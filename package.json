@@ -1,0 +1,26 @@
+{
+  "name": "@jossuealcala/pulse",
+  "version": "0.1.0-dev.1",
+  "description": "One room where local AI agents collaborate around a project.",
+  "type": "module",
+  "private": true,
+  "files": [
+    "bin",
+    "src",
+    "public",
+    "README.md"
+  ],
+  "bin": {
+    "pulse": "./bin/pulse.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node ./bin/pulse.mjs start",
+    "doctor": "node ./bin/pulse.mjs doctor",
+    "test": "node --test",
+    "check": "npm test && node ./bin/pulse.mjs doctor --json"
+  },
+  "license": "UNLICENSED"
+}

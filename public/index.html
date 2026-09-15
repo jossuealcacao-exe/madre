@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PULSE</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div class="brand"><span class="pulse-dot"></span>PULSE</div>
+        <div id="project" class="project"></div>
+      </header>
+      <section class="room">
+        <div class="room-heading">
+          <div>
+            <p class="eyebrow">PROJECT ROOM</p>
+            <h1>One conversation. Every agent.</h1>
+          </div>
+          <div id="agents" class="agents"></div>
+        </div>
+        <div id="messages" class="messages" aria-live="polite">
+          <div class="empty">
+            <strong>Start with a question.</strong>
+            <span>Mention an available agent, for example <code>@codex summarize this project</code>.</span>
+          </div>
+        </div>
+        <form id="composer" class="composer">
+          <select id="target" aria-label="Agent"></select>
+          <textarea id="message" rows="1" placeholder="Ask the room…" required></textarea>
+          <button type="submit" aria-label="Send">Send</button>
+        </form>
+        <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
