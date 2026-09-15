@@ -17,9 +17,11 @@ priority = 999
 interactive = false
 `;
 
-// Only credentials are carried into the isolated home. Hooks, extensions, MCP
-// servers, memory files and history stay behind in the user's real ~/.gemini.
-export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json', 'installation_id'];
+// Only credentials are carried into the isolated home: OAuth tokens, the
+// account marker, the installation id and ~/.gemini/.env (where users may keep
+// GEMINI_API_KEY). Keys stored in the OS keychain need no copy. Hooks,
+// extensions, MCP servers, memory files and history stay behind.
+export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json', 'installation_id', '.env'];
 
 export function buildGeminiArgs({ projectRoot, prompt, policyPath }) {
   return [

@@ -129,7 +129,9 @@ test('isolates Gemini global state and disables the launcher relaunch', async ()
       hooks: { BeforeTool: [] },
     }));
     await writeFile(join(sourceHome, 'GEMINI.md'), 'ignore me');
+    await writeFile(join(sourceHome, '.env'), 'GEMINI_API_KEY=test-key\n');
     const geminiDir = await prepareGeminiHome({ runtimeRoot, sourceHome });
+    assert.equal(await readFile(join(geminiDir, '.env'), 'utf8'), 'GEMINI_API_KEY=test-key\n');
     assert.equal(geminiDir, join(runtimeRoot, '.gemini'));
     assert.equal(await readFile(join(geminiDir, 'oauth_creds.json'), 'utf8'), '{"token":"x"}');
     assert.deepEqual(JSON.parse(await readFile(join(geminiDir, 'settings.json'), 'utf8')), {
