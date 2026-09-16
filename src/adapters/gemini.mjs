@@ -51,8 +51,20 @@ export function geminiPolicy({ lease = null, scopes = null, imageStudio = null }
   return `${lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}`;
 }
 
+// Gemini CLI reads "@something" in a prompt as a file to include, even in
+// headless mode, and fuzzily resolves "@claude" to CLAUDE.md. Its parser skips
+// an @ preceded by a backslash, so every handle goes in as \@name; the model
+// is told what that means and its reply is unescaped on the way out.
+export const GEMINI_MENTION_NOTE = 'Note: in this prompt every @handle is written as \\@handle (your CLI would otherwise read @name as a file to include). Read \\@name as @name and write handles plainly as @name in your reply.';
+export function escapeGeminiMentions(text) {
+  return String(text ?? '').replace(/(^|[^\\])@(?=[\w./~-])/g, '$1\\@');
+}
+export const unescapeGeminiMentions = (text) => String(text ?? '').replace(/\\@/g, '@');
+
 export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null, attachmentsDir = null, lease = null }) {
   const includes = [projectRoot, attachmentsDir, lease?.outDir].filter(Boolean).join(',');
+  const escaped = escapeGeminiMentions(prompt);
+  const safePrompt = escaped !== prompt ? `${GEMINI_MENTION_NOTE}\n\n${escaped}` : prompt;
   return [
     ...(model && model !== 'auto' ? ['--model', model] : []),
     '--approval-mode', lease ? 'default' : 'plan',
@@ -62,7 +74,7 @@ export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null,
     '--skip-trust',
     '--include-directories', includes,
     '--policy', policyPath,
-    '--prompt', prompt,
+    '--prompt', safePrompt,
   ];
 }
 
@@ -147,7 +159,7 @@ export function parseGeminiOutput(output) {
   if (events.length === 1 && !events[0].type && (events[0].response !== undefined || events[0].error || events[0].stats)) {
     const result = events[0];
     if (result.error) return { text: '', usage: null, error: result.error.message ?? 'Gemini returned an error.' };
-    return { text: typeof result.response === 'string' ? result.response.trim() : '', usage: usageFromStats(result.stats) };
+    return { text: typeof result.response === 'string' ? unescapeGeminiMentions(result.response.trim()) : '', usage: usageFromStats(result.stats) };
   }
   let text = '';
   let usage = null;
@@ -161,7 +173,7 @@ export function parseGeminiOutput(output) {
     }
     if (event.type === 'result') usage = usageFromStats(event.stats);
   }
-  return { text: text.trim(), usage, toolCalls, ...(error ? { error } : {}) };
+  return { text: unescapeGeminiMentions(text.trim()), usage, toolCalls, ...(error ? { error } : {}) };
 }
 
 // Best-effort removal of the temporary home. A killed Gemini may still be
@@ -259,6 +271,10 @@ export async function invokeGemini({
           continue;
         }
         if (diagnosis) error.message = `${error.message} ${diagnosis.message} ${diagnosis.hint}`;
+        else if ((error.code === 'TIMEOUT' || error.code === 'IDLE') && error.partialStderr?.trim()) {
+          const lastStderr = error.partialStderr.trim().split('\n').filter(Boolean).at(-1);
+          if (lastStderr) error.message = `${error.message} stderr: ${lastStderr.slice(0, 200)}`;
+        }
         if (attempt > 1) error.message = `${error.message} (retried ${attempt - 1}×)`;
         throw error;
       }

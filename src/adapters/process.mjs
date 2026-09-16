@@ -98,7 +98,8 @@ export function runReadonlyProcess({
 
     // Only complete stdout lines count as activity: a CLI's stderr spinner or
     // progress noise must not keep a silent model alive past the idle limit.
-    child.stdout.on('data', (chunk) => { stdout += chunk; if (String(chunk).includes('\n')) lastActivity = Date.now(); });
+    // Blank keep-alive lines are not activity either.
+    child.stdout.on('data', (chunk) => { stdout += chunk; if (/\S/.test(String(chunk)) && String(chunk).includes('\n')) lastActivity = Date.now(); });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     armIdle();
     child.on('error', (error) => finish(() => {

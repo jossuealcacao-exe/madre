@@ -181,6 +181,10 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 
 `npm run pack:check` empaqueta el proyecto, lo instala en un directorio vacío y ejecuta el CLI instalado: `--help`, `doctor` y un arranque del servidor que sirve la sala y cierra limpio con `SIGTERM`. No invoca ningún modelo.
 
+### Menciones y Gemini CLI
+
+Gemini CLI lee `@algo` en el prompt como un archivo a incluir, incluso en modo headless, y resuelve `@claude` contra `CLAUDE.md`. PULSE escapa cada handle como `\@nombre` al construir el prompt (su parser respeta la barra invertida), antepone una nota que explica la convención y desescapa la respuesta. Las menciones llegan y vuelven intactas.
+
 ## Estado de adaptadores
 
 - Codex: consulta de solo lectura habilitada.

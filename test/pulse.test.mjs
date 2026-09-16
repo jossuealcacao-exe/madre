@@ -41,7 +41,7 @@ import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexMod
 import { contentTypeFor, isImage, listDirectory, readServable, resolveInside, resolveReferences, scoreFile, searchFiles, storeAttachment } from '../src/files.mjs';
 import { CAPABILITIES, abilityLine, agentsWith, capabilitySummary, resolveScopes } from '../src/capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
-import { diagnoseGeminiStderr, geminiLeasePolicy } from '../src/adapters/gemini.mjs';
+import { diagnoseGeminiStderr, escapeGeminiMentions, geminiLeasePolicy } from '../src/adapters/gemini.mjs';
 import { leaseConfig, openCodeConfig } from '../src/adapters/opencode.mjs';
 import { geminiPolicy } from '../src/adapters/gemini.mjs';
 import { claudeTools } from '../src/adapters/claude.mjs';
@@ -2241,4 +2241,19 @@ test('searchFiles ranks by name match and resolveReferences reads !file:lines fr
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+
+test('Gemini prompts escape @handles so the CLI does not read them as files, and replies are unescaped', () => {
+  assert.equal(escapeGeminiMentions('You are @gemini; talk to @codex and @claude about x@y.com'), 'You are \\@gemini; talk to \\@codex and \\@claude about x\\@y.com');
+  assert.equal(escapeGeminiMentions('already \\@codex'), 'already \\@codex', 'no double escaping');
+  assert.equal(escapeGeminiMentions('no handles here'), 'no handles here');
+  const args = buildGeminiArgs({ projectRoot: '/p', prompt: 'ask @codex', policyPath: '/policy.toml' });
+  const prompt = args[args.indexOf('--prompt') + 1];
+  assert.match(prompt, /^Note: in this prompt every @handle/);
+  assert.match(prompt, /ask \\@codex$/);
+  const plain = buildGeminiArgs({ projectRoot: '/p', prompt: 'no handles', policyPath: '/policy.toml' });
+  assert.equal(plain[plain.indexOf('--prompt') + 1], 'no handles', 'prompts without handles are untouched');
+  const parsed = parseGeminiOutput(JSON.stringify({ type: 'message', role: 'assistant', content: 'OK \\@codex and @claude' }));
+  assert.equal(parsed.text, 'OK @codex and @claude');
 });
