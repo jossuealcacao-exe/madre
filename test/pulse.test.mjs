@@ -1968,7 +1968,9 @@ test('Image Studio MCP server: protocol, tool, path containment, Google errors e
     } });
     assert.equal(made.bytes, 4);
     await assert.rejects(generateImage({ prompt: 'p', fileName: 'x.png', outDir: out, env: { GEMINI_API_KEY: 'k' }, fetchImpl: async () => ({ ok: false, status: 429, json: async () => ({ error: { message: 'Your prepayment credits are depleted.' } }) }) }), (error) => error.code === 'CREDITS_DEPLETED');
-    await assert.rejects(generateImage({ prompt: 'p', fileName: 'x.png', outDir: out, env: {} }), (error) => error.code === 'NO_KEY' || process.platform === 'darwin');
+    // No key in env: off macOS that is NO_KEY; on macOS the keychain may hold
+    // the user's real key, so the stubbed fetch answers 401 and never goes out.
+    await assert.rejects(generateImage({ prompt: 'p', fileName: 'x.png', outDir: out, env: {}, fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'unauthorized' } }) }) }), (error) => error.code === 'NO_KEY' || error.code === 'AUTH');
   } finally {
     await rm(out, { recursive: true, force: true });
   }

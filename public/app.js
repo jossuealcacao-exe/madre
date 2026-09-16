@@ -649,6 +649,7 @@ function renderThinking(event) {
   const status = el('span', 'status');
   const elapsed = el('span', 'elapsed');
   bubble.append(status, elapsed);
+  node.append(bubble);
   const startedAt = event.timestamp ? new Date(event.timestamp).getTime() : Date.now();
   const phrases = workingPhrases(agent, state.userMessages.get(messageId)?.text ?? '');
   let phraseIndex = -1;
@@ -1457,7 +1458,21 @@ function renderMotherOs() {
 
 function renderMotherRecorded() {
   mother.recorded.replaceChildren();
-  mother.recorded.append(el('h3', null, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`));
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('pulse.mother.log') === 'collapsed'; } catch { /* no storage */ }
+  const head = el('h3', 'toggle');
+  const headButton = el('button', null, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`);
+  headButton.type = 'button';
+  headButton.setAttribute('aria-expanded', String(!collapsed));
+  headButton.append(el('span', 'caret', collapsed ? '▸ EXPAND' : '▾ COLLAPSE'));
+  headButton.addEventListener('click', () => {
+    try { localStorage.setItem('pulse.mother.log', collapsed ? 'expanded' : 'collapsed'); } catch { /* no storage */ }
+    renderMotherRecorded();
+  });
+  head.append(headButton);
+  mother.recorded.append(head);
+  mother.recorded.classList.toggle('collapsed', collapsed);
+  if (collapsed) return;
   if (!state.failures.length) {
     mother.recorded.append(el('p', 'mother-answer', 'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.'));
     return;
@@ -1466,7 +1481,23 @@ function renderMotherRecorded() {
     const rowNode = paint(el('div', 'mother-record'), failure.agent);
     rowNode.append(el('span', 't', formatTime(failure.time)));
     rowNode.append(el('span', 'a', failure.agent ?? 'room'));
-    rowNode.append(el('span', 'e', String(failure.error).split('\n')[0].slice(0, 220)));
+    const full = String(failure.error).trim();
+    const firstLine = full.split('\n')[0].slice(0, 220);
+    const errorNode = el('span', 'e', firstLine);
+    if (full.length > firstLine.length) {
+      // One line by default; click to read the whole record and back.
+      errorNode.classList.add('more');
+      errorNode.title = 'Expand';
+      errorNode.tabIndex = 0;
+      const flip = () => {
+        const open = errorNode.classList.toggle('open');
+        errorNode.textContent = open ? full.slice(0, 4000) : firstLine;
+        errorNode.title = open ? 'Collapse' : 'Expand';
+      };
+      errorNode.addEventListener('click', flip);
+      errorNode.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); flip(); } });
+    }
+    rowNode.append(errorNode);
     const matches = diagnose(failure.error, failure.agent);
     const links = el('span', 'k');
     if (!matches.length) links.append(el('span', 'none', 'UNCLASSIFIED'));
