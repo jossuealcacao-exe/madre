@@ -1026,7 +1026,8 @@ stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 const autosize = () => {
   els.input.style.height = 'auto';
-  els.input.style.height = `${Math.min(els.input.scrollHeight, 180)}px`;
+  const floor = state.create ? 96 : 0;
+  els.input.style.height = `${Math.min(Math.max(els.input.scrollHeight, floor), state.create ? 260 : 180)}px`;
 };
 els.input.addEventListener('input', autosize);
 els.input.addEventListener('keydown', (event) => {
@@ -1097,7 +1098,9 @@ els.createToggle.addEventListener('click', () => {
   renderCreateScopes();
   els.composer.classList.toggle('creating', state.create);
   els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
-  els.input.placeholder = state.create ? 'Creation lease on: the agent may create files in .pulse/out/ for this request.' : 'Type here, human. Ask the room…';
+  els.input.placeholder = state.create ? 'Creation lease on: describe what to create, where it goes (.pulse/out/), and how it should look.' : 'Type here, human. Ask the room…';
+  els.input.rows = state.create ? 4 : 1;
+  autosize();
   els.input.focus();
 });
 els.attach.addEventListener('click', () => els.fileInput.click());
@@ -1676,7 +1679,7 @@ function connectionCard(agent) {
     const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(scope.enabled); box.disabled = !scope.capable || !scope.wired;
     box.dataset.agent = agent.id; box.dataset.scope = key; box.className = 'scope-input';
     line.append(box, labelText);
-    line.append(el('span', 'why', !scope.capable ? 'not available from this CLI' : !scope.wired ? 'next: not wired yet' : scope.enabled ? 'on for CREATE' : 'off'));
+    line.append(el('span', 'why', !scope.capable ? 'not available from this CLI' : !scope.wired ? 'not wired yet' : scope.enabled ? (key === 'web' ? 'on for every turn' : 'on for CREATE') : 'off'));
     line.title = !scope.capable ? `${agent.label}'s CLI has no way to do this; PULSE will tell you if you try.` : '';
     scopes.append(line);
   }

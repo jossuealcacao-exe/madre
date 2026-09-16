@@ -39,6 +39,18 @@ interactive = false
 `;
 }
 
+export const geminiWebPolicy = `
+[[rule]]
+toolName = ["google_web_search", "web_fetch"]
+decision = "allow"
+priority = 999
+interactive = false
+`;
+
+export function geminiPolicy({ lease = null, scopes = null } = {}) {
+  return `${lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}`;
+}
+
 export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null, attachmentsDir = null, lease = null }) {
   const includes = [projectRoot, attachmentsDir, lease?.outDir].filter(Boolean).join(',');
   return [
@@ -191,6 +203,7 @@ export async function invokeGemini({
   model = null,
   attachments = [],
   lease = null,
+  scopes = null,
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   run = runReadonlyProcess,
@@ -198,7 +211,7 @@ export async function invokeGemini({
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
-    await writeFile(policyPath, lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy, { mode: 0o600 });
+    await writeFile(policyPath, geminiPolicy({ lease, scopes }), { mode: 0o600 });
     await prepareGeminiHome({ runtimeRoot });
     let attempt = 0;
     for (;;) {

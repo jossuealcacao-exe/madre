@@ -42,7 +42,9 @@ import { contentTypeFor, isImage, readServable, resolveInside, storeAttachment }
 import { CAPABILITIES, abilityLine, agentsWith, capabilitySummary, resolveScopes } from '../src/capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
 import { diagnoseGeminiStderr, geminiLeasePolicy } from '../src/adapters/gemini.mjs';
-import { leaseConfig } from '../src/adapters/opencode.mjs';
+import { leaseConfig, openCodeConfig } from '../src/adapters/opencode.mjs';
+import { geminiPolicy } from '../src/adapters/gemini.mjs';
+import { claudeTools } from '../src/adapters/claude.mjs';
 import { symlink } from 'node:fs/promises';
 import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
 import { mkdir } from 'node:fs/promises';
@@ -1892,6 +1894,43 @@ test('idle detection ignores stderr chatter and counts only complete stdout line
   const started = Date.now();
   await assert.rejects(chatty, (error) => error.code === 'IDLE' && /retrying/.test(error.partialStderr));
   assert.ok(Date.now() - started < 5000, 'stderr noise did not postpone the idle stop');
+});
+
+test('web scope: wired into every CLI, standing per agent, off by default', async () => {
+  assert.equal(resolveScopes('codex').web.wired, true);
+  assert.equal(resolveScopes('codex').web.enabled, false, 'off until the human enables it');
+  assert.equal(resolveScopes('codex', { web: true }).web.enabled, true);
+  const web = { web: true, imageGen: true };
+  assert.ok(buildCodexArgs({ projectRoot: '/p', prompt: 'q', scopes: web }).indexOf('--search') < buildCodexArgs({ projectRoot: '/p', prompt: 'q', scopes: web }).indexOf('exec'), 'Codex --search is a global flag before exec');
+  assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--search'), false);
+  assert.deepEqual(claudeTools({ scopes: web }), ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch']);
+  assert.deepEqual(claudeTools({ lease: { outDir: '/o' }, scopes: web }), ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'WebFetch', 'WebSearch']);
+  const claude = buildClaudeArgs({ prompt: 'q', scopes: web });
+  assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,WebFetch,WebSearch');
+  assert.equal(buildClaudeArgs({ prompt: 'q' }).includes('WebFetch'), false);
+  assert.match(geminiPolicy({ scopes: web }), /toolName = \["google_web_search", "web_fetch"\]\ndecision = "allow"/);
+  assert.doesNotMatch(geminiPolicy({}), /google_web_search/);
+  assert.match(geminiPolicy({ lease: { outDir: '/o' }, scopes: web }), /write_file[\s\S]*google_web_search/);
+  assert.deepEqual([openCodeConfig({ scopes: web }).agent['pulse-readonly'].permission.webfetch, openCodeConfig({ scopes: web }).agent['pulse-readonly'].permission.websearch], ['allow', 'allow']);
+  assert.equal(openCodeConfig({}).agent['pulse-readonly'].permission.webfetch, undefined);
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-web-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '1' }];
+    const seen = [];
+    const room = new Room({ store, agents, projectRoot: root, invokers: { 'claude-readonly': async ({ prompt, scopes, lease }) => { seen.push({ prompt, scopes, lease }); return { text: 'ok', usage: null }; } } });
+    await room.send({ text: 'latest node version?', target: 'claude' });
+    assert.deepEqual(seen[0].scopes, { web: false, imageGen: false });
+    assert.match(seen[0].prompt, /Do not access the web/);
+    room.setScopes({ claude: { web: true } });
+    await room.send({ text: 'latest node version?', target: 'claude' });
+    assert.deepEqual(seen[1].scopes, { web: true, imageGen: false });
+    assert.match(seen[1].prompt, /WEB ACCESS: the human enabled web search/);
+    assert.equal(seen[1].lease, null, 'web does not need a lease');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

@@ -2,14 +2,16 @@ import { runReadonlyProcess } from './process.mjs';
 
 // With a lease, the working root is the lease directory (the only writable
 // place) and the sandbox allows workspace writes; the project stays readable.
-export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [], lease = null }) {
+export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [], lease = null, scopes = null }) {
   const images = attachments.filter((file) => /^image\//.test(file.contentType ?? ''));
   return [
     '--sandbox', lease ? 'workspace-write' : 'read-only',
     '--ask-for-approval', 'never',
+    // Live web search is a global Codex flag; the human's web scope decides.
+    ...(scopes?.web ? ['--search'] : []),
     '-C', lease ? lease.outDir : projectRoot,
     // Image generation is a Codex feature; the human's scope decides per turn.
-    ...(lease && lease.scopes && lease.scopes.imageGen === false ? ['-c', 'features.image_generation=false'] : []),
+    ...(lease && (scopes?.imageGen === false || lease.scopes?.imageGen === false) ? ['-c', 'features.image_generation=false'] : []),
     'exec',
     ...(lease ? ['--skip-git-repo-check'] : []),
     ...(model ? ['--model', model] : []),
@@ -47,10 +49,10 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildCodexArgs({ projectRoot, prompt, model, attachments, lease }),
+    args: buildCodexArgs({ projectRoot, prompt, model, attachments, lease, scopes }),
     cwd: lease ? lease.outDir : projectRoot,
     env: process.env,
     timeoutMs,

@@ -3,7 +3,20 @@ import { runReadonlyProcess } from './process.mjs';
 // dontAsk denies any tool use that is not pre-approved, so under a lease the
 // Write/Edit tools exist but only paths inside the lease directory are
 // allowed; everything else in the project is refused without a prompt.
-export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null }) {
+export function claudeTools({ lease = null, scopes = null } = {}) {
+  const tools = ['Read', 'Glob', 'Grep'];
+  if (lease) tools.push('Write', 'Edit');
+  if (scopes?.web) tools.push('WebFetch', 'WebSearch');
+  return tools;
+}
+
+export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null }) {
+  const tools = claudeTools({ lease, scopes });
+  const allowed = [
+    'Read', 'Glob', 'Grep',
+    ...(lease ? [`Write(${lease.outDir}/**)`, `Edit(${lease.outDir}/**)`] : []),
+    ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
+  ];
   return [
     '-p',
     ...(model ? ['--model', model] : []),
@@ -11,8 +24,8 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     ...(attachmentsDir ? ['--add-dir', attachmentsDir] : []),
     '--output-format', 'json',
     '--permission-mode', 'dontAsk',
-    '--tools', lease ? 'Read,Glob,Grep,Write,Edit' : 'Read,Glob,Grep',
-    ...(lease ? ['--allowedTools', `Read,Glob,Grep,Write(${lease.outDir}/**),Edit(${lease.outDir}/**)`] : []),
+    '--tools', tools.join(','),
+    ...(lease || scopes?.web ? ['--allowedTools', allowed.join(',')] : []),
     '--safe-mode',
     '--disable-slash-commands',
     '--no-session-persistence',
@@ -57,10 +70,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease }),
+    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

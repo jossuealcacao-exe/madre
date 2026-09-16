@@ -16,28 +16,28 @@ export const CAPABILITIES = {
     imageIn: { how: '-i <file>', note: 'Images attach to the prompt directly.' },
     write: { how: '-C <outdir> --sandbox workspace-write', note: 'Reads the whole project, writes only inside the lease directory.' },
     imageGen: { how: 'features.image_generation (stable, enabled)', note: 'Generated with the ChatGPT account; saved into the lease directory.' },
-    web: { how: 'web_search feature', note: 'Off in consultation mode.' },
+    web: { how: '--search (live web_search tool)', note: 'Off until enabled in CONNECTIONS.' },
   },
   claude: {
     read: true,
     imageIn: { how: 'Read tool on the attachment path', note: 'The attachments folder is added with --add-dir.' },
     write: { how: '--tools Write,Edit + permission rules', note: 'Write/Edit allowed only under the lease directory.' },
     imageGen: false,
-    web: { how: 'WebFetch / WebSearch tools', note: 'Off in consultation mode.' },
+    web: { how: '--tools WebFetch,WebSearch', note: 'Off until enabled in CONNECTIONS.' },
   },
   gemini: {
     read: true,
     imageIn: { how: 'read_file on the attachment path', note: 'The attachments folder is added with --include-directories.' },
     write: { how: 'policy: allow write_file/edit with argsPattern', note: 'Paths outside the lease directory stay denied.' },
     imageGen: false,
-    web: { how: 'google_web_search / web_fetch', note: 'Off in consultation mode.' },
+    web: { how: 'policy: allow google_web_search, web_fetch', note: 'Off until enabled in CONNECTIONS.' },
   },
   opencode: {
     read: true,
     imageIn: { how: '-f <file>', note: 'Files attach to the message.' },
     write: { how: 'permission.edit patterns', note: 'Edit allowed only under the lease directory.' },
     imageGen: false,
-    web: { how: 'webfetch / websearch permissions', note: 'Off in consultation mode.' },
+    web: { how: 'permission.webfetch / websearch = allow', note: 'Off until enabled in CONNECTIONS.' },
   },
 };
 
@@ -72,7 +72,7 @@ export function resolveScopes(agentId, configured = {}) {
   for (const scope of SCOPES) {
     const capable = Boolean(caps[scope]);
     const wanted = configured[scope] ?? (scope !== 'web');
-    scopes[scope] = { capable, enabled: capable && wanted, wired: scope !== 'web' };
+    scopes[scope] = { capable, enabled: capable && wanted, wired: true };
   }
   return scopes;
 }

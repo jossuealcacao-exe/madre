@@ -562,3 +562,9 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .conn-card .scope input { accent-color: #9bff66; width: auto; }
 .conn-card .scope.unavailable { color: var(--ph-dim); cursor: not-allowed; }
 .conn-card .scope .why { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }
+
+/* CREATE armed: room for a longer human request */
+.composer textarea { transition: min-height .25s ease; }
+.composer.creating textarea { min-height: 96px; }
+.composer.creating .field { align-items: start; padding-top: 10px; }
+.composer.creating .crew-label, .composer.creating .attach, .composer.creating .create-toggle, .composer.creating .field button[type="submit"] { align-self: start; margin-top: 2px; }

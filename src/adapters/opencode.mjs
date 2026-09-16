@@ -50,11 +50,26 @@ export function leaseConfig(outDir) {
   };
 }
 
-export function openCodeEnvironment(environment = process.env, { lease = null } = {}) {
+export function openCodeConfig({ lease = null, scopes = null } = {}) {
+  const base = lease ? leaseConfig(lease.outDir) : readonlyConfig;
+  if (!scopes?.web) return base;
+  return {
+    ...base,
+    agent: {
+      'pulse-readonly': {
+        ...base.agent['pulse-readonly'],
+        prompt: base.agent['pulse-readonly'].prompt.replace('browse the web, ', ''),
+        permission: { ...base.agent['pulse-readonly'].permission, webfetch: 'allow', websearch: 'allow' },
+      },
+    },
+  };
+}
+
+export function openCodeEnvironment(environment = process.env, { lease = null, scopes = null } = {}) {
   return {
     ...environment,
     OPENCODE_AUTO_SHARE: 'false',
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(lease ? leaseConfig(lease.outDir) : readonlyConfig),
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(openCodeConfig({ lease, scopes })),
     OPENCODE_DISABLE_AUTOUPDATE: 'true',
   };
 }
@@ -92,12 +107,12 @@ export function parseOpenCodeOutput(output) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null }) {
+export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null }) {
   return runReadonlyProcess({
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt, attachments, ...(model ? { model } : {}) }),
     cwd: projectRoot,
-    env: openCodeEnvironment(process.env, { lease }),
+    env: openCodeEnvironment(process.env, { lease, scopes }),
     timeoutMs,
     signal,
     label: 'OpenCode',
