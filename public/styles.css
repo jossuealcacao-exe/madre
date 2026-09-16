@@ -565,8 +565,11 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .conn-card .scope.unavailable { color: var(--ph-dim); cursor: not-allowed; }
 .conn-card .scope .why { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }
 
-/* CREATE armed: the field widens past the column; it only grows taller when the text does */
+/* CREATE armed and text present: the field widens past the column; height follows line breaks only */
 .composer { transition: width .3s ease; }
-.composer.creating { width: min(1180px, 100% - 40px); }
+.composer.creating.wide { width: min(1180px, 100% - 40px); }
+.composer textarea { overflow-y: auto; line-height: 21px; }
 .composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
 @media (max-width: 1240px) { .composer.creating { width: calc(100% - 40px); } }
+
+.module-card select { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .06em; padding: 6px 8px; }

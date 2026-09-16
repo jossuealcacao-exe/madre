@@ -50,26 +50,34 @@ export function leaseConfig(outDir) {
   };
 }
 
-export function openCodeConfig({ lease = null, scopes = null } = {}) {
-  const base = lease ? leaseConfig(lease.outDir) : readonlyConfig;
-  if (!scopes?.web) return base;
-  return {
-    ...base,
-    agent: {
-      'pulse-readonly': {
-        ...base.agent['pulse-readonly'],
-        prompt: base.agent['pulse-readonly'].prompt.replace('browse the web, ', ''),
-        permission: { ...base.agent['pulse-readonly'].permission, webfetch: 'allow', websearch: 'allow' },
+export function openCodeConfig({ lease = null, scopes = null, imageStudio = null } = {}) {
+  let config = lease ? leaseConfig(lease.outDir) : readonlyConfig;
+  if (scopes?.web) {
+    config = {
+      ...config,
+      agent: {
+        'pulse-readonly': {
+          ...config.agent['pulse-readonly'],
+          prompt: config.agent['pulse-readonly'].prompt.replace('browse the web, ', ''),
+          permission: { ...config.agent['pulse-readonly'].permission, webfetch: 'allow', websearch: 'allow' },
+        },
       },
-    },
-  };
+    };
+  }
+  if (imageStudio && lease) {
+    config = {
+      ...config,
+      mcp: { [imageStudio.name]: { type: 'local', command: [imageStudio.command, ...imageStudio.args], environment: imageStudio.env, enabled: true } },
+    };
+  }
+  return config;
 }
 
-export function openCodeEnvironment(environment = process.env, { lease = null, scopes = null } = {}) {
+export function openCodeEnvironment(environment = process.env, { lease = null, scopes = null, imageStudio = null } = {}) {
   return {
     ...environment,
     OPENCODE_AUTO_SHARE: 'false',
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(openCodeConfig({ lease, scopes })),
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(openCodeConfig({ lease, scopes, imageStudio })),
     OPENCODE_DISABLE_AUTOUPDATE: 'true',
   };
 }
@@ -107,12 +115,12 @@ export function parseOpenCodeOutput(output) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null }) {
+export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null }) {
   return runReadonlyProcess({
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt, attachments, ...(model ? { model } : {}) }),
     cwd: projectRoot,
-    env: openCodeEnvironment(process.env, { lease, scopes }),
+    env: openCodeEnvironment(process.env, { lease, scopes, imageStudio }),
     timeoutMs,
     signal,
     label: 'OpenCode',

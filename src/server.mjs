@@ -14,6 +14,8 @@ import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { discoverModels } from './models.mjs';
+import { setImageModule } from './capabilities.mjs';
+import { resolveGeminiKey } from './image-studio.mjs';
 import { readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
@@ -78,6 +80,7 @@ export async function createPulseServer({
   installers = {},
   loginRunners = {},
   probe = probeAll,
+  imageKey = resolveGeminiKey,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
@@ -218,7 +221,9 @@ export async function createPulseServer({
     return Buffer.concat(chunks);
   }
 
-  room.setScopes((await readConfig(root)).scopes ?? {});
+  const startupConfig = await readConfig(root);
+  room.setScopes(startupConfig.scopes ?? {});
+  setImageModule(startupConfig.modules?.imageStudio ?? {});
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -282,6 +287,18 @@ export async function createPulseServer({
   async function installExtension(id, { confirm } = {}) {
     const extension = extensionById(id);
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
+    if (extension.kind === 'builtin') {
+      // Image Studio: a switch in config.json, nothing written to the project.
+      const current = await readConfig(root);
+      const enabled = !(current.modules?.imageStudio?.enabled);
+      const key = await imageKey();
+      if (enabled && !key) return { status: 412, body: { error: 'No Gemini API key found. Sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY, then enable Image Studio.' } };
+      const model = typeof arguments[1]?.model === 'string' && arguments[1].model ? arguments[1].model : (current.modules?.imageStudio?.model ?? extension.models[0]);
+      await updateConfig(root, { modules: { imageStudio: { enabled, model } } });
+      setImageModule({ enabled, model });
+      await room.record('extension.toggled', { id, name: extension.name, enabled, model });
+      return { status: 200, body: { enabled, model, capabilities: room.capabilities() } };
+    }
     if (confirm !== true) return { status: 400, body: { error: 'Installing a module writes into the project; send { "confirm": true } to proceed.' } };
     if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
     const preflight = extension.preflight ? await extension.preflight(canonicalProjectRoot) : { ok: true, problems: [] };
@@ -454,7 +471,7 @@ export async function createPulseServer({
         return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: 'No running plan with that id.' });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
-        return sendJson(response, 200, { installing, extensions: await listExtensions({ projectRoot: canonicalProjectRoot, agents }) });
+        return sendJson(response, 200, { installing, extensions: await listExtensions({ projectRoot: canonicalProjectRoot, agents, config: await readConfig(root), imageKey }) });
       }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {

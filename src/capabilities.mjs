@@ -41,7 +41,22 @@ export const CAPABILITIES = {
   },
 };
 
-export const capabilityOf = (agentId) => CAPABILITIES[agentId] ?? { read: true, imageIn: false, write: false, imageGen: false, web: false };
+// PULSE modules can add abilities a CLI lacks. Image Studio (PULSE's own MCP
+// image server on the Gemini API) gives Gemini CLI, Claude Code and OpenCode
+// image generation; Codex keeps its native one.
+let imageModule = { enabled: false };
+export function setImageModule(state) {
+  imageModule = { enabled: Boolean(state?.enabled), model: state?.model ?? null };
+}
+export const imageModuleState = () => ({ ...imageModule });
+
+export const capabilityOf = (agentId) => {
+  const base = CAPABILITIES[agentId] ?? { read: true, imageIn: false, write: false, imageGen: false, web: false };
+  if (!base.imageGen && imageModule.enabled && ['gemini', 'claude', 'opencode'].includes(agentId)) {
+    return { ...base, imageGen: { how: 'PULSE Image Studio (MCP tool generate_image, Gemini API)', note: `Attached only inside a creation lease with the image scope on${imageModule.model ? ` · model ${imageModule.model}` : ''}.`, module: 'image-studio' } };
+  }
+  return base;
+};
 
 export function capabilitySummary(agentId) {
   const caps = capabilityOf(agentId);

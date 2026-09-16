@@ -128,6 +128,10 @@ Los alcances se eligen por agente en `⚙ CONNECTIONS`: crear archivos y generar
 
 Al terminar cada turno, PULSE compara la carpeta antes y después y registra lo aparecido como `artifacts.created`; las imágenes y archivos creados se muestran bajo la respuesta del agente y se abren en el visor. El permiso queda en el log como `lease.granted`, dura un mensaje (hay que volver a pulsar `CREATE`), lo heredan los pasos delegados, y STOPALL lo corta con todo lo demás. Añade `.pulse/` al `.gitignore` del proyecto si no quieres versionar los artefactos.
 
+### Image Studio: imágenes para quien no las genera
+
+Solo Codex genera imágenes de forma nativa. El módulo **Image Studio** (en `MODULES`, sin escribir nada en el proyecto) enciende un servidor MCP propio de PULSE, `src/mcp/image-server.mjs`, que expone la herramienta `generate_image` sobre los modelos de imagen de la API de Gemini (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3-pro-image`) con tu propia key de Gemini y sus créditos. PULSE lo conecta a Gemini CLI, Claude Code y OpenCode únicamente dentro de un permiso CREATE con el alcance de imágenes encendido, en sus homes aislados: Claude por `--mcp-config` estricto, Gemini en el `settings.json` temporal más una regla de política, OpenCode en su config efímera. La imagen se guarda en la carpeta del permiso y aparece como artefacto. Con el módulo activo, la casilla GENERATE IMAGES de esos tres agentes se vuelve seleccionable en Conexiones; MU/TH/UR explica la ruta desde `ask MU/TH/UR`. Si la key no tiene créditos, Google responde 429 y la sala lo dice con su nombre.
+
 ## Módulos
 
 La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay uno:

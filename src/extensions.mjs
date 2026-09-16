@@ -87,10 +87,46 @@ export const EXTENSIONS = [
   },
 ];
 
+// Built-in module: no project write, no npm. "Installing" it enables PULSE's own
+// MCP image server for the CLIs that cannot generate images natively.
+export const IMAGE_STUDIO = {
+  id: 'image-studio',
+  kind: 'builtin',
+  name: 'Image Studio',
+  vendor: 'PULSE · Gemini API',
+  package: null,
+  version: '0.1.0',
+  summary: 'Gives Gemini CLI, Claude Code and OpenCode an image-generation tool through a PULSE-owned MCP server on the Gemini API image models, using your own Gemini key and credits. Attached only inside a creation lease with the image scope on.',
+  creates: ['nothing in the project: images land in the lease directory like any artifact', 'an "image-studio" entry in ~/.pulse/config.json', 'an MCP server process per turn, started and stopped by the CLI'],
+  requires: ['a Gemini API key with credits (the key the Gemini CLI stores, or GEMINI_API_KEY)'],
+  models: ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image'],
+};
+EXTENSIONS.push(IMAGE_STUDIO);
+
 export const extensionById = (id) => EXTENSIONS.find((extension) => extension.id === id) ?? null;
 
-export async function listExtensions({ projectRoot, agents = [] }) {
+export async function listExtensions({ projectRoot, agents = [], config = {}, imageKey = async () => null }) {
   return Promise.all(EXTENSIONS.map(async (extension) => {
+    if (extension.kind === 'builtin') {
+      const enabled = Boolean(config.modules?.imageStudio?.enabled);
+      const key = await imageKey();
+      return {
+        id: extension.id,
+        kind: 'builtin',
+        name: extension.name,
+        vendor: extension.vendor,
+        package: null,
+        version: extension.version,
+        summary: extension.summary,
+        creates: extension.creates,
+        requires: extension.requires,
+        models: extension.models,
+        model: config.modules?.imageStudio?.model ?? extension.models[0],
+        status: { installed: enabled, detail: enabled ? `on · ${config.modules?.imageStudio?.model ?? extension.models[0]}${key ? '' : ' · no Gemini key found'}` : key ? 'key found' : 'no Gemini key found' },
+        preflight: key ? { ok: true, problems: [] } : { ok: false, problems: ['No Gemini API key: sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY. Image models bill against that key\'s AI Studio credits.'] },
+        install: { display: enabled ? 'disable Image Studio' : 'enable Image Studio (config.json)', platforms: ['gemini', 'claude', 'opencode'] },
+      };
+    }
     const status = await extension.detect(projectRoot);
     const plan = extension.installCommand({ agents });
     const preflight = extension.preflight ? await extension.preflight(projectRoot) : { ok: true, problems: [] };

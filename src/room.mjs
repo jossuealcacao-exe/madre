@@ -11,6 +11,8 @@ import { DELEGATION_HELP, parseDirectives } from './directives.mjs';
 import { isValidModelName } from './models.mjs';
 import { SCOPES, SCOPE_LABELS, abilityLine, capabilitySummary, resolveScopes } from './capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from './lease.mjs';
+import { imageStudioFor } from './image-studio.mjs';
+import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -416,7 +418,7 @@ export class Room {
     return outcome?.responseMessageId ?? null;
   }
 
-  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], lease = null, scopes = null, sharedLeaseHint = null }) {
+  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null }) {
     const others = this.delegatesFor(agent.id);
     const mayDelegate = allowDelegation && this.#delegation && depth === 0 && others.length > 0;
     const attached = attachments.length
@@ -432,7 +434,7 @@ export class Room {
         : null,
       mayDelegate ? DELEGATION_HELP(agent.id, others, this.#maxPlanSteps) : null,
       mayDelegate ? `Abilities right now (route each step to an agent that can do it):\n${[agent.id, ...others].map((id) => abilityLine(id, this.scopesFor(id))).join('\n')}` : null,
-      lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: this.scopesFor(agent.id) }) : null,
+      lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: this.scopesFor(agent.id), imageStudio }) : null,
       scopes?.web ? 'WEB ACCESS: the human enabled web search and fetch for you; use them when the question needs current or external information, and cite the sources you used.' : null,
       !lease && requester !== 'you' && depth > 0 && sharedLeaseHint ? sharedLeaseHint : null,
       attached,
@@ -455,6 +457,13 @@ export class Room {
     if (sharedLease) {
       lease = enabled.write ? { ...sharedLease, scopes: enabled } : null;
     }
+    // Image Studio: PULSE's MCP image server, for agents whose CLI has no native
+    // image generation, only inside a lease with the image scope on.
+    const native = Boolean(CAPABILITIES[agent.id]?.imageGen);
+    const studio = imageModuleState();
+    const imageStudio = lease && enabled.imageGen && !native && studio.enabled
+      ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.outDir })
+      : null;
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported PULSE adapter.`);
@@ -462,13 +471,14 @@ export class Room {
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
-        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, lease, scopes: turnScopes, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
+        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, lease, scopes: turnScopes, imageStudio, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,
         attachments,
         lease,
         scopes: turnScopes,
+        imageStudio,
       });
       const responseMessageId = randomUUID();
       const artifacts = lease ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];

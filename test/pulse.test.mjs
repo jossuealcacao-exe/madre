@@ -45,6 +45,10 @@ import { diagnoseGeminiStderr, geminiLeasePolicy } from '../src/adapters/gemini.
 import { leaseConfig, openCodeConfig } from '../src/adapters/opencode.mjs';
 import { geminiPolicy } from '../src/adapters/gemini.mjs';
 import { claudeTools } from '../src/adapters/claude.mjs';
+import { handleRequest, safeImageName, explainGoogleError, generateImage } from '../src/mcp/image-server.mjs';
+import { imageStudioFor, IMAGE_SERVER_PATH } from '../src/image-studio.mjs';
+import { setImageModule, imageModuleState } from '../src/capabilities.mjs';
+import { geminiImagePolicy } from '../src/adapters/gemini.mjs';
 import { symlink } from 'node:fs/promises';
 import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
 import { mkdir } from 'node:fs/promises';
@@ -1039,7 +1043,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
   assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms codex,claude');
   assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.1', 'setup', '.']);
-  assert.equal(EXTENSIONS.length, 1);
+  assert.equal(EXTENSIONS.length, 2);
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));
   const project = join(root, 'project');
@@ -1049,6 +1053,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
     const listed = await listExtensions({ projectRoot: project, agents });
     assert.equal(listed[0].status.installed, false);
     assert.equal(listed[0].install.display, plan.display);
+    assert.equal(listed[1].id, 'image-studio');
 
     // A stand-in installer that behaves like `ahp setup .`: prints progress and creates .ahp/.
     const fakeInstaller = () => ({
@@ -1929,6 +1934,137 @@ test('web scope: wired into every CLI, standing per agent, off by default', asyn
     assert.match(seen[1].prompt, /WEB ACCESS: the human enabled web search/);
     assert.equal(seen[1].lease, null, 'web does not need a lease');
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('Image Studio MCP server: protocol, tool, path containment, Google errors explained', async () => {
+  const out = await mkdtemp(join(tmpdir(), 'pulse-img-'));
+  try {
+    const env = { PULSE_IMAGE_FAKE: '1' };
+    const init = await handleRequest({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, { outDir: out, env });
+    assert.equal(init.result.serverInfo.name, 'pulse-image');
+    const list = await handleRequest({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, { outDir: out, env });
+    assert.deepEqual(list.result.tools.map((tool) => tool.name), ['generate_image']);
+    const call = await handleRequest({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'generate_image', arguments: { prompt: 'a dot', file_name: '../../escape.png' } } }, { outDir: out, env });
+    assert.equal(call.result.isError, false);
+    assert.match(call.result.content[0].text, /escape\.png \(70 bytes/);
+    assert.equal((await readFile(join(out, 'escape.png'))).length, 70, 'written inside the lease, never above it');
+    assert.equal(await handleRequest({ jsonrpc: '2.0', method: 'notifications/initialized' }, { outDir: out, env }), null);
+    assert.equal((await handleRequest({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'nope' } }, { outDir: out, env })).error.code, -32602);
+    assert.equal((await handleRequest({ jsonrpc: '2.0', id: 5, method: 'resources/list' }, { outDir: out, env })).error.code, -32601);
+    assert.equal(safeImageName('my poster'), 'my poster.png');
+    assert.equal(safeImageName('../x/../y.png'), 'y.png');
+    assert.equal(explainGoogleError(429, { error: { message: 'Your prepayment credits are depleted. Please go to AI Studio' } }).code, 'CREDITS_DEPLETED');
+    assert.equal(explainGoogleError(429, { error: { message: 'Resource exhausted' } }).code, 'RATE_LIMITED');
+    assert.equal(explainGoogleError(403, {}).code, 'AUTH');
+    // real path with a stubbed fetch: base64 image data is decoded and saved
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64');
+    const made = await generateImage({ prompt: 'p', fileName: 'real.png', outDir: out, env: { GEMINI_API_KEY: 'k' }, fetchImpl: async (url, init) => {
+      assert.match(url, /gemini-2\.5-flash-image:generateContent$/);
+      assert.equal(init.headers['x-goog-api-key'], 'k');
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: png } }] } }] }) };
+    } });
+    assert.equal(made.bytes, 4);
+    await assert.rejects(generateImage({ prompt: 'p', fileName: 'x.png', outDir: out, env: { GEMINI_API_KEY: 'k' }, fetchImpl: async () => ({ ok: false, status: 429, json: async () => ({ error: { message: 'Your prepayment credits are depleted.' } }) }) }), (error) => error.code === 'CREDITS_DEPLETED');
+    await assert.rejects(generateImage({ prompt: 'p', fileName: 'x.png', outDir: out, env: {} }), (error) => error.code === 'NO_KEY' || process.platform === 'darwin');
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+});
+
+test('Image Studio wiring: module grants imageGen; CLIs receive PULSE\'s MCP server only inside a lease', async () => {
+  try {
+    setImageModule({ enabled: false });
+    assert.equal(capabilitySummary('gemini').imageGen, false);
+    setImageModule({ enabled: true, model: 'gemini-3.1-flash-image' });
+    assert.equal(capabilitySummary('gemini').imageGen, true);
+    assert.equal(capabilitySummary('claude').imageGen, true);
+    assert.equal(capabilitySummary('opencode').imageGen, true);
+    assert.match(capabilitySummary('gemini').detail.imageGen.how, /Image Studio/);
+    assert.equal(resolveScopes('gemini').imageGen.capable, true);
+    assert.equal(imageModuleState().model, 'gemini-3.1-flash-image');
+
+    const studio = imageStudioFor({ enabled: true, model: 'gemini-3.1-flash-image', outDir: '/p/.pulse/out/x', env: {} });
+    assert.equal(studio.name, 'pulse-image');
+    assert.deepEqual(studio.args, [IMAGE_SERVER_PATH]);
+    assert.equal(studio.env.PULSE_IMAGE_OUT_DIR, '/p/.pulse/out/x');
+    assert.equal(imageStudioFor({ enabled: false, outDir: '/p' }), null);
+
+    const lease = { outDir: '/p/.pulse/out/x', relativeDir: '.pulse/out/x', leaseId: 'x', scopes: { write: true, imageGen: true, web: false } };
+    const claude = buildClaudeArgs({ prompt: 'q', lease, imageStudio: studio });
+    const mcp = JSON.parse(claude[claude.indexOf('--mcp-config') + 1]);
+    assert.deepEqual(Object.keys(mcp.mcpServers), ['pulse-image']);
+    assert.equal(mcp.mcpServers['pulse-image'].env.PULSE_IMAGE_OUT_DIR, '/p/.pulse/out/x');
+    assert.match(claude[claude.indexOf('--allowedTools') + 1], /mcp__pulse-image__generate_image/);
+    assert.equal(JSON.parse(buildClaudeArgs({ prompt: 'q' })[buildClaudeArgs({ prompt: 'q' }).indexOf('--mcp-config') + 1]).mcpServers['pulse-image'], undefined);
+
+    const settings = isolateGeminiSettings({ security: { auth: { selectedType: 'gemini-api-key' } }, hooks: {} }, { imageStudio: studio });
+    assert.deepEqual(Object.keys(settings), ['security', 'mcpServers']);
+    assert.equal(settings.mcpServers['pulse-image'].command, process.execPath);
+    assert.match(geminiImagePolicy(studio), /toolName = \["generate_image", "pulse-image__generate_image"\]/);
+    assert.match(geminiPolicy({ lease, imageStudio: studio }), /generate_image/);
+    assert.doesNotMatch(geminiPolicy({ imageStudio: studio }), /generate_image/, 'no lease, no image tool');
+
+    const oc = openCodeConfig({ lease, imageStudio: studio });
+    assert.equal(oc.mcp['pulse-image'].type, 'local');
+    assert.deepEqual(oc.mcp['pulse-image'].command, [process.execPath, IMAGE_SERVER_PATH]);
+    assert.equal(openCodeConfig({ imageStudio: studio }).mcp, undefined);
+
+    // Room: with the module on, Gemini under a lease gets the studio and the prompt names the tool.
+    const root = await mkdtemp(join(tmpdir(), 'pulse-studio-room-'));
+    try {
+      const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+      const agents = [{ id: 'gemini', label: 'gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '1' }, { id: 'codex', label: 'codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+      const seen = {};
+      const invokers = Object.fromEntries(agents.map((agent) => [`${agent.id}-readonly`, async ({ prompt, imageStudio }) => { seen[agent.id] = { prompt, imageStudio }; return { text: 'ok', usage: null }; }]));
+      const room = new Room({ store, agents, projectRoot: root, invokers });
+      await room.send({ text: 'draw', target: 'gemini', create: true });
+      assert.equal(seen.gemini.imageStudio.name, 'pulse-image');
+      assert.match(seen.gemini.prompt, /MCP tool generate_image/);
+      await room.send({ text: 'draw', target: 'codex', create: true });
+      assert.equal(seen.codex.imageStudio, null, 'Codex keeps its native image generation');
+      await room.send({ text: 'no lease', target: 'gemini' });
+      assert.equal(seen.gemini.imageStudio, null, 'no lease, no studio');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  } finally {
+    setImageModule({ enabled: false });
+  }
+});
+
+test('Image Studio module: toggled from the modules API, gated on a Gemini key, persisted in config', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-studio-api-'));
+  const agents = [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '1' }];
+  let key = null;
+  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {}, imageKey: async () => key });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const api = (path, options) => fetch(`http://127.0.0.1:${port}${path}`, options).then(async (response) => ({ status: response.status, body: await response.json() }));
+  try {
+    let listed = await api('/api/extensions');
+    const studio = listed.body.extensions.find((item) => item.id === 'image-studio');
+    assert.equal(studio.kind, 'builtin');
+    assert.equal(studio.status.installed, false);
+    assert.equal(studio.preflight.ok, false, 'no key, cannot enable');
+    assert.equal((await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' })).status, 412);
+    key = 'AQ.test';
+    const on = await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, model: 'gemini-3-pro-image' }) });
+    assert.equal(on.status, 200);
+    assert.equal(on.body.enabled, true);
+    assert.equal(on.body.capabilities.gemini.imageGen, true);
+    const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
+    assert.deepEqual(config.modules.imageStudio, { enabled: true, model: 'gemini-3-pro-image' });
+    listed = await api('/api/extensions');
+    assert.match(listed.body.extensions.find((item) => item.id === 'image-studio').status.detail, /on · gemini-3-pro-image/);
+    assert.ok((await store.readAll()).some((event) => event.type === 'extension.toggled' && event.payload.enabled === true));
+    const off = await api('/api/extensions/image-studio/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+    assert.equal(off.body.enabled, false);
+    assert.equal(off.body.capabilities.gemini.imageGen, false);
+  } finally {
+    setImageModule({ enabled: false });
+    await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
   }
 });

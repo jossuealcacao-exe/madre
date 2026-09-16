@@ -1024,11 +1024,17 @@ stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 /* ---------- composer ---------- */
 
+// Height follows explicit line breaks only, up to two (three visible lines);
+// longer text scrolls inside. Width widens only with the lock armed and text present.
+const LINE_PX = 21;
 const autosize = () => {
-  els.input.style.height = 'auto';
-  els.input.style.height = `${Math.min(els.input.scrollHeight, state.create ? 320 : 180)}px`;
+  const breaks = Math.min((els.input.value.match(/\n/g) ?? []).length, 2);
+  const rows = 1 + breaks;
+  els.input.style.height = `${rows * LINE_PX + 14}px`;
+  els.composer.classList.toggle('wide', state.create && els.input.value.trim().length > 0);
 };
 els.input.addEventListener('input', autosize);
+autosize();
 els.input.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
@@ -1415,7 +1421,51 @@ async function refreshModules() {
   if (modules.dialog.open) renderModules();
 }
 
+function builtinCard(item) {
+  const card = el('article', 'module-card');
+  card.id = `module-${item.id}`;
+  const head = el('div', 'head');
+  const title = el('div');
+  title.append(el('h4', null, item.name));
+  title.append(el('div', 'vendor', `${item.vendor} · v${item.version}`));
+  head.append(title);
+  const on = Boolean(item.status?.installed);
+  head.append(el('span', `state${on ? ' installed' : ''}`, on ? 'ENABLED' : 'DISABLED'));
+  card.append(head);
+  card.append(el('p', null, item.summary));
+  const list = el('ul');
+  for (const line of item.creates ?? []) list.append(el('li', null, line));
+  for (const line of item.requires ?? []) list.append(el('li', null, `requires ${line}`));
+  card.append(list);
+  if (item.preflight && !item.preflight.ok) {
+    const warn = el('div', 'confirm');
+    warn.append(el('span', 'warn', 'CANNOT ENABLE YET'));
+    for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
+    card.append(warn);
+  }
+  const actions = el('div', 'actions');
+  const model = el('select');
+  for (const name of item.models ?? []) { const option = el('option', null, name); option.value = name; if (name === item.model) option.selected = true; model.append(option); }
+  model.title = 'Gemini image model used by Image Studio';
+  const toggle = el('button', on ? null : 'primary', on ? 'DISABLE' : 'ENABLE');
+  toggle.type = 'button';
+  toggle.disabled = !on && item.preflight && !item.preflight.ok;
+  toggle.addEventListener('click', async () => {
+    toggle.disabled = true;
+    const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, model: model.value }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) toast(result.error ?? `Could not toggle ${item.name}.`);
+    else { toast(`MU/TH/UR › Image Studio ${result.enabled ? 'enabled' : 'disabled'}${result.enabled ? ` · ${result.model}` : ''}. Image scopes for Gemini, Claude and OpenCode ${result.enabled ? 'can now be switched on' : 'are off'} in CONNECTIONS.`); if (result.capabilities) { state.capabilities = result.capabilities; renderCreateScopes(); } }
+    await refreshModules();
+  });
+  actions.append(toggle, model);
+  actions.append(el('span', 'note', item.status?.detail ? item.status.detail.toUpperCase() : ''));
+  card.append(actions);
+  return card;
+}
+
 function moduleCard(item) {
+  if (item.kind === 'builtin') return builtinCard(item);
   const card = el('article', 'module-card');
   card.id = `module-${item.id}`;
   const head = el('div', 'head');

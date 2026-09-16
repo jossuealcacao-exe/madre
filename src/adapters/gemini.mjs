@@ -47,8 +47,8 @@ priority = 999
 interactive = false
 `;
 
-export function geminiPolicy({ lease = null, scopes = null } = {}) {
-  return `${lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}`;
+export function geminiPolicy({ lease = null, scopes = null, imageStudio = null } = {}) {
+  return `${lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}`;
 }
 
 export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null, attachmentsDir = null, lease = null }) {
@@ -78,12 +78,26 @@ export function buildGeminiEnvironment({ runtimeRoot, environment = process.env 
   };
 }
 
-export function isolateGeminiSettings(settings) {
+export function isolateGeminiSettings(settings, { imageStudio = null } = {}) {
   const auth = settings?.security?.auth;
-  return auth ? { security: { auth } } : {};
+  const isolated = auth ? { security: { auth } } : {};
+  if (imageStudio) {
+    isolated.mcpServers = { [imageStudio.name]: { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env, trust: true } };
+  }
+  return isolated;
 }
 
-export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir(), '.gemini') }) {
+export function geminiImagePolicy(imageStudio) {
+  return `
+[[rule]]
+toolName = ["${imageStudio.tool}", "${imageStudio.name}__${imageStudio.tool}"]
+decision = "allow"
+priority = 1000
+interactive = false
+`;
+}
+
+export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir(), '.gemini'), imageStudio = null }) {
   const geminiDir = join(runtimeRoot, '.gemini');
   await mkdir(geminiDir, { recursive: true, mode: 0o700 });
   for (const name of geminiCredentialFiles) {
@@ -97,7 +111,7 @@ export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir
   } catch (error) {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
   }
-  await writeFile(join(geminiDir, 'settings.json'), JSON.stringify(isolateGeminiSettings(settings)), { mode: 0o600 });
+  await writeFile(join(geminiDir, 'settings.json'), JSON.stringify(isolateGeminiSettings(settings, { imageStudio })), { mode: 0o600 });
   return geminiDir;
 }
 
@@ -174,6 +188,9 @@ export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 
 // looked like a hang; naming it lets the human act on it.
 export function diagnoseGeminiStderr(stderr) {
   const text = String(stderr ?? '');
+  if (/prepayment credits are depleted/i.test(text)) {
+    return { code: 'CREDITS_DEPLETED', message: 'Google says the AI Studio project behind this Gemini key has no prepaid credits left; every request is refused (HTTP 429) until it is topped up.', hint: 'Add credits at https://ai.studio/projects, or switch the Gemini CLI to another key.' };
+  }
   if (/status:\s*429|\b429\b|RESOURCE_EXHAUSTED|rate ?limit|quota exceeded/i.test(text)) {
     const router = /ClassifierStrategy|\.route\b/.test(text);
     return {
@@ -204,6 +221,7 @@ export async function invokeGemini({
   attachments = [],
   lease = null,
   scopes = null,
+  imageStudio = null,
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   run = runReadonlyProcess,
@@ -211,8 +229,8 @@ export async function invokeGemini({
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
-    await writeFile(policyPath, geminiPolicy({ lease, scopes }), { mode: 0o600 });
-    await prepareGeminiHome({ runtimeRoot });
+    await writeFile(policyPath, geminiPolicy({ lease, scopes, imageStudio: lease ? imageStudio : null }), { mode: 0o600 });
+    await prepareGeminiHome({ runtimeRoot, imageStudio: lease ? imageStudio : null });
     let attempt = 0;
     for (;;) {
       attempt += 1;
@@ -232,7 +250,7 @@ export async function invokeGemini({
         const produced = parseGeminiOutput(error.partialOutput ?? '').text;
         const diagnosis = diagnoseGeminiStderr(error.partialStderr ?? error.stderr ?? '');
         // A rate limit will not clear within a retry; say what happened instead.
-        if (diagnosis?.code === 'RATE_LIMITED' || diagnosis?.code === 'AUTH') {
+        if (diagnosis?.code === 'RATE_LIMITED' || diagnosis?.code === 'AUTH' || diagnosis?.code === 'CREDITS_DEPLETED') {
           error.message = `${diagnosis.message} ${diagnosis.hint}`;
           error.code = diagnosis.code;
           throw error;

@@ -10,13 +10,18 @@ export function claudeTools({ lease = null, scopes = null } = {}) {
   return tools;
 }
 
-export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null }) {
+export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null }) {
   const tools = claudeTools({ lease, scopes });
+  const mcpTool = imageStudio ? `mcp__${imageStudio.name}__${imageStudio.tool}` : null;
   const allowed = [
     'Read', 'Glob', 'Grep',
     ...(lease ? [`Write(${lease.outDir}/**)`, `Edit(${lease.outDir}/**)`] : []),
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
+    ...(mcpTool ? [mcpTool] : []),
   ];
+  // Only PULSE's own MCP server ever reaches Claude here; --strict-mcp-config
+  // keeps the user's servers out of the isolated run.
+  const mcpConfig = JSON.stringify({ mcpServers: imageStudio ? { [imageStudio.name]: { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env } } : {} });
   return [
     '-p',
     ...(model ? ['--model', model] : []),
@@ -25,13 +30,13 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     '--output-format', 'json',
     '--permission-mode', 'dontAsk',
     '--tools', tools.join(','),
-    ...(lease || scopes?.web ? ['--allowedTools', allowed.join(',')] : []),
+    ...(lease || scopes?.web || imageStudio ? ['--allowedTools', allowed.join(',')] : []),
     '--safe-mode',
     '--disable-slash-commands',
     '--no-session-persistence',
     '--no-chrome',
     '--strict-mcp-config',
-    '--mcp-config', '{"mcpServers":{}}',
+    '--mcp-config', mcpConfig,
     // --tools and --mcp-config are variadic; `--` stops them from swallowing the prompt.
     '--',
     prompt,
@@ -70,10 +75,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes }),
+    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,
