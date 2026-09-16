@@ -31,6 +31,9 @@ const state = {
   running: new Map(),      // messageId -> agent, turns in flight
   plansRunning: new Set(),
   brakeArmed: false,       // STOP ALL is a brake against runaway sequences: armed only by MU/TH/UR alerts
+  agentStats: new Map(),   // id -> { turns, lastTurnMs, lastTurnTokens, cost, started }
+  sessions: {},            // id -> { state, detail } from the last probe
+  loginLogs: new Map(),    // id -> streamed sign-in lines
 };
 
 const AGENT_HINTS = {
@@ -602,8 +605,15 @@ function renderEvent(event) {
 }
 
 function renderEventNode(event) {
+  trackStats(event);
   let node = null;
   switch (event.type) {
+    case 'connection.login.started':
+    case 'connection.login.finished':
+      node = renderLoginEvent(event);
+      break;
+    case 'connection.login.output': appendLoginOutput(event); return;
+    case 'room.settings': return;
     case 'message.created':
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
@@ -728,6 +738,7 @@ els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) 
 els.project.title = initial.projectRoot;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 state.timeouts = initial.timeouts ?? {};
+state.sessions = initial.sessions ?? {};
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 updateStopAll();
 for (const agent of initial.agents) {
@@ -1165,3 +1176,302 @@ modules.button.addEventListener('click', async () => {
 });
 modules.close.addEventListener('click', () => modules.dialog.close());
 void refreshModules();
+
+/* ---------- agent spheres: click to expand session usage ---------- */
+
+const pop = document.querySelector('#agent-pop');
+function statsFor(id) {
+  if (!state.agentStats.has(id)) state.agentStats.set(id, { turns: 0, lastTurnMs: null, lastTurnTokens: null, cost: 0, started: new Map() });
+  return state.agentStats.get(id);
+}
+function trackStats(event) {
+  if (event.type === 'agent.started') {
+    statsFor(event.payload.agent).started.set(event.payload.messageId, new Date(event.timestamp).getTime());
+  } else if (event.type === 'agent.completed' || event.type === 'message.failed') {
+    const stats = statsFor(event.payload.agent ?? event.payload.target);
+    const t0 = stats.started.get(event.payload.messageId);
+    if (t0) { stats.lastTurnMs = new Date(event.timestamp).getTime() - t0; stats.started.delete(event.payload.messageId); }
+    stats.turns += 1;
+  } else if (event.type === 'usage.recorded') {
+    const stats = statsFor(event.payload.agent);
+    stats.lastTurnTokens = event.payload.usage?.totalTokens ?? null;
+    if (Number.isFinite(event.payload.usage?.costUsd)) stats.cost += event.payload.usage.costUsd;
+  }
+}
+
+function fmtMs(ms) { return ms === null ? '—' : ms < 1000 ? `${ms}ms` : `${Math.round(ms / 1000)}s`; }
+
+function openAgentPop(id, anchor) {
+  const agent = state.agents.get(id);
+  if (!agent) return;
+  const stats = statsFor(id);
+  const session = state.sessions?.[id];
+  const percent = state.budget && agent.tokens ? Math.min(100, (agent.tokens / state.budget) * 100) : 0;
+  paint(pop, id);
+  pop.replaceChildren();
+  const head = el('div', 'head');
+  head.append(avatar(id, { size: 24 }));
+  head.append(el('b', null, agent.label));
+  head.append(el('span', 'vendor', brandOf(id).vendor));
+  pop.append(head);
+  const big = el('div', 'big', formatTokens(agent.tokens ?? 0) || '0');
+  big.append(el('small', null, `tokens · this room`));
+  pop.append(big);
+  const gauge = el('div', `gauge${percent >= 80 ? ' hot' : ''}`);
+  const fill = el('i'); fill.style.width = `${percent}%`; gauge.append(fill);
+  pop.append(gauge);
+  const dl = el('dl');
+  const row = (k, v, cls) => { dl.append(el('dt', null, k)); dl.append(el('dd', cls, v)); };
+  row('local budget', state.budget ? `${Math.round(percent)}% of ${formatTokens(state.budget)}` : 'unbounded');
+  row('turns', String(stats.turns));
+  row('last turn', `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)} tok` : ''}`);
+  if (stats.cost > 0) row('cost (reported)', `$${stats.cost.toFixed(2)}`);
+  row('session', session ? session.state.replace('-', ' ') : agent.ready ? 'unknown' : 'not ready', session?.state === 'signed-in' ? 'on' : session?.state === 'signed-out' ? 'off' : null);
+  if (session?.detail) row('via', session.detail);
+  row('provider quota', Number.isFinite(agent.officialPercent) ? `${Math.round(agent.officialPercent)}% used` : 'not published');
+  row('timeout', `${Math.round((state.timeouts[id] ?? 180000) / 1000)}s`);
+  if (agent.version) row('version', agent.version);
+  pop.append(dl);
+  pop.append(el('div', 'foot', 'local counts, not the provider\'s bill · ⚙ connections in MU/TH/UR'));
+  pop.hidden = false;
+  const rect = anchor.getBoundingClientRect();
+  const width = pop.offsetWidth || 260;
+  pop.style.top = `${rect.bottom + 10}px`;
+  pop.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left + rect.width / 2 - width / 2))}px`;
+  document.querySelectorAll('.agents .avatar.open').forEach((node) => node.classList.remove('open'));
+  anchor.classList.add('open');
+  pop.dataset.for = id;
+}
+function closeAgentPop() {
+  pop.hidden = true;
+  delete pop.dataset.for;
+  document.querySelectorAll('.agents .avatar.open').forEach((node) => node.classList.remove('open'));
+}
+els.agents.addEventListener('click', (event) => {
+  const sphere = event.target.closest('.avatar');
+  if (!sphere) return;
+  const id = sphere.dataset.agent;
+  if (pop.dataset.for === id && !pop.hidden) closeAgentPop(); else openAgentPop(id, sphere);
+});
+document.addEventListener('click', (event) => { if (!pop.hidden && !pop.contains(event.target) && !event.target.closest('.agents')) closeAgentPop(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeAgentPop(); });
+
+/* ---------- ⚙ connections & settings inside MU/TH/UR ---------- */
+
+const settingsUI = {
+  button: document.querySelector('#mother-settings-button'),
+  section: document.querySelector('#mother-settings'),
+  data: null,
+  open: false,
+  loginLogs: new Map(),
+};
+
+function renderLoginEvent(event) {
+  const { agent, command, session, code, error } = event.payload;
+  const finished = event.type === 'connection.login.finished';
+  const ok = finished && session?.state === 'signed-in';
+  const node = el('div', `system login${finished && !ok ? ' failed' : ''}`);
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(el('b', null, 'connections › '));
+  node.append(finished
+    ? (ok ? `@${agent} signed in${session?.detail ? ` · ${session.detail}` : ''}` : `@${agent} sign-in did not complete${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
+    : `signing in @${agent} · ${command}`);
+  if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; if (state.settingsOpen) void loadSettings(); }
+  state.lastSender = null;
+  return node;
+}
+function appendLoginOutput(event) {
+  const { agent, line, url } = event.payload;
+  const log = state.loginLogs.get(agent) ?? [];
+  log.push({ line, url });
+  state.loginLogs.set(agent, log.slice(-60));
+  const box = document.getElementById(`login-log-${agent}`);
+  if (box) { box.append(loginLine({ line, url })); box.scrollTop = box.scrollHeight; }
+  if (url) toast(`@${agent}: open ${url} to finish signing in`);
+}
+function loginLine({ line, url }) {
+  const div = el('div');
+  if (url) {
+    const a = el('a', null, line); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    div.append(a);
+  } else div.append(line);
+  return div;
+}
+
+async function loadSettings() {
+  settingsUI.data = await fetch('/api/settings').then((response) => response.json());
+  state.sessions = settingsUI.data.sessions ?? state.sessions;
+  renderSettings();
+}
+
+function connectionCard(agent) {
+  const card = paint(el('article', 'conn-card'), agent.id);
+  const session = settingsUI.data.sessions?.[agent.id];
+  const head = el('div', 'head');
+  head.append(avatar(agent.id, { size: 26, status: agent.ready ? 'ready' : agent.detected ? 'detected' : 'offline' }));
+  const title = el('div');
+  title.append(el('h4', null, agent.label));
+  title.append(el('div', 'vendor', brandOf(agent.id).vendor));
+  head.append(title);
+  const busy = settingsUI.data.loggingIn === agent.id;
+  const tag = el('span', `session${busy ? ' busy' : session?.state === 'signed-in' ? ' on' : session?.state === 'signed-out' ? ' off' : ''}`,
+    busy ? 'SIGNING IN' : !agent.detected ? 'NOT INSTALLED' : session ? session.state.toUpperCase().replace('-', ' ') : 'UNKNOWN');
+  head.append(tag);
+  card.append(head);
+  const meta = el('div', 'meta');
+  meta.append(agent.detected ? `${agent.version ?? 'version unknown'} · ${agent.path}` : (agent.login?.install ?? []).join(' · '));
+  if (session?.detail) meta.append(el('div', null, `session: ${session.detail}`));
+  card.append(meta);
+
+  const row = el('div', 'row');
+  const recheck = el('button', null, 'RECHECK');
+  recheck.type = 'button';
+  recheck.addEventListener('click', async () => {
+    recheck.disabled = true;
+    const result = await fetch('/api/agents/probe', { method: 'POST' }).then((response) => response.json()).catch(() => null);
+    if (result?.sessions) { settingsUI.data.sessions = result.sessions; state.sessions = result.sessions; renderSettings(); }
+    recheck.disabled = false;
+  });
+  row.append(recheck);
+  if (agent.detected && agent.login) {
+    if (agent.login.headless) {
+      const login = el('button', 'primary', session?.state === 'signed-in' ? 'SIGN IN AGAIN' : 'SIGN IN');
+      login.type = 'button';
+      login.disabled = Boolean(settingsUI.data.loggingIn);
+      login.title = agent.login.note;
+      login.addEventListener('click', async () => {
+        login.disabled = true;
+        state.loginLogs.set(agent.id, []);
+        const response = await fetch(`/api/agents/${agent.id}/login`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) toast(result.error ?? 'Sign-in could not start.');
+        else { settingsUI.data.loggingIn = agent.id; renderSettings(); }
+      });
+      row.append(login);
+    } else {
+      row.append(el('span', 'note', 'signs in from its own prompt:'));
+    }
+  }
+  card.append(row);
+  if (agent.detected && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
+
+  const timeout = el('label');
+  timeout.append(`TIMEOUT · SECONDS`);
+  const input = el('input');
+  input.type = 'number'; input.min = '10'; input.step = '10';
+  input.value = String(Math.round((settingsUI.data.settings.timeouts[agent.id] ?? 180000) / 1000));
+  input.dataset.agent = agent.id;
+  input.className = 'timeout-input';
+  timeout.append(input);
+  card.append(timeout);
+
+  const log = state.loginLogs.get(agent.id) ?? [];
+  if (log.length || busy) {
+    const box = el('div', 'login-log');
+    box.id = `login-log-${agent.id}`;
+    for (const entry of log) box.append(loginLine(entry));
+    card.append(box);
+  }
+  return card;
+}
+
+function renderSettings() {
+  const { data } = settingsUI;
+  if (!data) return;
+  const section = settingsUI.section;
+  section.replaceChildren();
+  section.append(el('h3', null, `CONNECTIONS · ${Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length} OF ${data.agents.length} SIGNED IN${data.sessionsAt ? ` · CHECKED ${formatTime(data.sessionsAt)}` : ''}`));
+  section.append(el('p', 'note', 'EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. PULSE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.'));
+  const grid = el('div', 'conn-grid');
+  for (const agent of data.agents) grid.append(connectionCard(agent));
+  section.append(grid);
+
+  section.append(el('h3', null, 'ROOM SETTINGS'));
+  const form = el('form', 'room-form');
+  const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
+  const num = (name, value, min, step) => { const input = el('input'); input.type = 'number'; input.name = name; input.value = String(value); input.min = String(min); input.step = String(step); return input; };
+  const budget = num('softTokenBudget', data.settings.softTokenBudget, 10000, 10000);
+  const steps = num('maxPlanSteps', data.settings.maxPlanSteps, 1, 1);
+  const defaultTimeout = num('defaultTimeout', Math.round(data.settings.defaultTimeout / 1000), 10, 10);
+  const idle = num('geminiIdle', Math.round(data.settings.geminiIdleMs / 1000), 10, 10);
+  const retries = num('geminiRetries', data.settings.geminiRetries, 0, 1);
+  const model = el('input'); model.name = 'opencodeModel'; model.value = data.settings.opencodeModel ?? ''; model.placeholder = 'provider/model'; model.setAttribute('list', 'opencode-models');
+  const datalist = el('datalist'); datalist.id = 'opencode-models';
+  form.append(field('LOCAL TOKEN BUDGET PER AGENT', budget));
+  form.append(field('DEFAULT TIMEOUT · SECONDS', defaultTimeout));
+  form.append(field('MAX PLAN STEPS', steps));
+  form.append(field('GEMINI SILENCE LIMIT · SECONDS', idle));
+  form.append(field('GEMINI RETRIES', retries));
+  const modelLabel = field('OPENCODE MODEL IN THIS ROOM', model);
+  modelLabel.append(datalist);
+  form.append(modelLabel);
+  const full = el('div', 'full');
+  const toggle = el('label', 'toggle');
+  const delegation = el('input'); delegation.type = 'checkbox'; delegation.name = 'delegation'; delegation.checked = data.settings.delegation;
+  toggle.append(delegation, 'AGENTS MAY DELEGATE TURNS TO EACH OTHER');
+  full.append(toggle);
+  const loadModels = el('button', null, 'LIST OPENCODE MODELS');
+  loadModels.type = 'button';
+  loadModels.addEventListener('click', async () => {
+    loadModels.disabled = true;
+    const result = await fetch('/api/agents/opencode/models').then((response) => response.json()).catch(() => ({ models: [] }));
+    datalist.replaceChildren();
+    for (const name of result.models ?? []) { const option = el('option'); option.value = name; datalist.append(option); }
+    loadModels.textContent = `${(result.models ?? []).length} MODELS LISTED`;
+  });
+  full.append(loadModels);
+  const save = el('button', 'primary', 'SAVE TO ~/.pulse/config.json');
+  save.type = 'submit';
+  full.append(save);
+  full.append(el('span', 'note', 'ENVIRONMENT VARIABLES SET BEFORE START STILL WIN ON THE NEXT LAUNCH.'));
+  form.append(full);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    save.disabled = true;
+    const timeouts = { default: Number(defaultTimeout.value) * 1000 };
+    for (const input of section.querySelectorAll('.timeout-input')) {
+      const seconds = Number(input.value);
+      if (seconds > 0 && seconds * 1000 !== timeouts.default) timeouts[input.dataset.agent] = seconds * 1000;
+      else timeouts[input.dataset.agent] = 0;
+    }
+    const payload = {
+      opencode: { model: model.value.trim() },
+      timeouts,
+      room: { delegation: delegation.checked, maxPlanSteps: Number(steps.value), softTokenBudget: Number(budget.value) },
+      gemini: { idleMs: Number(idle.value) * 1000, retries: Number(retries.value) },
+    };
+    const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok) {
+      state.timeouts = result.settings.timeouts;
+      state.budget = result.settings.softTokenBudget;
+      toast('MU/TH/UR › settings saved. new turns use them now.');
+      await loadSettings();
+    } else toast(result.error ?? 'Settings were not saved.');
+    save.disabled = false;
+  });
+  section.append(form);
+}
+
+settingsUI.button.addEventListener('click', async () => {
+  settingsUI.open = !settingsUI.open;
+  state.settingsOpen = settingsUI.open;
+  settingsUI.button.setAttribute('aria-pressed', String(settingsUI.open));
+  settingsUI.section.hidden = !settingsUI.open;
+  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known']) {
+    const node = document.getElementById(id);
+    if (node) node.hidden = settingsUI.open;
+  }
+  if (settingsUI.open) { settingsUI.section.append(el('p', 'mother-answer', 'CHECKING CONNECTIONS…')); await loadSettings(); }
+});
+mother.dialog.addEventListener('close', () => {
+  if (!settingsUI.open) return;
+  settingsUI.open = false;
+  state.settingsOpen = false;
+  settingsUI.button.setAttribute('aria-pressed', 'false');
+  settingsUI.section.hidden = true;
+  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known']) {
+    const node = document.getElementById(id);
+    if (node) node.hidden = false;
+  }
+});

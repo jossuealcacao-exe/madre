@@ -23,6 +23,8 @@ class FakeElement {
     this.scrollTop = 0; this.scrollHeight = 0; this.clientHeight = 0;
     this.options = { length: 0 };
     this.open = false;
+    this.offsetWidth = 260;
+    this.isConnected = true;
     this._text = '';
     this._id = '';
     const classes = new Set();
@@ -64,6 +66,7 @@ class FakeElement {
     };
     return walk(this);
   }
+  querySelectorAll(selector) { const out = []; const walk = (node) => { for (const child of node.children) if (child instanceof FakeElement) { const cls = selector.replace(/^\./, '').split(/[\s.\[]/)[0]; if (child.classList.contains(cls)) out.push(child); walk(child); } }; walk(this); return out; }
   add(option) { this.options.length += 1; this.options[this.options.length - 1] = option; if (!this.value) this.value = option.value; }
   focus() {} scrollIntoView() {} requestSubmit() {} showModal() { this.open = true; } close() { this.open = false; }
 }
@@ -87,6 +90,7 @@ function buildDocument(html) {
     return FakeElement.prototype.querySelector.call(document, selector);
   };
   document.getElementById = (id) => registry.get(id) ?? null;
+  document.querySelectorAll = (selector) => FakeElement.prototype.querySelectorAll.call(document, selector);
   document.createElement = (tag) => new FakeElement(tag);
   document.createDocumentFragment = () => new FakeElement('fragment');
   return document;
@@ -138,6 +142,20 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(firstUser, 'a human message rendered');
   assert.match(firstUser.textContent, /YOU · CREW/, 'human messages carry the crew label');
   assert.equal(registry.get('crew-label') !== undefined, true);
+  // Click on a sphere expands session usage, replayed history included.
+  const sphere = registry.get('agents').children.find((child) => child instanceof FakeElement);
+  assert.ok(sphere, 'agent spheres rendered');
+  const popup = registry.get('agent-pop');
+  sphere.getBoundingClientRect = () => ({ bottom: 40, left: 100, width: 26 });
+  globalThis.window.innerWidth = 1200;
+  const clickHandler = registry.get('agents').listeners.click?.[0];
+  assert.ok(clickHandler, 'sphere click handler installed');
+  clickHandler({ target: { closest: () => sphere } });
+  assert.equal(popup.hidden, false);
+  assert.match(popup.textContent, /tokens · this room/);
+  assert.match(popup.textContent, /turns/);
+  const statsText = popup.textContent;
+  assert.ok(/\d+/.test(statsText));
 
   // Easter egg: trackpad-style bursts at the end of the record.
   const { trackHold, state: uiState } = globalThis.__pulse;

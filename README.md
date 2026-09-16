@@ -80,6 +80,16 @@ PULSE ejecuta los pasos en secuencia como turnos normales de la sala: cada uno q
 
 Escribe `STOPALL` en el compositor, o pulsa `STOP ALL` en la barra, y PULSE detiene todos los planes y mata todos los procesos de agente en curso; queda registrado como `room.stopped`. Desde una terminal: `curl -X POST http://127.0.0.1:4317/api/stop-all`. MU/TH/UR avisa en rojo (`room.alert`) cuando la sala empieza a escaparse de las manos: un mensaje tuyo durante un plan (se responde, pero no abre otro plan), tres o más agentes trabajando a la vez, un agente con dos turnos cruzados, o un plan de más de cinco minutos.
 
+## Conexiones y ajustes
+
+PULSE no guarda credenciales ni habla con los proveedores: lanza el CLI de cada agente como proceso, y ese CLI usa su propia sesión (Codex con ChatGPT, Claude Code con tu cuenta, Gemini CLI con su key u OAuth, OpenCode con su `auth.json`). El botón `⚙ CONNECTIONS` dentro de MU/TH/UR muestra, por plataforma, si el CLI tiene sesión, con qué, su versión y su ruta, y permite:
+
+- `RECHECK`: volver a preguntar a cada CLI por su sesión.
+- `SIGN IN` para Codex y Claude Code: PULSE ejecuta el inicio de sesión del propio CLI, que abre el navegador en esta máquina, y transmite su salida (incluido el enlace) a la sala. Gemini y OpenCode inician sesión desde su propio prompt, así que se muestra el comando exacto a copiar.
+- Ajustes de la sala guardados en `~/.pulse/config.json` y aplicados a los turnos siguientes sin reiniciar: presupuesto local por agente, timeout por defecto y por agente, pasos máximos de plan, delegación entre agentes, límite de silencio y reintentos de Gemini, y el modelo de OpenCode (con la lista real de `opencode models`).
+
+Hacer clic en una esfera de agente en la barra despliega su uso en la sesión: tokens de esta sala contra el presupuesto local, turnos, duración y tokens del último turno, costo reportado, estado de sesión, cuota del proveedor si la publica, timeout y versión. Son conteos locales, no la factura del proveedor.
+
 ## Módulos
 
 La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay uno:

@@ -89,11 +89,13 @@ export const AGENT_SETUP = {
     install: ['npm install -g @openai/codex', 'or install the ChatGPT desktop app, which bundles codex'],
     login: ['login'],
     loginNote: 'Opens your browser to sign in with ChatGPT.',
+    browser: true,
   },
   claude: {
     install: ['npm install -g @anthropic-ai/claude-code', 'or: brew install --cask claude-code'],
     login: ['auth', 'login'],
     loginNote: 'Opens your browser to sign in with your Claude account.',
+    browser: true,
   },
   gemini: {
     install: ['npm install -g @google/gemini-cli'],
@@ -107,6 +109,24 @@ export const AGENT_SETUP = {
     loginNote: 'Pick a provider and paste its key or complete its OAuth flow.',
   },
 };
+
+// How the room can (re)connect an agent. Codex and Claude sign in with a
+// browser flow their own CLI drives, so the server can run them and stream the
+// URL; Gemini and OpenCode need their interactive prompt, so the user gets the
+// exact command instead.
+export function loginPlanFor(agent) {
+  const setup = AGENT_SETUP[agent.id];
+  if (!setup) return null;
+  const headless = Boolean(setup.browser) && setup.login.length > 0;
+  return {
+    headless,
+    command: agent.path ?? agent.id,
+    args: headless ? setup.login : [],
+    display: headless ? `${agent.id} ${setup.login.join(' ')}` : agent.id === 'gemini' ? 'gemini   # then type /auth' : `${agent.id} ${setup.login.join(' ')}`,
+    note: setup.loginNote,
+    install: setup.install,
+  };
+}
 
 export async function probeAgentAuth(agent) {
   if (!agent.detected || !agent.path) return { state: 'not-installed', detail: 'not found on this computer' };

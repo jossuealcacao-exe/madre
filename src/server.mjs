@@ -11,6 +11,8 @@ import { QuotaMonitor } from './quota-monitor.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
+import { loginPlanFor, probeAll } from './auth-probe.mjs';
+import { loadConfig as readConfig, updateConfig } from './config.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -72,6 +74,8 @@ export async function createPulseServer({
   invokers,
   // Tests substitute the real installers with local scripts.
   installers = {},
+  loginRunners = {},
+  probe = probeAll,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
@@ -94,6 +98,95 @@ export async function createPulseServer({
     delegation,
     maxPlanSteps,
   });
+  // Session state per agent, refreshed on demand from the connections panel.
+  let sessions = {};
+  let sessionsAt = null;
+  async function refreshSessions() {
+    sessions = await probe(agents);
+    sessionsAt = new Date().toISOString();
+    return sessions;
+  }
+  void refreshSessions().catch((error) => console.error(`PULSE session probe failed: ${error.message}`));
+
+  // Effective settings = environment + config file + live changes; the file
+  // is what survives a restart.
+  function effectiveSettings() {
+    const current = room.settings();
+    return {
+      timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
+      defaultTimeout: current.agentTimeouts.default ?? 180000,
+      delegation: current.delegation,
+      maxPlanSteps: current.maxPlanSteps,
+      softTokenBudget: current.softTokenBudget,
+      opencodeModel: process.env.PULSE_OPENCODE_MODEL ?? null,
+      geminiIdleMs: Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
+      geminiRetries: Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
+    };
+  }
+  async function applySettings(patch) {
+    const config = {};
+    const live = {};
+    if (patch.opencode && 'model' in patch.opencode) {
+      config.opencode = { model: patch.opencode.model || undefined };
+      if (patch.opencode.model) process.env.PULSE_OPENCODE_MODEL = String(patch.opencode.model); else delete process.env.PULSE_OPENCODE_MODEL;
+    }
+    if (patch.timeouts) {
+      const timeouts = { ...room.settings().agentTimeouts };
+      for (const [key, value] of Object.entries(patch.timeouts)) {
+        const ms = Number(value);
+        if (Number.isFinite(ms) && ms > 0) timeouts[key] = ms; else delete timeouts[key];
+      }
+      config.timeouts = Object.fromEntries(Object.entries(patch.timeouts).map(([key, value]) => [key, Number(value) > 0 ? Number(value) : undefined]));
+      live.agentTimeouts = timeouts;
+    }
+    if (patch.room) {
+      config.room = {};
+      if (typeof patch.room.delegation === 'boolean') { config.room.delegation = patch.room.delegation; live.delegation = patch.room.delegation; }
+      if (Number(patch.room.maxPlanSteps) > 0) { config.room.maxPlanSteps = Number(patch.room.maxPlanSteps); live.maxPlanSteps = Number(patch.room.maxPlanSteps); }
+      if (Number(patch.room.softTokenBudget) > 0) { config.room.softTokenBudget = Number(patch.room.softTokenBudget); live.softTokenBudget = Number(patch.room.softTokenBudget); }
+    }
+    if (patch.gemini) {
+      config.gemini = {};
+      if (Number(patch.gemini.idleMs) > 0) { config.gemini.idleMs = Number(patch.gemini.idleMs); process.env.PULSE_GEMINI_IDLE_MS = String(Number(patch.gemini.idleMs)); }
+      if (Number.isFinite(Number(patch.gemini.retries))) { config.gemini.retries = Number(patch.gemini.retries); process.env.PULSE_GEMINI_RETRIES = String(Number(patch.gemini.retries)); }
+    }
+    room.configure(live);
+    await updateConfig(root, config);
+    await room.record('room.settings', { changed: Object.keys(config), settings: effectiveSettings() });
+    return effectiveSettings();
+  }
+
+  let loggingIn = null;
+  async function loginAgent(id) {
+    const agent = agents.find((item) => item.id === id);
+    if (!agent) return { status: 404, body: { error: `Unknown agent: ${id}.` } };
+    if (!agent.detected) return { status: 412, body: { error: `${agent.label} is not installed on this computer.`, install: loginPlanFor(agent)?.install ?? [] } };
+    const plan = loginRunners[id]?.(agent) ?? loginPlanFor(agent);
+    if (!plan) return { status: 404, body: { error: `No sign-in flow known for ${id}.` } };
+    if (!plan.headless) return { status: 409, body: { error: `${agent.label} signs in from its own prompt. Run this in a terminal, then press RECHECK.`, command: plan.display, note: plan.note } };
+    if (loggingIn) return { status: 409, body: { error: `A sign-in is already running (${loggingIn}).` } };
+    loggingIn = id;
+    await room.record('connection.login.started', { agent: id, command: plan.display, note: plan.note });
+    void (async () => {
+      const lines = [];
+      const result = await runInstaller({
+        command: plan.command,
+        args: plan.args,
+        projectRoot: canonicalProjectRoot,
+        timeoutMs: 300000,
+        onLine: (line) => {
+          lines.push(line);
+          const url = line.match(/https?:\/\/\S+/)?.[0] ?? null;
+          void room.record('connection.login.output', { agent: id, line: line.slice(0, 500), url });
+        },
+      });
+      await refreshSessions();
+      await room.record('connection.login.finished', { agent: id, code: result.code, error: result.error ?? null, session: sessions[id] ?? null, tail: lines.slice(-6) });
+      loggingIn = null;
+    })();
+    return { status: 202, body: { accepted: true, command: plan.display } };
+  }
+
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -231,9 +324,11 @@ export async function createPulseServer({
           agents,
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
-          delegation: { enabled: delegation, maxPlanSteps },
+          delegation: { enabled: room.settings().delegation, maxPlanSteps: room.settings().maxPlanSteps },
           plans: room.activePlans(),
           turns: room.activeTurns(),
+          sessions,
+          sessionsAt,
           quotaSources: quotaMonitor.snapshot(),
           events: await store.readAll(),
         });
@@ -261,6 +356,27 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      if (request.method === 'GET' && url.pathname === '/api/settings') {
+        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent) })) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/settings') {
+        return sendJson(response, 200, { settings: await applySettings(await body(request)) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/agents/probe') {
+        return sendJson(response, 200, { sessions: await refreshSessions(), sessionsAt });
+      }
+      const loginMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/login$/);
+      if (loginMatch) {
+        const result = await loginAgent(loginMatch[1]);
+        return sendJson(response, result.status, result.body);
+      }
+      if (request.method === 'GET' && url.pathname === '/api/agents/opencode/models') {
+        const opencode = agents.find((agent) => agent.id === 'opencode');
+        if (!opencode?.detected) return sendJson(response, 404, { error: 'OpenCode is not installed.' });
+        const models = [];
+        await runInstaller({ command: opencode.path, args: ['models'], projectRoot: canonicalProjectRoot, timeoutMs: 20000, onLine: (line) => { if (/^[\w.-]+\/[\w.:-]+$/.test(line.trim())) models.push(line.trim()); } });
+        return sendJson(response, 200, { models });
       }
       if (request.method === 'POST' && url.pathname === '/api/stop-all') {
         const result = await room.stopAll();

@@ -30,7 +30,7 @@ import {
   prepareGeminiHome,
 } from '../src/adapters/gemini.mjs';
 import { runReadonlyProcess } from '../src/adapters/process.mjs';
-import { geminiAuthState, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
+import { geminiAuthState, loginPlanFor, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
@@ -1439,6 +1439,90 @@ test('STOPALL halts every plan and every in-flight turn and is reachable over HT
     const after = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
     assert.deepEqual({ plans: after.plans, turns: after.turns }, { plans: [], turns: [] });
   } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('connections: settings are read, saved to config, applied live; sign-in streams for browser CLIs and hands a command to the others', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-settings-'));
+  const agents = [
+    { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x/codex', version: '1' },
+    { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x/claude', version: '1' },
+    { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x/gemini', version: '1' },
+    { id: 'opencode', label: 'OpenCode', detected: false, ready: false, adapter: 'opencode-readonly', path: null, version: null },
+  ];
+  assert.equal(loginPlanFor(agents[0]).headless, true);
+  assert.equal(loginPlanFor(agents[1]).headless, true);
+  assert.equal(loginPlanFor(agents[2]).headless, false);
+  assert.match(loginPlanFor(agents[2]).display, /gemini.*\/auth/);
+  let probes = 0;
+  const probe = async () => { probes += 1; return { codex: { state: probes > 1 ? 'signed-in' : 'signed-out', detail: probes > 1 ? 'via ChatGPT' : 'not logged in' }, claude: { state: 'signed-in', detail: 'via claude.ai' }, gemini: { state: 'unknown', detail: '' }, opencode: { state: 'not-installed', detail: '' } }; };
+  const loginRunners = {
+    codex: () => ({ headless: true, command: process.execPath, args: ['-e', 'console.log("Open this URL to sign in: https://auth.example/device/ABC"); setTimeout(() => console.log("Logged in using ChatGPT"), 50)'], display: 'codex login', note: 'browser' }),
+  };
+  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, probe, loginRunners, broadcastIntervalMs: 50, invokers: {} });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const api = (path, options) => fetch(`http://127.0.0.1:${port}${path}`, options).then(async (response) => ({ status: response.status, body: await response.json() }));
+  try {
+    const initial = await api('/api/settings');
+    assert.equal(initial.status, 200);
+    assert.equal(initial.body.settings.delegation, true);
+    assert.equal(initial.body.settings.softTokenBudget, 500000);
+    assert.equal(initial.body.settings.timeouts.codex, 180000);
+    assert.equal(initial.body.agents.find((a) => a.id === 'gemini').login.headless, false);
+
+    const saved = await api('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+      opencode: { model: 'openai/gpt-5.6-sol' },
+      timeouts: { default: 240000, gemini: 90000, codex: 0 },
+      room: { delegation: false, maxPlanSteps: 2, softTokenBudget: 750000 },
+      gemini: { idleMs: 60000, retries: 2 },
+    }) });
+    assert.equal(saved.status, 200);
+    assert.deepEqual({ ...saved.body.settings, timeouts: undefined }, {
+      timeouts: undefined, defaultTimeout: 240000, delegation: false, maxPlanSteps: 2, softTokenBudget: 750000, opencodeModel: 'openai/gpt-5.6-sol', geminiIdleMs: 60000, geminiRetries: 2,
+    });
+    assert.equal(saved.body.settings.timeouts.gemini, 90000);
+    assert.equal(saved.body.settings.timeouts.codex, 240000, 'a cleared per-agent value falls back to the default');
+    const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
+    assert.equal(config.opencode.model, 'openai/gpt-5.6-sol');
+    assert.equal(config.room.delegation, false);
+    assert.equal(config.gemini.idleMs, 60000);
+    assert.equal(process.env.PULSE_OPENCODE_MODEL, 'openai/gpt-5.6-sol');
+    const stateNow = await api('/api/state');
+    assert.equal(stateNow.body.delegation.enabled, false);
+    assert.equal(stateNow.body.timeouts.gemini, 90000);
+    assert.ok((await store.readAll()).some((event) => event.type === 'room.settings'));
+
+    // Interactive CLIs get a command, not a process.
+    const gemini = await api('/api/agents/gemini/login', { method: 'POST' });
+    assert.equal(gemini.status, 409);
+    assert.match(gemini.body.command, /gemini/);
+    assert.equal((await api('/api/agents/opencode/login', { method: 'POST' })).status, 412);
+    assert.equal((await api('/api/agents/nope/login', { method: 'POST' })).status, 404);
+
+    // Browser CLIs run headless: URL streamed, session re-probed on finish.
+    const codex = await api('/api/agents/codex/login', { method: 'POST' });
+    assert.equal(codex.status, 202);
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if ((await store.readAll()).some((event) => event.type === 'connection.login.finished')) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    const events = await store.readAll();
+    const urlLine = events.find((event) => event.type === 'connection.login.output' && event.payload.url);
+    assert.equal(urlLine.payload.url, 'https://auth.example/device/ABC');
+    const finished = events.find((event) => event.type === 'connection.login.finished');
+    assert.equal(finished.payload.code, 0);
+    assert.equal(finished.payload.session.state, 'signed-in');
+    const after = await api('/api/state');
+    assert.equal(after.body.sessions.codex.state, 'signed-in');
+    const reprobe = await api('/api/agents/probe', { method: 'POST' });
+    assert.equal(reprobe.body.sessions.claude.detail, 'via claude.ai');
+  } finally {
+    delete process.env.PULSE_OPENCODE_MODEL;
+    delete process.env.PULSE_GEMINI_IDLE_MS;
+    delete process.env.PULSE_GEMINI_RETRIES;
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
   }

@@ -415,3 +415,52 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .system.alert .cmd { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid var(--terror); letter-spacing: .2em; }
 .system.halted { color: var(--terror); }
 .composer.stopall textarea { color: var(--terror); letter-spacing: .12em; text-transform: uppercase; }
+
+/* ================= connections & settings (inside MU/TH/UR) ================= */
+.mother-actions { display: flex; gap: 8px; }
+.mother-close[aria-pressed="true"] { background: var(--ph); color: #041004; text-shadow: none; }
+.settings .conn-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.conn-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
+.conn-card .head { display: flex; align-items: center; gap: 10px; }
+.conn-card .head .avatar { --size: 26px; }
+.conn-card h4 { margin: 0; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--agent, var(--ph)); }
+.conn-card .vendor { font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
+.conn-card .session { margin-left: auto; font-size: 9.5px; letter-spacing: .16em; padding: 3px 8px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
+.conn-card .session.on { color: var(--ph); border-color: var(--ph); }
+.conn-card .session.off { color: #ff7b72; border-color: #ff7b72; }
+.conn-card .session.busy { color: #ffd166; border-color: #ffd166; animation: blink 1s infinite; }
+.conn-card .meta { font-size: 11px; line-height: 1.6; color: rgba(210, 255, 190, .8); text-shadow: none; }
+.conn-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.conn-card button, .settings .room-form button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.conn-card button.primary, .settings .room-form button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
+.conn-card button:disabled, .settings .room-form button:disabled { opacity: .4; cursor: default; }
+.conn-card label, .settings .room-form label { display: grid; gap: 4px; font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
+.conn-card input, .settings .room-form input, .settings .room-form select { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
+.conn-card input:focus, .settings .room-form input:focus { outline: 1px solid var(--ph); }
+.conn-card .login-log { max-height: 140px; overflow-y: auto; border: 1px solid var(--ph-faint); background: #000; padding: 8px 10px; font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conn-card .login-log a { color: var(--ph); }
+.settings .room-form { border: 1px solid var(--ph-dim); padding: 14px 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-items: end; }
+.settings .room-form .full { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.settings .room-form .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph); cursor: pointer; }
+.settings .room-form .toggle input { width: auto; accent-color: #9bff66; }
+.settings .note { font-size: 10px; letter-spacing: .1em; color: var(--ph-dim); }
+.system.login { color: var(--phosphor); }
+.system.login.failed { color: var(--danger); }
+
+/* ================= agent popover (click on a sphere) ================= */
+.agents .avatar { cursor: pointer; }
+.agents .avatar.open { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--agent); }
+.agent-pop { position: fixed; z-index: 30; min-width: 250px; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px 12px; border: 1px solid var(--line-2); border-top: 2px solid var(--agent, var(--line-2)); border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
+.agent-pop .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.agent-pop .head b { color: var(--agent); letter-spacing: .14em; text-transform: uppercase; font-size: 11px; }
+.agent-pop .head .vendor { color: var(--text-3); font-size: 10px; margin-left: auto; }
+.agent-pop .big { font-size: 22px; letter-spacing: -.01em; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-weight: 600; color: var(--text); }
+.agent-pop .big small { font-size: 10px; color: var(--text-3); letter-spacing: .12em; text-transform: uppercase; margin-left: 6px; font-family: var(--mono); font-weight: 400; }
+.agent-pop .gauge { height: 3px; background: var(--line-2); border-radius: 2px; overflow: hidden; margin: 6px 0 10px; }
+.agent-pop .gauge i { display: block; height: 100%; width: 0; background: var(--agent); }
+.agent-pop .gauge.hot i { background: var(--crit); }
+.agent-pop dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+.agent-pop dt { color: var(--text-3); text-transform: uppercase; letter-spacing: .12em; font-size: 9.5px; }
+.agent-pop dd { margin: 0; color: var(--text-2); text-align: right; }
+.agent-pop dd.on { color: var(--phosphor); } .agent-pop dd.off { color: var(--danger); }
+.agent-pop .foot { margin-top: 10px; font-size: 9.5px; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; }

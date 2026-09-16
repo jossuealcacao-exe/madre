@@ -49,6 +49,8 @@ export function applyConfigToEnv(config, env = process.env) {
   set('PULSE_CONTEXT_MAX_CHARS', config.room?.contextMaxChars);
   set('PULSE_AGENT_TIMEOUT_MS', config.timeouts?.default);
   if (config.room?.delegation === false) set('PULSE_DELEGATION', '0');
+  set('PULSE_GEMINI_IDLE_MS', config.gemini?.idleMs);
+  set('PULSE_GEMINI_RETRIES', config.gemini?.retries);
   set('PULSE_MAX_PLAN_STEPS', config.room?.maxPlanSteps);
   for (const [agent, value] of Object.entries(config.timeouts ?? {})) {
     if (agent !== 'default') set(`PULSE_${agent.toUpperCase()}_TIMEOUT_MS`, value);

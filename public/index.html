@@ -52,8 +52,12 @@
           <header class="mother-head">
             <span class="mother-title">MU/TH/UR 6000</span>
             <span class="mother-sub">PULSE · INTERFACE 2037 · TROUBLESHOOTING</span>
-            <button id="mother-close" class="mother-close" type="button">END SESSION ×</button>
+            <span class="mother-actions">
+              <button id="mother-settings-button" class="mother-close" type="button" aria-pressed="false" title="Connections and room settings">⚙ CONNECTIONS</button>
+              <button id="mother-close" class="mother-close" type="button">END SESSION ×</button>
+            </span>
           </header>
+          <section id="mother-settings" class="mother-section settings" hidden></section>
           <pre id="mother-boot" class="mother-boot" aria-live="polite"></pre>
           <form id="mother-query" class="mother-query" autocomplete="off">
             <span class="mother-prompt">›</span>
@@ -101,6 +105,7 @@
       </form>
       <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
       <div id="toast" class="toast" role="status" hidden></div>
+      <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>
     </div>
     <script type="module" src="/app.js"></script>
   </body>

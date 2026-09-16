@@ -151,6 +151,24 @@ export class Room {
     }
   }
 
+  // Live settings changes from the room UI. Only the fields present change.
+  configure({ agentTimeouts, delegation, maxPlanSteps, softTokenBudget } = {}) {
+    if (agentTimeouts) this.#agentTimeouts = { ...agentTimeouts };
+    if (typeof delegation === 'boolean') this.#delegation = delegation;
+    if (Number.isFinite(maxPlanSteps) && maxPlanSteps > 0) this.#maxPlanSteps = maxPlanSteps;
+    if (Number.isFinite(softTokenBudget) && softTokenBudget > 0) this.#softTokenBudget = softTokenBudget;
+    return this.settings();
+  }
+
+  settings() {
+    return {
+      agentTimeouts: { ...this.#agentTimeouts },
+      delegation: this.#delegation,
+      maxPlanSteps: this.#maxPlanSteps,
+      softTokenBudget: this.#softTokenBudget,
+    };
+  }
+
   timeoutFor(agentId) {
     return this.#agentTimeouts[agentId] ?? this.#agentTimeouts.default ?? 180000;
   }
