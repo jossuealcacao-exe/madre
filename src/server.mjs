@@ -13,6 +13,7 @@ import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
+import { discoverModels } from './models.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -370,6 +371,14 @@ export async function createPulseServer({
       if (loginMatch) {
         const result = await loginAgent(loginMatch[1]);
         return sendJson(response, result.status, result.body);
+      }
+      if (request.method === 'GET' && url.pathname === '/api/models') {
+        const listOpenCode = async (opencode) => {
+          const models = [];
+          await runInstaller({ command: opencode.path, args: ['models'], projectRoot: canonicalProjectRoot, timeoutMs: 20000, onLine: (line) => { if (/^[\w.-]+\/[\w.:-]+$/.test(line.trim())) models.push(line.trim()); } });
+          return models;
+        };
+        return sendJson(response, 200, { models: await discoverModels({ agents, config: await readConfig(root), listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [] }) });
       }
       if (request.method === 'GET' && url.pathname === '/api/agents/opencode/models') {
         const opencode = agents.find((agent) => agent.id === 'opencode');

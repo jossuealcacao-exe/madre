@@ -88,6 +88,10 @@ PULSE no guarda credenciales ni habla con los proveedores: lanza el CLI de cada 
 - `SIGN IN` para Codex y Claude Code: PULSE ejecuta el inicio de sesión del propio CLI, que abre el navegador en esta máquina, y transmite su salida (incluido el enlace) a la sala. Gemini y OpenCode inician sesión desde su propio prompt, así que se muestra el comando exacto a copiar.
 - Ajustes de la sala guardados en `~/.pulse/config.json` y aplicados a los turnos siguientes sin reiniciar: presupuesto local por agente, timeout por defecto y por agente, pasos máximos de plan, delegación entre agentes, límite de silencio y reintentos de Gemini, y el modelo de OpenCode (con la lista real de `opencode models`).
 
+### Modelo por petición
+
+En el compositor, un segundo clic sobre la esfera del agente ya elegido, o el chip `default model ▾` junto a `to @agente`, abre el selector de modelo para esa petición: Codex con los modelos de su caché local (`gpt-5.6-sol`, `gpt-5.6-luna`, `gpt-5.6-terra`…), Claude con sus alias (`fable`, `opus`, `sonnet`, `haiku`), Gemini (`auto`, `gemini-3-pro-preview`, `gemini-3-flash-preview`…) y OpenCode con la lista real de `opencode models`. También acepta un nombre libre. La elección se recuerda por agente en el navegador, viaja con el mensaje como `--model` al CLI y queda registrada en la pregunta y en la respuesta. Puedes añadir modelos propios en `~/.pulse/config.json` bajo `"models": { "claude": ["claude-opus-5"] }`.
+
 Hacer clic en una esfera de agente en la barra despliega su uso en la sesión: tokens de esta sala contra el presupuesto local, turnos, duración y tokens del último turno, costo reportado, estado de sesión, cuota del proveedor si la publica, timeout y versión. Son conteos locales, no la factura del proveedor.
 
 ## Módulos

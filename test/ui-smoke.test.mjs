@@ -93,6 +93,7 @@ function buildDocument(html) {
   document.querySelectorAll = (selector) => FakeElement.prototype.querySelectorAll.call(document, selector);
   document.createElement = (tag) => new FakeElement(tag);
   document.createDocumentFragment = () => new FakeElement('fragment');
+  document.body = new FakeElement('body');
   return document;
 }
 
@@ -110,10 +111,12 @@ test('the room UI boots against a real transcript without throwing', async () =>
   globalThis.window = globalThis;
   Object.defineProperty(globalThis, 'navigator', { value: { platform: 'MacIntel', userAgent: 'test', clipboard: { writeText: async () => {} } }, configurable: true });
   globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
+  globalThis.localStorage = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
   globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
   globalThis.EventSource = class { constructor(url) { streamUrl = url; } };
   globalThis.fetch = async (url) => {
     if (url === '/api/extensions') return { ok: true, json: async () => ({ installing: null, extensions: [] }) };
+    if (String(url).startsWith('/api/models')) return { ok: true, json: async () => ({ models: {} }) };
     assert.equal(url, '/api/state');
     return { json: async () => ({
       projectRoot: '/Users/demo/pulse',

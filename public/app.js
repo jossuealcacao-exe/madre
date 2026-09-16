@@ -34,7 +34,10 @@ const state = {
   agentStats: new Map(),   // id -> { turns, lastTurnMs, lastTurnTokens, cost, started }
   sessions: {},            // id -> { state, detail } from the last probe
   loginLogs: new Map(),    // id -> streamed sign-in lines
+  models: {},              // id -> { models, default, note } from /api/models
+  chosenModel: {},         // id -> model name picked in the composer
 };
+try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
 
 const AGENT_HINTS = {
   codex: 'Install the Codex CLI and sign in with your ChatGPT account.',
@@ -281,10 +284,13 @@ function renderPicker() {
     pick.setAttribute('aria-checked', String(els.target.value === agent.id));
     pick.tabIndex = 0;
     const choose = () => {
+      if (els.target.value === agent.id) { toggleModelMenu(agent.id, pick); return; }
+      closeModelMenu();
       els.target.value = agent.id;
       renderPicker();
       els.input.focus();
     };
+    pick.title = els.target.value === agent.id ? `${agent.label} · click again to choose its model` : agent.label;
     pick.addEventListener('click', choose);
     pick.addEventListener('keydown', (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); choose(); } });
     els.picker.append(pick);
@@ -294,9 +300,77 @@ function renderPicker() {
     const text = paint(el('span', 'pick-label'), current.id);
     text.append('to ');
     text.append(el('b', null, `@${current.id}`));
+    const chosen = state.chosenModel[current.id];
+    const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : 'default model ▾');
+    modelChip.type = 'button';
+    modelChip.title = 'Choose the model for this agent';
+    modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
+    text.append(modelChip);
     els.picker.append(text);
   }
 }
+
+/* ---------- model menu: which model answers this request ---------- */
+
+const modelMenu = el('div', 'model-menu');
+modelMenu.hidden = true;
+document.body.append(modelMenu);
+let modelMenuFor = null;
+
+async function ensureModels(id) {
+  if (state.models[id]) return state.models[id];
+  try {
+    const data = await fetch(`/api/models${id === 'opencode' ? '?opencode=1' : ''}`).then((response) => response.json());
+    state.models = { ...state.models, ...(data.models ?? {}) };
+  } catch { /* offline: fall back to whatever we know */ }
+  return state.models[id] ?? { models: [], default: null, note: '' };
+}
+
+function rememberModel(id, model) {
+  if (model) state.chosenModel[id] = model; else delete state.chosenModel[id];
+  try { localStorage.setItem('pulse.chosenModel', JSON.stringify(state.chosenModel)); } catch { /* private mode */ }
+}
+
+async function toggleModelMenu(id, anchor) {
+  if (!modelMenu.hidden && modelMenuFor === id) { closeModelMenu(); return; }
+  modelMenuFor = id;
+  paint(modelMenu, id);
+  modelMenu.replaceChildren(el('div', 'model-menu-title', 'loading models…'));
+  modelMenu.hidden = false;
+  placeModelMenu(anchor);
+  const info = await ensureModels(id);
+  if (modelMenuFor !== id) return;
+  modelMenu.replaceChildren();
+  const title = el('div', 'model-menu-title');
+  title.append(el('b', null, `@${id}`), ` · model for this request`);
+  modelMenu.append(title);
+  const list = el('div', 'model-list');
+  const options = [{ name: null, label: `default${info.default ? ` · ${info.default}` : ''}` }, ...info.models.map((name) => ({ name, label: name }))];
+  for (const option of options) {
+    const button = el('button', `model-option${(state.chosenModel[id] ?? null) === option.name ? ' current' : ''}`, option.label);
+    button.type = 'button';
+    button.addEventListener('click', () => { rememberModel(id, option.name); closeModelMenu(); renderPicker(); els.input.focus(); });
+    list.append(button);
+  }
+  modelMenu.append(list);
+  const custom = el('form', 'model-custom');
+  const input = el('input'); input.placeholder = 'other model name…'; input.spellcheck = false;
+  custom.append(input);
+  custom.addEventListener('submit', (event) => { event.preventDefault(); const name = input.value.trim(); if (name) { rememberModel(id, name); closeModelMenu(); renderPicker(); } });
+  modelMenu.append(custom);
+  if (info.note) modelMenu.append(el('div', 'model-note', info.note));
+  placeModelMenu(anchor);
+}
+function placeModelMenu(anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const width = modelMenu.offsetWidth || 280;
+  const height = modelMenu.offsetHeight || 200;
+  modelMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
+  modelMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+}
+function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; }
+document.addEventListener('click', (event) => { if (!modelMenu.hidden && !modelMenu.contains(event.target) && !event.target.closest('.picker')) closeModelMenu(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModelMenu(); });
 
 function renderOnboarding() {
   const ready = [...state.agents.values()].filter((agent) => agent.ready);
@@ -338,8 +412,8 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text } = event.payload;
-  state.userMessages.set(messageId, { text, target });
+  const { messageId, target, text, model } = event.payload;
+  state.userMessages.set(messageId, { text, target, model });
   const reviewed = state.expendable;
   const node = row('user');
   if (reviewed) node.classList.add('expendable');
@@ -350,7 +424,7 @@ function renderUserMessage(event) {
   col.append(who);
   col.append(el('div', 'bubble', text));
   const stamp = paint(el('div', 'stamp'), target);
-  stamp.append(el('span', 'to', `→ @${target}`));
+  stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}`));
   stamp.append(el('span', null, formatTime(event.timestamp)));
   if (reviewed) stamp.append(el('span', null, 'acknowledged, human'));
   col.append(stamp);
@@ -361,7 +435,7 @@ function renderUserMessage(event) {
 }
 
 function renderAssistantMessage(event) {
-  const { messageId, parentMessageId, sender, target, text, status, step, totalSteps } = event.payload;
+  const { messageId, parentMessageId, sender, target, text, status, step, totalSteps, model } = event.payload;
   const delegated = status === 'delegated';
   const compact = state.lastSender === sender && !delegated;
   const node = row('assistant', sender, { compact });
@@ -380,6 +454,7 @@ function renderAssistantMessage(event) {
       who.append(el('span', 'badge', `answering @${target}`));
     }
     if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
+    if (model) who.append(el('span', 'badge model', model));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
@@ -802,7 +877,7 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, target: els.target.value || null }),
+      body: JSON.stringify({ text, target: els.target.value || null, model: state.chosenModel[els.target.value] ?? null }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
@@ -1353,7 +1428,9 @@ function connectionCard(agent) {
     }
   }
   card.append(row);
-  if (agent.detected && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
+  const slot = el('div', 'slot');
+  if (agent.detected && agent.login && !agent.login.headless) slot.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
+  card.append(slot);
 
   const timeout = el('label');
   timeout.append(`TIMEOUT · SECONDS`);
@@ -1370,7 +1447,7 @@ function connectionCard(agent) {
     const box = el('div', 'login-log');
     box.id = `login-log-${agent.id}`;
     for (const entry of log) box.append(loginLine(entry));
-    card.append(box);
+    slot.append(box);
   }
   return card;
 }

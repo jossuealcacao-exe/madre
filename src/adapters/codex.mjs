@@ -1,11 +1,12 @@
 import { runReadonlyProcess } from './process.mjs';
 
-export function buildCodexArgs({ projectRoot, prompt }) {
+export function buildCodexArgs({ projectRoot, prompt, model = null }) {
   return [
     '--sandbox', 'read-only',
     '--ask-for-approval', 'never',
     '-C', projectRoot,
     'exec',
+    ...(model ? ['--model', model] : []),
     '--ephemeral',
     '--color', 'never',
     '--json',
@@ -39,10 +40,10 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildCodexArgs({ projectRoot, prompt }),
+    args: buildCodexArgs({ projectRoot, prompt, model }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

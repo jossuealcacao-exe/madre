@@ -1,8 +1,9 @@
 import { runReadonlyProcess } from './process.mjs';
 
-export function buildClaudeArgs({ prompt }) {
+export function buildClaudeArgs({ prompt, model = null }) {
   return [
     '-p',
+    ...(model ? ['--model', model] : []),
     '--output-format', 'json',
     '--permission-mode', 'dontAsk',
     '--tools', 'Read,Glob,Grep',
@@ -50,10 +51,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt }),
+    args: buildClaudeArgs({ prompt, model }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

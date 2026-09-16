@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { UsageSentinel } from './usage-sentinel.mjs';
 import { buildConversationContext, formatConversationContext } from './conversation-context.mjs';
 import { DELEGATION_HELP, parseDirectives } from './directives.mjs';
+import { isValidModelName } from './models.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -201,10 +202,12 @@ export class Room {
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
   }
 
-  async send({ text, target }) {
+  async send({ text, target, model = null }) {
     const parsed = parseMessage(text, target);
     if (!parsed.text) throw new Error('Write a message first.');
     if (!parsed.target) throw new Error('Choose an agent or begin with @agent.');
+    if (model !== null && model !== undefined && model !== '' && !isValidModelName(model)) throw new Error('Model name is not valid.');
+    const chosenModel = model || null;
 
     const messageId = randomUUID();
     await this.#emit('message.created', {
@@ -214,6 +217,7 @@ export class Room {
       target: parsed.target,
       text: parsed.text,
       status: 'sent',
+      model: chosenModel,
     });
     if (parsed.text.length > this.#maxMessageChars) {
       await this.#emit('message.failed', {
@@ -228,7 +232,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#dispatch({ messageId, targetId: parsed.target, text: parsed.text, requester: 'you', depth: 0, allowDelegation });
+    await this.#dispatch({ messageId, targetId: parsed.target, text: parsed.text, requester: 'you', depth: 0, allowDelegation, model: chosenModel });
   }
 
   // Agents that can receive a delegated step from `self`.
@@ -277,7 +281,7 @@ export class Room {
 
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
-  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true }) {
+  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null }) {
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${targetId} is not installed on this computer.` });
@@ -320,7 +324,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal });
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model });
     this.#turns.set(messageId, turn);
     let outcome = null;
     try {
@@ -354,7 +358,7 @@ export class Room {
     ].filter(Boolean).join('\n');
   }
 
-  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal }) {
+  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null }) {
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported PULSE adapter.`);
@@ -364,6 +368,7 @@ export class Room {
         prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,
+        model,
       });
       const responseMessageId = randomUUID();
       const others = this.delegatesFor(agent.id);
@@ -382,6 +387,7 @@ export class Room {
         text: result.text,
         status: 'completed',
         planId,
+        model,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
       });
       await this.#recordUsage(agent.id, result.usage, { messageId, responseMessageId });

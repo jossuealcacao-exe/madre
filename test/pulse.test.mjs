@@ -37,6 +37,7 @@ import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from
 import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/extensions.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
+import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexModelCache } from '../src/models.mjs';
 import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
@@ -1524,6 +1525,61 @@ test('connections: settings are read, saved to config, applied live; sign-in str
     delete process.env.PULSE_GEMINI_IDLE_MS;
     delete process.env.PULSE_GEMINI_RETRIES;
     await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('models: discovered locally, validated, and passed to every CLI as --model', async () => {
+  const cache = JSON.stringify({ models: [{ slug: 'gpt-5.6-sol' }, { slug: 'gpt-5.6-luna' }, { slug: 'gpt-reserve' }, { slug: 'codex-auto-review' }, { nested: { slug: 'gpt-6-astra' } }] });
+  assert.deepEqual(parseCodexModelCache(cache), ['gpt-5.6-luna', 'gpt-5.6-sol', 'gpt-6-astra']);
+  assert.deepEqual(parseCodexModelCache('not json'), []);
+  assert.equal(parseCodexDefaultModel('model = "gpt-5.6-sol"\nmodel_reasoning_effort = "high"'), 'gpt-5.6-sol');
+  assert.equal(isValidModelName('openai/gpt-5.6-sol'), true);
+  assert.equal(isValidModelName('fable'), true);
+  assert.equal(isValidModelName('rm -rf /'), false);
+  assert.equal(isValidModelName('--flag'), false);
+
+  const home = await mkdtemp(join(tmpdir(), 'pulse-models-home-'));
+  try {
+    await mkdir(join(home, '.codex'), { recursive: true });
+    await writeFile(join(home, '.codex', 'models_cache.json'), cache);
+    await writeFile(join(home, '.codex', 'config.toml'), 'model = "gpt-5.6-terra"\n');
+    const agents = ['codex', 'claude', 'gemini', 'opencode'].map((id) => ({ id, detected: true, ready: true, path: '/x' }));
+    const found = await discoverModels({ agents, home, config: { models: { claude: ['claude-opus-5'] } }, listOpenCode: async () => ['openai/gpt-5.6-sol', 'openai/gpt-5.6-luna'] });
+    assert.deepEqual(found.codex.models.slice(0, 3), ['gpt-5.6-luna', 'gpt-5.6-sol', 'gpt-6-astra']);
+    assert.equal(found.codex.default, 'gpt-5.6-terra');
+    assert.equal(found.claude.models[0], 'claude-opus-5', 'user-configured models come first');
+    assert.ok(found.claude.models.includes('fable'));
+    assert.deepEqual(found.opencode.models, ['openai/gpt-5.6-sol', 'openai/gpt-5.6-luna']);
+    assert.equal(found.gemini.models[0], 'auto');
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+
+  assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q', model: 'gpt-5.6-luna' }).slice(7, 9), ['--model', 'gpt-5.6-luna']);
+  assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--model'), false);
+  assert.deepEqual(buildClaudeArgs({ prompt: 'q', model: 'fable' }).slice(1, 3), ['--model', 'fable']);
+  assert.deepEqual(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', model: 'gemini-3-pro-preview' }).slice(0, 2), ['--model', 'gemini-3-pro-preview']);
+  assert.equal(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', model: 'auto' }).includes('--model'), false, '"auto" means no flag');
+  assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: 'openai/gpt-5.6-terra' }).slice(6, 8), ['--model', 'openai/gpt-5.6-terra']);
+});
+
+test('the chosen model travels with the human turn and is recorded on both messages', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-model-turn-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '1' }];
+    const seen = [];
+    const room = new Room({ store, agents, projectRoot: root, invokers: { 'claude-readonly': async ({ model }) => { seen.push(model); return { text: 'ok', usage: null }; } } });
+    await room.send({ text: 'hi', target: 'claude', model: 'fable' });
+    await room.send({ text: 'hi again', target: 'claude' });
+    assert.deepEqual(seen, ['fable', null]);
+    const messages = (await store.readAll()).filter((event) => event.type === 'message.created');
+    assert.equal(messages[0].payload.model, 'fable');
+    assert.equal(messages[1].payload.model, 'fable', 'the reply records the model that produced it');
+    assert.equal(messages[2].payload.model, null);
+    await assert.rejects(room.send({ text: 'x', target: 'claude', model: '--bad flag' }), /Model name is not valid/);
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

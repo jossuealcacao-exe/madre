@@ -23,8 +23,9 @@ interactive = false
 // extensions, MCP servers, memory files and history stay behind.
 export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json', 'installation_id', '.env'];
 
-export function buildGeminiArgs({ projectRoot, prompt, policyPath }) {
+export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null }) {
   return [
+    ...(model && model !== 'auto' ? ['--model', model] : []),
     '--approval-mode', 'plan',
     // stream-json emits init / tool_use / message deltas / result as JSONL, so
     // PULSE can tell a thinking Gemini from a hung one.
@@ -148,6 +149,7 @@ export async function invokeGemini({
   prompt,
   timeoutMs = 120000,
   signal,
+  model = null,
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   run = runReadonlyProcess,
@@ -163,7 +165,7 @@ export async function invokeGemini({
       try {
         return await run({
           executable,
-          args: buildGeminiArgs({ projectRoot, prompt, policyPath }),
+          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model }),
           cwd: runtimeRoot,
           env: buildGeminiEnvironment({ runtimeRoot }),
           timeoutMs,
