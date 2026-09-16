@@ -25,15 +25,22 @@ export const DELEGATION_HELP = (self, others, maxSteps) => [
   'Address each agent once. Do not delegate what you can answer yourself.',
 ].join('\n');
 
+// Only a plan block that closes the reply counts. Blocks quoted earlier in
+// the text (examples, explanations) are never executed.
 export function parseDirectives(text, { self, available = [], maxSteps = 4 } = {}) {
   const source = String(text ?? '');
   const blocks = [...source.matchAll(/```pulse\s*\n([\s\S]*?)```/gi)];
   if (!blocks.length) return { steps: [], closing: null, ignored: [] };
+  const last = blocks.at(-1);
+  const trailing = source.slice(last.index + last[0].length);
+  if (trailing.trim()) {
+    return { steps: [], closing: null, ignored: [{ line: '```pulse … ```', reason: 'a plan block must be the last thing in the reply' }] };
+  }
   const steps = [];
   const ignored = [];
   let closing = null;
   const seen = new Set();
-  for (const block of blocks) {
+  for (const block of [last]) {
     for (const raw of block[1].split('\n')) {
       const line = raw.trim();
       if (!line || line.startsWith('#')) continue;

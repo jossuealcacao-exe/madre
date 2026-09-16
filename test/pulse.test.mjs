@@ -22,6 +22,7 @@ import { buildClaudeArgs, parseClaudeOutput } from '../src/adapters/claude.mjs';
 import {
   buildGeminiArgs,
   buildGeminiEnvironment,
+  cleanupRuntimeRoot,
   geminiReadonlyPolicy,
   isolateGeminiSettings,
   parseGeminiOutput,
@@ -35,6 +36,7 @@ import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from
 import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/extensions.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
+import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
@@ -205,6 +207,27 @@ test('isolates Gemini global state and disables the launcher relaunch', async ()
     await rm(sourceHome, { recursive: true, force: true });
     await rm(runtimeRoot, { recursive: true, force: true });
   }
+});
+
+test('Gemini temp-home cleanup is best-effort and never throws', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-gemini-cleanup-'));
+  await mkdir(join(root, '.gemini'), { recursive: true });
+  await writeFile(join(root, '.gemini', 'installation_id'), 'x');
+  assert.equal(await cleanupRuntimeRoot(root), true);
+  assert.equal(await cleanupRuntimeRoot(root), true, 'a missing directory is fine');
+  assert.equal(await cleanupRuntimeRoot(join(root, 'never-existed'), { attempts: 1 }), true);
+});
+
+test('a timeout error carries the agent\'s last output line', async () => {
+  await assert.rejects(runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', 'console.error("Attempt 3 failed with status 503. Retrying with backoff…"); setTimeout(() => {}, 60000)'],
+    cwd: process.cwd(),
+    timeoutMs: 500,
+    killGraceMs: 100,
+    label: 'Gemini',
+    parse: () => ({ text: '' }),
+  }), /Gemini did not respond before the timeout \(1s\)\. Last output: Attempt 3 failed with status 503/);
 });
 
 test('terminates the whole adapter process tree on timeout', async () => {
@@ -1143,6 +1166,18 @@ test('a missing project folder is named in the adapter error, not hidden behind 
   }), /Codex could not start: .*ENOENT.*project folder \/definitely\/not\/here exists/);
 });
 
+test('failed turns appear in the conversation context so an orchestrator knows why a step is missing', () => {
+  const events = [
+    { sequence: 1, type: 'message.created', payload: { messageId: 'a', role: 'user', sender: 'you', target: 'gemini', text: 'q' } },
+    { sequence: 2, type: 'message.failed', payload: { messageId: 'a', target: 'gemini', error: 'Gemini did not respond before the timeout (300s).' } },
+    { sequence: 3, type: 'message.created', payload: { messageId: 'b', role: 'assistant', sender: 'codex', target: 'you', text: 'answer' } },
+  ];
+  const context = buildConversationContext(events);
+  assert.deepEqual(context.messages.map((message) => `${message.sender} (${message.role})`), ['you (user)', 'gemini (failed)', 'codex (assistant)']);
+  assert.equal(context.previousAgent, 'codex', 'failures never count as the previous answering agent');
+  assert.match(formatConversationContext(context), /gemini \(failed\): Gemini did not respond before the timeout/);
+});
+
 test('parses delegation directives from an agent reply', () => {
   const text = `Here is my take.\n\n\`\`\`pulse\n@gemini: Synthesize in one paragraph.\n- @codex: Same, name the weakest claim.\n@claude: Compare both.\n@gemini: duplicate\n@opencode: not here\nnot a step\n\`\`\``;
   const parsed = parseDirectives(text, { self: 'claude', available: ['gemini', 'codex'], maxSteps: 4 });
@@ -1154,6 +1189,12 @@ test('parses delegation directives from an agent reply', () => {
     'not a step (expected "@agent: text")',
   ]);
   assert.deepEqual(parseDirectives('no plan here', { self: 'claude', available: ['gemini'] }), { steps: [], closing: null, ignored: [] });
+  // A quoted example followed by prose is not a plan; only a closing block runs.
+  const quoted = parseDirectives('For example:\n```pulse\n@gemini: example\n```\nBut I will not delegate now.', { self: 'claude', available: ['gemini'] });
+  assert.deepEqual(quoted.steps, []);
+  assert.match(quoted.ignored[0].reason, /must be the last thing/);
+  const twoBlocks = parseDirectives('Example:\n```pulse\n@codex: ignored example\n```\nReal plan:\n```pulse\n@gemini: real\n```\n', { self: 'claude', available: ['gemini', 'codex'] });
+  assert.deepEqual(twoBlocks.steps, [{ agent: 'gemini', text: 'real' }], 'only the last block counts');
   const capped = parseDirectives('```pulse\n@a: 1\n@b: 2\n@c: 3\n```', { self: 'x', available: ['a', 'b', 'c'], maxSteps: 2 });
   assert.equal(capped.steps.length, 2);
   assert.match(capped.ignored[0].reason, /capped at 2/);

@@ -106,6 +106,25 @@ export function parseGeminiOutput(output) {
   }
 }
 
+// Best-effort removal of the temporary home. A killed Gemini may still be
+// flushing files for a moment, which makes a single recursive rm fail with
+// ENOTEMPTY; cleanup must never replace the real outcome of the turn.
+export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 250 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await rm(runtimeRoot, { recursive: true, force: true });
+      return true;
+    } catch (error) {
+      if (attempt === attempts) {
+        console.error(`PULSE could not remove Gemini's temporary home ${runtimeRoot}: ${error.message}`);
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
+  }
+  return false;
+}
+
 export async function invokeGemini({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
@@ -123,6 +142,6 @@ export async function invokeGemini({ executable, projectRoot, prompt, timeoutMs 
       parse: parseGeminiOutput,
     });
   } finally {
-    await rm(runtimeRoot, { recursive: true, force: true });
+    void cleanupRuntimeRoot(runtimeRoot);
   }
 }

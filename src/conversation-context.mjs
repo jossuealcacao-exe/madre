@@ -1,4 +1,11 @@
 function messageEntry(event) {
+  if (event.type === 'message.failed') {
+    // Failures are part of the conversation: an orchestrator closing a plan
+    // must know that a step never answered, and why.
+    const { messageId, target, error } = event.payload;
+    if (typeof error !== 'string' || !error.trim()) return null;
+    return { sequence: event.sequence, messageId: `${messageId}:failed`, role: 'failed', sender: target ?? 'room', target: 'you', text: error.trim() };
+  }
   if (event.type !== 'message.created') return null;
   const { messageId, role, sender, target, text } = event.payload;
   if (typeof text !== 'string' || !text.trim()) return null;

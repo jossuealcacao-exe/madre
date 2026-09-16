@@ -63,7 +63,9 @@ export function runReadonlyProcess({
     };
     const timer = setTimeout(() => {
       terminateProcessTree(child, { graceMs: killGraceMs });
-      finish(() => reject(new Error(`${label} did not respond before the timeout.`)));
+      // The last thing the agent said is usually the reason it was slow.
+      const lastLine = `${stderr}\n${stdout}`.split('\n').map((line) => line.trim()).filter(Boolean).at(-1);
+      finish(() => reject(new Error(`${label} did not respond before the timeout (${Math.round(timeoutMs / 1000)}s).${lastLine ? ` Last output: ${lastLine.slice(0, 200)}` : ''}`)));
     }, timeoutMs);
     signal?.addEventListener('abort', onAbort, { once: true });
 
