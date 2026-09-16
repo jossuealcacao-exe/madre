@@ -1,12 +1,15 @@
 import { runReadonlyProcess } from './process.mjs';
 
-export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [] }) {
+// With a lease, the working root is the lease directory (the only writable
+// place) and the sandbox allows workspace writes; the project stays readable.
+export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [], lease = null }) {
   const images = attachments.filter((file) => /^image\//.test(file.contentType ?? ''));
   return [
-    '--sandbox', 'read-only',
+    '--sandbox', lease ? 'workspace-write' : 'read-only',
     '--ask-for-approval', 'never',
-    '-C', projectRoot,
+    '-C', lease ? lease.outDir : projectRoot,
     'exec',
+    ...(lease ? ['--skip-git-repo-check'] : []),
     ...(model ? ['--model', model] : []),
     ...images.flatMap((file) => ['--image', file.path]),
     '--ephemeral',
@@ -42,11 +45,11 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [] }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildCodexArgs({ projectRoot, prompt, model, attachments }),
-    cwd: projectRoot,
+    args: buildCodexArgs({ projectRoot, prompt, model, attachments, lease }),
+    cwd: lease ? lease.outDir : projectRoot,
     env: process.env,
     timeoutMs,
     signal,

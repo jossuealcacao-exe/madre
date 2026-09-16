@@ -34,11 +34,27 @@ export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PUL
   ];
 }
 
-export function openCodeEnvironment(environment = process.env) {
+export function leaseConfig(outDir) {
+  return {
+    ...readonlyConfig,
+    agent: {
+      'pulse-readonly': {
+        ...readonlyConfig.agent['pulse-readonly'],
+        prompt: 'Answer the user directly. Inspect project files when necessary. You may create or edit files only inside the creation lease directory named in the request; never elsewhere. Do not run commands, browse the web, or launch subagents.',
+        permission: {
+          ...readonlyConfig.agent['pulse-readonly'].permission,
+          edit: { '*': 'deny', [`${outDir}/**`]: 'allow' },
+        },
+      },
+    },
+  };
+}
+
+export function openCodeEnvironment(environment = process.env, { lease = null } = {}) {
   return {
     ...environment,
     OPENCODE_AUTO_SHARE: 'false',
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(readonlyConfig),
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(lease ? leaseConfig(lease.outDir) : readonlyConfig),
     OPENCODE_DISABLE_AUTOUPDATE: 'true',
   };
 }
@@ -76,12 +92,12 @@ export function parseOpenCodeOutput(output) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [] }) {
+export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null }) {
   return runReadonlyProcess({
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt, attachments, ...(model ? { model } : {}) }),
     cwd: projectRoot,
-    env: openCodeEnvironment(),
+    env: openCodeEnvironment(process.env, { lease }),
     timeoutMs,
     signal,
     label: 'OpenCode',

@@ -489,7 +489,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .who .badge.model { color: var(--agent); border-color: color-mix(in srgb, var(--agent) 50%, transparent); text-transform: none; letter-spacing: .04em; }
 
 /* ================= attachments, inline files & viewer ================= */
-.field { grid-template-columns: auto 1fr auto auto; }
+.field { grid-template-columns: auto 1fr auto auto auto; }
 .attach { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; display: grid; place-items: center; }
 .attach:hover { color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 10%, transparent); }
 .attach svg { width: 18px; height: 18px; }
@@ -524,3 +524,18 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .cap.on { color: var(--agent, var(--phosphor)); border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 50%, transparent); }
 .conn-card .caps .cap.on { color: var(--ph); border-color: var(--ph-dim); }
 .conn-card .caps .cap { color: var(--ph-dim); border-color: var(--ph-faint); }
+
+/* ================= creation lease ================= */
+.create-toggle { height: 30px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-3); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; align-self: center; transition: color .2s, border-color .2s, background .2s; }
+.create-toggle svg { width: 15px; height: 15px; }
+.create-toggle:hover { color: var(--text); border-color: var(--text-3); }
+.create-toggle[aria-pressed="true"] { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--warn) 50%, transparent); }
+.create-toggle[aria-pressed="true"] .lock-shackle { transform: translate(3px, -2px) rotate(20deg); transform-origin: 13px 8px; }
+.composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
+.composer.creating .crew-label { color: var(--warn); }
+.who .badge.lease { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
+.user .stamp .lease { color: var(--warn); }
+.system.lease { color: var(--warn); }
+.bubble .artifacts { margin: 10px 0 0; padding-top: 8px; border-top: 1px dashed var(--line-2); }
+.bubble .artifacts .label { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--warn); margin-bottom: 6px; }
+@media (max-width: 680px) { .create-toggle .create-word { display: none; } .create-toggle { padding: 0 8px; } }

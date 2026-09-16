@@ -40,6 +40,9 @@ import { parseDirectives, stripDirectives } from '../src/directives.mjs';
 import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexModelCache } from '../src/models.mjs';
 import { contentTypeFor, isImage, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
 import { CAPABILITIES, agentsWith, capabilitySummary } from '../src/capabilities.mjs';
+import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
+import { geminiLeasePolicy } from '../src/adapters/gemini.mjs';
+import { leaseConfig } from '../src/adapters/opencode.mjs';
 import { symlink } from 'node:fs/promises';
 import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
 import { mkdir } from 'node:fs/promises';
@@ -1690,6 +1693,99 @@ test('attachments: uploaded to the room folder, served back, handed to every CLI
     assert.equal(state.capabilities.codex.imageGen, true);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('creation lease: a fresh directory under .pulse/out, artifacts detected by diff, every CLI scoped to it', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-lease-'));
+  try {
+    const lease = await createLease({ projectRoot: root, leaseId: 'abcdef12-0000' });
+    assert.match(lease.relativeDir, /^\.pulse\/out\/\d{8}-\d{6}-abcdef12$/);
+    assert.equal(lease.outDir, join(root, lease.relativeDir));
+    const before = await snapshot(lease.outDir);
+    assert.equal(before.size, 0);
+    await writeFile(join(lease.outDir, 'poster.png'), Buffer.from([1, 2, 3]));
+    await mkdir(join(lease.outDir, 'src'), { recursive: true });
+    await writeFile(join(lease.outDir, 'src', 'demo.mjs'), 'export {};');
+    const after = await snapshot(lease.outDir);
+    const artifacts = diffSnapshots(before, after, { relativeDir: lease.relativeDir });
+    assert.deepEqual(artifacts.map((file) => [file.name, file.contentType, file.status]), [['poster.png', 'image/png', 'created'], ['demo.mjs', 'text/javascript', 'created']]);
+    assert.equal(artifacts[0].path, `${lease.relativeDir}/poster.png`);
+    assert.deepEqual(diffSnapshots(after, after, { relativeDir: lease.relativeDir }), [], 'unchanged files are not artifacts');
+    assert.match(leaseInstructions({ outDir: '/p/.pulse/out/x', agentId: 'codex' }), /only inside \/p\/.pulse\/out\/x[\s\S]*generate images/);
+    assert.doesNotMatch(leaseInstructions({ outDir: '/p/.pulse/out/x', agentId: 'claude' }), /generate images/);
+
+    const scope = { outDir: '/p/.pulse/out/x', relativeDir: '.pulse/out/x', leaseId: 'x' };
+    const codex = buildCodexArgs({ projectRoot: '/p', prompt: 'q', lease: scope });
+    assert.deepEqual(codex.slice(0, 2), ['--sandbox', 'workspace-write']);
+    assert.deepEqual(codex.slice(4, 6), ['-C', '/p/.pulse/out/x']);
+    assert.ok(codex.includes('--skip-git-repo-check'));
+    assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).slice(0, 2), ['--sandbox', 'read-only']);
+    const claude = buildClaudeArgs({ prompt: 'q', lease: scope });
+    assert.equal(claude[claude.indexOf('--tools') + 1], 'Read,Glob,Grep,Write,Edit');
+    assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,Write(/p/.pulse/out/x/**),Edit(/p/.pulse/out/x/**)');
+    assert.equal(claude.includes('--allowedTools'), true);
+    assert.equal(buildClaudeArgs({ prompt: 'q' }).includes('--allowedTools'), false);
+    const gemini = buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', lease: scope });
+    assert.equal(gemini[gemini.indexOf('--approval-mode') + 1], 'default');
+    assert.equal(gemini[gemini.indexOf('--include-directories') + 1], '/p,/p/.pulse/out/x');
+    assert.equal(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t' })[1], 'plan');
+    const policy = geminiLeasePolicy('/p/.pulse/out/x');
+    assert.match(policy, /toolName = \["write_file", "replace", "edit"\]/);
+    assert.match(policy, /argsPattern = '"file_path"\\s\*:\\s\*"\/p\/\\\.pulse\/out\/x\/'/);
+    assert.match(policy, /toolName = "\*"\ndecision = "deny"/, 'the deny-all rule stays');
+    const oc = leaseConfig('/p/.pulse/out/x');
+    assert.deepEqual(oc.agent['pulse-readonly'].permission.edit, { '*': 'deny', '/p/.pulse/out/x/**': 'allow' });
+    assert.equal(oc.agent['pulse-readonly'].permission.read, 'allow');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('creation lease: granted per human message, inherited by the plan, artifacts recorded on the replies', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-lease-room-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = ['claude', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const leases = [];
+    const invokers = {
+      'claude-readonly': async ({ prompt, lease }) => {
+        leases.push(['claude', lease?.outDir ?? null]);
+        if (/this is your closing turn/.test(prompt)) return { text: 'Codex made the poster.', usage: null };
+        assert.match(prompt, /CREATION LEASE/);
+        return { text: 'Delegating.\n\n```pulse\n@codex: generate poster.png in the lease directory\n@claude: confirm\n```', usage: null };
+      },
+      'codex-readonly': async ({ prompt, lease }) => {
+        leases.push(['codex', lease?.outDir ?? null]);
+        assert.match(prompt, /CREATION LEASE[\s\S]*generate images/);
+        await writeFile(join(lease.outDir, 'poster.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        return { text: 'Saved poster.png', usage: null };
+      },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    await room.send({ text: 'make me a poster', target: 'claude', create: true });
+    const events = await store.readAll();
+    const granted = events.find((event) => event.type === 'lease.granted');
+    assert.equal(granted.payload.agent, 'claude');
+    assert.match(granted.payload.outDir, /^\.pulse\/out\//);
+    assert.ok(leases.every(([, dir]) => dir && dir.endsWith(granted.payload.outDir)), 'orchestrator, delegate and closing turn share the lease');
+    const created = events.find((event) => event.type === 'artifacts.created');
+    assert.equal(created.payload.agent, 'codex');
+    assert.deepEqual(created.payload.files.map((file) => file.name), ['poster.png']);
+    const codexReply = events.find((event) => event.type === 'message.created' && event.payload.sender === 'codex');
+    assert.equal(codexReply.payload.artifacts[0].contentType, 'image/png');
+    assert.equal(codexReply.payload.leaseId, granted.payload.leaseId);
+    const user = events.find((event) => event.type === 'message.created' && event.payload.role === 'user');
+    assert.equal(user.payload.create, true);
+    assert.equal(events.find((event) => event.type === 'plan.created').payload.leaseId, granted.payload.leaseId);
+
+    // Without CREATE nothing changes: no lease, read-only prompt.
+    const quiet = await new EventStore(join(root, 'quiet.jsonl')).initialize();
+    const readOnly = new Room({ store: quiet, agents, projectRoot: root, invokers: { 'codex-readonly': async ({ prompt, lease }) => { assert.equal(lease, null); assert.match(prompt, /Operate read-only/); return { text: 'ok', usage: null }; } } });
+    await readOnly.send({ text: 'just asking', target: 'codex' });
+    assert.equal((await quiet.readAll()).some((event) => event.type === 'lease.granted'), false);
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

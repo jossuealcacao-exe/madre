@@ -1,6 +1,9 @@
 import { runReadonlyProcess } from './process.mjs';
 
-export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null }) {
+// dontAsk denies any tool use that is not pre-approved, so under a lease the
+// Write/Edit tools exist but only paths inside the lease directory are
+// allowed; everything else in the project is refused without a prompt.
+export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null }) {
   return [
     '-p',
     ...(model ? ['--model', model] : []),
@@ -8,7 +11,8 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null })
     ...(attachmentsDir ? ['--add-dir', attachmentsDir] : []),
     '--output-format', 'json',
     '--permission-mode', 'dontAsk',
-    '--tools', 'Read,Glob,Grep',
+    '--tools', lease ? 'Read,Glob,Grep,Write,Edit' : 'Read,Glob,Grep',
+    ...(lease ? ['--allowedTools', `Read,Glob,Grep,Write(${lease.outDir}/**),Edit(${lease.outDir}/**)`] : []),
     '--safe-mode',
     '--disable-slash-commands',
     '--no-session-persistence',
@@ -53,10 +57,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [] }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null }),
+    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

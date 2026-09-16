@@ -113,7 +113,18 @@ Verificadas contra las versiones instaladas y visibles en la esfera de cada agen
 | Gemini CLI | sí | `read_file` | política con `argsPattern` | no expuesto en headless | `google_web_search` |
 | OpenCode | sí | `-f` | permisos `edit` por patrón | no | webfetch / websearch |
 
-La creación de archivos y la generación de imágenes están apagadas en el modo de consulta; son la capa siguiente, bajo un permiso explícito del humano por turno y con un directorio de salida acotado.
+### Creación bajo permiso: CREATE
+
+La creación de archivos y la generación de imágenes están apagadas en el modo de consulta. El botón `CREATE` del compositor concede un permiso de creación para ese mensaje y para el plan que arranque: PULSE crea una carpeta nueva en `<proyecto>/.pulse/out/<fecha>-<id>/` y cambia cada CLI a un modo de escritura acotado a esa carpeta, con el proyecto legible pero intocable:
+
+| Agente | Cómo se acota |
+|---|---|
+| Codex | `-C <carpeta> --sandbox workspace-write`; genera imágenes con `image_generation` y las guarda ahí |
+| Claude Code | `--tools Read,Glob,Grep,Write,Edit` con `--allowedTools Write(<carpeta>/**),Edit(<carpeta>/**)` bajo `dontAsk`: cualquier otra ruta se rechaza sin preguntar |
+| Gemini CLI | política de solo lectura más reglas `allow` para `write_file`/`edit` cuyo `file_path` empiece por la carpeta, con `--approval-mode default` |
+| OpenCode | `permission.edit: { "*": "deny", "<carpeta>/**": "allow" }` |
+
+Al terminar cada turno, PULSE compara la carpeta antes y después y registra lo aparecido como `artifacts.created`; las imágenes y archivos creados se muestran bajo la respuesta del agente y se abren en el visor. El permiso queda en el log como `lease.granted`, dura un mensaje (hay que volver a pulsar `CREATE`), lo heredan los pasos delegados, y STOPALL lo corta con todo lo demás. Añade `.pulse/` al `.gitignore` del proyecto si no quieres versionar los artefactos.
 
 ## Módulos
 

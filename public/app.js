@@ -14,6 +14,7 @@ const els = {
   target: document.querySelector('#target'),
   input: document.querySelector('#message'),
   attach: document.querySelector('#attach'),
+  createToggle: document.querySelector('#create-toggle'),
   fileInput: document.querySelector('#file-input'),
   attachments: document.querySelector('#attachments'),
   send: document.querySelector('#composer button[type="submit"]'),
@@ -41,6 +42,7 @@ const state = {
   capabilities: {},        // id -> { read, imageIn, write, imageGen, web }
   pending: [],             // attachments uploaded for the next message
   projectRoot: '',
+  create: false,           // creation lease armed for the next message
   chosenModel: {},         // id -> model name picked in the composer
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
@@ -506,7 +508,7 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text, model, attachments = [] } = event.payload;
+  const { messageId, target, text, model, attachments = [], create } = event.payload;
   state.userMessages.set(messageId, { text, target, model });
   const reviewed = state.expendable;
   const node = row('user');
@@ -515,6 +517,7 @@ function renderUserMessage(event) {
   const col = el('div', 'col');
   const who = el('div', 'who');
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
+  if (create) who.append(el('span', 'badge lease', 'create'));
   col.append(who);
   const bubble = el('div', 'bubble', text);
   if (attachments.length) bubble.append(fileTiles(attachments));
@@ -561,6 +564,7 @@ function renderAssistantMessage(event) {
   }
   const bubble = el('div', 'bubble');
   bubble.append(renderMarkdown(text));
+  if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
   col.append(bubble);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
@@ -659,6 +663,46 @@ function renderWarning(event) {
   node.append(gauge);
   state.lastSender = null;
   return node;
+}
+
+function renderLease(event) {
+  const { agent, outDir } = event.payload;
+  const node = el('div', 'system lease');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(el('b', null, 'creation lease · '));
+  node.append(`@${agent} may create files in `);
+  const link = el('a', 'file-link', outDir);
+  link.href = '#';
+  link.addEventListener('click', (ev) => { ev.preventDefault(); });
+  node.append(link);
+  state.lastSender = null;
+  return node;
+}
+
+function attachArtifacts(event) {
+  const { responseMessageId, files = [] } = event.payload;
+  const bubble = document.getElementById(`msg-${responseMessageId}`)?.querySelector('.bubble');
+  if (!bubble || bubble.querySelector('.artifacts')) return;
+  bubble.append(artifactTiles(files));
+}
+
+function artifactTiles(files) {
+  const wrap = el('div', 'artifacts');
+  wrap.append(el('span', 'label', `created · ${files.length} file${files.length === 1 ? '' : 's'}`));
+  const tiles = el('div', 'files');
+  for (const file of files) {
+    const url = `/api/files?path=${encodeURIComponent(file.path)}`;
+    const image = (file.contentType ?? '').startsWith('image/');
+    const tile = el('button', `file-tile${image ? ' image' : ''}`);
+    tile.type = 'button';
+    tile.title = `${file.path} · ${file.size} bytes · ${file.status}`;
+    if (image) { const img = el('img'); img.src = url; img.alt = file.name; img.loading = 'lazy'; tile.append(img); }
+    else { tile.append(el('span', 'kind', (file.name.split('.').pop() ?? 'file').slice(0, 4).toUpperCase())); tile.append(el('span', 'name', file.name)); }
+    tile.addEventListener('click', () => openViewer({ root: 'project', path: file.path, label: `/${file.path}` }));
+    tiles.append(tile);
+  }
+  wrap.append(tiles);
+  return wrap;
 }
 
 function renderAlert(event) {
@@ -825,6 +869,8 @@ function renderEventNode(event) {
       break;
     case 'room.alert': node = renderAlert(event); break;
     case 'room.stopped': node = renderHalted(event); break;
+    case 'lease.granted': node = renderLease(event); break;
+    case 'artifacts.created': attachArtifacts(event); return;
     default: return;
   }
   removeEmpty();
@@ -1005,6 +1051,14 @@ async function addFiles(files) {
     renderPendingAttachments();
   }
 }
+els.createToggle.addEventListener('click', () => {
+  state.create = !state.create;
+  els.createToggle.setAttribute('aria-pressed', String(state.create));
+  els.composer.classList.toggle('creating', state.create);
+  els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
+  els.input.placeholder = state.create ? 'Creation lease on: the agent may create files in .pulse/out/ for this request.' : 'Type here, human. Ask the room…';
+  els.input.focus();
+});
 els.attach.addEventListener('click', () => els.fileInput.click());
 els.fileInput.addEventListener('change', () => { void addFiles([...els.fileInput.files]); els.fileInput.value = ''; });
 els.input.addEventListener('paste', (event) => {
@@ -1035,7 +1089,7 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, target: els.target.value || null, model: state.chosenModel[els.target.value] ?? null, attachments: ready.map((item) => item.id) }),
+      body: JSON.stringify({ text, target: els.target.value || null, model: state.chosenModel[els.target.value] ?? null, attachments: ready.map((item) => item.id), create: state.create }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
@@ -1044,6 +1098,7 @@ els.composer.addEventListener('submit', async (event) => {
       els.input.value = '';
       state.pending = [];
       renderPendingAttachments();
+      if (state.create) els.createToggle.click(); // one lease per message; the human re-arms explicitly
       autosize();
     }
   } catch (error) {

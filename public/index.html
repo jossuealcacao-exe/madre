@@ -99,6 +99,10 @@
         <div class="field">
           <span id="crew-label" class="crew-label" aria-hidden="true">HUMAN ›</span>
           <textarea id="message" rows="1" placeholder="Type here, human. Ask the room…"></textarea>
+          <button id="create-toggle" type="button" class="create-toggle" aria-pressed="false" title="Creation lease: let the agent create files for this request, only inside .pulse/out/">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path class="lock-shackle" d="M6.5 8.5V6a3.5 3.5 0 017 0v2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4.5" y="8.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span class="create-word">CREATE</span>
+          </button>
           <button id="attach" type="button" class="attach" title="Attach an image or file (or drop it here)" aria-label="Attach">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 6.5l-6 6a2.1 2.1 0 003 3l6.5-6.5a4 4 0 00-5.7-5.7L4.8 9.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -108,7 +112,7 @@
           </button>
         </div>
       </form>
-      <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
+      <p class="safety">Consultation mode · Project writes stay under your control: agents create files only when you grant CREATE, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.</p>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>
       <dialog id="viewer" class="viewer" aria-label="File viewer">

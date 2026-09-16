@@ -23,15 +23,32 @@ interactive = false
 // extensions, MCP servers, memory files and history stay behind.
 export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json', 'installation_id', '.env'];
 
-export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null, attachmentsDir = null }) {
+// The read-only policy plus, under a lease, allow rules for the write tools
+// whose file_path argument starts with the lease directory. Plan mode would
+// block every write regardless of policy, so a lease uses approval "default":
+// headless Gemini cannot prompt, so anything the policy does not allow fails.
+export function geminiLeasePolicy(outDir) {
+  const escaped = outDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return `${geminiReadonlyPolicy}
+[[rule]]
+toolName = ["write_file", "replace", "edit"]
+argsPattern = '"file_path"\\s*:\\s*"${escaped}/'
+decision = "allow"
+priority = 1000
+interactive = false
+`;
+}
+
+export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null, attachmentsDir = null, lease = null }) {
+  const includes = [projectRoot, attachmentsDir, lease?.outDir].filter(Boolean).join(',');
   return [
     ...(model && model !== 'auto' ? ['--model', model] : []),
-    '--approval-mode', 'plan',
+    '--approval-mode', lease ? 'default' : 'plan',
     // stream-json emits init / tool_use / message deltas / result as JSONL, so
     // PULSE can tell a thinking Gemini from a hung one.
     '--output-format', 'stream-json',
     '--skip-trust',
-    '--include-directories', attachmentsDir ? `${projectRoot},${attachmentsDir}` : projectRoot,
+    '--include-directories', includes,
     '--policy', policyPath,
     '--prompt', prompt,
   ];
@@ -151,6 +168,7 @@ export async function invokeGemini({
   signal,
   model = null,
   attachments = [],
+  lease = null,
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   run = runReadonlyProcess,
@@ -158,7 +176,7 @@ export async function invokeGemini({
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
-    await writeFile(policyPath, geminiReadonlyPolicy, { mode: 0o600 });
+    await writeFile(policyPath, lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy, { mode: 0o600 });
     await prepareGeminiHome({ runtimeRoot });
     let attempt = 0;
     for (;;) {
@@ -166,7 +184,7 @@ export async function invokeGemini({
       try {
         return await run({
           executable,
-          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model, attachmentsDir: attachments[0]?.dir ?? null }),
+          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model, attachmentsDir: attachments[0]?.dir ?? null, lease }),
           cwd: runtimeRoot,
           env: buildGeminiEnvironment({ runtimeRoot }),
           timeoutMs,
