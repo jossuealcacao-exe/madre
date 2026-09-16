@@ -63,6 +63,20 @@ export const CONDITIONS = [
     },
   },
   {
+    id: 'gemini-rate-limited',
+    agent: 'gemini',
+    severity: 'transient',
+    title: 'Gemini key rate-limited by Google (HTTP 429)',
+    match: /HTTP 429|rate-limiting|RESOURCE_EXHAUSTED|quota exceeded/i,
+    diagnosis: 'The Gemini API key hit its per-minute or daily quota. Gemini CLI retries with exponential backoff and prints only stack traces while it waits, which looked like a hang. With the "auto" model, the first request is a small router call, so even that can be throttled.',
+    remedy: 'Wait a minute and retry, pick an explicit model in the composer (gemini-3-flash-preview skips the router), or raise the key\'s quota in Google AI Studio.',
+    fixes: {
+      darwin: ['# in the room: click the Gemini sphere twice → choose gemini-3-flash-preview', '# check quota: https://aistudio.google.com/app/apikey', 'gemini --model gemini-3-flash-preview -p "ping"'],
+      linux: ['gemini --model gemini-3-flash-preview -p "ping"', '# quota: https://aistudio.google.com/app/apikey'],
+      win32: ['gemini --model gemini-3-flash-preview -p "ping"', '# quota: https://aistudio.google.com/app/apikey'],
+    },
+  },
+  {
     id: 'gemini-high-demand',
     agent: 'gemini',
     severity: 'transient',

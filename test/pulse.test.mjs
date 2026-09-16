@@ -41,7 +41,7 @@ import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexMod
 import { contentTypeFor, isImage, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
 import { CAPABILITIES, abilityLine, agentsWith, capabilitySummary, resolveScopes } from '../src/capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
-import { geminiLeasePolicy } from '../src/adapters/gemini.mjs';
+import { diagnoseGeminiStderr, geminiLeasePolicy } from '../src/adapters/gemini.mjs';
 import { leaseConfig } from '../src/adapters/opencode.mjs';
 import { symlink } from 'node:fs/promises';
 import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
@@ -1857,6 +1857,41 @@ test('scopes: what the human enabled, per agent; CREATE is refused with a reason
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('Gemini stderr is diagnosed: 429 names the rate limit instead of a silent hang', async () => {
+  const stderr = 'Error: ... at async retryWithBackoff (chunk.js:1)\n at async NumericalClassifierStrategy.route (chunk.js:2) {\n  status: 429\n}\n';
+  const limited = diagnoseGeminiStderr(stderr);
+  assert.equal(limited.code, 'RATE_LIMITED');
+  assert.match(limited.message, /HTTP 429.*"auto" router/);
+  assert.match(limited.hint, /gemini-3-flash-preview/);
+  assert.equal(diagnoseGeminiStderr('Attempt 2 failed with status 503').code, 'UNAVAILABLE');
+  assert.equal(diagnoseGeminiStderr('API key not valid').code, 'AUTH');
+  assert.equal(diagnoseGeminiStderr('[STARTUP] Cannot measure phase'), null);
+
+  // Through the adapter: an idle stop with a 429 in stderr is reported as a rate limit and not retried.
+  let attempts = 0;
+  const idle = new Error('Gemini went silent for 8s and was stopped.');
+  idle.code = 'IDLE';
+  idle.partialStderr = stderr;
+  await assert.rejects(invokeGemini({ executable: '/fake', projectRoot: process.cwd(), prompt: 'p', retries: 1, run: async () => { attempts += 1; throw idle; } }), (error) => error.code === 'RATE_LIMITED' && /HTTP 429/.test(error.message));
+  assert.equal(attempts, 1, 'no retry against a rate limit');
+});
+
+test('idle detection ignores stderr chatter and counts only complete stdout lines', async () => {
+  const chatty = runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', 'console.log(JSON.stringify({type:"init"})); setInterval(() => process.stderr.write("retrying...\\n"), 100); setTimeout(() => {}, 60000)'],
+    cwd: process.cwd(),
+    timeoutMs: 60000,
+    idleTimeoutMs: 500,
+    killGraceMs: 100,
+    label: 'Gemini',
+    parse: () => ({ text: '' }),
+  });
+  const started = Date.now();
+  await assert.rejects(chatty, (error) => error.code === 'IDLE' && /retrying/.test(error.partialStderr));
+  assert.ok(Date.now() - started < 5000, 'stderr noise did not postpone the idle stop');
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

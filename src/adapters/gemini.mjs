@@ -157,6 +157,28 @@ export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 
   return false;
 }
 
+// Gemini CLI retries HTTP 429 (quota / rate limit) with exponential backoff
+// and prints only stack traces to stderr while it waits. From the room that
+// looked like a hang; naming it lets the human act on it.
+export function diagnoseGeminiStderr(stderr) {
+  const text = String(stderr ?? '');
+  if (/status:\s*429|\b429\b|RESOURCE_EXHAUSTED|rate ?limit|quota exceeded/i.test(text)) {
+    const router = /ClassifierStrategy|\.route\b/.test(text);
+    return {
+      code: 'RATE_LIMITED',
+      message: `Google is rate-limiting this Gemini key (HTTP 429)${router ? ' while its "auto" router picked a model' : ''}; the CLI kept retrying with backoff.`,
+      hint: 'Wait a minute, or pick an explicit model such as gemini-3-flash-preview to skip the router; check the key\'s quota at aistudio.google.com.',
+    };
+  }
+  if (/status:?\s*503|UNAVAILABLE|high demand/i.test(text)) {
+    return { code: 'UNAVAILABLE', message: 'Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.', hint: 'Try again shortly or choose another model.' };
+  }
+  if (/status:\s*40[13]|PERMISSION_DENIED|API key not valid|IneligibleTierError/i.test(text)) {
+    return { code: 'AUTH', message: 'Google rejected the Gemini credentials.', hint: 'Run `gemini` and use /auth, or check GEMINI_API_KEY.' };
+  }
+  return null;
+}
+
 // Gemini is bimodal in practice: it answers in 10–60 s or never at all,
 // printing nothing after startup. With stream-json every tool call and text
 // delta is activity, so a long silence means a hang; one retry usually lands.
@@ -195,9 +217,17 @@ export async function invokeGemini({
         });
       } catch (error) {
         const produced = parseGeminiOutput(error.partialOutput ?? '').text;
+        const diagnosis = diagnoseGeminiStderr(error.partialStderr ?? error.stderr ?? '');
+        // A rate limit will not clear within a retry; say what happened instead.
+        if (diagnosis?.code === 'RATE_LIMITED' || diagnosis?.code === 'AUTH') {
+          error.message = `${diagnosis.message} ${diagnosis.hint}`;
+          error.code = diagnosis.code;
+          throw error;
+        }
         if (error.code === 'IDLE' && !produced && attempt <= retries && !signal?.aborted) {
           continue;
         }
+        if (diagnosis) error.message = `${error.message} ${diagnosis.message} ${diagnosis.hint}`;
         if (attempt > 1) error.message = `${error.message} (retried ${attempt - 1}×)`;
         throw error;
       }

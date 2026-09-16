@@ -65,6 +65,7 @@ export function runReadonlyProcess({
         const error = new Error(`${label} went silent for ${Math.round(idleTimeoutMs / 1000)}s and was stopped.${lastLine ? ` Last output: ${lastLine.slice(0, 200)}` : ''}`);
         error.code = 'IDLE';
         error.partialOutput = stdout;
+        error.partialStderr = stderr.slice(-2000);
         finish(() => reject(error));
       }, idleTimeoutMs);
       idleTimer.unref?.();
@@ -87,12 +88,18 @@ export function runReadonlyProcess({
       terminateProcessTree(child, { graceMs: killGraceMs });
       // The last thing the agent said is usually the reason it was slow.
       const lastLine = `${stderr}\n${stdout}`.split('\n').map((line) => line.trim()).filter(Boolean).at(-1);
-      finish(() => reject(new Error(`${label} did not respond before the timeout (${Math.round(timeoutMs / 1000)}s).${lastLine ? ` Last output: ${lastLine.slice(0, 200)}` : ''}`)));
+      const error = new Error(`${label} did not respond before the timeout (${Math.round(timeoutMs / 1000)}s).${lastLine ? ` Last output: ${lastLine.slice(0, 200)}` : ''}`);
+      error.code = 'TIMEOUT';
+      error.partialOutput = stdout;
+      error.partialStderr = stderr.slice(-2000);
+      finish(() => reject(error));
     }, timeoutMs);
     signal?.addEventListener('abort', onAbort, { once: true });
 
-    child.stdout.on('data', (chunk) => { stdout += chunk; lastActivity = Date.now(); });
-    child.stderr.on('data', (chunk) => { stderr += chunk; lastActivity = Date.now(); });
+    // Only complete stdout lines count as activity: a CLI's stderr spinner or
+    // progress noise must not keep a silent model alive past the idle limit.
+    child.stdout.on('data', (chunk) => { stdout += chunk; if (String(chunk).includes('\n')) lastActivity = Date.now(); });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
     armIdle();
     child.on('error', (error) => finish(() => {
       // spawn reports ENOENT for a missing cwd as well as a missing binary.
