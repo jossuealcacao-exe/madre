@@ -827,7 +827,7 @@ test('shutdown interrupts in-flight turns and records them as failed', async () 
       projectRoot: root,
       invokers: {
         'codex-readonly': ({ signal }) => new Promise((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('Codex was interrupted because PULSE is shutting down.')), { once: true });
+          signal.addEventListener('abort', () => reject(new Error(`Codex was interrupted: ${signal.reason}.`)), { once: true });
         }),
       },
     });
@@ -840,7 +840,7 @@ test('shutdown interrupts in-flight turns and records them as failed', async () 
     await turn;
     const events = await store.readAll();
     assert.deepEqual(events.map((event) => event.type), ['message.created', 'agent.started', 'message.failed']);
-    assert.match(events.at(-1).payload.error, /interrupted because PULSE is shutting down/);
+    assert.match(events.at(-1).payload.error, /interrupted: PULSE is shutting down/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -860,11 +860,11 @@ test('aborting the signal terminates the adapter process tree', async () => {
     signal: controller.signal,
   });
   setTimeout(() => controller.abort(), 100);
-  await assert.rejects(pending, /Fixture was interrupted because PULSE is shutting down/);
+  await assert.rejects(pending, /Fixture was interrupted: PULSE is shutting down/);
   assert.ok(Date.now() - started < 3000);
   await assert.rejects(runReadonlyProcess({
     executable: process.execPath, args: ['-e', ''], cwd: process.cwd(), label: 'Fixture', parse: () => ({ text: '' }), signal: controller.signal,
-  }), /interrupted before it started/);
+  }), /interrupted before it started: PULSE is shutting down/);
 });
 
 test('reads each agent session state from its CLI output', () => {
@@ -1336,7 +1336,7 @@ test('a human message during a plan is answered without starting a second plan, 
 test('STOPALL halts every plan and every in-flight turn and is reachable over HTTP', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-stopall-'));
   const agents = ['claude', 'gemini', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
-  const hang = ({ signal, label }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error(`${label} was interrupted because PULSE is shutting down.`)), { once: true }));
+  const hang = ({ signal, label }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error(`${label} was interrupted: ${signal.reason}.`)), { once: true }));
   const invokers = {
     'claude-readonly': async () => ({ text: '```pulse\n@gemini: slow\n@codex: never\n```', usage: null }),
     'gemini-readonly': ({ signal }) => hang({ signal, label: 'Gemini' }),
@@ -1372,6 +1372,7 @@ test('STOPALL halts every plan and every in-flight turn and is reachable over HT
     const stopped = events.find((event) => event.type === 'room.stopped');
     assert.deepEqual(stopped.payload.agents.sort(), ['codex', 'gemini']);
     assert.equal(events.filter((event) => event.type === 'message.failed').length, 2, 'both in-flight turns recorded as interrupted');
+    assert.ok(events.filter((event) => event.type === 'message.failed').every((event) => /STOPALL by the human/.test(event.payload.error)), 'the failure names STOPALL, not a shutdown');
     assert.equal(events.some((event) => event.type === 'agent.started' && event.payload.agent === 'codex' && event.payload.planId), false, 'the plan never reached its second step');
     const after = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
     assert.deepEqual({ plans: after.plans, turns: after.turns }, { plans: [], turns: [] });

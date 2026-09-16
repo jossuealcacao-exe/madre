@@ -179,7 +179,7 @@ export class Room {
   // until each one has recorded its failure in the log.
   async shutdown() {
     for (const plan of this.#plans.values()) plan.stopped = 'PULSE is shutting down';
-    for (const { controller } of this.#turns.values()) controller.abort();
+    for (const { controller } of this.#turns.values()) controller.abort('PULSE is shutting down');
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
   }
 
@@ -231,7 +231,7 @@ export class Room {
     const plans = this.#plans.size;
     const turns = this.#turns.size;
     for (const plan of this.#plans.values()) plan.stopped = reason;
-    for (const turn of this.#turns.values()) turn.controller.abort();
+    for (const turn of this.#turns.values()) turn.controller.abort(reason);
     await this.#emit('room.stopped', { reason, plans, turns, agents: [...new Set([...this.#turns.values()].map((turn) => turn.agent))] });
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
     return { plans, turns };
@@ -252,7 +252,7 @@ export class Room {
     if (!plan) return false;
     plan.stopped = reason;
     for (const turn of this.#turns.values()) {
-      if (turn.planId === planId) turn.controller.abort();
+      if (turn.planId === planId) turn.controller.abort(reason);
     }
     return true;
   }

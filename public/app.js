@@ -485,7 +485,9 @@ function renderHalted(event) {
   const { reason, plans, turns, agents = [] } = event.payload;
   const node = el('div', 'system halted');
   node.append(el('b', null, 'MU/TH/UR › '));
-  node.append(`all stop · ${plans} plan${plans === 1 ? '' : 's'}, ${turns} turn${turns === 1 ? '' : 's'}${agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : ''} · ${reason}`);
+  node.append(plans || turns
+    ? `all stop · ${plans} plan${plans === 1 ? '' : 's'}, ${turns} turn${turns === 1 ? '' : 's'} halted${agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : ''} · ${reason}`
+    : `all stop · nothing was running · ${reason}`);
   state.plansRunning.clear();
   updateStopAll();
   state.lastSender = null;
@@ -497,7 +499,10 @@ async function stopAll() {
   if (button) button.disabled = true;
   try {
     const response = await fetch('/api/stop-all', { method: 'POST' });
-    if (!response.ok) toast('STOPALL failed to reach the room.');
+    if (!response.ok) { toast('STOPALL failed to reach the room.'); return; }
+    const result = await response.json().catch(() => ({}));
+    if (!result.plans && !result.turns) toast('MU/TH/UR › all quiet. nothing was running.');
+    else toast(`MU/TH/UR › all stop. ${result.plans} plan${result.plans === 1 ? '' : 's'}, ${result.turns} turn${result.turns === 1 ? '' : 's'} halted.`);
   } finally {
     if (button) button.disabled = false;
   }

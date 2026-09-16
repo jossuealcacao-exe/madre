@@ -37,7 +37,7 @@ export function runReadonlyProcess({
 }) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new Error(`${label} was interrupted before it started.`));
+      reject(new Error(`${label} was interrupted before it started: ${typeof signal.reason === 'string' ? signal.reason : 'PULSE is shutting down'}.`));
       return;
     }
     const child = spawn(executable, args, {
@@ -52,7 +52,8 @@ export function runReadonlyProcess({
 
     const onAbort = () => {
       terminateProcessTree(child, { graceMs: killGraceMs });
-      finish(() => reject(new Error(`${label} was interrupted because PULSE is shutting down.`)));
+      const reason = typeof signal?.reason === 'string' ? signal.reason : 'PULSE is shutting down';
+      finish(() => reject(new Error(`${label} was interrupted: ${reason}.`)));
     };
     const finish = (operation) => {
       if (settled) return;
