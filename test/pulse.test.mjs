@@ -24,6 +24,7 @@ import {
   buildGeminiEnvironment,
   cleanupRuntimeRoot,
   geminiReadonlyPolicy,
+  invokeGemini,
   isolateGeminiSettings,
   parseGeminiOutput,
   prepareGeminiHome,
@@ -161,7 +162,7 @@ test('runs Gemini from an isolated workspace under an explicit read-only policy'
   const args = buildGeminiArgs({ projectRoot: '/project', prompt: 'hello', policyPath: '/tmp/readonly.toml' });
   assert.deepEqual(args, [
     '--approval-mode', 'plan',
-    '--output-format', 'json',
+    '--output-format', 'stream-json',
     '--skip-trust',
     '--include-directories', '/project',
     '--policy', '/tmp/readonly.toml',
@@ -293,6 +294,65 @@ test('extracts Gemini response and aggregates per-model token usage', () => {
     },
   });
   assert.equal(parseGeminiOutput(JSON.stringify({ error: { message: 'Quota unavailable.' } })).error, 'Quota unavailable.');
+
+  // stream-json: init, tool events, assistant deltas, result with flat per-model stats
+  const stream = [
+    { type: 'init', session_id: 's', model: 'auto' },
+    { type: 'message', role: 'user', content: 'q' },
+    { type: 'tool_use', tool_name: 'read_file', tool_id: 't1', parameters: { file_path: 'package.json' } },
+    { type: 'tool_result', tool_id: 't1', status: 'success', output: '' },
+    { type: 'message', role: 'assistant', content: 'The name is ', delta: true },
+    { type: 'message', role: 'assistant', content: '@jossuealcala/pulse.', delta: true },
+    { type: 'result', status: 'success', stats: { total_tokens: 21461, tool_calls: 1, models: {
+      'gemini-3.1-pro-preview-customtools': { total_tokens: 0, input_tokens: 0, output_tokens: 0, cached: 0 },
+      'gemini-3-flash-preview': { total_tokens: 21461, input_tokens: 21428, output_tokens: 33, cached: 8135 },
+    } } },
+  ].map((event) => JSON.stringify(event)).join('\n');
+  const parsed = parseGeminiOutput(stream);
+  assert.equal(parsed.text, 'The name is @jossuealcala/pulse.');
+  assert.equal(parsed.toolCalls, 1);
+  assert.deepEqual(parsed.usage, { inputTokens: 21428, cachedInputTokens: 8135, outputTokens: 33, reasoningTokens: 0, totalTokens: 21461, source: 'gemini-json' });
+  const failed = parseGeminiOutput([JSON.stringify({ type: 'init' }), JSON.stringify({ type: 'result', status: 'error', error: { message: 'Quota exceeded' } })].join('\n'));
+  assert.equal(failed.error, 'Quota exceeded');
+});
+
+test('a silent process is stopped by the idle timeout and Gemini retries once', async () => {
+  const idle = runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', 'console.log(JSON.stringify({type:"init"})); setTimeout(() => {}, 60000)'],
+    cwd: process.cwd(),
+    timeoutMs: 60000,
+    idleTimeoutMs: 400,
+    killGraceMs: 100,
+    label: 'Gemini',
+    parse: () => ({ text: '' }),
+  });
+  await assert.rejects(idle, (error) => error.code === 'IDLE' && /went silent for 0s and was stopped/.test(error.message) && /"init"/.test(error.partialOutput));
+
+  // A process that keeps talking is not idle even though each line is far apart.
+  const chatty = await runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', 'let n=0; const t=setInterval(()=>{ console.log(JSON.stringify({type:"message",role:"assistant",content:"x"})); if(++n===3){clearInterval(t);} }, 150)'],
+    cwd: process.cwd(),
+    timeoutMs: 10000,
+    idleTimeoutMs: 400,
+    label: 'Gemini',
+    parse: parseGeminiOutput,
+  });
+  assert.equal(chatty.text, 'xxx');
+
+  // invokeGemini retries once on a silent hang, then surfaces the failure.
+  let attempts = 0;
+  const hang = new Error('Gemini went silent for 90s and was stopped.');
+  hang.code = 'IDLE';
+  await assert.rejects(invokeGemini({ executable: '/fake', projectRoot: process.cwd(), prompt: 'p', retries: 1, run: async () => { attempts += 1; throw hang; } }), /went silent.*\(retried 1×\)/);
+  assert.equal(attempts, 2);
+  attempts = 0;
+  const partial = new Error('Gemini went silent for 90s and was stopped.');
+  partial.code = 'IDLE';
+  partial.partialOutput = JSON.stringify({ type: 'message', role: 'assistant', content: 'half an answer' });
+  await assert.rejects(invokeGemini({ executable: '/fake', projectRoot: process.cwd(), prompt: 'p', retries: 1, run: async () => { attempts += 1; throw partial; } }), /went silent/);
+  assert.equal(attempts, 1, 'no retry when Gemini had already started answering');
 });
 
 test('runs OpenCode with an ephemeral restricted agent', () => {

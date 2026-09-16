@@ -26,7 +26,9 @@ export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json'
 export function buildGeminiArgs({ projectRoot, prompt, policyPath }) {
   return [
     '--approval-mode', 'plan',
-    '--output-format', 'json',
+    // stream-json emits init / tool_use / message deltas / result as JSONL, so
+    // PULSE can tell a thinking Gemini from a hung one.
+    '--output-format', 'stream-json',
     '--skip-trust',
     '--include-directories', projectRoot,
     '--policy', policyPath,
@@ -69,41 +71,53 @@ export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir
   return geminiDir;
 }
 
+function usageFromStats(stats) {
+  const models = Object.values(stats?.models ?? {});
+  if (!models.length) return null;
+  const totals = models.reduce((usage, model) => {
+    // Two shapes exist: the older { tokens: { prompt, candidates, total, cached, thoughts } }
+    // and stream-json's flat { input_tokens, output_tokens, total_tokens, cached }.
+    const tokens = model?.tokens ?? model ?? {};
+    const input = tokens.prompt ?? tokens.input_tokens ?? tokens.input ?? 0;
+    const output = tokens.candidates ?? tokens.output_tokens ?? 0;
+    usage.inputTokens += input;
+    usage.cachedInputTokens += tokens.cached ?? 0;
+    usage.outputTokens += output;
+    usage.reasoningTokens += tokens.thoughts ?? 0;
+    usage.totalTokens += tokens.total ?? tokens.total_tokens ?? (input + output);
+    return usage;
+  }, { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, source: 'gemini-json' });
+  return totals;
+}
+
+// Accepts stream-json (JSONL events) and, for compatibility, the single-object
+// output of `--output-format json`.
 export function parseGeminiOutput(output) {
-  try {
-    const result = JSON.parse(output.trim());
-    if (result.error) {
-      return {
-        text: '',
-        usage: null,
-        error: result.error.message ?? 'Gemini returned an error.',
-      };
-    }
-    const models = Object.values(result.stats?.models ?? {});
-    const totals = models.reduce((usage, model) => {
-      const tokens = model?.tokens ?? {};
-      usage.inputTokens += tokens.prompt ?? tokens.input ?? 0;
-      usage.cachedInputTokens += tokens.cached ?? 0;
-      usage.outputTokens += tokens.candidates ?? 0;
-      usage.reasoningTokens += tokens.thoughts ?? 0;
-      usage.totalTokens += tokens.total
-        ?? ((tokens.prompt ?? tokens.input ?? 0) + (tokens.candidates ?? 0));
-      return usage;
-    }, {
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      totalTokens: 0,
-      source: 'gemini-json',
-    });
-    return {
-      text: typeof result.response === 'string' ? result.response.trim() : '',
-      usage: models.length ? totals : null,
-    };
-  } catch {
-    return { text: '', usage: null };
+  const trimmed = String(output ?? '').trim();
+  if (!trimmed) return { text: '', usage: null };
+  const lines = trimmed.split('\n').map((line) => line.trim()).filter(Boolean);
+  const events = [];
+  for (const line of lines) {
+    try { events.push(JSON.parse(line)); } catch { /* diagnostics between events */ }
   }
+  if (events.length === 1 && !events[0].type && (events[0].response !== undefined || events[0].error || events[0].stats)) {
+    const result = events[0];
+    if (result.error) return { text: '', usage: null, error: result.error.message ?? 'Gemini returned an error.' };
+    return { text: typeof result.response === 'string' ? result.response.trim() : '', usage: usageFromStats(result.stats) };
+  }
+  let text = '';
+  let usage = null;
+  let error = null;
+  let toolCalls = 0;
+  for (const event of events) {
+    if (event.type === 'message' && event.role === 'assistant' && typeof event.content === 'string') text += event.content;
+    if (event.type === 'tool_use') toolCalls += 1;
+    if (event.type === 'error' || (event.type === 'result' && event.status && event.status !== 'success')) {
+      error = event.error?.message ?? event.message ?? `Gemini finished with status ${event.status ?? 'error'}.`;
+    }
+    if (event.type === 'result') usage = usageFromStats(event.stats);
+  }
+  return { text: text.trim(), usage, toolCalls, ...(error ? { error } : {}) };
 }
 
 // Best-effort removal of the temporary home. A killed Gemini may still be
@@ -125,22 +139,48 @@ export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 
   return false;
 }
 
-export async function invokeGemini({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
+// Gemini is bimodal in practice: it answers in 10–60 s or never at all,
+// printing nothing after startup. With stream-json every tool call and text
+// delta is activity, so a long silence means a hang; one retry usually lands.
+export async function invokeGemini({
+  executable,
+  projectRoot,
+  prompt,
+  timeoutMs = 120000,
+  signal,
+  idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
+  retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
+  run = runReadonlyProcess,
+}) {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
     await writeFile(policyPath, geminiReadonlyPolicy, { mode: 0o600 });
     await prepareGeminiHome({ runtimeRoot });
-    return await runReadonlyProcess({
-      executable,
-      args: buildGeminiArgs({ projectRoot, prompt, policyPath }),
-      cwd: runtimeRoot,
-      env: buildGeminiEnvironment({ runtimeRoot }),
-      timeoutMs,
-      signal,
-      label: 'Gemini',
-      parse: parseGeminiOutput,
-    });
+    let attempt = 0;
+    for (;;) {
+      attempt += 1;
+      try {
+        return await run({
+          executable,
+          args: buildGeminiArgs({ projectRoot, prompt, policyPath }),
+          cwd: runtimeRoot,
+          env: buildGeminiEnvironment({ runtimeRoot }),
+          timeoutMs,
+          idleTimeoutMs,
+          signal,
+          label: 'Gemini',
+          parse: parseGeminiOutput,
+        });
+      } catch (error) {
+        const produced = parseGeminiOutput(error.partialOutput ?? '').text;
+        if (error.code === 'IDLE' && !produced && attempt <= retries && !signal?.aborted) {
+          continue;
+        }
+        if (attempt > 1) error.message = `${error.message} (retried ${attempt - 1}×)`;
+        throw error;
+      }
+    }
   } finally {
     void cleanupRuntimeRoot(runtimeRoot);
   }

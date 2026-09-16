@@ -129,8 +129,8 @@ export const CONDITIONS = [
     id: 'timeout',
     severity: 'tunable',
     title: 'Agent did not respond before the timeout',
-    match: /did not respond before the timeout/i,
-    diagnosis: 'The agent was still reading files or reasoning when the per-agent timeout (default 180 s) expired. Long questions over many files take longer; PULSE killed the whole process tree.',
+    match: /did not respond before the timeout|went silent for/i,
+    diagnosis: 'The agent was still reading files or reasoning when the per-agent timeout (default 180 s) expired, or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; PULSE killed the whole process tree.',
     remedy: 'Raise the timeout for that agent or for all of them, then ask again. Values are milliseconds.',
     fixes: {
       darwin: ['# all agents, 5 minutes:', ...envExport('PULSE_AGENT_TIMEOUT_MS', '300000').darwin.slice(0, 1), '# one agent:', 'export PULSE_CLAUDE_TIMEOUT_MS="600000"', '# or persist in ~/.pulse/config.json → {"timeouts":{"default":300000}}'],
