@@ -1997,6 +1997,9 @@ test('Image Studio wiring: module grants imageGen; CLIs receive PULSE\'s MCP ser
     assert.deepEqual(Object.keys(mcp.mcpServers), ['pulse-image']);
     assert.equal(mcp.mcpServers['pulse-image'].env.PULSE_IMAGE_OUT_DIR, '/p/.pulse/out/x');
     assert.match(claude[claude.indexOf('--allowedTools') + 1], /mcp__pulse-image__generate_image/);
+    assert.equal(claude.includes('--safe-mode'), false, 'safe-mode would disable our MCP server');
+    assert.equal(claude[claude.indexOf('--setting-sources') + 1], '', 'no user setting sources replace safe-mode');
+    assert.ok(buildClaudeArgs({ prompt: 'q' }).includes('--safe-mode'), 'without the studio, safe-mode stays');
     assert.equal(JSON.parse(buildClaudeArgs({ prompt: 'q' })[buildClaudeArgs({ prompt: 'q' }).indexOf('--mcp-config') + 1]).mcpServers['pulse-image'], undefined);
 
     const settings = isolateGeminiSettings({ security: { auth: { selectedType: 'gemini-api-key' } }, hooks: {} }, { imageStudio: studio });

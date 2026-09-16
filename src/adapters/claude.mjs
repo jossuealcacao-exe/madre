@@ -31,7 +31,10 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     '--permission-mode', 'dontAsk',
     '--tools', tools.join(','),
     ...(lease || scopes?.web || imageStudio ? ['--allowedTools', allowed.join(',')] : []),
-    '--safe-mode',
+    // --safe-mode disables every MCP server, ours included. With Image Studio
+    // attached we drop it and instead load no setting sources at all: no user
+    // hooks, plugins or MCP servers, only the project's CLAUDE.md and our server.
+    ...(imageStudio ? ['--setting-sources', ''] : ['--safe-mode']),
     '--disable-slash-commands',
     '--no-session-persistence',
     '--no-chrome',

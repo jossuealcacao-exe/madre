@@ -28,18 +28,23 @@ export async function resolveGeminiKey(env = process.env) {
   if (env.GEMINI_API_KEY) return env.GEMINI_API_KEY;
   if (env.GOOGLE_API_KEY) return env.GOOGLE_API_KEY;
   if (process.platform !== 'darwin') return null;
-  try {
-    const { stdout } = await execFileAsync('/usr/bin/security', ['find-generic-password', '-s', 'gemini-cli-api-key', '-w'], { timeout: 4000 });
-    const raw = stdout.trim();
+  // The keychain occasionally answers empty under concurrent reads; one retry.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const parsed = JSON.parse(raw);
-      return parsed?.token?.accessToken ?? parsed?.token?.apiKey ?? parsed?.apiKey ?? null;
+      const { stdout } = await execFileAsync('/usr/bin/security', ['find-generic-password', '-s', 'gemini-cli-api-key', '-w'], { timeout: 4000 });
+      const raw = stdout.trim();
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed?.token?.accessToken ?? parsed?.token?.apiKey ?? parsed?.apiKey ?? null;
+      } catch {
+        return raw;
+      }
     } catch {
-      return raw || null;
+      if (attempt === 1) return null;
     }
-  } catch {
-    return null;
   }
+  return null;
 }
 
 export function safeImageName(name, fallback = 'image.png') {
