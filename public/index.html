@@ -32,7 +32,17 @@
         <button id="mother-button" class="mother-button" type="button" title="Troubleshooting · MU/TH/UR" aria-haspopup="dialog">
           <span class="mother-glyph" aria-hidden="true"></span>MU/TH/UR<span id="mother-count" class="mother-count" hidden></span>
         </button>
+        <button id="tree-button" class="tree-button" type="button" title="Project files" aria-pressed="false" aria-controls="tree">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h5M4 10h5M4 15.5h5M11.5 4.5H16M11.5 10H16M11.5 15.5H16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M6 6.5v7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".45"/></svg>
+        </button>
       </header>
+      <aside id="tree" class="tree" aria-label="Project files" hidden>
+        <header class="tree-head">
+          <span class="tree-title">FILES <span id="tree-root" class="tree-root"></span></span>
+          <button id="tree-close" class="tree-close" type="button" aria-label="Close files">×</button>
+        </header>
+        <div id="tree-body" class="tree-body" role="tree"></div>
+      </aside>
 
       <dialog id="modules" class="mother modules" aria-label="Modules">
         <div class="mother-frame">

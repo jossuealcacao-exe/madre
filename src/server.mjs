@@ -17,7 +17,7 @@ import { discoverModels } from './models.mjs';
 import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
-import { readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
+import { listDirectory, readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -407,6 +407,11 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      if (request.method === 'GET' && url.pathname === '/api/tree') {
+        const listing = await listDirectory(canonicalProjectRoot, url.searchParams.get('path') ?? '.');
+        if (listing.status !== 200) return sendJson(response, listing.status, { error: listing.error });
+        return sendJson(response, 200, { path: url.searchParams.get('path') ?? '.', entries: listing.entries, truncated: listing.truncated });
       }
       if (request.method === 'GET' && url.pathname === '/api/files') {
         const which = url.searchParams.get('root') === 'attachments' ? attachmentsRoot : canonicalProjectRoot;

@@ -99,6 +99,7 @@ Hacer clic en una esfera de agente en la barra despliega su uso en la sesión: t
 La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULSE deje de ser de solo lectura:
 
 - Las rutas de archivo que un agente menciona (`src/room.mjs`, `public/app.js:42`) se vuelven enlaces que abren un visor: código y texto con la línea resaltada, imágenes, PDF, audio y video. Las imágenes Markdown del proyecto se pintan en la burbuja.
+- El icono de archivos al extremo derecho de la barra abre un panel plegable con el árbol del proyecto, en el hueco a la derecha del hilo (se oculta en pantallas angostas). Las carpetas se despliegan bajo demanda vía `GET /api/tree?path=…`, en solo lectura y encerrado a la raíz; `.git` no se lista y `node_modules` no se recorre. Un archivo abre el visor.
 - `GET /api/files?path=…` sirve archivos del proyecto en solo lectura, encerrado a la raíz del proyecto: nada de `..`, rutas absolutas ni symlinks hacia fuera; máximo 20 MB.
 - Adjuntos: el clip del compositor, arrastrar al compositor o pegar una imagen suben el archivo a la carpeta de la sala bajo `PULSE_HOME`, nunca al proyecto (máximo 15 MB). El mensaje los registra y cada CLI los recibe como sabe: Codex con `--image`, OpenCode con `--file`, Claude y Gemini leyendo la ruta con su herramienta de lectura, con la carpeta de adjuntos habilitada.
 

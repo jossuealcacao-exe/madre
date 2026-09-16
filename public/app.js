@@ -21,6 +21,11 @@ const els = {
   attachments: document.querySelector('#attachments'),
   send: document.querySelector('#composer button[type="submit"]'),
   connection: document.querySelector('#connection'),
+  tree: document.querySelector('#tree'),
+  treeBody: document.querySelector('#tree-body'),
+  treeRoot: document.querySelector('#tree-root'),
+  treeButton: document.querySelector('#tree-button'),
+  treeClose: document.querySelector('#tree-close'),
   toast: document.querySelector('#toast'),
 };
 
@@ -965,8 +970,92 @@ function renderEventNode(event) {
   removeEmpty();
   const stickToBottom = els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 120;
   els.column.append(node);
+  followTurn(event, node, stickToBottom);
+}
+
+// Modern chats carry the reader along: a new human message or a working
+// indicator scrolls to the end; an answer scrolls to its start so a long
+// reply is read from the top. Live events only, never during the replay.
+let replaying = true;
+function followTurn(event, node, stickToBottom) {
+  if (replaying) { if (stickToBottom) scrollToEnd(); return; }
+  const isTurn = event.type === 'agent.started' || (event.type === 'message.created' && event.payload.role === 'user');
+  const isAnswer = event.type === 'message.created' && event.payload.role !== 'user';
+  if (isAnswer) {
+    const tall = node.getBoundingClientRect?.().height > els.thread.clientHeight * 0.7;
+    if (tall) node.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    else els.thread.scrollTo?.({ top: els.thread.scrollHeight, behavior: 'smooth' }) ?? scrollToEnd();
+    return;
+  }
+  if (isTurn) { els.thread.scrollTo?.({ top: els.thread.scrollHeight, behavior: 'smooth' }) ?? scrollToEnd(); return; }
   if (stickToBottom) scrollToEnd();
 }
+
+/* ---------- project files panel ---------- */
+
+const tree = { open: false, loaded: new Map() };
+const formatSize = (bytes) => bytes == null ? '' : bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+const CODE_EXT = /\.(m?[jt]sx?|py|rb|go|rs|java|kt|swift|c|h|cpp|hpp|cs|php|sh|zsh|css|scss|html?|json|ya?ml|toml|sql|md)$/i;
+
+async function loadTreeLevel(path, list) {
+  list.replaceChildren(el('li', 'empty-dir', 'loading…'));
+  try {
+    const response = await fetch(`/api/tree?path=${encodeURIComponent(path)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+    list.replaceChildren();
+    if (!data.entries.length) list.append(el('li', 'empty-dir', 'empty'));
+    for (const entry of data.entries) list.append(treeNode(path === '.' ? entry.name : `${path}/${entry.name}`, entry));
+    if (data.truncated) list.append(el('li', 'empty-dir', 'more entries not shown'));
+  } catch (error) {
+    list.replaceChildren(el('li', 'error', `could not list: ${error.message}`));
+  }
+}
+
+function treeNode(path, entry) {
+  const item = el('li');
+  item.setAttribute('role', 'treeitem');
+  const button = el('button', `node ${entry.kind}${entry.shallow ? ' shallow' : ''}${entry.kind === 'file' && /^image\//.test(entry.contentType ?? '') ? ' image' : ''}${entry.kind === 'file' && CODE_EXT.test(entry.name) ? ' code' : ''}`);
+  button.type = 'button';
+  button.title = path;
+  if (entry.kind === 'dir') {
+    const caret = el('span', 'caret', '▸');
+    button.append(caret, el('span', 'name', entry.name));
+    const children = el('ul');
+    children.hidden = true;
+    let opened = false;
+    button.addEventListener('click', () => {
+      if (entry.shallow) { toast(`${entry.name} is not walked: too many generated files. Ask an agent for a specific path instead.`); return; }
+      opened = !opened;
+      caret.textContent = opened ? '▾' : '▸';
+      children.hidden = !opened;
+      item.setAttribute('aria-expanded', String(opened));
+      if (opened && !children.childElementCount) void loadTreeLevel(path, children);
+    });
+    item.append(button, children);
+  } else {
+    button.append(el('span', 'caret', ''), el('span', 'name', entry.name), el('span', 'size', formatSize(entry.size)));
+    button.addEventListener('click', () => { void openViewer({ root: 'project', path, label: path }); });
+    item.append(button);
+  }
+  return item;
+}
+
+function setTree(open) {
+  tree.open = open;
+  els.tree.hidden = !open;
+  els.treeButton.setAttribute('aria-pressed', String(open));
+  try { localStorage.setItem('pulse.tree', open ? 'open' : 'closed'); } catch { /* no storage */ }
+  if (open && !els.treeBody.childElementCount) {
+    els.treeRoot.textContent = `/ ${(state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''}`;
+    const root = el('ul');
+    els.treeBody.append(root);
+    void loadTreeLevel('.', root);
+  }
+}
+els.treeButton?.addEventListener('click', () => setTree(!tree.open));
+els.treeClose?.addEventListener('click', () => setTree(false));
+try { if (localStorage.getItem('pulse.tree') === 'open') setTree(true); } catch { /* no storage */ }
 
 /* ---------- easter egg: hold the scroll at the end of the record ---------- */
 
@@ -1058,6 +1147,7 @@ els.thread.addEventListener('keydown', (event) => trackHold(event.key === 'Arrow
 const initial = await fetch('/api/state').then((response) => response.json());
 els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;
 els.project.title = initial.projectRoot;
+if (els.treeRoot) els.treeRoot.textContent = `/ ${initial.projectRoot.split('/').filter(Boolean).at(-1) ?? ''}`;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
@@ -1084,7 +1174,7 @@ function setConnection(value) {
   els.connection.querySelector('.connection-label').textContent = value;
 }
 const stream = new EventSource(`/api/events?since=${state.lastSequence}`);
-stream.onopen = () => setConnection('live');
+stream.onopen = () => { setConnection('live'); replaying = false; };
 stream.onerror = () => setConnection('reconnecting');
 stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 

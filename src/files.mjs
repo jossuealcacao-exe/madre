@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { extname, join, resolve, sep } from 'node:path';
 
 // Read-only file access for the room UI, and human attachments.
@@ -35,6 +35,33 @@ export async function resolveInside(root, relative) {
   const canonical = await realpath(candidate).catch(() => null);
   if (!canonical || (canonical !== canonicalRoot && !canonical.startsWith(canonicalRoot + sep))) return null;
   return canonical;
+}
+
+// One level of the project tree, for the room's file panel. Directories
+// first, then files, both alphabetical; .git is never listed and node_modules
+// is shown but not walked. Read-only and fenced to the project root.
+const SKIP = new Set(['.git', '.DS_Store']);
+const SHALLOW = new Set(['node_modules', '.pulse', '.venv', 'venv', 'dist', 'build', '.next']);
+export async function listDirectory(root, relative = '.') {
+  const path = await resolveInside(root, relative || '.');
+  if (!path) return { status: 404, error: 'Not found.' };
+  let entries;
+  try { entries = await readdir(path, { withFileTypes: true }); } catch { return { status: 404, error: 'Not a directory.' }; }
+  const items = [];
+  for (const entry of entries) {
+    if (SKIP.has(entry.name)) continue;
+    const isDir = entry.isDirectory() || (entry.isSymbolicLink() && (await stat(join(path, entry.name)).catch(() => null))?.isDirectory());
+    const item = { name: entry.name, kind: isDir ? 'dir' : 'file' };
+    if (isDir && SHALLOW.has(entry.name)) item.shallow = true;
+    if (!isDir) {
+      const info = await stat(join(path, entry.name)).catch(() => null);
+      if (info) item.size = info.size;
+      item.contentType = contentTypeFor(entry.name);
+    }
+    items.push(item);
+  }
+  items.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) : a.kind === 'dir' ? -1 : 1));
+  return { status: 200, entries: items.slice(0, 500), truncated: items.length > 500 };
 }
 
 export async function readServable(root, relative, { maxBytes = MAX_FILE_BYTES } = {}) {

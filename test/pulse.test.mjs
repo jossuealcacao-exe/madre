@@ -38,7 +38,7 @@ import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/e
 import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
 import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexModelCache } from '../src/models.mjs';
-import { contentTypeFor, isImage, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
+import { contentTypeFor, isImage, listDirectory, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
 import { CAPABILITIES, abilityLine, agentsWith, capabilitySummary, resolveScopes } from '../src/capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
 import { diagnoseGeminiStderr, geminiLeasePolicy } from '../src/adapters/gemini.mjs';
@@ -2190,6 +2190,29 @@ test('POST /api/commands records a command.output event the transcript shares wi
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
+test('listDirectory fences to the project, hides .git, sorts folders first and does not walk node_modules', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-tree-'));
+  try {
+    await mkdir(join(root, 'src'));
+    await mkdir(join(root, '.git'));
+    await mkdir(join(root, 'node_modules'));
+    await writeFile(join(root, 'zeta.txt'), 'z');
+    await writeFile(join(root, 'src', 'a.mjs'), 'export {}');
+    const top = await listDirectory(root, '.');
+    assert.equal(top.status, 200);
+    assert.deepEqual(top.entries.map((entry) => entry.name), ['node_modules', 'src', 'zeta.txt']);
+    assert.equal(top.entries[0].shallow, true);
+    assert.equal(top.entries[2].size, 1);
+    const inner = await listDirectory(root, 'src');
+    assert.deepEqual(inner.entries.map((entry) => `${entry.kind}:${entry.name}`), ['file:a.mjs']);
+    assert.equal((await listDirectory(root, '../')).status, 404);
+    assert.equal((await listDirectory(root, 'zeta.txt')).status, 404);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

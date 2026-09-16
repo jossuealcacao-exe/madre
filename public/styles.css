@@ -77,6 +77,8 @@ body {
   grid-template-rows: auto 1fr auto auto auto;
 }
 .bar, .onboarding, .composer, .safety, .thread-inner { width: var(--column); margin-left: auto; margin-right: auto; }
+.shell > .bar { grid-row: 1; } .shell > .onboarding { grid-row: 2; } .shell > .thread { grid-row: 3; } .shell > .composer { grid-row: 4; } .shell > .safety { grid-row: 5; }
+.shell > .bar, .shell > .onboarding, .shell > .thread, .shell > .composer, .shell > .safety, .shell > .tree { grid-column: 1; }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ================= bar ================= */
@@ -369,6 +371,9 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-record .e.more.open::after { content: ' ▾'; }
 .mother-record .e.more:hover, .mother-record .e.more:focus-visible { color: var(--ph); outline: none; }
 .mother-section h3.toggle { display: block; }
+.mother-section h3.toggle::before { content: none; }
+.mother-section h3.toggle button::before { content: "▌ "; color: var(--ph); }
+.mother-section h3.toggle button > :first-child { flex: 1; }
 .mother-section h3.toggle button { display: flex; width: 100%; justify-content: space-between; gap: 12px; border: 0; background: transparent; color: var(--ph-dim); font: inherit; letter-spacing: .28em; padding: 0; cursor: pointer; text-align: left; }
 .mother-section h3.toggle button:hover { color: var(--ph); }
 .mother-section h3.toggle .caret { color: var(--ph); letter-spacing: .18em; }
@@ -599,7 +604,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .composer.stopall .editor .highlight { visibility: hidden; }
 .editor .highlight { color: var(--text); pointer-events: none; scrollbar-width: none; }
 .editor .highlight::-webkit-scrollbar { display: none; }
-.editor .highlight .chip { border-radius: 6px; padding: 1px 4px; margin: 0 -4px; background: color-mix(in srgb, var(--agent, var(--phosphor)) 18%, transparent); color: var(--agent, var(--phosphor)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent, var(--phosphor)) 45%, transparent); font-weight: 600; }
+.editor .highlight .chip { --chip-bg: color-mix(in srgb, var(--agent, var(--phosphor)) 16%, var(--panel)); border-radius: 5px; padding: 0; margin: 0; background: var(--chip-bg); color: var(--agent, var(--phosphor)); box-shadow: 0 0 0 3px var(--chip-bg), 0 0 0 4px color-mix(in srgb, var(--agent, var(--phosphor)) 40%, transparent); font-weight: 600; }
 .editor .highlight .chip.cmd { --agent: var(--phosphor); font-family: var(--mono); font-size: 13px; letter-spacing: .04em; }
 .editor .highlight .chip.unknown { --agent: var(--text-3); text-decoration: underline dotted; font-weight: 500; }
 .slash-menu { position: absolute; left: -12px; bottom: calc(100% + 14px); z-index: 30; min-width: 280px; max-width: min(460px, 90vw); border: 1px solid var(--line-2); background: var(--panel); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .35); padding: 6px; display: grid; gap: 2px; }
@@ -609,6 +614,34 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .slash-menu .item.off .key { color: var(--text-3); text-decoration: line-through; }
 .slash-menu .item[aria-selected="true"], .slash-menu .item:hover { background: color-mix(in srgb, var(--agent, var(--phosphor)) 14%, transparent); }
 .slash-menu .hint { padding: 4px 10px 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--text-3); }
+/* ---------- project files panel: lives in the free space right of the thread ---------- */
+.tree-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 26px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; padding: 0; }
+.tree-button svg { width: 16px; height: 16px; }
+.tree-button:hover, .tree-button[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 14px color-mix(in srgb, var(--phosphor) 30%, transparent); }
+.tree { grid-row: 3; justify-self: end; align-self: stretch; z-index: 5; width: clamp(240px, calc((100% - var(--column)) / 2 - 36px), 420px); margin: 18px 20px 10px 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); border: 1px solid var(--line-2); border-radius: 18px; background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .06); overflow: hidden; animation: tree-in .22s ease; }
+@keyframes tree-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+.tree-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; color: var(--text-2); }
+.tree-title { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.tree-root { color: var(--text-3); letter-spacing: .06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-close { border: 0; background: transparent; color: var(--text-3); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.tree-close:hover { color: var(--text); background: var(--line); }
+.tree-body { overflow: auto; padding: 8px 8px 14px; font-family: var(--mono); font-size: 12px; letter-spacing: .01em; }
+.tree-body ul { list-style: none; margin: 0; padding: 0; }
+.tree-body ul ul { padding-left: 14px; border-left: 1px solid var(--line); margin-left: 9px; }
+.tree-body li { margin: 0; }
+.tree-body .node { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; padding: 4px 8px; border-radius: 7px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-body .node:hover { background: color-mix(in srgb, var(--phosphor) 10%, transparent); color: var(--text); }
+.tree-body .node .caret { width: 10px; color: var(--text-3); flex: none; font-size: 10px; }
+.tree-body .node .name { overflow: hidden; text-overflow: ellipsis; }
+.tree-body .node.dir .name { color: var(--text); }
+.tree-body .node.file .name::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 2px; margin-right: 7px; background: var(--line-2); vertical-align: 1px; }
+.tree-body .node.file.image .name::before { background: var(--phosphor); }
+.tree-body .node.file.code .name::before { background: color-mix(in srgb, var(--warn) 70%, transparent); }
+.tree-body .node .size { margin-left: auto; color: var(--text-3); font-size: 10px; padding-left: 8px; }
+.tree-body .node.shallow .name::after { content: ' · not walked'; color: var(--text-3); font-size: 10px; }
+.tree-body .empty-dir, .tree-body .error { padding: 4px 24px; color: var(--text-3); font-size: 11px; }
+@media (max-width: 1180px) { .tree, .tree-button { display: none !important; } }
+
 .command-card { margin: 10px 0 6px; max-width: min(860px, 100%); border: 1px solid var(--line-2); border-radius: 12px; background: color-mix(in srgb, var(--panel) 80%, transparent); overflow: hidden; }
 .command-card.failed { border-color: color-mix(in srgb, var(--crit) 60%, transparent); }
 .command-card .head { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; color: var(--text-2); border-bottom: 1px solid var(--line-2); }
