@@ -451,6 +451,15 @@ function renderEvent(event) {
   if (state.seen.has(event.id)) return;
   state.seen.add(event.id);
   state.lastSequence = Math.max(state.lastSequence, event.sequence ?? 0);
+  try {
+    renderEventNode(event);
+  } catch (error) {
+    // One malformed or unexpected event must never take the whole room down.
+    console.error(`PULSE could not render event ${event.sequence} (${event.type}):`, error);
+  }
+}
+
+function renderEventNode(event) {
   let node = null;
   switch (event.type) {
     case 'message.created':
@@ -564,8 +573,12 @@ const mother = {
 function recordFailure(entry) {
   state.failures.push(entry);
   const count = state.failures.filter((failure) => !failure.recovered).length;
-  mother.count.hidden = count === 0;
-  mother.count.textContent = String(count);
+  // Called while the transcript is still being replayed, before the MU/TH/UR
+  // block below has initialised, so look the badge up directly.
+  const badge = document.querySelector('#mother-count');
+  if (!badge) return;
+  badge.hidden = count === 0;
+  badge.textContent = String(count);
 }
 
 function commandBlock(lines) {
