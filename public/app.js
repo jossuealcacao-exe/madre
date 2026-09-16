@@ -57,7 +57,7 @@ for (const agent of state.agents) {
 if (!target.options.length) target.add(new Option('No agent ready', ''));
 for (const event of state.events) renderEvent(event);
 
-const stream = new EventSource('/api/events');
+const stream = new EventSource(`/api/events?since=${state.events.at(-1)?.sequence ?? 0}`);
 stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 composer.addEventListener('submit', async (event) => {

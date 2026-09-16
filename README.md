@@ -17,7 +17,9 @@ PULSE no instala ni configura proveedores. Detecta los runtimes existentes y man
 
 Cada proyecto tiene una sala estable bajo `PULSE_HOME` (por defecto `~/.pulse`). PULSE reconstruye una ventana acotada de la conversación desde su event log aunque se reinicie o se abra desde otro IDE. Cuando cambia el agente, registra `handoff.created` con el origen, el destino y el rango de eventos entregado; el transcript sigue siendo la fuente durable y no se modifica el proyecto.
 
-Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala.
+Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso PULSE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
+
+Los errores de un agente se guardan acotados en `message.failed`: una sola línea de hasta 500 caracteres, sin stack traces.
 
 La ventana predeterminada es de 16,000 caracteres y puede ajustarse con `PULSE_CONTEXT_MAX_CHARS`. Los mensajes antiguos se omiten antes que los recientes.
 
@@ -34,7 +36,7 @@ Un lector implementa `{ id, agent, read() }`; `read()` devuelve `null` o `{ used
 ## Estado de adaptadores
 
 - Codex: consulta de solo lectura habilitada.
-- OpenCode: consulta restringida habilitada; PULSE inyecta permisos efímeros y no modifica la configuración global.
+- OpenCode: consulta restringida habilitada; PULSE inyecta permisos efímeros y no modifica la configuración global. Si tu configuración de OpenCode no fija modelo, `run` elige el proveedor por defecto, que puede no ser el que tiene sesión válida; fija `PULSE_OPENCODE_MODEL=proveedor/modelo` (por ejemplo `openai/gpt-5.6-sol`) al arrancar PULSE.
 - Claude Code: consulta restringida habilitada con Safe Mode, herramientas locales de lectura, MCP desactivado y sesiones no persistentes.
 - Gemini CLI: consulta restringida habilitada con Plan Mode y una política efímera que solo permite herramientas locales de lectura. PULSE ejecuta Gemini con un `GEMINI_CLI_HOME` temporal que solo recibe las credenciales existentes (tokens OAuth y `~/.gemini/.env`; una API key guardada en el llavero del sistema funciona sin copia); hooks, extensiones, servidores MCP y memoria del `~/.gemini` real no se cargan. El relanzamiento interno del CLI se desactiva para que el timeout controle el proceso que hace la petición.
 

@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import http from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { parseMessage } from '../src/router.mjs';
-import { Room } from '../src/room.mjs';
+import { failureMessage, Room } from '../src/room.mjs';
 import { createPulseServer, projectRoomId } from '../src/server.mjs';
 import { buildCodexArgs, parseCodexOutput } from '../src/adapters/codex.mjs';
 import { buildClaudeArgs, parseClaudeOutput } from '../src/adapters/claude.mjs';
@@ -20,6 +21,50 @@ import {
 import { runReadonlyProcess } from '../src/adapters/process.mjs';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
+
+
+// Opens an SSE connection and resolves each parsed frame through `onEvent`.
+function openEventStream(url) {
+  return new Promise((resolve, reject) => {
+    const request = http.get(url, (response) => {
+      let buffer = '';
+      const frames = [];
+      const waiters = [];
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => {
+        buffer += chunk;
+        let index;
+        while ((index = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, index);
+          buffer = buffer.slice(index + 2);
+          if (!block.includes('data:')) continue;
+          const id = block.match(/^id: (.*)$/m)?.[1] ?? null;
+          const data = JSON.parse(block.match(/^data: (.*)$/m)[1]);
+          const frame = { id, data };
+          frames.push(frame);
+          waiters.splice(0).forEach((waiter) => waiter());
+        }
+      });
+      resolve({
+        frames,
+        response,
+        async waitFor(count, timeoutMs = 3000) {
+          const deadline = Date.now() + timeoutMs;
+          while (frames.length < count) {
+            if (Date.now() > deadline) throw new Error(`expected ${count} frames, got ${frames.length}`);
+            await new Promise((next) => {
+              waiters.push(next);
+              setTimeout(next, 50);
+            });
+          }
+          return frames.slice(0, count);
+        },
+        close: () => request.destroy(),
+      });
+    });
+    request.on('error', reject);
+  });
+}
 
 test('routes an explicit agent mention', () => {
   assert.deepEqual(parseMessage('@codex inspect the project', 'claude'), {
@@ -211,7 +256,8 @@ test('extracts Gemini response and aggregates per-model token usage', () => {
 });
 
 test('runs OpenCode with an ephemeral restricted agent', () => {
-  const args = buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello' });
+  assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: 'openai/gpt-5.6-sol' }).slice(6, 8), ['--model', 'openai/gpt-5.6-sol']);
+  const args = buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: undefined });
   assert.deepEqual(args, [
     '--pure',
     'run',
@@ -233,6 +279,8 @@ test('extracts only assistant text from OpenCode JSON events', () => {
     JSON.stringify({ type: 'text', part: { type: 'text', text: 'CODE_OK' } }),
   ].join('\n');
   assert.deepEqual(parseOpenCodeOutput(output), { text: 'OPENCODE_OK', usage: null });
+  const failure = JSON.stringify({ type: 'error', error: { name: 'APIError', data: { message: 'invalid x-api-key', statusCode: 401 } } });
+  assert.deepEqual(parseOpenCodeOutput(failure), { text: '', usage: null, error: 'APIError: invalid x-api-key' });
 });
 
 test('warns once when usage crosses preventive and critical thresholds', () => {
@@ -425,6 +473,103 @@ test('persists context handoffs across agents and room restarts', async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('truncates failure messages to one bounded line', async () => {
+  assert.equal(failureMessage(new Error('\n  Error: first useful line\n    at stack frame')), 'Error: first useful line');
+  assert.equal(failureMessage('plain text'), 'plain text');
+  assert.equal(failureMessage(undefined), 'Unknown error');
+  assert.equal(failureMessage(new Error('   \n\n')), 'Unknown error');
+  const long = failureMessage(new Error('x'.repeat(2000)));
+  assert.equal(long.length, 500);
+  assert.ok(long.endsWith('…'));
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-failure-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake', version: 'test' }];
+    const room = new Room({
+      store,
+      agents,
+      projectRoot: root,
+      invokers: { 'gemini-readonly': async () => { throw new Error(`Error authenticating: boom\n${'    at frame\n'.repeat(200)}`); } },
+    });
+    await room.send({ text: 'hello', target: 'gemini' });
+    const failed = (await store.readAll()).find((event) => event.type === 'message.failed');
+    assert.equal(failed.payload.error, 'Error authenticating: boom');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('streams events appended by another store instance', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-sse-'));
+  const agents = [{ id: 'codex', label: 'Codex', detected: false, ready: false, adapter: null, path: null, version: null }];
+  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, broadcastIntervalMs: 50 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  let stream;
+  try {
+    stream = await openEventStream(`http://127.0.0.1:${port}/api/events`);
+    // The server canonicalizes the project root, so the shared room path must too.
+    const roomFile = join(root, 'rooms', projectRoomId(await realpath(root)), 'events.jsonl');
+    const external = await new EventStore(roomFile).initialize();
+    const started = Date.now();
+    const appended = await external.append('handoff.created', { fromAgent: 'other-ide', toAgent: 'codex' });
+    const [frame] = await stream.waitFor(1);
+    assert.ok(Date.now() - started < 1000);
+    assert.equal(frame.id, String(appended.sequence));
+    assert.equal(frame.data.id, appended.id);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.equal(stream.frames.length, 1, 'external event must be delivered exactly once');
+    assert.equal((await store.readAll()).at(-1).id, appended.id);
+  } finally {
+    stream?.close();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('replays since a sequence and closes cleanly with open streams', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-since-'));
+  const agents = [{ id: 'codex', label: 'Codex', detected: false, ready: false, adapter: null, path: null, version: null }];
+  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, broadcastIntervalMs: 50 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  let stream;
+  let closed = 'pending';
+  try {
+    await store.append('message.created', { messageId: 'a', role: 'user', sender: 'you', target: 'codex', text: 'one', status: 'sent' });
+    await store.append('message.created', { messageId: 'b', role: 'user', sender: 'you', target: 'codex', text: 'two', status: 'sent' });
+    await store.append('message.created', { messageId: 'c', role: 'user', sender: 'you', target: 'codex', text: 'three', status: 'sent' });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    stream = await openEventStream(`http://127.0.0.1:${port}/api/events?since=1`);
+    const replayed = await stream.waitFor(2);
+    assert.deepEqual(replayed.map((frame) => frame.data.sequence), [2, 3]);
+
+    // Mixed local emit and external append keep ascending, unique sequences.
+    const external = await new EventStore(join(root, 'rooms', projectRoomId(await realpath(root)), 'events.jsonl')).initialize();
+    await fetch(`http://127.0.0.1:${port}/api/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'hello', target: 'codex' }),
+    });
+    await external.append('quota.updated', { agent: 'codex', usedPercent: 10, source: 'test' });
+    const all = await stream.waitFor(5);
+    const sequences = all.map((frame) => frame.data.sequence);
+    assert.deepEqual(sequences, [...new Set(sequences)]);
+    assert.deepEqual(sequences, [...sequences].sort((a, b) => a - b));
+    assert.equal(sequences.at(-1), 6);
+  } finally {
+    closed = await Promise.race([
+      new Promise((resolve) => server.close(() => resolve('closed'))),
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), 2000)),
+    ]);
+    stream?.close();
+    await rm(root, { recursive: true, force: true });
+  }
+  assert.equal(closed, 'closed', 'server.close() must resolve while an SSE client is connected');
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

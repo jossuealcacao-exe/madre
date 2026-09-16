@@ -18,12 +18,16 @@ const readonlyConfig = {
   },
 };
 
-export function buildOpenCodeArgs({ projectRoot, prompt }) {
+// Optional provider/model override (e.g. "openai/gpt-5.6-sol"). Without it,
+// OpenCode picks its own default provider, which may not be the one the user
+// actually signed in to.
+export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PULSE_OPENCODE_MODEL }) {
   return [
     '--pure',
     'run',
     '--format', 'json',
     '--agent', 'pulse-readonly',
+    ...(model ? ['--model', model] : []),
     '--dir', projectRoot,
     prompt,
   ];
@@ -41,9 +45,14 @@ export function openCodeEnvironment(environment = process.env) {
 export function parseOpenCodeOutput(output) {
   const text = [];
   let usage = null;
+  let error = null;
   for (const line of output.split('\n').filter(Boolean)) {
     try {
       const event = JSON.parse(line);
+      if (event.type === 'error' && event.error) {
+        const detail = event.error.data?.message ?? event.error.message ?? '';
+        error = [event.error.name, detail].filter(Boolean).join(': ') || 'OpenCode returned an error.';
+      }
       if (event.type === 'text' && typeof event.part?.text === 'string') {
         text.push(event.part.text);
       }
@@ -63,7 +72,7 @@ export function parseOpenCodeOutput(output) {
       // Ignore non-event diagnostic lines; stderr is reported when the process fails.
     }
   }
-  return { text: text.join('').trim(), usage };
+  return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
 export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000 }) {

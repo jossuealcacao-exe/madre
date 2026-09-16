@@ -48,6 +48,7 @@ export async function createPulseServer({
   contextMaxChars = Number(process.env.PULSE_CONTEXT_MAX_CHARS ?? 16000),
   quotaSources = [],
   quotaPollIntervalMs = Number(process.env.PULSE_QUOTA_POLL_INTERVAL_MS ?? 60000),
+  broadcastIntervalMs = Number(process.env.PULSE_BROADCAST_INTERVAL_MS ?? 500),
   invokers,
 }) {
   const agents = providedAgents ?? await detectAgents();
@@ -70,11 +71,44 @@ export async function createPulseServer({
     onReport: (report) => room.reportOfficialQuota(report),
   });
   await quotaMonitor.start();
-  const clients = new Set();
-  room.subscribe((event) => {
-    const line = `data: ${JSON.stringify(event)}\n\n`;
-    for (const client of clients) client.write(line);
-  });
+  // SSE fan-out works from the durable log, not from in-memory emits, so events
+  // appended by another PULSE process on the same room reach open pages too.
+  // `clients` maps each SSE response to the last sequence it already holds.
+  const clients = new Map();
+  let lastBroadcastSequence = historicalEvents.at(-1)?.sequence ?? 0;
+  let inFlight = null;
+  let dirty = false;
+  const writeEvent = (client, event) => client.write(`id: ${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`);
+
+  function broadcastPending() {
+    if (inFlight) {
+      dirty = true;
+      return inFlight;
+    }
+    inFlight = (async () => {
+      try {
+        do {
+          dirty = false;
+          const events = await store.readAll();
+          for (const event of events) {
+            if (event.sequence <= lastBroadcastSequence) continue;
+            for (const [client, floor] of clients) {
+              if (event.sequence > floor) writeEvent(client, event);
+            }
+            lastBroadcastSequence = event.sequence;
+          }
+        } while (dirty);
+      } catch (error) {
+        console.error(`PULSE broadcast error: ${error.message}`);
+      } finally {
+        inFlight = null;
+      }
+    })();
+    return inFlight;
+  }
+  const unsubscribe = room.subscribe(() => { void broadcastPending(); });
+  const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
+  poller.unref();
 
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
@@ -103,14 +137,27 @@ export async function createPulseServer({
         });
       }
       if (request.method === 'GET' && url.pathname === '/api/events') {
+        const sinceValue = request.headers['last-event-id'] ?? url.searchParams.get('since');
+        const since = sinceValue === undefined || sinceValue === null || sinceValue === '' ? null : Number(sinceValue);
         response.writeHead(200, {
           'content-type': 'text/event-stream',
           'cache-control': 'no-cache',
           connection: 'keep-alive',
         });
         response.write(': connected\n\n');
-        clients.add(response);
+        // Replay what this client missed between /api/state and this connection,
+        // then register it so the shared cursor delivers everything newer.
+        const events = Number.isFinite(since) ? await store.readAll() : [];
+        let floor = Number.isFinite(since) ? since : 0;
+        for (const event of events) {
+          if (event.sequence > floor && event.sequence <= lastBroadcastSequence) {
+            writeEvent(response, event);
+            floor = event.sequence;
+          }
+        }
+        clients.set(response, floor);
         request.on('close', () => clients.delete(response));
+        void broadcastPending();
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/messages') {
@@ -134,6 +181,18 @@ export async function createPulseServer({
       sendJson(response, 400, { error: error.message });
     }
   });
+  // `server.close()` only resolves once every connection has ended, so the
+  // long-lived SSE responses must be ended before the native close runs.
+  const nativeClose = server.close.bind(server);
+  server.close = (callback) => {
+    clearInterval(poller);
+    unsubscribe();
+    for (const client of clients.keys()) client.end();
+    clients.clear();
+    const result = nativeClose(callback);
+    server.closeIdleConnections?.();
+    return result;
+  };
   server.on('close', () => quotaMonitor.stop());
 
   return { server, store, agents, quotaMonitor };
@@ -151,5 +210,8 @@ export async function startPulse({ port, projectRoot, openBrowser }) {
   const detected = agents.filter((agent) => agent.detected).map((agent) => agent.label).join(', ') || 'none';
   console.log(`\nPULSE is ready\n\n  ${url}\n  Project: ${projectRoot}\n  Ready: ${ready}\n  Detected: ${detected}\n`);
   if (openBrowser) openUrl(url);
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.once(signal, () => server.close(() => process.exit(0)));
+  }
   return { server, url };
 }

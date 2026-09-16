@@ -7,6 +7,14 @@ import { randomUUID } from 'node:crypto';
 import { UsageSentinel } from './usage-sentinel.mjs';
 import { buildConversationContext, formatConversationContext } from './conversation-context.mjs';
 
+// Adapters can fail with multi-line stderr or stack traces. The room keeps only
+// the first meaningful line, bounded, so the event log and the UI stay readable.
+export function failureMessage(error, maxLength = 500) {
+  const raw = String(error?.message ?? error ?? 'Unknown error');
+  const line = raw.split(/\r?\n/).map((part) => part.trim()).find(Boolean) ?? 'Unknown error';
+  return line.length > maxLength ? `${line.slice(0, maxLength - 1)}…` : line;
+}
+
 const defaultInvokers = {
   'codex-readonly': invokeCodex,
   'claude-readonly': invokeClaude,
@@ -192,7 +200,7 @@ export class Room {
       await this.#emit('message.failed', {
         messageId,
         target: agent.id,
-        error: error.message,
+        error: failureMessage(error),
       });
     }
   }
