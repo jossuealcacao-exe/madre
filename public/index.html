@@ -17,7 +17,30 @@
         <div id="connection" class="connection" data-state="connecting" title="Live updates">
           <span class="connection-dot"></span><span class="connection-label">connecting</span>
         </div>
+        <button id="mother-button" class="mother-button" type="button" title="Troubleshooting · MU/TH/UR" aria-haspopup="dialog">
+          <span class="mother-glyph" aria-hidden="true"></span>MU/TH/UR<span id="mother-count" class="mother-count" hidden></span>
+        </button>
       </header>
+
+      <dialog id="mother" class="mother" aria-label="MU/TH/UR troubleshooting">
+        <div class="mother-frame">
+          <header class="mother-head">
+            <span class="mother-title">MU/TH/UR 6000</span>
+            <span class="mother-sub">PULSE · INTERFACE 2037 · TROUBLESHOOTING</span>
+            <button id="mother-close" class="mother-close" type="button">END SESSION ×</button>
+          </header>
+          <pre id="mother-boot" class="mother-boot" aria-live="polite"></pre>
+          <form id="mother-query" class="mother-query" autocomplete="off">
+            <span class="mother-prompt">›</span>
+            <input id="mother-input" type="text" placeholder="INQUIRY (type a symptom, an agent, or a keyword)" spellcheck="false">
+            <div id="mother-os" class="mother-os" role="radiogroup" aria-label="Operating system"></div>
+          </form>
+          <p id="mother-answer" class="mother-answer"></p>
+          <section id="mother-recorded" class="mother-section"></section>
+          <section id="mother-known" class="mother-section"></section>
+          <footer class="mother-foot">NO SPECIAL ORDERS ON THIS SHIP · THE CREW IS NOT EXPENDABLE · ESC TO END SESSION</footer>
+        </div>
+      </dialog>
 
       <main id="messages" class="thread" aria-live="polite">
         <div class="empty">

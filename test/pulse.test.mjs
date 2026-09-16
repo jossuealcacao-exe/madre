@@ -25,6 +25,7 @@ import { runReadonlyProcess } from '../src/adapters/process.mjs';
 import { geminiAuthState, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
+import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
 
@@ -385,6 +386,10 @@ test('serves the single-room interface', async () => {
     const brands = await fetch(`http://127.0.0.1:${port}/brands.js`);
     assert.equal(brands.status, 200);
     assert.match(await brands.text(), /export const BRANDS/);
+    const troubleshooting = await fetch(`http://127.0.0.1:${port}/troubleshooting.js`);
+    assert.equal(troubleshooting.status, 200);
+    assert.match(await troubleshooting.text(), /export const CONDITIONS/);
+    assert.match(html, /id="mother"/);
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((result) => result.json());
     assert.equal(state.softTokenBudget, 500000);
   } finally {
@@ -889,6 +894,32 @@ test('renders the setup report and decides who is online', () => {
   assert.doesNotMatch(report, /\u001b\[/, 'no ANSI codes when colors are off');
   const colored = renderReport({ agents, probes, projectRoot: '/tmp/demo', palette: makePalette({ colors: true, depth: 24 }) });
   assert.match(colored, /\u001b\[38;2;16;163;127m/, 'Codex row uses the OpenAI palette');
+});
+
+test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes', () => {
+  const ids = (text, agent) => diagnose(text, agent).map((condition) => condition.id);
+  assert.deepEqual(ids('Error authenticating: IneligibleTierError: This client is no longer supported for Gemini Code Assist', 'gemini'), ['gemini-ineligible-tier', 'not-signed-in']);
+  assert.deepEqual(ids('APIError: invalid x-api-key', 'opencode'), ['opencode-default-provider']);
+  assert.deepEqual(ids('APIError: invalid x-api-key', 'claude'), [], 'agent-specific conditions never match another agent');
+  assert.deepEqual(ids('Error: Invalid MCP configuration: ENAMETOOLONG', 'claude'), ['claude-args']);
+  assert.deepEqual(ids('Codex did not respond before the timeout.', 'codex'), ['timeout']);
+  assert.deepEqual(ids('Codex was interrupted because PULSE is shutting down.', 'codex'), ['interrupted']);
+  assert.deepEqual(ids('gemini is not installed on this computer.', 'gemini'), ['not-installed']);
+  assert.deepEqual(ids('listen EADDRINUSE: address already in use 127.0.0.1:4317'), ['port-in-use']);
+  assert.deepEqual(ids('everything is fine'), []);
+  for (const condition of CONDITIONS) {
+    for (const platform of ['darwin', 'linux', 'win32']) {
+      assert.ok(fixesFor(condition, platform).length > 0, `${condition.id} has a ${platform} remedy`);
+    }
+  }
+  assert.deepEqual(fixesFor(CONDITIONS.find((c) => c.id === 'not-installed'), 'win32', 'gemini'), ['npm install -g @google/gemini-cli']);
+  assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'linux').join('\n'), /ss -ltnp/);
+  assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'win32').join('\n'), /netstat -ano/);
+  assert.equal(detectPlatform({ platform: 'MacIntel' }), 'darwin');
+  assert.equal(detectPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0)' }), 'win32');
+  assert.equal(detectPlatform({ platform: 'Linux x86_64' }), 'linux');
+  assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.agent}`)));
+  assert.equal(searchConditions('').length, CONDITIONS.length);
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

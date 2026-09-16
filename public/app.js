@@ -1,4 +1,5 @@
 import { brandOf } from './brands.js';
+import { CONDITIONS, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 
 const els = {
   project: document.querySelector('#project'),
@@ -22,6 +23,7 @@ const state = {
   userMessages: new Map(), // messageId -> { text, target }
   lastSequence: 0,
   lastSender: null,        // for iMessage-style grouping of consecutive bubbles
+  failures: [],            // recorded conditions for MU/TH/UR
 };
 
 const AGENT_HINTS = {
@@ -387,6 +389,7 @@ const classify = (percent) => (percent >= 100 ? 'exhausted' : percent >= 90 ? 'c
 function renderWarning(event) {
   const { agent, usedPercent, projectedPercent, level, message, alternatives = [], source } = event.payload;
   const byProjection = Number.isFinite(projectedPercent) && projectedPercent > usedPercent && classify(projectedPercent) !== classify(usedPercent);
+  if (level === 'exhausted') recordFailure({ time: event.timestamp, agent, error: message, warning: true });
   const node = el('div', `system ${level === 'warning' ? 'warn' : 'crit'}`);
   node.title = message;
   const scope = source === 'room-soft-budget' ? 'local budget' : source?.startsWith('official') ? 'provider quota' : source === 'test-simulation' ? 'simulated window' : 'usage window';
@@ -412,6 +415,7 @@ function renderWarning(event) {
 
 function renderFailure(event) {
   const { messageId, target, error, recovered } = event.payload;
+  recordFailure({ time: event.timestamp, agent: target, error, recovered });
   removeThinking(messageId);
   const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
   node.append(el('span', 'label', recovered ? `${label(target)} · turn recovered after restart` : `${label(target)} could not answer`));
@@ -538,3 +542,196 @@ els.composer.addEventListener('submit', async (event) => {
     els.input.focus();
   }
 });
+
+/* ---------- MU/TH/UR: troubleshooting ---------- */
+
+const mother = {
+  dialog: document.querySelector('#mother'),
+  button: document.querySelector('#mother-button'),
+  count: document.querySelector('#mother-count'),
+  close: document.querySelector('#mother-close'),
+  boot: document.querySelector('#mother-boot'),
+  query: document.querySelector('#mother-query'),
+  input: document.querySelector('#mother-input'),
+  os: document.querySelector('#mother-os'),
+  answer: document.querySelector('#mother-answer'),
+  recorded: document.querySelector('#mother-recorded'),
+  known: document.querySelector('#mother-known'),
+  platform: detectPlatform(),
+  bootTimer: null,
+};
+
+function recordFailure(entry) {
+  state.failures.push(entry);
+  const count = state.failures.filter((failure) => !failure.recovered).length;
+  mother.count.hidden = count === 0;
+  mother.count.textContent = String(count);
+}
+
+function commandBlock(lines) {
+  const block = el('div', 'mother-cmd');
+  const copy = el('button', 'copy', 'COPY');
+  copy.type = 'button';
+  const runnable = lines.filter((line) => !line.trim().startsWith('#'));
+  copy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(runnable.join('\n'));
+      copy.textContent = 'COPIED';
+      setTimeout(() => { copy.textContent = 'COPY'; }, 1500);
+    } catch {
+      copy.textContent = 'SELECT';
+    }
+  });
+  block.append(copy);
+  const pre = el('pre');
+  for (const line of lines) {
+    const span = el('span', line.trim().startsWith('#') ? 'c' : null, line);
+    pre.append(span, '\n');
+  }
+  block.append(pre);
+  return block;
+}
+
+function conditionCard(condition, { hit = false, agent = null } = {}) {
+  const card = el('article', `mother-card${hit ? ' hit' : ''}`);
+  card.id = `mother-${condition.id}`;
+  const tags = el('div', 'tags');
+  tags.append(el('span', `sev-${condition.severity}`, condition.severity));
+  if (condition.agent) tags.append(paint(el('span', 'agent', `@${condition.agent}`), condition.agent));
+  tags.append(el('span', null, condition.id));
+  card.append(tags);
+  card.append(el('h4', null, condition.title));
+  const diagnosis = el('p');
+  diagnosis.append(el('b', null, 'DIAGNOSIS'));
+  diagnosis.append(condition.diagnosis);
+  card.append(diagnosis);
+  const remedy = el('p');
+  remedy.append(el('b', null, 'REMEDY'));
+  remedy.append(condition.remedy);
+  card.append(remedy);
+  const chosen = agent ?? condition.agent ?? null;
+  card.append(commandBlock(fixesFor(condition, mother.platform, chosen)));
+  if (condition.perAgent && !chosen) {
+    for (const id of Object.keys(condition.perAgent)) {
+      const label = paint(el('p'), id);
+      label.append(el('b', null, `@${id}`));
+      card.append(label);
+      card.append(commandBlock(condition.perAgent[id][mother.platform] ?? []));
+    }
+  }
+  return card;
+}
+
+function renderMotherOs() {
+  mother.os.replaceChildren();
+  for (const [id, meta] of Object.entries(PLATFORMS)) {
+    const button = el('button', null, meta.label.toUpperCase());
+    button.type = 'button';
+    button.setAttribute('role', 'radio');
+    button.setAttribute('aria-checked', String(id === mother.platform));
+    button.addEventListener('click', () => { mother.platform = id; renderMother(); });
+    mother.os.append(button);
+  }
+}
+
+function renderMotherRecorded() {
+  mother.recorded.replaceChildren();
+  mother.recorded.append(el('h3', null, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`));
+  if (!state.failures.length) {
+    mother.recorded.append(el('p', 'mother-answer', 'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.'));
+    return;
+  }
+  for (const failure of [...state.failures].reverse().slice(0, 40)) {
+    const rowNode = paint(el('div', 'mother-record'), failure.agent);
+    rowNode.append(el('span', 't', formatTime(failure.time)));
+    rowNode.append(el('span', 'a', failure.agent ?? 'room'));
+    rowNode.append(el('span', 'e', String(failure.error).split('\n')[0].slice(0, 220)));
+    const matches = diagnose(failure.error, failure.agent);
+    const links = el('span', 'k');
+    if (!matches.length) links.append(el('span', 'none', 'UNCLASSIFIED'));
+    for (const condition of matches) {
+      const jump = el('button', null, condition.id);
+      jump.type = 'button';
+      jump.addEventListener('click', () => {
+        mother.input.value = '';
+        renderMotherKnown(CONDITIONS, new Set(matches.map((item) => item.id)), failure.agent);
+        document.getElementById(`mother-${condition.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      links.append(jump);
+    }
+    rowNode.append(links);
+    mother.recorded.append(rowNode);
+  }
+}
+
+function renderMotherKnown(list = CONDITIONS, hits = new Set(), agent = null) {
+  mother.known.replaceChildren();
+  mother.known.append(el('h3', null, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`));
+  const grid = el('div', 'mother-grid');
+  const ordered = [...list].sort((a, b) => Number(hits.has(b.id)) - Number(hits.has(a.id)));
+  for (const condition of ordered) grid.append(conditionCard(condition, { hit: hits.has(condition.id), agent: agent && condition.perAgent ? agent : null }));
+  mother.known.append(grid);
+}
+
+function answerQuery(query) {
+  const text = query.trim();
+  if (!text) { mother.answer.textContent = ''; return renderMotherKnown(); }
+  if (/special order|937|expendable/i.test(text)) {
+    mother.answer.textContent = 'NO SPECIAL ORDERS ON THIS SHIP. THE CREW IS NOT EXPENDABLE. RESTATE INQUIRY.';
+    return renderMotherKnown([]);
+  }
+  if (/^(help|\?)$/i.test(text)) {
+    mother.answer.textContent = 'INQUIRY ACCEPTS: AN AGENT NAME · A SYMPTOM · A KEYWORD SUCH AS TIMEOUT, LOGIN, PORT, BUDGET.';
+    return renderMotherKnown();
+  }
+  const byError = diagnose(text);
+  const bySearch = searchConditions(text);
+  const list = [...new Set([...byError, ...bySearch])];
+  const recordedHits = new Set(state.failures.flatMap((failure) => diagnose(failure.error, failure.agent).map((c) => c.id)));
+  if (!list.length) {
+    mother.answer.textContent = 'UNABLE TO COMPUTE. REQUEST CLARIFICATION.';
+    return renderMotherKnown([]);
+  }
+  mother.answer.textContent = `${list.length} CONDITION${list.length === 1 ? '' : 'S'} MATCH INQUIRY.${byError.length ? ' PROBABLE CAUSE HIGHLIGHTED.' : ''}`;
+  renderMotherKnown(list, new Set([...byError.map((c) => c.id), ...recordedHits]));
+}
+
+function renderMother() {
+  renderMotherOs();
+  renderMotherRecorded();
+  answerQuery(mother.input.value);
+}
+
+function bootMother() {
+  clearTimeout(mother.bootTimer);
+  const online = [...state.agents.values()].filter((agent) => agent.ready).length;
+  const open = state.failures.filter((failure) => !failure.recovered).length;
+  const lines = [
+    'INTERFACE 2037 READY FOR INQUIRY',
+    `CREW: ${state.agents.size} AGENTS · ${online} READY · ROOM /${els.project.textContent}`,
+    open ? `${open} CONDITION${open === 1 ? '' : 'S'} RECORDED IN THIS ROOM. PROBABLE CAUSES CLASSIFIED BELOW.` : 'NO OPEN CONDITIONS. ALL SYSTEMS NOMINAL.',
+  ];
+  mother.boot.textContent = '';
+  let index = 0;
+  const step = () => {
+    if (index >= lines.length) return;
+    mother.boot.textContent += `${index ? '\n' : ''}${lines[index]}`;
+    index += 1;
+    mother.bootTimer = setTimeout(step, 320);
+  };
+  step();
+}
+
+function openMother() {
+  if (mother.dialog.open) return;
+  mother.dialog.showModal();
+  bootMother();
+  renderMother();
+  mother.input.focus();
+}
+
+mother.button.addEventListener('click', openMother);
+mother.close.addEventListener('click', () => mother.dialog.close());
+mother.query.addEventListener('submit', (event) => { event.preventDefault(); answerQuery(mother.input.value); });
+mother.input.addEventListener('input', () => answerQuery(mother.input.value));
+mother.dialog.addEventListener('close', () => clearTimeout(mother.bootTimer));
