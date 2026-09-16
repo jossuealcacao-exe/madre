@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { resolve } from 'node:path';
+import { stat } from 'node:fs/promises';
 import { startPulse } from '../src/server.mjs';
 import { detectAgents } from '../src/runtime-detection.mjs';
 import { probeAll } from '../src/auth-probe.mjs';
@@ -37,6 +38,13 @@ async function openRoom(options) {
 
 const projectRoot = resolve(option('--project', process.cwd()));
 const stateRoot = process.env.PULSE_HOME;
+if (command !== 'help') {
+  const stats = await stat(projectRoot).catch(() => null);
+  if (!stats?.isDirectory()) {
+    console.error(`\n  MOTHER › project folder not found: ${projectRoot}\n  Pass an existing directory with --project, or run PULSE from inside the project.\n`);
+    process.exit(2);
+  }
+}
 applyConfigToEnv(await loadConfig(stateRoot));
 
 if (command === 'doctor') {

@@ -155,6 +155,11 @@ export async function createPulseServer({
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
     if (confirm !== true) return { status: 400, body: { error: 'Installing a module writes into the project; send { "confirm": true } to proceed.' } };
     if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
+    const preflight = extension.preflight ? await extension.preflight(canonicalProjectRoot) : { ok: true, problems: [] };
+    if (!preflight.ok && !installers[id]) {
+      await room.record('extension.install.refused', { id, name: extension.name, problems: preflight.problems });
+      return { status: 412, body: { error: preflight.problems.join(' '), problems: preflight.problems } };
+    }
     const before = await extension.detect(canonicalProjectRoot);
     const plan = installers[id]?.({ projectRoot: canonicalProjectRoot, agents }) ?? extension.installCommand({ agents });
     installing = id;

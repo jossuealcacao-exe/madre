@@ -32,7 +32,7 @@ import { geminiAuthState, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpe
 import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
-import { EXTENSIONS, extensionById, listExtensions } from '../src/extensions.mjs';
+import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/extensions.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
@@ -1071,6 +1071,63 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
     await new Promise((resolve) => busy.close(resolve));
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('modules: AHP+ preflight refuses when the git root is not the project or npx is missing', async () => {
+  const ahp = extensionById('ahp');
+  const root = await mkdtemp(join(tmpdir(), 'pulse-preflight-'));
+  const project = join(root, 'project');
+  await mkdir(project);
+  const real = await realpath(project);
+  try {
+    // Not a git repository at all.
+    const noGit = await ahp.preflight(project, { toplevel: async () => null, npx: async () => '/usr/bin/npx' });
+    assert.equal(noGit.ok, false);
+    assert.match(noGit.problems[0], /not a git repository/);
+    // Git root is a parent (the home-directory-was-git-inited case).
+    const parent = await ahp.preflight(project, { toplevel: async () => await realpath(root), npx: async () => '/usr/bin/npx' });
+    assert.equal(parent.ok, false);
+    assert.match(parent.problems[0], /git root is .* not the project itself/);
+    // Own git root, npx present.
+    const fine = await ahp.preflight(project, { toplevel: async () => real, npx: async () => '/usr/bin/npx' });
+    assert.deepEqual(fine, { ok: true, problems: [], gitRoot: real });
+    // npx missing.
+    const noNpx = await ahp.preflight(project, { toplevel: async () => real, npx: async () => null });
+    assert.match(noNpx.problems[0], /npx is not on PATH/);
+    // Real git: the temp dir is not a repo, so gitToplevel is null (unless a parent is one).
+    const top = await gitToplevel(project);
+    assert.ok(top === null || top !== real);
+
+    // The server refuses before writing and records why.
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+    const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents, broadcastIntervalMs: 50 });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address();
+    try {
+      const listing = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
+      assert.equal(listing.extensions[0].preflight.ok, false);
+      const refused = await fetch(`http://127.0.0.1:${port}/api/extensions/ahp/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+      assert.equal(refused.status, 412);
+      const body = await refused.json();
+      assert.ok(body.problems.length >= 1);
+      const events = await store.readAll();
+      assert.equal(events.at(-1).type, 'extension.install.refused');
+      assert.equal(events.some((event) => event.type === 'extension.install.started'), false, 'nothing was started');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the CLI refuses a project folder that does not exist', async () => {
+  const child = spawnCli(['doctor', '--project', '/definitely/not/here'], process.cwd());
+  let out = '';
+  child.stderr.on('data', (chunk) => { out += chunk; });
+  const code = await new Promise((resolve) => child.on('close', resolve));
+  assert.equal(code, 2);
+  assert.match(out, /project folder not found: \/definitely\/not\/here/);
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

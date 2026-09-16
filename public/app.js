@@ -485,6 +485,7 @@ function renderEventNode(event) {
     case 'quota.updated': applyQuota(event); return;
     case 'extension.install.started':
     case 'extension.install.finished':
+    case 'extension.install.refused':
       node = renderModuleEvent(event);
       break;
     case 'extension.install.output': appendModuleOutput(event); return;
@@ -866,10 +867,14 @@ const modules = {
 };
 
 function renderModuleEvent(event) {
-  const { id, name, command, platforms = [], ok, code, error, status } = event.payload;
-  const node = el('div', `system module${event.type.endsWith('finished') && !ok ? ' failed' : ''}`);
+  const { id, name, command, platforms = [], ok, code, error, status, problems = [] } = event.payload;
+  const failed = (event.type.endsWith('finished') && !ok) || event.type.endsWith('refused');
+  const node = el('div', `system module${failed ? ' failed' : ''}`);
   node.append(el('b', null, 'MODULES › '));
-  if (event.type === 'extension.install.started') {
+  if (event.type === 'extension.install.refused') {
+    node.append(`${name} not installed · ${problems.join(' ')}`);
+    modules.installing = null;
+  } else if (event.type === 'extension.install.started') {
     node.append(`installing ${name}${platforms.length ? ` for ${platforms.map((p) => `@${p}`).join(', ')}` : ''} · `);
     node.append(el('span', null, command));
     modules.installing = id;
@@ -930,7 +935,14 @@ function moduleCard(item) {
   card.append(creates);
 
   const actions = el('div', 'actions');
-  if (modules.confirming === item.id) {
+  const blocked = item.preflight && !item.preflight.ok;
+  if (blocked) {
+    const warn = el('div', 'confirm');
+    warn.append(el('span', 'warn', 'CANNOT INSTALL HERE YET'));
+    for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
+    card.append(warn);
+  }
+  if (modules.confirming === item.id && !blocked) {
     const confirm = el('div', 'confirm');
     confirm.append(el('span', 'warn', 'THIS WRITES INTO THE PROJECT. PULSE WILL RUN, IN THE PROJECT FOLDER:'));
     confirm.append(commandBlock([item.install.display]));
@@ -963,7 +975,7 @@ function moduleCard(item) {
   } else {
     const install = el('button', item.status?.installed ? null : 'primary', item.status?.installed ? 'REINSTALL / UPGRADE' : 'INSTALL');
     install.type = 'button';
-    install.disabled = Boolean(modules.installing);
+    install.disabled = Boolean(modules.installing) || blocked;
     install.addEventListener('click', () => { modules.confirming = item.id; renderModules(); });
     actions.append(install);
     if (modules.installing && modules.installing !== item.id) actions.append(el('span', 'note', 'ANOTHER INSTALL IS RUNNING'));
