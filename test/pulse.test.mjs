@@ -22,6 +22,9 @@ import {
   prepareGeminiHome,
 } from '../src/adapters/gemini.mjs';
 import { runReadonlyProcess } from '../src/adapters/process.mjs';
+import { geminiAuthState, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
+import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
+import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
 
@@ -821,6 +824,71 @@ test('aborting the signal terminates the adapter process tree', async () => {
   await assert.rejects(runReadonlyProcess({
     executable: process.execPath, args: ['-e', ''], cwd: process.cwd(), label: 'Fixture', parse: () => ({ text: '' }), signal: controller.signal,
   }), /interrupted before it started/);
+});
+
+test('reads each agent session state from its CLI output', () => {
+  assert.deepEqual(parseCodexLoginStatus({ stdout: 'Logged in using ChatGPT\n', code: 0 }), { state: 'signed-in', detail: 'via ChatGPT' });
+  assert.equal(parseCodexLoginStatus({ stdout: 'Not logged in\n', code: 1 }).state, 'signed-out');
+  assert.equal(parseCodexLoginStatus({ stderr: 'boom', code: 1 }).state, 'unknown');
+  assert.deepEqual(parseClaudeAuthStatus({ stdout: JSON.stringify({ loggedIn: true, authMethod: 'claude.ai' }) }), { state: 'signed-in', detail: 'via claude.ai' });
+  assert.equal(parseClaudeAuthStatus({ stdout: JSON.stringify({ loggedIn: false }) }).state, 'signed-out');
+  assert.equal(parseClaudeAuthStatus({ stdout: 'not json' }).state, 'unknown');
+  const list = parseOpenCodeAuthList({ stdout: '\u001b[0m\n┌  Credentials \u001b[90m~/.local/share/opencode/auth.json\n│\n●  OpenAI \u001b[90moauth\n│\n●  Anthropic \u001b[90mapi\n' });
+  assert.equal(list.state, 'signed-in');
+  assert.deepEqual(list.providers, [{ name: 'OpenAI', type: 'oauth' }, { name: 'Anthropic', type: 'api' }]);
+  assert.equal(parseOpenCodeAuthList({ stdout: '┌  Credentials\n└  none\n' }).state, 'signed-out');
+  assert.equal(geminiAuthState({ settings: { security: { auth: { selectedType: 'gemini-api-key' } } }, hasOauth: false, hasApiKey: true }).state, 'signed-in');
+  assert.equal(geminiAuthState({ settings: { security: { auth: { selectedType: 'gemini-api-key' } } }, hasOauth: false, hasApiKey: false }).state, 'signed-out');
+  assert.equal(geminiAuthState({ settings: { security: { auth: { selectedType: 'oauth-personal' } } }, hasOauth: true, hasApiKey: false }).state, 'signed-in');
+  assert.equal(geminiAuthState({ settings: null, hasOauth: false, hasApiKey: false }).state, 'signed-out');
+  assert.equal(geminiAuthState({ settings: null, hasOauth: true, hasApiKey: false }).state, 'unknown');
+});
+
+test('persists preferences in config.json and lets the environment win', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-config-'));
+  try {
+    assert.deepEqual(await loadConfig(root), {});
+    await updateConfig(root, { opencode: { model: 'openai/gpt-5.6-sol' }, timeouts: { default: 300000 } });
+    await updateConfig(root, { timeouts: { claude: 600000 } });
+    const config = await loadConfig(root);
+    assert.deepEqual(config, { opencode: { model: 'openai/gpt-5.6-sol' }, timeouts: { default: 300000, claude: 600000 } });
+    const env = { PULSE_AGENT_TIMEOUT_MS: '120000' };
+    const applied = applyConfigToEnv(config, env);
+    assert.deepEqual(applied, { PULSE_OPENCODE_MODEL: 'openai/gpt-5.6-sol', PULSE_CLAUDE_TIMEOUT_MS: '600000' });
+    assert.equal(env.PULSE_AGENT_TIMEOUT_MS, '120000', 'exported variables are never overridden');
+    await writeFile(join(root, 'config.json'), '{not json');
+    assert.deepEqual(await loadConfig(root), {});
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('renders the setup report and decides who is online', () => {
+  const agents = [
+    { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: 'codex-cli 0.153.4' },
+    { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '2.1.267' },
+    { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '0.60.0' },
+    { id: 'opencode', label: 'OpenCode', detected: false, ready: false, adapter: 'opencode-readonly', path: null, version: null },
+  ];
+  const probes = {
+    codex: { state: 'signed-in', detail: 'via ChatGPT' },
+    claude: { state: 'signed-out', detail: 'not logged in' },
+    gemini: { state: 'unknown', detail: 'credentials present, auth type not selected' },
+    opencode: { state: 'not-installed', detail: 'not found on this computer' },
+  };
+  assert.equal(isOnline(agents[0], probes.codex), true);
+  assert.equal(isOnline(agents[1], probes.claude), false);
+  assert.equal(isOnline(agents[3], probes.opencode), false);
+  const report = renderReport({ agents, probes, projectRoot: '/tmp/demo', config: {}, palette: makePalette({ colors: false }) });
+  assert.match(report, /INTERFACE · SETUP/);
+  assert.match(report, /◉ CODEX\s+OpenAI\s+READY\s+SESSION OK\s+via ChatGPT · codex-cli 0\.153\.4/);
+  assert.match(report, /◌ CLAUDE\s+Anthropic\s+READY\s+NO SESSION/);
+  assert.match(report, /◌ GEMINI\s+Google\s+READY\s+SESSION \?/);
+  assert.match(report, /○ OPENCODE\s+OpenCode\s+NOT FOUND/);
+  assert.match(report, /MOTHER › 1 OF 4 AGENTS ONLINE\. ROOM CAN OPEN\./);
+  assert.doesNotMatch(report, /\u001b\[/, 'no ANSI codes when colors are off');
+  const colored = renderReport({ agents, probes, projectRoot: '/tmp/demo', palette: makePalette({ colors: true, depth: 24 }) });
+  assert.match(colored, /\u001b\[38;2;16;163;127m/, 'Codex row uses the OpenAI palette');
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

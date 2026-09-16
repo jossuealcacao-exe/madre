@@ -11,7 +11,27 @@ npx @jossuealcala/pulse doctor
 npx @jossuealcala/pulse start
 ```
 
-`doctor` muestra qué agentes están listos. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 20 o superior.
+`doctor` muestra qué agentes están instalados y cuáles tienen sesión iniciada. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 20 o superior.
+
+### Primer contacto: `pulse setup`
+
+Si al arrancar en una terminal ningún agente está en línea (instalado, con adaptador y con sesión), PULSE abre primero el asistente. También puedes invocarlo directo:
+
+```bash
+npx @jossuealcala/pulse setup
+```
+
+El asistente detecta los cuatro agentes, muestra estado, versión y sesión de cada uno, y desde ahí ejecuta el inicio de sesión propio de cada CLI: `codex login`, `claude auth login`, `opencode auth login`, y para Gemini cede la terminal a `gemini` para usar `/auth`. También permite fijar el modelo que OpenCode usará en la sala. Nada se instala ni se configura a espaldas del usuario: los instaladores solo se sugieren, y las credenciales las guarda cada CLI donde siempre. Con `--no-setup` el arranque omite el asistente.
+
+Las preferencias que el asistente guarda viven en `~/.pulse/config.json` (o `PULSE_HOME/config.json`) y las variables de entorno tienen prioridad sobre ellas:
+
+```json
+{
+  "opencode": { "model": "openai/gpt-5.6-sol" },
+  "timeouts": { "default": 300000, "claude": 600000 },
+  "room": { "softTokenBudget": 500000 }
+}
+```
 
 Para trabajar sobre el código fuente:
 
@@ -63,7 +83,7 @@ Cada agente tiene un timeout de 120 s por defecto. `PULSE_AGENT_TIMEOUT_MS` lo c
 | `PULSE_BROADCAST_INTERVAL_MS` | `500` | Sondeo del log para el stream |
 | `PULSE_SSE_MAX_BUFFERED_BYTES` | `1048576` | Límite de buffer por cliente SSE |
 | `PULSE_QUOTA_POLL_INTERVAL_MS` | `60000` | Sondeo de fuentes oficiales de cuota |
-| `PULSE_OPENCODE_MODEL` | — | `proveedor/modelo` para OpenCode |
+| `PULSE_OPENCODE_MODEL` | `opencode.model` del config | `proveedor/modelo` para OpenCode |
 | `PULSE_TEST_MODE` | — | `1` habilita `/api/test/limits` |
 
 ## Empaquetado

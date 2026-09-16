@@ -9,6 +9,7 @@ import { detectAgents } from './runtime-detection.mjs';
 import { EventStore } from './event-store.mjs';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { Room } from './room.mjs';
+import { applyConfigToEnv, loadConfig } from './config.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -63,12 +64,15 @@ export async function createPulseServer({
   quotaPollIntervalMs = Number(process.env.PULSE_QUOTA_POLL_INTERVAL_MS ?? 60000),
   broadcastIntervalMs = Number(process.env.PULSE_BROADCAST_INTERVAL_MS ?? 500),
   sseMaxBufferedBytes = Number(process.env.PULSE_SSE_MAX_BUFFERED_BYTES ?? 1_048_576),
-  agentTimeouts = agentTimeoutsFromEnv(),
+  agentTimeouts,
   maxMessageChars = Number(process.env.PULSE_MAX_MESSAGE_CHARS ?? 20000),
   invokers,
 }) {
-  const agents = providedAgents ?? await detectAgents();
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
+  // ~/.pulse/config.json fills in whatever the environment did not set.
+  applyConfigToEnv(await loadConfig(root));
+  agentTimeouts ??= agentTimeoutsFromEnv();
+  const agents = providedAgents ?? await detectAgents();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const store = await new EventStore(join(root, 'rooms', projectRoomId(canonicalProjectRoot), 'events.jsonl')).initialize();
   const historicalEvents = await store.readAll();
