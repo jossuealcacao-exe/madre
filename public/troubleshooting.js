@@ -155,11 +155,11 @@ export const CONDITIONS = [
     title: 'Agent did not respond before the timeout',
     match: /did not respond before the timeout|went silent for/i,
     diagnosis: 'The agent was still reading files or reasoning when the per-agent timeout (default 180 s) expired, or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; PULSE killed the whole process tree.',
-    remedy: 'Raise the timeout for that agent or for all of them, then ask again. Values are milliseconds.',
+    remedy: 'Raise the timeout in this panel: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS (or the per-agent field on its card) → SAVE. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running room never sees a later export.',
     fixes: {
-      darwin: ['# all agents, 5 minutes:', ...envExport('PULSE_AGENT_TIMEOUT_MS', '300000').darwin.slice(0, 1), '# one agent:', 'export PULSE_CLAUDE_TIMEOUT_MS="600000"', '# or persist in ~/.pulse/config.json → {"timeouts":{"default":300000}}'],
-      linux: ['export PULSE_AGENT_TIMEOUT_MS="300000"', 'export PULSE_CLAUDE_TIMEOUT_MS="600000"', '# or persist in ~/.pulse/config.json → {"timeouts":{"default":300000}}'],
-      win32: ['$env:PULSE_AGENT_TIMEOUT_MS="300000"', '$env:PULSE_CLAUDE_TIMEOUT_MS="600000"', '# or persist in %USERPROFILE%\\.pulse\\config.json → {"timeouts":{"default":300000}}'],
+      darwin: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', '# at launch only (env wins over config.json):', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 pulse start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}'],
+      linux: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 pulse start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}'],
+      win32: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', '$env:PULSE_AGENT_TIMEOUT_MS="300000"; $env:PULSE_CLAUDE_TIMEOUT_MS="600000"; pulse start', '# or %USERPROFILE%\\.pulse\\config.json → {"timeouts":{"default":300000,"claude":600000}}'],
     },
   },
   {
@@ -189,12 +189,12 @@ export const CONDITIONS = [
     severity: 'tunable',
     title: 'Local token budget exhausted for an agent',
     match: /PULSE exhausted|local room token budget/i,
-    diagnosis: 'The room keeps a soft per-agent budget (500,000 tokens by default) so one agent does not quietly eat a whole session. It is local bookkeeping, not the provider\'s quota.',
-    remedy: 'Continue with another agent, or raise the budget.',
+    diagnosis: 'The room keeps a soft per-agent budget (500,000 tokens by default) so one agent does not quietly eat a whole session. It is PULSE\'s own bookkeeping from the usage each CLI reports after a turn, not the provider\'s quota: nothing is blocked, the room only warns and suggests other agents. Cache reads weigh a tenth of a fresh token.',
+    remedy: 'Continue with another agent, or raise the budget in ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE (live, persisted). The provider\'s real limits show in each sphere\'s popover when the CLI reports them.',
     fixes: {
-      darwin: ['export PULSE_SOFT_TOKEN_BUDGET="1000000"', '# or ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}'],
-      linux: ['export PULSE_SOFT_TOKEN_BUDGET="1000000"'],
-      win32: ['$env:PULSE_SOFT_TOKEN_BUDGET="1000000"'],
+      darwin: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', '# at launch: PULSE_SOFT_TOKEN_BUDGET=1000000 pulse start', '# or ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}'],
+      linux: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', 'PULSE_SOFT_TOKEN_BUDGET=1000000 pulse start'],
+      win32: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', '$env:PULSE_SOFT_TOKEN_BUDGET="1000000"; pulse start'],
     },
   },
   {

@@ -30,6 +30,18 @@ const defaultInvokers = {
   'opencode-readonly': invokeOpenCode,
 };
 
+// What a turn costs against PULSE's local budget. Cache reads are close to
+// free at every provider, so they weigh a tenth; Codex counts cached tokens
+// inside inputTokens, the other CLIs report them separately.
+export function budgetTokens(usage = {}) {
+  const n = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+  const cached = n(usage.cachedInputTokens);
+  const input = usage.source === 'codex-json' ? Math.max(0, n(usage.inputTokens) - cached) : n(usage.inputTokens);
+  const fresh = input + n(usage.cacheCreationInputTokens) + n(usage.outputTokens) + n(usage.reasoningTokens);
+  if (!fresh && !cached) return n(usage.totalTokens);
+  return Math.round(fresh + cached * 0.1);
+}
+
 export class Room {
   #store;
   #agents;
@@ -38,6 +50,7 @@ export class Room {
   #sentinel = new UsageSentinel();
   #tokenTotals = new Map();
   #softTokenBudget;
+  #rawTokenTotals = new Map();
   #contextMaxChars;
   #invokers;
   #agentTimeouts;
@@ -82,7 +95,8 @@ export class Room {
 
     for (const event of historicalEvents) {
       if (event.type === 'usage.recorded') {
-        this.#tokenTotals.set(event.payload.agent, event.payload.roomTotalTokens);
+        this.#tokenTotals.set(event.payload.agent, event.payload.roomBudgetTokens ?? event.payload.roomTotalTokens);
+        this.#rawTokenTotals.set(event.payload.agent, event.payload.roomTotalTokens);
       }
       if (event.type === 'quota.updated' || event.type === 'limit.warning') {
         this.#sentinel.seed(event.payload);
@@ -147,14 +161,18 @@ export class Room {
   async #recordUsage(agent, usage, { messageId = null, responseMessageId = null } = {}) {
     if (!usage) return;
     const previous = this.#tokenTotals.get(agent) ?? 0;
-    const total = previous + (usage.totalTokens ?? 0);
+    const spent = budgetTokens(usage);
+    const total = previous + spent;
     this.#tokenTotals.set(agent, total);
-    await this.#emit('usage.recorded', { agent, usage, roomTotalTokens: total, messageId, responseMessageId });
+    const rawPrevious = this.#rawTokenTotals.get(agent) ?? 0;
+    const rawTotal = rawPrevious + (usage.totalTokens ?? 0);
+    this.#rawTokenTotals.set(agent, rawTotal);
+    await this.#emit('usage.recorded', { agent, usage, roomTotalTokens: rawTotal, roomBudgetTokens: total, budgetTokens: spent, messageId, responseMessageId });
     if (Number.isFinite(this.#softTokenBudget) && this.#softTokenBudget > 0) {
       await this.reportLimit({
         agent,
         usedPercent: (total / this.#softTokenBudget) * 100,
-        projectedPercent: ((total + (usage.totalTokens ?? 0)) / this.#softTokenBudget) * 100,
+        projectedPercent: ((total + spent) / this.#softTokenBudget) * 100,
         source: 'room-soft-budget',
       });
     }

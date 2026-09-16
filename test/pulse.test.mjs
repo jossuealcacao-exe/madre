@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { parseMessage } from '../src/router.mjs';
-import { failureMessage, Room } from '../src/room.mjs';
+import { budgetTokens, failureMessage, Room } from '../src/room.mjs';
 import { agentTimeoutsFromEnv, createPulseServer, projectRoomId } from '../src/server.mjs';
 import { buildCodexArgs, parseCodexOutput } from '../src/adapters/codex.mjs';
 import { buildClaudeArgs, parseClaudeOutput } from '../src/adapters/claude.mjs';
@@ -2294,4 +2294,11 @@ test('invokeGemini retries once on a fallback model when Google answers 503, and
   };
   const result = await invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: recovering, fallbackModel: 'gemini-2.5-flash' });
   assert.equal(result.text, 'answered by gemini-2.5-flash');
+});
+
+
+test('budgetTokens weighs cache reads a tenth and handles Codex counting cached inside input', () => {
+  assert.equal(budgetTokens({ source: 'claude-json', inputTokens: 16, cacheCreationInputTokens: 22181, cachedInputTokens: 162817, outputTokens: 5442, reasoningTokens: 0, totalTokens: 190456 }), 16 + 22181 + 5442 + Math.round(162817 * 0.1));
+  assert.equal(budgetTokens({ source: 'codex-json', inputTokens: 157674, cachedInputTokens: 132608, outputTokens: 1454, reasoningTokens: 457, totalTokens: 159128 }), Math.round((157674 - 132608) + 1454 + 457 + 132608 * 0.1));
+  assert.equal(budgetTokens({ totalTokens: 1200 }), 1200, 'falls back to the total when nothing is itemised');
 });
