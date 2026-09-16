@@ -38,6 +38,16 @@ const CLIENT_COMMANDS = [
   { name: 'stopall', title: 'STOP ALL', usage: '/stopall', summary: 'Master brake: halt every plan and turn in flight. Never reaches an agent.', available: true, client: true },
 ];
 
+const PLACEHOLDERS = {
+  plain: 'Type here, human. Ask the room…',
+  create: 'Creation lease on: what to create and how it should look. It lands in .pulse/out/',
+  order: 'Priority one. Terse transmissions; the original stays in the record.',
+  expendable: 'Type here, human. MOTHER is listening.',
+};
+let winkTimer = null;
+const LINE_PX = 21;
+const MAX_ROWS = 3;
+
 const state = {
   agents: new Map(),
   budget: null,
@@ -1278,8 +1288,8 @@ function armExpendable() {
   state.expendable = true;
   pushes = [];
   els.composer.classList.add('expendable');
-  els.crewLabel.textContent = 'CREW · EXPENDABLE ›';
-  els.input.placeholder = 'Type here, human. MOTHER is listening.';
+  updateCrewLabel();
+  updatePlaceholder();
   const line = el('div', 'system mother');
   line.append(el('b', null, 'MU/TH/UR › '));
   line.append('end of record. nothing else is down here, human. crew status under review.');
@@ -1291,8 +1301,8 @@ function armExpendable() {
 function disarmExpendable() {
   state.expendable = false;
   els.composer.classList.remove('expendable');
-  els.crewLabel.textContent = 'HUMAN ›';
-  els.input.placeholder = 'Type here, human. Ask the room…';
+  updateCrewLabel();
+  updatePlaceholder();
 }
 
 function trackHold(downward, now = Date.now()) {
@@ -1383,9 +1393,7 @@ stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 // One line, always. Height follows the lines the text actually takes,
 // wrapped or explicit, up to three visible lines; longer text scrolls inside.
-const LINE_PX = 21;
-const MAX_ROWS = 3;
-const autosize = () => {
+function autosize() {
   els.input.style.height = `${LINE_PX}px`;
   const padding = 14; // 7px top + bottom, content-box
   const needed = Math.max(1, Math.ceil((els.input.scrollHeight - padding) / LINE_PX));
@@ -1393,7 +1401,7 @@ const autosize = () => {
   els.input.style.height = `${rows * LINE_PX}px`;
   els.highlight.style.height = els.input.style.height;
   renderHighlight();
-};
+}
 function syncHighlightScroll() { els.highlight.scrollTop = els.input.scrollTop; }
 els.input.addEventListener('input', autosize);
 els.input.addEventListener('scroll', syncHighlightScroll);
@@ -1620,22 +1628,49 @@ els.createToggle.addEventListener('click', () => {
   els.createToggle.setAttribute('aria-pressed', String(state.create));
   renderCreateScopes();
   els.composer.classList.toggle('creating', state.create);
-  els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
-  els.input.placeholder = state.create ? 'Creation lease on: what to create and how it should look. It lands in .pulse/out/' : 'Type here, human. Ask the room…';
+  updateCrewLabel();
+  updatePlaceholder();
   autosize();
   els.input.focus();
 });
+// The crew label reads the composer's state: order, lease, easter egg, human.
+function updateCrewLabel() {
+  els.crewLabel.textContent = state.ashCode && state.ashCodeInstalled
+    ? (state.create ? 'MU/TH/UR · 937 · CREATE ›' : 'MU/TH/UR · SPECIAL ORDER 937 ›')
+    : state.create ? 'HUMAN · CREATE ›'
+      : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
+}
+function updatePlaceholder() {
+  els.input.placeholder = state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
+}
+function setOrder937(on, { wink = false } = {}) {
+  state.ashCode = on;
+  els.ashToggle.setAttribute('aria-pressed', String(on));
+  els.ashToggle.textContent = on ? 'ORDER_937' : 'order_937';
+  els.composer.classList.toggle('ordering', on);
+  updateCrewLabel();
+  updatePlaceholder();
+  autosize();
+  if (on && wink) {
+    // The wink to MOTHER: one CRT sweep across the field, then business as usual.
+    clearTimeout(winkTimer);
+    els.composer.classList.remove('ash-wink');
+    void els.composer.offsetWidth;
+    els.composer.classList.add('ash-wink');
+    winkTimer = setTimeout(() => els.composer.classList.remove('ash-wink'), 1600);
+  } else if (!on) {
+    els.composer.classList.remove('ash-wink');
+  }
+}
 function syncAshCodeUI(enabled) {
   state.ashCodeInstalled = enabled;
-  state.ashCode = enabled;
   els.ashToggle.hidden = !enabled;
-  els.ashToggle.setAttribute('aria-pressed', String(enabled));
+  setOrder937(enabled);
 }
 els.ashToggle.addEventListener('click', () => {
   if (!state.ashCodeInstalled) return;
-  state.ashCode = !state.ashCode;
-  els.ashToggle.setAttribute('aria-pressed', String(state.ashCode));
-  if (state.ashCode) toast('ORDER 937 · BETA: abbreviation may change meaning or cause errors. Check the original. Fewer characters are not verified token savings.');
+  setOrder937(!state.ashCode, { wink: true });
+  if (state.ashCode) toast('MU/TH/UR › SPECIAL ORDER 937 · BETA: abbreviation may change meaning or cause errors. Check the original. Fewer characters are not verified token savings.');
   els.input.focus();
 });
 els.attach.addEventListener('click', () => els.fileInput.click());

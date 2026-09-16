@@ -17,6 +17,8 @@
   --text-3: #626a5f;
 
   --phosphor: #9bff66;           /* MOTHER */
+  --brew: #28fe14;               /* ORDER 937: Terminal.app 'Homebrew' green */
+  --brew-ink: #041004;
   --phosphor-ink: #0a1405;
   --accent: var(--phosphor);
   --accent-ink: var(--phosphor-ink);
@@ -45,6 +47,8 @@
     --text-2: #5a615a;
     --text-3: #8b928a;
     --phosphor: #2f8a1c;
+    --brew: #178f0c;
+    --brew-ink: #ffffff;
     --phosphor-ink: #ffffff;
     --bubble: #e9ebe6;
     --bubble-ink: #121512;
@@ -66,6 +70,8 @@
     --text-2: #5a615a;
     --text-3: #8b928a;
     --phosphor: #2f8a1c;
+    --brew: #178f0c;
+    --brew-ink: #ffffff;
     --phosphor-ink: #ffffff;
     --bubble: #e9ebe6;
     --bubble-ink: #121512;
@@ -532,7 +538,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .who .badge.model { color: var(--agent); border-color: color-mix(in srgb, var(--agent) 50%, transparent); text-transform: none; letter-spacing: .04em; }
 
 /* ================= attachments, inline files & viewer ================= */
-.field { grid-template-columns: auto 1fr auto auto auto; }
+.field { grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; }
 .attach { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; display: grid; place-items: center; }
 .attach:hover { color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 10%, transparent); }
 .attach svg { width: 18px; height: 18px; }
@@ -606,9 +612,35 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .conn-card .scope.sub { margin-left: 22px; font-size: 9px; }
 .create-toggle[aria-pressed="true"] .lock.closed { display: none; }
 .create-toggle[aria-pressed="true"] .lock.open { display: block; }
-.ashcode-toggle { height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .13em; cursor: pointer; align-self: center; transition: color .2s, border-color .2s, background .2s, box-shadow .2s; }
-.ashcode-toggle:hover { color: var(--text); border-color: var(--text-3); }
-.ashcode-toggle[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 13%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--phosphor) 25%, transparent), 0 0 16px color-mix(in srgb, var(--phosphor) 25%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 60%, transparent); }
+/* ORDER 937: a bash prompt on a black terminal, Homebrew green. */
+.ashcode-toggle { height: 30px; padding: 0 10px 0 9px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--brew) 32%, transparent); background: #070907; color: color-mix(in srgb, var(--brew) 55%, #6c7a6c); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: none; cursor: pointer; align-self: center; display: inline-flex; align-items: center; gap: 6px; transition: color .2s, border-color .2s, box-shadow .2s; }
+.ashcode-toggle::before { content: '$'; color: color-mix(in srgb, var(--brew) 70%, transparent); font-weight: 700; }
+.ashcode-toggle::after { content: ''; width: 7px; height: 12px; background: currentColor; opacity: .55; margin-left: 1px; }
+.ashcode-toggle:hover { color: var(--brew); border-color: color-mix(in srgb, var(--brew) 60%, transparent); }
+.ashcode-toggle[aria-pressed="true"] { color: var(--brew); border-color: var(--brew); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brew) 25%, transparent), 0 0 18px color-mix(in srgb, var(--brew) 35%, transparent), inset 0 0 12px color-mix(in srgb, var(--brew) 12%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--brew) 70%, transparent); }
+.ashcode-toggle[aria-pressed="true"]::after { animation: cursor-blink 1s steps(1) infinite; opacity: 1; }
+:root[data-theme="light"] .ashcode-toggle, .ashcode-toggle { /* stays a black terminal in every theme */ }
+
+/* With ORDER 937 lit, the field widens like CREATE and glows Homebrew green. */
+.composer.ordering { width: min(1180px, 100% - 40px); }
+.composer.ordering .field { position: relative; border-color: color-mix(in srgb, var(--brew) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brew) 14%, transparent); }
+.composer.ordering .crew-label { color: var(--brew); text-shadow: 0 0 8px color-mix(in srgb, var(--brew) 55%, transparent); }
+.composer.ordering .editor textarea::placeholder { color: color-mix(in srgb, var(--brew) 60%, transparent); }
+.composer.creating.ordering .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--brew) 45%, transparent); }
+
+/* The wink to MOTHER when the order is given: a CRT sweep and scanlines that fade. */
+.composer .field::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; z-index: 2;
+  background:
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--brew) 0%, transparent) 40%, color-mix(in srgb, var(--brew) 38%, transparent) 50%, transparent 60%) no-repeat,
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--brew) 10%, transparent) 0 1px, transparent 1px 3px);
+  background-size: 60% 100%, 100% 100%; background-position: -60% 0, 0 0; }
+.composer.ash-wink .field::before { animation: ash-sweep 1.5s cubic-bezier(.2, .7, .2, 1) 1; }
+.composer.ash-wink .crew-label { animation: phosphor-flicker .8s steps(1) 2; }
+.composer.ash-wink .editor textarea { animation: ash-type .9s steps(1) 1; }
+@keyframes ash-sweep { 0% { opacity: 0; background-position: -60% 0, 0 0; } 12% { opacity: 1; } 70% { opacity: .9; background-position: 160% 0, 0 0; } 100% { opacity: 0; background-position: 160% 0, 0 0; } }
+@keyframes ash-type { 0%, 30% { caret-color: var(--brew); } 40% { caret-color: transparent; } 55% { caret-color: var(--brew); } 100% { caret-color: var(--text); } }
+@media (prefers-reduced-motion: reduce) { .composer.ash-wink .field::before, .composer.ash-wink .crew-label, .composer.ash-wink .editor textarea { animation: none; } }
+
 .who .badge.ash { color: var(--phosphor); border-color: color-mix(in srgb, var(--phosphor) 50%, transparent); }
 .who .badge.ash.skipped { color: var(--text-3); border-color: var(--line-2); }
 .ash-original { margin-top: 10px; border-top: 1px dashed var(--line-2); padding-top: 8px; }
