@@ -422,7 +422,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-close[aria-pressed="true"] { background: var(--ph); color: #041004; text-shadow: none; }
 .settings .conn-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 .settings .conn-grid { align-items: stretch; }
-.conn-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; grid-template-rows: 44px 64px 34px 1fr auto; gap: 12px; min-width: 0; overflow-wrap: anywhere; align-content: start; }
+.conn-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; grid-template-rows: 44px 64px 96px 34px 1fr auto; gap: 12px; min-width: 0; overflow-wrap: anywhere; align-content: start; }
 .conn-card .head { display: flex; align-items: center; gap: 10px; align-self: center; }
 .conn-card .meta { align-self: start; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .conn-card .row { align-self: center; }
@@ -557,14 +557,16 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .row .col { max-width: 100%; }
 .thread-inner { overflow-x: hidden; }
 /* scope toggles in connection cards */
-.conn-card .scopes { display: grid; gap: 6px; }
+.conn-card .scopes { display: grid; gap: 8px; align-self: center; }
+.conn-card .scope .assist { margin-left: 6px; border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 8.5px; letter-spacing: .14em; padding: 1px 6px; cursor: pointer; text-transform: uppercase; }
+.conn-card .scope .assist:hover { background: var(--ph-faint); }
 .conn-card .scope { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .12em; color: var(--ph); cursor: pointer; }
 .conn-card .scope input { accent-color: #9bff66; width: auto; }
 .conn-card .scope.unavailable { color: var(--ph-dim); cursor: not-allowed; }
 .conn-card .scope .why { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }
 
-/* CREATE armed: room for a longer human request */
-.composer textarea { transition: min-height .25s ease; }
-.composer.creating textarea { min-height: 96px; }
-.composer.creating .field { align-items: start; padding-top: 10px; }
-.composer.creating .crew-label, .composer.creating .attach, .composer.creating .create-toggle, .composer.creating .field button[type="submit"] { align-self: start; margin-top: 2px; }
+/* CREATE armed: the field widens past the column; it only grows taller when the text does */
+.composer { transition: width .3s ease; }
+.composer.creating { width: min(1180px, 100% - 40px); }
+.composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
+@media (max-width: 1240px) { .composer.creating { width: calc(100% - 40px); } }

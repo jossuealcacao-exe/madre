@@ -1026,8 +1026,7 @@ stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 const autosize = () => {
   els.input.style.height = 'auto';
-  const floor = state.create ? 96 : 0;
-  els.input.style.height = `${Math.min(Math.max(els.input.scrollHeight, floor), state.create ? 260 : 180)}px`;
+  els.input.style.height = `${Math.min(els.input.scrollHeight, state.create ? 320 : 180)}px`;
 };
 els.input.addEventListener('input', autosize);
 els.input.addEventListener('keydown', (event) => {
@@ -1099,7 +1098,6 @@ els.createToggle.addEventListener('click', () => {
   els.composer.classList.toggle('creating', state.create);
   els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
   els.input.placeholder = state.create ? 'Creation lease on: describe what to create, where it goes (.pulse/out/), and how it should look.' : 'Type here, human. Ask the room…';
-  els.input.rows = state.create ? 4 : 1;
   autosize();
   els.input.focus();
 });
@@ -1680,7 +1678,14 @@ function connectionCard(agent) {
     box.dataset.agent = agent.id; box.dataset.scope = key; box.className = 'scope-input';
     line.append(box, labelText);
     line.append(el('span', 'why', !scope.capable ? 'not available from this CLI' : !scope.wired ? 'not wired yet' : scope.enabled ? (key === 'web' ? 'on for every turn' : 'on for CREATE') : 'off'));
-    line.title = !scope.capable ? `${agent.label}'s CLI has no way to do this; PULSE will tell you if you try.` : '';
+    line.title = !scope.capable ? `${agent.label}'s CLI has no way to do this; MU/TH/UR knows the routes.` : '';
+    if (!scope.capable) {
+      const assist = el('button', 'assist', 'ask MU/TH/UR');
+      assist.type = 'button';
+      assist.title = `How could @${agent.id} get "${labelText.toLowerCase()}"?`;
+      assist.addEventListener('click', (event) => { event.preventDefault(); askMotherAbout(`scope-${agent.id}-${key}`); });
+      line.append(assist);
+    }
     scopes.append(line);
   }
   card.append(scopes);
@@ -1823,6 +1828,14 @@ function renderSettings() {
     save.disabled = false;
   });
   section.append(form);
+}
+
+function askMotherAbout(conditionId) {
+  // Leave the settings view and put the matching MU/TH/UR card front and centre.
+  if (settingsUI.open) settingsUI.button.click();
+  mother.input.value = conditionId;
+  answerQuery(conditionId);
+  setTimeout(() => document.getElementById(`mother-${conditionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
 
 settingsUI.button.addEventListener('click', async () => {
