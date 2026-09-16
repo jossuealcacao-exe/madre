@@ -22,6 +22,7 @@ export const DELEGATION_HELP = (self, others, maxSteps) => [
   `@${self}: <what you will do with their answers, optional closing turn for you>`,
   '```',
   `PULSE runs the steps in order (at most ${maxSteps}), shows every answer in the room, then hands you the closing turn if you asked for one.`,
+  'The plan block must be the very last thing in your reply: nothing after it, not even a closing sentence. Say everything else before it.',
   'Address each agent once. Do not delegate what you can answer yourself.',
 ].join('\n');
 

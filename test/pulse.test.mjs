@@ -1780,6 +1780,15 @@ test('creation lease: granted per human message, inherited by the plan, artifact
     assert.equal(user.payload.create, true);
     assert.equal(events.find((event) => event.type === 'plan.created').payload.leaseId, granted.payload.leaseId);
 
+    // A plan block followed by prose is refused, and the room says so.
+    const noisy = await new EventStore(join(root, 'noisy.jsonl')).initialize();
+    const noisyRoom = new Room({ store: noisy, agents, projectRoot: root, invokers: { 'claude-readonly': async () => ({ text: '```pulse\n@codex: do it\n```\nFiles created: none.', usage: null }) } });
+    await noisyRoom.send({ text: 'go', target: 'claude' });
+    const ignored = (await noisy.readAll()).find((event) => event.type === 'plan.ignored');
+    assert.equal(ignored.payload.orchestrator, 'claude');
+    assert.match(ignored.payload.reasons[0], /must be the last thing/);
+    assert.equal((await noisy.readAll()).some((event) => event.type === 'plan.created'), false);
+
     // Without CREATE nothing changes: no lease, read-only prompt.
     const quiet = await new EventStore(join(root, 'quiet.jsonl')).initialize();
     const readOnly = new Room({ store: quiet, agents, projectRoot: root, invokers: { 'codex-readonly': async ({ prompt, lease }) => { assert.equal(lease, null); assert.match(prompt, /Operate read-only/); return { text: 'ok', usage: null }; } } });

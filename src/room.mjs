@@ -421,6 +421,11 @@ export class Room {
       const directives = allowDelegation && this.#delegation && depth === 0
         ? parseDirectives(result.text, { self: agent.id, available: others, maxSteps: this.#maxPlanSteps })
         : { steps: [], closing: null, ignored: [] };
+      if (directives.steps.length === 0 && directives.ignored.length && depth === 0) {
+        // The agent tried to delegate but the block was unusable; say so, or the
+        // human sees a plan-shaped reply and nothing happening.
+        await this.#emit('plan.ignored', { orchestrator: agent.id, responseMessageId, reasons: directives.ignored.map((item) => item.reason) });
+      }
       if (depth > 0 && /```pulse/i.test(result.text)) {
         await this.#alert('nested-delegation', `@${agent.id} tried to open a plan from inside a plan. It was ignored; the sequence stays under @${requester}. STOPALL if the room drifts.`, `nested:${agent.id}`);
       }

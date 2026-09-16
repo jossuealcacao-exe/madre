@@ -69,6 +69,6 @@ export function leaseInstructions({ outDir, agentId }) {
     'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
     'Reading the project stays allowed. Do not modify project files.',
     agentId === 'codex' ? 'You can generate images; save them into the lease directory with a descriptive file name.' : null,
-    'End your answer by listing the files you created.',
+    'List the files you created (or "none") before any plan block; nothing may follow a plan block.',
   ].filter(Boolean).join('\n');
 }

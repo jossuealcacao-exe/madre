@@ -665,6 +665,16 @@ function renderWarning(event) {
   return node;
 }
 
+function renderPlanIgnored(event) {
+  const { orchestrator, reasons = [] } = event.payload;
+  const node = el('div', 'system plan failed');
+  node.style.setProperty('--agent', agentColor(orchestrator));
+  node.append(el('b', null, 'plan · '));
+  node.append(`@${orchestrator}'s plan block was not run · ${[...new Set(reasons)].join(' · ')} · ask again and it will fix the block`);
+  state.lastSender = null;
+  return node;
+}
+
 function renderLease(event) {
   const { agent, outDir } = event.payload;
   const node = el('div', 'system lease');
@@ -870,6 +880,7 @@ function renderEventNode(event) {
     case 'room.alert': node = renderAlert(event); break;
     case 'room.stopped': node = renderHalted(event); break;
     case 'lease.granted': node = renderLease(event); break;
+    case 'plan.ignored': node = renderPlanIgnored(event); break;
     case 'artifacts.created': attachArtifacts(event); return;
     default: return;
   }
