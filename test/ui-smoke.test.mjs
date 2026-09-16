@@ -136,4 +136,34 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(firstUser, 'a human message rendered');
   assert.match(firstUser.textContent, /YOU · CREW/, 'human messages carry the crew label');
   assert.equal(registry.get('crew-label') !== undefined, true);
+
+  // Easter egg: trackpad-style bursts at the end of the record.
+  const { trackHold, state: uiState } = globalThis.__pulse;
+  const thread = registry.get('messages');
+  thread.scrollHeight = 1000; thread.clientHeight = 400; thread.scrollTop = 600; // at bottom
+  const t0 = 1_000_000;
+  assert.equal(trackHold(true, t0), false);
+  assert.equal(trackHold(true, t0 + 50), false, 'same burst is ignored');
+  assert.equal(trackHold(true, t0 + 1500), false);
+  assert.equal(trackHold(true, t0 + 3000), false, 'three pushes but only 3 s');
+  assert.equal(trackHold(true, t0 + 4500), false);
+  assert.equal(trackHold(true, t0 + 6100), true, 'pushes every ~1.5 s spanning 6 s arm MOTHER');
+  assert.equal(uiState.expendable, true);
+  assert.match(registry.get('crew-label').textContent, /EXPENDABLE/);
+  assert.match(column.children.at(-1).textContent, /end of record/);
+
+  // A reviewed human message carries the mark, then everything disarms.
+  const stream = new globalThis.EventSource('/x');
+  void stream;
+  globalThis.__pulse.disarmExpendable();
+  assert.equal(uiState.expendable, false);
+  assert.equal(registry.get('crew-label').textContent, 'HUMAN ›');
+
+  // Silence longer than two seconds starts over; scrolling up resets.
+  assert.equal(trackHold(true, t0 + 20_000), false);
+  assert.equal(trackHold(true, t0 + 23_000), false, 'gap > 2 s discards the earlier push');
+  assert.equal(trackHold(true, t0 + 24_000), false);
+  assert.equal(trackHold(false, t0 + 25_000), false, 'an upward push resets');
+  assert.equal(trackHold(true, t0 + 30_000), false);
+  assert.equal(uiState.expendable, false);
 });

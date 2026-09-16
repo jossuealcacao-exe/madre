@@ -493,19 +493,24 @@ function renderEventNode(event) {
 
 /* ---------- easter egg: hold the scroll at the end of the record ---------- */
 
+// A trackpad only reports while the fingers move, so "holding the scroll
+// down" arrives as bursts. We count distinct downward pushes at the end of
+// the record: at least three of them, spanning six seconds, with no more
+// than two seconds of silence between pushes and no push upward.
 const HOLD_MS = 6000;
-const HOLD_GAP_MS = 600;
-let holdStart = 0;
-let holdLast = 0;
+const HOLD_GAP_MS = 2000;
+const HOLD_MIN_PUSHES = 3;
+const BURST_MS = 150;
+let pushes = [];
 
 function atBottom() {
-  return els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 2;
+  return els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 4;
 }
 
 function armExpendable() {
   if (state.expendable) return;
   state.expendable = true;
-  holdStart = 0;
+  pushes = [];
   els.composer.classList.add('expendable');
   els.crewLabel.textContent = 'CREW · EXPENDABLE ›';
   els.input.placeholder = 'Type here, human. MOTHER is listening.';
@@ -524,13 +529,23 @@ function disarmExpendable() {
   els.input.placeholder = 'Type here, human. Ask the room…';
 }
 
-function trackHold(downward) {
-  const now = Date.now();
-  if (!downward || !atBottom()) { holdStart = 0; return; }
-  if (!holdStart || now - holdLast > HOLD_GAP_MS) holdStart = now;
-  holdLast = now;
-  if (now - holdStart >= HOLD_MS) armExpendable();
+function trackHold(downward, now = Date.now()) {
+  if (state.expendable) return false;
+  if (!downward || !atBottom()) { pushes = []; return false; }
+  const last = pushes.at(-1);
+  if (last !== undefined && now - last < BURST_MS) return false;       // same burst
+  if (last !== undefined && now - last > HOLD_GAP_MS) pushes = [];      // gave up, start over
+  pushes.push(now);
+  const span = pushes.at(-1) - pushes[0];
+  if (pushes.length >= HOLD_MIN_PUSHES && span >= HOLD_MS) {
+    armExpendable();
+    return true;
+  }
+  return false;
 }
+
+// Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
+globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, state };
 
 els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
 let touchY = null;
