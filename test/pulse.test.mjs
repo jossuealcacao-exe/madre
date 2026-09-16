@@ -377,6 +377,10 @@ test('serves the single-room interface', async () => {
     assert.match(html, /One conversation\. Every agent\./);
     assert.match(html, /Ask the room/);
     assert.match(html, /configured model provider/);
+    assert.match(html, /id="onboarding"/);
+    assert.match(html, /id="connection"/);
+    const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((result) => result.json());
+    assert.equal(state.softTokenBudget, 500000);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
@@ -455,6 +459,7 @@ test('persists context handoffs across agents and room restarts', async () => {
       throughSequence: 3,
       messageCount: 2,
       omittedMessages: 0,
+      kind: 'automatic',
     });
     assert.match(prompts.at(-1).prompt, /Codex found the router\./);
 

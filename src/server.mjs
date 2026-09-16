@@ -164,6 +164,7 @@ export async function createPulseServer({
         return sendJson(response, 200, {
           projectRoot,
           agents,
+          softTokenBudget,
           quotaSources: quotaMonitor.snapshot(),
           events: await store.readAll(),
         });

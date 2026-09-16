@@ -111,12 +111,12 @@ export class Room {
     return this.reportLimit(report);
   }
 
-  async #recordUsage(agent, usage) {
+  async #recordUsage(agent, usage, { messageId = null, responseMessageId = null } = {}) {
     if (!usage) return;
     const previous = this.#tokenTotals.get(agent) ?? 0;
     const total = previous + (usage.totalTokens ?? 0);
     this.#tokenTotals.set(agent, total);
-    await this.#emit('usage.recorded', { agent, usage, roomTotalTokens: total });
+    await this.#emit('usage.recorded', { agent, usage, roomTotalTokens: total, messageId, responseMessageId });
     if (Number.isFinite(this.#softTokenBudget) && this.#softTokenBudget > 0) {
       await this.reportLimit({
         agent,
@@ -215,6 +215,7 @@ export class Room {
         throughSequence: context.throughSequence,
         messageCount: context.messages.length,
         omittedMessages: context.omittedMessages,
+        kind: 'automatic',
       });
     }
 
@@ -250,8 +251,9 @@ export class Room {
         timeoutMs: this.timeoutFor(agent.id),
         signal,
       });
+      const responseMessageId = randomUUID();
       await this.#emit('message.created', {
-        messageId: randomUUID(),
+        messageId: responseMessageId,
         parentMessageId: messageId,
         role: 'assistant',
         sender: agent.id,
@@ -259,7 +261,7 @@ export class Room {
         text: result.text,
         status: 'completed',
       });
-      await this.#recordUsage(agent.id, result.usage);
+      await this.#recordUsage(agent.id, result.usage, { messageId, responseMessageId });
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId });
     } catch (error) {
       await this.#emit('message.failed', {

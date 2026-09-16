@@ -7,33 +7,40 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <main class="shell">
-      <header>
-        <div class="brand"><span class="pulse-dot"></span>PULSE</div>
-        <div id="project" class="project"></div>
+    <div class="shell">
+      <header class="bar">
+        <div class="bar-left">
+          <span class="brand"><span class="pulse-dot"></span>PULSE</span>
+          <span id="project" class="project" title="Project room"></span>
+        </div>
+        <div id="agents" class="agents" aria-label="Agents"></div>
+        <div id="connection" class="connection" data-state="connecting" title="Live updates">
+          <span class="connection-dot"></span><span class="connection-label">connecting</span>
+        </div>
       </header>
-      <section class="room">
-        <div class="room-heading">
-          <div>
-            <p class="eyebrow">PROJECT ROOM</p>
-            <h1>One conversation. Every agent.</h1>
-          </div>
-          <div id="agents" class="agents"></div>
+
+      <main id="messages" class="thread" aria-live="polite">
+        <div class="empty">
+          <strong>One conversation. Every agent.</strong>
+          <span>Pick an agent below or start with a mention, for example <code>@codex summarize this project</code>.</span>
         </div>
-        <div id="messages" class="messages" aria-live="polite">
-          <div class="empty">
-            <strong>Start with a question.</strong>
-            <span>Mention an available agent, for example <code>@codex summarize this project</code>.</span>
-          </div>
-        </div>
-        <form id="composer" class="composer">
-          <select id="target" aria-label="Agent"></select>
-          <textarea id="message" rows="1" placeholder="Ask the room…" required></textarea>
-          <button type="submit" aria-label="Send">Send</button>
-        </form>
-        <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
+      </main>
+
+      <section id="onboarding" class="onboarding" hidden>
+        <h2>No agent is ready yet</h2>
+        <p>PULSE talks to the coding agents already installed on this computer. Install or sign in to one of them, then reload this page.</p>
+        <ul id="onboarding-list" class="onboarding-list"></ul>
+        <p class="hint">Run <code>pulse doctor</code> in a terminal for the same diagnosis.</p>
       </section>
-    </main>
+
+      <form id="composer" class="composer">
+        <select id="target" aria-label="Agent"></select>
+        <textarea id="message" rows="1" placeholder="Ask the room…" required></textarea>
+        <button type="submit" aria-label="Send">Send</button>
+      </form>
+      <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </div>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
