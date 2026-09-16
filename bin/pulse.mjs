@@ -5,7 +5,10 @@ import { startPulse } from '../src/server.mjs';
 import { detectAgents } from '../src/runtime-detection.mjs';
 
 const args = process.argv.slice(2);
-const command = args[0]?.startsWith('-') ? 'start' : (args.shift() ?? 'start');
+const helpFlags = new Set(['help', '--help', '-h']);
+const command = helpFlags.has(args[0])
+  ? 'help'
+  : args[0]?.startsWith('-') ? 'start' : (args.shift() ?? 'start');
 
 function option(name, fallback) {
   const index = args.indexOf(name);
@@ -38,7 +41,7 @@ if (command === 'doctor') {
   const projectRoot = resolve(option('--project', process.cwd()));
   const noOpen = args.includes('--no-open');
   await startPulse({ port, projectRoot, openBrowser: !noOpen });
-} else if (command === 'help' || command === '--help' || command === '-h') {
+} else if (command === 'help') {
   console.log(`PULSE\n\n  pulse start [--project PATH] [--port 4317] [--no-open]\n  pulse doctor [--project PATH] [--json]\n`);
 } else {
   console.error(`Unknown command: ${command}`);

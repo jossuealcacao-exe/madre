@@ -32,6 +32,9 @@ export class Room {
   #softTokenBudget;
   #contextMaxChars;
   #invokers;
+  #agentTimeouts;
+  #maxMessageChars;
+  #turns = new Map();
 
   constructor({
     store,
@@ -41,6 +44,8 @@ export class Room {
     contextMaxChars = 16000,
     historicalEvents = [],
     invokers = defaultInvokers,
+    agentTimeouts = {},
+    maxMessageChars = 20000,
   }) {
     this.#store = store;
     this.#agents = agents;
@@ -48,6 +53,8 @@ export class Room {
     this.#softTokenBudget = softTokenBudget;
     this.#contextMaxChars = contextMaxChars;
     this.#invokers = invokers;
+    this.#agentTimeouts = agentTimeouts;
+    this.#maxMessageChars = maxMessageChars;
 
     for (const event of historicalEvents) {
       if (event.type === 'usage.recorded') {
@@ -120,6 +127,37 @@ export class Room {
     }
   }
 
+  timeoutFor(agentId) {
+    return this.#agentTimeouts[agentId] ?? this.#agentTimeouts.default ?? 120000;
+  }
+
+  // A process that died mid-turn leaves `agent.started` without a closing
+  // event, and the UI would show "thinking" forever. Called once at startup.
+  async reconcile() {
+    const events = await this.#store.readAll();
+    const open = new Map();
+    for (const event of events) {
+      if (event.type === 'agent.started') open.set(event.payload.messageId, event.payload);
+      if (event.type === 'agent.completed' || event.type === 'message.failed') open.delete(event.payload.messageId);
+    }
+    for (const { messageId, agent } of open.values()) {
+      await this.#emit('message.failed', {
+        messageId,
+        target: agent,
+        error: `PULSE stopped while @${agent} was answering; the turn was not completed. Ask again.`,
+        recovered: true,
+      });
+    }
+    return open.size;
+  }
+
+  // Interrupts every in-flight turn (killing the agent processes) and waits
+  // until each one has recorded its failure in the log.
+  async shutdown() {
+    for (const { controller } of this.#turns.values()) controller.abort();
+    await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
+  }
+
   async send({ text, target }) {
     const parsed = parseMessage(text, target);
     if (!parsed.text) throw new Error('Write a message first.');
@@ -136,6 +174,14 @@ export class Room {
       status: 'sent',
     });
 
+    if (parsed.text.length > this.#maxMessageChars) {
+      await this.#emit('message.failed', {
+        messageId,
+        target: parsed.target,
+        error: `Message is too long (${parsed.text.length} characters); the limit is ${this.#maxMessageChars}.`,
+      });
+      return;
+    }
     if (!agent?.detected) {
       await this.#emit('message.failed', {
         messageId,
@@ -173,6 +219,18 @@ export class Room {
     }
 
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId });
+    const controller = new AbortController();
+    const turn = { controller, promise: null };
+    turn.promise = this.#runTurn({ messageId, agent, parsed, context, handoffId, signal: controller.signal });
+    this.#turns.set(messageId, turn);
+    try {
+      await turn.promise;
+    } finally {
+      this.#turns.delete(messageId);
+    }
+  }
+
+  async #runTurn({ messageId, agent, parsed, context, handoffId, signal }) {
     try {
       const prompt = [
         'You are answering inside a PULSE project room.',
@@ -185,7 +243,13 @@ export class Room {
       ].filter(Boolean).join('\n');
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported PULSE adapter.`);
-      const result = await invoke({ executable: agent.path, projectRoot: this.#projectRoot, prompt });
+      const result = await invoke({
+        executable: agent.path,
+        projectRoot: this.#projectRoot,
+        prompt,
+        timeoutMs: this.timeoutFor(agent.id),
+        signal,
+      });
       await this.#emit('message.created', {
         messageId: randomUUID(),
         parentMessageId: messageId,

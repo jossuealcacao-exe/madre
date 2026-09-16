@@ -33,6 +33,19 @@ function openUrl(url) {
   execFile(command, args, () => {});
 }
 
+// PULSE_AGENT_TIMEOUT_MS applies to every agent; PULSE_<AGENT>_TIMEOUT_MS
+// (e.g. PULSE_CLAUDE_TIMEOUT_MS) overrides it for one.
+export function agentTimeoutsFromEnv(env = process.env, agentIds = ['codex', 'claude', 'gemini', 'opencode']) {
+  const timeouts = {};
+  const shared = Number(env.PULSE_AGENT_TIMEOUT_MS);
+  if (Number.isFinite(shared) && shared > 0) timeouts.default = shared;
+  for (const id of agentIds) {
+    const value = Number(env[`PULSE_${id.toUpperCase()}_TIMEOUT_MS`]);
+    if (Number.isFinite(value) && value > 0) timeouts[id] = value;
+  }
+  return timeouts;
+}
+
 export function projectRoomId(projectRoot) {
   const path = resolve(projectRoot);
   const digest = createHash('sha256').update(path).digest('hex').slice(0, 16);
@@ -50,6 +63,8 @@ export async function createPulseServer({
   quotaPollIntervalMs = Number(process.env.PULSE_QUOTA_POLL_INTERVAL_MS ?? 60000),
   broadcastIntervalMs = Number(process.env.PULSE_BROADCAST_INTERVAL_MS ?? 500),
   sseMaxBufferedBytes = Number(process.env.PULSE_SSE_MAX_BUFFERED_BYTES ?? 1_048_576),
+  agentTimeouts = agentTimeoutsFromEnv(),
+  maxMessageChars = Number(process.env.PULSE_MAX_MESSAGE_CHARS ?? 20000),
   invokers,
 }) {
   const agents = providedAgents ?? await detectAgents();
@@ -65,7 +80,11 @@ export async function createPulseServer({
     contextMaxChars,
     historicalEvents,
     invokers,
+    agentTimeouts,
+    maxMessageChars,
   });
+  const recoveredTurns = await room.reconcile();
+  if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
     sources: quotaSources,
     intervalMs: quotaPollIntervalMs,
@@ -199,12 +218,20 @@ export async function createPulseServer({
   const nativeClose = server.close.bind(server);
   server.close = (callback) => {
     clearInterval(poller);
-    unsubscribe();
-    for (const client of clients.keys()) client.end();
-    clients.clear();
-    const result = nativeClose(callback);
-    server.closeIdleConnections?.();
-    return result;
+    // In-flight agent processes are killed and their turns recorded as failed
+    // before the SSE clients go away, so open pages see the outcome.
+    const shutdown = room.shutdown().catch((error) => console.error(`PULSE shutdown error: ${error.message}`));
+    let result;
+    shutdown.then(() => {
+      void broadcastPending().then(() => {
+        unsubscribe();
+        for (const client of clients.keys()) client.end();
+        clients.clear();
+        result = nativeClose(callback);
+        server.closeIdleConnections?.();
+      });
+    });
+    return server;
   };
   server.on('close', () => quotaMonitor.stop());
 

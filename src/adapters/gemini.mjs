@@ -106,7 +106,7 @@ export function parseGeminiOutput(output) {
   }
 }
 
-export async function invokeGemini({ executable, projectRoot, prompt, timeoutMs = 120000 }) {
+export async function invokeGemini({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
@@ -118,6 +118,7 @@ export async function invokeGemini({ executable, projectRoot, prompt, timeoutMs 
       cwd: runtimeRoot,
       env: buildGeminiEnvironment({ runtimeRoot }),
       timeoutMs,
+      signal,
       label: 'Gemini',
       parse: parseGeminiOutput,
     });

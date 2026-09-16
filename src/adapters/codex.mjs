@@ -39,13 +39,14 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000 }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
   return runReadonlyProcess({
     executable,
     args: buildCodexArgs({ projectRoot, prompt }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,
+    signal,
     label: 'Codex',
     parse: parseCodexOutput,
   });

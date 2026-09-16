@@ -2,12 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFileAsync = promisify(execFile);
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { parseMessage } from '../src/router.mjs';
 import { failureMessage, Room } from '../src/room.mjs';
-import { createPulseServer, projectRoomId } from '../src/server.mjs';
+import { agentTimeoutsFromEnv, createPulseServer, projectRoomId } from '../src/server.mjs';
 import { buildCodexArgs, parseCodexOutput } from '../src/adapters/codex.mjs';
 import { buildClaudeArgs, parseClaudeOutput } from '../src/adapters/claude.mjs';
 import {
@@ -663,6 +666,153 @@ test('drops SSE clients that stop draining instead of buffering without bound', 
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('prints help without starting a server', async () => {
+  for (const flag of ['--help', '-h', 'help']) {
+    const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), 'bin', 'pulse.mjs'), flag], { timeout: 5000 });
+    assert.match(stdout, /pulse start \[--project PATH\]/);
+  }
+});
+
+test('reads agent timeouts from the environment and passes them to adapters', async () => {
+  assert.deepEqual(agentTimeoutsFromEnv({}), {});
+  assert.deepEqual(agentTimeoutsFromEnv({ PULSE_AGENT_TIMEOUT_MS: '30000', PULSE_CLAUDE_TIMEOUT_MS: '240000', PULSE_GEMINI_TIMEOUT_MS: 'nope' }), {
+    default: 30000,
+    claude: 240000,
+  });
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-timeouts-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [
+      { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' },
+      { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' },
+    ];
+    const seen = {};
+    const invoker = (id) => async ({ timeoutMs, signal }) => {
+      seen[id] = { timeoutMs, hasSignal: signal instanceof AbortSignal };
+      return { text: 'ok', usage: null };
+    };
+    const room = new Room({
+      store,
+      agents,
+      projectRoot: root,
+      agentTimeouts: { default: 30000, claude: 240000 },
+      invokers: { 'claude-readonly': invoker('claude'), 'codex-readonly': invoker('codex') },
+    });
+    assert.equal(room.timeoutFor('claude'), 240000);
+    assert.equal(room.timeoutFor('codex'), 30000);
+    assert.equal(new Room({ store, agents, projectRoot: root, invokers: {} }).timeoutFor('codex'), 120000);
+    await room.send({ text: 'a', target: 'claude' });
+    await room.send({ text: 'b', target: 'codex' });
+    assert.deepEqual(seen, { claude: { timeoutMs: 240000, hasSignal: true }, codex: { timeoutMs: 30000, hasSignal: true } });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects oversized messages before invoking the agent', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-toolong-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+    let invoked = 0;
+    const room = new Room({
+      store,
+      agents,
+      projectRoot: root,
+      maxMessageChars: 50,
+      invokers: { 'codex-readonly': async () => { invoked += 1; return { text: 'ok', usage: null }; } },
+    });
+    await room.send({ text: 'x'.repeat(51), target: 'codex' });
+    assert.equal(invoked, 0);
+    const events = await store.readAll();
+    assert.deepEqual(events.map((event) => event.type), ['message.created', 'message.failed']);
+    assert.match(events[1].payload.error, /too long \(51 characters\); the limit is 50/);
+    await room.send({ text: 'x'.repeat(50), target: 'codex' });
+    assert.equal(invoked, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('recovers turns left open by a previous process', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-recover-'));
+  try {
+    const file = join(root, 'events.jsonl');
+    const crashed = await new EventStore(file).initialize();
+    await crashed.append('message.created', { messageId: 'm1', role: 'user', sender: 'you', target: 'codex', text: 'hi', status: 'sent' });
+    await crashed.append('agent.started', { messageId: 'm1', agent: 'codex', handoffId: null });
+    await crashed.append('message.created', { messageId: 'm2', role: 'user', sender: 'you', target: 'codex', text: 'again', status: 'sent' });
+    await crashed.append('agent.started', { messageId: 'm2', agent: 'codex', handoffId: null });
+    await crashed.append('agent.completed', { messageId: 'm2', agent: 'codex', handoffId: null });
+
+    const store = await new EventStore(file).initialize();
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+    const room = new Room({ store, agents, projectRoot: root, historicalEvents: await store.readAll(), invokers: {} });
+    assert.equal(await room.reconcile(), 1);
+    const failed = (await store.readAll()).filter((event) => event.type === 'message.failed');
+    assert.equal(failed.length, 1);
+    assert.equal(failed[0].payload.messageId, 'm1');
+    assert.equal(failed[0].payload.recovered, true);
+    assert.match(failed[0].payload.error, /PULSE stopped while @codex was answering/);
+    // Idempotent: a second start finds nothing open.
+    assert.equal(await room.reconcile(), 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('shutdown interrupts in-flight turns and records them as failed', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-shutdown-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+    const room = new Room({
+      store,
+      agents,
+      projectRoot: root,
+      invokers: {
+        'codex-readonly': ({ signal }) => new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('Codex was interrupted because PULSE is shutting down.')), { once: true });
+        }),
+      },
+    });
+    const turn = room.send({ text: 'slow question', target: 'codex' });
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if ((await store.readAll()).some((event) => event.type === 'agent.started')) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    await room.shutdown();
+    await turn;
+    const events = await store.readAll();
+    assert.deepEqual(events.map((event) => event.type), ['message.created', 'agent.started', 'message.failed']);
+    assert.match(events.at(-1).payload.error, /interrupted because PULSE is shutting down/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('aborting the signal terminates the adapter process tree', async () => {
+  const controller = new AbortController();
+  const started = Date.now();
+  const pending = runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', 'setTimeout(() => {}, 60000)'],
+    cwd: process.cwd(),
+    timeoutMs: 60000,
+    killGraceMs: 200,
+    label: 'Fixture',
+    parse: () => ({ text: '' }),
+    signal: controller.signal,
+  });
+  setTimeout(() => controller.abort(), 100);
+  await assert.rejects(pending, /Fixture was interrupted because PULSE is shutting down/);
+  assert.ok(Date.now() - started < 3000);
+  await assert.rejects(runReadonlyProcess({
+    executable: process.execPath, args: ['-e', ''], cwd: process.cwd(), label: 'Fixture', parse: () => ({ text: '' }), signal: controller.signal,
+  }), /interrupted before it started/);
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

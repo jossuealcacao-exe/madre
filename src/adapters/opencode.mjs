@@ -75,13 +75,14 @@ export function parseOpenCodeOutput(output) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000 }) {
+export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
   return runReadonlyProcess({
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt }),
     cwd: projectRoot,
     env: openCodeEnvironment(),
     timeoutMs,
+    signal,
     label: 'OpenCode',
     parse: parseOpenCodeOutput,
   });

@@ -20,7 +20,8 @@
     "start": "node ./bin/pulse.mjs start",
     "doctor": "node ./bin/pulse.mjs doctor",
     "test": "node --test",
-    "check": "npm test && node ./bin/pulse.mjs doctor --json"
+    "check": "npm test && node ./bin/pulse.mjs doctor --json",
+    "pack:check": "node ./scripts/pack-check.mjs"
   },
   "license": "UNLICENSED"
 }

@@ -50,13 +50,14 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000 }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal }) {
   return runReadonlyProcess({
     executable,
     args: buildClaudeArgs({ prompt }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,
+    signal,
     label: 'Claude',
     parse: parseClaudeOutput,
   });

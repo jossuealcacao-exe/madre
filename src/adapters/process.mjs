@@ -33,8 +33,13 @@ export function runReadonlyProcess({
   killGraceMs = 2000,
   label,
   parse,
+  signal,
 }) {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error(`${label} was interrupted before it started.`));
+      return;
+    }
     const child = spawn(executable, args, {
       cwd,
       env,
@@ -45,16 +50,22 @@ export function runReadonlyProcess({
     let stderr = '';
     let settled = false;
 
+    const onAbort = () => {
+      terminateProcessTree(child, { graceMs: killGraceMs });
+      finish(() => reject(new Error(`${label} was interrupted because PULSE is shutting down.`)));
+    };
     const finish = (operation) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       operation();
     };
     const timer = setTimeout(() => {
       terminateProcessTree(child, { graceMs: killGraceMs });
       finish(() => reject(new Error(`${label} did not respond before the timeout.`)));
     }, timeoutMs);
+    signal?.addEventListener('abort', onAbort, { once: true });
 
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
