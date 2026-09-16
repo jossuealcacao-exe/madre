@@ -2217,6 +2217,24 @@ function connectionCard(agent) {
     const line = el('label', `scope${!scope.capable || !scope.wired ? ' unavailable' : ''}`);
     const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(scope.enabled); box.disabled = !scope.capable || !scope.wired;
     box.dataset.agent = agent.id; box.dataset.scope = key; box.className = 'scope-input';
+    // Scopes apply the moment they are ticked; no need to find the SAVE button below.
+    box.addEventListener('change', async () => {
+      box.disabled = true;
+      try {
+        const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scopes: { [agent.id]: { [key]: box.checked } } }) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        if (result.settings?.capabilities) { state.capabilities = result.settings.capabilities; settingsUI.data.settings.capabilities = result.settings.capabilities; renderCreateScopes(); }
+        const why = line.querySelector('.why');
+        if (why) why.textContent = box.checked ? (key === 'web' ? 'on for every turn' : 'on for CREATE') : 'off';
+        toast(`MU/TH/UR › @${agent.id} ${labelText.toLowerCase()} ${box.checked ? 'on' : 'off'}. ${key === 'web' ? 'Applies to its next turn.' : 'Applies to its next CREATE.'}`);
+      } catch (error) {
+        box.checked = !box.checked;
+        toast(`Scope was not saved: ${error.message}`);
+      } finally {
+        box.disabled = false;
+      }
+    });
     line.append(box, labelText);
     line.append(el('span', 'why', !scope.capable ? 'not available from this CLI' : !scope.wired ? 'not wired yet' : scope.enabled ? (key === 'web' ? 'on for every turn' : 'on for CREATE') : 'off'));
     line.title = !scope.capable ? `${agent.label}'s CLI has no way to do this; MU/TH/UR knows the routes.` : '';
