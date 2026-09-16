@@ -572,6 +572,99 @@ test('replays since a sequence and closes cleanly with open streams', async () =
   assert.equal(closed, 'closed', 'server.close() must resolve while an SSE client is connected');
 });
 
+test('warns one turn early when the projected usage would cross a threshold', async () => {
+  const sentinel = new UsageSentinel();
+  assert.equal(sentinel.evaluate({ agent: 'claude', usedPercent: 40, projectedPercent: 70, source: 'room-soft-budget' }), null);
+  const early = sentinel.evaluate({ agent: 'claude', usedPercent: 68, projectedPercent: 111, source: 'room-soft-budget' });
+  assert.equal(early.level, 'exhausted');
+  assert.equal(early.usedPercent, 68);
+  assert.equal(early.projectedPercent, 111);
+  assert.match(early.message, /has used 68% .* another turn like the last one would reach 111%/);
+  // Reaching the level for real afterwards does not repeat the alarm.
+  assert.equal(sentinel.evaluate({ agent: 'claude', usedPercent: 100, projectedPercent: 140, source: 'room-soft-budget' }), null);
+  // Without a projection the message keeps its original shape.
+  assert.match(new UsageSentinel().evaluate({ agent: 'codex', usedPercent: 85, source: 'test' }).message, /has used 85% of its .*\. Prepare/);
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-projection-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [
+      { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' },
+      { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' },
+    ];
+    const room = new Room({
+      store,
+      agents,
+      projectRoot: root,
+      softTokenBudget: 1000,
+      invokers: { 'claude-readonly': async () => ({ text: 'ok', usage: { totalTokens: 450 } }) },
+    });
+    await room.send({ text: 'first', target: 'claude' });
+    assert.equal((await store.readAll()).filter((event) => event.type === 'limit.warning').length, 1, '45% used, 90% projected → critical warning');
+    const warning = (await store.readAll()).find((event) => event.type === 'limit.warning').payload;
+    assert.equal(warning.level, 'critical');
+    assert.equal(warning.usedPercent, 45);
+    assert.deepEqual(warning.alternatives, ['codex']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('tails only the bytes appended since the last offset', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-tail-'));
+  try {
+    const file = join(root, 'events.jsonl');
+    const store = await new EventStore(file).initialize();
+    assert.deepEqual(await store.tail(0), { events: [], offset: 0 });
+    await store.append('message.created', { text: 'uno con acento ñ' });
+    await store.append('message.created', { text: 'dos' });
+    const first = await store.tail(0);
+    assert.deepEqual(first.events.map((event) => event.sequence), [1, 2]);
+    assert.ok(first.offset > 0);
+    assert.deepEqual(await store.tail(first.offset), { events: [], offset: first.offset });
+
+    const other = await new EventStore(file).initialize();
+    const appended = await other.append('handoff.created', { fromAgent: 'a', toAgent: 'b' });
+    const second = await store.tail(first.offset);
+    assert.deepEqual(second.events.map((event) => event.id), [appended.id]);
+    assert.equal(second.offset, (await readFile(file)).length);
+
+    // A shrunken file restarts from the beginning instead of reading garbage.
+    await writeFile(file, '');
+    assert.deepEqual(await store.tail(second.offset), { events: [], offset: 0 });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('drops SSE clients that stop draining instead of buffering without bound', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-backpressure-'));
+  const agents = [{ id: 'codex', label: 'Codex', detected: false, ready: false, adapter: null, path: null, version: null }];
+  const { server, store } = await createPulseServer({
+    projectRoot: root,
+    stateRoot: root,
+    agents,
+    broadcastIntervalMs: 50,
+    sseMaxBufferedBytes: 1,
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  let stream;
+  try {
+    stream = await openEventStream(`http://127.0.0.1:${port}/api/events`);
+    const ended = new Promise((resolve) => stream.response.on('close', () => resolve('closed')));
+    await store.append('message.created', { text: 'x'.repeat(4096) });
+    const outcome = await Promise.race([ended, new Promise((resolve) => setTimeout(() => resolve('still open'), 2000))]);
+    assert.equal(outcome, 'closed', 'a client over the buffer limit must be disconnected');
+    // The room itself keeps working for everyone else.
+    assert.equal((await store.readAll()).length, 1);
+  } finally {
+    stream?.close();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('polls available official quota sources and restores sentinel state', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-quota-'));
   const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' }];

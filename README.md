@@ -17,7 +17,7 @@ PULSE no instala ni configura proveedores. Detecta los runtimes existentes y man
 
 Cada proyecto tiene una sala estable bajo `PULSE_HOME` (por defecto `~/.pulse`). PULSE reconstruye una ventana acotada de la conversación desde su event log aunque se reinicie o se abra desde otro IDE. Cuando cambia el agente, registra `handoff.created` con el origen, el destino y el rango de eventos entregado; el transcript sigue siendo la fuente durable y no se modifica el proyecto.
 
-Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso PULSE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
+Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso PULSE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). El sondeo lee solo los bytes nuevos del log, no el archivo completo. Un cliente que deja de consumir el stream se desconecta cuando acumula más de 1 MiB sin drenar (`PULSE_SSE_MAX_BUFFERED_BYTES`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
 
 Los errores de un agente se guardan acotados en `message.failed`: una sola línea de hasta 500 caracteres, sin stack traces.
 
@@ -25,7 +25,7 @@ La ventana predeterminada es de 16,000 caracteres y puede ajustarse con `PULSE_C
 
 ## Centinela de límites
 
-Cuando un CLI expone telemetría de tokens por turno, PULSE la registra y la compara con un presupuesto local de la sala. Avisa al 80%, escala a crítico al 90% y marca agotado al 100%, recomendando otro agente que esté listo. El presupuesto predeterminado es de 100,000 tokens y puede ajustarse con `PULSE_SOFT_TOKEN_BUDGET`.
+Cuando un CLI expone telemetría de tokens por turno, PULSE la registra y la compara con un presupuesto local de la sala. Avisa al 80%, escala a crítico al 90% y marca agotado al 100%, recomendando otro agente que esté listo. También proyecta: si otro turno del mismo tamaño que el último cruzaría un umbral, avisa un turno antes. El presupuesto predeterminado es de 500,000 tokens (un turno real de consulta con contexto cuesta entre 10,000 y 60,000) y puede ajustarse con `PULSE_SOFT_TOKEN_BUDGET`.
 
 El presupuesto local no es la cuota oficial de la cuenta. PULSE solo mostrará un porcentaje del proveedor cuando exista una fuente fiable para ese dato; nunca lo inferirá a partir de tokens locales. El endpoint `/api/test/limits` sirve para pruebas controladas y solo existe al iniciar con `PULSE_TEST_MODE=1`.
 

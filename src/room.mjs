@@ -37,7 +37,7 @@ export class Room {
     store,
     agents,
     projectRoot,
-    softTokenBudget = 100000,
+    softTokenBudget = 500000,
     contextMaxChars = 16000,
     historicalEvents = [],
     invokers = defaultInvokers,
@@ -79,11 +79,11 @@ export class Room {
     return event;
   }
 
-  async reportLimit({ agent, usedPercent, source = 'provider-window', resetAt = null }) {
+  async reportLimit({ agent, usedPercent, source = 'provider-window', resetAt = null, projectedPercent = null }) {
     const alternatives = this.#agents
       .filter((item) => item.ready && item.id !== agent)
       .map((item) => item.id);
-    const warning = this.#sentinel.evaluate({ agent, usedPercent, source, resetAt, alternatives });
+    const warning = this.#sentinel.evaluate({ agent, usedPercent, source, resetAt, alternatives, projectedPercent });
     if (warning) await this.#emit('limit.warning', warning);
     return warning;
   }
@@ -114,6 +114,7 @@ export class Room {
       await this.reportLimit({
         agent,
         usedPercent: (total / this.#softTokenBudget) * 100,
+        projectedPercent: ((total + (usage.totalTokens ?? 0)) / this.#softTokenBudget) * 100,
         source: 'room-soft-budget',
       });
     }

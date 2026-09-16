@@ -44,11 +44,12 @@ export async function createPulseServer({
   stateRoot,
   agents: providedAgents,
   testMode = process.env.PULSE_TEST_MODE === '1',
-  softTokenBudget = Number(process.env.PULSE_SOFT_TOKEN_BUDGET ?? 100000),
+  softTokenBudget = Number(process.env.PULSE_SOFT_TOKEN_BUDGET ?? 500000),
   contextMaxChars = Number(process.env.PULSE_CONTEXT_MAX_CHARS ?? 16000),
   quotaSources = [],
   quotaPollIntervalMs = Number(process.env.PULSE_QUOTA_POLL_INTERVAL_MS ?? 60000),
   broadcastIntervalMs = Number(process.env.PULSE_BROADCAST_INTERVAL_MS ?? 500),
+  sseMaxBufferedBytes = Number(process.env.PULSE_SSE_MAX_BUFFERED_BYTES ?? 1_048_576),
   invokers,
 }) {
   const agents = providedAgents ?? await detectAgents();
@@ -76,9 +77,20 @@ export async function createPulseServer({
   // `clients` maps each SSE response to the last sequence it already holds.
   const clients = new Map();
   let lastBroadcastSequence = historicalEvents.at(-1)?.sequence ?? 0;
+  // Byte offset of the log already broadcast; the poller only reads past it.
+  let tailOffset = (await store.tail(0)).offset;
   let inFlight = null;
   let dirty = false;
-  const writeEvent = (client, event) => client.write(`id: ${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`);
+  // A client that stops draining is dropped instead of buffering without bound.
+  const writeEvent = (client, event) => {
+    client.write(`id: ${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`);
+    if (client.writableLength > sseMaxBufferedBytes) {
+      clients.delete(client);
+      client.destroy();
+      return false;
+    }
+    return true;
+  };
 
   function broadcastPending() {
     if (inFlight) {
@@ -89,7 +101,8 @@ export async function createPulseServer({
       try {
         do {
           dirty = false;
-          const events = await store.readAll();
+          const { events, offset } = await store.tail(tailOffset);
+          tailOffset = offset;
           for (const event of events) {
             if (event.sequence <= lastBroadcastSequence) continue;
             for (const [client, floor] of clients) {

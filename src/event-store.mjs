@@ -30,6 +30,39 @@ export class EventStore {
     }
   }
 
+  // Reads only the bytes appended after `offset`. Appends are whole lines
+  // written under the lock, so a locked read never sees a partial line; the
+  // trailing-newline guard is defensive. A shrunken file restarts from zero.
+  async tail(offset = 0) {
+    const release = await this.#acquireLock();
+    try {
+      let handle;
+      try {
+        handle = await open(this.#file, 'r');
+      } catch (error) {
+        if (error.code === 'ENOENT') return { events: [], offset: 0 };
+        throw error;
+      }
+      try {
+        const { size } = await handle.stat();
+        const start = size < offset ? 0 : offset;
+        if (size === start) return { events: [], offset: start };
+        const buffer = Buffer.alloc(size - start);
+        await handle.read(buffer, 0, buffer.length, start);
+        let text = buffer.toString('utf8');
+        const lastNewline = text.lastIndexOf('\n');
+        if (lastNewline < 0) return { events: [], offset: start };
+        text = text.slice(0, lastNewline + 1);
+        const events = text.split('\n').filter(Boolean).map((line) => JSON.parse(line));
+        return { events, offset: start + Buffer.byteLength(text, 'utf8') };
+      } finally {
+        await handle.close();
+      }
+    } finally {
+      await release();
+    }
+  }
+
   async #readAllUnlocked() {
     try {
       const text = await readFile(this.#file, 'utf8');
