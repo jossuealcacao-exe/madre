@@ -604,15 +604,66 @@ function fileTiles(files) {
   return wrap;
 }
 
+// What the waiting bubble says while an agent works, in the voice each CLI
+// uses in its own terminal, staged by how long the turn has been running.
+const WORKING_VOICE = {
+  codex: {
+    early: ['Reading the request…', 'Looking around the project…', 'Opening files…'],
+    middle: ['Thinking…', 'Tracing how this fits together…', 'Cross-checking the code…', 'Skimming the transcript…'],
+    late: ['Reasoning…', 'Weighing the options…', 'Verifying before answering…', 'Still on it…'],
+    long: ['Deep in the code…', 'Composing the answer…', 'Almost there…'],
+  },
+  claude: {
+    early: ['Reading…', 'Grepping the project…', 'Mapping the files…'],
+    middle: ['Thinking…', 'Pondering…', 'Connecting the pieces…', 'Reading the relevant files…'],
+    late: ['Ruminating…', 'Considering the edge cases…', 'Checking the details…', 'Musing…'],
+    long: ['Synthesizing…', 'Drafting the reply…', 'Finishing the thought…'],
+  },
+  gemini: {
+    early: ['Scanning the project…', 'Loading context…', 'Reading files…'],
+    middle: ['Thinking…', 'Analyzing…', 'Following the references…', 'Building the picture…'],
+    late: ['Reasoning through it…', 'Verifying the findings…', 'Sorting the evidence…'],
+    long: ['Formulating the answer…', 'Writing it up…', 'Wrapping up…'],
+  },
+  opencode: {
+    early: ['Reading the repo…', 'Listing files…', 'Grabbing context…'],
+    middle: ['Thinking…', 'Digging through the code…', 'Following the call chain…', 'Looking closer…'],
+    late: ['Working through it…', 'Double-checking…', 'Piecing it together…'],
+    long: ['Writing the response…', 'Tidying the answer…', 'Nearly done…'],
+  },
+};
+function workingPhrases(agent, prompt = '') {
+  const voice = WORKING_VOICE[agent] ?? { early: ['Reading…'], middle: ['Thinking…'], late: ['Working…'], long: ['Writing…'] };
+  const topic = prompt.trim().split(/\s+/).slice(0, 4).join(' ');
+  const middle = [...voice.middle];
+  if (topic && topic.length <= 40) middle.splice(1, 0, `Thinking about "${topic}"…`);
+  return [voice.early, middle, voice.late, voice.long];
+}
+
 function renderThinking(event) {
   const { messageId, agent } = event.payload;
   const node = row('thinking', agent);
   node.id = `working-${messageId}`;
   const bubble = el('div', 'bubble');
   bubble.append(el('i'), el('i'), el('i'));
+  const status = el('span', 'status');
   const elapsed = el('span', 'elapsed');
-  bubble.append(elapsed);
+  bubble.append(status, elapsed);
   const startedAt = event.timestamp ? new Date(event.timestamp).getTime() : Date.now();
+  const phrases = workingPhrases(agent, state.userMessages.get(messageId)?.text ?? '');
+  let phraseIndex = -1;
+  let phraseChangedAt = 0;
+  const speak = (seconds) => {
+    // Early phrases turn over quickly, then settle: the model reads first, then reasons, then writes.
+    const stage = seconds < 4 ? 0 : seconds < 12 ? 1 : seconds < 40 ? 2 : 3;
+    const pool = phrases[stage];
+    const period = stage === 0 ? 2 : stage === 1 ? 4 : 6;
+    if (seconds - phraseChangedAt < period && phraseIndex >= 0) return;
+    phraseChangedAt = seconds;
+    phraseIndex = (phraseIndex + 1) % pool.length;
+    const next = pool[phraseIndex];
+    if (status.textContent !== next) { status.textContent = next; status.style.animation = 'none'; void status.offsetWidth; status.style.animation = ''; }
+  };
   const limitMs = state.timeouts[agent] ?? 180000;
   const limit = Math.round(limitMs / 1000);
   let timer = null;
@@ -622,6 +673,7 @@ function renderThinking(event) {
     if (node.isConnected) wasConnected = true;
     else if (wasConnected && timer) { clearInterval(timer); return; }
     const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+    speak(seconds);
     elapsed.textContent = `${seconds}s / ${limit}s`;
     elapsed.classList.toggle('late', seconds >= limit * 0.6);
     bubble.title = `${label(agent)} is reading the project… ${seconds}s so far; PULSE gives up at ${limit}s.`;
@@ -1243,7 +1295,7 @@ els.createToggle.addEventListener('click', () => {
   renderCreateScopes();
   els.composer.classList.toggle('creating', state.create);
   els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
-  els.input.placeholder = state.create ? 'Creation lease on: describe what to create, where it goes (.pulse/out/), and how it should look.' : 'Type here, human. Ask the room…';
+  els.input.placeholder = state.create ? 'Creation lease on: what to create and how it should look. It lands in .pulse/out/' : 'Type here, human. Ask the room…';
   autosize();
   els.input.focus();
 });
@@ -1374,7 +1426,7 @@ function conditionCard(condition, { hit = false, agent = null } = {}) {
   diagnosis.append(el('b', null, 'DIAGNOSIS'));
   diagnosis.append(condition.diagnosis);
   card.append(diagnosis);
-  const remedy = el('p');
+  const remedy = el('p', 'remedy');
   remedy.append(el('b', null, 'REMEDY'));
   remedy.append(condition.remedy);
   card.append(remedy);

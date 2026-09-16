@@ -207,7 +207,11 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .stamp .to { color: var(--agent, var(--text-3)); }
 
 /* typing indicator */
-.row.thinking .bubble { display: inline-flex; gap: 5px; padding: 12px 14px; width: max-content; align-items: center; }
+.row.thinking .bubble { display: inline-flex; gap: 5px; padding: 10px 14px; width: max-content; max-width: 100%; align-items: center; }
+.row.thinking .status { font-size: 13.5px; color: var(--text-2); margin-left: 8px; font-style: italic; animation: status-in .35s ease; white-space: nowrap; }
+.row.thinking .status::after { content: ''; display: inline-block; width: 2px; height: 14px; margin-left: 3px; vertical-align: -2px; background: var(--agent, var(--text-2)); animation: cursor-blink 1s steps(1) infinite; }
+@keyframes status-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes cursor-blink { 50% { opacity: 0; } }
 .row.thinking .elapsed { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; }
 .row.thinking .elapsed.late { color: var(--warn); }
 .row.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--agent, var(--text-2)); animation: bounce 1.2s infinite; opacity: .5; }
@@ -342,6 +346,10 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-card h4 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .mother-card p { margin: 0; font-size: 12px; line-height: 1.6; color: rgba(210, 255, 190, .85); text-shadow: none; }
 .mother-card p b { color: var(--ph); font-weight: 400; letter-spacing: .12em; font-size: 10px; display: block; margin-bottom: 2px; }
+.mother-card p.remedy { color: #eaffdf; font-size: 13px; line-height: 1.65; padding: 10px 12px; border: 1px solid var(--ph); border-left-width: 4px; background: var(--ph-faint); text-shadow: 0 0 6px rgba(155, 255, 102, .25); }
+.mother-card p.remedy b { color: var(--ph); font-weight: 700; letter-spacing: .2em; }
+.mother-card.hit p.remedy { box-shadow: 0 0 18px rgba(155, 255, 102, .18); animation: remedy-in .6s ease; }
+@keyframes remedy-in { from { background: rgba(155, 255, 102, .35); } to { background: var(--ph-faint); } }
 .mother-cmd { position: relative; margin: 4px 0 0; border: 1px solid var(--ph-faint); background: #000; padding: 10px 12px; }
 .mother-cmd pre { margin: 0; font: inherit; font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ph); }
 .mother-cmd .c { color: var(--ph-dim); }
@@ -567,8 +575,12 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 
 /* CREATE armed and text present: the field widens past the column; height follows line breaks only */
 /* Field box: one line, always. It grows only with explicit line breaks
-   (max two, three visible lines) and scrolls beyond; it never widens. */
+   (max two, three visible lines) and scrolls beyond. It widens, keeping
+   one line, while CREATE is armed, so the longer lease prompt fits. */
 .field { align-items: center; }
+.composer { transition: width .3s ease; }
+.composer.creating { width: min(1180px, 100% - 40px); }
+.editor textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .editor { position: relative; display: grid; min-width: 0; }
 .editor textarea, .editor .highlight { grid-area: 1 / 1; margin: 0; padding: 7px 0; line-height: 21px; font-size: 15px; font-family: inherit; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; box-sizing: content-box; min-height: 0; max-height: none; overflow-y: auto; }
 .editor textarea { position: relative; z-index: 1; color: transparent; caret-color: var(--text); }
