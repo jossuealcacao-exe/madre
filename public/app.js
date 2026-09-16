@@ -1,3 +1,5 @@
+import { brandOf } from './brands.js';
+
 const els = {
   project: document.querySelector('#project'),
   agents: document.querySelector('#agents'),
@@ -5,6 +7,7 @@ const els = {
   onboarding: document.querySelector('#onboarding'),
   onboardingList: document.querySelector('#onboarding-list'),
   composer: document.querySelector('#composer'),
+  picker: document.querySelector('#picker'),
   target: document.querySelector('#target'),
   input: document.querySelector('#message'),
   send: document.querySelector('#composer button[type="submit"]'),
@@ -18,6 +21,7 @@ const state = {
   seen: new Set(),
   userMessages: new Map(), // messageId -> { text, target }
   lastSequence: 0,
+  lastSender: null,        // for iMessage-style grouping of consecutive bubbles
 };
 
 const AGENT_HINTS = {
@@ -48,7 +52,27 @@ const formatTime = (iso) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const label = (id) => state.agents.get(id)?.label ?? id;
+const label = (id) => state.agents.get(id)?.label ?? brandOf(id).label ?? id;
+const isLight = () => matchMedia('(prefers-color-scheme: light)').matches;
+const agentColor = (id) => {
+  const brand = brandOf(id);
+  return isLight() && brand.colorLight ? brand.colorLight : brand.color;
+};
+function paint(node, id) {
+  node.dataset.agent = id;
+  node.style.setProperty('--agent', agentColor(id));
+  const brand = brandOf(id);
+  if (brand.gradient) node.style.setProperty('--agent-gradient', brand.gradient);
+  return node;
+}
+
+function avatar(id, { size = 28, ring = false, pct = 0, status = 'ready' } = {}) {
+  const node = paint(el('span', `avatar ${status}${ring ? ' ring' : ''}${pct >= 80 ? ' hot' : ''}`), id);
+  node.style.setProperty('--size', `${size}px`);
+  node.style.setProperty('--pct', String(Math.max(0, Math.min(100, pct))));
+  node.innerHTML = brandOf(id).mark(); // trusted: our own SVG strings from brands.js
+  return node;
+}
 
 let toastTimer;
 function toast(message) {
@@ -67,7 +91,6 @@ function scrollToEnd() {
 const SAFE_URL = /^https?:\/\//i;
 
 function renderInline(text, into) {
-  // tokens: `code`, **bold**, *italic*, [label](url)
   const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))/g;
   let last = 0;
   for (const match of text.matchAll(pattern)) {
@@ -94,15 +117,15 @@ function renderInline(text, into) {
 function codeBlock(lines, lang) {
   const wrapper = el('div', `codeblock${lang ? ' has-lang' : ''}`);
   if (lang) wrapper.append(el('span', 'lang', lang));
-  const copy = el('button', 'copy', 'Copy');
+  const copy = el('button', 'copy', 'copy');
   copy.type = 'button';
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(lines.join('\n'));
-      copy.textContent = 'Copied';
-      setTimeout(() => { copy.textContent = 'Copy'; }, 1500);
+      copy.textContent = 'copied';
+      setTimeout(() => { copy.textContent = 'copy'; }, 1500);
     } catch {
-      copy.textContent = 'Select & copy';
+      copy.textContent = 'select & copy';
     }
   });
   wrapper.append(copy);
@@ -134,7 +157,7 @@ export function renderMarkdown(text) {
       const body = [];
       index += 1;
       while (index < lines.length && !/^\s*```\s*$/.test(lines[index])) body.push(lines[index++]);
-      index += 1; // closing fence (or EOF)
+      index += 1;
       fragment.append(codeBlock(body, fence[1]));
       continue;
     }
@@ -160,7 +183,6 @@ export function renderMarkdown(text) {
       while (index < lines.length) {
         const item = lines[index].match(test);
         if (!item) {
-          // continuation line for the previous item
           if (lines[index].trim() && /^\s{2,}/.test(lines[index]) && list.lastChild) {
             list.lastChild.append(' ');
             renderInline(lines[index].trim(), list.lastChild);
@@ -194,32 +216,56 @@ export function renderMarkdown(text) {
   return fragment;
 }
 
-/* ---------- agents bar & onboarding ---------- */
+/* ---------- agents bar, picker & onboarding ---------- */
 
 function renderAgents() {
   els.agents.replaceChildren();
   for (const agent of state.agents.values()) {
-    const chip = el('span', `agent ${agent.ready ? 'ready' : agent.detected ? 'detected' : 'offline'}`);
-    chip.dataset.agent = agent.id;
     const percent = state.budget && agent.tokens ? Math.min(100, (agent.tokens / state.budget) * 100) : 0;
-    if (percent >= 80) chip.classList.add('hot');
-    chip.title = [
-      agent.ready ? 'Ready' : agent.detected ? 'Detected; adapter pending' : 'Not installed',
-      agent.version ? `Version: ${agent.version}` : null,
-      agent.tokens ? `Local room tokens: ${agent.tokens.toLocaleString()} (${Math.round(percent)}% of local budget)` : 'No local usage yet',
-      Number.isFinite(agent.officialPercent) ? `Provider quota: ${Math.round(agent.officialPercent)}% used` : 'Provider quota: not published',
+    const node = avatar(agent.id, {
+      size: 26,
+      ring: agent.ready,
+      pct: percent,
+      status: agent.ready ? 'ready' : agent.detected ? 'detected' : 'offline',
+    });
+    node.title = [
+      `${agent.label}${brandOf(agent.id).vendor ? ` · ${brandOf(agent.id).vendor}` : ''}`,
+      agent.ready ? 'Ready' : agent.detected ? 'Detected, adapter pending' : 'Not installed',
+      agent.version ? agent.version : null,
+      agent.tokens ? `${agent.tokens.toLocaleString()} local tokens · ${Math.round(percent)}% of local budget` : 'No local usage yet',
+      Number.isFinite(agent.officialPercent) ? `Provider quota ${Math.round(agent.officialPercent)}% used` : 'Provider quota not published',
     ].filter(Boolean).join('\n');
-    chip.append(el('span', 'dot'));
-    chip.append(el('span', 'name', agent.label));
-    if (agent.tokens) {
-      chip.append(el('span', 'tokens', formatTokens(agent.tokens)));
-      const bar = el('span', 'bar-mini');
-      const fill = el('i');
-      fill.style.width = `${percent}%`;
-      bar.append(fill);
-      chip.append(bar);
-    }
-    els.agents.append(chip);
+    els.agents.append(node);
+  }
+}
+
+function renderPicker() {
+  els.picker.replaceChildren();
+  const ready = [...state.agents.values()].filter((agent) => agent.ready);
+  if (!ready.length) return;
+  if (!els.target.value || !ready.some((agent) => agent.id === els.target.value)) els.target.value = ready[0].id;
+  for (const agent of ready) {
+    const pick = avatar(agent.id, { size: 30 });
+    pick.classList.add('pick');
+    pick.setAttribute('role', 'radio');
+    pick.setAttribute('aria-label', agent.label);
+    pick.setAttribute('aria-checked', String(els.target.value === agent.id));
+    pick.tabIndex = 0;
+    const choose = () => {
+      els.target.value = agent.id;
+      renderPicker();
+      els.input.focus();
+    };
+    pick.addEventListener('click', choose);
+    pick.addEventListener('keydown', (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); choose(); } });
+    els.picker.append(pick);
+  }
+  const current = state.agents.get(els.target.value);
+  if (current) {
+    const text = paint(el('span', 'pick-label'), current.id);
+    text.append('to ');
+    text.append(el('b', null, `@${current.id}`));
+    els.picker.append(text);
   }
 }
 
@@ -232,12 +278,11 @@ function renderOnboarding() {
   if (ready.length) return;
   els.onboardingList.replaceChildren();
   for (const agent of state.agents.values()) {
-    const item = el('li');
-    item.dataset.agent = agent.id;
+    const item = paint(el('li'), agent.id);
+    item.append(avatar(agent.id, { size: 28, status: agent.detected ? 'detected' : 'offline' }));
     item.append(el('span', 'name', agent.label));
     const status = el('span', 'state');
-    const b = el('b', null, agent.ready ? 'Ready' : agent.detected ? 'Installed, adapter not enabled' : 'Not installed');
-    status.append(b);
+    status.append(el('b', null, agent.ready ? 'Ready' : agent.detected ? 'Installed, adapter not enabled' : 'Not installed'));
     status.append(` · ${agent.detected ? (agent.version ?? 'version unknown') : AGENT_HINTS[agent.id] ?? 'Install it and reload.'}`);
     item.append(status);
     els.onboardingList.append(item);
@@ -254,93 +299,104 @@ function removeThinking(messageId) {
   document.getElementById(`working-${messageId}`)?.remove();
 }
 
+function row(kind, agentId, { compact = false } = {}) {
+  const node = el('article', `row ${kind}${compact ? ' compact' : ''}`);
+  if (agentId) {
+    paint(node, agentId);
+    node.append(avatar(agentId, { size: 28 }));
+  }
+  return node;
+}
+
 function renderUserMessage(event) {
   const { messageId, target, text } = event.payload;
   state.userMessages.set(messageId, { text, target });
-  const item = el('article', 'message user');
-  item.id = `msg-${messageId}`;
-  const meta = el('div', 'meta');
-  meta.append(el('span', 'who', 'You'));
-  meta.append(el('span', 'to', `→ @${target}`));
-  meta.append(el('span', 'time', formatTime(event.timestamp)));
-  item.append(meta);
-  item.append(el('div', 'bubble', text));
-  return item;
+  const node = row('user');
+  node.id = `msg-${messageId}`;
+  const col = el('div', 'col');
+  col.append(el('div', 'bubble', text));
+  const stamp = paint(el('div', 'stamp'), target);
+  stamp.append(el('span', 'to', `→ @${target}`));
+  stamp.append(el('span', null, formatTime(event.timestamp)));
+  col.append(stamp);
+  node.append(col);
+  state.lastSender = 'you';
+  return node;
 }
 
 function renderAssistantMessage(event) {
   const { messageId, parentMessageId, sender, text, status } = event.payload;
-  const item = el('article', 'message assistant');
-  item.id = `msg-${messageId}`;
-  item.dataset.agent = sender;
-  const meta = el('div', 'meta');
-  meta.append(el('span', 'who', `@${sender}`));
-  meta.append(el('span', 'time', formatTime(event.timestamp)));
-  if (status === 'handoff') meta.append(el('span', 'badge', 'handoff note'));
-  const question = state.userMessages.get(parentMessageId);
-  if (question) {
-    const reply = el('span', 'reply', `↳ ${question.text.length > 80 ? `${question.text.slice(0, 80)}…` : question.text}`);
-    reply.title = question.text;
-    meta.append(reply);
+  const compact = state.lastSender === sender;
+  const node = row('assistant', sender, { compact });
+  node.id = `msg-${messageId}`;
+  const col = el('div', 'col');
+  if (!compact || status === 'handoff') {
+    const who = el('div', 'who');
+    who.append(el('span', null, label(sender)));
+    if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
+    const question = state.userMessages.get(parentMessageId);
+    if (question) {
+      const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
+      reply.title = question.text;
+      who.append(reply);
+    }
+    col.append(who);
   }
-  item.append(meta);
   const bubble = el('div', 'bubble');
   bubble.append(renderMarkdown(text));
-  item.append(bubble);
-  const usage = el('div', 'usage');
-  usage.id = `usage-${messageId}`;
-  usage.hidden = true;
-  item.append(usage);
-  return item;
+  col.append(bubble);
+  const stamp = el('div', 'stamp');
+  stamp.id = `usage-${messageId}`;
+  stamp.append(el('span', null, formatTime(event.timestamp)));
+  col.append(stamp);
+  node.append(col);
+  state.lastSender = sender;
+  return node;
 }
 
 function renderThinking(event) {
   const { messageId, agent } = event.payload;
-  const item = el('div', 'thinking');
-  item.id = `working-${messageId}`;
-  item.dataset.agent = agent;
-  const dots = el('span', 'dots');
-  dots.append(el('i'), el('i'), el('i'));
-  item.append(dots);
-  item.append(el('span', null, `${label(agent)} is reading the project…`));
-  return item;
+  const node = row('thinking', agent);
+  node.id = `working-${messageId}`;
+  const bubble = el('div', 'bubble');
+  bubble.append(el('i'), el('i'), el('i'));
+  bubble.title = `${label(agent)} is reading the project…`;
+  node.append(bubble);
+  return node;
 }
 
 function renderHandoff(event) {
   const { fromAgent, toAgent, messageCount, omittedMessages, kind } = event.payload;
-  const item = el('div', 'separator');
-  item.style.setProperty('--from', `var(--${fromAgent}, var(--text-2))`);
-  item.style.setProperty('--to', `var(--${toAgent}, var(--text-2))`);
-  const text = el('span');
-  text.append('Handoff ');
-  text.append(el('span', 'from', `@${fromAgent}`));
-  text.append(' → ');
-  text.append(el('span', 'to', `@${toAgent}`));
-  const detail = messageCount > 0
-    ? ` · ${messageCount} message${messageCount === 1 ? '' : 's'} carried over${omittedMessages ? `, ${omittedMessages} older omitted` : ''}`
-    : ' · no prior context';
-  text.append(detail);
-  if (kind && kind !== 'automatic') text.append(` · ${kind}`);
-  item.append(text);
-  return item;
+  const node = el('div', 'system handoff');
+  node.style.setProperty('--from', agentColor(fromAgent));
+  node.style.setProperty('--to', agentColor(toAgent));
+  node.append('handoff ');
+  node.append(el('b', 'from', `@${fromAgent}`));
+  node.append(' → ');
+  node.append(el('b', 'to', `@${toAgent}`));
+  node.append(messageCount > 0
+    ? ` · ${messageCount} message${messageCount === 1 ? '' : 's'} carried${omittedMessages ? ` · ${omittedMessages} older omitted` : ''}`
+    : ' · no prior context');
+  if (kind && kind !== 'automatic') node.append(` · ${kind}`);
+  state.lastSender = null;
+  return node;
 }
+
+const classify = (percent) => (percent >= 100 ? 'exhausted' : percent >= 90 ? 'critical' : percent >= 80 ? 'warning' : 'normal');
 
 function renderWarning(event) {
   const { agent, usedPercent, projectedPercent, level, message, alternatives = [], source } = event.payload;
   const byProjection = Number.isFinite(projectedPercent) && projectedPercent > usedPercent && classify(projectedPercent) !== classify(usedPercent);
-  const item = el('section', `banner ${level}${byProjection ? ' projection' : ''}`);
-  item.dataset.agent = agent;
-  item.append(el('span', 'kind', byProjection ? 'Next-turn projection' : 'Usage now'));
-  const text = el('div', 'text');
+  const node = el('div', `system ${level === 'warning' ? 'warn' : 'crit'}`);
+  node.title = message;
   const scope = source === 'room-soft-budget' ? 'local budget' : source?.startsWith('official') ? 'provider quota' : source === 'test-simulation' ? 'simulated window' : 'usage window';
-  text.append(el('strong', null, `@${agent} `));
-  text.append(byProjection
-    ? `is at ${Math.round(usedPercent)}% of its ${scope}; another turn like the last one would reach ${Math.round(projectedPercent)}%.`
-    : `has used ${Math.round(usedPercent)}% of its ${scope}.`);
-  if (alternatives.length) text.append(` Continue with ${alternatives.map((id) => `@${id}`).join(' or ')}.`);
-  text.title = message;
-  item.append(text);
-  const gauge = el('div', 'gauge');
+  node.append(el('b', null, byProjection ? 'projection · ' : `${level} · `));
+  node.append(el('b', null, `@${agent} `));
+  node.append(byProjection
+    ? `at ${Math.round(usedPercent)}% of ${scope} · next turn like the last → ${Math.round(projectedPercent)}%`
+    : `${Math.round(usedPercent)}% of ${scope} used`);
+  if (alternatives.length) node.append(` · continue with ${alternatives.map((id) => `@${id}`).join(' / ')}`);
+  const gauge = el('span', 'gauge');
   if (byProjection) {
     const next = el('span', 'next');
     next.style.width = `${Math.min(100, projectedPercent)}%`;
@@ -349,19 +405,19 @@ function renderWarning(event) {
   const now = el('span', 'now');
   now.style.width = `${Math.min(100, usedPercent)}%`;
   gauge.append(now);
-  item.append(gauge);
-  return item;
+  node.append(gauge);
+  state.lastSender = null;
+  return node;
 }
-
-const classify = (percent) => (percent >= 100 ? 'exhausted' : percent >= 90 ? 'critical' : percent >= 80 ? 'warning' : 'normal');
 
 function renderFailure(event) {
   const { messageId, target, error, recovered } = event.payload;
   removeThinking(messageId);
-  const item = el('div', `error-card${recovered ? ' recovered' : ''}`);
-  item.append(el('span', 'label', recovered ? `${label(target)} · turn recovered after restart` : `${label(target)} could not answer`));
-  item.append(error);
-  return item;
+  const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
+  node.append(el('span', 'label', recovered ? `${label(target)} · turn recovered after restart` : `${label(target)} could not answer`));
+  node.append(error);
+  state.lastSender = null;
+  return node;
 }
 
 function applyUsage(event) {
@@ -371,14 +427,11 @@ function applyUsage(event) {
     entry.tokens = roomTotalTokens;
     renderAgents();
   }
-  const slot = responseMessageId ? document.getElementById(`usage-${responseMessageId}`) : null;
-  if (slot && usage) {
-    slot.hidden = false;
-    slot.replaceChildren();
-    slot.append(el('span', null, `${formatTokens(usage.totalTokens)} tokens`));
-    if (usage.cachedInputTokens) slot.append(el('span', null, `${formatTokens(usage.cachedInputTokens)} cached`));
-    if (Number.isFinite(usage.costUsd) && usage.costUsd > 0) slot.append(el('span', null, `$${usage.costUsd.toFixed(3)}`));
-    slot.append(el('span', null, `room total ${formatTokens(roomTotalTokens)}`));
+  const stamp = responseMessageId ? document.getElementById(`usage-${responseMessageId}`) : null;
+  if (stamp && usage) {
+    stamp.append(el('span', null, `${formatTokens(usage.totalTokens)} tok`));
+    if (Number.isFinite(usage.costUsd) && usage.costUsd > 0) stamp.append(el('span', null, `$${usage.costUsd.toFixed(2)}`));
+    stamp.append(el('span', null, `Σ ${formatTokens(roomTotalTokens)}`));
   }
 }
 
@@ -418,7 +471,7 @@ function renderEvent(event) {
 /* ---------- bootstrap ---------- */
 
 const initial = await fetch('/api/state').then((response) => response.json());
-els.project.textContent = initial.projectRoot;
+els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;
 els.project.title = initial.projectRoot;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 for (const agent of initial.agents) {
@@ -427,9 +480,11 @@ for (const agent of initial.agents) {
 }
 if (!els.target.options.length) els.target.add(new Option('No agent ready', ''));
 renderAgents();
+renderPicker();
 renderOnboarding();
 for (const event of initial.events) renderEvent(event);
 scrollToEnd();
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { renderAgents(); renderPicker(); });
 
 /* ---------- live stream ---------- */
 

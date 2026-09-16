@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>PULSE</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
@@ -21,22 +21,29 @@
 
       <main id="messages" class="thread" aria-live="polite">
         <div class="empty">
+          <div class="empty-mark" aria-hidden="true"></div>
           <strong>One conversation. Every agent.</strong>
-          <span>Pick an agent below or start with a mention, for example <code>@codex summarize this project</code>.</span>
+          <span>Pick an agent and ask, or start with a mention such as <code>@codex summarize this project</code>.</span>
         </div>
       </main>
 
       <section id="onboarding" class="onboarding" hidden>
-        <h2>No agent is ready yet</h2>
-        <p>PULSE talks to the coding agents already installed on this computer. Install or sign in to one of them, then reload this page.</p>
+        <p class="onboarding-eyebrow">INTERFACE · NO AGENT READY</p>
+        <h2>PULSE talks to the coding agents already on this computer.</h2>
+        <p>Install or sign in to one of them, then reload this page.</p>
         <ul id="onboarding-list" class="onboarding-list"></ul>
-        <p class="hint">Run <code>pulse doctor</code> in a terminal for the same diagnosis.</p>
+        <p class="hint">Same diagnosis in a terminal: <code>pulse doctor</code></p>
       </section>
 
       <form id="composer" class="composer">
-        <select id="target" aria-label="Agent"></select>
-        <textarea id="message" rows="1" placeholder="Ask the room…" required></textarea>
-        <button type="submit" aria-label="Send">Send</button>
+        <div id="picker" class="picker" role="radiogroup" aria-label="Agent"></div>
+        <select id="target" aria-label="Agent" class="visually-hidden"></select>
+        <div class="field">
+          <textarea id="message" rows="1" placeholder="Ask the room…" required></textarea>
+          <button type="submit" aria-label="Send">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16V5m0 0l-4.5 4.5M10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
       </form>
       <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
       <div id="toast" class="toast" role="status" hidden></div>

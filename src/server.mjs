@@ -150,8 +150,8 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         return response.end(html);
       }
-      if (request.method === 'GET' && url.pathname === '/app.js') {
-        const js = await readFile(join(publicDirectory, 'app.js'));
+      if (request.method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/brands.js')) {
+        const js = await readFile(join(publicDirectory, url.pathname.slice(1)));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
         return response.end(js);
       }

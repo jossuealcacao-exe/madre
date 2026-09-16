@@ -379,6 +379,9 @@ test('serves the single-room interface', async () => {
     assert.match(html, /configured model provider/);
     assert.match(html, /id="onboarding"/);
     assert.match(html, /id="connection"/);
+    const brands = await fetch(`http://127.0.0.1:${port}/brands.js`);
+    assert.equal(brands.status, 200);
+    assert.match(await brands.text(), /export const BRANDS/);
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((result) => result.json());
     assert.equal(state.softTokenBudget, 500000);
   } finally {
