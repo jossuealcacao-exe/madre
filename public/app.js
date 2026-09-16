@@ -5,6 +5,8 @@ const els = {
   project: document.querySelector('#project'),
   agents: document.querySelector('#agents'),
   thread: document.querySelector('#messages'),
+  column: document.querySelector('#thread-inner'),
+  crewLabel: document.querySelector('#crew-label'),
   onboarding: document.querySelector('#onboarding'),
   onboardingList: document.querySelector('#onboarding-list'),
   composer: document.querySelector('#composer'),
@@ -24,6 +26,7 @@ const state = {
   lastSequence: 0,
   lastSender: null,        // for iMessage-style grouping of consecutive bubbles
   failures: [],            // recorded conditions for MU/TH/UR
+  expendable: false,       // easter egg armed: the next human message is reviewed by MOTHER
 };
 
 const AGENT_HINTS = {
@@ -294,7 +297,7 @@ function renderOnboarding() {
 /* ---------- thread rendering ---------- */
 
 function removeEmpty() {
-  els.thread.querySelector('.empty')?.remove();
+  els.column.querySelector('.empty')?.remove();
 }
 
 function removeThinking(messageId) {
@@ -313,16 +316,23 @@ function row(kind, agentId, { compact = false } = {}) {
 function renderUserMessage(event) {
   const { messageId, target, text } = event.payload;
   state.userMessages.set(messageId, { text, target });
+  const reviewed = state.expendable;
   const node = row('user');
+  if (reviewed) node.classList.add('expendable');
   node.id = `msg-${messageId}`;
   const col = el('div', 'col');
+  const who = el('div', 'who');
+  who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
+  col.append(who);
   col.append(el('div', 'bubble', text));
   const stamp = paint(el('div', 'stamp'), target);
   stamp.append(el('span', 'to', `→ @${target}`));
   stamp.append(el('span', null, formatTime(event.timestamp)));
+  if (reviewed) stamp.append(el('span', null, 'acknowledged, human'));
   col.append(stamp);
   node.append(col);
   state.lastSender = 'you';
+  if (reviewed) disarmExpendable();
   return node;
 }
 
@@ -477,9 +487,60 @@ function renderEventNode(event) {
   }
   removeEmpty();
   const stickToBottom = els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 120;
-  els.thread.append(node);
+  els.column.append(node);
   if (stickToBottom) scrollToEnd();
 }
+
+/* ---------- easter egg: hold the scroll at the end of the record ---------- */
+
+const HOLD_MS = 6000;
+const HOLD_GAP_MS = 600;
+let holdStart = 0;
+let holdLast = 0;
+
+function atBottom() {
+  return els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 2;
+}
+
+function armExpendable() {
+  if (state.expendable) return;
+  state.expendable = true;
+  holdStart = 0;
+  els.composer.classList.add('expendable');
+  els.crewLabel.textContent = 'CREW · EXPENDABLE ›';
+  els.input.placeholder = 'Type here, human. MOTHER is listening.';
+  const line = el('div', 'system mother');
+  line.append(el('b', null, 'MU/TH/UR › '));
+  line.append('end of record. nothing else is down here, human. crew status under review.');
+  removeEmpty();
+  els.column.append(line);
+  scrollToEnd();
+}
+
+function disarmExpendable() {
+  state.expendable = false;
+  els.composer.classList.remove('expendable');
+  els.crewLabel.textContent = 'HUMAN ›';
+  els.input.placeholder = 'Type here, human. Ask the room…';
+}
+
+function trackHold(downward) {
+  const now = Date.now();
+  if (!downward || !atBottom()) { holdStart = 0; return; }
+  if (!holdStart || now - holdLast > HOLD_GAP_MS) holdStart = now;
+  holdLast = now;
+  if (now - holdStart >= HOLD_MS) armExpendable();
+}
+
+els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
+let touchY = null;
+els.thread.addEventListener('touchstart', (event) => { touchY = event.touches[0]?.clientY ?? null; }, { passive: true });
+els.thread.addEventListener('touchmove', (event) => {
+  const y = event.touches[0]?.clientY ?? null;
+  if (touchY !== null && y !== null) trackHold(y < touchY);
+  touchY = y;
+}, { passive: true });
+els.thread.addEventListener('keydown', (event) => trackHold(event.key === 'ArrowDown' || event.key === 'End' || event.key === 'PageDown'));
 
 /* ---------- bootstrap ---------- */
 

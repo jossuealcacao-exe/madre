@@ -80,7 +80,7 @@ function buildDocument(html) {
   const label = new FakeElement('span'); label.className = 'connection-label';
   registry.get('connection').append(label);
   const empty = new FakeElement('div'); empty.className = 'empty';
-  registry.get('messages').append(empty);
+  registry.get('thread-inner').append(empty);
   document.querySelector = (selector) => {
     if (selector === '#composer button[type="submit"]') return submit;
     return FakeElement.prototype.querySelector.call(document, selector);
@@ -127,8 +127,13 @@ test('the room UI boots against a real transcript without throwing', async () =>
   const badge = registry.get('mother-count');
   assert.equal(badge.hidden, false);
   assert.equal(Number(badge.textContent) >= failures, true, 'MU/TH/UR badge counts the recorded failures');
-  const thread = registry.get('messages');
-  const rendered = thread.children.filter((child) => child.className !== 'empty');
+  const column = registry.get('thread-inner');
+  const rendered = column.children.filter((child) => child.className !== 'empty');
   assert.ok(rendered.length >= events.filter((event) => event.type === 'message.created').length, 'every message became a node');
-  assert.equal(thread.querySelector('.thinking'), null, 'no ghost typing indicator survives the replay');
+  assert.equal(column.querySelector('.thinking'), null, 'no ghost typing indicator survives the replay');
+  assert.equal(column.querySelector('.empty'), null, 'the empty state is gone once messages exist');
+  const firstUser = column.children.find((child) => child instanceof FakeElement && child.classList.contains('user'));
+  assert.ok(firstUser, 'a human message rendered');
+  assert.match(firstUser.textContent, /YOU · CREW/, 'human messages carry the crew label');
+  assert.equal(registry.get('crew-label') !== undefined, true);
 });

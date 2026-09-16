@@ -43,10 +43,12 @@
       </dialog>
 
       <main id="messages" class="thread" aria-live="polite">
-        <div class="empty">
-          <div class="empty-mark" aria-hidden="true"></div>
-          <strong>One conversation. Every agent.</strong>
-          <span>Pick an agent and ask, or start with a mention such as <code>@codex summarize this project</code>.</span>
+        <div id="thread-inner" class="thread-inner">
+          <div class="empty">
+            <div class="empty-mark" aria-hidden="true"></div>
+            <strong>One conversation. Every agent.</strong>
+            <span>Pick an agent and ask, or start with a mention such as <code>@codex summarize this project</code>.</span>
+          </div>
         </div>
       </main>
 
@@ -62,7 +64,8 @@
         <div id="picker" class="picker" role="radiogroup" aria-label="Agent"></div>
         <select id="target" aria-label="Agent" class="visually-hidden"></select>
         <div class="field">
-          <textarea id="message" rows="1" placeholder="Ask the room…" required></textarea>
+          <span id="crew-label" class="crew-label" aria-hidden="true">HUMAN ›</span>
+          <textarea id="message" rows="1" placeholder="Type here, human. Ask the room…" required></textarea>
           <button type="submit" aria-label="Send">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16V5m0 0l-4.5 4.5M10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
