@@ -352,6 +352,9 @@ export class Room {
       const directives = allowDelegation && this.#delegation && depth === 0
         ? parseDirectives(result.text, { self: agent.id, available: others, maxSteps: this.#maxPlanSteps })
         : { steps: [], closing: null, ignored: [] };
+      if (depth > 0 && /```pulse/i.test(result.text)) {
+        await this.#alert('nested-delegation', `@${agent.id} tried to open a plan from inside a plan. It was ignored; the sequence stays under @${requester}. STOPALL if the room drifts.`, `nested:${agent.id}`);
+      }
       await this.#emit('message.created', {
         messageId: responseMessageId,
         parentMessageId: messageId,

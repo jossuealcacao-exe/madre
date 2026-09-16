@@ -1225,7 +1225,7 @@ test('an orchestrating agent puts the others to work in order, then closes; dele
 
     const events = await store.readAll();
     const types = events.map((event) => `${event.type}${event.payload.status ? `:${event.payload.status}` : ''}${event.payload.sender ? `:${event.payload.sender}→${event.payload.target}` : event.payload.agent ? `:${event.payload.agent}` : ''}`);
-    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('handoff.')), [
+    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('handoff.') && !type.startsWith('room.alert')), [
       'message.created:sent:you→claude',
       'agent.started:claude',
       'message.created:completed:claude→you',
@@ -1249,6 +1249,8 @@ test('an orchestrating agent puts the others to work in order, then closes; dele
     assert.deepEqual(plan.steps.map((step) => step.agent), ['gemini', 'codex']);
     assert.equal(plan.closing, 'Compare both syntheses.');
     assert.equal(events.filter((event) => event.type === 'plan.created').length, 1, "gemini's nested plan was not executed");
+    const nested = events.find((event) => event.type === 'room.alert' && event.payload.code === 'nested-delegation');
+    assert.match(nested.payload.message, /@gemini tried to open a plan from inside a plan/);
     assert.match(prompts.find((item) => item.agent === 'gemini').prompt, /@claude is coordinating on behalf of the human and asks you: Synthesize/);
     assert.doesNotMatch(prompts.find((item) => item.agent === 'gemini').prompt, /You may put other agents to work/, 'delegates are not offered delegation');
     assert.match(prompts[0].prompt, /You may put other agents to work: @gemini, @codex/);

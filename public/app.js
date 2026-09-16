@@ -28,8 +28,9 @@ const state = {
   lastSender: null,        // for iMessage-style grouping of consecutive bubbles
   failures: [],            // recorded conditions for MU/TH/UR
   expendable: false,       // easter egg armed: the next human message is reviewed by MOTHER
-  running: new Map(),      // messageId -> agent, turns in flight (for STOP ALL)
+  running: new Map(),      // messageId -> agent, turns in flight
   plansRunning: new Set(),
+  brakeArmed: false,       // STOP ALL is a brake against runaway sequences: armed only by MU/TH/UR alerts
 };
 
 const AGENT_HINTS = {
@@ -472,6 +473,8 @@ function renderWarning(event) {
 
 function renderAlert(event) {
   const { message } = event.payload;
+  state.brakeArmed = true;
+  updateStopAll();
   const node = el('div', 'system alert');
   node.append(el('b', null, 'MU/TH/UR › '));
   node.append(message.replace(/\s*Type STOPALL[^.]*\.?$/i, '').replace(/\s*STOPALL halts[^.]*\.?$/i, ''));
@@ -484,6 +487,7 @@ function renderAlert(event) {
 function renderHalted(event) {
   const { reason, plans, turns, agents = [] } = event.payload;
   const node = el('div', 'system halted');
+  state.brakeArmed = false;
   node.append(el('b', null, 'MU/TH/UR › '));
   node.append(plans || turns
     ? `all stop · ${plans} plan${plans === 1 ? '' : 's'}, ${turns} turn${turns === 1 ? '' : 's'} halted${agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : ''} · ${reason}`
@@ -511,7 +515,15 @@ async function stopAll() {
 function updateStopAll() {
   const button = document.querySelector('#stop-all');
   if (!button) return;
-  button.hidden = state.running.size === 0 && state.plansRunning.size === 0;
+  const idle = state.running.size === 0 && state.plansRunning.size === 0;
+  if (idle) state.brakeArmed = false;
+  button.hidden = false;
+  button.disabled = !state.brakeArmed;
+  button.classList.toggle('armed', state.brakeArmed);
+  button.title = state.brakeArmed
+    ? 'MU/TH/UR detected a runaway sequence. STOP ALL halts every plan and every agent turn.'
+    : idle ? 'All quiet. STOP ALL arms itself when MU/TH/UR detects a runaway sequence; typing STOPALL always works.'
+      : 'Agents are working normally. STOP ALL arms itself on a MU/TH/UR alert; typing STOPALL always works.';
 }
 
 function renderPlanEvent(event) {
@@ -717,6 +729,7 @@ els.project.title = initial.projectRoot;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 state.timeouts = initial.timeouts ?? {};
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
+updateStopAll();
 for (const agent of initial.agents) {
   state.agents.set(agent.id, { ...agent, tokens: 0, officialPercent: null });
   if (agent.ready) els.target.add(new Option(agent.label, agent.id));
