@@ -41,7 +41,8 @@ export async function resolveInside(root, relative) {
 // first, then files, both alphabetical; .git is never listed and node_modules
 // is shown but not walked. Read-only and fenced to the project root.
 const SKIP = new Set(['.git', '.DS_Store']);
-const SHALLOW = new Set(['node_modules', '.pulse', '.venv', 'venv', 'dist', 'build', '.next']);
+// Folders the search walk skips (the tree still opens them one level at a time).
+const SHALLOW = new Set(['node_modules', '.venv', 'venv', 'dist', 'build', '.next', '.git']);
 export async function listDirectory(root, relative = '.') {
   const path = await resolveInside(root, relative || '.');
   if (!path) return { status: 404, error: 'Not found.' };

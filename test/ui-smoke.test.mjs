@@ -129,7 +129,14 @@ test('the room UI boots against a real transcript without throwing', async () =>
     }) };
   };
   try {
-    await import('../public/app.js');
+    const app = await import('../public/app.js');
+    // GFM tables render as real tables, not as pipes in a paragraph.
+    const table = app.renderMarkdown('Before\n\n| Claim | State |\n|---|:---:|\n| a \\| b | **ok** |\n| c | d |\n\nAfter');
+    const tableNode = table.children.find((node) => node.classList?.contains('table-wrap'));
+    assert.ok(tableNode, 'a table-wrap block is produced');
+    const cells = [];
+    (function walk(node) { for (const child of node.children ?? []) { if (typeof child === 'string') continue; if (/^(td|th)$/i.test(child.tagName)) cells.push(child.textContent); walk(child); } })(tableNode);
+    assert.deepEqual(cells, ['Claim', 'State', 'a | b', 'ok', 'c', 'd']);
   } finally {
     console.error = originalError;
   }

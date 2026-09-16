@@ -1883,7 +1883,7 @@ test('Gemini stderr is diagnosed: 429 names the rate limit instead of a silent h
   idle.code = 'IDLE';
   idle.partialStderr = stderr;
   await assert.rejects(invokeGemini({ executable: '/fake', projectRoot: process.cwd(), prompt: 'p', retries: 1, run: async () => { attempts += 1; throw idle; } }), (error) => error.code === 'RATE_LIMITED' && /HTTP 429/.test(error.message));
-  assert.equal(attempts, 1, 'no retry against a rate limit');
+  assert.equal(attempts, 2, 'one retry on the fallback model, then the rate limit is reported');
 });
 
 test('idle detection ignores stderr chatter and counts only complete stdout lines', async () => {
@@ -2256,4 +2256,42 @@ test('Gemini prompts escape @handles so the CLI does not read them as files, and
   assert.equal(plain[plain.indexOf('--prompt') + 1], 'no handles', 'prompts without handles are untouched');
   const parsed = parseGeminiOutput(JSON.stringify({ type: 'message', role: 'assistant', content: 'OK \\@codex and @claude' }));
   assert.equal(parsed.text, 'OK @codex and @claude');
+});
+
+test('runReadonlyProcess stops a process the moment watchStderr condemns it', async () => {
+  const started = Date.now();
+  await assert.rejects(
+    runReadonlyProcess({
+      executable: process.execPath,
+      args: ['-e', 'process.stderr.write("status: 503 UNAVAILABLE\\n"); setTimeout(() => {}, 20000);'],
+      cwd: process.cwd(),
+      timeoutMs: 15000,
+      label: 'Fake',
+      parse: (text) => ({ text }),
+      watchStderr: (stderr) => (/503/.test(stderr) ? Object.assign(new Error('capacity'), { code: 'UNAVAILABLE' }) : null),
+    }),
+    (error) => error.code === 'UNAVAILABLE' && /capacity/.test(error.message) && typeof error.partialStderr === 'string',
+  );
+  assert.ok(Date.now() - started < 5000, 'did not wait for the timeout');
+});
+
+test('invokeGemini retries once on a fallback model when Google answers 503, and names both when it still fails', async () => {
+  const calls = [];
+  const failing = async ({ args }) => {
+    calls.push(args.includes('--model') ? args[args.indexOf('--model') + 1] : 'auto');
+    throw Object.assign(new Error('Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.'), { code: 'UNAVAILABLE', partialStderr: 'status: 503 UNAVAILABLE', partialOutput: '' });
+  };
+  await assert.rejects(
+    invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: failing, fallbackModel: 'gemini-2.5-flash' }),
+    (error) => error.code === 'UNAVAILABLE' && /also tried gemini-2\.5-flash/.test(error.message),
+  );
+  assert.deepEqual(calls, ['auto', 'gemini-2.5-flash']);
+
+  const recovering = async ({ args }) => {
+    const model = args.includes('--model') ? args[args.indexOf('--model') + 1] : 'auto';
+    if (model === 'auto') throw Object.assign(new Error('503'), { code: 'UNAVAILABLE', partialStderr: 'status: 503 UNAVAILABLE', partialOutput: '' });
+    return { text: `answered by ${model}`, usage: null };
+  };
+  const result = await invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: recovering, fallbackModel: 'gemini-2.5-flash' });
+  assert.equal(result.text, 'answered by gemini-2.5-flash');
 });

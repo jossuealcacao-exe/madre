@@ -413,6 +413,32 @@ export function renderMarkdown(text) {
     }
     if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) { flushParagraph(); fragment.append(el('hr')); index += 1; continue; }
 
+    // GFM table: a header row, a separator row of dashes, then body rows.
+    if (/^\s*\|.*\|\s*$/.test(line) && index + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[index + 1])) {
+      flushParagraph();
+      const splitRow = (row) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'));
+      const aligns = splitRow(lines[index + 1]).map((cell) => (/^:-+:$/.test(cell) ? 'center' : /-+:$/.test(cell) ? 'right' : null));
+      const wrap = el('div', 'table-wrap');
+      const table = el('table');
+      const thead = el('thead');
+      const headRow = el('tr');
+      splitRow(line).forEach((cell, column) => { const th = el('th'); if (aligns[column]) th.style.textAlign = aligns[column]; renderInline(cell, th); headRow.append(th); });
+      thead.append(headRow);
+      table.append(thead);
+      const tbody = el('tbody');
+      index += 2;
+      while (index < lines.length && /^\s*\|.*\|\s*$/.test(lines[index])) {
+        const tr = el('tr');
+        splitRow(lines[index]).forEach((cell, column) => { const td = el('td'); if (aligns[column]) td.style.textAlign = aligns[column]; renderInline(cell, td); tr.append(td); });
+        tbody.append(tr);
+        index += 1;
+      }
+      table.append(tbody);
+      wrap.append(table);
+      fragment.append(wrap);
+      continue;
+    }
+
     const bullet = line.match(/^\s*[-*+]\s+(.*)$/);
     const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
     if (bullet || numbered) {
@@ -1148,7 +1174,6 @@ function treeNode(path, entry) {
     children.hidden = true;
     let opened = false;
     button.addEventListener('click', () => {
-      if (entry.shallow) { toast(`${entry.name} is not walked: too many generated files. Ask an agent for a specific path instead.`); return; }
       opened = !opened;
       caret.textContent = opened ? '▾' : '▸';
       children.hidden = !opened;

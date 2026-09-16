@@ -236,6 +236,8 @@ export async function invokeGemini({
   imageStudio = null,
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
+  fallbackModel = process.env.PULSE_GEMINI_FALLBACK_MODEL ?? 'gemini-2.5-flash',
+  failFastMs = 15000,
   run = runReadonlyProcess,
 }) {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
@@ -244,26 +246,52 @@ export async function invokeGemini({
     await writeFile(policyPath, geminiPolicy({ lease, scopes, imageStudio: lease ? imageStudio : null }), { mode: 0o600 });
     await prepareGeminiHome({ runtimeRoot, imageStudio: lease ? imageStudio : null });
     let attempt = 0;
+    let currentModel = model;
+    let switched = false;
     for (;;) {
       attempt += 1;
+      // The CLI retries a 503 or 429 with backoff for minutes while stderr
+      // fills with stack traces. Read stderr as it comes and stop as soon as
+      // the condition is clear: credits/auth at once, capacity after a grace.
+      let firstSeenAt = null;
+      const watchStderr = (stderr) => {
+        const diagnosis = diagnoseGeminiStderr(stderr);
+        if (!diagnosis) return null;
+        firstSeenAt ??= Date.now();
+        const terminal = diagnosis.code === 'CREDITS_DEPLETED' || diagnosis.code === 'AUTH';
+        if (!terminal && Date.now() - firstSeenAt < failFastMs) return null;
+        return Object.assign(new Error(`${diagnosis.message} ${diagnosis.hint}`), { code: diagnosis.code, diagnosis });
+      };
       try {
         return await run({
           executable,
-          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model, attachmentsDir: attachments[0]?.dir ?? null, lease }),
+          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model: currentModel, attachmentsDir: attachments[0]?.dir ?? null, lease }),
           cwd: runtimeRoot,
           env: buildGeminiEnvironment({ runtimeRoot }),
           timeoutMs,
           idleTimeoutMs,
+          watchStderr,
           signal,
           label: 'Gemini',
           parse: parseGeminiOutput,
         });
       } catch (error) {
         const produced = parseGeminiOutput(error.partialOutput ?? '').text;
-        const diagnosis = diagnoseGeminiStderr(error.partialStderr ?? error.stderr ?? '');
-        // A rate limit will not clear within a retry; say what happened instead.
-        if (diagnosis?.code === 'RATE_LIMITED' || diagnosis?.code === 'AUTH' || diagnosis?.code === 'CREDITS_DEPLETED') {
+        const diagnosis = error.diagnosis ?? diagnoseGeminiStderr(error.partialStderr ?? error.stderr ?? '');
+        if (diagnosis?.code === 'AUTH' || diagnosis?.code === 'CREDITS_DEPLETED') {
           error.message = `${diagnosis.message} ${diagnosis.hint}`;
+          error.code = diagnosis.code;
+          throw error;
+        }
+        // Capacity trouble (503) or a rate limit on the chosen model: one more
+        // try on a lighter, explicit model before giving up.
+        if ((diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED') && !produced && !signal?.aborted && fallbackModel && !switched && currentModel !== fallbackModel) {
+          switched = true;
+          currentModel = fallbackModel;
+          continue;
+        }
+        if (diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED') {
+          error.message = `${diagnosis.message} ${diagnosis.hint}${switched ? ` (also tried ${fallbackModel})` : ''}`;
           error.code = diagnosis.code;
           throw error;
         }

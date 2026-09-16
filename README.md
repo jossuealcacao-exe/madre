@@ -100,6 +100,7 @@ La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULS
 
 - El visor es un mini editor de lectura: líneas numeradas, clic en un número selecciona una línea y Shift+clic extiende el rango; el botón REVIEW WITH o el clic derecho sobre el código abre el menú de agentes y deja en el campo de texto la referencia `!archivo:desde-hasta` con ese agente como destinatario. Cuando un agente crea o modifica un archivo bajo CREATE, el visor se abre solo con ese archivo.
 - El botón sol/luna de la barra alterna el tema: automático según el sistema, claro u oscuro; se recuerda en el navegador.
+- Las burbujas renderizan Markdown, incluidas tablas GFM (encabezado, separador y filas, con alineación).
 - Las rutas de archivo que un agente menciona (`src/room.mjs`, `public/app.js:42`) se vuelven enlaces que abren un visor: código y texto con la línea resaltada, imágenes, PDF, audio y video. Las imágenes Markdown del proyecto se pintan en la burbuja.
 - El icono de archivos al extremo derecho de la barra abre un panel plegable con el árbol del proyecto, en el hueco a la derecha del hilo (se oculta en pantallas angostas). Las carpetas se despliegan bajo demanda vía `GET /api/tree?path=…`, en solo lectura y encerrado a la raíz; `.git` no se lista y `node_modules` no se recorre. Un archivo abre el visor.
 - `GET /api/files?path=…` sirve archivos del proyecto en solo lectura, encerrado a la raíz del proyecto: nada de `..`, rutas absolutas ni symlinks hacia fuera; máximo 20 MB.
@@ -180,6 +181,10 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 ## Empaquetado
 
 `npm run pack:check` empaqueta el proyecto, lo instala en un directorio vacío y ejecuta el CLI instalado: `--help`, `doctor` y un arranque del servidor que sirve la sala y cierra limpio con `SIGTERM`. No invoca ningún modelo.
+
+### Gemini y la capacidad de Google
+
+Cuando Google responde 503 (modelo saturado) o 429, el Gemini CLI reintenta con backoff durante minutos y solo escribe trazas en stderr. PULSE lee ese stderr en vivo: si la condición persiste 15 s corta el proceso, reintenta una vez con un modelo explícito más ligero (`gemini-2.5-flash`, configurable con `PULSE_GEMINI_FALLBACK_MODEL`) y, si tampoco responde, lo dice con nombre y modelo probado. Créditos agotados o credenciales inválidas cortan de inmediato.
 
 ### Menciones y Gemini CLI
 

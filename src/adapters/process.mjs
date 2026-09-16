@@ -34,6 +34,10 @@ export function runReadonlyProcess({
   // Optional: give up when the process stays silent this long. Streaming
   // adapters use it to tell "thinking" from "hung"; batch ones leave it off.
   idleTimeoutMs = null,
+  // Optional: inspect accumulated stderr as it arrives; return an Error to
+  // stop the process now instead of waiting for the timeout (e.g. a CLI that
+  // retries a 503 forever).
+  watchStderr = null,
   label,
   parse,
   signal,
@@ -100,7 +104,17 @@ export function runReadonlyProcess({
     // progress noise must not keep a silent model alive past the idle limit.
     // Blank keep-alive lines are not activity either.
     child.stdout.on('data', (chunk) => { stdout += chunk; if (/\S/.test(String(chunk)) && String(chunk).includes('\n')) lastActivity = Date.now(); });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+      if (!watchStderr || settled) return;
+      const verdict = watchStderr(stderr);
+      if (!verdict) return;
+      terminateProcessTree(child, { graceMs: killGraceMs });
+      verdict.code ??= 'STDERR';
+      verdict.partialOutput = stdout;
+      verdict.partialStderr = stderr.slice(-2000);
+      finish(() => reject(verdict));
+    });
     armIdle();
     child.on('error', (error) => finish(() => {
       // spawn reports ENOENT for a missing cwd as well as a missing binary.

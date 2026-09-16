@@ -618,6 +618,12 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bubble table { display: block; max-width: 100%; overflow-x: auto; }
 .bubble img.inline, .bubble .file-tile img { max-width: 100%; }
 .plan-card li, .bubble li, .bubble p, .bubble a { overflow-wrap: anywhere; }
+.bubble .table-wrap { overflow-x: auto; margin: 6px 0 10px; max-width: 100%; }
+.bubble table { border-collapse: collapse; font-size: 13px; line-height: 1.45; min-width: 60%; }
+.bubble th, .bubble td { border: 1px solid color-mix(in srgb, var(--bubble-ink) 14%, transparent); padding: 6px 10px; vertical-align: top; text-align: left; }
+.bubble th { font-weight: 650; background: color-mix(in srgb, var(--bubble-ink) 6%, transparent); font-size: 12px; letter-spacing: .02em; }
+.bubble tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--bubble-ink) 3%, transparent); }
+.row.user .bubble th, .row.user .bubble td { border-color: color-mix(in srgb, var(--user-ink) 25%, transparent); }
 .row .col { max-width: 100%; }
 .thread-inner { overflow-x: hidden; }
 /* scope toggles in connection cards */
