@@ -13,6 +13,7 @@ import { SCOPES, SCOPE_LABELS, abilityLine, capabilitySummary, resolveScopes } f
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from './lease.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
+import { resolveReferences } from './files.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -253,6 +254,8 @@ export class Room {
     if (model !== null && model !== undefined && model !== '' && !isValidModelName(model)) throw new Error('Model name is not valid.');
     const chosenModel = model || null;
     const text2 = parsed.text || `(${files.length} attached file${files.length === 1 ? '' : 's'})`;
+    // "!path" tokens point the agent at project files; only existing files count.
+    const references = await resolveReferences(this.#projectRoot, text2);
 
     const messageId = randomUUID();
     await this.#emit('message.created', {
@@ -264,6 +267,7 @@ export class Room {
       status: 'sent',
       model: chosenModel,
       attachments: files.length ? files.map((file) => ({ id: file.id, name: file.name, fileName: file.fileName, size: file.size, contentType: file.contentType })) : undefined,
+      references: references.length ? references.map(({ excerpt, ...reference }) => reference) : undefined,
       create: create === true ? true : undefined,
     });
     // The human's creation lease: one directory for this message and any plan
@@ -316,7 +320,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation, model: chosenModel, attachments: files, lease });
+    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation, model: chosenModel, attachments: files, references, lease });
   }
 
   // Agents that can receive a delegated step from `self`.
@@ -365,7 +369,7 @@ export class Room {
 
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
-  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], lease = null }) {
+  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null }) {
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${targetId} is not installed on this computer.` });
@@ -408,7 +412,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model, attachments, lease });
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model, attachments, references, lease });
     this.#turns.set(messageId, turn);
     let outcome = null;
     try {
@@ -424,11 +428,14 @@ export class Room {
     return outcome?.responseMessageId ?? null;
   }
 
-  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null }) {
+  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], references = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null }) {
     const others = this.delegatesFor(agent.id);
     const mayDelegate = allowDelegation && this.#delegation && depth === 0 && others.length > 0;
     const attached = attachments.length
       ? `The human attached ${attachments.length} file(s); read them if relevant, they are part of this request:\n${attachments.map((file) => `- ${file.path} (${file.contentType}, ${file.size} bytes)`).join('\n')}`
+      : null;
+    const referenced = references.length
+      ? `The human points at these project files with "!" (read them first; a range means those lines specifically):\n${references.map((ref) => `- ${ref.path}${ref.lines ? `:${ref.lines.from}-${ref.lines.to}` : ''} (${ref.contentType}, ${ref.size} bytes)${ref.excerpt ? `\n${ref.excerpt}` : ''}`).join('\n')}`
       : null;
     return [
       'You are answering inside a PULSE project room shared by a human and several AI agents.',
@@ -444,13 +451,14 @@ export class Room {
       scopes?.web ? 'WEB ACCESS: the human enabled web search and fetch for you; use them when the question needs current or external information, and cite the sources you used.' : null,
       !lease && requester !== 'you' && depth > 0 && sharedLeaseHint ? sharedLeaseHint : null,
       attached,
+      referenced,
       requester === 'you'
         ? `User message: ${text}`
         : `@${requester} is coordinating on behalf of the human and asks you: ${text}\nAnswer to the room. You cannot delegate further in this turn.`,
     ].filter(Boolean).join('\n');
   }
 
-  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null, attachments = [], lease: sharedLease = null }) {
+  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null }) {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
     // read-only even while the plan holds a lease.
@@ -477,7 +485,7 @@ export class Room {
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
-        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, lease, scopes: turnScopes, imageStudio, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
+        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, references, lease, scopes: turnScopes, imageStudio, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,

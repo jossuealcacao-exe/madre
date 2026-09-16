@@ -38,7 +38,7 @@ import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/e
 import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
 import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexModelCache } from '../src/models.mjs';
-import { contentTypeFor, isImage, listDirectory, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
+import { contentTypeFor, isImage, listDirectory, readServable, resolveInside, resolveReferences, scoreFile, searchFiles, storeAttachment } from '../src/files.mjs';
 import { CAPABILITIES, abilityLine, agentsWith, capabilitySummary, resolveScopes } from '../src/capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
 import { diagnoseGeminiStderr, geminiLeasePolicy } from '../src/adapters/gemini.mjs';
@@ -2213,6 +2213,31 @@ test('listDirectory fences to the project, hides .git, sorts folders first and d
     assert.deepEqual(inner.entries.map((entry) => `${entry.kind}:${entry.name}`), ['file:a.mjs']);
     assert.equal((await listDirectory(root, '../')).status, 404);
     assert.equal((await listDirectory(root, 'zeta.txt')).status, 404);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
+test('searchFiles ranks by name match and resolveReferences reads !file:lines from the project only', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-refs-'));
+  try {
+    await mkdir(join(root, 'src'));
+    await mkdir(join(root, 'node_modules', 'dep'), { recursive: true });
+    await writeFile(join(root, 'node_modules', 'dep', 'room.mjs'), 'nope');
+    await writeFile(join(root, 'src', 'room.mjs'), 'one\ntwo\nthree\nfour\n');
+    await writeFile(join(root, 'img.md'), '# image brief\n');
+    const found = await searchFiles(root, 'room');
+    assert.deepEqual(found.map((file) => file.path), ['src/room.mjs'], 'node_modules is not walked');
+    assert.ok(scoreFile('src/room.mjs', 'room.mjs') > scoreFile('src/room.mjs', 'rm'));
+    assert.equal((await searchFiles(root, 'zzz')).length, 0);
+
+    const refs = await resolveReferences(root, 'revisa con @claude el !img.md y !src/room.mjs:2-3 y también !missing.txt y !../etc/passwd');
+    assert.deepEqual(refs.map((ref) => ref.path), ['img.md', 'src/room.mjs']);
+    assert.equal(refs[0].lines, undefined);
+    assert.deepEqual(refs[1].lines, { from: 2, to: 3 });
+    assert.match(refs[1].excerpt, /2 \| two\n\s+3 \| three/);
+    assert.equal((await resolveReferences(root, 'no refs here, email a!b.c')).length, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

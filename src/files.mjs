@@ -64,6 +64,86 @@ export async function listDirectory(root, relative = '.') {
   return { status: 200, entries: items.slice(0, 500), truncated: items.length > 500 };
 }
 
+// Fuzzy-ish file search for the "!" menu in the composer: every path under
+// the project (same fences as the tree, shallow folders skipped) scored by
+// substring and initials match. The walk is cached for a short while.
+const walkCache = new Map(); // root -> { at, files }
+export async function walkProject(root, { maxFiles = 20000, ttlMs = 15000 } = {}) {
+  const cached = walkCache.get(root);
+  if (cached && Date.now() - cached.at < ttlMs) return cached.files;
+  const files = [];
+  async function walk(dir, prefix, depth) {
+    if (files.length >= maxFiles || depth > 14) return;
+    let entries = [];
+    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (SKIP.has(entry.name)) continue;
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) { if (!SHALLOW.has(entry.name)) await walk(join(dir, entry.name), rel, depth + 1); continue; }
+      if (entry.isFile()) files.push(rel);
+      if (files.length >= maxFiles) return;
+    }
+  }
+  await walk(root, '', 0);
+  walkCache.set(root, { at: Date.now(), files });
+  return files;
+}
+
+export function scoreFile(path, query) {
+  const q = query.toLowerCase();
+  if (!q) return 1;
+  const lower = path.toLowerCase();
+  const name = lower.split('/').pop();
+  if (name === q) return 100;
+  if (name.startsWith(q)) return 80 - Math.min(name.length - q.length, 30);
+  if (name.includes(q)) return 60 - Math.min(name.indexOf(q), 30);
+  if (lower.includes(q)) return 40 - Math.min(lower.length / 10, 20);
+  // subsequence match ("rmjs" -> room.mjs)
+  let index = 0;
+  for (const char of q) { index = lower.indexOf(char, index); if (index < 0) return 0; index += 1; }
+  return 10 - Math.min(lower.length / 20, 9);
+}
+
+export async function searchFiles(root, query, { limit = 20 } = {}) {
+  const files = await walkProject(root);
+  return files
+    .map((path) => ({ path, score: scoreFile(path, String(query ?? '').trim()) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.length - b.path.length || a.path.localeCompare(b.path))
+    .slice(0, limit)
+    .map((item) => ({ path: item.path, name: item.path.split('/').pop(), contentType: contentTypeFor(item.path) }));
+}
+
+// "!src/room.mjs:12-20" in a human message points an agent at a project file
+// (optionally a line range). Only files that exist inside the project count.
+export const REFERENCE = /(^|[\s(,;:])!((?:[\w.-]+\/)*[\w.-]+\.[A-Za-z0-9]{1,8})(?::(\d+)(?:-(\d+))?)?(?![\w/])/g;
+export async function resolveReferences(root, text, { maxLines = 120 } = {}) {
+  const found = [];
+  const seen = new Set();
+  for (const match of String(text ?? '').matchAll(REFERENCE)) {
+    const rel = match[2];
+    const key = `${rel}:${match[3] ?? ''}-${match[4] ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const path = await resolveInside(root, rel);
+    if (!path) continue;
+    const info = await stat(path).catch(() => null);
+    if (!info || !info.isFile()) continue;
+    const reference = { path: rel, size: info.size, contentType: contentTypeFor(rel) };
+    if (match[3]) {
+      const from = Number(match[3]);
+      const to = match[4] ? Math.max(from, Number(match[4])) : from;
+      reference.lines = { from, to };
+      if (isText(rel) && info.size <= 2 * 1024 * 1024) {
+        const all = (await readFile(path, 'utf8')).split('\n');
+        reference.excerpt = all.slice(from - 1, Math.min(to, from - 1 + maxLines)).map((line, index) => `${String(from + index).padStart(4)} | ${line}`).join('\n');
+      }
+    }
+    found.push(reference);
+  }
+  return found;
+}
+
 export async function readServable(root, relative, { maxBytes = MAX_FILE_BYTES } = {}) {
   const path = await resolveInside(root, relative);
   if (!path) return { status: 404, error: 'Not found.' };

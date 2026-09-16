@@ -98,6 +98,8 @@ Hacer clic en una esfera de agente en la barra despliega su uso en la sesión: t
 
 La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULSE deje de ser de solo lectura:
 
+- El visor es un mini editor de lectura: líneas numeradas, clic en un número selecciona una línea y Shift+clic extiende el rango; el botón REVIEW WITH o el clic derecho sobre el código abre el menú de agentes y deja en el campo de texto la referencia `!archivo:desde-hasta` con ese agente como destinatario. Cuando un agente crea o modifica un archivo bajo CREATE, el visor se abre solo con ese archivo.
+- El botón sol/luna de la barra alterna el tema: automático según el sistema, claro u oscuro; se recuerda en el navegador.
 - Las rutas de archivo que un agente menciona (`src/room.mjs`, `public/app.js:42`) se vuelven enlaces que abren un visor: código y texto con la línea resaltada, imágenes, PDF, audio y video. Las imágenes Markdown del proyecto se pintan en la burbuja.
 - El icono de archivos al extremo derecho de la barra abre un panel plegable con el árbol del proyecto, en el hueco a la derecha del hilo (se oculta en pantallas angostas). Las carpetas se despliegan bajo demanda vía `GET /api/tree?path=…`, en solo lectura y encerrado a la raíz; `.git` no se lista y `node_modules` no se recorre. Un archivo abre el visor.
 - `GET /api/files?path=…` sirve archivos del proyecto en solo lectura, encerrado a la raíz del proyecto: nada de `..`, rutas absolutas ni symlinks hacia fuera; máximo 20 MB.
@@ -108,6 +110,7 @@ La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULS
 El campo es de una sola línea y crece solo con saltos de línea explícitos, hasta dos (tres líneas visibles); más allá, el texto se desplaza dentro. Nunca se ensancha. Dentro del campo:
 
 - `@codex`, `@claude`, `@gemini`, `@opencode` se pintan como etiquetas con el color del agente en cuanto se escriben; teclear `@` abre la lista de agentes de la sala.
+- `!` apunta a un archivo del proyecto: `!img.md` o `!src/room.mjs:12-20`. Teclear `!` busca entre los archivos del proyecto (`GET /api/tree/search?q=…`); la referencia se pinta como etiqueta, el servidor comprueba que el archivo existe dentro del proyecto y el agente recibe la lista al frente de su prompt, con las líneas citadas si hay rango. En las burbujas, `!archivo:líneas` abre el visor en esas líneas.
 - `/` abre el menú de comandos. Los del compositor actúan al enviar: `/create <petición>` arma el permiso CREATE para ese mensaje, `/image <petición>` lo arma con el alcance de imágenes y enruta al agente que sí puede generarlas, `/stopall` es el freno maestro. Los de módulos (`/git`, `/ahp`) corren en el servidor, en solo lectura y dentro del proyecto, y devuelven una tarjeta de hechos al hilo que los agentes también leen en su transcripción. Un comando tachado en el menú es un módulo que no está disponible en este proyecto.
 
 ### Capacidades por agente

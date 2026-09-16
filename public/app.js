@@ -160,7 +160,7 @@ function imageSource(src) {
 }
 
 function renderInline(text, into) {
-  const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(!\[[^\]\n]*\]\(([^)\s]+)\))|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))/g;
+  const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(!\[[^\]\n]*\]\(([^)\s]+)\))|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))|((?<![\w/])!((?:[\w.-]+\/)*[\w.-]+\.[A-Za-z0-9]{1,8})(?::(\d+)(?:-(\d+))?)?(?![\w/]))/g;
   let last = 0;
   for (const match of text.matchAll(pattern)) {
     if (match.index > last) appendTextWithPaths(text.slice(last, match.index), into);
@@ -180,6 +180,15 @@ function renderInline(text, into) {
         img.addEventListener('click', () => openViewer({ url: src, label: alt || match[5] }));
         into.append(img);
       } else into.append(el('code', null, match[5]));
+    }
+    else if (match[8]) {
+      const ref = el('button', 'file-ref', token);
+      ref.type = 'button';
+      const from = match[10] ? Number(match[10]) : null;
+      const to = match[11] ? Number(match[11]) : from;
+      ref.title = `Open ${match[9]}${from ? ` at line ${from}${to !== from ? `-${to}` : ''}` : ''}`;
+      ref.addEventListener('click', () => openViewer({ root: 'project', path: match[9], line: from, lines: from ? { from, to } : null }));
+      into.append(ref);
     }
     else if (match[2]) into.append(el('strong', null, token.slice(2, -2)));
     else if (match[3]) into.append(el('em', null, token.slice(1, -1)));
@@ -207,12 +216,104 @@ const viewer = {
   body: document.querySelector('#viewer-body'),
   close: document.querySelector('#viewer-close'),
 };
-async function openViewer({ root = 'project', path = null, url = null, label = null, line = null }) {
+const viewerUI = {
+  selection: document.querySelector('#viewer-selection'),
+  review: document.querySelector('#viewer-review'),
+  menu: document.querySelector('#viewer-menu'),
+  path: null,      // project-relative path of the open text file, if any
+  from: null, to: null,
+  lineNodes: [],
+};
+function setSelection(from, to) {
+  viewerUI.from = from; viewerUI.to = to;
+  const lo = Math.min(from ?? 0, to ?? 0), hi = Math.max(from ?? 0, to ?? 0);
+  for (const { n, ln, tx } of viewerUI.lineNodes) {
+    const on = from !== null && n >= lo && n <= hi;
+    ln.classList.toggle('sel', on); tx.classList.toggle('sel', on);
+  }
+  const has = from !== null;
+  viewerUI.selection.hidden = !has;
+  viewerUI.review.hidden = !has;
+  if (has) viewerUI.selection.textContent = lo === hi ? `L${lo}` : `L${lo}-${hi}`;
+}
+function referenceForSelection() {
+  const lo = Math.min(viewerUI.from, viewerUI.to), hi = Math.max(viewerUI.from, viewerUI.to);
+  return `!${viewerUI.path}:${lo}${hi !== lo ? `-${hi}` : ''}`;
+}
+// "Review with @agent": the selection becomes a !file:lines reference in the
+// composer and that agent becomes the target; the human finishes the sentence.
+function reviewWith(agentId) {
+  const reference = referenceForSelection();
+  const current = els.input.value.trim();
+  els.input.value = `${reference} ${current ? current : 'review this: '}`;
+  if (agentId && state.agents.get(agentId)?.ready) { els.target.value = agentId; renderPicker(); }
+  hideViewerMenu();
+  viewer.dialog.close();
+  autosize();
+  els.input.focus();
+  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+}
+function showViewerMenu(x, y) {
+  const menuNode = viewerUI.menu;
+  menuNode.replaceChildren(el('div', 'hint', `REVIEW ${referenceForSelection()} WITH`));
+  for (const agent of state.agents.values()) {
+    const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
+    item.type = 'button';
+    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? label(agent.id) : `${label(agent.id)} · not ready`));
+    item.disabled = !agent.ready;
+    item.addEventListener('click', () => reviewWith(agent.id));
+    menuNode.append(item);
+  }
+  menuNode.hidden = false;
+  const width = 240, height = 40 + 36 * state.agents.size;
+  menuNode.style.left = `${Math.min(x, window.innerWidth - width - 12)}px`;
+  menuNode.style.top = `${Math.min(y, window.innerHeight - height - 12)}px`;
+}
+function hideViewerMenu() { viewerUI.menu.hidden = true; }
+viewerUI.review?.addEventListener('click', (event) => {
+  const rect = event.currentTarget.getBoundingClientRect();
+  if (viewerUI.menu.hidden) showViewerMenu(rect.left, rect.bottom + 6); else hideViewerMenu();
+});
+viewer.dialog.addEventListener('click', (event) => { if (!viewerUI.menu.hidden && !viewerUI.menu.contains(event.target) && event.target !== viewerUI.review) hideViewerMenu(); });
+viewer.dialog.addEventListener('close', () => { hideViewerMenu(); setSelection(null, null); });
+
+function codeView(text, { line = null, lines = null } = {}) {
+  const pre = el('pre', 'code');
+  viewerUI.lineNodes = [];
+  const rows = text.replace(/\n$/, '').split('\n');
+  rows.forEach((content, index) => {
+    const n = index + 1;
+    const ln = el('span', 'ln', String(n));
+    const tx = el('span', 'tx', content || ' ');
+    ln.dataset.n = n; tx.dataset.n = n;
+    const marked = lines ? n >= lines.from && n <= lines.to : n === line;
+    if (marked) { ln.classList.add('hl'); tx.classList.add('hl'); }
+    ln.addEventListener('click', (event) => {
+      if (event.shiftKey && viewerUI.from !== null) setSelection(viewerUI.from, n);
+      else if (viewerUI.from === n && viewerUI.to === n) setSelection(null, null);
+      else setSelection(n, n);
+    });
+    tx.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      const lo = Math.min(viewerUI.from ?? -1, viewerUI.to ?? -1), hi = Math.max(viewerUI.from ?? -1, viewerUI.to ?? -1);
+      if (viewerUI.from === null || n < lo || n > hi) setSelection(n, n);
+      showViewerMenu(event.clientX, event.clientY);
+    });
+    ln.addEventListener('contextmenu', (event) => { event.preventDefault(); if (viewerUI.from === null) setSelection(n, n); showViewerMenu(event.clientX, event.clientY); });
+    viewerUI.lineNodes.push({ n, ln, tx });
+    pre.append(ln, tx);
+  });
+  return pre;
+}
+
+async function openViewer({ root = 'project', path = null, url = null, label = null, line = null, lines = null }) {
   const src = url ?? `/api/files?root=${root}&path=${encodeURIComponent(path)}`;
   viewer.path.textContent = label ?? (root === 'project' ? `/${path}` : path);
   viewer.open.href = src;
   viewer.body.replaceChildren(el('div', null, 'loading…'));
-  viewer.dialog.showModal();
+  viewerUI.path = root === 'project' ? path : null;
+  setSelection(null, null);
+  if (!viewer.dialog.open) viewer.dialog.showModal();
   try {
     const response = await fetch(src);
     if (!response.ok) { const err = await response.json().catch(() => ({})); viewer.body.replaceChildren(el('div', 'err', err.error ?? `HTTP ${response.status}`)); return; }
@@ -224,17 +325,11 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
       viewer.body.replaceChildren(frame); return;
     }
     const text = await response.text();
-    const pre = el('pre');
-    if (line) {
-      const lines = text.split('\n');
-      lines.forEach((content, index) => {
-        const span = el('span', index + 1 === line ? 'hl' : null, `${content}\n`);
-        if (index + 1 === line) span.style.background = 'color-mix(in srgb, var(--phosphor) 18%, transparent)';
-        pre.append(span);
-      });
-    } else pre.textContent = text;
+    const pre = codeView(text, { line, lines });
     viewer.body.replaceChildren(pre);
-    if (line) pre.querySelector('.hl')?.scrollIntoView({ block: 'center' });
+    if (lines) setSelection(lines.from, lines.to);
+    else if (line) setSelection(line, line);
+    pre.querySelector('.hl')?.scrollIntoView({ block: 'center' });
   } catch (error) {
     viewer.body.replaceChildren(el('div', 'err', error.message));
   }
@@ -775,6 +870,12 @@ function attachArtifacts(event) {
   const bubble = document.getElementById(`msg-${responseMessageId}`)?.querySelector('.bubble');
   if (!bubble || bubble.querySelector('.artifacts')) return;
   bubble.append(artifactTiles(files));
+  // Something new exists in the project: show it, so the human sees what
+  // changed and can quote lines back to an agent. Live events only.
+  if (!replaying && files.length && !viewer.dialog.open) {
+    const first = files.find((file) => (file.contentType ?? '').startsWith('image/') || /^(text\/|application\/(json|x-ndjson))/.test(file.contentType ?? '')) ?? null;
+    if (first) void openViewer({ root: 'project', path: first.path, label: `/${first.path} · ${first.status}` });
+  }
 }
 
 function artifactTiles(files) {
@@ -991,6 +1092,28 @@ function followTurn(event, node, stickToBottom) {
   if (stickToBottom) scrollToEnd();
 }
 
+/* ---------- theme: auto (system) → light → dark ---------- */
+
+const themeButton = document.querySelector('#theme-button');
+function applyTheme(mode) {
+  const rootElement = document.documentElement ?? { dataset: {} };
+  if (mode === 'auto') delete rootElement.dataset.theme;
+  else rootElement.dataset.theme = mode;
+  if (themeButton) {
+    themeButton.dataset.theme = mode;
+    themeButton.title = mode === 'auto' ? 'Theme · auto (follows the system)' : mode === 'light' ? 'Theme · light' : 'Theme · dark';
+  }
+}
+let themeMode = 'auto';
+try { themeMode = localStorage.getItem('pulse.theme') ?? 'auto'; } catch { /* no storage */ }
+applyTheme(['auto', 'light', 'dark'].includes(themeMode) ? themeMode : 'auto');
+themeButton?.addEventListener('click', () => {
+  themeMode = themeMode === 'auto' ? 'light' : themeMode === 'light' ? 'dark' : 'auto';
+  try { localStorage.setItem('pulse.theme', themeMode); } catch { /* no storage */ }
+  applyTheme(themeMode);
+  toast(`Theme · ${themeMode === 'auto' ? 'auto, following the system' : themeMode}`);
+});
+
 /* ---------- project files panel ---------- */
 
 const tree = { open: false, loaded: new Map() };
@@ -1180,12 +1303,15 @@ stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 /* ---------- composer ---------- */
 
-// One line, always. Height follows explicit line breaks only, up to two
-// (three visible lines); longer text scrolls inside. The box never widens.
+// One line, always. Height follows the lines the text actually takes,
+// wrapped or explicit, up to three visible lines; longer text scrolls inside.
 const LINE_PX = 21;
+const MAX_ROWS = 3;
 const autosize = () => {
-  const breaks = Math.min((els.input.value.match(/\n/g) ?? []).length, 2);
-  const rows = 1 + breaks;
+  els.input.style.height = `${LINE_PX}px`;
+  const padding = 14; // 7px top + bottom, content-box
+  const needed = Math.max(1, Math.ceil((els.input.scrollHeight - padding) / LINE_PX));
+  const rows = Math.min(Number.isFinite(needed) ? needed : 1, MAX_ROWS);
   els.input.style.height = `${rows * LINE_PX}px`;
   els.highlight.style.height = els.input.style.height;
   renderHighlight();
@@ -1205,8 +1331,12 @@ function renderHighlight() {
   const text = els.input.value;
   const agents = knownAgentIds();
   const commands = allCommands();
-  const html = escapeHtml(text).replace(/(^|[\s(,;:])([@/])([a-z][\w-]*)/gi, (whole, lead, sigil, name) => {
+  const html = escapeHtml(text).replace(/(^|[\s(,;:])([@/!])([\w][\w./-]*(?::\d+(?:-\d+)?)?)/g, (whole, lead, sigil, name) => {
     const key = name.toLowerCase();
+    if (sigil === '!') {
+      if (!/\.[A-Za-z0-9]{1,8}(?::\d+(?:-\d+)?)?$/.test(name)) return whole;
+      return `${lead}<span class="chip file">!${escapeHtml(name)}</span>`;
+    }
     if (sigil === '@') {
       if (!agents.includes(key)) return whole;
       return `${lead}<span class="chip agent" style="--agent:${brandOf(key).color}">@${escapeHtml(name)}</span>`;
@@ -1234,18 +1364,40 @@ const menu = { items: [], index: 0, kind: null, start: 0, end: 0 };
 function menuQuery() {
   const caret = els.input.selectionStart ?? els.input.value.length;
   const before = els.input.value.slice(0, caret);
-  const match = before.match(/(^|[\s(,;:])([@/])([\w-]*)$/);
+  const match = before.match(/(^|[\s(,;:])([@/!])([\w./-]*)$/);
   if (!match) return null;
   return { kind: match[2], query: match[3].toLowerCase(), start: caret - match[3].length - 1, end: caret };
 }
 function closeMenu() { els.slashMenu.hidden = true; menu.items = []; menu.kind = null; }
+let fileSearchTimer = null;
+let fileSearchSeq = 0;
+function fileMenu(found) {
+  // Ask the server for matching project files, debounced; render when the answer is still current.
+  clearTimeout(fileSearchTimer);
+  const seq = ++fileSearchSeq;
+  fileSearchTimer = setTimeout(async () => {
+    try {
+      const data = await fetch(`/api/tree/search?q=${encodeURIComponent(found.query)}`).then((response) => response.json());
+      if (seq !== fileSearchSeq) return;
+      const current = menuQuery();
+      if (!current || current.kind !== '!' || current.query !== found.query) return;
+      const items = (data.matches ?? []).map((file) => ({ key: `!${file.name}`, insert: `!${file.path} `, what: file.path, color: null }));
+      if (!items.length) return closeMenu();
+      showMenu(items, { ...found, hint: 'FILE · ↑↓ · TAB OR ENTER · add :12-20 for lines' });
+    } catch { closeMenu(); }
+  }, 120);
+}
 function renderMenu() {
   const found = menuQuery();
   if (!found) return closeMenu();
+  if (found.kind === '!') return fileMenu(found);
   const items = found.kind === '@'
     ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : `${label(id)} · not ready`, color: brandOf(id).color, off: !state.agents.get(id)?.ready }))
     : allCommands().filter((item) => item.name.startsWith(found.query)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : `${item.title} is not available here · see MODULES`, off: !item.available }));
   if (!items.length) return closeMenu();
+  showMenu(items, found);
+}
+function showMenu(items, found) {
   Object.assign(menu, { items, index: Math.min(menu.index, items.length - 1), kind: found.kind, start: found.start, end: found.end });
   els.slashMenu.replaceChildren();
   items.forEach((item, index) => {
@@ -1258,7 +1410,7 @@ function renderMenu() {
     button.addEventListener('mousedown', (event) => { event.preventDefault(); pickMenu(index); });
     els.slashMenu.append(button);
   });
-  els.slashMenu.append(el('div', 'hint', found.kind === '@' ? 'MENTION · ↑↓ · TAB OR ENTER' : 'COMMAND · ↑↓ · TAB OR ENTER'));
+  els.slashMenu.append(el('div', 'hint', found.hint ?? (found.kind === '@' ? 'MENTION · ↑↓ · TAB OR ENTER' : 'COMMAND · ↑↓ · TAB OR ENTER')));
   els.slashMenu.hidden = false;
 }
 function pickMenu(index = menu.index) {
