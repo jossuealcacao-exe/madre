@@ -23,7 +23,7 @@ interactive = false
 // extensions, MCP servers, memory files and history stay behind.
 export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json', 'installation_id', '.env'];
 
-export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null }) {
+export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null, attachmentsDir = null }) {
   return [
     ...(model && model !== 'auto' ? ['--model', model] : []),
     '--approval-mode', 'plan',
@@ -31,7 +31,7 @@ export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null 
     // PULSE can tell a thinking Gemini from a hung one.
     '--output-format', 'stream-json',
     '--skip-trust',
-    '--include-directories', projectRoot,
+    '--include-directories', attachmentsDir ? `${projectRoot},${attachmentsDir}` : projectRoot,
     '--policy', policyPath,
     '--prompt', prompt,
   ];
@@ -150,6 +150,7 @@ export async function invokeGemini({
   timeoutMs = 120000,
   signal,
   model = null,
+  attachments = [],
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   run = runReadonlyProcess,
@@ -165,7 +166,7 @@ export async function invokeGemini({
       try {
         return await run({
           executable,
-          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model }),
+          args: buildGeminiArgs({ projectRoot, prompt, policyPath, model, attachmentsDir: attachments[0]?.dir ?? null }),
           cwd: runtimeRoot,
           env: buildGeminiEnvironment({ runtimeRoot }),
           timeoutMs,

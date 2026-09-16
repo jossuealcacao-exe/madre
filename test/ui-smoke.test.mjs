@@ -24,6 +24,8 @@ class FakeElement {
     this.options = { length: 0 };
     this.open = false;
     this.offsetWidth = 260;
+    this.offsetHeight = 100;
+    this.getBoundingClientRect = () => ({ top: 100, bottom: 130, left: 100, width: 26 });
     this.isConnected = true;
     this._text = '';
     this._id = '';

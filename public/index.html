@@ -95,9 +95,14 @@
       <form id="composer" class="composer">
         <div id="picker" class="picker" role="radiogroup" aria-label="Agent"></div>
         <select id="target" aria-label="Agent" class="visually-hidden"></select>
+        <div id="attachments" class="attachments" hidden></div>
         <div class="field">
           <span id="crew-label" class="crew-label" aria-hidden="true">HUMAN ›</span>
-          <textarea id="message" rows="1" placeholder="Type here, human. Ask the room…" required></textarea>
+          <textarea id="message" rows="1" placeholder="Type here, human. Ask the room…"></textarea>
+          <button id="attach" type="button" class="attach" title="Attach an image or file (or drop it here)" aria-label="Attach">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 6.5l-6 6a2.1 2.1 0 003 3l6.5-6.5a4 4 0 00-5.7-5.7L4.8 9.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <input id="file-input" type="file" multiple hidden>
           <button type="submit" aria-label="Send">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16V5m0 0l-4.5 4.5M10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -106,6 +111,14 @@
       <p class="safety">Consultation mode · Project writes stay under your control · Content an agent reads may be sent to its configured model provider.</p>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>
+      <dialog id="viewer" class="viewer" aria-label="File viewer">
+        <header class="viewer-head">
+          <span id="viewer-path" class="viewer-path"></span>
+          <a id="viewer-open" class="viewer-open" target="_blank" rel="noopener noreferrer">OPEN RAW ↗</a>
+          <button id="viewer-close" class="mother-close" type="button">CLOSE ×</button>
+        </header>
+        <div id="viewer-body" class="viewer-body"></div>
+      </dialog>
     </div>
     <script type="module" src="/app.js"></script>
   </body>

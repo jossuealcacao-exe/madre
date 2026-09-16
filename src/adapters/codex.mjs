@@ -1,12 +1,14 @@
 import { runReadonlyProcess } from './process.mjs';
 
-export function buildCodexArgs({ projectRoot, prompt, model = null }) {
+export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [] }) {
+  const images = attachments.filter((file) => /^image\//.test(file.contentType ?? ''));
   return [
     '--sandbox', 'read-only',
     '--ask-for-approval', 'never',
     '-C', projectRoot,
     'exec',
     ...(model ? ['--model', model] : []),
+    ...images.flatMap((file) => ['--image', file.path]),
     '--ephemeral',
     '--color', 'never',
     '--json',
@@ -40,10 +42,10 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [] }) {
   return runReadonlyProcess({
     executable,
-    args: buildCodexArgs({ projectRoot, prompt, model }),
+    args: buildCodexArgs({ projectRoot, prompt, model, attachments }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

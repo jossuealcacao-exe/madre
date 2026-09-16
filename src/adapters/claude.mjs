@@ -1,9 +1,11 @@
 import { runReadonlyProcess } from './process.mjs';
 
-export function buildClaudeArgs({ prompt, model = null }) {
+export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null }) {
   return [
     '-p',
     ...(model ? ['--model', model] : []),
+    // Attachments live outside the project; Read needs the folder allowed.
+    ...(attachmentsDir ? ['--add-dir', attachmentsDir] : []),
     '--output-format', 'json',
     '--permission-mode', 'dontAsk',
     '--tools', 'Read,Glob,Grep',
@@ -51,10 +53,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [] }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt, model }),
+    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

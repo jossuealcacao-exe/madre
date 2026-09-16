@@ -13,6 +13,9 @@ const els = {
   picker: document.querySelector('#picker'),
   target: document.querySelector('#target'),
   input: document.querySelector('#message'),
+  attach: document.querySelector('#attach'),
+  fileInput: document.querySelector('#file-input'),
+  attachments: document.querySelector('#attachments'),
   send: document.querySelector('#composer button[type="submit"]'),
   connection: document.querySelector('#connection'),
   toast: document.querySelector('#toast'),
@@ -35,6 +38,9 @@ const state = {
   sessions: {},            // id -> { state, detail } from the last probe
   loginLogs: new Map(),    // id -> streamed sign-in lines
   models: {},              // id -> { models, default, note } from /api/models
+  capabilities: {},        // id -> { read, imageIn, write, imageGen, web }
+  pending: [],             // attachments uploaded for the next message
+  projectRoot: '',
   chosenModel: {},         // id -> model name picked in the composer
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
@@ -105,18 +111,63 @@ function scrollToEnd() {
 
 const SAFE_URL = /^https?:\/\//i;
 
+const FILE_PATH = /(?<![\w/@.-])((?:\.{1,2}\/)?(?:[\w.-]+\/)+[\w.-]+\.[A-Za-z0-9]{1,8}|\/Users\/[\w.-]+(?:\/[\w.-]+)+\.[A-Za-z0-9]{1,8})(?::(\d+))?(?![\w/])/g;
+
+function projectRelative(path) {
+  if (state.projectRoot && path.startsWith(state.projectRoot + '/')) return path.slice(state.projectRoot.length + 1);
+  if (path.startsWith('/')) return null;
+  return path.replace(/^\.\//, '');
+}
+
+// Plain text with file paths turned into viewer links.
+function appendTextWithPaths(text, into) {
+  let last = 0;
+  for (const match of text.matchAll(FILE_PATH)) {
+    const rel = projectRelative(match[1]);
+    if (!rel) continue;
+    if (match.index > last) into.append(text.slice(last, match.index));
+    const link = el('a', 'file-link', match[0]);
+    link.href = `/api/files?path=${encodeURIComponent(rel)}`;
+    link.addEventListener('click', (event) => { event.preventDefault(); openViewer({ root: 'project', path: rel, line: match[2] ? Number(match[2]) : null }); });
+    into.append(link);
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) into.append(text.slice(last));
+}
+
+function imageSource(src) {
+  if (/^https?:\/\//i.test(src)) return src;
+  const rel = projectRelative(src);
+  return rel ? `/api/files?path=${encodeURIComponent(rel)}` : null;
+}
+
 function renderInline(text, into) {
-  const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))/g;
+  const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(!\[[^\]\n]*\]\(([^)\s]+)\))|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))/g;
   let last = 0;
   for (const match of text.matchAll(pattern)) {
-    if (match.index > last) into.append(text.slice(last, match.index));
+    if (match.index > last) appendTextWithPaths(text.slice(last, match.index), into);
     const [token] = match;
-    if (match[1]) into.append(el('code', null, token.slice(1, -1)));
+    if (match[1]) {
+      const code = el('code', null, token.slice(1, -1));
+      const rel = FILE_PATH.test(token.slice(1, -1)) ? projectRelative(token.slice(1, -1).replace(/:\d+$/, '')) : null;
+      FILE_PATH.lastIndex = 0;
+      if (rel) { code.classList.add('file-link'); code.style.cursor = 'pointer'; code.addEventListener('click', () => openViewer({ root: 'project', path: rel })); }
+      into.append(code);
+    } else if (match[4]) {
+      const src = imageSource(match[5]);
+      const alt = token.slice(2, token.indexOf(']'));
+      if (src) {
+        const img = el('img', 'inline');
+        img.src = src; img.alt = alt; img.loading = 'lazy';
+        img.addEventListener('click', () => openViewer({ url: src, label: alt || match[5] }));
+        into.append(img);
+      } else into.append(el('code', null, match[5]));
+    }
     else if (match[2]) into.append(el('strong', null, token.slice(2, -2)));
     else if (match[3]) into.append(el('em', null, token.slice(1, -1)));
-    else if (match[4]) {
+    else if (match[6]) {
       const anchor = el('a', null, token.slice(1, token.indexOf(']')));
-      const href = match[5];
+      const href = match[7];
       if (SAFE_URL.test(href)) {
         anchor.href = href;
         anchor.target = '_blank';
@@ -126,8 +177,51 @@ function renderInline(text, into) {
     }
     last = match.index + token.length;
   }
-  if (last < text.length) into.append(text.slice(last));
+  if (last < text.length) appendTextWithPaths(text.slice(last), into);
 }
+
+/* ---------- file viewer ---------- */
+
+const viewer = {
+  dialog: document.querySelector('#viewer'),
+  path: document.querySelector('#viewer-path'),
+  open: document.querySelector('#viewer-open'),
+  body: document.querySelector('#viewer-body'),
+  close: document.querySelector('#viewer-close'),
+};
+async function openViewer({ root = 'project', path = null, url = null, label = null, line = null }) {
+  const src = url ?? `/api/files?root=${root}&path=${encodeURIComponent(path)}`;
+  viewer.path.textContent = label ?? (root === 'project' ? `/${path}` : path);
+  viewer.open.href = src;
+  viewer.body.replaceChildren(el('div', null, 'loading…'));
+  viewer.dialog.showModal();
+  try {
+    const response = await fetch(src);
+    if (!response.ok) { const err = await response.json().catch(() => ({})); viewer.body.replaceChildren(el('div', 'err', err.error ?? `HTTP ${response.status}`)); return; }
+    const type = response.headers.get('content-type') ?? '';
+    if (type.startsWith('image/')) { const img = el('img'); img.src = src; img.alt = viewer.path.textContent; viewer.body.replaceChildren(img); return; }
+    if (type === 'application/pdf' || type.startsWith('video/') || type.startsWith('audio/')) {
+      const frame = el(type === 'application/pdf' ? 'iframe' : type.startsWith('video/') ? 'video' : 'audio');
+      frame.src = src; if (frame.tagName !== 'IFRAME') frame.controls = true;
+      viewer.body.replaceChildren(frame); return;
+    }
+    const text = await response.text();
+    const pre = el('pre');
+    if (line) {
+      const lines = text.split('\n');
+      lines.forEach((content, index) => {
+        const span = el('span', index + 1 === line ? 'hl' : null, `${content}\n`);
+        if (index + 1 === line) span.style.background = 'color-mix(in srgb, var(--phosphor) 18%, transparent)';
+        pre.append(span);
+      });
+    } else pre.textContent = text;
+    viewer.body.replaceChildren(pre);
+    if (line) pre.querySelector('.hl')?.scrollIntoView({ block: 'center' });
+  } catch (error) {
+    viewer.body.replaceChildren(el('div', 'err', error.message));
+  }
+}
+viewer.close.addEventListener('click', () => viewer.dialog.close());
 
 function codeBlock(lines, lang) {
   const wrapper = el('div', `codeblock${lang ? ' has-lang' : ''}`);
@@ -412,7 +506,7 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text, model } = event.payload;
+  const { messageId, target, text, model, attachments = [] } = event.payload;
   state.userMessages.set(messageId, { text, target, model });
   const reviewed = state.expendable;
   const node = row('user');
@@ -422,7 +516,9 @@ function renderUserMessage(event) {
   const who = el('div', 'who');
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
   col.append(who);
-  col.append(el('div', 'bubble', text));
+  const bubble = el('div', 'bubble', text);
+  if (attachments.length) bubble.append(fileTiles(attachments));
+  col.append(bubble);
   const stamp = paint(el('div', 'stamp'), target);
   stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}`));
   stamp.append(el('span', null, formatTime(event.timestamp)));
@@ -473,6 +569,22 @@ function renderAssistantMessage(event) {
   node.append(col);
   state.lastSender = sender;
   return node;
+}
+
+function fileTiles(files) {
+  const wrap = el('div', 'files');
+  for (const file of files) {
+    const url = `/api/files?root=attachments&path=${encodeURIComponent(file.fileName)}`;
+    const image = (file.contentType ?? '').startsWith('image/');
+    const tile = el('button', `file-tile${image ? ' image' : ''}`);
+    tile.type = 'button';
+    tile.title = `${file.name} · ${formatTokens(file.size)}B`;
+    if (image) { const img = el('img'); img.src = url; img.alt = file.name; img.loading = 'lazy'; tile.append(img); }
+    else { tile.append(el('span', 'kind', (file.name.split('.').pop() ?? 'file').slice(0, 4).toUpperCase())); tile.append(el('span', 'name', file.name)); }
+    tile.addEventListener('click', () => openViewer({ root: 'attachments', path: file.fileName, label: file.name }));
+    wrap.append(tile);
+  }
+  return wrap;
 }
 
 function renderThinking(event) {
@@ -814,6 +926,8 @@ els.project.title = initial.projectRoot;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
+state.capabilities = initial.capabilities ?? {};
+state.projectRoot = initial.projectRoot ?? '';
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 updateStopAll();
 for (const agent of initial.agents) {
@@ -859,10 +973,54 @@ els.input.addEventListener('input', () => {
 });
 document.querySelector('#stop-all')?.addEventListener('click', stopAll);
 
+function renderPendingAttachments() {
+  els.attachments.replaceChildren();
+  els.attachments.hidden = state.pending.length === 0;
+  for (const item of state.pending) {
+    const chip = el('span', `attachment-chip${item.uploading ? ' uploading' : ''}`);
+    if (item.previewUrl) { const img = el('img'); img.src = item.previewUrl; img.alt = item.name; chip.append(img); }
+    else chip.append(el('span', 'kind', (item.name.split('.').pop() ?? 'file').slice(0, 4).toUpperCase()));
+    chip.append(el('span', 'name', item.uploading ? `${item.name} · uploading…` : item.name));
+    const remove = el('button', 'remove', '×');
+    remove.type = 'button'; remove.title = 'Remove';
+    remove.addEventListener('click', () => { state.pending = state.pending.filter((other) => other !== item); renderPendingAttachments(); });
+    chip.append(remove);
+    els.attachments.append(chip);
+  }
+}
+async function addFiles(files) {
+  for (const file of files) {
+    const item = { name: file.name || 'pasted-image.png', uploading: true, id: null, previewUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : null };
+    state.pending.push(item);
+    renderPendingAttachments();
+    try {
+      const response = await fetch('/api/attachments', { method: 'POST', headers: { 'x-pulse-filename': encodeURIComponent(item.name), 'content-type': file.type || 'application/octet-stream' }, body: file });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? `Upload failed (${response.status}).`);
+      item.id = result.attachment.id; item.uploading = false;
+    } catch (error) {
+      state.pending = state.pending.filter((other) => other !== item);
+      toast(`Attachment rejected: ${error.message}`);
+    }
+    renderPendingAttachments();
+  }
+}
+els.attach.addEventListener('click', () => els.fileInput.click());
+els.fileInput.addEventListener('change', () => { void addFiles([...els.fileInput.files]); els.fileInput.value = ''; });
+els.input.addEventListener('paste', (event) => {
+  const files = [...(event.clipboardData?.files ?? [])];
+  if (files.length) { event.preventDefault(); void addFiles(files); }
+});
+for (const type of ['dragenter', 'dragover']) els.composer.addEventListener(type, (event) => { event.preventDefault(); els.composer.classList.add('dropping'); });
+for (const type of ['dragleave', 'drop']) els.composer.addEventListener(type, (event) => { event.preventDefault(); els.composer.classList.remove('dropping'); });
+els.composer.addEventListener('drop', (event) => { const files = [...(event.dataTransfer?.files ?? [])]; if (files.length) void addFiles(files); });
+
 els.composer.addEventListener('submit', async (event) => {
   event.preventDefault();
   const text = els.input.value.trim();
-  if (!text) return;
+  const ready = state.pending.filter((item) => item.id && !item.uploading);
+  if (!text && !ready.length) return;
+  if (state.pending.some((item) => item.uploading)) { toast('An attachment is still uploading.'); return; }
   if (STOPALL.test(text)) {
     // Master command: never reaches an agent.
     els.input.value = '';
@@ -877,13 +1035,15 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, target: els.target.value || null, model: state.chosenModel[els.target.value] ?? null }),
+      body: JSON.stringify({ text, target: els.target.value || null, model: state.chosenModel[els.target.value] ?? null, attachments: ready.map((item) => item.id) }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
       toast(result.error ?? 'The room rejected the message.');
     } else {
       els.input.value = '';
+      state.pending = [];
+      renderPendingAttachments();
       autosize();
     }
   } catch (error) {
@@ -1276,6 +1436,20 @@ function trackStats(event) {
 
 function fmtMs(ms) { return ms === null ? '—' : ms < 1000 ? `${ms}ms` : `${Math.round(ms / 1000)}s`; }
 
+const CAP_LABELS = { read: 'read', imageIn: 'image in', write: 'create', imageGen: 'image gen', web: 'web' };
+function capabilityBadges(id) {
+  const caps = state.capabilities[id] ?? {};
+  const wrap = el('div', 'caps');
+  wrap.style.marginTop = '10px';
+  for (const [key, labelText] of Object.entries(CAP_LABELS)) {
+    const badge = el('span', `cap${caps[key] ? ' on' : ''}`, labelText);
+    const detail = caps.detail?.[key];
+    badge.title = caps[key] ? `${labelText}: ${detail?.how ?? 'available'}${detail?.note ? ` · ${detail.note}` : ''}` : `${labelText}: not available from this CLI`;
+    wrap.append(badge);
+  }
+  return wrap;
+}
+
 function openAgentPop(id, anchor) {
   const agent = state.agents.get(id);
   if (!agent) return;
@@ -1307,6 +1481,7 @@ function openAgentPop(id, anchor) {
   row('timeout', `${Math.round((state.timeouts[id] ?? 180000) / 1000)}s`);
   if (agent.version) row('version', agent.version);
   pop.append(dl);
+  pop.append(capabilityBadges(id));
   pop.append(el('div', 'foot', 'local counts, not the provider\'s bill · ⚙ connections in MU/TH/UR'));
   pop.hidden = false;
   const rect = anchor.getBoundingClientRect();
@@ -1396,6 +1571,7 @@ function connectionCard(agent) {
   const meta = el('div', 'meta');
   meta.append(agent.detected ? `${agent.version ?? 'version unknown'} · ${agent.path}` : (agent.login?.install ?? []).join(' · '));
   if (session?.detail) meta.append(el('div', null, `session: ${session.detail}`));
+  meta.append(capabilityBadges(agent.id));
   card.append(meta);
 
   const row = el('div', 'row');

@@ -94,6 +94,27 @@ En el compositor, un segundo clic sobre la esfera del agente ya elegido, o el ch
 
 Hacer clic en una esfera de agente en la barra despliega su uso en la sesión: tokens de esta sala contra el presupuesto local, turnos, duración y tokens del último turno, costo reportado, estado de sesión, cuota del proveedor si la publica, timeout y versión. Son conteos locales, no la factura del proveedor.
 
+## Archivos, imágenes y adjuntos
+
+La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULSE deje de ser de solo lectura:
+
+- Las rutas de archivo que un agente menciona (`src/room.mjs`, `public/app.js:42`) se vuelven enlaces que abren un visor: código y texto con la línea resaltada, imágenes, PDF, audio y video. Las imágenes Markdown del proyecto se pintan en la burbuja.
+- `GET /api/files?path=…` sirve archivos del proyecto en solo lectura, encerrado a la raíz del proyecto: nada de `..`, rutas absolutas ni symlinks hacia fuera; máximo 20 MB.
+- Adjuntos: el clip del compositor, arrastrar al compositor o pegar una imagen suben el archivo a la carpeta de la sala bajo `PULSE_HOME`, nunca al proyecto (máximo 15 MB). El mensaje los registra y cada CLI los recibe como sabe: Codex con `--image`, OpenCode con `--file`, Claude y Gemini leyendo la ruta con su herramienta de lectura, con la carpeta de adjuntos habilitada.
+
+### Capacidades por agente
+
+Verificadas contra las versiones instaladas y visibles en la esfera de cada agente y en `⚙ CONNECTIONS`:
+
+| | Lee proyecto | Recibe imágenes | Crea archivos (acotado) | Genera imágenes | Web |
+|---|---|---|---|---|---|
+| Codex | sí | `-i` | `-C <salida> --sandbox workspace-write` | sí, `image_generation` con la cuenta de ChatGPT | `web_search` |
+| Claude Code | sí | Read sobre la ruta | `--tools Write,Edit` con reglas de permiso por ruta | no | WebFetch / WebSearch |
+| Gemini CLI | sí | `read_file` | política con `argsPattern` | no expuesto en headless | `google_web_search` |
+| OpenCode | sí | `-f` | permisos `edit` por patrón | no | webfetch / websearch |
+
+La creación de archivos y la generación de imágenes están apagadas en el modo de consulta; son la capa siguiente, bajo un permiso explícito del humano por turno y con un directorio de salida acotado.
+
 ## Módulos
 
 La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay uno:

@@ -38,6 +38,9 @@ import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/e
 import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
 import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexModelCache } from '../src/models.mjs';
+import { contentTypeFor, isImage, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
+import { CAPABILITIES, agentsWith, capabilitySummary } from '../src/capabilities.mjs';
+import { symlink } from 'node:fs/promises';
 import { buildConversationContext, formatConversationContext } from '../src/conversation-context.mjs';
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
@@ -1580,6 +1583,113 @@ test('the chosen model travels with the human turn and is recorded on both messa
     assert.equal(messages[2].payload.model, null);
     await assert.rejects(room.send({ text: 'x', target: 'claude', model: '--bad flag' }), /Model name is not valid/);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('files: only paths inside the root are served, symlinks out are refused, types are known', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-files-'));
+  const outside = await mkdtemp(join(tmpdir(), 'pulse-outside-'));
+  try {
+    await mkdir(join(root, 'docs'), { recursive: true });
+    await writeFile(join(root, 'docs', 'note.md'), '# hi');
+    await writeFile(join(root, 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    await writeFile(join(outside, 'secret.txt'), 'nope');
+    await symlink(join(outside, 'secret.txt'), join(root, 'escape.txt'));
+    assert.equal(await resolveInside(root, 'docs/note.md'), await realpath(join(root, 'docs', 'note.md')));
+    assert.equal(await resolveInside(root, '../'), null);
+    assert.equal(await resolveInside(root, '../../etc/passwd'), null);
+    assert.equal(await resolveInside(root, '/etc/passwd'), null);
+    assert.equal(await resolveInside(root, 'escape.txt'), null, 'symlink pointing outside the root is refused');
+    assert.equal(await resolveInside(root, 'docs/../logo.png'), await realpath(join(root, 'logo.png')));
+    assert.equal(await resolveInside(root, ''), null);
+    const served = await readServable(root, 'docs/note.md');
+    assert.equal(served.status, 200);
+    assert.equal(served.contentType, 'text/markdown');
+    assert.equal(served.body.toString(), '# hi');
+    assert.equal((await readServable(root, 'missing.md')).status, 404);
+    assert.equal((await readServable(root, 'docs')).status, 404, 'directories are not files');
+    assert.equal((await readServable(root, 'logo.png', { maxBytes: 2 })).status, 413);
+    assert.equal(contentTypeFor('x.MJS'), 'text/javascript');
+    assert.equal(isImage('photo.JPG'), true);
+    assert.equal(contentTypeFor('binary.bin'), 'application/octet-stream');
+    const stored = await storeAttachment(join(root, 'att'), { name: '../../evil name?.png', bytes: Buffer.from([1, 2, 3]) });
+    assert.match(stored.fileName, /^[0-9a-f]{8}-\.\._\.\._evil name_\.png$|^[0-9a-f]{8}-.*evil name_\.png$/);
+    assert.equal(stored.contentType, 'image/png');
+    assert.equal(stored.size, 3);
+    await assert.rejects(storeAttachment(join(root, 'att'), { name: 'empty', bytes: Buffer.alloc(0) }), /empty/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+});
+
+test('capabilities: verified matrix, routing helper', () => {
+  assert.equal(capabilitySummary('codex').imageGen, true);
+  assert.equal(capabilitySummary('claude').imageGen, false);
+  assert.equal(capabilitySummary('gemini').imageGen, false);
+  assert.ok(Object.values(CAPABILITIES).every((caps) => caps.read && caps.imageIn && caps.write));
+  assert.deepEqual(agentsWith('imageGen', ['codex', 'claude', 'gemini', 'opencode']), ['codex']);
+  assert.equal(capabilitySummary('unknown').write, false);
+  assert.match(capabilitySummary('codex').detail.imageIn.how, /-i <file>/);
+});
+
+test('attachments: uploaded to the room folder, served back, handed to every CLI the way it accepts files', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-attach-'));
+  const project = join(root, 'project');
+  await mkdir(join(project, 'src'), { recursive: true });
+  await writeFile(join(project, 'src', 'thing.mjs'), 'export const x = 1;\n');
+  const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+  const seen = [];
+  const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents, broadcastIntervalMs: 50, invokers: { 'codex-readonly': async ({ prompt, attachments }) => { seen.push({ prompt, attachments }); return { text: 'seen', usage: null }; } } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    // project files, read-only, no escape
+    const source = await fetch(`${base}/api/files?path=src/thing.mjs`);
+    assert.equal(source.status, 200);
+    assert.equal(source.headers.get('content-type'), 'text/javascript');
+    assert.equal(await source.text(), 'export const x = 1;\n');
+    assert.equal((await fetch(`${base}/api/files?path=../events.jsonl`)).status, 404);
+    assert.equal((await fetch(`${base}/api/files?path=/etc/hosts`)).status, 404);
+
+    // upload
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const uploaded = await fetch(`${base}/api/attachments`, { method: 'POST', headers: { 'x-pulse-filename': encodeURIComponent('sketch.png'), 'content-type': 'image/png' }, body: png }).then((response) => response.json());
+    assert.equal(uploaded.attachment.contentType, 'image/png');
+    assert.equal(uploaded.attachment.size, 8);
+    const back = await fetch(`${base}${uploaded.attachment.url}`);
+    assert.equal(back.status, 200);
+    assert.equal(back.headers.get('content-type'), 'image/png');
+    assert.deepEqual(Buffer.from(await back.arrayBuffer()), png);
+    assert.ok((await store.readAll()).some((event) => event.type === 'attachment.stored' && event.payload.name === 'sketch.png'));
+    assert.equal((await fetch(`${base}/api/attachments`, { method: 'POST', body: Buffer.alloc(0) })).status, 400);
+
+    // send with attachment → invoker receives paths; message records the file
+    await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'what is this?', target: 'codex', attachments: [uploaded.attachment.id, 'not-an-id'] }) });
+    for (let attempt = 0; attempt < 100 && !seen.length; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].attachments.length, 1);
+    assert.match(seen[0].attachments[0].path, /attachments\/[0-9a-f]{8}-sketch\.png$/);
+    assert.match(seen[0].prompt, /The human attached 1 file\(s\)[\s\S]*sketch\.png \(image\/png, 8 bytes\)/);
+    const userMessage = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.role === 'user');
+    assert.equal(userMessage.payload.attachments[0].name, 'sketch.png');
+
+    // files-only message is allowed
+    const filesOnly = await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '', target: 'codex', attachments: [uploaded.attachment.id] }) });
+    assert.equal(filesOnly.status, 202);
+
+    // each adapter passes the file its own way
+    const file = { path: '/att/a.png', contentType: 'image/png', dir: '/att', name: 'a.png', size: 8 };
+    assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q', attachments: [file] }).slice(7, 9), ['--image', '/att/a.png']);
+    assert.deepEqual(buildClaudeArgs({ prompt: 'q', attachmentsDir: '/att' }).slice(1, 3), ['--add-dir', '/att']);
+    assert.ok(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', attachmentsDir: '/att' }).includes('/p,/att'));
+    assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: undefined, attachments: [file] }).slice(6, 8), ['--file', '/att/a.png']);
+    const state = await fetch(`${base}/api/state`).then((response) => response.json());
+    assert.equal(state.capabilities.codex.imageGen, true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
   }
 });

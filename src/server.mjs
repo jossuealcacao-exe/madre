@@ -14,6 +14,7 @@ import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { discoverModels } from './models.mjs';
+import { readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -188,6 +189,24 @@ export async function createPulseServer({
     return { status: 202, body: { accepted: true, command: plan.display } };
   }
 
+  // Attachments live beside the room log, never inside the project.
+  const roomDirectory = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
+  const attachmentsRoot = join(roomDirectory, 'attachments');
+  room.restoreAttachments(historicalEvents
+    .filter((event) => event.type === 'attachment.stored')
+    .map((event) => ({ ...event.payload, path: join(attachmentsRoot, event.payload.fileName), dir: attachmentsRoot })));
+
+  async function rawBody(request, limit) {
+    const chunks = [];
+    let total = 0;
+    for await (const chunk of request) {
+      total += chunk.length;
+      if (total > limit) throw Object.assign(new Error(`Attachment is larger than ${Math.round(limit / 1024 / 1024)} MB.`), { status: 413 });
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
+
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -330,6 +349,7 @@ export async function createPulseServer({
           turns: room.activeTurns(),
           sessions,
           sessionsAt,
+          capabilities: room.capabilities(),
           quotaSources: quotaMonitor.snapshot(),
           events: await store.readAll(),
         });
@@ -357,6 +377,31 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      if (request.method === 'GET' && url.pathname === '/api/files') {
+        const which = url.searchParams.get('root') === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
+        const file = await readServable(which, url.searchParams.get('path') ?? '');
+        if (file.status !== 200) return sendJson(response, file.status, { error: file.error });
+        response.writeHead(200, {
+          'content-type': file.contentType,
+          'content-length': file.size,
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+          'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+          'content-disposition': `inline; filename="${encodeURIComponent(basename(file.path))}"`,
+        });
+        return response.end(file.body);
+      }
+      if (request.method === 'POST' && url.pathname === '/api/attachments') {
+        let bytes;
+        try {
+          bytes = await rawBody(request, MAX_ATTACHMENT_BYTES);
+        } catch (error) {
+          return sendJson(response, error.status ?? 400, { error: error.message });
+        }
+        const name = decodeURIComponent(request.headers['x-pulse-filename'] ?? url.searchParams.get('name') ?? 'attachment');
+        const record = await room.registerAttachment(await storeAttachment(attachmentsRoot, { name, bytes }));
+        return sendJson(response, 201, { attachment: { id: record.id, name: record.name, fileName: record.fileName, size: record.size, contentType: record.contentType, url: `/api/files?root=attachments&path=${encodeURIComponent(record.fileName)}` } });
       }
       if (request.method === 'GET' && url.pathname === '/api/settings') {
         return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent) })) });

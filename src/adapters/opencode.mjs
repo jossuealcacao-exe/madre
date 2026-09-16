@@ -21,13 +21,14 @@ const readonlyConfig = {
 // Optional provider/model override (e.g. "openai/gpt-5.6-sol"). Without it,
 // OpenCode picks its own default provider, which may not be the one the user
 // actually signed in to.
-export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PULSE_OPENCODE_MODEL }) {
+export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PULSE_OPENCODE_MODEL, attachments = [] }) {
   return [
     '--pure',
     'run',
     '--format', 'json',
     '--agent', 'pulse-readonly',
     ...(model ? ['--model', model] : []),
+    ...attachments.flatMap((file) => ['--file', file.path]),
     '--dir', projectRoot,
     prompt,
   ];
@@ -75,10 +76,10 @@ export function parseOpenCodeOutput(output) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null }) {
+export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [] }) {
   return runReadonlyProcess({
     executable,
-    args: buildOpenCodeArgs({ projectRoot, prompt, ...(model ? { model } : {}) }),
+    args: buildOpenCodeArgs({ projectRoot, prompt, attachments, ...(model ? { model } : {}) }),
     cwd: projectRoot,
     env: openCodeEnvironment(),
     timeoutMs,

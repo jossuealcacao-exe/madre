@@ -487,3 +487,40 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .model-custom input:focus { border-color: var(--agent, var(--phosphor)); }
 .model-note { margin: 8px 4px 0; font-size: 9.5px; color: var(--text-3); line-height: 1.5; }
 .who .badge.model { color: var(--agent); border-color: color-mix(in srgb, var(--agent) 50%, transparent); text-transform: none; letter-spacing: .04em; }
+
+/* ================= attachments, inline files & viewer ================= */
+.field { grid-template-columns: auto 1fr auto auto; }
+.attach { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); cursor: pointer; display: grid; place-items: center; }
+.attach:hover { color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 10%, transparent); }
+.attach svg { width: 18px; height: 18px; }
+.composer.dropping .field { border-color: var(--phosphor); box-shadow: 0 0 0 3px color-mix(in srgb, var(--phosphor) 25%, transparent); }
+.attachments { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 6px; }
+.attachment-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 4px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel); font-family: var(--mono); font-size: 10.5px; color: var(--text-2); max-width: 260px; }
+.attachment-chip img { width: 28px; height: 28px; object-fit: cover; border-radius: 6px; }
+.attachment-chip .kind { width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; background: color-mix(in srgb, var(--phosphor) 12%, transparent); color: var(--phosphor); font-size: 9px; letter-spacing: .08em; }
+.attachment-chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-chip .remove { border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 13px; padding: 0 2px; }
+.attachment-chip .remove:hover { color: var(--danger); }
+.attachment-chip.uploading { opacity: .6; }
+.bubble .files { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; }
+.bubble .file-tile { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 10px; border: 1px solid rgba(0,0,0,.15); background: rgba(0,0,0,.08); font-family: var(--mono); font-size: 10.5px; cursor: pointer; color: inherit; max-width: 100%; }
+.assistant .bubble .file-tile { border-color: var(--line-2); background: var(--panel); color: var(--text-2); }
+.bubble .file-tile img { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; display: block; }
+.bubble .file-tile.image { padding: 0; border: 0; background: transparent; }
+.bubble img.inline { max-width: 100%; max-height: 420px; border-radius: 12px; display: block; margin: 6px 0; cursor: zoom-in; }
+.bubble a.file-link { color: var(--agent, var(--phosphor)); text-decoration: none; border-bottom: 1px dashed currentColor; font-family: var(--mono); font-size: .92em; cursor: pointer; }
+dialog.viewer { border: 0; padding: 0; width: min(1100px, 96vw); max-width: 96vw; height: min(88vh, 900px); background: var(--panel); color: var(--text); border-radius: 16px; box-shadow: var(--shadow); }
+dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+.viewer-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px; }
+.viewer-path { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.viewer-open { color: var(--phosphor); text-decoration: none; letter-spacing: .12em; font-size: 10px; }
+.viewer-body { height: calc(100% - 46px); overflow: auto; display: grid; place-items: start center; padding: 16px; }
+.viewer-body img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+.viewer-body pre { margin: 0; width: 100%; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.viewer-body iframe { width: 100%; height: 100%; border: 0; background: #fff; border-radius: 8px; }
+.viewer-body .err { color: var(--danger); font-family: var(--mono); }
+.caps { display: flex; gap: 6px; flex-wrap: wrap; }
+.cap { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--text-3); }
+.cap.on { color: var(--agent, var(--phosphor)); border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 50%, transparent); }
+.conn-card .caps .cap.on { color: var(--ph); border-color: var(--ph-dim); }
+.conn-card .caps .cap { color: var(--ph-dim); border-color: var(--ph-faint); }
