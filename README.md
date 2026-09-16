@@ -124,6 +124,8 @@ La creación de archivos y la generación de imágenes están apagadas en el mod
 | Gemini CLI | política de solo lectura más reglas `allow` para `write_file`/`edit` cuyo `file_path` empiece por la carpeta, con `--approval-mode default` |
 | OpenCode | `permission.edit: { "*": "deny", "<carpeta>/**": "allow" }` |
 
+Los alcances de CREATE se eligen por agente en `⚙ CONNECTIONS`: crear archivos, generar imágenes, acceso web (este último aún sin cablear). Un alcance solo se puede encender donde el CLI tiene la capacidad; hoy solo Codex genera imágenes. Al pulsar `CREATE` el compositor muestra los alcances del agente elegido, y si ese agente no puede crear nada, la sala lo dice en el momento (`lease.refused`) y nombra quién sí puede. El orquestador recibe la lista de habilidades de cada agente para no delegar imágenes a quien no las genera; un delegado sin creación habilitada trabaja en solo lectura aunque el plan tenga permiso.
+
 Al terminar cada turno, PULSE compara la carpeta antes y después y registra lo aparecido como `artifacts.created`; las imágenes y archivos creados se muestran bajo la respuesta del agente y se abren en el visor. El permiso queda en el log como `lease.granted`, dura un mensaje (hay que volver a pulsar `CREATE`), lo heredan los pasos delegados, y STOPALL lo corta con todo lo demás. Añade `.pulse/` al `.gitignore` del proyecto si no quieres versionar los artefactos.
 
 ## Módulos

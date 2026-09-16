@@ -39,7 +39,7 @@ import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
 import { discoverModels, isValidModelName, parseCodexDefaultModel, parseCodexModelCache } from '../src/models.mjs';
 import { contentTypeFor, isImage, readServable, resolveInside, storeAttachment } from '../src/files.mjs';
-import { CAPABILITIES, agentsWith, capabilitySummary } from '../src/capabilities.mjs';
+import { CAPABILITIES, abilityLine, agentsWith, capabilitySummary, resolveScopes } from '../src/capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from '../src/lease.mjs';
 import { geminiLeasePolicy } from '../src/adapters/gemini.mjs';
 import { leaseConfig } from '../src/adapters/opencode.mjs';
@@ -1485,16 +1485,20 @@ test('connections: settings are read, saved to config, applied live; sign-in str
       timeouts: { default: 240000, gemini: 90000, codex: 0 },
       room: { delegation: false, maxPlanSteps: 2, softTokenBudget: 750000 },
       gemini: { idleMs: 60000, retries: 2 },
+      scopes: { codex: { imageGen: false }, gemini: { imageGen: true }, nope: { write: true } },
     }) });
     assert.equal(saved.status, 200);
-    assert.deepEqual({ ...saved.body.settings, timeouts: undefined }, {
-      timeouts: undefined, defaultTimeout: 240000, delegation: false, maxPlanSteps: 2, softTokenBudget: 750000, opencodeModel: 'openai/gpt-5.6-sol', geminiIdleMs: 60000, geminiRetries: 2,
+    assert.equal(saved.body.settings.capabilities.codex.scopes.imageGen.enabled, false, 'scope switched off');
+    assert.equal(saved.body.settings.capabilities.gemini.scopes.imageGen.enabled, false, 'cannot enable an ability the CLI lacks');
+    assert.deepEqual({ ...saved.body.settings, timeouts: undefined, capabilities: undefined }, {
+      timeouts: undefined, capabilities: undefined, defaultTimeout: 240000, delegation: false, maxPlanSteps: 2, softTokenBudget: 750000, opencodeModel: 'openai/gpt-5.6-sol', geminiIdleMs: 60000, geminiRetries: 2,
     });
     assert.equal(saved.body.settings.timeouts.gemini, 90000);
     assert.equal(saved.body.settings.timeouts.codex, 240000, 'a cleared per-agent value falls back to the default');
     const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
     assert.equal(config.opencode.model, 'openai/gpt-5.6-sol');
     assert.equal(config.room.delegation, false);
+    assert.deepEqual(config.scopes, { codex: { imageGen: false }, gemini: { imageGen: true } }, 'unknown agents are dropped, the rest persisted');
     assert.equal(config.gemini.idleMs, 60000);
     assert.equal(process.env.PULSE_OPENCODE_MODEL, 'openai/gpt-5.6-sol');
     const stateNow = await api('/api/state');
@@ -1714,7 +1718,8 @@ test('creation lease: a fresh directory under .pulse/out, artifacts detected by 
     assert.equal(artifacts[0].path, `${lease.relativeDir}/poster.png`);
     assert.deepEqual(diffSnapshots(after, after, { relativeDir: lease.relativeDir }), [], 'unchanged files are not artifacts');
     assert.match(leaseInstructions({ outDir: '/p/.pulse/out/x', agentId: 'codex' }), /only inside \/p\/.pulse\/out\/x[\s\S]*generate images/);
-    assert.doesNotMatch(leaseInstructions({ outDir: '/p/.pulse/out/x', agentId: 'claude' }), /generate images/);
+    assert.match(leaseInstructions({ outDir: '/p/.pulse/out/x', agentId: 'claude' }), /You cannot generate images from this CLI/);
+    assert.match(leaseInstructions({ outDir: '/p/.pulse/out/x', agentId: 'codex', scopes: { write: true, imageGen: false }, capable: { imageGen: { capable: true } } }), /switched off for this request/);
 
     const scope = { outDir: '/p/.pulse/out/x', relativeDir: '.pulse/out/x', leaseId: 'x' };
     const codex = buildCodexArgs({ projectRoot: '/p', prompt: 'q', lease: scope });
@@ -1794,6 +1799,61 @@ test('creation lease: granted per human message, inherited by the plan, artifact
     const readOnly = new Room({ store: quiet, agents, projectRoot: root, invokers: { 'codex-readonly': async ({ prompt, lease }) => { assert.equal(lease, null); assert.match(prompt, /Operate read-only/); return { text: 'ok', usage: null }; } } });
     await readOnly.send({ text: 'just asking', target: 'codex' });
     assert.equal((await quiet.readAll()).some((event) => event.type === 'lease.granted'), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('scopes: what the human enabled, per agent; CREATE is refused with a reason when the agent cannot create', async () => {
+  const codex = resolveScopes('codex');
+  assert.deepEqual(codex.write, { capable: true, enabled: true, wired: true });
+  assert.deepEqual(codex.imageGen, { capable: true, enabled: true, wired: true });
+  assert.equal(codex.web.enabled, false, 'web is off by default');
+  const gemini = resolveScopes('gemini');
+  assert.deepEqual(gemini.imageGen, { capable: false, enabled: false, wired: true });
+  assert.equal(resolveScopes('gemini', { imageGen: true }).imageGen.enabled, false, 'cannot enable what the CLI lacks');
+  assert.equal(resolveScopes('codex', { write: false }).write.enabled, false);
+  assert.match(abilityLine('codex', codex), /@codex: can create files, generate images/);
+  assert.match(abilityLine('gemini', gemini), /@gemini: can create files; cannot generate images/);
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-scopes-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = ['claude', 'codex', 'gemini'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const seen = {};
+    const invokers = Object.fromEntries(agents.map((agent) => [`${agent.id}-readonly`, async ({ prompt, lease }) => { seen[agent.id] = { prompt, lease }; return { text: 'ok', usage: null }; }]));
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    room.setScopes({ gemini: { write: false } });
+
+    // Gemini: creation switched off → refused, answered read-only, alternatives named.
+    await room.send({ text: 'make an image', target: 'gemini', create: true });
+    let events = await store.readAll();
+    const refused = events.find((event) => event.type === 'lease.refused');
+    assert.equal(refused.payload.agent, 'gemini');
+    assert.match(refused.payload.message, /switched off for it/);
+    assert.deepEqual(refused.payload.unavailable, ['generate images']);
+    assert.deepEqual(refused.payload.alternatives.sort(), ['@claude', '@codex']);
+    assert.equal(events.some((event) => event.type === 'lease.granted'), false);
+    assert.equal(seen.gemini.lease, null);
+
+    // Claude orchestrates under a lease: Claude gets no image scope, Codex does, both inside the same lease.
+    room.setScopes({});
+    const orchestrating = new Room({ store, agents, projectRoot: root, invokers: {
+      ...invokers,
+      'claude-readonly': async ({ prompt, lease }) => { seen.claude = { prompt, lease }; if (/this is your closing turn/.test(prompt)) return { text: 'done', usage: null }; return { text: '```pulse\n@codex: image please\n@gemini: describe it\n```', usage: null }; },
+    } });
+    await orchestrating.send({ text: 'poster', target: 'claude', create: true });
+    events = await store.readAll();
+    const granted = events.find((event) => event.type === 'lease.granted');
+    assert.deepEqual(granted.payload.scopes, ['write']);
+    assert.deepEqual(granted.payload.unavailable, ['generate images']);
+    assert.match(seen.claude.prompt, /@codex: can create files, generate images/, 'the orchestrator is told who can generate images');
+    assert.match(seen.claude.prompt, /@gemini: can create files; cannot generate images/);
+    assert.equal(seen.codex.lease.scopes.imageGen, true, 'the delegate gets its own scopes inside the shared lease');
+    assert.match(seen.codex.prompt, /You can generate images/);
+    assert.equal(seen.gemini.lease.scopes.imageGen, false);
+    assert.match(seen.gemini.prompt, /You cannot generate images from this CLI/);
+    assert.equal(seen.claude.lease.outDir, seen.codex.lease.outDir);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

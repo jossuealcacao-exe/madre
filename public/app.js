@@ -404,6 +404,7 @@ function renderPicker() {
     text.append(modelChip);
     els.picker.append(text);
   }
+  if (typeof renderCreateScopes === 'function') renderCreateScopes();
 }
 
 /* ---------- model menu: which model answers this request ---------- */
@@ -675,12 +676,22 @@ function renderPlanIgnored(event) {
   return node;
 }
 
+function renderLeaseRefused(event) {
+  const { message } = event.payload;
+  const node = el('div', 'system lease refused');
+  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(message);
+  toast(`MU/TH/UR › ${message}`);
+  state.lastSender = null;
+  return node;
+}
+
 function renderLease(event) {
-  const { agent, outDir } = event.payload;
+  const { agent, outDir, scopes = [], unavailable = [] } = event.payload;
   const node = el('div', 'system lease');
   node.style.setProperty('--agent', agentColor(agent));
   node.append(el('b', null, 'creation lease · '));
-  node.append(`@${agent} may create files in `);
+  node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} in `);
   const link = el('a', 'file-link', outDir);
   link.href = '#';
   link.addEventListener('click', (ev) => { ev.preventDefault(); });
@@ -880,6 +891,7 @@ function renderEventNode(event) {
     case 'room.alert': node = renderAlert(event); break;
     case 'room.stopped': node = renderHalted(event); break;
     case 'lease.granted': node = renderLease(event); break;
+    case 'lease.refused': node = renderLeaseRefused(event); break;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
     case 'artifacts.created': attachArtifacts(event); return;
     default: return;
@@ -1062,9 +1074,27 @@ async function addFiles(files) {
     renderPendingAttachments();
   }
 }
+function renderCreateScopes() {
+  const box = document.querySelector('#create-scopes');
+  if (!box) return;
+  const id = els.target.value;
+  const scopes = state.capabilities[id]?.scopes;
+  box.hidden = !state.create || !scopes;
+  if (box.hidden) return;
+  box.replaceChildren();
+  for (const [key, labelText] of [['write', 'files'], ['imageGen', 'images'], ['web', 'web']]) {
+    const scope = scopes[key] ?? {};
+    const on = scope.enabled && scope.wired;
+    const badge = el('span', `cap${on ? ' on' : scope.capable ? '' : ' no'}`, labelText);
+    badge.title = on ? `${labelText}: enabled for @${id}` : !scope.capable ? `${labelText}: @${id}'s CLI cannot do this` : !scope.wired ? `${labelText}: not wired yet` : `${labelText}: switched off for @${id} in CONNECTIONS`;
+    box.append(badge);
+  }
+  if (!scopes.write?.enabled) toast(`MU/TH/UR › @${id} ${scopes.write?.capable ? 'has file creation switched off' : 'cannot create files from its CLI'}. CREATE will be refused; pick another agent or change CONNECTIONS.`);
+}
 els.createToggle.addEventListener('click', () => {
   state.create = !state.create;
   els.createToggle.setAttribute('aria-pressed', String(state.create));
+  renderCreateScopes();
   els.composer.classList.toggle('creating', state.create);
   els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
   els.input.placeholder = state.create ? 'Creation lease on: the agent may create files in .pulse/out/ for this request.' : 'Type here, human. Ask the room…';
@@ -1637,8 +1667,20 @@ function connectionCard(agent) {
   const meta = el('div', 'meta');
   meta.append(agent.detected ? `${agent.version ?? 'version unknown'} · ${agent.path}` : (agent.login?.install ?? []).join(' · '));
   if (session?.detail) meta.append(el('div', null, `session: ${session.detail}`));
-  meta.append(capabilityBadges(agent.id));
   card.append(meta);
+  const scopes = el('div', 'scopes');
+  const agentScopes = settingsUI.data.settings.capabilities?.[agent.id]?.scopes ?? {};
+  for (const [key, labelText] of [['write', 'CREATE FILES'], ['imageGen', 'GENERATE IMAGES'], ['web', 'WEB ACCESS']]) {
+    const scope = agentScopes[key] ?? { capable: false, enabled: false, wired: false };
+    const line = el('label', `scope${!scope.capable || !scope.wired ? ' unavailable' : ''}`);
+    const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(scope.enabled); box.disabled = !scope.capable || !scope.wired;
+    box.dataset.agent = agent.id; box.dataset.scope = key; box.className = 'scope-input';
+    line.append(box, labelText);
+    line.append(el('span', 'why', !scope.capable ? 'not available from this CLI' : !scope.wired ? 'next: not wired yet' : scope.enabled ? 'on for CREATE' : 'off'));
+    line.title = !scope.capable ? `${agent.label}'s CLI has no way to do this; PULSE will tell you if you try.` : '';
+    scopes.append(line);
+  }
+  card.append(scopes);
 
   const row = el('div', 'row');
   const recheck = el('button', null, 'RECHECK');
@@ -1753,8 +1795,15 @@ function renderSettings() {
       if (seconds > 0 && seconds * 1000 !== timeouts.default) timeouts[input.dataset.agent] = seconds * 1000;
       else timeouts[input.dataset.agent] = 0;
     }
+    const scopePatch = {};
+    for (const input of section.querySelectorAll('.scope-input')) {
+      if (input.disabled) continue;
+      scopePatch[input.dataset.agent] ??= {};
+      scopePatch[input.dataset.agent][input.dataset.scope] = input.checked;
+    }
     const payload = {
       opencode: { model: model.value.trim() },
+      scopes: scopePatch,
       timeouts,
       room: { delegation: delegation.checked, maxPlanSteps: Number(steps.value), softTokenBudget: Number(budget.value) },
       gemini: { idleMs: Number(idle.value) * 1000, retries: Number(retries.value) },
@@ -1764,6 +1813,7 @@ function renderSettings() {
     if (response.ok) {
       state.timeouts = result.settings.timeouts;
       state.budget = result.settings.softTokenBudget;
+      if (result.settings.capabilities) { state.capabilities = result.settings.capabilities; renderCreateScopes(); }
       toast('MU/TH/UR › settings saved. new turns use them now.');
       await loadSettings();
     } else toast(result.error ?? 'Settings were not saved.');

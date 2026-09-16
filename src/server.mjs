@@ -123,6 +123,7 @@ export async function createPulseServer({
       opencodeModel: process.env.PULSE_OPENCODE_MODEL ?? null,
       geminiIdleMs: Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
       geminiRetries: Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
+      capabilities: room.capabilities(),
     };
   }
   async function applySettings(patch) {
@@ -146,6 +147,16 @@ export async function createPulseServer({
       if (typeof patch.room.delegation === 'boolean') { config.room.delegation = patch.room.delegation; live.delegation = patch.room.delegation; }
       if (Number(patch.room.maxPlanSteps) > 0) { config.room.maxPlanSteps = Number(patch.room.maxPlanSteps); live.maxPlanSteps = Number(patch.room.maxPlanSteps); }
       if (Number(patch.room.softTokenBudget) > 0) { config.room.softTokenBudget = Number(patch.room.softTokenBudget); live.softTokenBudget = Number(patch.room.softTokenBudget); }
+    }
+    if (patch.scopes && typeof patch.scopes === 'object') {
+      const current = (await readConfig(root)).scopes ?? {};
+      config.scopes = { ...current };
+      for (const [agentId, scopes] of Object.entries(patch.scopes)) {
+        if (!agents.some((agent) => agent.id === agentId) || !scopes || typeof scopes !== 'object') continue;
+        config.scopes[agentId] = { ...(current[agentId] ?? {}) };
+        for (const scope of ['write', 'imageGen', 'web']) if (typeof scopes[scope] === 'boolean') config.scopes[agentId][scope] = scopes[scope];
+      }
+      room.setScopes(config.scopes);
     }
     if (patch.gemini) {
       config.gemini = {};
@@ -207,6 +218,7 @@ export async function createPulseServer({
     return Buffer.concat(chunks);
   }
 
+  room.setScopes((await readConfig(root)).scopes ?? {});
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({

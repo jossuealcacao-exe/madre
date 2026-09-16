@@ -530,7 +530,14 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .create-toggle svg { width: 15px; height: 15px; }
 .create-toggle:hover { color: var(--text); border-color: var(--text-3); }
 .create-toggle[aria-pressed="true"] { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--warn) 50%, transparent); }
-.create-toggle[aria-pressed="true"] .lock-shackle { transform: translate(3px, -2px) rotate(20deg); transform-origin: 13px 8px; }
+.create-toggle .lock.open { display: none; }
+.create-toggle[aria-pressed="true"] .lock.closed { display: none; }
+.create-toggle[aria-pressed="true"] .lock.open { display: block; }
+.create-scopes { display: inline-flex; gap: 4px; margin-left: 4px; }
+.create-scopes .cap { font-size: 8.5px; padding: 1px 5px; }
+.create-scopes .cap.on { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.create-scopes .cap.no { text-decoration: line-through; opacity: .7; }
+.system.lease.refused { color: var(--danger); }
 .composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
 .composer.creating .crew-label { color: var(--warn); }
 .who .badge.lease { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
@@ -539,3 +546,19 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bubble .artifacts { margin: 10px 0 0; padding-top: 8px; border-top: 1px dashed var(--line-2); }
 .bubble .artifacts .label { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--warn); margin-bottom: 6px; }
 @media (max-width: 680px) { .create-toggle .create-word { display: none; } .create-toggle { padding: 0 8px; } }
+
+/* no horizontal overflow inside bubbles: wrap everything */
+.bubble, .bubble * { min-width: 0; }
+.bubble { max-width: 100%; overflow-x: hidden; }
+.codeblock pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: hidden; }
+.bubble table { display: block; max-width: 100%; overflow-x: auto; }
+.bubble img.inline, .bubble .file-tile img { max-width: 100%; }
+.plan-card li, .bubble li, .bubble p, .bubble a { overflow-wrap: anywhere; }
+.row .col { max-width: 100%; }
+.thread-inner { overflow-x: hidden; }
+/* scope toggles in connection cards */
+.conn-card .scopes { display: grid; gap: 6px; }
+.conn-card .scope { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .12em; color: var(--ph); cursor: pointer; }
+.conn-card .scope input { accent-color: #9bff66; width: auto; }
+.conn-card .scope.unavailable { color: var(--ph-dim); cursor: not-allowed; }
+.conn-card .scope .why { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }

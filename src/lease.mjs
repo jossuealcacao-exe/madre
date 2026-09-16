@@ -63,12 +63,16 @@ export function diffSnapshots(before, after, { relativeDir }) {
   return artifacts.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export function leaseInstructions({ outDir, agentId }) {
+export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null }) {
+  const canImage = Boolean(scopes.imageGen);
+  const couldImage = capable ? Boolean(capable.imageGen?.capable) : canImage;
   return [
     `CREATION LEASE: the human allows you to create files for this request, only inside ${outDir}.`,
     'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
     'Reading the project stays allowed. Do not modify project files.',
-    agentId === 'codex' ? 'You can generate images; save them into the lease directory with a descriptive file name.' : null,
+    canImage ? 'You can generate images; save them into the lease directory with a descriptive file name.'
+      : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'
+        : 'You cannot generate images from this CLI; if asked for one, say so plainly instead of attempting it.',
     'List the files you created (or "none") before any plan block; nothing may follow a plan block.',
   ].filter(Boolean).join('\n');
 }

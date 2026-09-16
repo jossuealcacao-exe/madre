@@ -8,6 +8,8 @@ export function buildCodexArgs({ projectRoot, prompt, model = null, attachments 
     '--sandbox', lease ? 'workspace-write' : 'read-only',
     '--ask-for-approval', 'never',
     '-C', lease ? lease.outDir : projectRoot,
+    // Image generation is a Codex feature; the human's scope decides per turn.
+    ...(lease && lease.scopes && lease.scopes.imageGen === false ? ['-c', 'features.image_generation=false'] : []),
     'exec',
     ...(lease ? ['--skip-git-repo-check'] : []),
     ...(model ? ['--model', model] : []),

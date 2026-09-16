@@ -59,3 +59,27 @@ export function capabilitySummary(agentId) {
 export function agentsWith(capability, agentIds) {
   return agentIds.filter((id) => Boolean(capabilityOf(id)[capability]));
 }
+
+// Scopes are the capabilities the human has switched on for CREATE. A scope
+// can only be enabled where the CLI has the capability; by default file
+// creation and image generation are on wherever possible, web stays off.
+export const SCOPES = ['write', 'imageGen', 'web'];
+export const SCOPE_LABELS = { write: 'create files', imageGen: 'generate images', web: 'web access' };
+
+export function resolveScopes(agentId, configured = {}) {
+  const caps = capabilityOf(agentId);
+  const scopes = {};
+  for (const scope of SCOPES) {
+    const capable = Boolean(caps[scope]);
+    const wanted = configured[scope] ?? (scope !== 'web');
+    scopes[scope] = { capable, enabled: capable && wanted, wired: scope !== 'web' };
+  }
+  return scopes;
+}
+
+// One line per agent for the orchestrator: who can do what right now.
+export function abilityLine(agentId, scopes) {
+  const on = SCOPES.filter((scope) => scopes[scope]?.enabled && scopes[scope]?.wired).map((scope) => SCOPE_LABELS[scope]);
+  const cannot = SCOPES.filter((scope) => !scopes[scope]?.capable).map((scope) => SCOPE_LABELS[scope]);
+  return `@${agentId}: can ${on.length ? on.join(', ') : 'only read'}${cannot.length ? `; cannot ${cannot.join(', ')}` : ''}`;
+}
