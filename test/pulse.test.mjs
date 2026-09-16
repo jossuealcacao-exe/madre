@@ -1295,6 +1295,92 @@ test('the human can stop a running plan and delegation can be disabled', async (
   }
 });
 
+test('a human message during a plan is answered without starting a second plan, and MOTHER says so', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-oneplan-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = ['claude', 'gemini', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    let releaseGemini;
+    const geminiDone = new Promise((resolve) => { releaseGemini = resolve; });
+    let claudeCalls = 0;
+    const invokers = {
+      'claude-readonly': async () => {
+        claudeCalls += 1;
+        // Every Claude turn tries to delegate; only the first may.
+        return { text: '```pulse\n@gemini: go\n@claude: close\n```', usage: null };
+      },
+      'gemini-readonly': async () => { await geminiDone; return { text: 'gemini done', usage: null }; },
+      'codex-readonly': async () => ({ text: 'codex', usage: null }),
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    const first = room.send({ text: 'coordinate', target: 'claude' });
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if ((await store.readAll()).some((event) => event.type === 'agent.started' && event.payload.agent === 'gemini')) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    // Human interjects while the plan waits on Gemini.
+    await room.send({ text: 'and now this', target: 'claude' });
+    releaseGemini();
+    await first;
+    const events = await store.readAll();
+    assert.equal(events.filter((event) => event.type === 'plan.created').length, 1, 'the second Claude turn could not open another plan');
+    const alert = events.find((event) => event.type === 'room.alert');
+    assert.equal(alert.payload.code, 'plan-active');
+    assert.match(alert.payload.message, /no second plan will start.*STOPALL/);
+    assert.ok(claudeCalls >= 3, 'orchestrator, interjection and closing turn all ran');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('STOPALL halts every plan and every in-flight turn and is reachable over HTTP', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-stopall-'));
+  const agents = ['claude', 'gemini', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+  const hang = ({ signal, label }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error(`${label} was interrupted because PULSE is shutting down.`)), { once: true }));
+  const invokers = {
+    'claude-readonly': async () => ({ text: '```pulse\n@gemini: slow\n@codex: never\n```', usage: null }),
+    'gemini-readonly': ({ signal }) => hang({ signal, label: 'Gemini' }),
+    'codex-readonly': ({ signal }) => hang({ signal, label: 'Codex' }),
+  };
+  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers, broadcastIntervalMs: 50 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  try {
+    await fetch(`http://127.0.0.1:${port}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'coordinate', target: 'claude' }) });
+    // A second human turn to Codex runs alongside the plan.
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if ((await store.readAll()).some((event) => event.type === 'agent.started' && event.payload.agent === 'gemini')) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    await fetch(`http://127.0.0.1:${port}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'also this', target: 'codex' }) });
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
+      if (state.turns.length >= 2 && state.plans.length === 1) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    const before = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
+    assert.equal(before.plans.length, 1);
+    assert.deepEqual(before.turns.map((turn) => turn.agent).sort(), ['codex', 'gemini']);
+
+    const halted = await fetch(`http://127.0.0.1:${port}/api/stop-all`, { method: 'POST' }).then((response) => response.json());
+    assert.deepEqual({ plans: halted.plans, turns: halted.turns }, { plans: 1, turns: 2 });
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if ((await store.readAll()).some((event) => event.type === 'plan.stopped')) break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    const events = await store.readAll();
+    const stopped = events.find((event) => event.type === 'room.stopped');
+    assert.deepEqual(stopped.payload.agents.sort(), ['codex', 'gemini']);
+    assert.equal(events.filter((event) => event.type === 'message.failed').length, 2, 'both in-flight turns recorded as interrupted');
+    assert.equal(events.some((event) => event.type === 'agent.started' && event.payload.agent === 'codex' && event.payload.planId), false, 'the plan never reached its second step');
+    const after = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
+    assert.deepEqual({ plans: after.plans, turns: after.turns }, { plans: [], turns: [] });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('polls available official quota sources and restores sentinel state', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-quota-'));
   const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' }];

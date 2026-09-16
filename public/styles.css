@@ -403,3 +403,13 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .system.plan .stop { margin-left: 10px; border: 1px solid var(--crit); background: transparent; color: var(--crit); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 2px 8px; cursor: pointer; vertical-align: middle; }
 .system.plan .stop:hover { background: color-mix(in srgb, var(--crit) 15%, transparent); }
 .system.plan .stop:disabled { opacity: .4; cursor: default; }
+
+/* ================= STOPALL ================= */
+.stop-all { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; cursor: pointer; text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); animation: blink 1.4s infinite; }
+.stop-all:hover { background: var(--terror); color: #fff; text-shadow: none; animation: none; }
+.stop-all-glyph { width: 8px; height: 8px; background: currentColor; }
+.system.alert { color: var(--terror); text-shadow: 0 0 10px color-mix(in srgb, var(--terror) 70%, transparent); letter-spacing: .14em; animation: terror-in 1.4s steps(3, end) 1; }
+.system.alert b { color: var(--terror); }
+.system.alert .cmd { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid var(--terror); letter-spacing: .2em; }
+.system.halted { color: var(--terror); }
+.composer.stopall textarea { color: var(--terror); letter-spacing: .12em; text-transform: uppercase; }

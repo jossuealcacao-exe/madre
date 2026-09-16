@@ -76,6 +76,10 @@ Un agente puede poner a trabajar a los demás. Si el humano le pide coordinar, e
 
 PULSE ejecuta los pasos en secuencia como turnos normales de la sala: cada uno queda en el log, pasa por handoff, presupuesto y timeout, y el humano puede detener el plan en cualquier momento desde la sala. El paso dirigido al propio orquestador se convierte en su turno de cierre cuando los demás han respondido. Los agentes delegados no pueden delegar a su vez, así que todo plan termina. El límite por plan son 4 pasos más el cierre (`PULSE_MAX_PLAN_STEPS`), y `PULSE_DELEGATION=0` o `"room": { "delegation": false }` en el config lo desactiva.
 
+### Freno maestro: STOPALL
+
+Escribe `STOPALL` en el compositor, o pulsa `STOP ALL` en la barra, y PULSE detiene todos los planes y mata todos los procesos de agente en curso; queda registrado como `room.stopped`. Desde una terminal: `curl -X POST http://127.0.0.1:4317/api/stop-all`. MU/TH/UR avisa en rojo (`room.alert`) cuando la sala empieza a escaparse de las manos: un mensaje tuyo durante un plan (se responde, pero no abre otro plan), tres o más agentes trabajando a la vez, un agente con dos turnos cruzados, o un plan de más de cinco minutos.
+
 ## Módulos
 
 La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay uno:

@@ -28,6 +28,8 @@ const state = {
   lastSender: null,        // for iMessage-style grouping of consecutive bubbles
   failures: [],            // recorded conditions for MU/TH/UR
   expendable: false,       // easter egg armed: the next human message is reviewed by MOTHER
+  running: new Map(),      // messageId -> agent, turns in flight (for STOP ALL)
+  plansRunning: new Set(),
 };
 
 const AGENT_HINTS = {
@@ -468,8 +470,49 @@ function renderWarning(event) {
   return node;
 }
 
+function renderAlert(event) {
+  const { message } = event.payload;
+  const node = el('div', 'system alert');
+  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(message.replace(/\s*Type STOPALL[^.]*\.?$/i, '').replace(/\s*STOPALL halts[^.]*\.?$/i, ''));
+  node.append(el('span', 'cmd', 'STOPALL'));
+  toast(`MU/TH/UR › ${message}`);
+  state.lastSender = null;
+  return node;
+}
+
+function renderHalted(event) {
+  const { reason, plans, turns, agents = [] } = event.payload;
+  const node = el('div', 'system halted');
+  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(`all stop · ${plans} plan${plans === 1 ? '' : 's'}, ${turns} turn${turns === 1 ? '' : 's'}${agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : ''} · ${reason}`);
+  state.plansRunning.clear();
+  updateStopAll();
+  state.lastSender = null;
+  return node;
+}
+
+async function stopAll() {
+  const button = document.querySelector('#stop-all');
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch('/api/stop-all', { method: 'POST' });
+    if (!response.ok) toast('STOPALL failed to reach the room.');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function updateStopAll() {
+  const button = document.querySelector('#stop-all');
+  if (!button) return;
+  button.hidden = state.running.size === 0 && state.plansRunning.size === 0;
+}
+
 function renderPlanEvent(event) {
   const { planId, orchestrator, steps = [], closing, stepsRun, reason } = event.payload;
+  if (event.type === 'plan.created') state.plansRunning.add(planId); else state.plansRunning.delete(planId);
+  updateStopAll();
   const node = el('div', `system plan${event.type === 'plan.stopped' ? ' failed' : ''}`);
   node.style.setProperty('--agent', agentColor(orchestrator));
   node.append(el('b', null, 'plan · '));
@@ -548,9 +591,9 @@ function renderEventNode(event) {
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
       break;
-    case 'agent.started': node = renderThinking(event); break;
-    case 'agent.completed': removeThinking(event.payload.messageId); return;
-    case 'message.failed': node = renderFailure(event); break;
+    case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
+    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); return;
+    case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'limit.warning': node = renderWarning(event); break;
     case 'usage.recorded': applyUsage(event); return;
@@ -566,6 +609,8 @@ function renderEventNode(event) {
     case 'plan.stopped':
       node = renderPlanEvent(event);
       break;
+    case 'room.alert': node = renderAlert(event); break;
+    case 'room.stopped': node = renderHalted(event); break;
     default: return;
   }
   removeEmpty();
@@ -666,6 +711,7 @@ els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) 
 els.project.title = initial.projectRoot;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 state.timeouts = initial.timeouts ?? {};
+for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 for (const agent of initial.agents) {
   state.agents.set(agent.id, { ...agent, tokens: 0, officialPercent: null });
   if (agent.ready) els.target.add(new Option(agent.label, agent.id));
@@ -703,10 +749,24 @@ els.input.addEventListener('keydown', (event) => {
   }
 });
 
+const STOPALL = /^\/?stop\s*all!?$/i;
+els.input.addEventListener('input', () => {
+  els.composer.classList.toggle('stopall', STOPALL.test(els.input.value.trim()));
+});
+document.querySelector('#stop-all')?.addEventListener('click', stopAll);
+
 els.composer.addEventListener('submit', async (event) => {
   event.preventDefault();
   const text = els.input.value.trim();
   if (!text) return;
+  if (STOPALL.test(text)) {
+    // Master command: never reaches an agent.
+    els.input.value = '';
+    els.composer.classList.remove('stopall');
+    autosize();
+    await stopAll();
+    return;
+  }
   els.input.disabled = true;
   els.send.disabled = true;
   try {

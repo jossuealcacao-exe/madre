@@ -37,8 +37,11 @@ export class Room {
   #maxMessageChars;
   #turns = new Map();
   #plans = new Map();
+  #alerted = new Map();
   #delegation;
   #maxPlanSteps;
+  #maxConcurrentTurns;
+  #planMaxAgeMs;
 
   constructor({
     store,
@@ -52,6 +55,8 @@ export class Room {
     maxMessageChars = 20000,
     delegation = true,
     maxPlanSteps = 4,
+    maxConcurrentTurns = 3,
+    planMaxAgeMs = 300000,
   }) {
     this.#store = store;
     this.#agents = agents;
@@ -63,6 +68,8 @@ export class Room {
     this.#maxMessageChars = maxMessageChars;
     this.#delegation = delegation;
     this.#maxPlanSteps = maxPlanSteps;
+    this.#maxConcurrentTurns = maxConcurrentTurns;
+    this.#planMaxAgeMs = planMaxAgeMs;
 
     for (const event of historicalEvents) {
       if (event.type === 'usage.recorded') {
@@ -171,6 +178,7 @@ export class Room {
   // Interrupts every in-flight turn (killing the agent processes) and waits
   // until each one has recorded its failure in the log.
   async shutdown() {
+    for (const plan of this.#plans.values()) plan.stopped = 'PULSE is shutting down';
     for (const { controller } of this.#turns.values()) controller.abort();
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
   }
@@ -197,7 +205,12 @@ export class Room {
       });
       return;
     }
-    await this.#dispatch({ messageId, targetId: parsed.target, text: parsed.text, requester: 'you', depth: 0 });
+    let allowDelegation = true;
+    if (this.#plans.size > 0) {
+      allowDelegation = false;
+      await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
+    }
+    await this.#dispatch({ messageId, targetId: parsed.target, text: parsed.text, requester: 'you', depth: 0, allowDelegation });
   }
 
   // Agents that can receive a delegated step from `self`.
@@ -206,7 +219,30 @@ export class Room {
   }
 
   activePlans() {
-    return [...this.#plans.values()].map((plan) => ({ planId: plan.planId, orchestrator: plan.orchestrator, step: plan.step, total: plan.steps.length + (plan.closing ? 1 : 0) }));
+    return [...this.#plans.values()].map((plan) => ({ planId: plan.planId, orchestrator: plan.orchestrator, step: plan.step, total: plan.steps.length + (plan.closing ? 1 : 0), startedAt: plan.startedAt }));
+  }
+
+  activeTurns() {
+    return [...this.#turns.entries()].map(([messageId, turn]) => ({ messageId, agent: turn.agent, planId: turn.planId, startedAt: turn.startedAt }));
+  }
+
+  // Master brake: every plan and every in-flight turn, recorded as one event.
+  async stopAll(reason = 'STOPALL by the human') {
+    const plans = this.#plans.size;
+    const turns = this.#turns.size;
+    for (const plan of this.#plans.values()) plan.stopped = reason;
+    for (const turn of this.#turns.values()) turn.controller.abort();
+    await this.#emit('room.stopped', { reason, plans, turns, agents: [...new Set([...this.#turns.values()].map((turn) => turn.agent))] });
+    await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
+    return { plans, turns };
+  }
+
+  // MOTHER speaks when the room starts to run away from the human.
+  async #alert(code, message, key = code) {
+    const now = Date.now();
+    if ((this.#alerted.get(key) ?? 0) > now - 30000) return;
+    this.#alerted.set(key, now);
+    await this.#emit('room.alert', { code, message, plans: this.activePlans().length, turns: this.#turns.size });
   }
 
   // Human brake: stops the remaining steps of a running plan and interrupts
@@ -252,16 +288,34 @@ export class Room {
       });
     }
 
+    if (this.#turns.size >= this.#maxConcurrentTurns) {
+      await this.#alert('too-many-turns', `${this.#turns.size + 1} agents are working at once. If this is not what you asked for, type STOPALL.`);
+    }
+    if ([...this.#turns.values()].some((turn) => turn.agent === agent.id)) {
+      await this.#alert('agent-double-booked', `@${agent.id} is already answering another turn; answers may cross. STOPALL halts everything.`, `double:${agent.id}`);
+    }
+    for (const plan of this.#plans.values()) {
+      if (Date.now() - plan.startedAt > this.#planMaxAgeMs) {
+        await this.#alert('plan-long', `The plan by @${plan.orchestrator} has been running for ${Math.round((Date.now() - plan.startedAt) / 60000)} min. STOPALL halts it.`, `plan-long:${plan.planId}`);
+      }
+    }
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
-    const turn = { controller, promise: null, planId };
+    const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
     turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal });
     this.#turns.set(messageId, turn);
+    let outcome = null;
     try {
-      return await turn.promise;
+      outcome = await turn.promise;
     } finally {
       this.#turns.delete(messageId);
     }
+    // The orchestrator's turn is over before its plan starts, so it is never
+    // counted as in flight while the others work.
+    if (outcome?.directives?.steps.length) {
+      await this.#runPlan({ orchestrator: agent.id, parentMessageId: outcome.responseMessageId, directives: outcome.directives });
+    }
+    return outcome?.responseMessageId ?? null;
   }
 
   #prompt({ agent, text, requester, depth, allowDelegation, context }) {
@@ -311,10 +365,7 @@ export class Room {
       });
       await this.#recordUsage(agent.id, result.usage, { messageId, responseMessageId });
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId });
-      if (directives.steps.length) {
-        await this.#runPlan({ orchestrator: agent.id, parentMessageId: responseMessageId, directives });
-      }
-      return responseMessageId;
+      return { responseMessageId, directives };
     } catch (error) {
       await this.#emit('message.failed', { messageId, target: agent.id, planId, error: failureMessage(error) });
       return null;
@@ -323,7 +374,7 @@ export class Room {
 
   async #runPlan({ orchestrator, parentMessageId, directives }) {
     const planId = randomUUID();
-    const plan = { planId, orchestrator, steps: directives.steps, closing: directives.closing, step: 0, stopped: null };
+    const plan = { planId, orchestrator, steps: directives.steps, closing: directives.closing, step: 0, stopped: null, startedAt: Date.now() };
     this.#plans.set(planId, plan);
     await this.#emit('plan.created', {
       planId,

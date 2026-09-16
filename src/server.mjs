@@ -233,6 +233,7 @@ export async function createPulseServer({
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
           delegation: { enabled: delegation, maxPlanSteps },
           plans: room.activePlans(),
+          turns: room.activeTurns(),
           quotaSources: quotaMonitor.snapshot(),
           events: await store.readAll(),
         });
@@ -260,6 +261,10 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/stop-all') {
+        const result = await room.stopAll();
+        return sendJson(response, 202, { stopped: true, ...result });
       }
       const stopMatch = request.method === 'POST' && url.pathname.match(/^\/api\/plans\/([0-9a-f-]+)\/stop$/);
       if (stopMatch) {
