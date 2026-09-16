@@ -1,14 +1,26 @@
 {
   "name": "@jossuealcala/pulse",
-  "version": "0.1.0-dev.1",
-  "description": "One room where local AI agents collaborate around a project.",
+  "version": "0.1.0",
+  "description": "One local room where the AI coding agents already installed on your machine (Codex, Claude Code, Gemini CLI, OpenCode) consult a project together, read-only, with durable handoff between them.",
+  "keywords": [
+    "ai-agents",
+    "codex",
+    "claude-code",
+    "gemini-cli",
+    "opencode",
+    "multi-agent",
+    "local-first",
+    "handoff"
+  ],
   "type": "module",
-  "private": true,
+  "license": "Apache-2.0",
   "files": [
     "bin",
     "src",
     "public",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "bin": {
     "pulse": "./bin/pulse.mjs"
@@ -23,5 +35,7 @@
     "check": "npm test && node ./bin/pulse.mjs doctor --json",
     "pack:check": "node ./scripts/pack-check.mjs"
   },
-  "license": "UNLICENSED"
+  "publishConfig": {
+    "access": "public"
+  }
 }

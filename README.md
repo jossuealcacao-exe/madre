@@ -2,7 +2,18 @@
 
 Una sola sala para conversar con los agentes de IA que ya están instalados en tu computadora, alrededor de un proyecto real.
 
-## Probar el MVP local
+## Uso
+
+Desde la carpeta de tu proyecto, sin instalar nada:
+
+```bash
+npx @jossuealcala/pulse doctor
+npx @jossuealcala/pulse start
+```
+
+`doctor` muestra qué agentes están listos. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 20 o superior.
+
+Para trabajar sobre el código fuente:
 
 ```bash
 node ./bin/pulse.mjs doctor
@@ -67,3 +78,7 @@ Cada agente tiene un timeout de 120 s por defecto. `PULSE_AGENT_TIMEOUT_MS` lo c
 - Gemini CLI: consulta restringida habilitada con Plan Mode y una política efímera que solo permite herramientas locales de lectura. PULSE ejecuta Gemini con un `GEMINI_CLI_HOME` temporal que solo recibe las credenciales existentes (tokens OAuth y `~/.gemini/.env`; una API key guardada en el llavero del sistema funciona sin copia); hooks, extensiones, servidores MCP y memoria del `~/.gemini` real no se cargan. El relanzamiento interno del CLI se desactiva para que el timeout controle el proceso que hace la petición.
 
 Todos los adaptadores corren en su propio grupo de procesos. Si un agente no responde antes del timeout, PULSE termina el árbol completo (SIGTERM y, tras un periodo de gracia, SIGKILL), no solo el lanzador.
+
+## Licencia
+
+Apache-2.0. Ver `LICENSE` y `NOTICE`.
