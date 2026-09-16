@@ -1130,6 +1130,16 @@ test('the CLI refuses a project folder that does not exist', async () => {
   assert.match(out, /project folder not found: \/definitely\/not\/here/);
 });
 
+test('a missing project folder is named in the adapter error, not hidden behind ENOENT', async () => {
+  await assert.rejects(runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', ''],
+    cwd: '/definitely/not/here',
+    label: 'Codex',
+    parse: () => ({ text: '' }),
+  }), /Codex could not start: .*ENOENT.*project folder \/definitely\/not\/here exists/);
+});
+
 test('polls available official quota sources and restores sentinel state', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-quota-'));
   const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' }];

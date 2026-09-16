@@ -69,7 +69,13 @@ export function runReadonlyProcess({
 
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
-    child.on('error', (error) => finish(() => reject(error)));
+    child.on('error', (error) => finish(() => {
+      // spawn reports ENOENT for a missing cwd as well as a missing binary.
+      if (error.code === 'ENOENT') {
+        error.message = `${label} could not start: ${error.message}. Check that the project folder ${cwd} exists and that ${executable} is still installed.`;
+      }
+      reject(error);
+    }));
     child.on('close', (code) => finish(() => {
       const response = parse(stdout);
       if (code === 0 && response.text) return resolve(response);
