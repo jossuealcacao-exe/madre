@@ -29,6 +29,7 @@
   --danger: #ff7b72;
   --warn: #ffd166;
   --crit: #ff8a7a;
+  --terror: #ff2a1f;             /* MOTHER, when she stops being polite */
   --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 12px 40px rgba(0,0,0,.45);
 }
 @media (prefers-color-scheme: light) {
@@ -86,8 +87,20 @@ body {
   color: var(--text-2);
 }
 .bar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.brand { display: flex; align-items: center; gap: 9px; color: var(--text); font-weight: 700; letter-spacing: .22em; font-size: 11px; }
-.pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 12px var(--phosphor); }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; letter-spacing: .22em; font-size: 11px; }
+.brand-mark { width: 64px; height: 18px; color: var(--phosphor); overflow: visible; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--phosphor) 55%, transparent)); }
+.brand-mark .beat { stroke-dasharray: 100; stroke-dashoffset: 100; animation: beat-draw 1.1s cubic-bezier(.2, .7, .2, 1) .15s forwards; }
+.brand-mark .beat-dot { opacity: 0; transform-origin: 60px 10px; transform-box: view-box; animation: beat-dot 1s ease-out 1.05s forwards, beat-idle 2.6s ease-in-out 2.4s infinite; }
+.brand-word { opacity: 0; transform: translateX(-6px); animation: word-in .6s ease-out 1.35s forwards; }
+@keyframes beat-draw { to { stroke-dashoffset: 0; } }
+@keyframes beat-dot { 0% { opacity: 0; transform: scale(.2); } 35% { opacity: 1; transform: scale(1.9); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes beat-idle { 0%, 100% { opacity: 1; transform: scale(1); } 14% { transform: scale(1.35); } 28% { transform: scale(1); } 42% { transform: scale(1.2); } 56% { transform: scale(1); } }
+@keyframes word-in { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark .beat { animation: none; stroke-dashoffset: 0; }
+  .brand-mark .beat-dot { animation: none; opacity: 1; }
+  .brand-word { animation: none; opacity: 1; transform: none; }
+}
 .project { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
 .project::before { content: "/ "; }
 .agents { display: flex; gap: 8px; margin-left: auto; }
@@ -132,8 +145,9 @@ body {
   padding: 36px 0 28px;
 }
 .empty { margin: auto; text-align: center; color: var(--text-3); display: grid; gap: 10px; max-width: 420px; justify-items: center; }
-.empty-mark { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); position: relative; margin-bottom: 8px; }
-.empty-mark::after { content: ""; position: absolute; inset: 15px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 24px var(--phosphor); }
+.empty-mark { width: 144px; height: 40px; color: var(--phosphor); margin-bottom: 6px; overflow: visible; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--phosphor) 55%, transparent)); }
+.empty-mark .beat { stroke-dasharray: 100; stroke-dashoffset: 100; animation: beat-draw 1.1s cubic-bezier(.2, .7, .2, 1) .15s forwards; }
+.empty-mark .beat-dot { opacity: 0; transform-origin: 60px 10px; transform-box: view-box; animation: beat-dot 1s ease-out 1.05s forwards, beat-idle 2.6s ease-in-out 2.4s infinite; }
 .empty strong { color: var(--text); font-size: 17px; letter-spacing: -.01em; font-weight: 600; }
 .empty span { font-size: 13px; line-height: 1.5; }
 code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 10%, transparent); padding: 2px 5px; border-radius: 5px; }
@@ -211,8 +225,13 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .system.fail { color: var(--danger); text-transform: none; letter-spacing: 0; font-size: 11px; }
 .system.fail .label { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; display: block; opacity: .8; margin-bottom: 2px; }
 .system.recovered { color: var(--text-3); }
-.system.mother { color: var(--phosphor); text-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 50%, transparent); letter-spacing: .14em; }
-.system.mother b { color: var(--phosphor); }
+.system.mother { color: var(--terror); text-shadow: 0 0 10px color-mix(in srgb, var(--terror) 70%, transparent), 0 0 28px color-mix(in srgb, var(--terror) 35%, transparent); letter-spacing: .16em; animation: terror-in 1.4s steps(3, end) 1; }
+.system.mother b { color: var(--terror); }
+@keyframes terror-in { 0% { opacity: 0; } 30% { opacity: 1; } 45% { opacity: .2; } 60% { opacity: 1; } 75% { opacity: .5; } 100% { opacity: 1; } }
+.composer.expendable .crew-label { color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); }
+.composer.expendable textarea::placeholder { color: color-mix(in srgb, var(--terror) 75%, transparent); }
+.user.expendable .who b, .user.expendable .stamp .to { color: var(--terror); }
+.mother-button.arming { color: var(--terror); border-color: var(--terror); box-shadow: 0 0 16px color-mix(in srgb, var(--terror) 35%, transparent); transition: color 3s linear, border-color 3s linear; }
 .system .gauge { display: block; width: 220px; max-width: 100%; height: 2px; margin: 8px auto 0; background: color-mix(in srgb, currentColor 22%, transparent); position: relative; overflow: hidden; }
 .system .gauge .now { position: absolute; inset: 0 auto 0 0; background: currentColor; }
 .system .gauge .next { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 5px); opacity: .55; }

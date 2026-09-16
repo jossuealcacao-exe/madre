@@ -10,7 +10,13 @@
     <div class="shell">
       <header class="bar">
         <div class="bar-left">
-          <span class="brand"><span class="pulse-dot"></span>PULSE</span>
+          <span class="brand" aria-label="PULSE">
+            <svg class="brand-mark" viewBox="0 0 72 20" aria-hidden="true">
+              <path class="beat" d="M1 10 H16 L20 10 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10 H52" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>
+              <circle class="beat-dot" cx="60" cy="10" r="3" fill="currentColor"/>
+            </svg>
+            <span class="brand-word">PULSE</span>
+          </span>
           <span id="project" class="project" title="Project room"></span>
         </div>
         <div id="agents" class="agents" aria-label="Agents"></div>
@@ -45,7 +51,10 @@
       <main id="messages" class="thread" aria-live="polite">
         <div id="thread-inner" class="thread-inner">
           <div class="empty">
-            <div class="empty-mark" aria-hidden="true"></div>
+            <svg class="empty-mark" viewBox="0 0 72 20" aria-hidden="true">
+              <path class="beat" d="M1 10 H16 L20 10 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10 H52" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>
+              <circle class="beat-dot" cx="60" cy="10" r="3" fill="currentColor"/>
+            </svg>
             <strong>One conversation. Every agent.</strong>
             <span>Pick an agent and ask, or start with a mention such as <code>@codex summarize this project</code>.</span>
           </div>

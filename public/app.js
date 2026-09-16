@@ -497,7 +497,7 @@ function renderEventNode(event) {
 // down" arrives as bursts. We count distinct downward pushes at the end of
 // the record: at least three of them, spanning six seconds, with no more
 // than two seconds of silence between pushes and no push upward.
-const HOLD_MS = 6000;
+const HOLD_MS = 4000;
 const HOLD_GAP_MS = 2000;
 const HOLD_MIN_PUSHES = 3;
 const BURST_MS = 150;
@@ -544,8 +544,27 @@ function trackHold(downward, now = Date.now()) {
   return false;
 }
 
+// Second way in: rest the cursor on MU/TH/UR for three seconds.
+const HOVER_MS = 3000;
+let hoverTimer = null;
+function beginHover() {
+  if (state.expendable) return;
+  const button = document.querySelector('#mother-button');
+  button?.classList.add('arming');
+  clearTimeout(hoverTimer);
+  hoverTimer = setTimeout(() => { button?.classList.remove('arming'); armExpendable(); }, HOVER_MS);
+}
+function endHover() {
+  clearTimeout(hoverTimer);
+  hoverTimer = null;
+  document.querySelector('#mother-button')?.classList.remove('arming');
+}
+document.querySelector('#mother-button')?.addEventListener('mouseenter', beginHover);
+document.querySelector('#mother-button')?.addEventListener('mouseleave', endHover);
+document.querySelector('#mother-button')?.addEventListener('click', endHover);
+
 // Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
-globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, state };
+globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state };
 
 els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
 let touchY = null;

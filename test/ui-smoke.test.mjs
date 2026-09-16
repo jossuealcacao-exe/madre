@@ -146,8 +146,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(trackHold(true, t0 + 50), false, 'same burst is ignored');
   assert.equal(trackHold(true, t0 + 1500), false);
   assert.equal(trackHold(true, t0 + 3000), false, 'three pushes but only 3 s');
-  assert.equal(trackHold(true, t0 + 4500), false);
-  assert.equal(trackHold(true, t0 + 6100), true, 'pushes every ~1.5 s spanning 6 s arm MOTHER');
+  assert.equal(trackHold(true, t0 + 4100), true, 'pushes every ~1.5 s spanning 4 s arm MOTHER');
   assert.equal(uiState.expendable, true);
   assert.match(registry.get('crew-label').textContent, /EXPENDABLE/);
   assert.match(column.children.at(-1).textContent, /end of record/);
