@@ -5,10 +5,9 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-// Optional modules a user can add to a project from the room, each installed
-// by its own tool. PULSE stays a read-only consultation room: installing a
-// module is the one action that writes into the project, so it only happens
-// after an explicit confirmation and is recorded in the durable log.
+// Optional room modules. Built-ins only change PULSE's local configuration;
+// the external AHP+ installer can write into the selected project, so it
+// requires explicit confirmation and records that action in the durable log.
 
 async function readJson(path) {
   try {
@@ -120,6 +119,20 @@ export const GIT_PULSE = {
 };
 EXTENSIONS.push(GIT_PULSE);
 
+export const ASHCODE = {
+  id: 'ashcode',
+  kind: 'builtin',
+  name: 'AshCode',
+  vendor: 'PULSE · ORDER 937',
+  package: null,
+  version: '0.1.0-beta',
+  summary: 'Opt-in Spanish/English prompt and reply abbreviation. Keeps the original visible; may change meaning. Shorter characters do not guarantee fewer provider tokens.',
+  creates: ['nothing in the project', 'an ashCode switch in ~/.pulse/config.json', 'original and abbreviated text in the room event log when applied'],
+  requires: [],
+  models: [],
+};
+EXTENSIONS.push(ASHCODE);
+
 export const extensionById = (id) => EXTENSIONS.find((extension) => extension.id === id) ?? null;
 
 export async function listExtensions({ projectRoot, agents = [], config = {}, imageKey = async () => null }) {
@@ -133,6 +146,17 @@ export async function listExtensions({ projectRoot, agents = [], config = {}, im
         preflight: isRepo ? { ok: true, problems: [] } : { ok: false, problems: ['Run `git init` in the project to use /git.'] },
         install: { display: '/git in the composer', platforms: [] },
         fixed: true,
+      };
+    }
+    if (extension.id === 'ashcode') {
+      const enabled = Boolean(config.modules?.ashCode?.enabled);
+      return {
+        id: extension.id, kind: 'builtin', name: extension.name, vendor: extension.vendor, package: null, version: extension.version,
+        summary: extension.summary, creates: extension.creates, requires: [], models: [],
+        status: { installed: enabled, detail: enabled ? 'on · beta · ORDER 937 available' : 'off · beta' },
+        preflight: { ok: true, problems: [] },
+        install: { display: enabled ? 'disable AshCode' : 'enable AshCode (config.json)', platforms: [] },
+        warning: 'Beta: abbreviation may alter meaning or introduce errors. Review the original. Character reduction is not verified token savings.',
       };
     }
     if (extension.kind === 'builtin') {

@@ -56,9 +56,9 @@
             <span class="mother-sub">PULSE · OPTIONAL INTEGRATIONS · INSTALLED BY THEIR OWN TOOLS</span>
             <button id="modules-close" class="mother-close" type="button">CLOSE ×</button>
           </header>
-          <p class="mother-answer" id="modules-note">A MODULE IS INSTALLED INTO THE PROJECT BY ITS OWN INSTALLER, ONLY AFTER YOU CONFIRM. PULSE ITSELF STAYS READ-ONLY.</p>
+          <p class="mother-answer" id="modules-note">BUILT-IN MODULES CHANGE ONLY PULSE SETTINGS. EXTERNAL MODULES WRITE INTO THE PROJECT ONLY AFTER YOU CONFIRM.</p>
           <section id="modules-list" class="mother-section"></section>
-          <footer class="mother-foot">THE ONLY WRITE PULSE EVER MAKES TO A PROJECT · YOU SEE THE COMMAND FIRST</footer>
+          <footer class="mother-foot">BUILT-INS STAY IN PULSE · PROJECT INSTALLS SHOW THE COMMAND FIRST</footer>
         </div>
       </dialog>
 
@@ -124,6 +124,7 @@
             <span class="create-word">CREATE</span>
             <span id="create-scopes" class="create-scopes" hidden></span>
           </button>
+          <button id="ashcode-toggle" type="button" class="ashcode-toggle" aria-pressed="false" title="AshCode beta: abbreviate this prompt and the replies. May change meaning; original remains available." hidden>ORDER 937</button>
           <button id="attach" type="button" class="attach" title="Attach an image or file (or drop it here)" aria-label="Attach">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 6.5l-6 6a2.1 2.1 0 003 3l6.5-6.5a4 4 0 00-5.7-5.7L4.8 9.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -133,7 +134,7 @@
           </button>
         </div>
       </form>
-      <p class="safety">Consultation mode · Project writes stay under your control: agents create files only when you grant CREATE, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.</p>
+      <p class="safety">Consultation mode · Project writes stay under your control: agents create files only with CREATE or an opt-in standing lease, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.</p>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>
       <dialog id="viewer" class="viewer" aria-label="File viewer">

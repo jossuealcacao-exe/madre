@@ -89,6 +89,9 @@ export function resolveScopes(agentId, configured = {}) {
     const wanted = configured[scope] ?? (scope !== 'web');
     scopes[scope] = { capable, enabled: capable && wanted, wired: true };
   }
+  // A standing lease: every turn of this agent may create files inside
+  // .pulse/out/ without the human arming CREATE each time. Opt-in per agent.
+  scopes.write.always = Boolean(configured.alwaysCreate) && scopes.write.enabled;
   return scopes;
 }
 

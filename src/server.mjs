@@ -158,7 +158,7 @@ export async function createPulseServer({
       for (const [agentId, scopes] of Object.entries(patch.scopes)) {
         if (!agents.some((agent) => agent.id === agentId) || !scopes || typeof scopes !== 'object') continue;
         config.scopes[agentId] = { ...(current[agentId] ?? {}) };
-        for (const scope of ['write', 'imageGen', 'web']) if (typeof scopes[scope] === 'boolean') config.scopes[agentId][scope] = scopes[scope];
+        for (const scope of ['write', 'imageGen', 'web', 'alwaysCreate']) if (typeof scopes[scope] === 'boolean') config.scopes[agentId][scope] = scopes[scope];
       }
       room.setScopes(config.scopes);
     }
@@ -225,6 +225,7 @@ export async function createPulseServer({
   const startupConfig = await readConfig(root);
   room.setScopes(startupConfig.scopes ?? {});
   setImageModule(startupConfig.modules?.imageStudio ?? {});
+  room.setAshCode(Boolean(startupConfig.modules?.ashCode?.enabled));
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -288,6 +289,15 @@ export async function createPulseServer({
   async function installExtension(id, { confirm } = {}) {
     const extension = extensionById(id);
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
+    if (extension.id === 'ashcode') {
+      const current = await readConfig(root);
+      const enabled = !Boolean(current.modules?.ashCode?.enabled);
+      if (enabled && confirm !== true) return { status: 400, body: { error: 'AshCode is beta and can change meaning. Send { "confirm": true } to enable it.' } };
+      await updateConfig(root, { modules: { ...current.modules, ashCode: { enabled } } });
+      room.setAshCode(enabled);
+      await room.record('extension.toggled', { id, name: extension.name, enabled, beta: true });
+      return { status: 200, body: { enabled, beta: true, warning: 'AshCode beta may alter meaning; review the original. Character reduction is not verified token savings.' } };
+    }
     if (extension.kind === 'builtin') {
       // Image Studio: a switch in config.json, nothing written to the project.
       const current = await readConfig(root);
@@ -295,7 +305,7 @@ export async function createPulseServer({
       const key = await imageKey();
       if (enabled && !key) return { status: 412, body: { error: 'No Gemini API key found. Sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY, then enable Image Studio.' } };
       const model = typeof arguments[1]?.model === 'string' && arguments[1].model ? arguments[1].model : (current.modules?.imageStudio?.model ?? extension.models[0]);
-      await updateConfig(root, { modules: { imageStudio: { enabled, model } } });
+      await updateConfig(root, { modules: { ...current.modules, imageStudio: { enabled, model } } });
       setImageModule({ enabled, model });
       await room.record('extension.toggled', { id, name: extension.name, enabled, model });
       return { status: 200, body: { enabled, model, capabilities: room.capabilities() } };
@@ -372,6 +382,7 @@ export async function createPulseServer({
         return sendJson(response, 200, {
           projectRoot,
           agents,
+          ashCode: { enabled: room.ashCodeEnabled() },
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
           delegation: { enabled: room.settings().delegation, maxPlanSteps: room.settings().maxPlanSteps },

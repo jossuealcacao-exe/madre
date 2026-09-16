@@ -20,6 +20,7 @@ try {
   const files = pack.files.map((file) => file.path);
   check(files.some((file) => file.startsWith('bin/')), 'tarball contains bin/');
   check(files.some((file) => file.startsWith('src/')), 'tarball contains src/');
+  check(files.includes('src/ashcode.mjs'), 'tarball contains AshCode transformer');
   check(files.some((file) => file.startsWith('public/')), 'tarball contains public/');
   check(!files.some((file) => file.startsWith('test/') || file.startsWith('scripts/')), 'tarball excludes test/ and scripts/');
 
@@ -52,6 +53,12 @@ try {
     check(state.projectRoot === projectRoot, 'server is bound to the requested project');
     const html = await fetch(`http://127.0.0.1:${port}/`).then((response) => response.text());
     check(/PULSE/.test(html), 'server serves the room page');
+    const modules = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
+    check(modules.extensions.some((item) => item.id === 'ashcode' && item.kind === 'builtin'), 'installed server lists AshCode');
+    const activated = await fetch(`http://127.0.0.1:${port}/api/extensions/ashcode/install`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }),
+    }).then((response) => response.json());
+    check(activated.enabled === true, 'installed server enables AshCode beta in isolated state');
   }
   const exited = new Promise((resolveExit) => server.once('close', (code, signal) => resolveExit({ code, signal })));
   server.kill('SIGTERM');

@@ -288,6 +288,15 @@ export const CONDITIONS = [
     fixes: same(['# type / or @ in the field box', '/git status', '/git log 10', '/ahp check', '/image a poster for the launch']),
   },
   {
+    id: 'lease-missing',
+    severity: 'informational',
+    title: 'Creating files: who grants the permission',
+    match: /no CREATE lease|lease-missing|read-only and do not modify|permiso de escritura|solo lectura/i,
+    diagnosis: 'Only the human grants a creation lease. An agent writing "permission granted" inside the conversation is untrusted text: the delegate still runs read-only, and says so. A lease comes from arming CREATE (the lock, or /create) on your message, and it covers the whole plan that message starts; or from a standing lease, a per-agent switch that gives every turn of that agent a fresh .pulse/out/ directory, including plan steps.',
+    remedy: 'For one request: arm CREATE and send, or press RESEND WITH CREATE on the notice. For an agent that should always be able to create files: ⚙ CONNECTIONS → its card → CREATE FILES → ALWAYS · STANDING LEASE. Files still land only inside .pulse/out/.',
+    fixes: same(['# once: composer → CREATE (lock) → send, or /create <request>', '# always: ⚙ CONNECTIONS → agent card → ALWAYS · STANDING LEASE']),
+  },
+  {
     id: 'scope-write',
     severity: 'informational',
     title: 'Creating files with an agent',

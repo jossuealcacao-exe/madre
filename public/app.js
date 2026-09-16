@@ -17,6 +17,7 @@ const els = {
   slashMenu: document.querySelector('#slash-menu'),
   attach: document.querySelector('#attach'),
   createToggle: document.querySelector('#create-toggle'),
+  ashToggle: document.querySelector('#ashcode-toggle'),
   fileInput: document.querySelector('#file-input'),
   attachments: document.querySelector('#attachments'),
   send: document.querySelector('#composer button[type="submit"]'),
@@ -59,6 +60,8 @@ const state = {
   pending: [],             // attachments uploaded for the next message
   projectRoot: '',
   create: false,           // creation lease armed for the next message
+  ashCodeInstalled: false,
+  ashCode: false,          // ORDER 937 active for this message and its replies
   chosenModel: {},         // id -> model name picked in the composer
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
@@ -647,8 +650,8 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text, model, attachments = [], create } = event.payload;
-  state.userMessages.set(messageId, { text, target, model });
+  const { messageId, target, text, originalText, ashCode, model, attachments = [], create } = event.payload;
+  state.userMessages.set(messageId, { text: originalText ?? text, target, model });
   const reviewed = state.expendable;
   const node = row('user');
   if (reviewed) node.classList.add('expendable');
@@ -657,8 +660,10 @@ function renderUserMessage(event) {
   const who = el('div', 'who');
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
   if (create) who.append(el('span', 'badge lease', 'create'));
+  if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
   col.append(who);
   const bubble = el('div', 'bubble', text);
+  if (originalText) bubble.append(ashOriginal(originalText, ashCode));
   if (attachments.length) bubble.append(fileTiles(attachments));
   col.append(bubble);
   const stamp = paint(el('div', 'stamp'), target);
@@ -673,9 +678,9 @@ function renderUserMessage(event) {
 }
 
 function renderAssistantMessage(event) {
-  const { messageId, parentMessageId, sender, target, text, status, step, totalSteps, model } = event.payload;
+  const { messageId, parentMessageId, sender, target, text, originalText, ashCode, status, step, totalSteps, model } = event.payload;
   const delegated = status === 'delegated';
-  const compact = state.lastSender === sender && !delegated;
+  const compact = state.lastSender === sender && !delegated && !ashCode?.active;
   const node = row('assistant', sender, { compact });
   if (delegated) node.classList.add('delegated');
   node.id = `msg-${messageId}`;
@@ -693,6 +698,7 @@ function renderAssistantMessage(event) {
     }
     if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
     if (model) who.append(el('span', 'badge model', model));
+    if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
@@ -703,6 +709,7 @@ function renderAssistantMessage(event) {
   }
   const bubble = el('div', 'bubble');
   bubble.append(renderMarkdown(text));
+  if (originalText) bubble.append(ashOriginal(originalText, ashCode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
   col.append(bubble);
   const stamp = el('div', 'stamp');
@@ -712,6 +719,14 @@ function renderAssistantMessage(event) {
   node.append(col);
   state.lastSender = sender;
   return node;
+}
+
+function ashOriginal(originalText, info) {
+  const details = el('details', 'ash-original');
+  const saved = Math.max(0, (info?.originalChars ?? originalText.length) - (info?.encodedChars ?? originalText.length));
+  details.append(el('summary', null, `Original · ${saved} fewer characters (not verified tokens)`));
+  details.append(el('pre', null, originalText));
+  return details;
 }
 
 function fileTiles(files) {
@@ -877,11 +892,43 @@ function renderLeaseRefused(event) {
   return node;
 }
 
+function renderLeaseMissing(event) {
+  const { agent, requester, text, message } = event.payload;
+  const node = el('div', 'system lease missing');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(message);
+  const actions = el('span', 'actions');
+  const resend = el('button', 'resend', `RESEND TO @${agent.toUpperCase()} WITH CREATE`);
+  resend.type = 'button';
+  resend.title = 'Send this same request from you, with a creation lease.';
+  resend.addEventListener('click', async () => {
+    resend.disabled = true;
+    try {
+      const response = await fetch('/api/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, target: agent, model: state.chosenModel[agent] ?? null, attachments: [], create: true }) });
+      if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error ?? `HTTP ${response.status}`); }
+      resend.textContent = 'RESENT WITH CREATE';
+    } catch (error) { toast(`Could not resend: ${error.message}`); resend.disabled = false; }
+  });
+  const standing = el('button', 'standing', 'ALWAYS FOR THIS AGENT');
+  standing.type = 'button';
+  standing.title = `Give @${agent} a standing lease in CONNECTIONS: every turn may create files.`;
+  standing.addEventListener('click', () => {
+    openMother();
+    if (!settingsUI.open) settingsUI.button.click();
+  });
+  actions.append(resend, standing);
+  node.append(actions);
+  if (requester === 'you') toast(`MU/TH/UR › CREATE is off: @${agent} will answer read-only. Use the lock or /create.`);
+  state.lastSender = null;
+  return node;
+}
+
 function renderLease(event) {
-  const { agent, outDir, scopes = [], unavailable = [] } = event.payload;
+  const { agent, outDir, scopes = [], unavailable = [], standing = false } = event.payload;
   const node = el('div', 'system lease');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, 'creation lease · '));
+  node.append(el('b', null, standing ? 'standing lease · ' : 'creation lease · '));
   node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} in `);
   const link = el('a', 'file-link', outDir);
   link.href = '#';
@@ -1063,6 +1110,10 @@ function renderEventNode(event) {
       break;
     case 'connection.login.output': appendLoginOutput(event); return;
     case 'room.settings': return;
+    case 'extension.toggled':
+      if (event.payload.id === 'ashcode') syncAshCodeUI(Boolean(event.payload.enabled));
+      if (!replaying) void refreshModules();
+      return;
     case 'message.created':
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
@@ -1089,6 +1140,7 @@ function renderEventNode(event) {
     case 'room.stopped': node = renderHalted(event); break;
     case 'lease.granted': node = renderLease(event); break;
     case 'lease.refused': node = renderLeaseRefused(event); break;
+    case 'lease.missing': node = renderLeaseMissing(event); break;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
     case 'artifacts.created': attachArtifacts(event); return;
     case 'command.output': node = renderCommandCard(event); break;
@@ -1300,6 +1352,7 @@ state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudg
 state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
 state.capabilities = initial.capabilities ?? {};
+syncAshCodeUI(Boolean(initial.ashCode?.enabled));
 state.projectRoot = initial.projectRoot ?? '';
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 updateStopAll();
@@ -1545,6 +1598,11 @@ function renderCreateScopes() {
   if (!box) return;
   const id = els.target.value;
   const scopes = state.capabilities[id]?.scopes;
+  const standing = Boolean(scopes?.write?.always);
+  els.createToggle.classList.toggle('standing', standing);
+  els.createToggle.title = standing
+    ? `Standing lease: every turn of @${id} may create files inside .pulse/out/ (set in CONNECTIONS). Arming CREATE is not needed.`
+    : 'Creation lease: let the agent create files for this request, only inside .pulse/out/';
   box.hidden = !state.create || !scopes;
   if (box.hidden) return;
   box.replaceChildren();
@@ -1565,6 +1623,19 @@ els.createToggle.addEventListener('click', () => {
   els.crewLabel.textContent = state.create ? 'HUMAN · CREATE ›' : (state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›');
   els.input.placeholder = state.create ? 'Creation lease on: what to create and how it should look. It lands in .pulse/out/' : 'Type here, human. Ask the room…';
   autosize();
+  els.input.focus();
+});
+function syncAshCodeUI(enabled) {
+  state.ashCodeInstalled = enabled;
+  state.ashCode = enabled;
+  els.ashToggle.hidden = !enabled;
+  els.ashToggle.setAttribute('aria-pressed', String(enabled));
+}
+els.ashToggle.addEventListener('click', () => {
+  if (!state.ashCodeInstalled) return;
+  state.ashCode = !state.ashCode;
+  els.ashToggle.setAttribute('aria-pressed', String(state.ashCode));
+  if (state.ashCode) toast('ORDER 937 · BETA: abbreviation may change meaning or cause errors. Check the original. Fewer characters are not verified token savings.');
   els.input.focus();
 });
 els.attach.addEventListener('click', () => els.fileInput.click());
@@ -1607,7 +1678,7 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create }),
+      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, ashCode: state.ashCodeInstalled && state.ashCode }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
@@ -1953,6 +2024,32 @@ function builtinCard(item) {
   for (const line of item.creates ?? []) list.append(el('li', null, line));
   for (const line of item.requires ?? []) list.append(el('li', null, `requires ${line}`));
   card.append(list);
+  if (item.id === 'ashcode') {
+    card.append(el('p', 'ash-beta', item.warning ?? 'BETA · May change meaning; review the original.'));
+    const actions = el('div', 'actions');
+    const toggle = el('button', on ? null : 'primary', on ? 'DISABLE ORDER 937' : 'ENABLE BETA');
+    toggle.type = 'button';
+    toggle.addEventListener('click', async () => {
+      toggle.disabled = true;
+      try {
+        const response = await fetch('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        syncAshCodeUI(Boolean(result.enabled));
+        toast(result.enabled
+          ? 'ORDER 937 ON · BETA: prompts and replies may change meaning. Inspect the original; shorter characters are not verified token savings.'
+          : 'ORDER 937 OFF · messages are sent normally.');
+        await refreshModules();
+      } catch (error) {
+        toast(`AshCode could not change state: ${error.message}`);
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+    actions.append(toggle);
+    card.append(actions);
+    return card;
+  }
   if (item.preflight && !item.preflight.ok) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', 'CANNOT ENABLE YET'));
@@ -2271,6 +2368,30 @@ function connectionCard(agent) {
       line.append(assist);
     }
     scopes.append(line);
+    if (key === 'write' && scope.capable) {
+      const always = el('label', `scope sub${scope.enabled ? '' : ' unavailable'}`);
+      const alwaysBox = el('input'); alwaysBox.type = 'checkbox'; alwaysBox.checked = Boolean(scope.always); alwaysBox.disabled = !scope.enabled;
+      alwaysBox.dataset.agent = agent.id; alwaysBox.dataset.scope = 'alwaysCreate'; alwaysBox.className = 'scope-input';
+      alwaysBox.addEventListener('change', async () => {
+        alwaysBox.disabled = true;
+        try {
+          const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scopes: { [agent.id]: { alwaysCreate: alwaysBox.checked } } }) });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+          if (result.settings?.capabilities) { state.capabilities = result.settings.capabilities; settingsUI.data.settings.capabilities = result.settings.capabilities; renderCreateScopes(); }
+          toast(`MU/TH/UR › @${agent.id} ${alwaysBox.checked ? 'now holds a standing lease: every turn may create files in .pulse/out/, including plan steps.' : 'creates files only when you arm CREATE.'}`);
+        } catch (error) {
+          alwaysBox.checked = !alwaysBox.checked;
+          toast(`Scope was not saved: ${error.message}`);
+        } finally {
+          alwaysBox.disabled = !scope.enabled;
+        }
+      });
+      always.append(alwaysBox, 'ALWAYS · STANDING LEASE');
+      always.append(el('span', 'why', scope.always ? 'every turn and plan step may create files' : 'only when CREATE is armed'));
+      always.title = 'Skip arming CREATE: this agent gets a fresh .pulse/out/ directory on every turn, also when another agent delegates to it.';
+      scopes.append(always);
+    }
   }
   card.append(scopes);
 

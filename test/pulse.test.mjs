@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { parseMessage } from '../src/router.mjs';
-import { budgetTokens, failureMessage, Room } from '../src/room.mjs';
+import { budgetTokens, failureMessage, looksLikeCreation, Room } from '../src/room.mjs';
 import { agentTimeoutsFromEnv, createPulseServer, projectRoomId } from '../src/server.mjs';
 import { buildCodexArgs, parseCodexOutput } from '../src/adapters/codex.mjs';
 import { buildClaudeArgs, parseClaudeOutput } from '../src/adapters/claude.mjs';
@@ -54,6 +54,7 @@ import { buildConversationContext, formatConversationContext } from '../src/conv
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
+import { ashLanguage, compressAshCode } from '../src/ashcode.mjs';
 
 
 // Opens an SSE connection and resolves each parsed frame through `onEvent`.
@@ -1043,7 +1044,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
   assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms codex,claude');
   assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.1', 'setup', '.']);
-  assert.equal(EXTENSIONS.length, 3);
+  assert.equal(EXTENSIONS.length, 4);
   assert.ok(EXTENSIONS.some((extension) => extension.id === 'git-pulse' && extension.kind === 'builtin'));
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));
@@ -1814,13 +1815,14 @@ test('creation lease: granted per human message, inherited by the plan, artifact
 
 test('scopes: what the human enabled, per agent; CREATE is refused with a reason when the agent cannot create', async () => {
   const codex = resolveScopes('codex');
-  assert.deepEqual(codex.write, { capable: true, enabled: true, wired: true });
+  assert.deepEqual(codex.write, { capable: true, enabled: true, wired: true, always: false });
   assert.deepEqual(codex.imageGen, { capable: true, enabled: true, wired: true });
   assert.equal(codex.web.enabled, false, 'web is off by default');
   const gemini = resolveScopes('gemini');
   assert.deepEqual(gemini.imageGen, { capable: false, enabled: false, wired: true });
   assert.equal(resolveScopes('gemini', { imageGen: true }).imageGen.enabled, false, 'cannot enable what the CLI lacks');
   assert.equal(resolveScopes('codex', { write: false }).write.enabled, false);
+  assert.equal(resolveScopes('codex', { write: false, alwaysCreate: true }).write.always, false);
   assert.match(abilityLine('codex', codex), /@codex: can create files, generate images/);
   assert.match(abilityLine('gemini', gemini), /@gemini: can create files; cannot generate images/);
 
@@ -2032,11 +2034,119 @@ test('Image Studio wiring: module grants imageGen; CLIs receive PULSE\'s MCP ser
       assert.equal(seen.codex.imageStudio, null, 'Codex keeps its native image generation');
       await room.send({ text: 'no lease', target: 'gemini' });
       assert.equal(seen.gemini.imageStudio, null, 'no lease, no studio');
+      room.setScopes({ gemini: { alwaysCreate: true } });
+      await room.send({ text: 'write a report', target: 'gemini' });
+      assert.equal(seen.gemini.imageStudio, null, 'a standing write lease does not enable paid image generation');
+      assert.ok((await store.readAll()).some((event) => event.type === 'lease.granted' && event.payload.standing && event.payload.agent === 'gemini'));
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   } finally {
     setImageModule({ enabled: false });
+  }
+});
+
+test('AshCode beta abbreviates Spanish and English but leaves uncertain or sensitive structure unchanged', () => {
+  const spanish = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
+  const english = 'Please create an image for the Core Cloud project for the header inside the home page of the main site';
+  assert.equal(ashLanguage(spanish), 'es');
+  assert.equal(ashLanguage(english), 'en');
+  assert.equal(compressAshCode(spanish).text, 'ASH937/es: crear imagen para proyecto Core Cloud para head en home');
+  assert.equal(compressAshCode(english).text, 'ASH937/en: create image for Core Cloud project for header inside home page');
+  for (const original of [
+    'crear una imagen para el proyecto Core Cloud no para el home',
+    'crear una imagen para el proyecto Core Cloud para la pagina principal de 2026',
+    'create an image for the project at https://example.com/page',
+    'create an image for the project at src/home.ts',
+    'create an image for the project in `src/home.ts`',
+    'ok',
+  ]) {
+    const result = compressAshCode(original);
+    assert.equal(result.applied, false, original);
+    assert.equal(result.text, original, original);
+  }
+});
+
+test('AshCode beta is opt-in per message, records the original, and uses abbreviated context', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ashcode-room-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }];
+    const prompts = [];
+    const answer = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
+    const room = new Room({ store, agents, projectRoot: root, invokers: { 'claude-readonly': async ({ prompt }) => { prompts.push(prompt); return { text: answer, usage: { totalTokens: 30 } }; } } });
+    const request = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
+    await room.send({ text: request, target: 'claude', ashCode: true });
+    assert.match(prompts[0], new RegExp(request), 'disabled module must not rewrite the prompt');
+    room.setAshCode(true);
+    await room.send({ text: request, target: 'claude', ashCode: true });
+    const events = (await store.readAll()).filter((event) => event.type === 'message.created');
+    assert.equal(events[2].payload.text, compressAshCode(request).text);
+    assert.equal(events[2].payload.originalText, request);
+    assert.equal(events[2].payload.ashCode.applied, true);
+    assert.equal(events[3].payload.text, compressAshCode(answer).text);
+    assert.equal(events[3].payload.originalText, answer);
+    assert.match(prompts[1], /ASH937\/es:/);
+    await room.send({ text: 'Resume brevemente', target: 'claude', ashCode: false });
+    assert.match(prompts[2], /ASH937\/es:/, 'abbreviated events enter subsequent context');
+    assert.equal(prompts[2].split(request).length - 1, 2, 'only the earlier non-AshCode turn keeps the full request and answer in context');
+    const latest = (await store.readAll()).filter((event) => event.type === 'message.created').at(-2);
+    assert.equal(latest.payload.text, 'Resume brevemente', 'bubble switch off bypasses compression');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('AshCode beta carries abbreviated instructions into a cross-agent plan', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ashcode-plan-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = ['claude', 'gemini'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/fake', version: 'test' }));
+    const brief = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
+    let delegatePrompt = '';
+    const room = new Room({ store, agents, projectRoot: root, invokers: {
+      'claude-readonly': async () => ({ text: `Delegating.\n\n\`\`\`pulse\n@gemini: ${brief}\n\`\`\``, usage: null }),
+      'gemini-readonly': async ({ prompt }) => { delegatePrompt = prompt; return { text: 'Entendido.', usage: null }; },
+    } });
+    room.setAshCode(true);
+    await room.send({ text: brief, target: 'claude', ashCode: true });
+    const delegated = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.status === 'delegated');
+    assert.ok(delegated);
+    assert.equal(delegated.payload.text, compressAshCode(brief).text);
+    assert.equal(delegated.payload.originalText, brief);
+    assert.match(delegatePrompt, /ASH937\/es:/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('AshCode module requires beta confirmation, persists its switch, and preserves other module settings', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ashcode-api-'));
+  const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }];
+  await updateConfig(root, { modules: { imageStudio: { enabled: false, model: 'gemini-2.5-flash-image' } } });
+  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {} });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const api = (path, options) => fetch(`http://127.0.0.1:${port}${path}`, options).then(async (response) => ({ status: response.status, body: await response.json() }));
+  try {
+    const listed = await api('/api/extensions');
+    assert.equal(listed.body.extensions.find((item) => item.id === 'ashcode').status.installed, false);
+    const denied = await api('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    assert.equal(denied.status, 400);
+    const on = await api('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+    assert.equal(on.status, 200);
+    assert.equal(on.body.enabled, true);
+    assert.equal((await api('/api/state')).body.ashCode.enabled, true);
+    assert.deepEqual((JSON.parse(await readFile(join(root, 'config.json'), 'utf8'))).modules, {
+      imageStudio: { enabled: false, model: 'gemini-2.5-flash-image' }, ashCode: { enabled: true },
+    });
+    assert.ok((await store.readAll()).some((event) => event.type === 'extension.toggled' && event.payload.id === 'ashcode' && event.payload.beta));
+    const off = await api('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    assert.equal(off.body.enabled, false);
+    assert.equal((await api('/api/state')).body.ashCode.enabled, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
   }
 });
 
@@ -2301,4 +2411,67 @@ test('budgetTokens weighs cache reads a tenth and handles Codex counting cached 
   assert.equal(budgetTokens({ source: 'claude-json', inputTokens: 16, cacheCreationInputTokens: 22181, cachedInputTokens: 162817, outputTokens: 5442, reasoningTokens: 0, totalTokens: 190456 }), 16 + 22181 + 5442 + Math.round(162817 * 0.1));
   assert.equal(budgetTokens({ source: 'codex-json', inputTokens: 157674, cachedInputTokens: 132608, outputTokens: 1454, reasoningTokens: 457, totalTokens: 159128 }), Math.round((157674 - 132608) + 1454 + 457 + 132608 * 0.1));
   assert.equal(budgetTokens({ totalTokens: 1200 }), 1200, 'falls back to the total when nothing is itemised');
+});
+
+
+test('standing lease: an agent opted in creates files on every turn, and a creation request without a lease is flagged with a way out', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-standing-'));
+  try {
+    assert.equal(looksLikeCreation('Genera el PDF con el análisis'), true);
+    assert.equal(looksLikeCreation('crea un archivo markdown'), true);
+    assert.equal(looksLikeCreation('¿qué opinas del diseño?'), false);
+    const store = new EventStore(join(root, 'events.jsonl'));
+    const agents = ['codex', 'claude'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const seen = {};
+    const invokers = {
+      'codex-readonly': async ({ prompt, lease }) => { seen.codex = { prompt, lease }; if (lease) await writeFile(join(lease.outDir, 'out.pdf'), 'pdf'); return { text: 'done', usage: null }; },
+      'claude-readonly': async ({ prompt, lease }) => { seen.claude = { prompt, lease }; return { text: '```pulse\n@codex: genera el PDF del informe\n```', usage: null }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    // No lease anywhere: the plan step that asks Codex for a PDF is flagged.
+    await room.send({ text: 'organiza el informe', target: 'claude' });
+    let events = await store.readAll();
+    const missing = events.find((event) => event.type === 'lease.missing');
+    assert.ok(missing, 'lease.missing is emitted for the delegated creation request');
+    assert.equal(missing.payload.agent, 'codex');
+    assert.equal(missing.payload.requester, 'claude');
+    assert.match(missing.payload.message, /does not count/);
+    assert.equal(seen.codex.lease, null);
+    assert.equal(events.some((event) => event.type === 'lease.granted'), false);
+
+    // Codex opted into a standing lease: the same plan step now creates files.
+    room.setScopes({ codex: { alwaysCreate: true } });
+    assert.equal(room.scopesFor('codex').write.always, true);
+    assert.equal(room.scopesFor('claude').write.always, false);
+    await room.send({ text: 'organiza el informe otra vez', target: 'claude' });
+    events = await store.readAll();
+    const granted = events.filter((event) => event.type === 'lease.granted');
+    assert.equal(granted.length, 1);
+    assert.equal(granted[0].payload.standing, true);
+    assert.equal(granted[0].payload.agent, 'codex');
+    assert.deepEqual(granted[0].payload.scopes, ['write'], 'a standing write lease cannot silently enable image generation');
+    assert.ok(seen.codex.lease, 'the delegate ran inside its own lease');
+    assert.equal(seen.codex.lease.scopes.imageGen, false);
+    const artifacts = events.find((event) => event.type === 'artifacts.created');
+    assert.equal(artifacts.payload.files[0].name, 'out.pdf');
+    assert.equal(events.filter((event) => event.type === 'lease.missing').length, 1, 'no second flag once the lease exists');
+
+    // A direct human message to a standing-lease agent needs no CREATE either.
+    await room.send({ text: 'crea un archivo csv', target: 'codex' });
+    events = await store.readAll();
+    const direct = events.filter((event) => event.type === 'lease.granted').at(-1);
+    assert.equal(direct.payload.standing, true);
+    assert.deepEqual(direct.payload.scopes, ['write']);
+    assert.equal(direct.payload.messageId, events.filter((event) => event.type === 'message.created' && event.payload.role === 'user').at(-1).payload.messageId);
+
+    // A standing lease on the orchestrator may pass file-writing to a
+    // delegate, but cannot silently elevate that delegate to image generation.
+    room.setScopes({ claude: { alwaysCreate: true } });
+    await room.send({ text: 'organiza el informe de nuevo', target: 'claude' });
+    assert.ok(seen.codex.lease);
+    assert.equal(seen.codex.lease.scopeCeiling.imageGen, false);
+    assert.equal(seen.codex.lease.scopes.imageGen, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
