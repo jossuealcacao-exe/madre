@@ -226,6 +226,7 @@ export async function createPulseServer({
           projectRoot,
           agents,
           softTokenBudget,
+          timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
           quotaSources: quotaMonitor.snapshot(),
           events: await store.readAll(),
         });

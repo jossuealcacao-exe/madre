@@ -30,6 +30,7 @@ class FakeElement {
       add: (...names) => names.forEach((name) => classes.add(name)),
       remove: (...names) => names.forEach((name) => classes.delete(name)),
       contains: (name) => classes.has(name),
+      toggle: (name, force) => { const on = force ?? !classes.has(name); if (on) classes.add(name); else classes.delete(name); return on; },
     };
     Object.defineProperty(this, 'className', {
       get: () => [...classes].join(' '),

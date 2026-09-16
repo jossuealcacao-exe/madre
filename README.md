@@ -76,7 +76,7 @@ Instalar un módulo es la única acción con la que PULSE escribe en el proyecto
 
 Si PULSE se detiene a mitad de un turno, al arrancar de nuevo detecta los `agent.started` sin cierre y registra un `message.failed` recuperado para cada uno, así la interfaz no queda en "pensando". Al cerrar con Ctrl+C o `SIGTERM`, PULSE interrumpe los procesos de agente en curso, registra esos turnos como fallidos, entrega los eventos pendientes a las páginas abiertas y termina.
 
-Cada agente tiene un timeout de 120 s por defecto. `PULSE_AGENT_TIMEOUT_MS` lo cambia para todos y `PULSE_CLAUDE_TIMEOUT_MS`, `PULSE_CODEX_TIMEOUT_MS`, `PULSE_GEMINI_TIMEOUT_MS` o `PULSE_OPENCODE_TIMEOUT_MS` para uno. Un mensaje de más de 20,000 caracteres (`PULSE_MAX_MESSAGE_CHARS`) se registra y se rechaza sin invocar al agente; el contexto inyectado ya está acotado por `PULSE_CONTEXT_MAX_CHARS`.
+Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra los segundos transcurridos y el límite. `PULSE_AGENT_TIMEOUT_MS` lo cambia para todos y `PULSE_CLAUDE_TIMEOUT_MS`, `PULSE_CODEX_TIMEOUT_MS`, `PULSE_GEMINI_TIMEOUT_MS` o `PULSE_OPENCODE_TIMEOUT_MS` para uno. Un mensaje de más de 20,000 caracteres (`PULSE_MAX_MESSAGE_CHARS`) se registra y se rechaza sin invocar al agente; el contexto inyectado ya está acotado por `PULSE_CONTEXT_MAX_CHARS`.
 
 ## Variables de entorno
 
@@ -86,7 +86,7 @@ Cada agente tiene un timeout de 120 s por defecto. `PULSE_AGENT_TIMEOUT_MS` lo c
 | `PULSE_SOFT_TOKEN_BUDGET` | `500000` | Presupuesto local de tokens por agente |
 | `PULSE_CONTEXT_MAX_CHARS` | `16000` | Ventana de transcript inyectada |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Tamaño máximo de un mensaje |
-| `PULSE_AGENT_TIMEOUT_MS` | `120000` | Timeout de invocación para todos los agentes |
+| `PULSE_AGENT_TIMEOUT_MS` | `180000` | Timeout de invocación para todos los agentes |
 | `PULSE_<AGENTE>_TIMEOUT_MS` | — | Timeout para un agente concreto |
 | `PULSE_BROADCAST_INTERVAL_MS` | `500` | Sondeo del log para el stream |
 | `PULSE_SSE_MAX_BUFFERED_BYTES` | `1048576` | Límite de buffer por cliente SSE |

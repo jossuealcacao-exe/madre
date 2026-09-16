@@ -137,7 +137,7 @@ export class Room {
   }
 
   timeoutFor(agentId) {
-    return this.#agentTimeouts[agentId] ?? this.#agentTimeouts.default ?? 120000;
+    return this.#agentTimeouts[agentId] ?? this.#agentTimeouts.default ?? 180000;
   }
 
   // A process that died mid-turn leaves `agent.started` without a closing

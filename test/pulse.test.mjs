@@ -402,6 +402,7 @@ test('serves the single-room interface', async () => {
     assert.match(html, /id="modules"/);
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((result) => result.json());
     assert.equal(state.softTokenBudget, 500000);
+    assert.deepEqual(state.timeouts, { codex: 180000 });
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
@@ -729,7 +730,7 @@ test('reads agent timeouts from the environment and passes them to adapters', as
     });
     assert.equal(room.timeoutFor('claude'), 240000);
     assert.equal(room.timeoutFor('codex'), 30000);
-    assert.equal(new Room({ store, agents, projectRoot: root, invokers: {} }).timeoutFor('codex'), 120000);
+    assert.equal(new Room({ store, agents, projectRoot: root, invokers: {} }).timeoutFor('codex'), 180000);
     await room.send({ text: 'a', target: 'claude' });
     await room.send({ text: 'b', target: 'codex' });
     assert.deepEqual(seen, { claude: { timeoutMs: 240000, hasSignal: true }, codex: { timeoutMs: 30000, hasSignal: true } });

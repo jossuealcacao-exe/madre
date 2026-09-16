@@ -21,6 +21,7 @@ const els = {
 const state = {
   agents: new Map(),
   budget: null,
+  timeouts: {},
   seen: new Set(),
   userMessages: new Map(), // messageId -> { text, target }
   lastSequence: 0,
@@ -372,8 +373,25 @@ function renderThinking(event) {
   node.id = `working-${messageId}`;
   const bubble = el('div', 'bubble');
   bubble.append(el('i'), el('i'), el('i'));
-  bubble.title = `${label(agent)} is reading the project…`;
-  node.append(bubble);
+  const elapsed = el('span', 'elapsed');
+  bubble.append(elapsed);
+  const startedAt = event.timestamp ? new Date(event.timestamp).getTime() : Date.now();
+  const limitMs = state.timeouts[agent] ?? 180000;
+  const limit = Math.round(limitMs / 1000);
+  let timer = null;
+  let wasConnected = false;
+  const tick = () => {
+    // Stop once the bubble has been in the document and was removed again.
+    if (node.isConnected) wasConnected = true;
+    else if (wasConnected && timer) { clearInterval(timer); return; }
+    const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+    elapsed.textContent = `${seconds}s / ${limit}s`;
+    elapsed.classList.toggle('late', seconds >= limit * 0.6);
+    bubble.title = `${label(agent)} is reading the project… ${seconds}s so far; PULSE gives up at ${limit}s.`;
+  };
+  tick();
+  timer = setInterval(tick, 1000);
+  timer.unref?.();
   return node;
 }
 
@@ -588,6 +606,7 @@ const initial = await fetch('/api/state').then((response) => response.json());
 els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;
 els.project.title = initial.projectRoot;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
+state.timeouts = initial.timeouts ?? {};
 for (const agent of initial.agents) {
   state.agents.set(agent.id, { ...agent, tokens: 0, officialPercent: null });
   if (agent.ready) els.target.add(new Option(agent.label, agent.id));
@@ -875,8 +894,8 @@ function renderModuleEvent(event) {
     node.append(`${name} not installed · ${problems.join(' ')}`);
     modules.installing = null;
   } else if (event.type === 'extension.install.started') {
-    node.append(`installing ${name}${platforms.length ? ` for ${platforms.map((p) => `@${p}`).join(', ')}` : ''} · `);
-    node.append(el('span', null, command));
+    node.append(`installing ${name}${platforms.length ? ` for ${platforms.map((p) => `@${p}`).join(', ')}` : ''}`);
+    node.append(el('span', 'cmd', command));
     modules.installing = id;
   } else {
     node.append(ok
@@ -926,9 +945,10 @@ function moduleCard(item) {
   head.append(title);
   const running = modules.installing === item.id;
   const stateTag = el('span', `state${item.status?.installed ? ' installed' : ''}${running ? ' running' : ''}`,
-    running ? 'INSTALLING' : item.status?.installed ? `INSTALLED${item.status.detail ? ` · ${item.status.detail}` : ''}` : 'NOT IN THIS PROJECT');
+    running ? 'INSTALLING' : item.status?.installed ? 'INSTALLED' : 'NOT IN THIS PROJECT');
   head.append(stateTag);
   card.append(head);
+  if (item.status?.installed && item.status.detail) card.append(el('div', 'detail', item.status.detail.toUpperCase()));
   card.append(el('p', null, item.summary));
   const creates = el('ul');
   for (const line of item.creates ?? []) creates.append(el('li', null, line));

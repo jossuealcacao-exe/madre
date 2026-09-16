@@ -206,7 +206,9 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .stamp .to { color: var(--agent, var(--text-3)); }
 
 /* typing indicator */
-.row.thinking .bubble { display: inline-flex; gap: 5px; padding: 12px 14px; width: max-content; }
+.row.thinking .bubble { display: inline-flex; gap: 5px; padding: 12px 14px; width: max-content; align-items: center; }
+.row.thinking .elapsed { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; }
+.row.thinking .elapsed.late { color: var(--warn); }
 .row.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--agent, var(--text-2)); animation: bounce 1.2s infinite; opacity: .5; }
 .row.thinking i:nth-child(2) { animation-delay: .18s; } .row.thinking i:nth-child(3) { animation-delay: .36s; }
 @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); opacity: .35; } 40% { transform: translateY(-4px); opacity: 1; } }
@@ -214,6 +216,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 /* system lines: handoffs, sentinel, failures — MOTHER speaks in small caps */
 .system {
   align-self: center; text-align: center; max-width: 92%;
+  overflow-wrap: anywhere;
   margin: 22px 0 8px;
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-3); line-height: 1.6;
@@ -365,11 +368,13 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 /* ================= MODULES ================= */
 .modules-glyph { border-radius: 50%; }
 .modules-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--phosphor); color: var(--phosphor-ink); font-size: 9px; letter-spacing: 0; }
-.module-card { border: 1px solid var(--ph-dim); padding: 18px 20px; background: rgba(2, 6, 2, .6); display: grid; gap: 12px; max-width: 760px; }
-.module-card .head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; }
+.module-card { border: 1px solid var(--ph-dim); padding: 18px 20px; background: rgba(2, 6, 2, .6); display: grid; gap: 12px; max-width: 760px; min-width: 0; overflow-wrap: anywhere; }
+.mother-grid > * { min-width: 0; }
+.module-card .head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
 .module-card h4 { margin: 0; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; }
 .module-card .vendor { font-size: 10px; letter-spacing: .18em; color: var(--ph-dim); }
 .module-card .state { font-size: 10px; letter-spacing: .18em; padding: 4px 8px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
+.module-card .detail { font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); }
 .module-card .state.installed { color: var(--ph); border-color: var(--ph); }
 .module-card .state.running { color: #ffd166; border-color: #ffd166; animation: blink 1s infinite; }
 .module-card p { margin: 0; font-size: 12.5px; line-height: 1.6; color: rgba(210, 255, 190, .85); text-shadow: none; }
@@ -384,4 +389,5 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .module-log { max-height: 260px; overflow-y: auto; border: 1px solid var(--ph-faint); background: #000; padding: 10px 12px; font-size: 11.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ph); }
 .module-log .err { color: #ff7b72; }
 .system.module { color: var(--phosphor); }
+.system.module .cmd { text-transform: none; letter-spacing: 0; color: var(--text-2); display: block; margin-top: 4px; }
 .system.module.failed { color: var(--danger); }
