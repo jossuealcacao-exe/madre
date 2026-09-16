@@ -6,28 +6,33 @@ import { detectAgents } from '../src/runtime-detection.mjs';
 import { probeAll } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig } from '../src/config.mjs';
 import { isOnline, runSetup } from '../src/setup.mjs';
+import { parseArgs } from '../src/cli-args.mjs';
 
-const args = process.argv.slice(2);
-const helpFlags = new Set(['help', '--help', '-h']);
-const command = helpFlags.has(args[0])
-  ? 'help'
-  : args[0]?.startsWith('-') ? 'start' : (args.shift() ?? 'start');
+const cli = parseArgs(process.argv.slice(2));
+const { command } = cli;
+const option = (name, fallback) => cli.option(name.replace(/^--/, ''), fallback);
+const has = (name) => cli.has(name.replace(/^--/, ''));
 
-function option(name, fallback) {
-  const index = args.indexOf(name);
-  return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
-}
-
+// With an explicit --port a busy port is an error the user asked for. Without
+// one, MOTHER walks up to the next free port so a second room just opens.
 async function openRoom(options) {
-  try {
-    await startPulse(options);
-  } catch (error) {
-    if (error.code === 'EADDRINUSE') {
-      console.error(`\n  MOTHER › port ${options.port} is already in use. Another PULSE may be open there; try --port ${options.port + 1}.\n`);
-      process.exit(2);
+  const explicit = cli.explicit('port');
+  let port = options.port;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      return await startPulse({ ...options, port });
+    } catch (error) {
+      if (error.code !== 'EADDRINUSE') throw error;
+      if (explicit) {
+        console.error(`\n  MOTHER › port ${port} is already in use. Another PULSE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
+        process.exit(2);
+      }
+      console.error(`  MOTHER › port ${port} in use, trying ${port + 1}.`);
+      port += 1;
     }
-    throw error;
   }
+  console.error(`\n  MOTHER › no free port between ${options.port} and ${port}. Pass --port explicitly.\n`);
+  process.exit(2);
 }
 
 const projectRoot = resolve(option('--project', process.cwd()));
@@ -45,7 +50,7 @@ if (command === 'doctor') {
     agents: report,
   };
 
-  if (args.includes('--json')) {
+  if (has('--json')) {
     console.log(JSON.stringify(result, null, 2));
   } else {
     console.log('\nPULSE doctor\n');
@@ -61,16 +66,16 @@ if (command === 'doctor') {
 } else if (command === 'setup') {
   const { action, online } = await runSetup({ projectRoot, stateRoot });
   if (action === 'start') {
-    await openRoom({ port: Number(option('--port', '4317')), projectRoot, openBrowser: !args.includes('--no-open') });
+    await openRoom({ port: Number(option('--port', '4317')), projectRoot, openBrowser: !has('--no-open') });
   } else {
     process.exitCode = action === 'report' && !online ? 1 : 0;
   }
 } else if (command === 'start') {
   const port = Number(option('--port', '4317'));
-  const noOpen = args.includes('--no-open');
+  const noOpen = has('--no-open');
   // First contact: in a terminal with nobody online, MOTHER walks the user
   // through configuring an agent before the room opens.
-  if (process.stdin.isTTY && process.stdout.isTTY && !args.includes('--no-setup')) {
+  if (process.stdin.isTTY && process.stdout.isTTY && !has('--no-setup')) {
     const agents = await detectAgents();
     const probes = await probeAll(agents);
     if (!agents.some((agent) => isOnline(agent, probes[agent.id]))) {
@@ -83,6 +88,7 @@ if (command === 'doctor') {
   console.log(`PULSE
 
   pulse start [--project PATH] [--port 4317] [--no-open] [--no-setup]
+              Without --port, a busy 4317 falls through to the next free port.
   pulse setup [--project PATH] [--port 4317] [--no-open]
   pulse doctor [--project PATH] [--json]
 

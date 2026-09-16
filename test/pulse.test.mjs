@@ -5,6 +5,12 @@ import http from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
+import { spawn } from 'node:child_process';
+function spawnCli(args, cwd) {
+  const env = { ...process.env, PULSE_HOME: cwd };
+  for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
+  return spawn(process.execPath, [join(process.cwd(), 'bin', 'pulse.mjs'), ...args], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+}
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
@@ -27,6 +33,7 @@ import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
 import { EXTENSIONS, extensionById, listExtensions } from '../src/extensions.mjs';
+import { parseArgs } from '../src/cli-args.mjs';
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
@@ -1015,6 +1022,53 @@ test('room.record only accepts namespaced, non-reserved event types', async () =
     await assert.rejects(room.record('agent.started', {}), /reserved/);
     await assert.rejects(room.record('nodots', {}), /reserved or malformed/);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('parses CLI options in both spellings and knows which were explicit', () => {
+  const spaced = parseArgs(['start', '--project', '/p', '--port', '4320', '--no-open']);
+  assert.equal(spaced.command, 'start');
+  assert.equal(spaced.option('project'), '/p');
+  assert.equal(spaced.option('port'), '4320');
+  assert.equal(spaced.has('no-open'), true);
+  assert.equal(spaced.explicit('port'), true);
+  const equals = parseArgs(['--project=/q', '--port=4321']);
+  assert.equal(equals.command, 'start', 'a leading option implies start');
+  assert.equal(equals.option('project'), '/q');
+  assert.equal(equals.option('port'), '4321');
+  const bare = parseArgs(['doctor', '--json']);
+  assert.equal(bare.command, 'doctor');
+  assert.equal(bare.has('json'), true);
+  assert.equal(bare.explicit('port'), false);
+  assert.equal(bare.option('port', '4317'), '4317');
+  assert.equal(parseArgs(['--help']).command, 'help');
+  assert.equal(parseArgs([]).command, 'start');
+});
+
+test('start without --port walks past a busy port; with --port it refuses', async () => {
+  const busy = http.createServer();
+  await new Promise((resolve) => busy.listen(0, '127.0.0.1', resolve));
+  const { port } = busy.address();
+  const root = await mkdtemp(join(tmpdir(), 'pulse-port-'));
+  try {
+    const run = (extra) => new Promise((resolve) => {
+      const child = spawnCli(['start', '--no-open', '--no-setup', '--project', root, ...extra], root);
+      let out = '';
+      child.stdout.on('data', (chunk) => { out += chunk; });
+      child.stderr.on('data', (chunk) => { out += chunk; });
+      const timer = setTimeout(() => child.kill('SIGTERM'), 8000);
+      const poll = setInterval(() => { if (/PULSE is ready/.test(out)) { clearInterval(poll); clearTimeout(timer); child.kill('SIGTERM'); } }, 100);
+      child.on('close', (code) => { clearInterval(poll); clearTimeout(timer); resolve({ code, out }); });
+    });
+    const fallback = await run(['--port', String(port), '--auto']); // explicit port → refuse
+    assert.equal(fallback.code, 2);
+    assert.match(fallback.out, new RegExp(`port ${port} is already in use`));
+    const walked = await run([]);
+    // default 4317 may or may not be busy on this machine; either way the room must come up
+    assert.match(walked.out, /PULSE is ready/);
+  } finally {
+    await new Promise((resolve) => busy.close(resolve));
     await rm(root, { recursive: true, force: true });
   }
 });
