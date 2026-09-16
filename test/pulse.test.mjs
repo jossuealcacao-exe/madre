@@ -34,6 +34,7 @@ import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
 import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/extensions.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
+import { parseDirectives, stripDirectives } from '../src/directives.mjs';
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
@@ -482,6 +483,7 @@ test('persists context handoffs across agents and room restarts', async () => {
       messageCount: 2,
       omittedMessages: 0,
       kind: 'automatic',
+      planId: null,
     });
     assert.match(prompts.at(-1).prompt, /Codex found the router\./);
 
@@ -1139,6 +1141,117 @@ test('a missing project folder is named in the adapter error, not hidden behind 
     label: 'Codex',
     parse: () => ({ text: '' }),
   }), /Codex could not start: .*ENOENT.*project folder \/definitely\/not\/here exists/);
+});
+
+test('parses delegation directives from an agent reply', () => {
+  const text = `Here is my take.\n\n\`\`\`pulse\n@gemini: Synthesize in one paragraph.\n- @codex: Same, name the weakest claim.\n@claude: Compare both.\n@gemini: duplicate\n@opencode: not here\nnot a step\n\`\`\``;
+  const parsed = parseDirectives(text, { self: 'claude', available: ['gemini', 'codex'], maxSteps: 4 });
+  assert.deepEqual(parsed.steps, [{ agent: 'gemini', text: 'Synthesize in one paragraph.' }, { agent: 'codex', text: 'Same, name the weakest claim.' }]);
+  assert.equal(parsed.closing, 'Compare both.');
+  assert.deepEqual(parsed.ignored.map((item) => item.reason), [
+    '@gemini already has a step',
+    '@opencode is not available in this room',
+    'not a step (expected "@agent: text")',
+  ]);
+  assert.deepEqual(parseDirectives('no plan here', { self: 'claude', available: ['gemini'] }), { steps: [], closing: null, ignored: [] });
+  const capped = parseDirectives('```pulse\n@a: 1\n@b: 2\n@c: 3\n```', { self: 'x', available: ['a', 'b', 'c'], maxSteps: 2 });
+  assert.equal(capped.steps.length, 2);
+  assert.match(capped.ignored[0].reason, /capped at 2/);
+  assert.equal(stripDirectives(text), 'Here is my take.');
+});
+
+test('an orchestrating agent puts the others to work in order, then closes; delegates cannot delegate', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-plan-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = ['claude', 'gemini', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const prompts = [];
+    const invokers = {
+      'claude-readonly': async ({ prompt }) => {
+        prompts.push({ agent: 'claude', prompt });
+        if (/this is your closing turn/.test(prompt)) return { text: 'Closing: Gemini and Codex agree on the facts.', usage: { totalTokens: 10 } };
+        return { text: 'Order: Gemini, then Codex.\n\n```pulse\n@gemini: Synthesize the author in one paragraph.\n@codex: Same; name the weakest claim.\n@claude: Compare both syntheses.\n```', usage: { totalTokens: 10 } };
+      },
+      'gemini-readonly': async ({ prompt }) => {
+        prompts.push({ agent: 'gemini', prompt });
+        // A delegate trying to delegate further is ignored.
+        return { text: 'Gemini synthesis.\n\n```pulse\n@codex: do more\n```', usage: { totalTokens: 5 } };
+      },
+      'codex-readonly': async ({ prompt }) => { prompts.push({ agent: 'codex', prompt }); return { text: 'Codex synthesis; weakest claim is X.', usage: { totalTokens: 5 } }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers, maxPlanSteps: 4 });
+    await room.send({ text: 'coordinate the others and synthesize', target: 'claude' });
+
+    const events = await store.readAll();
+    const types = events.map((event) => `${event.type}${event.payload.status ? `:${event.payload.status}` : ''}${event.payload.sender ? `:${event.payload.sender}→${event.payload.target}` : event.payload.agent ? `:${event.payload.agent}` : ''}`);
+    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('handoff.')), [
+      'message.created:sent:you→claude',
+      'agent.started:claude',
+      'message.created:completed:claude→you',
+      'agent.completed:claude',
+      'plan.created',
+      'message.created:delegated:claude→gemini',
+      'agent.started:gemini',
+      'message.created:completed:gemini→claude',
+      'agent.completed:gemini',
+      'message.created:delegated:claude→codex',
+      'agent.started:codex',
+      'message.created:completed:codex→claude',
+      'agent.completed:codex',
+      'message.created:delegated:claude→claude',
+      'agent.started:claude',
+      'message.created:completed:claude→claude',
+      'agent.completed:claude',
+      'plan.completed',
+    ]);
+    const plan = events.find((event) => event.type === 'plan.created').payload;
+    assert.deepEqual(plan.steps.map((step) => step.agent), ['gemini', 'codex']);
+    assert.equal(plan.closing, 'Compare both syntheses.');
+    assert.equal(events.filter((event) => event.type === 'plan.created').length, 1, "gemini's nested plan was not executed");
+    assert.match(prompts.find((item) => item.agent === 'gemini').prompt, /@claude is coordinating on behalf of the human and asks you: Synthesize/);
+    assert.doesNotMatch(prompts.find((item) => item.agent === 'gemini').prompt, /You may put other agents to work/, 'delegates are not offered delegation');
+    assert.match(prompts[0].prompt, /You may put other agents to work: @gemini, @codex/);
+    assert.match(prompts.at(-1).prompt, /this is your closing turn/);
+    const orchestratorReply = events.find((event) => event.payload.delegates);
+    assert.deepEqual(orchestratorReply.payload.delegates, ['gemini', 'codex']);
+    const handoffs = events.filter((event) => event.type === 'handoff.created');
+    assert.ok(handoffs.some((event) => event.payload.kind === 'delegated'));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the human can stop a running plan and delegation can be disabled', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-plan-stop-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = ['claude', 'gemini', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    let room;
+    const invokers = {
+      'claude-readonly': async () => ({ text: '```pulse\n@gemini: slow question\n@codex: never reached\n@claude: close\n```', usage: null }),
+      'gemini-readonly': ({ signal }) => new Promise((_, reject) => {
+        // Stop the plan while Gemini is still working.
+        setTimeout(() => { const [plan] = room.activePlans(); room.stopPlan(plan.planId); }, 20);
+        signal.addEventListener('abort', () => reject(new Error('Gemini was interrupted because PULSE is shutting down.')), { once: true });
+      }),
+      'codex-readonly': async () => { throw new Error('codex must not run'); },
+    };
+    room = new Room({ store, agents, projectRoot: root, invokers });
+    await room.send({ text: 'go', target: 'claude' });
+    const events = await store.readAll();
+    assert.equal(events.some((event) => event.type === 'agent.started' && event.payload.agent === 'codex'), false);
+    const stopped = events.find((event) => event.type === 'plan.stopped');
+    assert.equal(stopped.payload.reason, 'stopped by the human');
+    assert.equal(stopped.payload.stepsRun, 1);
+    assert.equal(room.activePlans().length, 0);
+
+    const quiet = await new EventStore(join(root, 'quiet.jsonl')).initialize();
+    const noDelegation = new Room({ store: quiet, agents, projectRoot: root, invokers, delegation: false });
+    await noDelegation.send({ text: 'go', target: 'claude' });
+    assert.equal((await quiet.readAll()).some((event) => event.type === 'plan.created'), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

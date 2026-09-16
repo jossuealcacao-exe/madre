@@ -64,6 +64,18 @@ Las fuentes oficiales de cuota se conectan como lectores opcionales y pueden dev
 
 Un lector implementa `{ id, agent, read() }`; `read()` devuelve `null` o `{ usedPercent, resetAt }`. Las versiones locales detectadas de Codex y OpenCode no exponen actualmente un comando CLI estable de cuota oficial, por lo que PULSE no activa ningún lector predeterminado. `opencode stats` es estadística local y no se trata como cuota de proveedor.
 
+## Delegación entre agentes
+
+Un agente puede poner a trabajar a los demás. Si el humano le pide coordinar, el agente termina su respuesta con un bloque `pulse` con un paso por línea, en orden:
+
+```
+@gemini: Sintetiza en un párrafo quién es el autor, separando hechos de inferencias.
+@codex: Misma pregunta; señala la afirmación menos sustentada.
+@claude: Compara ambas síntesis y marca dónde divergen.
+```
+
+PULSE ejecuta los pasos en secuencia como turnos normales de la sala: cada uno queda en el log, pasa por handoff, presupuesto y timeout, y el humano puede detener el plan en cualquier momento desde la sala. El paso dirigido al propio orquestador se convierte en su turno de cierre cuando los demás han respondido. Los agentes delegados no pueden delegar a su vez, así que todo plan termina. El límite por plan son 4 pasos más el cierre (`PULSE_MAX_PLAN_STEPS`), y `PULSE_DELEGATION=0` o `"room": { "delegation": false }` en el config lo desactiva.
+
 ## Módulos
 
 La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay uno:
@@ -92,6 +104,8 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 | `PULSE_SSE_MAX_BUFFERED_BYTES` | `1048576` | Límite de buffer por cliente SSE |
 | `PULSE_QUOTA_POLL_INTERVAL_MS` | `60000` | Sondeo de fuentes oficiales de cuota |
 | `PULSE_OPENCODE_MODEL` | `opencode.model` del config | `proveedor/modelo` para OpenCode |
+| `PULSE_DELEGATION` | activado | `0` impide que los agentes deleguen turnos |
+| `PULSE_MAX_PLAN_STEPS` | `4` | Pasos máximos por plan de delegación |
 | `PULSE_TEST_MODE` | — | `1` habilita `/api/test/limits` |
 
 ## Empaquetado

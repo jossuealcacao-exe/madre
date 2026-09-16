@@ -67,6 +67,8 @@ export async function createPulseServer({
   sseMaxBufferedBytes = Number(process.env.PULSE_SSE_MAX_BUFFERED_BYTES ?? 1_048_576),
   agentTimeouts,
   maxMessageChars = Number(process.env.PULSE_MAX_MESSAGE_CHARS ?? 20000),
+  delegation = process.env.PULSE_DELEGATION !== '0',
+  maxPlanSteps = Number(process.env.PULSE_MAX_PLAN_STEPS ?? 4),
   invokers,
   // Tests substitute the real installers with local scripts.
   installers = {},
@@ -89,6 +91,8 @@ export async function createPulseServer({
     invokers,
     agentTimeouts,
     maxMessageChars,
+    delegation,
+    maxPlanSteps,
   });
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
@@ -227,6 +231,8 @@ export async function createPulseServer({
           agents,
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
+          delegation: { enabled: delegation, maxPlanSteps },
+          plans: room.activePlans(),
           quotaSources: quotaMonitor.snapshot(),
           events: await store.readAll(),
         });
@@ -254,6 +260,11 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      const stopMatch = request.method === 'POST' && url.pathname.match(/^\/api\/plans\/([0-9a-f-]+)\/stop$/);
+      if (stopMatch) {
+        const stopped = await room.stopPlan(stopMatch[1]);
+        return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: 'No running plan with that id.' });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
         return sendJson(response, 200, { installing, extensions: await listExtensions({ projectRoot: canonicalProjectRoot, agents }) });

@@ -391,3 +391,15 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .system.module { color: var(--phosphor); }
 .system.module .cmd { text-transform: none; letter-spacing: 0; color: var(--text-2); display: block; margin-top: 4px; }
 .system.module.failed { color: var(--danger); }
+
+/* ================= delegation ================= */
+.plan-card { margin: 8px 0 4px; border: 1px dashed var(--line-2); border-radius: 12px; padding: 10px 12px 10px 14px; background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.plan-label { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.plan-card ol { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.plan-card li { margin: 4px 0; }
+.plan-card li b { color: var(--agent); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; }
+.row.delegated .bubble { background: color-mix(in srgb, var(--bubble) 75%, transparent); border: 1px dashed var(--line-2); box-shadow: none; font-size: 14px; }
+.who .to-agent { color: var(--agent); }
+.system.plan .stop { margin-left: 10px; border: 1px solid var(--crit); background: transparent; color: var(--crit); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 2px 8px; cursor: pointer; vertical-align: middle; }
+.system.plan .stop:hover { background: color-mix(in srgb, var(--crit) 15%, transparent); }
+.system.plan .stop:disabled { opacity: .4; cursor: default; }

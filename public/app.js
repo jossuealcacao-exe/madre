@@ -141,6 +141,23 @@ function codeBlock(lines, lang) {
   return wrapper;
 }
 
+// A ```pulse block is a delegation plan: render it as steps, not as code.
+function planCard(lines) {
+  const card = el('div', 'plan-card');
+  card.append(el('span', 'plan-label', 'plan'));
+  const list = el('ol');
+  for (const raw of lines) {
+    const match = raw.trim().match(/^[-*]?\s*@([a-z0-9_-]+)\s*[:：]\s*(.+)$/i);
+    if (!match) continue;
+    const item = paint(el('li'), match[1].toLowerCase());
+    item.append(el('b', null, `@${match[1].toLowerCase()}`));
+    item.append(` ${match[2]}`);
+    list.append(item);
+  }
+  card.append(list);
+  return card;
+}
+
 export function renderMarkdown(text) {
   const fragment = document.createDocumentFragment();
   const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
@@ -164,7 +181,7 @@ export function renderMarkdown(text) {
       index += 1;
       while (index < lines.length && !/^\s*```\s*$/.test(lines[index])) body.push(lines[index++]);
       index += 1;
-      fragment.append(codeBlock(body, fence[1]));
+      fragment.append(fence[1]?.toLowerCase() === 'pulse' ? planCard(body) : codeBlock(body, fence[1]));
       continue;
     }
     if (!line.trim()) { flushParagraph(); index += 1; continue; }
@@ -338,14 +355,24 @@ function renderUserMessage(event) {
 }
 
 function renderAssistantMessage(event) {
-  const { messageId, parentMessageId, sender, text, status } = event.payload;
-  const compact = state.lastSender === sender;
+  const { messageId, parentMessageId, sender, target, text, status, step, totalSteps } = event.payload;
+  const delegated = status === 'delegated';
+  const compact = state.lastSender === sender && !delegated;
   const node = row('assistant', sender, { compact });
+  if (delegated) node.classList.add('delegated');
   node.id = `msg-${messageId}`;
   const col = el('div', 'col');
-  if (!compact || status === 'handoff') {
+  if (!compact || status === 'handoff' || delegated) {
     const who = el('div', 'who');
     who.append(el('span', null, label(sender)));
+    if (delegated) {
+      const to = paint(el('span', 'to-agent'), target);
+      to.append(`→ @${target}`);
+      who.append(to);
+      who.append(el('span', 'badge', target === sender ? 'closing turn' : `step ${step}/${totalSteps}`));
+    } else if (target && target !== 'you') {
+      who.append(el('span', 'badge', `answering @${target}`));
+    }
     if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
@@ -441,6 +468,33 @@ function renderWarning(event) {
   return node;
 }
 
+function renderPlanEvent(event) {
+  const { planId, orchestrator, steps = [], closing, stepsRun, reason } = event.payload;
+  const node = el('div', `system plan${event.type === 'plan.stopped' ? ' failed' : ''}`);
+  node.style.setProperty('--agent', agentColor(orchestrator));
+  node.append(el('b', null, 'plan · '));
+  if (event.type === 'plan.created') {
+    node.id = `plan-${planId}`;
+    node.append(`@${orchestrator} puts ${steps.map((step) => `@${step.agent}`).join(', ')} to work${closing ? ', then closes' : ''}`);
+    const stop = el('button', 'stop', 'STOP');
+    stop.type = 'button';
+    stop.title = 'Stop the remaining steps of this plan';
+    stop.addEventListener('click', async () => {
+      stop.disabled = true;
+      const response = await fetch(`/api/plans/${planId}/stop`, { method: 'POST' });
+      if (!response.ok) toast('That plan is no longer running.');
+    });
+    node.append(stop);
+  } else {
+    document.getElementById(`plan-${planId}`)?.querySelector('.stop')?.remove();
+    node.append(event.type === 'plan.completed'
+      ? `@${orchestrator} finished · ${stepsRun} step${stepsRun === 1 ? '' : 's'}`
+      : `@${orchestrator} stopped after ${stepsRun} step${stepsRun === 1 ? '' : 's'} · ${reason ?? ''}`);
+  }
+  state.lastSender = null;
+  return node;
+}
+
 function renderFailure(event) {
   const { messageId, target, error, recovered } = event.payload;
   recordFailure({ time: event.timestamp, agent: target, error, recovered });
@@ -507,6 +561,11 @@ function renderEventNode(event) {
       node = renderModuleEvent(event);
       break;
     case 'extension.install.output': appendModuleOutput(event); return;
+    case 'plan.created':
+    case 'plan.completed':
+    case 'plan.stopped':
+      node = renderPlanEvent(event);
+      break;
     default: return;
   }
   removeEmpty();
