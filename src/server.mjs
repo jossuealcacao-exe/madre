@@ -10,6 +10,7 @@ import { EventStore } from './event-store.mjs';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
+import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -67,6 +68,8 @@ export async function createPulseServer({
   agentTimeouts,
   maxMessageChars = Number(process.env.PULSE_MAX_MESSAGE_CHARS ?? 20000),
   invokers,
+  // Tests substitute the real installers with local scripts.
+  installers = {},
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
@@ -146,6 +149,55 @@ export async function createPulseServer({
   const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
   poller.unref();
 
+  let installing = null;
+  async function installExtension(id, { confirm } = {}) {
+    const extension = extensionById(id);
+    if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
+    if (confirm !== true) return { status: 400, body: { error: 'Installing a module writes into the project; send { "confirm": true } to proceed.' } };
+    if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
+    const before = await extension.detect(canonicalProjectRoot);
+    const plan = installers[id]?.({ projectRoot: canonicalProjectRoot, agents }) ?? extension.installCommand({ agents });
+    installing = id;
+    await room.record('extension.install.started', { id, name: extension.name, command: plan.display, platforms: plan.platforms ?? [], alreadyInstalled: before.installed });
+    void (async () => {
+      const lines = [];
+      let pending = [];
+      let flushTimer = null;
+      const flush = async () => {
+        flushTimer = null;
+        if (!pending.length) return;
+        const batch = pending;
+        pending = [];
+        await room.record('extension.install.output', { id, lines: batch });
+      };
+      const result = await runInstaller({
+        command: plan.command,
+        args: plan.args,
+        projectRoot: canonicalProjectRoot,
+        onLine: (line) => {
+          lines.push(line);
+          pending.push(line.slice(0, 500));
+          if (pending.length >= 20) void flush();
+          else if (!flushTimer) flushTimer = setTimeout(() => { void flush(); }, 400);
+        },
+      });
+      clearTimeout(flushTimer);
+      await flush();
+      const after = await extension.detect(canonicalProjectRoot);
+      await room.record('extension.install.finished', {
+        id,
+        name: extension.name,
+        code: result.code,
+        error: result.error ?? null,
+        ok: result.code === 0 && after.installed,
+        status: after,
+        tail: lines.slice(-12),
+      });
+      installing = null;
+    })();
+    return { status: 202, body: { accepted: true, command: plan.display } };
+  }
+
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
     try {
@@ -196,6 +248,14 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      if (request.method === 'GET' && url.pathname === '/api/extensions') {
+        return sendJson(response, 200, { installing, extensions: await listExtensions({ projectRoot: canonicalProjectRoot, agents }) });
+      }
+      const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
+      if (installMatch) {
+        const result = await installExtension(installMatch[1], await body(request));
+        return sendJson(response, result.status, result.body);
       }
       if (request.method === 'POST' && url.pathname === '/api/messages') {
         const payload = await body(request);

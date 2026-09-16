@@ -80,6 +80,15 @@ export class Room {
     return () => this.#listeners.delete(listener);
   }
 
+  // Durable, non-conversational events from the server (module installs,
+  // operator actions). Types are namespaced so the UI can tell them apart.
+  async record(type, payload) {
+    if (!/^[a-z]+(\.[a-z]+)+$/.test(type) || type.startsWith('message.') || type.startsWith('agent.')) {
+      throw new Error(`Refusing to record reserved or malformed event type: ${type}`);
+    }
+    return this.#emit(type, payload);
+  }
+
   async #emit(type, payload) {
     const event = await this.#store.append(type, payload);
     for (const listener of this.#listeners) listener(event);

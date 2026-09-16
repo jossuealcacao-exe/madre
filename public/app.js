@@ -483,6 +483,11 @@ function renderEventNode(event) {
     case 'limit.warning': node = renderWarning(event); break;
     case 'usage.recorded': applyUsage(event); return;
     case 'quota.updated': applyQuota(event); return;
+    case 'extension.install.started':
+    case 'extension.install.finished':
+      node = renderModuleEvent(event);
+      break;
+    case 'extension.install.output': appendModuleOutput(event); return;
     default: return;
   }
   removeEmpty();
@@ -843,3 +848,151 @@ mother.close.addEventListener('click', () => mother.dialog.close());
 mother.query.addEventListener('submit', (event) => { event.preventDefault(); answerQuery(mother.input.value); });
 mother.input.addEventListener('input', () => answerQuery(mother.input.value));
 mother.dialog.addEventListener('close', () => clearTimeout(mother.bootTimer));
+
+
+/* ---------- MODULES: optional integrations installed by their own tools ---------- */
+
+const modules = {
+  dialog: document.querySelector('#modules'),
+  button: document.querySelector('#modules-button'),
+  count: document.querySelector('#modules-count'),
+  close: document.querySelector('#modules-close'),
+  list: document.querySelector('#modules-list'),
+  note: document.querySelector('#modules-note'),
+  items: [],
+  installing: null,
+  logs: new Map(),   // id -> array of lines
+  confirming: null,
+};
+
+function renderModuleEvent(event) {
+  const { id, name, command, platforms = [], ok, code, error, status } = event.payload;
+  const node = el('div', `system module${event.type.endsWith('finished') && !ok ? ' failed' : ''}`);
+  node.append(el('b', null, 'MODULES › '));
+  if (event.type === 'extension.install.started') {
+    node.append(`installing ${name}${platforms.length ? ` for ${platforms.map((p) => `@${p}`).join(', ')}` : ''} · `);
+    node.append(el('span', null, command));
+    modules.installing = id;
+  } else {
+    node.append(ok
+      ? `${name} installed${status?.detail ? ` · ${status.detail}` : ''}`
+      : `${name} install failed${error ? ` · ${error}` : code !== undefined ? ` · exit ${code}` : ''}`);
+    modules.installing = null;
+    void refreshModules();
+  }
+  state.lastSender = null;
+  return node;
+}
+
+function appendModuleOutput(event) {
+  const { id, lines = [] } = event.payload;
+  const log = modules.logs.get(id) ?? [];
+  log.push(...lines);
+  modules.logs.set(id, log.slice(-400));
+  const box = document.getElementById(`module-log-${id}`);
+  if (box) {
+    for (const line of lines) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, line));
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+async function refreshModules() {
+  try {
+    const data = await fetch('/api/extensions').then((response) => response.json());
+    modules.items = data.extensions ?? [];
+    modules.installing = data.installing ?? null;
+  } catch (error) {
+    modules.items = [];
+    modules.note.textContent = `UNABLE TO LIST MODULES: ${error.message}`;
+  }
+  const installed = modules.items.filter((item) => item.status?.installed).length;
+  modules.count.hidden = installed === 0;
+  modules.count.textContent = String(installed);
+  if (modules.dialog.open) renderModules();
+}
+
+function moduleCard(item) {
+  const card = el('article', 'module-card');
+  card.id = `module-${item.id}`;
+  const head = el('div', 'head');
+  const title = el('div');
+  title.append(el('h4', null, item.name));
+  title.append(el('div', 'vendor', `${item.vendor} · ${item.package}@${item.version}`));
+  head.append(title);
+  const running = modules.installing === item.id;
+  const stateTag = el('span', `state${item.status?.installed ? ' installed' : ''}${running ? ' running' : ''}`,
+    running ? 'INSTALLING' : item.status?.installed ? `INSTALLED${item.status.detail ? ` · ${item.status.detail}` : ''}` : 'NOT IN THIS PROJECT');
+  head.append(stateTag);
+  card.append(head);
+  card.append(el('p', null, item.summary));
+  const creates = el('ul');
+  for (const line of item.creates ?? []) creates.append(el('li', null, line));
+  card.append(creates);
+
+  const actions = el('div', 'actions');
+  if (modules.confirming === item.id) {
+    const confirm = el('div', 'confirm');
+    confirm.append(el('span', 'warn', 'THIS WRITES INTO THE PROJECT. PULSE WILL RUN, IN THE PROJECT FOLDER:'));
+    confirm.append(commandBlock([item.install.display]));
+    confirm.append(el('span', 'note', item.install.platforms?.length
+      ? `IDE adapters for the agents detected here: ${item.install.platforms.join(', ')}.`
+      : 'No detected agent has an adapter for this module; it installs without IDE adapters.'));
+    const row = el('div', 'actions');
+    const go = el('button', 'primary', 'CONFIRM INSTALL');
+    go.type = 'button';
+    go.addEventListener('click', async () => {
+      go.disabled = true;
+      const response = await fetch(`/api/extensions/${item.id}/install`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) toast(result.error ?? `Install request failed (${response.status}).`);
+      modules.confirming = null;
+      modules.installing = response.ok ? item.id : modules.installing;
+      modules.logs.set(item.id, []);
+      renderModules();
+    });
+    const cancel = el('button', null, 'CANCEL');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => { modules.confirming = null; renderModules(); });
+    row.append(go, cancel);
+    confirm.append(row);
+    card.append(confirm);
+  } else {
+    const install = el('button', item.status?.installed ? null : 'primary', item.status?.installed ? 'REINSTALL / UPGRADE' : 'INSTALL');
+    install.type = 'button';
+    install.disabled = Boolean(modules.installing);
+    install.addEventListener('click', () => { modules.confirming = item.id; renderModules(); });
+    actions.append(install);
+    if (modules.installing && modules.installing !== item.id) actions.append(el('span', 'note', 'ANOTHER INSTALL IS RUNNING'));
+    card.append(actions);
+  }
+  const log = modules.logs.get(item.id) ?? [];
+  if (log.length || running) {
+    const box = el('div', 'module-log');
+    box.id = `module-log-${item.id}`;
+    for (const line of log) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, line));
+    card.append(box);
+    queueMicrotask(() => { box.scrollTop = box.scrollHeight; });
+  }
+  return card;
+}
+
+function renderModules() {
+  modules.list.replaceChildren();
+  modules.list.append(el('h3', null, `AVAILABLE · ${modules.items.length} · PROJECT /${els.project.textContent}`));
+  const grid = el('div', 'mother-grid');
+  for (const item of modules.items) grid.append(moduleCard(item));
+  modules.list.append(grid);
+}
+
+modules.button.addEventListener('click', async () => {
+  if (modules.dialog.open) return;
+  modules.dialog.showModal();
+  await refreshModules();
+  renderModules();
+});
+modules.close.addEventListener('click', () => modules.dialog.close());
+void refreshModules();

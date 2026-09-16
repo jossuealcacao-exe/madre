@@ -361,3 +361,27 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
   .mother-record .e, .mother-record .k { grid-column: 1 / -1; }
   .mother-record .k { justify-content: flex-start; }
 }
+
+/* ================= MODULES ================= */
+.modules-glyph { border-radius: 50%; }
+.modules-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--phosphor); color: var(--phosphor-ink); font-size: 9px; letter-spacing: 0; }
+.module-card { border: 1px solid var(--ph-dim); padding: 18px 20px; background: rgba(2, 6, 2, .6); display: grid; gap: 12px; max-width: 760px; }
+.module-card .head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; }
+.module-card h4 { margin: 0; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; }
+.module-card .vendor { font-size: 10px; letter-spacing: .18em; color: var(--ph-dim); }
+.module-card .state { font-size: 10px; letter-spacing: .18em; padding: 4px 8px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
+.module-card .state.installed { color: var(--ph); border-color: var(--ph); }
+.module-card .state.running { color: #ffd166; border-color: #ffd166; animation: blink 1s infinite; }
+.module-card p { margin: 0; font-size: 12.5px; line-height: 1.6; color: rgba(210, 255, 190, .85); text-shadow: none; }
+.module-card ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: rgba(210, 255, 190, .8); text-shadow: none; }
+.module-card .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.module-card .actions button { border: 1px solid var(--ph); background: transparent; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .18em; padding: 8px 14px; cursor: pointer; }
+.module-card .actions button.primary { background: var(--ph); color: #041004; text-shadow: none; }
+.module-card .actions button:disabled { opacity: .4; cursor: default; }
+.module-card .actions .note { font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); }
+.module-card .confirm { border: 1px dashed var(--ph); padding: 12px 14px; display: grid; gap: 10px; }
+.module-card .confirm .warn { color: #ffd166; font-size: 11px; letter-spacing: .12em; }
+.module-log { max-height: 260px; overflow-y: auto; border: 1px solid var(--ph-faint); background: #000; padding: 10px 12px; font-size: 11.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ph); }
+.module-log .err { color: #ff7b72; }
+.system.module { color: var(--phosphor); }
+.system.module.failed { color: var(--danger); }

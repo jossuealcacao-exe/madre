@@ -26,6 +26,8 @@ import { geminiAuthState, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpe
 import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
+import { EXTENSIONS, extensionById, listExtensions } from '../src/extensions.mjs';
+import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
 
@@ -390,6 +392,7 @@ test('serves the single-room interface', async () => {
     assert.equal(troubleshooting.status, 200);
     assert.match(await troubleshooting.text(), /export const CONDITIONS/);
     assert.match(html, /id="mother"/);
+    assert.match(html, /id="modules"/);
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((result) => result.json());
     assert.equal(state.softTokenBudget, 500000);
   } finally {
@@ -920,6 +923,100 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.equal(detectPlatform({ platform: 'Linux x86_64' }), 'linux');
   assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.agent}`)));
   assert.equal(searchConditions('').length, CONDITIONS.length);
+});
+
+test('modules: AHP+ is detected, planned for detected agents only, and installed after confirmation', async () => {
+  const ahp = extensionById('ahp');
+  const agents = [
+    { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' },
+    { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '1' },
+    { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '1' },
+    { id: 'opencode', label: 'OpenCode', detected: false, ready: false, adapter: 'opencode-readonly', path: null, version: null },
+  ];
+  const plan = ahp.installCommand({ agents });
+  assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
+  assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms codex,claude');
+  assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.1', 'setup', '.']);
+  assert.equal(EXTENSIONS.length, 1);
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));
+  const project = join(root, 'project');
+  await mkdir(project);
+  try {
+    assert.deepEqual(await ahp.detect(project), { installed: false });
+    const listed = await listExtensions({ projectRoot: project, agents });
+    assert.equal(listed[0].status.installed, false);
+    assert.equal(listed[0].install.display, plan.display);
+
+    // A stand-in installer that behaves like `ahp setup .`: prints progress and creates .ahp/.
+    const fakeInstaller = () => ({
+      command: process.execPath,
+      args: ['-e', `
+        const fs = require('node:fs');
+        console.log('AHP+ setup: pinning package');
+        fs.mkdirSync('.ahp', { recursive: true });
+        fs.writeFileSync('.ahp/manifest.json', JSON.stringify({ protocol_version: '1.4.0', project_id: 'demo' }));
+        fs.mkdirSync('node_modules/@jossuealcala/ahp-plus', { recursive: true });
+        fs.writeFileSync('node_modules/@jossuealcala/ahp-plus/package.json', JSON.stringify({ version: '1.4.1' }));
+        console.error('warning: sample stderr line');
+        console.log('AHP+ setup: done');
+      `],
+      display: 'node fake-ahp-setup',
+      platforms: ['codex', 'claude'],
+    });
+    const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents, broadcastIntervalMs: 50, installers: { ahp: fakeInstaller } });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address();
+    try {
+      const listing = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
+      assert.equal(listing.extensions[0].id, 'ahp');
+      assert.equal(listing.extensions[0].status.installed, false);
+
+      const refused = await fetch(`http://127.0.0.1:${port}/api/extensions/ahp/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      assert.equal(refused.status, 400, 'no confirm, no write');
+      assert.equal((await fetch(`http://127.0.0.1:${port}/api/extensions/nope/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' })).status, 404);
+
+      const accepted = await fetch(`http://127.0.0.1:${port}/api/extensions/ahp/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+      assert.equal(accepted.status, 202);
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        if ((await store.readAll()).some((event) => event.type === 'extension.install.finished')) break;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      const events = await store.readAll();
+      const started = events.find((event) => event.type === 'extension.install.started');
+      const finished = events.find((event) => event.type === 'extension.install.finished');
+      assert.equal(started.payload.command, 'node fake-ahp-setup');
+      assert.deepEqual(started.payload.platforms, ['codex', 'claude']);
+      assert.equal(finished.payload.ok, true);
+      assert.equal(finished.payload.status.version, '1.4.1');
+      assert.equal(finished.payload.status.protocolVersion, '1.4.0');
+      const output = events.filter((event) => event.type === 'extension.install.output').flatMap((event) => event.payload.lines);
+      assert.ok(output.includes('AHP+ setup: pinning package') && output.includes('AHP+ setup: done') && output.includes('warning: sample stderr line'));
+      assert.deepEqual(await ahp.detect(project), { installed: true, version: '1.4.1', protocolVersion: '1.4.0', projectId: 'demo', detail: 'cli 1.4.1 · protocol 1.4.0' });
+      const after = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
+      assert.equal(after.extensions[0].status.installed, true);
+      assert.equal(after.installing, null);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('room.record only accepts namespaced, non-reserved event types', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-record-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const room = new Room({ store, agents: [], projectRoot: root, invokers: {} });
+    const event = await room.record('extension.install.started', { id: 'x' });
+    assert.equal(event.type, 'extension.install.started');
+    await assert.rejects(room.record('message.created', {}), /reserved/);
+    await assert.rejects(room.record('agent.started', {}), /reserved/);
+    await assert.rejects(room.record('nodots', {}), /reserved or malformed/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('polls available official quota sources and restores sentinel state', async () => {

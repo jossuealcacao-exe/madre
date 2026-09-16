@@ -108,6 +108,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
   globalThis.EventSource = class { constructor(url) { streamUrl = url; } };
   globalThis.fetch = async (url) => {
+    if (url === '/api/extensions') return { ok: true, json: async () => ({ installing: null, extensions: [] }) };
     assert.equal(url, '/api/state');
     return { json: async () => ({
       projectRoot: '/Users/demo/pulse',
