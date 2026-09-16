@@ -189,6 +189,12 @@ export class Room {
     return this.capabilities();
   }
 
+  // A slash command's result, shared with everyone (and with agents through
+  // the transcript) as a fact card.
+  async recordCommand({ name, title, text, ok, args = [] }) {
+    return this.#emit('command.output', { name, title, text: String(text ?? '').slice(0, 20000), ok: ok !== false, args });
+  }
+
   // Live settings changes from the room UI. Only the fields present change.
   configure({ agentTimeouts, delegation, maxPlanSteps, softTokenBudget } = {}) {
     if (agentTimeouts) this.#agentTimeouts = { ...agentTimeouts };

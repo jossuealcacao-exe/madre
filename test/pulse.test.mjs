@@ -1043,7 +1043,8 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
   assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms codex,claude');
   assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.1', 'setup', '.']);
-  assert.equal(EXTENSIONS.length, 2);
+  assert.equal(EXTENSIONS.length, 3);
+  assert.ok(EXTENSIONS.some((extension) => extension.id === 'git-pulse' && extension.kind === 'builtin'));
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));
   const project = join(root, 'project');
@@ -2118,6 +2119,75 @@ test('polls available official quota sources and restores sentinel state', async
     assert.equal(events.filter((event) => event.type === 'quota.updated').length, 2);
     assert.equal(events.filter((event) => event.type === 'limit.warning').length, 1);
     await new Promise((resolve) => second.server.close(resolve));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+// ---------- slash commands: Git Pulse and the command API ----------
+import { COMMANDS, listCommands, parseCommand } from '../src/commands.mjs';
+
+test('parseCommand splits "/git log 5" and rejects plain text', () => {
+  assert.deepEqual(parseCommand('/git log 5').name, 'git');
+  assert.deepEqual(parseCommand('/git log 5').args, ['log', '5']);
+  assert.equal(parseCommand('hello /git'), null);
+  assert.equal(parseCommand('/Git').name, 'git');
+});
+
+test('Git Pulse runs read-only in a git project and is unavailable elsewhere', async () => {
+  const repo = await mkdtemp(join(tmpdir(), 'pulse-gitpulse-'));
+  const plain = await mkdtemp(join(tmpdir(), 'pulse-plain-'));
+  try {
+    const git = (...args) => new Promise((resolve, reject) => execFile('git', args, { cwd: repo, env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }, (error, stdout) => (error ? reject(error) : resolve(stdout))));
+    await git('init', '-q');
+    await writeFile(join(repo, 'a.txt'), 'one\n');
+    await git('add', 'a.txt');
+    await git('-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'first');
+    await writeFile(join(repo, 'b.txt'), 'two\n');
+    const gitPulse = COMMANDS.find((command) => command.name === 'git');
+    assert.equal(await gitPulse.available({ projectRoot: repo }), true);
+    assert.equal(await gitPulse.available({ projectRoot: plain }), false);
+    const status = await gitPulse.execute({ projectRoot: repo, args: [] });
+    assert.equal(status.ok, true);
+    assert.match(status.text, /## changes[\s\S]*\?\? b\.txt/);
+    assert.match(status.text, /## last commits[\s\S]*first/);
+    const bad = await gitPulse.execute({ projectRoot: repo, args: ['rm'] });
+    assert.equal(bad.ok, false);
+    const listed = await listCommands({ projectRoot: plain });
+    assert.equal(listed.find((command) => command.name === 'git').available, false);
+  } finally {
+    await rm(repo, { recursive: true, force: true });
+    await rm(plain, { recursive: true, force: true });
+  }
+});
+
+test('POST /api/commands records a command.output event the transcript shares with agents', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-cmd-api-'));
+  const agents = [{ id: 'codex', label: 'Codex', detected: false, ready: false, adapter: null, path: null, version: null }];
+  try {
+    await new Promise((resolve, reject) => execFile('git', ['init', '-q'], { cwd: root }, (error) => (error ? reject(error) : resolve())));
+    const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const listing = await fetch(`${base}/api/commands`).then((response) => response.json());
+      assert.equal(listing.commands.find((command) => command.name === 'git').available, true);
+      const posted = await fetch(`${base}/api/commands`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '/git branches' }) });
+      assert.equal(posted.status, 200);
+      const events = await store.readAll();
+      const card = events.find((event) => event.type === 'command.output');
+      assert.equal(card.payload.name, 'git');
+      assert.deepEqual(card.payload.args, ['branches']);
+      const context = buildConversationContext(events);
+      assert.equal(context.messages.at(-1).role, 'command');
+      assert.match(context.messages.at(-1).text, /Git Pulse/);
+      const unknown = await fetch(`${base}/api/commands`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '/nope' }) });
+      assert.equal(unknown.status, 404);
+      const notCommand = await fetch(`${base}/api/commands`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'hello' }) });
+      assert.equal(notCommand.status, 400);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

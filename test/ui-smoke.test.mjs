@@ -118,6 +118,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   globalThis.EventSource = class { constructor(url) { streamUrl = url; } };
   globalThis.fetch = async (url) => {
     if (url === '/api/extensions') return { ok: true, json: async () => ({ installing: null, extensions: [] }) };
+    if (url === '/api/commands') return { ok: true, json: async () => ({ commands: [{ name: 'git', module: 'git-pulse', title: 'Git Pulse', usage: '/git', summary: 'repo facts', available: true }] }) };
     if (String(url).startsWith('/api/models')) return { ok: true, json: async () => ({ models: {} }) };
     assert.equal(url, '/api/state');
     return { json: async () => ({

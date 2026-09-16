@@ -102,6 +102,13 @@ La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULS
 - `GET /api/files?path=…` sirve archivos del proyecto en solo lectura, encerrado a la raíz del proyecto: nada de `..`, rutas absolutas ni symlinks hacia fuera; máximo 20 MB.
 - Adjuntos: el clip del compositor, arrastrar al compositor o pegar una imagen suben el archivo a la carpeta de la sala bajo `PULSE_HOME`, nunca al proyecto (máximo 15 MB). El mensaje los registra y cada CLI los recibe como sabe: Codex con `--image`, OpenCode con `--file`, Claude y Gemini leyendo la ruta con su herramienta de lectura, con la carpeta de adjuntos habilitada.
 
+### El campo de texto: menciones y comandos
+
+El campo es de una sola línea y crece solo con saltos de línea explícitos, hasta dos (tres líneas visibles); más allá, el texto se desplaza dentro. Nunca se ensancha. Dentro del campo:
+
+- `@codex`, `@claude`, `@gemini`, `@opencode` se pintan como etiquetas con el color del agente en cuanto se escriben; teclear `@` abre la lista de agentes de la sala.
+- `/` abre el menú de comandos. Los del compositor actúan al enviar: `/create <petición>` arma el permiso CREATE para ese mensaje, `/image <petición>` lo arma con el alcance de imágenes y enruta al agente que sí puede generarlas, `/stopall` es el freno maestro. Los de módulos (`/git`, `/ahp`) corren en el servidor, en solo lectura y dentro del proyecto, y devuelven una tarjeta de hechos al hilo que los agentes también leen en su transcripción. Un comando tachado en el menú es un módulo que no está disponible en este proyecto.
+
 ### Capacidades por agente
 
 Verificadas contra las versiones instaladas y visibles en la esfera de cada agente y en `⚙ CONNECTIONS`:
@@ -134,9 +141,11 @@ Solo Codex genera imágenes de forma nativa. El módulo **Image Studio** (en `MO
 
 ## Módulos
 
-La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay uno:
+La sala puede ofrecer integraciones opcionales que se instalan en el proyecto con su propio instalador, no con código de PULSE. El botón `MODULES` de la barra lista los disponibles y su estado en el proyecto actual. Hoy hay tres:
 
-- **AHP+** (`@jossuealcala/ahp-plus`): estado verificado del proyecto, checkpoints y handoffs entre sesiones de IA, guardado en `.ahp/`. PULSE lo detecta por `.ahp/manifest.json` y lo instala con `npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms <agentes detectados>`, pidiendo adaptadores solo para los agentes presentes en la máquina que AHP+ soporta (Codex, Claude, OpenCode).
+- **Git Pulse** (integrado, sin instalación): `/git status`, `/git log [n]`, `/git diff` y `/git branches` traen a la sala la rama, los cambios sin confirmar, los últimos commits o el resumen del diff, en solo lectura y sin gastar un turno de agente. La tarjeta queda en el registro como `command.output` y entra en el contexto que reciben los agentes, así todos razonan sobre los mismos hechos del repositorio. Requiere que el proyecto sea un repositorio git.
+- **Image Studio** (integrado): ver la sección anterior.
+- **AHP+** (`@jossuealcala/ahp-plus`): estado verificado del proyecto, checkpoints y handoffs entre sesiones de IA, guardado en `.ahp/`. PULSE lo detecta por `.ahp/manifest.json` y lo instala con `npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms <agentes detectados>`, pidiendo adaptadores solo para los agentes presentes en la máquina que AHP+ soporta (Codex, Claude, OpenCode). Una vez instalado, `/ahp status`, `/ahp check` y `/ahp context` consultan su estado desde el campo de texto.
 
 Instalar un módulo es la única acción con la que PULSE escribe en el proyecto. Por eso el botón muestra primero el comando exacto y exige confirmación; la ejecución se transmite en vivo a la sala y queda registrada en el log como `extension.install.started`, `extension.install.output` y `extension.install.finished`. La consulta a los agentes sigue siendo de solo lectura.
 

@@ -13,6 +13,8 @@ const els = {
   picker: document.querySelector('#picker'),
   target: document.querySelector('#target'),
   input: document.querySelector('#message'),
+  highlight: document.querySelector('#highlight'),
+  slashMenu: document.querySelector('#slash-menu'),
   attach: document.querySelector('#attach'),
   createToggle: document.querySelector('#create-toggle'),
   fileInput: document.querySelector('#file-input'),
@@ -21,6 +23,14 @@ const els = {
   connection: document.querySelector('#connection'),
   toast: document.querySelector('#toast'),
 };
+
+// Built-in commands live in the composer; module commands come from the
+// server (/api/commands) and run there, read-only, as fact cards.
+const CLIENT_COMMANDS = [
+  { name: 'create', title: 'CREATE', usage: '/create <what to make>', summary: 'Arm the creation lease for this message: the agent may create files inside .pulse/out/.', available: true, client: true },
+  { name: 'image', title: 'Image', usage: '/image <what to draw>', summary: 'Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.', available: true, client: true },
+  { name: 'stopall', title: 'STOP ALL', usage: '/stopall', summary: 'Master brake: halt every plan and turn in flight. Never reaches an agent.', available: true, client: true },
+];
 
 const state = {
   agents: new Map(),
@@ -33,6 +43,7 @@ const state = {
   failures: [],            // recorded conditions for MU/TH/UR
   expendable: false,       // easter egg armed: the next human message is reviewed by MOTHER
   running: new Map(),      // messageId -> agent, turns in flight
+  commands: [],            // slash commands from /api/commands (modules) + the built-in ones
   plansRunning: new Set(),
   brakeArmed: false,       // STOP ALL is a brake against runaway sequences: armed only by MU/TH/UR alerts
   agentStats: new Map(),   // id -> { turns, lastTurnMs, lastTurnTokens, cost, started }
@@ -405,6 +416,7 @@ function renderPicker() {
     els.picker.append(text);
   }
   if (typeof renderCreateScopes === 'function') renderCreateScopes();
+  if (typeof renderHighlight === 'function') renderHighlight();
 }
 
 /* ---------- model menu: which model answers this request ---------- */
@@ -894,6 +906,7 @@ function renderEventNode(event) {
     case 'lease.refused': node = renderLeaseRefused(event); break;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
     case 'artifacts.created': attachArtifacts(event); return;
+    case 'command.output': node = renderCommandCard(event); break;
     default: return;
   }
   removeEmpty();
@@ -1024,17 +1037,144 @@ stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
 
 /* ---------- composer ---------- */
 
-// Height follows explicit line breaks only, up to two (three visible lines);
-// longer text scrolls inside. Width widens only with the lock armed and text present.
+// One line, always. Height follows explicit line breaks only, up to two
+// (three visible lines); longer text scrolls inside. The box never widens.
 const LINE_PX = 21;
 const autosize = () => {
   const breaks = Math.min((els.input.value.match(/\n/g) ?? []).length, 2);
   const rows = 1 + breaks;
-  els.input.style.height = `${rows * LINE_PX + 14}px`;
-  els.composer.classList.toggle('wide', state.create && els.input.value.trim().length > 0);
+  els.input.style.height = `${rows * LINE_PX}px`;
+  els.highlight.style.height = els.input.style.height;
+  renderHighlight();
 };
+function syncHighlightScroll() { els.highlight.scrollTop = els.input.scrollTop; }
 els.input.addEventListener('input', autosize);
+els.input.addEventListener('scroll', syncHighlightScroll);
 autosize();
+
+/* ---------- labels inside the field: @agent mentions and /commands ---------- */
+
+function allCommands() { return [...CLIENT_COMMANDS, ...(state.commands ?? [])]; }
+function knownAgentIds() { return [...state.agents.keys()]; }
+function escapeHtml(text) { return text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
+
+function renderHighlight() {
+  const text = els.input.value;
+  const agents = knownAgentIds();
+  const commands = allCommands();
+  const html = escapeHtml(text).replace(/(^|[\s(,;:])([@/])([a-z][\w-]*)/gi, (whole, lead, sigil, name) => {
+    const key = name.toLowerCase();
+    if (sigil === '@') {
+      if (!agents.includes(key)) return whole;
+      return `${lead}<span class="chip agent" style="--agent:${brandOf(key).color}">@${escapeHtml(name)}</span>`;
+    }
+    const command = commands.find((item) => item.name === key);
+    if (!command) return whole;
+    return `${lead}<span class="chip cmd${command.available ? '' : ' unknown'}">/${escapeHtml(name)}</span>`;
+  });
+  els.highlight.innerHTML = `${html}${text.endsWith('\n') ? '\n' : ''}` || '';
+  syncHighlightScroll();
+}
+
+async function refreshCommands() {
+  try {
+    const data = await fetch('/api/commands').then((response) => response.json());
+    state.commands = (data.commands ?? []).map((item) => ({ ...item, client: false }));
+  } catch {
+    state.commands = [];
+  }
+  renderHighlight();
+}
+
+// The "/" and "@" menu: typing either at the start of a word lists what fits.
+const menu = { items: [], index: 0, kind: null, start: 0, end: 0 };
+function menuQuery() {
+  const caret = els.input.selectionStart ?? els.input.value.length;
+  const before = els.input.value.slice(0, caret);
+  const match = before.match(/(^|[\s(,;:])([@/])([\w-]*)$/);
+  if (!match) return null;
+  return { kind: match[2], query: match[3].toLowerCase(), start: caret - match[3].length - 1, end: caret };
+}
+function closeMenu() { els.slashMenu.hidden = true; menu.items = []; menu.kind = null; }
+function renderMenu() {
+  const found = menuQuery();
+  if (!found) return closeMenu();
+  const items = found.kind === '@'
+    ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : `${label(id)} · not ready`, color: brandOf(id).color, off: !state.agents.get(id)?.ready }))
+    : allCommands().filter((item) => item.name.startsWith(found.query)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : `${item.title} is not available here · see MODULES`, off: !item.available }));
+  if (!items.length) return closeMenu();
+  Object.assign(menu, { items, index: Math.min(menu.index, items.length - 1), kind: found.kind, start: found.start, end: found.end });
+  els.slashMenu.replaceChildren();
+  items.forEach((item, index) => {
+    const button = el('button', `item${item.off ? ' off' : ''}`);
+    button.type = 'button';
+    button.setAttribute('role', 'option');
+    button.setAttribute('aria-selected', String(index === menu.index));
+    if (item.color) button.style.setProperty('--agent', item.color);
+    button.append(el('span', 'key', item.key), el('span', 'what', item.what));
+    button.addEventListener('mousedown', (event) => { event.preventDefault(); pickMenu(index); });
+    els.slashMenu.append(button);
+  });
+  els.slashMenu.append(el('div', 'hint', found.kind === '@' ? 'MENTION · ↑↓ · TAB OR ENTER' : 'COMMAND · ↑↓ · TAB OR ENTER'));
+  els.slashMenu.hidden = false;
+}
+function pickMenu(index = menu.index) {
+  const item = menu.items[index];
+  if (!item) return;
+  const value = els.input.value;
+  els.input.value = `${value.slice(0, menu.start)}${item.insert}${value.slice(menu.end)}`;
+  const caret = menu.start + item.insert.length;
+  els.input.setSelectionRange(caret, caret);
+  closeMenu();
+  autosize();
+  els.input.focus();
+}
+els.input.addEventListener('input', () => { menu.index = 0; renderMenu(); });
+els.input.addEventListener('click', renderMenu);
+els.input.addEventListener('blur', () => setTimeout(closeMenu, 120));
+els.input.addEventListener('keydown', (event) => {
+  if (els.slashMenu.hidden) return;
+  if (event.key === 'ArrowDown') { event.preventDefault(); menu.index = (menu.index + 1) % menu.items.length; renderMenu(); }
+  else if (event.key === 'ArrowUp') { event.preventDefault(); menu.index = (menu.index - 1 + menu.items.length) % menu.items.length; renderMenu(); }
+  else if (event.key === 'Tab' || event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); pickMenu(); }
+  else if (event.key === 'Escape') { event.preventDefault(); closeMenu(); }
+}, true);
+
+// A "/command" the human sends: client commands act here, module commands run
+// on the server and come back as a fact card in the thread.
+async function runSlashCommand(text) {
+  const match = text.match(/^\/([a-z][\w-]*)(?:\s+([\s\S]*))?$/i);
+  if (!match) return { handled: false };
+  const name = match[1].toLowerCase();
+  const rest = (match[2] ?? '').trim();
+  if (name === 'stopall') { await stopAll(); return { handled: true }; }
+  if (name === 'create' || name === 'image') {
+    if (!rest) { toast(`MU/TH/UR › /${name} needs a request after it, e.g. "/${name} a poster for the launch".`); return { handled: true }; }
+    let target = els.target.value;
+    if (name === 'image') {
+      const capable = [...state.agents.values()].filter((agent) => agent.ready && state.capabilities[agent.id]?.scopes?.imageGen?.enabled).map((agent) => agent.id);
+      if (!capable.includes(target)) {
+        if (!capable.length) { toast('MU/TH/UR › nobody in the room can generate images right now: enable Image Studio in MODULES or switch on GENERATE IMAGES for an agent in CONNECTIONS.'); return { handled: true }; }
+        toast(`MU/TH/UR › @${target} cannot generate images here; routing to @${capable[0]}.`);
+        target = capable[0];
+        els.target.value = target;
+        renderPicker();
+      }
+    }
+    if (!state.create) els.createToggle.click();
+    return { handled: false, text: rest, target };
+  }
+  const known = allCommands().find((item) => item.name === name);
+  if (!known) { toast(`MU/TH/UR › unknown command /${name}. Type "/" to see what this room offers.`); return { handled: true }; }
+  if (!known.available) { toast(`MU/TH/UR › /${name} is not available in this project: ${known.title} (see MODULES).`); return { handled: true }; }
+  const response = await fetch('/api/commands', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+  if (!response.ok && response.status !== 422) {
+    const result = await response.json().catch(() => ({}));
+    toast(result.error ?? `/${name} failed (${response.status}).`);
+  }
+  return { handled: true };
+}
+
 els.input.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
@@ -1131,13 +1271,23 @@ els.composer.addEventListener('submit', async (event) => {
     await stopAll();
     return;
   }
+  let outgoing = text;
+  let target = els.target.value;
+  if (text.startsWith('/')) {
+    els.input.disabled = true;
+    const result = await runSlashCommand(text).catch((error) => { toast(`Command failed: ${error.message}`); return { handled: true }; });
+    els.input.disabled = false;
+    if (result.handled) { els.input.value = ''; autosize(); els.input.focus(); return; }
+    outgoing = result.text ?? text;
+    target = result.target ?? target;
+  }
   els.input.disabled = true;
   els.send.disabled = true;
   try {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, target: els.target.value || null, model: state.chosenModel[els.target.value] ?? null, attachments: ready.map((item) => item.id), create: state.create }),
+      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
@@ -1389,7 +1539,23 @@ function renderModuleEvent(event) {
       : `${name} install failed${error ? ` · ${error}` : code !== undefined ? ` · exit ${code}` : ''}`);
     modules.installing = null;
     void refreshModules();
+void refreshCommands();
   }
+  state.lastSender = null;
+  return node;
+}
+
+function renderCommandCard(event) {
+  const { name, title, text, ok, args = [] } = event.payload;
+  const node = el('div', `command-card${ok === false ? ' failed' : ''}`);
+  const head = el('div', 'head');
+  head.append(el('b', null, `/${name}`), el('span', null, title ?? name), el('span', 'args', args.join(' ')));
+  const pre = el('pre');
+  for (const line of String(text ?? '').split('\n')) {
+    if (line.startsWith('## ')) pre.append(el('span', 'h', line.slice(3)), '\n');
+    else pre.append(`${line}\n`);
+  }
+  node.append(head, pre);
   state.lastSender = null;
   return node;
 }

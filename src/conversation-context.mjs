@@ -6,6 +6,11 @@ function messageEntry(event) {
     if (typeof error !== 'string' || !error.trim()) return null;
     return { sequence: event.sequence, messageId: `${messageId}:failed`, role: 'failed', sender: target ?? 'room', target: 'you', text: error.trim() };
   }
+  if (event.type === 'command.output') {
+    const { name, title, text } = event.payload;
+    if (typeof text !== 'string' || !text.trim()) return null;
+    return { sequence: event.sequence, messageId: `${event.id}:command`, role: 'command', sender: `/${name}`, target: 'room', text: `${title}\n${text.trim()}`.slice(0, 6000) };
+  }
   if (event.type !== 'message.created') return null;
   const { messageId, role, sender, target, text } = event.payload;
   if (typeof text !== 'string' || !text.trim()) return null;

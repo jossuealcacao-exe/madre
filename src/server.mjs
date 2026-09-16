@@ -16,6 +16,7 @@ import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { discoverModels } from './models.mjs';
 import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
+import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
@@ -469,6 +470,20 @@ export async function createPulseServer({
       if (stopMatch) {
         const stopped = await room.stopPlan(stopMatch[1]);
         return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: 'No running plan with that id.' });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/commands') {
+        return sendJson(response, 200, { commands: await listCommands({ projectRoot: canonicalProjectRoot }) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/commands') {
+        const { text } = await body(request);
+        const parsed = parseCommand(text);
+        if (!parsed) return sendJson(response, 400, { error: 'Not a command. Commands start with "/" followed by a name.' });
+        const command = commandByName(parsed.name);
+        if (!command) return sendJson(response, 404, { error: `Unknown command /${parsed.name}.` });
+        if (!(await command.available({ projectRoot: canonicalProjectRoot }))) return sendJson(response, 412, { error: `/${parsed.name} is not available in this project (${command.title}).` });
+        const result = await command.execute({ projectRoot: canonicalProjectRoot, args: parsed.args });
+        const event = await room.recordCommand({ name: parsed.name, args: parsed.args, ...result });
+        return sendJson(response, result.ok ? 200 : 422, { command: parsed.name, title: result.title, ok: result.ok, sequence: event.sequence });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
         return sendJson(response, 200, { installing, extensions: await listExtensions({ projectRoot: canonicalProjectRoot, agents, config: await readConfig(root), imageKey }) });

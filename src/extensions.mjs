@@ -103,10 +103,38 @@ export const IMAGE_STUDIO = {
 };
 EXTENSIONS.push(IMAGE_STUDIO);
 
+// Git Pulse: read-only repository facts in the room via /git. Nothing to
+// install; it is on wherever the project is a git repository.
+export const GIT_PULSE = {
+  id: 'git-pulse',
+  kind: 'builtin',
+  name: 'Git Pulse',
+  vendor: 'PULSE',
+  package: null,
+  version: '0.1.0',
+  summary: 'Type /git in the composer to bring the repository\'s branch, uncommitted changes, recent commits or diff stats into the room as a shared fact card, without spending an agent turn.',
+  creates: ['nothing: read-only git commands run inside the project'],
+  requires: ['the project is a git repository'],
+  models: [],
+  commands: ['/git status', '/git log [n]', '/git diff', '/git branches'],
+};
+EXTENSIONS.push(GIT_PULSE);
+
 export const extensionById = (id) => EXTENSIONS.find((extension) => extension.id === id) ?? null;
 
 export async function listExtensions({ projectRoot, agents = [], config = {}, imageKey = async () => null }) {
   return Promise.all(EXTENSIONS.map(async (extension) => {
+    if (extension.id === 'git-pulse') {
+      const isRepo = await gitToplevel(projectRoot);
+      return {
+        id: extension.id, kind: 'builtin', name: extension.name, vendor: extension.vendor, package: null, version: extension.version,
+        summary: extension.summary, creates: extension.creates, requires: extension.requires, models: [], commands: extension.commands,
+        status: { installed: Boolean(isRepo), detail: isRepo ? 'on · project is a git repository' : 'not a git repository' },
+        preflight: isRepo ? { ok: true, problems: [] } : { ok: false, problems: ['Run `git init` in the project to use /git.'] },
+        install: { display: '/git in the composer', platforms: [] },
+        fixed: true,
+      };
+    }
     if (extension.kind === 'builtin') {
       const enabled = Boolean(config.modules?.imageStudio?.enabled);
       const key = await imageKey();

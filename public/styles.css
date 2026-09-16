@@ -566,10 +566,33 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .conn-card .scope .why { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }
 
 /* CREATE armed and text present: the field widens past the column; height follows line breaks only */
-.composer { transition: width .3s ease; }
-.composer.creating.wide { width: min(1180px, 100% - 40px); }
-.composer textarea { overflow-y: auto; line-height: 21px; }
-.composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
-@media (max-width: 1240px) { .composer.creating { width: calc(100% - 40px); } }
+/* Field box: one line, always. It grows only with explicit line breaks
+   (max two, three visible lines) and scrolls beyond; it never widens. */
+.field { align-items: center; }
+.editor { position: relative; display: grid; min-width: 0; }
+.editor textarea, .editor .highlight { grid-area: 1 / 1; margin: 0; padding: 7px 0; line-height: 21px; font-size: 15px; font-family: inherit; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; box-sizing: content-box; min-height: 0; max-height: none; overflow-y: auto; }
+.editor textarea { position: relative; z-index: 1; color: transparent; caret-color: var(--text); }
+.editor textarea::selection { background: color-mix(in srgb, var(--phosphor) 30%, transparent); }
+.composer.stopall .editor textarea { color: var(--terror); }
+.composer.stopall .editor .highlight { visibility: hidden; }
+.editor .highlight { color: var(--text); pointer-events: none; scrollbar-width: none; }
+.editor .highlight::-webkit-scrollbar { display: none; }
+.editor .highlight .chip { border-radius: 6px; padding: 1px 4px; margin: 0 -4px; background: color-mix(in srgb, var(--agent, var(--phosphor)) 18%, transparent); color: var(--agent, var(--phosphor)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent, var(--phosphor)) 45%, transparent); font-weight: 600; }
+.editor .highlight .chip.cmd { --agent: var(--phosphor); font-family: var(--mono); font-size: 13px; letter-spacing: .04em; }
+.editor .highlight .chip.unknown { --agent: var(--text-3); text-decoration: underline dotted; font-weight: 500; }
+.slash-menu { position: absolute; left: -12px; bottom: calc(100% + 14px); z-index: 30; min-width: 280px; max-width: min(460px, 90vw); border: 1px solid var(--line-2); background: var(--panel); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .35); padding: 6px; display: grid; gap: 2px; }
+.slash-menu .item { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 9px; cursor: pointer; border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; }
+.slash-menu .item .key { font-family: var(--mono); font-size: 12.5px; color: var(--agent, var(--phosphor)); font-weight: 600; white-space: nowrap; }
+.slash-menu .item .what { font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slash-menu .item.off .key { color: var(--text-3); text-decoration: line-through; }
+.slash-menu .item[aria-selected="true"], .slash-menu .item:hover { background: color-mix(in srgb, var(--agent, var(--phosphor)) 14%, transparent); }
+.slash-menu .hint { padding: 4px 10px 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--text-3); }
+.command-card { margin: 10px 0 6px; max-width: min(860px, 100%); border: 1px solid var(--line-2); border-radius: 12px; background: color-mix(in srgb, var(--panel) 80%, transparent); overflow: hidden; }
+.command-card.failed { border-color: color-mix(in srgb, var(--crit) 60%, transparent); }
+.command-card .head { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; color: var(--text-2); border-bottom: 1px solid var(--line-2); }
+.command-card .head b { color: var(--phosphor); font-weight: 600; }
+.command-card .head .args { color: var(--text-3); letter-spacing: .04em; }
+.command-card pre { margin: 0; padding: 10px 12px; max-height: 320px; overflow: auto; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.command-card pre .h { color: var(--phosphor); font-weight: 600; }
 
 .module-card select { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .06em; padding: 6px 8px; }

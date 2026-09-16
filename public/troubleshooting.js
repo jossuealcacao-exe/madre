@@ -279,6 +279,15 @@ export const CONDITIONS = [
     fixes: same(['# ⚙ CONNECTIONS → agent card → WEB ACCESS → SAVE']),
   },
   {
+    id: 'slash-commands',
+    severity: 'informational',
+    title: 'Commands and mentions in the field box',
+    match: /slash|command|\/git|\/ahp|mention|@agent/i,
+    diagnosis: 'Type "/" for the room\'s commands: /create arms the lease, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git Pulse) and /ahp (AHP+) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label.',
+    remedy: 'A struck-through command is a module that is not available in this project: open MODULES to install or enable it (Git Pulse needs a git repository; AHP+ needs to be installed).',
+    fixes: same(['# type / or @ in the field box', '/git status', '/git log 10', '/ahp check', '/image a poster for the launch']),
+  },
+  {
     id: 'scope-write',
     severity: 'informational',
     title: 'Creating files with an agent',
