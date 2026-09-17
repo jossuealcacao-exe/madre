@@ -1412,13 +1412,13 @@ function artifactTiles(files) {
 
 function renderAlert(event) {
   const { message } = event.payload;
-  state.brakeArmed = true;
-  updateStopAll();
+  if (!replaying) { state.brakeArmed = true; updateStopAll(); }
   const node = el('div', 'system alert');
   node.append(el('b', null, 'MU/TH/UR › '));
   node.append(message.replace(/\s*Type STOPALL[^.]*\.?$/i, '').replace(/\s*STOPALL halts[^.]*\.?$/i, ''));
   node.append(el('span', 'cmd', 'STOPALL'));
-  toast(`MU/TH/UR › ${message}`);
+  // A replayed alert is history: it stays in the thread, it does not shout again or arm the brake.
+  if (!replaying) toast(`MU/TH/UR › ${message}`);
   state.lastSender = null;
   return node;
 }
