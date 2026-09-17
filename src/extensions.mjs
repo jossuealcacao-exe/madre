@@ -133,6 +133,22 @@ export const ASHCODE = {
 };
 EXTENSIONS.push(ASHCODE);
 
+// RIPLEY: the file viewer renders HTML, SVG and Markdown instead of showing
+// their source, inside a sealed frame. A switch in config.json, nothing else.
+export const RIPLEY = {
+  id: 'ripley',
+  kind: 'builtin',
+  name: 'RIPLEY',
+  vendor: 'MADRE · PREVIEW',
+  package: null,
+  version: '0.1.0',
+  summary: 'Renders HTML, SVG and Markdown from the project and from .pulse/out in the file viewer, inside a sealed frame: no scripts, no network, no storage. Nothing leaves the room.',
+  creates: ['nothing in the project', 'a ripley switch in ~/.pulse/config.json'],
+  requires: [],
+  models: [],
+};
+EXTENSIONS.push(RIPLEY);
+
 export const extensionById = (id) => EXTENSIONS.find((extension) => extension.id === id) ?? null;
 
 export async function listExtensions({ projectRoot, agents = [], config = {}, imageKey = async () => null }) {
@@ -157,6 +173,17 @@ export async function listExtensions({ projectRoot, agents = [], config = {}, im
         preflight: { ok: true, problems: [] },
         install: { display: enabled ? 'disable AshCode' : 'enable AshCode (config.json)', platforms: [] },
         warning: 'Beta: abbreviation may alter meaning or introduce errors. Review the original. Character reduction is not verified token savings.',
+      };
+    }
+    if (extension.id === 'ripley') {
+      const enabled = Boolean(config.modules?.ripley?.enabled);
+      return {
+        id: extension.id, kind: 'builtin', name: extension.name, vendor: extension.vendor, package: null, version: extension.version,
+        summary: extension.summary, creates: extension.creates, requires: [], models: [],
+        status: { installed: enabled, detail: enabled ? 'on · PREVIEW in the file viewer' : 'off · files show as source' },
+        preflight: { ok: true, problems: [] },
+        install: { display: enabled ? 'disable RIPLEY' : 'enable RIPLEY (config.json)', platforms: [] },
+        fixed: false,
       };
     }
     if (extension.kind === 'builtin') {

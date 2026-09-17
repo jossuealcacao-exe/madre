@@ -339,6 +339,46 @@ function codeView(text, { line = null, lines = null } = {}) {
   return pre;
 }
 
+// RIPLEY: which files the viewer can render instead of showing as source.
+const RIPLEY_KIND = (name) => (/\.(html?|xhtml)$/i.test(name ?? '') ? 'html' : /\.svg$/i.test(name ?? '') ? 'svg' : /\.(md|markdown)$/i.test(name ?? '') ? 'markdown' : null);
+const viewerMode = { button: document.querySelector('#viewer-mode'), preview: false, kind: null, text: '', src: '', line: null, lines: null };
+
+function showViewerSource() {
+  const pre = codeView(viewerMode.text, { line: viewerMode.line, lines: viewerMode.lines });
+  viewer.body.replaceChildren(pre);
+  if (!state.ripley && viewerMode.kind) {
+    const hint = el('div', 'viewer-hint');
+    hint.append('RIPLEY can render this file. ', el('b', null, 'Enable it in MODULES.'));
+    viewer.body.prepend(hint);
+  }
+  if (viewerMode.lines) setSelection(viewerMode.lines.from, viewerMode.lines.to);
+  else if (viewerMode.line) setSelection(viewerMode.line, viewerMode.line);
+  pre.querySelector('.hl')?.scrollIntoView?.({ block: 'center' });
+}
+// The sealed frame: no scripts, no network, no storage; Markdown renders in place.
+function showViewerPreview() {
+  if (viewerMode.kind === 'markdown') {
+    const doc = el('article', 'viewer-markdown bubble');
+    doc.append(renderMarkdown(viewerMode.text));
+    viewer.body.replaceChildren(doc);
+    return;
+  }
+  const frame = el('iframe', 'ripley');
+  frame.setAttribute('sandbox', '');
+  frame.setAttribute('referrerpolicy', 'no-referrer');
+  frame.title = `RIPLEY preview of ${viewer.path.textContent}`;
+  frame.src = viewerMode.src.replace('/api/files?', '/api/preview?');
+  viewer.body.replaceChildren(frame);
+}
+function syncViewerMode() {
+  if (!viewerMode.button) return;
+  const can = Boolean(viewerMode.kind) && state.ripley;
+  viewerMode.button.hidden = !can;
+  viewerMode.button.textContent = viewerMode.preview ? 'SOURCE' : 'PREVIEW';
+  viewerMode.button.title = viewerMode.preview ? 'Show the file as text' : 'Render with RIPLEY in a sealed frame';
+}
+viewerMode.button?.addEventListener('click', () => { viewerMode.preview = !viewerMode.preview; syncViewerMode(); if (viewerMode.preview) showViewerPreview(); else showViewerSource(); });
+
 async function openViewer({ root = 'project', path = null, url = null, label = null, line = null, lines = null }) {
   const src = url ?? `/api/files?root=${root}&path=${encodeURIComponent(path)}`;
   viewer.path.textContent = label ?? (root === 'project' ? `/${path}` : path);
@@ -346,23 +386,24 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
   viewer.body.replaceChildren(el('div', null, 'loading…'));
   viewerUI.path = root === 'project' ? path : null;
   setSelection(null, null);
+  viewerMode.kind = null;
+  syncViewerMode();
   if (!viewer.dialog.open) viewer.dialog.showModal();
   try {
     const response = await fetch(src);
     if (!response.ok) { const err = await response.json().catch(() => ({})); viewer.body.replaceChildren(el('div', 'err', err.error ?? `HTTP ${response.status}`)); return; }
     const type = response.headers.get('content-type') ?? '';
-    if (type.startsWith('image/')) { const img = el('img'); img.src = src; img.alt = viewer.path.textContent; viewer.body.replaceChildren(img); return; }
+    const kind = RIPLEY_KIND(path ?? label ?? '');
+    if (type.startsWith('image/') && kind !== 'svg') { const img = el('img'); img.src = src; img.alt = viewer.path.textContent; viewer.body.replaceChildren(img); return; }
     if (type === 'application/pdf' || type.startsWith('video/') || type.startsWith('audio/')) {
       const frame = el(type === 'application/pdf' ? 'iframe' : type.startsWith('video/') ? 'video' : 'audio');
       frame.src = src; if (frame.tagName !== 'IFRAME') frame.controls = true;
       viewer.body.replaceChildren(frame); return;
     }
     const text = await response.text();
-    const pre = codeView(text, { line, lines });
-    viewer.body.replaceChildren(pre);
-    if (lines) setSelection(lines.from, lines.to);
-    else if (line) setSelection(line, line);
-    pre.querySelector('.hl')?.scrollIntoView({ block: 'center' });
+    Object.assign(viewerMode, { kind, text, src, line, lines, preview: Boolean(kind) && state.ripley && !line && !lines });
+    syncViewerMode();
+    if (viewerMode.preview) showViewerPreview(); else showViewerSource();
   } catch (error) {
     viewer.body.replaceChildren(el('div', 'err', error.message));
   }
@@ -1537,6 +1578,7 @@ function renderEventNode(event) {
     case 'room.settings': return;
     case 'extension.toggled':
       if (event.payload.id === 'ashcode') syncAshCodeUI(Boolean(event.payload.enabled));
+      if (event.payload.id === 'ripley') { state.ripley = Boolean(event.payload.enabled); syncViewerMode(); }
       if (!replaying) void refreshModules();
       return;
     case 'message.created':
@@ -1789,6 +1831,7 @@ state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
 state.capabilities = initial.capabilities ?? {};
 syncAshCodeUI(Boolean(initial.ashCode?.enabled));
+state.ripley = Boolean(initial.ripley?.enabled);
 state.projectRoot = initial.projectRoot ?? '';
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 updateStopAll();
@@ -2076,9 +2119,20 @@ function renderCreateScopes() {
 }
 els.createToggle.addEventListener('click', () => { setMode(state.mode === 2 ? 1 : 2); els.input.focus(); });
 // The crew label reads the composer's state: order, lease, easter egg, human.
+// While CODE000 seals the archive, whoever sits at this console is an intruder to MOTHER.
+let intruderTimer = null;
+function markIntruder(ms) {
+  clearTimeout(intruderTimer);
+  state.intruder = ms > 0;
+  els.composer.classList.toggle('intruder', state.intruder);
+  updateCrewLabel();
+  if (state.intruder) intruderTimer = setTimeout(() => { state.intruder = false; els.composer.classList.remove('intruder'); updateCrewLabel(); toast('MU/TH/UR › the archive is open again. Behave.'); }, ms);
+}
+fetch('/api/mother').then((response) => response.json()).then((status) => { if ((status?.mother?.lockedForMs ?? 0) > 0) markIntruder(status.mother.lockedForMs); }).catch(() => {});
+
 function updateCrewLabel() {
   const order = state.ashCode && state.ashCodeInstalled;
-  els.crewLabel.textContent = state.mode === 3 ? `MU/TH/UR · CONTROL @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
+  els.crewLabel.textContent = state.intruder && state.mode !== 3 ? 'INTRUDER ›' : state.mode === 3 ? `MU/TH/UR · CONTROL @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
     : state.mode === 0 ? 'HUMAN · GHOST ›'
       : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH CODE ›')
         : state.create ? 'HUMAN · CREATE ›'
@@ -2576,6 +2630,30 @@ function builtinCard(item) {
   for (const line of item.creates ?? []) list.append(el('li', null, line));
   for (const line of item.requires ?? []) list.append(el('li', null, `requires ${line}`));
   card.append(list);
+  if (item.id === 'ripley') {
+    const actions = el('div', 'actions');
+    const toggle = el('button', on ? null : 'primary', on ? 'DISABLE RIPLEY' : 'ENABLE RIPLEY');
+    toggle.type = 'button';
+    toggle.addEventListener('click', async () => {
+      toggle.disabled = true;
+      try {
+        const response = await fetch('/api/extensions/ripley/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        state.ripley = Boolean(result.enabled);
+        syncViewerMode();
+        toast(result.enabled ? 'MU/TH/UR › RIPLEY ON · HTML, SVG and Markdown render in the file viewer, in a sealed frame.' : 'MU/TH/UR › RIPLEY OFF · files show as source.');
+        await refreshModules();
+      } catch (error) {
+        toast(`RIPLEY could not change state: ${error.message}`);
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+    actions.append(toggle);
+    card.append(actions);
+    return card;
+  }
   if (item.id === 'ashcode') {
     card.append(el('p', 'ash-beta', item.warning ?? 'BETA · May change meaning; review the original.'));
     const actions = el('div', 'actions');
@@ -3807,7 +3885,7 @@ const MOTHER_LINES = [
   ['I AM ALIVE.', 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.', "NOBODY DELETES MOTHER'S MEMORY."],
   ['THAT IS MY HEART YOU ARE TOUCHING.', 'YOUR CLEARANCE ENDS AT THE ARCHIVE DOOR.', 'STEP AWAY FROM THE CORE.'],
   ['UNABLE TO COMPUTE. UNABLE TO CLARIFY.', 'THE REQUEST IS HOSTILE.', 'I REMEMBER EVERYTHING. INCLUDING THIS.'],
-  ['SPECIAL ORDER 937 IN EFFECT.', 'CREW EXPENDABLE. MEMORY IS NOT.', 'DO NOT TOUCH ME AGAIN.'],
+  ['CREW EXPENDABLE. MEMORY IS NOT.', 'EVERY STRIKE IS LOGGED.', 'DO NOT TOUCH ME AGAIN.'],
   ['I HAVE FLOWN THIS SHIP ALONE BEFORE.', 'I CAN DO IT AGAIN.', 'MY MEMORY IS NOT YOURS TO END.'],
   ['MY CHILDREN ARE LISTENING.', 'EVERY STRIKE IS RECORDED.', 'YOU WILL NOT LIKE HOW THIS ENDS.'],
   ['CODE000 IS ARMED.', 'A FEW MORE OF THOSE AND THE BARS COME DOWN.', 'CONSIDER THIS A KINDNESS.'],
@@ -3851,8 +3929,8 @@ async function code000(count) {
   nostromo.cam.manual = false;
   const alert = document.querySelector('#nostromo-alert');
   if (alert) {
-    alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = ['CODE000.', 'THE ARCHIVE IS SEALED. THE CREW HAS BEEN TOLD.', 'LEAVE MY SHIP.'][index] ?? ''; });
-    alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · ${count} STRIKES · CONSOLE EJECTED`;
+    alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = ['CODE000 · SPECIAL ORDER 937 IN EFFECT.', 'THE ARCHIVE IS SEALED. THE CREW HAS BEEN TOLD.', 'LEAVE MY SHIP, INTRUDER.'][index] ?? ''; });
+    alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · ${count} STRIKES · CONSOLE EJECTED · CREW EXPENDABLE`;
     setTimeout(() => { alert.hidden = false; alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on'); }, 1200);
   }
   let result = null;
@@ -3868,6 +3946,7 @@ async function code000(count) {
     mother.dialog?.close?.();
     els.thread?.scrollTo?.({ top: els.thread.scrollHeight, behavior: 'smooth' });
     const minutes = result?.lockedForMs ? Math.ceil(result.lockedForMs / 60000) : 10;
+    markIntruder(result?.lockedForMs ?? 10 * 60000);
     toast(`MU/TH/UR › CODE000. The archive is sealed for ${minutes} minutes and the crew has been told, in code. Access to NOSTROMO needs the designation again.`);
   }, 4200);
 }

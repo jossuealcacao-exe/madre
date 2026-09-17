@@ -93,6 +93,8 @@ export async function createPulseServer({
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
   applyConfigToEnv(await loadConfig(root));
+  // RIPLEY renders HTML in the viewer only while the human has it switched on.
+  let ripleyEnabled = Boolean((await readConfig(root)).modules?.ripley?.enabled);
   agentTimeouts ??= agentTimeoutsFromEnv();
   const agents = providedAgents ?? await detectAgents();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
@@ -324,6 +326,14 @@ export async function createPulseServer({
   async function installExtension(id, { confirm } = {}) {
     const extension = extensionById(id);
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
+    if (extension.id === 'ripley') {
+      const current = await readConfig(root);
+      const enabled = !Boolean(current.modules?.ripley?.enabled);
+      await updateConfig(root, { modules: { ...current.modules, ripley: { enabled } } });
+      ripleyEnabled = enabled;
+      await room.record('extension.toggled', { id, name: extension.name, enabled });
+      return { status: 200, body: { enabled } };
+    }
     if (extension.id === 'ashcode') {
       const current = await readConfig(root);
       const enabled = !Boolean(current.modules?.ashCode?.enabled);
@@ -418,6 +428,7 @@ export async function createPulseServer({
           projectRoot,
           agents,
           ashCode: { enabled: room.ashCodeEnabled() },
+          ripley: { enabled: ripleyEnabled },
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
           delegation: { enabled: room.settings().delegation, maxPlanSteps: room.settings().maxPlanSteps },
@@ -476,6 +487,27 @@ export async function createPulseServer({
           'cache-control': 'no-store',
           'x-content-type-options': 'nosniff',
           'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+          'content-disposition': `inline; filename="${encodeURIComponent(basename(file.path))}"`,
+        });
+        return response.end(file.body);
+      }
+      // RIPLEY: the same file, served to be rendered, inside a frame that may run
+      // nothing, load nothing from outside and keep nothing.
+      if (request.method === 'GET' && url.pathname === '/api/preview') {
+        if (!ripleyEnabled) return sendJson(response, 412, { error: 'RIPLEY is off. Enable it in MODULES to render files.' });
+        const which = url.searchParams.get('root') === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
+        const relative = url.searchParams.get('path') ?? '';
+        const kind = /\.(html?|xhtml)$/i.test(relative) ? 'text/html; charset=utf-8' : /\.svg$/i.test(relative) ? 'image/svg+xml' : null;
+        if (!kind) return sendJson(response, 415, { error: 'RIPLEY renders .html and .svg here; Markdown is rendered in the viewer itself.' });
+        const file = await readServable(which, relative);
+        if (file.status !== 200) return sendJson(response, file.status, { error: file.error });
+        response.writeHead(200, {
+          'content-type': kind,
+          'content-length': file.size,
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+          'referrer-policy': 'no-referrer',
+          'content-security-policy': "sandbox; default-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' data:; form-action 'none'; base-uri 'none'",
           'content-disposition': `inline; filename="${encodeURIComponent(basename(file.path))}"`,
         });
         return response.end(file.body);

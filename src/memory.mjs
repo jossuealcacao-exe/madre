@@ -125,7 +125,8 @@ export class RoomMemory {
         sender TEXT NOT NULL,
         target TEXT,
         message_id TEXT,
-        text TEXT NOT NULL
+        text TEXT NOT NULL,
+        distilled INTEGER NOT NULL DEFAULT 0
       );
       CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(text, sender, content='entries', content_rowid='sequence', tokenize='trigram');
       CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
@@ -155,6 +156,13 @@ export class RoomMemory {
       CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
+    // Older files: each entry remembers whether it was distilled (the old watermark seeds it).
+    const entryColumns = this.#db.prepare('PRAGMA table_info(entries)').all().map((column) => column.name);
+    if (entryColumns.length && !entryColumns.includes('distilled')) {
+      this.#db.exec('ALTER TABLE entries ADD COLUMN distilled INTEGER NOT NULL DEFAULT 0');
+      const watermark = Number(this.#db.prepare("SELECT value FROM meta WHERE key = 'last_distilled'").get()?.value ?? 0);
+      if (watermark > 0) this.#db.prepare('UPDATE entries SET distilled = 1 WHERE sequence <= ?').run(watermark);
+    }
     // Notes written on the human's request carry where they came from; older files gain the columns in place.
     const columns = this.#db.prepare('PRAGMA table_info(memories)').all().map((column) => column.name);
     if (!columns.includes('origin')) this.#db.exec("ALTER TABLE memories ADD COLUMN origin TEXT NOT NULL DEFAULT 'distilled'");
@@ -247,16 +255,26 @@ export class RoomMemory {
 
   /* ---------- distilled memories ---------- */
 
-  lastDistilled() { return Number(this.#metaValue('last_distilled') ?? 0); }
-  markDistilled(throughSequence) { this.#setMeta.run('last_distilled', String(Math.max(this.lastDistilled(), Number(throughSequence) || 0))); }
-  undistilledCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM entries WHERE sequence > ?').get(this.lastDistilled()).n; }
+  lastDistilled() { return this.#db.prepare('SELECT COALESCE(MAX(sequence), 0) AS n FROM entries WHERE distilled = 1').get().n; }
+  // Marks entries as distilled: a list of sequences, or everything up to a sequence.
+  markDistilled(sequences) {
+    if (Array.isArray(sequences)) {
+      const mark = this.#db.prepare('UPDATE entries SET distilled = 1 WHERE sequence = ?');
+      this.#db.exec('BEGIN');
+      try { for (const sequence of sequences) mark.run(sequence); this.#db.exec('COMMIT'); } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+    } else {
+      this.#db.prepare('UPDATE entries SET distilled = 1 WHERE sequence <= ?').run(Number(sequences) || 0);
+    }
+  }
+  undistilledCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM entries WHERE distilled = 0').get().n; }
   memoryCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM memories').get().n; }
 
-  // The next batch to distil: entries after the last distilled sequence, in
-  // order, cut at a character budget so one run stays cheap. `remaining` says
-  // how many entries wait beyond the batch.
+  // The next batch to distil: the NEWEST entries nobody has distilled, cut at a
+  // character budget so one run stays cheap, returned in ledger order. What was
+  // just said becomes memory first; an old backlog drains behind it, batch by
+  // batch. `remaining` says how many entries still wait.
   undistilled({ maxChars = 6000 } = {}) {
-    const rows = this.#db.prepare('SELECT sequence, timestamp, role, sender, target, message_id AS messageId, text FROM entries WHERE sequence > ? ORDER BY sequence').all(this.lastDistilled());
+    const rows = this.#db.prepare('SELECT sequence, timestamp, role, sender, target, message_id AS messageId, text FROM entries WHERE distilled = 0 ORDER BY sequence DESC').all();
     const batch = [];
     let used = 0;
     for (const row of rows) {
@@ -265,7 +283,8 @@ export class RoomMemory {
       batch.push({ ...row, text: row.text.length > 1600 ? `${row.text.slice(0, 1600)}…` : row.text });
       used += cost;
     }
-    return { entries: batch, fromSequence: batch[0]?.sequence ?? null, throughSequence: batch.at(-1)?.sequence ?? null, remaining: rows.length - batch.length };
+    batch.sort((a, b) => a.sequence - b.sequence);
+    return { entries: batch, sequences: batch.map((row) => row.sequence), fromSequence: batch[0]?.sequence ?? null, throughSequence: batch.at(-1)?.sequence ?? null, remaining: rows.length - batch.length };
   }
 
   // Stores distilled memories; a note already held (same text, ignoring case

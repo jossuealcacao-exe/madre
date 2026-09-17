@@ -1044,7 +1044,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
   assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms codex,claude');
   assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.1', 'setup', '.']);
-  assert.equal(EXTENSIONS.length, 4);
+  assert.equal(EXTENSIONS.length, 5);
   assert.ok(EXTENSIONS.some((extension) => extension.id === 'git-pulse' && extension.kind === 'builtin'));
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));

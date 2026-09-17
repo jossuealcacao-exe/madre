@@ -434,7 +434,7 @@ export class Room {
         const result = await this.#invokers[agent.adapter]({ executable: agent.path, projectRoot: this.#projectRoot, prompt, timeoutMs: this.timeoutFor(agent.id), model: this.#distill.model, attachments: [], lease: null, scopes: { web: false, imageGen: false }, imageStudio: null });
         const memories = parseDistillation(result?.text, { fromSequence: batch.fromSequence, throughSequence: batch.throughSequence });
         const added = this.#memory.addMemories(memories, { agent: agent.id, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence });
-        this.#memory.markDistilled(batch.throughSequence);
+        this.#memory.markDistilled(batch.sequences);
         this.#distillFailures.delete(batch.fromSequence);
         await this.#recordUsage(agent.id, result?.usage ?? null);
         const kinds = {};
@@ -446,7 +446,7 @@ export class Room {
         const attempts = (this.#distillFailures.get(batch.fromSequence) ?? 0) + 1;
         this.#distillFailures.set(batch.fromSequence, attempts);
         const skipped = attempts >= 3;
-        if (skipped) { this.#memory.markDistilled(batch.throughSequence); this.#distillFailures.delete(batch.fromSequence); }
+        if (skipped) { this.#memory.markDistilled(batch.sequences); this.#distillFailures.delete(batch.fromSequence); }
         const report = { agent: agent.id, error: failureMessage(error), attempts, skipped, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, considered: batch.entries.length, remaining: batch.remaining };
         await this.#emit('memory.distilled', report);
         return report;

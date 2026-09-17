@@ -735,3 +735,91 @@ test('CODE000: the archive seals, the crew is told in code, the console reads on
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('memory: distillation takes the newest exchanges first and the backlog drains behind them; an old watermark migrates', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-newest-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 12; i += 1) await store.append('message.created', { messageId: `m${i}`, role: 'user', sender: 'you', target: 'codex', text: `Exchange number ${i} ${'x'.repeat(200)}` });
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    assert.equal(memory.undistilledCount(), 12);
+    const first = memory.undistilled({ maxChars: 1100 });
+    assert.deepEqual(first.sequences, [9, 10, 11, 12], 'the newest four fit and come in ledger order');
+    assert.equal(first.remaining, 8);
+    memory.markDistilled(first.sequences);
+    assert.equal(memory.lastDistilled(), 12);
+    assert.equal(memory.undistilledCount(), 8);
+    const second = memory.undistilled({ maxChars: 1100 });
+    assert.deepEqual(second.sequences, [5, 6, 7, 8], 'then the next newest');
+    // A new exchange jumps the queue.
+    await store.append('message.created', { messageId: 'm13', role: 'user', sender: 'you', target: 'codex', text: 'Fresh exchange 13' });
+    await memory.catchUp(store);
+    assert.equal(memory.undistilled({ maxChars: 1100 }).sequences.at(-1), 13);
+    memory.close();
+
+    // A file from before the flag: the watermark seeds the flag.
+    const { DatabaseSync } = await import('node:sqlite');
+    const raw = new DatabaseSync(join(root, 'memory.sqlite'));
+    raw.exec('ALTER TABLE entries DROP COLUMN distilled');
+    raw.exec("INSERT INTO meta (key, value) VALUES ('last_distilled', '6') ON CONFLICT(key) DO UPDATE SET value = '6'");
+    raw.close();
+    const migrated = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    assert.equal(migrated.lastDistilled(), 6);
+    assert.equal(migrated.undistilledCount(), 7);
+    migrated.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+import { listExtensions } from '../src/extensions.mjs';
+
+test('RIPLEY: off by default, files stay source; on, HTML and SVG render through a sealed preview route', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ripley-'));
+  const project = join(root, 'site');
+  await mkdir(project);
+  await writeFile(join(project, 'index.html'), '<!doctype html><h1>Hello</h1><script>alert(1)</script>');
+  await writeFile(join(project, 'logo.svg'), '<svg xmlns="http://www.w3.org/2000/svg"><circle r="4"/></svg>');
+  await writeFile(join(project, 'app.js'), 'console.log(1)');
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' }];
+  const { server } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers: { 'codex-readonly': async () => ({ text: 'ok', usage: null }) } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const listed = await listExtensions({ projectRoot: project, config: {} });
+    const ripley = listed.find((item) => item.id === 'ripley');
+    assert.equal(ripley.status.installed, false);
+    assert.equal((await listExtensions({ projectRoot: project, config: { modules: { ripley: { enabled: true } } } })).find((item) => item.id === 'ripley').status.detail, 'on · PREVIEW in the file viewer');
+
+    const state = await fetch(`${base}/api/state`).then((response) => response.json());
+    assert.deepEqual(state.ripley, { enabled: false });
+    const off = await fetch(`${base}/api/preview?path=index.html`);
+    assert.equal(off.status, 412);
+    // Plain /api/files keeps serving HTML as text, as before.
+    assert.match((await fetch(`${base}/api/files?path=index.html`)).headers.get('content-type'), /^text\/plain/);
+
+    const toggled = await fetch(`${base}/api/extensions/ripley/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    assert.equal(toggled.status, 200);
+    assert.deepEqual(await toggled.json(), { enabled: true });
+    assert.deepEqual((await fetch(`${base}/api/state`).then((response) => response.json())).ripley, { enabled: true });
+
+    const html = await fetch(`${base}/api/preview?path=index.html`);
+    assert.equal(html.status, 200);
+    assert.match(html.headers.get('content-type'), /^text\/html/);
+    assert.match(html.headers.get('content-security-policy'), /^sandbox; default-src 'none';/);
+    assert.ok(!/script-src/.test(html.headers.get('content-security-policy')), 'no script source is ever allowed');
+    assert.equal(html.headers.get('referrer-policy'), 'no-referrer');
+    assert.match(await html.text(), /<h1>Hello<\/h1>/);
+    const svg = await fetch(`${base}/api/preview?path=logo.svg`);
+    assert.match(svg.headers.get('content-type'), /^image\/svg\+xml/);
+    assert.equal((await fetch(`${base}/api/preview?path=app.js`)).status, 415);
+    assert.equal((await fetch(`${base}/api/preview?path=../outside.html`)).status, 404);
+
+    const back = await fetch(`${base}/api/extensions/ripley/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).then((response) => response.json());
+    assert.deepEqual(back, { enabled: false });
+    assert.equal((await fetch(`${base}/api/preview?path=index.html`)).status, 412);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
