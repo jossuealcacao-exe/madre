@@ -3272,6 +3272,13 @@ function buildNostromo(data) {
   nostromo.empty.hidden = memories.length > 0;
 }
 
+// World space: MOTHER's core sits at (0, 0); planets orbit in world units and a
+// camera maps the world to the canvas. The camera follows the whole system
+// until the human takes the wheel (drag, wheel), and RECENTER hands it back.
+const NOSTROMO_ORBIT = 300;
+const HEART_PERIOD = 1.15;   // seconds per beat: slow, deliberate, alive
+const WAVE_SPEED = 260;      // world units per second a beat travels outward
+
 function sizeNostromo() {
   const canvas = nostromo.canvas;
   const rect = canvas.getBoundingClientRect();
@@ -3280,12 +3287,11 @@ function sizeNostromo() {
   nostromo.size = { w: rect.width, h: rect.height, dpr };
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
-  // Planets keep their polar seat when the window changes.
-  const orbit = Math.min(rect.width, rect.height) * 0.42;
   for (const node of nostromo.nodes) {
     if (node.placed) continue;
-    node.x = rect.width / 2 + Math.cos(node.angle) * orbit * node.distance * 1.3;
-    node.y = rect.height / 2 + Math.sin(node.angle) * orbit * node.distance * 1.3;
+    const radius = NOSTROMO_ORBIT * (0.5 + node.distance);
+    node.x = Math.cos(node.angle) * radius;
+    node.y = Math.sin(node.angle) * radius;
     node.placed = true;
   }
   return true;
@@ -3295,13 +3301,19 @@ function startNostromo() {
   stopNostromo();
   if (typeof requestAnimationFrame !== 'function' || !nostromo.canvas?.getContext) return;
   if (!sizeNostromo()) return;
+  nostromo.cam = { x: 0, y: 0, scale: 1, manual: false };
+  nostromo.rings = [];
+  nostromo.lastPhase = 0;
+  nostromo.alarm = null;
   window.addEventListener('resize', sizeNostromo);
   nostromo.last = performance.now();
   const frame = (now) => {
     const dt = Math.min(48, now - nostromo.last) / 16;
     nostromo.last = now;
-    stepNostromo(dt);
-    drawNostromo(now / 1000);
+    const t = now / 1000;
+    stepNostromo(dt, t);
+    fitNostromo();
+    drawNostromo(t);
     nostromo.raf = requestAnimationFrame(frame);
   };
   nostromo.raf = requestAnimationFrame(frame);
@@ -3312,35 +3324,39 @@ function stopNostromo() {
   window.removeEventListener('resize', sizeNostromo);
 }
 
-// One step of the floating network: the sun keeps everyone at arm's length,
-// planets repel each other, linked ones attract, and a slow current keeps it alive.
-function stepNostromo(dt) {
-  const { w, h } = nostromo.size;
-  const cx = w / 2;
-  const cy = h / 2;
-  const orbit = Math.min(w, h) * 0.42;
+// The heartbeat: lub, then a softer dub, each decaying fast. 0..~1.5.
+function heartbeat(t) {
+  const phase = (t % HEART_PERIOD) / HEART_PERIOD;
+  const pulse = (at) => (phase >= at ? Math.exp(-(phase - at) * 14) : 0);
+  return { phase, beat: pulse(0) + 0.55 * pulse(0.22) };
+}
+function coreRadius() { return Math.max(46, Math.min(nostromo.size.w, nostromo.size.h) * 0.085) / Math.max(0.35, nostromo.cam?.scale ?? 1) * 0.9; }
+
+// The core's radius in world units: constant so the layout does not depend on the window.
+const CORE_R = 64;
+
+function stepNostromo(dt, t) {
   const nodes = nostromo.nodes.filter((node) => node.scale > 0.01);
   const byId = new Map(nodes.map((node) => [node.memory.id, node]));
   for (const node of nodes) {
     let fx = 0;
     let fy = 0;
-    const dx = node.x - cx;
-    const dy = node.y - cy;
-    const dist = Math.hypot(dx, dy) || 1;
-    // A soft ring around the sun: too close is pushed out, too far pulled in.
-    const target = orbit * (0.55 + node.distance * 0.55);
+    const dist = Math.hypot(node.x, node.y) || 1;
+    // A soft ring around the core: too close is pushed out, too far pulled in.
+    const target = NOSTROMO_ORBIT * (0.55 + node.distance * 0.6);
     const pull = (target - dist) * 0.004;
-    fx += (dx / dist) * pull;
-    fy += (dy / dist) * pull;
+    fx += (node.x / dist) * pull;
+    fy += (node.y / dist) * pull;
+    if (dist < CORE_R * 2.2) { const push = (CORE_R * 2.2 - dist) * 0.02; fx += (node.x / dist) * push; fy += (node.y / dist) * push; }
     for (const other of nodes) {
       if (other === node) continue;
       const ox = node.x - other.x;
       const oy = node.y - other.y;
       const d = Math.hypot(ox, oy) || 1;
-      const min = node.r + other.r + 26;
+      const min = node.r + other.r + 30;
       if (d < min * 2.2) { const push = ((min * 2.2 - d) / (min * 2.2)) * 0.9; fx += (ox / d) * push; fy += (oy / d) * push; }
     }
-    if (!nostromo.reduced) { fx += Math.sin(node.seed + performance.now() / 2600) * 0.02; fy += Math.cos(node.seed * 1.3 + performance.now() / 3100) * 0.02; }
+    if (!nostromo.reduced) { fx += Math.sin(node.seed + t * 0.38) * 0.02; fy += Math.cos(node.seed * 1.3 + t * 0.32) * 0.02; }
     node.fx = fx;
     node.fy = fy;
   }
@@ -3351,7 +3367,7 @@ function stepNostromo(dt) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const d = Math.hypot(dx, dy) || 1;
-    const rest = a.r + b.r + 60;
+    const rest = a.r + b.r + 70;
     const k = (d - rest) * 0.0035 * link.weight;
     a.fx += (dx / d) * k; a.fy += (dy / d) * k;
     b.fx -= (dx / d) * k; b.fy -= (dy / d) * k;
@@ -3359,129 +3375,278 @@ function stepNostromo(dt) {
   for (const node of nodes) {
     node.vx = (node.vx + node.fx * dt) * 0.86;
     node.vy = (node.vy + node.fy * dt) * 0.86;
-    node.x = Math.min(w - node.r - 12, Math.max(node.r + 12, node.x + node.vx * dt));
-    node.y = Math.min(h - node.r - 12, Math.max(node.r + 72, node.y + node.vy * dt));
+    node.x += node.vx * dt;
+    node.y += node.vy * dt;
+    node.spin = (node.spin ?? node.seed) + dt * 0.012 * (1 + (node.seed % 1));
     if (!nostromo.reduced) {
-      // Smoke: a few embers rising off each planet, fading as they climb.
-      if (node.smoke.length < 7 && Math.random() < 0.08 * dt) node.smoke.push({ x: (Math.random() - 0.5) * node.r, y: -node.r * 0.4, age: 0, life: 90 + Math.random() * 70, drift: (Math.random() - 0.5) * 0.25, size: node.r * (0.35 + Math.random() * 0.4) });
-      for (const puff of node.smoke) { puff.age += dt; puff.y -= 0.35 * dt; puff.x += puff.drift * dt; puff.size += 0.12 * dt; }
+      // Plasma wisps: a few tendrils rising off each planet, fading as they climb.
+      if (node.smoke.length < 5 && Math.random() < 0.05 * dt) node.smoke.push({ x: (Math.random() - 0.5) * node.r, y: -node.r * 0.4, age: 0, life: 80 + Math.random() * 60, drift: (Math.random() - 0.5) * 0.2, size: node.r * (0.3 + Math.random() * 0.3) });
+      for (const puff of node.smoke) { puff.age += dt; puff.y -= 0.3 * dt; puff.x += puff.drift * dt; puff.size += 0.08 * dt; }
       node.smoke = node.smoke.filter((puff) => puff.age < puff.life);
     }
   }
   for (const node of nostromo.nodes) if (node.forgetting) node.scale = Math.max(0, node.scale - 0.06 * dt);
   nostromo.nodes = nostromo.nodes.filter((node) => !(node.forgetting && node.scale <= 0.01));
+  // A new beat sends a wave out from the core.
+  const { phase } = heartbeat(t);
+  if (phase < nostromo.lastPhase && !nostromo.reduced) nostromo.rings.push({ born: t });
+  nostromo.lastPhase = phase;
+  nostromo.rings = nostromo.rings.filter((ring) => t - ring.born < 2.4);
 }
+
+// The camera follows the whole system until the human takes over.
+function fitNostromo() {
+  const cam = nostromo.cam;
+  if (!cam || cam.manual) return;
+  const { w, h } = nostromo.size;
+  let minX = -CORE_R * 2.4, maxX = CORE_R * 2.4, minY = -CORE_R * 2.4, maxY = CORE_R * 2.4;
+  for (const node of nostromo.nodes) {
+    minX = Math.min(minX, node.x - node.r * 3); maxX = Math.max(maxX, node.x + node.r * 3);
+    minY = Math.min(minY, node.y - node.r * 3); maxY = Math.max(maxY, node.y + node.r * 3);
+  }
+  const pad = 70;
+  const scale = Math.min(1.4, Math.max(0.3, Math.min((w - pad * 2) / (maxX - minX || 1), (h - pad * 2 - 40) / (maxY - minY || 1))));
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2 - 20 / scale;
+  cam.x += (cx - cam.x) * 0.05;
+  cam.y += (cy - cam.y) * 0.05;
+  cam.scale += (scale - cam.scale) * 0.05;
+}
+function toScreen(x, y) { const { w, h } = nostromo.size; const cam = nostromo.cam; return { x: w / 2 + (x - cam.x) * cam.scale, y: h / 2 + (y - cam.y) * cam.scale }; }
+function toWorld(sx, sy) { const { w, h } = nostromo.size; const cam = nostromo.cam; return { x: cam.x + (sx - w / 2) / cam.scale, y: cam.y + (sy - h / 2) / cam.scale }; }
 
 function drawNostromo(t) {
   const ctx = nostromo.canvas.getContext('2d');
   const { w, h, dpr } = nostromo.size;
+  const cam = nostromo.cam;
+  const { beat } = heartbeat(t);
+  const alarm = nostromo.alarm ? Math.max(0, 1 - (t - nostromo.alarm) / 3.6) : 0;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const cx = w / 2;
-  const cy = h / 2;
-  // A faint star field, fixed per size.
+  // Stars, with a little parallax against the camera.
   ctx.fillStyle = 'rgba(255, 244, 240, .35)';
-  for (let i = 0; i < 90; i += 1) { const sx = ((i * 97.3) % w); const sy = ((i * 53.7 + 31) % h); ctx.globalAlpha = 0.15 + 0.2 * Math.abs(Math.sin(t * 0.6 + i)); ctx.fillRect(sx, sy, 1.2, 1.2); }
+  for (let i = 0; i < 120; i += 1) {
+    const sx = ((i * 97.3 - cam.x * 0.08) % w + w) % w;
+    const sy = ((i * 53.7 + 31 - cam.y * 0.08) % h + h) % h;
+    ctx.globalAlpha = 0.12 + 0.22 * Math.abs(Math.sin(t * 0.6 + i));
+    ctx.fillRect(sx, sy, 1.2, 1.2);
+  }
   ctx.globalAlpha = 1;
-  const sunR = Math.max(34, Math.min(w, h) * 0.075);
-  // Plasma: one ray per planet, bowing and flickering, brightest at the sun.
-  for (const node of nostromo.nodes) {
-    const dx = node.x - cx;
-    const dy = node.y - cy;
+
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.scale(cam.scale, cam.scale);
+  ctx.translate(-cam.x, -cam.y);
+  const R = CORE_R * (1 + 0.07 * beat + 0.12 * alarm);
+
+  // Plasma between linked memories: they share a theme, so a filament runs between them.
+  for (const link of nostromo.links) {
+    const a = nostromo.nodes.find((node) => node.memory.id === link.a);
+    const b = nostromo.nodes.find((node) => node.memory.id === link.b);
+    if (!a || !b) continue;
+    const dx = b.x - a.x, dy = b.y - a.y;
     const d = Math.hypot(dx, dy) || 1;
-    const nx = -dy / d;
-    const ny = dx / d;
-    const bow = Math.sin(t * 1.7 + node.seed) * Math.min(60, d * 0.18);
-    const mx = (cx + node.x) / 2 + nx * bow;
-    const my = (cy + node.y) / 2 + ny * bow;
-    const grad = ctx.createLinearGradient(cx, cy, node.x, node.y);
-    grad.addColorStop(0, 'rgba(255, 90, 60, .9)');
-    grad.addColorStop(0.5, 'rgba(255, 42, 31, .35)');
-    grad.addColorStop(1, hexAlpha(node.color, 0.75 * node.scale));
+    const bow = Math.sin(t * 1.3 + a.seed + b.seed) * Math.min(40, d * 0.15);
+    const mx = (a.x + b.x) / 2 - (dy / d) * bow;
+    const my = (a.y + b.y) / 2 + (dx / d) * bow;
+    const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+    grad.addColorStop(0, hexAlpha(a.color, 0.55 * link.weight));
+    grad.addColorStop(0.5, 'rgba(255, 240, 235, .25)');
+    grad.addColorStop(1, hexAlpha(b.color, 0.55 * link.weight));
     ctx.strokeStyle = grad;
-    ctx.lineWidth = 1.1 + 0.6 * Math.abs(Math.sin(t * 5 + node.seed * 3));
+    ctx.lineWidth = (0.8 + 0.5 * Math.abs(Math.sin(t * 4 + a.seed))) / cam.scale;
+    ctx.shadowColor = hexAlpha(a.color, 0.7);
+    ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(mx, my, b.x, b.y); ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Plasma from the core to every memory: bowing, flickering, a pulse travelling out with each beat.
+  for (const node of nostromo.nodes) {
+    const d = Math.hypot(node.x, node.y) || 1;
+    const nx = -node.y / d, ny = node.x / d;
+    const bow = Math.sin(t * 1.7 + node.seed) * Math.min(60, d * 0.18);
+    const mx = node.x / 2 + nx * bow, my = node.y / 2 + ny * bow;
+    const grad = ctx.createLinearGradient(0, 0, node.x, node.y);
+    grad.addColorStop(0, alarm ? 'rgba(255, 230, 220, .95)' : 'rgba(255, 90, 60, .9)');
+    grad.addColorStop(0.5, `rgba(255, 42, 31, ${0.3 + 0.25 * beat})`);
+    grad.addColorStop(1, hexAlpha(node.color, 0.8 * node.scale));
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = (1 + 0.7 * Math.abs(Math.sin(t * 5 + node.seed * 3)) + 0.8 * beat) / cam.scale;
     ctx.shadowColor = 'rgba(255, 60, 40, .8)';
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.moveTo(cx + (dx / d) * sunR * 0.9, cy + (dy / d) * sunR * 0.9);
+    ctx.moveTo((node.x / d) * R * 0.92, (node.y / d) * R * 0.92);
     ctx.quadraticCurveTo(mx, my, node.x, node.y);
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // A pulse travelling along the ray.
-    const p = (t * 0.45 + node.seed / (Math.PI * 2)) % 1;
-    const px = (1 - p) * (1 - p) * cx + 2 * (1 - p) * p * mx + p * p * node.x;
-    const py = (1 - p) * (1 - p) * cy + 2 * (1 - p) * p * my + p * p * node.y;
-    ctx.fillStyle = 'rgba(255, 230, 220, .9)';
-    ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill();
+    // The beat, travelling along the filament.
+    for (const ring of nostromo.rings) {
+      const p = ((t - ring.born) * WAVE_SPEED) / d;
+      if (p < 0 || p > 1) continue;
+      const px = (1 - p) * (1 - p) * 0 + 2 * (1 - p) * p * mx + p * p * node.x;
+      const py = (1 - p) * (1 - p) * 0 + 2 * (1 - p) * p * my + p * p * node.y;
+      ctx.fillStyle = 'rgba(255, 235, 225, .95)';
+      ctx.shadowColor = 'rgba(255, 120, 90, 1)'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(px, py, 2.2 / cam.scale, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
   }
-  // The sun: red, iridescent, breathing. Layers of hue-shifting light and a corona that undulates.
-  const breath = 1 + 0.035 * Math.sin(t * 1.4);
-  const corona = ctx.createRadialGradient(cx, cy, sunR * 0.6, cx, cy, sunR * 2.6 * breath);
-  corona.addColorStop(0, 'rgba(255, 42, 31, .55)');
-  corona.addColorStop(0.35, 'rgba(255, 80, 40, .18)');
-  corona.addColorStop(1, 'rgba(255, 42, 31, 0)');
-  ctx.fillStyle = corona;
-  ctx.beginPath(); ctx.arc(cx, cy, sunR * 2.6 * breath, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath();
-  for (let i = 0; i <= 72; i += 1) {
-    const a = (i / 72) * Math.PI * 2;
-    const wobble = 1 + 0.06 * Math.sin(a * 5 + t * 2.3) + 0.035 * Math.sin(a * 9 - t * 3.1);
-    const r = sunR * wobble * breath;
-    if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+
+  // Shockwaves: one ring per beat, expanding and thinning.
+  for (const ring of nostromo.rings) {
+    const age = t - ring.born;
+    const radius = R + age * WAVE_SPEED;
+    ctx.strokeStyle = `rgba(255, 60, 40, ${Math.max(0, 0.32 - age * 0.14)})`;
+    ctx.lineWidth = Math.max(0.4, 2.4 - age * 1.1) / cam.scale;
+    ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
   }
-  ctx.closePath();
-  const hue = 355 + 14 * Math.sin(t * 0.7);
-  const body = ctx.createRadialGradient(cx - sunR * 0.3, cy - sunR * 0.3, sunR * 0.1, cx, cy, sunR * 1.05);
-  body.addColorStop(0, `hsl(${hue + 30} 100% 82%)`);
-  body.addColorStop(0.3, `hsl(${hue + 10} 100% 60%)`);
-  body.addColorStop(0.75, `hsl(${hue} 95% 45%)`);
-  body.addColorStop(1, `hsl(${hue - 12} 90% 28%)`);
+
+  // MOTHER's core. A heart: deep haze, a smooth sphere lit from within, a dark iris,
+  // veins under the skin, arcs of plasma licking the surface, a white-hot rim.
+  const haze = ctx.createRadialGradient(0, 0, R * 0.5, 0, 0, R * (3.2 + 0.5 * beat));
+  haze.addColorStop(0, `rgba(255, 42, 31, ${0.5 + 0.2 * beat})`);
+  haze.addColorStop(0.3, `rgba(180, 20, 20, ${0.22 + 0.1 * beat})`);
+  haze.addColorStop(1, 'rgba(120, 0, 10, 0)');
+  ctx.fillStyle = haze;
+  ctx.beginPath(); ctx.arc(0, 0, R * (3.2 + 0.5 * beat), 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
+  ctx.shadowColor = `rgba(255, 42, 31, ${0.8 + 0.2 * beat})`;
+  ctx.shadowBlur = 50 + 30 * beat;
+  const body = ctx.createRadialGradient(-R * 0.25, -R * 0.3, R * 0.05, 0, 0, R);
+  body.addColorStop(0, `hsl(${8 + 6 * beat} 100% ${58 + 12 * beat}%)`);
+  body.addColorStop(0.35, 'hsl(2 96% 44%)');
+  body.addColorStop(0.75, 'hsl(358 92% 30%)');
+  body.addColorStop(1, 'hsl(352 90% 16%)');
   ctx.fillStyle = body;
-  ctx.shadowColor = 'rgba(255, 42, 31, .9)';
-  ctx.shadowBlur = 40;
   ctx.fill();
   ctx.shadowBlur = 0;
-  // Iridescence: a thin rotating sheen.
-  const sheen = ctx.createLinearGradient(cx - sunR, cy, cx + sunR, cy);
-  sheen.addColorStop(0, `hsla(${hue + 60} 100% 70% / 0)`);
-  sheen.addColorStop(0.5 + 0.3 * Math.sin(t * 0.9), `hsla(${hue + 90} 100% 75% / .28)`);
-  sheen.addColorStop(1, `hsla(${hue + 140} 100% 70% / 0)`);
+  ctx.clip();
+  // Veins: slow filaments under the surface, darker where the blood is deep, brighter on the beat.
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 9; i += 1) {
+    const a0 = i * 0.7 + t * 0.05;
+    const r0 = R * (0.15 + (i % 3) * 0.25);
+    const x0 = Math.cos(a0) * r0, y0 = Math.sin(a0) * r0;
+    const x1 = Math.cos(a0 + 1.1 + Math.sin(t * 0.3 + i) * 0.3) * R * 1.05, y1 = Math.sin(a0 + 1.1) * R * 1.05;
+    const cxv = Math.cos(a0 + 0.5) * R * 0.7 * (1 + 0.1 * Math.sin(t + i)), cyv = Math.sin(a0 + 0.5) * R * 0.7;
+    ctx.strokeStyle = `rgba(${90 + 120 * beat}, ${5 + 20 * beat}, ${10 + 10 * beat}, ${0.45 + 0.35 * beat})`;
+    ctx.lineWidth = (2.6 - (i % 3) * 0.6) * (1 + 0.3 * beat);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxv, cyv, x1, y1); ctx.stroke();
+  }
+  // The iris: a darker void drifting across the core, where MOTHER looks from.
+  const ix = Math.cos(t * 0.21) * R * 0.22, iy = Math.sin(t * 0.17) * R * 0.18;
+  const iris = ctx.createRadialGradient(ix, iy, 0, ix, iy, R * 0.55);
+  iris.addColorStop(0, `rgba(20, 0, 4, ${0.85 - 0.25 * beat})`);
+  iris.addColorStop(0.55, 'rgba(60, 0, 8, .45)');
+  iris.addColorStop(1, 'rgba(120, 10, 10, 0)');
+  ctx.fillStyle = iris;
+  ctx.fillRect(-R, -R, R * 2, R * 2);
+  // Specular sheen, iridescent, slowly turning.
+  const sheenAngle = t * 0.4;
+  const sheen = ctx.createLinearGradient(Math.cos(sheenAngle) * -R, Math.sin(sheenAngle) * -R, Math.cos(sheenAngle) * R, Math.sin(sheenAngle) * R);
+  sheen.addColorStop(0, 'hsla(300 100% 75% / 0)');
+  sheen.addColorStop(0.5, `hsla(${40 + 40 * Math.sin(t * 0.8)} 100% 80% / ${0.16 + 0.1 * beat})`);
+  sheen.addColorStop(1, 'hsla(200 100% 75% / 0)');
   ctx.fillStyle = sheen;
-  ctx.fill();
-  // Planets: smoking spheres coloured by kind, the selected one ringed.
+  ctx.fillRect(-R, -R, R * 2, R * 2);
+  ctx.restore();
+  // Plasma prominences: arcs leaping off the surface and falling back, flickering.
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 5; i += 1) {
+    const base = i * 1.256 + t * 0.12;
+    const spread = 0.35 + 0.15 * Math.sin(t * 2.1 + i);
+    const lift = R * (0.25 + 0.2 * Math.abs(Math.sin(t * 1.6 + i * 1.7)) + 0.3 * alarm);
+    const x0 = Math.cos(base - spread) * R, y0 = Math.sin(base - spread) * R;
+    const x1 = Math.cos(base + spread) * R, y1 = Math.sin(base + spread) * R;
+    const cxp = Math.cos(base) * (R + lift), cyp = Math.sin(base) * (R + lift);
+    ctx.strokeStyle = `rgba(255, ${120 + 80 * beat}, ${80 + 60 * beat}, ${0.35 + 0.4 * Math.abs(Math.sin(t * 6 + i))})`;
+    ctx.lineWidth = (1.4 + 0.8 * beat) / cam.scale;
+    ctx.shadowColor = 'rgba(255, 90, 60, .9)'; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  // The rim: white-hot on the beat.
+  ctx.strokeStyle = `rgba(255, ${200 + 55 * beat}, ${190 + 60 * beat}, ${0.45 + 0.45 * beat})`;
+  ctx.lineWidth = (1.2 + 1.6 * beat) / cam.scale;
+  ctx.shadowColor = 'rgba(255, 200, 190, .9)'; ctx.shadowBlur = 18 + 20 * beat;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Memories: small plasma planets. Lit sphere, a swirl turning under the skin, a rim of its
+  // own colour, and a pulse when the core's beat reaches it.
   for (const node of nostromo.nodes) {
     const r = node.r * node.scale;
     if (r <= 0) continue;
+    const d = Math.hypot(node.x, node.y) || 1;
+    let arrive = 0;
+    for (const ring of nostromo.rings) { const gap = (t - ring.born) - (d - R) / WAVE_SPEED; if (gap >= 0) arrive = Math.max(arrive, Math.exp(-gap * 6)); }
     for (const puff of node.smoke) {
       const k = puff.age / puff.life;
-      ctx.fillStyle = hexAlpha(node.color, (1 - k) * 0.22 * node.scale);
+      ctx.fillStyle = hexAlpha(node.color, (1 - k) * 0.16 * node.scale);
       ctx.beginPath(); ctx.arc(node.x + puff.x, node.y + puff.y, puff.size, 0, Math.PI * 2); ctx.fill();
     }
-    const glow = ctx.createRadialGradient(node.x, node.y, r * 0.5, node.x, node.y, r * 2.4);
-    glow.addColorStop(0, hexAlpha(node.color, 0.35));
+    const glow = ctx.createRadialGradient(node.x, node.y, r * 0.5, node.x, node.y, r * (2.6 + 1.2 * arrive));
+    glow.addColorStop(0, hexAlpha(node.color, 0.4 + 0.3 * arrive));
     glow.addColorStop(1, hexAlpha(node.color, 0));
     ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(node.x, node.y, r * 2.4, 0, Math.PI * 2); ctx.fill();
-    const sphere = ctx.createRadialGradient(node.x - r * 0.35, node.y - r * 0.35, r * 0.1, node.x, node.y, r);
-    sphere.addColorStop(0, '#fffaf5');
-    sphere.addColorStop(0.25, node.color);
-    sphere.addColorStop(1, hexAlpha('#000000', 0.85));
+    ctx.beginPath(); ctx.arc(node.x, node.y, r * (2.6 + 1.2 * arrive), 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
+    ctx.shadowColor = hexAlpha(node.color, 0.9); ctx.shadowBlur = 16 + 14 * arrive;
+    const sphere = ctx.createRadialGradient(node.x - r * 0.38, node.y - r * 0.38, r * 0.05, node.x, node.y, r * 1.05);
+    sphere.addColorStop(0, '#ffffff');
+    sphere.addColorStop(0.18, hexMix(node.color, '#ffffff', 0.35));
+    sphere.addColorStop(0.55, node.color);
+    sphere.addColorStop(1, hexMix(node.color, '#000000', 0.78));
     ctx.fillStyle = sphere;
-    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.clip();
+    // Plasma currents under the skin, two bands turning at different speeds.
+    for (let k = 0; k < 2; k += 1) {
+      const a = node.spin * (k ? -0.7 : 1) + k * 2.1;
+      ctx.strokeStyle = hexAlpha(k ? '#ffffff' : hexMix(node.color, '#ffffff', 0.5), 0.22 + 0.2 * arrive);
+      ctx.lineWidth = r * (0.22 - k * 0.08);
+      ctx.beginPath(); ctx.ellipse(node.x, node.y, r * 0.95, r * (0.35 + 0.15 * k), a, 0.3, Math.PI - 0.3); ctx.stroke();
+    }
+    ctx.restore();
+    // Rim light and the beat's ring.
+    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.4), 0.5 + 0.4 * arrive);
+    ctx.lineWidth = (0.9 + arrive) / cam.scale;
+    ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.6 / cam.scale, 0, Math.PI * 2); ctx.stroke();
+    if (arrive > 0.05) {
+      ctx.strokeStyle = hexAlpha(node.color, arrive * 0.6);
+      ctx.lineWidth = 1 / cam.scale;
+      ctx.beginPath(); ctx.arc(node.x, node.y, r + 4 + (1 - arrive) * 14, 0, Math.PI * 2); ctx.stroke();
+    }
     if (node === nostromo.selected || node === nostromo.hover) {
       ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(node.x, node.y, r + 5 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 1.2 / cam.scale;
+      ctx.beginPath(); ctx.arc(node.x, node.y, r + 6 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
     }
   }
-  // The hovered memory, in a line.
+  ctx.restore();
+
+  // Vignette that tightens on the beat; red wash while MOTHER is angry.
+  const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * (0.35 - 0.03 * beat), w / 2, h / 2, Math.max(w, h) * 0.75);
+  vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vig.addColorStop(1, `rgba(${alarm ? 60 : 0}, 0, 0, ${0.55 + 0.1 * beat})`);
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, w, h);
+  if (alarm) { ctx.fillStyle = `rgba(255, 30, 20, ${0.08 * alarm * (0.6 + 0.4 * Math.sin(t * 18))})`; ctx.fillRect(0, 0, w, h); }
+
+  // The hovered memory, named on screen.
   if (nostromo.hover && nostromo.hover.scale > 0.5) {
     const node = nostromo.hover;
+    const p = toScreen(node.x, node.y);
     const label = `${node.memory.kind.toUpperCase()} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
     ctx.font = '11px ' + (getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace');
     const width = ctx.measureText(label).width + 16;
-    const lx = Math.min(w - width - 8, Math.max(8, node.x - width / 2));
-    const ly = node.y + node.r + 14;
+    const lx = Math.min(w - width - 8, Math.max(8, p.x - width / 2));
+    const ly = p.y + node.r * cam.scale + 14;
     ctx.fillStyle = 'rgba(3, 2, 3, .85)';
     ctx.fillRect(lx, ly, width, 22);
     ctx.strokeStyle = hexAlpha(node.color, 0.6);
@@ -3495,28 +3660,85 @@ function hexAlpha(hex, alpha) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${Math.max(0, Math.min(1, alpha))})`;
 }
+function hexMix(hex, other, amount) {
+  const a = parseInt(hex.slice(1), 16), b = parseInt(other.slice(1), 16);
+  const ch = (shift) => Math.round(((a >> shift) & 255) * (1 - amount) + ((b >> shift) & 255) * amount);
+  return `#${[16, 8, 0].map((shift) => ch(shift).toString(16).padStart(2, '0')).join('')}`;
+}
 
+// Pointer: what is under it, in world space; the core counts too.
 function nostromoAt(event) {
   const rect = nostromo.canvas.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
+  const p = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+  const slack = 8 / nostromo.cam.scale;
   let best = null;
   for (const node of nostromo.nodes) {
-    const d = Math.hypot(node.x - x, node.y - y);
-    if (d <= node.r * node.scale + 8 && (!best || d < best.d)) best = { node, d };
+    const d = Math.hypot(node.x - p.x, node.y - p.y);
+    if (d <= node.r * node.scale + slack && (!best || d < best.d)) best = { node, d };
   }
-  return best?.node ?? null;
+  if (best) return best.node;
+  return Math.hypot(p.x, p.y) <= CORE_R * 1.15 ? 'core' : null;
 }
+// Drag pans, wheel zooms about the pointer, a still click selects.
+const drag = { active: false, moved: false, x: 0, y: 0 };
+nostromo.canvas?.addEventListener('mousedown', (event) => { drag.active = true; drag.moved = false; drag.x = event.clientX; drag.y = event.clientY; });
 nostromo.canvas?.addEventListener('mousemove', (event) => {
-  nostromo.hover = nostromoAt(event);
-  nostromo.canvas.classList.toggle('over', Boolean(nostromo.hover));
+  if (drag.active) {
+    const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 3) drag.moved = true;
+    if (drag.moved) {
+      nostromo.cam.manual = true;
+      nostromo.cam.x -= dx / nostromo.cam.scale;
+      nostromo.cam.y -= dy / nostromo.cam.scale;
+      drag.x = event.clientX; drag.y = event.clientY;
+      nostromo.canvas.classList.add('dragging');
+      document.querySelector('#nostromo-recenter')?.removeAttribute('hidden');
+    }
+    return;
+  }
+  const at = nostromoAt(event);
+  nostromo.hover = at && at !== 'core' ? at : null;
+  nostromo.canvas.classList.toggle('over', Boolean(at));
 });
+window.addEventListener?.('mouseup', () => { drag.active = false; nostromo.canvas?.classList.remove('dragging'); });
 nostromo.canvas?.addEventListener('mouseleave', () => { nostromo.hover = null; });
+nostromo.canvas?.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  const rect = nostromo.canvas.getBoundingClientRect();
+  const before = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+  const factor = Math.exp(-event.deltaY * 0.0012);
+  nostromo.cam.scale = Math.min(3.2, Math.max(0.2, nostromo.cam.scale * factor));
+  const after = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+  nostromo.cam.x += before.x - after.x;
+  nostromo.cam.y += before.y - after.y;
+  nostromo.cam.manual = true;
+  document.querySelector('#nostromo-recenter')?.removeAttribute('hidden');
+}, { passive: false });
 nostromo.canvas?.addEventListener('click', (event) => {
-  const node = nostromoAt(event);
-  if (!node) { nostromo.selected = null; nostromo.card.hidden = true; return; }
-  showNostromoCard(node);
+  if (drag.moved) { drag.moved = false; return; }
+  const at = nostromoAt(event);
+  if (at === 'core') { motherAlarm(); return; }
+  if (!at) { nostromo.selected = null; nostromo.card.hidden = true; return; }
+  showNostromoCard(at);
 });
+document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) => { nostromo.cam.manual = false; event.currentTarget.setAttribute('hidden', ''); });
+
+// Touch the core and MOTHER answers. Nobody deletes MOTHER's memory.
+let alarmTimer = null;
+function motherAlarm() {
+  const alert = document.querySelector('#nostromo-alert');
+  nostromo.alarm = performance.now() / 1000;
+  nostromo.card.hidden = true;
+  nostromo.selected = null;
+  if (!alert) return;
+  alert.hidden = false;
+  alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on');
+  const frame = document.querySelector('#nostromo .nostromo-frame');
+  frame?.classList.remove('shake'); void frame?.offsetWidth; frame?.classList.add('shake');
+  clearTimeout(alarmTimer);
+  alarmTimer = setTimeout(() => { alert.hidden = true; alert.classList.remove('on'); frame?.classList.remove('shake'); }, 4200);
+}
+document.querySelector('#nostromo-alert')?.addEventListener('click', () => { clearTimeout(alarmTimer); const alert = document.querySelector('#nostromo-alert'); alert.hidden = true; alert.classList.remove('on'); });
 
 function showNostromoCard(node) {
   const { memory } = node;

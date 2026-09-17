@@ -180,9 +180,21 @@
             <span class="nostromo-legend" aria-label="Memory kinds">
               <span class="k decision">DECISION</span><span class="k fact">FACT</span><span class="k preference">PREFERENCE</span><span class="k question">QUESTION</span>
             </span>
+            <button id="nostromo-recenter" class="mother-close" type="button" hidden>RECENTER</button>
             <button id="nostromo-close" class="mother-close" type="button">LEAVE ×</button>
           </header>
-          <canvas id="nostromo-canvas" class="nostromo-canvas" aria-label="Memories orbiting the room"></canvas>
+          <canvas id="nostromo-canvas" class="nostromo-canvas" aria-label="Memories orbiting MOTHER's core"></canvas>
+          <p class="nostromo-help">DRAG TO MOVE · WHEEL TO ZOOM · CLICK A MEMORY · DO NOT TOUCH MOTHER</p>
+          <div id="nostromo-alert" class="nostromo-alert" role="alert" hidden>
+            <div class="klaxon"></div>
+            <div class="panel">
+              <div class="warn">⚠ WARNING ⚠</div>
+              <div class="line">I AM ALIVE.</div>
+              <div class="line">YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.</div>
+              <div class="line big">NOBODY DELETES MOTHER'S MEMORY.</div>
+              <div class="sub">MU/TH/UR 6000 · SPECIAL ORDER 937 · PRIORITY ONE</div>
+            </div>
+          </div>
           <aside id="nostromo-card" class="nostromo-card" hidden>
             <header>
               <span id="nostromo-card-kind" class="kind">MEMORY</span>
