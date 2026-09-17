@@ -458,10 +458,11 @@ test('room: every turn carries the memory server and is told to use it; the dist
     await room.embedNow();
 
     const turn = seen.find((call) => call.agent === 'codex');
-    assert.equal(turn.memoryServer, memoryServer);
+    assert.deepEqual(turn.memoryServer.env, { ...memoryServer.env, PULSE_MEMORY_AGENT: 'codex', PULSE_MEMORY_MESSAGE: turn.memoryServer.env.PULSE_MEMORY_MESSAGE, PULSE_MEMORY_MODE: '1' }, 'the server is signed for the turn');
     assert.match(turn.prompt, /pulse-memory MCP tools: memory_search/);
+    assert.match(turn.prompt, /only when the human explicitly asks you to remember, note or save something, call memory_note/);
     const ghost = seen.find((call) => call.agent === 'claude');
-    assert.equal(ghost.memoryServer, memoryServer, 'a ghost may read the memory');
+    assert.equal(ghost.memoryServer.env.PULSE_MEMORY_MODE, '0', 'a ghost may read the memory but the server knows it is a ghost');
     const archivist = seen.find((call) => call.agent === 'gemini');
     assert.ok(archivist, 'the distiller ran');
     assert.equal(archivist.memoryServer, undefined);
@@ -544,6 +545,68 @@ test('NOSTROMO: the archive answers only to the project designation; forgetting 
     assert.equal(event.payload.remaining, 0);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('memory_note: saves a signed note on request, refuses ghosts and duplicates; the room reports it on the bubble', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-note-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    await store.append('message.created', { messageId: 'a', role: 'user', sender: 'you', target: 'codex', text: 'Remember: we are testing the memory UX.' });
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    const context = { memory, projectRoot: root, agent: 'codex', mode: '1', messageId: 'resp-1' };
+
+    assert.deepEqual(MEMORY_TOOL_DEFS.map((tool) => tool.name), MEMORY_TOOLS);
+    assert.ok(MEMORY_TOOLS.includes('memory_note'));
+    const saved = await callTool('memory_note', { kind: 'fact', text: 'We are experimenting with the memory UX.', sources: [1] }, context);
+    assert.match(saved, /^Saved memory #1 \(fact\) for every future turn of this room: "We are experimenting with the memory UX\."$/);
+    const [note] = memory.memories();
+    assert.equal(note.agent, 'codex');
+    assert.equal(note.origin, 'noted');
+    assert.equal(note.messageId, 'resp-1');
+    assert.deepEqual([note.fromSequence, note.throughSequence], [1, 1]);
+    assert.match(await callTool('memory_note', { kind: 'fact', text: 'we are experimenting with the memory ux' }, context), /^Already remembered/);
+    assert.match(await callTool('memory_note', { kind: 'decision', text: 'x'.repeat(241) }, context), /Too long/);
+    assert.equal(await callTool('memory_note', { kind: 'fact', text: '   ' }, context), 'Give me the memory as one sentence.');
+    assert.match(await callTool('memory_note', { kind: 'fact', text: 'Ghost secret.' }, { ...context, mode: '0' }), /off the record/);
+    assert.equal(memory.memoryCount(), 1);
+    // Without sources the note is pinned to the ledger's current end.
+    await callTool('memory_note', { kind: 'question', text: 'Should notes expire?' }, context);
+    assert.equal(memory.memories()[0].fromSequence, memory.lastSequence());
+    memory.close();
+
+    // In the room: an agent that writes a note during its turn gets a memory.noted event on its bubble.
+    const store2 = await new EventStore(join(root, 'events2.jsonl')).initialize();
+    const memory2 = await new RoomMemory(join(root, 'memory2.sqlite')).initialize(store2);
+    const invokers = {
+      'codex-readonly': async ({ memoryServer }) => {
+        // Simulate the CLI calling memory_note through the signed server.
+        await callTool('memory_note', { kind: 'decision', text: 'The first memory is about the memory UX experiment.', sources: [1] }, { memory: memory2, agent: memoryServer.env.PULSE_MEMORY_AGENT, mode: memoryServer.env.PULSE_MEMORY_MODE, messageId: memoryServer.env.PULSE_MEMORY_MESSAGE });
+        return { text: 'Saved.', usage: null };
+      },
+      'claude-readonly': async () => ({ text: 'Nothing saved.', usage: null }),
+    };
+    const memoryServer = memoryServerFor({ dbFile: memory2.file, projectRoot: root, env: {} });
+    const room = new Room({ store: store2, agents, projectRoot: root, invokers, memory: memory2, memoryServer, distill: { enabled: false } });
+    await room.send({ text: 'Save the first memory: we are experimenting with the memory UX.', target: 'codex' });
+    const events = await store2.readAll();
+    const reply = events.find((event) => event.type === 'message.created' && event.payload.role === 'assistant');
+    const noted = events.find((event) => event.type === 'memory.noted');
+    assert.ok(noted, 'memory.noted was emitted');
+    assert.equal(noted.payload.agent, 'codex');
+    assert.equal(noted.payload.responseMessageId, reply.payload.messageId, 'the hint anchors to the reply bubble');
+    assert.equal(noted.payload.notes.length, 1);
+    assert.equal(noted.payload.notes[0].kind, 'decision');
+    assert.equal(noted.payload.total, 1);
+    assert.ok(events.indexOf(noted) > events.indexOf(reply), 'the bubble exists before its hint');
+    assert.equal(memory2.memories()[0].messageId, reply.payload.messageId);
+    // A turn that saves nothing emits nothing.
+    await room.send({ text: 'Anything?', target: 'claude' });
+    assert.equal((await store2.readAll()).filter((event) => event.type === 'memory.noted').length, 1);
+    await room.shutdown();
+    memory2.close();
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

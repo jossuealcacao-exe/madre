@@ -1043,6 +1043,30 @@ function renderDistilled(event) {
   return node;
 }
 
+// A memory the agent saved on request shows up under its bubble: one pill per note, in the kind's colour.
+function attachMemoryHint(event) {
+  const { responseMessageId, notes = [], agent } = event.payload;
+  const bubbleRow = document.getElementById(`msg-${responseMessageId}`);
+  const col = bubbleRow?.querySelector?.('.col');
+  if (!col || !notes.length) return;
+  col.querySelector?.('.memory-hint')?.remove?.();
+  const hint = el('div', 'memory-hint');
+  hint.style.setProperty('--agent', agentColor(agent));
+  hint.append(el('span', 'lead', '◉ memory saved'));
+  for (const note of notes.slice(0, 3)) {
+    const pill = el('button', `pill ${note.kind}`);
+    pill.type = 'button';
+    pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
+    pill.append(el('b', null, note.kind), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
+    pill.title = `${note.text}\nSaved by @${agent} for every future turn · #${note.fromSequence}–#${note.throughSequence}. Click to see it in NOSTROMO.`;
+    pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
+    hint.append(pill);
+  }
+  if (notes.length > 3) hint.append(el('span', 'more', `+${notes.length - 3}`));
+  const stamp = col.querySelector?.('.stamp');
+  if (stamp && typeof col.insertBefore === 'function') col.insertBefore(hint, stamp); else col.append(hint);
+}
+
 function renderForgotten(event) {
   const { kind, text, remaining } = event.payload;
   const node = el('div', 'system memory forgotten');
@@ -1511,6 +1535,7 @@ function renderEventNode(event) {
     case 'handoff.created': node = renderHandoff(event); break;
     case 'memory.distilled': node = renderDistilled(event); break;
     case 'memory.forgotten': node = renderForgotten(event); break;
+    case 'memory.noted': attachMemoryHint(event); return;
     case 'limit.warning': node = renderWarning(event); break;
     case 'limit.cleared': node = renderCleared(event); break;
     case 'usage.recorded': applyUsage(event); return;
@@ -3168,6 +3193,7 @@ const nostromo = {
   hover: null,
   raf: null,
   last: 0,
+  focusId: null,       // a memory to open the card on, when boarding from a bubble hint
   size: { w: 0, h: 0, dpr: 1 },
   reduced: typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 };
@@ -3218,6 +3244,11 @@ async function openNostromo() {
   }
   buildNostromo(data);
   startNostromo();
+  if (nostromo.focusId != null) {
+    const node = nostromo.nodes.find((item) => item.memory.id === nostromo.focusId);
+    nostromo.focusId = null;
+    if (node) showNostromoCard(node);
+  }
 }
 document.querySelector('#nostromo-close')?.addEventListener('click', () => nostromo.dialog.close());
 nostromo.dialog?.addEventListener('close', stopNostromo);
@@ -3494,7 +3525,7 @@ function showNostromoCard(node) {
   document.querySelector('#nostromo-card-kind').textContent = memory.kind.toUpperCase();
   document.querySelector('#nostromo-card-text').textContent = memory.text;
   document.querySelector('#nostromo-card-span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
-  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}`;
+  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? ' · on the human\'s request' : ' · distilled'}`;
   document.querySelector('#nostromo-card-when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
   const linked = nostromo.links.filter((link) => link.a === memory.id || link.b === memory.id).length;
   document.querySelector('#nostromo-card-links').textContent = linked ? `${linked} memor${linked === 1 ? 'y' : 'ies'} on the same theme` : 'nothing yet';

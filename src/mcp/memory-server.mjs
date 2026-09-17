@@ -54,6 +54,15 @@ export const TOOLS = [
     } },
   },
   {
+    name: 'memory_note',
+    description: 'Save one durable memory of this room, ONLY when the human explicitly asks you to remember, note or save something (memories are otherwise distilled automatically; never save on your own initiative). One self-contained sentence, at most 240 characters, in the language the room uses, with the ledger sequences it comes from when you know them. Refused in a GHOST turn.',
+    inputSchema: { type: 'object', properties: {
+      kind: { type: 'string', enum: MEMORY_KINDS, description: 'decision, fact, preference or question.' },
+      text: { type: 'string', description: 'The memory, one sentence, names and numbers exact.' },
+      sources: { type: 'array', items: { type: 'integer' }, description: 'Ledger sequences it comes from, if known.' },
+    }, required: ['kind', 'text'] },
+  },
+  {
     name: 'project_state',
     description: 'The verified project state kept by AHP+ in .ahp/ (manifest and the latest handoff), if the project uses it.',
     inputSchema: { type: 'object', properties: {} },
@@ -92,8 +101,22 @@ async function projectState(projectRoot) {
   return parts.join('\n\n');
 }
 
-export async function callTool(name, args = {}, { memory, projectRoot = process.env.PULSE_PROJECT_ROOT }) {
+export async function callTool(name, args = {}, { memory, projectRoot = process.env.PULSE_PROJECT_ROOT, agent = process.env.PULSE_MEMORY_AGENT ?? 'agent', mode = process.env.PULSE_MEMORY_MODE ?? '1', messageId = process.env.PULSE_MEMORY_MESSAGE ?? null }) {
   switch (name) {
+    case 'memory_note': {
+      if (String(mode) === '0') return 'This exchange is off the record (GHOST): nothing can be saved to the room memory.';
+      const text = String(args.text ?? '').replace(/\s+/g, ' ').trim();
+      if (!text) return 'Give me the memory as one sentence.';
+      if (text.length > 240) return `Too long (${text.length} characters): one sentence of at most 240.`;
+      const kind = MEMORY_KINDS.includes(args.kind) ? args.kind : 'fact';
+      const sources = (Array.isArray(args.sources) ? args.sources : []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+      const last = memory.lastSequence();
+      const before = memory.maxMemoryId();
+      const added = memory.addMemories([{ kind, text, sources }], { agent, fromSequence: sources.length ? Math.min(...sources) : last, throughSequence: sources.length ? Math.max(...sources) : last, origin: 'noted', messageId });
+      if (!added) return `Already remembered: "${text}"`;
+      const [saved] = memory.notesSince(before, { agent });
+      return `Saved memory #${saved?.id ?? '?'} (${kind}) for every future turn of this room: "${text}"`;
+    }
     case 'memory_search': {
       const query = String(args.query ?? '').trim();
       if (!query) return 'Give me a query.';
@@ -190,7 +213,7 @@ const invokedDirectly = process.argv[1] && (await realpath(process.argv[1]).catc
 if (invokedDirectly) {
   try {
     const memory = await openMemory();
-    serve({ context: { memory, projectRoot: process.env.PULSE_PROJECT_ROOT } });
+    serve({ context: { memory, projectRoot: process.env.PULSE_PROJECT_ROOT, agent: process.env.PULSE_MEMORY_AGENT ?? 'agent', mode: process.env.PULSE_MEMORY_MODE ?? '1', messageId: process.env.PULSE_MEMORY_MESSAGE ?? null } });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exit(2);

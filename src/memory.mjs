@@ -155,6 +155,10 @@ export class RoomMemory {
       CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
+    // Notes written on the human's request carry where they came from; older files gain the columns in place.
+    const columns = this.#db.prepare('PRAGMA table_info(memories)').all().map((column) => column.name);
+    if (!columns.includes('origin')) this.#db.exec("ALTER TABLE memories ADD COLUMN origin TEXT NOT NULL DEFAULT 'distilled'");
+    if (!columns.includes('message_id')) this.#db.exec('ALTER TABLE memories ADD COLUMN message_id TEXT');
   }
 
   /* ---------- embeddings ---------- */
@@ -262,8 +266,8 @@ export class RoomMemory {
 
   // Stores distilled memories; a note already held (same text, ignoring case
   // and punctuation) is not stored twice. Returns how many were new.
-  addMemories(list, { agent, fromSequence, throughSequence }) {
-    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  addMemories(list, { agent, fromSequence, throughSequence, origin = 'distilled', messageId = null }) {
+    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const now = new Date().toISOString();
     let added = 0;
     this.#db.exec('BEGIN');
@@ -273,7 +277,7 @@ export class RoomMemory {
         if (!text) continue;
         const kind = MEMORY_KINDS.includes(memory.kind) ? memory.kind : 'fact';
         const sources = (Array.isArray(memory.sources) ? memory.sources : []).filter((n) => Number.isInteger(n));
-        const result = insert.run(now, kind, text, normalizeMemory(text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent);
+        const result = insert.run(now, kind, text, normalizeMemory(text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent, origin, messageId);
         added += Number(result.changes ?? 0);
       }
       this.#db.exec('COMMIT');
@@ -340,12 +344,22 @@ export class RoomMemory {
     });
   }
 
+  maxMemoryId() { return this.#db.prepare('SELECT COALESCE(MAX(id), 0) AS n FROM memories').get().n; }
+
+  // Notes an agent wrote after a point: what a turn saved through memory_note.
+  notesSince(id, { agent = null } = {}) {
+    const rows = agent
+      ? this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories WHERE id > ? AND agent = ? ORDER BY id').all(id, agent)
+      : this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories WHERE id > ? ORDER BY id').all(id);
+    return rows.map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
+  }
+
   memories({ limit = 50, kind = null } = {}) {
     if (kind) {
-      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
+      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
         .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
     }
-    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories ORDER BY id DESC LIMIT ?').all(limit)
+    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories ORDER BY id DESC LIMIT ?').all(limit)
       .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
 
@@ -373,7 +387,7 @@ export class RoomMemory {
       const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
       for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
     }
-    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories WHERE id = ?');
+    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories WHERE id = ?');
     const chosen = [];
     let remaining = Math.max(0, maxChars);
     for (const id of ids) {

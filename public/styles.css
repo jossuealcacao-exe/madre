@@ -299,6 +299,16 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-empty { position: absolute; inset: 50% 0 auto 0; margin: 0; text-align: center; font-size: 11px; letter-spacing: .22em; color: var(--ph-dim); }
 @media (max-width: 720px) { .nostromo-head { grid-template-columns: auto 1fr auto; } .nostromo-legend { display: none; } .nostromo-card { right: 16px; left: 16px; width: auto; } }
 .system.memory.forgotten { color: var(--terror); }
+/* The hint under a bubble when its agent saved a memory on request. */
+.memory-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 12px 0; animation: hint-in .6s cubic-bezier(.2, .7, .2, 1) 1; }
+.memory-hint .lead { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--agent, var(--text-3)); }
+.memory-hint .pill { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid color-mix(in srgb, var(--kind) 55%, transparent); background: color-mix(in srgb, var(--kind) 8%, transparent); color: var(--text-2); font: inherit; font-size: 11px; padding: 3px 10px; border-radius: 999px; cursor: pointer; text-align: left; box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 45%, transparent); animation: hint-glow 2.4s ease-out 1; transition: background .2s, color .2s; }
+.memory-hint .pill b { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--kind); }
+.memory-hint .pill:hover { background: color-mix(in srgb, var(--kind) 18%, transparent); color: var(--text); }
+.memory-hint .more { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
+@keyframes hint-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes hint-glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 55%, transparent); } 40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kind) 0%, transparent), 0 0 18px color-mix(in srgb, var(--kind) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .memory-hint, .memory-hint .pill { animation: none; } }
 .system.crit { color: var(--crit); }
 .system.fail { color: var(--danger); text-transform: none; letter-spacing: 0; font-size: 11px; }
 .system.fail .label { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; display: block; opacity: .8; margin-bottom: 2px; }

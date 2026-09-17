@@ -5,7 +5,14 @@ import { fileURLToPath } from 'node:url';
 // list the distilled notes, see the latest exchanges and read AHP+'s state.
 export const MEMORY_SERVER_PATH = fileURLToPath(new URL('./mcp/memory-server.mjs', import.meta.url));
 export const MEMORY_SERVER_NAME = 'pulse-memory';
-export const MEMORY_TOOLS = ['memory_search', 'memory_recall', 'memory_notes', 'memory_timeline', 'project_state'];
+export const MEMORY_TOOLS = ['memory_search', 'memory_recall', 'memory_notes', 'memory_timeline', 'memory_note', 'project_state'];
+
+// The same server, told who is calling: memory_note signs its notes with the
+// agent and the turn, and a GHOST turn is refused any write.
+export function memoryServerForTurn(server, { agent, messageId, mode = 1 }) {
+  if (!server) return null;
+  return { ...server, env: { ...server.env, PULSE_MEMORY_AGENT: agent, PULSE_MEMORY_MESSAGE: messageId, PULSE_MEMORY_MODE: String(mode) } };
+}
 
 export function memoryServerFor({ dbFile, projectRoot, env = process.env }) {
   if (!dbFile || env.PULSE_MEMORY_TOOLS === '0') return null;
