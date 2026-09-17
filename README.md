@@ -13,7 +13,7 @@ npx @jossuealcala/madre doctor
 npx @jossuealcala/madre start
 ```
 
-`doctor` muestra qué agentes están instalados y cuáles tienen sesión iniciada. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 22.5 o superior.
+`doctor` muestra qué agentes están instalados y cuáles tienen sesión iniciada; `doctor --catalog [texto]` imprime el catálogo completo de condiciones conocidas de MU/TH/UR con sus remedios para tu sistema, el mismo que consulta la sala. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 22.5 o superior.
 
 ### Primer contacto: `madre setup`
 

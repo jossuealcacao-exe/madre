@@ -587,7 +587,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 /* ================= agent popover (click on a sphere) ================= */
 .agents .avatar { cursor: pointer; }
 .agents .avatar.open { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--agent); }
-.agent-pop { position: fixed; z-index: 30; min-width: 250px; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px 12px; border: 1px solid var(--line-2); border-top: 2px solid var(--agent, var(--line-2)); border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
+.agent-pop { position: fixed; z-index: 30; min-width: 250px; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px 12px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: var(--shadow); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
 .agent-pop .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .agent-pop .head b { color: var(--agent); letter-spacing: .14em; text-transform: uppercase; font-size: 11px; }
 .agent-pop .head .vendor { color: var(--text-3); font-size: 10px; margin-left: auto; }
@@ -668,7 +668,7 @@ dialog.override[open] { display: grid; place-items: center; }
 .override-reply.granted { color: var(--ph); text-shadow: 0 0 10px rgba(155, 255, 102, .6); }
 .override-frame.shake { animation: override-shake .35s ease; }
 @keyframes override-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
-.model-menu { position: fixed; z-index: 40; width: min(320px, calc(100vw - 24px)); padding: 10px; border: 1px solid var(--line-2); border-top: 2px solid var(--agent, var(--line-2)); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text); }
+.model-menu { position: fixed; z-index: 40; width: min(320px, calc(100vw - 24px)); padding: 10px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text); }
 .model-menu-title { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin: 2px 4px 8px; }
 .model-menu-title b { color: var(--agent); }
 .model-list { display: grid; gap: 2px; max-height: 260px; overflow-y: auto; }

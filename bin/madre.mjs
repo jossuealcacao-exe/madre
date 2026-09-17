@@ -52,7 +52,25 @@ if (command !== 'help') {
 }
 applyConfigToEnv(await loadConfig(stateRoot));
 
-if (command === 'doctor') {
+if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
+  // The same knowledge base MU/TH/UR uses in the room, printed for this platform.
+  const { CONDITIONS, fixesFor, searchConditions, PLATFORMS } = await import('../public/troubleshooting.js');
+  const query = option('--catalog', '') || option('--conditions', '') || '';
+  const platform = PLATFORMS[process.platform] ? process.platform : 'linux';
+  const list = query && !query.startsWith('--') ? searchConditions(query) : CONDITIONS;
+  console.log(`\nMU/TH/UR · KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[platform].label.toUpperCase()} / ${PLATFORMS[platform].shell.toUpperCase()}\n`);
+  for (const condition of list) {
+    console.log(`▌ ${condition.title}`);
+    console.log(`  ${condition.id} · ${condition.severity}${condition.agent ? ` · @${condition.agent}` : ''}`);
+    console.log(`  ${condition.diagnosis}`);
+    console.log(`  → ${condition.remedy}`);
+    const fixes = fixesFor(condition, platform);
+    if (fixes.length) console.log(fixes.map((line) => `    ${line}`).join('\n'));
+    if (condition.perAgent) for (const [id, byPlatform] of Object.entries(condition.perAgent)) { const lines = byPlatform[platform] ?? byPlatform.darwin ?? []; if (lines.length) console.log(`    # @${id}\n${lines.map((line) => `    ${line}`).join('\n')}`); }
+    console.log('');
+  }
+  process.exitCode = 0;
+} else if (command === 'doctor') {
   const agents = await detectAgents();
   const probes = await probeAll(agents);
   const report = agents.map((agent) => ({ ...agent, session: probes[agent.id] }));
@@ -73,7 +91,7 @@ if (command === 'doctor') {
       console.log(`  ${agent.label.padEnd(10)} ${mark}${agent.version ? ` · ${agent.version}` : ''}${session}`);
     }
     console.log(`\n  Project    ${result.project}`);
-    console.log(result.ok ? '\nReady to start.\n' : '\nNo agent is online. Run `madre setup`.\n');
+    console.log(result.ok ? '\nReady to start. Known conditions and fixes: `madre doctor --catalog [query]`.\n' : '\nNo agent is online. Run `madre setup`. Known conditions and fixes: `madre doctor --catalog`.\n');
   }
   process.exitCode = result.ok ? 0 : 1;
 } else if (command === 'setup') {
