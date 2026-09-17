@@ -703,7 +703,11 @@ function toggleModeMenu(id, anchor) {
     body.append(el('span', 'name', MODES[n].label), el('span', 'hint', MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
     const tag = state.mode === n ? 'NOW' : raise ? 'RAISE TO #3 ›' : locked ? 'LOCKED' : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) ? 'DEFAULT' : '';
-    if (tag) option.append(el('span', `tag${raise ? ' raise' : ''}`, tag));
+    if (tag) {
+      const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
+      if (state.mode === n) label.append(el('span', 'dot'));
+      option.append(label);
+    }
     option.title = !locked ? MODES[n].hint
       : raise ? `@${id} is capped at #${cap}. This raises MAX MODE to #3 in CONNECTIONS and opens the override.`
       : n === 3 ? `@${id}'s CLI cannot write files, so CONTROL is not possible for it.`

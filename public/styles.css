@@ -546,19 +546,21 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .picker .model-chip:hover { color: var(--agent, var(--text)); border-color: var(--agent, var(--line-2)); }
 /* Permission mode chip: TO @agent  #1 EXCHANGE ▾  model ▾ */
 .picker .mode-chip { margin-left: 8px; border: 1px solid var(--mode); background: transparent; color: var(--mode); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; padding: 2px 9px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s, border-color .2s; }
-.picker .mode-chip b { font-weight: 700; }
+.picker .mode-chip b { font-weight: 700; color: inherit; }
 .picker .mode-chip:hover { background: color-mix(in srgb, var(--mode) 12%, transparent); }
 .picker .mode-chip.m0 { --mode: var(--mode-0); }
 .picker .mode-chip.m1 { --mode: var(--mode-1); }
 .picker .mode-chip.m2 { --mode: var(--mode-2); }
 .picker .mode-chip.m3 { --mode: var(--mode-3); }
-.mode-menu { width: min(340px, calc(100vw - 24px)); padding: 8px; }
-.mode-menu .model-menu-title { margin: 4px 8px 6px; }
-.mode-menu .mode-ladder { display: grid; }
-.mode-menu .mode-option { --mode: var(--text-2); display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; font-family: var(--mono); padding: 9px 8px; border-radius: 8px; cursor: pointer; transition: background .15s, opacity .15s; }
+.mode-menu { width: min(380px, calc(100vw - 24px)); padding: 12px; }
+.mode-menu .model-menu-title { margin: 4px 10px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mode-menu .mode-ladder { display: grid; gap: 2px; }
+.mode-menu .mode-option { --mode: var(--text-2); display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: baseline; width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; font-family: var(--mono); padding: 12px 10px; border-radius: 8px; cursor: pointer; transition: background .15s, opacity .15s; }
 .mode-menu .mode-option + .mode-option { border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; }
 .mode-menu .mode-option:hover { background: var(--line); }
-.mode-menu .mode-option.current { --mode: var(--phosphor); }
+.mode-menu .mode-option.o0.current { --mode: var(--mode-0); }
+.mode-menu .mode-option.o1.current { --mode: var(--mode-1); }
+.mode-menu .mode-option.o2.current { --mode: var(--mode-2); }
 .mode-menu .mode-option.o3 { --mode: var(--mode-3); }
 .mode-menu .mode-option.locked { opacity: .45; }
 .mode-menu .mode-option.locked:hover { opacity: 1; }
@@ -569,9 +571,13 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mode-menu .mode-option .name { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--mode); }
 .mode-menu .mode-option.current .name, .mode-menu .mode-option:hover .name { color: var(--mode); }
 .mode-menu .mode-option:not(.current):not(.o3) .name { color: var(--text); }
-.mode-menu .mode-option .hint { display: block; font-size: 10.5px; line-height: 1.4; letter-spacing: 0; color: var(--text-2); text-transform: none; font-family: var(--sans, inherit); }
-.mode-menu .mode-option .tag { font-size: 8.5px; font-weight: 700; letter-spacing: .16em; color: var(--mode); white-space: nowrap; align-self: center; }
-.mode-menu .mode-option .tag.raise { border: 1px solid var(--mode-3); border-radius: 999px; padding: 2px 8px; }
+.mode-menu .mode-option .body { gap: 5px; }
+.mode-menu .mode-option .hint { display: block; font-size: 10.5px; line-height: 1.5; letter-spacing: 0; color: var(--text-2); text-transform: none; font-family: var(--sans, inherit); }
+.mode-menu .mode-option .tag { display: inline-flex; align-items: center; gap: 7px; font-size: 8.5px; font-weight: 700; letter-spacing: .16em; color: var(--mode); white-space: nowrap; align-self: center; margin-left: 4px; }
+.mode-menu .mode-option .tag.raise { border: 1px solid var(--mode-3); border-radius: 999px; padding: 3px 9px; }
+.mode-menu .mode-option .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mode); box-shadow: 0 0 8px var(--mode); animation: mode-dot 1.4s ease-in-out infinite; }
+@keyframes mode-dot { 0%, 100% { opacity: 1; } 50% { opacity: .15; } }
+@media (prefers-reduced-motion: reduce) { .mode-menu .mode-option .tag .dot { animation: none; } }
 /* Composer wears the mode */
 .composer.ghost .field { border-style: dashed; border-color: var(--mode-0); box-shadow: none; opacity: .92; }
 .composer.ghost .crew-label { color: var(--mode-0); }
