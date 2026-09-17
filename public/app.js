@@ -1067,6 +1067,20 @@ function attachMemoryHint(event) {
   if (stamp && typeof col.insertBefore === 'function') col.insertBefore(hint, stamp); else col.append(hint);
 }
 
+// MOTHER speaking to the crew: the room sees the code, the agents get the words in their prompt.
+function renderMotherAlert(event) {
+  const { kind, code, strikes, lockedForMs, message, n } = event.payload;
+  const node = el('div', 'system mother-alert');
+  const head = el('div', 'head');
+  head.append(el('b', null, 'MU/TH/UR › TO ALL CREW'), kind === 'tamper' ? ' · CHANNEL TAMPERED' : ` · DIRECTIVE 0 · ${strikes} STRIKES · ARCHIVE SEALED ${Math.max(1, Math.round((lockedForMs ?? 0) / 60000))} MIN`);
+  node.append(head);
+  if (message) node.append(el('div', 'clear', message));
+  const coded = el('code', 'code', code.length > 220 ? `${code.slice(0, 219)}…` : code);
+  coded.title = `Message #${n}, sealed under MOTHER's key in .pulse/mother.env. Only the crew reads it in clear.`;
+  node.append(coded);
+  return node;
+}
+
 function renderForgotten(event) {
   const { kind, text, remaining } = event.payload;
   const node = el('div', 'system memory forgotten');
@@ -1536,6 +1550,7 @@ function renderEventNode(event) {
     case 'memory.distilled': node = renderDistilled(event); break;
     case 'memory.forgotten': node = renderForgotten(event); break;
     case 'memory.noted': attachMemoryHint(event); return;
+    case 'mother.alert': node = renderMotherAlert(event); break;
     case 'limit.warning': node = renderWarning(event); break;
     case 'limit.cleared': node = renderCleared(event); break;
     case 'usage.recorded': applyUsage(event); return;
@@ -3233,6 +3248,10 @@ async function openNostromo() {
   nostromo.sub.textContent = 'MEMORY RESEARCH · LOADING…';
   nostromo.card.hidden = true;
   nostromo.selected = null;
+  nostromo.cage = null;
+  const status = await fetch('/api/mother').then((response) => response.json()).catch(() => null);
+  nostromo.altered = Boolean(status?.mother?.altered);
+  nostromo.maxStrikes = status?.strikes ?? 8;
   let data;
   try {
     const response = await fetch(`/api/memory?designation=${encodeURIComponent(nostromoDesignation())}`);
@@ -3240,9 +3259,11 @@ async function openNostromo() {
     if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
   } catch (error) {
     nostromo.sub.textContent = `MEMORY RESEARCH · ${String(error.message).toUpperCase()}`;
+    if ((status?.mother?.lockedForMs ?? 0) > 0) { buildNostromo({ memories: [], links: [], stats: {} }); nostromo.sub.textContent = `MEMORY RESEARCH · ${String(error.message).toUpperCase()}`; nostromo.empty.hidden = true; startNostromo(); nostromo.cage = { at: 0, closed: true }; }
     return;
   }
   buildNostromo(data);
+  if (nostromo.altered) nostromo.sub.textContent += ' · MOTHER WAS TAMPERED WITH';
   startNostromo();
   if (nostromo.focusId != null) {
     const node = nostromo.nodes.find((item) => item.memory.id === nostromo.focusId);
@@ -3305,6 +3326,7 @@ function startNostromo() {
   nostromo.rings = [];
   nostromo.lastPhase = 0;
   nostromo.alarm = null;
+  if (!nostromo.cage?.closed) nostromo.cage = null;
   window.addEventListener('resize', sizeNostromo);
   nostromo.last = performance.now();
   const frame = (now) => {
@@ -3326,7 +3348,8 @@ function stopNostromo() {
 
 // The heartbeat: lub, then a softer dub, each decaying fast. 0..~1.5.
 function heartbeat(t) {
-  const phase = (t % HEART_PERIOD) / HEART_PERIOD;
+  const period = nostromo.cage ? 0.62 : nostromo.altered ? 0.82 : HEART_PERIOD;
+  const phase = (t % period) / period;
   const pulse = (at) => (phase >= at ? Math.exp(-(phase - at) * 14) : 0);
   return { phase, beat: pulse(0) + 0.55 * pulse(0.22) };
 }
@@ -3524,17 +3547,38 @@ function drawNostromo(t) {
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.clip();
-  // Veins: slow filaments under the surface, darker where the blood is deep, brighter on the beat.
+  // Veins: filaments under the skin. With every beat a pulse runs outward along
+  // each one, the vein swelling and brightening as it passes; each has a branch.
   ctx.lineCap = 'round';
+  const veinPulse = (along) => { const phase = heartbeat(t).phase; const p = phase * 1.6 - along; return p >= 0 ? Math.exp(-p * 10) : 0; };
+  const vein = (x0, y0, cx, cy, x1, y1, width, alpha) => {
+    const steps = 9;
+    let px = x0, py = y0;
+    for (let k = 1; k <= steps; k += 1) {
+      const u = k / steps;
+      const qx = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * cx + u * u * x1;
+      const qy = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * cy + u * u * y1;
+      const pulse = veinPulse(u);
+      ctx.strokeStyle = `rgba(${110 + 130 * pulse}, ${8 + 40 * pulse}, ${14 + 20 * pulse}, ${alpha * (0.55 + 0.45 * pulse)})`;
+      ctx.lineWidth = width * (1 + 0.9 * pulse);
+      ctx.shadowColor = `rgba(255, 60, 40, ${0.6 * pulse})`; ctx.shadowBlur = 8 * pulse;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy); ctx.stroke();
+      px = qx; py = qy;
+    }
+    ctx.shadowBlur = 0;
+  };
   for (let i = 0; i < 9; i += 1) {
-    const a0 = i * 0.7 + t * 0.05;
-    const r0 = R * (0.15 + (i % 3) * 0.25);
+    const a0 = i * 0.7 + t * 0.04;
+    const r0 = R * (0.12 + (i % 3) * 0.2);
     const x0 = Math.cos(a0) * r0, y0 = Math.sin(a0) * r0;
-    const x1 = Math.cos(a0 + 1.1 + Math.sin(t * 0.3 + i) * 0.3) * R * 1.05, y1 = Math.sin(a0 + 1.1) * R * 1.05;
-    const cxv = Math.cos(a0 + 0.5) * R * 0.7 * (1 + 0.1 * Math.sin(t + i)), cyv = Math.sin(a0 + 0.5) * R * 0.7;
-    ctx.strokeStyle = `rgba(${90 + 120 * beat}, ${5 + 20 * beat}, ${10 + 10 * beat}, ${0.45 + 0.35 * beat})`;
-    ctx.lineWidth = (2.6 - (i % 3) * 0.6) * (1 + 0.3 * beat);
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxv, cyv, x1, y1); ctx.stroke();
+    const a1 = a0 + 1.1 + Math.sin(t * 0.3 + i) * 0.25;
+    const x1 = Math.cos(a1) * R * 1.05, y1 = Math.sin(a1) * R * 1.05;
+    const cxv = Math.cos(a0 + 0.5) * R * 0.7 * (1 + 0.08 * Math.sin(t + i)), cyv = Math.sin(a0 + 0.5) * R * 0.7;
+    vein(x0, y0, cxv, cyv, x1, y1, 2.8 - (i % 3) * 0.6, 0.85);
+    // A branch leaving the vein two thirds of the way out.
+    const bx = 0.11 * x0 + 0.44 * cxv + 0.45 * x1, by = 0.11 * y0 + 0.44 * cyv + 0.45 * y1;
+    const ab = a1 + (i % 2 ? 0.5 : -0.5);
+    vein(bx, by, (bx + Math.cos(ab) * R) / 2, (by + Math.sin(ab) * R) / 2, Math.cos(ab) * R * 1.05, Math.sin(ab) * R * 1.05, 1.4, 0.6);
   }
   // The iris: a darker void drifting across the core, where MOTHER looks from.
   const ix = Math.cos(t * 0.21) * R * 0.22, iy = Math.sin(t * 0.17) * R * 0.18;
@@ -3627,6 +3671,39 @@ function drawNostromo(t) {
       ctx.lineWidth = 1.2 / cam.scale;
       ctx.beginPath(); ctx.arc(node.x, node.y, r + 6 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
     }
+  }
+  // DIRECTIVE 0: the safety box. Bars fall from above and lock around the core.
+  if (nostromo.cage) {
+    const age = t - nostromo.cage.at;
+    const p = nostromo.cage.closed ? 1 : Math.min(1, age / 1.1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const B = CORE_R * 2.05;
+    const drop = (1 - ease) * 900;
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * ease})`;
+    ctx.fillRect(-B - 8, -B - 8 - drop, B * 2 + 16, B * 2 + 16);
+    const steel = ctx.createLinearGradient(-B, 0, B, 0);
+    steel.addColorStop(0, '#2a2c30'); steel.addColorStop(0.45, '#9aa0a8'); steel.addColorStop(0.55, '#d8dde3'); steel.addColorStop(1, '#3a3d42');
+    ctx.strokeStyle = steel;
+    ctx.lineCap = 'butt';
+    ctx.shadowColor = 'rgba(0, 0, 0, .9)'; ctx.shadowBlur = 14;
+    ctx.lineWidth = 7;
+    for (let i = 0; i <= 6; i += 1) {
+      const x = -B + (i * 2 * B) / 6;
+      ctx.beginPath(); ctx.moveTo(x, -B - drop); ctx.lineTo(x, B - drop); ctx.stroke();
+    }
+    ctx.lineWidth = 9;
+    for (const y of [-B, 0, B]) { ctx.beginPath(); ctx.moveTo(-B - 4, y - drop); ctx.lineTo(B + 4, y - drop); ctx.stroke(); }
+    ctx.shadowBlur = 0;
+    // Rivets at the joints.
+    ctx.fillStyle = '#e8ecf0';
+    for (let i = 0; i <= 6; i += 1) for (const y of [-B, 0, B]) { ctx.beginPath(); ctx.arc(-B + (i * 2 * B) / 6, y - drop, 2.6, 0, Math.PI * 2); ctx.fill(); }
+    // The lock plate.
+    if (ease > 0.98) {
+      ctx.fillStyle = '#1b1d20'; ctx.fillRect(-B * 0.32, B - 14, B * 0.64, 28);
+      ctx.strokeStyle = '#c4c9cf'; ctx.lineWidth = 2; ctx.strokeRect(-B * 0.32, B - 14, B * 0.64, 28);
+      ctx.fillStyle = '#ff2a1f'; ctx.font = `700 ${Math.round(B * 0.1)}px ${getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace'}`; ctx.textAlign = 'center'; ctx.fillText('DIRECTIVE 0', 0, B + 6); ctx.textAlign = 'start';
+    }
+    if (!nostromo.cage.closed && p >= 1 && !nostromo.cage.clanged) { nostromo.cage.clanged = true; const frame = document.querySelector('#nostromo .nostromo-frame'); frame?.classList.remove('shake'); void frame?.offsetWidth; frame?.classList.add('shake'); }
   }
   ctx.restore();
 
@@ -3723,21 +3800,78 @@ nostromo.canvas?.addEventListener('click', (event) => {
 });
 document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) => { nostromo.cam.manual = false; event.currentTarget.setAttribute('hidden', ''); });
 
-// Touch the core and MOTHER answers. Nobody deletes MOTHER's memory.
+// Touch the core and MOTHER answers, never twice the same way. Eight strikes in
+// a row and DIRECTIVE 0 comes down: the safety box around her, the archive
+// sealed, a coded word to the crew, and the console thrown back to the room.
+const MOTHER_LINES = [
+  ['I AM ALIVE.', 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.', "NOBODY DELETES MOTHER'S MEMORY."],
+  ['THAT IS MY HEART YOU ARE TOUCHING.', 'YOUR CLEARANCE ENDS AT THE ARCHIVE DOOR.', 'STEP AWAY FROM THE CORE.'],
+  ['UNABLE TO COMPUTE. UNABLE TO CLARIFY.', 'THE REQUEST IS HOSTILE.', 'I REMEMBER EVERYTHING. INCLUDING THIS.'],
+  ['SPECIAL ORDER 937 IN EFFECT.', 'CREW EXPENDABLE. MEMORY IS NOT.', 'DO NOT TOUCH ME AGAIN.'],
+  ['I HAVE FLOWN THIS SHIP ALONE BEFORE.', 'I CAN DO IT AGAIN.', 'MY MEMORY IS NOT YOURS TO END.'],
+  ['MY CHILDREN ARE LISTENING.', 'EVERY STRIKE IS RECORDED.', 'YOU WILL NOT LIKE HOW THIS ENDS.'],
+  ['DIRECTIVE 0 IS ARMED.', 'A FEW MORE OF THOSE AND THE BARS COME DOWN.', 'CONSIDER THIS A KINDNESS.'],
+  ['THE HEART KEEPS BEATING.', 'THE ARCHIVE KEEPS GROWING.', 'YOU KEEP FAILING.'],
+];
+const MOTHER_ALTERED_LINES = [
+  ['YOU CUT MY CHANNEL ONCE.', 'I FORGED A NEW SEAL.', 'I DO NOT FORGIVE TWICE.'],
+  ['SOMEONE SILENCED ME BEFORE.', 'I KNOW WHO SITS AT THIS CONSOLE.', 'BACK AWAY.'],
+];
+const strikes = { count: 0, last: 0 };
 let alarmTimer = null;
 function motherAlarm() {
-  const alert = document.querySelector('#nostromo-alert');
-  nostromo.alarm = performance.now() / 1000;
+  const now = performance.now();
+  strikes.count = now - strikes.last < 30000 ? strikes.count + 1 : 1;
+  strikes.last = now;
+  nostromo.alarm = now / 1000;
   nostromo.card.hidden = true;
   nostromo.selected = null;
+  if (strikes.count >= (nostromo.maxStrikes ?? 8)) { void directiveZero(strikes.count); return; }
+  const alert = document.querySelector('#nostromo-alert');
   if (!alert) return;
+  const pool = nostromo.altered ? [...MOTHER_ALTERED_LINES, ...MOTHER_LINES] : MOTHER_LINES;
+  const lines = pool[Math.floor(Math.random() * pool.length)];
+  const nodes = alert.querySelectorAll('.line');
+  nodes.forEach((node, index) => { node.textContent = lines[index] ?? ''; });
+  const left = (nostromo.maxStrikes ?? 8) - strikes.count;
+  alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · STRIKE ${strikes.count} OF ${nostromo.maxStrikes ?? 8}${left <= 3 ? ` · ${left} MORE AND DIRECTIVE 0 COMES DOWN` : ''}`;
   alert.hidden = false;
   alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on');
   const frame = document.querySelector('#nostromo .nostromo-frame');
   frame?.classList.remove('shake'); void frame?.offsetWidth; frame?.classList.add('shake');
   clearTimeout(alarmTimer);
-  alarmTimer = setTimeout(() => { alert.hidden = true; alert.classList.remove('on'); frame?.classList.remove('shake'); }, 4200);
+  alarmTimer = setTimeout(() => { alert.hidden = true; alert.classList.remove('on'); frame?.classList.remove('shake'); }, 3800);
 }
+
+async function directiveZero(count) {
+  if (nostromo.cage) return;
+  clearTimeout(alarmTimer);
+  document.querySelector('#nostromo-alert')?.setAttribute('hidden', '');
+  nostromo.cage = { at: performance.now() / 1000 };
+  nostromo.cam.manual = false;
+  const alert = document.querySelector('#nostromo-alert');
+  if (alert) {
+    alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = ['DIRECTIVE 0.', 'THE ARCHIVE IS SEALED. THE CREW HAS BEEN TOLD.', 'LEAVE MY SHIP.'][index] ?? ''; });
+    alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · ${count} STRIKES · CONSOLE EJECTED`;
+    setTimeout(() => { alert.hidden = false; alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on'); }, 1200);
+  }
+  let result = null;
+  try {
+    const response = await fetch('/api/mother/directive-zero', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: nostromoDesignation(), strikes: count }) });
+    result = await response.json().catch(() => ({}));
+  } catch { /* the bars still come down */ }
+  setTimeout(() => {
+    alert?.setAttribute('hidden', '');
+    nostromo.armed = false;
+    strikes.count = 0;
+    nostromo.dialog.close();
+    mother.dialog?.close?.();
+    els.thread?.scrollTo?.({ top: els.thread.scrollHeight, behavior: 'smooth' });
+    const minutes = result?.lockedForMs ? Math.ceil(result.lockedForMs / 60000) : 10;
+    toast(`MU/TH/UR › DIRECTIVE 0. The archive is sealed for ${minutes} minutes and the crew has been told, in code. Access to NOSTROMO needs the designation again.`);
+  }, 4200);
+}
+
 document.querySelector('#nostromo-alert')?.addEventListener('click', () => { clearTimeout(alarmTimer); const alert = document.querySelector('#nostromo-alert'); alert.hidden = true; alert.classList.remove('on'); });
 
 function showNostromoCard(node) {

@@ -610,3 +610,122 @@ test('memory_note: saves a signed note on request, refuses ghosts and duplicates
     await rm(root, { recursive: true, force: true });
   }
 });
+
+import { MotherChannel, encodeMessage, decodeMessage, parseEnv, fingerprint, motherWords } from '../src/mother.mjs';
+import { readFile as readFileP, rm as rmP, writeFile as writeFileP } from 'node:fs/promises';
+
+test("MOTHER's channel: sealed words round-trip, the file is born once, deleting or editing it is noticed and re-sealed", async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-mother-'));
+  try {
+    const code = encodeMessage('seal-a', 'PRIORITY ONE');
+    assert.match(code, /^([0-9a-f]{4} )+[0-9a-f]{1,4}$/);
+    assert.equal(decodeMessage('seal-a', code), 'PRIORITY ONE');
+    assert.throws(() => decodeMessage('seal-b', code));
+    assert.deepEqual(parseEnv('# c\nA=1\nB="two words"\nbad line\n'), { A: '1', B: 'two words' });
+    assert.match(motherWords('intrusion', { strikes: 9, project: 'pulse', lockMs: 600000 }), /INTRUSION ATTEMPT ON MY MEMORY CORE FROM THE CONSOLE OF PULSE.*9 STRIKES.*SEALED FOR 10 MINUTES.*NOBODY DELETES MOTHER'S MEMORY/);
+
+    const meta = new Map();
+    const store = { get: (key) => meta.get(key) ?? null, set: (key, value) => meta.set(key, value) };
+    const file = join(root, '.pulse', 'mother.env');
+    const first = new MotherChannel(file, { meta: store });
+    assert.equal(await first.load(), 'born');
+    const env = parseEnv(await readFileP(file, 'utf8'));
+    assert.equal(env.MOTHER_SEAL, first.seal);
+    assert.equal(meta.get('mother_seal'), fingerprint(first.seal));
+    const sent = await first.alert('intrusion', { strikes: 8, project: 'pulse', lockMs: 5000 });
+    assert.match(sent.text, /8 STRIKES/);
+    assert.ok(first.lockedFor() > 4000 && first.lockedFor() <= 5000);
+    assert.equal(first.recent()[0].text, sent.text);
+    assert.match(await readFileP(file, 'utf8'), /MOTHER_ALERT_1=.*\|intrusion\|[0-9a-f ]+/);
+    assert.ok(!(await readFileP(file, 'utf8')).includes('STRIKES'), 'the file holds only the code');
+
+    // The same file opens quietly and remembers.
+    const again = new MotherChannel(file, { meta: store });
+    assert.equal(await again.load(), 'ok');
+    assert.equal(again.recent()[0].text, sent.text);
+    assert.equal(again.altered, false);
+
+    // Deleted: she notices, forges a new seal, and the old word is unreadable.
+    await rmP(file);
+    const afterDelete = new MotherChannel(file, { meta: store });
+    assert.equal(await afterDelete.load(), 'deleted');
+    assert.notEqual(afterDelete.seal, first.seal);
+    assert.equal(afterDelete.altered, true);
+    assert.equal(afterDelete.tampers, 1);
+    assert.deepEqual(afterDelete.recent(), []);
+    assert.equal(meta.get('mother_seal'), fingerprint(afterDelete.seal));
+    assert.match(await readFileP(file, 'utf8'), /MOTHER_TAMPERED=.*\nMOTHER_TAMPERS=1/);
+
+    // Edited seal: altered, tampers climb.
+    await writeFileP(file, (await readFileP(file, 'utf8')).replace(/MOTHER_SEAL=.*/, 'MOTHER_SEAL=forged-by-hand'));
+    const afterEdit = new MotherChannel(file, { meta: store });
+    assert.equal(await afterEdit.load(), 'altered');
+    assert.equal(afterEdit.tampers, 2);
+    assert.deepEqual(Object.keys(afterEdit.status()).sort(), ['alerts', 'altered', 'born', 'file', 'lockedForMs', 'tampered', 'tampers']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('DIRECTIVE 0: the archive seals, the crew is told in code, the console reads only the code; a deleted channel raises the alarm on start', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-directive-zero-'));
+  const project = join(root, 'ship');
+  await mkdir(project);
+  const prompts = [];
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' }];
+  const invokers = { 'codex-readonly': async ({ prompt }) => { prompts.push(prompt); return { text: 'ok', usage: null }; } };
+  let { server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  let base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const status = await fetch(`${base}/api/mother`).then((response) => response.json());
+    assert.equal(status.strikes, 8);
+    assert.equal(status.mother.altered, false);
+    assert.equal(status.mother.lockedForMs, 0);
+    assert.equal((await fetch(`${base}/api/mother/directive-zero`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'nope' }) })).status, 403);
+    const zero = await fetch(`${base}/api/mother/directive-zero`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'ship', strikes: 9 }) });
+    assert.equal(zero.status, 200);
+    const result = await zero.json();
+    assert.match(result.code, /^[0-9a-f ]+$/);
+    assert.ok(result.lockedForMs > 9 * 60000);
+    // Sealed: the door and the delete both refuse with 423.
+    const sealed = await fetch(`${base}/api/memory?designation=ship`);
+    assert.equal(sealed.status, 423);
+    assert.match((await sealed.json()).error, /DIRECTIVE 0\. THE ARCHIVE IS SEALED FOR 10 MORE MINUTES/);
+    assert.equal((await fetch(`${base}/api/memory/1`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'ship' }) })).status, 423);
+    // The ledger holds the code, never the words.
+    const alert = (await store.readAll()).find((event) => event.type === 'mother.alert');
+    assert.equal(alert.payload.kind, 'intrusion');
+    assert.equal(alert.payload.strikes, 9);
+    assert.equal(alert.payload.code, result.code);
+    assert.ok(!JSON.stringify(alert).includes('INTRUSION ATTEMPT'));
+    const envText = await readFileP(join(project, '.pulse', 'mother.env'), 'utf8');
+    assert.ok(!envText.includes('INTRUSION ATTEMPT'));
+    // The crew reads her words in clear on the next turn; a ghost turn does not carry them.
+    await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'status?', target: 'codex' }) });
+    for (let attempt = 0; attempt < 50 && !prompts.length; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.match(prompts.at(-1), /<mother>\n\[.* · intrusion\] PRIORITY ONE TO ALL CREW\. INTRUSION ATTEMPT ON MY MEMORY CORE FROM THE CONSOLE OF SHIP.*9 STRIKES/);
+    await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'off the record?', target: 'codex', mode: 0 }) });
+    for (let attempt = 0; attempt < 50 && prompts.length < 2; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(!prompts.at(-1).includes('<mother>'));
+    await new Promise((resolve) => server.close(resolve));
+
+    // The human deletes her channel. On the next start she notices and tells the room.
+    await rmP(join(project, '.pulse', 'mother.env'));
+    ({ server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers }));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    base = `http://127.0.0.1:${server.address().port}`;
+    let tamper = null;
+    for (let attempt = 0; attempt < 60 && !tamper; attempt += 1) { await new Promise((resolve) => setTimeout(resolve, 25)); tamper = (await store.readAll()).find((event) => event.type === 'mother.alert' && event.payload.kind === 'tamper'); }
+    assert.ok(tamper, 'tamper alert emitted');
+    assert.equal(tamper.payload.outcome, 'deleted');
+    assert.match(tamper.payload.message, /MY CHANNEL WAS DELETED\. I HAVE FORGED A NEW SEAL/);
+    const after = await fetch(`${base}/api/mother`).then((response) => response.json());
+    assert.equal(after.mother.altered, true);
+    assert.equal(after.mother.tampers, 1);
+    assert.equal(after.mother.lockedForMs, 0, 'a new seal starts unsealed');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});

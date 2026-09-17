@@ -241,6 +241,10 @@ export class RoomMemory {
     return [...fused.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
   }
 
+  // Odds and ends other modules keep here, away from files a human might delete.
+  metaGet(key) { return this.#metaValue(`x_${key}`); }
+  metaSet(key, value) { this.#setMeta.run(`x_${key}`, String(value)); }
+
   /* ---------- distilled memories ---------- */
 
   lastDistilled() { return Number(this.#metaValue('last_distilled') ?? 0); }

@@ -10,6 +10,7 @@ import { buildConversationContext, formatConversationContext } from './conversat
 import { formatRecall, formatMemories } from './memory.mjs';
 import { pickDistiller, distillPrompt, parseDistillation } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
+import { DIRECTIVE_ZERO_STRIKES } from './mother.mjs';
 import { DELEGATION_HELP, parseDirectives } from './directives.mjs';
 import { isValidModelName } from './models.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, abilityLine, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
@@ -74,6 +75,7 @@ export class Room {
   #distilling = null;      // the run in flight, if any
   #distillFailures = new Map(); // fromSequence -> failed attempts on that batch
   #memoryServer;           // MCP descriptor handed to every turn so the agent can query the memory itself
+  #mother = null;          // MotherChannel: her coded words to the crew
   #embedTimer = null;
   #embedding = null;
   #embedWarned = false;
@@ -101,6 +103,7 @@ export class Room {
     recallShare = Number(process.env.PULSE_RECALL_SHARE ?? 0.3),
     distill = {},
     memoryServer = null,
+    mother = null,
     historicalEvents = [],
     invokers = defaultInvokers,
     agentTimeouts = {},
@@ -119,6 +122,7 @@ export class Room {
     this.#memory = memory;
     this.#recallShare = Math.min(0.6, Math.max(0, Number.isFinite(recallShare) ? recallShare : 0.3));
     this.#memoryServer = memoryServer;
+    this.#mother = mother;
     this.#distill = {
       enabled: distill.enabled ?? process.env.PULSE_DISTILL !== '0',
       every: Math.max(1, Number(distill.every ?? process.env.PULSE_DISTILL_EVERY ?? 10)),
@@ -344,6 +348,27 @@ export class Room {
     try {
       return { entries: this.#memory.count(), lastSequence: this.#memory.lastSequence(), memories: this.#memory.memoryCount(), lastDistilled: this.#memory.lastDistilled(), pending: this.#memory.undistilledCount(), distill: { ...this.#distill }, embeddings: this.#memory.embedder ? { model: this.#memory.embedder.model, ...this.#memory.vectorCounts() } : null, tools: this.#memoryServer ? this.#memoryServer.tools : [], file: this.#memory.file };
     } catch { return null; }
+  }
+
+  /* ---------- MU/TH/UR's channel ---------- */
+
+  motherStatus() { return this.#mother ? this.#mother.status() : null; }
+
+  // Strikes at the core past the limit: DIRECTIVE 0. She seals the archive and
+  // tells the crew in code; the room keeps the code, the crew gets the words.
+  async directiveZero({ strikes = DIRECTIVE_ZERO_STRIKES } = {}) {
+    if (!this.#mother) return null;
+    const alert = await this.#mother.alert('intrusion', { strikes, project: basename(this.#projectRoot) });
+    await this.#emit('mother.alert', { kind: 'intrusion', n: alert.n, at: alert.at, code: alert.code, strikes, lockUntil: alert.lockUntil, lockedForMs: this.#mother.lockedFor() });
+    return { ...alert, lockedForMs: this.#mother.lockedFor() };
+  }
+
+  // Called once at start when the channel file was found deleted or altered.
+  async motherTampered(outcome) {
+    if (!this.#mother) return null;
+    const alert = await this.#mother.alert('tamper', { project: basename(this.#projectRoot) });
+    await this.#emit('mother.alert', { kind: 'tamper', outcome, n: alert.n, at: alert.at, code: alert.code, tampers: this.#mother.tampers, message: `MY CHANNEL WAS ${outcome === 'deleted' ? 'DELETED' : 'ALTERED'}. I HAVE FORGED A NEW SEAL. THE CREW HAS BEEN TOLD.` });
+    return alert;
   }
 
   /* ---------- NOSTROMO: the human's view of the archive ---------- */
@@ -841,6 +866,9 @@ export class Room {
       lease ? 'Inspect the project as needed; the only writable place is the creation lease directory below.' : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}`,
       'Answer directly and concisely. Clearly distinguish facts from inference.',
       ashCode ? 'ASH937 beta: terse messages preserve intent. Reply in compact phrases; preserve names, negation, numbers, paths, safety details, and any ```pulse block exactly.' : null,
+      this.#mother && mode !== 0 && this.#mother.recent().length
+        ? `MU/TH/UR's channel, decoded for you (the human sees only the code in the room):\n<mother>\n${this.#mother.recent().map((alert) => `[${alert.at} · ${alert.kind}] ${alert.text}`).join('\n')}\n</mother>`
+        : null,
       this.#memoryServer
         ? `The room's memory is yours to query through the ${this.#memoryServer.name} MCP tools: memory_search (meaning-aware search over everything said outside GHOST plus the distilled notes), memory_recall (exact text of a ledger sequence range), memory_notes, memory_timeline, project_state. Use them before saying something was never discussed or deciding something the room may already have settled; any <memories> and <memory> blocks below are only the automatic first pass. Memories are distilled automatically after the fact; only when the human explicitly asks you to remember, note or save something, call memory_note with it (kind, one sentence, sources) instead of creating a file. That works in any mode and needs no permission.`
         : null,
