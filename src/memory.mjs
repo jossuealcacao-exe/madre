@@ -1,15 +1,19 @@
-// MADRE's durable room memory: everything ever said in a room outside GHOST,
-// indexed for full-text recall so an agent's turn can be handed the older
-// exchanges that matter to it, exactly as they were said. It lives in a
-// SQLite file next to the ledger, is derived from the ledger alone, and can be
-// deleted at any time: the next start rebuilds it. GHOST events never reach
-// the ledger, so they never reach here either.
+// MADRE's durable room memory, two layers in one SQLite file next to the ledger.
+//   entries   everything ever said in the room outside GHOST, indexed for
+//             full-text recall: exact quotes handed to a turn when they match.
+//             Derived from the ledger alone; rebuilt whenever it is stale.
+//   memories  short durable notes an agent distils from those entries every
+//             so often (decisions, verified facts, the human's preferences,
+//             open questions), each citing the sequences it came from. These
+//             cost a model call, so a schema change keeps them.
+// GHOST events never reach the ledger, so they never reach here either.
 
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { messageEntry } from './conversation-context.mjs';
 
-export const MEMORY_SCHEMA_VERSION = 1;
+export const MEMORY_SCHEMA_VERSION = 2;
+export const MEMORY_KINDS = ['decision', 'fact', 'preference', 'question'];
 
 // Words that carry no meaning for recall, in the two languages the rooms speak.
 const STOPWORDS = new Set(('the and for with that this from what which where when have has are was were will would could should about into your you our their there here they them then than also just like only over under some any all not but can does did done been being make made use used using please into onto ' +
@@ -78,18 +82,34 @@ export class RoomMemory {
     if (this.#file !== ':memory:') await mkdir(dirname(this.#file), { recursive: true });
     ({ DatabaseSync: this.#Database } = await loadSqlite());
     this.#open();
-    if (this.#metaValue('schema') !== String(MEMORY_SCHEMA_VERSION)) {
-      this.close();
-      if (this.#file !== ':memory:') await Promise.all(['', '-wal', '-shm'].map((suffix) => rm(`${this.#file}${suffix}`, { force: true })));
-      this.#open();
-    }
+    if (this.#metaValue('schema') !== String(MEMORY_SCHEMA_VERSION)) this.#rebuildEntries();
     if (store) await this.catchUp(store);
     return this;
+  }
+
+  // The entries index is derived, so a stale schema just drops it and lets the
+  // ledger fill it again; the distilled memories are kept.
+  #rebuildEntries() {
+    this.#db.exec(`
+      DROP TRIGGER IF EXISTS entries_ai; DROP TRIGGER IF EXISTS entries_ad;
+      DROP TABLE IF EXISTS entries_fts; DROP TABLE IF EXISTS entries;
+      DELETE FROM meta WHERE key IN ('last_sequence');
+    `);
+    this.#createSchema();
+    this.#setMeta.run('schema', String(MEMORY_SCHEMA_VERSION));
   }
 
   #open() {
     this.#db = new this.#Database(this.#file);
     if (this.#file !== ':memory:') this.#db.exec('PRAGMA journal_mode = WAL');
+    this.#createSchema();
+    this.#meta = this.#db.prepare('SELECT value FROM meta WHERE key = ?');
+    this.#setMeta = this.#db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+    this.#insert = this.#db.prepare('INSERT OR IGNORE INTO entries (sequence, event_id, timestamp, type, role, sender, target, message_id, text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    if (this.#metaValue('schema') === null) this.#setMeta.run('schema', String(MEMORY_SCHEMA_VERSION));
+  }
+
+  #createSchema() {
     this.#db.exec(`
       CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS entries (
@@ -110,11 +130,115 @@ export class RoomMemory {
       CREATE TRIGGER IF NOT EXISTS entries_ad AFTER DELETE ON entries BEGIN
         INSERT INTO entries_fts(entries_fts, rowid, text, sender) VALUES ('delete', old.sequence, old.text, old.sender);
       END;
+      CREATE TABLE IF NOT EXISTS memories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        text TEXT NOT NULL,
+        norm TEXT NOT NULL UNIQUE,
+        from_sequence INTEGER NOT NULL,
+        through_sequence INTEGER NOT NULL,
+        sources TEXT NOT NULL,
+        agent TEXT NOT NULL
+      );
+      CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(text, kind, content='memories', content_rowid='id', tokenize='trigram');
+      CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+        INSERT INTO memories_fts(rowid, text, kind) VALUES (new.id, new.text, new.kind);
+      END;
+      CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+        INSERT INTO memories_fts(memories_fts, rowid, text, kind) VALUES ('delete', old.id, old.text, old.kind);
+      END;
     `);
-    this.#meta = this.#db.prepare('SELECT value FROM meta WHERE key = ?');
-    this.#setMeta = this.#db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-    this.#insert = this.#db.prepare('INSERT OR IGNORE INTO entries (sequence, event_id, timestamp, type, role, sender, target, message_id, text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    if (this.#metaValue('schema') === null) this.#setMeta.run('schema', String(MEMORY_SCHEMA_VERSION));
+  }
+
+  /* ---------- distilled memories ---------- */
+
+  lastDistilled() { return Number(this.#metaValue('last_distilled') ?? 0); }
+  markDistilled(throughSequence) { this.#setMeta.run('last_distilled', String(Math.max(this.lastDistilled(), Number(throughSequence) || 0))); }
+  undistilledCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM entries WHERE sequence > ?').get(this.lastDistilled()).n; }
+  memoryCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM memories').get().n; }
+
+  // The next batch to distil: entries after the last distilled sequence, in
+  // order, cut at a character budget so one run stays cheap. `remaining` says
+  // how many entries wait beyond the batch.
+  undistilled({ maxChars = 6000 } = {}) {
+    const rows = this.#db.prepare('SELECT sequence, timestamp, role, sender, target, message_id AS messageId, text FROM entries WHERE sequence > ? ORDER BY sequence').all(this.lastDistilled());
+    const batch = [];
+    let used = 0;
+    for (const row of rows) {
+      const cost = Math.min(row.text.length, 1600) + 40;
+      if (batch.length && used + cost > maxChars) break;
+      batch.push({ ...row, text: row.text.length > 1600 ? `${row.text.slice(0, 1600)}…` : row.text });
+      used += cost;
+    }
+    return { entries: batch, fromSequence: batch[0]?.sequence ?? null, throughSequence: batch.at(-1)?.sequence ?? null, remaining: rows.length - batch.length };
+  }
+
+  // Stores distilled memories; a note already held (same text, ignoring case
+  // and punctuation) is not stored twice. Returns how many were new.
+  addMemories(list, { agent, fromSequence, throughSequence }) {
+    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    const now = new Date().toISOString();
+    let added = 0;
+    this.#db.exec('BEGIN');
+    try {
+      for (const memory of list) {
+        const text = String(memory.text ?? '').trim();
+        if (!text) continue;
+        const kind = MEMORY_KINDS.includes(memory.kind) ? memory.kind : 'fact';
+        const sources = (Array.isArray(memory.sources) ? memory.sources : []).filter((n) => Number.isInteger(n));
+        const result = insert.run(now, kind, text, normalizeMemory(text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent);
+        added += Number(result.changes ?? 0);
+      }
+      this.#db.exec('COMMIT');
+    } catch (error) {
+      this.#db.exec('ROLLBACK');
+      throw error;
+    }
+    return added;
+  }
+
+  memories({ limit = 50 } = {}) {
+    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories ORDER BY id DESC LIMIT ?').all(limit)
+      .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
+  }
+
+  // Distilled memories for a request: the ones matching its terms (rarity
+  // weighted, like entries) and, when few match, the most recent decisions and
+  // preferences, all from before `beforeSequence` so they add to the window
+  // rather than repeat it, within a character budget.
+  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200 } = {}) {
+    if (!this.#db) return [];
+    const total = this.memoryCount();
+    if (!total) return [];
+    const terms = queryTerms(text);
+    const scores = new Map();
+    const lookup = this.#db.prepare('SELECT m.id FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid WHERE memories_fts MATCH ? AND m.through_sequence < ? LIMIT 500');
+    for (const term of terms) {
+      let rows;
+      try { rows = lookup.all(`"${term.replaceAll('"', '""')}"`, beforeSequence); } catch { continue; }
+      if (!rows.length || (terms.length > 1 && rows.length > Math.max(8, total * 0.35))) continue;
+      const weight = Math.log(1 + total / rows.length) * (1 + Math.min(term.length, 12) / 12);
+      for (const { id } of rows) scores.set(id, (scores.get(id) ?? 0) + weight);
+    }
+    const ids = [...scores.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]).map(([id]) => id);
+    if (ids.length < 2) {
+      const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
+      for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
+    }
+    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories WHERE id = ?');
+    const chosen = [];
+    let remaining = Math.max(0, maxChars);
+    for (const id of ids) {
+      if (chosen.length >= limit) break;
+      const row = fetch.get(id);
+      if (!row) continue;
+      const cost = row.text.length + 24;
+      if (cost > remaining) continue;
+      remaining -= cost;
+      chosen.push({ ...row, sources: JSON.parse(row.sources) });
+    }
+    return chosen.sort((a, b) => a.fromSequence - b.fromSequence || a.id - b.id);
   }
 
   #metaValue(key) { return this.#meta.get(key)?.value ?? null; }
@@ -205,6 +329,19 @@ export class RoomMemory {
     this.#db?.close();
     this.#db = null;
   }
+}
+
+export function normalizeMemory(text) {
+  return String(text).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+// The block an agent reads for distilled memories: kind, where it came from, the note.
+export function formatMemories(list) {
+  if (!list?.length) return '';
+  return list.map((memory) => {
+    const span = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}`;
+    return `- [${memory.kind} · ${span}] ${memory.text}`;
+  }).join('\n');
 }
 
 // The block an agent reads: one exact quote per line group, stamped with the

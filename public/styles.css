@@ -266,6 +266,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .system b { font-weight: 600; color: var(--text-2); }
 .system .from { color: var(--from, var(--text-2)); } .system .to { color: var(--to, var(--text-2)); }
 .system.warn { color: var(--warn); }
+.system.memory { color: var(--text-3); } .system.memory .who { color: var(--agent, var(--text-2)); }
 .system.crit { color: var(--crit); }
 .system.fail { color: var(--danger); text-transform: none; letter-spacing: 0; font-size: 11px; }
 .system.fail .label { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; display: block; opacity: .8; margin-bottom: 2px; }

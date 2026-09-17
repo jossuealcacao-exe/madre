@@ -1028,6 +1028,21 @@ function renderThinking(event) {
   return node;
 }
 
+// The archivist reports: which agent read which stretch of the room and how many notes it kept.
+function renderDistilled(event) {
+  const { agent, added, considered, fromSequence, throughSequence, remaining, error, skipped, total } = event.payload;
+  const node = el('div', `system memory${error ? ' warn' : ''}`);
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append('memory · ');
+  node.append(el('b', 'who', `@${agent}`));
+  if (error) {
+    node.append(` could not distil #${fromSequence}–#${throughSequence}: ${error}${skipped ? ' · batch skipped' : ' · will retry'}`);
+  } else {
+    node.append(` read ${considered} exchange${considered === 1 ? '' : 's'} (#${fromSequence}–#${throughSequence}) · kept ${added} memor${added === 1 ? 'y' : 'ies'}${Number.isFinite(total) ? ` · ${total} in the archive` : ''}${remaining ? ` · ${remaining} waiting` : ''}`);
+  }
+  return node;
+}
+
 function renderHandoff(event) {
   const { fromAgent, toAgent, messageCount, omittedMessages, kind } = event.payload;
   const node = el('div', 'system handoff');
@@ -1485,6 +1500,7 @@ function renderEventNode(event) {
     case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
+    case 'memory.distilled': node = renderDistilled(event); break;
     case 'limit.warning': node = renderWarning(event); break;
     case 'limit.cleared': node = renderCleared(event); break;
     case 'usage.recorded': applyUsage(event); return;

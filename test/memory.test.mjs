@@ -97,7 +97,7 @@ test('memory: a turn beyond the context window recalls the matching old exchange
   try {
     const store = await new EventStore(join(root, 'events.jsonl')).initialize();
     const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
-    const room = new Room({ store, agents, projectRoot: root, invokers, memory, contextMaxChars: 1200 });
+    const room = new Room({ store, agents, projectRoot: root, invokers, memory, contextMaxChars: 1200, distill: { enabled: false } });
 
     await room.send({ text: 'Decision: the payment webhook must verify the Stripe signature before parsing JSON.', target: 'codex' });
     for (let index = 0; index < 8; index += 1) {
@@ -127,8 +127,134 @@ test('memory: a turn beyond the context window recalls the matching old exchange
     await room.send({ text: 'Anything about a PELICAN codeword in our history?', target: 'codex' });
     assert.ok(!prompts.at(-1).prompt.includes('<memory>'));
 
-    assert.deepEqual(Object.keys(room.memoryStats()), ['entries', 'lastSequence', 'file']);
+    assert.deepEqual(Object.keys(room.memoryStats()), ['entries', 'lastSequence', 'memories', 'lastDistilled', 'pending', 'distill', 'file']);
     await room.shutdown?.();
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+import { pickDistiller, parseDistillation, distillPrompt } from '../src/distiller.mjs';
+
+test('distiller: picks the human\'s agent when usable, else the cheapest ready one that is not busy', () => {
+  const roster = [
+    { id: 'claude', detected: true, ready: true, adapter: 'claude-readonly' },
+    { id: 'codex', detected: true, ready: true, adapter: 'codex-readonly' },
+    { id: 'gemini', detected: true, ready: false, adapter: 'gemini-readonly' },
+    { id: 'opencode', detected: true, ready: true, adapter: 'opencode-readonly' },
+  ];
+  assert.equal(pickDistiller(roster).id, 'opencode');
+  assert.equal(pickDistiller(roster, { preferred: 'claude' }).id, 'claude');
+  assert.equal(pickDistiller(roster, { preferred: 'gemini' }).id, 'opencode');
+  assert.equal(pickDistiller(roster, { busy: new Set(['opencode']) }).id, 'codex');
+  assert.equal(pickDistiller(roster, { invokers: { 'claude-readonly': () => {} } }).id, 'claude');
+  assert.equal(pickDistiller([{ id: 'x', detected: true, ready: false }]), null);
+});
+
+test('distiller: keeps only well-formed memories, in range, deduplicated, capped', () => {
+  const text = [
+    '```json',
+    '{"kind":"decision","text":"Use SQLite FTS5 for room memory; embeddings wait for phase C.","sources":[3,4]}',
+    '- {"kind":"fact","text":"  The event log lives in ~/.pulse/rooms/<room>/events.jsonl.  ","sources":[2, 99]}',
+    '{"kind":"nonsense","text":"Kind falls back to fact","sources":"nope"}',
+    '{"text":""}',
+    'not json at all',
+    '{"kind":"decision","text":"use sqlite fts5 for room memory; embeddings wait for phase c.","sources":[3]}',
+    `{"kind":"question","text":"${'x'.repeat(400)}","sources":[5]}`,
+    '{"kind":"preference","text":"Reply in Spanish.","sources":[1]}',
+    '{"kind":"fact","text":"Sixth one is dropped.","sources":[1]}',
+    '```',
+  ].join('\n');
+  const memories = parseDistillation(text, { fromSequence: 1, throughSequence: 6 });
+  assert.equal(memories.length, 5);
+  assert.deepEqual(memories[0], { kind: 'decision', text: 'Use SQLite FTS5 for room memory; embeddings wait for phase C.', sources: [3, 4] });
+  assert.deepEqual(memories[1].sources, [2]);
+  assert.equal(memories[1].text, 'The event log lives in ~/.pulse/rooms/<room>/events.jsonl.');
+  assert.equal(memories[2].kind, 'fact');
+  assert.equal(memories[3].text.length, 240);
+  assert.deepEqual(parseDistillation('NONE'), []);
+  const prompt = distillPrompt({ entries: [{ sequence: 7, role: 'user', sender: 'you', target: 'codex', text: 'hola' }], projectName: 'pulse', existing: [{ text: 'Known thing.' }] });
+  assert.match(prompt, /\[#7 · @you \(user\) → @codex\] hola/);
+  assert.match(prompt, /Already remembered[\s\S]*- Known thing\./);
+  assert.match(prompt, /output exactly: NONE/);
+});
+
+test('distiller: the room distils with the cheapest agent after enough exchanges, reports it, counts tokens, and later turns read the notes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-distill-'));
+  const roster = [
+    ...agents,
+    { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake/gemini', version: 'test' },
+  ];
+  const prompts = [];
+  let distillCalls = 0;
+  let failNext = false;
+  const invokers = {
+    'codex-readonly': async ({ prompt }) => { prompts.push({ agent: 'codex', prompt }); return { text: 'Codex: the webhook handler is in src/webhooks.mjs.', usage: { totalTokens: 100, inputTokens: 80, outputTokens: 20 } }; },
+    'claude-readonly': async ({ prompt }) => { prompts.push({ agent: 'claude', prompt }); return { text: 'Claude agrees.', usage: null }; },
+    'gemini-readonly': async ({ prompt, lease, scopes }) => {
+      distillCalls += 1;
+      prompts.push({ agent: 'gemini', prompt, lease, scopes });
+      if (failNext) { failNext = false; throw new Error('gemini quota exhausted'); }
+      return { text: 'Here you go:\n{"kind":"decision","text":"The payment webhook verifies the Stripe signature before parsing JSON.","sources":[1,2]}\n{"kind":"fact","text":"The webhook handler lives in src/webhooks.mjs.","sources":[2]}\n', usage: { totalTokens: 300, inputTokens: 280, outputTokens: 20 } };
+    },
+  };
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    const room = new Room({ store, agents: roster, projectRoot: root, invokers, memory, contextMaxChars: 900, distill: { every: 4, idleMs: 60_000 } });
+
+    // Two exchanges = 4 entries: the threshold. A ghost in between adds nothing.
+    await room.send({ text: 'Decision: the payment webhook must verify the Stripe signature before parsing JSON.', target: 'codex' });
+    await room.send({ text: 'Off the record, codeword PELICAN.', target: 'claude', mode: 0 });
+    await room.send({ text: 'Where does the webhook handler live?', target: 'codex' });
+    await room.settleDistillation();
+
+    assert.equal(distillCalls, 1, 'one distillation run');
+    const archivist = prompts.find((entry) => entry.agent === 'gemini');
+    assert.match(archivist.prompt, /You are the archivist/);
+    assert.match(archivist.prompt, /\[#1 · @you \(user\) → @codex\] Decision: the payment webhook/);
+    assert.ok(!archivist.prompt.includes('PELICAN'), 'ghosts are never distilled');
+    assert.equal(archivist.lease, null);
+    assert.equal(memory.memoryCount(), 2);
+    const through = memory.lastDistilled();
+    assert.ok(through >= 4 && through <= memory.lastSequence(), 'distilled through the last entry of the batch');
+    assert.equal(memory.undistilledCount(), 0);
+    const events = await store.readAll();
+    const report = events.find((event) => event.type === 'memory.distilled');
+    assert.equal(report.payload.agent, 'gemini');
+    assert.equal(report.payload.added, 2);
+    assert.deepEqual([report.payload.fromSequence, report.payload.throughSequence, report.payload.remaining], [1, through, 0]);
+    assert.ok(events.some((event) => event.type === 'usage.recorded' && event.payload.agent === 'gemini' && event.payload.usage.totalTokens === 300), 'the archivist\'s tokens count');
+    const stats = room.memoryStats();
+    assert.equal(stats.memories, 2);
+    assert.equal(stats.pending, 0);
+
+    // Below the threshold nothing runs; the same batch is not distilled twice.
+    await room.send({ text: 'Thanks.', target: 'claude' });
+    await room.settleDistillation();
+    assert.equal(distillCalls, 1);
+
+    // Push the decision out of a 900-char window; the distilled note comes back first, then the exact quote.
+    for (let index = 0; index < 4; index += 1) await room.send({ text: `Filler ${index}: onboarding card colours, at length. ${'lorem ipsum '.repeat(10)}`, target: 'claude' });
+    await room.settleDistillation();
+    await room.send({ text: 'Remind me what we decided about the Stripe webhook signature.', target: 'claude' });
+    const prompt = prompts.at(-1).prompt;
+    assert.match(prompt, new RegExp(`<memories>\\n- \\[decision · #1–#${through}\\] The payment webhook verifies the Stripe signature before parsing JSON\\.`));
+    assert.ok(prompt.indexOf('<memories>') < prompt.indexOf('<memory>'), 'notes before quotes');
+    assert.match(prompt, /<memory>[\s\S]*Decision: the payment webhook must verify the Stripe signature/);
+
+    // A failing archivist is reported, the batch stays pending, and is retried later.
+    failNext = true;
+    const before = memory.lastDistilled();
+    const failed = await room.distillNow();
+    assert.match(failed.error, /gemini quota exhausted/);
+    assert.equal(failed.skipped, false);
+    assert.equal(memory.lastDistilled(), before);
+    const retried = await room.distillNow();
+    assert.equal(retried.error, undefined);
+    assert.ok(memory.lastDistilled() > before);
+    await room.shutdown();
     memory.close();
   } finally {
     await rm(root, { recursive: true, force: true });
