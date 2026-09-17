@@ -1,6 +1,29 @@
+<p align="center">
+  <a href="https://jossuealcala.com/en/"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/madre-banner.svg" alt="MADRE · MU/TH/UR 6000 · INTERFACE 2037" width="100%"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@jossuealcala/madre"><img alt="npm" src="https://img.shields.io/npm/v/@jossuealcala/madre?style=flat-square&label=npm&color=9bff66&labelColor=050605"></a>
+  <img alt="node" src="https://img.shields.io/badge/node-%E2%89%A5%2022.5-9bff66?style=flat-square&labelColor=050605">
+  <img alt="dependencies" src="https://img.shields.io/badge/dependencies-0-9bff66?style=flat-square&labelColor=050605">
+  <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-9bff66?style=flat-square&labelColor=050605">
+  <img alt="crew" src="https://img.shields.io/badge/crew-Codex%20%C2%B7%20Claude%20%C2%B7%20Gemini%20%C2%B7%20OpenCode-9bff66?style=flat-square&labelColor=050605">
+</p>
+
+```
+MU/TH/UR 6000 · INTERFACE 2037 · MADRE IS READY
+
+  one local room · four AI coding agents · one shared memory
+  read-only by default · CONTROL when you say so · nothing leaves your machine
+```
+
 # MADRE
 
-Una sola sala para conversar con los agentes de IA que ya están instalados en tu computadora, alrededor de un proyecto real.
+Una sola sala para conversar con los agentes de IA que ya están instalados en tu computadora, alrededor de un proyecto real. *One local room where Codex, Claude Code, Gemini CLI and OpenCode work on a project together, with a memory every one of them recalls.*
+
+```
+npx @jossuealcala/madre start
+```
 
 Tres nombres, tres capas. **MADRE** es el producto: lo que instalas, abres en el navegador y ves junto al logo del latido. **PULSE** es el canal sobre el que corre una sala: el registro de eventos, el bloque de delegación entre agentes, los homes aislados de cada CLI y la carpeta `.pulse/` donde caen los artefactos; por eso esos identificadores conservan su nombre. **MU/TH/UR** es la voz operativa dentro de MADRE: diagnóstico, conexiones y ajustes. El comando `pulse` sigue funcionando como alias de `madre`.
 

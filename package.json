@@ -10,8 +10,27 @@
     "opencode",
     "multi-agent",
     "local-first",
-    "handoff"
+    "handoff",
+    "madre",
+    "mother",
+    "mu-th-ur",
+    "memory",
+    "sqlite",
+    "mcp",
+    "pulse"
   ],
+  "homepage": "https://github.com/jossuealcacao-exe/madre#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jossuealcacao-exe/madre.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jossuealcacao-exe/madre/issues"
+  },
+  "author": {
+    "name": "Jossué Alcalá",
+    "url": "https://jossuealcala.com/en/"
+  },
   "type": "module",
   "license": "Apache-2.0",
   "files": [
@@ -21,7 +40,8 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "docs/madre-banner.svg"
   ],
   "bin": {
     "madre": "./bin/madre.mjs",
