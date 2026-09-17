@@ -249,6 +249,10 @@ Gemini CLI lee `@algo` en el prompt como un archivo a incluir, incluso en modo h
 
 Todos los adaptadores corren en su propio grupo de procesos. Si un agente no responde antes del timeout, MADRE termina el árbol completo (SIGTERM y, tras un periodo de gracia, SIGKILL), no solo el lanzador.
 
+## Cambios
+
+Ver [CHANGELOG.md](CHANGELOG.md). La versión actual es 0.2.0.
+
 ## Licencia
 
 Apache-2.0. Ver `LICENSE` y `NOTICE`.
