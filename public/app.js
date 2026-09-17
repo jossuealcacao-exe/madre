@@ -1851,7 +1851,7 @@ function commandBlock(lines) {
   return block;
 }
 
-function conditionCard(condition, { hit = false, agent = null } = {}) {
+function conditionCard(condition, { hit = false, agent = null, hintAgent = null } = {}) {
   const card = el('article', `mother-card${hit ? ' hit' : ''}`);
   card.id = `mother-${condition.id}`;
   const tags = el('div', 'tags');
@@ -1868,6 +1868,22 @@ function conditionCard(condition, { hit = false, agent = null } = {}) {
   remedy.append(el('b', null, 'REMEDY'));
   remedy.append(condition.remedy);
   card.append(remedy);
+  const actions = conditionActions(condition, hintAgent ?? agent ?? condition.agent ?? null);
+  if (actions.length) {
+    const bar = el('div', 'actions');
+    for (const action of actions) {
+      const button = el('button', 'act', action.label);
+      button.type = 'button';
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try { await saveSettingNow(action.patch, action.done); button.textContent = 'APPLIED ✓'; }
+        catch (error) { toast(`Could not apply: ${error.message}`); button.disabled = false; }
+      });
+      bar.append(button);
+    }
+    bar.append(el('span', 'note', 'APPLIES NOW · TERMINAL COMMANDS BELOW ARE THE LAUNCH-TIME ALTERNATIVE'));
+    card.append(bar);
+  }
   const chosen = agent ?? condition.agent ?? null;
   card.append(commandBlock(fixesFor(condition, mother.platform, chosen)));
   if (condition.perAgent && !chosen) {
@@ -1958,7 +1974,7 @@ function renderMotherKnown(list = CONDITIONS, hits = new Set(), agent = null) {
   mother.known.append(el('h3', null, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`));
   const grid = el('div', 'mother-grid');
   const ordered = [...list].sort((a, b) => Number(hits.has(b.id)) - Number(hits.has(a.id)));
-  for (const condition of ordered) grid.append(conditionCard(condition, { hit: hits.has(condition.id), agent: agent && condition.perAgent ? agent : null }));
+  for (const condition of ordered) grid.append(conditionCard(condition, { hit: hits.has(condition.id), agent: agent && condition.perAgent ? agent : null, hintAgent: agent }));
   mother.known.append(grid);
 }
 
@@ -2547,6 +2563,7 @@ function connectionCard(agent) {
   input.value = String(Math.round((settingsUI.data.settings.timeouts[agent.id] ?? 180000) / 1000));
   input.dataset.agent = agent.id;
   input.className = 'timeout-input';
+  wireInstantNumber(input, { min: 10, toPatch: (seconds) => ({ timeouts: { [agent.id]: seconds * 1000 } }), describe: (seconds) => `@${agent.id} timeout saved: ${seconds}s.` });
   timeout.append(input);
   card.append(timeout);
 
@@ -2578,6 +2595,8 @@ function renderSettings() {
   const budget = num('softTokenBudget', data.settings.softTokenBudget, 10000, 10000);
   const steps = num('maxPlanSteps', data.settings.maxPlanSteps, 1, 1);
   const defaultTimeout = num('defaultTimeout', Math.round(data.settings.defaultTimeout / 1000), 10, 10);
+  wireInstantNumber(budget, { min: 10000, toPatch: (value) => ({ room: { softTokenBudget: value } }), describe: (value) => `local budget saved: ${formatTokens(value)} tokens per agent per 5h window.` });
+  wireInstantNumber(defaultTimeout, { min: 10, toPatch: (seconds) => ({ timeouts: { default: seconds * 1000 } }), describe: (seconds) => `default timeout saved: ${seconds}s.` });
   const idle = num('geminiIdle', Math.round(data.settings.geminiIdleMs / 1000), 10, 10);
   const retries = num('geminiRetries', data.settings.geminiRetries, 0, 1);
   const model = el('input'); model.name = 'opencodeModel'; model.value = data.settings.opencodeModel ?? ''; model.placeholder = 'provider/model'; model.setAttribute('list', 'opencode-models');
@@ -2644,6 +2663,54 @@ function renderSettings() {
     save.disabled = false;
   });
   section.append(form);
+}
+
+// Save one setting the moment it changes, the way the scope boxes do; the
+// SAVE button below stays for the fields that are not wired this way.
+async function saveSettingNow(patch, confirmation) {
+  const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+  if (result.settings) {
+    state.timeouts = result.settings.timeouts ?? state.timeouts;
+    if (Number.isFinite(result.settings.softTokenBudget)) state.budget = result.settings.softTokenBudget;
+    if (result.settings.capabilities) { state.capabilities = result.settings.capabilities; renderCreateScopes(); }
+    if (settingsUI.data) settingsUI.data.settings = { ...settingsUI.data.settings, ...result.settings };
+  }
+  if (confirmation) toast(`MU/TH/UR › ${confirmation} Applies to the next turn.`);
+  return result.settings ?? null;
+}
+// Number inputs commit on change (blur or Enter); revert and explain on failure.
+function wireInstantNumber(input, { toPatch, describe, min = 1 }) {
+  let last = input.value;
+  input.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); input.blur(); } });
+  input.addEventListener('change', async () => {
+    const value = Number(input.value);
+    if (!Number.isFinite(value) || value < min) { input.value = last; toast(`MU/TH/UR › that value is not valid (minimum ${min}).`); return; }
+    input.disabled = true;
+    try { await saveSettingNow(toPatch(value), describe(value)); last = input.value; }
+    catch (error) { input.value = last; toast(`Setting was not saved: ${error.message}`); }
+    finally { input.disabled = false; }
+  });
+}
+const nextTimeoutSeconds = (currentMs) => { const current = Math.round((currentMs ?? 180000) / 1000); return [300, 600, 900, 1200].find((step) => step > current) ?? current + 300; };
+// MU/TH/UR acts, not just advises: buttons that apply the fix through /api/settings.
+function conditionActions(condition, agent) {
+  const actions = [];
+  if (condition.id === 'timeout') {
+    if (agent && state.agents.has(agent)) {
+      const seconds = nextTimeoutSeconds(state.timeouts[agent]);
+      actions.push({ label: `RAISE @${agent.toUpperCase()} TIMEOUT TO ${seconds}s`, patch: { timeouts: { [agent]: seconds * 1000 } }, done: `@${agent} timeout is now ${seconds}s.` });
+    }
+    const defaultMs = Math.min(...Object.values(state.timeouts ?? {}).filter(Number.isFinite), 180000);
+    const seconds = nextTimeoutSeconds(defaultMs);
+    actions.push({ label: `RAISE DEFAULT TIMEOUT TO ${seconds}s`, patch: { timeouts: { default: seconds * 1000 } }, done: `default timeout is now ${seconds}s for every agent without its own.` });
+  }
+  if (condition.id === 'budget-exhausted') {
+    const budget = Math.max(1000000, (state.budget ?? 500000) * 2);
+    actions.push({ label: `RAISE LOCAL BUDGET TO ${formatTokens(budget)}`, patch: { room: { softTokenBudget: budget } }, done: `local budget is now ${formatTokens(budget)} tokens per agent per 5h window.` });
+  }
+  return actions;
 }
 
 function askMotherAbout(conditionId) {

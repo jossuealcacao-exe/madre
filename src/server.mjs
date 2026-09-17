@@ -146,11 +146,14 @@ export async function createPulseServer({
         const ms = Number(value);
         if (Number.isFinite(ms) && ms > 0) timeouts[key] = ms; else delete timeouts[key];
       }
-      config.timeouts = Object.fromEntries(Object.entries(patch.timeouts).map(([key, value]) => [key, Number(value) > 0 ? Number(value) : undefined]));
+      // A one-field save must not erase the other timeouts on disk.
+      const stored = { ...((await readConfig(root)).timeouts ?? {}) };
+      for (const [key, value] of Object.entries(patch.timeouts)) { if (Number(value) > 0) stored[key] = Number(value); else delete stored[key]; }
+      config.timeouts = stored;
       live.agentTimeouts = timeouts;
     }
     if (patch.room) {
-      config.room = {};
+      config.room = { ...((await readConfig(root)).room ?? {}) };
       if (typeof patch.room.delegation === 'boolean') { config.room.delegation = patch.room.delegation; live.delegation = patch.room.delegation; }
       if (Number(patch.room.maxPlanSteps) > 0) { config.room.maxPlanSteps = Number(patch.room.maxPlanSteps); live.maxPlanSteps = Number(patch.room.maxPlanSteps); }
       if (Number(patch.room.softTokenBudget) > 0) { config.room.softTokenBudget = Number(patch.room.softTokenBudget); live.softTokenBudget = Number(patch.room.softTokenBudget); }
@@ -166,7 +169,7 @@ export async function createPulseServer({
       room.setScopes(config.scopes);
     }
     if (patch.gemini) {
-      config.gemini = {};
+      config.gemini = { ...((await readConfig(root)).gemini ?? {}) };
       if (Number(patch.gemini.idleMs) > 0) { config.gemini.idleMs = Number(patch.gemini.idleMs); process.env.PULSE_GEMINI_IDLE_MS = String(Number(patch.gemini.idleMs)); }
       if (Number.isFinite(Number(patch.gemini.retries))) { config.gemini.retries = Number(patch.gemini.retries); process.env.PULSE_GEMINI_RETRIES = String(Number(patch.gemini.retries)); }
     }

@@ -155,7 +155,7 @@ export const CONDITIONS = [
     title: 'Agent did not respond before the timeout',
     match: /did not respond before the timeout|went silent for/i,
     diagnosis: 'The agent was still reading files or reasoning when the per-agent timeout (default 180 s) expired, or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree.',
-    remedy: 'Raise the timeout in this panel: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS (or the per-agent field on its card) → SAVE. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running room never sees a later export.',
+    remedy: 'Press the RAISE button on this card, or type a new number in ⚙ CONNECTIONS (DEFAULT TIMEOUT · SECONDS, or the field on the agent\'s card): fields save the moment you leave them. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running room never sees a later export.',
     fixes: {
       darwin: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', '# at launch only (env wins over config.json):', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 madre start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}'],
       linux: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 madre start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}'],
@@ -199,7 +199,7 @@ export const CONDITIONS = [
     title: 'Local token budget exhausted for an agent',
     match: /MADRE exhausted|local room token budget/i,
     diagnosis: 'The room keeps a soft per-agent budget (500,000 tokens by default) so one agent does not quietly eat a whole session. It is MADRE\'s own bookkeeping from the usage each CLI reports after a turn, not the provider\'s quota: nothing is blocked, the room only warns and suggests other agents. Cache reads weigh a tenth of a fresh token.',
-    remedy: 'Continue with another agent, or raise the budget in ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE (live, persisted). The provider\'s real limits show in each sphere\'s popover when the CLI reports them.',
+    remedy: 'Continue with another agent, press RAISE LOCAL BUDGET on this card, or type a number in ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT (saves on leaving the field). The provider\'s real limits show in each sphere\'s popover when the CLI reports them.',
     fixes: {
       darwin: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', '# at launch: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start', '# or ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}'],
       linux: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', 'PULSE_SOFT_TOKEN_BUDGET=1000000 madre start'],
