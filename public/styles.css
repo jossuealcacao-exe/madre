@@ -308,7 +308,9 @@ textarea::placeholder { color: var(--text-3); }
 .safety { margin: 14px auto 18px; color: var(--text-3); font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
 
 /* toast */
-.toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); padding: 9px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: var(--panel); color: var(--danger); font-size: 13px; box-shadow: var(--shadow); max-width: min(560px, calc(100% - 32px)); }
+.toast { position: fixed; left: 50%; bottom: calc(100vh - var(--composer-top, 70vh) + 22px); transform: translateX(-50%); padding: 9px 14px; animation: toast-in .22s ease; z-index: 40; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: var(--panel); color: var(--danger); font-size: 13px; box-shadow: var(--shadow); max-width: min(560px, calc(100% - 32px)); }
+
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 @media (max-width: 680px) {
   .bar { flex-wrap: wrap; gap: 10px; }
@@ -613,12 +615,15 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .create-toggle[aria-pressed="true"] .lock.closed { display: none; }
 .create-toggle[aria-pressed="true"] .lock.open { display: block; }
 /* ORDER 937: a bash prompt on a black terminal, Homebrew green. */
-.ashcode-toggle { height: 30px; padding: 0 10px 0 9px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--brew) 32%, transparent); background: #070907; color: color-mix(in srgb, var(--brew) 55%, #6c7a6c); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: none; cursor: pointer; align-self: center; display: inline-flex; align-items: center; gap: 6px; transition: color .2s, border-color .2s, box-shadow .2s; }
-.ashcode-toggle::before { content: '$'; color: color-mix(in srgb, var(--brew) 70%, transparent); font-weight: 700; }
-.ashcode-toggle::after { content: ''; width: 7px; height: 12px; background: currentColor; opacity: .55; margin-left: 1px; }
-.ashcode-toggle:hover { color: var(--brew); border-color: color-mix(in srgb, var(--brew) 60%, transparent); }
-.ashcode-toggle[aria-pressed="true"] { color: var(--brew); border-color: var(--brew); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brew) 25%, transparent), 0 0 18px color-mix(in srgb, var(--brew) 35%, transparent), inset 0 0 12px color-mix(in srgb, var(--brew) 12%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--brew) 70%, transparent); }
+/* Off: a dormant prompt, grey like the other idle controls. On: the terminal lights up. */
+.ashcode-toggle { height: 30px; padding: 0 10px 0 9px; border-radius: 7px; border: 1px dashed var(--line-2); background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: none; cursor: pointer; align-self: center; display: inline-flex; align-items: center; gap: 6px; opacity: .8; transition: color .2s, border-color .2s, box-shadow .2s, background .2s, opacity .2s; }
+.ashcode-toggle::before { content: '$'; color: var(--text-3); font-weight: 700; }
+.ashcode-toggle::after { content: ''; width: 7px; height: 12px; background: currentColor; opacity: .25; margin-left: 1px; }
+.ashcode-toggle:hover { opacity: 1; color: var(--text-2); border-color: var(--text-3); }
+.ashcode-toggle[aria-pressed="true"] { opacity: 1; border-style: solid; background: #070907; color: var(--brew); border-color: var(--brew); font-weight: 700; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brew) 25%, transparent), 0 0 18px color-mix(in srgb, var(--brew) 40%, transparent), inset 0 0 12px color-mix(in srgb, var(--brew) 14%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--brew) 70%, transparent); }
+.ashcode-toggle[aria-pressed="true"]::before { color: color-mix(in srgb, var(--brew) 75%, transparent); }
 .ashcode-toggle[aria-pressed="true"]::after { animation: cursor-blink 1s steps(1) infinite; opacity: 1; }
+.ashcode-toggle[aria-pressed="true"]:hover { color: var(--brew); border-color: var(--brew); }
 :root[data-theme="light"] .ashcode-toggle, .ashcode-toggle { /* stays a black terminal in every theme */ }
 
 /* With ORDER 937 lit, the field widens like CREATE and glows Homebrew green. */

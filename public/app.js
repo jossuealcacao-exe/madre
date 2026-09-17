@@ -127,7 +127,13 @@ function avatar(id, { size = 28, ring = false, pct = 0, status = 'ready' } = {})
 }
 
 let toastTimer;
+// The hint sits just above the composer, whatever its height right now.
+function placeToast() {
+  const top = els.composer?.getBoundingClientRect?.().top;
+  if (Number.isFinite(top) && top > 0 && document.documentElement?.style) document.documentElement.style.setProperty('--composer-top', `${Math.round(top)}px`);
+}
 function toast(message) {
+  placeToast();
   els.toast.textContent = message;
   els.toast.hidden = false;
   clearTimeout(toastTimer);
@@ -1384,6 +1390,8 @@ function setConnection(value) {
   els.connection.dataset.state = value;
   els.connection.querySelector('.connection-label').textContent = value;
 }
+if (typeof ResizeObserver === 'function' && els.composer) new ResizeObserver(placeToast).observe(els.composer);
+window.addEventListener?.('resize', placeToast);
 const stream = new EventSource(`/api/events?since=${state.lastSequence}`);
 stream.onopen = () => { setConnection('live'); replaying = false; };
 stream.onerror = () => setConnection('reconnecting');
