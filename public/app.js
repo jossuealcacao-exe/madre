@@ -129,8 +129,10 @@ function avatar(id, { size = 28, ring = false, pct = 0, status = 'ready' } = {})
 let toastTimer;
 // The hint sits just above the composer, whatever its height right now.
 function placeToast() {
-  const top = els.composer?.getBoundingClientRect?.().top;
-  if (Number.isFinite(top) && top > 0 && document.documentElement?.style) document.documentElement.style.setProperty('--composer-top', `${Math.round(top)}px`);
+  const rect = els.composer?.getBoundingClientRect?.();
+  if (!rect || !document.documentElement?.style) return;
+  if (Number.isFinite(rect.top) && rect.top > 0) document.documentElement.style.setProperty('--composer-top', `${Math.round(rect.top)}px`);
+  if (Number.isFinite(rect.left) && rect.width > 0) document.documentElement.style.setProperty('--composer-center', `${Math.round(rect.left + rect.width / 2)}px`);
 }
 function toast(message) {
   placeToast();
@@ -502,10 +504,28 @@ export function renderMarkdown(text) {
 
 /* ---------- agents bar, picker & onboarding ---------- */
 
+const fmtWindow = (minutes) => (!Number.isFinite(Number(minutes)) ? 'window' : Number(minutes) % 1440 === 0 ? `${Number(minutes) / 1440}d` : Number(minutes) % 60 === 0 ? `${Number(minutes) / 60}h` : `${minutes}m`);
+const fmtReset = (iso) => { if (!iso) return ''; const date = new Date(iso); if (Number.isNaN(date.getTime())) return ''; const sameDay = date.toDateString() === new Date().toDateString(); return sameDay ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : date.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
+// An official window whose reset time has passed counts as empty until the CLI reports again.
+function liveOfficial(agent) {
+  if (!Number.isFinite(agent.officialPercent)) return null;
+  if (agent.officialResetAt && new Date(agent.officialResetAt).getTime() <= Date.now()) return 0;
+  return agent.officialPercent;
+}
+function localPercent(agent) {
+  return state.budget && agent.tokens ? Math.min(100, (agent.tokens / state.budget) * 100) : 0;
+}
+// What the ring shows: the provider's real window when the CLI publishes one, else the local rolling window.
+function ringPercent(agent) {
+  const official = liveOfficial(agent);
+  return official === null ? localPercent(agent) : official;
+}
+
 function renderAgents() {
   els.agents.replaceChildren();
   for (const agent of state.agents.values()) {
-    const percent = state.budget && agent.tokens ? Math.min(100, (agent.tokens / state.budget) * 100) : 0;
+    const percent = ringPercent(agent);
+    const official = liveOfficial(agent);
     const node = avatar(agent.id, {
       size: 26,
       ring: agent.ready,
@@ -516,8 +536,10 @@ function renderAgents() {
       `${agent.label}${brandOf(agent.id).vendor ? ` · ${brandOf(agent.id).vendor}` : ''}`,
       agent.ready ? 'Ready' : agent.detected ? 'Detected, adapter pending' : 'Not installed',
       agent.version ? agent.version : null,
-      agent.tokens ? `${agent.tokens.toLocaleString()} local tokens · ${Math.round(percent)}% of local budget` : 'No local usage yet',
-      Number.isFinite(agent.officialPercent) ? `Provider quota ${Math.round(agent.officialPercent)}% used` : 'Provider quota not published',
+      official === null
+        ? (agent.tokens ? `Ring: local 5h window · ${Math.round(percent)}% of ${formatTokens(state.budget ?? 0)} budget tokens` : 'Ring: local window · no usage yet')
+        : `Ring: provider limit · ${Math.round(official)}% used${agent.officialResetAt ? ` · resets ${fmtReset(agent.officialResetAt)}` : ''}`,
+      agent.tokens ? `${agent.tokens.toLocaleString()} budget tokens in the local window` : null,
     ].filter(Boolean).join('\n');
     els.agents.append(node);
   }
@@ -852,9 +874,10 @@ function renderHandoff(event) {
   node.append(' → ');
   node.append(el('b', 'to', `@${toAgent}`));
   node.append(messageCount > 0
-    ? ` · ${messageCount} message${messageCount === 1 ? '' : 's'} carried${omittedMessages ? ` · ${omittedMessages} older omitted` : ''}`
+    ? ` · ${messageCount} message${messageCount === 1 ? '' : 's'} carried${omittedMessages ? ` · ${omittedMessages} older stay in the record` : ''}`
     : ' · no prior context');
   if (kind && kind !== 'automatic') node.append(` · ${kind}`);
+  node.title = `The receiving agent gets the most recent transcript that fits its context allowance (${omittedMessages ? `${omittedMessages} older messages did not fit; they remain in the room log` : 'everything fit'}). Adjust with PULSE_CONTEXT_MAX_CHARS.`;
   state.lastSender = null;
   return node;
 }
@@ -1085,7 +1108,8 @@ function applyUsage(event) {
   const { agent, usage, roomTotalTokens, responseMessageId } = event.payload;
   const entry = state.agents.get(agent);
   if (entry) {
-    entry.tokens = roomTotalTokens;
+    entry.tokens = event.payload.roomBudgetTokens ?? roomTotalTokens;
+    entry.rawTokens = roomTotalTokens;
     renderAgents();
   }
   const stamp = responseMessageId ? document.getElementById(`usage-${responseMessageId}`) : null;
@@ -1097,11 +1121,29 @@ function applyUsage(event) {
 }
 
 function applyQuota(event) {
-  const { agent, usedPercent } = event.payload;
+  const { agent, usedPercent, resetAt = null, windows = null, stale = false, observedAt = null, source } = event.payload;
   const entry = state.agents.get(agent);
   if (!entry) return;
   entry.officialPercent = usedPercent;
+  entry.officialResetAt = resetAt;
+  entry.officialWindows = windows;
+  entry.officialStale = stale;
+  entry.officialObservedAt = observedAt;
+  entry.officialSource = source;
   renderAgents();
+}
+
+function renderCleared(event) {
+  const { agent, usedPercent, source, message } = event.payload;
+  const node = el('div', 'system recovered');
+  node.append(el('b', null, 'clear · '), el('b', null, `@${agent} `), `${Math.round(usedPercent)}% of ${source === 'room-soft-budget' ? 'local window' : 'provider limit'} · window reset`);
+  node.title = message;
+  const entry = state.agents.get(agent);
+  if (entry && source !== 'room-soft-budget') { entry.officialPercent = usedPercent; entry.officialResetAt = event.payload.resetAt ?? null; }
+  renderAgents();
+  if (!replaying) toast(`MU/TH/UR › @${agent} limit window reset · ${Math.round(usedPercent)}% used now.`);
+  state.lastSender = null;
+  return node;
 }
 
 function renderEvent(event) {
@@ -1139,6 +1181,7 @@ function renderEventNode(event) {
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'limit.warning': node = renderWarning(event); break;
+    case 'limit.cleared': node = renderCleared(event); break;
     case 'usage.recorded': applyUsage(event); return;
     case 'quota.updated': applyQuota(event); return;
     case 'extension.install.started':
@@ -1373,9 +1416,22 @@ state.projectRoot = initial.projectRoot ?? '';
 for (const plan of initial.plans ?? []) state.plansRunning.add(plan.planId);
 updateStopAll();
 for (const agent of initial.agents) {
-  state.agents.set(agent.id, { ...agent, tokens: 0, officialPercent: null });
+  const window = initial.budgetWindow?.[agent.id];
+  state.agents.set(agent.id, { ...agent, tokens: window?.tokens ?? 0, rawTokens: window?.rawTokens ?? 0, windowMs: window?.windowMs ?? null, rollsOverAt: window?.rollsOverAt ?? null, officialPercent: null, officialResetAt: null, officialWindows: null });
   if (agent.ready) els.target.add(new Option(agent.label, agent.id));
 }
+// Windows roll over without anyone typing: re-read the room's view every minute.
+async function refreshBudgetWindow() {
+  try {
+    const data = await fetch('/api/state').then((response) => response.json());
+    for (const [id, window] of Object.entries(data.budgetWindow ?? {})) {
+      const entry = state.agents.get(id);
+      if (entry) { entry.tokens = window.tokens; entry.rawTokens = window.rawTokens; entry.rollsOverAt = window.rollsOverAt; }
+    }
+    renderAgents();
+  } catch { /* offline; the stream will tell */ }
+}
+if (typeof setInterval === 'function') { const ticker = setInterval(refreshBudgetWindow, 60000); ticker.unref?.(); }
 if (!els.target.options.length) els.target.add(new Option('No agent ready', ''));
 renderAgents();
 renderPicker();
@@ -2258,7 +2314,9 @@ function openAgentPop(id, anchor) {
   if (!agent) return;
   const stats = statsFor(id);
   const session = state.sessions?.[id];
-  const percent = state.budget && agent.tokens ? Math.min(100, (agent.tokens / state.budget) * 100) : 0;
+  const percent = localPercent(agent);
+  const official = liveOfficial(agent);
+  const shown = ringPercent(agent);
   paint(pop, id);
   pop.replaceChildren();
   const head = el('div', 'head');
@@ -2266,26 +2324,36 @@ function openAgentPop(id, anchor) {
   head.append(el('b', null, agent.label));
   head.append(el('span', 'vendor', brandOf(id).vendor));
   pop.append(head);
-  const big = el('div', 'big', formatTokens(agent.tokens ?? 0) || '0');
-  big.append(el('small', null, `tokens · this room`));
+  const big = el('div', 'big', official === null ? (formatTokens(agent.tokens ?? 0) || '0') : `${Math.round(official)}%`);
+  big.append(el('small', null, official === null ? 'budget tokens · local 5h window' : `of the provider's ${fmtWindow(agent.officialWindows?.primary?.windowMinutes ?? 300)} limit${agent.officialResetAt ? ` · resets ${fmtReset(agent.officialResetAt)}` : ' · window reset'}`));
   pop.append(big);
-  const gauge = el('div', `gauge${percent >= 80 ? ' hot' : ''}`);
-  const fill = el('i'); fill.style.width = `${percent}%`; gauge.append(fill);
+  const gauge = el('div', `gauge${shown >= 80 ? ' hot' : ''}`);
+  const fill = el('i'); fill.style.width = `${shown}%`; gauge.append(fill);
   pop.append(gauge);
   const dl = el('dl');
   const row = (k, v, cls) => { dl.append(el('dt', null, k)); dl.append(el('dd', cls, v)); };
-  row('local budget', state.budget ? `${Math.round(percent)}% of ${formatTokens(state.budget)}` : 'unbounded');
+  if (agent.officialWindows) {
+    const { primary, secondary } = agent.officialWindows;
+    if (primary) row(`${fmtWindow(primary.windowMinutes)} limit`, primary.resetAt ? `${Math.round(primary.usedPercent)}% · resets ${fmtReset(primary.resetAt)}` : `${Math.round(primary.usedPercent)}% · reset, awaiting fresh data`, primary.usedPercent >= 80 ? 'off' : null);
+    if (secondary) row(`${fmtWindow(secondary.windowMinutes)} limit`, `${Math.round(secondary.usedPercent)}%${secondary.resetAt ? ` · resets ${fmtReset(secondary.resetAt)}` : ''}`, secondary.usedPercent >= 80 ? 'off' : null);
+    if (agent.officialObservedAt) row('reported', `${fmtReset(agent.officialObservedAt)} by ${agent.officialSource?.replace('official:', '') ?? 'the CLI'}`);
+  } else if (Number.isFinite(agent.officialPercent)) {
+    row('provider limit', `${Math.round(official ?? 0)}% used`);
+  } else {
+    row('provider limit', 'not published by this CLI · ring shows the local window');
+  }
+  row('local window', state.budget ? `${Math.round(percent)}% of ${formatTokens(state.budget)} · 5h rolling${agent.rollsOverAt ? ` · oldest turn drops ${fmtReset(agent.rollsOverAt)}` : ''}` : 'unbounded');
+  if (agent.rawTokens) row('all-time in room', `${formatTokens(agent.rawTokens)} tok`);
   row('turns', String(stats.turns));
   row('last turn', `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)} tok` : ''}`);
   if (stats.cost > 0) row('cost (reported)', `$${stats.cost.toFixed(2)}`);
   row('session', session ? session.state.replace('-', ' ') : agent.ready ? 'unknown' : 'not ready', session?.state === 'signed-in' ? 'on' : session?.state === 'signed-out' ? 'off' : null);
   if (session?.detail) row('via', session.detail);
-  row('provider quota', Number.isFinite(agent.officialPercent) ? `${Math.round(agent.officialPercent)}% used` : 'not published');
   row('timeout', `${Math.round((state.timeouts[id] ?? 180000) / 1000)}s`);
   if (agent.version) row('version', agent.version);
   pop.append(dl);
   pop.append(capabilityBadges(id));
-  pop.append(el('div', 'foot', 'local counts, not the provider\'s bill · ⚙ connections in MU/TH/UR'));
+  pop.append(el('div', 'foot', official === null ? 'local window, not the provider\'s bill · ⚙ connections in MU/TH/UR' : 'provider limit as the CLI reports it · ⚙ connections in MU/TH/UR'));
   pop.hidden = false;
   const rect = anchor.getBoundingClientRect();
   const width = pop.offsetWidth || 260;

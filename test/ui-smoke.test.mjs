@@ -172,7 +172,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(clickHandler, 'sphere click handler installed');
   clickHandler({ target: { closest: () => sphere } });
   assert.equal(popup.hidden, false);
-  assert.match(popup.textContent, /tokens · this room/);
+  assert.match(popup.textContent, /of the provider's [0-9]*[hd] limit|budget tokens · local 5h window/);
   assert.match(popup.textContent, /turns/);
   const statsText = popup.textContent;
   assert.ok(/\d+/.test(statsText));

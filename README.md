@@ -58,13 +58,17 @@ La ventana predeterminada es de 16,000 caracteres y puede ajustarse con `PULSE_C
 
 ## Centinela de límites
 
-Cuando un CLI expone telemetría de tokens por turno, MADRE la registra y la compara con un presupuesto local de la sala. Avisa al 80%, escala a crítico al 90% y marca agotado al 100%, recomendando otro agente que esté listo. También proyecta: si otro turno del mismo tamaño que el último cruzaría un umbral, avisa un turno antes. El presupuesto predeterminado es de 500,000 tokens (un turno real de consulta con contexto cuesta entre 10,000 y 60,000) y puede ajustarse con `PULSE_SOFT_TOKEN_BUDGET`.
+Cada esfera de la barra lleva un anillo. Muestra el **límite real del proveedor** cuando el CLI lo publica, y si no, la **ventana local** de MADRE.
 
-El presupuesto local no es la cuota oficial de la cuenta. MADRE solo mostrará un porcentaje del proveedor cuando exista una fuente fiable para ese dato; nunca lo inferirá a partir de tokens locales. El endpoint `/api/test/limits` sirve para pruebas controladas y solo existe al iniciar con `PULSE_TEST_MODE=1`.
+- **Codex** escribe en cada rollout de sesión (`~/.codex/sessions`) sus dos ventanas de cuenta, 5 horas y semanal, con porcentaje usado y hora de reinicio. MADRE lee el más reciente; no hay red de por medio.
+- **Claude Code** obtiene `/usage` del endpoint OAuth de Anthropic. Con `PULSE_CLAUDE_USAGE=1`, MADRE consulta el mismo endpoint con el token que Claude Code guarda en el llavero (macOS, que puede pedir permiso una vez) o en `~/.claude/.credentials.json`; el token solo viaja a `api.anthropic.com`, como hace el propio CLI. Es opcional porque implica leer una credencial del llavero. `PULSE_OFFICIAL_QUOTA=0` desactiva todas las lecturas de proveedor.
+- **Gemini y OpenCode** no publican nada localmente: su anillo es la ventana local.
 
-Las fuentes oficiales de cuota se conectan como lectores opcionales y pueden devolver `null` cuando el proveedor no publique el dato. MADRE las consulta periódicamente, conserva cada lectura válida como `quota.updated` y alimenta el centinela con la procedencia `official:<fuente>`. No hay scraping ni conversión de tokens locales a cuota oficial.
+La ventana local es un presupuesto blando por agente (500 000 tokens de presupuesto por defecto) sobre una **ventana rodante de 5 horas**, como las ventanas cortas de los proveedores: los turnos salen del cómputo cuando envejecen, así que el anillo baja solo. Las lecturas de caché pesan una décima parte. Es contabilidad de MADRE, no la factura: solo avisa, al 80 %, 90 % y 100 %, y sugiere otros agentes.
 
-Un lector implementa `{ id, agent, read() }`; `read()` devuelve `null` o `{ usedPercent, resetAt }`. Las versiones locales detectadas de Codex y OpenCode no exponen actualmente un comando CLI estable de cuota oficial, por lo que MADRE no activa ningún lector predeterminado. `opencode stats` es estadística local y no se trata como cuota de proveedor.
+Una ventana cuya hora de reinicio ya pasó cuenta como vacía aunque el CLI no haya vuelto a escribir (Codex solo actualiza sus límites cuando corre). El monitor vuelve a leer las fuentes cada minuto y justo después de cada reinicio, y cuando una ventana llena vuelve a la normalidad la sala lo anuncia con `limit.cleared`, para que un anillo lleno se vacíe a tiempo. Al hacer clic en una esfera se ven ambas ventanas, sus horas de reinicio y de dónde salió el dato.
+
+Un lector de cuota implementa `{ id, agent, read() }`; `read()` devuelve `null` o `{ usedPercent, resetAt, windows?, stale? }`. MADRE nunca infiere la cuota del proveedor a partir de tokens locales.
 
 ## Delegación entre agentes
 

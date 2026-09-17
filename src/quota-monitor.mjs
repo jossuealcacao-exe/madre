@@ -60,8 +60,12 @@ export class QuotaMonitor {
           usedPercent,
           resetAt: value.resetAt ?? null,
           source: `official:${source.id}`,
+          windows: value.windows ?? null,
+          stale: Boolean(value.stale),
+          observedAt: value.observedAt ?? null,
         };
         await this.#onReport(report);
+        this.#armReset(report.resetAt);
         this.#status.set(source.id, {
           id: source.id,
           agent,
@@ -84,6 +88,20 @@ export class QuotaMonitor {
     return this.#polling;
   }
 
+  // A window that resets while the room is open: ask again right after, so
+  // a full ring empties on time instead of at the next minute tick.
+  #resetTimer = null;
+  #armReset(resetAt) {
+    if (!resetAt) return;
+    const delay = new Date(resetAt).getTime() - Date.now() + 2000;
+    if (!Number.isFinite(delay) || delay <= 0 || delay > 7 * 24 * 3600 * 1000) return;
+    if (this.#resetTimer && this.#resetTimer.at <= new Date(resetAt).getTime() + 2000) return;
+    clearTimeout(this.#resetTimer?.timer);
+    const timer = setTimeout(() => { this.#resetTimer = null; void this.poll(); }, delay);
+    timer.unref?.();
+    this.#resetTimer = { timer, at: new Date(resetAt).getTime() + 2000 };
+  }
+
   async start() {
     await this.poll();
     if (this.#sources.length && Number.isFinite(this.#intervalMs) && this.#intervalMs > 0) {
@@ -95,5 +113,7 @@ export class QuotaMonitor {
   stop() {
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = null;
+    clearTimeout(this.#resetTimer?.timer);
+    this.#resetTimer = null;
   }
 }

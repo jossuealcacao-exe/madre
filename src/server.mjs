@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { detectAgents } from './runtime-detection.mjs';
 import { EventStore } from './event-store.mjs';
 import { QuotaMonitor } from './quota-monitor.mjs';
+import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
@@ -68,6 +69,8 @@ export async function createPulseServer({
   testMode = process.env.PULSE_TEST_MODE === '1',
   softTokenBudget = Number(process.env.PULSE_SOFT_TOKEN_BUDGET ?? 500000),
   contextMaxChars = Number(process.env.PULSE_CONTEXT_MAX_CHARS ?? 16000),
+  // Real limits per CLI where the CLI publishes them. Only the CLI entry
+  // point (startPulse) turns them on; tests and embedders pass their own.
   quotaSources = [],
   quotaPollIntervalMs = Number(process.env.PULSE_QUOTA_POLL_INTERVAL_MS ?? 60000),
   broadcastIntervalMs = Number(process.env.PULSE_BROADCAST_INTERVAL_MS ?? 500),
@@ -392,6 +395,7 @@ export async function createPulseServer({
           sessionsAt,
           capabilities: room.capabilities(),
           quotaSources: quotaMonitor.snapshot(),
+          budgetWindow: room.budgetWindow(),
           events: await store.readAll(),
         });
       }
@@ -560,7 +564,7 @@ export async function createPulseServer({
 }
 
 export async function startPulse({ port, projectRoot, openBrowser }) {
-  const { server, agents } = await createPulseServer({ projectRoot });
+  const { server, agents } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources() });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);

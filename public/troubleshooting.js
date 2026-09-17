@@ -185,6 +185,15 @@ export const CONDITIONS = [
     },
   },
   {
+    id: 'limits-real',
+    severity: 'informational',
+    title: 'Where the rings get their numbers',
+    match: /ring|quota|limit window|resets|rollout|oauth usage|window reset|limits-real/i,
+    diagnosis: 'Each sphere\'s ring shows the provider\'s real limit when the CLI publishes it: Codex writes its 5-hour and weekly windows (used %, reset time) into every session rollout under ~/.codex/sessions; Claude Code\'s /usage comes from Anthropic\'s OAuth usage endpoint; MADRE can ask it with the token Claude Code keeps in the keychain when you start with PULSE_CLAUDE_USAGE=1 (macOS may ask once to allow the keychain read). Gemini and OpenCode publish nothing locally, so their ring shows MADRE\'s own rolling 5-hour window of budget tokens. A window whose reset time has passed counts as empty until the CLI reports again, and the sentinel says "clear" when a full window resets.',
+    remedy: 'Click a sphere to see both windows and when they reset. If a ring looks stale, run one turn with that agent: Codex only rewrites its limits when it runs. Set PULSE_OFFICIAL_QUOTA=0 to stop reading provider limits altogether.',
+    fixes: same(['# click the sphere → 5h / 7d windows and reset times', 'PULSE_CLAUDE_USAGE=1 madre start     # also read Claude Code\'s usage windows', 'PULSE_OFFICIAL_QUOTA=0 madre start   # local window only']),
+  },
+  {
     id: 'budget-exhausted',
     severity: 'tunable',
     title: 'Local token budget exhausted for an agent',

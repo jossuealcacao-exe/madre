@@ -33,6 +33,11 @@ export class UsageSentinel {
     const key = `${agent}:${source}`;
     const previous = this.#lastLevel.get(key) ?? 'normal';
     this.#lastLevel.set(key, level);
+    // Back below the warning line after having crossed it: the window reset
+    // (or the provider forgave). Worth a word, so full rings can empty.
+    if (level === 'normal' && severity[previous] >= severity.warning) {
+      return { agent, usedPercent: percent, projectedPercent: projected, level, source, resetAt, alternatives, cleared: true, message: `MADRE clear: @${agent} is back at ${Math.round(percent)}% of its ${source === 'room-soft-budget' ? 'local window' : 'provider window'}.` };
+    }
     if (level === 'normal' || severity[level] <= severity[previous]) return null;
 
     const destination = alternatives.length

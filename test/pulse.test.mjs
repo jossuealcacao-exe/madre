@@ -2192,9 +2192,11 @@ test('polls available official quota sources and restores sentinel state', async
   const source = {
     id: 'codex-account',
     agent: 'codex',
-    read: async () => ({ usedPercent, resetAt: '2026-09-16T00:00:00.000Z' }),
+    // A reset time far ahead: an expired window would (rightly) be treated as empty.
+    read: async () => ({ usedPercent, resetAt: '2099-01-01T00:00:00.000Z' }),
   };
 
+  const open = [];
   try {
     const first = await createPulseServer({
       projectRoot: root,
@@ -2203,6 +2205,7 @@ test('polls available official quota sources and restores sentinel state', async
       quotaSources: [source],
       quotaPollIntervalMs: 0,
     });
+    open.push(first.server);
     await new Promise((resolve) => first.server.listen(0, '127.0.0.1', resolve));
     assert.deepEqual(first.quotaMonitor.snapshot(), [{
       id: 'codex-account',
@@ -2226,12 +2229,15 @@ test('polls available official quota sources and restores sentinel state', async
       quotaSources: [source],
       quotaPollIntervalMs: 0,
     });
+    open.push(second.server);
     await new Promise((resolve) => second.server.listen(0, '127.0.0.1', resolve));
     events = await second.store.readAll();
     assert.equal(events.filter((event) => event.type === 'quota.updated').length, 2);
     assert.equal(events.filter((event) => event.type === 'limit.warning').length, 1);
     await new Promise((resolve) => second.server.close(resolve));
   } finally {
+    // Close whatever is still listening, or a failed assertion leaves the broadcaster ticking forever.
+    await Promise.all(open.map((server) => new Promise((resolve) => (server.listening ? server.close(resolve) : resolve()))));
     await rm(root, { recursive: true, force: true });
   }
 });
@@ -2471,6 +2477,85 @@ test('standing lease: an agent opted in creates files on every turn, and a creat
     assert.ok(seen.codex.lease);
     assert.equal(seen.codex.lease.scopeCeiling.imageGen, false);
     assert.equal(seen.codex.lease.scopes.imageGen, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+// ---------- real limits: Codex rollouts, Claude usage endpoint, expired windows ----------
+import { interpretWindow, readClaudeUsage, readCodexRateLimits, windowLabel } from '../src/quota-sources.mjs';
+
+test('readCodexRateLimits takes the newest populated rate_limits and empties a window whose reset has passed', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'pulse-codex-home-'));
+  try {
+    const day = join(home, 'sessions', '2026', '09', '16');
+    await mkdir(day, { recursive: true });
+    const now = Date.parse('2026-09-17T12:00:00Z');
+    const line = (rateLimits, ts) => JSON.stringify({ timestamp: ts, type: 'event_msg', payload: { type: 'token_count', rate_limits: rateLimits } });
+    await writeFile(join(day, 'rollout-a.jsonl'), [
+      line({ primary: { used_percent: 20, window_minutes: 300, resets_at: 1789500000 }, secondary: { used_percent: 30, window_minutes: 10080, resets_at: 1789844305 } }, '2026-09-16T10:00:00Z'),
+      line({ primary: { used_percent: 99, window_minutes: 300, resets_at: Math.floor(now / 1000) - 60 }, secondary: { used_percent: 79, window_minutes: 10080, resets_at: Math.floor(now / 1000) + 200000 } }, '2026-09-16T21:20:48Z'),
+      JSON.stringify({ timestamp: '2026-09-16T21:20:49Z', type: 'event_msg', payload: { type: 'token_count', rate_limits: { primary: null, secondary: null } } }),
+    ].join('\n'));
+    const report = await readCodexRateLimits({ home, now });
+    assert.equal(report.agent, 'codex');
+    assert.equal(report.windows.primary.usedPercent, 0, 'the 5h window reset a minute ago, so it counts as empty');
+    assert.equal(report.windows.primary.stale, true);
+    assert.equal(report.windows.secondary.usedPercent, 79);
+    assert.equal(report.usedPercent, 79, 'the ring shows the worst live window');
+    assert.equal(report.observedAt, '2026-09-16T21:20:48Z');
+    assert.equal(await readCodexRateLimits({ home: join(home, 'nope'), now }), null);
+    assert.equal(windowLabel(300), '5h');
+    assert.equal(windowLabel(10080), '7d');
+    assert.deepEqual(interpretWindow({ usedPercent: 50, resetAt: new Date(now + 1000).toISOString() }, now).stale, false);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('readClaudeUsage reads five-hour and seven-day windows with the CLI token, and fails loudly on a rejected token', async () => {
+  const now = Date.parse('2026-09-17T12:00:00Z');
+  const usage = await readClaudeUsage({
+    now,
+    tokenReader: async () => 'tok',
+    fetchImpl: async (url, init) => {
+      assert.match(url, /api\.anthropic\.com\/api\/oauth\/usage$/);
+      assert.equal(init.headers.authorization, 'Bearer tok');
+      return { ok: true, status: 200, json: async () => ({ five_hour: { utilization: 42, resets_at: new Date(now + 3600e3).toISOString() }, seven_day: { utilization: 61, resets_at: new Date(now + 86400e3).toISOString() } }) };
+    },
+  });
+  assert.equal(usage.agent, 'claude');
+  assert.equal(usage.usedPercent, 61);
+  assert.equal(usage.windows.primary.usedPercent, 42);
+  assert.equal(await readClaudeUsage({ tokenReader: async () => null }), null, 'no token, nothing to report');
+  await assert.rejects(readClaudeUsage({ tokenReader: async () => 'bad', fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({}) }) }), /rejected the Claude Code token/);
+});
+
+test('the sentinel announces a cleared window and the room records limit.cleared', async () => {
+  const sentinel = new UsageSentinel();
+  assert.equal(sentinel.evaluate({ agent: 'codex', usedPercent: 99, source: 'official:x' }).level, 'critical');
+  const cleared = sentinel.evaluate({ agent: 'codex', usedPercent: 3, source: 'official:x' });
+  assert.equal(cleared.cleared, true);
+  assert.match(cleared.message, /back at 3%/);
+  assert.equal(sentinel.evaluate({ agent: 'codex', usedPercent: 4, source: 'official:x' }), null, 'staying normal is silent');
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-cleared-'));
+  try {
+    const store = new EventStore(join(root, 'events.jsonl'));
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+    const room = new Room({ store, agents, projectRoot: root, invokers: {} });
+    await room.reportOfficialQuota({ agent: 'codex', usedPercent: 95, source: 'official:codex-rollout', resetAt: new Date(Date.now() + 60000).toISOString(), windows: { primary: { usedPercent: 95 } } });
+    await room.reportOfficialQuota({ agent: 'codex', usedPercent: 0, source: 'official:codex-rollout', resetAt: null, stale: true });
+    const events = await store.readAll();
+    assert.equal(events.filter((event) => event.type === 'limit.warning').length, 1);
+    const clear = events.find((event) => event.type === 'limit.cleared');
+    assert.ok(clear, 'a reset window is announced');
+    assert.equal(clear.payload.agent, 'codex');
+    assert.equal(events.find((event) => event.type === 'quota.updated').payload.windows.primary.usedPercent, 95);
+
+    // A restarted room does not seed a full ring from a report whose window has since reset.
+    const seeded = new Room({ store, agents, projectRoot: root, invokers: {} });
+    assert.deepEqual(Object.keys(seeded.budgetWindow()), ['codex']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

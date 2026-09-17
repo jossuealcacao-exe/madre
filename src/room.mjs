@@ -58,6 +58,10 @@ export class Room {
   #tokenTotals = new Map();
   #softTokenBudget;
   #rawTokenTotals = new Map();
+  // Local budget is a rolling window (5 h, like the providers' short windows):
+  // per agent, the turns inside the window with their budget cost.
+  #usageWindow = new Map();
+  #windowMs = Number(process.env.PULSE_BUDGET_WINDOW_MS ?? 5 * 3600 * 1000);
   #contextMaxChars;
   #invokers;
   #agentTimeouts;
@@ -103,13 +107,20 @@ export class Room {
 
     for (const event of historicalEvents) {
       if (event.type === 'usage.recorded') {
-        this.#tokenTotals.set(event.payload.agent, event.payload.roomBudgetTokens ?? event.payload.roomTotalTokens);
         this.#rawTokenTotals.set(event.payload.agent, event.payload.roomTotalTokens);
+        const at = new Date(event.timestamp ?? 0).getTime() || 0;
+        const spent = event.payload.budgetTokens ?? budgetTokens(event.payload.usage ?? {});
+        const list = this.#usageWindow.get(event.payload.agent) ?? [];
+        list.push({ at, spent });
+        this.#usageWindow.set(event.payload.agent, list);
       }
       if (event.type === 'quota.updated' || event.type === 'limit.warning') {
-        this.#sentinel.seed(event.payload);
+        // An old report whose window has since reset must not seed a full ring.
+        const passed = event.payload.resetAt && new Date(event.payload.resetAt).getTime() <= Date.now();
+        this.#sentinel.seed(passed ? { ...event.payload, usedPercent: 0 } : event.payload);
       }
     }
+    for (const agent of this.#usageWindow.keys()) this.#tokenTotals.set(agent, this.#windowTotal(agent));
     for (const [agent, total] of this.#tokenTotals) {
       if (Number.isFinite(this.#softTokenBudget) && this.#softTokenBudget > 0) {
         this.#sentinel.seed({
@@ -146,11 +157,12 @@ export class Room {
       .filter((item) => item.ready && item.id !== agent)
       .map((item) => item.id);
     const warning = this.#sentinel.evaluate({ agent, usedPercent, source, resetAt, alternatives, projectedPercent });
+    if (warning?.cleared) { await this.#emit('limit.cleared', warning); return null; }
     if (warning) await this.#emit('limit.warning', warning);
     return warning;
   }
 
-  async reportOfficialQuota({ agent, usedPercent, source, resetAt = null }) {
+  async reportOfficialQuota({ agent, usedPercent, source, resetAt = null, windows = null, stale = false, observedAt = null }) {
     const percent = Number(usedPercent);
     if (!agent || !source || !Number.isFinite(percent)) {
       throw new Error('Official quota reports require an agent, source, and numeric usedPercent.');
@@ -160,22 +172,45 @@ export class Room {
       usedPercent: Math.max(0, Math.min(100, percent)),
       source,
       resetAt,
+      windows: windows ?? undefined,
+      stale: stale || undefined,
+      observedAt: observedAt ?? undefined,
       official: true,
     };
     await this.#emit('quota.updated', report);
     return this.reportLimit(report);
   }
 
+  // Budget tokens spent by an agent inside the rolling window, dropping what fell out.
+  #windowTotal(agent, now = Date.now()) {
+    const list = (this.#usageWindow.get(agent) ?? []).filter((entry) => now - entry.at < this.#windowMs);
+    this.#usageWindow.set(agent, list);
+    return list.reduce((sum, entry) => sum + entry.spent, 0);
+  }
+
+  // The local window as the UI should see it now: totals recomputed so a ring
+  // empties when the window rolls over, even without a new turn.
+  budgetWindow() {
+    const now = Date.now();
+    return Object.fromEntries(this.#agents.map((agent) => {
+      const total = this.#windowTotal(agent.id, now);
+      const oldest = (this.#usageWindow.get(agent.id) ?? [])[0]?.at ?? null;
+      return [agent.id, { tokens: total, rawTokens: this.#rawTokenTotals.get(agent.id) ?? 0, windowMs: this.#windowMs, rollsOverAt: oldest ? new Date(oldest + this.#windowMs).toISOString() : null }];
+    }));
+  }
+
   async #recordUsage(agent, usage, { messageId = null, responseMessageId = null } = {}) {
     if (!usage) return;
-    const previous = this.#tokenTotals.get(agent) ?? 0;
     const spent = budgetTokens(usage);
-    const total = previous + spent;
+    const list = this.#usageWindow.get(agent) ?? [];
+    list.push({ at: Date.now(), spent });
+    this.#usageWindow.set(agent, list);
+    const total = this.#windowTotal(agent);
     this.#tokenTotals.set(agent, total);
     const rawPrevious = this.#rawTokenTotals.get(agent) ?? 0;
     const rawTotal = rawPrevious + (usage.totalTokens ?? 0);
     this.#rawTokenTotals.set(agent, rawTotal);
-    await this.#emit('usage.recorded', { agent, usage, roomTotalTokens: rawTotal, roomBudgetTokens: total, budgetTokens: spent, messageId, responseMessageId });
+    await this.#emit('usage.recorded', { agent, usage, roomTotalTokens: rawTotal, roomBudgetTokens: total, budgetTokens: spent, windowMs: this.#windowMs, messageId, responseMessageId });
     if (Number.isFinite(this.#softTokenBudget) && this.#softTokenBudget > 0) {
       await this.reportLimit({
         agent,
