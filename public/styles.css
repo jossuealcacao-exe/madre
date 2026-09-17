@@ -267,6 +267,38 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .system .from { color: var(--from, var(--text-2)); } .system .to { color: var(--to, var(--text-2)); }
 .system.warn { color: var(--warn); }
 .system.memory { color: var(--text-3); } .system.memory .who { color: var(--agent, var(--text-2)); }
+
+/* NOSTROMO: the archive as a small solar system. One colour per kind of memory. */
+:root { --mem-decision: #ffb000; --mem-fact: #9bff66; --mem-preference: #d78cff; --mem-question: #5fd6ff; --nostromo-sun: #ff2a1f; }
+.nostromo-button { color: var(--terror); border-color: color-mix(in srgb, var(--terror) 55%, transparent); }
+.nostromo-button:hover { background: color-mix(in srgb, var(--terror) 14%, transparent); }
+dialog.nostromo { color: #eef1ea; }
+dialog.nostromo::backdrop { background: #000; }
+.nostromo-frame { --ph: #ffb4ad; --ph-dim: rgba(255, 42, 31, .55); --ph-faint: rgba(255, 42, 31, .16); position: relative; height: 100%; background: #030203; font-family: var(--mono); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.nostromo-head { display: grid; grid-template-columns: auto 1fr auto auto; gap: 18px; align-items: center; padding: 18px 26px 14px; border-bottom: 1px solid var(--ph-faint); color: var(--ph); position: relative; z-index: 2; }
+.nostromo-head .mother-title { color: var(--nostromo-sun); text-shadow: 0 0 18px color-mix(in srgb, var(--nostromo-sun) 60%, transparent); }
+.nostromo-head .mother-sub { color: var(--ph-dim); }
+.nostromo-legend { display: flex; gap: 8px; }
+.nostromo-legend .k { font-size: 9px; letter-spacing: .16em; padding: 3px 8px; border: 1px solid; border-radius: 999px; }
+.nostromo-legend .k.decision { color: var(--mem-decision); } .nostromo-legend .k.fact { color: var(--mem-fact); } .nostromo-legend .k.preference { color: var(--mem-preference); } .nostromo-legend .k.question { color: var(--mem-question); }
+.nostromo-frame .mother-close { color: var(--ph); border-color: var(--ph-dim); }
+.nostromo-frame .mother-close:hover { background: var(--ph-faint); }
+.nostromo-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.nostromo-canvas.over { cursor: pointer; }
+.nostromo-card { position: absolute; right: 26px; top: 96px; width: min(380px, calc(100vw - 52px)); padding: 18px 20px 16px; background: rgba(6, 3, 4, .92); border: 1px solid var(--kind, var(--ph-dim)); box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 0 40px color-mix(in srgb, var(--kind, var(--nostromo-sun)) 25%, transparent); backdrop-filter: blur(8px); display: grid; gap: 12px; z-index: 3; animation: mother-on .3s ease; }
+.nostromo-card header { display: flex; justify-content: space-between; align-items: center; }
+.nostromo-card .kind { font-size: 10px; letter-spacing: .22em; color: var(--kind, var(--ph)); text-shadow: 0 0 10px color-mix(in srgb, var(--kind, var(--ph)) 55%, transparent); }
+.nostromo-card .text { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-size: 14px; line-height: 1.5; color: #eef1ea; }
+.nostromo-card .meta { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 10px; letter-spacing: .1em; }
+.nostromo-card .meta dt { color: var(--ph-dim); } .nostromo-card .meta dd { margin: 0; color: #c9c2bf; }
+.nostromo-card .forget { border: 1px solid var(--nostromo-sun); background: transparent; color: var(--nostromo-sun); font: inherit; font-size: 10px; letter-spacing: .18em; padding: 9px 12px; cursor: pointer; transition: background .2s; }
+.nostromo-card .forget:hover { background: color-mix(in srgb, var(--nostromo-sun) 14%, transparent); }
+.nostromo-card .forget.confirm { background: var(--nostromo-sun); color: #fff3f1; animation: blink 1s steps(1) infinite; }
+.nostromo-card .forget:disabled { opacity: .5; cursor: default; animation: none; }
+.nostromo-card .foot { margin: 0; font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); line-height: 1.5; }
+.nostromo-empty { position: absolute; inset: 50% 0 auto 0; margin: 0; text-align: center; font-size: 11px; letter-spacing: .22em; color: var(--ph-dim); }
+@media (max-width: 720px) { .nostromo-head { grid-template-columns: auto 1fr auto; } .nostromo-legend { display: none; } .nostromo-card { right: 16px; left: 16px; width: auto; } }
+.system.memory.forgotten { color: var(--terror); }
 .system.crit { color: var(--crit); }
 .system.fail { color: var(--danger); text-transform: none; letter-spacing: 0; font-size: 11px; }
 .system.fail .label { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; display: block; opacity: .8; margin-bottom: 2px; }

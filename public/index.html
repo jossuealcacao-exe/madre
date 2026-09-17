@@ -69,6 +69,7 @@
             <span class="mother-sub">MADRE · INTERFACE 2037 · TROUBLESHOOTING</span>
             <span class="mother-actions">
               <button id="mother-settings-button" class="mother-close" type="button" aria-pressed="false" title="Connections and room settings">⚙ CONNECTIONS</button>
+              <button id="nostromo-button" class="mother-close nostromo-button" type="button" title="NOSTROMO · memory research · needs the project designation">◉ NOSTROMO</button>
               <button id="mother-close" class="mother-close" type="button">END SESSION ×</button>
             </span>
           </header>
@@ -152,6 +153,52 @@
           </form>
           <p class="mother-answer override-reply" id="override-reply" aria-live="polite"></p>
           <footer class="mother-foot">CONTROL IS NEVER DELEGATED · EVERY TURN IS CHECKPOINTED · STOPALL REVOKES IT</footer>
+        </div>
+      </dialog>
+      <dialog id="nostromo-gate" class="mother override" aria-label="NOSTROMO access">
+        <div class="mother-frame override-frame">
+          <header class="mother-head">
+            <span class="mother-title">NOSTROMO</span>
+            <span class="mother-sub">MEMORY RESEARCH · ACCESS CONTROL</span>
+            <button id="nostromo-gate-cancel" class="mother-close" type="button">CANCEL ×</button>
+          </header>
+          <p class="mother-answer" id="nostromo-gate-brief">THE ARCHIVE OF THIS ROOM: EVERY MEMORY THE CREW DISTILLED, LINKED BY WHAT THEY SHARE. READING IS FREE; FORGETTING IS FOREVER. TYPE THE PROJECT DESIGNATION TO BOARD.</p>
+          <form id="nostromo-gate-form" class="mother-query override-query">
+            <span class="k">DESIGNATION ›</span>
+            <input id="nostromo-gate-input" autocomplete="off" spellcheck="false" placeholder="type the current project's folder name to board">
+            <button type="submit" class="mother-close">BOARD</button>
+          </form>
+          <p class="mother-answer override-reply" id="nostromo-gate-reply" aria-live="polite"></p>
+          <footer class="mother-foot">ACCESS STAYS OPEN UNTIL THIS PAGE RELOADS · GHOST NEVER REACHES THE ARCHIVE</footer>
+        </div>
+      </dialog>
+      <dialog id="nostromo" class="mother nostromo" aria-label="NOSTROMO memory research">
+        <div class="nostromo-frame">
+          <header class="nostromo-head">
+            <span class="mother-title">NOSTROMO</span>
+            <span id="nostromo-sub" class="mother-sub">MEMORY RESEARCH · LOADING…</span>
+            <span class="nostromo-legend" aria-label="Memory kinds">
+              <span class="k decision">DECISION</span><span class="k fact">FACT</span><span class="k preference">PREFERENCE</span><span class="k question">QUESTION</span>
+            </span>
+            <button id="nostromo-close" class="mother-close" type="button">LEAVE ×</button>
+          </header>
+          <canvas id="nostromo-canvas" class="nostromo-canvas" aria-label="Memories orbiting the room"></canvas>
+          <aside id="nostromo-card" class="nostromo-card" hidden>
+            <header>
+              <span id="nostromo-card-kind" class="kind">MEMORY</span>
+              <button id="nostromo-card-close" class="mother-close" type="button">×</button>
+            </header>
+            <p id="nostromo-card-text" class="text"></p>
+            <dl class="meta">
+              <dt>SOURCE</dt><dd id="nostromo-card-span"></dd>
+              <dt>ARCHIVIST</dt><dd id="nostromo-card-agent"></dd>
+              <dt>DISTILLED</dt><dd id="nostromo-card-when"></dd>
+              <dt>LINKED</dt><dd id="nostromo-card-links"></dd>
+            </dl>
+            <button id="nostromo-forget" class="forget" type="button">FORGET THIS MEMORY</button>
+            <p class="foot">FORGETTING REMOVES THE NOTE FROM EVERY FUTURE TURN. THE LEDGER IT CAME FROM STAYS.</p>
+          </aside>
+          <p id="nostromo-empty" class="nostromo-empty" hidden>NO MEMORIES YET. THE ARCHIVIST WRITES THE FIRST ONES AFTER A FEW EXCHANGES.</p>
         </div>
       </dialog>
       <dialog id="viewer" class="viewer" aria-label="File viewer">

@@ -476,3 +476,74 @@ test('room: every turn carries the memory server and is told to use it; the dist
     await rm(root, { recursive: true, force: true });
   }
 });
+
+import { createPulseServer } from '../src/server.mjs';
+
+test('memory: forgetting removes the note and its vector; links pair notes that agree', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-forget-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const memory = (await new RoomMemory(join(root, 'memory.sqlite')).initialize(store)).attachEmbedder(topicEmbedder);
+    memory.addMemories([
+      { kind: 'decision', text: 'Verify the Stripe signature first.', sources: [1] },
+      { kind: 'fact', text: 'The payment webhook lives in src/webhooks.mjs.', sources: [2] },
+      { kind: 'preference', text: 'Onboarding cards in phosphor colour.', sources: [3] },
+    ], { agent: 'gemini', fromSequence: 1, throughSequence: 3 });
+    await memory.embedPending();
+    assert.deepEqual(memory.memoryLinks(), [{ a: 1, b: 2, weight: 1 }]);
+    assert.deepEqual(memory.memoryLinks({ floor: 1.1 }), []);
+    const gone = memory.deleteMemory(2);
+    assert.equal(gone.text, 'The payment webhook lives in src/webhooks.mjs.');
+    assert.equal(memory.deleteMemory(2), null);
+    assert.equal(memory.memoryCount(), 2);
+    assert.deepEqual(memory.vectorCounts(), { entries: 0, memories: 2 });
+    assert.deepEqual(memory.memoryLinks(), []);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('NOSTROMO: the archive answers only to the project designation; forgetting is recorded in the ledger', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-nostromo-'));
+  const project = join(root, 'Nostromo Project');
+  await mkdir(project);
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' }];
+  const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers: { 'codex-readonly': async () => ({ text: 'ok', usage: null }) } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    assert.equal((await fetch(`${base}/api/memory`)).status, 403);
+    assert.equal((await fetch(`${base}/api/memory?designation=wrong`)).status, 403);
+    const ok = await fetch(`${base}/api/memory?designation=nostromo%20project`);
+    assert.equal(ok.status, 200);
+    const research = await ok.json();
+    assert.deepEqual(research.memories, []);
+    assert.deepEqual(research.links, []);
+    assert.equal(research.stats.memories, 0);
+
+    // Seed a note through the room's own memory file, then read it back through the door.
+    const memory = await new RoomMemory(research.stats.file).initialize();
+    memory.addMemories([{ kind: 'question', text: 'Should the webhook retry on 5xx?', sources: [1] }], { agent: 'gemini', fromSequence: 1, throughSequence: 1 });
+    memory.close();
+    const listed = await fetch(`${base}/api/memory?designation=Nostromo%20Project`).then((response) => response.json());
+    assert.equal(listed.memories.length, 1);
+    const id = listed.memories[0].id;
+
+    assert.equal((await fetch(`${base}/api/memory/${id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'nope' }) })).status, 403);
+    const forgotten = await fetch(`${base}/api/memory/${id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'nostromo project' }) });
+    assert.equal(forgotten.status, 200);
+    const result = await forgotten.json();
+    assert.equal(result.forgotten.kind, 'question');
+    assert.equal(result.stats.memories, 0);
+    assert.equal((await fetch(`${base}/api/memory/${id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'nostromo project' }) })).status, 404);
+    const event = (await store.readAll()).find((item) => item.type === 'memory.forgotten');
+    assert.equal(event.payload.kind, 'question');
+    assert.match(event.payload.text, /retry on 5xx/);
+    assert.equal(event.payload.remaining, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});

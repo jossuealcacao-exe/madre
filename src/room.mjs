@@ -345,6 +345,23 @@ export class Room {
     } catch { return null; }
   }
 
+  /* ---------- NOSTROMO: the human's view of the archive ---------- */
+
+  // Every distilled note with the links between those that agree, for the map.
+  memoryResearch() {
+    if (!this.#memory) return null;
+    return { stats: this.memoryStats(), memories: this.#memory.memories({ limit: 500 }), links: this.#memory.memoryLinks() };
+  }
+
+  // Forgetting is recorded in the ledger like anything else the human does to the room.
+  async forgetMemory(id) {
+    if (!this.#memory) return null;
+    const row = this.#memory.deleteMemory(Number(id));
+    if (!row) return null;
+    await this.#emit('memory.forgotten', { id: row.id, kind: row.kind, text: row.text.slice(0, 160), fromSequence: row.fromSequence, throughSequence: row.throughSequence, agent: row.agent, remaining: this.#memory.memoryCount() });
+    return row;
+  }
+
   /* ---------- distillation: the archivist's turn ---------- */
 
   // After a turn: distil now if enough has piled up and the room is quiet,

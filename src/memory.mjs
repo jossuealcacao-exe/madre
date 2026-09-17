@@ -303,6 +303,43 @@ export class RoomMemory {
     return this.#db.prepare('SELECT sequence, timestamp, role, sender, target, substr(text, 1, 200) AS text FROM entries WHERE sequence > ? ORDER BY sequence DESC LIMIT ?').all(since, limit);
   }
 
+  // Forgetting is the one edit a human makes to the archive: the note and its vector go.
+  deleteMemory(id) {
+    const row = this.#db.prepare('SELECT id, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, agent FROM memories WHERE id = ?').get(id);
+    if (!row) return null;
+    this.#db.exec('BEGIN');
+    try {
+      this.#db.prepare('DELETE FROM memory_vectors WHERE id = ?').run(id);
+      this.#db.prepare('DELETE FROM memories WHERE id = ?').run(id);
+      this.#db.exec('COMMIT');
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+    return row;
+  }
+
+  // Which notes are about the same thing: pairs whose vectors agree, strongest
+  // first, a few per note. Empty without an embedder or vectors.
+  memoryLinks({ floor = 0.6, maxPerNode = 4 } = {}) {
+    if (!this.#embedder) return [];
+    const rows = this.#db.prepare('SELECT id, vec FROM memory_vectors WHERE model = ?').all(this.#embedder.model).map((row) => ({ id: row.id, vec: fromBlob(row.vec) }));
+    const links = [];
+    for (let i = 0; i < rows.length; i += 1) {
+      for (let j = i + 1; j < rows.length; j += 1) {
+        const weight = cosine(rows[i].vec, rows[j].vec);
+        if (weight >= floor) links.push({ a: rows[i].id, b: rows[j].id, weight: Number(weight.toFixed(3)) });
+      }
+    }
+    links.sort((x, y) => y.weight - x.weight);
+    const degree = new Map();
+    return links.filter((link) => {
+      const da = degree.get(link.a) ?? 0;
+      const db = degree.get(link.b) ?? 0;
+      if (da >= maxPerNode || db >= maxPerNode) return false;
+      degree.set(link.a, da + 1);
+      degree.set(link.b, db + 1);
+      return true;
+    });
+  }
+
   memories({ limit = 50, kind = null } = {}) {
     if (kind) {
       return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)

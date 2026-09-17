@@ -490,6 +490,20 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/settings') {
         return sendJson(response, 200, { settings: await applySettings(await body(request)) });
       }
+      // NOSTROMO: the archive is behind the project designation, like CONTROL.
+      const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
+      if (request.method === 'GET' && url.pathname === '/api/memory') {
+        if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        const research = room.memoryResearch();
+        return research ? sendJson(response, 200, research) : sendJson(response, 503, { error: 'The room has no memory.' });
+      }
+      const forgetMatch = request.method === 'DELETE' && url.pathname.match(/^\/api\/memory\/(\d+)$/);
+      if (forgetMatch) {
+        const payload = await body(request).catch(() => ({}));
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        const row = await room.forgetMemory(forgetMatch[1]);
+        return row ? sendJson(response, 200, { forgotten: row, stats: room.memoryStats() }) : sendJson(response, 404, { error: 'No such memory.' });
+      }
       if (request.method === 'POST' && url.pathname === '/api/agents/probe') {
         return sendJson(response, 200, { sessions: await refreshSessions(), sessionsAt });
       }

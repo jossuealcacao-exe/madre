@@ -1043,6 +1043,15 @@ function renderDistilled(event) {
   return node;
 }
 
+function renderForgotten(event) {
+  const { kind, text, remaining } = event.payload;
+  const node = el('div', 'system memory forgotten');
+  node.append('memory · the human forgot a ');
+  node.append(el('b', 'who', kind));
+  node.append(`: “${text}”${Number.isFinite(remaining) ? ` · ${remaining} left in the archive` : ''}`);
+  return node;
+}
+
 function renderHandoff(event) {
   const { fromAgent, toAgent, messageCount, omittedMessages, kind } = event.payload;
   const node = el('div', 'system handoff');
@@ -1501,6 +1510,7 @@ function renderEventNode(event) {
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'memory.distilled': node = renderDistilled(event); break;
+    case 'memory.forgotten': node = renderForgotten(event); break;
     case 'limit.warning': node = renderWarning(event); break;
     case 'limit.cleared': node = renderCleared(event); break;
     case 'usage.recorded': applyUsage(event); return;
@@ -3131,6 +3141,405 @@ function askMotherAbout(conditionId) {
   answerQuery(conditionId);
   setTimeout(() => document.getElementById(`mother-${conditionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
+
+
+/* ---------- NOSTROMO: memory research. The archive as a solar system: the room is a red sun, every distilled memory a smoking planet, plasma between them. ---------- */
+
+const MEMORY_COLORS = { decision: '#ffb000', fact: '#9bff66', preference: '#d78cff', question: '#5fd6ff' };
+const nostromo = {
+  button: document.querySelector('#nostromo-button'),
+  dialog: document.querySelector('#nostromo'),
+  canvas: document.querySelector('#nostromo-canvas'),
+  sub: document.querySelector('#nostromo-sub'),
+  empty: document.querySelector('#nostromo-empty'),
+  card: document.querySelector('#nostromo-card'),
+  gate: {
+    dialog: document.querySelector('#nostromo-gate'),
+    form: document.querySelector('#nostromo-gate-form'),
+    input: document.querySelector('#nostromo-gate-input'),
+    reply: document.querySelector('#nostromo-gate-reply'),
+    frame: document.querySelector('#nostromo-gate .override-frame'),
+    cancel: document.querySelector('#nostromo-gate-cancel'),
+  },
+  armed: false,          // the designation was typed once this page
+  nodes: [],
+  links: [],
+  selected: null,
+  hover: null,
+  raf: null,
+  last: 0,
+  size: { w: 0, h: 0, dpr: 1 },
+  reduced: typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+};
+
+function nostromoDesignation() { return (state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''; }
+
+nostromo.button?.addEventListener('click', () => {
+  if (nostromo.armed) { void openNostromo(); return; }
+  if (!nostromo.gate.dialog) return;
+  nostromo.gate.reply.textContent = '';
+  nostromo.gate.reply.className = 'mother-answer override-reply';
+  nostromo.gate.input.value = '';
+  nostromo.gate.dialog.showModal();
+  nostromo.gate.input.focus();
+});
+nostromo.gate.cancel?.addEventListener('click', () => nostromo.gate.dialog.close());
+nostromo.gate.form?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const typed = nostromo.gate.input.value.trim();
+  if (!typed || typed.toLowerCase() !== nostromoDesignation().toLowerCase()) {
+    nostromo.gate.reply.textContent = 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.';
+    nostromo.gate.reply.className = 'mother-answer override-reply denied';
+    nostromo.gate.frame.classList.remove('shake'); void nostromo.gate.frame.offsetWidth; nostromo.gate.frame.classList.add('shake');
+    nostromo.gate.input.select();
+    return;
+  }
+  nostromo.gate.reply.textContent = 'DESIGNATION ACCEPTED. BOARDING NOSTROMO.';
+  nostromo.gate.reply.className = 'mother-answer override-reply granted';
+  nostromo.armed = true;
+  setTimeout(() => { nostromo.gate.dialog.close(); void openNostromo(); }, 700);
+});
+
+async function openNostromo() {
+  if (!nostromo.dialog) return;
+  mother.dialog?.close?.();
+  nostromo.dialog.showModal();
+  nostromo.sub.textContent = 'MEMORY RESEARCH · LOADING…';
+  nostromo.card.hidden = true;
+  nostromo.selected = null;
+  let data;
+  try {
+    const response = await fetch(`/api/memory?designation=${encodeURIComponent(nostromoDesignation())}`);
+    data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+  } catch (error) {
+    nostromo.sub.textContent = `MEMORY RESEARCH · ${String(error.message).toUpperCase()}`;
+    return;
+  }
+  buildNostromo(data);
+  startNostromo();
+}
+document.querySelector('#nostromo-close')?.addEventListener('click', () => nostromo.dialog.close());
+nostromo.dialog?.addEventListener('close', stopNostromo);
+document.querySelector('#nostromo-card-close')?.addEventListener('click', () => { nostromo.card.hidden = true; nostromo.selected = null; });
+
+// Planets: size follows how much ledger a memory covers; they start in their kind's sector
+// and drift toward the memories they agree with, so topics gather on their own.
+function buildNostromo(data) {
+  const kinds = Object.keys(MEMORY_COLORS);
+  const memories = data.memories ?? [];
+  nostromo.links = (data.links ?? []).filter((link) => memories.some((m) => m.id === link.a) && memories.some((m) => m.id === link.b));
+  nostromo.nodes = memories.map((memory, index) => {
+    const sector = kinds.indexOf(memory.kind) < 0 ? 1 : kinds.indexOf(memory.kind);
+    const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
+    const distance = 0.42 + Math.random() * 0.5;
+    const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
+    return { memory, angle, distance, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+  });
+  const stats = data.stats ?? {};
+  nostromo.sub.textContent = `MEMORY RESEARCH · ${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
+  nostromo.empty.hidden = memories.length > 0;
+}
+
+function sizeNostromo() {
+  const canvas = nostromo.canvas;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  if (!rect.width || !rect.height) return false;
+  nostromo.size = { w: rect.width, h: rect.height, dpr };
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  // Planets keep their polar seat when the window changes.
+  const orbit = Math.min(rect.width, rect.height) * 0.42;
+  for (const node of nostromo.nodes) {
+    if (node.placed) continue;
+    node.x = rect.width / 2 + Math.cos(node.angle) * orbit * node.distance * 1.3;
+    node.y = rect.height / 2 + Math.sin(node.angle) * orbit * node.distance * 1.3;
+    node.placed = true;
+  }
+  return true;
+}
+
+function startNostromo() {
+  stopNostromo();
+  if (typeof requestAnimationFrame !== 'function' || !nostromo.canvas?.getContext) return;
+  if (!sizeNostromo()) return;
+  window.addEventListener('resize', sizeNostromo);
+  nostromo.last = performance.now();
+  const frame = (now) => {
+    const dt = Math.min(48, now - nostromo.last) / 16;
+    nostromo.last = now;
+    stepNostromo(dt);
+    drawNostromo(now / 1000);
+    nostromo.raf = requestAnimationFrame(frame);
+  };
+  nostromo.raf = requestAnimationFrame(frame);
+}
+function stopNostromo() {
+  if (nostromo.raf) cancelAnimationFrame(nostromo.raf);
+  nostromo.raf = null;
+  window.removeEventListener('resize', sizeNostromo);
+}
+
+// One step of the floating network: the sun keeps everyone at arm's length,
+// planets repel each other, linked ones attract, and a slow current keeps it alive.
+function stepNostromo(dt) {
+  const { w, h } = nostromo.size;
+  const cx = w / 2;
+  const cy = h / 2;
+  const orbit = Math.min(w, h) * 0.42;
+  const nodes = nostromo.nodes.filter((node) => node.scale > 0.01);
+  const byId = new Map(nodes.map((node) => [node.memory.id, node]));
+  for (const node of nodes) {
+    let fx = 0;
+    let fy = 0;
+    const dx = node.x - cx;
+    const dy = node.y - cy;
+    const dist = Math.hypot(dx, dy) || 1;
+    // A soft ring around the sun: too close is pushed out, too far pulled in.
+    const target = orbit * (0.55 + node.distance * 0.55);
+    const pull = (target - dist) * 0.004;
+    fx += (dx / dist) * pull;
+    fy += (dy / dist) * pull;
+    for (const other of nodes) {
+      if (other === node) continue;
+      const ox = node.x - other.x;
+      const oy = node.y - other.y;
+      const d = Math.hypot(ox, oy) || 1;
+      const min = node.r + other.r + 26;
+      if (d < min * 2.2) { const push = ((min * 2.2 - d) / (min * 2.2)) * 0.9; fx += (ox / d) * push; fy += (oy / d) * push; }
+    }
+    if (!nostromo.reduced) { fx += Math.sin(node.seed + performance.now() / 2600) * 0.02; fy += Math.cos(node.seed * 1.3 + performance.now() / 3100) * 0.02; }
+    node.fx = fx;
+    node.fy = fy;
+  }
+  for (const link of nostromo.links) {
+    const a = byId.get(link.a);
+    const b = byId.get(link.b);
+    if (!a || !b) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const rest = a.r + b.r + 60;
+    const k = (d - rest) * 0.0035 * link.weight;
+    a.fx += (dx / d) * k; a.fy += (dy / d) * k;
+    b.fx -= (dx / d) * k; b.fy -= (dy / d) * k;
+  }
+  for (const node of nodes) {
+    node.vx = (node.vx + node.fx * dt) * 0.86;
+    node.vy = (node.vy + node.fy * dt) * 0.86;
+    node.x = Math.min(w - node.r - 12, Math.max(node.r + 12, node.x + node.vx * dt));
+    node.y = Math.min(h - node.r - 12, Math.max(node.r + 72, node.y + node.vy * dt));
+    if (!nostromo.reduced) {
+      // Smoke: a few embers rising off each planet, fading as they climb.
+      if (node.smoke.length < 7 && Math.random() < 0.08 * dt) node.smoke.push({ x: (Math.random() - 0.5) * node.r, y: -node.r * 0.4, age: 0, life: 90 + Math.random() * 70, drift: (Math.random() - 0.5) * 0.25, size: node.r * (0.35 + Math.random() * 0.4) });
+      for (const puff of node.smoke) { puff.age += dt; puff.y -= 0.35 * dt; puff.x += puff.drift * dt; puff.size += 0.12 * dt; }
+      node.smoke = node.smoke.filter((puff) => puff.age < puff.life);
+    }
+  }
+  for (const node of nostromo.nodes) if (node.forgetting) node.scale = Math.max(0, node.scale - 0.06 * dt);
+  nostromo.nodes = nostromo.nodes.filter((node) => !(node.forgetting && node.scale <= 0.01));
+}
+
+function drawNostromo(t) {
+  const ctx = nostromo.canvas.getContext('2d');
+  const { w, h, dpr } = nostromo.size;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2;
+  const cy = h / 2;
+  // A faint star field, fixed per size.
+  ctx.fillStyle = 'rgba(255, 244, 240, .35)';
+  for (let i = 0; i < 90; i += 1) { const sx = ((i * 97.3) % w); const sy = ((i * 53.7 + 31) % h); ctx.globalAlpha = 0.15 + 0.2 * Math.abs(Math.sin(t * 0.6 + i)); ctx.fillRect(sx, sy, 1.2, 1.2); }
+  ctx.globalAlpha = 1;
+  const sunR = Math.max(34, Math.min(w, h) * 0.075);
+  // Plasma: one ray per planet, bowing and flickering, brightest at the sun.
+  for (const node of nostromo.nodes) {
+    const dx = node.x - cx;
+    const dy = node.y - cy;
+    const d = Math.hypot(dx, dy) || 1;
+    const nx = -dy / d;
+    const ny = dx / d;
+    const bow = Math.sin(t * 1.7 + node.seed) * Math.min(60, d * 0.18);
+    const mx = (cx + node.x) / 2 + nx * bow;
+    const my = (cy + node.y) / 2 + ny * bow;
+    const grad = ctx.createLinearGradient(cx, cy, node.x, node.y);
+    grad.addColorStop(0, 'rgba(255, 90, 60, .9)');
+    grad.addColorStop(0.5, 'rgba(255, 42, 31, .35)');
+    grad.addColorStop(1, hexAlpha(node.color, 0.75 * node.scale));
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.1 + 0.6 * Math.abs(Math.sin(t * 5 + node.seed * 3));
+    ctx.shadowColor = 'rgba(255, 60, 40, .8)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(cx + (dx / d) * sunR * 0.9, cy + (dy / d) * sunR * 0.9);
+    ctx.quadraticCurveTo(mx, my, node.x, node.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // A pulse travelling along the ray.
+    const p = (t * 0.45 + node.seed / (Math.PI * 2)) % 1;
+    const px = (1 - p) * (1 - p) * cx + 2 * (1 - p) * p * mx + p * p * node.x;
+    const py = (1 - p) * (1 - p) * cy + 2 * (1 - p) * p * my + p * p * node.y;
+    ctx.fillStyle = 'rgba(255, 230, 220, .9)';
+    ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+  // The sun: red, iridescent, breathing. Layers of hue-shifting light and a corona that undulates.
+  const breath = 1 + 0.035 * Math.sin(t * 1.4);
+  const corona = ctx.createRadialGradient(cx, cy, sunR * 0.6, cx, cy, sunR * 2.6 * breath);
+  corona.addColorStop(0, 'rgba(255, 42, 31, .55)');
+  corona.addColorStop(0.35, 'rgba(255, 80, 40, .18)');
+  corona.addColorStop(1, 'rgba(255, 42, 31, 0)');
+  ctx.fillStyle = corona;
+  ctx.beginPath(); ctx.arc(cx, cy, sunR * 2.6 * breath, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  for (let i = 0; i <= 72; i += 1) {
+    const a = (i / 72) * Math.PI * 2;
+    const wobble = 1 + 0.06 * Math.sin(a * 5 + t * 2.3) + 0.035 * Math.sin(a * 9 - t * 3.1);
+    const r = sunR * wobble * breath;
+    if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  ctx.closePath();
+  const hue = 355 + 14 * Math.sin(t * 0.7);
+  const body = ctx.createRadialGradient(cx - sunR * 0.3, cy - sunR * 0.3, sunR * 0.1, cx, cy, sunR * 1.05);
+  body.addColorStop(0, `hsl(${hue + 30} 100% 82%)`);
+  body.addColorStop(0.3, `hsl(${hue + 10} 100% 60%)`);
+  body.addColorStop(0.75, `hsl(${hue} 95% 45%)`);
+  body.addColorStop(1, `hsl(${hue - 12} 90% 28%)`);
+  ctx.fillStyle = body;
+  ctx.shadowColor = 'rgba(255, 42, 31, .9)';
+  ctx.shadowBlur = 40;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // Iridescence: a thin rotating sheen.
+  const sheen = ctx.createLinearGradient(cx - sunR, cy, cx + sunR, cy);
+  sheen.addColorStop(0, `hsla(${hue + 60} 100% 70% / 0)`);
+  sheen.addColorStop(0.5 + 0.3 * Math.sin(t * 0.9), `hsla(${hue + 90} 100% 75% / .28)`);
+  sheen.addColorStop(1, `hsla(${hue + 140} 100% 70% / 0)`);
+  ctx.fillStyle = sheen;
+  ctx.fill();
+  // Planets: smoking spheres coloured by kind, the selected one ringed.
+  for (const node of nostromo.nodes) {
+    const r = node.r * node.scale;
+    if (r <= 0) continue;
+    for (const puff of node.smoke) {
+      const k = puff.age / puff.life;
+      ctx.fillStyle = hexAlpha(node.color, (1 - k) * 0.22 * node.scale);
+      ctx.beginPath(); ctx.arc(node.x + puff.x, node.y + puff.y, puff.size, 0, Math.PI * 2); ctx.fill();
+    }
+    const glow = ctx.createRadialGradient(node.x, node.y, r * 0.5, node.x, node.y, r * 2.4);
+    glow.addColorStop(0, hexAlpha(node.color, 0.35));
+    glow.addColorStop(1, hexAlpha(node.color, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(node.x, node.y, r * 2.4, 0, Math.PI * 2); ctx.fill();
+    const sphere = ctx.createRadialGradient(node.x - r * 0.35, node.y - r * 0.35, r * 0.1, node.x, node.y, r);
+    sphere.addColorStop(0, '#fffaf5');
+    sphere.addColorStop(0.25, node.color);
+    sphere.addColorStop(1, hexAlpha('#000000', 0.85));
+    ctx.fillStyle = sphere;
+    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.fill();
+    if (node === nostromo.selected || node === nostromo.hover) {
+      ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(node.x, node.y, r + 5 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  // The hovered memory, in a line.
+  if (nostromo.hover && nostromo.hover.scale > 0.5) {
+    const node = nostromo.hover;
+    const label = `${node.memory.kind.toUpperCase()} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
+    ctx.font = '11px ' + (getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace');
+    const width = ctx.measureText(label).width + 16;
+    const lx = Math.min(w - width - 8, Math.max(8, node.x - width / 2));
+    const ly = node.y + node.r + 14;
+    ctx.fillStyle = 'rgba(3, 2, 3, .85)';
+    ctx.fillRect(lx, ly, width, 22);
+    ctx.strokeStyle = hexAlpha(node.color, 0.6);
+    ctx.strokeRect(lx + 0.5, ly + 0.5, width - 1, 21);
+    ctx.fillStyle = '#eef1ea';
+    ctx.fillText(label, lx + 8, ly + 15);
+  }
+}
+
+function hexAlpha(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${Math.max(0, Math.min(1, alpha))})`;
+}
+
+function nostromoAt(event) {
+  const rect = nostromo.canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  let best = null;
+  for (const node of nostromo.nodes) {
+    const d = Math.hypot(node.x - x, node.y - y);
+    if (d <= node.r * node.scale + 8 && (!best || d < best.d)) best = { node, d };
+  }
+  return best?.node ?? null;
+}
+nostromo.canvas?.addEventListener('mousemove', (event) => {
+  nostromo.hover = nostromoAt(event);
+  nostromo.canvas.classList.toggle('over', Boolean(nostromo.hover));
+});
+nostromo.canvas?.addEventListener('mouseleave', () => { nostromo.hover = null; });
+nostromo.canvas?.addEventListener('click', (event) => {
+  const node = nostromoAt(event);
+  if (!node) { nostromo.selected = null; nostromo.card.hidden = true; return; }
+  showNostromoCard(node);
+});
+
+function showNostromoCard(node) {
+  const { memory } = node;
+  nostromo.selected = node;
+  nostromo.card.style.setProperty('--kind', node.color);
+  document.querySelector('#nostromo-card-kind').textContent = memory.kind.toUpperCase();
+  document.querySelector('#nostromo-card-text').textContent = memory.text;
+  document.querySelector('#nostromo-card-span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
+  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}`;
+  document.querySelector('#nostromo-card-when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
+  const linked = nostromo.links.filter((link) => link.a === memory.id || link.b === memory.id).length;
+  document.querySelector('#nostromo-card-links').textContent = linked ? `${linked} memor${linked === 1 ? 'y' : 'ies'} on the same theme` : 'nothing yet';
+  const forget = document.querySelector('#nostromo-forget');
+  forget.textContent = 'FORGET THIS MEMORY';
+  forget.classList.remove('confirm');
+  forget.disabled = false;
+  nostromo.card.hidden = false;
+}
+
+// Forgetting takes two presses: the second within four seconds.
+let forgetTimer = null;
+document.querySelector('#nostromo-forget')?.addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  const node = nostromo.selected;
+  if (!node) return;
+  if (!button.classList.contains('confirm')) {
+    button.classList.add('confirm');
+    button.textContent = 'PRESS AGAIN TO FORGET · FOREVER';
+    clearTimeout(forgetTimer);
+    forgetTimer = setTimeout(() => { button.classList.remove('confirm'); button.textContent = 'FORGET THIS MEMORY'; }, 4000);
+    return;
+  }
+  clearTimeout(forgetTimer);
+  button.disabled = true;
+  button.textContent = 'FORGETTING…';
+  try {
+    const response = await fetch(`/api/memory/${node.memory.id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: nostromoDesignation() }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+    node.forgetting = true;
+    nostromo.links = nostromo.links.filter((link) => link.a !== node.memory.id && link.b !== node.memory.id);
+    nostromo.card.hidden = true;
+    nostromo.selected = null;
+    const left = result.stats?.memories ?? Math.max(0, nostromo.nodes.length - 1);
+    nostromo.sub.textContent = `MEMORY RESEARCH · ${left} MEMOR${left === 1 ? 'Y' : 'IES'} · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${result.stats?.entries ?? 0} EXCHANGES BEHIND THEM`;
+    nostromo.empty.hidden = left > 0;
+    toast(`MU/TH/UR › memory forgotten: “${node.memory.text.slice(0, 80)}${node.memory.text.length > 80 ? '…' : ''}”. No future turn will read it.`);
+  } catch (error) {
+    button.disabled = false;
+    button.classList.remove('confirm');
+    button.textContent = 'FORGET THIS MEMORY';
+    toast(`MU/TH/UR › could not forget: ${error.message}`);
+  }
+});
 
 settingsUI.button.addEventListener('click', async () => {
   settingsUI.open = !settingsUI.open;
