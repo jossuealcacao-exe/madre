@@ -6,13 +6,16 @@
 //             so often (decisions, verified facts, the human's preferences,
 //             open questions), each citing the sequences it came from. These
 //             cost a model call, so a schema change keeps them.
+//   vectors   embeddings of both, when an embedder is attached, so recall can
+//             match meaning and not only words. Filled in the background.
 // GHOST events never reach the ledger, so they never reach here either.
 
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { messageEntry } from './conversation-context.mjs';
+import { cosine, toBlob, fromBlob } from './embeddings.mjs';
 
-export const MEMORY_SCHEMA_VERSION = 2;
+export const MEMORY_SCHEMA_VERSION = 3;
 export const MEMORY_KINDS = ['decision', 'fact', 'preference', 'question'];
 
 // Words that carry no meaning for recall, in the two languages the rooms speak.
@@ -70,6 +73,7 @@ export class RoomMemory {
   #insert;
   #meta;
   #setMeta;
+  #embedder = null;
 
   constructor(file) {
     this.#file = file;
@@ -92,7 +96,7 @@ export class RoomMemory {
   #rebuildEntries() {
     this.#db.exec(`
       DROP TRIGGER IF EXISTS entries_ai; DROP TRIGGER IF EXISTS entries_ad;
-      DROP TABLE IF EXISTS entries_fts; DROP TABLE IF EXISTS entries;
+      DROP TABLE IF EXISTS entries_fts; DROP TABLE IF EXISTS entry_vectors; DROP TABLE IF EXISTS entries;
       DELETE FROM meta WHERE key IN ('last_sequence');
     `);
     this.#createSchema();
@@ -148,7 +152,89 @@ export class RoomMemory {
       CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
         INSERT INTO memories_fts(memories_fts, rowid, text, kind) VALUES ('delete', old.id, old.text, old.kind);
       END;
+      CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
+      CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
+  }
+
+  /* ---------- embeddings ---------- */
+
+  attachEmbedder(embedder) { this.#embedder = embedder ?? null; return this; }
+  get embedder() { return this.#embedder; }
+
+  // Entries and notes without a vector for the current model, oldest first.
+  pendingVectors({ limit = 100 } = {}) {
+    if (!this.#embedder) return { entries: [], memories: [] };
+    const model = this.#embedder.model;
+    return {
+      entries: this.#db.prepare('SELECT e.sequence, e.text FROM entries e LEFT JOIN entry_vectors v ON v.sequence = e.sequence AND v.model = ? WHERE v.sequence IS NULL ORDER BY e.sequence DESC LIMIT ?').all(model, limit),
+      memories: this.#db.prepare('SELECT m.id, m.text FROM memories m LEFT JOIN memory_vectors v ON v.id = m.id AND v.model = ? WHERE v.id IS NULL ORDER BY m.id DESC LIMIT ?').all(model, limit),
+    };
+  }
+
+  // Embeds one batch of what is pending. Returns how many vectors were stored.
+  async embedPending({ limit = 100 } = {}) {
+    if (!this.#embedder || !this.#db) return 0;
+    const pending = this.pendingVectors({ limit });
+    const texts = [...pending.entries.map((row) => row.text), ...pending.memories.map((row) => row.text)];
+    if (!texts.length) return 0;
+    const vectors = await this.#embedder.embed(texts, { query: false });
+    const model = this.#embedder.model;
+    const putEntry = this.#db.prepare('INSERT OR REPLACE INTO entry_vectors (sequence, model, vec) VALUES (?, ?, ?)');
+    const putMemory = this.#db.prepare('INSERT OR REPLACE INTO memory_vectors (id, model, vec) VALUES (?, ?, ?)');
+    this.#db.exec('BEGIN');
+    try {
+      pending.entries.forEach((row, index) => putEntry.run(row.sequence, model, toBlob(vectors[index])));
+      pending.memories.forEach((row, index) => putMemory.run(row.id, model, toBlob(vectors[pending.entries.length + index])));
+      this.#db.exec('COMMIT');
+    } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+    return texts.length;
+  }
+
+  vectorCounts() {
+    if (!this.#embedder) return { entries: 0, memories: 0 };
+    return {
+      entries: this.#db.prepare('SELECT COUNT(*) AS n FROM entry_vectors WHERE model = ?').get(this.#embedder.model).n,
+      memories: this.#db.prepare('SELECT COUNT(*) AS n FROM memory_vectors WHERE model = ?').get(this.#embedder.model).n,
+    };
+  }
+
+  // The query's vector, or null when there is no embedder or it fails: recall then stays lexical.
+  async embedQuery(text, { timeoutMs = 2500 } = {}) {
+    if (!this.#embedder) return null;
+    try {
+      const [vector] = await Promise.race([
+        this.#embedder.embed([String(text ?? '').slice(0, 2000)], { query: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('embedding timed out')), timeoutMs).unref?.()),
+      ]);
+      return vector ?? null;
+    } catch { return null; }
+  }
+
+  // Cosine scores of every stored vector against the query, above a floor.
+  #semanticScores(table, key, queryVector, { beforeSequence, floor }) {
+    if (!queryVector || !this.#embedder) return new Map();
+    const rows = table === 'entry_vectors'
+      ? this.#db.prepare('SELECT sequence AS key, vec FROM entry_vectors WHERE model = ? AND sequence < ?').all(this.#embedder.model, beforeSequence)
+      : this.#db.prepare('SELECT v.id AS key, v.vec FROM memory_vectors v JOIN memories m ON m.id = v.id WHERE v.model = ? AND m.through_sequence < ?').all(this.#embedder.model, beforeSequence);
+    // Embedding models differ in how similar "unrelated" looks, so the cut is
+    // relative to the best match as well as absolute: close seconds stay,
+    // the long tail goes.
+    const scored = rows.map((row) => [row.key, cosine(queryVector, fromBlob(row.vec))]);
+    const best = Math.max(0, ...scored.map(([, score]) => score));
+    const cut = Math.max(floor, best - 0.12);
+    return new Map(scored.filter(([, score]) => score >= cut));
+  }
+
+  // Lexical scores (rarity weighted, 0..1 after normalisation) and semantic
+  // scores (cosine) fused: an item found by both wins, one found only by
+  // meaning still surfaces.
+  static fuse(lexical, semantic, { lexicalWeight = 0.55 } = {}) {
+    const max = Math.max(0, ...lexical.values()) || 1;
+    const fused = new Map();
+    for (const [key, score] of lexical) fused.set(key, lexicalWeight * (score / max));
+    for (const [key, score] of semantic) fused.set(key, (fused.get(key) ?? 0) + (1 - lexicalWeight) * score);
+    return [...fused.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
   }
 
   /* ---------- distilled memories ---------- */
@@ -198,7 +284,30 @@ export class RoomMemory {
     return added;
   }
 
-  memories({ limit = 50 } = {}) {
+  // Exact text of a stretch of the ledger, capped so a tool answer stays readable.
+  range({ from = 1, through = Number.MAX_SAFE_INTEGER, limit = 40, maxChars = 12000 } = {}) {
+    const rows = this.#db.prepare('SELECT sequence, timestamp, type, role, sender, target, message_id AS messageId, text FROM entries WHERE sequence >= ? AND sequence <= ? ORDER BY sequence LIMIT ?').all(from, through, limit + 1);
+    const out = [];
+    let used = 0;
+    for (const row of rows.slice(0, limit)) {
+      const text = row.text.length > maxChars - used ? `${row.text.slice(0, Math.max(0, maxChars - used - 1))}…` : row.text;
+      out.push({ ...row, text });
+      used += text.length;
+      if (used >= maxChars) break;
+    }
+    return { entries: out, truncated: rows.length > limit || used >= maxChars };
+  }
+
+  // The latest entries, newest first, one line each.
+  timeline({ since = 0, limit = 30 } = {}) {
+    return this.#db.prepare('SELECT sequence, timestamp, role, sender, target, substr(text, 1, 200) AS text FROM entries WHERE sequence > ? ORDER BY sequence DESC LIMIT ?').all(since, limit);
+  }
+
+  memories({ limit = 50, kind = null } = {}) {
+    if (kind) {
+      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
+        .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
+    }
     return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent FROM memories ORDER BY id DESC LIMIT ?').all(limit)
       .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
@@ -207,11 +316,12 @@ export class RoomMemory {
   // weighted, like entries) and, when few match, the most recent decisions and
   // preferences, all from before `beforeSequence` so they add to the window
   // rather than repeat it, within a character budget.
-  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200 } = {}) {
+  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45 } = {}) {
     if (!this.#db) return [];
     const total = this.memoryCount();
     if (!total) return [];
     const terms = queryTerms(text);
+    const semantic = this.#semanticScores('memory_vectors', 'id', queryVector, { beforeSequence, floor: semanticFloor });
     const scores = new Map();
     const lookup = this.#db.prepare('SELECT m.id FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid WHERE memories_fts MATCH ? AND m.through_sequence < ? LIMIT 500');
     for (const term of terms) {
@@ -221,7 +331,7 @@ export class RoomMemory {
       const weight = Math.log(1 + total / rows.length) * (1 + Math.min(term.length, 12) / 12);
       for (const { id } of rows) scores.set(id, (scores.get(id) ?? 0) + weight);
     }
-    const ids = [...scores.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]).map(([id]) => id);
+    const ids = RoomMemory.fuse(scores, semantic).map(([id]) => id);
     if (ids.length < 2) {
       const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
       for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
@@ -286,11 +396,13 @@ export class RoomMemory {
   // `beforeSequence` (the recent window the agent gets verbatim anyway), never
   // the request itself, within a character budget, oldest first so they read
   // as a timeline.
-  recall(text, { beforeSequence = Number.MAX_SAFE_INTEGER, excludeMessageId = null, limit = 6, maxChars = 4000, excerptChars = 360 } = {}) {
+  recall(text, { beforeSequence = Number.MAX_SAFE_INTEGER, excludeMessageId = null, limit = 6, maxChars = 4000, excerptChars = 360, queryVector = null, semanticFloor = 0.45 } = {}) {
     const terms = queryTerms(text);
-    if (!terms.length || !this.#db) return { terms, entries: [], omitted: 0 };
+    if (!this.#db) return { terms, entries: [], omitted: 0 };
     const total = this.count();
     if (!total) return { terms, entries: [], omitted: 0 };
+    const semantic = this.#semanticScores('entry_vectors', 'sequence', queryVector, { beforeSequence, floor: semanticFloor });
+    if (!terms.length && !semantic.size) return { terms, entries: [], omitted: 0 };
     const lookup = this.#db.prepare('SELECT rowid FROM entries_fts WHERE entries_fts MATCH ? AND rowid < ? LIMIT 2000');
     const scores = new Map();
     const matchedTerms = [];
@@ -304,8 +416,8 @@ export class RoomMemory {
       const weight = Math.log(1 + total / rows.length) * (1 + Math.min(term.length, 12) / 12);
       for (const { rowid } of rows) scores.set(rowid, (scores.get(rowid) ?? 0) + weight);
     }
-    if (!scores.size) return { terms, entries: [], omitted: 0 };
-    const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]).slice(0, limit * 4);
+    if (!scores.size && !semantic.size) return { terms, entries: [], omitted: 0 };
+    const ranked = RoomMemory.fuse(scores, semantic).slice(0, limit * 4);
     const fetch = this.#db.prepare('SELECT sequence, timestamp, type, role, sender, target, message_id AS messageId, text FROM entries WHERE sequence = ?');
     const chosen = [];
     let remaining = Math.max(0, maxChars);
@@ -315,14 +427,14 @@ export class RoomMemory {
       if (!row || (excludeMessageId && row.messageId === excludeMessageId)) continue;
       seen += 1;
       if (chosen.length >= limit) break;
-      const text2 = excerpt(row.text, matchedTerms, { maxChars: excerptChars });
+      const text2 = excerpt(row.text, matchedTerms.length ? matchedTerms : terms, { maxChars: excerptChars });
       const cost = text2.length + 48;
       if (cost > remaining) continue;
       remaining -= cost;
-      chosen.push({ sequence: row.sequence, timestamp: row.timestamp, type: row.type, role: row.role, sender: row.sender, target: row.target, messageId: row.messageId, excerpt: text2, score });
+      chosen.push({ sequence: row.sequence, timestamp: row.timestamp, type: row.type, role: row.role, sender: row.sender, target: row.target, messageId: row.messageId, excerpt: text2, score, semantic: semantic.get(row.sequence) ?? 0 });
     }
     chosen.sort((a, b) => a.sequence - b.sequence);
-    return { terms: matchedTerms, entries: chosen, omitted: Math.max(0, seen - chosen.length) };
+    return { terms: matchedTerms, entries: chosen, omitted: Math.max(0, seen - chosen.length), semantic: semantic.size > 0 };
   }
 
   close() {

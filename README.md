@@ -54,6 +54,10 @@ Cada proyecto tiene una sala estable bajo `PULSE_HOME` (por defecto `~/.pulse`).
 
 **Memorias destiladas.** Cada cierto número de intercambios (`PULSE_DISTILL_EVERY`, 10 por defecto) o cuando la sala lleva un rato en reposo (`PULSE_DISTILL_IDLE_MS`, 10 min), el agente más barato disponible (Gemini, luego OpenCode, Codex, Claude; `PULSE_DISTILL_AGENT` lo fija y `PULSE_DISTILL_MODEL` elige modelo) lee lo aún no destilado, un lote acotado por `PULSE_DISTILL_MAX_CHARS` (6000), y escribe hasta cinco notas durables tipadas (decisión, hecho, preferencia, pregunta abierta) con las secuencias de origen. Una sola llamada por lote, nunca durante un turno, y un atraso largo se drena un lote por vez. Las notas que coinciden con la petición entran al prompt como bloque `<memories>` antes de las citas exactas, dentro del mismo presupuesto; la sala anota cada destilación como `memory.distilled` y sus tokens cuentan en el presupuesto del agente. `PULSE_DISTILL=0` la apaga.
 
+**Búsqueda por significado.** Si hay una clave de Gemini (variable `GEMINI_API_KEY` o la del llavero de macOS que usa el Gemini CLI, la misma de Image Studio), cada intercambio y cada nota se embeben en segundo plano con `gemini-embedding-001` (768 dimensiones, un lote de hasta 100 textos por llamada, nunca en el camino crítico del turno) y la petición de cada turno se embebe una vez. El recall fusiona palabras y significado, así una pregunta en español encuentra una decisión escrita en inglés. Sin clave, el recall es léxico. `PULSE_EMBED=0` lo apaga; `PULSE_EMBED_MODEL` y `PULSE_EMBED_DIMS` lo ajustan.
+
+**La memoria como herramientas del agente.** En cada turno MADRE adjunta a la CLI el servidor MCP `pulse-memory` (Claude, Gemini, OpenCode y Codex, con la misma configuración aislada por corrida que Image Studio): `memory_search` busca por significado y palabras entre citas y notas, `memory_recall` lee el texto exacto de un rango de secuencias, `memory_notes` lista las notas destiladas, `memory_timeline` muestra los últimos intercambios y `project_state` lee el estado de AHP+ en `.ahp/` si el proyecto lo usa. El prompt le dice al agente que consulte antes de afirmar que algo nunca se habló. El destilador no recibe las herramientas. `PULSE_MEMORY_TOOLS=0` las quita.
+
 Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso MADRE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). El sondeo lee solo los bytes nuevos del log, no el archivo completo. Un cliente que deja de consumir el stream se desconecta cuando acumula más de 1 MiB sin drenar (`PULSE_SSE_MAX_BUFFERED_BYTES`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
 
 Los errores de un agente se guardan acotados en `message.failed`: una sola línea de hasta 500 caracteres, sin stack traces.
@@ -204,6 +208,10 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 | `PULSE_DISTILL_MAX_CHARS` | `6000` | Tamaño máximo del lote que lee el destilador |
 | `PULSE_DISTILL_AGENT` | — | Agente destilador preferido; por defecto el más barato disponible |
 | `PULSE_DISTILL_MODEL` | — | Modelo para la destilación |
+| `PULSE_EMBED` | `1` | Embeddings con la clave de Gemini para recall por significado (`0` lo apaga) |
+| `PULSE_EMBED_MODEL` | `gemini-embedding-001` | Modelo de embeddings |
+| `PULSE_EMBED_DIMS` | `768` | Dimensiones del vector |
+| `PULSE_MEMORY_TOOLS` | `1` | Servidor MCP `pulse-memory` adjunto a cada turno (`0` lo quita) |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Tamaño máximo de un mensaje |
 | `PULSE_AGENT_TIMEOUT_MS` | `180000` | Timeout de invocación para todos los agentes |
 | `PULSE_<AGENTE>_TIMEOUT_MS` | — | Timeout para un agente concreto |

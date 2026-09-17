@@ -8,6 +8,8 @@ import { execFile } from 'node:child_process';
 import { detectAgents } from './runtime-detection.mjs';
 import { EventStore } from './event-store.mjs';
 import { RoomMemory } from './memory.mjs';
+import { createEmbedder } from './embeddings.mjs';
+import { memoryServerFor } from './memory-tools.mjs';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
@@ -100,6 +102,13 @@ export async function createPulseServer({
   // and never a reason for the room not to open.
   const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).initialize(store)
     .catch((error) => { console.error(`MADRE memory unavailable, turns get the recent window only: ${error.message}`); return null; });
+  // Meaning-aware recall through the user's own Gemini key, when there is one;
+  // and the memory as MCP tools for every agent's turn.
+  if (memory) {
+    const key = process.env.PULSE_EMBED === '0' ? null : await imageKey().catch(() => null);
+    memory.attachEmbedder(createEmbedder({ key }));
+  }
+  const memoryServer = memory ? memoryServerFor({ dbFile: memory.file, projectRoot: canonicalProjectRoot }) : null;
   const room = new Room({
     store,
     agents,
@@ -107,6 +116,7 @@ export async function createPulseServer({
     softTokenBudget,
     contextMaxChars,
     memory,
+    memoryServer,
     historicalEvents,
     invokers,
     agentTimeouts,
@@ -114,6 +124,7 @@ export async function createPulseServer({
     delegation,
     maxPlanSteps,
   });
+  if (memory?.embedder) setTimeout(() => void room.embedNow(), 2000).unref?.();
   // Session state per agent, refreshed on demand from the connections panel.
   let sessions = {};
   let sessionsAt = null;

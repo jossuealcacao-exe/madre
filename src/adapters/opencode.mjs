@@ -53,7 +53,7 @@ export function leaseConfig(outDir, { control = false } = {}) {
   };
 }
 
-export function openCodeConfig({ lease = null, scopes = null, imageStudio = null } = {}) {
+export function openCodeConfig({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
   let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control) }) : readonlyConfig;
   if (scopes?.web) {
     config = {
@@ -70,17 +70,33 @@ export function openCodeConfig({ lease = null, scopes = null, imageStudio = null
   if (imageStudio && lease) {
     config = {
       ...config,
-      mcp: { [imageStudio.name]: { type: 'local', command: [imageStudio.command, ...imageStudio.args], environment: imageStudio.env, enabled: true } },
+      mcp: { ...(config.mcp ?? {}), [imageStudio.name]: { type: 'local', command: [imageStudio.command, ...imageStudio.args], environment: imageStudio.env, enabled: true } },
+    };
+  }
+  if (memoryServer) {
+    config = {
+      ...config,
+      mcp: { ...(config.mcp ?? {}), [memoryServer.name]: { type: 'local', command: [memoryServer.command, ...memoryServer.args], environment: memoryServer.env, enabled: true } },
+      agent: {
+        'pulse-readonly': {
+          ...config.agent['pulse-readonly'],
+          permission: {
+            ...config.agent['pulse-readonly'].permission,
+            [`${memoryServer.name}*`]: 'allow',
+            ...Object.fromEntries(memoryServer.tools.map((tool) => [`${memoryServer.name}_${tool}`, 'allow'])),
+          },
+        },
+      },
     };
   }
   return config;
 }
 
-export function openCodeEnvironment(environment = process.env, { lease = null, scopes = null, imageStudio = null } = {}) {
+export function openCodeEnvironment(environment = process.env, { lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
   return {
     ...environment,
     OPENCODE_AUTO_SHARE: 'false',
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(openCodeConfig({ lease, scopes, imageStudio })),
+    OPENCODE_CONFIG_CONTENT: JSON.stringify(openCodeConfig({ lease, scopes, imageStudio, memoryServer })),
     OPENCODE_DISABLE_AUTOUPDATE: 'true',
   };
 }
@@ -118,12 +134,12 @@ export function parseOpenCodeOutput(output) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null }) {
+export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null }) {
   return runReadonlyProcess({
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt, attachments, ...(model ? { model } : {}) }),
     cwd: projectRoot,
-    env: openCodeEnvironment(process.env, { lease, scopes, imageStudio }),
+    env: openCodeEnvironment(process.env, { lease, scopes, imageStudio, memoryServer }),
     timeoutMs,
     signal,
     label: 'OpenCode',

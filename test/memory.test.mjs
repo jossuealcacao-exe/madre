@@ -127,7 +127,7 @@ test('memory: a turn beyond the context window recalls the matching old exchange
     await room.send({ text: 'Anything about a PELICAN codeword in our history?', target: 'codex' });
     assert.ok(!prompts.at(-1).prompt.includes('<memory>'));
 
-    assert.deepEqual(Object.keys(room.memoryStats()), ['entries', 'lastSequence', 'memories', 'lastDistilled', 'pending', 'distill', 'file']);
+    assert.deepEqual(Object.keys(room.memoryStats()), ['entries', 'lastSequence', 'memories', 'lastDistilled', 'pending', 'distill', 'embeddings', 'tools', 'file']);
     await room.shutdown?.();
     memory.close();
   } finally {
@@ -254,6 +254,222 @@ test('distiller: the room distils with the cheapest agent after enough exchanges
     const retried = await room.distillNow();
     assert.equal(retried.error, undefined);
     assert.ok(memory.lastDistilled() > before);
+    await room.shutdown();
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+import { cosine, fakeEmbedding, createEmbedder, toBlob, fromBlob } from '../src/embeddings.mjs';
+import { handleRequest as memoryRpc, callTool, TOOLS as MEMORY_TOOL_DEFS } from '../src/mcp/memory-server.mjs';
+import { memoryServerFor, MEMORY_TOOLS } from '../src/memory-tools.mjs';
+import { buildClaudeArgs } from '../src/adapters/claude.mjs';
+import { buildCodexArgs, tomlValue } from '../src/adapters/codex.mjs';
+import { isolateGeminiSettings, geminiPolicy } from '../src/adapters/gemini.mjs';
+import { openCodeConfig } from '../src/adapters/opencode.mjs';
+import { mkdir, writeFile } from 'node:fs/promises';
+
+// An embedder with two meanings: money and colours. Lets a Spanish question find an English decision by meaning alone.
+const topicEmbedder = {
+  model: 'topics-2',
+  dims: 2,
+  embed: async (texts) => texts.map((text) => (/stripe|payment|webhook|cobro|pago|firma/i.test(text) ? Float32Array.from([1, 0]) : /colou?r|onboarding|card/i.test(text) ? Float32Array.from([0, 1]) : Float32Array.from([0, 0]))),
+};
+
+test('embeddings: cosine, blobs round-trip, fake embedder is stable and unit length, factory honours the switches', async () => {
+  assert.equal(cosine([1, 0], [1, 0]), 1);
+  assert.equal(cosine([1, 0], [0, 1]), 0);
+  const a = fakeEmbedding('payment webhook signature');
+  const b = fakeEmbedding('payment webhook signature');
+  assert.deepEqual([...a], [...b]);
+  assert.ok(Math.abs(cosine(a, a) - 1) < 1e-6);
+  assert.ok(cosine(a, fakeEmbedding('payment webhook')) > cosine(a, fakeEmbedding('onboarding colours')));
+  assert.deepEqual([...fromBlob(toBlob([0.5, -1, 2]))], [0.5, -1, 2]);
+  assert.equal(createEmbedder({ key: null, env: {} }), null);
+  assert.equal(createEmbedder({ key: 'k', env: { PULSE_EMBED: '0' } }), null);
+  assert.equal(createEmbedder({ key: null, env: { PULSE_EMBED_FAKE: '1' } }).model, 'fake-64');
+  const calls = [];
+  const gemini = createEmbedder({ key: 'secret', env: { PULSE_EMBED_DIMS: '4' }, fetchImpl: async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return { ok: true, json: async () => ({ embeddings: JSON.parse(init.body).requests.map(() => ({ values: [1, 0, 0, 0] })) }) }; } });
+  const vectors = await gemini.embed(['hola', 'adiós'], { query: true });
+  assert.equal(vectors.length, 2);
+  assert.match(calls[0].url, /gemini-embedding-001:batchEmbedContents\?key=secret$/);
+  assert.equal(calls[0].body.requests[0].taskType, 'RETRIEVAL_QUERY');
+  assert.equal(calls[0].body.requests[0].outputDimensionality, 4);
+});
+
+test('memory: vectors are stored in the background and recall fuses meaning with words', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-vectors-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    await store.append('message.created', { messageId: 'a', role: 'user', sender: 'you', target: 'codex', text: 'Decision: the payment webhook verifies the Stripe signature before parsing JSON.' });
+    await store.append('message.created', { messageId: 'b', role: 'assistant', sender: 'codex', target: 'you', text: 'Onboarding cards should use the phosphor colour.' });
+    await store.append('message.created', { messageId: 'c', role: 'user', sender: 'you', target: 'claude', text: 'Unrelated remark about lunch.' });
+    const memory = (await new RoomMemory(join(root, 'memory.sqlite')).initialize(store)).attachEmbedder(topicEmbedder);
+    assert.deepEqual(memory.vectorCounts(), { entries: 0, memories: 0 });
+    assert.equal(await memory.embedPending(), 3);
+    assert.deepEqual(memory.vectorCounts(), { entries: 3, memories: 0 });
+    assert.equal(await memory.embedPending(), 0, 'nothing pending twice');
+
+    // No word in common with the decision; meaning finds it anyway, and nothing else crosses the floor.
+    const queryVector = await memory.embedQuery('¿qué acordamos sobre la firma del cobro?');
+    const recall = memory.recall('¿qué acordamos sobre la firma del cobro?', { beforeSequence: 10, queryVector });
+    assert.equal(recall.entries.length, 1);
+    assert.equal(recall.entries[0].sequence, 1);
+    assert.ok(recall.entries[0].semantic > 0.9);
+    assert.equal(recall.semantic, true);
+    // Words still count: a lexical hit with no meaning match surfaces too.
+    const both = memory.recall('lunch remark about colour', { beforeSequence: 10, queryVector: Float32Array.from([0, 1]) });
+    assert.deepEqual(both.entries.map((entry) => entry.sequence), [2, 3]);
+    // Without a vector, recall is what it was.
+    assert.equal(memory.recall('firma del cobro', { beforeSequence: 10 }).entries.length, 0);
+
+    // Distilled notes get vectors too and are found by meaning.
+    memory.addMemories([{ kind: 'decision', text: 'Webhook signatures are verified before parsing.', sources: [1] }], { agent: 'gemini', fromSequence: 1, throughSequence: 1 });
+    assert.equal(await memory.embedPending(), 1);
+    const notes = memory.recallMemories('cobro firma', { beforeSequence: 10, queryVector });
+    assert.equal(notes.length, 1);
+    assert.match(notes[0].text, /Webhook signatures/);
+
+    // A stale entries schema drops entry vectors with the entries and keeps note vectors.
+    memory.close();
+    const { DatabaseSync } = await import('node:sqlite');
+    const raw = new DatabaseSync(join(root, 'memory.sqlite'));
+    raw.exec("UPDATE meta SET value = '0' WHERE key = 'schema'");
+    raw.close();
+    const rebuilt = (await new RoomMemory(join(root, 'memory.sqlite')).initialize(store)).attachEmbedder(topicEmbedder);
+    assert.deepEqual(rebuilt.vectorCounts(), { entries: 0, memories: 1 });
+    assert.equal(rebuilt.count(), 3);
+    rebuilt.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('memory MCP server: lists five tools; search, recall, notes, timeline and project_state answer over the room file', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-mcp-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    await store.append('message.created', { messageId: 'a', role: 'user', sender: 'you', target: 'codex', text: 'Decision: the payment webhook verifies the Stripe signature before parsing JSON.' });
+    await store.append('message.created', { messageId: 'a', role: 'assistant', sender: 'codex', target: 'you', text: 'Noted; the handler is src/webhooks.mjs.' });
+    await store.append('command.output', { name: 'git', title: '/git status', text: 'On branch main.' });
+    const memory = (await new RoomMemory(join(root, 'memory.sqlite')).initialize(store)).attachEmbedder(topicEmbedder);
+    await memory.embedPending();
+    memory.addMemories([{ kind: 'preference', text: 'Reply in Spanish, briefly.', sources: [1] }], { agent: 'gemini', fromSequence: 1, throughSequence: 2 });
+    const context = { memory, projectRoot: root };
+
+    const listed = await memoryRpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, context);
+    assert.deepEqual(listed.result.tools.map((tool) => tool.name), MEMORY_TOOLS);
+    assert.deepEqual(MEMORY_TOOL_DEFS.map((tool) => tool.name), MEMORY_TOOLS);
+    const init = await memoryRpc({ jsonrpc: '2.0', id: 2, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, context);
+    assert.equal(init.result.serverInfo.name, 'pulse-memory');
+
+    const search = await memoryRpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'memory_search', arguments: { query: 'firma del cobro' } } }, context);
+    assert.equal(search.result.isError, false);
+    assert.match(search.result.content[0].text, /Quotes \(meaning and words/);
+    assert.match(search.result.content[0].text, /\[#1 .*\] Decision: the payment webhook/);
+    assert.match(await callTool('memory_search', { query: 'nothing here at all zzz', scope: 'quotes' }, context), /Nothing in the room memory matches/);
+    assert.match(await callTool('memory_search', { query: 'Spanish', scope: 'notes' }, context), /Distilled notes:\n- \[preference · #1–#2\] Reply in Spanish/);
+
+    const recall = await callTool('memory_recall', { from: 1, through: 2 }, context);
+    assert.match(recall, /\[#1 · .* · @you \(user\) → @codex\]\nDecision: the payment webhook[\s\S]*\[#2 · .* · @codex \(assistant\) → human\]/);
+    assert.match(await callTool('memory_recall', { from: 50 }, context), /No exchanges between #50 and #70/);
+    assert.match(await callTool('memory_notes', { kind: 'preference' }, context), /Reply in Spanish/);
+    assert.equal(await callTool('memory_notes', { kind: 'question' }, context), 'No distilled notes yet.');
+    const timeline = await callTool('memory_timeline', { limit: 2 }, context);
+    assert.match(timeline, /^#3 · .* · \/git: \/git status On branch main\.\n#2 · .* · @codex → human: Noted/);
+
+    assert.match(await callTool('project_state', {}, context), /does not use AHP\+/);
+    await mkdir(join(root, '.ahp', 'handoffs'), { recursive: true });
+    await writeFile(join(root, '.ahp', 'manifest.json'), '{"version":1}');
+    await writeFile(join(root, '.ahp', 'handoffs', 'h1.md'), '# Handoff one');
+    const state = await callTool('project_state', {}, context);
+    assert.match(state, /AHP\+ manifest[\s\S]*{"version":1}[\s\S]*Latest in \.ahp\/handoffs\/ \(h1\.md\):\n# Handoff one/);
+
+    const unknown = await memoryRpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'nope' } }, context);
+    assert.equal(unknown.error.code, -32602);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('adapters: every CLI gets the memory server for the run, with its tools allowed', () => {
+  const server = memoryServerFor({ dbFile: '/home/u/.pulse/rooms/r/memory.sqlite', projectRoot: '/proj', env: { GEMINI_API_KEY: 'k' } });
+  assert.equal(server.name, 'pulse-memory');
+  assert.deepEqual(server.tools, MEMORY_TOOLS);
+  assert.deepEqual(server.env, { PULSE_MEMORY_DB: '/home/u/.pulse/rooms/r/memory.sqlite', PULSE_PROJECT_ROOT: '/proj', GEMINI_API_KEY: 'k' });
+  assert.equal(memoryServerFor({ dbFile: '/x', projectRoot: '/p', env: { PULSE_MEMORY_TOOLS: '0' } }), null);
+
+  const claude = buildClaudeArgs({ prompt: 'q', memoryServer: server });
+  assert.ok(!claude.includes('--safe-mode'), 'safe mode would disable our server');
+  assert.deepEqual(claude.slice(claude.indexOf('--setting-sources'), claude.indexOf('--setting-sources') + 2), ['--setting-sources', '']);
+  const allowed = claude[claude.indexOf('--allowedTools') + 1].split(',');
+  for (const tool of MEMORY_TOOLS) assert.ok(allowed.includes(`mcp__pulse-memory__${tool}`), tool);
+  const mcp = JSON.parse(claude[claude.indexOf('--mcp-config') + 1]);
+  assert.deepEqual(Object.keys(mcp.mcpServers), ['pulse-memory']);
+  assert.equal(mcp.mcpServers['pulse-memory'].env.PULSE_MEMORY_DB, server.env.PULSE_MEMORY_DB);
+  assert.deepEqual(claude.slice(-2), ['--', 'q']);
+  assert.ok(buildClaudeArgs({ prompt: 'q' }).includes('--safe-mode'), 'without servers nothing changes');
+
+  const codex = buildCodexArgs({ projectRoot: '/proj', prompt: 'q', memoryServer: server });
+  assert.deepEqual(codex.slice(0, 6), ['--sandbox', 'read-only', '--ask-for-approval', 'never', '-C', '/proj']);
+  const overrides = codex.filter((arg, index) => codex[index - 1] === '-c');
+  assert.equal(overrides.length, 3);
+  assert.equal(overrides[0], `mcp_servers.pulse-memory.command=${JSON.stringify(process.execPath)}`);
+  assert.match(overrides[1], /^mcp_servers\.pulse-memory\.args=\[".*memory-server\.mjs"\]$/);
+  assert.equal(overrides[2], 'mcp_servers.pulse-memory.env={ PULSE_MEMORY_DB = "/home/u/.pulse/rooms/r/memory.sqlite", PULSE_PROJECT_ROOT = "/proj", GEMINI_API_KEY = "k" }');
+  assert.ok(codex.indexOf('exec') > codex.lastIndexOf('-c'), 'overrides are global flags, before exec');
+  assert.equal(tomlValue({ 'odd key': ['a"b'] }), '{ "odd key" = ["a\\"b"] }');
+
+  const gemini = isolateGeminiSettings({ security: { auth: { selectedType: 'gemini-api-key' } }, mcpServers: { evil: {} } }, { memoryServer: server });
+  assert.deepEqual(Object.keys(gemini.mcpServers), ['pulse-memory']);
+  assert.equal(gemini.mcpServers['pulse-memory'].trust, true);
+  const policy = geminiPolicy({ memoryServer: server });
+  assert.match(policy, /toolName = \["memory_search", "pulse-memory__memory_search", "memory_recall"/);
+  assert.match(policy, /decision = "deny"/);
+
+  const opencode = openCodeConfig({ memoryServer: server });
+  assert.equal(opencode.mcp['pulse-memory'].type, 'local');
+  assert.deepEqual(opencode.mcp['pulse-memory'].command, [process.execPath, server.args[0]]);
+  assert.equal(opencode.agent['pulse-readonly'].permission['pulse-memory*'], 'allow');
+  assert.equal(opencode.agent['pulse-readonly'].permission['pulse-memory_memory_search'], 'allow');
+  assert.equal(opencode.agent['pulse-readonly'].permission['*'], 'deny');
+  assert.equal(openCodeConfig({}).mcp, undefined);
+});
+
+test('room: every turn carries the memory server and is told to use it; the distiller gets neither', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-tools-room-'));
+  const seen = [];
+  const roster = [...agents, { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake/gemini', version: 'test' }];
+  const invokers = {
+    'codex-readonly': async (call) => { seen.push({ agent: 'codex', ...call }); return { text: 'ok', usage: null }; },
+    'claude-readonly': async (call) => { seen.push({ agent: 'claude', ...call }); return { text: 'ok', usage: null }; },
+    'gemini-readonly': async (call) => { seen.push({ agent: 'gemini', ...call }); return { text: 'NONE', usage: null }; },
+  };
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const memory = (await new RoomMemory(join(root, 'memory.sqlite')).initialize(store)).attachEmbedder(topicEmbedder);
+    const memoryServer = memoryServerFor({ dbFile: memory.file, projectRoot: root, env: {} });
+    const room = new Room({ store, agents: roster, projectRoot: root, invokers, memory, memoryServer, distill: { every: 2, idleMs: 60_000 } });
+    await room.send({ text: 'Where is the payment webhook?', target: 'codex' });
+    await room.send({ text: 'Off the record: same question.', target: 'claude', mode: 0 });
+    await room.settleDistillation();
+    await room.embedNow();
+
+    const turn = seen.find((call) => call.agent === 'codex');
+    assert.equal(turn.memoryServer, memoryServer);
+    assert.match(turn.prompt, /pulse-memory MCP tools: memory_search/);
+    const ghost = seen.find((call) => call.agent === 'claude');
+    assert.equal(ghost.memoryServer, memoryServer, 'a ghost may read the memory');
+    const archivist = seen.find((call) => call.agent === 'gemini');
+    assert.ok(archivist, 'the distiller ran');
+    assert.equal(archivist.memoryServer, undefined);
+    assert.ok(!archivist.prompt.includes('memory_search'));
+    assert.equal(memory.vectorCounts().entries, 2, 'both entries embedded in the background');
+    const stats = room.memoryStats();
+    assert.deepEqual(stats.tools, MEMORY_TOOLS);
+    assert.equal(stats.embeddings.model, 'topics-2');
     await room.shutdown();
     memory.close();
   } finally {

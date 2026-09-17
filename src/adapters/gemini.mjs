@@ -55,8 +55,19 @@ priority = 999
 interactive = false
 `;
 
-export function geminiPolicy({ lease = null, scopes = null, imageStudio = null } = {}) {
-  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}`;
+export function geminiPolicy({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
+  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}`;
+}
+
+export function geminiMemoryPolicy(memoryServer) {
+  const names = memoryServer.tools.flatMap((tool) => [tool, `${memoryServer.name}__${tool}`]);
+  return `
+[[rule]]
+toolName = [${names.map((name) => `"${name}"`).join(', ')}]
+decision = "allow"
+priority = 1000
+interactive = false
+`;
 }
 
 // Gemini CLI reads "@something" in a prompt as a file to include, even in
@@ -98,11 +109,13 @@ export function buildGeminiEnvironment({ runtimeRoot, environment = process.env 
   };
 }
 
-export function isolateGeminiSettings(settings, { imageStudio = null } = {}) {
+export function isolateGeminiSettings(settings, { imageStudio = null, memoryServer = null } = {}) {
   const auth = settings?.security?.auth;
   const isolated = auth ? { security: { auth } } : {};
-  if (imageStudio) {
-    isolated.mcpServers = { [imageStudio.name]: { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env, trust: true } };
+  for (const server of [memoryServer, imageStudio]) {
+    if (!server) continue;
+    isolated.mcpServers ??= {};
+    isolated.mcpServers[server.name] = { command: server.command, args: server.args, env: server.env, trust: true };
   }
   return isolated;
 }
@@ -117,7 +130,7 @@ interactive = false
 `;
 }
 
-export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir(), '.gemini'), imageStudio = null }) {
+export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir(), '.gemini'), imageStudio = null, memoryServer = null }) {
   const geminiDir = join(runtimeRoot, '.gemini');
   await mkdir(geminiDir, { recursive: true, mode: 0o700 });
   for (const name of geminiCredentialFiles) {
@@ -131,7 +144,7 @@ export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir
   } catch (error) {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
   }
-  await writeFile(join(geminiDir, 'settings.json'), JSON.stringify(isolateGeminiSettings(settings, { imageStudio })), { mode: 0o600 });
+  await writeFile(join(geminiDir, 'settings.json'), JSON.stringify(isolateGeminiSettings(settings, { imageStudio, memoryServer })), { mode: 0o600 });
   return geminiDir;
 }
 
@@ -242,6 +255,7 @@ export async function invokeGemini({
   lease = null,
   scopes = null,
   imageStudio = null,
+  memoryServer = null,
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   fallbackModel = process.env.PULSE_GEMINI_FALLBACK_MODEL ?? 'gemini-2.5-flash',
@@ -251,8 +265,8 @@ export async function invokeGemini({
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
-    await writeFile(policyPath, geminiPolicy({ lease, scopes, imageStudio: lease ? imageStudio : null }), { mode: 0o600 });
-    await prepareGeminiHome({ runtimeRoot, imageStudio: lease ? imageStudio : null });
+    await writeFile(policyPath, geminiPolicy({ lease, scopes, imageStudio: lease ? imageStudio : null, memoryServer }), { mode: 0o600 });
+    await prepareGeminiHome({ runtimeRoot, imageStudio: lease ? imageStudio : null, memoryServer });
     let attempt = 0;
     let currentModel = model;
     let switched = false;

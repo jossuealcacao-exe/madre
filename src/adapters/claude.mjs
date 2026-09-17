@@ -10,18 +10,29 @@ export function claudeTools({ lease = null, scopes = null } = {}) {
   return tools;
 }
 
-export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null }) {
+export function mcpServersFor({ imageStudio = null, memoryServer = null } = {}) {
+  const servers = {};
+  if (memoryServer) servers[memoryServer.name] = { command: memoryServer.command, args: memoryServer.args, env: memoryServer.env };
+  if (imageStudio) servers[imageStudio.name] = { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env };
+  return servers;
+}
+
+export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null, memoryServer = null }) {
   const tools = claudeTools({ lease, scopes });
-  const mcpTool = imageStudio ? `mcp__${imageStudio.name}__${imageStudio.tool}` : null;
+  const mcpTools = [
+    ...(memoryServer ? memoryServer.tools.map((tool) => `mcp__${memoryServer.name}__${tool}`) : []),
+    ...(imageStudio ? [`mcp__${imageStudio.name}__${imageStudio.tool}`] : []),
+  ];
   const allowed = [
     'Read', 'Glob', 'Grep',
     ...(lease ? [`Write(${lease.outDir}/**)`, `Edit(${lease.outDir}/**)`] : []),
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
-    ...(mcpTool ? [mcpTool] : []),
+    ...mcpTools,
   ];
-  // Only MADRE's own MCP server ever reaches Claude here; --strict-mcp-config
+  // Only MADRE's own MCP servers ever reach Claude here; --strict-mcp-config
   // keeps the user's servers out of the isolated run.
-  const mcpConfig = JSON.stringify({ mcpServers: imageStudio ? { [imageStudio.name]: { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env } } : {} });
+  const anyMcp = Boolean(imageStudio || memoryServer);
+  const mcpConfig = JSON.stringify({ mcpServers: mcpServersFor({ imageStudio, memoryServer }) });
   return [
     '-p',
     ...(model ? ['--model', model] : []),
@@ -30,13 +41,13 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     '--output-format', 'json',
     '--permission-mode', 'dontAsk',
     '--tools', tools.join(','),
-    ...(lease || scopes?.web || imageStudio ? ['--allowedTools', allowed.join(',')] : []),
+    ...(lease || scopes?.web || anyMcp ? ['--allowedTools', allowed.join(',')] : []),
     // CONTROL: the whole project is writable except MADRE's forbidden zones.
     ...(lease?.control ? ['--disallowedTools', ['.git/**', '.pulse/**', '.env', '.env.*', '**/.env', '**/.env.*'].flatMap((glob) => [`Write(${lease.outDir}/${glob})`, `Edit(${lease.outDir}/${glob})`]).join(',')] : []),
-    // --safe-mode disables every MCP server, ours included. With Image Studio
+    // --safe-mode disables every MCP server, ours included. With a MADRE server
     // attached we drop it and instead load no setting sources at all: no user
-    // hooks, plugins or MCP servers, only the project's CLAUDE.md and our server.
-    ...(imageStudio ? ['--setting-sources', ''] : ['--safe-mode']),
+    // hooks, plugins or MCP servers, only the project's CLAUDE.md and ours.
+    ...(anyMcp ? ['--setting-sources', ''] : ['--safe-mode']),
     '--disable-slash-commands',
     '--no-session-persistence',
     '--no-chrome',
@@ -80,10 +91,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio }),
+    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,
