@@ -1193,7 +1193,7 @@ function renderLeaseRefused(event) {
   const node = el('div', 'system lease refused');
   node.append(el('b', null, 'MU/TH/UR › '));
   node.append(message);
-  toast(`MU/TH/UR › ${message}`);
+  if (!replaying) toast(`MU/TH/UR › ${message}`);
   state.lastSender = null;
   return node;
 }
@@ -1294,7 +1294,7 @@ function renderLeaseMissing(event) {
   });
   actions.append(resend, standing);
   node.append(actions);
-  if (requester === 'you') toast(`MU/TH/UR › CREATE is off: @${agent} will answer read-only. Use the lock or /create.`);
+  if (requester === 'you' && !replaying) toast(`MU/TH/UR › CREATE is off: @${agent} will answer read-only. Use the lock or /create.`);
   state.lastSender = null;
   return node;
 }
