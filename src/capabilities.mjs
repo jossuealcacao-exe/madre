@@ -75,6 +75,24 @@ export function agentsWith(capability, agentIds) {
   return agentIds.filter((id) => Boolean(capabilityOf(id)[capability]));
 }
 
+// Permission modes, chosen per message in the composer and capped per agent
+// in CONNECTIONS. The human's mode is the ceiling of any plan it starts.
+//   #0 GHOST     off the record: nothing enters the log or anyone's context
+//   #1 EXCHANGE  read the project, coordinate with the others (default)
+//   #2 CREATE    create files and images inside the turn's .pulse/out/ lease
+//   #3 CONTROL   read, create and modify the project itself (phase C)
+export const MODES = {
+  0: { key: 'ghost', label: 'GHOST', hint: 'off the record · nothing is saved or remembered' },
+  1: { key: 'exchange', label: 'EXCHANGE', hint: 'read the project and coordinate · default' },
+  2: { key: 'create', label: 'CREATE', hint: 'create files and images inside .pulse/out/' },
+  3: { key: 'control', label: 'CONTROL', hint: 'modify the project itself · only this agent · needs the override' },
+};
+export const MODE_MAX = 3;
+export const normalizeMode = (value, fallback = 1) => {
+  const mode = Number(value);
+  return Number.isInteger(mode) && mode >= 0 && mode <= MODE_MAX ? mode : fallback;
+};
+
 // Scopes are the capabilities the human has switched on for CREATE. A scope
 // can only be enabled where the CLI has the capability; by default file
 // creation and image generation are on wherever possible, web stays off.
@@ -92,6 +110,11 @@ export function resolveScopes(agentId, configured = {}) {
   // A standing lease: every turn of this agent may create files inside
   // .pulse/out/ without the human arming CREATE each time. Opt-in per agent.
   scopes.write.always = Boolean(configured.alwaysCreate) && scopes.write.enabled;
+  // The ceiling: how far the composer may take this agent. Writing needs the
+  // CLI to be able to write; CONTROL is capped at 2 until phase C wires it.
+  const wanted = normalizeMode(configured.maxMode, scopes.write.enabled ? 2 : 1);
+  scopes.maxMode = Math.min(wanted, scopes.write.capable ? 3 : 1);
+  scopes.defaultMode = scopes.write.always && scopes.maxMode >= 2 ? 2 : 1;
   return scopes;
 }
 

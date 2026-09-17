@@ -42,11 +42,21 @@ const PLACEHOLDERS = {
   plain: 'Type here, human. Ask the room…',
   create: 'Creation lease on: what to create and how it should look. It lands in .pulse/out/',
   order: 'Priority one. Terse transmissions; the original stays in the record.',
+  ghost: 'Off the record. Ask anything; nothing is saved, nobody else will remember it.',
+  control: 'Control armed. Say what to change in the project; every action runs without asking.',
   expendable: 'Type here, human. MOTHER is listening.',
 };
 let winkTimer = null;
 const LINE_PX = 21;
 const MAX_ROWS = 3;
+
+// Permission modes: chosen per message, capped per agent in CONNECTIONS.
+const MODES = {
+  0: { key: 'ghost', label: 'GHOST', hint: 'Off the record. Nothing is saved, nobody else remembers it, gone on reload.' },
+  1: { key: 'exchange', label: 'EXCHANGE', hint: 'Read the project and coordinate with the others. The default.' },
+  2: { key: 'create', label: 'CREATE', hint: 'Create files and images, only inside this turn\'s .pulse/out/ directory.' },
+  3: { key: 'control', label: 'CONTROL', hint: 'Modify the project itself, no approval per action. Only this agent. Needs the override.' },
+};
 
 const state = {
   agents: new Map(),
@@ -59,6 +69,8 @@ const state = {
   failures: [],            // recorded conditions for MU/TH/UR
   expendable: false,       // easter egg armed: the next human message is reviewed by MOTHER
   running: new Map(),      // messageId -> agent, turns in flight
+  mode: 1,                 // permission mode for the next message (#0..#3)
+  modeArmedFor: null,      // agent the CONTROL override was granted to
   commands: [],            // slash commands from /api/commands (modules) + the built-in ones
   plansRunning: new Set(),
   brakeArmed: false,       // STOP ALL is a brake against runaway sequences: armed only by MU/TH/UR alerts
@@ -560,8 +572,9 @@ function renderPicker() {
     const choose = () => {
       if (els.target.value === agent.id) { toggleModelMenu(agent.id, pick); return; }
       closeModelMenu();
+      closeModeMenu();
       els.target.value = agent.id;
-      renderPicker();
+      setMode(defaultModeFor(agent.id));
       els.input.focus();
     };
     pick.title = els.target.value === agent.id ? `${agent.label} · click again to choose its model` : agent.label;
@@ -574,6 +587,12 @@ function renderPicker() {
     const text = paint(el('span', 'pick-label'), current.id);
     text.append('to ');
     text.append(el('b', null, `@${current.id}`));
+    const modeChip = el('button', `mode-chip m${state.mode}`);
+    modeChip.type = 'button';
+    modeChip.append(el('b', null, `#${state.mode}`), `${MODES[state.mode].label} ▾`);
+    modeChip.title = `Permission mode for this message · ${MODES[state.mode].hint}`;
+    modeChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModeMenu(current.id, modeChip); });
+    text.append(modeChip);
     const chosen = state.chosenModel[current.id];
     const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : 'default model ▾');
     modelChip.type = 'button';
@@ -648,6 +667,131 @@ function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; }
 document.addEventListener('click', (event) => { if (!modelMenu.hidden && !modelMenu.contains(event.target) && !event.target.closest('.picker')) closeModelMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModelMenu(); });
 
+/* ---------- mode menu: how far this message may go ---------- */
+
+const modeMenu = el('div', 'model-menu mode-menu');
+modeMenu.hidden = true;
+document.body.append(modeMenu);
+let modeMenuFor = null;
+function closeModeMenu() { modeMenu.hidden = true; modeMenuFor = null; }
+document.addEventListener('click', (event) => { if (!modeMenu.hidden && !modeMenu.contains(event.target) && !event.target.closest('.picker')) closeModeMenu(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModeMenu(); });
+
+function ceilingFor(id) { return state.capabilities[id]?.scopes?.maxMode ?? 1; }
+function defaultModeFor(id) { return state.capabilities[id]?.scopes?.defaultMode ?? 1; }
+
+function toggleModeMenu(id, anchor) {
+  if (!modeMenu.hidden && modeMenuFor === id) { closeModeMenu(); return; }
+  closeModelMenu();
+  modeMenuFor = id;
+  paint(modeMenu, id);
+  modeMenu.replaceChildren();
+  const title = el('div', 'model-menu-title');
+  title.append(el('b', null, `@${id}`), ` · permission mode · capped at #${ceilingFor(id)} in CONNECTIONS`);
+  modeMenu.append(title);
+  const cap = ceilingFor(id);
+  for (const n of [0, 1, 2, 3]) {
+    const option = el('button', `mode-option o${n}${state.mode === n ? ' current' : ''}`);
+    option.type = 'button';
+    const allowed = n <= cap;
+    option.disabled = !allowed;
+    const body = el('span');
+    body.append(el('span', 'name', MODES[n].label), el('span', 'hint', MODES[n].hint));
+    option.append(el('span', 'n', `#${n}`), body, el('span', 'cap', !allowed ? (n === 3 && cap < 3 ? 'RAISE MAX MODE' : 'ABOVE MAX MODE') : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) && n === 2 ? 'STANDING' : ''));
+    option.addEventListener('click', () => {
+      closeModeMenu();
+      if (n === 3) { openOverride(id); return; }
+      setMode(n, { wink: n === 0 });
+    });
+    modeMenu.append(option);
+    if (n === 2) {
+      const scopes = state.capabilities[id]?.scopes;
+      if (scopes) {
+        const row = el('div', 'mode-scopes');
+        for (const [key, labelText] of [['write', 'files'], ['imageGen', 'images'], ['web', 'web']]) {
+          const scope = scopes[key] ?? {};
+          const on = scope.enabled && scope.wired;
+          row.append(el('span', `cap${on ? ' on' : scope.capable ? '' : ' no'}`, labelText));
+        }
+        modeMenu.append(row);
+      }
+    }
+  }
+  modeMenu.append(el('div', 'model-note', 'Your mode is the ceiling of any plan this message starts. #3 is never delegated.'));
+  modeMenu.hidden = false;
+  const rect = anchor.getBoundingClientRect();
+  const width = modeMenu.offsetWidth || 320;
+  const height = modeMenu.offsetHeight || 260;
+  modeMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
+  modeMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+}
+
+// One place changes the mode: chip, classes, label, placeholder and the old CREATE state.
+function setMode(n, { wink = false } = {}) {
+  const mode = [0, 1, 2, 3].includes(n) ? n : 1;
+  state.mode = mode;
+  state.create = mode === 2;
+  if (mode !== 3) state.modeArmedFor = null;
+  els.createToggle.setAttribute('aria-pressed', String(state.create));
+  els.composer.classList.toggle('creating', mode === 2);
+  els.composer.classList.toggle('ghost', mode === 0);
+  els.composer.classList.toggle('control', mode === 3);
+  if (typeof renderCreateScopes === 'function') renderCreateScopes();
+  if (typeof updateCrewLabel === 'function') { updateCrewLabel(); updatePlaceholder(); }
+  if (typeof renderPicker === 'function') renderPicker();
+  if (typeof autosize === 'function') autosize();
+  if (wink && typeof winkField === 'function') winkField();
+}
+// After a message goes out the mode falls back to the target's default: #2 for a standing lease, else #1.
+function resetModeAfterSend() { setMode(defaultModeFor(els.target.value)); }
+
+/* ---------- emergency command override: arming CONTROL ---------- */
+
+const override = {
+  dialog: document.querySelector('#override'),
+  form: document.querySelector('#override-form'),
+  input: document.querySelector('#override-input'),
+  reply: document.querySelector('#override-reply'),
+  brief: document.querySelector('#override-brief'),
+  cancel: document.querySelector('#override-cancel'),
+  frame: document.querySelector('#override .override-frame'),
+  agent: null,
+};
+function projectDesignation() { return (state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''; }
+function openOverride(id) {
+  if (!override.dialog) return;
+  override.agent = id;
+  override.brief.textContent = `PRIORITY ONE. CONTROL GIVES @${id.toUpperCase()} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION. TYPE THE PROJECT DESIGNATION TO ARM.`;
+  override.reply.textContent = '';
+  override.reply.className = 'mother-answer override-reply';
+  override.input.value = '';
+  override.dialog.showModal();
+  override.input.focus();
+}
+override.cancel?.addEventListener('click', () => override.dialog.close());
+override.form?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const typed = override.input.value.trim();
+  const expected = projectDesignation();
+  if (!typed || typed.toLowerCase() !== expected.toLowerCase()) {
+    override.reply.textContent = 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.';
+    override.reply.className = 'mother-answer override-reply denied';
+    override.frame.classList.remove('shake'); void override.frame.offsetWidth; override.frame.classList.add('shake');
+    override.input.select();
+    return;
+  }
+  override.reply.textContent = `SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @${override.agent.toUpperCase()}. CREW IN COMMAND.`;
+  override.reply.className = 'mother-answer override-reply granted';
+  const agent = override.agent;
+  setTimeout(() => {
+    override.dialog.close();
+    state.modeArmedFor = agent;
+    els.target.value = agent;
+    setMode(3, { wink: true });
+    toast(`MU/TH/UR › CONTROL armed for @${agent} for this message. Phase C wires the checkpoint and the writes; until then the room refuses to send at #3.`);
+  }, 900);
+});
+
 function renderOnboarding() {
   const ready = [...state.agents.values()].filter((agent) => agent.ready);
   els.onboarding.hidden = ready.length > 0;
@@ -688,16 +832,18 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text, originalText, ashCode, model, attachments = [], create } = event.payload;
+  const { messageId, target, text, originalText, ashCode, model, attachments = [], create, mode } = event.payload;
   state.userMessages.set(messageId, { text: originalText ?? text, target, model });
   const reviewed = state.expendable;
   const node = row('user');
+  if (event.ghost || mode === 0) node.classList.add('ghost');
   if (reviewed) node.classList.add('expendable');
   node.id = `msg-${messageId}`;
   const col = el('div', 'col');
   const who = el('div', 'who');
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
-  if (create) who.append(el('span', 'badge lease', 'create'));
+  const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
+  if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, `#${shownMode} ${MODES[shownMode].label}`));
   if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
   col.append(who);
   const bubble = el('div', 'bubble', text);
@@ -716,10 +862,11 @@ function renderUserMessage(event) {
 }
 
 function renderAssistantMessage(event) {
-  const { messageId, parentMessageId, sender, target, text, originalText, ashCode, status, step, totalSteps, model } = event.payload;
+  const { messageId, parentMessageId, sender, target, text, originalText, ashCode, status, step, totalSteps, model, mode } = event.payload;
   const delegated = status === 'delegated';
-  const compact = state.lastSender === sender && !delegated && !ashCode?.active;
+  const compact = state.lastSender === sender && !delegated && !ashCode?.active && !event.ghost;
   const node = row('assistant', sender, { compact });
+  if (event.ghost || mode === 0) node.classList.add('ghost');
   if (delegated) node.classList.add('delegated');
   node.id = `msg-${messageId}`;
   const col = el('div', 'col');
@@ -736,6 +883,7 @@ function renderAssistantMessage(event) {
     }
     if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
     if (model) who.append(el('span', 'badge model', model));
+    if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
     if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
@@ -1073,7 +1221,13 @@ function renderPlanEvent(event) {
   node.append(el('b', null, 'plan · '));
   if (event.type === 'plan.created') {
     node.id = `plan-${planId}`;
-    node.append(`@${orchestrator} puts ${steps.map((step) => `@${step.agent}`).join(', ')} to work${closing ? ', then closes' : ''}`);
+    node.append(`@${orchestrator} puts `);
+    steps.forEach((step, index) => {
+      if (index) node.append(', ');
+      node.append(`@${step.agent}`);
+      if (Number.isInteger(step.mode)) node.append(el('span', `step-mode m${step.mode}`, `#${step.mode}`));
+    });
+    node.append(` to work${closing ? ', then closes' : ''}`);
     const stop = el('button', 'stop', 'STOP');
     stop.type = 'button';
     stop.title = 'Stop the remaining steps of this plan';
@@ -1150,6 +1304,7 @@ function renderEvent(event) {
   if (state.seen.has(event.id)) return;
   state.seen.add(event.id);
   state.lastSequence = Math.max(state.lastSequence, event.sequence ?? 0);
+  if (event.ghost) state.seen.add(event.id);
   try {
     renderEventNode(event);
   } catch (error) {
@@ -1481,8 +1636,12 @@ function renderHighlight() {
   const text = els.input.value;
   const agents = knownAgentIds();
   const commands = allCommands();
-  const html = escapeHtml(text).replace(/(^|[\s(,;:])([@/!])([\w][\w./-]*(?::\d+(?:-\d+)?)?)/g, (whole, lead, sigil, name) => {
+  const html = escapeHtml(text).replace(/(^|[\s(,;:])([@/!#])([\w][\w./-]*(?::\d+(?:-\d+)?)?)/g, (whole, lead, sigil, name) => {
     const key = name.toLowerCase();
+    if (sigil === '#') {
+      if (!/^[0-3]$/.test(name)) return whole;
+      return `${lead}<span class="chip mode m${name}">#${name} ${MODES[Number(name)].label}</span>`;
+    }
     if (sigil === '!') {
       if (!/\.[A-Za-z0-9]{1,8}(?::\d+(?:-\d+)?)?$/.test(name)) return whole;
       return `${lead}<span class="chip file">!${escapeHtml(name)}</span>`;
@@ -1514,7 +1673,7 @@ const menu = { items: [], index: 0, kind: null, start: 0, end: 0 };
 function menuQuery() {
   const caret = els.input.selectionStart ?? els.input.value.length;
   const before = els.input.value.slice(0, caret);
-  const match = before.match(/(^|[\s(,;:])([@/!])([\w./-]*)$/);
+  const match = before.match(/(^|[\s(,;:])([@/!#])([\w./-]*)$/);
   if (!match) return null;
   return { kind: match[2], query: match[3].toLowerCase(), start: caret - match[3].length - 1, end: caret };
 }
@@ -1541,6 +1700,12 @@ function renderMenu() {
   const found = menuQuery();
   if (!found) return closeMenu();
   if (found.kind === '!') return fileMenu(found);
+  if (found.kind === '#') {
+    const cap = ceilingFor(els.target.value);
+    const items = [0, 1, 2, 3].filter((n) => String(n).startsWith(found.query)).map((n) => ({ key: `#${n} ${MODES[n].label}`, insert: `#${n} `, what: n > cap ? `${MODES[n].hint} · above @${els.target.value}'s max mode` : MODES[n].hint, off: n > cap }));
+    if (!items.length) return closeMenu();
+    return showMenu(items, { ...found, hint: 'MODE · ↑↓ · TAB OR ENTER' });
+  }
   const items = found.kind === '@'
     ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : `${label(id)} · not ready`, color: brandOf(id).color, off: !state.agents.get(id)?.ready }))
     : allCommands().filter((item) => item.name.startsWith(found.query)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : `${item.title} is not available here · see MODULES`, off: !item.available }));
@@ -1606,7 +1771,7 @@ async function runSlashCommand(text) {
         renderPicker();
       }
     }
-    if (!state.create) els.createToggle.click();
+    if (!state.create) setMode(2);
     return { handled: false, text: rest, target };
   }
   const known = allCommands().find((item) => item.name === name);
@@ -1687,25 +1852,18 @@ function renderCreateScopes() {
   }
   if (!scopes.write?.enabled) toast(`MU/TH/UR › @${id} ${scopes.write?.capable ? 'has file creation switched off' : 'cannot create files from its CLI'}. CREATE will be refused; pick another agent or change CONNECTIONS.`);
 }
-els.createToggle.addEventListener('click', () => {
-  state.create = !state.create;
-  els.createToggle.setAttribute('aria-pressed', String(state.create));
-  renderCreateScopes();
-  els.composer.classList.toggle('creating', state.create);
-  updateCrewLabel();
-  updatePlaceholder();
-  autosize();
-  els.input.focus();
-});
+els.createToggle.addEventListener('click', () => { setMode(state.mode === 2 ? 1 : 2); els.input.focus(); });
 // The crew label reads the composer's state: order, lease, easter egg, human.
 function updateCrewLabel() {
-  els.crewLabel.textContent = state.ashCode && state.ashCodeInstalled
-    ? (state.create ? 'MU/TH/UR · 937 · CREATE ›' : 'MU/TH/UR · SPECIAL ORDER 937 ›')
-    : state.create ? 'HUMAN · CREATE ›'
-      : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
+  const order = state.ashCode && state.ashCodeInstalled;
+  els.crewLabel.textContent = state.mode === 3 ? `MU/TH/UR · CONTROL @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
+    : state.mode === 0 ? 'HUMAN · GHOST ›'
+      : order ? (state.create ? 'MU/TH/UR · 937 · CREATE ›' : 'MU/TH/UR · SPECIAL ORDER 937 ›')
+        : state.create ? 'HUMAN · CREATE ›'
+          : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
 }
 function updatePlaceholder() {
-  els.input.placeholder = state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
+  els.input.placeholder = state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
 }
 function setOrder937(on, { wink = false } = {}) {
   state.ashCode = on;
@@ -1716,15 +1874,18 @@ function setOrder937(on, { wink = false } = {}) {
   updatePlaceholder();
   autosize();
   if (on && wink) {
-    // The wink to MOTHER: one CRT sweep across the field, then business as usual.
-    clearTimeout(winkTimer);
-    els.composer.classList.remove('ash-wink');
-    void els.composer.offsetWidth;
-    els.composer.classList.add('ash-wink');
-    winkTimer = setTimeout(() => els.composer.classList.remove('ash-wink'), 1600);
+    winkField();
   } else if (!on) {
     els.composer.classList.remove('ash-wink');
   }
+}
+// The wink to MOTHER: one CRT sweep across the field, then business as usual.
+function winkField() {
+  clearTimeout(winkTimer);
+  els.composer.classList.remove('ash-wink');
+  void els.composer.offsetWidth;
+  els.composer.classList.add('ash-wink');
+  winkTimer = setTimeout(() => els.composer.classList.remove('ash-wink'), 1600);
 }
 function syncAshCodeUI(enabled) {
   state.ashCodeInstalled = enabled;
@@ -1763,6 +1924,9 @@ els.composer.addEventListener('submit', async (event) => {
   }
   let outgoing = text;
   let target = els.target.value;
+  // "#2" written in the message is the same as choosing it in the chip.
+  const modeToken = outgoing.match(/(^|\s)#([0-3])(?=\s|$)/);
+  if (modeToken) { setMode(Number(modeToken[2])); outgoing = outgoing.replace(/(^|\s)#[0-3](?=\s|$)/, '$1').replace(/\s{2,}/g, ' ').trim(); }
   if (text.startsWith('/')) {
     els.input.disabled = true;
     const result = await runSlashCommand(text).catch((error) => { toast(`Command failed: ${error.message}`); return { handled: true }; });
@@ -1777,16 +1941,17 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, ashCode: state.ashCodeInstalled && state.ashCode }),
+      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ashCode: state.ashCodeInstalled && state.ashCode }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
-      toast(result.error ?? 'The room rejected the message.');
+      toast(`MU/TH/UR › ${result.error ?? 'The room rejected the message.'}`);
+      if (response.status === 501 && state.mode === 3) setMode(1);
     } else {
       els.input.value = '';
       state.pending = [];
       renderPendingAttachments();
-      if (state.create) els.createToggle.click(); // one lease per message; the human re-arms explicitly
+      resetModeAfterSend(); // one mode per message; standing leases fall back to #2, everyone else to #1
       autosize();
     }
   } catch (error) {
@@ -2520,6 +2685,30 @@ function connectionCard(agent) {
       scopes.append(always);
     }
   }
+  // The ceiling: how far the composer may take this agent.
+  const ceiling = el('div', 'ceiling');
+  ceiling.append(el('span', 'k', 'MAX MODE'));
+  const seg = el('div', 'seg');
+  const currentCap = agentScopes.maxMode ?? 1;
+  for (const n of [0, 1, 2, 3]) {
+    const button = el('button', `seg-option o${n}${currentCap === n ? ' current' : ''}`, `#${n}`);
+    button.type = 'button';
+    button.title = `${MODES[n].label} · ${MODES[n].hint}`;
+    const possible = n <= 1 || agentScopes.write?.capable;
+    button.disabled = !possible;
+    button.addEventListener('click', async () => {
+      if (n === currentCap) return;
+      for (const other of seg.children) other.disabled = true;
+      try {
+        await saveSettingNow({ scopes: { [agent.id]: { maxMode: n, ...(n >= 2 ? { write: true } : {}) } } }, `@${agent.id} is now capped at #${n} ${MODES[n].label}.${n === 3 ? ' CONTROL itself arrives in phase C.' : ''}`);
+        await loadSettings();
+      } catch (error) { toast(`Max mode was not saved: ${error.message}`); for (const other of seg.children) other.disabled = false; }
+    });
+    seg.append(button);
+  }
+  ceiling.append(seg);
+  ceiling.append(el('span', 'why', `${MODES[currentCap].label} · ${MODES[currentCap].hint}`));
+  scopes.append(ceiling);
   card.append(scopes);
 
   const row = el('div', 'row');

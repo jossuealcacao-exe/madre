@@ -9,7 +9,7 @@ import { UsageSentinel } from './usage-sentinel.mjs';
 import { buildConversationContext, formatConversationContext } from './conversation-context.mjs';
 import { DELEGATION_HELP, parseDirectives } from './directives.mjs';
 import { isValidModelName } from './models.mjs';
-import { SCOPES, SCOPE_LABELS, abilityLine, capabilitySummary, resolveScopes } from './capabilities.mjs';
+import { MODES, SCOPES, SCOPE_LABELS, abilityLine, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
 import { createLease, diffSnapshots, leaseInstructions, snapshot } from './lease.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
@@ -146,10 +146,43 @@ export class Room {
     return this.#emit(type, payload);
   }
 
+  // Ghost (#0) turns: their events reach the open pages but never the log,
+  // so they cannot enter a handoff or survive a reload. Usage still counts,
+  // because the tokens were really spent.
+  #ghostTurns = new Set();
+  #ghostListeners = new Set();
+  #ghostCounter = 0;
+  subscribeGhost(listener) {
+    this.#ghostListeners.add(listener);
+    return () => this.#ghostListeners.delete(listener);
+  }
+  #isGhost(type, payload) {
+    if (!this.#ghostTurns.size) return false;
+    if (type === 'usage.recorded' || type.startsWith('limit.') || type.startsWith('quota.')) return false;
+    return this.#ghostTurns.has(payload?.messageId) || this.#ghostTurns.has(payload?.parentMessageId);
+  }
   async #emit(type, payload) {
+    if (this.#isGhost(type, payload)) {
+      this.#ghostCounter += 1;
+      const event = { id: `ghost-${randomUUID()}`, sequence: null, ghost: true, timestamp: new Date().toISOString(), type, payload: { ...payload, mode: payload.mode ?? 0 } };
+      for (const listener of this.#ghostListeners) listener(event);
+      return event;
+    }
     const event = await this.#store.append(type, payload);
     for (const listener of this.#listeners) listener(event);
     return event;
+  }
+
+  // Can this message go out at this mode? Answered before the turn exists.
+  modeCheck({ target, text, mode, create = false } = {}) {
+    const parsed = parseMessage(text ?? '', target);
+    const wanted = normalizeMode(mode, create === true ? 2 : 1);
+    if (!parsed.target) return { ok: true, mode: wanted };
+    const scopes = this.scopesFor(parsed.target);
+    if (wanted === 3) return { ok: false, status: 501, mode: wanted, maxMode: scopes.maxMode, error: `CONTROL (#3) is not wired yet: phase C brings checkpoints, diff and UNDO first. @${parsed.target} was not sent anything.` };
+    // #2 above the agent's ceiling still goes out: the room answers read-only
+    // and says why (lease.refused), the way CREATE has always behaved.
+    return { ok: true, mode: wanted, maxMode: scopes.maxMode, capped: wanted > scopes.maxMode };
   }
 
   async reportLimit({ agent, usedPercent, source = 'provider-window', resetAt = null, projectedPercent = null }) {
@@ -316,8 +349,13 @@ export class Room {
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
   }
 
-  async send({ text, target, model = null, attachments = [], create = false, ashCode = false }) {
+  async send({ text, target, model = null, attachments = [], create = false, ashCode = false, mode = undefined }) {
     const parsed = parseMessage(text, target);
+    const requestedMode = normalizeMode(mode, create === true ? 2 : 1);
+    const gate = this.modeCheck({ target, text, mode: requestedMode });
+    if (!gate.ok) throw new Error(gate.error);
+    create = requestedMode === 2;
+    const ghost = requestedMode === 0;
     const files = (Array.isArray(attachments) ? attachments : []).map((id) => this.attachment(id)).filter(Boolean);
     if (!parsed.text && !files.length) throw new Error('Write a message first.');
     if (!parsed.target) throw new Error('Choose an agent or begin with @agent.');
@@ -330,9 +368,13 @@ export class Room {
     // "!path" tokens point the agent at project files; only existing files count.
     const references = await resolveReferences(this.#projectRoot, originalText);
 
+    // A standing lease (default #2) needs no arming; a ghost never writes.
+    const standing = !ghost && !create && Boolean(this.scopesFor(parsed.target).write.always);
     const messageId = randomUUID();
+    if (ghost) this.#ghostTurns.add(messageId);
     await this.#emit('message.created', {
       messageId,
+      mode: ghost ? 0 : (standing || create ? 2 : 1),
       role: 'user',
       sender: 'you',
       target: parsed.target,
@@ -350,18 +392,17 @@ export class Room {
     // The lease carries the scopes enabled for the target; if the target cannot
     // create anything, the room says so instead of silently answering read-only.
     let lease = null;
-    const standing = !create && Boolean(this.scopesFor(parsed.target).write.always);
     if (create === true || standing) {
       const scopes = this.scopesFor(parsed.target);
       const enabled = SCOPES.filter((scope) => scopes[scope].enabled && scopes[scope].wired);
       const unavailable = SCOPES.filter((scope) => !scopes[scope].capable).map((scope) => SCOPE_LABELS[scope]);
       const disabled = SCOPES.filter((scope) => scopes[scope].capable && !scopes[scope].enabled && scopes[scope].wired).map((scope) => SCOPE_LABELS[scope]);
-      if (!enabled.includes('write')) {
-        const alternatives = this.#agents.filter((agent) => agent.ready && agent.id !== parsed.target && this.scopesFor(agent.id).write.enabled).map((agent) => `@${agent.id}`);
+      if (!enabled.includes('write') || scopes.maxMode < 2) {
+        const alternatives = this.#agents.filter((agent) => agent.ready && agent.id !== parsed.target && this.scopesFor(agent.id).maxMode >= 2).map((agent) => `@${agent.id}`);
         await this.#emit('lease.refused', {
           messageId,
           agent: parsed.target,
-          reason: scopes.write.capable ? `file creation is switched off for @${parsed.target}` : `@${parsed.target} cannot create files from its CLI`,
+          reason: !scopes.write.capable ? `@${parsed.target} cannot create files from its CLI` : scopes.maxMode < 2 ? `@${parsed.target} is capped at #${scopes.maxMode} ${MODES[scopes.maxMode].label} in CONNECTIONS` : `file creation is switched off for @${parsed.target}`,
           unavailable,
           disabled,
           alternatives,
@@ -400,7 +441,8 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation, model: chosenModel, attachments: files, references, lease, ashCode: ashActive });
+    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : (lease ? 2 : 1) });
+    if (ghost) setTimeout(() => this.#ghostTurns.delete(messageId), 10 * 60 * 1000).unref?.();
   }
 
   // Agents that can receive a delegated step from `self`.
@@ -449,7 +491,7 @@ export class Room {
 
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
-  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ashCode = false }) {
+  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ashCode = false, mode = 1 }) {
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${targetId} is not installed on this computer.` });
@@ -492,7 +534,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model, attachments, references, lease, ashCode });
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model, attachments, references, lease, ashCode, mode });
     this.#turns.set(messageId, turn);
     let outcome = null;
     try {
@@ -508,7 +550,7 @@ export class Room {
     return outcome?.responseMessageId ?? null;
   }
 
-  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], references = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null, ashCode = false }) {
+  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], references = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null, ashCode = false, mode = 1 }) {
     const others = this.delegatesFor(agent.id);
     const mayDelegate = allowDelegation && this.#delegation && depth === 0 && others.length > 0;
     const attached = attachments.length
@@ -520,6 +562,7 @@ export class Room {
     return [
       'You are answering inside a MADRE project room shared by a human and several AI agents.',
       `You are @${agent.id}.`,
+      `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}`,
       lease ? 'Inspect the project as needed; the only writable place is the creation lease directory below.' : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}`,
       'Answer directly and concisely. Clearly distinguish facts from inference.',
       ashCode ? 'ASH937 beta: terse messages preserve intent. Reply in compact phrases; preserve names, negation, numbers, paths, safety details, and any ```pulse block exactly.' : null,
@@ -539,7 +582,7 @@ export class Room {
     ].filter(Boolean).join('\n');
   }
 
-  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ashCode = false }) {
+  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ashCode = false, mode = 1 }) {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
     // read-only even while the plan holds a lease.
@@ -592,6 +635,8 @@ export class Room {
     const imageStudio = lease?.scopes?.imageGen && enabled.imageGen && !native && studio.enabled
       ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.outDir })
       : null;
+    // The turn's effective mode: #0 for ghosts, #2 only while it holds a lease.
+    const turnMode = mode === 0 ? 0 : lease ? 2 : 1;
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
@@ -599,7 +644,7 @@ export class Room {
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
-        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
+        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,
@@ -635,6 +680,7 @@ export class Room {
         status: 'completed',
         planId,
         model,
+        mode: turnMode,
         leaseId: lease?.leaseId,
         artifacts: artifacts.length ? artifacts : undefined,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
@@ -653,15 +699,19 @@ export class Room {
 
   async #runPlan({ orchestrator, parentMessageId, directives, lease = null, ashCode = false }) {
     const planId = randomUUID();
+    // The plan runs at the human's mode: #2 only while a lease exists, and a
+    // step's agent gets #2 only if its own scopes allow writing.
+    const stepMode = (agentId) => (lease && this.scopesFor(agentId).write.enabled ? 2 : 1);
     const plan = { planId, orchestrator, steps: directives.steps, closing: directives.closing, step: 0, stopped: null, startedAt: Date.now() };
     this.#plans.set(planId, plan);
     await this.#emit('plan.created', {
       planId,
       orchestrator,
       parentMessageId,
-      steps: directives.steps,
+      steps: directives.steps.map((step) => ({ ...step, mode: stepMode(step.agent) })),
       closing: directives.closing,
       ignored: directives.ignored,
+      mode: lease ? 2 : 1,
       leaseId: lease?.leaseId ?? null,
     });
     try {
@@ -681,10 +731,11 @@ export class Room {
           ashCode: ashCode ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
           status: 'delegated',
           planId,
+          mode: stepMode(step.agent),
           step: index + 1,
           totalSteps: directives.steps.length + (directives.closing ? 1 : 0),
         });
-        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ashCode });
+        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ashCode, mode: stepMode(step.agent) });
       }
       if (!plan.stopped && directives.closing) {
         plan.step = directives.steps.length + 1;

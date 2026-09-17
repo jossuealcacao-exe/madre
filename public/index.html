@@ -118,7 +118,7 @@
             <textarea id="message" rows="1" placeholder="Type here, human. Ask the room…"></textarea>
             <div id="slash-menu" class="slash-menu" role="listbox" hidden></div>
           </div>
-          <button id="create-toggle" type="button" class="create-toggle" aria-pressed="false" title="Creation lease: let the agent create files for this request, only inside .pulse/out/">
+          <button id="create-toggle" type="button" class="create-toggle" aria-pressed="false" title="Creation lease: let the agent create files for this request, only inside .pulse/out/" hidden>
             <svg class="lock closed" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 8.5V6a3.5 3.5 0 017 0v2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4.5" y="8.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
             <svg class="lock open" viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 8.5V5.5a3.5 3.5 0 00-6.7-1.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4.5" y="8.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="12.5" r="1.2" fill="currentColor"/></svg>
             <span class="create-word">CREATE</span>
@@ -137,6 +137,23 @@
       <p class="safety">Consultation mode · Project writes stay under your control: agents create files only with CREATE or an opt-in standing lease, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.</p>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>
+      <dialog id="override" class="mother override" aria-label="Emergency command override">
+        <div class="mother-frame override-frame">
+          <header class="mother-head">
+            <span class="mother-title">MU/TH/UR 6000</span>
+            <span class="mother-sub">EMERGENCY COMMAND OVERRIDE 100375</span>
+            <button id="override-cancel" class="mother-close" type="button">CANCEL ×</button>
+          </header>
+          <p class="mother-answer" id="override-brief">PRIORITY ONE. CONTROL MODE GIVES ONE AGENT THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.</p>
+          <form id="override-form" class="mother-query override-query">
+            <span class="k">DESIGNATION ›</span>
+            <input id="override-input" autocomplete="off" spellcheck="false" placeholder="type the current project's folder name to arm">
+            <button type="submit" class="mother-close">ARM</button>
+          </form>
+          <p class="mother-answer override-reply" id="override-reply" aria-live="polite"></p>
+          <footer class="mother-foot">CONTROL IS NEVER DELEGATED · EVERY TURN IS CHECKPOINTED · STOPALL REVOKES IT</footer>
+        </div>
+      </dialog>
       <dialog id="viewer" class="viewer" aria-label="File viewer">
         <header class="viewer-head">
           <span id="viewer-path" class="viewer-path"></span>

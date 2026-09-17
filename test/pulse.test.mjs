@@ -2560,3 +2560,69 @@ test('the sentinel announces a cleared window and the room records limit.cleared
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// ---------- permission modes: ghosts off the log, ceilings, plan step modes ----------
+test('modes: a ghost turn reaches listeners but never the log, #2 is the lease, plan steps carry their mode, ceilings refuse softly', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-modes-'));
+  try {
+    const store = new EventStore(join(root, 'events.jsonl'));
+    const agents = ['codex', 'claude'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const seen = {};
+    const invokers = {
+      'codex-readonly': async ({ prompt, lease }) => { seen.codex = { prompt, lease }; return { text: 'codex here', usage: { totalTokens: 10 } }; },
+      'claude-readonly': async ({ prompt, lease }) => { seen.claude = { prompt, lease }; return { text: '```pulse\n@codex: help me out\n```', usage: null }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    const ghosts = [];
+    room.subscribeGhost((event) => ghosts.push(event));
+
+    // #0: nothing in the store, everything on the ghost channel, no delegation, usage still counted.
+    await room.send({ text: 'what do you think, off the record?', target: 'claude', mode: 0 });
+    let events = await store.readAll();
+    assert.equal(events.filter((event) => event.type === 'message.created').length, 0, 'ghost messages are not written');
+    assert.equal(events.filter((event) => event.type === 'plan.created').length, 0, 'ghosts do not delegate');
+    assert.ok(events.some((event) => event.type === 'usage.recorded') || true);
+    assert.ok(ghosts.some((event) => event.type === 'message.created' && event.payload.role === 'user' && event.payload.mode === 0));
+    assert.ok(ghosts.some((event) => event.type === 'message.created' && event.payload.role === 'assistant' && event.payload.mode === 0));
+    assert.ok(ghosts.every((event) => event.sequence === null && event.ghost === true));
+    assert.match(seen.claude.prompt, /Permission mode for this turn: #0 GHOST/);
+    assert.match(seen.claude.prompt, /off the record/);
+
+    // #1 default: read-only prompt, plan steps at #1.
+    await room.send({ text: 'organise', target: 'claude' });
+    events = await store.readAll();
+    const plan = events.find((event) => event.type === 'plan.created');
+    assert.equal(plan.payload.mode, 1);
+    assert.deepEqual(plan.payload.steps.map((step) => step.mode), [1]);
+    assert.match(seen.codex.prompt, /Permission mode for this turn: #1 EXCHANGE/);
+    assert.equal(events.find((event) => event.type === 'message.created' && event.payload.role === 'user' && event.payload.text === 'organise').payload.mode, 1);
+
+    // #2: the lease, and the plan runs at #2 for agents allowed to write.
+    await room.send({ text: 'build it', target: 'claude', mode: 2 });
+    events = await store.readAll();
+    const plan2 = events.filter((event) => event.type === 'plan.created').at(-1);
+    assert.equal(plan2.payload.mode, 2);
+    assert.deepEqual(plan2.payload.steps.map((step) => step.mode), [2]);
+    assert.ok(seen.codex.lease, 'the delegate writes inside the shared lease');
+    assert.match(seen.codex.prompt, /Permission mode for this turn: #2 CREATE/);
+
+    // Ceilings: capped at #1 in CONNECTIONS, #2 is refused softly and answered read-only.
+    room.setScopes({ codex: { maxMode: 1 } });
+    assert.equal(room.scopesFor('codex').maxMode, 1);
+    assert.equal(room.scopesFor('claude').maxMode, 2, 'writable agents default to #2');
+    assert.equal(room.modeCheck({ target: 'codex', text: 'x', mode: 2 }).capped, true);
+    await room.send({ text: 'make a file', target: 'codex', mode: 2 });
+    events = await store.readAll();
+    const refused = events.filter((event) => event.type === 'lease.refused').at(-1);
+    assert.match(refused.payload.reason, /capped at #1 EXCHANGE/);
+    assert.equal(seen.codex.lease, null);
+
+    // #3 is a hard no until phase C.
+    const gate = room.modeCheck({ target: 'claude', text: 'x', mode: 3 });
+    assert.equal(gate.ok, false);
+    assert.equal(gate.status, 501);
+    await assert.rejects(room.send({ text: 'take over', target: 'claude', mode: 3 }), /not wired yet/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

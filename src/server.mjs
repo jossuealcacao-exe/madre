@@ -165,6 +165,7 @@ export async function createPulseServer({
         if (!agents.some((agent) => agent.id === agentId) || !scopes || typeof scopes !== 'object') continue;
         config.scopes[agentId] = { ...(current[agentId] ?? {}) };
         for (const scope of ['write', 'imageGen', 'web', 'alwaysCreate']) if (typeof scopes[scope] === 'boolean') config.scopes[agentId][scope] = scopes[scope];
+        if (Number.isInteger(Number(scopes.maxMode)) && Number(scopes.maxMode) >= 0 && Number(scopes.maxMode) <= 3) config.scopes[agentId].maxMode = Number(scopes.maxMode);
       }
       room.setScopes(config.scopes);
     }
@@ -251,7 +252,9 @@ export async function createPulseServer({
   let dirty = false;
   // A client that stops draining is dropped instead of buffering without bound.
   const writeEvent = (client, event) => {
-    client.write(`id: ${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`);
+    // Ghost events have no sequence: they are never in the log, so no `id:`
+    // line, and a reconnecting client will not ask for them again.
+    client.write(`${event.sequence ? `id: ${event.sequence}\n` : ''}data: ${JSON.stringify(event)}\n\n`);
     if (client.writableLength > sseMaxBufferedBytes) {
       clients.delete(client);
       client.destroy();
@@ -288,6 +291,7 @@ export async function createPulseServer({
     return inFlight;
   }
   const unsubscribe = room.subscribe(() => { void broadcastPending(); });
+  const unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
   const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
   poller.unref();
 
@@ -522,6 +526,10 @@ export async function createPulseServer({
       }
       if (request.method === 'POST' && url.pathname === '/api/messages') {
         const payload = await body(request);
+        // Modes are checked before the turn is accepted, so the composer
+        // hears "no" with a reason instead of a silent log line.
+        const gate = room.modeCheck(payload);
+        if (!gate.ok) return sendJson(response, gate.status ?? 403, { error: gate.error, mode: gate.mode, maxMode: gate.maxMode });
         void room.send(payload).catch((error) => {
           console.error(`MADRE room error: ${error.message}`);
         });
@@ -553,6 +561,7 @@ export async function createPulseServer({
     shutdown.then(() => {
       void broadcastPending().then(() => {
         unsubscribe();
+    unsubscribeGhost();
         for (const client of clients.keys()) client.end();
         clients.clear();
         result = nativeClose(callback);

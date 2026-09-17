@@ -131,6 +131,19 @@ Verificadas contra las versiones instaladas y visibles en la esfera de cada agen
 | Gemini CLI | sí | `read_file` | política con `argsPattern` | no expuesto en headless | `google_web_search` |
 | OpenCode | sí | `-f` | permisos `edit` por patrón | no | webfetch / websearch |
 
+### Modos de permiso
+
+Cada mensaje sale con un modo, elegido en el chip que sigue a `TO @agente` o escrito en el texto como `#2`. Tu modo es el techo de cualquier plan que ese mensaje arranque.
+
+| Modo | Nombre | Qué permite |
+|---|---|---|
+| #0 | GHOST | Fuera del registro: no se escribe en `events.jsonl`, ningún otro agente lo recuerda, desaparece al recargar y no admite delegación. Los tokens sí cuentan. |
+| #1 | EXCHANGE | Leer el proyecto y coordinar. Es el default. |
+| #2 | CREATE | La concesión de creación: archivos e imágenes dentro de `.pulse/out/` del turno. Absorbe el antiguo candado CREATE. |
+| #3 | CONTROL | Leer, crear y modificar el proyecto real sin aprobación por acción, solo el agente nombrado. Llega en la fase C con checkpoint git, diff y UNDO; hoy la sala lo rechaza al enviar. |
+
+En CONNECTIONS cada agente tiene un `MAX MODE`. Por encima de él, un `#2` se responde en solo lectura con su tarjeta de motivo y un `#3` se rechaza. Armar `#3` pasa por la anulación de emergencia: MU/TH/UR pide la designación del proyecto, el nombre de la carpeta, antes de encender el chip en rojo.
+
 ### Creación bajo permiso: CREATE
 
 La creación de archivos y la generación de imágenes están apagadas en el modo de consulta. El botón `CREATE` del compositor concede un permiso de creación para ese mensaje y para el plan que arranque: MADRE crea una carpeta nueva en `<proyecto>/.pulse/out/<fecha>-<id>/` y cambia cada CLI a un modo de escritura acotado a esa carpeta, con el proyecto legible pero intocable:

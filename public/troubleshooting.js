@@ -297,6 +297,15 @@ export const CONDITIONS = [
     fixes: same(['# type / or @ in the field box', '/git status', '/git log 10', '/ahp check', '/image a poster for the launch']),
   },
   {
+    id: 'modes',
+    severity: 'informational',
+    title: 'Permission modes: #0 GHOST · #1 EXCHANGE · #2 CREATE · #3 CONTROL',
+    match: /mode|ghost|exchange|control|override|designation|max mode|#[0-3]\b/i,
+    diagnosis: 'Every message goes out at a mode, chosen in the chip after TO @agent (or typed as #2 in the text). #0 GHOST is off the record: nothing is saved, no other agent remembers it, gone on reload, no delegation. #1 EXCHANGE is the default: read and coordinate. #2 CREATE is the creation lease: files and images inside .pulse/out/. #3 CONTROL will let one agent modify the project itself (phase C: checkpoint, diff, UNDO). Your mode is the ceiling of any plan the message starts, and #3 is never delegated. Each agent has a MAX MODE in CONNECTIONS; above it, #2 is answered read-only and #3 is refused.',
+    remedy: 'Pick the mode in the chip, or type #0..#3 in the message. Raise an agent\'s MAX MODE in ⚙ CONNECTIONS. CONTROL asks for the project designation (the folder name) in the override before arming.',
+    fixes: same(['# chip: TO @codex  #1 EXCHANGE ▾  → choose', '@codex #2 create the poster', '# ⚙ CONNECTIONS → agent card → MAX MODE']),
+  },
+  {
     id: 'lease-missing',
     severity: 'informational',
     title: 'Creating files: who grants the permission',
