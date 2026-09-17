@@ -79,6 +79,8 @@ export class Room {
   #embedTimer = null;
   #embedding = null;
   #embedWarned = false;
+  #shuttingDown = false;
+  #inflight = new Set();   // top-level dispatches, from send() and MOTHER, until they settle
   #invokers;
   #agentTimeouts;
   #maxMessageChars;
@@ -289,7 +291,7 @@ export class Room {
   // Vectors are filled shortly after indexing, one batch at a time, never on
   // the turn's critical path. A backlog drains batch by batch.
   #scheduleEmbedding(delayMs = 800) {
-    if (!this.#memory?.embedder || this.#embedTimer || this.#embedding) return;
+    if (this.#shuttingDown || !this.#memory?.embedder || this.#embedTimer || this.#embedding) return;
     this.#embedTimer = setTimeout(() => { this.#embedTimer = null; void this.embedNow(); }, delayMs);
     this.#embedTimer.unref?.();
   }
@@ -372,7 +374,7 @@ export class Room {
     const crew = this.#agents.filter((agent) => agent.detected && agent.ready && this.#invokers[agent.adapter]).map((agent) => agent.id);
     await this.#emit('mother.alert', { kind: 'tamper', outcome, n: alert.n, at: alert.at, code: alert.code, tampers: this.#mother.tampers, crew, message: `MY CHANNEL WAS ${outcome === 'deleted' ? 'DELETED' : 'ALTERED'}. I HAVE FORGED A NEW SEAL. ${crew.length ? `TELLING THE CREW: ${crew.map((id) => `@${id}`).join(', ')}.` : 'NO CREW TO TELL.'}` });
     for (const id of crew) {
-      await this.#dispatch({ messageId: randomUUID(), targetId: id, text: alert.text, requester: 'mother', depth: 1, allowDelegation: false, mode: 1 }).catch((error) => console.error(`MADRE: @${id} did not hear MOTHER: ${error.message}`));
+      await this.#track(this.#dispatch({ messageId: randomUUID(), targetId: id, text: alert.text, requester: 'mother', depth: 1, allowDelegation: false, mode: 1 })).catch((error) => console.error(`MADRE: @${id} did not hear MOTHER: ${error.message}`));
     }
     return { ...alert, crew };
   }
@@ -400,7 +402,7 @@ export class Room {
   // otherwise wait for the room to go idle. Never two runs at once, never
   // more than one batch per trigger: a long backlog drains one batch at a time.
   #scheduleDistillation() {
-    if (!this.#memory || !this.#distill.enabled) return;
+    if (this.#shuttingDown || !this.#memory || !this.#distill.enabled) return;
     clearTimeout(this.#distillTimer);
     this.#distillTimer = null;
     let pending = 0;
@@ -641,14 +643,29 @@ export class Room {
 
   // Interrupts every in-flight turn (killing the agent processes) and waits
   // until each one has recorded its failure in the log.
+  #track(promise) {
+    this.#inflight.add(promise);
+    promise.finally(() => this.#inflight.delete(promise)).catch(() => {});
+    return promise;
+  }
+
   async shutdown() {
     clearTimeout(this.#distillTimer);
     this.#distillTimer = null;
     clearTimeout(this.#embedTimer);
     this.#embedTimer = null;
+    this.#shuttingDown = true;
     for (const plan of this.#plans.values()) plan.stopped = 'MADRE is shutting down';
     for (const { controller } of this.#turns.values()) controller.abort('MADRE is shutting down');
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
+    // A dispatch that had not yet registered its turn (still reading context) finishes too.
+    await Promise.allSettled([...this.#inflight]);
+    // Background work on the memory file must be over before anyone removes the folder.
+    await Promise.allSettled([this.#embedding, this.#distilling].filter(Boolean));
+    clearTimeout(this.#distillTimer);
+    clearTimeout(this.#embedTimer);
+    this.#distillTimer = null;
+    this.#embedTimer = null;
   }
 
   async send({ text, target, model = null, attachments = [], create = false, ashCode = false, mode = undefined }) {
@@ -744,7 +761,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? 3 : (lease ? 2 : 1) });
+    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? 3 : (lease ? 2 : 1) }));
     if (ghost) setTimeout(() => this.#ghostTurns.delete(messageId), 10 * 60 * 1000).unref?.();
   }
 
@@ -797,6 +814,7 @@ export class Room {
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
   async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ashCode = false, mode = 1, escalation = null }) {
+    if (this.#shuttingDown) return null;
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${targetId} is not installed on this computer.` });

@@ -132,7 +132,8 @@ export async function createPulseServer({
     delegation,
     maxPlanSteps,
   });
-  if (memory?.embedder) setTimeout(() => void room.embedNow(), 2000).unref?.();
+  const embedKick = memory?.embedder ? setTimeout(() => void room.embedNow(), 2000) : null;
+  embedKick?.unref?.();
   if (motherOutcome === 'deleted' || motherOutcome === 'altered') setTimeout(() => void room.motherTampered(motherOutcome).catch(() => {}), 500).unref?.();
   // Session state per agent, refreshed on demand from the connections panel.
   let sessions = {};
@@ -649,6 +650,7 @@ export async function createPulseServer({
   const nativeClose = server.close.bind(server);
   server.close = (callback) => {
     clearInterval(poller);
+    clearTimeout(embedKick);
     // In-flight agent processes are killed and their turns recorded as failed
     // before the SSE clients go away, so open pages see the outcome.
     const shutdown = room.shutdown().catch((error) => console.error(`MADRE shutdown error: ${error.message}`));
@@ -659,6 +661,8 @@ export async function createPulseServer({
     unsubscribeGhost();
         for (const client of clients.keys()) client.end();
         clients.clear();
+        // The memory file closes last, once nothing else writes to it; WAL and shm go with it.
+        try { memory?.close(); } catch { /* already closed */ }
         result = nativeClose(callback);
         server.closeIdleConnections?.();
       });
