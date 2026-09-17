@@ -52,10 +52,10 @@ const MAX_ROWS = 3;
 
 // Permission modes: chosen per message, capped per agent in CONNECTIONS.
 const MODES = {
-  0: { key: 'ghost', label: 'GHOST', hint: 'Off the record. Nothing is saved, nobody else remembers it, gone on reload.' },
-  1: { key: 'exchange', label: 'EXCHANGE', hint: 'Read the project and coordinate with the others. The default.' },
-  2: { key: 'create', label: 'CREATE', hint: 'Create files and images, only inside this turn\'s .pulse/out/ directory.' },
-  3: { key: 'control', label: 'CONTROL', hint: 'Modify the project itself, no approval per action. Only this agent. Needs the override.' },
+  0: { key: 'ghost', label: 'GHOST', hint: 'Off the record. Nothing is saved; gone on reload.' },
+  1: { key: 'exchange', label: 'EXCHANGE', hint: 'Read the project and talk to the room. Writes nothing.' },
+  2: { key: 'create', label: 'CREATE', hint: 'Write new files, only inside this turn\'s .pulse/out/.' },
+  3: { key: 'control', label: 'CONTROL', hint: 'Edit the project itself, no approval per action. Override required.' },
 };
 
 const state = {
@@ -686,38 +686,47 @@ function toggleModeMenu(id, anchor) {
   modeMenuFor = id;
   paint(modeMenu, id);
   modeMenu.replaceChildren();
-  const title = el('div', 'model-menu-title');
-  title.append(el('b', null, `@${id}`), ` · permission mode · capped at #${ceilingFor(id)} in CONNECTIONS`);
-  modeMenu.append(title);
   const cap = ceilingFor(id);
+  const scopes = state.capabilities[id]?.scopes;
+  const canRaise = Boolean(scopes?.write?.capable);
+  const title = el('div', 'model-menu-title');
+  title.append(el('b', null, `@${id}`), ' · mode for this message');
+  modeMenu.append(title);
+  const ladder = el('div', 'mode-ladder');
   for (const n of [0, 1, 2, 3]) {
-    const option = el('button', `mode-option o${n}${state.mode === n ? ' current' : ''}`);
+    const locked = n > cap;
+    const raise = locked && n === 3 && canRaise;
+    const option = el('button', `mode-option o${n}${state.mode === n ? ' current' : ''}${locked ? ' locked' : ''}`);
     option.type = 'button';
-    const allowed = n <= cap;
-    option.disabled = !allowed;
-    const body = el('span');
+    option.disabled = locked && !raise;
+    const body = el('span', 'body');
     body.append(el('span', 'name', MODES[n].label), el('span', 'hint', MODES[n].hint));
-    option.append(el('span', 'n', `#${n}`), body, el('span', 'cap', !allowed ? (n === 3 && cap < 3 ? 'RAISE MAX MODE' : 'ABOVE MAX MODE') : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) && n === 2 ? 'STANDING' : ''));
+    option.append(el('span', 'n', `#${n}`), body);
+    const tag = state.mode === n ? 'NOW' : raise ? 'RAISE TO #3 ›' : locked ? 'LOCKED' : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) ? 'DEFAULT' : '';
+    if (tag) option.append(el('span', `tag${raise ? ' raise' : ''}`, tag));
+    option.title = !locked ? MODES[n].hint
+      : raise ? `@${id} is capped at #${cap}. This raises MAX MODE to #3 in CONNECTIONS and opens the override.`
+      : n === 3 ? `@${id}'s CLI cannot write files, so CONTROL is not possible for it.`
+      : `Above @${id}'s MAX MODE (#${cap}). Raise it in CONNECTIONS.`;
     option.addEventListener('click', () => {
       closeModeMenu();
-      if (n === 3) { openOverride(id); return; }
+      if (n === 3) { openOverride(id, { raise }); return; }
       setMode(n, { wink: n === 0 });
     });
-    modeMenu.append(option);
-    if (n === 2) {
-      const scopes = state.capabilities[id]?.scopes;
-      if (scopes) {
-        const row = el('div', 'mode-scopes');
-        for (const [key, labelText] of [['write', 'files'], ['imageGen', 'images'], ['web', 'web']]) {
-          const scope = scopes[key] ?? {};
-          const on = scope.enabled && scope.wired;
-          row.append(el('span', `cap${on ? ' on' : scope.capable ? '' : ' no'}`, labelText));
-        }
-        modeMenu.append(row);
+    ladder.append(option);
+    if (n === 2 && scopes) {
+      const row = el('div', 'mode-scopes');
+      row.append(el('span', 'k', 'may create'));
+      for (const [key, labelText] of [['write', 'files'], ['imageGen', 'images'], ['web', 'web']]) {
+        const scope = scopes[key] ?? {};
+        const on = scope.enabled && scope.wired;
+        row.append(el('span', `cap${on ? ' on' : scope.capable ? '' : ' no'}`, labelText));
       }
+      ladder.append(row);
     }
   }
-  modeMenu.append(el('div', 'model-note', 'Your mode is the ceiling of any plan this message starts. #3 is never delegated.'));
+  modeMenu.append(ladder);
+  modeMenu.append(el('div', 'model-note', `Ceiling for @${id}: #${cap} ${MODES[cap].label}, set in CONNECTIONS. Your mode caps any plan this message starts; #3 is never delegated.`));
   modeMenu.hidden = false;
   const rect = anchor.getBoundingClientRect();
   const width = modeMenu.offsetWidth || 320;
@@ -740,7 +749,7 @@ function setMode(n, { wink = false } = {}) {
   if (typeof updateCrewLabel === 'function') { updateCrewLabel(); updatePlaceholder(); }
   if (typeof renderPicker === 'function') renderPicker();
   if (typeof autosize === 'function') autosize();
-  if (wink && typeof winkField === 'function') winkField();
+  if (wink && typeof winkField === 'function') winkField({ control: mode === 3 });
 }
 // After a message goes out the mode falls back to the target's default: #2 for a standing lease, else #1.
 function resetModeAfterSend() { setMode(defaultModeFor(els.target.value)); }
@@ -756,12 +765,14 @@ const override = {
   cancel: document.querySelector('#override-cancel'),
   frame: document.querySelector('#override .override-frame'),
   agent: null,
+  raise: false,   // the agent is capped below #3: arming also raises MAX MODE in CONNECTIONS
 };
 function projectDesignation() { return (state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''; }
-function openOverride(id) {
+function openOverride(id, { raise = false } = {}) {
   if (!override.dialog) return;
   override.agent = id;
-  override.brief.textContent = `PRIORITY ONE. CONTROL GIVES @${id.toUpperCase()} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION. TYPE THE PROJECT DESIGNATION TO ARM.`;
+  override.raise = raise;
+  override.brief.textContent = `PRIORITY ONE. CONTROL GIVES @${id.toUpperCase()} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.${raise ? ` THIS ALSO RAISES @${id.toUpperCase()} MAX MODE TO #3 IN CONNECTIONS.` : ''} TYPE THE PROJECT DESIGNATION TO ARM.`;
   override.reply.textContent = '';
   override.reply.className = 'mother-answer override-reply';
   override.input.value = '';
@@ -783,12 +794,22 @@ override.form?.addEventListener('submit', (event) => {
   override.reply.textContent = `SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @${override.agent.toUpperCase()}. CREW IN COMMAND.`;
   override.reply.className = 'mother-answer override-reply granted';
   const agent = override.agent;
-  setTimeout(() => {
+  const raise = override.raise;
+  setTimeout(async () => {
     override.dialog.close();
+    if (raise) {
+      try {
+        await saveSettingNow({ scopes: { [agent]: { maxMode: 3, write: true } } });
+        if (settingsUI.open) renderSettings();
+      } catch (error) {
+        toast(`MU/TH/UR › MAX MODE was not raised for @${agent}: ${error.message}. CONTROL stays off.`);
+        return;
+      }
+    }
     state.modeArmedFor = agent;
     els.target.value = agent;
     setMode(3, { wink: true });
-    toast(`MU/TH/UR › CONTROL armed for @${agent} for this message. A checkpoint is taken before it runs; every change is listed and UNDO is one click.`);
+    toast(`MU/TH/UR › CONTROL armed for @${agent} for this message.${raise ? ` MAX MODE is now #3 in CONNECTIONS.` : ''} A checkpoint is taken before it runs; every change is listed and UNDO is one click.`);
   }, 900);
 });
 
@@ -2021,12 +2042,59 @@ function setOrder937(on, { wink = false } = {}) {
   }
 }
 // The wink to MOTHER: one CRT sweep across the field, then business as usual.
-function winkField() {
+// CONTROL winks red, with binary rain over the field: the screen the crew sees when it takes command.
+function winkField({ control = false } = {}) {
   clearTimeout(winkTimer);
-  els.composer.classList.remove('ash-wink');
+  els.composer.classList.remove('ash-wink', 'control-wink');
   void els.composer.offsetWidth;
-  els.composer.classList.add('ash-wink');
-  winkTimer = setTimeout(() => els.composer.classList.remove('ash-wink'), 1600);
+  els.composer.classList.add(control ? 'control-wink' : 'ash-wink');
+  if (control) binaryRain(els.composer.querySelector('.field'));
+  winkTimer = setTimeout(() => els.composer.classList.remove('ash-wink', 'control-wink'), control ? 2600 : 1600);
+}
+// Red 0/1 glyphs falling down the field for a couple of seconds, then the canvas is gone. Skipped under reduced motion.
+function binaryRain(host, { duration = 2400 } = {}) {
+  if (!host || typeof requestAnimationFrame !== 'function') return;
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  host.querySelector?.('.rain')?.remove();
+  const canvas = document.createElement('canvas');
+  canvas.className = 'rain';
+  const ctx = canvas.getContext?.('2d');
+  if (!ctx) return;
+  const rect = host.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const scale = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * scale);
+  canvas.height = Math.round(rect.height * scale);
+  host.append(canvas);
+  ctx.scale(scale, scale);
+  const styles = getComputedStyle(host);
+  const red = styles.getPropertyValue('--terror').trim() || '#ff2a1f';
+  ctx.font = `700 10px ${styles.getPropertyValue('--mono').trim() || 'monospace'}`;
+  const cell = 11;
+  const drops = Array.from({ length: Math.ceil(rect.width / cell) }, () => ({ y: -Math.random() * rect.height * 2, speed: 2.5 + Math.random() * 5 }));
+  const started = performance.now();
+  let last = started;
+  const frame = (now) => {
+    const t = now - started;
+    const dt = Math.min(48, now - last);
+    last = now;
+    // Fade the previous frame a little: the trail behind each drop.
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0, 0, 0, .16)';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+    ctx.globalCompositeOperation = 'source-over';
+    const intensity = t < duration * 0.65 ? 1 : Math.max(0, 1 - (t - duration * 0.65) / (duration * 0.35));
+    drops.forEach((drop, i) => {
+      drop.y += drop.speed * dt / 16;
+      if (drop.y > rect.height + cell && intensity > 0.4) { drop.y = -cell * (1 + Math.random() * 16); drop.speed = 2.5 + Math.random() * 5; }
+      ctx.globalAlpha = intensity * (0.5 + Math.random() * 0.5);
+      ctx.fillStyle = Math.random() < 0.1 ? '#fff1ef' : red;
+      ctx.fillText(Math.random() < 0.5 ? '0' : '1', i * cell + 2, drop.y);
+    });
+    ctx.globalAlpha = 1;
+    if (t < duration && canvas.isConnected) requestAnimationFrame(frame); else canvas.remove();
+  };
+  requestAnimationFrame(frame);
 }
 function syncAshCodeUI(enabled) {
   state.ashCodeInstalled = enabled;
@@ -2841,7 +2909,7 @@ function connectionCard(agent) {
       if (n === currentCap) return;
       for (const other of seg.children) other.disabled = true;
       try {
-        await saveSettingNow({ scopes: { [agent.id]: { maxMode: n, ...(n >= 2 ? { write: true } : {}) } } }, `@${agent.id} is now capped at #${n} ${MODES[n].label}.${n === 3 ? ' CONTROL itself arrives in phase C.' : ''}`);
+        await saveSettingNow({ scopes: { [agent.id]: { maxMode: n, ...(n >= 2 ? { write: true } : {}) } } }, `@${agent.id} is now capped at #${n} ${MODES[n].label}.${n === 3 ? ' CONTROL still needs the override per message.' : ''}`);
         await loadSettings();
       } catch (error) { toast(`Max mode was not saved: ${error.message}`); for (const other of seg.children) other.disabled = false; }
     });
