@@ -10,7 +10,7 @@ import { EventStore } from './event-store.mjs';
 import { RoomMemory } from './memory.mjs';
 import { createEmbedder } from './embeddings.mjs';
 import { memoryServerFor } from './memory-tools.mjs';
-import { MotherChannel, DIRECTIVE_ZERO_STRIKES } from './mother.mjs';
+import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
@@ -500,18 +500,18 @@ export async function createPulseServer({
       // NOSTROMO: the archive is behind the project designation, like CONTROL.
       const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
       if (request.method === 'GET' && url.pathname === '/api/mother') {
-        return sendJson(response, 200, { mother: room.motherStatus(), strikes: DIRECTIVE_ZERO_STRIKES });
+        return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });
       }
-      if (request.method === 'POST' && url.pathname === '/api/mother/directive-zero') {
+      if (request.method === 'POST' && url.pathname === '/api/mother/code000') {
         const payload = await body(request).catch(() => ({}));
         if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
-        const result = await room.directiveZero({ strikes: Number(payload.strikes) || DIRECTIVE_ZERO_STRIKES });
+        const result = await room.code000({ strikes: Number(payload.strikes) || CODE000_STRIKES });
         return result ? sendJson(response, 200, { code: result.code, lockedForMs: result.lockedForMs, n: result.n }) : sendJson(response, 503, { error: 'MOTHER is silent.' });
       }
       if (request.method === 'GET' && url.pathname === '/api/memory') {
         if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
         const sealed = room.motherStatus()?.lockedForMs ?? 0;
-        if (sealed > 0) return sendJson(response, 423, { error: `DIRECTIVE 0. THE ARCHIVE IS SEALED FOR ${Math.ceil(sealed / 60000)} MORE MINUTE${Math.ceil(sealed / 60000) === 1 ? '' : 'S'}.`, lockedForMs: sealed });
+        if (sealed > 0) return sendJson(response, 423, { error: `CODE000. THE ARCHIVE IS SEALED FOR ${Math.ceil(sealed / 60000)} MORE MINUTE${Math.ceil(sealed / 60000) === 1 ? '' : 'S'}.`, lockedForMs: sealed });
         const research = room.memoryResearch();
         return research ? sendJson(response, 200, research) : sendJson(response, 503, { error: 'The room has no memory.' });
       }
@@ -519,7 +519,7 @@ export async function createPulseServer({
       if (forgetMatch) {
         const payload = await body(request).catch(() => ({}));
         if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
-        if ((room.motherStatus()?.lockedForMs ?? 0) > 0) return sendJson(response, 423, { error: 'DIRECTIVE 0. THE ARCHIVE IS SEALED.' });
+        if ((room.motherStatus()?.lockedForMs ?? 0) > 0) return sendJson(response, 423, { error: 'CODE000. THE ARCHIVE IS SEALED.' });
         const row = await room.forgetMemory(forgetMatch[1]);
         return row ? sendJson(response, 200, { forgotten: row, stats: room.memoryStats() }) : sendJson(response, 404, { error: 'No such memory.' });
       }

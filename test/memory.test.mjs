@@ -667,8 +667,8 @@ test("MOTHER's channel: sealed words round-trip, the file is born once, deleting
   }
 });
 
-test('DIRECTIVE 0: the archive seals, the crew is told in code, the console reads only the code; a deleted channel raises the alarm on start', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pulse-directive-zero-'));
+test('CODE000: the archive seals, the crew is told in code, the console reads only the code; a deleted channel raises the alarm on start', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-code000-'));
   const project = join(root, 'ship');
   await mkdir(project);
   const prompts = [];
@@ -682,8 +682,8 @@ test('DIRECTIVE 0: the archive seals, the crew is told in code, the console read
     assert.equal(status.strikes, 8);
     assert.equal(status.mother.altered, false);
     assert.equal(status.mother.lockedForMs, 0);
-    assert.equal((await fetch(`${base}/api/mother/directive-zero`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'nope' }) })).status, 403);
-    const zero = await fetch(`${base}/api/mother/directive-zero`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'ship', strikes: 9 }) });
+    assert.equal((await fetch(`${base}/api/mother/code000`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'nope' }) })).status, 403);
+    const zero = await fetch(`${base}/api/mother/code000`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'ship', strikes: 9 }) });
     assert.equal(zero.status, 200);
     const result = await zero.json();
     assert.match(result.code, /^[0-9a-f ]+$/);
@@ -691,7 +691,7 @@ test('DIRECTIVE 0: the archive seals, the crew is told in code, the console read
     // Sealed: the door and the delete both refuse with 423.
     const sealed = await fetch(`${base}/api/memory?designation=ship`);
     assert.equal(sealed.status, 423);
-    assert.match((await sealed.json()).error, /DIRECTIVE 0\. THE ARCHIVE IS SEALED FOR 10 MORE MINUTES/);
+    assert.match((await sealed.json()).error, /CODE000\. THE ARCHIVE IS SEALED FOR 10 MORE MINUTES/);
     assert.equal((await fetch(`${base}/api/memory/1`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: 'ship' }) })).status, 423);
     // The ledger holds the code, never the words.
     const alert = (await store.readAll()).find((event) => event.type === 'mother.alert');
@@ -720,6 +720,12 @@ test('DIRECTIVE 0: the archive seals, the crew is told in code, the console read
     assert.ok(tamper, 'tamper alert emitted');
     assert.equal(tamper.payload.outcome, 'deleted');
     assert.match(tamper.payload.message, /MY CHANNEL WAS DELETED\. I HAVE FORGED A NEW SEAL/);
+    assert.deepEqual(tamper.payload.crew, ['codex']);
+    let heard = null;
+    for (let attempt = 0; attempt < 80 && !heard; attempt += 1) { await new Promise((resolve) => setTimeout(resolve, 25)); heard = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.role === 'assistant' && event.payload.target === 'mother'); }
+    assert.ok(heard, 'the crew answered MOTHER in the room');
+    assert.equal(heard.payload.sender, 'codex');
+    assert.ok(prompts.some((prompt) => /MU\/TH\/UR herself addresses you[\s\S]*MY CHANNEL WAS TAMPERED WITH/.test(prompt)), 'she spoke to the agent in clear');
     const after = await fetch(`${base}/api/mother`).then((response) => response.json());
     assert.equal(after.mother.altered, true);
     assert.equal(after.mother.tampers, 1);

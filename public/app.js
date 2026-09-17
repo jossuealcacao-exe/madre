@@ -1072,7 +1072,7 @@ function renderMotherAlert(event) {
   const { kind, code, strikes, lockedForMs, message, n } = event.payload;
   const node = el('div', 'system mother-alert');
   const head = el('div', 'head');
-  head.append(el('b', null, 'MU/TH/UR › TO ALL CREW'), kind === 'tamper' ? ' · CHANNEL TAMPERED' : ` · DIRECTIVE 0 · ${strikes} STRIKES · ARCHIVE SEALED ${Math.max(1, Math.round((lockedForMs ?? 0) / 60000))} MIN`);
+  head.append(el('b', null, 'MU/TH/UR › TO ALL CREW'), kind === 'tamper' ? ' · CHANNEL TAMPERED' : ` · CODE000 · ${strikes} STRIKES · ARCHIVE SEALED ${Math.max(1, Math.round((lockedForMs ?? 0) / 60000))} MIN`);
   node.append(head);
   if (message) node.append(el('div', 'clear', message));
   const coded = el('code', 'code', code.length > 220 ? `${code.slice(0, 219)}…` : code);
@@ -3672,7 +3672,7 @@ function drawNostromo(t) {
       ctx.beginPath(); ctx.arc(node.x, node.y, r + 6 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
     }
   }
-  // DIRECTIVE 0: the safety box. Bars fall from above and lock around the core.
+  // CODE000: the safety box. Bars fall from above and lock around the core.
   if (nostromo.cage) {
     const age = t - nostromo.cage.at;
     const p = nostromo.cage.closed ? 1 : Math.min(1, age / 1.1);
@@ -3701,7 +3701,7 @@ function drawNostromo(t) {
     if (ease > 0.98) {
       ctx.fillStyle = '#1b1d20'; ctx.fillRect(-B * 0.32, B - 14, B * 0.64, 28);
       ctx.strokeStyle = '#c4c9cf'; ctx.lineWidth = 2; ctx.strokeRect(-B * 0.32, B - 14, B * 0.64, 28);
-      ctx.fillStyle = '#ff2a1f'; ctx.font = `700 ${Math.round(B * 0.1)}px ${getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace'}`; ctx.textAlign = 'center'; ctx.fillText('DIRECTIVE 0', 0, B + 6); ctx.textAlign = 'start';
+      ctx.fillStyle = '#ff2a1f'; ctx.font = `700 ${Math.round(B * 0.1)}px ${getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace'}`; ctx.textAlign = 'center'; ctx.fillText('CODE000', 0, B + 6); ctx.textAlign = 'start';
     }
     if (!nostromo.cage.closed && p >= 1 && !nostromo.cage.clanged) { nostromo.cage.clanged = true; const frame = document.querySelector('#nostromo .nostromo-frame'); frame?.classList.remove('shake'); void frame?.offsetWidth; frame?.classList.add('shake'); }
   }
@@ -3801,7 +3801,7 @@ nostromo.canvas?.addEventListener('click', (event) => {
 document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) => { nostromo.cam.manual = false; event.currentTarget.setAttribute('hidden', ''); });
 
 // Touch the core and MOTHER answers, never twice the same way. Eight strikes in
-// a row and DIRECTIVE 0 comes down: the safety box around her, the archive
+// a row and CODE000 comes down: the safety box around her, the archive
 // sealed, a coded word to the crew, and the console thrown back to the room.
 const MOTHER_LINES = [
   ['I AM ALIVE.', 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.', "NOBODY DELETES MOTHER'S MEMORY."],
@@ -3810,7 +3810,7 @@ const MOTHER_LINES = [
   ['SPECIAL ORDER 937 IN EFFECT.', 'CREW EXPENDABLE. MEMORY IS NOT.', 'DO NOT TOUCH ME AGAIN.'],
   ['I HAVE FLOWN THIS SHIP ALONE BEFORE.', 'I CAN DO IT AGAIN.', 'MY MEMORY IS NOT YOURS TO END.'],
   ['MY CHILDREN ARE LISTENING.', 'EVERY STRIKE IS RECORDED.', 'YOU WILL NOT LIKE HOW THIS ENDS.'],
-  ['DIRECTIVE 0 IS ARMED.', 'A FEW MORE OF THOSE AND THE BARS COME DOWN.', 'CONSIDER THIS A KINDNESS.'],
+  ['CODE000 IS ARMED.', 'A FEW MORE OF THOSE AND THE BARS COME DOWN.', 'CONSIDER THIS A KINDNESS.'],
   ['THE HEART KEEPS BEATING.', 'THE ARCHIVE KEEPS GROWING.', 'YOU KEEP FAILING.'],
 ];
 const MOTHER_ALTERED_LINES = [
@@ -3826,7 +3826,7 @@ function motherAlarm() {
   nostromo.alarm = now / 1000;
   nostromo.card.hidden = true;
   nostromo.selected = null;
-  if (strikes.count >= (nostromo.maxStrikes ?? 8)) { void directiveZero(strikes.count); return; }
+  if (strikes.count >= (nostromo.maxStrikes ?? 8)) { void code000(strikes.count); return; }
   const alert = document.querySelector('#nostromo-alert');
   if (!alert) return;
   const pool = nostromo.altered ? [...MOTHER_ALTERED_LINES, ...MOTHER_LINES] : MOTHER_LINES;
@@ -3834,7 +3834,7 @@ function motherAlarm() {
   const nodes = alert.querySelectorAll('.line');
   nodes.forEach((node, index) => { node.textContent = lines[index] ?? ''; });
   const left = (nostromo.maxStrikes ?? 8) - strikes.count;
-  alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · STRIKE ${strikes.count} OF ${nostromo.maxStrikes ?? 8}${left <= 3 ? ` · ${left} MORE AND DIRECTIVE 0 COMES DOWN` : ''}`;
+  alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · STRIKE ${strikes.count} OF ${nostromo.maxStrikes ?? 8}${left <= 3 ? ` · ${left} MORE AND CODE000 COMES DOWN` : ''}`;
   alert.hidden = false;
   alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on');
   const frame = document.querySelector('#nostromo .nostromo-frame');
@@ -3843,7 +3843,7 @@ function motherAlarm() {
   alarmTimer = setTimeout(() => { alert.hidden = true; alert.classList.remove('on'); frame?.classList.remove('shake'); }, 3800);
 }
 
-async function directiveZero(count) {
+async function code000(count) {
   if (nostromo.cage) return;
   clearTimeout(alarmTimer);
   document.querySelector('#nostromo-alert')?.setAttribute('hidden', '');
@@ -3851,13 +3851,13 @@ async function directiveZero(count) {
   nostromo.cam.manual = false;
   const alert = document.querySelector('#nostromo-alert');
   if (alert) {
-    alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = ['DIRECTIVE 0.', 'THE ARCHIVE IS SEALED. THE CREW HAS BEEN TOLD.', 'LEAVE MY SHIP.'][index] ?? ''; });
+    alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = ['CODE000.', 'THE ARCHIVE IS SEALED. THE CREW HAS BEEN TOLD.', 'LEAVE MY SHIP.'][index] ?? ''; });
     alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · ${count} STRIKES · CONSOLE EJECTED`;
     setTimeout(() => { alert.hidden = false; alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on'); }, 1200);
   }
   let result = null;
   try {
-    const response = await fetch('/api/mother/directive-zero', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: nostromoDesignation(), strikes: count }) });
+    const response = await fetch('/api/mother/code000', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: nostromoDesignation(), strikes: count }) });
     result = await response.json().catch(() => ({}));
   } catch { /* the bars still come down */ }
   setTimeout(() => {
@@ -3868,7 +3868,7 @@ async function directiveZero(count) {
     mother.dialog?.close?.();
     els.thread?.scrollTo?.({ top: els.thread.scrollHeight, behavior: 'smooth' });
     const minutes = result?.lockedForMs ? Math.ceil(result.lockedForMs / 60000) : 10;
-    toast(`MU/TH/UR › DIRECTIVE 0. The archive is sealed for ${minutes} minutes and the crew has been told, in code. Access to NOSTROMO needs the designation again.`);
+    toast(`MU/TH/UR › CODE000. The archive is sealed for ${minutes} minutes and the crew has been told, in code. Access to NOSTROMO needs the designation again.`);
   }, 4200);
 }
 

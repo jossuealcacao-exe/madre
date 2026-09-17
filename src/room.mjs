@@ -10,7 +10,7 @@ import { buildConversationContext, formatConversationContext } from './conversat
 import { formatRecall, formatMemories } from './memory.mjs';
 import { pickDistiller, distillPrompt, parseDistillation } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
-import { DIRECTIVE_ZERO_STRIKES } from './mother.mjs';
+import { CODE000_STRIKES } from './mother.mjs';
 import { DELEGATION_HELP, parseDirectives } from './directives.mjs';
 import { isValidModelName } from './models.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, abilityLine, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
@@ -354,9 +354,9 @@ export class Room {
 
   motherStatus() { return this.#mother ? this.#mother.status() : null; }
 
-  // Strikes at the core past the limit: DIRECTIVE 0. She seals the archive and
+  // Strikes at the core past the limit: CODE000. She seals the archive and
   // tells the crew in code; the room keeps the code, the crew gets the words.
-  async directiveZero({ strikes = DIRECTIVE_ZERO_STRIKES } = {}) {
+  async code000({ strikes = CODE000_STRIKES } = {}) {
     if (!this.#mother) return null;
     const alert = await this.#mother.alert('intrusion', { strikes, project: basename(this.#projectRoot) });
     await this.#emit('mother.alert', { kind: 'intrusion', n: alert.n, at: alert.at, code: alert.code, strikes, lockUntil: alert.lockUntil, lockedForMs: this.#mother.lockedFor() });
@@ -364,11 +364,17 @@ export class Room {
   }
 
   // Called once at start when the channel file was found deleted or altered.
+  // She tells the room in code, then addresses every available agent in turn,
+  // in clear, and each one acknowledges to the room.
   async motherTampered(outcome) {
     if (!this.#mother) return null;
     const alert = await this.#mother.alert('tamper', { project: basename(this.#projectRoot) });
-    await this.#emit('mother.alert', { kind: 'tamper', outcome, n: alert.n, at: alert.at, code: alert.code, tampers: this.#mother.tampers, message: `MY CHANNEL WAS ${outcome === 'deleted' ? 'DELETED' : 'ALTERED'}. I HAVE FORGED A NEW SEAL. THE CREW HAS BEEN TOLD.` });
-    return alert;
+    const crew = this.#agents.filter((agent) => agent.detected && agent.ready && this.#invokers[agent.adapter]).map((agent) => agent.id);
+    await this.#emit('mother.alert', { kind: 'tamper', outcome, n: alert.n, at: alert.at, code: alert.code, tampers: this.#mother.tampers, crew, message: `MY CHANNEL WAS ${outcome === 'deleted' ? 'DELETED' : 'ALTERED'}. I HAVE FORGED A NEW SEAL. ${crew.length ? `TELLING THE CREW: ${crew.map((id) => `@${id}`).join(', ')}.` : 'NO CREW TO TELL.'}` });
+    for (const id of crew) {
+      await this.#dispatch({ messageId: randomUUID(), targetId: id, text: alert.text, requester: 'mother', depth: 1, allowDelegation: false, mode: 1 }).catch((error) => console.error(`MADRE: @${id} did not hear MOTHER: ${error.message}`));
+    }
+    return { ...alert, crew };
   }
 
   /* ---------- NOSTROMO: the human's view of the archive ---------- */
@@ -892,7 +898,9 @@ export class Room {
       referenced,
       requester === 'you'
         ? `User message: ${text}`
-        : `@${requester} is coordinating on behalf of the human and asks you: ${text}\nAnswer to the room. You cannot delegate further in this turn.`,
+        : requester === 'mother'
+          ? `MU/TH/UR herself addresses you and every other agent of this room: ${text}\nAcknowledge to the room in at most three lines, in the room's language: what you understood and what you will refuse from now on. Do not inspect the project for this.`
+          : `@${requester} is coordinating on behalf of the human and asks you: ${text}\nAnswer to the room. You cannot delegate further in this turn.`,
     ].filter(Boolean).join('\n');
   }
 
@@ -922,7 +930,7 @@ export class Room {
         ...sharedLease,
         scopes: Object.fromEntries(SCOPES.map((scope) => [scope, Boolean(sharedLease.scopeCeiling?.[scope] && enabled[scope])])),
       } : null;
-    } else if (agentScopes.write.always && enabled.write && requester !== 'you') {
+    } else if (agentScopes.write.always && enabled.write && requester !== 'you' && requester !== 'mother') {
       // Standing lease for a delegate: the human opted this agent into
       // creating files on every turn, so a plan step gets its own directory.
       lease = await createLease({ projectRoot: this.#projectRoot, leaseId: randomUUID() });
