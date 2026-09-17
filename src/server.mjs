@@ -399,6 +399,7 @@ export async function createPulseServer({
           plans: room.activePlans(),
           turns: room.activeTurns(),
           modeRequests: room.pendingModeRequests(),
+          control: room.control(),
           sessions,
           sessionsAt,
           capabilities: room.capabilities(),
@@ -525,6 +526,10 @@ export async function createPulseServer({
         const result = await installExtension(installMatch[1], await body(request));
         return sendJson(response, result.status, result.body);
       }
+      if (request.method === 'POST' && /^\/api\/control\/[\w-]+\/undo$/.test(url.pathname)) {
+        const result = await room.undoControl(url.pathname.split('/')[3]);
+        return sendJson(response, result.ok ? 200 : result.status ?? 400, result);
+      }
       if (request.method === 'POST' && /^\/api\/modes\/[\w-]+\/decide$/.test(url.pathname)) {
         const requestId = url.pathname.split('/')[3];
         const { decision } = await body(request);
@@ -535,7 +540,7 @@ export async function createPulseServer({
         const payload = await body(request);
         // Modes are checked before the turn is accepted, so the composer
         // hears "no" with a reason instead of a silent log line.
-        const gate = room.modeCheck(payload);
+        const gate = await room.modeCheck(payload);
         if (!gate.ok) return sendJson(response, gate.status ?? 403, { error: gate.error, mode: gate.mode, maxMode: gate.maxMode });
         void room.send(payload).catch((error) => {
           console.error(`MADRE room error: ${error.message}`);

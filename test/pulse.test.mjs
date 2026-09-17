@@ -2618,18 +2618,18 @@ test('modes: a ghost turn reaches listeners but never the log, #2 is the lease, 
     room.setScopes({ codex: { maxMode: 1 } });
     assert.equal(room.scopesFor('codex').maxMode, 1);
     assert.equal(room.scopesFor('claude').maxMode, 2, 'writable agents default to #2');
-    assert.equal(room.modeCheck({ target: 'codex', text: 'x', mode: 2 }).capped, true);
+    assert.equal((await room.modeCheck({ target: 'codex', text: 'x', mode: 2 })).capped, true);
     await room.send({ text: 'make a file', target: 'codex', mode: 2 });
     events = await store.readAll();
     const refused = events.filter((event) => event.type === 'lease.refused').at(-1);
     assert.match(refused.payload.reason, /capped at #1 EXCHANGE/);
     assert.equal(seen.codex.lease, null);
 
-    // #3 is a hard no until phase C.
-    const gate = room.modeCheck({ target: 'claude', text: 'x', mode: 3 });
+    // #3 needs MAX MODE 3 in CONNECTIONS.
+    const gate = await room.modeCheck({ target: 'claude', text: 'x', mode: 3 });
     assert.equal(gate.ok, false);
-    assert.equal(gate.status, 501);
-    await assert.rejects(room.send({ text: 'take over', target: 'claude', mode: 3 }), /not wired yet/);
+    assert.equal(gate.status, 403);
+    await assert.rejects(room.send({ text: 'take over', target: 'claude', mode: 3 }), /raise its MAX MODE to #3/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -2693,6 +2693,124 @@ test('escalation: a creation step in a #1 plan waits for the human; once, plan, 
     assert.equal(timedOut.length, 2);
     assert.match(seen.codex[2].prompt, /did not answer in time/);
     assert.equal(room.pendingModeRequests().length, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
+// ---------- CONTROL: checkpoints, forbidden zones, UNDO, one holder ----------
+import { createCheckpoint, diffCheckpoint, isForbidden, restoreCheckpoint } from '../src/checkpoint.mjs';
+
+test('checkpoint: photographs tracked and untracked files without touching the branch, diffs, and restores including removals', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-checkpoint-'));
+  try {
+    const git = (...args) => new Promise((resolve, reject) => execFile('git', args, { cwd: root, env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }, (error, stdout) => (error ? reject(error) : resolve(stdout))));
+    await git('init', '-q');
+    await writeFile(join(root, 'a.txt'), 'one\n');
+    await writeFile(join(root, '.gitignore'), 'ignored/\n');
+    await mkdir(join(root, 'ignored'));
+    await writeFile(join(root, 'ignored', 'x'), 'x');
+    // No commits yet: the checkpoint must still work (abysm starts like this).
+    await writeFile(join(root, 'untracked.md'), 'draft\n');
+    const checkpoint = await createCheckpoint(root, { id: 'cp1' });
+    assert.match(checkpoint.commit, /^[0-9a-f]{40}$/);
+    assert.equal(checkpoint.head, null);
+    assert.equal((await git('rev-parse', '--verify', '-q', 'refs/madre/checkpoints/cp1')).trim(), checkpoint.commit);
+    assert.equal((await git('status', '--porcelain')).includes('a.txt'), true, 'the user\'s index and branch are untouched');
+
+    // The agent's turn: modify, add, delete, and write into forbidden zones.
+    await writeFile(join(root, 'a.txt'), 'two\n');
+    await writeFile(join(root, 'new.js'), 'export {}\n');
+    await rm(join(root, 'untracked.md'));
+    await writeFile(join(root, '.env'), 'SECRET=1\n');
+    const diff = await diffCheckpoint(root, checkpoint);
+    assert.deepEqual(diff.files.map((file) => `${file.status}:${file.path}`).sort(), ['A:.env', 'A:new.js', 'D:untracked.md', 'M:a.txt']);
+    assert.deepEqual(diff.forbidden, ['.env']);
+    assert.match(diff.stat, /4 files changed/);
+    assert.equal(isForbidden('.git/config'), true);
+    assert.equal(isForbidden('src/.env.local'), true);
+    assert.equal(isForbidden('src/env.js'), false);
+
+    // Forbidden zones first, then everything.
+    const partial = await restoreCheckpoint(root, checkpoint, { paths: ['.env'] });
+    assert.deepEqual(partial.removed, ['.env']);
+    assert.equal(await readFile(join(root, 'a.txt'), 'utf8'), 'two\n', 'a partial restore leaves other changes alone');
+    const full = await restoreCheckpoint(root, checkpoint);
+    assert.deepEqual(full.removed.sort(), ['new.js']);
+    assert.deepEqual(full.restored.sort(), ['a.txt', 'untracked.md']);
+    assert.equal(await readFile(join(root, 'a.txt'), 'utf8'), 'one\n');
+    assert.equal(await readFile(join(root, 'untracked.md'), 'utf8'), 'draft\n');
+    assert.equal(await readFile(join(root, 'ignored', 'x'), 'utf8'), 'x', 'ignored files are never part of the photograph');
+    assert.deepEqual((await diffCheckpoint(root, checkpoint)).files, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('CONTROL: one holder, checkpoint before, changes reported with forbidden writes reverted, UNDO restores, others are warned', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-control-'));
+  try {
+    await new Promise((resolve, reject) => execFile('git', ['init', '-q'], { cwd: root }, (error) => (error ? reject(error) : resolve())));
+    await writeFile(join(root, 'README.md'), '# before\n');
+    // The room's log lives outside the project, as in real rooms (~/.pulse), or the checkpoint would see it change.
+    const logDir = await mkdtemp(join(tmpdir(), 'pulse-control-log-'));
+    const store = new EventStore(join(logDir, 'events.jsonl'));
+    const agents = ['codex', 'claude'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const seen = {};
+    let release;
+    const invokers = {
+      'codex-readonly': async ({ prompt, lease }) => {
+        seen.codex = { prompt, lease };
+        await writeFile(join(root, 'README.md'), '# after\n');
+        await writeFile(join(root, 'feature.js'), 'export const x = 1;\n');
+        await writeFile(join(root, '.env'), 'LEAK=1\n');
+        await new Promise((resolve) => { release = resolve; });
+        return { text: 'changed README and added feature.js', usage: null };
+      },
+      'claude-readonly': async ({ prompt }) => { seen.claude = { prompt }; return { text: 'read-only look', usage: null }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    assert.equal((await room.modeCheck({ target: 'codex', text: 'x', mode: 3 })).status, 403, 'capped at #2 by default');
+    room.setScopes({ codex: { maxMode: 3 } });
+    assert.equal(room.scopesFor('codex').maxMode, 3);
+    assert.equal((await room.modeCheck({ target: 'codex', text: 'x', mode: 3 })).ok, true);
+
+    const running = room.send({ text: 'rewrite the readme and add a feature', target: 'codex', mode: 3 });
+    for (let attempt = 0; attempt < 100 && !release; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(release, 'the CONTROL turn is running');
+    let events = await store.readAll();
+    const started = events.find((event) => event.type === 'control.started');
+    assert.equal(started.payload.agent, 'codex');
+    assert.equal(room.control().agent, 'codex');
+    assert.equal(seen.codex.lease.control, true);
+    assert.equal(seen.codex.lease.outDir, root);
+    assert.match(seen.codex.prompt, /CONTROL \(#3\): the human put you in command/);
+    assert.match(seen.codex.prompt, /Permission mode for this turn: #3 CONTROL/);
+    // Second holder is refused; another agent working meanwhile is warned.
+    assert.equal((await room.modeCheck({ target: 'claude', text: 'x', mode: 3 })).status, 403);
+    room.setScopes({ codex: { maxMode: 3 }, claude: { maxMode: 3 } });
+    assert.equal((await room.modeCheck({ target: 'claude', text: 'x', mode: 3 })).status, 409);
+    await room.send({ text: 'what do you see?', target: 'claude' });
+    assert.match(seen.claude.prompt, /currently holds CONTROL/);
+    assert.equal((await room.undoControl(started.payload.checkpointId)).status, 409, 'no UNDO while the turn runs');
+    release();
+    await running;
+    events = await store.readAll();
+    const changed = events.find((event) => event.type === 'control.changed');
+    assert.deepEqual(changed.payload.files.map((file) => `${file.status}:${file.path}`).sort(), ['A:feature.js', 'M:README.md']);
+    assert.deepEqual(changed.payload.forbiddenReverted, ['.env']);
+    assert.equal(await readFile(join(root, '.env'), 'utf8').catch(() => null), null, 'the forbidden write is gone');
+    assert.equal(await readFile(join(root, 'README.md'), 'utf8'), '# after\n');
+    assert.equal(room.control(), null, 'the holder is released');
+    assert.equal(events.find((event) => event.type === 'message.created' && event.payload.role === 'assistant' && event.payload.sender === 'codex').payload.mode, 3);
+
+    const undone = await room.undoControl(changed.payload.checkpointId);
+    assert.equal(undone.ok, true);
+    assert.equal(await readFile(join(root, 'README.md'), 'utf8'), '# before\n');
+    assert.equal(await readFile(join(root, 'feature.js'), 'utf8').catch(() => null), null);
+    assert.ok((await store.readAll()).some((event) => event.type === 'control.reverted'));
+    assert.equal((await room.undoControl('nope')).status, 404);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

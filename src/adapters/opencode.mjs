@@ -34,16 +34,19 @@ export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PUL
   ];
 }
 
-export function leaseConfig(outDir) {
+export function leaseConfig(outDir, { control = false } = {}) {
+  const forbidden = control ? Object.fromEntries(['.git/**', '.pulse/**', '.env', '.env.*', '**/.env', '**/.env.*'].map((glob) => [`${outDir}/${glob}`, 'deny'])) : {};
   return {
     ...readonlyConfig,
     agent: {
       'pulse-readonly': {
         ...readonlyConfig.agent['pulse-readonly'],
-        prompt: 'Answer the user directly. Inspect project files when necessary. You may create or edit files only inside the creation lease directory named in the request; never elsewhere. Do not run commands, browse the web, or launch subagents.',
+        prompt: control
+          ? 'Answer the user directly. You are in CONTROL of this project: create and edit files anywhere inside it except .git, .pulse and .env files. Do not run commands, browse the web, or launch subagents.'
+          : 'Answer the user directly. Inspect project files when necessary. You may create or edit files only inside the creation lease directory named in the request; never elsewhere. Do not run commands, browse the web, or launch subagents.',
         permission: {
           ...readonlyConfig.agent['pulse-readonly'].permission,
-          edit: { '*': 'deny', [`${outDir}/**`]: 'allow' },
+          edit: { '*': 'deny', [`${outDir}/**`]: 'allow', ...forbidden },
         },
       },
     },
@@ -51,7 +54,7 @@ export function leaseConfig(outDir) {
 }
 
 export function openCodeConfig({ lease = null, scopes = null, imageStudio = null } = {}) {
-  let config = lease ? leaseConfig(lease.outDir) : readonlyConfig;
+  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control) }) : readonlyConfig;
   if (scopes?.web) {
     config = {
       ...config,

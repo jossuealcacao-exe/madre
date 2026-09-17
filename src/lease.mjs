@@ -63,13 +63,17 @@ export function diffSnapshots(before, after, { relativeDir }) {
   return artifacts.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null }) {
+export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false }) {
   const canImage = Boolean(scopes.imageGen);
   const couldImage = capable ? Boolean(capable.imageGen?.capable) : canImage;
   return [
-    `CREATION LEASE: the human allows you to create files for this request, only inside ${outDir}.`,
-    'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
-    'Reading the project stays allowed. Do not modify project files.',
+    control
+      ? `CONTROL (#3): the human put you in command of this project at ${outDir}. You may read, create and modify its files without asking, one change at a time, minimal and reversible. MADRE took a checkpoint before this turn; everything you change is listed to the human afterwards and can be undone in one click.`
+      : `CREATION LEASE: the human allows you to create files for this request, only inside ${outDir}.`,
+    control
+      ? 'Never touch .git, .pulse, .env files or credentials: writes there are denied and reverted. Do not run destructive commands. Do not delegate this power: other agents you involve work read-only.'
+      : 'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
+    control ? 'End with a short list of the files you changed and why.' : 'Reading the project stays allowed. Do not modify project files.',
     imageStudio ? `You can generate images with the MCP tool ${imageStudio.tool} (server ${imageStudio.name}): pass a detailed prompt and a file_name; it saves the PNG into the lease directory and returns the path.`
       : canImage ? 'You can generate images; save them into the lease directory with a descriptive file name.'
       : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'

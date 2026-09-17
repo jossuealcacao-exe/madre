@@ -27,8 +27,16 @@ export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json'
 // whose file_path argument starts with the lease directory. Plan mode would
 // block every write regardless of policy, so a lease uses approval "default":
 // headless Gemini cannot prompt, so anything the policy does not allow fails.
-export function geminiLeasePolicy(outDir) {
+export function geminiLeasePolicy(outDir, { control = false } = {}) {
   const escaped = outDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const forbidden = control ? `
+[[rule]]
+toolName = ["write_file", "replace", "edit", "run_shell_command"]
+argsPattern = '${escaped}/(\\.git|\\.pulse|\\.env)'
+decision = "deny"
+priority = 1100
+interactive = false
+` : '';
   return `${geminiReadonlyPolicy}
 [[rule]]
 toolName = ["write_file", "replace", "edit"]
@@ -36,7 +44,7 @@ argsPattern = '"file_path"\\s*:\\s*"${escaped}/'
 decision = "allow"
 priority = 1000
 interactive = false
-`;
+${forbidden}`;
 }
 
 export const geminiWebPolicy = `
@@ -48,7 +56,7 @@ interactive = false
 `;
 
 export function geminiPolicy({ lease = null, scopes = null, imageStudio = null } = {}) {
-  return `${lease ? geminiLeasePolicy(lease.outDir) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}`;
+  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}`;
 }
 
 // Gemini CLI reads "@something" in a prompt as a file to include, even in

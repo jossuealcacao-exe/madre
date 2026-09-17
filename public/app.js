@@ -788,7 +788,7 @@ override.form?.addEventListener('submit', (event) => {
     state.modeArmedFor = agent;
     els.target.value = agent;
     setMode(3, { wink: true });
-    toast(`MU/TH/UR › CONTROL armed for @${agent} for this message. Phase C wires the checkpoint and the writes; until then the room refuses to send at #3.`);
+    toast(`MU/TH/UR › CONTROL armed for @${agent} for this message. A checkpoint is taken before it runs; every change is listed and UNDO is one click.`);
   }, 900);
 });
 
@@ -1076,6 +1076,75 @@ function renderLeaseRefused(event) {
   node.append(el('b', null, 'MU/TH/UR › '));
   node.append(message);
   toast(`MU/TH/UR › ${message}`);
+  state.lastSender = null;
+  return node;
+}
+
+/* ---------- CONTROL: the project itself, between two checkpoints ---------- */
+
+function renderControlStarted(event) {
+  const { agent, commit, message } = event.payload;
+  const node = el('div', 'system control');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(el('b', null, 'CONTROL · '), el('b', 'who', `@${agent}`), ` holds the project · checkpoint `, el('code', null, (commit ?? '').slice(0, 7)));
+  node.title = message;
+  if (!replaying) toast(`MU/TH/UR › @${agent} holds CONTROL. Checkpoint taken; UNDO will be one click.`);
+  state.lastSender = null;
+  return node;
+}
+function renderControlChanged(event) {
+  const { agent, checkpointId, files = [], stat, forbiddenReverted = [], message } = event.payload;
+  const node = el('div', `system control changed${files.length ? '' : ' quiet'}`);
+  node.id = `control-${checkpointId}`;
+  node.style.setProperty('--agent', agentColor(agent));
+  const head = el('div', 'head');
+  head.append(el('b', null, 'CONTROL · '), el('b', 'who', `@${agent}`), files.length ? ` changed ${files.length} file${files.length === 1 ? '' : 's'}` : ' changed nothing');
+  node.append(head);
+  if (files.length) {
+    const list = el('ul', 'files');
+    for (const file of files.slice(0, 40)) {
+      const item = el('li');
+      item.append(el('span', `st ${file.status}`, { A: 'added', M: 'modified', D: 'deleted', R: 'renamed' }[file.status] ?? file.status));
+      const link = el('button', 'file-ref', file.path);
+      link.type = 'button';
+      if (file.status !== 'D') link.addEventListener('click', () => openViewer({ root: 'project', path: file.path, label: `/${file.path} · ${file.status}` }));
+      else link.disabled = true;
+      item.append(link);
+      list.append(item);
+    }
+    if (files.length > 40) list.append(el('li', null, `… and ${files.length - 40} more`));
+    node.append(list);
+    if (stat) { const pre = el('pre', 'stat', stat.split('\n').slice(-1)[0]); pre.title = stat; node.append(pre); }
+  }
+  if (forbiddenReverted.length) node.append(el('div', 'forbidden', `${forbiddenReverted.length} write${forbiddenReverted.length === 1 ? '' : 's'} into forbidden zones reverted: ${forbiddenReverted.join(', ')}`));
+  if (files.length) {
+    const undo = el('button', 'undo', 'UNDO · RESTORE CHECKPOINT');
+    undo.type = 'button';
+    undo.title = 'Put the project back exactly as it was before this CONTROL turn.';
+    undo.addEventListener('click', async () => {
+      undo.disabled = true;
+      try {
+        const response = await fetch(`/api/control/${checkpointId}/undo`, { method: 'POST' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        undo.textContent = 'RESTORED';
+      } catch (error) { toast(`MU/TH/UR › ${error.message}`); undo.disabled = false; }
+    });
+    node.append(undo);
+  }
+  node.title = message;
+  state.lastSender = null;
+  return node;
+}
+function renderControlReverted(event) {
+  const { agent, checkpointId, restored = [], removed = [], message } = event.payload;
+  const node = el('div', 'system control reverted');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(el('b', null, 'CONTROL · '), `project restored to the checkpoint before @${agent}'s turn · ${restored.length} restored · ${removed.length} removed`);
+  node.title = message;
+  const card = document.getElementById(`control-${checkpointId}`);
+  card?.querySelector('.undo')?.replaceWith(el('span', 'outcome', 'RESTORED'));
+  if (!replaying) toast(`MU/TH/UR › ${message}`);
   state.lastSender = null;
   return node;
 }
@@ -1422,6 +1491,9 @@ function renderEventNode(event) {
     case 'lease.refused': node = renderLeaseRefused(event); break;
     case 'lease.missing': node = renderLeaseMissing(event); break;
     case 'mode.requested': node = renderModeRequest(event); break;
+    case 'control.started': node = renderControlStarted(event); break;
+    case 'control.changed': node = renderControlChanged(event); break;
+    case 'control.reverted': node = renderControlReverted(event); break;
     case 'mode.granted':
     case 'mode.denied': settleModeRequest(event); return;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
@@ -2015,7 +2087,7 @@ els.composer.addEventListener('submit', async (event) => {
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
       toast(`MU/TH/UR › ${result.error ?? 'The room rejected the message.'}`);
-      if (response.status === 501 && state.mode === 3) setMode(1);
+      if (state.mode === 3 && [403, 409, 412].includes(response.status)) setMode(1);
     } else {
       els.input.value = '';
       state.pending = [];

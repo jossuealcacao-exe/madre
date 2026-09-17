@@ -719,6 +719,26 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .create-scopes .cap.on { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
 .create-scopes .cap.no { text-decoration: line-through; opacity: .7; }
 .system.lease.refused { color: var(--danger); }
+/* CONTROL cards */
+.system.control { color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 45%, transparent); }
+.system.control .who { color: var(--agent); }
+.system.control code { font-family: var(--mono); font-size: 10.5px; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--terror) 45%, transparent); border-radius: 6px; }
+.system.control.changed { display: grid; gap: 8px; justify-items: center; max-width: min(760px, 92%); padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--terror) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--terror) 6%, transparent); text-shadow: none; text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+.system.control.changed .head { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+.system.control.changed.quiet { border-style: dashed; color: var(--text-2); background: transparent; }
+.system.control .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; justify-items: start; text-align: left; }
+.system.control .files li { display: flex; gap: 8px; align-items: center; }
+.system.control .files .st { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); min-width: 64px; }
+.system.control .files .st.A { color: var(--phosphor); } .system.control .files .st.M { color: var(--warn); } .system.control .files .st.D { color: var(--danger); }
+.system.control .files .file-ref { font-family: var(--mono); font-size: 12px; color: var(--text); background: transparent; border: 0; border-bottom: 1px dashed var(--line-2); padding: 0; cursor: pointer; }
+.system.control .files .file-ref:disabled { text-decoration: line-through; cursor: default; }
+.system.control .stat { margin: 0; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); white-space: pre-wrap; }
+.system.control .forbidden { font-family: var(--mono); font-size: 10.5px; color: var(--danger); letter-spacing: .04em; }
+.system.control .undo { border: 1px solid var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .16em; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+.system.control .undo:hover { background: color-mix(in srgb, var(--terror) 22%, transparent); }
+.system.control .undo:disabled { opacity: .5; cursor: default; }
+.system.control .outcome { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; color: var(--phosphor); }
+.system.control.reverted { color: var(--phosphor); text-shadow: none; }
 /* Escalation card: the plan waits for the human, with a clock */
 .system.escalation { color: var(--warn); display: grid; gap: 8px; justify-items: center; max-width: min(760px, 92%); padding: 12px 16px; border: 1px dashed color-mix(in srgb, var(--warn) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--warn) 6%, transparent); text-transform: none; letter-spacing: 0; font-size: 12.5px; }
 .system.escalation .head { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }

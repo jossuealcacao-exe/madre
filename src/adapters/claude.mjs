@@ -31,6 +31,8 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     '--permission-mode', 'dontAsk',
     '--tools', tools.join(','),
     ...(lease || scopes?.web || imageStudio ? ['--allowedTools', allowed.join(',')] : []),
+    // CONTROL: the whole project is writable except MADRE's forbidden zones.
+    ...(lease?.control ? ['--disallowedTools', ['.git/**', '.pulse/**', '.env', '.env.*', '**/.env', '**/.env.*'].flatMap((glob) => [`Write(${lease.outDir}/${glob})`, `Edit(${lease.outDir}/${glob})`]).join(',')] : []),
     // --safe-mode disables every MCP server, ours included. With Image Studio
     // attached we drop it and instead load no setting sources at all: no user
     // hooks, plugins or MCP servers, only the project's CLAUDE.md and our server.

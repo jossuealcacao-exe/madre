@@ -15,6 +15,7 @@ import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
 import { compressAshCode } from './ashcode.mjs';
+import { createCheckpoint, diffCheckpoint, isGitRepo, restoreCheckpoint } from './checkpoint.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -151,6 +152,19 @@ export class Room {
   // Ghost (#0) turns: their events reach the open pages but never the log,
   // so they cannot enter a handoff or survive a reload. Usage still counts,
   // because the tokens were really spent.
+  // CONTROL (#3): one holder per room, every turn between two checkpoints.
+  #control = null;            // { agent, messageId, checkpoint, since }
+  #checkpoints = new Map();   // id -> checkpoint (for UNDO after the turn)
+  control() { return this.#control ? { agent: this.#control.agent, messageId: this.#control.messageId, checkpointId: this.#control.checkpoint.id, since: this.#control.since } : null; }
+  async undoControl(checkpointId) {
+    const checkpoint = this.#checkpoints.get(checkpointId);
+    if (!checkpoint) return { ok: false, status: 404, error: 'That checkpoint is not known to this room.' };
+    if (this.#control?.checkpoint.id === checkpointId) return { ok: false, status: 409, error: 'That CONTROL turn is still running; STOPALL first.' };
+    const result = await restoreCheckpoint(this.#projectRoot, checkpoint);
+    await this.#emit('control.reverted', { checkpointId, agent: checkpoint.agent, removed: result.removed, restored: result.restored, message: `Project restored to the checkpoint taken before @${checkpoint.agent}'s CONTROL turn: ${result.restored.length} file(s) restored, ${result.removed.length} removed.` });
+    return { ok: true, ...result };
+  }
+
   // Escalation: a plan step that needs #2 while the plan runs at #1 waits
   // here for the human's word, with a clock. Nobody else can grant it.
   #escalationMs;
@@ -233,12 +247,17 @@ export class Room {
   }
 
   // Can this message go out at this mode? Answered before the turn exists.
-  modeCheck({ target, text, mode, create = false } = {}) {
+  async modeCheck({ target, text, mode, create = false } = {}) {
     const parsed = parseMessage(text ?? '', target);
     const wanted = normalizeMode(mode, create === true ? 2 : 1);
     if (!parsed.target) return { ok: true, mode: wanted };
     const scopes = this.scopesFor(parsed.target);
-    if (wanted === 3) return { ok: false, status: 501, mode: wanted, maxMode: scopes.maxMode, error: `CONTROL (#3) is not wired yet: phase C brings checkpoints, diff and UNDO first. @${parsed.target} was not sent anything.` };
+    if (wanted === 3) {
+      if (scopes.maxMode < 3) return { ok: false, status: 403, mode: wanted, maxMode: scopes.maxMode, error: `@${parsed.target} is capped at #${scopes.maxMode} ${MODES[scopes.maxMode].label}; raise its MAX MODE to #3 in CONNECTIONS first.` };
+      if (!(await isGitRepo(this.#projectRoot))) return { ok: false, status: 412, mode: wanted, maxMode: scopes.maxMode, error: 'CONTROL needs the project to be a git repository: the checkpoint that makes UNDO possible is a git commit. Run git init first.' };
+      if (this.#control) return { ok: false, status: 409, mode: wanted, maxMode: scopes.maxMode, error: `@${this.#control.agent} already holds CONTROL of this project; one holder at a time. STOPALL revokes it.` };
+      return { ok: true, mode: 3, maxMode: scopes.maxMode };
+    }
     // #2 above the agent's ceiling still goes out: the room answers read-only
     // and says why (lease.refused), the way CREATE has always behaved.
     return { ok: true, mode: wanted, maxMode: scopes.maxMode, capped: wanted > scopes.maxMode };
@@ -411,10 +430,11 @@ export class Room {
   async send({ text, target, model = null, attachments = [], create = false, ashCode = false, mode = undefined }) {
     const parsed = parseMessage(text, target);
     const requestedMode = normalizeMode(mode, create === true ? 2 : 1);
-    const gate = this.modeCheck({ target, text, mode: requestedMode });
+    const gate = await this.modeCheck({ target, text, mode: requestedMode });
     if (!gate.ok) throw new Error(gate.error);
     create = requestedMode === 2;
     const ghost = requestedMode === 0;
+    const control = requestedMode === 3;
     const files = (Array.isArray(attachments) ? attachments : []).map((id) => this.attachment(id)).filter(Boolean);
     if (!parsed.text && !files.length) throw new Error('Write a message first.');
     if (!parsed.target) throw new Error('Choose an agent or begin with @agent.');
@@ -433,7 +453,7 @@ export class Room {
     if (ghost) this.#ghostTurns.add(messageId);
     await this.#emit('message.created', {
       messageId,
-      mode: ghost ? 0 : (standing || create ? 2 : 1),
+      mode: ghost ? 0 : control ? 3 : (standing || create ? 2 : 1),
       role: 'user',
       sender: 'you',
       target: parsed.target,
@@ -500,7 +520,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : (lease ? 2 : 1) });
+    await this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? 3 : (lease ? 2 : 1) });
     if (ghost) setTimeout(() => this.#ghostTurns.delete(messageId), 10 * 60 * 1000).unref?.();
   }
 
@@ -632,7 +652,8 @@ export class Room {
         : null,
       mayDelegate ? DELEGATION_HELP(agent.id, others, this.#maxPlanSteps) : null,
       mayDelegate ? `Abilities right now (route each step to an agent that can do it):\n${[agent.id, ...others].map((id) => abilityLine(id, this.scopesFor(id))).join('\n')}` : null,
-      lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: this.scopesFor(agent.id), imageStudio }) : null,
+      lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: this.scopesFor(agent.id), imageStudio, control: Boolean(lease.control) }) : null,
+      !lease?.control && this.#control && this.#control.agent !== agent.id ? `Heads-up: @${this.#control.agent} currently holds CONTROL and may be changing project files while you work; cite the state you actually read.` : null,
       escalation ? `The human was asked to allow file creation for this step and ${escalation === 'timeout' ? 'did not answer in time' : escalation === 'stopped' ? 'stopped the plan' : 'declined'}. Answer read-only: say plainly what you would have created and what it would contain, without creating it.` : null,
       scopes?.web ? 'WEB ACCESS: the human enabled web search and fetch for you; use them when the question needs current or external information, and cite the sources you used.' : null,
       !lease && requester !== 'you' && depth > 0 && sharedLeaseHint ? sharedLeaseHint : null,
@@ -654,7 +675,18 @@ export class Room {
     // creation and image generation only act inside a lease.
     const turnScopes = { web: enabled.web, imageGen: enabled.imageGen };
     let lease = null;
-    if (sharedLease) {
+    let controlRun = null;
+    if (mode === 3 && requester === 'you' && depth === 0) {
+      // CONTROL: the project itself is the writable root, and a checkpoint
+      // taken now makes every change of this turn reversible.
+      const checkpoint = await createCheckpoint(this.#projectRoot, { id: `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${messageId.slice(0, 8)}`, label: `MADRE control @${agent.id}` });
+      checkpoint.agent = agent.id;
+      this.#checkpoints.set(checkpoint.id, checkpoint);
+      controlRun = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString() };
+      this.#control = controlRun;
+      lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabled, write: true }, control: true, checkpoint };
+      await this.#emit('control.started', { checkpointId: checkpoint.id, commit: checkpoint.commit, head: checkpoint.head, agent: agent.id, messageId, message: `@${agent.id} holds CONTROL of the project. Checkpoint ${checkpoint.commit.slice(0, 7)} taken; UNDO will be one click.` });
+    } else if (sharedLease) {
       lease = enabled.write ? {
         ...sharedLease,
         scopes: Object.fromEntries(SCOPES.map((scope) => [scope, Boolean(sharedLease.scopeCeiling?.[scope] && enabled[scope])])),
@@ -697,12 +729,12 @@ export class Room {
     const imageStudio = lease?.scopes?.imageGen && enabled.imageGen && !native && studio.enabled
       ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.outDir })
       : null;
-    // The turn's effective mode: #0 for ghosts, #2 only while it holds a lease.
-    const turnMode = mode === 0 ? 0 : lease ? 2 : 1;
+    // The turn's effective mode: #0 for ghosts, #3 in control, #2 only while it holds a lease.
+    const turnMode = mode === 0 ? 0 : controlRun ? 3 : lease ? 2 : 1;
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
-      const before = lease ? await snapshot(lease.outDir) : null;
+      const before = lease && !lease.control ? await snapshot(lease.outDir) : null;
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
@@ -716,7 +748,18 @@ export class Room {
         imageStudio,
       });
       const responseMessageId = randomUUID();
-      const artifacts = lease ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
+      const artifacts = lease && !lease.control ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
+      // CONTROL: what really changed in the project, forbidden zones reverted on the spot.
+      let controlChanges = null;
+      if (controlRun) {
+        const diff = await diffCheckpoint(this.#projectRoot, controlRun.checkpoint);
+        let reverted = [];
+        if (diff.forbidden.length) {
+          const restored = await restoreCheckpoint(this.#projectRoot, controlRun.checkpoint, { paths: diff.forbidden });
+          reverted = [...restored.restored, ...restored.removed];
+        }
+        controlChanges = { checkpointId: controlRun.checkpoint.id, agent: agent.id, messageId, files: diff.files.filter((file) => !diff.forbidden.includes(file.path)), stat: diff.stat, forbiddenReverted: reverted };
+      }
       const others = this.delegatesFor(agent.id);
       const directives = allowDelegation && this.#delegation && depth === 0
         ? parseDirectives(result.text, { self: agent.id, available: others, maxSteps: this.#maxPlanSteps })
@@ -750,12 +793,20 @@ export class Room {
       if (artifacts.length) {
         await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });
       }
+      if (controlChanges) {
+        const count = controlChanges.files.length;
+        const reverted = controlChanges.forbiddenReverted.length ? ` ${controlChanges.forbiddenReverted.length} write(s) into forbidden zones were reverted.` : '';
+        await this.#emit('control.changed', { ...controlChanges, responseMessageId, message: `${count ? `@${agent.id} changed ${count} file(s) in the project.` : `@${agent.id} changed nothing in the project.`}${reverted}` });
+      }
       await this.#recordUsage(agent.id, result.usage, { messageId, responseMessageId });
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId });
       return { responseMessageId, directives };
     } catch (error) {
       await this.#emit('message.failed', { messageId, target: agent.id, planId, error: failureMessage(error) });
       return null;
+    } finally {
+      // Release CONTROL whichever way the turn ended; the checkpoint stays for UNDO.
+      if (controlRun && this.#control === controlRun) this.#control = null;
     }
   }
 
