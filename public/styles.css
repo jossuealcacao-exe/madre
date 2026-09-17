@@ -552,13 +552,13 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-close[aria-pressed="true"] { background: var(--ph); color: #041004; text-shadow: none; }
 .settings .conn-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 .settings .conn-grid { align-items: stretch; }
-.conn-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; grid-template-rows: 44px 64px 96px 34px 1fr auto; gap: 12px; min-width: 0; overflow-wrap: anywhere; align-content: start; }
+.conn-card { border: 1px solid var(--ph-dim); padding: 16px 18px 18px; background: rgba(2, 6, 2, .6); display: grid; grid-template-rows: auto; gap: 14px; min-width: 0; overflow-wrap: anywhere; align-content: start; }
 .conn-card .head { display: flex; align-items: center; gap: 10px; align-self: center; }
-.conn-card .meta { align-self: start; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-.conn-card .row { align-self: center; }
+.conn-card .meta { align-self: start; }
+.conn-card .row { align-self: start; padding-top: 4px; }
 .conn-card .slot { min-height: 0; }
-.conn-card .mother-cmd { margin: 0; }
-.conn-card label { align-self: end; }
+.conn-card .mother-cmd { margin: 0; } .conn-card .slot { display: grid; gap: 8px; }
+.conn-card label { align-self: end; margin-top: 4px; }
 .conn-card .head .avatar { --size: 26px; }
 .conn-card h4 { margin: 0; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--agent, var(--ph)); }
 .conn-card .vendor { font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
@@ -752,10 +752,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.lease.missing button { border: 1px solid color-mix(in srgb, var(--warn) 60%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); color: var(--warn); font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; padding: 4px 9px; border-radius: 6px; cursor: pointer; }
 .system.lease.missing button:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); }
 .system.lease.missing button:disabled { opacity: .6; cursor: default; }
-.conn-card .scope.sub { margin-left: 22px; font-size: 9px; }
-.conn-card .ceiling { display: grid; grid-template-columns: auto auto; gap: 4px 10px; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--ph-faint); }
+.conn-card .scope.sub { margin-left: 22px; font-size: 9px; margin-top: -2px; }
+.conn-card .ceiling { display: grid; grid-template-columns: auto auto; gap: 8px 12px; align-items: center; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--ph-faint); }
 .conn-card .ceiling .k { font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
-.conn-card .ceiling .why { grid-column: 1 / -1; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }
+.conn-card .ceiling .why { grid-column: 1 / -1; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; line-height: 1.5; }
 .conn-card .seg { display: inline-flex; border: 1px solid var(--ph-dim); }
 .conn-card .seg-option { border: 0; border-right: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .1em; padding: 4px 9px; cursor: pointer; }
 .conn-card .seg-option:last-child { border-right: 0; }
@@ -892,7 +892,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .row .col { max-width: 100%; }
 .thread-inner { overflow-x: hidden; }
 /* scope toggles in connection cards */
-.conn-card .scopes { display: grid; gap: 8px; align-self: center; }
+.conn-card .scopes { display: grid; gap: 10px; align-self: start; padding-top: 12px; border-top: 1px solid var(--ph-faint); }
 .conn-card .scope .assist { margin-left: 6px; border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 8.5px; letter-spacing: .14em; padding: 1px 6px; cursor: pointer; text-transform: uppercase; }
 .conn-card .scope .assist:hover { background: var(--ph-faint); }
 .conn-card .scope { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .12em; color: var(--ph); cursor: pointer; }

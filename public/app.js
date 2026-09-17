@@ -83,7 +83,7 @@ const state = {
   projectRoot: '',
   create: false,           // creation lease armed for the next message
   ashCodeInstalled: false,
-  ashCode: false,          // ORDER 937 active for this message and its replies
+  ashCode: false,          // ASH CODE active for this message and its replies
   chosenModel: {},         // id -> model name picked in the composer
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
@@ -859,7 +859,7 @@ function renderUserMessage(event) {
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
   const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
   if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, `#${shownMode} ${MODES[shownMode].label}`));
-  if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
+  if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ASH CODE' : 'ASH CODE · unchanged'));
   col.append(who);
   const bubble = el('div', 'bubble', text);
   if (originalText) bubble.append(ashOriginal(originalText, ashCode));
@@ -900,7 +900,7 @@ function renderAssistantMessage(event) {
     if (model) who.append(el('span', 'badge model', model));
     if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
     if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
-    if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
+    if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ASH CODE' : 'ASH CODE · unchanged'));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
@@ -2080,7 +2080,7 @@ function updateCrewLabel() {
   const order = state.ashCode && state.ashCodeInstalled;
   els.crewLabel.textContent = state.mode === 3 ? `MU/TH/UR · CONTROL @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
     : state.mode === 0 ? 'HUMAN · GHOST ›'
-      : order ? (state.create ? 'MU/TH/UR · 937 · CREATE ›' : 'MU/TH/UR · SPECIAL ORDER 937 ›')
+      : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH CODE ›')
         : state.create ? 'HUMAN · CREATE ›'
           : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
 }
@@ -2090,7 +2090,7 @@ function updatePlaceholder() {
 function setOrder937(on, { wink = false } = {}) {
   state.ashCode = on;
   els.ashToggle.setAttribute('aria-pressed', String(on));
-  els.ashToggle.textContent = on ? 'ORDER_937' : 'order_937';
+  els.ashToggle.textContent = on ? 'ASH_CODE' : 'ash_code';
   els.composer.classList.toggle('ordering', on);
   updateCrewLabel();
   updatePlaceholder();
@@ -2101,7 +2101,7 @@ function setOrder937(on, { wink = false } = {}) {
     els.composer.classList.remove('ash-wink');
   }
 }
-// The wink to MOTHER. Three of them: ORDER 937 is one green CRT sweep across the field ('ash'),
+// The wink to MOTHER. Three of them: ASH CODE is one green CRT sweep across the field ('ash'),
 // GHOST fills the field with smoke that clears at once ('ghost'), CONTROL rains red binary over
 // the field and the whole room ('control'). Then business as usual.
 const WINKS = { ash: 1600, ghost: 1200, control: 3000 };
@@ -2167,7 +2167,7 @@ function syncAshCodeUI(enabled) {
 els.ashToggle.addEventListener('click', () => {
   if (!state.ashCodeInstalled) return;
   setOrder937(!state.ashCode, { wink: true });
-  if (state.ashCode) toast('MU/TH/UR › SPECIAL ORDER 937 · BETA: abbreviation may change meaning or cause errors. Check the original. Fewer characters are not verified token savings.');
+  if (state.ashCode) toast('MU/TH/UR › ASH CODE · BETA: abbreviation may change meaning or cause errors. Check the original. Fewer characters are not verified token savings.');
   els.input.focus();
 });
 els.attach.addEventListener('click', () => els.fileInput.click());
@@ -2579,7 +2579,7 @@ function builtinCard(item) {
   if (item.id === 'ashcode') {
     card.append(el('p', 'ash-beta', item.warning ?? 'BETA · May change meaning; review the original.'));
     const actions = el('div', 'actions');
-    const toggle = el('button', on ? null : 'primary', on ? 'DISABLE ORDER 937' : 'ENABLE BETA');
+    const toggle = el('button', on ? null : 'primary', on ? 'DISABLE ASH CODE' : 'ENABLE BETA');
     toggle.type = 'button';
     toggle.addEventListener('click', async () => {
       toggle.disabled = true;
@@ -2589,8 +2589,8 @@ function builtinCard(item) {
         if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
         syncAshCodeUI(Boolean(result.enabled));
         toast(result.enabled
-          ? 'ORDER 937 ON · BETA: prompts and replies may change meaning. Inspect the original; shorter characters are not verified token savings.'
-          : 'ORDER 937 OFF · messages are sent normally.');
+          ? 'ASH CODE ON · BETA: prompts and replies may change meaning. Inspect the original; shorter characters are not verified token savings.'
+          : 'ASH CODE OFF · messages are sent normally.');
         await refreshModules();
       } catch (error) {
         toast(`AshCode could not change state: ${error.message}`);
