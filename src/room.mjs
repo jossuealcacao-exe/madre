@@ -91,6 +91,7 @@ export class Room {
     maxPlanSteps = 4,
     maxConcurrentTurns = 3,
     planMaxAgeMs = 300000,
+    escalationMs = Number(process.env.PULSE_ESCALATION_MS ?? 180000),
   }) {
     this.#store = store;
     this.#agents = agents;
@@ -104,6 +105,7 @@ export class Room {
     this.#maxPlanSteps = maxPlanSteps;
     this.#maxConcurrentTurns = maxConcurrentTurns;
     this.#planMaxAgeMs = planMaxAgeMs;
+    this.#escalationMs = escalationMs;
 
     for (const event of historicalEvents) {
       if (event.type === 'usage.recorded') {
@@ -149,6 +151,63 @@ export class Room {
   // Ghost (#0) turns: their events reach the open pages but never the log,
   // so they cannot enter a handoff or survive a reload. Usage still counts,
   // because the tokens were really spent.
+  // Escalation: a plan step that needs #2 while the plan runs at #1 waits
+  // here for the human's word, with a clock. Nobody else can grant it.
+  #escalationMs;
+  #modeRequests = new Map();
+  pendingModeRequests() {
+    return [...this.#modeRequests.values()].map((entry) => entry.payload);
+  }
+  async #askForMode({ planId, plan, step, index, totalSteps, orchestrator, parentMessageId, mode = 2 }) {
+    const requestId = randomUUID();
+    const expiresAt = new Date(Date.now() + this.#escalationMs).toISOString();
+    const payload = { requestId, planId, agent: step.agent, orchestrator, mode, step: index + 1, totalSteps, text: step.text, expiresAt, message: `@${step.agent} needs #${mode} ${MODES[mode].label} for step ${index + 1}: the plan runs at #1. Grant it once, for the whole plan, or deny.` };
+    await this.#emit('mode.requested', payload);
+    const decision = await new Promise((resolve) => {
+      const timer = setTimeout(() => resolve({ decision: 'deny', reason: 'timeout' }), this.#escalationMs);
+      timer.unref?.();
+      this.#modeRequests.set(requestId, { payload, timer, resolve, plan });
+    });
+    const entry = this.#modeRequests.get(requestId);
+    if (entry) { clearTimeout(entry.timer); this.#modeRequests.delete(requestId); }
+    if (decision.decision === 'deny' || plan.stopped) {
+      const reason = plan.stopped ? 'stopped' : decision.reason ?? 'denied';
+      await this.#emit('mode.denied', { requestId, planId, agent: step.agent, mode, step: index + 1, reason, message: reason === 'timeout' ? `No answer in ${Math.round(this.#escalationMs / 1000)}s: @${step.agent} runs step ${index + 1} at #1.` : reason === 'stopped' ? `The plan was stopped while @${step.agent} waited for #${mode}.` : `Denied: @${step.agent} runs step ${index + 1} at #1 and will say what it could not create.` });
+      return { scope: null, reason };
+    }
+    const scopes = this.scopesFor(step.agent);
+    const enabled = Object.fromEntries(SCOPES.map((scope) => [scope, scopes[scope].enabled && scopes[scope].wired]));
+    const lease = await createLease({ projectRoot: this.#projectRoot, leaseId: randomUUID() });
+    lease.messageId = parentMessageId;
+    lease.scopes = decision.decision === 'plan' ? Object.fromEntries(SCOPES.map((scope) => [scope, true])) : enabled;
+    await this.#emit('lease.granted', {
+      escalated: decision.decision,
+      leaseId: lease.leaseId,
+      messageId: parentMessageId,
+      agent: step.agent,
+      outDir: lease.relativeDir,
+      scopes: SCOPES.filter((scope) => enabled[scope]),
+      unavailable: SCOPES.filter((scope) => !scopes[scope].capable).map((scope) => SCOPE_LABELS[scope]),
+      planId,
+    });
+    await this.#emit('mode.granted', { requestId, planId, agent: step.agent, mode, step: index + 1, scope: decision.decision, leaseId: lease.leaseId, message: decision.decision === 'plan' ? `#${mode} granted for the rest of the plan; every writable agent creates inside one lease.` : `#${mode} granted to @${step.agent} for step ${index + 1} only.` });
+    return { scope: decision.decision, lease };
+  }
+  // The human's answer to a pending request: 'once', 'plan' or 'deny'.
+  decideMode(requestId, decision) {
+    const entry = this.#modeRequests.get(requestId);
+    if (!entry) return { ok: false, error: 'That request is no longer pending.' };
+    if (!['once', 'plan', 'deny'].includes(decision)) return { ok: false, error: 'Decision must be once, plan or deny.' };
+    entry.resolve({ decision, reason: decision === 'deny' ? 'denied' : null });
+    return { ok: true };
+  }
+  #resolvePendingFor(planId, reason) {
+    for (const [requestId, entry] of this.#modeRequests) {
+      if (planId && entry.payload.planId !== planId) continue;
+      entry.resolve({ decision: 'deny', reason });
+      this.#modeRequests.delete(requestId);
+    }
+  }
   #ghostTurns = new Set();
   #ghostListeners = new Set();
   #ghostCounter = 0;
@@ -463,6 +522,7 @@ export class Room {
     const plans = this.#plans.size;
     const turns = this.#turns.size;
     for (const plan of this.#plans.values()) plan.stopped = reason;
+    this.#resolvePendingFor(null, 'stopped');
     for (const turn of this.#turns.values()) turn.controller.abort(reason);
     await this.#emit('room.stopped', { reason, plans, turns, agents: [...new Set([...this.#turns.values()].map((turn) => turn.agent))] });
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
@@ -483,6 +543,7 @@ export class Room {
     const plan = this.#plans.get(planId);
     if (!plan) return false;
     plan.stopped = reason;
+    this.#resolvePendingFor(planId, 'stopped');
     for (const turn of this.#turns.values()) {
       if (turn.planId === planId) turn.controller.abort(reason);
     }
@@ -491,7 +552,7 @@ export class Room {
 
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
-  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ashCode = false, mode = 1 }) {
+  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ashCode = false, mode = 1, escalation = null }) {
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${targetId} is not installed on this computer.` });
@@ -534,7 +595,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model, attachments, references, lease, ashCode, mode });
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal: controller.signal, model, attachments, references, lease, ashCode, mode, escalation });
     this.#turns.set(messageId, turn);
     let outcome = null;
     try {
@@ -550,7 +611,7 @@ export class Room {
     return outcome?.responseMessageId ?? null;
   }
 
-  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], references = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null, ashCode = false, mode = 1 }) {
+  #prompt({ agent, text, requester, depth, allowDelegation, context, attachments = [], references = [], lease = null, scopes = null, imageStudio = null, sharedLeaseHint = null, ashCode = false, mode = 1, escalation = null }) {
     const others = this.delegatesFor(agent.id);
     const mayDelegate = allowDelegation && this.#delegation && depth === 0 && others.length > 0;
     const attached = attachments.length
@@ -572,6 +633,7 @@ export class Room {
       mayDelegate ? DELEGATION_HELP(agent.id, others, this.#maxPlanSteps) : null,
       mayDelegate ? `Abilities right now (route each step to an agent that can do it):\n${[agent.id, ...others].map((id) => abilityLine(id, this.scopesFor(id))).join('\n')}` : null,
       lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: this.scopesFor(agent.id), imageStudio }) : null,
+      escalation ? `The human was asked to allow file creation for this step and ${escalation === 'timeout' ? 'did not answer in time' : escalation === 'stopped' ? 'stopped the plan' : 'declined'}. Answer read-only: say plainly what you would have created and what it would contain, without creating it.` : null,
       scopes?.web ? 'WEB ACCESS: the human enabled web search and fetch for you; use them when the question needs current or external information, and cite the sources you used.' : null,
       !lease && requester !== 'you' && depth > 0 && sharedLeaseHint ? sharedLeaseHint : null,
       attached,
@@ -582,7 +644,7 @@ export class Room {
     ].filter(Boolean).join('\n');
   }
 
-  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ashCode = false, mode = 1 }) {
+  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ashCode = false, mode = 1, escalation = null }) {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
     // read-only even while the plan holds a lease.
@@ -618,7 +680,7 @@ export class Room {
     turnScopes.imageGen = Boolean(lease?.scopes?.imageGen);
     // The step asks for files but nobody granted a lease: say so now, with a
     // way out, instead of letting the agent's refusal be the only signal.
-    if (!lease && !sharedLease && looksLikeCreation(text)) {
+    if (!lease && !sharedLease && !escalation && looksLikeCreation(text)) {
       await this.#emit('lease.missing', {
         messageId,
         agent: agent.id,
@@ -644,7 +706,7 @@ export class Room {
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
-        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
+        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,
@@ -721,6 +783,18 @@ export class Room {
         const messageId = randomUUID();
         const abbreviated = ashCode ? compressAshCode(step.text) : null;
         const stepText = abbreviated?.text ?? step.text;
+        // A creation step in a #1 plan: stop and ask the human before the
+        // agent starts, once, with a clock. Permission written by the
+        // orchestrator inside the step text never counts.
+        let stepLease = lease;
+        let escalation = null;
+        const stepScopes = this.scopesFor(step.agent);
+        if (!lease && !stepScopes.write.always && looksLikeCreation(step.text) && stepScopes.maxMode >= 2 && stepScopes.write.enabled) {
+          const outcome = await this.#askForMode({ planId, plan, step, index, totalSteps: directives.steps.length + (directives.closing ? 1 : 0), orchestrator, parentMessageId, mode: 2 });
+          if (outcome.scope === 'plan') lease = outcome.lease;
+          if (outcome.scope) stepLease = outcome.lease; else escalation = outcome.reason;
+          if (plan.stopped) break;
+        }
         await this.#emit('message.created', {
           messageId,
           role: 'assistant',
@@ -731,11 +805,12 @@ export class Room {
           ashCode: ashCode ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
           status: 'delegated',
           planId,
-          mode: stepMode(step.agent),
+          mode: stepLease && stepScopes.write.enabled ? 2 : 1,
+          escalation: escalation ?? undefined,
           step: index + 1,
           totalSteps: directives.steps.length + (directives.closing ? 1 : 0),
         });
-        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ashCode, mode: stepMode(step.agent) });
+        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: stepLease, ashCode, mode: stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
       }
       if (!plan.stopped && directives.closing) {
         plan.step = directives.steps.length + 1;

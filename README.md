@@ -142,6 +142,8 @@ Cada mensaje sale con un modo, elegido en el chip que sigue a `TO @agente` o esc
 | #2 | CREATE | La concesión de creación: archivos e imágenes dentro de `.pulse/out/` del turno. Absorbe el antiguo candado CREATE. |
 | #3 | CONTROL | Leer, crear y modificar el proyecto real sin aprobación por acción, solo el agente nombrado. Llega en la fase C con checkpoint git, diff y UNDO; hoy la sala lo rechaza al enviar. |
 
+**Escalación con cronómetro.** Cuando un plan corre en #1 y uno de sus pasos pide crear algo, la sala se detiene antes de arrancar ese paso y pregunta: `@gemini asks #2 CREATE for step 2/3 · GRANT ONCE · GRANT FOR PLAN · DENY`, con cuenta regresiva (3 minutos, `PULSE_ESCALATION_MS`). GRANT ONCE da a ese agente su propio directorio en `.pulse/out/` solo para ese paso; GRANT FOR PLAN abre un lease compartido para el resto del plan; DENY o el silencio hacen que el paso corra en #1 y el agente diga qué habría creado. Nadie más que el humano concede: un permiso escrito por el orquestador dentro del texto no cuenta. STOP y STOPALL cierran las preguntas pendientes.
+
 En CONNECTIONS cada agente tiene un `MAX MODE`. Por encima de él, un `#2` se responde en solo lectura con su tarjeta de motivo y un `#3` se rechaza. Armar `#3` pasa por la anulación de emergencia: MU/TH/UR pide la designación del proyecto, el nombre de la carpeta, antes de encender el chip en rojo.
 
 ### Creación bajo permiso: CREATE

@@ -398,6 +398,7 @@ export async function createPulseServer({
           delegation: { enabled: room.settings().delegation, maxPlanSteps: room.settings().maxPlanSteps },
           plans: room.activePlans(),
           turns: room.activeTurns(),
+          modeRequests: room.pendingModeRequests(),
           sessions,
           sessionsAt,
           capabilities: room.capabilities(),
@@ -523,6 +524,12 @@ export async function createPulseServer({
       if (installMatch) {
         const result = await installExtension(installMatch[1], await body(request));
         return sendJson(response, result.status, result.body);
+      }
+      if (request.method === 'POST' && /^\/api\/modes\/[\w-]+\/decide$/.test(url.pathname)) {
+        const requestId = url.pathname.split('/')[3];
+        const { decision } = await body(request);
+        const result = room.decideMode(requestId, decision);
+        return sendJson(response, result.ok ? 200 : 409, result);
       }
       if (request.method === 'POST' && url.pathname === '/api/messages') {
         const payload = await body(request);

@@ -884,6 +884,7 @@ function renderAssistantMessage(event) {
     if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
     if (model) who.append(el('span', 'badge model', model));
     if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
+    if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
     if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ORDER 937' : 'ORDER 937 · unchanged'));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
@@ -1111,11 +1112,76 @@ function renderLeaseMissing(event) {
   return node;
 }
 
+/* ---------- escalation: a plan step asks for #2 while the plan runs at #1 ---------- */
+
+const modeRequests = new Map(); // requestId -> { node, timer }
+function renderModeRequest(event) {
+  const { requestId, agent, orchestrator, mode, step, totalSteps, text, expiresAt, message } = event.payload;
+  const node = el('div', 'system escalation');
+  node.id = `mode-request-${requestId}`;
+  node.style.setProperty('--agent', agentColor(agent));
+  const head = el('div', 'head');
+  head.append(el('b', null, 'MU/TH/UR › '), el('b', 'who', `@${agent}`), ` asks `, el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`), ` for step ${step}/${totalSteps} of @${orchestrator}'s plan`);
+  node.append(head);
+  const quote = el('div', 'quote', text.length > 220 ? `${text.slice(0, 220)}…` : text);
+  quote.title = text;
+  node.append(quote);
+  const actions = el('div', 'actions');
+  const decide = async (decision, button) => {
+    for (const other of actions.querySelectorAll('button')) other.disabled = true;
+    try {
+      const response = await fetch(`/api/modes/${requestId}/decide`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      button.textContent = decision === 'deny' ? 'DENIED' : 'GRANTED';
+    } catch (error) {
+      toast(`MU/TH/UR › ${error.message}`);
+      for (const other of actions.querySelectorAll('button')) other.disabled = false;
+    }
+  };
+  const once = el('button', 'grant', 'GRANT ONCE'); once.type = 'button'; once.title = `@${agent} creates files for this step only, inside its own .pulse/out/ directory.`;
+  const plan = el('button', 'grant plan', 'GRANT FOR PLAN'); plan.type = 'button'; plan.title = 'Every remaining writable step of this plan shares one lease directory.';
+  const deny = el('button', 'deny', 'DENY'); deny.type = 'button'; deny.title = `@${agent} answers read-only and says what it would have created.`;
+  once.addEventListener('click', () => decide('once', once));
+  plan.addEventListener('click', () => decide('plan', plan));
+  deny.addEventListener('click', () => decide('deny', deny));
+  const clock = el('span', 'clock');
+  actions.append(once, plan, deny, clock);
+  node.append(actions);
+  node.title = message;
+  // The clock counts down to the automatic denial; it stops when the room answers.
+  const deadline = new Date(expiresAt).getTime();
+  const tick = () => {
+    const left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+    clock.textContent = `${String(Math.floor(left / 60)).padStart(1, '0')}:${String(left % 60).padStart(2, '0')}`;
+    clock.classList.toggle('late', left <= 30);
+    if (left <= 0) { const entry = modeRequests.get(requestId); if (entry) clearInterval(entry.timer); }
+  };
+  tick();
+  const timer = setInterval(tick, 1000);
+  timer.unref?.();
+  modeRequests.set(requestId, { node, timer, actions });
+  if (!replaying) { toast(`MU/TH/UR › @${agent} asks #${mode} ${MODES[mode].label} for step ${step}. The plan waits for you.`); if (typeof armBrake === 'function') { /* no brake: waiting is safe */ } }
+  state.lastSender = null;
+  return node;
+}
+function settleModeRequest(event) {
+  const { requestId, scope, reason, message } = event.payload;
+  const entry = modeRequests.get(requestId);
+  if (!entry) return;
+  clearInterval(entry.timer);
+  const granted = event.type === 'mode.granted';
+  entry.node.classList.add(granted ? 'granted' : 'denied');
+  entry.actions.replaceChildren(el('span', 'outcome', granted ? (scope === 'plan' ? 'GRANTED FOR THE PLAN' : 'GRANTED ONCE') : reason === 'timeout' ? 'DENIED · NO ANSWER IN TIME' : reason === 'stopped' ? 'PLAN STOPPED' : 'DENIED'));
+  entry.node.title = message ?? '';
+  modeRequests.delete(requestId);
+}
+
 function renderLease(event) {
-  const { agent, outDir, scopes = [], unavailable = [], standing = false } = event.payload;
+  const { agent, outDir, scopes = [], unavailable = [], standing = false, escalated = null } = event.payload;
   const node = el('div', 'system lease');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, standing ? 'standing lease · ' : 'creation lease · '));
+  node.append(el('b', null, standing ? 'standing lease · ' : escalated ? `lease granted on request${escalated === 'plan' ? ' · whole plan' : ''} · ` : 'creation lease · '));
   node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} in `);
   const link = el('a', 'file-link', outDir);
   link.href = '#';
@@ -1355,6 +1421,9 @@ function renderEventNode(event) {
     case 'lease.granted': node = renderLease(event); break;
     case 'lease.refused': node = renderLeaseRefused(event); break;
     case 'lease.missing': node = renderLeaseMissing(event); break;
+    case 'mode.requested': node = renderModeRequest(event); break;
+    case 'mode.granted':
+    case 'mode.denied': settleModeRequest(event); return;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
     case 'artifacts.created': attachArtifacts(event); return;
     case 'command.output': node = renderCommandCard(event); break;

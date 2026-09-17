@@ -2104,7 +2104,8 @@ test('AshCode beta carries abbreviated instructions into a cross-agent plan', as
     const agents = ['claude', 'gemini'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/fake', version: 'test' }));
     const brief = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
     let delegatePrompt = '';
-    const room = new Room({ store, agents, projectRoot: root, invokers: {
+    // The brief asks for an image, so the #1 plan pauses to ask the human; a 200 ms clock denies it here.
+    const room = new Room({ store, agents, projectRoot: root, escalationMs: 200, invokers: {
       'claude-readonly': async () => ({ text: `Delegating.\n\n\`\`\`pulse\n@gemini: ${brief}\n\`\`\``, usage: null }),
       'gemini-readonly': async ({ prompt }) => { delegatePrompt = prompt; return { text: 'Entendido.', usage: null }; },
     } });
@@ -2433,17 +2434,24 @@ test('standing lease: an agent opted in creates files on every turn, and a creat
       'codex-readonly': async ({ prompt, lease }) => { seen.codex = { prompt, lease }; if (lease) await writeFile(join(lease.outDir, 'out.pdf'), 'pdf'); return { text: 'done', usage: null }; },
       'claude-readonly': async ({ prompt, lease }) => { seen.claude = { prompt, lease }; return { text: '```pulse\n@codex: genera el PDF del informe\n```', usage: null }; },
     };
-    const room = new Room({ store, agents, projectRoot: root, invokers });
-    // No lease anywhere: the plan step that asks Codex for a PDF is flagged.
+    const room = new Room({ store, agents, projectRoot: root, invokers, escalationMs: 200 });
+    // No lease anywhere: the plan step that asks Codex for a PDF becomes a question to the human; here nobody answers.
     await room.send({ text: 'organiza el informe', target: 'claude' });
     let events = await store.readAll();
-    const missing = events.find((event) => event.type === 'lease.missing');
-    assert.ok(missing, 'lease.missing is emitted for the delegated creation request');
-    assert.equal(missing.payload.agent, 'codex');
-    assert.equal(missing.payload.requester, 'claude');
-    assert.match(missing.payload.message, /does not count/);
+    const asked = events.find((event) => event.type === 'mode.requested');
+    assert.ok(asked, 'the room asks before the creation step starts');
+    assert.equal(asked.payload.agent, 'codex');
+    assert.equal(asked.payload.orchestrator, 'claude');
+    assert.equal(events.find((event) => event.type === 'mode.denied').payload.reason, 'timeout');
     assert.equal(seen.codex.lease, null);
+    assert.match(seen.codex.prompt, /did not answer in time/);
     assert.equal(events.some((event) => event.type === 'lease.granted'), false);
+    // A direct human request at #1 still gets the missing-lease card with its resend button.
+    await room.send({ text: 'crea un archivo csv con el resumen', target: 'codex' });
+    events = await store.readAll();
+    const missing = events.find((event) => event.type === 'lease.missing');
+    assert.ok(missing, 'lease.missing is emitted for a direct creation request without CREATE');
+    assert.equal(missing.payload.requester, 'you');
 
     // Codex opted into a standing lease: the same plan step now creates files.
     room.setScopes({ codex: { alwaysCreate: true } });
@@ -2622,6 +2630,69 @@ test('modes: a ghost turn reaches listeners but never the log, #2 is the lease, 
     assert.equal(gate.ok, false);
     assert.equal(gate.status, 501);
     await assert.rejects(room.send({ text: 'take over', target: 'claude', mode: 3 }), /not wired yet/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
+test('escalation: a creation step in a #1 plan waits for the human; once, plan, deny and timeout each do what they say', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-escalation-'));
+  try {
+    const store = new EventStore(join(root, 'events.jsonl'));
+    const agents = ['codex', 'claude', 'gemini'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const seen = { codex: [], gemini: [] };
+    const invokers = {
+      'claude-readonly': async () => ({ text: '```pulse\n@codex: genera el PDF del informe\n@gemini: crea una imagen de portada\n```', usage: null }),
+      'codex-readonly': async ({ prompt, lease }) => { seen.codex.push({ prompt, lease }); if (lease) await writeFile(join(lease.outDir, 'informe.pdf'), 'x'); return { text: 'codex done', usage: null }; },
+      'gemini-readonly': async ({ prompt, lease }) => { seen.gemini.push({ prompt, lease }); return { text: 'gemini done', usage: null }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers, escalationMs: 400 });
+    const waitFor = async (predicate, ms = 3000) => { const until = Date.now() + ms; while (Date.now() < until) { const events = await store.readAll(); const hit = events.find(predicate); if (hit) return hit; await new Promise((resolve) => setTimeout(resolve, 20)); } throw new Error('timed out waiting'); };
+
+    // Grant once for Codex, deny Gemini: the plan pauses at each step.
+    const run1 = room.send({ text: 'organiza el informe', target: 'claude' });
+    const first = await waitFor((event) => event.type === 'mode.requested');
+    assert.equal(first.payload.agent, 'codex');
+    assert.equal(first.payload.step, 1);
+    assert.equal(room.pendingModeRequests().length, 1);
+    assert.equal(seen.codex.length, 0, 'the step has not started');
+    assert.equal(room.decideMode('nope', 'once').ok, false);
+    assert.equal(room.decideMode(first.payload.requestId, 'once').ok, true);
+    const second = await waitFor((event) => event.type === 'mode.requested' && event.payload.agent === 'gemini');
+    room.decideMode(second.payload.requestId, 'deny');
+    await run1;
+    let events = await store.readAll();
+    assert.equal(events.filter((event) => event.type === 'mode.granted').length, 1);
+    assert.equal(events.find((event) => event.type === 'mode.granted').payload.scope, 'once');
+    assert.equal(events.filter((event) => event.type === 'mode.denied').length, 1);
+    assert.ok(seen.codex[0].lease, 'codex created inside a lease granted on request');
+    assert.equal(events.find((event) => event.type === 'lease.granted').payload.escalated, 'once');
+    assert.equal(events.find((event) => event.type === 'artifacts.created').payload.files[0].name, 'informe.pdf');
+    assert.equal(seen.gemini[0].lease, null);
+    assert.match(seen.gemini[0].prompt, /declined\. Answer read-only/);
+    assert.equal(events.filter((event) => event.type === 'lease.missing').length, 0, 'a decided step does not also get the missing-lease card');
+    const geminiStep = events.find((event) => event.type === 'message.created' && event.payload.status === 'delegated' && event.payload.target === 'gemini');
+    assert.equal(geminiStep.payload.escalation, 'denied');
+
+    // Grant for the plan: the second step needs no second question.
+    const run2 = room.send({ text: 'otra vez', target: 'claude' });
+    const third = await waitFor((event) => event.type === 'mode.requested' && event.payload.agent === 'codex' && event.sequence > first.sequence + 5);
+    room.decideMode(third.payload.requestId, 'plan');
+    await run2;
+    events = await store.readAll();
+    assert.equal(events.filter((event) => event.type === 'mode.requested').length, 3, 'no request for gemini once the plan holds a lease');
+    assert.ok(seen.gemini[1].lease, 'gemini writes inside the plan lease');
+    assert.equal(seen.gemini[1].lease.outDir, seen.codex[1].lease.outDir);
+
+    // Timeout: nobody answers in 400 ms, the step runs read-only and says so.
+    const run3 = room.send({ text: 'y otra', target: 'claude' });
+    await run3;
+    events = await store.readAll();
+    const timedOut = events.filter((event) => event.type === 'mode.denied' && event.payload.reason === 'timeout');
+    assert.equal(timedOut.length, 2);
+    assert.match(seen.codex[2].prompt, /did not answer in time/);
+    assert.equal(room.pendingModeRequests().length, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

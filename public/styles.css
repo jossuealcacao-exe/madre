@@ -719,6 +719,22 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .create-scopes .cap.on { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
 .create-scopes .cap.no { text-decoration: line-through; opacity: .7; }
 .system.lease.refused { color: var(--danger); }
+/* Escalation card: the plan waits for the human, with a clock */
+.system.escalation { color: var(--warn); display: grid; gap: 8px; justify-items: center; max-width: min(760px, 92%); padding: 12px 16px; border: 1px dashed color-mix(in srgb, var(--warn) 55%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--warn) 6%, transparent); text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+.system.escalation .head { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+.system.escalation .head .who { color: var(--agent); }
+.system.escalation .quote { font-family: inherit; font-size: 13px; color: var(--text-2); font-style: italic; text-align: center; overflow-wrap: anywhere; }
+.system.escalation .actions { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.system.escalation button { border: 1px solid color-mix(in srgb, var(--warn) 65%, transparent); background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; padding: 6px 11px; border-radius: 8px; cursor: pointer; }
+.system.escalation button.plan { border-style: double; }
+.system.escalation button.deny { color: var(--text-2); border-color: var(--line-2); background: transparent; }
+.system.escalation button:hover { filter: brightness(1.1); background: color-mix(in srgb, var(--warn) 22%, transparent); }
+.system.escalation button:disabled { opacity: .5; cursor: default; }
+.system.escalation .clock { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--text-3); margin-left: 6px; }
+.system.escalation .clock.late { color: var(--crit); animation: blink 1s infinite; }
+.system.escalation .outcome { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; }
+.system.escalation.granted { border-style: solid; color: var(--phosphor); border-color: color-mix(in srgb, var(--phosphor) 50%, transparent); background: color-mix(in srgb, var(--phosphor) 6%, transparent); }
+.system.escalation.denied { color: var(--text-3); border-color: var(--line-2); background: transparent; }
 .composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
 .composer.creating .crew-label { color: var(--warn); }
 .who .badge.lease { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
