@@ -690,7 +690,7 @@ function toggleModeMenu(id, anchor) {
   const scopes = state.capabilities[id]?.scopes;
   const canRaise = Boolean(scopes?.write?.capable);
   const title = el('div', 'model-menu-title');
-  title.append(el('b', null, `@${id}`), ' · mode for this message');
+  title.append(el('b', null, `@${id}`), ` · mode for this message · ceiling #${cap}`);
   modeMenu.append(title);
   const ladder = el('div', 'mode-ladder');
   for (const n of [0, 1, 2, 3]) {
@@ -714,19 +714,8 @@ function toggleModeMenu(id, anchor) {
       setMode(n, { wink: n === 0 });
     });
     ladder.append(option);
-    if (n === 2 && scopes) {
-      const row = el('div', 'mode-scopes');
-      row.append(el('span', 'k', 'may create'));
-      for (const [key, labelText] of [['write', 'files'], ['imageGen', 'images'], ['web', 'web']]) {
-        const scope = scopes[key] ?? {};
-        const on = scope.enabled && scope.wired;
-        row.append(el('span', `cap${on ? ' on' : scope.capable ? '' : ' no'}`, labelText));
-      }
-      ladder.append(row);
-    }
   }
   modeMenu.append(ladder);
-  modeMenu.append(el('div', 'model-note', `Ceiling for @${id}: #${cap} ${MODES[cap].label}, set in CONNECTIONS. Your mode caps any plan this message starts; #3 is never delegated.`));
   modeMenu.hidden = false;
   const rect = anchor.getBoundingClientRect();
   const width = modeMenu.offsetWidth || 320;
@@ -745,11 +734,12 @@ function setMode(n, { wink = false } = {}) {
   els.composer.classList.toggle('creating', mode === 2);
   els.composer.classList.toggle('ghost', mode === 0);
   els.composer.classList.toggle('control', mode === 3);
+  for (const n of [0, 1, 2, 3]) els.composer.classList.toggle(`m${n}`, mode === n);
   if (typeof renderCreateScopes === 'function') renderCreateScopes();
   if (typeof updateCrewLabel === 'function') { updateCrewLabel(); updatePlaceholder(); }
   if (typeof renderPicker === 'function') renderPicker();
   if (typeof autosize === 'function') autosize();
-  if (wink && typeof winkField === 'function') winkField({ control: mode === 3 });
+  if (wink && typeof winkField === 'function') winkField(mode === 3 ? 'control' : mode === 0 ? 'ghost' : 'ash');
 }
 // After a message goes out the mode falls back to the target's default: #2 for a standing lease, else #1.
 function resetModeAfterSend() { setMode(defaultModeFor(els.target.value)); }
@@ -2041,26 +2031,30 @@ function setOrder937(on, { wink = false } = {}) {
     els.composer.classList.remove('ash-wink');
   }
 }
-// The wink to MOTHER: one CRT sweep across the field, then business as usual.
-// CONTROL winks red, with binary rain over the field: the screen the crew sees when it takes command.
-function winkField({ control = false } = {}) {
+// The wink to MOTHER. Three of them: ORDER 937 is one green CRT sweep across the field ('ash'),
+// GHOST fills the field with smoke that clears at once ('ghost'), CONTROL rains red binary over
+// the field and the whole room ('control'). Then business as usual.
+const WINKS = { ash: 1600, ghost: 1200, control: 3000 };
+function winkField(kind = 'ash') {
   clearTimeout(winkTimer);
-  els.composer.classList.remove('ash-wink', 'control-wink');
+  const classes = Object.keys(WINKS).map((name) => `${name}-wink`);
+  els.composer.classList.remove(...classes);
   void els.composer.offsetWidth;
-  els.composer.classList.add(control ? 'control-wink' : 'ash-wink');
-  if (control) binaryRain(els.composer.querySelector('.field'));
-  winkTimer = setTimeout(() => els.composer.classList.remove('ash-wink', 'control-wink'), control ? 2600 : 1600);
+  els.composer.classList.add(`${kind}-wink`);
+  if (kind === 'control') { binaryRain(els.composer.querySelector('.field')); binaryRain(document.body, { fixed: true, duration: 2800, cell: 15, size: 13 }); }
+  winkTimer = setTimeout(() => els.composer.classList.remove(...classes), WINKS[kind] ?? 1600);
 }
-// Red 0/1 glyphs falling down the field for a couple of seconds, then the canvas is gone. Skipped under reduced motion.
-function binaryRain(host, { duration = 2400 } = {}) {
+// Red 0/1 glyphs falling like rain, a bright head and a fading trail per column, gone after a couple of seconds.
+// Over the field it fits the box; with fixed:true it covers the viewport. Skipped under reduced motion.
+function binaryRain(host, { duration = 2400, fixed = false, cell = 11, size = 10 } = {}) {
   if (!host || typeof requestAnimationFrame !== 'function') return;
   if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  host.querySelector?.('.rain')?.remove();
+  for (const old of host.querySelectorAll?.(fixed ? '.rain.global' : ':scope > .rain') ?? []) old.remove();
   const canvas = document.createElement('canvas');
-  canvas.className = 'rain';
+  canvas.className = fixed ? 'rain global' : 'rain';
   const ctx = canvas.getContext?.('2d');
   if (!ctx) return;
-  const rect = host.getBoundingClientRect();
+  const rect = fixed ? { width: window.innerWidth, height: window.innerHeight } : host.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
   const scale = window.devicePixelRatio || 1;
   canvas.width = Math.round(rect.width * scale);
@@ -2069,9 +2063,8 @@ function binaryRain(host, { duration = 2400 } = {}) {
   ctx.scale(scale, scale);
   const styles = getComputedStyle(host);
   const red = styles.getPropertyValue('--terror').trim() || '#ff2a1f';
-  ctx.font = `700 10px ${styles.getPropertyValue('--mono').trim() || 'monospace'}`;
-  const cell = 11;
-  const drops = Array.from({ length: Math.ceil(rect.width / cell) }, () => ({ y: -Math.random() * rect.height * 2, speed: 2.5 + Math.random() * 5 }));
+  ctx.font = `700 ${size}px ${styles.getPropertyValue('--mono').trim() || 'monospace'}`;
+  const drops = Array.from({ length: Math.ceil(rect.width / cell) }, () => ({ y: -Math.random() * rect.height * (fixed ? 1.2 : 2), speed: (fixed ? 4 : 2.5) + Math.random() * (fixed ? 9 : 5) }));
   const started = performance.now();
   let last = started;
   const frame = (now) => {
@@ -2086,7 +2079,7 @@ function binaryRain(host, { duration = 2400 } = {}) {
     const intensity = t < duration * 0.65 ? 1 : Math.max(0, 1 - (t - duration * 0.65) / (duration * 0.35));
     drops.forEach((drop, i) => {
       drop.y += drop.speed * dt / 16;
-      if (drop.y > rect.height + cell && intensity > 0.4) { drop.y = -cell * (1 + Math.random() * 16); drop.speed = 2.5 + Math.random() * 5; }
+      if (drop.y > rect.height + cell && intensity > 0.4) { drop.y = -cell * (1 + Math.random() * 16); drop.speed = (fixed ? 4 : 2.5) + Math.random() * (fixed ? 9 : 5); }
       ctx.globalAlpha = intensity * (0.5 + Math.random() * 0.5);
       ctx.fillStyle = Math.random() < 0.1 ? '#fff1ef' : red;
       ctx.fillText(Math.random() < 0.5 ? '0' : '1', i * cell + 2, drop.y);

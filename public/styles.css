@@ -33,6 +33,12 @@
   --crit: #ff8a7a;
   --terror: #ff2a1f;             /* MOTHER, when she stops being polite */
   --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 12px 40px rgba(0,0,0,.45);
+
+  /* Permission modes: one colour each, read by the chip, the field, the send button and the menu. */
+  --mode-0: #8d978c; --mode-0-ink: #0b0d0b;        /* GHOST · smoke */
+  --mode-1: var(--phosphor); --mode-1-ink: var(--phosphor-ink);   /* EXCHANGE · phosphor */
+  --mode-2: #ffb000; --mode-2-ink: #1a1000;        /* CREATE · amber phosphor */
+  --mode-3: var(--terror); --mode-3-ink: #fff3f1;  /* CONTROL · the red screen */
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -56,6 +62,9 @@
     --warn: #8a6a00;
     --crit: #a1301f;
     --shadow: 0 12px 40px rgba(0,0,0,.08);
+    --mode-0: #6f786e; --mode-0-ink: #ffffff;
+    --mode-2: #a06e00; --mode-2-ink: #ffffff;
+    --mode-3: #d81b12; --mode-3-ink: #ffffff;
   }
 }
 :root[data-theme="light"] {
@@ -301,7 +310,11 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 select, textarea, button { font: inherit; }
 textarea { resize: none; min-height: 34px; max-height: 180px; padding: 7px 0; border: 0; outline: 0; color: var(--text); background: transparent; line-height: 1.4; font-size: 15px; }
 textarea::placeholder { color: var(--text-3); }
-.field button[type="submit"] { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: var(--phosphor); color: var(--phosphor-ink); cursor: pointer; display: grid; place-items: center; box-shadow: 0 0 18px color-mix(in srgb, var(--phosphor) 45%, transparent); }
+.composer { --mode: var(--mode-1); --mode-ink: var(--mode-1-ink); }
+.composer.m0 { --mode: var(--mode-0); --mode-ink: var(--mode-0-ink); }
+.composer.m2 { --mode: var(--mode-2); --mode-ink: var(--mode-2-ink); }
+.composer.m3 { --mode: var(--mode-3); --mode-ink: var(--mode-3-ink); }
+.field button[type="submit"] { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: var(--mode, var(--phosphor)); color: var(--mode-ink, var(--phosphor-ink)); cursor: pointer; display: grid; place-items: center; box-shadow: 0 0 18px color-mix(in srgb, var(--mode, var(--phosphor)) 45%, transparent); transition: background .25s, box-shadow .25s; }
 .field button[type="submit"] svg { width: 18px; height: 18px; }
 .field button[type="submit"]:hover { filter: brightness(1.06); }
 .field button[type="submit"]:disabled { opacity: .4; cursor: default; box-shadow: none; }
@@ -532,37 +545,36 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .picker .model-chip { margin-left: 8px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: none; padding: 2px 8px; border-radius: 999px; cursor: pointer; }
 .picker .model-chip:hover { color: var(--agent, var(--text)); border-color: var(--agent, var(--line-2)); }
 /* Permission mode chip: TO @agent  #1 EXCHANGE ▾  model ▾ */
-.picker .mode-chip { margin-left: 8px; border: 1px solid var(--mode, var(--line-2)); background: color-mix(in srgb, var(--mode, var(--text-3)) 10%, transparent); color: var(--mode, var(--text-2)); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; padding: 2px 9px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .2s, box-shadow .2s; }
+.picker .mode-chip { margin-left: 8px; border: 1px solid var(--mode); background: transparent; color: var(--mode); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; padding: 2px 9px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s, border-color .2s; }
 .picker .mode-chip b { font-weight: 700; }
-.picker .mode-chip:hover { background: color-mix(in srgb, var(--mode, var(--text-3)) 18%, transparent); }
-.picker .mode-chip.m0 { --mode: var(--text-3); border-style: dashed; }
-.picker .mode-chip.m1 { --mode: var(--phosphor); }
-.picker .mode-chip.m2 { --mode: var(--warn); }
-.picker .mode-chip.m3 { --mode: var(--terror); box-shadow: 0 0 14px color-mix(in srgb, var(--terror) 35%, transparent); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); }
-.mode-menu { width: min(370px, calc(100vw - 24px)); }
-.mode-menu .mode-ladder { display: grid; gap: 3px; }
-.mode-menu .mode-option { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--mode); background: color-mix(in srgb, var(--mode, var(--phosphor)) 5%, transparent); color: var(--text); font: inherit; font-family: var(--mono); padding: 9px 10px 9px 12px; border-radius: 0 10px 10px 0; cursor: pointer; transition: background .15s, opacity .15s; }
-.mode-menu .mode-option:hover { background: color-mix(in srgb, var(--mode, var(--phosphor)) 14%, transparent); }
-.mode-menu .mode-option.current { background: color-mix(in srgb, var(--mode, var(--phosphor)) 18%, transparent); }
-.mode-menu .mode-option.locked { opacity: .6; }
+.picker .mode-chip:hover { background: color-mix(in srgb, var(--mode) 12%, transparent); }
+.picker .mode-chip.m0 { --mode: var(--mode-0); }
+.picker .mode-chip.m1 { --mode: var(--mode-1); }
+.picker .mode-chip.m2 { --mode: var(--mode-2); }
+.picker .mode-chip.m3 { --mode: var(--mode-3); }
+.mode-menu { width: min(340px, calc(100vw - 24px)); padding: 8px; }
+.mode-menu .model-menu-title { margin: 4px 8px 6px; }
+.mode-menu .mode-ladder { display: grid; }
+.mode-menu .mode-option { --mode: var(--text-2); display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; font-family: var(--mono); padding: 9px 8px; border-radius: 8px; cursor: pointer; transition: background .15s, opacity .15s; }
+.mode-menu .mode-option + .mode-option { border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; }
+.mode-menu .mode-option:hover { background: var(--line); }
+.mode-menu .mode-option.current { --mode: var(--phosphor); }
+.mode-menu .mode-option.o3 { --mode: var(--mode-3); }
+.mode-menu .mode-option.locked { opacity: .45; }
 .mode-menu .mode-option.locked:hover { opacity: 1; }
-.mode-menu .mode-option:disabled { opacity: .35; cursor: default; }
-.mode-menu .mode-option:disabled:hover { background: color-mix(in srgb, var(--mode, var(--phosphor)) 5%, transparent); }
-.mode-menu .mode-option .n { font-weight: 700; color: var(--mode); font-size: 14px; }
-.mode-menu .mode-option.o3 .n { text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); }
+.mode-menu .mode-option:disabled { opacity: .3; cursor: default; }
+.mode-menu .mode-option:disabled:hover { background: transparent; }
+.mode-menu .mode-option .n { font-weight: 700; color: var(--mode); font-size: 12px; }
 .mode-menu .mode-option .body { display: grid; gap: 3px; min-width: 0; }
 .mode-menu .mode-option .name { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--mode); }
+.mode-menu .mode-option.current .name, .mode-menu .mode-option:hover .name { color: var(--mode); }
+.mode-menu .mode-option:not(.current):not(.o3) .name { color: var(--text); }
 .mode-menu .mode-option .hint { display: block; font-size: 10.5px; line-height: 1.4; letter-spacing: 0; color: var(--text-2); text-transform: none; font-family: var(--sans, inherit); }
-.mode-menu .mode-option .tag { font-size: 8.5px; font-weight: 700; letter-spacing: .14em; color: var(--mode); border: 1px solid color-mix(in srgb, var(--mode) 55%, transparent); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
-.mode-menu .mode-option.current .tag { background: var(--mode); border-color: var(--mode); color: var(--bg); }
-.mode-menu .mode-option .tag.raise { color: var(--terror); border-color: var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--terror) 30%, transparent); }
-.mode-menu .mode-option.o0 { --mode: var(--text-3); } .mode-menu .mode-option.o1 { --mode: var(--phosphor); } .mode-menu .mode-option.o2 { --mode: var(--warn); } .mode-menu .mode-option.o3 { --mode: var(--terror); }
-.mode-menu .mode-scopes { display: flex; align-items: center; gap: 4px; margin: 0 0 4px 55px; }
-.mode-menu .mode-scopes .k { font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-right: 4px; }
-.mode-menu .model-note { margin-top: 8px; }
+.mode-menu .mode-option .tag { font-size: 8.5px; font-weight: 700; letter-spacing: .16em; color: var(--mode); white-space: nowrap; align-self: center; }
+.mode-menu .mode-option .tag.raise { border: 1px solid var(--mode-3); border-radius: 999px; padding: 2px 8px; }
 /* Composer wears the mode */
-.composer.ghost .field { border-style: dashed; border-color: var(--text-3); box-shadow: none; opacity: .92; }
-.composer.ghost .crew-label { color: var(--text-3); }
+.composer.ghost .field { border-style: dashed; border-color: var(--mode-0); box-shadow: none; opacity: .92; }
+.composer.ghost .crew-label { color: var(--mode-0); }
 .composer.ghost .editor textarea { color: transparent; }
 .composer.ghost .editor .highlight { color: var(--text-2); font-style: italic; }
 .composer.control { width: min(1180px, 100% - 40px); }
@@ -570,12 +582,12 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .composer.control .crew-label { color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); }
 /* Mode badges on bubbles and plan steps */
 .who .badge.mode { font-weight: 700; letter-spacing: .1em; }
-.who .badge.mode.m0 { color: var(--text-3); border-style: dashed; } .who .badge.mode.m1 { color: var(--phosphor); border-color: color-mix(in srgb, var(--phosphor) 45%, transparent); } .who .badge.mode.m2 { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); } .who .badge.mode.m3 { color: var(--terror); border-color: var(--terror); }
+.who .badge.mode.m0 { color: var(--mode-0); border-color: color-mix(in srgb, var(--mode-0) 50%, transparent); } .who .badge.mode.m1 { color: var(--mode-1); border-color: color-mix(in srgb, var(--mode-1) 45%, transparent); } .who .badge.mode.m2 { color: var(--mode-2); border-color: color-mix(in srgb, var(--mode-2) 50%, transparent); } .who .badge.mode.m3 { color: var(--mode-3); border-color: var(--mode-3); }
 .row.ghost .bubble { border: 1px dashed var(--line-2); background: transparent; opacity: .85; }
 .row.ghost.user .bubble { background: transparent; color: var(--text); border-color: var(--text-3); }
 .row.ghost .stamp::after { content: ' · not recorded'; color: var(--text-3); }
 .system.plan .step-mode { margin-left: 3px; font-weight: 700; }
-.system.plan .step-mode.m1 { color: var(--phosphor); } .system.plan .step-mode.m2 { color: var(--warn); }
+.system.plan .step-mode.m1 { color: var(--mode-1); } .system.plan .step-mode.m2 { color: var(--mode-2); }
 /* Emergency command override: a small MOTHER terminal */
 /* Only an open override is laid out; a closed <dialog> must stay display:none. */
 dialog.override[open] { display: grid; place-items: center; }
@@ -703,7 +715,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .composer.ordering .field { position: relative; border-color: color-mix(in srgb, var(--brew) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brew) 14%, transparent); }
 .composer.ordering .crew-label { color: var(--brew); text-shadow: 0 0 8px color-mix(in srgb, var(--brew) 55%, transparent); }
 .composer.ordering .editor textarea::placeholder { color: color-mix(in srgb, var(--brew) 60%, transparent); }
-.composer.creating.ordering .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--brew) 45%, transparent); }
+.composer.creating.ordering .field { border-color: var(--mode-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode-2) 18%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--brew) 45%, transparent); }
 
 /* The wink to MOTHER when the order is given: a CRT sweep and scanlines that fade. */
 .composer .field::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; z-index: 2;
@@ -717,6 +729,21 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 @keyframes ash-sweep { 0% { opacity: 0; background-position: -60% 0, 0 0; } 12% { opacity: 1; } 70% { opacity: .9; background-position: 160% 0, 0 0; } 100% { opacity: 0; background-position: 160% 0, 0 0; } }
 @keyframes ash-type { 0%, 30% { caret-color: var(--brew); } 40% { caret-color: transparent; } 55% { caret-color: var(--brew); } 100% { caret-color: var(--text); } }
 .field .rain { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; pointer-events: none; z-index: 3; }
+.rain.global { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 60; animation: rain-in .25s ease-out 1; }
+@keyframes rain-in { from { opacity: 0; } to { opacity: 1; } }
+/* GHOST: the field fills with smoke that clears at once. Fast, quiet. */
+.composer .field::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; z-index: 2;
+  background:
+    radial-gradient(38% 70% at 18% 75%, color-mix(in srgb, var(--mode-0) 55%, transparent), transparent 72%),
+    radial-gradient(34% 60% at 46% 25%, color-mix(in srgb, var(--mode-0) 45%, transparent), transparent 72%),
+    radial-gradient(42% 75% at 76% 65%, color-mix(in srgb, var(--mode-0) 55%, transparent), transparent 72%),
+    radial-gradient(30% 55% at 92% 20%, color-mix(in srgb, var(--mode-0) 40%, transparent), transparent 72%);
+  background-size: 130% 130%; background-position: 50% 100%; filter: blur(8px); }
+.composer.ghost-wink .field::after { animation: ghost-smoke 1.15s cubic-bezier(.2, .6, .2, 1) 1; }
+@keyframes ghost-smoke {
+  0% { opacity: 0; background-position: 50% 140%; filter: blur(4px); }
+  22% { opacity: .85; background-position: 50% 60%; filter: blur(8px); }
+  100% { opacity: 0; background-position: 50% -60%; filter: blur(18px); } }
 .composer.control-wink .field::before { animation: control-sweep 2.2s cubic-bezier(.2, .7, .2, 1) 1;
   background:
     linear-gradient(90deg, transparent 0%, transparent 40%, color-mix(in srgb, var(--terror) 45%, transparent) 50%, transparent 60%) no-repeat,
@@ -727,7 +754,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 @keyframes control-sweep { 0% { opacity: 0; background-position: -60% 0, 0 0; } 8% { opacity: 1; } 18% { opacity: .3; } 26% { opacity: 1; } 72% { opacity: .9; background-position: 160% 0, 0 0; } 100% { opacity: 0; background-position: 160% 0, 0 0; } }
 @keyframes terror-flicker { 0%, 100% { filter: none; } 15% { filter: brightness(2) saturate(1.6); } 30% { filter: brightness(.5); } 45% { filter: brightness(1.8); } 60% { filter: brightness(.8); } }
 @keyframes control-type { 0%, 30% { caret-color: var(--terror); } 40% { caret-color: transparent; } 55% { caret-color: var(--terror); } 100% { caret-color: var(--text); } }
-@media (prefers-reduced-motion: reduce) { .composer.ash-wink .field::before, .composer.ash-wink .crew-label, .composer.ash-wink .editor textarea, .composer.control-wink .field::before, .composer.control-wink .crew-label, .composer.control-wink .editor textarea { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .composer.ash-wink .field::before, .composer.ash-wink .crew-label, .composer.ash-wink .editor textarea, .composer.control-wink .field::before, .composer.control-wink .crew-label, .composer.control-wink .editor textarea, .composer.ghost-wink .field::after, .rain.global { animation: none; } }
 
 .who .badge.ash { color: var(--phosphor); border-color: color-mix(in srgb, var(--phosphor) 50%, transparent); }
 .who .badge.ash.skipped { color: var(--text-3); border-color: var(--line-2); }
@@ -776,8 +803,8 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.escalation .outcome { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; }
 .system.escalation.granted { border-style: solid; color: var(--phosphor); border-color: color-mix(in srgb, var(--phosphor) 50%, transparent); background: color-mix(in srgb, var(--phosphor) 6%, transparent); }
 .system.escalation.denied { color: var(--text-3); border-color: var(--line-2); background: transparent; }
-.composer.creating .field { border-color: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); }
-.composer.creating .crew-label { color: var(--warn); }
+.composer.creating .field { border-color: var(--mode-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode-2) 18%, transparent); }
+.composer.creating .crew-label { color: var(--mode-2); }
 .who .badge.lease { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
 .user .stamp .lease { color: var(--warn); }
 .system.lease { color: var(--warn); }
