@@ -7,6 +7,7 @@ import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { detectAgents } from './runtime-detection.mjs';
 import { EventStore } from './event-store.mjs';
+import { RoomMemory } from './memory.mjs';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
@@ -92,14 +93,20 @@ export async function createPulseServer({
   agentTimeouts ??= agentTimeoutsFromEnv();
   const agents = providedAgents ?? await detectAgents();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
-  const store = await new EventStore(join(root, 'rooms', projectRoomId(canonicalProjectRoot), 'events.jsonl')).initialize();
+  const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
+  const store = await new EventStore(join(roomDir, 'events.jsonl')).initialize();
   const historicalEvents = await store.readAll();
+  // The room's memory: derived from the ledger, rebuilt if missing or stale,
+  // and never a reason for the room not to open.
+  const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).initialize(store)
+    .catch((error) => { console.error(`MADRE memory unavailable, turns get the recent window only: ${error.message}`); return null; });
   const room = new Room({
     store,
     agents,
     projectRoot,
     softTokenBudget,
     contextMaxChars,
+    memory,
     historicalEvents,
     invokers,
     agentTimeouts,

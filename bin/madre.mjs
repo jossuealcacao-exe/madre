@@ -37,6 +37,11 @@ async function openRoom(options) {
 }
 
 const projectRoot = resolve(option('--project', process.cwd()));
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 5)) {
+  console.error(`\n  MOTHER › MADRE needs Node 22.5 or newer (found ${process.version}): the room's memory runs on node:sqlite.\n`);
+  process.exit(2);
+}
 const stateRoot = process.env.PULSE_HOME;
 if (command !== 'help') {
   const stats = await stat(projectRoot).catch(() => null);

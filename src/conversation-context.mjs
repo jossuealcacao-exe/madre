@@ -1,4 +1,4 @@
-function messageEntry(event) {
+export function messageEntry(event) {
   if (event.type === 'message.failed') {
     // Failures are part of the conversation: an orchestrator closing a plan
     // must know that a step never answered, and why.

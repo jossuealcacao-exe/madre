@@ -27,7 +27,7 @@
     "pulse": "./bin/madre.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5.0"
   },
   "scripts": {
     "start": "node ./bin/madre.mjs start",

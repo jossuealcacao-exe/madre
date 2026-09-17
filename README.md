@@ -13,7 +13,7 @@ npx @jossuealcala/madre doctor
 npx @jossuealcala/madre start
 ```
 
-`doctor` muestra qué agentes están instalados y cuáles tienen sesión iniciada. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 20 o superior.
+`doctor` muestra qué agentes están instalados y cuáles tienen sesión iniciada. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 22.5 o superior.
 
 ### Primer contacto: `madre setup`
 
@@ -49,6 +49,8 @@ MADRE no instala ni configura proveedores. Detecta los runtimes existentes y man
 ## Handoff durable
 
 Cada proyecto tiene una sala estable bajo `PULSE_HOME` (por defecto `~/.pulse`). MADRE reconstruye una ventana acotada de la conversación desde su event log aunque se reinicie o se abra desde otro IDE. Cuando cambia el agente, registra `handoff.created` con el origen, el destino y el rango de eventos entregado; el transcript sigue siendo la fuente durable y no se modifica el proyecto.
+
+**Memoria de la sala.** Todo lo dicho fuera de GHOST queda indexado en `memory.sqlite` junto al event log (SQLite con búsqueda de texto completo, incluido en Node 22.5+). Cuando la conversación excede la ventana de contexto, cada turno recibe además, en automático y sin comando alguno, los intercambios anteriores que coinciden con la petición: citas exactas con su número de secuencia, para cualquier agente, dentro del mismo presupuesto de caracteres (`PULSE_RECALL_SHARE`, por defecto el 30 % de `PULSE_CONTEXT_MAX_CHARS`). El índice se deriva del log y se reconstruye solo si falta o cambia de esquema; los turnos GHOST pueden leerlo pero nunca lo escriben.
 
 Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso MADRE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). El sondeo lee solo los bytes nuevos del log, no el archivo completo. Un cliente que deja de consumir el stream se desconecta cuando acumula más de 1 MiB sin drenar (`PULSE_SSE_MAX_BUFFERED_BYTES`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
 
@@ -192,7 +194,8 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 |---|---|---|
 | `PULSE_HOME` | `~/.pulse` | Raíz de las salas |
 | `PULSE_SOFT_TOKEN_BUDGET` | `500000` | Presupuesto local de tokens por agente |
-| `PULSE_CONTEXT_MAX_CHARS` | `16000` | Ventana de transcript inyectada |
+| `PULSE_CONTEXT_MAX_CHARS` | `16000` | Ventana de transcript inyectada (incluye lo recordado) |
+| `PULSE_RECALL_SHARE` | `0.3` | Parte de la ventana que puede ocupar la memoria recordada (0 la apaga) |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Tamaño máximo de un mensaje |
 | `PULSE_AGENT_TIMEOUT_MS` | `180000` | Timeout de invocación para todos los agentes |
 | `PULSE_<AGENTE>_TIMEOUT_MS` | — | Timeout para un agente concreto |
