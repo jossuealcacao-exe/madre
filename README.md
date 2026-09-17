@@ -1,24 +1,26 @@
-# PULSE
+# MADRE
 
 Una sola sala para conversar con los agentes de IA que ya están instalados en tu computadora, alrededor de un proyecto real.
+
+Tres nombres, tres capas. **MADRE** es el producto: lo que instalas, abres en el navegador y ves junto al logo del latido. **PULSE** es el canal sobre el que corre una sala: el registro de eventos, el bloque de delegación entre agentes, los homes aislados de cada CLI y la carpeta `.pulse/` donde caen los artefactos; por eso esos identificadores conservan su nombre. **MU/TH/UR** es la voz operativa dentro de MADRE: diagnóstico, conexiones y ajustes. El comando `pulse` sigue funcionando como alias de `madre`.
 
 ## Uso
 
 Desde la carpeta de tu proyecto, sin instalar nada:
 
 ```bash
-npx @jossuealcala/pulse doctor
-npx @jossuealcala/pulse start
+npx @jossuealcala/madre doctor
+npx @jossuealcala/madre start
 ```
 
 `doctor` muestra qué agentes están instalados y cuáles tienen sesión iniciada. `start` abre la sala en el navegador en `http://127.0.0.1:4317`; con `--no-open` solo imprime la URL y con `--project RUTA` apunta a otra carpeta. Requiere Node 20 o superior.
 
-### Primer contacto: `pulse setup`
+### Primer contacto: `madre setup`
 
-Si al arrancar en una terminal ningún agente está en línea (instalado, con adaptador y con sesión), PULSE abre primero el asistente. También puedes invocarlo directo:
+Si al arrancar en una terminal ningún agente está en línea (instalado, con adaptador y con sesión), MADRE abre primero el asistente. También puedes invocarlo directo:
 
 ```bash
-npx @jossuealcala/pulse setup
+npx @jossuealcala/madre setup
 ```
 
 El asistente detecta los cuatro agentes, muestra estado, versión y sesión de cada uno, y desde ahí ejecuta el inicio de sesión propio de cada CLI: `codex login`, `claude auth login`, `opencode auth login`, y para Gemini cede la terminal a `gemini` para usar `/auth`. También permite fijar el modelo que OpenCode usará en la sala. Nada se instala ni se configura a espaldas del usuario: los instaladores solo se sugieren, y las credenciales las guarda cada CLI donde siempre. Con `--no-setup` el arranque omite el asistente.
@@ -36,19 +38,19 @@ Las preferencias que el asistente guarda viven en `~/.pulse/config.json` (o `PUL
 Para trabajar sobre el código fuente:
 
 ```bash
-node ./bin/pulse.mjs doctor
-node ./bin/pulse.mjs start --no-open
+node ./bin/madre.mjs doctor
+node ./bin/madre.mjs start --no-open
 ```
 
 Abre la URL que aparece en la terminal. Selecciona Codex, Claude, Gemini u OpenCode, o escribe una mención como `@claude` seguida de una consulta. Los cuatro adaptadores operan en modo de consulta sin edición del proyecto.
 
-PULSE no instala ni configura proveedores. Detecta los runtimes existentes y mantiene las escrituras del proyecto bajo control del usuario. El contenido que un agente lea puede enviarse al proveedor de modelo configurado en ese agente; aplican su cuenta, límites y términos.
+MADRE no instala ni configura proveedores. Detecta los runtimes existentes y mantiene las escrituras del proyecto bajo control del usuario. El contenido que un agente lea puede enviarse al proveedor de modelo configurado en ese agente; aplican su cuenta, límites y términos.
 
 ## Handoff durable
 
-Cada proyecto tiene una sala estable bajo `PULSE_HOME` (por defecto `~/.pulse`). PULSE reconstruye una ventana acotada de la conversación desde su event log aunque se reinicie o se abra desde otro IDE. Cuando cambia el agente, registra `handoff.created` con el origen, el destino y el rango de eventos entregado; el transcript sigue siendo la fuente durable y no se modifica el proyecto.
+Cada proyecto tiene una sala estable bajo `PULSE_HOME` (por defecto `~/.pulse`). MADRE reconstruye una ventana acotada de la conversación desde su event log aunque se reinicie o se abra desde otro IDE. Cuando cambia el agente, registra `handoff.created` con el origen, el destino y el rango de eventos entregado; el transcript sigue siendo la fuente durable y no se modifica el proyecto.
 
-Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso PULSE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). El sondeo lee solo los bytes nuevos del log, no el archivo completo. Un cliente que deja de consumir el stream se desconecta cuando acumula más de 1 MiB sin drenar (`PULSE_SSE_MAX_BUFFERED_BYTES`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
+Las escrituras del event log se serializan también entre procesos locales para preservar secuencias únicas si dos IDEs acceden a la misma sala. El stream `/api/events` se alimenta del log, no de la memoria del proceso: los eventos que otro proceso MADRE agregue a la misma sala llegan a las páginas abiertas (sondeo cada 500 ms, ajustable con `PULSE_BROADCAST_INTERVAL_MS`). El sondeo lee solo los bytes nuevos del log, no el archivo completo. Un cliente que deja de consumir el stream se desconecta cuando acumula más de 1 MiB sin drenar (`PULSE_SSE_MAX_BUFFERED_BYTES`). Cada frame lleva `id` igual a su secuencia y el cliente puede reconectar con `?since=N` o `Last-Event-ID` para recibir solo lo que le falta.
 
 Los errores de un agente se guardan acotados en `message.failed`: una sola línea de hasta 500 caracteres, sin stack traces.
 
@@ -56,13 +58,13 @@ La ventana predeterminada es de 16,000 caracteres y puede ajustarse con `PULSE_C
 
 ## Centinela de límites
 
-Cuando un CLI expone telemetría de tokens por turno, PULSE la registra y la compara con un presupuesto local de la sala. Avisa al 80%, escala a crítico al 90% y marca agotado al 100%, recomendando otro agente que esté listo. También proyecta: si otro turno del mismo tamaño que el último cruzaría un umbral, avisa un turno antes. El presupuesto predeterminado es de 500,000 tokens (un turno real de consulta con contexto cuesta entre 10,000 y 60,000) y puede ajustarse con `PULSE_SOFT_TOKEN_BUDGET`.
+Cuando un CLI expone telemetría de tokens por turno, MADRE la registra y la compara con un presupuesto local de la sala. Avisa al 80%, escala a crítico al 90% y marca agotado al 100%, recomendando otro agente que esté listo. También proyecta: si otro turno del mismo tamaño que el último cruzaría un umbral, avisa un turno antes. El presupuesto predeterminado es de 500,000 tokens (un turno real de consulta con contexto cuesta entre 10,000 y 60,000) y puede ajustarse con `PULSE_SOFT_TOKEN_BUDGET`.
 
-El presupuesto local no es la cuota oficial de la cuenta. PULSE solo mostrará un porcentaje del proveedor cuando exista una fuente fiable para ese dato; nunca lo inferirá a partir de tokens locales. El endpoint `/api/test/limits` sirve para pruebas controladas y solo existe al iniciar con `PULSE_TEST_MODE=1`.
+El presupuesto local no es la cuota oficial de la cuenta. MADRE solo mostrará un porcentaje del proveedor cuando exista una fuente fiable para ese dato; nunca lo inferirá a partir de tokens locales. El endpoint `/api/test/limits` sirve para pruebas controladas y solo existe al iniciar con `PULSE_TEST_MODE=1`.
 
-Las fuentes oficiales de cuota se conectan como lectores opcionales y pueden devolver `null` cuando el proveedor no publique el dato. PULSE las consulta periódicamente, conserva cada lectura válida como `quota.updated` y alimenta el centinela con la procedencia `official:<fuente>`. No hay scraping ni conversión de tokens locales a cuota oficial.
+Las fuentes oficiales de cuota se conectan como lectores opcionales y pueden devolver `null` cuando el proveedor no publique el dato. MADRE las consulta periódicamente, conserva cada lectura válida como `quota.updated` y alimenta el centinela con la procedencia `official:<fuente>`. No hay scraping ni conversión de tokens locales a cuota oficial.
 
-Un lector implementa `{ id, agent, read() }`; `read()` devuelve `null` o `{ usedPercent, resetAt }`. Las versiones locales detectadas de Codex y OpenCode no exponen actualmente un comando CLI estable de cuota oficial, por lo que PULSE no activa ningún lector predeterminado. `opencode stats` es estadística local y no se trata como cuota de proveedor.
+Un lector implementa `{ id, agent, read() }`; `read()` devuelve `null` o `{ usedPercent, resetAt }`. Las versiones locales detectadas de Codex y OpenCode no exponen actualmente un comando CLI estable de cuota oficial, por lo que MADRE no activa ningún lector predeterminado. `opencode stats` es estadística local y no se trata como cuota de proveedor.
 
 ## Delegación entre agentes
 
@@ -74,18 +76,18 @@ Un agente puede poner a trabajar a los demás. Si el humano le pide coordinar, e
 @claude: Compara ambas síntesis y marca dónde divergen.
 ```
 
-PULSE ejecuta los pasos en secuencia como turnos normales de la sala: cada uno queda en el log, pasa por handoff, presupuesto y timeout, y el humano puede detener el plan en cualquier momento desde la sala. El paso dirigido al propio orquestador se convierte en su turno de cierre cuando los demás han respondido. Los agentes delegados no pueden delegar a su vez, así que todo plan termina. El límite por plan son 4 pasos más el cierre (`PULSE_MAX_PLAN_STEPS`), y `PULSE_DELEGATION=0` o `"room": { "delegation": false }` en el config lo desactiva.
+MADRE ejecuta los pasos en secuencia como turnos normales de la sala: cada uno queda en el log, pasa por handoff, presupuesto y timeout, y el humano puede detener el plan en cualquier momento desde la sala. El paso dirigido al propio orquestador se convierte en su turno de cierre cuando los demás han respondido. Los agentes delegados no pueden delegar a su vez, así que todo plan termina. El límite por plan son 4 pasos más el cierre (`PULSE_MAX_PLAN_STEPS`), y `PULSE_DELEGATION=0` o `"room": { "delegation": false }` en el config lo desactiva.
 
 ### Freno maestro: STOPALL
 
-Escribe `STOPALL` en el compositor, o pulsa `STOP ALL` en la barra, y PULSE detiene todos los planes y mata todos los procesos de agente en curso; queda registrado como `room.stopped`. Desde una terminal: `curl -X POST http://127.0.0.1:4317/api/stop-all`. MU/TH/UR avisa en rojo (`room.alert`) cuando la sala empieza a escaparse de las manos: un mensaje tuyo durante un plan (se responde, pero no abre otro plan), tres o más agentes trabajando a la vez, un agente con dos turnos cruzados, o un plan de más de cinco minutos.
+Escribe `STOPALL` en el compositor, o pulsa `STOP ALL` en la barra, y MADRE detiene todos los planes y mata todos los procesos de agente en curso; queda registrado como `room.stopped`. Desde una terminal: `curl -X POST http://127.0.0.1:4317/api/stop-all`. MU/TH/UR avisa en rojo (`room.alert`) cuando la sala empieza a escaparse de las manos: un mensaje tuyo durante un plan (se responde, pero no abre otro plan), tres o más agentes trabajando a la vez, un agente con dos turnos cruzados, o un plan de más de cinco minutos.
 
 ## Conexiones y ajustes
 
-PULSE no guarda credenciales ni habla con los proveedores: lanza el CLI de cada agente como proceso, y ese CLI usa su propia sesión (Codex con ChatGPT, Claude Code con tu cuenta, Gemini CLI con su key u OAuth, OpenCode con su `auth.json`). El botón `⚙ CONNECTIONS` dentro de MU/TH/UR muestra, por plataforma, si el CLI tiene sesión, con qué, su versión y su ruta, y permite:
+MADRE no guarda credenciales ni habla con los proveedores: lanza el CLI de cada agente como proceso, y ese CLI usa su propia sesión (Codex con ChatGPT, Claude Code con tu cuenta, Gemini CLI con su key u OAuth, OpenCode con su `auth.json`). El botón `⚙ CONNECTIONS` dentro de MU/TH/UR muestra, por plataforma, si el CLI tiene sesión, con qué, su versión y su ruta, y permite:
 
 - `RECHECK`: volver a preguntar a cada CLI por su sesión.
-- `SIGN IN` para Codex y Claude Code: PULSE ejecuta el inicio de sesión del propio CLI, que abre el navegador en esta máquina, y transmite su salida (incluido el enlace) a la sala. Gemini y OpenCode inician sesión desde su propio prompt, así que se muestra el comando exacto a copiar.
+- `SIGN IN` para Codex y Claude Code: MADRE ejecuta el inicio de sesión del propio CLI, que abre el navegador en esta máquina, y transmite su salida (incluido el enlace) a la sala. Gemini y OpenCode inician sesión desde su propio prompt, así que se muestra el comando exacto a copiar.
 - Ajustes de la sala guardados en `~/.pulse/config.json` y aplicados a los turnos siguientes sin reiniciar: presupuesto local por agente, timeout por defecto y por agente, pasos máximos de plan, delegación entre agentes, límite de silencio y reintentos de Gemini, y el modelo de OpenCode (con la lista real de `opencode models`).
 
 ### Modelo por petición
@@ -96,7 +98,7 @@ Hacer clic en una esfera de agente en la barra despliega su uso en la sesión: t
 
 ## Archivos, imágenes y adjuntos
 
-La sala muestra lo que los agentes citan y lo que el humano aporta, sin que PULSE deje de ser de solo lectura:
+La sala muestra lo que los agentes citan y lo que el humano aporta, sin que MADRE deje de ser de solo lectura:
 
 - El visor es un mini editor de lectura: líneas numeradas, clic en un número selecciona una línea y Shift+clic extiende el rango; el botón REVIEW WITH o el clic derecho sobre el código abre el menú de agentes y deja en el campo de texto la referencia `!archivo:desde-hasta` con ese agente como destinatario. Cuando un agente crea o modifica un archivo bajo CREATE, el visor se abre solo con ese archivo.
 - El botón sol/luna de la barra alterna el tema: automático según el sistema, claro u oscuro; se recuerda en el navegador.
@@ -127,7 +129,7 @@ Verificadas contra las versiones instaladas y visibles en la esfera de cada agen
 
 ### Creación bajo permiso: CREATE
 
-La creación de archivos y la generación de imágenes están apagadas en el modo de consulta. El botón `CREATE` del compositor concede un permiso de creación para ese mensaje y para el plan que arranque: PULSE crea una carpeta nueva en `<proyecto>/.pulse/out/<fecha>-<id>/` y cambia cada CLI a un modo de escritura acotado a esa carpeta, con el proyecto legible pero intocable:
+La creación de archivos y la generación de imágenes están apagadas en el modo de consulta. El botón `CREATE` del compositor concede un permiso de creación para ese mensaje y para el plan que arranque: MADRE crea una carpeta nueva en `<proyecto>/.pulse/out/<fecha>-<id>/` y cambia cada CLI a un modo de escritura acotado a esa carpeta, con el proyecto legible pero intocable:
 
 | Agente | Cómo se acota |
 |---|---|
@@ -140,26 +142,26 @@ Los alcances se eligen por agente en `⚙ CONNECTIONS`: crear archivos y generar
 
 La lectura del proyecto es la capacidad base de consulta; no requiere activar un permiso de escritura. Para crear archivos una sola vez, arma CREATE en tu mensaje: el plan y sus delegados heredan ese permiso, cada uno limitado por sus propios alcances. Si otro agente pide a un delegado crear un archivo sin ese permiso, la sala muestra `lease.missing` antes de su respuesta. Puedes reenviar esa petición directamente con CREATE o abrir `⚙ CONNECTIONS` desde el aviso. Allí, `ALWAYS · STANDING LEASE` es una opción explícita por agente: cada turno suyo, incluso un paso delegado, recibe una carpeta nueva bajo `.pulse/out/` para escribir. Este permiso permanente **no habilita generación de imágenes**; ésta sigue exigiendo CREATE con el alcance de imágenes. Desactiva el permiso permanente en cualquier momento desde Conexiones. Una frase del agente que diga «permiso concedido» nunca sustituye la autorización del humano.
 
-Al terminar cada turno, PULSE compara la carpeta antes y después y registra lo aparecido como `artifacts.created`; las imágenes y archivos creados se muestran bajo la respuesta del agente y se abren en el visor. El permiso queda en el log como `lease.granted`; el permiso puntual dura un mensaje (hay que volver a pulsar `CREATE`) y lo heredan los pasos delegados. El permiso permanente genera un nuevo lease por turno del agente autorizado. STOPALL corta las ejecuciones activas. Añade `.pulse/` al `.gitignore` del proyecto si no quieres versionar los artefactos.
+Al terminar cada turno, MADRE compara la carpeta antes y después y registra lo aparecido como `artifacts.created`; las imágenes y archivos creados se muestran bajo la respuesta del agente y se abren en el visor. El permiso queda en el log como `lease.granted`; el permiso puntual dura un mensaje (hay que volver a pulsar `CREATE`) y lo heredan los pasos delegados. El permiso permanente genera un nuevo lease por turno del agente autorizado. STOPALL corta las ejecuciones activas. Añade `.pulse/` al `.gitignore` del proyecto si no quieres versionar los artefactos.
 
 ### Image Studio: imágenes para quien no las genera
 
-Solo Codex genera imágenes de forma nativa. El módulo **Image Studio** (en `MODULES`, sin escribir nada en el proyecto) enciende un servidor MCP propio de PULSE, `src/mcp/image-server.mjs`, que expone la herramienta `generate_image` sobre los modelos de imagen de la API de Gemini (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3-pro-image`) con tu propia key de Gemini y sus créditos. PULSE lo conecta a Gemini CLI, Claude Code y OpenCode únicamente dentro de un permiso CREATE con el alcance de imágenes encendido, en sus homes aislados: Claude por `--mcp-config` estricto, Gemini en el `settings.json` temporal más una regla de política, OpenCode en su config efímera. La imagen se guarda en la carpeta del permiso y aparece como artefacto. Con el módulo activo, la casilla GENERATE IMAGES de esos tres agentes se vuelve seleccionable en Conexiones; MU/TH/UR explica la ruta desde `ask MU/TH/UR`. Si la key no tiene créditos, Google responde 429 y la sala lo dice con su nombre.
+Solo Codex genera imágenes de forma nativa. El módulo **Image Studio** (en `MODULES`, sin escribir nada en el proyecto) enciende un servidor MCP propio de MADRE, `src/mcp/image-server.mjs`, que expone la herramienta `generate_image` sobre los modelos de imagen de la API de Gemini (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3-pro-image`) con tu propia key de Gemini y sus créditos. MADRE lo conecta a Gemini CLI, Claude Code y OpenCode únicamente dentro de un permiso CREATE con el alcance de imágenes encendido, en sus homes aislados: Claude por `--mcp-config` estricto, Gemini en el `settings.json` temporal más una regla de política, OpenCode en su config efímera. La imagen se guarda en la carpeta del permiso y aparece como artefacto. Con el módulo activo, la casilla GENERATE IMAGES de esos tres agentes se vuelve seleccionable en Conexiones; MU/TH/UR explica la ruta desde `ask MU/TH/UR`. Si la key no tiene créditos, Google responde 429 y la sala lo dice con su nombre.
 
 ## Módulos
 
-La sala ofrece módulos integrados de PULSE y una integración externa opcional. El botón `MODULES` de la barra lista los disponibles y su estado. Hoy hay cuatro:
+La sala ofrece módulos integrados de MADRE y una integración externa opcional. El botón `MODULES` de la barra lista los disponibles y su estado. Hoy hay cuatro:
 
 - **Git Pulse** (integrado, sin instalación): `/git status`, `/git log [n]`, `/git diff` y `/git branches` traen a la sala la rama, los cambios sin confirmar, los últimos commits o el resumen del diff, en solo lectura y sin gastar un turno de agente. La tarjeta queda en el registro como `command.output` y entra en el contexto que reciben los agentes, así todos razonan sobre los mismos hechos del repositorio. Requiere que el proyecto sea un repositorio git.
 - **Image Studio** (integrado): ver la sección anterior.
-- **AshCode · ORDER 937** (integrado, beta): actívalo en `MODULES` para mostrar el botón `ORDER 937` junto a `CREATE`. Cuando está iluminado, PULSE intenta abreviar localmente mensajes en español o inglés antes de enviarlos a un agente, y pide respuestas concisas. La burbuja muestra el texto enviado y permite desplegar el original; las respuestas abreviadas también conservan el original. Se omite la transformación si detecta código, rutas, enlaces, negaciones, cifras, estructura compleja, idioma incierto o ninguna reducción segura. **Puede cambiar el significado o producir errores: revisa siempre el original y la respuesta.** Menos caracteres no demuestra menos tokens facturados; consulta el uso real del proveedor. Al encenderlo, el campo se ensancha como con CREATE, la etiqueta pasa a `MU/TH/UR · SPECIAL ORDER 937 ›` y la caja hace un guiño a MADRE: un barrido CRT con líneas de fósforo en verde Homebrew (el verde del perfil Homebrew de Terminal.app), que también viste el botón como un prompt de bash con cursor parpadeante. Se apaga desde `ORDER 937` para el siguiente mensaje o se deshabilita en `MODULES`. No requiere npm ni modifica el proyecto: su estado se guarda en la configuración local de PULSE.
-- **AHP+** (`@jossuealcala/ahp-plus`): estado verificado del proyecto, checkpoints y handoffs entre sesiones de IA, guardado en `.ahp/`. PULSE lo detecta por `.ahp/manifest.json` y lo instala con `npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms <agentes detectados>`, pidiendo adaptadores solo para los agentes presentes en la máquina que AHP+ soporta (Codex, Claude, OpenCode). Una vez instalado, `/ahp status`, `/ahp check` y `/ahp context` consultan su estado desde el campo de texto.
+- **AshCode · ORDER 937** (integrado, beta): actívalo en `MODULES` para mostrar el botón `ORDER 937` junto a `CREATE`. Cuando está iluminado, MADRE intenta abreviar localmente mensajes en español o inglés antes de enviarlos a un agente, y pide respuestas concisas. La burbuja muestra el texto enviado y permite desplegar el original; las respuestas abreviadas también conservan el original. Se omite la transformación si detecta código, rutas, enlaces, negaciones, cifras, estructura compleja, idioma incierto o ninguna reducción segura. **Puede cambiar el significado o producir errores: revisa siempre el original y la respuesta.** Menos caracteres no demuestra menos tokens facturados; consulta el uso real del proveedor. Al encenderlo, el campo se ensancha como con CREATE, la etiqueta pasa a `MU/TH/UR · SPECIAL ORDER 937 ›` y la caja hace un guiño a MADRE: un barrido CRT con líneas de fósforo en verde Homebrew (el verde del perfil Homebrew de Terminal.app), que también viste el botón como un prompt de bash con cursor parpadeante. Se apaga desde `ORDER 937` para el siguiente mensaje o se deshabilita en `MODULES`. No requiere npm ni modifica el proyecto: su estado se guarda en la configuración local de MADRE.
+- **AHP+** (`@jossuealcala/ahp-plus`): estado verificado del proyecto, checkpoints y handoffs entre sesiones de IA, guardado en `.ahp/`. MADRE lo detecta por `.ahp/manifest.json` y lo instala con `npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms <agentes detectados>`, pidiendo adaptadores solo para los agentes presentes en la máquina que AHP+ soporta (Codex, Claude, OpenCode). Una vez instalado, `/ahp status`, `/ahp check` y `/ahp context` consultan su estado desde el campo de texto.
 
-Instalar el módulo externo AHP+ es la única acción de módulos con la que PULSE escribe en el proyecto. Por eso el botón muestra primero el comando exacto y exige confirmación; la ejecución se transmite en vivo a la sala y queda registrada en el log como `extension.install.started`, `extension.install.output` y `extension.install.finished`. La consulta a los agentes sigue siendo de solo lectura.
+Instalar el módulo externo AHP+ es la única acción de módulos con la que MADRE escribe en el proyecto. Por eso el botón muestra primero el comando exacto y exige confirmación; la ejecución se transmite en vivo a la sala y queda registrada en el log como `extension.install.started`, `extension.install.output` y `extension.install.finished`. La consulta a los agentes sigue siendo de solo lectura.
 
 ## Recuperación operativa
 
-Si PULSE se detiene a mitad de un turno, al arrancar de nuevo detecta los `agent.started` sin cierre y registra un `message.failed` recuperado para cada uno, así la interfaz no queda en "pensando". Al cerrar con Ctrl+C o `SIGTERM`, PULSE interrumpe los procesos de agente en curso, registra esos turnos como fallidos, entrega los eventos pendientes a las páginas abiertas y termina.
+Si MADRE se detiene a mitad de un turno, al arrancar de nuevo detecta los `agent.started` sin cierre y registra un `message.failed` recuperado para cada uno, así la interfaz no queda en "pensando". Al cerrar con Ctrl+C o `SIGTERM`, MADRE interrumpe los procesos de agente en curso, registra esos turnos como fallidos, entrega los eventos pendientes a las páginas abiertas y termina.
 
 Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra los segundos transcurridos y el límite. `PULSE_AGENT_TIMEOUT_MS` lo cambia para todos y `PULSE_CLAUDE_TIMEOUT_MS`, `PULSE_CODEX_TIMEOUT_MS`, `PULSE_GEMINI_TIMEOUT_MS` o `PULSE_OPENCODE_TIMEOUT_MS` para uno. Un mensaje de más de 20,000 caracteres (`PULSE_MAX_MESSAGE_CHARS`) se registra y se rechaza sin invocar al agente; el contexto inyectado ya está acotado por `PULSE_CONTEXT_MAX_CHARS`.
 
@@ -187,20 +189,20 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 
 ### Gemini y la capacidad de Google
 
-Cuando Google responde 503 (modelo saturado) o 429, el Gemini CLI reintenta con backoff durante minutos y solo escribe trazas en stderr. PULSE lee ese stderr en vivo: si la condición persiste 15 s corta el proceso, reintenta una vez con un modelo explícito más ligero (`gemini-2.5-flash`, configurable con `PULSE_GEMINI_FALLBACK_MODEL`) y, si tampoco responde, lo dice con nombre y modelo probado. Créditos agotados o credenciales inválidas cortan de inmediato.
+Cuando Google responde 503 (modelo saturado) o 429, el Gemini CLI reintenta con backoff durante minutos y solo escribe trazas en stderr. MADRE lee ese stderr en vivo: si la condición persiste 15 s corta el proceso, reintenta una vez con un modelo explícito más ligero (`gemini-2.5-flash`, configurable con `PULSE_GEMINI_FALLBACK_MODEL`) y, si tampoco responde, lo dice con nombre y modelo probado. Créditos agotados o credenciales inválidas cortan de inmediato.
 
 ### Menciones y Gemini CLI
 
-Gemini CLI lee `@algo` en el prompt como un archivo a incluir, incluso en modo headless, y resuelve `@claude` contra `CLAUDE.md`. PULSE escapa cada handle como `\@nombre` al construir el prompt (su parser respeta la barra invertida), antepone una nota que explica la convención y desescapa la respuesta. Las menciones llegan y vuelven intactas.
+Gemini CLI lee `@algo` en el prompt como un archivo a incluir, incluso en modo headless, y resuelve `@claude` contra `CLAUDE.md`. MADRE escapa cada handle como `\@nombre` al construir el prompt (su parser respeta la barra invertida), antepone una nota que explica la convención y desescapa la respuesta. Las menciones llegan y vuelven intactas.
 
 ## Estado de adaptadores
 
 - Codex: consulta de solo lectura habilitada.
-- OpenCode: consulta restringida habilitada; PULSE inyecta permisos efímeros y no modifica la configuración global. Si tu configuración de OpenCode no fija modelo, `run` elige el proveedor por defecto, que puede no ser el que tiene sesión válida; fija `PULSE_OPENCODE_MODEL=proveedor/modelo` (por ejemplo `openai/gpt-5.6-sol`) al arrancar PULSE.
+- OpenCode: consulta restringida habilitada; MADRE inyecta permisos efímeros y no modifica la configuración global. Si tu configuración de OpenCode no fija modelo, `run` elige el proveedor por defecto, que puede no ser el que tiene sesión válida; fija `PULSE_OPENCODE_MODEL=proveedor/modelo` (por ejemplo `openai/gpt-5.6-sol`) al arrancar MADRE.
 - Claude Code: consulta restringida habilitada con Safe Mode, herramientas locales de lectura, MCP desactivado y sesiones no persistentes.
-- Gemini CLI: consulta restringida habilitada con Plan Mode y una política efímera que solo permite herramientas locales de lectura. PULSE ejecuta Gemini con un `GEMINI_CLI_HOME` temporal que solo recibe las credenciales existentes (tokens OAuth y `~/.gemini/.env`; una API key guardada en el llavero del sistema funciona sin copia); hooks, extensiones, servidores MCP y memoria del `~/.gemini` real no se cargan. El relanzamiento interno del CLI se desactiva para que el timeout controle el proceso que hace la petición.
+- Gemini CLI: consulta restringida habilitada con Plan Mode y una política efímera que solo permite herramientas locales de lectura. MADRE ejecuta Gemini con un `GEMINI_CLI_HOME` temporal que solo recibe las credenciales existentes (tokens OAuth y `~/.gemini/.env`; una API key guardada en el llavero del sistema funciona sin copia); hooks, extensiones, servidores MCP y memoria del `~/.gemini` real no se cargan. El relanzamiento interno del CLI se desactiva para que el timeout controle el proceso que hace la petición.
 
-Todos los adaptadores corren en su propio grupo de procesos. Si un agente no responde antes del timeout, PULSE termina el árbol completo (SIGTERM y, tras un periodo de gracia, SIGKILL), no solo el lanzador.
+Todos los adaptadores corren en su propio grupo de procesos. Si un agente no responde antes del timeout, MADRE termina el árbol completo (SIGTERM y, tras un periodo de gracia, SIGKILL), no solo el lanzador.
 
 ## Licencia
 

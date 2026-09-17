@@ -25,7 +25,7 @@ async function openRoom(options) {
     } catch (error) {
       if (error.code !== 'EADDRINUSE') throw error;
       if (explicit) {
-        console.error(`\n  MOTHER › port ${port} is already in use. Another PULSE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
+        console.error(`\n  MOTHER › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
         process.exit(2);
       }
       console.error(`  MOTHER › port ${port} in use, trying ${port + 1}.`);
@@ -41,7 +41,7 @@ const stateRoot = process.env.PULSE_HOME;
 if (command !== 'help') {
   const stats = await stat(projectRoot).catch(() => null);
   if (!stats?.isDirectory()) {
-    console.error(`\n  MOTHER › project folder not found: ${projectRoot}\n  Pass an existing directory with --project, or run PULSE from inside the project.\n`);
+    console.error(`\n  MOTHER › project folder not found: ${projectRoot}\n  Pass an existing directory with --project, or run MADRE from inside the project.\n`);
     process.exit(2);
   }
 }
@@ -61,14 +61,14 @@ if (command === 'doctor') {
   if (has('--json')) {
     console.log(JSON.stringify(result, null, 2));
   } else {
-    console.log('\nPULSE doctor\n');
+    console.log('\nMADRE doctor\n');
     for (const agent of report) {
       const mark = agent.ready ? 'ready' : agent.detected ? 'detected' : 'not found';
       const session = agent.detected ? ` · ${agent.session.state}${agent.session.detail ? ` (${agent.session.detail})` : ''}` : '';
       console.log(`  ${agent.label.padEnd(10)} ${mark}${agent.version ? ` · ${agent.version}` : ''}${session}`);
     }
     console.log(`\n  Project    ${result.project}`);
-    console.log(result.ok ? '\nReady to start.\n' : '\nNo agent is online. Run `pulse setup`.\n');
+    console.log(result.ok ? '\nReady to start.\n' : '\nNo agent is online. Run `madre setup`.\n');
   }
   process.exitCode = result.ok ? 0 : 1;
 } else if (command === 'setup') {
@@ -93,12 +93,12 @@ if (command === 'doctor') {
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen });
 } else if (command === 'help') {
-  console.log(`PULSE
+  console.log(`MADRE
 
-  pulse start [--project PATH] [--port 4317] [--no-open] [--no-setup]
+  madre start [--project PATH] [--port 4317] [--no-open] [--no-setup]
               Without --port, a busy 4317 falls through to the next free port.
-  pulse setup [--project PATH] [--port 4317] [--no-open]
-  pulse doctor [--project PATH] [--json]
+  madre setup [--project PATH] [--port 4317] [--no-open]
+  madre doctor [--project PATH] [--json]
 
   start   Opens the project room. With nobody online, runs setup first.
   setup   Detects the agents on this computer, shows who has a session,

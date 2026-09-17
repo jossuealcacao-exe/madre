@@ -828,7 +828,7 @@ function renderThinking(event) {
     speak(seconds);
     elapsed.textContent = `${seconds}s / ${limit}s`;
     elapsed.classList.toggle('late', seconds >= limit * 0.6);
-    bubble.title = `${label(agent)} is reading the project… ${seconds}s so far; PULSE gives up at ${limit}s.`;
+    bubble.title = `${label(agent)} is reading the project… ${seconds}s so far; MADRE gives up at ${limit}s.`;
   };
   tick();
   timer = setInterval(tick, 1000);
@@ -1106,7 +1106,7 @@ function renderEvent(event) {
     renderEventNode(event);
   } catch (error) {
     // One malformed or unexpected event must never take the whole room down.
-    console.error(`PULSE could not render event ${event.sequence} (${event.type}):`, error);
+    console.error(`MADRE could not render event ${event.sequence} (${event.type}):`, error);
   }
 }
 
@@ -1726,7 +1726,7 @@ els.composer.addEventListener('submit', async (event) => {
       autosize();
     }
   } catch (error) {
-    toast(`Could not reach PULSE: ${error.message}`);
+    toast(`Could not reach MADRE: ${error.message}`);
   } finally {
     els.input.disabled = false;
     els.send.disabled = false;
@@ -2142,7 +2142,7 @@ function moduleCard(item) {
   }
   if (modules.confirming === item.id && !blocked) {
     const confirm = el('div', 'confirm');
-    confirm.append(el('span', 'warn', 'THIS WRITES INTO THE PROJECT. PULSE WILL RUN, IN THE PROJECT FOLDER:'));
+    confirm.append(el('span', 'warn', 'THIS WRITES INTO THE PROJECT. MADRE WILL RUN, IN THE PROJECT FOLDER:'));
     confirm.append(commandBlock([item.install.display]));
     confirm.append(el('span', 'note', item.install.platforms?.length
       ? `IDE adapters for the agents detected here: ${item.install.platforms.join(', ')}.`
@@ -2490,7 +2490,7 @@ function renderSettings() {
   const section = settingsUI.section;
   section.replaceChildren();
   section.append(el('h3', null, `CONNECTIONS · ${Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length} OF ${data.agents.length} SIGNED IN${data.sessionsAt ? ` · CHECKED ${formatTime(data.sessionsAt)}` : ''}`));
-  section.append(el('p', 'note', 'EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. PULSE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.'));
+  section.append(el('p', 'note', 'EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. MADRE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.'));
   const grid = el('div', 'conn-grid');
   for (const agent of data.agents) grid.append(connectionCard(agent));
   section.append(grid);

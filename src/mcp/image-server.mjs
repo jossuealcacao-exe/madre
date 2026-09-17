@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// PULSE Image Studio: a tiny MCP server (stdio, JSON-RPC 2.0) that exposes one
+// MADRE Image Studio: a tiny MCP server (stdio, JSON-RPC 2.0) that exposes one
 // tool, generate_image, backed by the Gemini API image models and the user's
-// own Gemini key. PULSE attaches it to the isolated homes of the CLIs that
+// own Gemini key. MADRE attaches it to the isolated homes of the CLIs that
 // cannot generate images natively (Gemini CLI, Claude Code, OpenCode), only
 // during a creation lease whose image scope is on. Files are written inside
 // the lease directory given in PULSE_IMAGE_OUT_DIR, never anywhere else.

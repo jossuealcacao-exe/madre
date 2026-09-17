@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { resolveGeminiKey } from './mcp/image-server.mjs';
 
-// How PULSE attaches its image MCP server to a CLI during a lease.
+// How MADRE attaches its image MCP server to a CLI during a lease.
 export const IMAGE_SERVER_PATH = fileURLToPath(new URL('./mcp/image-server.mjs', import.meta.url));
 export const IMAGE_SERVER_NAME = 'pulse-image';
 export const IMAGE_TOOL = 'generate_image';

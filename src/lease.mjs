@@ -3,12 +3,12 @@ import { join, relative, sep } from 'node:path';
 import { contentTypeFor } from './files.mjs';
 
 // A creation lease is the human saying, for one message (and the plan it may
-// start): "these agents may create files, here". PULSE makes a fresh
+// start): "these agents may create files, here". MADRE makes a fresh
 // directory under <project>/.pulse/out/, points every adapter's write scope at
 // it, and afterwards reports exactly what appeared there as artifacts.
 //
 // Nothing else in the project becomes writable. The lease directory is
-// PULSE's own; add `.pulse/` to the project's ignore file if you do not want
+// MADRE's own; add `.pulse/` to the project's ignore file if you do not want
 // artifacts committed.
 
 export const LEASE_ROOT = join('.pulse', 'out');

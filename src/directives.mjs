@@ -7,7 +7,7 @@
 //   @claude: Compare both syntheses and mark where they diverge.
 //   ```
 //
-// PULSE runs the steps sequentially as regular room turns, each recorded,
+// MADRE runs the steps sequentially as regular room turns, each recorded,
 // each subject to handoff, budget and timeout, and each stoppable by the
 // human. A step addressed to the orchestrator itself becomes its closing
 // turn once the others have answered. Delegated agents cannot delegate
@@ -21,7 +21,7 @@ export const DELEGATION_HELP = (self, others, maxSteps) => [
   `@${others[0] ?? 'codex'}: <question for that agent>`,
   `@${self}: <what you will do with their answers, optional closing turn for you>`,
   '```',
-  `PULSE runs the steps in order (at most ${maxSteps}), shows every answer in the room, then hands you the closing turn if you asked for one.`,
+  `MADRE runs the steps in order (at most ${maxSteps}), shows every answer in the room, then hands you the closing turn if you asked for one.`,
   'The plan block must be the very last thing in your reply: nothing after it, not even a closing sentence. Say everything else before it.',
   'Address each agent once. Do not delegate what you can answer yourself.',
 ].join('\n');

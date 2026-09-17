@@ -8,7 +8,7 @@ toolName = "*"
 decision = "deny"
 priority = 998
 interactive = false
-denyMessage = "PULSE consultation mode only permits local project reads."
+denyMessage = "MADRE consultation mode only permits local project reads."
 
 [[rule]]
 toolName = ["read_file", "list_directory", "glob", "grep_search"]
@@ -69,7 +69,7 @@ export function buildGeminiArgs({ projectRoot, prompt, policyPath, model = null,
     ...(model && model !== 'auto' ? ['--model', model] : []),
     '--approval-mode', lease ? 'default' : 'plan',
     // stream-json emits init / tool_use / message deltas / result as JSONL, so
-    // PULSE can tell a thinking Gemini from a hung one.
+    // MADRE can tell a thinking Gemini from a hung one.
     '--output-format', 'stream-json',
     '--skip-trust',
     '--include-directories', includes,
@@ -186,7 +186,7 @@ export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 
       return true;
     } catch (error) {
       if (attempt === attempts) {
-        console.error(`PULSE could not remove Gemini's temporary home ${runtimeRoot}: ${error.message}`);
+        console.error(`MADRE could not remove Gemini's temporary home ${runtimeRoot}: ${error.message}`);
         return false;
       }
       await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));

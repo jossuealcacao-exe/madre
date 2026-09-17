@@ -1,7 +1,7 @@
 // Visual identity per agent.
 //
 // Colors follow each vendor's public palette so a Codex bubble reads as Codex
-// and a Claude bubble as Claude. The marks are PULSE's own monograms: the
+// and a Claude bubble as Claude. The marks are MADRE's own monograms: the
 // vendors' logos are registered trademarks and their brand guidelines do not
 // allow embedding them in third-party products without permission. To use an
 // official asset under a license you hold, set `mark` to that inline SVG.

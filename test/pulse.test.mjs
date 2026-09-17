@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 function spawnCli(args, cwd) {
   const env = { ...process.env, PULSE_HOME: cwd };
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
-  return spawn(process.execPath, [join(process.cwd(), 'bin', 'pulse.mjs'), ...args], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  return spawn(process.execPath, [join(process.cwd(), 'bin', 'madre.mjs'), ...args], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -316,14 +316,14 @@ test('extracts Gemini response and aggregates per-model token usage', () => {
     { type: 'tool_use', tool_name: 'read_file', tool_id: 't1', parameters: { file_path: 'package.json' } },
     { type: 'tool_result', tool_id: 't1', status: 'success', output: '' },
     { type: 'message', role: 'assistant', content: 'The name is ', delta: true },
-    { type: 'message', role: 'assistant', content: '@jossuealcala/pulse.', delta: true },
+    { type: 'message', role: 'assistant', content: '@jossuealcala/madre.', delta: true },
     { type: 'result', status: 'success', stats: { total_tokens: 21461, tool_calls: 1, models: {
       'gemini-3.1-pro-preview-customtools': { total_tokens: 0, input_tokens: 0, output_tokens: 0, cached: 0 },
       'gemini-3-flash-preview': { total_tokens: 21461, input_tokens: 21428, output_tokens: 33, cached: 8135 },
     } } },
   ].map((event) => JSON.stringify(event)).join('\n');
   const parsed = parseGeminiOutput(stream);
-  assert.equal(parsed.text, 'The name is @jossuealcala/pulse.');
+  assert.equal(parsed.text, 'The name is @jossuealcala/madre.');
   assert.equal(parsed.toolCalls, 1);
   assert.deepEqual(parsed.usage, { inputTokens: 21428, cachedInputTokens: 8135, outputTokens: 33, reasoningTokens: 0, totalTokens: 21461, source: 'gemini-json' });
   const failed = parseGeminiOutput([JSON.stringify({ type: 'init' }), JSON.stringify({ type: 'result', status: 'error', error: { message: 'Quota exceeded' } })].join('\n'));
@@ -796,8 +796,8 @@ test('drops SSE clients that stop draining instead of buffering without bound', 
 
 test('prints help without starting a server', async () => {
   for (const flag of ['--help', '-h', 'help']) {
-    const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), 'bin', 'pulse.mjs'), flag], { timeout: 5000 });
-    assert.match(stdout, /pulse start \[--project PATH\]/);
+    const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), 'bin', 'madre.mjs'), flag], { timeout: 5000 });
+    assert.match(stdout, /madre start \[--project PATH\]/);
   }
 });
 
@@ -882,7 +882,7 @@ test('recovers turns left open by a previous process', async () => {
     assert.equal(failed.length, 1);
     assert.equal(failed[0].payload.messageId, 'm1');
     assert.equal(failed[0].payload.recovered, true);
-    assert.match(failed[0].payload.error, /PULSE stopped while @codex was answering/);
+    assert.match(failed[0].payload.error, /MADRE stopped while @codex was answering/);
     // Idempotent: a second start finds nothing open.
     assert.equal(await room.reconcile(), 0);
   } finally {
@@ -914,7 +914,7 @@ test('shutdown interrupts in-flight turns and records them as failed', async () 
     await turn;
     const events = await store.readAll();
     assert.deepEqual(events.map((event) => event.type), ['message.created', 'agent.started', 'message.failed']);
-    assert.match(events.at(-1).payload.error, /interrupted: PULSE is shutting down/);
+    assert.match(events.at(-1).payload.error, /interrupted: MADRE is shutting down/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -934,11 +934,11 @@ test('aborting the signal terminates the adapter process tree', async () => {
     signal: controller.signal,
   });
   setTimeout(() => controller.abort(), 100);
-  await assert.rejects(pending, /Fixture was interrupted: PULSE is shutting down/);
+  await assert.rejects(pending, /Fixture was interrupted: MADRE is shutting down/);
   assert.ok(Date.now() - started < 3000);
   await assert.rejects(runReadonlyProcess({
     executable: process.execPath, args: ['-e', ''], cwd: process.cwd(), label: 'Fixture', parse: () => ({ text: '' }), signal: controller.signal,
-  }), /interrupted before it started: PULSE is shutting down/);
+  }), /interrupted before it started: MADRE is shutting down/);
 });
 
 test('reads each agent session state from its CLI output', () => {
@@ -1013,7 +1013,7 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.deepEqual(ids('APIError: invalid x-api-key', 'claude'), [], 'agent-specific conditions never match another agent');
   assert.deepEqual(ids('Error: Invalid MCP configuration: ENAMETOOLONG', 'claude'), ['claude-args']);
   assert.deepEqual(ids('Codex did not respond before the timeout.', 'codex'), ['timeout']);
-  assert.deepEqual(ids('Codex was interrupted because PULSE is shutting down.', 'codex'), ['interrupted']);
+  assert.deepEqual(ids('Codex was interrupted because MADRE is shutting down.', 'codex'), ['interrupted']);
   assert.deepEqual(ids('gemini is not installed on this computer.', 'gemini'), ['not-installed']);
   assert.deepEqual(ids('listen EADDRINUSE: address already in use 127.0.0.1:4317'), ['port-in-use']);
   assert.deepEqual(ids('everything is fine'), []);
@@ -1160,7 +1160,7 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
       child.stdout.on('data', (chunk) => { out += chunk; });
       child.stderr.on('data', (chunk) => { out += chunk; });
       const timer = setTimeout(() => child.kill('SIGTERM'), 8000);
-      const poll = setInterval(() => { if (/PULSE is ready/.test(out)) { clearInterval(poll); clearTimeout(timer); child.kill('SIGTERM'); } }, 100);
+      const poll = setInterval(() => { if (/MADRE is ready/.test(out)) { clearInterval(poll); clearTimeout(timer); child.kill('SIGTERM'); } }, 100);
       child.on('close', (code) => { clearInterval(poll); clearTimeout(timer); resolve({ code, out }); });
     });
     const fallback = await run(['--port', String(port), '--auto']); // explicit port → refuse
@@ -1168,7 +1168,7 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
     assert.match(fallback.out, new RegExp(`port ${port} is already in use`));
     const walked = await run([]);
     // default 4317 may or may not be busy on this machine; either way the room must come up
-    assert.match(walked.out, /PULSE is ready/);
+    assert.match(walked.out, /MADRE is ready/);
   } finally {
     await new Promise((resolve) => busy.close(resolve));
     await rm(root, { recursive: true, force: true });
@@ -1351,7 +1351,7 @@ test('the human can stop a running plan and delegation can be disabled', async (
       'gemini-readonly': ({ signal }) => new Promise((_, reject) => {
         // Stop the plan while Gemini is still working.
         setTimeout(() => { const [plan] = room.activePlans(); room.stopPlan(plan.planId); }, 20);
-        signal.addEventListener('abort', () => reject(new Error('Gemini was interrupted because PULSE is shutting down.')), { once: true });
+        signal.addEventListener('abort', () => reject(new Error('Gemini was interrupted because MADRE is shutting down.')), { once: true });
       }),
       'codex-readonly': async () => { throw new Error('codex must not run'); },
     };
@@ -1978,7 +1978,7 @@ test('Image Studio MCP server: protocol, tool, path containment, Google errors e
   }
 });
 
-test('Image Studio wiring: module grants imageGen; CLIs receive PULSE\'s MCP server only inside a lease', async () => {
+test('Image Studio wiring: module grants imageGen; CLIs receive MADRE\'s MCP server only inside a lease', async () => {
   try {
     setImageModule({ enabled: false });
     assert.equal(capabilitySummary('gemini').imageGen, false);

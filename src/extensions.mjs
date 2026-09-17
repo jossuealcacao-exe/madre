@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-// Optional room modules. Built-ins only change PULSE's local configuration;
+// Optional room modules. Built-ins only change MADRE's local configuration;
 // the external AHP+ installer can write into the selected project, so it
 // requires explicit confirmation and records that action in the durable log.
 
@@ -17,7 +17,7 @@ async function readJson(path) {
   }
 }
 
-// AHP+ platform names for the agents PULSE knows about. Gemini has no AHP+
+// AHP+ platform names for the agents MADRE knows about. Gemini has no AHP+
 // adapter yet, so it is simply not requested.
 const AHP_PLATFORMS = { codex: 'codex', claude: 'claude', opencode: 'opencode' };
 
@@ -66,7 +66,7 @@ export const EXTENSIONS = [
     async preflight(projectRoot, { toplevel = gitToplevel, npx = findOnPath } = {}) {
       const root = await realpath(projectRoot).catch(() => resolve(projectRoot));
       const problems = [];
-      if (!(await npx('npx'))) problems.push('npx is not on PATH for the PULSE server; start PULSE from a terminal where `npx --version` works.');
+      if (!(await npx('npx'))) problems.push('npx is not on PATH for the MADRE server; start MADRE from a terminal where `npx --version` works.');
       const top = await toplevel(root);
       if (!top) {
         problems.push('The project is not a git repository. AHP+ pins itself to the git root: run `git init` in the project first.');
@@ -86,16 +86,16 @@ export const EXTENSIONS = [
   },
 ];
 
-// Built-in module: no project write, no npm. "Installing" it enables PULSE's own
+// Built-in module: no project write, no npm. "Installing" it enables MADRE's own
 // MCP image server for the CLIs that cannot generate images natively.
 export const IMAGE_STUDIO = {
   id: 'image-studio',
   kind: 'builtin',
   name: 'Image Studio',
-  vendor: 'PULSE · Gemini API',
+  vendor: 'MADRE · Gemini API',
   package: null,
   version: '0.1.0',
-  summary: 'Gives Gemini CLI, Claude Code and OpenCode an image-generation tool through a PULSE-owned MCP server on the Gemini API image models, using your own Gemini key and credits. Attached only inside a creation lease with the image scope on.',
+  summary: 'Gives Gemini CLI, Claude Code and OpenCode an image-generation tool through a MADRE-owned MCP server on the Gemini API image models, using your own Gemini key and credits. Attached only inside a creation lease with the image scope on.',
   creates: ['nothing in the project: images land in the lease directory like any artifact', 'an "image-studio" entry in ~/.pulse/config.json', 'an MCP server process per turn, started and stopped by the CLI'],
   requires: ['a Gemini API key with credits (the key the Gemini CLI stores, or GEMINI_API_KEY)'],
   models: ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image'],
@@ -108,7 +108,7 @@ export const GIT_PULSE = {
   id: 'git-pulse',
   kind: 'builtin',
   name: 'Git Pulse',
-  vendor: 'PULSE',
+  vendor: 'MADRE',
   package: null,
   version: '0.1.0',
   summary: 'Type /git in the composer to bring the repository\'s branch, uncommitted changes, recent commits or diff stats into the room as a shared fact card, without spending an agent turn.',
@@ -123,7 +123,7 @@ export const ASHCODE = {
   id: 'ashcode',
   kind: 'builtin',
   name: 'AshCode',
-  vendor: 'PULSE · ORDER 937',
+  vendor: 'MADRE · ORDER 937',
   package: null,
   version: '0.1.0-beta',
   summary: 'Opt-in Spanish/English prompt and reply abbreviation. Keeps the original visible; may change meaning. Shorter characters do not guarantee fewer provider tokens.',

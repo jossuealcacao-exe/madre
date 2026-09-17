@@ -4,7 +4,7 @@ const readonlyConfig = {
   share: 'disabled',
   agent: {
     'pulse-readonly': {
-      description: 'PULSE project consultation without mutations',
+      description: 'MADRE project consultation without mutations',
       mode: 'primary',
       prompt: 'Answer the user directly. Inspect project files only when necessary. Never modify files, run commands, browse the web, or launch subagents.',
       permission: {

@@ -1,7 +1,7 @@
 {
-  "name": "@jossuealcala/pulse",
+  "name": "@jossuealcala/madre",
   "version": "0.1.0",
-  "description": "One local room where the AI coding agents already installed on your machine (Codex, Claude Code, Gemini CLI, OpenCode) consult a project together, read-only, with durable handoff between them.",
+  "description": "MADRE: one local room where the AI coding agents already installed on your machine (Codex, Claude Code, Gemini CLI, OpenCode) consult a project together over the PULSE channel, read-only, with durable handoff between them.",
   "keywords": [
     "ai-agents",
     "codex",
@@ -23,16 +23,17 @@
     "NOTICE"
   ],
   "bin": {
-    "pulse": "./bin/pulse.mjs"
+    "madre": "./bin/madre.mjs",
+    "pulse": "./bin/madre.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node ./bin/pulse.mjs start",
-    "doctor": "node ./bin/pulse.mjs doctor",
+    "start": "node ./bin/madre.mjs start",
+    "doctor": "node ./bin/madre.mjs doctor",
     "test": "node --test",
-    "check": "npm test && node ./bin/pulse.mjs doctor --json",
+    "check": "npm test && node ./bin/madre.mjs doctor --json",
     "pack:check": "node ./scripts/pack-check.mjs"
   },
   "publishConfig": {

@@ -112,7 +112,7 @@ export async function createPulseServer({
     sessionsAt = new Date().toISOString();
     return sessions;
   }
-  void refreshSessions().catch((error) => console.error(`PULSE session probe failed: ${error.message}`));
+  void refreshSessions().catch((error) => console.error(`MADRE session probe failed: ${error.message}`));
 
   // Effective settings = environment + config file + live changes; the file
   // is what survives a restart.
@@ -227,7 +227,7 @@ export async function createPulseServer({
   setImageModule(startupConfig.modules?.imageStudio ?? {});
   room.setAshCode(Boolean(startupConfig.modules?.ashCode?.enabled));
   const recoveredTurns = await room.reconcile();
-  if (recoveredTurns) console.error(`PULSE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
+  if (recoveredTurns) console.error(`MADRE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
     sources: quotaSources,
     intervalMs: quotaPollIntervalMs,
@@ -235,7 +235,7 @@ export async function createPulseServer({
   });
   await quotaMonitor.start();
   // SSE fan-out works from the durable log, not from in-memory emits, so events
-  // appended by another PULSE process on the same room reach open pages too.
+  // appended by another MADRE process on the same room reach open pages too.
   // `clients` maps each SSE response to the last sequence it already holds.
   const clients = new Map();
   let lastBroadcastSequence = historicalEvents.at(-1)?.sequence ?? 0;
@@ -274,7 +274,7 @@ export async function createPulseServer({
           }
         } while (dirty);
       } catch (error) {
-        console.error(`PULSE broadcast error: ${error.message}`);
+        console.error(`MADRE broadcast error: ${error.message}`);
       } finally {
         inFlight = null;
       }
@@ -516,7 +516,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/messages') {
         const payload = await body(request);
         void room.send(payload).catch((error) => {
-          console.error(`PULSE room error: ${error.message}`);
+          console.error(`MADRE room error: ${error.message}`);
         });
         return sendJson(response, 202, { accepted: true });
       }
@@ -541,7 +541,7 @@ export async function createPulseServer({
     clearInterval(poller);
     // In-flight agent processes are killed and their turns recorded as failed
     // before the SSE clients go away, so open pages see the outcome.
-    const shutdown = room.shutdown().catch((error) => console.error(`PULSE shutdown error: ${error.message}`));
+    const shutdown = room.shutdown().catch((error) => console.error(`MADRE shutdown error: ${error.message}`));
     let result;
     shutdown.then(() => {
       void broadcastPending().then(() => {
@@ -569,7 +569,7 @@ export async function startPulse({ port, projectRoot, openBrowser }) {
   const url = `http://127.0.0.1:${address.port}`;
   const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || 'none';
   const detected = agents.filter((agent) => agent.detected).map((agent) => agent.label).join(', ') || 'none';
-  console.log(`\nPULSE is ready\n\n  ${url}\n  Project: ${projectRoot}\n  Ready: ${ready}\n  Detected: ${detected}\n`);
+  console.log(`\nMADRE is ready\n\n  ${url}\n  Project: ${projectRoot}\n  Ready: ${ready}\n  Detected: ${detected}\n`);
   if (openBrowser) openUrl(url);
   for (const signal of ['SIGINT', 'SIGTERM']) {
     process.once(signal, () => server.close(() => process.exit(0)));

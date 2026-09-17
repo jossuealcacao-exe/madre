@@ -1,4 +1,4 @@
-// Tiny argv reader for the PULSE CLI. Accepts `--name value` and
+// Tiny argv reader for the MADRE CLI. Accepts `--name value` and
 // `--name=value`, and remembers which options the user set explicitly so the
 // room can choose sensible defaults (like the next free port) only when they
 // did not.

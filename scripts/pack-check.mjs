@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Packs PULSE, installs the tarball into an empty directory and exercises the
+// Packs MADRE, installs the tarball into an empty directory and exercises the
 // installed CLI: doctor, help, and a server start that serves /api/state.
 // No model call is made, so this costs no provider quota.
 import { execFile, spawn } from 'node:child_process';
@@ -28,10 +28,10 @@ try {
   await run('mkdir', ['-p', consumer]);
   await writeFile(join(consumer, 'package.json'), JSON.stringify({ name: 'pulse-consumer', private: true }));
   await run('npm', ['install', '--no-audit', '--no-fund', join(workspace, pack.filename)], { cwd: consumer });
-  const cli = join(consumer, 'node_modules', '.bin', 'pulse');
+  const cli = join(consumer, 'node_modules', '.bin', 'madre');
 
   const { stdout: help } = await run(cli, ['--help']);
-  check(/pulse start/.test(help), 'installed CLI prints help');
+  check(/madre start/.test(help), 'installed CLI prints help');
   const { stdout: doctor } = await run(cli, ['doctor', '--json', '--project', projectRoot]).catch((error) => error);
   const report = JSON.parse(doctor);
   check(Array.isArray(report.agents) && report.agents.length === 4, 'doctor reports four agents');
@@ -52,7 +52,7 @@ try {
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
     check(state.projectRoot === projectRoot, 'server is bound to the requested project');
     const html = await fetch(`http://127.0.0.1:${port}/`).then((response) => response.text());
-    check(/PULSE/.test(html), 'server serves the room page');
+    check(/MADRE/.test(html), 'server serves the room page');
     const modules = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
     check(modules.extensions.some((item) => item.id === 'ashcode' && item.kind === 'builtin'), 'installed server lists AshCode');
     const activated = await fetch(`http://127.0.0.1:${port}/api/extensions/ashcode/install`, {

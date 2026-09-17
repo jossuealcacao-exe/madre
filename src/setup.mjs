@@ -59,7 +59,7 @@ export function renderReport({ agents, probes, projectRoot, config = {}, palette
   const bar = p.phosphor('▌');
   const lines = [];
   lines.push('');
-  lines.push(`${bar} ${p.bold(p.phosphor('PULSE'))}${' '.repeat(Math.max(1, width - 30))}${p.dim('INTERFACE · SETUP')}`);
+  lines.push(`${bar} ${p.bold(p.phosphor('MADRE'))}${' '.repeat(Math.max(1, width - 30))}${p.dim('INTERFACE · SETUP')}`);
   lines.push(`${bar} ${p.dim(projectRoot)}`);
   lines.push('');
   lines.push(`  ${p.dim('┌ AGENTS ' + '─'.repeat(Math.max(4, width - 12)))}`);
@@ -156,7 +156,7 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
         log(`  ${p.dim('Reading models from opencode…')}`);
         const models = await listOpenCodeModels(opencode);
         if (models.length) log(`  ${p.dim(models.slice(0, 24).join('\n  '))}${models.length > 24 ? p.dim(`\n  … ${models.length - 24} more`) : ''}`);
-        const model = (await ask('provider/model for PULSE (empty to clear)')).trim();
+        const model = (await ask('provider/model for MADRE (empty to clear)')).trim();
         config = await updateConfig(stateRoot, { opencode: { model: model || undefined } });
         if (model) process.env.PULSE_OPENCODE_MODEL = model; else delete process.env.PULSE_OPENCODE_MODEL;
         log(`  ${p.phosphor('saved')} ${p.dim(model ? `opencode.model = ${model}` : 'opencode.model cleared')}`);
@@ -178,7 +178,7 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
       }
       log(`  ${p.dim(setup.loginNote)}`);
       if (setup.interactive || !setup.login.length) {
-        log(`  ${p.dim(`Handing the terminal to ${agent.id}. Exit it when you are done and PULSE will rescan.`)}`);
+        log(`  ${p.dim(`Handing the terminal to ${agent.id}. Exit it when you are done and MADRE will rescan.`)}`);
         await runInTerminal(agent.path, []);
       } else {
         await runInTerminal(agent.path, setup.login);

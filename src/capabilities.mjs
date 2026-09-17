@@ -1,4 +1,4 @@
-// What each CLI can do from PULSE, verified against the installed versions on
+// What each CLI can do from MADRE, verified against the installed versions on
 // 2026-09-16 (Codex 0.153, Claude Code 2.1, Gemini CLI 0.60, OpenCode 1.18).
 // The room shows this so a human knows whom to ask for what, and an
 // orchestrator can route steps to the agent that actually has the ability.
@@ -41,7 +41,7 @@ export const CAPABILITIES = {
   },
 };
 
-// PULSE modules can add abilities a CLI lacks. Image Studio (PULSE's own MCP
+// MADRE modules can add abilities a CLI lacks. Image Studio (MADRE's own MCP
 // image server on the Gemini API) gives Gemini CLI, Claude Code and OpenCode
 // image generation; Codex keeps its native one.
 let imageModule = { enabled: false };
@@ -53,7 +53,7 @@ export const imageModuleState = () => ({ ...imageModule });
 export const capabilityOf = (agentId) => {
   const base = CAPABILITIES[agentId] ?? { read: true, imageIn: false, write: false, imageGen: false, web: false };
   if (!base.imageGen && imageModule.enabled && ['gemini', 'claude', 'opencode'].includes(agentId)) {
-    return { ...base, imageGen: { how: 'PULSE Image Studio (MCP tool generate_image, Gemini API)', note: `Attached only inside a creation lease with the image scope on${imageModule.model ? ` · model ${imageModule.model}` : ''}.`, module: 'image-studio' } };
+    return { ...base, imageGen: { how: 'MADRE Image Studio (MCP tool generate_image, Gemini API)', note: `Attached only inside a creation lease with the image scope on${imageModule.model ? ` · model ${imageModule.model}` : ''}.`, module: 'image-studio' } };
   }
   return base;
 };

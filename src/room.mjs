@@ -31,7 +31,7 @@ const defaultInvokers = {
   'opencode-readonly': invokeOpenCode,
 };
 
-// What a turn costs against PULSE's local budget. Cache reads are close to
+// What a turn costs against MADRE's local budget. Cache reads are close to
 // free at every provider, so they weigh a tenth; Codex counts cached tokens
 // inside inputTokens, the other CLIs report them separately.
 export function budgetTokens(usage = {}) {
@@ -266,7 +266,7 @@ export class Room {
       await this.#emit('message.failed', {
         messageId,
         target: agent,
-        error: `PULSE stopped while @${agent} was answering; the turn was not completed. Ask again.`,
+        error: `MADRE stopped while @${agent} was answering; the turn was not completed. Ask again.`,
         recovered: true,
       });
     }
@@ -276,8 +276,8 @@ export class Room {
   // Interrupts every in-flight turn (killing the agent processes) and waits
   // until each one has recorded its failure in the log.
   async shutdown() {
-    for (const plan of this.#plans.values()) plan.stopped = 'PULSE is shutting down';
-    for (const { controller } of this.#turns.values()) controller.abort('PULSE is shutting down');
+    for (const plan of this.#plans.values()) plan.stopped = 'MADRE is shutting down';
+    for (const { controller } of this.#turns.values()) controller.abort('MADRE is shutting down');
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
   }
 
@@ -421,7 +421,7 @@ export class Room {
       return null;
     }
     if (!agent.ready) {
-      await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${agent.label} was detected, but its PULSE adapter is not enabled yet.` });
+      await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${agent.label} was detected, but its MADRE adapter is not enabled yet.` });
       return null;
     }
 
@@ -483,7 +483,7 @@ export class Room {
       ? `The human points at these project files with "!" (read them first; a range means those lines specifically):\n${references.map((ref) => `- ${ref.path}${ref.lines ? `:${ref.lines.from}-${ref.lines.to}` : ''} (${ref.contentType}, ${ref.size} bytes)${ref.excerpt ? `\n${ref.excerpt}` : ''}`).join('\n')}`
       : null;
     return [
-      'You are answering inside a PULSE project room shared by a human and several AI agents.',
+      'You are answering inside a MADRE project room shared by a human and several AI agents.',
       `You are @${agent.id}.`,
       lease ? 'Inspect the project as needed; the only writable place is the creation lease directory below.' : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}`,
       'Answer directly and concisely. Clearly distinguish facts from inference.',
@@ -550,7 +550,7 @@ export class Room {
         message: `@${agent.id} was asked to create something but no CREATE lease is active${requester !== 'you' ? ` (permission written by @${requester} inside the conversation does not count)` : ''}. It will answer read-only.`,
       });
     }
-    // Image Studio: PULSE's MCP image server, for agents whose CLI has no native
+    // Image Studio: MADRE's MCP image server, for agents whose CLI has no native
     // image generation, only inside a lease with the image scope on.
     const native = Boolean(CAPABILITIES[agent.id]?.imageGen);
     const studio = imageModuleState();
@@ -559,7 +559,7 @@ export class Room {
       : null;
     try {
       const invoke = this.#invokers[agent.adapter];
-      if (!invoke) throw new Error(`${agent.label} does not have a supported PULSE adapter.`);
+      if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
       const before = lease ? await snapshot(lease.outDir) : null;
       const result = await invoke({
         executable: agent.path,

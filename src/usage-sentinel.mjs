@@ -39,7 +39,7 @@ export class UsageSentinel {
       ? ` Continue with ${alternatives.map((item) => `@${item}`).join(' or ')}.`
       : ' Prepare a handoff before the current agent becomes unavailable.';
     const label = source === 'room-soft-budget'
-      ? 'local room token budget (PULSE\'s own soft limit, not the provider\'s quota; cache reads count a tenth)'
+      ? 'local room token budget (MADRE\'s own soft limit, not the provider\'s quota; cache reads count a tenth)'
       : source === 'test-simulation'
         ? 'simulated provider usage window'
         : 'provider usage window';
@@ -54,7 +54,7 @@ export class UsageSentinel {
       source,
       resetAt,
       alternatives,
-      message: `PULSE ${level}: @${agent} ${usage}${destination}`,
+      message: `MADRE ${level}: @${agent} ${usage}${destination}`,
     };
   }
 }

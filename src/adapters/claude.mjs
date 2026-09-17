@@ -19,7 +19,7 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
     ...(mcpTool ? [mcpTool] : []),
   ];
-  // Only PULSE's own MCP server ever reaches Claude here; --strict-mcp-config
+  // Only MADRE's own MCP server ever reaches Claude here; --strict-mcp-config
   // keeps the user's servers out of the isolated run.
   const mcpConfig = JSON.stringify({ mcpServers: imageStudio ? { [imageStudio.name]: { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env } } : {} });
   return [
