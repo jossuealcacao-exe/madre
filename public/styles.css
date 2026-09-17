@@ -567,8 +567,8 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .system.plan .step-mode { margin-left: 3px; font-weight: 700; }
 .system.plan .step-mode.m1 { color: var(--phosphor); } .system.plan .step-mode.m2 { color: var(--warn); }
 /* Emergency command override: a small MOTHER terminal */
-dialog.override { display: grid; place-items: center; }
-dialog.override[open] { display: grid; }
+/* Only an open override is laid out; a closed <dialog> must stay display:none. */
+dialog.override[open] { display: grid; place-items: center; }
 .override-frame { width: min(680px, 92vw); height: auto; min-height: 0; padding: 26px 30px 22px; border: 1px solid var(--ph-dim); box-shadow: 0 0 0 1px var(--ph-faint), 0 0 60px rgba(155, 255, 102, .12); animation: mother-on .4s ease; }
 .override-query { grid-template-columns: auto 1fr auto; }
 .override-query .k { font-size: 11px; letter-spacing: .22em; color: var(--ph-dim); }
