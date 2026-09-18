@@ -416,8 +416,8 @@ export const CONDITIONS = [
     severity: 'informational',
     title: 'RIPLEY: rendering HTML, SVG and Markdown in the viewer',
     match: /ripley|RIPLEY is off|renders \.html|render(ed|ing)? (the )?(html|svg|markdown)/i,
-    diagnosis: 'With RIPLEY on (MODULES), the file viewer renders .html and .svg through /api/preview inside a sealed frame (sandbox with no permissions; a policy that allows no scripts, no network, no forms, no storage) and Markdown in place; PREVIEW / SOURCE switches. Off, those files show as text with a note. 412 means RIPLEY is off; 415 means the type is not rendered (only .html, .htm, .svg; .md renders in the viewer itself). Plain /api/files always serves HTML as text.',
-    remedy: 'Enable RIPLEY in MODULES. If a page looks broken in PREVIEW it is usually because it needs scripts or external resources, which the frame forbids by design: open it with OPEN RAW in a normal tab if you trust it.',
+    diagnosis: 'With RIPLEY on (MODULES), the file viewer renders .html and .svg through /preview/project/<path> inside a sealed frame: the page\'s own scripts run, but the frame has no origin, no network, no forms and no way to reach MADRE, and it loads CSS, JS, images and fonts only from the project through MADRE. Relative links work. Markdown renders in place; PREVIEW / SOURCE switches. Off, those files show as text with a note. 412 means RIPLEY is off. Plain /api/files always serves HTML as text.',
+    remedy: 'Enable RIPLEY in MODULES. If a page looks broken in PREVIEW it is usually because it fetches something from the internet or another server, which the frame forbids by design: open it with OPEN RAW in a normal tab if you trust it.',
     fixes: same(['# MODULES → RIPLEY → ENABLE RIPLEY', '# viewer → PREVIEW / SOURCE']),
   },
   {

@@ -523,25 +523,30 @@ export async function createPulseServer({
         });
         return response.end(file.body);
       }
-      // RIPLEY: the same file, served to be rendered, inside a frame that may run
-      // nothing, load nothing from outside and keep nothing.
-      if (request.method === 'GET' && url.pathname === '/api/preview') {
+      // RIPLEY: the project rendered as a site, inside a frame that runs scripts but
+      // reaches nothing: an opaque origin (sandbox without same-origin), no network
+      // (connect-src none), no forms, no top navigation, assets only from MADRE's
+      // own host. Path-based, so a page's relative links to its CSS, JS and images
+      // resolve to the same route.
+      const previewMatch = request.method === 'GET' && url.pathname.match(/^\/preview\/(project|attachments)\/(.*)$/);
+      if (previewMatch) {
         if (!ripleyEnabled) return sendJson(response, 412, { error: 'RIPLEY is off. Enable it in MODULES to render files.' });
-        const which = url.searchParams.get('root') === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
-        const relative = url.searchParams.get('path') ?? '';
-        const kind = /\.(html?|xhtml)$/i.test(relative) ? 'text/html; charset=utf-8' : /\.svg$/i.test(relative) ? 'image/svg+xml' : null;
-        if (!kind) return sendJson(response, 415, { error: 'RIPLEY renders .html and .svg here; Markdown is rendered in the viewer itself.' });
+        const which = previewMatch[1] === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
+        const relative = decodeURIComponent(previewMatch[2]);
         const file = await readServable(which, relative);
         if (file.status !== 200) return sendJson(response, file.status, { error: file.error });
-        response.writeHead(200, {
-          'content-type': kind,
+        const isPage = /\.(html?|xhtml)$/i.test(relative);
+        const origin = `${request.headers['x-forwarded-proto'] ?? 'http'}://${request.headers.host ?? '127.0.0.1'}`;
+        const headers = {
+          'content-type': isPage ? 'text/html; charset=utf-8' : file.contentType,
           'content-length': file.size,
           'cache-control': 'no-store',
           'x-content-type-options': 'nosniff',
           'referrer-policy': 'no-referrer',
-          'content-security-policy': "sandbox; default-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' data:; form-action 'none'; base-uri 'none'",
           'content-disposition': `inline; filename="${encodeURIComponent(basename(file.path))}"`,
-        });
+        };
+        if (isPage) headers['content-security-policy'] = `sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' ${origin}; style-src 'unsafe-inline' ${origin}; img-src ${origin} data: blob:; font-src ${origin} data:; media-src ${origin} data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'`;
+        response.writeHead(200, headers);
         return response.end(file.body);
       }
       if (request.method === 'POST' && url.pathname === '/api/attachments') {

@@ -364,12 +364,20 @@ function showViewerPreview() {
     viewer.body.replaceChildren(doc);
     return;
   }
+  // Scripts may run; the frame has no origin of its own, no network, no forms, no way up to MADRE.
   const frame = el('iframe', 'ripley');
-  frame.setAttribute('sandbox', '');
+  frame.setAttribute('sandbox', 'allow-scripts');
   frame.setAttribute('referrerpolicy', 'no-referrer');
   frame.title = `RIPLEY preview of ${viewer.path.textContent}`;
-  frame.src = viewerMode.src.replace('/api/files?', '/api/preview?');
+  frame.src = previewUrl(viewerMode.src);
   viewer.body.replaceChildren(frame);
+}
+// /api/files?root=project&path=a/b.html → /preview/project/a/b.html, so the page's relative links resolve.
+function previewUrl(filesUrl) {
+  const params = new URL(filesUrl, window.location.origin).searchParams;
+  const root = params.get('root') === 'attachments' ? 'attachments' : 'project';
+  const path = (params.get('path') ?? '').split('/').map(encodeURIComponent).join('/');
+  return `/preview/${root}/${path}`;
 }
 function syncViewerMode() {
   if (!viewerMode.button) return;

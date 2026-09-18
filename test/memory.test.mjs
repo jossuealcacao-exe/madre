@@ -795,7 +795,7 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
 
     const state = await fetch(`${base}/api/state`).then((response) => response.json());
     assert.deepEqual(state.ripley, { enabled: false });
-    const off = await fetch(`${base}/api/preview?path=index.html`);
+    const off = await fetch(`${base}/preview/project/index.html`);
     assert.equal(off.status, 412);
     // Plain /api/files keeps serving HTML as text, as before.
     assert.match((await fetch(`${base}/api/files?path=index.html`)).headers.get('content-type'), /^text\/plain/);
@@ -805,21 +805,29 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
     assert.deepEqual(await toggled.json(), { enabled: true });
     assert.deepEqual((await fetch(`${base}/api/state`).then((response) => response.json())).ripley, { enabled: true });
 
-    const html = await fetch(`${base}/api/preview?path=index.html`);
+    const html = await fetch(`${base}/preview/project/index.html`);
     assert.equal(html.status, 200);
     assert.match(html.headers.get('content-type'), /^text\/html/);
-    assert.match(html.headers.get('content-security-policy'), /^sandbox; default-src 'none';/);
-    assert.ok(!/script-src/.test(html.headers.get('content-security-policy')), 'no script source is ever allowed');
+    const csp = html.headers.get('content-security-policy');
+    assert.match(csp, /^sandbox allow-scripts; default-src 'none';/, 'scripts run, but in an opaque origin');
+    assert.ok(!/allow-same-origin/.test(csp) && !/allow-forms/.test(csp) && !/allow-top-navigation/.test(csp), 'no origin, no forms, no way up');
+    assert.match(csp, new RegExp(`script-src 'unsafe-inline' http://127\\.0\\.0\\.1:${server.address().port};`), 'project scripts only through MADRE');
+    assert.match(csp, /connect-src 'none'/, 'no network from inside');
     assert.equal(html.headers.get('referrer-policy'), 'no-referrer');
     assert.match(await html.text(), /<h1>Hello<\/h1>/);
-    const svg = await fetch(`${base}/api/preview?path=logo.svg`);
+    const svg = await fetch(`${base}/preview/project/logo.svg`);
     assert.match(svg.headers.get('content-type'), /^image\/svg\+xml/);
-    assert.equal((await fetch(`${base}/api/preview?path=app.js`)).status, 415);
-    assert.equal((await fetch(`${base}/api/preview?path=../outside.html`)).status, 404);
+    // Assets a page links relatively are served on the same route, without a page policy.
+    const js = await fetch(`${base}/preview/project/app.js`);
+    assert.equal(js.status, 200);
+    assert.match(js.headers.get('content-type'), /javascript/);
+    assert.equal(js.headers.get('content-security-policy'), null);
+    assert.equal((await fetch(`${base}/preview/project/../outside.html`)).status, 404);
+    assert.equal((await fetch(`${base}/preview/project/..%2Foutside.html`)).status, 404);
 
     const back = await fetch(`${base}/api/extensions/ripley/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).then((response) => response.json());
     assert.deepEqual(back, { enabled: false });
-    assert.equal((await fetch(`${base}/api/preview?path=index.html`)).status, 412);
+    assert.equal((await fetch(`${base}/preview/project/index.html`)).status, 412);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
