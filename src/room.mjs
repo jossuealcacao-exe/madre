@@ -213,8 +213,9 @@ export class Room {
     const payload = { requestId, planId, agent: step.agent, orchestrator, mode, step: index + 1, totalSteps, text: step.text, expiresAt, message: `@${step.agent} needs #${mode} ${MODES[mode].label} for step ${index + 1}: the plan runs at #1. Grant it once, for the whole plan, or deny.` };
     await this.#emit('mode.requested', payload);
     const decision = await new Promise((resolve) => {
+      // The clock keeps the process alive on purpose: a plan is waiting for the
+      // human. Shutdown settles every pending request, so nothing can hang.
       const timer = setTimeout(() => resolve({ decision: 'deny', reason: 'timeout' }), this.#escalationMs);
-      timer.unref?.();
       this.#modeRequests.set(requestId, { payload, timer, resolve, plan });
     });
     const entry = this.#modeRequests.get(requestId);
@@ -253,6 +254,7 @@ export class Room {
   #resolvePendingFor(planId, reason) {
     for (const [requestId, entry] of this.#modeRequests) {
       if (planId && entry.payload.planId !== planId) continue;
+      clearTimeout(entry.timer);
       entry.resolve({ decision: 'deny', reason });
       this.#modeRequests.delete(requestId);
     }
@@ -664,6 +666,7 @@ export class Room {
     clearTimeout(this.#embedTimer);
     this.#embedTimer = null;
     this.#shuttingDown = true;
+    this.#resolvePendingFor(null, 'stopped');
     for (const plan of this.#plans.values()) plan.stopped = 'MADRE is shutting down';
     for (const { controller } of this.#turns.values()) controller.abort('MADRE is shutting down');
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
