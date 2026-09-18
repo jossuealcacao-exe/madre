@@ -12,7 +12,7 @@ Dónde va MADRE después de la beta 0.2. Tres líneas, en orden de dependencia, 
 
 Antes de más superficie:
 
-- **`room.mjs` en piezas:** `room/turns`, `plans`, `control`, `permissions`, `handoff`, `lifecycle`. Mismo comportamiento, misma suite; un archivo por responsabilidad.
+- **`room.mjs` en piezas** · hecho: `src/room/{prompt,context,control,escalation,archivist,vectors,budget,ghost,attachments}`; el motor de turnos y planes queda en `room.mjs`.
 - **CONTROL con Codex:** prevención antes que restauración. Explorar exclusiones del sandbox o turno sobre copia sincronizada.
 - **Catálogo y sentinel** siguen absorbiendo cada condición que aparezca en manos ajenas.
 
@@ -36,7 +36,7 @@ Hoy la destilación produce notas. La idea: que produzca **una inteligencia prop
 - **Evaluación antes de promover:** un conjunto fijo de preguntas del proyecto con respuestas conocidas; el modelo nuevo sustituye al anterior solo si contesta mejor. Todo queda en el ledger.
 - Riesgos honestos: datos escasos al inicio, tiempo de entrenamiento en la máquina del usuario, calidad difícil de medir. Por eso 2a y 2b van primero y ya valen solas.
 
-## 3 · SDK interno de módulos (0.3)
+## 3 · SDK interno de módulos (0.3) · hecho en `src/modules/`
 
 Los cinco módulos actuales tocan cuatro archivos cada uno. Un módulo debería ser **un archivo**:
 

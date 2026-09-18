@@ -12,7 +12,8 @@ import { createEmbedder } from './embeddings.mjs';
 import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
-import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel, RECOMMENDED as OLLAMA_RECOMMENDED } from './ollama.mjs';
+import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
+import { moduleById, describeModules, findModuleRoute } from './modules/index.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -36,7 +37,7 @@ import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
-import { extensionById, listExtensions, runInstaller } from './extensions.mjs';
+import { extensionById, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { discoverModels } from './models.mjs';
@@ -118,8 +119,8 @@ export async function createPulseServer({
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
   applyConfigToEnv(await loadConfig(root));
-  // RIPLEY renders HTML in the viewer only while the human has it switched on.
-  let ripleyEnabled = Boolean((await readConfig(root)).modules?.ripley?.enabled);
+  // RIPLEY renders HTML in the viewer only while the human has it switched on; read live, the switch is the module's.
+  const ripleyOn = async () => Boolean((await readConfig(root)).modules?.ripley?.enabled);
   agentTimeouts ??= agentTimeoutsFromEnv();
   const agents = providedAgents ?? await detectAgents();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
@@ -434,46 +435,52 @@ export async function createPulseServer({
   poller.unref();
 
   let installing = null;
-  async function installExtension(id, { confirm } = {}) {
+  // The context a module works in: the project, its settings, the room, and what this server offers.
+  async function moduleContext() {
+    const config = await readConfig(root);
+    return {
+      projectRoot: canonicalProjectRoot, stateRoot: root, config, env: process.env, agents, room,
+      readConfig: () => readConfig(root),
+      updateConfig: (patch) => updateConfig(root, patch),
+      record: (type, payload) => room.record(type, payload),
+      services: {
+        imageKey,
+        setImageModule,
+        ollama: {
+          state: () => ollama,
+          wire: (options) => wireOllama(options),
+          // Pulls stream into the room like a module install; one at a time.
+          pull: async (model) => {
+            if (installing) return { ok: false, error: `Another install is running (${installing}).` };
+            installing = 'ollama';
+            await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: `ollama pull ${model}`, platforms: [], alreadyInstalled: false });
+            void (async () => {
+              let pending = [];
+              let flushTimer = null;
+              const flush = async () => { flushTimer = null; if (!pending.length) return; const batch = pending; pending = []; await room.record('extension.install.output', { id: 'ollama', lines: batch }); };
+              try {
+                await pullModel({ host: ollama.host, model, fetchImpl: reportFetch, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
+                await flush();
+                const status = await wireOllama();
+                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, ollama: status });
+              } catch (error) {
+                await flush();
+                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message });
+              } finally { installing = null; }
+            })();
+            return { ok: true };
+          },
+        },
+      },
+    };
+  }
+
+  async function installExtension(id, payload = {}) {
+    const { confirm } = payload;
     const extension = extensionById(id);
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
-    if (extension.id === 'ollama') {
-      const current = await readConfig(root);
-      const enabled = !((current.modules?.ollama?.enabled) ?? true);
-      await updateConfig(root, { modules: { ...current.modules, ollama: { ...(current.modules?.ollama ?? {}), enabled } } });
-      const status = await wireOllama();
-      await room.record('extension.toggled', { id, name: extension.name, enabled });
-      return { status: 200, body: { enabled, ollama: status } };
-    }
-    if (extension.id === 'ripley') {
-      const current = await readConfig(root);
-      const enabled = !Boolean(current.modules?.ripley?.enabled);
-      await updateConfig(root, { modules: { ...current.modules, ripley: { enabled } } });
-      ripleyEnabled = enabled;
-      await room.record('extension.toggled', { id, name: extension.name, enabled });
-      return { status: 200, body: { enabled } };
-    }
-    if (extension.id === 'ashcode') {
-      const current = await readConfig(root);
-      const enabled = !Boolean(current.modules?.ashCode?.enabled);
-      if (enabled && confirm !== true) return { status: 400, body: { error: 'AshCode is beta and can change meaning. Send { "confirm": true } to enable it.' } };
-      await updateConfig(root, { modules: { ...current.modules, ashCode: { enabled } } });
-      room.setAshCode(enabled);
-      await room.record('extension.toggled', { id, name: extension.name, enabled, beta: true });
-      return { status: 200, body: { enabled, beta: true, warning: 'AshCode beta may alter meaning; review the original. Character reduction is not verified token savings.' } };
-    }
-    if (extension.kind === 'builtin') {
-      // Image Studio: a switch in config.json, nothing written to the project.
-      const current = await readConfig(root);
-      const enabled = !(current.modules?.imageStudio?.enabled);
-      const key = await imageKey();
-      if (enabled && !key) return { status: 412, body: { error: 'No Gemini API key found. Sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY, then enable Image Studio.' } };
-      const model = typeof arguments[1]?.model === 'string' && arguments[1].model ? arguments[1].model : (current.modules?.imageStudio?.model ?? extension.models[0]);
-      await updateConfig(root, { modules: { ...current.modules, imageStudio: { enabled, model } } });
-      setImageModule({ enabled, model });
-      await room.record('extension.toggled', { id, name: extension.name, enabled, model });
-      return { status: 200, body: { enabled, model, capabilities: room.capabilities() } };
-    }
+    // Built-ins are switches the module itself defines.
+    if (extension.toggle) return extension.toggle(await moduleContext(), payload);
     if (confirm !== true) return { status: 400, body: { error: 'Installing a module writes into the project; send { "confirm": true } to proceed.' } };
     if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
     const preflight = extension.preflight ? await extension.preflight(canonicalProjectRoot) : { ok: true, problems: [] };
@@ -547,7 +554,7 @@ export async function createPulseServer({
           projectRoot,
           agents,
           ashCode: { enabled: room.ashCodeEnabled() },
-          ripley: { enabled: ripleyEnabled },
+          ripley: { enabled: await ripleyOn() },
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
           delegation: { enabled: room.settings().delegation, maxPlanSteps: room.settings().maxPlanSteps },
@@ -617,7 +624,7 @@ export async function createPulseServer({
       // resolve to the same route.
       const previewMatch = request.method === 'GET' && url.pathname.match(/^\/preview\/(project|attachments)\/(.*)$/);
       if (previewMatch) {
-        if (!ripleyEnabled) return sendJson(response, 412, { error: 'RIPLEY is off. Enable it in MODULES to render files.' });
+        if (!(await ripleyOn())) return sendJson(response, 412, { error: 'RIPLEY is off. Enable it in MODULES to render files.' });
         const which = previewMatch[1] === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
         const relative = decodeURIComponent(previewMatch[2]);
         const file = await readServable(which, relative);
@@ -675,44 +682,12 @@ export async function createPulseServer({
         const outcome = await sentinel.send(sentinelMatch[1]);
         return sendJson(response, outcome.ok ? 200 : (outcome.status === 404 || outcome.status === 412 ? outcome.status : 502), outcome);
       }
-      // Ollama: status, recheck, role switches and pulls (streamed like a module install).
-      if (request.method === 'GET' && url.pathname === '/api/ollama') {
-        return sendJson(response, 200, { ollama: await wireOllama({ probe: false }), recommended: OLLAMA_RECOMMENDED });
-      }
-      if (request.method === 'POST' && url.pathname === '/api/ollama/probe') {
-        return sendJson(response, 200, { ollama: await wireOllama(), recommended: OLLAMA_RECOMMENDED });
-      }
-      if (request.method === 'POST' && url.pathname === '/api/ollama/settings') {
-        const patch = await body(request).catch(() => ({}));
-        const current = await readConfig(root);
-        const next = { ...(current.modules?.ollama ?? {}) };
-        for (const key of ['embeddings', 'archivist', 'enabled']) if (typeof patch[key] === 'boolean') next[key] = patch[key];
-        await updateConfig(root, { modules: { ...current.modules, ollama: next } });
-        return sendJson(response, 200, { ollama: await wireOllama({ probe: false }) });
-      }
-      if (request.method === 'POST' && url.pathname === '/api/ollama/pull') {
-        const payload = await body(request).catch(() => ({}));
-        const model = String(payload.model ?? '').trim();
-        if (!/^[a-z0-9][a-z0-9._:/-]{1,80}$/i.test(model)) return sendJson(response, 400, { error: 'Give a model name like nomic-embed-text or qwen2.5:3b.' });
-        if (!ollama.running) return sendJson(response, 412, { error: 'Ollama is not running.' });
-        if (installing) return sendJson(response, 409, { error: `Another install is running (${installing}).` });
-        installing = 'ollama';
-        await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: `ollama pull ${model}`, platforms: [], alreadyInstalled: false });
-        void (async () => {
-          let pending = [];
-          let flushTimer = null;
-          const flush = async () => { flushTimer = null; if (!pending.length) return; const batch = pending; pending = []; await room.record('extension.install.output', { id: 'ollama', lines: batch }); };
-          try {
-            await pullModel({ host: ollama.host, model, fetchImpl: reportFetch === globalThis.fetch ? globalThis.fetch : reportFetch, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
-            await flush();
-            const status = await wireOllama();
-            await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, ollama: status });
-          } catch (error) {
-            await flush();
-            await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message });
-          } finally { installing = null; }
-        })();
-        return sendJson(response, 202, { pulling: model });
+      // Routes a module serves, before MADRE's own: the module answers with { status, body }.
+      const moduleRoute = findModuleRoute(request.method, url.pathname);
+      if (moduleRoute) {
+        const payload = request.method === 'POST' ? await body(request).catch(() => ({})) : {};
+        const result = await moduleRoute.route.handler(await moduleContext(), { request, url, params: moduleRoute.params, payload });
+        return sendJson(response, result.status ?? 200, result.body ?? {});
       }
       if (request.method === 'GET' && url.pathname === '/api/mother') {
         return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });
@@ -785,7 +760,7 @@ export async function createPulseServer({
         return sendJson(response, result.ok ? 200 : 422, { command: parsed.name, title: result.title, ok: result.ok, sequence: event.sequence });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
-        return sendJson(response, 200, { installing, extensions: await (await listExtensions({ projectRoot: canonicalProjectRoot, agents, config: await readConfig(root), imageKey, ollama })).map((item) => (item.id === 'ollama' ? { ...item, recommended: OLLAMA_RECOMMENDED } : item)) });
+        return sendJson(response, 200, { installing, extensions: await describeModules(await moduleContext()) });
       }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {
