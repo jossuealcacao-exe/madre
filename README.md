@@ -4,6 +4,8 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@jossuealcala/madre"><img alt="npm" src="https://img.shields.io/npm/v/@jossuealcala/madre?style=flat-square&label=npm&color=9bff66&labelColor=050605"></a>
+  <a href="https://github.com/jossuealcacao-exe/madre/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/jossuealcacao-exe/madre/ci.yml?style=flat-square&label=CI&color=9bff66&labelColor=050605"></a>
+  <img alt="status" src="https://img.shields.io/badge/status-beta-ffb000?style=flat-square&labelColor=050605">
   <img alt="node" src="https://img.shields.io/badge/node-%E2%89%A5%2022.5-9bff66?style=flat-square&labelColor=050605">
   <img alt="dependencies" src="https://img.shields.io/badge/dependencies-0-9bff66?style=flat-square&labelColor=050605">
   <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-9bff66?style=flat-square&labelColor=050605">
@@ -11,7 +13,7 @@
 </p>
 
 ```
-MU/TH/UR 6000 · INTERFACE 2037 · MADRE IS READY
+MU/TH/UR 6000 · INTERFACE 2037 · MADRE IS READY · BETA
 
   one local room · four AI coding agents · one shared memory
   read-only by default · CONTROL when you say so · no MADRE cloud, no MADRE account: your agents keep their own provider connections
@@ -288,7 +290,7 @@ Todos los adaptadores corren en su propio grupo de procesos. Si un agente no res
 
 ## Cambios
 
-Ver [CHANGELOG.md](CHANGELOG.md). La versión actual es 0.2.0.
+Ver [CHANGELOG.md](CHANGELOG.md). La versión actual es 0.2.1, beta pública: el núcleo está probado y bajo CI, la superficie sigue cambiando y las decisiones que aún duelen están escritas en el modelo de amenazas. Los problemas se reportan desde MU/TH/UR (`✎ FEEDBACK` o el sentinel) o en [issues](https://github.com/jossuealcacao-exe/madre/issues); la seguridad, según [SECURITY.md](SECURITY.md).
 
 ## Licencia
 

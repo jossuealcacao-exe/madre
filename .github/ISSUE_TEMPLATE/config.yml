@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security · PRIORITY ONE
+    url: https://github.com/jossuealcacao-exe/madre/security/advisories/new
+    about: An agent writing where it should not, CONTROL it should not have, or anything leaving your machine without your say-so. Private first.

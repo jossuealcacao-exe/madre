@@ -1,0 +1,22 @@
+name: "✎ FEEDBACK · what you wish MADRE did"
+description: An idea, a rough edge, a wish. The crew reads everything.
+title: "[feedback] "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ```
+        MU/TH/UR 6000 · INTERFACE 2037 · THE CREW IS LISTENING
+        ```
+  - type: textarea
+    id: wish
+    attributes:
+      label: What happened, or what you wish MADRE did
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: MADRE version
+      placeholder: "0.2.1"

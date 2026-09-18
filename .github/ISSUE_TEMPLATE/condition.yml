@@ -1,0 +1,45 @@
+name: "▌ CONDITION · something failed"
+description: MU/TH/UR recorded a failure and could not explain it, or something in the room broke.
+title: "[condition] "
+labels: [condition]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ```
+        MU/TH/UR 6000 · INTERFACE 2037 · INQUIRY
+        ```
+        If MU/TH/UR already opened a prefilled issue for you (REPORT ON GITHUB ↗), use that one; it carries the redacted record. Otherwise:
+  - type: input
+    id: version
+    attributes:
+      label: MADRE · Node · platform
+      description: "`madre doctor --json` prints all three."
+      placeholder: "0.2.1 · v22.12.0 · darwin 25.0.0 arm64"
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent involved
+      options: [none / the room itself, codex, claude, gemini, opencode]
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Permission mode of the turn
+      options: ["#0 GHOST", "#1 EXCHANGE", "#2 CREATE", "#3 CONTROL", "not a turn"]
+  - type: textarea
+    id: record
+    attributes:
+      label: What MU/TH/UR recorded
+      description: The line from RECORDED CONDITIONS or the sentinel. Remove anything you would rather not share.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you were doing
+      description: The smallest sequence of messages that gets there again.

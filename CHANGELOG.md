@@ -2,6 +2,27 @@
 
 Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
+## 0.2.1 · 2026-09-18 · beta pública
+
+Primera versión pensada para manos ajenas. Requiere Node 22.5 o superior.
+
+### Monitoreo
+- Sentinel de errores en MU/TH/UR: los fallos que ninguna condición conocida explica y las caídas del proceso se guardan como reportes redactados (sin rutas, nombres, correos ni claves), con `REPORT ON GITHUB ↗` prellenado y el botón `✎ FEEDBACK`. Con el colector del autor configurado por defecto, cada reporte tiene `SEND` y existe `AUTO-REPORT`, apagado hasta que el humano lo encienda. `docs/report-collector/` trae el Worker que convierte reportes en issues.
+
+### Sala
+- Copiar y responder al final de cada respuesta: el primero lleva el texto al portapapeles; el segundo elige qué agente responde y deja la cita al frente del compositor para la directiva del humano.
+- Modo claro sin resplandor: la UX conserva sus colores y pierde el brillo de tubo; MU/TH/UR y NOSTROMO mantienen sus pantallas.
+- Un archivista que falla se sienta media hora y el siguiente lote lo toma otro agente; la línea de fallo dice una sola frase y guarda el registro completo en el tooltip.
+- MADRE no repite el mismo juego de frases dos veces seguidas al tocar su corazón.
+
+### Verdad y seguridad
+- La frase de arranque ya no dice que nada sale de la máquina: los agentes hablan con sus proveedores. El README explica el modelo de amenazas en corto, incluida la deuda de CONTROL con Codex (zonas prohibidas revertidas después del turno).
+- El reloj de escalación mantiene vivo el proceso mientras un plan espera al humano; el apagado resuelve las peticiones pendientes. En Node 22 esto cortaba la suite a la mitad.
+
+### Proyecto
+- CI en GitHub Actions: Ubuntu y macOS, Node 22 y 24, con pruebas, empaquetado e instalación del tarball.
+- Plantillas de issues, `SECURITY.md` y `CONTRIBUTING.md`.
+
 ## 0.2.0 · 2026-09-17
 
 Requiere Node 22.5 o superior (antes 20): la memoria de la sala corre sobre `node:sqlite`.
