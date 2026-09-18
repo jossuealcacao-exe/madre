@@ -2,6 +2,13 @@
 
 Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
+## 0.2.2 · 2026-09-18
+
+### Corrección crítica
+- Claude Code negaba toda escritura en `#2 CREATE` y `#3 CONTROL`: las reglas `Write(/ruta/**)` se leían como relativas al proyecto. Ahora van como `//ruta/**`, la forma absoluta de Claude Code; las zonas prohibidas siguen bloqueadas antes del turno.
+
+Reproducido con el CLI real en un repositorio temporal: con una barra el archivo quedaba bloqueado sin pregunta; con dos se escribe y `.env` sigue bloqueado. Sin otros cambios respecto a 0.2.1.
+
 ## 0.2.1 · 2026-09-18 · beta pública
 
 Primera versión pensada para manos ajenas. Requiere Node 22.5 o superior.
@@ -14,9 +21,6 @@ Primera versión pensada para manos ajenas. Requiere Node 22.5 o superior.
 - Modo claro sin resplandor: la UX conserva sus colores y pierde el brillo de tubo; MU/TH/UR y NOSTROMO mantienen sus pantallas.
 - Un archivista que falla se sienta media hora y el siguiente lote lo toma otro agente; la línea de fallo dice una sola frase y guarda el registro completo en el tooltip.
 - MADRE no repite el mismo juego de frases dos veces seguidas al tocar su corazón.
-
-### Corrección crítica
-- Claude Code negaba toda escritura en `#2 CREATE` y `#3 CONTROL`: las reglas `Write(/ruta/**)` se leían como relativas al proyecto. Ahora van como `//ruta/**`, la forma absoluta de Claude Code; las zonas prohibidas siguen bloqueadas antes del turno.
 
 ### Verdad y seguridad
 - La frase de arranque ya no dice que nada sale de la máquina: los agentes hablan con sus proveedores. El README explica el modelo de amenazas en corto, incluida la deuda de CONTROL con Codex (zonas prohibidas revertidas después del turno).
