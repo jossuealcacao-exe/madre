@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, ollamaHost } from '../src/ollama.mjs';
@@ -170,6 +170,63 @@ test('ollama: the module lists its state, the server wires it live, and PULL str
     assert.equal(toggled.ollama.embeddings, false, 'disabled means no local roles');
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('memory settings: MU/TH/UR saves archivist, allow-list, cadence, embeddings and recall share; the room applies them live', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-settings-'));
+  const project = join(root, 'p'); await mkdir(project);
+  const probe = { running: true, host: 'http://o', models: [{ name: 'nomic-embed-text:latest', family: 'nomic-bert' }, { name: 'qwen2.5:3b', family: 'qwen2' }], embedModel: 'nomic-embed-text:latest', chatModel: 'qwen2.5:3b' };
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }, { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '1' }];
+  const { server } = await createPulseServer({ projectRoot: project, stateRoot: root, agents: roster, invokers: { 'codex-readonly': async () => ({ text: 'ok', usage: null }), 'gemini-readonly': async () => ({ text: 'ok', usage: null }) }, ollamaProbe: async () => probe, reportFetch: fakeOllama() });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const before = (await fetch(`${base}/api/settings`).then((response) => response.json())).settings.memory;
+    assert.equal(before.archivist, 'auto');
+    assert.equal(before.every, 10);
+    assert.deepEqual(before.candidates.map((c) => c.id), ['ollama', 'codex', 'gemini']);
+    assert.equal(before.embedder, 'ollama:nomic-embed-text:latest');
+    const saved = await fetch(`${base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ memory: { archivist: 'gemini', archivists: ['gemini', 'codex'], every: 4, idleMinutes: 3, embedProvider: 'off', recallShare: 0.45 } }) }).then((response) => response.json());
+    assert.equal(saved.settings.memory.archivist, 'gemini');
+    assert.deepEqual(saved.settings.memory.archivists, ['gemini', 'codex']);
+    assert.equal(saved.settings.memory.every, 4);
+    assert.equal(saved.settings.memory.idleMinutes, 3);
+    assert.equal(saved.settings.memory.recallShare, 0.45);
+    assert.equal(saved.settings.memory.embedder, null, 'embeddings off applies live');
+    const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
+    assert.deepEqual(config.memory, { archivist: 'gemini', archivists: ['gemini', 'codex'], every: 4, idleMinutes: 3, embedProvider: 'off', recallShare: 0.45 });
+    const back = await fetch(`${base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ memory: { embedProvider: 'auto', archivists: [] } }) }).then((response) => response.json());
+    assert.equal(back.settings.memory.embedder, 'ollama:nomic-embed-text:latest', 'back to local embeddings');
+    assert.equal(back.settings.memory.archivists, null, 'empty list means everyone');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('memory settings: an allow-list keeps Ollama out of the archivist chair when the human says so', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-allowlist-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+    const used = [];
+    const invokers = {
+      'codex-readonly': async ({ prompt }) => { if (/archivist/.test(prompt)) used.push('codex'); return { text: 'NONE', usage: null }; },
+      ollama: async () => { used.push('ollama'); return { text: '{"memories":[]}', usage: { totalTokens: 1, local: true } }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers, memory, distill: { every: 2, idleMs: 60_000, allowed: ['codex'] } });
+    await room.send({ text: 'hello', target: 'codex' });
+    await room.settleDistillation();
+    assert.deepEqual(used, ['codex'], 'Ollama exists but is not allowed');
+    room.configureDistill({ allowed: null });
+    assert.equal(room.distillSettings().allowed, null);
+    assert.equal(room.distillSettings().ollama, true);
+    await room.shutdown();
+    memory.close();
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

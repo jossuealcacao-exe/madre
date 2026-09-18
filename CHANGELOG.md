@@ -11,6 +11,9 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - El archivista local pide JSON estructurado y no cuenta contra ningún presupuesto de proveedor; el reporte `memory.distilled` dice `local`, modelo y tokens.
 - Variables: `PULSE_EMBED_PROVIDER`, `PULSE_OLLAMA_HOST`, `PULSE_OLLAMA_MODEL`, `PULSE_OLLAMA_EMBED_MODEL`.
 
+### Memoria configurable desde MU/TH/UR
+- Sección `MEMORY` en CONNECTIONS: archivista preferido, quiénes pueden destilar, cada cuántos intercambios o minutos de reposo, proveedor de embeddings y porcentaje de recall. Se guarda en `config.json` y se aplica en vivo.
+
 ## 0.2.3 · 2026-09-18
 
 ### RIPLEY navega

@@ -224,6 +224,10 @@ Instalar el módulo externo AHP+ es la única acción de módulos con la que MAD
 - **Escritura.** En #1 nadie escribe. En #2 la escritura queda confinada a `.pulse/out/<lease>/` por las reglas de cada CLI. En #3 CONTROL el proyecto entero es escribible salvo `.git/`, `.pulse/` y los `.env`: Claude, Gemini y OpenCode reciben esa prohibición como regla previa; Codex entra con su sandbox `workspace-write`, que no admite excluir rutas dentro del proyecto, así que en su caso la zona prohibida se hace cumplir **después del turno**: MADRE compara con el checkpoint y revierte lo que tocó ahí. Eso protege lo que persiste, no impide que un efecto intermedio ocurra durante el turno. Es deuda conocida: prevención antes que restauración. Mientras tanto, si un `.env` es crítico, no des CONTROL a Codex o baja su MAX MODE.
 - **Memoria.** Todo lo dicho fuera de GHOST queda en `~/.pulse/rooms/<sala>/` y se reinyecta en los prompts de todos los agentes de esa sala. GHOST es la salida para lo que no debe recordarse.
 
+## Memoria desde MU/TH/UR
+
+En `⚙ CONNECTIONS → MEMORY` se ajusta la memoria sin terminal y se aplica al siguiente turno: quién destila primero (`AUTO` elige al más barato permitido, con Ollama al frente cuando corre), quiénes pueden destilar, cada cuántos intercambios o tras cuántos minutos de reposo, dónde se calculan los embeddings (`AUTO`, `OLLAMA`, `GEMINI`, `OFF`) y qué parte del contexto puede ocupar el recall. Todo queda en `~/.pulse/config.json` bajo `memory`; las variables de entorno, si están puestas, mandan al siguiente arranque.
+
 ## Ollama: la inteligencia local
 
 Si Ollama corre en la máquina, MADRE lo usa sin configurar nada: los embeddings de la memoria se calculan localmente con el modelo de embeddings disponible (`nomic-embed-text` recomendado) y la destilación de memorias la hace primero el modelo local (`qwen2.5:3b` recomendado, cualquiera de la familia Qwen, Llama o Gemma sirve), antes que Gemini y el resto. Recordar deja de costar tokens y nada del proyecto sale de la máquina para eso. El módulo `OLLAMA` en MODULES muestra qué hay, permite descargar los modelos recomendados con `PULL`, apagar cada rol y desactivar el módulo. Sin Ollama, todo sigue como antes. `PULSE_OLLAMA_HOST`, `PULSE_OLLAMA_MODEL` y `PULSE_OLLAMA_EMBED_MODEL` eligen host y modelos; `PULSE_EMBED_PROVIDER=gemini` mantiene los embeddings en Gemini aunque Ollama exista.
@@ -256,6 +260,7 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 | `PULSE_DISTILL_MODEL` | — | Modelo para la destilación |
 | `PULSE_EMBED` | `1` | Embeddings para recall por significado (`0` lo apaga) |
 | `PULSE_EMBED_PROVIDER` | `auto` | `ollama`, `gemini` o `auto` (Ollama si corre con modelo de embeddings, si no Gemini) |
+| `PULSE_OLLAMA` | `1` | `0` ignora Ollama por completo |
 | `PULSE_OLLAMA_HOST` | `http://127.0.0.1:11434` | Dónde escucha Ollama |
 | `PULSE_OLLAMA_MODEL` | el mejor disponible | Modelo local para destilar |
 | `PULSE_OLLAMA_EMBED_MODEL` | el mejor disponible | Modelo local de embeddings |

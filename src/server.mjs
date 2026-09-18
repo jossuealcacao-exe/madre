@@ -112,8 +112,8 @@ export async function createPulseServer({
   imageKey = resolveGeminiKey,
   // The sentinel's outbound channel; tests hand in a fake.
   reportFetch = globalThis.fetch,
-  // Ollama detection; tests hand in a fake probe.
-  ollamaProbe = probeOllama,
+  // Ollama detection; tests hand in a fake probe. PULSE_OLLAMA=0 leaves Ollama alone entirely.
+  ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
@@ -143,12 +143,21 @@ export async function createPulseServer({
     const useArchivist = ollama.running && settings.enabled && settings.archivist && ollama.chatModel;
     if (memory) {
       const key = process.env.PULSE_EMBED === '0' ? null : await imageKey().catch(() => null);
-      const embedder = createEmbedder({ key, ollama: useEmbeddings ? ollama : null, ollamaEmbedder });
+      const embedder = createEmbedder({ key, env: embedEnvFor(await memoryConfig()), ollama: useEmbeddings ? ollama : null, ollamaEmbedder });
       if (room) room.setEmbedder(embedder); else memory.attachEmbedder(embedder);
     }
     if (room) room.setInvoker('ollama', useArchivist ? ollamaInvoker({ host: ollama.host, model: ollama.chatModel }) : null);
     return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist) };
   }
+  // Memory settings the human keeps in config.json (MU/TH/UR → MEMORY); environment still wins at launch.
+  const memoryConfig = async () => ({ archivist: 'auto', archivists: null, every: 10, idleMinutes: 10, embedProvider: 'auto', recallShare: 0.3, ...((await readConfig(root)).memory ?? {}) });
+  const embedEnvFor = (cfg) => {
+    const view = { ...process.env };
+    if (!process.env.PULSE_EMBED_PROVIDER && !process.env.PULSE_EMBED) {
+      if (cfg.embedProvider === 'off') view.PULSE_EMBED = '0'; else if (cfg.embedProvider && cfg.embedProvider !== 'auto') view.PULSE_EMBED_PROVIDER = cfg.embedProvider;
+    }
+    return view;
+  };
   let room = null;
   await wireOllama();
   const memoryServer = memory ? memoryServerFor({ dbFile: memory.file, projectRoot: canonicalProjectRoot }) : null;
@@ -156,12 +165,20 @@ export async function createPulseServer({
   // file, so a deleted or edited .pulse/mother.env is noticed.
   const mother = new MotherChannel(join(canonicalProjectRoot, '.pulse', 'mother.env'), { meta: memory ? { get: (key) => memory.metaGet(key), set: (key, value) => memory.metaSet(key, value) } : null });
   const motherOutcome = await mother.load().catch((error) => { console.error(`MADRE could not open MOTHER's channel: ${error.message}`); return null; });
+  const startupMemory = await memoryConfig();
   room = new Room({
     store,
     agents,
     projectRoot,
     softTokenBudget,
     contextMaxChars,
+    recallShare: Number(process.env.PULSE_RECALL_SHARE ?? startupMemory.recallShare),
+    distill: {
+      every: Number(process.env.PULSE_DISTILL_EVERY ?? startupMemory.every),
+      idleMs: Number(process.env.PULSE_DISTILL_IDLE_MS ?? startupMemory.idleMinutes * 60000),
+      agent: process.env.PULSE_DISTILL_AGENT ?? (startupMemory.archivist && startupMemory.archivist !== 'auto' ? startupMemory.archivist : null),
+      allowed: Array.isArray(startupMemory.archivists) && startupMemory.archivists.length ? startupMemory.archivists : null,
+    },
     memory,
     memoryServer,
     mother: motherOutcome ? mother : null,
@@ -200,6 +217,19 @@ export async function createPulseServer({
       geminiIdleMs: Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
       geminiRetries: Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
       capabilities: room.capabilities(),
+      memory: memorySettingsView(),
+    };
+  }
+  // What MU/TH/UR shows under MEMORY: the live values, who could distil, and what embeds today.
+  function memorySettingsView() {
+    const distill = room.distillSettings();
+    const candidates = [...(distill.ollama ? [{ id: 'ollama', label: `Ollama · ${ollama.chatModel ?? 'local'}`, local: true }] : []), ...agents.filter((agent) => agent.detected).map((agent) => ({ id: agent.id, label: agent.label, local: false }))];
+    return {
+      enabled: distill.enabled, every: distill.every, idleMinutes: Math.round(distill.idleMs / 60000), archivist: distill.agent ?? 'auto', archivists: distill.allowed, recallShare: distill.recallShare,
+      candidates, embedder: memory?.embedder?.model ?? null, embedProvider: process.env.PULSE_EMBED === '0' ? 'off' : (process.env.PULSE_EMBED_PROVIDER ?? null),
+      ollama: { running: ollama.running, embedModel: ollama.embedModel, chatModel: ollama.chatModel },
+      stats: room.memoryStats() ? { entries: room.memoryStats().entries, memories: room.memoryStats().memories, pending: room.memoryStats().pending } : null,
+      envWins: Boolean(process.env.PULSE_DISTILL_EVERY || process.env.PULSE_DISTILL_AGENT || process.env.PULSE_RECALL_SHARE || process.env.PULSE_EMBED_PROVIDER || process.env.PULSE_EMBED),
     };
   }
   async function applySettings(patch) {
@@ -227,6 +257,21 @@ export async function createPulseServer({
       if (Number(patch.room.maxPlanSteps) > 0) { config.room.maxPlanSteps = Number(patch.room.maxPlanSteps); live.maxPlanSteps = Number(patch.room.maxPlanSteps); }
       if (Number(patch.room.softTokenBudget) > 0) { config.room.softTokenBudget = Number(patch.room.softTokenBudget); live.softTokenBudget = Number(patch.room.softTokenBudget); }
     }
+    if (patch.memory && typeof patch.memory === 'object') {
+      const current = await memoryConfig();
+      const next = { ...current };
+      const m = patch.memory;
+      if (Number(m.every) >= 1) next.every = Math.trunc(Number(m.every));
+      if (Number(m.idleMinutes) >= 1) next.idleMinutes = Math.trunc(Number(m.idleMinutes));
+      if (typeof m.archivist === 'string') next.archivist = m.archivist === 'auto' ? 'auto' : m.archivist;
+      if (Array.isArray(m.archivists)) next.archivists = m.archivists.length ? m.archivists.map(String) : null;
+      if (['auto', 'ollama', 'gemini', 'off'].includes(m.embedProvider)) next.embedProvider = m.embedProvider;
+      if (Number.isFinite(Number(m.recallShare))) next.recallShare = Math.min(0.6, Math.max(0, Number(m.recallShare)));
+      if (typeof m.enabled === 'boolean') next.enabled = m.enabled;
+      config.memory = next;
+      room.configureDistill({ every: next.every, idleMs: next.idleMinutes * 60000, agent: next.archivist === 'auto' ? null : next.archivist, allowed: next.archivists, recallShare: next.recallShare, ...(typeof next.enabled === 'boolean' ? { enabled: next.enabled } : {}) });
+      live.memory = true;
+    }
     if (patch.scopes && typeof patch.scopes === 'object') {
       const current = (await readConfig(root)).scopes ?? {};
       config.scopes = { ...current };
@@ -245,6 +290,7 @@ export async function createPulseServer({
     }
     room.configure(live);
     await updateConfig(root, config);
+    if (live.memory) await wireOllama({ probe: false });
     await room.record('room.settings', { changed: Object.keys(config), settings: effectiveSettings() });
     return effectiveSettings();
   }

@@ -55,7 +55,7 @@
   "scripts": {
     "start": "node ./bin/madre.mjs start",
     "doctor": "node ./bin/madre.mjs doctor",
-    "test": "node --test",
+    "test": "node --import ./test/setup.mjs --test",
     "check": "npm test && node ./bin/madre.mjs doctor --json",
     "pack:check": "node ./scripts/pack-check.mjs",
     "release": "node ./scripts/release.mjs"

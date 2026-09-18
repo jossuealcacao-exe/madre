@@ -3440,6 +3440,53 @@ function renderSettings() {
     save.disabled = false;
   });
   section.append(form);
+
+  // MEMORY: who distils, with whom, how often, where it embeds, how much recall a turn gets. Saves as you change it.
+  const mem = data.settings.memory;
+  if (mem) {
+    section.append(el('h3', null, `MEMORY · ${mem.stats ? `${mem.stats.entries} EXCHANGES · ${mem.stats.memories} MEMORIES · ${mem.stats.pending} WAITING` : 'NO INDEX'}`));
+    section.append(el('p', 'note', 'THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.'));
+    const mform = el('form', 'room-form memory-form');
+    const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(`Memory setting was not saved: ${error.message}`); } };
+    const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
+    const archivist = el('select');
+    for (const [value, text] of [['auto', 'AUTO · cheapest allowed'], ...mem.candidates.map((c) => [c.id, `@${c.id}${c.local ? ` · ${c.label}` : ''}`])]) { const option = el('option', null, text); option.value = value; if (value === mem.archivist) option.selected = true; archivist.append(option); }
+    archivist.addEventListener('change', () => save({ archivist: archivist.value }, archivist.value === 'auto' ? 'archivist: the cheapest allowed agent goes first.' : `archivist: @${archivist.value} distils first.`));
+    mform.append(field('ARCHIVIST', archivist));
+    const every = el('input'); every.type = 'number'; every.min = '1'; every.step = '1'; every.value = String(mem.every);
+    wireInstantNumber(every, { min: 1, toPatch: (value) => ({ memory: { every: value } }), describe: (value) => `distil every ${value} exchange${value === 1 ? '' : 's'}.` });
+    mform.append(field('DISTIL EVERY · EXCHANGES', every));
+    const idle = el('input'); idle.type = 'number'; idle.min = '1'; idle.step = '1'; idle.value = String(mem.idleMinutes);
+    wireInstantNumber(idle, { min: 1, toPatch: (value) => ({ memory: { idleMinutes: value } }), describe: (value) => `or after ${value} quiet minute${value === 1 ? '' : 's'}.` });
+    mform.append(field('OR AFTER · QUIET MINUTES', idle));
+    const share = el('input'); share.type = 'number'; share.min = '0'; share.max = '60'; share.step = '5'; share.value = String(Math.round(mem.recallShare * 100));
+    wireInstantNumber(share, { min: 0, toPatch: (value) => ({ memory: { recallShare: Math.min(60, value) / 100 } }), describe: (value) => `recall may take ${Math.min(60, value)}% of each turn's context.` });
+    mform.append(field('RECALL · % OF CONTEXT', share));
+    const embed = el('select');
+    const embedOptions = [['auto', 'AUTO · Ollama if running, else Gemini'], ['ollama', `OLLAMA · local${mem.ollama.embedModel ? ` · ${mem.ollama.embedModel}` : ' · no model yet'}`], ['gemini', 'GEMINI · needs your key'], ['off', 'OFF · words only']];
+    for (const [value, text] of embedOptions) { const option = el('option', null, text); option.value = value; if (value === (mem.embedProvider ?? data.config?.memory?.embedProvider ?? 'auto')) option.selected = true; embed.append(option); }
+    embed.addEventListener('change', () => save({ embedProvider: embed.value }, `embeddings: ${embed.options[embed.selectedIndex].textContent.toLowerCase()}.`));
+    const embedLabel = field(`EMBEDDINGS · NOW ${mem.embedder ? mem.embedder.toUpperCase() : 'OFF'}`, embed);
+    mform.append(embedLabel);
+    const who = el('div', 'full');
+    who.append(el('span', 'note', 'MAY DISTIL:'));
+    const allowed = new Set(mem.archivists ?? mem.candidates.map((c) => c.id));
+    for (const candidate of mem.candidates) {
+      const toggle = el('label', 'toggle');
+      const box = el('input'); box.type = 'checkbox'; box.checked = allowed.has(candidate.id);
+      box.addEventListener('change', () => {
+        if (box.checked) allowed.add(candidate.id); else allowed.delete(candidate.id);
+        if (!allowed.size) { box.checked = true; allowed.add(candidate.id); toast('MU/TH/UR › someone has to keep the archive.'); return; }
+        void save({ archivists: allowed.size === mem.candidates.length ? [] : [...allowed] }, `archivists: ${[...allowed].map((id) => `@${id}`).join(', ')}.`);
+      });
+      toggle.append(box, `@${candidate.id.toUpperCase()}${candidate.local ? ' · LOCAL · FREE' : ''}`);
+      who.append(toggle);
+    }
+    mform.append(who);
+    if (mem.envWins) mform.append(el('span', 'note full', 'ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.'));
+    mform.addEventListener('submit', (event) => event.preventDefault());
+    section.append(mform);
+  }
 }
 
 // Save one setting the moment it changes, the way the scope boxes do; the

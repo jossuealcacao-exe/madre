@@ -133,6 +133,7 @@ export class Room {
       maxChars: Math.max(500, Number(distill.maxChars ?? process.env.PULSE_DISTILL_MAX_CHARS ?? 6000)),
       agent: distill.agent ?? process.env.PULSE_DISTILL_AGENT ?? null,
       model: distill.model ?? process.env.PULSE_DISTILL_MODEL ?? null,
+      allowed: Array.isArray(distill.allowed) && distill.allowed.length ? [...distill.allowed] : null,   // who may distil; null = anyone
     };
     this.#invokers = invokers;
     this.#agentTimeouts = agentTimeouts;
@@ -348,6 +349,22 @@ export class Room {
     return { context: recent, recall: recall?.entries?.length ? recall : null, memories: memories?.length ? memories : null };
   }
 
+  // The human tunes the archive from MU/TH/UR; changes apply to the next run.
+  distillSettings() {
+    return { ...this.#distill, allowed: this.#distill.allowed ? [...this.#distill.allowed] : null, recallShare: this.#recallShare, ollama: Boolean(this.#invokers.ollama) };
+  }
+  configureDistill(patch = {}) {
+    if (typeof patch.enabled === 'boolean') this.#distill.enabled = patch.enabled;
+    if (Number(patch.every) >= 1) this.#distill.every = Math.trunc(Number(patch.every));
+    if (Number(patch.idleMs) >= 1000) this.#distill.idleMs = Math.trunc(Number(patch.idleMs));
+    if (Number(patch.maxChars) >= 500) this.#distill.maxChars = Math.trunc(Number(patch.maxChars));
+    if ('agent' in patch) this.#distill.agent = patch.agent ? String(patch.agent) : null;
+    if ('allowed' in patch) this.#distill.allowed = Array.isArray(patch.allowed) && patch.allowed.length ? [...patch.allowed] : null;
+    if (Number.isFinite(Number(patch.recallShare))) this.#recallShare = Math.min(0.6, Math.max(0, Number(patch.recallShare)));
+    this.#distillBench.clear();
+    return this.distillSettings();
+  }
+
   // Ollama comes and goes: the server re-wires the embedder and the local archivist without a restart.
   setEmbedder(embedder) {
     if (!this.#memory) return;
@@ -447,7 +464,8 @@ export class Room {
       const benched = new Set(this.#distillBench.keys());
       // Everyone benched? Then the bench is cleared rather than leaving the archive to rot.
       // Ollama joins the candidates when the server has it wired: local, free, first in line.
-      const candidates = this.#invokers.ollama ? [OLLAMA_ARCHIVIST, ...this.#agents] : this.#agents;
+      const everyone = this.#invokers.ollama ? [OLLAMA_ARCHIVIST, ...this.#agents] : this.#agents;
+      const candidates = this.#distill.allowed ? everyone.filter((agent) => this.#distill.allowed.includes(agent.id)) : everyone;
       let agent = pickDistiller(candidates, { preferred: this.#distill.agent, busy, invokers: this.#invokers, benched });
       if (!agent && benched.size) { this.#distillBench.clear(); agent = pickDistiller(candidates, { preferred: this.#distill.agent, busy, invokers: this.#invokers }); }
       if (!agent) return null;
@@ -474,7 +492,7 @@ export class Room {
         if (skipped) { this.#memory.markDistilled(batch.sequences); this.#distillFailures.delete(batch.fromSequence); }
         // The archivist that failed sits out for half an hour; the next run picks someone else.
         this.#distillBench.set(agent.id, Date.now() + 30 * 60 * 1000);
-        const next = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy: new Set(), invokers: this.#invokers, benched: new Set(this.#distillBench.keys()) });
+        const next = pickDistiller(candidates, { preferred: this.#distill.agent, busy: new Set(), invokers: this.#invokers, benched: new Set(this.#distillBench.keys()) });
         const report = { agent: agent.id, error: failureMessage(error), attempts, skipped, next: next?.id ?? null, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, considered: batch.entries.length, remaining: batch.remaining };
         await this.#emit('memory.distilled', report);
         return report;
