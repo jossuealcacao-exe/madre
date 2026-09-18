@@ -228,6 +228,10 @@ Instalar el módulo externo AHP+ es la única acción de módulos con la que MAD
 
 En `⚙ CONNECTIONS → MEMORY` se ajusta la memoria sin terminal y se aplica al siguiente turno: quién destila primero (`AUTO` elige al más barato permitido, con Ollama al frente cuando corre), quiénes pueden destilar, cada cuántos intercambios o tras cuántos minutos de reposo, dónde se calculan los embeddings (`AUTO`, `OLLAMA`, `GEMINI`, `OFF`) y qué parte del contexto puede ocupar el recall. Todo queda en `~/.pulse/config.json` bajo `memory`; las variables de entorno, si están puestas, mandan al siguiente arranque.
 
+## @madre, el quinto agente
+
+Cuando Ollama corre con un modelo de chat, aparece en la sala un quinto agente: `@madre`. Es la memoria del proyecto convertida en interlocutor: responde desde el archivo completo, notas destiladas y citas exactas con su secuencia `[#n]`, más lo que lleve el mensaje. No escribe, no dibuja, no navega ni delega; cuando la sala nunca habló de algo, lo dice. Los demás agentes pueden delegarle un paso para comprobar qué se decidió. Sus tokens son locales y no cuentan contra ningún presupuesto. Entra y sale con Ollama, y MU/TH/UR lo anuncia; el interruptor `@MADRE IN THE ROOM` en MODULES → OLLAMA lo apaga.
+
 ## Ollama: la inteligencia local
 
 Si Ollama corre en la máquina, MADRE lo usa sin configurar nada: los embeddings de la memoria se calculan localmente con el modelo de embeddings disponible (`nomic-embed-text` recomendado) y la destilación de memorias la hace primero el modelo local (`qwen2.5:3b` recomendado, cualquiera de la familia Qwen, Llama o Gemma sirve), antes que Gemini y el resto. Recordar deja de costar tokens y nada del proyecto sale de la máquina para eso. El módulo `OLLAMA` en MODULES muestra qué hay, permite descargar los modelos recomendados con `PULL`, apagar cada rol y desactivar el módulo. Sin Ollama, todo sigue como antes. `PULSE_OLLAMA_HOST`, `PULSE_OLLAMA_MODEL` y `PULSE_OLLAMA_EMBED_MODEL` eligen host y modelos; `PULSE_EMBED_PROVIDER=gemini` mantiene los embeddings en Gemini aunque Ollama exista.

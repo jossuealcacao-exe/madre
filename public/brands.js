@@ -47,6 +47,15 @@ export const BRANDS = {
   },
 };
 
+BRANDS.madre = {
+  label: 'MADRE',
+  vendor: 'the room · local',
+  color: '#9bff66',
+  colorLight: '#2f8a1c',
+  ink: '#0a1405',
+  mark: () => glyph('<path d="M4 16 H11 L13 16 L15 9 L18 23 L20 16 L22 16 L23.5 13 L25 16 H28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'),
+};
+
 BRANDS.ollama = {
   label: 'Ollama',
   vendor: 'local',

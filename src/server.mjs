@@ -14,6 +14,7 @@ import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
 import { moduleById, describeModules, findModuleRoute } from './modules/index.mjs';
+import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -136,7 +137,7 @@ export async function createPulseServer({
   // Ollama, when it is there: local embeddings and a local archivist. Probed at
   // start and again from MODULES; wired live, no restart.
   let ollama = { running: false, host: null, models: [], embedModel: null, chatModel: null };
-  const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
+  const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, agent: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
   async function wireOllama({ probe: doProbe = true } = {}) {
     if (doProbe) ollama = await ollamaProbe();
     const settings = await ollamaSettings();
@@ -148,7 +149,18 @@ export async function createPulseServer({
       if (room) room.setEmbedder(embedder); else memory.attachEmbedder(embedder);
     }
     if (room) room.setInvoker('ollama', useArchivist ? ollamaInvoker({ host: ollama.host, model: ollama.chatModel }) : null);
-    return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist) };
+    // @madre: the fifth agent, present whenever Ollama has a chat model and the human left it on.
+    const fifth = madreAgent(ollama, { enabled: settings.enabled && settings.agent !== false });
+    const index = agents.findIndex((agent) => agent.id === MADRE_AGENT_ID);
+    let changed = false;
+    if (fifth.ready && index < 0) { agents.push(fifth); changed = true; }
+    else if (fifth.ready && (agents[index].version !== fifth.version)) { Object.assign(agents[index], fifth); changed = true; }
+    else if (!fifth.ready && index >= 0) { agents.splice(index, 1); changed = true; }
+    if (room) {
+      room.setInvoker(MADRE_ADAPTER, fifth.ready ? madreInvoker({ memory, ollama: () => ollama, fetchImpl: reportFetch }) : null);
+      if (changed) await room.record('agents.updated', { agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local) })), removed: fifth.ready ? [] : [MADRE_AGENT_ID], reason: fifth.ready ? `@madre is in the room · ${fifth.version}` : '@madre left the room: Ollama has no chat model running' });
+    }
+    return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist), agent: fifth.ready };
   }
   // Memory settings the human keeps in config.json (MU/TH/UR → MEMORY); environment still wins at launch.
   const memoryConfig = async () => ({ archivist: 'auto', archivists: null, every: 10, idleMinutes: 10, embedProvider: 'auto', recallShare: 0.3, ...((await readConfig(root)).memory ?? {}) });
@@ -224,7 +236,7 @@ export async function createPulseServer({
   // What MU/TH/UR shows under MEMORY: the live values, who could distil, and what embeds today.
   function memorySettingsView() {
     const distill = room.distillSettings();
-    const candidates = [...(distill.ollama ? [{ id: 'ollama', label: `Ollama · ${ollama.chatModel ?? 'local'}`, local: true }] : []), ...agents.filter((agent) => agent.detected).map((agent) => ({ id: agent.id, label: agent.label, local: false }))];
+    const candidates = [...(distill.ollama ? [{ id: 'ollama', label: `Ollama · ${ollama.chatModel ?? 'local'}`, local: true }] : []), ...agents.filter((agent) => agent.detected && !agent.local).map((agent) => ({ id: agent.id, label: agent.label, local: false }))];
     return {
       enabled: distill.enabled, every: distill.every, idleMinutes: Math.round(distill.idleMs / 60000), archivist: distill.agent ?? 'auto', archivists: distill.allowed, recallShare: distill.recallShare,
       candidates, embedder: memory?.embedder?.model ?? null, embedProvider: process.env.PULSE_EMBED === '0' ? 'off' : (process.env.PULSE_EMBED_PROVIDER ?? null),

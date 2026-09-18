@@ -759,6 +759,7 @@ export class Room {
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
+        text,
         prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,

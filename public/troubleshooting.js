@@ -434,6 +434,15 @@ export const CONDITIONS = [
     },
   },
   {
+    id: 'madre-agent',
+    severity: 'informational',
+    title: '@madre: the room\'s own memory, as an agent',
+    match: /@madre|madre-local|needs Ollama running with a chat model/i,
+    diagnosis: 'When Ollama runs with a chat model, a fifth agent joins the room: @madre. It answers from the whole archive (distilled notes and exact quotes, cited as [#n]) and from what the message carries, locally, for free. It never writes, draws, browses or delegates; when the room never discussed something it says so. Other agents may delegate a step to it to check what was decided. It leaves the room when Ollama stops, and MU/TH/UR says so.',
+    remedy: 'Start Ollama and PULL a chat model in MODULES → OLLAMA; the switch @MADRE IN THE ROOM turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".',
+    fixes: same(['ollama serve', 'ollama pull qwen2.5:3b', '@madre what did we decide about the webhook?']),
+  },
+  {
     id: 'control-changes',
     severity: 'informational',
     title: 'CONTROL: what changed, what was reverted, UNDO',

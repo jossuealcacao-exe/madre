@@ -11,12 +11,12 @@ export default defineModule({
   summary: 'Recall by meaning and memory distillation on this machine through Ollama: no provider tokens, nothing leaves. Needs Ollama running with an embedding model and a chat model; MADRE can pull the recommended ones.',
   creates: ['nothing in the project', 'an ollama block in ~/.pulse/config.json', 'models in Ollama\'s own store when you press PULL'],
   requires: ['Ollama installed and running (ollama serve, or the Ollama app)'],
-  settings: { enabled: true, embeddings: true, archivist: true },
+  settings: { enabled: true, embeddings: true, archivist: true, agent: true },
   card: 'ollama',
   async status(ctx) {
     const probe = ctx.services.ollama?.state() ?? { running: false, models: [], embedModel: null, chatModel: null };
     const settings = ctx.settings;
-    const roles = [settings.embeddings && probe.embedModel ? `embeddings · ${probe.embedModel}` : null, settings.archivist && probe.chatModel ? `archivist · ${probe.chatModel}` : null].filter(Boolean);
+    const roles = [settings.embeddings && probe.embedModel ? `embeddings · ${probe.embedModel}` : null, settings.archivist && probe.chatModel ? `archivist · ${probe.chatModel}` : null, settings.agent !== false && probe.chatModel ? '@madre in the room' : null].filter(Boolean);
     const detail = !probe.running ? 'not running · start Ollama and RECHECK'
       : !settings.enabled ? `off · ${probe.models.length} model${probe.models.length === 1 ? '' : 's'} available`
         : roles.length ? `on · ${roles.join(' · ')}` : 'on · no usable model yet · PULL one';
@@ -41,7 +41,7 @@ export default defineModule({
     { method: 'POST', path: '/api/ollama/probe', handler: async (ctx) => ({ status: 200, body: { ollama: await ctx.services.ollama.wire(), recommended: RECOMMENDED } }) },
     { method: 'POST', path: '/api/ollama/settings', handler: async (ctx, { payload }) => {
       const next = { ...(ctx.config.modules?.ollama ?? {}) };
-      for (const key of ['embeddings', 'archivist', 'enabled']) if (typeof payload[key] === 'boolean') next[key] = payload[key];
+      for (const key of ['embeddings', 'archivist', 'agent', 'enabled']) if (typeof payload[key] === 'boolean') next[key] = payload[key];
       await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), ollama: next } });
       return { status: 200, body: { ollama: await ctx.services.ollama.wire({ probe: false }) } };
     } },

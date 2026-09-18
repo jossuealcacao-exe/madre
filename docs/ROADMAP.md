@@ -25,7 +25,7 @@ Hoy la destilación produce notas. La idea: que produzca **una inteligencia prop
 - Ollama como archivista: destila con un modelo local; Gemini y los demás quedan como respaldo. La destilación deja de costar tokens ajenos.
 - Detectar Ollama como se detecta cada CLI; sin Ollama, todo sigue como hoy.
 
-### 2b · `@madre`, el quinto agente
+### 2b · `@madre`, el quinto agente · hecho en `src/adapters/madre.mjs`
 - Un adaptador Ollama que responde **desde la memoria de la sala y los archivos del proyecto** (RAG sobre `memory.sqlite` + lectura del proyecto). No delega, no escribe, solo sabe.
 - Crece solo: cada nota destilada y cada intercambio indexado amplían lo que `@madre` puede contestar. Es la "IA de MADRE" visible desde el primer día, sin entrenar nada.
 - Sirve como juez barato: ¿esta petición ya se resolvió? ¿contradice una decisión?

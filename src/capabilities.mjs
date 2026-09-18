@@ -10,6 +10,7 @@
 //   imageGen   generate images (Codex: image_generation feature via ChatGPT)
 //   web        fetch or search the web (denied by default in consultation mode)
 
+// @madre, the room's local memory agent, is not a CLI: capabilityOf gives it the read-only profile.
 export const CAPABILITIES = {
   codex: {
     read: true,

@@ -1771,6 +1771,19 @@ function renderEventNode(event) {
     case 'memory.distilled': node = renderDistilled(event); break;
     case 'memory.forgotten': node = renderForgotten(event); break;
     case 'memory.noted': attachMemoryHint(event); return;
+    case 'agents.updated': {
+      for (const agent of event.payload.agents ?? []) {
+        const known = state.agents.get(agent.id);
+        state.agents.set(agent.id, { ...(known ?? { tokens: 0, rawTokens: 0, windowMs: null, rollsOverAt: null, officialPercent: null, officialResetAt: null, officialWindows: null }), ...agent });
+        const option = [...els.target.options].find((item) => item.value === agent.id);
+        if (agent.ready && !option) els.target.add(new Option(agent.label, agent.id));
+        if (!agent.ready && option) option.remove();
+      }
+      for (const id of event.payload.removed ?? []) { state.agents.delete(id); [...els.target.options].find((item) => item.value === id)?.remove(); }
+      renderAgents(); renderPicker(); renderOnboarding();
+      if (!replaying && event.payload.reason) toast(`MU/TH/UR › ${event.payload.reason}`);
+      return;
+    }
     case 'mother.alert': node = renderMotherAlert(event); break;
     case 'sentinel.report': state.reports.set(event.payload.id, { ...event.payload }); if (!replaying) { renderMotherSentinel(); toast(`MU/TH/UR › ${event.payload.kind === 'crash' ? 'a crash' : 'an unknown condition'} was recorded by the sentinel. Open MU/TH/UR to report it.`); } return;
     case 'sentinel.sent': { const report = state.reports.get(event.payload.id); if (report) report.sent = { ok: event.payload.ok, status: event.payload.status ?? null, error: event.payload.error ?? null, at: event.timestamp }; if (!replaying) renderMotherSentinel(); return; }
@@ -2841,12 +2854,12 @@ function builtinCard(item) {
         } catch (error) { toast(`Ollama could not change state: ${error.message}`); toggle.disabled = false; }
       });
       actions.append(toggle);
-      for (const [role, model, present] of [['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel)], ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel)]]) {
+      for (const [role, model, present] of [['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel)], ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel)], ['agent', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel)]]) {
         if (present) {
           const box = el('label', 'toggle');
           const input = el('input'); input.type = 'checkbox'; input.checked = info.settings[role] !== false;
           input.addEventListener('change', async () => { input.disabled = true; await fetch('/api/ollama/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [role]: input.checked }) }).catch(() => null); await refreshModules(); });
-          box.append(input, role.toUpperCase());
+          box.append(input, role === 'agent' ? '@MADRE IN THE ROOM' : role.toUpperCase());
           actions.append(box);
         } else {
           const pull = el('button', 'primary', `PULL ${model}`);

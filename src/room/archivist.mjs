@@ -68,7 +68,9 @@ export class Archivist {
 
   #candidates() {
     const invokers = this.#deps.invokers();
-    const everyone = invokers.ollama ? [OLLAMA_ARCHIVIST, ...this.#deps.agents()] : this.#deps.agents();
+    // @madre answers questions; the archive is written by the Ollama archivist itself.
+    const agents = this.#deps.agents().filter((agent) => agent.adapter !== 'madre-local');
+    const everyone = invokers.ollama ? [OLLAMA_ARCHIVIST, ...agents] : agents;
     return this.#settings.allowed ? everyone.filter((agent) => this.#settings.allowed.includes(agent.id)) : everyone;
   }
 

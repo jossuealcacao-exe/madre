@@ -6,6 +6,7 @@
 // free at every provider, so they weigh a tenth; Codex counts cached tokens
 // inside its input, so they are taken out before weighing.
 export function budgetTokens(usage = {}) {
+  if (usage.local) return 0;
   const n = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
   const cached = n(usage.cachedInputTokens);
   const input = usage.source === 'codex-json' ? Math.max(0, n(usage.inputTokens) - cached) : n(usage.inputTokens);
