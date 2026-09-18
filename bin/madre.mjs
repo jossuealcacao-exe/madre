@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { resolve } from 'node:path';
-import { stat } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { readFile, stat } from 'node:fs/promises';
 import { startPulse } from '../src/server.mjs';
 import { detectAgents } from '../src/runtime-detection.mjs';
 import { probeAll } from '../src/auth-probe.mjs';
@@ -41,6 +42,14 @@ const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
 if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 5)) {
   console.error(`\n  MOTHER › MADRE needs Node 22.5 or newer (found ${process.version}): the room's memory runs on node:sqlite.\n`);
   process.exit(2);
+}
+if (has('--version') || has('-v') || command === 'version') {
+  // Version and commit, so a report can name exactly what ran.
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  let commit = '';
+  try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* installed from npm: no repo */ }
+  console.log(`madre ${pkg.version}${commit ? ` · ${commit}` : ''} · node ${process.version}`);
+  process.exit(0);
 }
 const stateRoot = process.env.PULSE_HOME;
 if (command !== 'help') {
