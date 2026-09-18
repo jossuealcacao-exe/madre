@@ -220,7 +220,7 @@ Instalar el módulo externo AHP+ es la única acción de módulos con la que MAD
 
 MU/TH/UR tiene una sección SENTINEL. Cuando un turno falla con un error que ninguna condición conocida explica, o el proceso de MADRE se cae, el sentinel guarda un reporte en el registro de la sala (`sentinel.report`): el error con rutas, nombres de usuario, correos y claves eliminados, la versión de MADRE y de Node, la plataforma y las versiones de los agentes detectados. Los repetidos se agrupan por huella durante 24 horas.
 
-Nada sale de la máquina por sí solo. Cada reporte tiene `REPORT ON GITHUB ↗`, que abre un issue prellenado en el repositorio para que lo leas antes de publicarlo, y el botón `✎ FEEDBACK` de la cabecera abre uno en blanco con tu entorno. Si el autor publica un colector (`PULSE_REPORT_URL` o `telemetry.reportUrl` en `~/.pulse/config.json`), aparece `SEND` por reporte y el interruptor `AUTO-REPORT`, apagado por defecto, que envía los nuevos reportes redactados al colector sin preguntar. `docs/report-collector/` trae un Worker de Cloudflare listo para desplegar que convierte cada reporte en un issue.
+Nada sale de la máquina por sí solo. Cada reporte tiene `REPORT ON GITHUB ↗`, que abre un issue prellenado en el repositorio para que lo leas antes de publicarlo, y el botón `✎ FEEDBACK` de la cabecera abre uno en blanco con tu entorno. El colector del autor viene configurado por defecto (`https://madre-reports.jossue-alcala-o.workers.dev/v1/reports`; `PULSE_REPORT_URL` o `telemetry.reportUrl` en `~/.pulse/config.json` lo cambian, y un valor vacío lo quita), así que cada reporte tiene `SEND` y existe el interruptor `AUTO-REPORT`, apagado por defecto, que envía los nuevos reportes redactados al colector sin preguntar. `docs/report-collector/` trae un Worker de Cloudflare listo para desplegar que convierte cada reporte en un issue.
 
 ## Recuperación operativa
 
@@ -246,7 +246,7 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 | `PULSE_EMBED_MODEL` | `gemini-embedding-001` | Modelo de embeddings |
 | `PULSE_EMBED_DIMS` | `768` | Dimensiones del vector |
 | `PULSE_MEMORY_TOOLS` | `1` | Servidor MCP `pulse-memory` adjunto a cada turno (`0` lo quita) |
-| `PULSE_REPORT_URL` | — | Colector del sentinel; habilita `SEND` y `AUTO-REPORT` |
+| `PULSE_REPORT_URL` | colector del autor | Colector del sentinel; vacío lo desactiva |
 | `PULSE_AUTO_REPORT` | `0` | Envía en automático los reportes nuevos al colector (`1`) |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Tamaño máximo de un mensaje |
 | `PULSE_AGENT_TIMEOUT_MS` | `180000` | Timeout de invocación para todos los agentes |

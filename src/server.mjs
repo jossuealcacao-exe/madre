@@ -15,6 +15,8 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
+// The author's collector: SEND and AUTO-REPORT are available out of the box; AUTO-REPORT stays off until the human turns it on.
+const DEFAULT_REPORT_URL = 'https://madre-reports.jossue-alcala-o.workers.dev/v1/reports';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
@@ -332,7 +334,7 @@ export async function createPulseServer({
   const sentinel = new ErrorSentinel({
     pkg: PACKAGE,
     agents,
-    settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || Boolean(telemetry.autoReport), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? '' },
+    settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || Boolean(telemetry.autoReport), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? DEFAULT_REPORT_URL },
     fetchImpl: reportFetch,
     emit: (type, payload) => room.record(type, payload),
     save: async (settings) => { const current = await readConfig(root); await updateConfig(root, { telemetry: { ...(current.telemetry ?? {}), ...settings } }); },

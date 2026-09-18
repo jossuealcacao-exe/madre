@@ -86,7 +86,11 @@ test('sentinel: the server records unknown failures, serves the issue link, send
     const initial = await fetch(`${base}/api/sentinel`).then((response) => response.json());
     assert.deepEqual(initial.reports, []);
     assert.equal(initial.settings.autoReport, false);
-    assert.equal(initial.settings.canSend, false);
+    assert.equal(initial.settings.canSend, true, 'the author\'s collector is the default');
+    assert.match(initial.settings.reportUrl, /^https:\/\/madre-reports\./);
+    // An empty URL switches the collector off entirely.
+    const off = await fetch(`${base}/api/sentinel/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reportUrl: '' }) }).then((response) => response.json());
+    assert.equal(off.settings.canSend, false);
     assert.match(initial.feedbackUrl, /github\.com\/.*\/issues\/new\?title=%5Bfeedback%5D/);
     await fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'go', target: 'codex' }) });
     let report = null;
