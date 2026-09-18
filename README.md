@@ -290,7 +290,7 @@ Todos los adaptadores corren en su propio grupo de procesos. Si un agente no res
 
 ## Cambios
 
-Ver [CHANGELOG.md](CHANGELOG.md). La versión actual es 0.2.4, beta pública: el núcleo está probado y bajo CI, la superficie sigue cambiando y las decisiones que aún duelen están escritas en el modelo de amenazas. Los problemas se reportan desde MU/TH/UR (`✎ FEEDBACK` o el sentinel) o en [issues](https://github.com/jossuealcacao-exe/madre/issues); la seguridad, según [SECURITY.md](SECURITY.md).
+Ver [CHANGELOG.md](CHANGELOG.md). La versión publicada es 0.2.2 y la siguiente en preparación es 0.2.3, beta pública: el núcleo está probado y bajo CI, la superficie sigue cambiando y las decisiones que aún duelen están escritas en el modelo de amenazas. Los problemas se reportan desde MU/TH/UR (`✎ FEEDBACK` o el sentinel) o en [issues](https://github.com/jossuealcacao-exe/madre/issues); la seguridad, según [SECURITY.md](SECURITY.md).
 
 ## Licencia
 
