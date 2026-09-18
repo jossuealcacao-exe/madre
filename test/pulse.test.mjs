@@ -1738,7 +1738,8 @@ test('creation lease: a fresh directory under .pulse/out, artifacts detected by 
     assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).slice(0, 2), ['--sandbox', 'read-only']);
     const claude = buildClaudeArgs({ prompt: 'q', lease: scope });
     assert.equal(claude[claude.indexOf('--tools') + 1], 'Read,Glob,Grep,Write,Edit');
-    assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,Write(/p/.pulse/out/x/**),Edit(/p/.pulse/out/x/**)');
+    // Double slash: Claude Code reads a single leading slash as project-relative and would deny every write.
+    assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,Write(///p/.pulse/out/x/**),Edit(///p/.pulse/out/x/**)');
     assert.equal(claude.includes('--allowedTools'), true);
     assert.equal(buildClaudeArgs({ prompt: 'q' }).includes('--allowedTools'), false);
     const gemini = buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', lease: scope });
