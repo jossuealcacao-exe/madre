@@ -2,6 +2,8 @@
 name = "madre-reports"
 main = "worker.mjs"
 compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
 
 # Secrets (set with `npx wrangler secret put NAME`):
 #   GITHUB_TOKEN  fine-grained token with Issues: read and write on the repo
