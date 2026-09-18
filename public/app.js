@@ -2813,6 +2813,61 @@ function builtinCard(item) {
   for (const line of item.creates ?? []) list.append(el('li', null, line));
   for (const line of item.requires ?? []) list.append(el('li', null, `requires ${line}`));
   card.append(list);
+  if (item.id === 'ollama') {
+    const info = item.ollama ?? { running: false, models: [], settings: {} };
+    const status = el('dl', 'ollama-status');
+    const put = (k, v) => { status.append(el('dt', null, k), el('dd', null, v)); };
+    put('SERVER', info.running ? `running · ${info.host}` : 'not running');
+    put('EMBEDDINGS', info.embedModel ? `${info.embedModel}${info.settings.embeddings === false ? ' · off' : ''}` : 'no embedding model');
+    put('ARCHIVIST', info.chatModel ? `${info.chatModel}${info.settings.archivist === false ? ' · off' : ''}` : 'no chat model');
+    if (info.models?.length) put('MODELS', info.models.map((model) => model.name).join(', '));
+    card.append(status);
+    const actions = el('div', 'actions');
+    const recheck = el('button', null, 'RECHECK');
+    recheck.type = 'button';
+    recheck.addEventListener('click', async () => { recheck.disabled = true; await fetch('/api/ollama/probe', { method: 'POST' }).catch(() => null); await refreshModules(); });
+    actions.append(recheck);
+    if (info.running) {
+      const toggle = el('button', on ? null : 'primary', info.settings.enabled === false ? 'ENABLE OLLAMA' : 'DISABLE OLLAMA');
+      toggle.type = 'button';
+      toggle.addEventListener('click', async () => {
+        toggle.disabled = true;
+        try {
+          const response = await fetch('/api/extensions/ollama/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+          toast(result.enabled ? 'MU/TH/UR › OLLAMA ON · memory embeds and distils on this machine.' : 'MU/TH/UR › OLLAMA OFF · back to the providers.');
+          await refreshModules();
+        } catch (error) { toast(`Ollama could not change state: ${error.message}`); toggle.disabled = false; }
+      });
+      actions.append(toggle);
+      for (const [role, model, present] of [['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel)], ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel)]]) {
+        if (present) {
+          const box = el('label', 'toggle');
+          const input = el('input'); input.type = 'checkbox'; input.checked = info.settings[role] !== false;
+          input.addEventListener('change', async () => { input.disabled = true; await fetch('/api/ollama/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [role]: input.checked }) }).catch(() => null); await refreshModules(); });
+          box.append(input, role.toUpperCase());
+          actions.append(box);
+        } else {
+          const pull = el('button', 'primary', `PULL ${model}`);
+          pull.type = 'button';
+          pull.title = `Download ${model} into Ollama for ${role}`;
+          pull.addEventListener('click', async () => {
+            pull.disabled = true;
+            const response = await fetch('/api/ollama/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'could not pull'}`); pull.disabled = false; }
+            else toast(`MU/TH/UR › pulling ${model}; progress shows in the room.`);
+          });
+          actions.append(pull);
+        }
+      }
+    } else {
+      card.append(el('p', 'confirm', 'Start Ollama (the app, or `ollama serve` in a terminal), then RECHECK. Without it the room keeps using its providers.'));
+    }
+    card.append(actions);
+    return card;
+  }
   if (item.id === 'ripley') {
     const actions = el('div', 'actions');
     const toggle = el('button', on ? null : 'primary', on ? 'DISABLE RIPLEY' : 'ENABLE RIPLEY');

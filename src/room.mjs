@@ -8,7 +8,7 @@ import { basename, dirname } from 'node:path';
 import { UsageSentinel } from './usage-sentinel.mjs';
 import { buildConversationContext, formatConversationContext } from './conversation-context.mjs';
 import { formatRecall, formatMemories } from './memory.mjs';
-import { pickDistiller, distillPrompt, parseDistillation } from './distiller.mjs';
+import { pickDistiller, distillPrompt, parseDistillation, OLLAMA_ARCHIVIST } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
 import { CODE000_STRIKES } from './mother.mjs';
 import { DELEGATION_HELP, parseDirectives } from './directives.mjs';
@@ -348,6 +348,17 @@ export class Room {
     return { context: recent, recall: recall?.entries?.length ? recall : null, memories: memories?.length ? memories : null };
   }
 
+  // Ollama comes and goes: the server re-wires the embedder and the local archivist without a restart.
+  setEmbedder(embedder) {
+    if (!this.#memory) return;
+    this.#memory.attachEmbedder(embedder ?? null);
+    if (embedder) this.#scheduleEmbedding(500);
+  }
+  setInvoker(id, fn) {
+    this.#invokers = { ...this.#invokers };
+    if (fn) this.#invokers[id] = fn; else delete this.#invokers[id];
+  }
+
   memoryStats() {
     if (!this.#memory) return null;
     try {
@@ -435,21 +446,25 @@ export class Room {
       for (const [id, until] of this.#distillBench) if (until <= now) this.#distillBench.delete(id);
       const benched = new Set(this.#distillBench.keys());
       // Everyone benched? Then the bench is cleared rather than leaving the archive to rot.
-      let agent = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy, invokers: this.#invokers, benched });
-      if (!agent && benched.size) { this.#distillBench.clear(); agent = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy, invokers: this.#invokers }); }
+      // Ollama joins the candidates when the server has it wired: local, free, first in line.
+      const candidates = this.#invokers.ollama ? [OLLAMA_ARCHIVIST, ...this.#agents] : this.#agents;
+      let agent = pickDistiller(candidates, { preferred: this.#distill.agent, busy, invokers: this.#invokers, benched });
+      if (!agent && benched.size) { this.#distillBench.clear(); agent = pickDistiller(candidates, { preferred: this.#distill.agent, busy, invokers: this.#invokers }); }
       if (!agent) return null;
       const started = Date.now();
       try {
-        const prompt = distillPrompt({ entries: batch.entries, projectName: basename(this.#projectRoot), existing: this.#memory.memories({ limit: 12 }) });
-        const result = await this.#invokers[agent.adapter]({ executable: agent.path, projectRoot: this.#projectRoot, prompt, timeoutMs: this.timeoutFor(agent.id), model: this.#distill.model, attachments: [], lease: null, scopes: { web: false, imageGen: false }, imageStudio: null });
+        const local = agent.adapter === 'ollama';
+        const prompt = distillPrompt({ entries: batch.entries, projectName: basename(this.#projectRoot), existing: this.#memory.memories({ limit: 12 }), json: local });
+        const result = await this.#invokers[agent.adapter]({ executable: agent.path, projectRoot: this.#projectRoot, prompt, timeoutMs: local ? this.#agentTimeouts.ollama ?? 300000 : this.timeoutFor(agent.id), model: local ? null : this.#distill.model, json: local, attachments: [], lease: null, scopes: { web: false, imageGen: false }, imageStudio: null });
         const memories = parseDistillation(result?.text, { fromSequence: batch.fromSequence, throughSequence: batch.throughSequence });
         const added = this.#memory.addMemories(memories, { agent: agent.id, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence });
         this.#memory.markDistilled(batch.sequences);
         this.#distillFailures.delete(batch.fromSequence);
-        await this.#recordUsage(agent.id, result?.usage ?? null);
+        // Local tokens cost nothing and count against no provider budget; they are reported, not charged.
+        if (!local) await this.#recordUsage(agent.id, result?.usage ?? null);
         const kinds = {};
         for (const memory of memories) kinds[memory.kind] = (kinds[memory.kind] ?? 0) + 1;
-        const report = { agent: agent.id, added, parsed: memories.length, considered: batch.entries.length, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, remaining: batch.remaining, kinds, elapsedMs: Date.now() - started, total: this.#memory.memoryCount() };
+        const report = { agent: agent.id, local, model: local ? result?.usage?.model ?? null : this.#distill.model, tokens: result?.usage?.totalTokens ?? null, added, parsed: memories.length, considered: batch.entries.length, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, remaining: batch.remaining, kinds, elapsedMs: Date.now() - started, total: this.#memory.memoryCount() };
         await this.#emit('memory.distilled', report);
         return report;
       } catch (error) {

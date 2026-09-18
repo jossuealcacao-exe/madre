@@ -6,7 +6,9 @@
 import { MEMORY_KINDS } from './memory.mjs';
 
 // Cheapest first, by the models these CLIs run by default.
-export const DISTILLER_ORDER = ['gemini', 'opencode', 'codex', 'claude'];
+// Ollama, when the room has it, is the cheapest of all: local and free.
+export const DISTILLER_ORDER = ['ollama', 'gemini', 'opencode', 'codex', 'claude'];
+export const OLLAMA_ARCHIVIST = { id: 'ollama', label: 'Ollama', detected: true, ready: true, adapter: 'ollama', path: null, version: null, local: true };
 export const MAX_MEMORIES_PER_RUN = 5;
 export const MAX_MEMORY_CHARS = 240;
 
@@ -26,7 +28,7 @@ export function pickDistiller(agents, { preferred = null, busy = new Set(), invo
   return agents.find(usable) ?? null;
 }
 
-export function distillPrompt({ entries, projectName = 'the project', existing = [] }) {
+export function distillPrompt({ entries, projectName = 'the project', existing = [], json = false }) {
   const transcript = entries.map((entry) => {
     const who = entry.role === 'command' ? entry.sender : `@${entry.sender}`;
     const to = entry.target && entry.target !== 'room' ? ` → ${entry.target === 'you' ? 'human' : `@${entry.target}`}` : '';
@@ -41,9 +43,11 @@ export function distillPrompt({ entries, projectName = 'the project', existing =
     `- preference: how the human wants things done or said`,
     `- question: something left open that a later turn should not forget`,
     'Skip greetings, restatements, transient status, anything a reader of the code would see anyway, and anything the exchanges do not actually establish.',
-    `Output only JSON lines, one object per memory, at most ${MAX_MEMORIES_PER_RUN}, nothing else:`,
-    `{"kind":"decision|fact|preference|question","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","sources":[sequence numbers it comes from]}`,
-    'If nothing durable was said, output exactly: NONE',
+    json
+      ? `Output one JSON object and nothing else: {"memories":[...]} with at most ${MAX_MEMORIES_PER_RUN} items, each {"kind":"decision|fact|preference|question","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","sources":[sequence numbers it comes from]}. If nothing durable was said: {"memories":[]}`
+      : `Output only JSON lines, one object per memory, at most ${MAX_MEMORIES_PER_RUN}, nothing else:`,
+    json ? null : `{"kind":"decision|fact|preference|question","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","sources":[sequence numbers it comes from]}`,
+    json ? null : 'If nothing durable was said, output exactly: NONE',
     known,
     '<exchanges>',
     transcript,
@@ -56,7 +60,13 @@ export function distillPrompt({ entries, projectName = 'the project', existing =
 export function parseDistillation(text, { fromSequence, throughSequence } = {}) {
   const memories = [];
   const seen = new Set();
-  for (const raw of String(text ?? '').split(/\r?\n/)) {
+  // A whole JSON object with a memories array (what local models return under format=json) is unrolled into lines.
+  let source = String(text ?? '');
+  const object = source.trim().match(/^\{[\s\S]*\}$/);
+  if (object) {
+    try { const parsed = JSON.parse(object[0]); if (Array.isArray(parsed?.memories)) source = parsed.memories.map((item) => JSON.stringify(item)).join('\n'); } catch { /* fall through: line by line */ }
+  }
+  for (const raw of source.split(/\r?\n/)) {
     const line = raw.trim().replace(/^```(?:json)?$|^```$/g, '').replace(/^[-*]\s+/, '');
     const start = line.indexOf('{');
     const end = line.lastIndexOf('}');

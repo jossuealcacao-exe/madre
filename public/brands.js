@@ -47,6 +47,15 @@ export const BRANDS = {
   },
 };
 
+BRANDS.ollama = {
+  label: 'Ollama',
+  vendor: 'local',
+  color: '#E6E6E6',
+  colorLight: '#3A3A3A',
+  ink: '#111111',
+  mark: () => glyph('<circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12.5" cy="15" r="1.6" fill="currentColor"/><circle cx="19.5" cy="15" r="1.6" fill="currentColor"/>'),
+};
+
 export const fallbackBrand = (id) => ({
   label: id,
   vendor: '',

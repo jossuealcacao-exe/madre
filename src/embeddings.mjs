@@ -68,11 +68,17 @@ async function geminiEmbed(texts, { key, model, dims, query, fetchImpl, timeoutM
 }
 
 // The embedder the memory uses: { model, dims, embed(texts, { query }) } or null when off.
-export function createEmbedder({ key = null, env = process.env, fetchImpl = globalThis.fetch, timeoutMs = Number(env.PULSE_EMBED_TIMEOUT_MS ?? 8000) } = {}) {
+// Which embedder: PULSE_EMBED_PROVIDER=ollama|gemini|auto. Auto prefers Ollama
+// when it is running with an embedding model (local, free, private), then Gemini
+// when there is a key, then none.
+export function createEmbedder({ key = null, env = process.env, fetchImpl = globalThis.fetch, timeoutMs = Number(env.PULSE_EMBED_TIMEOUT_MS ?? 8000), ollama = null, ollamaEmbedder: makeOllama = null } = {}) {
   if (env.PULSE_EMBED === '0') return null;
   if (env.PULSE_EMBED_FAKE === '1') {
     return { model: 'fake-64', dims: 64, embed: async (texts) => texts.map((text) => fakeEmbedding(text)) };
   }
+  const provider = env.PULSE_EMBED_PROVIDER ?? 'auto';
+  if (provider !== 'gemini' && ollama?.running && ollama.embedModel && makeOllama) return makeOllama({ host: ollama.host, model: ollama.embedModel, fetchImpl });
+  if (provider === 'ollama') return null;
   if (!key) return null;
   const model = env.PULSE_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
   const dims = Number(env.PULSE_EMBED_DIMS ?? DEFAULT_EMBED_DIMS);

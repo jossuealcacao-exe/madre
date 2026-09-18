@@ -149,9 +149,25 @@ export const RIPLEY = {
 };
 EXTENSIONS.push(RIPLEY);
 
+// OLLAMA: local intelligence. When Ollama runs on this machine, MADRE embeds the
+// memory locally and lets a local model distil it. Free, private, optional.
+export const OLLAMA = {
+  id: 'ollama',
+  kind: 'builtin',
+  name: 'OLLAMA',
+  vendor: 'MADRE · LOCAL INTELLIGENCE',
+  package: null,
+  version: '0.1.0',
+  summary: 'Recall by meaning and memory distillation on this machine through Ollama: no provider tokens, nothing leaves. Needs Ollama running with an embedding model and a chat model; MADRE can pull the recommended ones.',
+  creates: ['nothing in the project', 'an ollama block in ~/.pulse/config.json', 'models in Ollama\'s own store when you press PULL'],
+  requires: ['Ollama installed and running (ollama serve, or the Ollama app)'],
+  models: [],
+};
+EXTENSIONS.push(OLLAMA);
+
 export const extensionById = (id) => EXTENSIONS.find((extension) => extension.id === id) ?? null;
 
-export async function listExtensions({ projectRoot, agents = [], config = {}, imageKey = async () => null }) {
+export async function listExtensions({ projectRoot, agents = [], config = {}, imageKey = async () => null, ollama = null }) {
   return Promise.all(EXTENSIONS.map(async (extension) => {
     if (extension.id === 'git-pulse') {
       const isRepo = await gitToplevel(projectRoot);
@@ -173,6 +189,22 @@ export async function listExtensions({ projectRoot, agents = [], config = {}, im
         preflight: { ok: true, problems: [] },
         install: { display: enabled ? 'disable AshCode' : 'enable AshCode (config.json)', platforms: [] },
         warning: 'Beta: abbreviation may alter meaning or introduce errors. Review the original. Character reduction is not verified token savings.',
+      };
+    }
+    if (extension.id === 'ollama') {
+      const settings = { enabled: true, embeddings: true, archivist: true, ...(config.modules?.ollama ?? {}) };
+      const probe = ollama ?? { running: false, models: [], embedModel: null, chatModel: null };
+      const roles = [settings.embeddings && probe.embedModel ? `embeddings · ${probe.embedModel}` : null, settings.archivist && probe.chatModel ? `archivist · ${probe.chatModel}` : null].filter(Boolean);
+      const detail = !probe.running ? 'not running · start Ollama and RECHECK'
+        : !settings.enabled ? `off · ${probe.models.length} model${probe.models.length === 1 ? '' : 's'} available`
+          : roles.length ? `on · ${roles.join(' · ')}` : 'on · no usable model yet · PULL one';
+      return {
+        id: extension.id, kind: 'builtin', name: extension.name, vendor: extension.vendor, package: null, version: extension.version,
+        summary: extension.summary, creates: extension.creates, requires: extension.requires, models: probe.models.map((model) => model.name),
+        status: { installed: settings.enabled && probe.running && roles.length > 0, detail },
+        ollama: { ...probe, settings },
+        preflight: probe.running ? { ok: true, problems: [] } : { ok: false, problems: ['Ollama is not running: open the Ollama app or run `ollama serve`, then RECHECK.'] },
+        install: { display: settings.enabled ? 'disable Ollama' : 'enable Ollama (config.json)', platforms: [] },
       };
     }
     if (extension.id === 'ripley') {

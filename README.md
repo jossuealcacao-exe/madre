@@ -224,6 +224,10 @@ Instalar el módulo externo AHP+ es la única acción de módulos con la que MAD
 - **Escritura.** En #1 nadie escribe. En #2 la escritura queda confinada a `.pulse/out/<lease>/` por las reglas de cada CLI. En #3 CONTROL el proyecto entero es escribible salvo `.git/`, `.pulse/` y los `.env`: Claude, Gemini y OpenCode reciben esa prohibición como regla previa; Codex entra con su sandbox `workspace-write`, que no admite excluir rutas dentro del proyecto, así que en su caso la zona prohibida se hace cumplir **después del turno**: MADRE compara con el checkpoint y revierte lo que tocó ahí. Eso protege lo que persiste, no impide que un efecto intermedio ocurra durante el turno. Es deuda conocida: prevención antes que restauración. Mientras tanto, si un `.env` es crítico, no des CONTROL a Codex o baja su MAX MODE.
 - **Memoria.** Todo lo dicho fuera de GHOST queda en `~/.pulse/rooms/<sala>/` y se reinyecta en los prompts de todos los agentes de esa sala. GHOST es la salida para lo que no debe recordarse.
 
+## Ollama: la inteligencia local
+
+Si Ollama corre en la máquina, MADRE lo usa sin configurar nada: los embeddings de la memoria se calculan localmente con el modelo de embeddings disponible (`nomic-embed-text` recomendado) y la destilación de memorias la hace primero el modelo local (`qwen2.5:3b` recomendado, cualquiera de la familia Qwen, Llama o Gemma sirve), antes que Gemini y el resto. Recordar deja de costar tokens y nada del proyecto sale de la máquina para eso. El módulo `OLLAMA` en MODULES muestra qué hay, permite descargar los modelos recomendados con `PULL`, apagar cada rol y desactivar el módulo. Sin Ollama, todo sigue como antes. `PULSE_OLLAMA_HOST`, `PULSE_OLLAMA_MODEL` y `PULSE_OLLAMA_EMBED_MODEL` eligen host y modelos; `PULSE_EMBED_PROVIDER=gemini` mantiene los embeddings en Gemini aunque Ollama exista.
+
 ## Sentinel de errores y feedback
 
 MU/TH/UR tiene una sección SENTINEL. Cuando un turno falla con un error que ninguna condición conocida explica, o el proceso de MADRE se cae, el sentinel guarda un reporte en el registro de la sala (`sentinel.report`): el error con rutas, nombres de usuario, correos y claves eliminados, la versión de MADRE y de Node, la plataforma y las versiones de los agentes detectados. Los repetidos se agrupan por huella durante 24 horas.
@@ -250,7 +254,11 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 | `PULSE_DISTILL_MAX_CHARS` | `6000` | Tamaño máximo del lote que lee el destilador |
 | `PULSE_DISTILL_AGENT` | — | Agente destilador preferido; por defecto el más barato disponible |
 | `PULSE_DISTILL_MODEL` | — | Modelo para la destilación |
-| `PULSE_EMBED` | `1` | Embeddings con la clave de Gemini para recall por significado (`0` lo apaga) |
+| `PULSE_EMBED` | `1` | Embeddings para recall por significado (`0` lo apaga) |
+| `PULSE_EMBED_PROVIDER` | `auto` | `ollama`, `gemini` o `auto` (Ollama si corre con modelo de embeddings, si no Gemini) |
+| `PULSE_OLLAMA_HOST` | `http://127.0.0.1:11434` | Dónde escucha Ollama |
+| `PULSE_OLLAMA_MODEL` | el mejor disponible | Modelo local para destilar |
+| `PULSE_OLLAMA_EMBED_MODEL` | el mejor disponible | Modelo local de embeddings |
 | `PULSE_EMBED_MODEL` | `gemini-embedding-001` | Modelo de embeddings |
 | `PULSE_EMBED_DIMS` | `768` | Dimensiones del vector |
 | `PULSE_MEMORY_TOOLS` | `1` | Servidor MCP `pulse-memory` adjunto a cada turno (`0` lo quita) |
@@ -290,7 +298,7 @@ Todos los adaptadores corren en su propio grupo de procesos. Si un agente no res
 
 ## Cambios
 
-Ver [CHANGELOG.md](CHANGELOG.md). La versión publicada es 0.2.2 y la siguiente en preparación es 0.2.3, beta pública: el núcleo está probado y bajo CI, la superficie sigue cambiando y las decisiones que aún duelen están escritas en el modelo de amenazas. Los problemas se reportan desde MU/TH/UR (`✎ FEEDBACK` o el sentinel) o en [issues](https://github.com/jossuealcacao-exe/madre/issues); la seguridad, según [SECURITY.md](SECURITY.md).
+Ver [CHANGELOG.md](CHANGELOG.md). La versión publicada es 0.2.3 y la siguiente en preparación es 0.3.0, beta pública: el núcleo está probado y bajo CI, la superficie sigue cambiando y las decisiones que aún duelen están escritas en el modelo de amenazas. Los problemas se reportan desde MU/TH/UR (`✎ FEEDBACK` o el sentinel) o en [issues](https://github.com/jossuealcacao-exe/madre/issues); la seguridad, según [SECURITY.md](SECURITY.md).
 
 ## Licencia
 

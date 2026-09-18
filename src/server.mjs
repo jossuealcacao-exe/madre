@@ -12,6 +12,7 @@ import { createEmbedder } from './embeddings.mjs';
 import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
+import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel, RECOMMENDED as OLLAMA_RECOMMENDED } from './ollama.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -111,6 +112,8 @@ export async function createPulseServer({
   imageKey = resolveGeminiKey,
   // The sentinel's outbound channel; tests hand in a fake.
   reportFetch = globalThis.fetch,
+  // Ollama detection; tests hand in a fake probe.
+  ollamaProbe = probeOllama,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
@@ -129,16 +132,31 @@ export async function createPulseServer({
     .catch((error) => { console.error(`MADRE memory unavailable, turns get the recent window only: ${error.message}`); return null; });
   // Meaning-aware recall through the user's own Gemini key, when there is one;
   // and the memory as MCP tools for every agent's turn.
-  if (memory) {
-    const key = process.env.PULSE_EMBED === '0' ? null : await imageKey().catch(() => null);
-    memory.attachEmbedder(createEmbedder({ key }));
+  // Ollama, when it is there: local embeddings and a local archivist. Probed at
+  // start and again from MODULES; wired live, no restart.
+  let ollama = { running: false, host: null, models: [], embedModel: null, chatModel: null };
+  const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
+  async function wireOllama({ probe: doProbe = true } = {}) {
+    if (doProbe) ollama = await ollamaProbe();
+    const settings = await ollamaSettings();
+    const useEmbeddings = ollama.running && settings.enabled && settings.embeddings && ollama.embedModel;
+    const useArchivist = ollama.running && settings.enabled && settings.archivist && ollama.chatModel;
+    if (memory) {
+      const key = process.env.PULSE_EMBED === '0' ? null : await imageKey().catch(() => null);
+      const embedder = createEmbedder({ key, ollama: useEmbeddings ? ollama : null, ollamaEmbedder });
+      if (room) room.setEmbedder(embedder); else memory.attachEmbedder(embedder);
+    }
+    if (room) room.setInvoker('ollama', useArchivist ? ollamaInvoker({ host: ollama.host, model: ollama.chatModel }) : null);
+    return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist) };
   }
+  let room = null;
+  await wireOllama();
   const memoryServer = memory ? memoryServerFor({ dbFile: memory.file, projectRoot: canonicalProjectRoot }) : null;
   // MOTHER's channel to the crew: her seal's fingerprint lives in the memory
   // file, so a deleted or edited .pulse/mother.env is noticed.
   const mother = new MotherChannel(join(canonicalProjectRoot, '.pulse', 'mother.env'), { meta: memory ? { get: (key) => memory.metaGet(key), set: (key, value) => memory.metaSet(key, value) } : null });
   const motherOutcome = await mother.load().catch((error) => { console.error(`MADRE could not open MOTHER's channel: ${error.message}`); return null; });
-  const room = new Room({
+  room = new Room({
     store,
     agents,
     projectRoot,
@@ -154,6 +172,7 @@ export async function createPulseServer({
     delegation,
     maxPlanSteps,
   });
+  await wireOllama({ probe: false });
   const embedKick = memory?.embedder ? setTimeout(() => void room.embedNow(), 2000) : null;
   embedKick?.unref?.();
   if (motherOutcome === 'deleted' || motherOutcome === 'altered') setTimeout(() => void room.motherTampered(motherOutcome).catch(() => {}), 500).unref?.();
@@ -372,6 +391,14 @@ export async function createPulseServer({
   async function installExtension(id, { confirm } = {}) {
     const extension = extensionById(id);
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
+    if (extension.id === 'ollama') {
+      const current = await readConfig(root);
+      const enabled = !((current.modules?.ollama?.enabled) ?? true);
+      await updateConfig(root, { modules: { ...current.modules, ollama: { ...(current.modules?.ollama ?? {}), enabled } } });
+      const status = await wireOllama();
+      await room.record('extension.toggled', { id, name: extension.name, enabled });
+      return { status: 200, body: { enabled, ollama: status } };
+    }
     if (extension.id === 'ripley') {
       const current = await readConfig(root);
       const enabled = !Boolean(current.modules?.ripley?.enabled);
@@ -602,6 +629,45 @@ export async function createPulseServer({
         const outcome = await sentinel.send(sentinelMatch[1]);
         return sendJson(response, outcome.ok ? 200 : (outcome.status === 404 || outcome.status === 412 ? outcome.status : 502), outcome);
       }
+      // Ollama: status, recheck, role switches and pulls (streamed like a module install).
+      if (request.method === 'GET' && url.pathname === '/api/ollama') {
+        return sendJson(response, 200, { ollama: await wireOllama({ probe: false }), recommended: OLLAMA_RECOMMENDED });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/ollama/probe') {
+        return sendJson(response, 200, { ollama: await wireOllama(), recommended: OLLAMA_RECOMMENDED });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/ollama/settings') {
+        const patch = await body(request).catch(() => ({}));
+        const current = await readConfig(root);
+        const next = { ...(current.modules?.ollama ?? {}) };
+        for (const key of ['embeddings', 'archivist', 'enabled']) if (typeof patch[key] === 'boolean') next[key] = patch[key];
+        await updateConfig(root, { modules: { ...current.modules, ollama: next } });
+        return sendJson(response, 200, { ollama: await wireOllama({ probe: false }) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/ollama/pull') {
+        const payload = await body(request).catch(() => ({}));
+        const model = String(payload.model ?? '').trim();
+        if (!/^[a-z0-9][a-z0-9._:/-]{1,80}$/i.test(model)) return sendJson(response, 400, { error: 'Give a model name like nomic-embed-text or qwen2.5:3b.' });
+        if (!ollama.running) return sendJson(response, 412, { error: 'Ollama is not running.' });
+        if (installing) return sendJson(response, 409, { error: `Another install is running (${installing}).` });
+        installing = 'ollama';
+        await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: `ollama pull ${model}`, platforms: [], alreadyInstalled: false });
+        void (async () => {
+          let pending = [];
+          let flushTimer = null;
+          const flush = async () => { flushTimer = null; if (!pending.length) return; const batch = pending; pending = []; await room.record('extension.install.output', { id: 'ollama', lines: batch }); };
+          try {
+            await pullModel({ host: ollama.host, model, fetchImpl: reportFetch === globalThis.fetch ? globalThis.fetch : reportFetch, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
+            await flush();
+            const status = await wireOllama();
+            await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, ollama: status });
+          } catch (error) {
+            await flush();
+            await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message });
+          } finally { installing = null; }
+        })();
+        return sendJson(response, 202, { pulling: model });
+      }
       if (request.method === 'GET' && url.pathname === '/api/mother') {
         return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });
       }
@@ -673,7 +739,7 @@ export async function createPulseServer({
         return sendJson(response, result.ok ? 200 : 422, { command: parsed.name, title: result.title, ok: result.ok, sequence: event.sequence });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
-        return sendJson(response, 200, { installing, extensions: await listExtensions({ projectRoot: canonicalProjectRoot, agents, config: await readConfig(root), imageKey }) });
+        return sendJson(response, 200, { installing, extensions: await (await listExtensions({ projectRoot: canonicalProjectRoot, agents, config: await readConfig(root), imageKey, ollama })).map((item) => (item.id === 'ollama' ? { ...item, recommended: OLLAMA_RECOMMENDED } : item)) });
       }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {

@@ -421,6 +421,19 @@ export const CONDITIONS = [
     fixes: same(['# MODULES → RIPLEY → ENABLE RIPLEY', '# viewer → PREVIEW / SOURCE']),
   },
   {
+    id: 'ollama',
+    severity: 'informational',
+    title: 'Ollama: local embeddings and a local archivist',
+    match: /ollama|11434|local model|nomic-embed|qwen|llama3/i,
+    diagnosis: 'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. MODULES shows what Ollama has, lets you pull the recommended models, and switches each role.',
+    remedy: 'Install Ollama (ollama.com), start it, then in MODULES press RECHECK and PULL the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.',
+    fixes: {
+      darwin: ['brew install ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
+      linux: ['curl -fsSL https://ollama.com/install.sh | sh', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
+      win32: ['winget install Ollama.Ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
+    },
+  },
+  {
     id: 'control-changes',
     severity: 'informational',
     title: 'CONTROL: what changed, what was reverted, UNDO',
