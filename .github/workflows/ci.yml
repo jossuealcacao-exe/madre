@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Unit and integration tests
+        run: npm test
+      - name: Pack, install the tarball and exercise the CLI
+        run: npm run pack:check
+      - name: doctor answers in JSON without any agent installed
+        run: |
+          node ./bin/madre.mjs doctor --json > doctor.json || true
+          node -e "const r = JSON.parse(require('fs').readFileSync('doctor.json', 'utf8')); if (!Array.isArray(r.agents) || r.agents.length !== 4) process.exit(1); console.log('doctor ok ·', r.node)"
+      - name: Known conditions print for this platform
+        run: node ./bin/madre.mjs doctor --catalog node-version

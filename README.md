@@ -14,7 +14,7 @@
 MU/TH/UR 6000 · INTERFACE 2037 · MADRE IS READY
 
   one local room · four AI coding agents · one shared memory
-  read-only by default · CONTROL when you say so · nothing leaves your machine
+  read-only by default · CONTROL when you say so · no MADRE cloud, no MADRE account: your agents keep their own provider connections
 ```
 
 # MADRE
@@ -215,6 +215,12 @@ La sala ofrece módulos integrados de MADRE y una integración externa opcional.
 - **AHP+** (`@jossuealcala/ahp-plus`): estado verificado del proyecto, checkpoints y handoffs entre sesiones de IA, guardado en `.ahp/`. MADRE lo detecta por `.ahp/manifest.json` y lo instala con `npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms <agentes detectados>`, pidiendo adaptadores solo para los agentes presentes en la máquina que AHP+ soporta (Codex, Claude, OpenCode). Una vez instalado, `/ahp status`, `/ahp check` y `/ahp context` consultan su estado desde el campo de texto.
 
 Instalar el módulo externo AHP+ es la única acción de módulos con la que MADRE escribe en el proyecto. Por eso el botón muestra primero el comando exacto y exige confirmación; la ejecución se transmite en vivo a la sala y queda registrada en el log como `extension.install.started`, `extension.install.output` y `extension.install.finished`. La consulta a los agentes sigue siendo de solo lectura.
+
+## Modelo de amenazas, en corto
+
+- **Qué sale de la máquina.** MADRE no tiene nube ni cuenta: no almacena credenciales, no tiene backend y no envía nada por sí sola. Pero cada agente es una CLI que llama a su proveedor: lo que un agente lee del proyecto puede viajar a OpenAI, Anthropic o Google según su configuración. El único envío propio de MADRE es el del sentinel, y solo si lo activas.
+- **Escritura.** En #1 nadie escribe. En #2 la escritura queda confinada a `.pulse/out/<lease>/` por las reglas de cada CLI. En #3 CONTROL el proyecto entero es escribible salvo `.git/`, `.pulse/` y los `.env`: Claude, Gemini y OpenCode reciben esa prohibición como regla previa; Codex entra con su sandbox `workspace-write`, que no admite excluir rutas dentro del proyecto, así que en su caso la zona prohibida se hace cumplir **después del turno**: MADRE compara con el checkpoint y revierte lo que tocó ahí. Eso protege lo que persiste, no impide que un efecto intermedio ocurra durante el turno. Es deuda conocida: prevención antes que restauración. Mientras tanto, si un `.env` es crítico, no des CONTROL a Codex o baja su MAX MODE.
+- **Memoria.** Todo lo dicho fuera de GHOST queda en `~/.pulse/rooms/<sala>/` y se reinyecta en los prompts de todos los agentes de esa sala. GHOST es la salida para lo que no debe recordarse.
 
 ## Sentinel de errores y feedback
 

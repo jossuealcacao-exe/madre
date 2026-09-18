@@ -3993,7 +3993,10 @@ function motherAlarm() {
   const alert = document.querySelector('#nostromo-alert');
   if (!alert) return;
   const pool = nostromo.altered ? [...MOTHER_ALTERED_LINES, ...MOTHER_LINES] : MOTHER_LINES;
-  const lines = pool[Math.floor(Math.random() * pool.length)];
+  // Never the same set twice in a row.
+  const choices = pool.filter((set) => set !== nostromo.lastLines);
+  const lines = choices[Math.floor(Math.random() * choices.length)];
+  nostromo.lastLines = lines;
   const nodes = alert.querySelectorAll('.line');
   nodes.forEach((node, index) => { node.textContent = lines[index] ?? ''; });
   const left = (nostromo.maxStrikes ?? 8) - strikes.count;
