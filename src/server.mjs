@@ -11,6 +11,10 @@ import { RoomMemory } from './memory.mjs';
 import { createEmbedder } from './embeddings.mjs';
 import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
+import { ErrorSentinel } from './sentinel-errors.mjs';
+
+const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
+let crashHandlersInstalled = false;
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
@@ -89,6 +93,8 @@ export async function createPulseServer({
   loginRunners = {},
   probe = probeAll,
   imageKey = resolveGeminiKey,
+  // The sentinel's outbound channel; tests hand in a fake.
+  reportFetch = globalThis.fetch,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
@@ -319,6 +325,29 @@ export async function createPulseServer({
     return inFlight;
   }
   const unsubscribe = room.subscribe(() => { void broadcastPending(); });
+
+  // The error sentinel: failures MU/TH/UR cannot classify, and crashes, become
+  // redacted reports in the ledger. Sending them anywhere is the human's call.
+  const telemetry = (await readConfig(root)).telemetry ?? {};
+  const sentinel = new ErrorSentinel({
+    pkg: PACKAGE,
+    agents,
+    settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || Boolean(telemetry.autoReport), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? '' },
+    fetchImpl: reportFetch,
+    emit: (type, payload) => room.record(type, payload),
+    save: async (settings) => { const current = await readConfig(root); await updateConfig(root, { telemetry: { ...(current.telemetry ?? {}), ...settings } }); },
+  });
+  sentinel.seed(historicalEvents);
+  const unsubscribeSentinel = room.subscribe((event) => { void sentinel.observe(event).catch(() => null); });
+  if (!testMode && !crashHandlersInstalled) {
+    crashHandlersInstalled = true;
+    for (const origin of ['uncaughtException', 'unhandledRejection']) {
+      process.on(origin, (error) => {
+        console.error(`MADRE ${origin}:`, error);
+        void sentinel.crash(error, origin).catch(() => null);
+      });
+    }
+  }
   const unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
   const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
   poller.unref();
@@ -532,6 +561,23 @@ export async function createPulseServer({
       }
       // NOSTROMO: the archive is behind the project designation, like CONTROL.
       const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
+      // Sentinel: reports, settings, the manual road (a prefilled issue) and the automatic one.
+      if (request.method === 'GET' && url.pathname === '/api/sentinel') {
+        return sendJson(response, 200, { reports: sentinel.reports(), settings: sentinel.settings(), environment: sentinel.environment(), feedbackUrl: sentinel.feedbackUrl() });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/sentinel/settings') {
+        const patch = await body(request).catch(() => ({}));
+        return sendJson(response, 200, { settings: await sentinel.setSettings(patch) });
+      }
+      const sentinelMatch = url.pathname.match(/^\/api\/sentinel\/([a-f0-9]{10})\/(issue|send)$/);
+      if (sentinelMatch && request.method === (sentinelMatch[2] === 'issue' ? 'GET' : 'POST')) {
+        if (sentinelMatch[2] === 'issue') {
+          const issue = sentinel.issueUrl(sentinelMatch[1]);
+          return issue ? sendJson(response, 200, { url: issue }) : sendJson(response, 404, { error: 'No such report, or no repository to file it in.' });
+        }
+        const outcome = await sentinel.send(sentinelMatch[1]);
+        return sendJson(response, outcome.ok ? 200 : (outcome.status === 404 || outcome.status === 412 ? outcome.status : 502), outcome);
+      }
       if (request.method === 'GET' && url.pathname === '/api/mother') {
         return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });
       }
@@ -658,6 +704,7 @@ export async function createPulseServer({
     shutdown.then(() => {
       void broadcastPending().then(() => {
         unsubscribe();
+        unsubscribeSentinel();
     unsubscribeGhost();
         for (const client of clients.keys()) client.end();
         clients.clear();

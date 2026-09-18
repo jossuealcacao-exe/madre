@@ -1008,3 +1008,13 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 :root[data-scheme="light"] .system.alert, :root[data-scheme="light"] .system.control, :root[data-scheme="light"] .system.mother, :root[data-scheme="light"] .system.mother-alert { text-shadow: none; }
 :root[data-scheme="light"] .system.mother-alert { background: color-mix(in srgb, var(--terror) 4%, transparent); }
 :root[data-scheme="light"] .crew-label { text-shadow: none; animation: none; }
+
+/* MU/TH/UR: the sentinel section. */
+.mother-section.sentinel .sentinel-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 6px 0 12px; }
+.mother-section.sentinel .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph-dim); cursor: pointer; }
+.mother-section.sentinel .toggle input { accent-color: #9bff66; }
+.mother-section.sentinel .toggle input:disabled + * , .mother-section.sentinel .toggle:has(input:disabled) { opacity: .6; cursor: default; }
+.mother-section.sentinel button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.mother-section.sentinel button:hover { background: var(--ph-faint); }
+.mother-section.sentinel .sentinel-report.sent { opacity: .65; }
+.mother-section.sentinel .note { margin: 0 0 10px; font-size: 10px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }

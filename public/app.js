@@ -78,6 +78,7 @@ const state = {
   sessions: {},            // id -> { state, detail } from the last probe
   loginLogs: new Map(),    // id -> streamed sign-in lines
   models: {},              // id -> { models, default, note } from /api/models
+  reports: new Map(),      // id -> sentinel report (unknown conditions and crashes)
   capabilities: {},        // id -> { read, imageIn, write, imageGen, web }
   pending: [],             // attachments uploaded for the next message
   projectRoot: '',
@@ -1669,6 +1670,8 @@ function renderEventNode(event) {
     case 'memory.forgotten': node = renderForgotten(event); break;
     case 'memory.noted': attachMemoryHint(event); return;
     case 'mother.alert': node = renderMotherAlert(event); break;
+    case 'sentinel.report': state.reports.set(event.payload.id, { ...event.payload }); if (!replaying) { renderMotherSentinel(); toast(`MU/TH/UR › ${event.payload.kind === 'crash' ? 'a crash' : 'an unknown condition'} was recorded by the sentinel. Open MU/TH/UR to report it.`); } return;
+    case 'sentinel.sent': { const report = state.reports.get(event.payload.id); if (report) report.sent = { ok: event.payload.ok, status: event.payload.status ?? null, error: event.payload.error ?? null, at: event.timestamp }; if (!replaying) renderMotherSentinel(); return; }
     case 'limit.warning': node = renderWarning(event); break;
     case 'limit.cleared': node = renderCleared(event); break;
     case 'usage.recorded': applyUsage(event); return;
@@ -4085,12 +4088,97 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
   }
 });
 
+
+/* ---------- MU/TH/UR: the sentinel. Unknown conditions and crashes, redacted, ready to report. ---------- */
+
+const sentinelUI = { section: document.querySelector('#mother-sentinel'), settings: null, feedbackUrl: null, loaded: false };
+async function loadSentinel() {
+  try {
+    const data = await fetch('/api/sentinel').then((response) => response.json());
+    sentinelUI.settings = data.settings;
+    sentinelUI.feedbackUrl = data.feedbackUrl;
+    for (const report of data.reports ?? []) state.reports.set(report.id, report);
+    sentinelUI.loaded = true;
+  } catch { /* the room works without it */ }
+  renderMotherSentinel();
+}
+function renderMotherSentinel() {
+  const section = sentinelUI.section;
+  if (!section) return;
+  section.replaceChildren();
+  const reports = [...state.reports.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
+  const unsent = reports.filter((report) => !report.sent?.ok).length;
+  section.append(el('h3', null, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`));
+  const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
+  const what = el('p', 'note', 'THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.');
+  section.append(what);
+  const controls = el('div', 'sentinel-controls');
+  const auto = el('label', 'toggle');
+  const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(settings.autoReport); box.disabled = !settings.canSend;
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    try {
+      const result = await fetch('/api/sentinel/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ autoReport: box.checked }) }).then((response) => response.json());
+      sentinelUI.settings = result.settings;
+      toast(`MU/TH/UR › auto-report ${result.settings.autoReport ? 'on: new unknown conditions go to the author\'s collector, redacted.' : 'off: reports stay here until you send one.'}`);
+    } catch (error) { box.checked = !box.checked; toast(`Could not save: ${error.message}`); }
+    finally { box.disabled = !sentinelUI.settings?.canSend; renderMotherSentinel(); }
+  });
+  auto.append(box, `AUTO-REPORT UNKNOWN CONDITIONS${settings.canSend ? '' : ' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)'}`);
+  controls.append(auto);
+  const feedback = el('button', null, '✎ FEEDBACK TO THE AUTHOR');
+  feedback.type = 'button';
+  feedback.addEventListener('click', () => openFeedback());
+  controls.append(feedback);
+  section.append(controls);
+  for (const report of reports.slice(0, 20)) {
+    const rowNode = paint(el('div', `mother-record sentinel-report${report.sent?.ok ? ' sent' : ''}`), report.agent ?? 'room');
+    rowNode.append(el('span', 't', formatTime(report.at)));
+    rowNode.append(el('span', 'a', report.kind === 'crash' ? 'CRASH' : `@${report.agent ?? 'room'}`));
+    const errorNode = el('span', 'e', String(report.error).split('\n')[0].slice(0, 200));
+    errorNode.title = report.error;
+    rowNode.append(errorNode);
+    const actions = el('span', 'k');
+    if (report.count > 1) actions.append(el('span', 'none', `×${report.count}`));
+    actions.append(el('span', 'none', report.fingerprint));
+    if (report.sent?.ok) actions.append(el('span', 'none', 'SENT'));
+    const issue = el('button', null, 'REPORT ON GITHUB ↗');
+    issue.type = 'button';
+    issue.addEventListener('click', async () => {
+      const result = await fetch(`/api/sentinel/${report.id}/issue`).then((response) => response.json()).catch(() => ({}));
+      if (result.url) window.open(result.url, '_blank', 'noopener'); else toast('MU/TH/UR › no repository to file this in.');
+    });
+    actions.append(issue);
+    if (settings.canSend && !report.sent?.ok) {
+      const send = el('button', null, 'SEND');
+      send.type = 'button';
+      send.addEventListener('click', async () => {
+        send.disabled = true;
+        const result = await fetch(`/api/sentinel/${report.id}/send`, { method: 'POST' }).then((response) => response.json()).catch((error) => ({ ok: false, error: error.message }));
+        toast(result.ok ? 'MU/TH/UR › report sent to the author\'s collector.' : `MU/TH/UR › could not send: ${result.error ?? 'unknown error'}`);
+        void loadSentinel();
+      });
+      actions.append(send);
+    }
+    rowNode.append(actions);
+    section.append(rowNode);
+  }
+}
+function openFeedback() {
+  const go = (url) => { if (url) window.open(url, '_blank', 'noopener'); else toast('MU/TH/UR › no repository configured for feedback.'); };
+  if (sentinelUI.feedbackUrl) { go(sentinelUI.feedbackUrl); return; }
+  fetch('/api/sentinel').then((response) => response.json()).then((data) => { sentinelUI.feedbackUrl = data.feedbackUrl; go(data.feedbackUrl); }).catch(() => go(null));
+}
+document.querySelector('#feedback-button')?.addEventListener('click', openFeedback);
+mother.dialog?.addEventListener?.('close', () => { /* keep reports; nothing to reset */ });
+void loadSentinel();
+
 settingsUI.button.addEventListener('click', async () => {
   settingsUI.open = !settingsUI.open;
   state.settingsOpen = settingsUI.open;
   settingsUI.button.setAttribute('aria-pressed', String(settingsUI.open));
   settingsUI.section.hidden = !settingsUI.open;
-  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known']) {
+  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel']) {
     const node = document.getElementById(id);
     if (node) node.hidden = settingsUI.open;
   }
@@ -4102,7 +4190,7 @@ mother.dialog.addEventListener('close', () => {
   state.settingsOpen = false;
   settingsUI.button.setAttribute('aria-pressed', 'false');
   settingsUI.section.hidden = true;
-  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known']) {
+  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel']) {
     const node = document.getElementById(id);
     if (node) node.hidden = false;
   }
