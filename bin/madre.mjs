@@ -102,12 +102,15 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
 } else if (command === 'doctor') {
   const agents = await detectAgents();
   const probes = await probeAll(agents);
+  const { localIntelligence, madreOnline } = await import('../src/setup.mjs');
+  const ollama = await localIntelligence();
   const report = agents.map((agent) => ({ ...agent, session: probes[agent.id] }));
   const result = {
-    ok: report.some((agent) => isOnline(agent, agent.session)),
+    ok: report.some((agent) => isOnline(agent, agent.session)) || madreOnline(ollama),
     node: process.version,
     project: projectRoot,
     agents: report,
+    ollama: { running: Boolean(ollama.running), chatModel: ollama.chatModel ?? null, embedModel: ollama.embedModel ?? null, madre: madreOnline(ollama) },
   };
 
   if (has('--json')) {
@@ -119,6 +122,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
       const session = agent.detected ? ` · ${agent.session.state}${agent.session.detail ? ` (${agent.session.detail})` : ''}` : '';
       console.log(`  ${agent.label.padEnd(10)} ${mark}${agent.version ? ` · ${agent.version}` : ''}${session}`);
     }
+    console.log(`  ${'Ollama'.padEnd(10)} ${ollama.disabled ? 'ignored (PULSE_OLLAMA=0)' : ollama.running ? `running${ollama.chatModel ? ` · @madre with ${ollama.chatModel}` : ' · no chat model yet'}${ollama.embedModel ? ` · embeddings ${ollama.embedModel}` : ''}` : 'not running · optional'}`);
     console.log(`\n  Project    ${result.project}`);
     console.log(result.ok ? '\nReady to start. Known conditions and fixes: `madre doctor --catalog [query]`.\n' : '\nNo agent is online. Run `madre setup`. Known conditions and fixes: `madre doctor --catalog`.\n');
   }
@@ -138,7 +142,8 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   if (process.stdin.isTTY && process.stdout.isTTY && !has('--no-setup')) {
     const agents = await detectAgents();
     const probes = await probeAll(agents);
-    if (!agents.some((agent) => isOnline(agent, probes[agent.id]))) {
+    const { localIntelligence, madreOnline } = await import('../src/setup.mjs');
+    if (!agents.some((agent) => isOnline(agent, probes[agent.id])) && !madreOnline(await localIntelligence())) {
       const { action } = await runSetup({ projectRoot, stateRoot });
       if (action !== 'start') process.exit(0);
     }

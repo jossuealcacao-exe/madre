@@ -27,6 +27,15 @@ Una sola sala para conversar con los agentes de IA que ya están instalados en t
 npx @jossuealcala/madre start
 ```
 
+**Primeros cinco minutos.** Node 22.5 o superior y al menos una de estas CLIs con sesión: Codex, Claude Code, Gemini CLI, OpenCode; u Ollama corriendo con un modelo de chat. Entra a la carpeta del proyecto y corre el comando de arriba.
+
+1. MADRE detecta qué CLIs tienes y quién tiene sesión. Si nadie está en línea, MU/TH/UR abre un asistente en la terminal: elige un número para correr el sign-in de esa CLI, `s` para abrir la sala.
+2. La sala abre en `http://127.0.0.1:4317`. Escribe a un agente con `TO @agente`; el modo del mensaje va en el chip de al lado (`#1 EXCHANGE` por defecto, solo lectura).
+3. Para conectar o reconectar una IA sin terminal: MU/TH/UR → `⚙ CONNECTIONS`. Codex y Claude tienen botón `SIGN IN`; Gemini y OpenCode muestran el comando exacto para su propio prompt. Ninguna credencial pasa por MADRE.
+4. Si tienes Ollama, MODULES → OLLAMA ya está encendido: la memoria se embebe localmente y `@madre` aparece en la fila.
+5. `⚙ CONNECTIONS → MEMORY` ajusta quién destila y cada cuánto; `◉ NOSTROMO` muestra lo que la sala recuerda.
+
+
 Tres nombres, tres capas. **MADRE** es el producto: lo que instalas, abres en el navegador y ves junto al logo del latido. **PULSE** es el canal sobre el que corre una sala: el registro de eventos, el bloque de delegación entre agentes, los homes aislados de cada CLI y la carpeta `.pulse/` donde caen los artefactos; por eso esos identificadores conservan su nombre. **MU/TH/UR** es la voz operativa dentro de MADRE: diagnóstico, conexiones y ajustes. El comando `pulse` sigue funcionando como alias de `madre`.
 
 ## Uso

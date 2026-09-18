@@ -48,13 +48,21 @@ const glyphFor = (agent, probe) => {
   return '◌';
 };
 
+// Ollama, when it runs with a chat model, is an agent of its own: @madre. Tests hand in a probe.
+export async function localIntelligence(env = process.env) {
+  if (env.PULSE_OLLAMA === '0') return { running: false, chatModel: null, embedModel: null, disabled: true };
+  const { probeOllama } = await import('./ollama.mjs');
+  return probeOllama({ env });
+}
+export const madreOnline = (ollama) => Boolean(ollama?.running && ollama.chatModel);
+
 export function isOnline(agent, probe) {
   return Boolean(agent.ready && probe?.state === 'signed-in');
 }
 
 /* ---------- report (pure, testable) ---------- */
 
-export function renderReport({ agents, probes, projectRoot, config = {}, palette = makePalette({ colors: false }), width = 72 }) {
+export function renderReport({ agents, probes, projectRoot, config = {}, palette = makePalette({ colors: false }), width = 72, ollama = null }) {
   const p = palette;
   const bar = p.phosphor('▌');
   const lines = [];
@@ -83,11 +91,19 @@ export function renderReport({ agents, probes, projectRoot, config = {}, palette
       lines.push(`  ${p.dim('│')}   ${p.dim(model ? `model ${model}` : 'model: provider default (set one if the default provider has no session)')}`);
     }
   }
+  if (ollama && !ollama.disabled) {
+    const local = madreOnline(ollama);
+    const status = local ? p.phosphor('RUNNING   ') : ollama.running ? p.warn('NO MODEL  ') : p.dim('NOT FOUND ');
+    const detail = local ? `@madre in the room · ${ollama.chatModel}${ollama.embedModel ? ` · embeddings ${ollama.embedModel}` : ''}` : ollama.running ? 'pull a chat model: ollama pull qwen2.5:3b' : 'optional: ollama serve · local memory, embeddings and @madre';
+    lines.push(`  ${p.dim('│')} ${p.phosphor('◉')} ${p.phosphor('OLLAMA'.padEnd(9))} ${p.dim('local'.padEnd(10))} ${status} ${p.dim(detail)}`);
+  }
   lines.push(`  ${p.dim('└' + '─'.repeat(Math.max(4, width - 4)))}`);
   const online = agents.filter((agent) => isOnline(agent, probes[agent.id]));
+  const local = madreOnline(ollama);
   const verdict = online.length
-    ? `${online.length} OF ${agents.length} AGENTS ONLINE. ROOM CAN OPEN.`
-    : `NO AGENT ONLINE. CONFIGURE ONE TO OPEN THE ROOM.`;
+    ? `${online.length} OF ${agents.length} AGENTS ONLINE${local ? ' · @MADRE LOCAL' : ''}. ROOM CAN OPEN.`
+    : local ? 'NO CLI ONLINE · @MADRE (LOCAL) IS. THE ROOM CAN OPEN WITH MEMORY ALONE; CONNECT A CLI TO WORK ON FILES.'
+      : `NO AGENT ONLINE. CONFIGURE ONE TO OPEN THE ROOM.`;
   lines.push('');
   lines.push(`  ${p.phosphor('MOTHER')}${p.dim(' ›')} ${p.bold(verdict)}`);
   return lines.join('\n');
@@ -119,12 +135,14 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
   let agents = await detectAgents();
   let probes = await probeAll(agents);
   let config = await loadConfig(stateRoot);
-  log(renderReport({ agents, probes, projectRoot, config, palette: p }));
+  const ollama = await localIntelligence();
+  log(renderReport({ agents, probes, projectRoot, config, palette: p, ollama }));
+  const anyoneOnline = () => agents.some((agent) => isOnline(agent, probes[agent.id])) || madreOnline(ollama);
 
   if (!interactive) {
     // Without a terminal there is nobody to walk through; report and hand
     // back. `online` lets the caller decide (exit codes, CI checks).
-    return { action: 'report', online: agents.some((agent) => isOnline(agent, probes[agent.id])), agents, probes };
+    return { action: 'report', online: anyoneOnline(), agents, probes, ollama };
   }
 
   const rl = createInterface({ input: stdin, output: stdout });
@@ -136,7 +154,7 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
       const answer = (await ask('select')).trim().toLowerCase();
       if (answer === 'q') return { action: 'quit', agents, probes };
       if (answer === 's') {
-        if (!agents.some((agent) => isOnline(agent, probes[agent.id]))) {
+        if (!anyoneOnline()) {
           log(`  ${p.warn('MOTHER ›')} no agent online; the room would open empty. Configure one first or press s again to open anyway.`);
           const again = (await ask('start anyway? [y/N]')).trim().toLowerCase();
           if (again !== 'y') continue;
@@ -147,7 +165,7 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
         agents = await detectAgents();
         probes = await probeAll(agents);
         config = await loadConfig(stateRoot);
-        log(renderReport({ agents, probes, projectRoot, config, palette: p }));
+        log(renderReport({ agents, probes, projectRoot, config, palette: p, ollama }));
         continue;
       }
       if (answer === 'm') {
