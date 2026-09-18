@@ -13,7 +13,7 @@ Dónde va MADRE después de la beta 0.2. Tres líneas, en orden de dependencia, 
 Antes de más superficie:
 
 - **`room.mjs` en piezas** · hecho: `src/room/{prompt,context,control,escalation,archivist,vectors,budget,ghost,attachments}`; el motor de turnos y planes queda en `room.mjs`.
-- **CONTROL con Codex:** prevención antes que restauración. Explorar exclusiones del sandbox o turno sobre copia sincronizada.
+- **CONTROL con Codex** · hecho en parte: `.env`, `.pulse/`, `.madre/` y `settings.local.json` en solo lectura durante el turno (`src/room/guard.mjs`); `.git/` sigue por restauración.
 - **Catálogo y sentinel** siguen absorbiendo cada condición que aparezca en manos ajenas.
 
 ## 2 · MADRE AI · la destilación que aprende (0.3)

@@ -3,6 +3,7 @@
 // restored on the spot, and the checkpoint stays for UNDO. One holder at a time.
 
 import { createCheckpoint, diffCheckpoint, restoreCheckpoint } from '../checkpoint.mjs';
+import { guardForbidden } from './guard.mjs';
 
 export class ControlDesk {
   #projectRoot;
@@ -23,10 +24,13 @@ export class ControlDesk {
     const checkpoint = await createCheckpoint(this.#projectRoot, { id: `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${messageId.slice(0, 8)}`, label: `MADRE control @${agent.id}` });
     checkpoint.agent = agent.id;
     this.#checkpoints.set(checkpoint.id, checkpoint);
-    const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString() };
+    // Prevention first: .env files and MADRE's folders are read-only for the length of the turn.
+    const guard = await guardForbidden(this.#projectRoot);
+    const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString(), guard };
     this.#holder = run;
     const lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabledScopes, write: true }, control: true, checkpoint };
-    const announcement = { checkpointId: checkpoint.id, commit: checkpoint.commit, head: checkpoint.head, agent: agent.id, messageId, message: `@${agent.id} holds CONTROL of the project. Checkpoint ${checkpoint.commit.slice(0, 7)} taken; UNDO will be one click.` };
+    const guarded = guard.locked.length ? ` ${guard.locked.length} forbidden path${guard.locked.length === 1 ? '' : 's'} locked read-only for the turn (${guard.locked.slice(0, 4).join(', ')}${guard.locked.length > 4 ? ', …' : ''}).` : '';
+    const announcement = { checkpointId: checkpoint.id, commit: checkpoint.commit, head: checkpoint.head, agent: agent.id, messageId, guarded: guard.locked, message: `@${agent.id} holds CONTROL of the project. Checkpoint ${checkpoint.commit.slice(0, 7)} taken; UNDO will be one click.${guarded}` };
     return { run, lease, announcement };
   }
 
@@ -45,9 +49,11 @@ export class ControlDesk {
     return changes;
   }
 
-  // Whichever way the turn ended, the seat is free again; the checkpoint stays.
-  release(run) {
-    if (run && this.#holder === run) this.#holder = null;
+  // Whichever way the turn ended, the seat is free again and the locks come off; the checkpoint stays.
+  async release(run) {
+    if (!run) return;
+    await run.guard?.release?.();
+    if (this.#holder === run) this.#holder = null;
   }
 
   async undo(checkpointId) {

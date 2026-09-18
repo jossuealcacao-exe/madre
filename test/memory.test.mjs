@@ -842,3 +842,35 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
     await rm(root, { recursive: true, force: true });
   }
 });
+
+import { guardForbidden, forbiddenTargets } from '../src/room/guard.mjs';
+import { writeFile as writeFileG, mkdir as mkdirG, stat as statG } from 'node:fs/promises';
+
+test('CONTROL guard: .env files and MADRE folders are read-only while the turn runs and writable again after', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-guard-'));
+  try {
+    await writeFileG(join(root, '.env'), 'SECRET=1');
+    await mkdirG(join(root, 'api'), { recursive: true });
+    await writeFileG(join(root, 'api', '.env.local'), 'X=1');
+    await mkdirG(join(root, '.pulse', 'out'), { recursive: true });
+    await mkdirG(join(root, 'node_modules', 'x'), { recursive: true });
+    await writeFileG(join(root, 'node_modules', 'x', '.env'), 'ignored');
+    await writeFileG(join(root, 'app.js'), 'ok');
+    const targets = (await forbiddenTargets(root)).map((t) => t.path.slice(root.length + 1)).sort();
+    assert.deepEqual(targets, ['.env', '.pulse', 'api/.env.local']);
+    const guard = await guardForbidden(root);
+    assert.deepEqual([...guard.locked].sort(), ['.env', '.pulse/', 'api/.env.local']);
+    await assert.rejects(writeFileG(join(root, '.env'), 'SECRET=2'), /EACCES|EPERM/);
+    await assert.rejects(writeFileG(join(root, '.pulse', 'new.txt'), 'x'), /EACCES|EPERM/);
+    await writeFileG(join(root, 'app.js'), 'still writable');
+    await guard.release();
+    await writeFileG(join(root, '.env'), 'SECRET=3');
+    await writeFileG(join(root, '.pulse', 'new.txt'), 'x');
+    assert.equal(((await statG(join(root, '.env'))).mode & 0o200) !== 0, true, 'write bit is back');
+    const again = await guardForbidden(root);
+    await again.release();
+  } finally {
+    await guardForbidden(root).then((g) => g.release()).catch(() => {});
+    await rm(root, { recursive: true, force: true });
+  }
+});

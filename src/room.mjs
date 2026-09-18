@@ -823,7 +823,7 @@ export class Room {
       return null;
     } finally {
       // Release CONTROL whichever way the turn ended; the checkpoint stays for UNDO.
-      this.#controlDesk.release(controlRun);
+      await this.#controlDesk.release(controlRun);
     }
   }
 

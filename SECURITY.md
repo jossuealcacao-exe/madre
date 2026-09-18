@@ -13,7 +13,7 @@ Please include the MADRE version (`madre doctor --json`), the platform, which ag
 
 ## Known, accepted for the beta
 
-- In `#3 CONTROL`, Codex's `workspace-write` sandbox cannot exclude paths inside the project; `.git/`, `.pulse/` and `.env` files are restored from the checkpoint **after** the turn instead of being blocked before. Do not grant CONTROL to Codex where an intermediate effect on those files would matter.
+- In `#3 CONTROL`, `.env` files, `.pulse/`, `.madre/` and `.claude/settings.local.json` are made read-only for the length of the turn and restored from the checkpoint afterwards; `.git/` stays writable because the CLIs need it and is only restored after the turn. An agent that changes permissions on purpose is caught by that restoration, not prevented.
 - Everything said outside `#0 GHOST` is kept in the room's memory and reaches every agent of that room. Use GHOST for what must not be remembered.
 
 NOBODY DELETES MOTHER'S MEMORY. EVERYTHING ELSE IS FAIR GAME.
