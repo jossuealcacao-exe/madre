@@ -74,6 +74,7 @@ export class Room {
   #distillTimer = null;
   #distilling = null;      // the run in flight, if any
   #distillFailures = new Map(); // fromSequence -> failed attempts on that batch
+  #distillBench = new Map();    // agent -> until (ms): an archivist that failed sits out for a while
   #memoryServer;           // MCP descriptor handed to every turn so the agent can query the memory itself
   #mother = null;          // MotherChannel: her coded words to the crew
   #embedTimer = null;
@@ -428,7 +429,12 @@ export class Room {
       const batch = this.#memory.undistilled({ maxChars: this.#distill.maxChars });
       if (!batch.entries.length) return null;
       const busy = new Set([...this.#turns.values()].map((turn) => turn.agent).filter(Boolean));
-      const agent = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy, invokers: this.#invokers });
+      const now = Date.now();
+      for (const [id, until] of this.#distillBench) if (until <= now) this.#distillBench.delete(id);
+      const benched = new Set(this.#distillBench.keys());
+      // Everyone benched? Then the bench is cleared rather than leaving the archive to rot.
+      let agent = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy, invokers: this.#invokers, benched });
+      if (!agent && benched.size) { this.#distillBench.clear(); agent = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy, invokers: this.#invokers }); }
       if (!agent) return null;
       const started = Date.now();
       try {
@@ -449,7 +455,10 @@ export class Room {
         this.#distillFailures.set(batch.fromSequence, attempts);
         const skipped = attempts >= 3;
         if (skipped) { this.#memory.markDistilled(batch.sequences); this.#distillFailures.delete(batch.fromSequence); }
-        const report = { agent: agent.id, error: failureMessage(error), attempts, skipped, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, considered: batch.entries.length, remaining: batch.remaining };
+        // The archivist that failed sits out for half an hour; the next run picks someone else.
+        this.#distillBench.set(agent.id, Date.now() + 30 * 60 * 1000);
+        const next = pickDistiller(this.#agents, { preferred: this.#distill.agent, busy: new Set(), invokers: this.#invokers, benched: new Set(this.#distillBench.keys()) });
+        const report = { agent: agent.id, error: failureMessage(error), attempts, skipped, next: next?.id ?? null, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, considered: batch.entries.length, remaining: batch.remaining };
         await this.#emit('memory.distilled', report);
         return report;
       }

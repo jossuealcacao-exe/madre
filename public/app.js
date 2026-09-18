@@ -1148,13 +1148,17 @@ function renderThinking(event) {
 
 // The archivist reports: which agent read which stretch of the room and how many notes it kept.
 function renderDistilled(event) {
-  const { agent, added, considered, fromSequence, throughSequence, remaining, error, skipped, total } = event.payload;
+  const { agent, added, considered, fromSequence, throughSequence, remaining, error, skipped, total, next } = event.payload;
   const node = el('div', `system memory${error ? ' warn' : ''}`);
   node.style.setProperty('--agent', agentColor(agent));
   node.append('memory · ');
   node.append(el('b', 'who', `@${agent}`));
   if (error) {
-    node.append(` could not distil #${fromSequence}–#${throughSequence}: ${error}${skipped ? ' · batch skipped' : ' · will retry'}`);
+    // One calm sentence; the whole record waits in the tooltip.
+    const first = String(error).split(/\s+last output:|\s+stderr:/i)[0].replace(/\s+/g, ' ').trim();
+    const brief = el('span', 'brief', first.length > 120 ? `${first.slice(0, 119)}…` : first);
+    brief.title = String(error).slice(0, 2000);
+    node.append(` could not distil #${fromSequence}–#${throughSequence}: `, brief, skipped ? ' · batch skipped' : next ? ` · @${next} takes the next run` : ' · will retry');
   } else {
     node.append(` read ${considered} exchange${considered === 1 ? '' : 's'} (#${fromSequence}–#${throughSequence}) · kept ${added} memor${added === 1 ? 'y' : 'ies'}${Number.isFinite(total) ? ` · ${total} in the archive` : ''}${remaining ? ` · ${remaining} waiting` : ''}`);
   }

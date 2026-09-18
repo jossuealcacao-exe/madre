@@ -268,6 +268,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .system .from { color: var(--from, var(--text-2)); } .system .to { color: var(--to, var(--text-2)); }
 .system.warn { color: var(--warn); }
 .system.memory { color: var(--text-3); } .system.memory .who { color: var(--agent, var(--text-2)); }
+.system.memory .brief { text-transform: none; letter-spacing: 0; color: var(--text-2); }
 
 /* NOSTROMO: the archive as a small solar system. One colour per kind of memory. */
 :root { --mem-decision: #ffb000; --mem-fact: #9bff66; --mem-preference: #d78cff; --mem-question: #5fd6ff; --nostromo-sun: #ff2a1f; }

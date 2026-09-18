@@ -12,8 +12,9 @@ export const MAX_MEMORY_CHARS = 240;
 
 // The agent that pays for distillation: the human's pick if it is usable, else
 // the cheapest ready one that has an adapter and no turn in flight.
-export function pickDistiller(agents, { preferred = null, busy = new Set(), invokers = null } = {}) {
-  const usable = (agent) => agent?.detected && agent.ready && !busy.has(agent.id) && (!invokers || Boolean(invokers[agent.adapter]));
+// `benched` holds agents that failed recently: they sit out until their bench time passes.
+export function pickDistiller(agents, { preferred = null, busy = new Set(), invokers = null, benched = new Set() } = {}) {
+  const usable = (agent) => agent?.detected && agent.ready && !busy.has(agent.id) && !benched.has(agent.id) && (!invokers || Boolean(invokers[agent.adapter]));
   if (preferred) {
     const chosen = agents.find((agent) => agent.id === preferred);
     if (usable(chosen)) return chosen;

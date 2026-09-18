@@ -251,8 +251,10 @@ test('distiller: the room distils with the cheapest agent after enough exchanges
     assert.match(failed.error, /gemini quota exhausted/);
     assert.equal(failed.skipped, false);
     assert.equal(memory.lastDistilled(), before);
+    assert.equal(failed.next, 'codex', 'the next cheapest archivist is named');
     const retried = await room.distillNow();
     assert.equal(retried.error, undefined);
+    assert.notEqual(retried.agent, 'gemini', 'a failed archivist sits out; the retry goes to another agent');
     assert.ok(memory.lastDistilled() > before);
     await room.shutdown();
     memory.close();
