@@ -15,6 +15,20 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
+
+// RIPLEY's bridge, injected into every page it renders: reports the page's path
+// and title to the viewer and forwards runtime errors and failed resources.
+// It talks only upward through postMessage; the frame stays an opaque origin.
+export const RIPLEY_BRIDGE = '<script data-ripley>(function(){var p=location.pathname;function send(m){try{parent.postMessage(Object.assign({ripley:1},m),"*")}catch(e){}}send({type:"page",path:p,title:document.title});addEventListener("DOMContentLoaded",function(){send({type:"page",path:p,title:document.title})});addEventListener("error",function(e){if(e.target&&e.target!==window&&!e.message){var u=e.target.src||e.target.href||"";send({type:"error",message:"Failed to load "+(u||e.target.tagName.toLowerCase()),source:u,line:0});return}send({type:"error",message:String(e.message||"error"),source:e.filename||"",line:e.lineno||0})},true);addEventListener("unhandledrejection",function(e){var r=e.reason;send({type:"error",message:"Unhandled promise rejection: "+String(r&&r.message||r),source:"",line:0})})})();</script>';
+export function injectRipleyBridge(body) {
+  const text = Buffer.isBuffer(body) ? body.toString('utf8') : String(body);
+  if (text.includes('data-ripley')) return Buffer.from(text);
+  const head = text.match(/<head[^>]*>/i);
+  if (head) return Buffer.from(text.slice(0, head.index + head[0].length) + RIPLEY_BRIDGE + text.slice(head.index + head[0].length));
+  const html = text.match(/<html[^>]*>/i);
+  if (html) return Buffer.from(text.slice(0, html.index + html[0].length) + RIPLEY_BRIDGE + text.slice(html.index + html[0].length));
+  return Buffer.from(RIPLEY_BRIDGE + text);
+}
 // The author's collector: SEND and AUTO-REPORT are available out of the box; AUTO-REPORT stays off until the human turns it on.
 const DEFAULT_REPORT_URL = 'https://madre-reports.jossue-alcala-o.workers.dev/v1/reports';
 import { QuotaMonitor } from './quota-monitor.mjs';
@@ -537,9 +551,12 @@ export async function createPulseServer({
         if (file.status !== 200) return sendJson(response, file.status, { error: file.error });
         const isPage = /\.(html?|xhtml)$/i.test(relative);
         const origin = `${request.headers['x-forwarded-proto'] ?? 'http'}://${request.headers.host ?? '127.0.0.1'}`;
+        // Pages carry RIPLEY's bridge: one inline script that tells the viewer which
+        // page loaded and forwards the page's own errors. Nothing else is touched.
+        const bodyOut = isPage ? injectRipleyBridge(file.body) : file.body;
         const headers = {
           'content-type': isPage ? 'text/html; charset=utf-8' : file.contentType,
-          'content-length': file.size,
+          'content-length': Buffer.byteLength(bodyOut),
           'cache-control': 'no-store',
           'x-content-type-options': 'nosniff',
           'referrer-policy': 'no-referrer',
@@ -547,7 +564,7 @@ export async function createPulseServer({
         };
         if (isPage) headers['content-security-policy'] = `sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' ${origin}; style-src 'unsafe-inline' ${origin}; img-src ${origin} data: blob:; font-src ${origin} data:; media-src ${origin} data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'`;
         response.writeHead(200, headers);
-        return response.end(file.body);
+        return response.end(bodyOut);
       }
       if (request.method === 'POST' && url.pathname === '/api/attachments') {
         let bytes;

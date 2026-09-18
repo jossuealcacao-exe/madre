@@ -217,6 +217,10 @@
       </dialog>
       <dialog id="viewer" class="viewer" aria-label="File viewer">
         <header class="viewer-head">
+          <span class="viewer-nav" id="viewer-nav" hidden>
+            <button id="viewer-back" class="nav" type="button" title="Back to the previous page" aria-label="Back" disabled>‹</button>
+            <button id="viewer-reload" class="nav" type="button" title="Reload the page" aria-label="Reload">↻</button>
+          </span>
           <span id="viewer-path" class="viewer-path"></span>
           <span id="viewer-selection" class="viewer-selection" hidden></span>
           <button id="viewer-mode" class="viewer-review viewer-mode" type="button" hidden>SOURCE</button>
@@ -224,6 +228,7 @@
           <a id="viewer-open" class="viewer-open" target="_blank" rel="noopener noreferrer">OPEN RAW ↗</a>
           <button id="viewer-close" class="mother-close" type="button">CLOSE ×</button>
         </header>
+        <div id="viewer-errors" class="viewer-errors" hidden></div>
         <div id="viewer-body" class="viewer-body"></div>
         <div id="viewer-menu" class="viewer-menu" role="menu" hidden></div>
       </dialog>

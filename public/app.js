@@ -309,7 +309,7 @@ viewerUI.review?.addEventListener('click', (event) => {
   if (viewerUI.menu.hidden) showViewerMenu(rect.left, rect.bottom + 6); else hideViewerMenu();
 });
 viewer.dialog.addEventListener('click', (event) => { if (!viewerUI.menu.hidden && !viewerUI.menu.contains(event.target) && event.target !== viewerUI.review) hideViewerMenu(); });
-viewer.dialog.addEventListener('close', () => { hideViewerMenu(); setSelection(null, null); });
+viewer.dialog.addEventListener('close', () => { hideViewerMenu(); setSelection(null, null); ripley.frame = null; ripley.history = []; ripleyClearErrors(); if (ripley.nav) ripley.nav.hidden = true; });
 
 function codeView(text, { line = null, lines = null } = {}) {
   const pre = el('pre', 'code');
@@ -345,6 +345,9 @@ const RIPLEY_KIND = (name) => (/\.(html?|xhtml)$/i.test(name ?? '') ? 'html' : /
 const viewerMode = { button: document.querySelector('#viewer-mode'), preview: false, kind: null, text: '', src: '', line: null, lines: null };
 
 function showViewerSource() {
+  if (ripley.nav) ripley.nav.hidden = true;
+  ripleyClearErrors();
+  ripley.frame = null;
   const pre = codeView(viewerMode.text, { line: viewerMode.line, lines: viewerMode.lines });
   viewer.body.replaceChildren(pre);
   if (!state.ripley && viewerMode.kind) {
@@ -356,9 +359,88 @@ function showViewerSource() {
   else if (viewerMode.line) setSelection(viewerMode.line, viewerMode.line);
   pre.querySelector('.hl')?.scrollIntoView?.({ block: 'center' });
 }
-// The sealed frame: no scripts, no network, no storage; Markdown renders in place.
+// RIPLEY's frame, its small bar (back, reload), its history inside the project,
+// what the page reports up (which page, which errors), and reloads when an
+// agent changes the file on screen.
+const ripley = {
+  nav: document.querySelector('#viewer-nav'),
+  back: document.querySelector('#viewer-back'),
+  reload: document.querySelector('#viewer-reload'),
+  errors: document.querySelector('#viewer-errors'),
+  frame: null,
+  history: [],      // preview URLs visited in this session of the viewer
+  current: null,    // project-relative path of the page on screen
+  root: 'project',
+};
+function ripleyPathFromPreview(pathname) {
+  const match = String(pathname ?? '').match(/^\/preview\/(project|attachments)\/(.*)$/);
+  return match ? { root: match[1], path: decodeURIComponent(match[2]) } : null;
+}
+function ripleyNavigate(url, { push = true } = {}) {
+  if (!ripley.frame) return;
+  if (push && ripley.history.at(-1) !== url) ripley.history.push(url);
+  ripley.frame.src = url;
+  ripley.back.disabled = ripley.history.length < 2;
+}
+function ripleyClearErrors() { if (ripley.errors) { ripley.errors.hidden = true; ripley.errors.replaceChildren(); } }
+function ripleyShowError({ message, source, line }) {
+  if (!ripley.errors || !viewerMode.preview) return;
+  const where = source ? `${ripleyPathFromPreview(new URL(source, window.location.origin).pathname)?.path ?? source}${line ? `:${line}` : ''}` : (ripley.current ? `${ripley.current}${line ? `:${line}` : ''}` : '');
+  const row = el('div', 'err-row');
+  row.append(el('span', 'msg', message));
+  if (where) row.append(el('span', 'where', where));
+  const ask = el('button', null, 'ASK THE ROOM');
+  ask.type = 'button';
+  ask.title = 'Put this error and the file into the composer';
+  ask.addEventListener('click', () => {
+    const reference = ripley.current ? `!${ripley.current}${line ? `:${line}` : ''} ` : '';
+    els.input.value = `${reference}RIPLEY reports an error in the page: ${message}${where ? ` (${where})` : ''}. Find the cause and propose the fix.`;
+    viewer.dialog.close();
+    autosize();
+    els.input.focus();
+  });
+  row.append(ask);
+  ripley.errors.append(row);
+  while (ripley.errors.children.length > 3) ripley.errors.firstChild.remove();
+  ripley.errors.hidden = false;
+}
+window.addEventListener?.('message', (event) => {
+  const data = event.data;
+  if (!data || data.ripley !== 1 || !ripley.frame || event.source !== ripley.frame.contentWindow) return;
+  if (data.type === 'page') {
+    const at = ripleyPathFromPreview(data.path);
+    if (at) {
+      ripley.current = at.path;
+      ripley.root = at.root;
+      viewer.path.textContent = `${at.root === 'project' ? '/' : ''}${at.path}${data.title ? ` · ${data.title}` : ''}`;
+      viewer.open.href = `/api/files?root=${at.root}&path=${encodeURIComponent(at.path)}`;
+    }
+  } else if (data.type === 'error') {
+    ripleyShowError(data);
+  }
+});
+ripley.back?.addEventListener('click', () => {
+  if (ripley.history.length < 2) return;
+  ripley.history.pop();
+  ripleyClearErrors();
+  ripleyNavigate(ripley.history.at(-1), { push: false });
+});
+ripley.reload?.addEventListener('click', () => { if (ripley.frame) { ripleyClearErrors(); ripley.frame.src = ripley.frame.src; } });
+// An agent changed what is on screen (CONTROL) or created it (a lease): reload the page.
+function ripleyMaybeReload(paths) {
+  if (!viewerMode.preview || !ripley.frame || !ripley.current || !viewer.dialog.open) return;
+  const page = ripley.current;
+  const dir = page.includes('/') ? page.slice(0, page.lastIndexOf('/') + 1) : '';
+  const hit = paths.some((path) => path === page || (dir ? path.startsWith(dir) : !path.includes('/')));
+  if (!hit) return;
+  ripleyClearErrors();
+  ripley.frame.src = ripley.frame.src;
+  toast('MU/TH/UR › RIPLEY reloaded the page: an agent changed it.');
+}
+
 function showViewerPreview() {
   if (viewerMode.kind === 'markdown') {
+    ripley.nav.hidden = true;
     const doc = el('article', 'viewer-markdown bubble');
     doc.append(renderMarkdown(viewerMode.text));
     viewer.body.replaceChildren(doc);
@@ -369,8 +451,16 @@ function showViewerPreview() {
   frame.setAttribute('sandbox', 'allow-scripts');
   frame.setAttribute('referrerpolicy', 'no-referrer');
   frame.title = `RIPLEY preview of ${viewer.path.textContent}`;
-  frame.src = previewUrl(viewerMode.src);
+  ripley.frame = frame;
+  ripley.history = [];
+  ripleyClearErrors();
+  const start = previewUrl(viewerMode.src);
+  const at = ripleyPathFromPreview(start);
+  ripley.current = at?.path ?? null;
+  ripley.root = at?.root ?? 'project';
   viewer.body.replaceChildren(frame);
+  ripley.nav.hidden = false;
+  ripleyNavigate(start);
 }
 // /api/files?root=project&path=a/b.html → /preview/project/a/b.html, so the page's relative links resolve.
 function previewUrl(filesUrl) {
@@ -1706,12 +1796,12 @@ function renderEventNode(event) {
     case 'lease.missing': node = renderLeaseMissing(event); break;
     case 'mode.requested': node = renderModeRequest(event); break;
     case 'control.started': node = renderControlStarted(event); break;
-    case 'control.changed': node = renderControlChanged(event); break;
+    case 'control.changed': node = renderControlChanged(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); break;
     case 'control.reverted': node = renderControlReverted(event); break;
     case 'mode.granted':
     case 'mode.denied': settleModeRequest(event); return;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
-    case 'artifacts.created': attachArtifacts(event); return;
+    case 'artifacts.created': attachArtifacts(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); return;
     case 'command.output': node = renderCommandCard(event); break;
     default: return;
   }

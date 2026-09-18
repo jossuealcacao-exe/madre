@@ -814,13 +814,22 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
     assert.match(csp, new RegExp(`script-src 'unsafe-inline' http://127\\.0\\.0\\.1:${server.address().port};`), 'project scripts only through MADRE');
     assert.match(csp, /connect-src 'none'/, 'no network from inside');
     assert.equal(html.headers.get('referrer-policy'), 'no-referrer');
-    assert.match(await html.text(), /<h1>Hello<\/h1>/);
+    const page = await html.text();
+    assert.match(page, /<h1>Hello<\/h1>/);
+    assert.match(page, /^<script data-ripley>/, 'the bridge leads a page without <head>');
+    assert.equal(Number(html.headers.get('content-length')), Buffer.byteLength(page), 'length counts the bridge');
+    await writeFile(join(project, 'headed.html'), '<!doctype html><html><head><title>T</title></head><body>x</body></html>');
+    const headed = await fetch(`${base}/preview/project/headed.html`).then((response) => response.text());
+    assert.match(headed, /<head><script data-ripley>[\s\S]*<\/script><title>T<\/title>/, 'the bridge goes first inside <head>');
+    assert.equal((headed.match(/data-ripley/g) ?? []).length, 1);
+    assert.match(headed, /postMessage/);
     const svg = await fetch(`${base}/preview/project/logo.svg`);
     assert.match(svg.headers.get('content-type'), /^image\/svg\+xml/);
     // Assets a page links relatively are served on the same route, without a page policy.
     const js = await fetch(`${base}/preview/project/app.js`);
     assert.equal(js.status, 200);
     assert.match(js.headers.get('content-type'), /javascript/);
+    assert.equal(await js.text(), 'console.log(1)', 'assets are never touched');
     assert.equal(js.headers.get('content-security-policy'), null);
     assert.equal((await fetch(`${base}/preview/project/../outside.html`)).status, 404);
     assert.equal((await fetch(`${base}/preview/project/..%2Foutside.html`)).status, 404);

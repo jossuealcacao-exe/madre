@@ -2,6 +2,13 @@
 
 Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
+## 0.2.4 · 2026-09-18
+
+### RIPLEY, tres piezas
+- Barra mínima en el visor: atrás y recargar, con la ruta y el título de la página en pantalla. Sin URL editable: RIPLEY es un visor del proyecto, no un navegador general.
+- Recarga sola cuando un agente cambia la página abierta o algo de su carpeta, en CONTROL o en un lease.
+- Los errores de la página se ven: un puente de una línea dentro del marco reenvía `window.onerror`, promesas rechazadas y recursos que no cargan; el visor los muestra en una franja con `ASK THE ROOM`, que deja el error y el archivo en el compositor.
+
 ## 0.2.3 · 2026-09-18
 
 ### RIPLEY navega
