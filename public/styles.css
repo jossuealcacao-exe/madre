@@ -1032,6 +1032,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .settings .memory-form .toggle { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; text-transform: uppercase; }
 .settings .memory-form .toggle input { accent-color: #9bff66; width: auto; }
 .settings .memory-form .full .note { margin-right: 12px; }
+.settings .memory-form .dataset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--ph-faint); }
 .module-card .ollama-status { margin: 0 0 10px; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 10px; letter-spacing: .1em; }
 .module-card .ollama-status dt { color: var(--ph-dim); } .module-card .ollama-status dd { margin: 0; color: rgba(210, 255, 190, .85); overflow-wrap: anywhere; }
 .module-card .actions .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }

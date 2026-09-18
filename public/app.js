@@ -1771,6 +1771,7 @@ function renderEventNode(event) {
     case 'memory.distilled': node = renderDistilled(event); break;
     case 'memory.forgotten': node = renderForgotten(event); break;
     case 'memory.noted': attachMemoryHint(event); return;
+    case 'dataset.exported': return;
     case 'agents.updated': {
       for (const agent of event.payload.agents ?? []) {
         const known = state.agents.get(agent.id);
@@ -3496,6 +3497,25 @@ function renderSettings() {
       who.append(toggle);
     }
     mform.append(who);
+    // The dataset behind MADRE AI: export what the room kept, train outside, @madre picks the result up.
+    const dataset = el('div', 'full dataset-row');
+    const exportButton = el('button', null, 'EXPORT DATASET');
+    exportButton.type = 'button';
+    exportButton.title = 'Write train.jsonl and valid.jsonl next to the ledger, redacted, in chat format for mlx-lm';
+    const datasetNote = el('span', 'note', 'LOADING…');
+    const showDataset = (payload) => {
+      const d = payload?.dataset;
+      datasetNote.textContent = d ? `${d.pairs} PAIRS · ${d.turns} TURNS · ${d.notes} NOTES · TRAIN ${d.train} · VALID ${d.valid} · ${new Date(d.exportedAt).toLocaleString()}${payload.trained ? ` · TRAINED MODEL ${payload.trained.toUpperCase()} IN USE` : ' · NO TRAINED MODEL YET · SEE docs/training'}` : 'NOT EXPORTED YET · PRESS EXPORT, THEN TRAIN WITH docs/training';
+    };
+    fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => { datasetNote.textContent = 'DATASET UNAVAILABLE'; });
+    exportButton.addEventListener('click', async () => {
+      exportButton.disabled = true;
+      try { const payload = await fetch('/api/dataset', { method: 'POST' }).then((response) => response.json()); showDataset(payload); toast(`MU/TH/UR › dataset exported: ${payload.dataset.pairs} pairs in ${payload.dir}`); }
+      catch (error) { toast(`Dataset export failed: ${error.message}`); }
+      finally { exportButton.disabled = false; }
+    });
+    dataset.append(exportButton, datasetNote);
+    mform.append(dataset);
     if (mem.envWins) mform.append(el('span', 'note full', 'ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.'));
     mform.addEventListener('submit', (event) => event.preventDefault());
     section.append(mform);

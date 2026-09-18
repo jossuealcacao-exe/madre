@@ -79,6 +79,26 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
     console.log('');
   }
   process.exitCode = 0;
+} else if (command === 'dataset') {
+  // Export the room's dataset without opening the room: the same files the server writes.
+  const { createHash } = await import('node:crypto');
+  const { join, basename, resolve: resolvePath } = await import('node:path');
+  const { homedir } = await import('node:os');
+  const { realpath } = await import('node:fs/promises');
+  const { EventStore } = await import('../src/event-store.mjs');
+  const { RoomMemory } = await import('../src/memory.mjs');
+  const { exportDataset } = await import('../src/dataset.mjs');
+  const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
+  const canonical = await realpath(projectRoot).catch(() => resolvePath(projectRoot));
+  const roomId = `${basename(canonical) || 'root'}-${createHash('sha256').update(canonical).digest('hex').slice(0, 16)}`;
+  const roomDir = join(root, 'rooms', roomId);
+  const store = await new EventStore(join(roomDir, 'events.jsonl')).initialize();
+  const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).initialize(store).catch(() => null);
+  const result = await exportDataset({ events: await store.readAll(), notes: memory ? memory.memories({ limit: 5000 }) : [], dir: join(roomDir, 'dataset'), project: basename(canonical), home: homedir() });
+  memory?.close();
+  if (has('--json')) console.log(JSON.stringify(result, null, 2));
+  else console.log(`\nMADRE dataset · ${result.project}\n\n  pairs      ${result.pairs} (${result.turns} turns · ${result.notes} notes)\n  train      ${result.train}\n  valid      ${result.valid}\n  by agent   ${Object.entries(result.byAgent).map(([id, n]) => `@${id} ${n}`).join(' · ') || '-'}\n  folder     ${result.dir}\n\n  Train it: docs/training/README.md (mlx-lm on Apple Silicon), then \`ollama create madre-${result.project.toLowerCase().replace(/[^a-z0-9]+/g, '-')}\` and @madre picks it up.\n`);
+  process.exitCode = 0;
 } else if (command === 'doctor') {
   const agents = await detectAgents();
   const probes = await probeAll(agents);

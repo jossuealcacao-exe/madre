@@ -30,7 +30,7 @@ Hoy la destilación produce notas. La idea: que produzca **una inteligencia prop
 - Crece solo: cada nota destilada y cada intercambio indexado amplían lo que `@madre` puede contestar. Es la "IA de MADRE" visible desde el primer día, sin entrenar nada.
 - Sirve como juez barato: ¿esta petición ya se resolvió? ¿contradice una decisión?
 
-### 2c · Destilación real: un modelo por proyecto
+### 2c · Destilación real: un modelo por proyecto · dataset y receta hechos (`madre dataset`, `docs/training/`); el entrenamiento corre fuera, `@madre` toma `madre-<proyecto>`
 - **Dataset primero.** Exportar pares (contexto, respuesta) del ledger, sin GHOST, redactados, con etiquetas de agente y modo, a `~/.pulse/rooms/<sala>/dataset.jsonl`. Acumula desde ahora aunque el entrenamiento llegue después.
 - **Entrenamiento local periódico:** LoRA sobre un modelo pequeño (Qwen2.5-Coder 7B o similar) con `mlx-lm` en Apple Silicon, cuando la sala está en reposo y el dataset creció lo suficiente. El resultado se registra en Ollama como `madre-<proyecto>:<fecha>` y `@madre` pasa a usarlo.
 - **Evaluación antes de promover:** un conjunto fijo de preguntas del proyecto con respuestas conocidas; el modelo nuevo sustituye al anterior solo si contesta mejor. Todo queda en el ledger.

@@ -15,6 +15,7 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
 import { moduleById, describeModules, findModuleRoute } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
+import { exportDataset } from './dataset.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -140,6 +141,10 @@ export async function createPulseServer({
   const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, agent: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
   async function wireOllama({ probe: doProbe = true } = {}) {
     if (doProbe) ollama = await ollamaProbe();
+    // A model trained on this room (docs/training) is named madre-<project>: @madre uses it when it exists.
+    const slug = basename(canonicalProjectRoot).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const trained = (ollama.models ?? []).map((model) => model.name).find((name) => name.startsWith(`madre-${slug}`)) ?? null;
+    ollama = { ...ollama, madreModel: trained };
     const settings = await ollamaSettings();
     const useEmbeddings = ollama.running && settings.enabled && settings.embeddings && ollama.embedModel;
     const useArchivist = ollama.running && settings.enabled && settings.archivist && ollama.chatModel;
@@ -150,14 +155,14 @@ export async function createPulseServer({
     }
     if (room) room.setInvoker('ollama', useArchivist ? ollamaInvoker({ host: ollama.host, model: ollama.chatModel }) : null);
     // @madre: the fifth agent, present whenever Ollama has a chat model and the human left it on.
-    const fifth = madreAgent(ollama, { enabled: settings.enabled && settings.agent !== false });
+    const fifth = madreAgent({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }, { enabled: settings.enabled && settings.agent !== false });
     const index = agents.findIndex((agent) => agent.id === MADRE_AGENT_ID);
     let changed = false;
     if (fifth.ready && index < 0) { agents.push(fifth); changed = true; }
     else if (fifth.ready && (agents[index].version !== fifth.version)) { Object.assign(agents[index], fifth); changed = true; }
     else if (!fifth.ready && index >= 0) { agents.splice(index, 1); changed = true; }
     if (room) {
-      room.setInvoker(MADRE_ADAPTER, fifth.ready ? madreInvoker({ memory, ollama: () => ollama, fetchImpl: reportFetch }) : null);
+      room.setInvoker(MADRE_ADAPTER, fifth.ready ? madreInvoker({ memory, ollama: () => ({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }), fetchImpl: reportFetch }) : null);
       if (changed) await room.record('agents.updated', { agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local) })), removed: fifth.ready ? [] : [MADRE_AGENT_ID], reason: fifth.ready ? `@madre is in the room · ${fifth.version}` : '@madre left the room: Ollama has no chat model running' });
     }
     return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist), agent: fifth.ready };
@@ -700,6 +705,17 @@ export async function createPulseServer({
         const payload = request.method === 'POST' ? await body(request).catch(() => ({})) : {};
         const result = await moduleRoute.route.handler(await moduleContext(), { request, url, params: moduleRoute.params, payload });
         return sendJson(response, result.status ?? 200, result.body ?? {});
+      }
+      // The dataset behind MADRE AI: exported on demand next to the ledger.
+      if (url.pathname === '/api/dataset' && (request.method === 'GET' || request.method === 'POST')) {
+        const dir = join(roomDir, 'dataset');
+        if (request.method === 'GET') {
+          const manifest = await readFile(join(dir, 'manifest.json'), 'utf8').then(JSON.parse).catch(() => null);
+          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null });
+        }
+        const result = await exportDataset({ events: await store.readAll(), notes: memory ? memory.memories({ limit: 5000 }) : [], dir, project: basename(canonicalProjectRoot), home: homedir() });
+        await room.record('dataset.exported', { pairs: result.pairs, turns: result.turns, notes: result.notes, train: result.train, valid: result.valid, dir });
+        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null });
       }
       if (request.method === 'GET' && url.pathname === '/api/mother') {
         return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });
