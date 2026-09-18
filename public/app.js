@@ -954,6 +954,7 @@ function renderAssistantMessage(event) {
   bubble.append(renderMarkdown(text));
   if (originalText) bubble.append(ashOriginal(originalText, ashCode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
+  bubble.append(bubbleActions({ text: originalText ?? text, sender, sequence: event.sequence }));
   col.append(bubble);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
@@ -963,6 +964,81 @@ function renderAssistantMessage(event) {
   state.lastSender = sender;
   return node;
 }
+
+// Two quiet icons at the end of a reply: copy it, or answer it through the agent you choose.
+const ICON_COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10.5 5.5V3.9A1.4 1.4 0 0 0 9.1 2.5H3.9A1.4 1.4 0 0 0 2.5 3.9v5.2a1.4 1.4 0 0 0 1.4 1.4h1.6" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_REPLY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5 2.5 7.5l4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 7.5h5.7a4.5 4.5 0 0 1 4.5 4.5v.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+function iconButton(svg, title, className) {
+  const button = el('button', `act ${className}`);
+  button.type = 'button';
+  button.title = title;
+  button.setAttribute('aria-label', title);
+  button.innerHTML = svg;
+  return button;
+}
+function bubbleActions({ text, sender, sequence }) {
+  const bar = el('div', 'bubble-actions');
+  const copy = iconButton(ICON_COPY, 'Copy this reply', 'copy');
+  copy.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      copy.innerHTML = ICON_DONE;
+      copy.classList.add('done');
+      setTimeout(() => { copy.innerHTML = ICON_COPY; copy.classList.remove('done'); }, 1400);
+    } catch {
+      toast('MU/TH/UR › the clipboard is not available here; select the text and copy.');
+    }
+  });
+  const reply = iconButton(ICON_REPLY, 'Reply to this through an agent', 'reply');
+  reply.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const rect = reply.getBoundingClientRect();
+    showReplyMenu({ text, sender, sequence }, rect.left, rect.bottom + 6);
+  });
+  bar.append(copy, reply);
+  return bar;
+}
+
+// "Reply with @agent": the quoted reply becomes the head of the message, the chosen
+// agent becomes the target, and the human writes the directive under it.
+const replyMenu = el('div', 'model-menu reply-menu');
+replyMenu.hidden = true;
+document.body?.append?.(replyMenu);
+function hideReplyMenu() { replyMenu.hidden = true; }
+function showReplyMenu(source, x, y) {
+  if (!replyMenu.hidden && replyMenu.dataset.for === `${source.sequence}`) { hideReplyMenu(); return; }
+  replyMenu.dataset.for = `${source.sequence}`;
+  replyMenu.replaceChildren(el('div', 'model-menu-title', `REPLY TO @${source.sender.toUpperCase()}${source.sequence ? ` · #${source.sequence}` : ''} WITH`));
+  for (const agent of state.agents.values()) {
+    const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
+    item.type = 'button';
+    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? (agent.id === source.sender ? 'the same agent' : label(agent.id)) : `${label(agent.id)} · not ready`));
+    item.disabled = !agent.ready;
+    item.addEventListener('click', () => replyWith(agent.id, source));
+    replyMenu.append(item);
+  }
+  replyMenu.hidden = false;
+  const width = replyMenu.offsetWidth || 260;
+  const height = replyMenu.offsetHeight || 40 + 36 * state.agents.size;
+  replyMenu.style.left = `${Math.max(12, Math.min(x, window.innerWidth - width - 12))}px`;
+  replyMenu.style.top = `${Math.min(y, window.innerHeight - height - 12)}px`;
+}
+function replyWith(agentId, source) {
+  hideReplyMenu();
+  const excerpt = source.text.replace(/\s+/g, ' ').trim();
+  const quoted = excerpt.length > 220 ? `${excerpt.slice(0, 219)}…` : excerpt;
+  const head = `↩ @${source.sender}${source.sequence ? ` #${source.sequence}` : ''}: “${quoted}”\n`;
+  const current = els.input.value.replace(/^↩ @[^\n]*\n/, '');
+  els.input.value = `${head}${current}`;
+  if (state.agents.get(agentId)?.ready) { els.target.value = agentId; renderPicker(); }
+  autosize();
+  els.input.focus();
+  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+}
+document.addEventListener('click', (event) => { if (!replyMenu.hidden && !replyMenu.contains(event.target) && !event.target.closest?.('.bubble-actions .reply')) hideReplyMenu(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hideReplyMenu(); });
 
 function ashOriginal(originalText, info) {
   const details = el('details', 'ash-original');
@@ -1655,6 +1731,8 @@ function applyTheme(mode) {
   const rootElement = document.documentElement ?? { dataset: {} };
   if (mode === 'auto') delete rootElement.dataset.theme;
   else rootElement.dataset.theme = mode;
+  const systemLight = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches;
+  rootElement.dataset.scheme = mode === 'auto' ? (systemLight ? 'light' : 'dark') : mode;
   if (themeButton) {
     themeButton.dataset.theme = mode;
     themeButton.title = mode === 'auto' ? 'Theme · auto (follows the system)' : mode === 'light' ? 'Theme · light' : 'Theme · dark';
@@ -1858,7 +1936,7 @@ renderPicker();
 renderOnboarding();
 for (const event of initial.events) renderEvent(event);
 scrollToEnd();
-matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { renderAgents(); renderPicker(); });
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { applyTheme(themeMode); renderAgents(); renderPicker(); });
 
 /* ---------- live stream ---------- */
 

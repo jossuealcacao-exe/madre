@@ -974,3 +974,37 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .command-card pre .h { color: var(--phosphor); font-weight: 600; }
 
 .module-card select { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .06em; padding: 6px 8px; }
+
+/* Copy and reply at the end of every reply: faint until the pointer is over the bubble. */
+.bubble-actions { display: flex; justify-content: flex-end; gap: 2px; margin: 6px -8px -6px 0; opacity: 0; transition: opacity .18s ease; }
+.bubble:hover .bubble-actions, .bubble:focus-within .bubble-actions { opacity: 1; }
+@media (hover: none) { .bubble-actions { opacity: .55; } }
+.bubble-actions .act { width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--text-3); cursor: pointer; padding: 0; transition: color .15s, background .15s; }
+.bubble-actions .act svg { width: 15px; height: 15px; }
+.bubble-actions .act:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.bubble-actions .act.done { color: var(--phosphor); }
+.reply-menu { width: min(280px, calc(100vw - 24px)); padding: 8px; }
+.reply-menu .model-menu-title { margin: 4px 8px 6px; }
+.reply-menu .item { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px 10px; border-radius: 8px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.reply-menu .item b { color: var(--agent, var(--text)); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; }
+.reply-menu .item span { color: var(--text-3); font-size: 12px; }
+.reply-menu .item:hover { background: color-mix(in srgb, var(--agent, var(--phosphor)) 12%, transparent); }
+.reply-menu .item:disabled { opacity: .4; cursor: default; }
+
+/* Light scheme: the CRT glow is a dark-room effect. In daylight, the room keeps its colours and loses the shine;
+   MU/TH/UR's and NOSTROMO's own screens stay as they are. */
+:root[data-scheme="light"] :not(.mother-frame, .mother-frame *, .nostromo-frame, .nostromo-frame *, .override-frame, .override-frame *) { text-shadow: none; }
+:root[data-scheme="light"] .brand-mark, :root[data-scheme="light"] .brand:hover .brand-mark, :root[data-scheme="light"] .empty-mark { filter: none; }
+:root[data-scheme="light"] .field button[type="submit"] { box-shadow: 0 2px 8px rgba(0, 0, 0, .14); }
+:root[data-scheme="light"] .user .bubble { box-shadow: 0 3px 12px rgba(0, 0, 0, .08); }
+:root[data-scheme="light"] .composer.control .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--terror) 30%, transparent); }
+:root[data-scheme="light"] .composer.creating .field, :root[data-scheme="light"] .composer.creating.ordering .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mode-2) 30%, transparent); }
+:root[data-scheme="light"] .composer.ordering .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brew) 22%, transparent); }
+:root[data-scheme="light"] .composer.dropping .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--phosphor) 35%, transparent); }
+:root[data-scheme="light"] .memory-hint .pill { animation: none; box-shadow: none; }
+:root[data-scheme="light"] .mode-menu .mode-option .tag .dot { box-shadow: none; }
+:root[data-scheme="light"] .picker .mode-chip, :root[data-scheme="light"] .who .badge { text-shadow: none; box-shadow: none; }
+:root[data-scheme="light"] .stop-all.armed { box-shadow: none; }
+:root[data-scheme="light"] .system.alert, :root[data-scheme="light"] .system.control, :root[data-scheme="light"] .system.mother, :root[data-scheme="light"] .system.mother-alert { text-shadow: none; }
+:root[data-scheme="light"] .system.mother-alert { background: color-mix(in srgb, var(--terror) 4%, transparent); }
+:root[data-scheme="light"] .crew-label { text-shadow: none; animation: none; }
