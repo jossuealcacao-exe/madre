@@ -24,7 +24,11 @@ node ./bin/madre.mjs doctor --catalog   # what MU/TH/UR already knows
 ```
 bin/madre.mjs        the CLI · start, doctor, setup
 src/server.mjs       HTTP + SSE, settings, modules, sentinel routes
-src/room.mjs         turns, permission modes, plans, CONTROL, handoff, memory hooks
+src/room.mjs         the turn engine: send, dispatch, turns, plans, handoff, scopes
+src/room/            its pieces: prompt (what an agent reads), context (transcript + recall),
+                     control (checkpoint, diff, undo), escalation (waiting for the human),
+                     archivist (distillation), vectors (embeddings), budget (token window),
+                     ghost (off the record), attachments
 src/adapters/        one file per CLI: Codex, Claude Code, Gemini CLI, OpenCode
 src/memory.mjs       SQLite index, distilled notes, vectors, recall
 src/distiller.mjs    the archivist's prompt and parsing
