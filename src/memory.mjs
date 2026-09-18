@@ -390,7 +390,8 @@ export class RoomMemory {
   // weighted, like entries) and, when few match, the most recent decisions and
   // preferences, all from before `beforeSequence` so they add to the window
   // rather than repeat it, within a character budget.
-  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45 } = {}) {
+  // `fallback` fills a thin match with the latest decisions and preferences; @madre turns it off to stay honest.
+  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true } = {}) {
     if (!this.#db) return [];
     const total = this.memoryCount();
     if (!total) return [];
@@ -406,7 +407,7 @@ export class RoomMemory {
       for (const { id } of rows) scores.set(id, (scores.get(id) ?? 0) + weight);
     }
     const ids = RoomMemory.fuse(scores, semantic).map(([id]) => id);
-    if (ids.length < 2) {
+    if (fallback && ids.length < 2) {
       const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
       for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
     }

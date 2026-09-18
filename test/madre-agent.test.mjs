@@ -49,7 +49,8 @@ test('@madre: answers from the whole archive with a grounded system prompt, and 
     assert.deepEqual(answer.grounded, { notes: 1, quotes: archive.quotes.length });
     assert.equal(calls[0].model, 'qwen2.5:3b');
     assert.match(calls[0].messages[0].content, /You are @madre, the memory of this MADRE project room/);
-    assert.match(calls[0].messages[1].content, /<archive>[\s\S]*Decision: RIPLEY renders HTML[\s\S]*<\/archive>/);
+    assert.match(calls[0].messages[1].content, /ARCHIVE \(what the room remembers[\s\S]*Decision: RIPLEY renders HTML[\s\S]*QUESTION FROM THE HUMAN:\nwhat did we decide about RIPLEY and scripts\?/);
+    assert.ok(!calls[0].messages[1].content.includes('You are @madre.'), 'the room briefing for CLIs is not forwarded, only its transcript');
     let state = running;
     const flaky = madreInvoker({ memory, ollama: () => state, fetchImpl });
     state = down;
@@ -83,6 +84,8 @@ test('@madre: joins the roster when Ollama is up, answers a turn, is never the a
     for (let attempt = 0; attempt < 120 && !reply; attempt += 1) { await new Promise((resolve) => setTimeout(resolve, 25)); reply = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.sender === 'madre'); }
     assert.ok(reply, '@madre answered');
     assert.match(reply.payload.text, /never discussed/);
+    // The usage line lands a moment after the reply; wait for the turn to complete.
+    for (let attempt = 0; attempt < 120 && !(await store.readAll()).some((event) => event.type === 'agent.completed' && event.payload.agent === 'madre'); attempt += 1) await new Promise((resolve) => setTimeout(resolve, 25));
     const usage = (await store.readAll()).find((event) => event.type === 'usage.recorded' && event.payload.agent === 'madre');
     assert.equal(usage.payload.budgetTokens, 0);
     assert.equal(usage.payload.usage.local, true);
