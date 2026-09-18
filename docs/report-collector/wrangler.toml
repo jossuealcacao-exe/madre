@@ -1,0 +1,8 @@
+# MADRE report collector · deploy from this folder with `npx wrangler deploy`
+name = "madre-reports"
+main = "worker.mjs"
+compatibility_date = "2026-09-01"
+
+# Secrets (set with `npx wrangler secret put NAME`):
+#   GITHUB_TOKEN  fine-grained token with Issues: read and write on the repo
+#   GITHUB_REPO   owner/name, e.g. jossuealcacao-exe/madre
