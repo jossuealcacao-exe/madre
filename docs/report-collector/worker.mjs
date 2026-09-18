@@ -9,7 +9,17 @@ export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
     // Health: is the collector configured? (repo is public knowledge; the token is never echoed)
-    if (request.method === 'GET' && path === '/v1/health') return json({ ok: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), repo: env.GITHUB_REPO ?? null, token: env.GITHUB_TOKEN ? `${env.GITHUB_TOKEN.slice(0, 4)}…` : null, version: 3 });
+    if (request.method === 'GET' && path === '/v1/health') {
+      // What GitHub says about the token: its scopes (classic) or none listed (fine-grained), and who it belongs to.
+      let scopes = null, login = null, tokenOk = null;
+      if (env.GITHUB_TOKEN) {
+        const probe = await fetch('https://api.github.com/user', { headers: { authorization: `Bearer ${env.GITHUB_TOKEN}`, 'user-agent': 'madre-report-collector', accept: 'application/vnd.github+json' } }).catch(() => null);
+        tokenOk = Boolean(probe?.ok);
+        scopes = probe?.headers.get('x-oauth-scopes') ?? null;
+        login = probe?.ok ? (await probe.json().catch(() => ({}))).login ?? null : null;
+      }
+      return json({ ok: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), repo: env.GITHUB_REPO ?? null, token: env.GITHUB_TOKEN ? `${env.GITHUB_TOKEN.slice(0, 4)}…` : null, tokenOk, login, scopes, version: 4 });
+    }
     if (request.method !== 'POST' || path !== '/v1/reports') return new Response('MADRE report collector', { status: 404 });
     const text = await request.text();
     if (text.length > MAX_BYTES) return json({ error: 'too large' }, 413);
