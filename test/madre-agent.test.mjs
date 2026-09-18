@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { madreAgent, madreInvoker, gather, MADRE_ADAPTER } from '../src/adapters/madre.mjs';
+import { madreAgent, madreInvoker, gather, actionRequest, briefingFor, MADRE_ADAPTER } from '../src/adapters/madre.mjs';
 import { EventStore } from '../src/event-store.mjs';
 import { RoomMemory } from '../src/memory.mjs';
 import { createPulseServer } from '../src/server.mjs';
@@ -50,6 +50,21 @@ test('@madre: answers from the whole archive with a grounded system prompt, and 
     assert.equal(calls[0].model, 'qwen2.5:3b');
     assert.match(calls[0].messages[0].content, /You are @madre, the memory of this MADRE project room/);
     assert.match(calls[0].messages[1].content, /ARCHIVE \(what the room remembers[\s\S]*Decision: RIPLEY renders HTML[\s\S]*QUESTION FROM THE HUMAN:\nwhat did we decide about RIPLEY and scripts\?/);
+    assert.match(calls[0].messages[1].content, /REMINDER: You are @madre[\s\S]*not Claude, Codex, Gemini or OpenCode[\s\S]*QUESTION FROM THE HUMAN/, 'identity repeated right before the question');
+    assert.equal(calls[0].options.num_ctx, 8192, 'a window wide enough that the system prompt is never dropped');
+
+    // Orders it cannot carry out are answered here, in the human's language, without the model.
+    const before = calls.length;
+    const declined = await invoke({ prompt: 'p', text: 'Directiva, convoca a una reunión con el crew y comparte los detalles del proyecto' });
+    assert.match(declined.text, /Solo respondo desde la memoria[\s\S]*@codex, @claude, @gemini u @opencode/);
+    assert.deepEqual([declined.declined, declined.usage.totalTokens, declined.usage.local, calls.length], ['action', 0, true, before]);
+    assert.match((await invoke({ prompt: 'p', text: 'Convene the crew and tell @codex to start' })).text, /I only answer from the room's memory/);
+    assert.equal(actionRequest('No realizaste la reunión convoca a todos')?.startsWith('Solo respondo'), true);
+    assert.equal(actionRequest('¿qué decidimos sobre la reunión del lunes?'), null, 'questions pass through');
+    assert.equal(actionRequest('what did we decide about RIPLEY and scripts?'), null);
+    assert.equal(actionRequest('Which files did codex create yesterday'), null);
+    assert.equal(actionRequest('resume lo que se dijo sobre el empaque'), null, 'a recall request is not an action');
+    assert.match(briefingFor({ prompt: 'p', text: 'q', archive: '' }), /nothing in the archive[\s\S]*REMINDER[\s\S]*QUESTION FROM THE HUMAN:\nq$/);
     assert.ok(!calls[0].messages[1].content.includes('You are @madre.'), 'the room briefing for CLIs is not forwarded, only its transcript');
     let state = running;
     const flaky = madreInvoker({ memory, ollama: () => state, fetchImpl });

@@ -7,7 +7,12 @@ export const DEFAULT_OLLAMA_HOST = 'http://127.0.0.1:11434';
 // Embedding models we know how to talk to, best first.
 export const EMBED_MODELS = ['nomic-embed-text', 'mxbai-embed-large', 'snowflake-arctic-embed', 'all-minilm', 'bge-m3'];
 // Chat models that follow instructions well enough to distil, best first for a 16 GB machine.
-export const CHAT_MODELS = ['qwen2.5-coder:7b', 'qwen2.5:7b', 'llama3.1:8b', 'gemma3:4b', 'qwen2.5:3b', 'llama3.2:3b', 'qwen2.5-coder:1.5b', 'qwen2.5:1.5b', 'llama3.2:1b'];
+// General chat models first: @madre speaks for the room in the human's language, and coder
+// models drift into other voices. A coder is taken only when nothing else is there.
+export const CHAT_MODELS = ['qwen2.5:7b', 'llama3.1:8b', 'gemma3:4b', 'qwen2.5:3b', 'llama3.2:3b', 'qwen2.5:1.5b', 'llama3.2:1b', 'qwen2.5-coder:7b', 'qwen2.5-coder:1.5b'];
+// Ollama's default window is 4k tokens and it drops the OLDEST text when a prompt overflows:
+// the system prompt goes first. Every MADRE call asks for a wider window.
+export const DEFAULT_NUM_CTX = 8192;
 export const RECOMMENDED = { embed: 'nomic-embed-text', chat: 'qwen2.5:3b' };
 
 export function ollamaHost(env = process.env) {
@@ -64,10 +69,10 @@ export function ollamaEmbedder({ host = ollamaHost(), model, fetchImpl = globalT
 }
 
 // One answer from a local model. `json: true` asks Ollama for a JSON object.
-export async function ollamaGenerate({ host = ollamaHost(), model, prompt, system = null, json = false, fetchImpl = globalThis.fetch, timeoutMs = 180000, temperature = 0.2 } = {}) {
+export async function ollamaGenerate({ host = ollamaHost(), model, prompt, system = null, json = false, fetchImpl = globalThis.fetch, timeoutMs = 180000, temperature = 0.2, numCtx = DEFAULT_NUM_CTX } = {}) {
   const started = Date.now();
   const messages = [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }];
-  const response = await fetchImpl(`${host}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages, stream: false, options: { temperature }, ...(json ? { format: 'json' } : {}) }), signal: AbortSignal.timeout(timeoutMs) });
+  const response = await fetchImpl(`${host}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages, stream: false, options: { temperature, num_ctx: numCtx }, ...(json ? { format: 'json' } : {}) }), signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) throw new Error(`Ollama HTTP ${response.status}: ${(await response.text().catch(() => '')).slice(0, 200)}`);
   const payload = await response.json();
   const inputTokens = payload.prompt_eval_count ?? 0;

@@ -28,9 +28,32 @@ export function briefingFor({ prompt, text, archive }) {
   return [
     transcript ? `RECENT TRANSCRIPT (oldest first):\n${transcript}` : null,
     `ARCHIVE (what the room remembers that matches the question; notes first, then exact quotes):\n${archive || '(nothing in the archive matches this question)'}`,
+    // Small models weigh the last thing they read: the identity goes here too, after
+    // thousands of characters spoken by Claude, Codex, Gemini and OpenCode.
+    REMINDER,
     `QUESTION FROM THE HUMAN:\n${text}`,
   ].filter(Boolean).join('\n\n');
 }
+
+const REMINDER = `REMINDER: You are @madre, the local memory of this room. You are not Claude, Codex, Gemini or OpenCode; the quotes above are theirs, not yours. Never claim to be another assistant or company. Answer as @madre, from the archive only.`;
+
+// Orders @madre cannot carry out: convening, delegating, running, writing. They are answered
+// here, in the human's language, without calling the model. Questions pass through.
+const ACTION_ES = /(^|[\s,.;:!¡])(convoca|convócalos|convócala|reúne|reune|delega|coordina|pídele|pidele|pídeles|pideles|dile|diles|ordena|manda|envía|envia|ejecuta|corre|instala|implementa|refactoriza|despliega|escribe|crea|modifica|edita|borra|elimina|genera|haz|hazlo|realiza|lanza|arranca|reinicia|configura|publica|sube)\b/i;
+const ACTION_EN = /(^|[\s,.;:!])(convene|summon|gather|schedule|delegate|coordinate|ask @|tell @|order|run|execute|install|implement|refactor|deploy|write|create|modify|edit|delete|remove|generate|build|commit|push|publish|launch|restart|configure|make (?:a|the|it)|call a meeting|set up)\b/i;
+const QUESTION = /[?¿]|(^|[^\p{L}])(qué|cuál|cuáles|cuándo|dónde|quién|quiénes|cómo|por qué|what|which|when|where|who|how|why|did|do we|have we|is there)(?!\p{L})/iu;
+const SPANISH = /[áéíóúñ¿¡]|\b(el|la|los|las|una?|que|para|con|de|todos|reunión|reunion)\b/i;
+
+export function actionRequest(text = '') {
+  const body = String(text).trim().replace(/^@?madre[,:]?\s*/i, '').replace(/^\p{L}+,\s*/u, '');
+  if (!body || QUESTION.test(body)) return null;
+  if (!ACTION_ES.test(body) && !ACTION_EN.test(body)) return null;
+  return SPANISH.test(body)
+    ? 'Solo respondo desde la memoria de la sala: no convoco, no delego, no ejecuto ni escribo. Para eso escríbele a @codex, @claude, @gemini u @opencode, los que estén en la fila. Si quieres, pregúntame qué recuerda la sala sobre esto y te lo cito.'
+    : 'I only answer from the room\'s memory: I do not convene, delegate, run or write. For that, write to @codex, @claude, @gemini or @opencode, whichever is in the row. If you like, ask me what the room remembers about this and I will quote it.';
+}
+
+const NO_USAGE = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, reasoningTokens: 0, totalTokens: 0, costUsd: 0, source: 'madre', local: true };
 
 // What the whole archive says about this request: notes first, then exact quotes.
 export async function gather(memory, text, { maxChars = 7000 } = {}) {
@@ -52,6 +75,8 @@ export function madreInvoker({ memory, ollama, fetchImpl = globalThis.fetch }) {
     const state = typeof ollama === 'function' ? ollama() : ollama;
     if (!state?.running || !state.chatModel) throw new Error('@madre needs Ollama running with a chat model. Open MODULES → OLLAMA.');
     const question = text || prompt.match(/User message: ([\s\S]*)$/)?.[1] || prompt.slice(-2000);
+    const declined = actionRequest(question);
+    if (declined) return { text: declined, usage: { ...NO_USAGE }, grounded: { notes: 0, quotes: 0 }, declined: 'action' };
     const archive = await gather(memory, question);
     const briefing = briefingFor({ prompt, text: question, archive: archive.text });
     const answer = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: SYSTEM, prompt: briefing, fetchImpl, timeoutMs, temperature: 0.1 });

@@ -45,6 +45,7 @@ const PLACEHOLDERS = {
   ghost: 'Off the record. Ask anything; nothing is saved, nobody else will remember it.',
   control: 'Control armed. Say what to change in the project; every action runs without asking.',
   expendable: 'Type here, human. MOTHER is listening.',
+  memory: 'Ask what the room remembers. @madre answers from memory with citations; it does not act.',
 };
 let winkTimer = null;
 const LINE_PX = 21;
@@ -727,6 +728,11 @@ function renderPicker() {
     const text = paint(el('span', 'pick-label'), current.id);
     text.append('to ');
     text.append(el('b', null, `@${current.id}`));
+    if (current.local) {
+      const note = el('span', 'pick-note', 'memory · answers, does not act');
+      note.title = '@madre runs on this machine and speaks only for what the room said. To convene the crew or change files, write to a CLI agent.';
+      text.append(note);
+    }
     const modeChip = el('button', `mode-chip m${state.mode}`);
     modeChip.type = 'button';
     modeChip.append(el('b', null, `#${state.mode}`), `${MODES[state.mode].label} ▾`);
@@ -2336,7 +2342,8 @@ function updateCrewLabel() {
           : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
 }
 function updatePlaceholder() {
-  els.input.placeholder = state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
+  const local = Boolean(state.agents.get(els.target.value)?.local);
+  els.input.placeholder = state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
 }
 function setOrder937(on, { wink = false } = {}) {
   state.ashCode = on;
