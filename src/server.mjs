@@ -43,7 +43,8 @@ import { extensionById, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
-import { checkForUpdate, detectInstall, updateCommand, releaseUrl } from './updates.mjs';
+import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
+import { spawn } from 'node:child_process';
 import { totalmem } from 'node:os';
 import { discoverModels } from './models.mjs';
 import { setImageModule } from './capabilities.mjs';
@@ -785,6 +786,26 @@ export async function createPulseServer({
       // Release channel: current, latest on npm, and the command for how this copy runs.
       if (request.method === 'GET' && url.pathname === '/api/version') {
         return sendJson(response, 200, await versionView({ force: url.searchParams.get('force') === '1' }));
+      }
+      // One click: install the newer version and come back on the same port. The room records it,
+      // closes its listener so the port is free, hands the command to a detached shell and exits.
+      if (request.method === 'POST' && url.pathname === '/api/updates/apply') {
+        const info = await versionView();
+        if (!info.available) return sendJson(response, 409, { error: `Nothing to apply: ${info.current} is the latest MADRE knows of.` });
+        const command = applyCommand({ install, name: PACKAGE.name, version: info.latest, port: request.socket.localPort, projectRoot: canonicalProjectRoot });
+        if (!command) return sendJson(response, 412, { error: 'This copy runs from source: pull the repository and start it again.' });
+        if (room.activeTurns().length || room.activePlans().length) return sendJson(response, 409, { error: 'Agents are still working. STOPALL or wait, then update.' });
+        await room.record('room.updating', { from: info.current, to: info.latest, install, command });
+        sendJson(response, 202, { restarting: true, from: info.current, to: info.latest, command });
+        setTimeout(() => {
+          server.close(() => {
+            const child = spawn('/bin/sh', ['-c', command], { cwd: canonicalProjectRoot, detached: true, stdio: 'ignore', env: { ...process.env, PULSE_UPDATE_RESTART: '1' } });
+            child.unref();
+            setTimeout(() => process.exit(0), 200);
+          });
+          for (const client of clients.keys()) { try { client.end(); } catch { /* gone */ } }
+        }, 300);
+        return undefined;
       }
       if (request.method === 'POST' && url.pathname === '/api/updates/settings') {
         const patch = await body(request).catch(() => ({}));

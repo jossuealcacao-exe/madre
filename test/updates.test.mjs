@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate } from '../src/updates.mjs';
+import { compareVersions, detectInstall, updateCommand, releaseUrl, checkForUpdate, applyCommand } from '../src/updates.mjs';
 
 test('updates: versions compare as releases, the launch mode picks the command, the registry is read once a day', async () => {
   assert.equal(compareVersions('0.3.0', '0.3.1'), -1);
@@ -16,6 +16,10 @@ test('updates: versions compare as releases, the launch mode picks the command, 
   assert.equal(detectInstall({ script: '/Users/x/pulse/bin/madre.mjs', projectRoot: '/Users/x/pulse' }), 'source');
   assert.equal(updateCommand('npx', '@jossuealcala/madre', '0.3.2'), 'npx @jossuealcala/madre@0.3.2 start');
   assert.equal(updateCommand('project', '@jossuealcala/madre', '0.3.2'), 'npm install @jossuealcala/madre@0.3.2');
+  assert.equal(applyCommand({ install: 'npx', name: '@jossuealcala/madre', version: '0.3.2', port: 4317, projectRoot: '/Users/x/Pangea OS' }), "exec npx -y @jossuealcala/madre@0.3.2 start --no-open --port 4317 --project '/Users/x/Pangea OS'");
+  assert.match(applyCommand({ install: 'project', name: '@jossuealcala/madre', version: '0.3.2', port: 4319, projectRoot: '/p' }), /^npm install @jossuealcala\/madre@0\.3\.2 --no-fund --no-audit && exec npx --no madre start --no-open --port 4319 --project '\/p'$/);
+  assert.match(applyCommand({ install: 'global', name: '@jossuealcala/madre', version: '0.3.2', port: 4317, projectRoot: '/p' }), /^npm install -g .* && exec madre start/);
+  assert.equal(applyCommand({ install: 'source', name: 'x', version: '1', port: 1, projectRoot: '/p' }), null, 'from source the human pulls');
   assert.equal(releaseUrl({ type: 'git', url: 'git+https://github.com/jossuealcacao-exe/madre.git' }, '0.3.2'), 'https://github.com/jossuealcacao-exe/madre/releases/tag/v0.3.2');
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-updates-'));

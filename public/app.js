@@ -4510,11 +4510,13 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
 
 /* ---------- Release channel: is there a newer MADRE? A pill in the bar, the command in MU/TH/UR. ---------- */
 
-const updateUI = { section: document.querySelector('#mother-update'), pill: document.querySelector('#update-pill'), info: null, timer: null };
+const updateUI = { section: document.querySelector('#mother-update'), pill: document.querySelector('#update-pill'), info: null, timer: null, announced: null, restarting: false };
 async function loadVersion({ force = false } = {}) {
   try {
     updateUI.info = await fetch(`/api/version${force ? '?force=1' : ''}`).then((response) => response.json());
   } catch { updateUI.info = null; }
+  // The first time a newer version shows up in this session, say so once; the pill stays.
+  if (updateUI.info?.available && updateUI.announced !== updateUI.info.latest && !replaying) { updateUI.announced = updateUI.info.latest; toast(`MU/TH/UR › MADRE ${updateUI.info.latest} is on npm. Open MU/TH/UR to restart with it.`); }
   renderUpdate();
   clearTimeout(updateUI.timer);
   updateUI.timer = setTimeout(() => void loadVersion(), 60 * 60 * 1000);
@@ -4534,7 +4536,31 @@ function renderUpdate() {
   const when = info.checkedAt ? new Date(info.checkedAt).toLocaleString() : null;
   section.append(el('h3', null, info.available ? `RELEASE CHANNEL · ${info.latest} AVAILABLE · YOU RUN ${info.current}` : `RELEASE CHANNEL · MADRE ${info.current}${info.latest ? ' · UP TO DATE' : info.enabled ? ' · NPM NOT REACHED YET' : ' · CHECK OFF'}`));
   if (info.available) {
-    section.append(el('p', 'note', `A NEWER MADRE IS ON NPM. THIS COPY RUNS ${info.install === 'npx' ? 'FROM THE NPX CACHE' : info.install === 'project' ? 'FROM THIS PROJECT\'S NODE_MODULES' : info.install === 'global' ? 'AS A GLOBAL INSTALL' : 'FROM SOURCE'}; STOP THE ROOM, RUN THIS IN YOUR TERMINAL, START AGAIN. MADRE NEVER UPDATES ITSELF WHILE YOU WORK.`));
+    const canRestart = info.install !== 'source';
+    section.append(el('p', 'note', `A NEWER MADRE IS ON NPM. THIS COPY RUNS ${info.install === 'npx' ? 'FROM THE NPX CACHE' : info.install === 'project' ? 'FROM THIS PROJECT\'S NODE_MODULES' : info.install === 'global' ? 'AS A GLOBAL INSTALL' : 'FROM SOURCE'}. ${canRestart ? 'RESTART WITH IT HERE: THE ROOM CLOSES, INSTALLS, AND COMES BACK ON THIS SAME ADDRESS IN A FEW SECONDS. NOTHING IN THE LEDGER IS LOST. OR RUN THE COMMAND YOURSELF.' : 'PULL THE REPOSITORY AND START IT AGAIN.'}`));
+    if (canRestart) {
+      const restart = el('button', 'update-restart', updateUI.restarting ? 'RESTARTING…' : `RESTART WITH ${info.latest}`);
+      restart.type = 'button';
+      restart.disabled = updateUI.restarting;
+      restart.addEventListener('click', async () => {
+        restart.disabled = true; restart.textContent = 'RESTARTING…'; updateUI.restarting = true;
+        try {
+          const payload = await fetch('/api/updates/apply', { method: 'POST' }).then((response) => response.json());
+          if (payload.error) throw new Error(payload.error);
+          toast(`MU/TH/UR › closing to install ${payload.to}. Back in a moment.`);
+          const from = info.current;
+          const wait = async () => {
+            for (let attempt = 0; attempt < 90; attempt += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              try { const next = await fetch('/api/version', { cache: 'no-store' }).then((response) => response.json()); if (next?.current && next.current !== from) { location.reload(); return; } } catch { /* still restarting */ }
+            }
+            updateUI.restarting = false; renderUpdate(); toast('MU/TH/UR › the room did not come back on its own. Start it from your terminal.');
+          };
+          void wait();
+        } catch (error) { updateUI.restarting = false; renderUpdate(); toast(`Update did not start: ${error.message}`); }
+      });
+      section.append(restart);
+    }
     const row = el('div', 'update-command');
     const code = el('code', null, info.command);
     const copy = el('button', null, 'COPY');

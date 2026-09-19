@@ -173,7 +173,7 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 | `⚙ CONNECTIONS` | Sesión, versión y ruta de cada CLI; `SIGN IN` y `RECHECK`; `MAX MODE`, `DEFAULT MODE` y habilidades; timeouts, presupuesto, delegación, modelo de OpenCode; MEMORY y PRIVACY |
 | `◉ NOSTROMO` | El mapa de la memoria |
 | `SENTINEL` | Fallos que ninguna condición explica y caídas del proceso, con rutas, usuarios, correos y claves eliminados. Cada reporte tiene `REPORT ON GITHUB ↗` para leerlo antes de publicarlo; `AUTO-REPORT`, apagado por defecto, envía los nuevos al colector del proyecto |
-| `RELEASE CHANNEL` | Una consulta a npm al día. Si hay versión nueva, una alerta en la barra y aquí el comando exacto para cómo corre tu copia. MADRE nunca se actualiza sola |
+| `RELEASE CHANNEL` | Una consulta a npm al día. Si hay versión nueva, una alerta en la barra y aquí `RESTART WITH x.y.z`: la sala cierra, instala y vuelve en la misma dirección; o el comando para hacerlo tú. Nunca mientras los agentes trabajan |
 | `✎ FEEDBACK` | Un issue en blanco con tu entorno ya escrito |
 
 ---

@@ -38,6 +38,19 @@ export function updateCommand(install, name, version = 'latest') {
   }
 }
 
+// One shell line that installs the version and starts the same room on the same port.
+// The room's own process runs it detached after closing its listener, then exits.
+const shq = (value) => `'${String(value).replace(/'/g, `'\\''`)}'`;
+export function applyCommand({ install, name, version, port, projectRoot }) {
+  const start = `start --no-open --port ${Number(port) || 4317} --project ${shq(projectRoot)}`;
+  switch (install) {
+    case 'npx': return `exec npx -y ${name}@${version} ${start}`;
+    case 'project': return `npm install ${name}@${version} --no-fund --no-audit && exec npx --no ${name.split('/').pop()} ${start}`;
+    case 'global': return `npm install -g ${name}@${version} --no-fund --no-audit && exec ${name.split('/').pop()} ${start}`;
+    default: return null;   // source: the human pulls
+  }
+}
+
 export function releaseUrl(repository, version) {
   const url = String(repository?.url ?? repository ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
   return url ? `${url}/releases/tag/v${version}` : null;

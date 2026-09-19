@@ -6,6 +6,10 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.3.2 · 2026-09-19
 
+### Canal de liberación, un clic
+- `RESTART WITH x.y.z` en MU/TH/UR: la sala registra `room.updating`, cierra su puerto, instala la versión según cómo corre esta copia (npx, dependencia del proyecto o global) y vuelve a abrir en la misma dirección; la página espera y se recarga sola. Con agentes trabajando se niega hasta que terminen. Desde el código fuente sigue siendo `git pull`.
+- La primera vez que aparece una versión nueva en la sesión, un aviso de MU/TH/UR lo dice; la alerta de la barra deja de brillar y respirar: línea ámbar fina, relleno suave, transiciones de 220 ms. Todos los controles de MADRE cambian de color con la misma curva; nada salta.
+
 ### Modos y permisos, una sola lógica
 - `#2 CREATE` ya no encierra al agente en `.pulse/out/`: crea archivos y carpetas nuevos donde corresponda en el proyecto, según sus convenciones, con `.pulse/out/<turno>/` como borrador. MADRE fotografía el proyecto antes del turno; lo que apareció se conserva y se muestra como artefacto, y todo archivo previo modificado, renombrado o borrado se restaura y se avisa (`create.reverted`). Las CLIs reciben sus herramientas de escritura sobre el proyecto (Claude Code y OpenCode solo escriben si también pueden editar, verificado con los CLIs reales); la garantía de "solo añadir" la da la restauración de MADRE al terminar.
 - Un orquestador puede pedir el modo de cada paso de su plan: `@codex #2: …`, `@claude #3: …`. MADRE lo acota al modo del mensaje del humano y al `MAX MODE` del agente. Bajo `#3` la palabra del orquestador basta: un paso `#2` recibe su lease de proyecto y un paso `#3` toma CONTROL para su turno, con checkpoint propio. Bajo `#1` un paso `#2` sigue pasando por la escalación.
