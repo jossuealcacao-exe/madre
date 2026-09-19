@@ -27,19 +27,22 @@ export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json'
 // whose file_path argument starts with the lease directory. Plan mode would
 // block every write regardless of policy, so a lease uses approval "default":
 // headless Gemini cannot prompt, so anything the policy does not allow fails.
-export function geminiLeasePolicy(outDir, { control = false } = {}) {
+export function geminiLeasePolicy(outDir, { control = false, create = false } = {}) {
   const escaped = outDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const forbidden = control ? `
+  // The whole project is the lease in #2 and #3: MADRE's zones stay out of reach.
+  const forbidden = control || create ? `
 [[rule]]
 toolName = ["write_file", "replace", "edit", "run_shell_command"]
-argsPattern = '${escaped}/(\\.git|\\.pulse|\\.env)'
+argsPattern = '${escaped}/(\\.git|\\.pulse|\\.madre|\\.env|\\.claude/settings\\.local\\.json)'
 decision = "deny"
 priority = 1100
 interactive = false
 ` : '';
+  // CREATE (#2) adds files: write_file only; CONTROL (#3) also replaces and edits.
+  const tools = create ? '["write_file"]' : '["write_file", "replace", "edit"]';
   return `${geminiReadonlyPolicy}
 [[rule]]
-toolName = ["write_file", "replace", "edit"]
+toolName = ${tools}
 argsPattern = '"file_path"\\s*:\\s*"${escaped}/'
 decision = "allow"
 priority = 1000
@@ -56,7 +59,7 @@ interactive = false
 `;
 
 export function geminiPolicy({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
-  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}`;
+  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}`;
 }
 
 export function geminiMemoryPolicy(memoryServer) {

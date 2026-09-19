@@ -21,6 +21,9 @@ import { parseDirectives } from './directives.mjs';
 import { isValidModelName } from './models.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
 import { createLease, diffSnapshots, snapshot } from './lease.mjs';
+import { stat as statFile } from 'node:fs/promises';
+import { basename as baseName, join as joinPath } from 'node:path';
+import { contentTypeFor } from './files.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
@@ -193,8 +196,7 @@ export class Room {
     }
     const scopes = this.scopesFor(step.agent);
     const enabled = Object.fromEntries(SCOPES.map((scope) => [scope, scopes[scope].enabled && scopes[scope].wired]));
-    const lease = await createLease({ projectRoot: this.#projectRoot, leaseId: randomUUID() });
-    lease.messageId = parentMessageId;
+    const lease = await this.#projectLease({ leaseId: randomUUID(), messageId: parentMessageId });
     lease.scopes = decision.decision === 'plan' ? Object.fromEntries(SCOPES.map((scope) => [scope, true])) : enabled;
     await this.#emit('lease.granted', {
       escalated: decision.decision,
@@ -202,6 +204,7 @@ export class Room {
       messageId: parentMessageId,
       agent: step.agent,
       outDir: lease.relativeDir,
+      scratchDir: lease.scratchDir,
       scopes: SCOPES.filter((scope) => enabled[scope]),
       unavailable: SCOPES.filter((scope) => !scopes[scope].capable).map((scope) => SCOPE_LABELS[scope]),
       planId,
@@ -574,10 +577,9 @@ export class Room {
           message: `@${parsed.target} will answer read-only: ${scopes.write.capable ? 'file creation is switched off for it (enable it in CONNECTIONS)' : 'its CLI cannot create files'}${unavailable.length ? `; it cannot ${unavailable.join(' or ')}` : ''}.${alternatives.length ? ` For creation ask ${alternatives.join(' or ')}.` : ''}`,
         });
       } else {
-        lease = await createLease({ projectRoot: this.#projectRoot, leaseId: randomUUID() });
-        lease.messageId = messageId;
+        lease = await this.#projectLease({ leaseId: randomUUID(), messageId });
         // CREATE authorizes the plan to use each delegate's enabled creation
-        // scopes; a standing write lease authorizes files only.
+        // scopes; a default-#2 lease authorizes files only.
         lease.scopeCeiling = { write: true, imageGen: !standing, web: true };
         lease.scopes = Object.fromEntries(SCOPES.map((scope) => [scope, enabled.includes(scope) && (!standing || scope === 'write')]));
         await this.#emit('lease.granted', {
@@ -586,6 +588,7 @@ export class Room {
           messageId,
           agent: parsed.target,
           outDir: lease.relativeDir,
+          scratchDir: lease.scratchDir,
           grantedBy: 'you',
           scopes: standing ? ['write'] : enabled,
           unavailable,
@@ -607,6 +610,25 @@ export class Room {
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
     await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? 3 : (lease ? 2 : 1) }));
+  }
+
+  // A #2 lease: the project itself is where new files go, and MADRE keeps a scratch folder
+  // under .pulse/out/ for what has no natural place. Each turn under it takes a checkpoint
+  // and puts back whatever existed before, so CREATE only ever adds.
+  async #projectLease({ leaseId, messageId }) {
+    const scratch = await createLease({ projectRoot: this.#projectRoot, leaseId });
+    return { leaseId, messageId, outDir: this.#projectRoot, relativeDir: '.', scratchDir: scratch.relativeDir, create: true };
+  }
+
+  // Artifacts from a #2 turn: the files the checkpoint saw appear, as the room shows them.
+  async #artifactsFrom(files) {
+    const out = [];
+    for (const file of files) {
+      if (file.status !== 'A') continue;
+      const info = await statFile(joinPath(this.#projectRoot, file.path)).catch(() => null);
+      out.push({ name: baseName(file.path), path: file.path, size: info?.size ?? 0, contentType: contentTypeFor(file.path), status: 'created' });
+    }
+    return out.sort((a, b) => a.path.localeCompare(b.path));
   }
 
   // Agents that can receive a delegated step from `self`.
@@ -714,7 +736,7 @@ export class Room {
     // The orchestrator's turn is over before its plan starts, so it is never
     // counted as in flight while the others work.
     if (outcome?.directives?.steps.length) {
-      await this.#runPlan({ orchestrator: agent.id, parentMessageId: outcome.responseMessageId, directives: outcome.directives, lease, ashCode });
+      await this.#runPlan({ orchestrator: agent.id, parentMessageId: outcome.responseMessageId, directives: outcome.directives, lease, ashCode, mode });
     }
     return outcome?.responseMessageId ?? null;
   }
@@ -745,13 +767,19 @@ export class Room {
     const turnScopes = { web: enabled.web, imageGen: enabled.imageGen };
     let lease = null;
     let controlRun = null;
-    if (mode === 3 && requester === 'you' && depth === 0) {
+    let createRun = null;
+    if (mode === 3 && (requester === 'you' || planId) && depth <= 1 && agentScopes.maxMode >= 3 && enabled.write) {
       // CONTROL: the project itself is the writable root, and a checkpoint
-      // taken now makes every change of this turn reversible.
-      const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled });
-      controlRun = seat.run;
-      lease = seat.lease;
-      await this.#emit('control.started', seat.announcement);
+      // taken now makes every change of this turn reversible. A plan step gets
+      // it when the orchestrator, itself in #3, named #3 for that step.
+      if (this.#controlDesk.holder) {
+        await this.#alert('control-busy', `@${this.#controlDesk.holder.agent} still holds CONTROL; @${agent.id} answers read-only this turn.`, `control-busy:${agent.id}`);
+      } else {
+        const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled });
+        controlRun = seat.run;
+        lease = seat.lease;
+        await this.#emit('control.started', seat.announcement);
+      }
     } else if (sharedLease) {
       lease = enabled.write ? {
         ...sharedLease,
@@ -760,8 +788,7 @@ export class Room {
     } else if (agentScopes.write.always && enabled.write && requester !== 'you' && requester !== 'mother') {
       // Standing lease for a delegate: the human opted this agent into
       // creating files on every turn, so a plan step gets its own directory.
-      lease = await createLease({ projectRoot: this.#projectRoot, leaseId: randomUUID() });
-      lease.messageId = messageId;
+      lease = await this.#projectLease({ leaseId: randomUUID(), messageId });
       lease.scopeCeiling = { write: true, imageGen: false, web: true };
       lease.scopes = { ...enabled, imageGen: false };
       await this.#emit('lease.granted', {
@@ -770,10 +797,17 @@ export class Room {
         messageId,
         agent: agent.id,
         outDir: lease.relativeDir,
+        scratchDir: lease.scratchDir,
         scopes: ['write'],
         unavailable: SCOPES.filter((scope) => !agentScopes[scope].capable).map((scope) => SCOPE_LABELS[scope]),
         planId,
       });
+    }
+    if (lease?.create && !controlRun) {
+      // CREATE: photograph the project now; after the turn only what appeared stays.
+      const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode: 2 });
+      createRun = seat.run;
+      lease = { ...lease, checkpoint: seat.run.checkpoint };
     }
     turnScopes.imageGen = Boolean(lease?.scopes?.imageGen);
     // The step asks for files but nobody granted a lease: say so now, with a
@@ -793,14 +827,14 @@ export class Room {
     const native = Boolean(CAPABILITIES[agent.id]?.imageGen);
     const studio = imageModuleState();
     const imageStudio = lease?.scopes?.imageGen && enabled.imageGen && !native && studio.enabled
-      ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.outDir })
+      ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : lease.outDir })
       : null;
     // The turn's effective mode: #0 for ghosts, #3 in control, #2 only while it holds a lease.
     const turnMode = mode === 0 ? 0 : controlRun ? 3 : lease ? 2 : 1;
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
-      const before = lease && !lease.control ? await snapshot(lease.outDir) : null;
+      const before = lease && !lease.control && !lease.create ? await snapshot(lease.outDir) : null;
       const responseMessageId = randomUUID();
       const notesBefore = this.#memory ? this.#memory.maxMemoryId() : 0;
       const others = this.delegatesFor(agent.id);
@@ -828,7 +862,9 @@ export class Room {
       // the archivist or any other agent can see it. The reply says how many, not which.
       const guarded = this.#privacy?.redact(result.text ?? '') ?? { text: result.text, hits: 0 };
       if (guarded.hits) result.text = guarded.text;
-      const artifacts = lease && !lease.control ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
+      // CREATE: what appeared stays and is shown; what existed before is put back and said.
+      const createChanges = createRun ? await this.#controlDesk.settle(createRun) : null;
+      const artifacts = createChanges ? await this.#artifactsFrom(createChanges.files) : lease && !lease.control ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
       // CONTROL: what really changed in the project, forbidden zones reverted on the spot.
       const controlChanges = controlRun ? await this.#controlDesk.settle(controlRun) : null;
       const directives = mayDelegate
@@ -866,6 +902,9 @@ export class Room {
       if (artifacts.length) {
         await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });
       }
+      if (createChanges && (createChanges.existingReverted.length || createChanges.forbiddenReverted.length)) {
+        await this.#emit('create.reverted', { checkpointId: createChanges.checkpointId, agent: agent.id, messageId, responseMessageId, existing: createChanges.existingReverted, forbidden: createChanges.forbiddenReverted, message: createChanges.message });
+      }
       // What the agent saved through memory_note during this turn, for the bubble's hint.
       if (this.#memory && turnMode !== 0) {
         const noted = this.#memory.notesSince(notesBefore, { agent: agent.id });
@@ -884,24 +923,32 @@ export class Room {
     } finally {
       // Release CONTROL whichever way the turn ended; the checkpoint stays for UNDO.
       await this.#controlDesk.release(controlRun);
+      await this.#controlDesk.release(createRun);
     }
   }
 
-  async #runPlan({ orchestrator, parentMessageId, directives, lease = null, ashCode = false }) {
+  async #runPlan({ orchestrator, parentMessageId, directives, lease = null, ashCode = false, mode = 1 }) {
     const planId = randomUUID();
-    // The plan runs at the human's mode: #2 only while a lease exists, and a
-    // step's agent gets #2 only if its own scopes allow writing.
-    const stepMode = (agentId) => (lease && this.scopesFor(agentId).write.enabled ? 2 : 1);
+    // The plan's ceiling is the human's mode: #3 when the orchestrator held CONTROL, #2 while a
+    // lease exists, #1 otherwise. A step may ask for a mode ("@codex #2: …"); it gets the lowest
+    // of what it asked, the ceiling and its own MAX MODE. Without a number it inherits the plan.
+    const ceiling = mode >= 3 ? 3 : lease ? 2 : 1;
+    const stepMode = (step) => {
+      const scopes = this.scopesFor(step.agent);
+      const asked = normalizeMode(step.mode, lease ? 2 : 1);
+      const granted = Math.min(asked, ceiling, scopes.maxMode);
+      return granted >= 2 && !scopes.write.enabled ? 1 : granted;
+    };
     const plan = { planId, orchestrator, steps: directives.steps, closing: directives.closing, step: 0, stopped: null, startedAt: Date.now() };
     this.#plans.set(planId, plan);
     await this.#emit('plan.created', {
       planId,
       orchestrator,
       parentMessageId,
-      steps: directives.steps.map((step) => ({ ...step, mode: stepMode(step.agent) })),
+      steps: directives.steps.map((step) => ({ ...step, mode: stepMode(step) })),
       closing: directives.closing,
       ignored: directives.ignored,
-      mode: lease ? 2 : 1,
+      mode: ceiling,
       leaseId: lease?.leaseId ?? null,
     });
     try {
@@ -917,7 +964,16 @@ export class Room {
         let stepLease = lease;
         let escalation = null;
         const stepScopes = this.scopesFor(step.agent);
-        if (!lease && !stepScopes.write.always && looksLikeCreation(step.text) && stepScopes.maxMode >= 2 && stepScopes.write.enabled) {
+        const wanted = stepMode(step);
+        // Under a #3 ceiling the orchestrator's word is enough: a #2 step gets its project lease,
+        // a #3 step gets CONTROL for its turn. Under #1 a creation step still asks the human.
+        if (ceiling === 3 && !stepLease && wanted === 2) {
+          stepLease = await this.#projectLease({ leaseId: randomUUID(), messageId });
+          stepLease.scopeCeiling = { write: true, imageGen: true, web: true };
+          stepLease.scopes = Object.fromEntries(SCOPES.map((scope) => [scope, stepScopes[scope].enabled && stepScopes[scope].wired]));
+          await this.#emit('lease.granted', { delegated: true, leaseId: stepLease.leaseId, messageId, agent: step.agent, outDir: '.', scratchDir: stepLease.scratchDir, grantedBy: orchestrator, scopes: SCOPES.filter((scope) => stepLease.scopes[scope]), unavailable: [], planId });
+        }
+        if (ceiling < 3 && !lease && !stepScopes.write.always && (wanted >= 2 || looksLikeCreation(step.text)) && stepScopes.maxMode >= 2 && stepScopes.write.enabled) {
           const outcome = await this.#askForMode({ planId, plan, step, index, totalSteps: directives.steps.length + (directives.closing ? 1 : 0), orchestrator, parentMessageId, mode: 2 });
           if (outcome.scope === 'plan') lease = outcome.lease;
           if (outcome.scope) stepLease = outcome.lease; else escalation = outcome.reason;
@@ -933,12 +989,12 @@ export class Room {
           ashCode: ashCode ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
           status: 'delegated',
           planId,
-          mode: stepLease && stepScopes.write.enabled ? 2 : 1,
+          mode: wanted === 3 ? 3 : stepLease && stepScopes.write.enabled ? 2 : 1,
           escalation: escalation ?? undefined,
           step: index + 1,
           totalSteps: directives.steps.length + (directives.closing ? 1 : 0),
         });
-        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: stepLease, ashCode, mode: stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
+        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: wanted === 3 ? null : stepLease, ashCode, mode: wanted === 3 ? 3 : stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
       }
       if (!plan.stopped && directives.closing) {
         plan.step = directives.steps.length + 1;

@@ -108,14 +108,16 @@ export function resolveScopes(agentId, configured = {}) {
     const wanted = configured[scope] ?? (scope !== 'web');
     scopes[scope] = { capable, enabled: capable && wanted, wired: true };
   }
-  // A standing lease: every turn of this agent may create files inside
-  // .pulse/out/ without the human arming CREATE each time. Opt-in per agent.
-  scopes.write.always = Boolean(configured.alwaysCreate) && scopes.write.enabled;
-  // The ceiling: how far the composer may take this agent. Writing needs the
-  // CLI to be able to write; CONTROL is capped at 2 until phase C wires it.
-  const wanted = normalizeMode(configured.maxMode, scopes.write.enabled ? 2 : 1);
-  scopes.maxMode = Math.min(wanted, scopes.write.capable ? 3 : 1);
-  scopes.defaultMode = scopes.write.always && scopes.maxMode >= 2 ? 2 : 1;
+  // One ceiling per agent: MAX MODE. Writing follows from it: an agent capped at #1 never
+  // writes, one allowed to #2 or #3 does. A `write: false` from an older config reads as #1.
+  const capableMax = scopes.write.capable ? 3 : 1;
+  const legacyCap = configured.write === false ? 1 : 3;
+  scopes.maxMode = Math.min(normalizeMode(configured.maxMode, scopes.write.capable ? 2 : 1), legacyCap, capableMax);
+  scopes.write.enabled = scopes.write.capable && scopes.maxMode >= 2;
+  // One start per agent: DEFAULT MODE, #1 or #2, never above the ceiling. An older
+  // `alwaysCreate` reads as #2. `write.always` keeps its name for the room's code.
+  scopes.defaultMode = Math.min(normalizeMode(configured.defaultMode, configured.alwaysCreate ? 2 : 1), 2, Math.max(1, scopes.maxMode));
+  scopes.write.always = scopes.defaultMode >= 2 && scopes.write.enabled;
   return scopes;
 }
 

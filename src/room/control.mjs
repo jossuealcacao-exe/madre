@@ -20,32 +20,44 @@ export class ControlDesk {
 
   // Takes the checkpoint and seats the agent. Returns the run, the lease that
   // makes the whole project writable, and what the room should announce.
-  async begin({ agent, messageId, enabledScopes }) {
-    const checkpoint = await createCheckpoint(this.#projectRoot, { id: `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${messageId.slice(0, 8)}`, label: `MADRE control @${agent.id}` });
+  // mode 3 (CONTROL) seats one holder for the whole project; mode 2 (CREATE) takes the same
+  // photograph without a seat: the project is writable for new files, and settle() puts back
+  // whatever existed before. Several #2 turns may run at once.
+  async begin({ agent, messageId, enabledScopes, mode = 3 }) {
+    const checkpoint = await createCheckpoint(this.#projectRoot, { id: `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${messageId.slice(0, 8)}`, label: `MADRE ${mode === 3 ? 'control' : 'create'} @${agent.id}` });
     checkpoint.agent = agent.id;
     this.#checkpoints.set(checkpoint.id, checkpoint);
     // Prevention first: .env files and MADRE's folders are read-only for the length of the turn.
     const guard = await guardForbidden(this.#projectRoot);
-    const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString(), guard };
-    this.#holder = run;
-    const lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabledScopes, write: true }, control: true, checkpoint };
+    const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString(), guard, mode };
+    if (mode === 3) this.#holder = run;
+    const lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabledScopes, write: true }, control: mode === 3, create: mode === 2, checkpoint };
+    if (mode !== 3) return { run, lease, announcement: null };
     const guarded = guard.locked.length ? ` ${guard.locked.length} forbidden path${guard.locked.length === 1 ? '' : 's'} locked read-only for the turn (${guard.locked.slice(0, 4).join(', ')}${guard.locked.length > 4 ? ', …' : ''}).` : '';
     const announcement = { checkpointId: checkpoint.id, commit: checkpoint.commit, head: checkpoint.head, agent: agent.id, messageId, guarded: guard.locked, message: `@${agent.id} holds CONTROL of the project. Checkpoint ${checkpoint.commit.slice(0, 7)} taken; UNDO will be one click.${guarded}` };
     return { run, lease, announcement };
   }
 
-  // What really changed, with forbidden zones already restored.
+  // What really changed, with forbidden zones already restored. In a #2 turn every change to
+  // a file that existed before (modified, deleted, renamed) is restored too: CREATE adds, only.
   async settle(run) {
     const diff = await diffCheckpoint(this.#projectRoot, run.checkpoint);
+    const additive = run.mode === 2;
+    const toRevert = new Set(diff.forbidden);
+    if (additive) for (const file of diff.files) if (file.status !== 'A') toRevert.add(file.path);
     let reverted = [];
-    if (diff.forbidden.length) {
-      const restored = await restoreCheckpoint(this.#projectRoot, run.checkpoint, { paths: diff.forbidden });
+    if (toRevert.size) {
+      const restored = await restoreCheckpoint(this.#projectRoot, run.checkpoint, { paths: [...toRevert] });
       reverted = [...restored.restored, ...restored.removed];
     }
-    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, files: diff.files.filter((file) => !diff.forbidden.includes(file.path)), stat: diff.stat, forbiddenReverted: reverted };
+    const kept = diff.files.filter((file) => !toRevert.has(file.path));
+    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, forbiddenReverted: diff.forbidden.length ? reverted.filter((path) => diff.forbidden.includes(path)) : [], existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [] };
     const count = changes.files.length;
-    const note = reverted.length ? ` ${reverted.length} write(s) into forbidden zones were reverted.` : '';
-    changes.message = `${count ? `@${run.agent} changed ${count} file(s) in the project.` : `@${run.agent} changed nothing in the project.`}${note}`;
+    const notes = [
+      changes.forbiddenReverted.length ? `${changes.forbiddenReverted.length} write(s) into forbidden zones were reverted.` : null,
+      changes.existingReverted.length ? `${changes.existingReverted.length} change(s) to existing files were put back: CREATE only adds.` : null,
+    ].filter(Boolean).join(' ');
+    changes.message = `${count ? `@${run.agent} ${additive ? 'created' : 'changed'} ${count} file(s) in the project.` : `@${run.agent} ${additive ? 'created' : 'changed'} nothing in the project.`}${notes ? ` ${notes}` : ''}`;
     return changes;
   }
 

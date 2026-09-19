@@ -62,9 +62,15 @@ Cada agente corre como proceso en su propio grupo, con un home aislado que solo 
 
 Los alcances de imagen de Claude, Gemini y OpenCode se cumplen con **Image Studio**: el servidor MCP `src/mcp/image-server.mjs`, adjunto solo dentro de un lease con el alcance encendido, que genera con la API de imágenes de Gemini y guarda el archivo en la carpeta del turno.
 
+## CREATE por dentro
+
+Un turno en `#2` toma la misma fotografía que CONTROL, sin asiento: varios turnos `#2` pueden correr a la vez. Al terminar, `diff` contra la fotografía: los archivos añadidos se conservan y se registran como `artifacts.created` con su ruta en el proyecto; los modificados, renombrados o borrados se restauran desde la fotografía y se anuncian en `create.reverted`. Las zonas prohibidas se restauran igual que en CONTROL. Cada CLI recibe sus herramientas de escritura sobre el proyecto: Claude Code niega `Write` si `Edit` no está permitido en la misma ruta y OpenCode deja sin herramienta de escritura si `edit` está denegado (ambos verificados con el CLI real), así que en `#2` van juntas y la garantía de "solo añadir" es la restauración posterior, no la regla previa. Gemini recibe solo `write_file`. El `scratchDir` bajo `.pulse/out/` sigue existiendo para lo que no tiene sitio y para Image Studio.
+
+En un plan, el modo de cada paso es el mínimo entre lo que pidió el orquestador (`@agente #n:`), el techo del plan (el modo del mensaje humano) y el `MAX MODE` del agente. Bajo techo `#3`, un paso `#2` recibe un lease de proyecto emitido a nombre del orquestador y un paso `#3` toma CONTROL con su propio checkpoint, uno a la vez. Bajo techo `#1`, un paso `#2` pasa por la escalación al humano.
+
 ## CONTROL por dentro
 
-Antes del turno, MADRE fotografía el proyecto como un commit real bajo `refs/madre/checkpoints/` con un índice temporal: incluye archivos sin seguimiento, respeta `.gitignore`, no toca tu rama, tu índice ni tu stash, y funciona en repositorios sin commits. Mientras dura el turno, `.env*`, `.pulse/`, `.madre/` y `.claude/settings.local.json` quedan en solo lectura a nivel de sistema de archivos y recuperan sus permisos al terminar. Después, `git diff` contra el checkpoint da la lista de cambios; cualquier escritura en una zona prohibida que hubiera pasado se revierte desde el checkpoint y se nombra. `UNDO` restaura el checkpoint completo.
+Antes del turno, MADRE fotografía el proyecto como un commit real bajo `refs/madre/checkpoints/` con un índice temporal (en un proyecto sin git, en un repositorio sombra bajo el directorio temporal del sistema, con el proyecto como árbol de trabajo): incluye archivos sin seguimiento, respeta `.gitignore`, no toca tu rama, tu índice ni tu stash, y funciona en repositorios sin commits. Mientras dura el turno, `.env*`, `.pulse/`, `.madre/` y `.claude/settings.local.json` quedan en solo lectura a nivel de sistema de archivos y recuperan sus permisos al terminar. Después, `git diff` contra el checkpoint da la lista de cambios; cualquier escritura en una zona prohibida que hubiera pasado se revierte desde el checkpoint y se nombra. `UNDO` restaura el checkpoint completo.
 
 ## Recuperación operativa
 

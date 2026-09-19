@@ -21,6 +21,7 @@ export const DELEGATION_HELP = (self, others, maxSteps) => [
   `@${others[0] ?? 'codex'}: <question for that agent>`,
   `@${self}: <what you will do with their answers, optional closing turn for you>`,
   '```',
+  'A step may name the mode it needs, "@codex #2: create the page" or "@claude #3: fix the router"; MADRE caps it at your own mode and at that agent\'s MAX MODE. Without a number a step inherits the plan\'s mode.',
   `MADRE runs the steps in order (at most ${maxSteps}), shows every answer in the room, then hands you the closing turn if you asked for one.`,
   'The plan block must be the very last thing in your reply: nothing after it, not even a closing sentence. Say everything else before it.',
   'Address each agent once. Do not delegate what you can answer yourself.',
@@ -45,10 +46,12 @@ export function parseDirectives(text, { self, available = [], maxSteps = 4 } = {
     for (const raw of block[1].split('\n')) {
       const line = raw.trim();
       if (!line || line.startsWith('#')) continue;
-      const match = line.match(/^[-*]?\s*@([a-z0-9_-]+)\s*[:：]\s*(.+)$/i);
-      if (!match) { ignored.push({ line, reason: 'not a step (expected "@agent: text")' }); continue; }
+      // "@agent: text" or "@agent #2: text": the mode is a request, capped by the plan's ceiling and the agent's MAX MODE.
+      const match = line.match(/^[-*]?\s*@([a-z0-9_-]+)\s*(?:#([0-3]))?\s*[:：]\s*(.+)$/i);
+      if (!match) { ignored.push({ line, reason: 'not a step (expected "@agent: text" or "@agent #2: text")' }); continue; }
       const agent = match[1].toLowerCase();
-      const instruction = match[2].trim();
+      const instruction = match[3].trim();
+      const mode = match[2] === undefined ? null : Number(match[2]);
       if (agent === self) {
         if (closing) { ignored.push({ line, reason: 'only one closing step for the orchestrator' }); continue; }
         closing = instruction;
@@ -58,7 +61,7 @@ export function parseDirectives(text, { self, available = [], maxSteps = 4 } = {
       if (seen.has(agent)) { ignored.push({ line, reason: `@${agent} already has a step` }); continue; }
       if (steps.length >= maxSteps) { ignored.push({ line, reason: `plan is capped at ${maxSteps} steps` }); continue; }
       seen.add(agent);
-      steps.push({ agent, text: instruction });
+      steps.push({ agent, text: instruction, ...(mode === null ? {} : { mode }) });
     }
   }
   return { steps, closing, ignored };

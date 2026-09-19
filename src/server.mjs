@@ -323,7 +323,9 @@ export async function createPulseServer({
         if (!agents.some((agent) => agent.id === agentId) || !scopes || typeof scopes !== 'object') continue;
         config.scopes[agentId] = { ...(current[agentId] ?? {}) };
         for (const scope of ['write', 'imageGen', 'web', 'alwaysCreate']) if (typeof scopes[scope] === 'boolean') config.scopes[agentId][scope] = scopes[scope];
-        if (Number.isInteger(Number(scopes.maxMode)) && Number(scopes.maxMode) >= 0 && Number(scopes.maxMode) <= 3) config.scopes[agentId].maxMode = Number(scopes.maxMode);
+        // MAX MODE and DEFAULT MODE are the two controls; setting them retires the older flags they replace.
+        if (Number.isInteger(Number(scopes.maxMode)) && Number(scopes.maxMode) >= 0 && Number(scopes.maxMode) <= 3) { config.scopes[agentId].maxMode = Number(scopes.maxMode); delete config.scopes[agentId].write; }
+        if (Number.isInteger(Number(scopes.defaultMode)) && Number(scopes.defaultMode) >= 1 && Number(scopes.defaultMode) <= 2) { config.scopes[agentId].defaultMode = Number(scopes.defaultMode); delete config.scopes[agentId].alwaysCreate; }
       }
       room.setScopes(config.scopes);
     }

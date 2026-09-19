@@ -33,14 +33,14 @@ const els = {
 // Built-in commands live in the composer; module commands come from the
 // server (/api/commands) and run there, read-only, as fact cards.
 const CLIENT_COMMANDS = [
-  { name: 'create', title: 'CREATE', usage: '/create <what to make>', summary: 'Arm the creation lease for this message: the agent may create files inside .pulse/out/.', available: true, client: true },
+  { name: 'create', title: 'CREATE', usage: '/create <what to make>', summary: 'Arm CREATE for this message: the agent may add new files to the project where they belong.', available: true, client: true },
   { name: 'image', title: 'Image', usage: '/image <what to draw>', summary: 'Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.', available: true, client: true },
   { name: 'stopall', title: 'STOP ALL', usage: '/stopall', summary: 'Master brake: halt every plan and turn in flight. Never reaches an agent.', available: true, client: true },
 ];
 
 const PLACEHOLDERS = {
   plain: 'Type here, human. Ask the room…',
-  create: 'Creation lease on: what to create and how it should look. It lands in .pulse/out/',
+  create: 'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.',
   order: 'Priority one. Terse transmissions; the original stays in the record.',
   ghost: 'Off the record. Ask anything; nothing is saved, nobody else will remember it.',
   control: 'Control armed. Say what to change in the project; every action runs without asking.',
@@ -55,7 +55,7 @@ const MAX_ROWS = 3;
 const MODES = {
   0: { key: 'ghost', label: 'GHOST', hint: 'Off the record. Nothing is saved; gone on reload.' },
   1: { key: 'exchange', label: 'EXCHANGE', hint: 'Read the project and talk to the room. Writes nothing.' },
-  2: { key: 'create', label: 'CREATE', hint: 'Write new files, only inside this turn\'s .pulse/out/.' },
+  2: { key: 'create', label: 'CREATE', hint: 'Add new files where they belong in the project. Existing files stay untouched.' },
   3: { key: 'control', label: 'CONTROL', hint: 'Edit the project itself, no approval per action. Override required.' },
 };
 
@@ -1426,6 +1426,18 @@ function renderLeaseRefused(event) {
 
 /* ---------- CONTROL: the project itself, between two checkpoints ---------- */
 
+// create · @codex · 2 existing files put back: CREATE only adds (README.md, src/index.astro)
+function renderCreateReverted(event) {
+  const { agent, existing = [], forbidden = [] } = event.payload;
+  const node = el('div', 'system memory warn');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append('create · ', el('b', 'who', `@${agent}`));
+  if (existing.length) node.append(` · ${existing.length} existing file${existing.length === 1 ? '' : 's'} put back, CREATE only adds: ${existing.slice(0, 4).join(', ')}${existing.length > 4 ? '…' : ''}`);
+  if (forbidden.length) node.append(` · ${forbidden.length} write${forbidden.length === 1 ? '' : 's'} into forbidden zones reverted`);
+  node.append(' · need to change existing files? ask again in #3 CONTROL');
+  return node;
+}
+
 function renderControlStarted(event) {
   const { agent, commit, message } = event.payload;
   const node = el('div', 'system control');
@@ -1552,7 +1564,7 @@ function renderModeRequest(event) {
       for (const other of actions.querySelectorAll('button')) other.disabled = false;
     }
   };
-  const once = el('button', 'grant', 'GRANT ONCE'); once.type = 'button'; once.title = `@${agent} creates files for this step only, inside its own .pulse/out/ directory.`;
+  const once = el('button', 'grant', 'GRANT ONCE'); once.type = 'button'; once.title = `@${agent} may add files to the project for this step only.`;
   const plan = el('button', 'grant plan', 'GRANT FOR PLAN'); plan.type = 'button'; plan.title = 'Every remaining writable step of this plan shares one lease directory.';
   const deny = el('button', 'deny', 'DENY'); deny.type = 'button'; deny.title = `@${agent} answers read-only and says what it would have created.`;
   once.addEventListener('click', () => decide('once', once));
@@ -1594,12 +1606,19 @@ function renderLease(event) {
   const { agent, outDir, scopes = [], unavailable = [], standing = false, escalated = null } = event.payload;
   const node = el('div', 'system lease');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, standing ? 'standing lease · ' : escalated ? `lease granted on request${escalated === 'plan' ? ' · whole plan' : ''} · ` : 'creation lease · '));
-  node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} in `);
-  const link = el('a', 'file-link', outDir);
-  link.href = '#';
-  link.addEventListener('click', (ev) => { ev.preventDefault(); });
-  node.append(link);
+  const { delegated = false, scratchDir = null, grantedBy = null } = event.payload;
+  node.append(el('b', null, standing ? 'default #2 · ' : escalated ? `#2 granted on request${escalated === 'plan' ? ' · whole plan' : ''} · ` : delegated ? `#2 by @${grantedBy} · ` : 'create · '));
+  node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} `);
+  if (outDir === '.' || !outDir) {
+    node.append('anywhere in the project · existing files stay untouched');
+    if (scratchDir) { node.append(' · scratch '); const link = el('a', 'file-link', scratchDir); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); }); node.append(link); }
+  } else {
+    node.append('in ');
+    const link = el('a', 'file-link', outDir);
+    link.href = '#';
+    link.addEventListener('click', (ev) => { ev.preventDefault(); });
+    node.append(link);
+  }
   state.lastSender = null;
   return node;
 }
@@ -1861,6 +1880,7 @@ function renderEventNode(event) {
     case 'lease.missing': node = renderLeaseMissing(event); break;
     case 'mode.requested': node = renderModeRequest(event); break;
     case 'control.started': node = renderControlStarted(event); break;
+    case 'create.reverted': node = renderCreateReverted(event); break;
     case 'control.changed': node = renderControlChanged(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); break;
     case 'control.reverted': node = renderControlReverted(event); break;
     case 'mode.granted':
@@ -2351,8 +2371,8 @@ function renderCreateScopes() {
   const standing = Boolean(scopes?.write?.always);
   els.createToggle.classList.toggle('standing', standing);
   els.createToggle.title = standing
-    ? `Standing lease: every turn of @${id} may create files inside .pulse/out/ (set in CONNECTIONS). Arming CREATE is not needed.`
-    : 'Creation lease: let the agent create files for this request, only inside .pulse/out/';
+    ? `@${id} starts in #2 (DEFAULT MODE in CONNECTIONS): every turn may add files to the project. Arming CREATE is not needed.`
+    : 'CREATE: let the agent add new files to the project for this request; existing files stay untouched';
   box.hidden = !state.create || !scopes;
   if (box.hidden) return;
   box.replaceChildren();
@@ -3298,7 +3318,8 @@ function connectionCard(agent) {
   card.append(meta);
   const scopes = el('div', 'scopes');
   const agentScopes = settingsUI.data.settings.capabilities?.[agent.id]?.scopes ?? {};
-  for (const [key, labelText] of [['write', 'CREATE FILES'], ['imageGen', 'GENERATE IMAGES'], ['web', 'WEB ACCESS']]) {
+  // Two abilities per agent: images and web. Writing is not an ability, it is the ceiling below.
+  for (const [key, labelText] of [['imageGen', 'GENERATE IMAGES'], ['web', 'WEB ACCESS']]) {
     const scope = agentScopes[key] ?? { capable: false, enabled: false, wired: false };
     const line = el('label', `scope${!scope.capable || !scope.wired ? ' unavailable' : ''}`);
     const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(scope.enabled); box.disabled = !scope.capable || !scope.wired;
@@ -3332,30 +3353,6 @@ function connectionCard(agent) {
       line.append(assist);
     }
     scopes.append(line);
-    if (key === 'write' && scope.capable) {
-      const always = el('label', `scope sub${scope.enabled ? '' : ' unavailable'}`);
-      const alwaysBox = el('input'); alwaysBox.type = 'checkbox'; alwaysBox.checked = Boolean(scope.always); alwaysBox.disabled = !scope.enabled;
-      alwaysBox.dataset.agent = agent.id; alwaysBox.dataset.scope = 'alwaysCreate'; alwaysBox.className = 'scope-input';
-      alwaysBox.addEventListener('change', async () => {
-        alwaysBox.disabled = true;
-        try {
-          const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scopes: { [agent.id]: { alwaysCreate: alwaysBox.checked } } }) });
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-          if (result.settings?.capabilities) { state.capabilities = result.settings.capabilities; settingsUI.data.settings.capabilities = result.settings.capabilities; renderCreateScopes(); }
-          toast(`MU/TH/UR › @${agent.id} ${alwaysBox.checked ? 'now holds a standing lease: every turn may create files in .pulse/out/, including plan steps.' : 'creates files only when you arm CREATE.'}`);
-        } catch (error) {
-          alwaysBox.checked = !alwaysBox.checked;
-          toast(`Scope was not saved: ${error.message}`);
-        } finally {
-          alwaysBox.disabled = !scope.enabled;
-        }
-      });
-      always.append(alwaysBox, 'ALWAYS · STANDING LEASE');
-      always.append(el('span', 'why', scope.always ? 'every turn and plan step may create files' : 'only when CREATE is armed'));
-      always.title = 'Skip arming CREATE: this agent gets a fresh .pulse/out/ directory on every turn, also when another agent delegates to it.';
-      scopes.append(always);
-    }
   }
   // The ceiling: how far the composer may take this agent.
   const ceiling = el('div', 'ceiling');
@@ -3381,6 +3378,29 @@ function connectionCard(agent) {
   ceiling.append(seg);
   ceiling.append(el('span', 'why', `${MODES[currentCap].label} · ${MODES[currentCap].hint}`));
   scopes.append(ceiling);
+  // The start: where a message to this agent begins. #2 means every turn may create files without arming CREATE.
+  const start = el('div', 'ceiling');
+  start.append(el('span', 'k', 'DEFAULT MODE'));
+  const startSeg = el('div', 'seg');
+  const currentStart = agentScopes.defaultMode ?? 1;
+  for (const n of [1, 2]) {
+    const button = el('button', `seg-option o${n}${currentStart === n ? ' current' : ''}`, `#${n}`);
+    button.type = 'button';
+    button.title = n === 2 ? 'Every message to this agent starts in CREATE: new files where they belong, existing files untouched. Plan steps to it too.' : 'Messages start read-only; arm CREATE when you want files.';
+    button.disabled = n > currentCap;
+    button.addEventListener('click', async () => {
+      if (n === currentStart) return;
+      for (const other of startSeg.children) other.disabled = true;
+      try {
+        await saveSettingNow({ scopes: { [agent.id]: { defaultMode: n } } }, n === 2 ? `@${agent.id} starts in #2 CREATE: every turn may add files to the project.` : `@${agent.id} starts read-only; arm CREATE when you want files.`);
+        await loadSettings();
+      } catch (error) { toast(`Default mode was not saved: ${error.message}`); for (const other of startSeg.children) other.disabled = false; }
+    });
+    startSeg.append(button);
+  }
+  start.append(startSeg);
+  start.append(el('span', 'why', currentStart === 2 ? 'every turn may create files, plan steps too' : 'read-only until you arm CREATE'));
+  scopes.append(start);
   card.append(scopes);
 
   const row = el('div', 'row');

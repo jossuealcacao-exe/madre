@@ -85,16 +85,18 @@ Cada mensaje sale con un modo. Tu modo es el techo de cualquier plan que ese men
 |---|---|---|
 | `#0` | **GHOST** | Fuera del registro. No se escribe en el ledger, nadie lo recuerda, desaparece al recargar. Los tokens sí cuentan. |
 | `#1` | **EXCHANGE** | Leer el proyecto y coordinar. El predeterminado. |
-| `#2` | **CREATE** | Crear archivos e imágenes, solo dentro de `<proyecto>/.pulse/out/<fecha>-<id>/`. |
+| `#2` | **CREATE** | Añadir archivos y carpetas nuevos donde corresponda en el proyecto. Lo que ya existía no cambia: si un agente lo toca, MADRE lo restaura al terminar y lo dice. |
 | `#3` | **CONTROL** | Editar el proyecto real sin aprobación por acción. Un titular por sala, checkpoint git antes, lista de cambios y `UNDO` después. |
 
-**CREATE por dentro.** MADRE crea la carpeta del turno y pasa cada CLI a escritura acotada a ella: Codex con `--sandbox workspace-write` sobre la carpeta, Claude con `Write`/`Edit` permitidos solo ahí, Gemini con reglas de política, OpenCode con permisos `edit` por patrón. Al terminar compara la carpeta y registra lo aparecido como `artifacts.created`; los archivos se muestran bajo la respuesta.
+**CREATE por dentro.** El agente decide dónde va lo nuevo según las convenciones del proyecto, y crea carpetas si hace falta; `.pulse/out/<turno>/` queda como borrador para lo que no tiene sitio. MADRE toma un checkpoint antes del turno y, al terminar, conserva lo que apareció, lo muestra bajo la respuesta como artefactos, y restaura cualquier archivo previo que se haya modificado, renombrado o borrado, avisando en la sala. Las CLIs reciben sus herramientas de escritura sobre el proyecto y la instrucción de no tocar lo existente; la garantía la da la restauración de MADRE al terminar, no la regla previa.
 
 **CONTROL por dentro.** Antes del turno, un commit real bajo `refs/madre/checkpoints/` que no toca tu rama, tu índice ni tu stash. Durante el turno, `.git/`, `.pulse/`, `.madre/`, los `.env` y `.claude/settings.local.json` quedan en solo lectura a nivel de sistema de archivos y recuperan sus permisos al terminar. Después, la lista de archivos añadidos, modificados y borrados, y `UNDO` restaura el checkpoint. Armar `#3` pide la designación del proyecto.
 
 **Escalación.** Si un plan en `#1` llega a un paso que pide crear algo, la sala se detiene y pregunta: `GRANT ONCE · GRANT FOR PLAN · DENY`, con cronómetro de tres minutos. Solo el humano concede; un permiso escrito por un agente dentro de la conversación no cuenta.
 
-**Techo por agente.** En `⚙ CONNECTIONS` cada agente tiene un `MAX MODE` y sus alcances: crear archivos, generar imágenes, web. `ALWAYS · STANDING LEASE` da a un agente una carpeta de creación en cada turno sin pedirla.
+**Modo por paso.** Un orquestador puede pedir el modo de cada paso: `@codex #2: crea la página`, `@claude #3: arregla el router`. MADRE lo acota al modo de tu mensaje y al `MAX MODE` de ese agente. Con tu mensaje en `#3`, la palabra del orquestador basta; con tu mensaje en `#1`, un paso `#2` pasa por la escalación.
+
+**Dos controles por agente.** En `⚙ CONNECTIONS` cada agente tiene `MAX MODE`, hasta dónde puede llegar un mensaje dirigido a él, y `DEFAULT MODE`, dónde empieza: `#1` solo lectura hasta que armes CREATE, o `#2` para que cada turno pueda añadir archivos sin pedirlo. Aparte, dos habilidades: generar imágenes y web.
 
 ---
 
@@ -168,7 +170,7 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 
 | Sección | Qué hace |
 |---|---|
-| `⚙ CONNECTIONS` | Sesión, versión y ruta de cada CLI; `SIGN IN` y `RECHECK`; `MAX MODE` y alcances; timeouts, presupuesto, delegación, modelo de OpenCode; MEMORY y PRIVACY |
+| `⚙ CONNECTIONS` | Sesión, versión y ruta de cada CLI; `SIGN IN` y `RECHECK`; `MAX MODE`, `DEFAULT MODE` y habilidades; timeouts, presupuesto, delegación, modelo de OpenCode; MEMORY y PRIVACY |
 | `◉ NOSTROMO` | El mapa de la memoria |
 | `SENTINEL` | Fallos que ninguna condición explica y caídas del proceso, con rutas, usuarios, correos y claves eliminados. Cada reporte tiene `REPORT ON GITHUB ↗` para leerlo antes de publicarlo; `AUTO-REPORT`, apagado por defecto, envía los nuevos al colector del proyecto |
 | `RELEASE CHANNEL` | Una consulta a npm al día. Si hay versión nueva, una alerta en la barra y aquí el comando exacto para cómo corre tu copia. MADRE nunca se actualiza sola |
@@ -198,7 +200,7 @@ Cada módulo es un archivo en `src/modules/` declarado con `defineModule`. Cómo
 - **Nada por sí solo.** MADRE no tiene nube, cuenta ni backend. No guarda credenciales.
 - **Lo que un agente lee, viaja a su proveedor.** Codex a OpenAI, Claude Code a Anthropic, Gemini CLI a Google, OpenCode a quien tenga configurado. Aplican su cuenta, sus límites y sus términos. `@madre` y el archivista con Ollama no salen de la máquina.
 - **Dos envíos propios, ambos bajo tu interruptor.** El sentinel, apagado por defecto, envía reportes redactados al colector del proyecto. El canal de liberación, encendido por defecto, pregunta a npm por la última versión: viaja el nombre del paquete, nada más, la misma petición que hace `npx`. `PULSE_UPDATE_CHECK=0` lo apaga.
-- **Escritura.** En `#1` nadie escribe. En `#2` solo dentro de `.pulse/out/`. En `#3` todo el proyecto salvo las zonas prohibidas, con checkpoint y `UNDO`.
+- **Escritura.** En `#1` nadie escribe. En `#2` solo se añade: lo que existía se restaura al terminar el turno. En `#3` todo el proyecto salvo las zonas prohibidas, con checkpoint y `UNDO`. En un proyecto sin git, MADRE guarda sus fotografías en un repositorio sombra fuera del proyecto.
 - **Memoria.** Todo lo dicho fuera de GHOST queda en `~/.pulse/rooms/<sala>/` y vuelve a los prompts de todos los agentes de esa sala. GHOST es la salida para lo que no debe recordarse; PRIVACY, para los nombres que nunca deben aparecer.
 
 ---

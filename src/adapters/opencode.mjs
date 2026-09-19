@@ -39,25 +39,30 @@ export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PUL
 // Verified against opencode 1.18.4: absolute patterns never match, so the lease is named by
 // its directory relative to the project.
 export const FORBIDDEN_GLOBS = ['.git/**', '.pulse/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'];
-export function writeRules(relativeDir, { control = false } = {}) {
-  if (control) return { '*': 'allow', ...Object.fromEntries(FORBIDDEN_GLOBS.map((glob) => [glob, 'deny'])) };
+export function writeRules(relativeDir, { control = false, create = false } = {}) {
+  if (control || create) return { '*': 'allow', ...Object.fromEntries(FORBIDDEN_GLOBS.map((glob) => [glob, 'deny'])) };
   const dir = String(relativeDir ?? '.').replace(/^\.\/+/, '').replace(/\/+$/, '');
   return { '*': 'deny', [dir && dir !== '.' ? `${dir}/**` : '**']: 'allow' };
 }
 
-export function leaseConfig(outDir, { control = false, relativeDir = null } = {}) {
-  const rules = writeRules(relativeDir ?? outDir, { control });
+export function leaseConfig(outDir, { control = false, create = false, relativeDir = null } = {}) {
+  const rules = writeRules(relativeDir ?? outDir, { control, create });
+  // OpenCode gates its `write` tool behind the `edit` permission as well (denying edit leaves "no
+  // file-writing tool"), so CREATE allows both and the room restores existing files afterwards.
+  const editRules = rules;
   return {
     ...readonlyConfig,
     agent: {
       'pulse-readonly': {
         ...readonlyConfig.agent['pulse-readonly'],
         prompt: control
-          ? 'Answer the user directly. You are in CONTROL of this project: create and edit files anywhere inside it except .git, .pulse and .env files. Do not run commands, browse the web, or launch subagents.'
-          : 'Answer the user directly. Inspect project files when necessary. You may create or edit files only inside the creation lease directory named in the request; never elsewhere. Do not run commands, browse the web, or launch subagents.',
+          ? 'Answer the user directly. You are in CONTROL of this project: create and edit files anywhere inside it except .git, .pulse, .madre and .env files. Do not run commands, browse the web, or launch subagents.'
+          : create
+            ? 'Answer the user directly. You may create new files and folders anywhere in this project where they belong; do not modify or delete existing files. Do not run commands, browse the web, or launch subagents.'
+            : 'Answer the user directly. Inspect project files when necessary. You may create or edit files only inside the creation lease directory named in the request; never elsewhere. Do not run commands, browse the web, or launch subagents.',
         permission: {
           ...readonlyConfig.agent['pulse-readonly'].permission,
-          edit: rules,
+          edit: editRules,
           write: rules,
         },
       },
@@ -66,7 +71,7 @@ export function leaseConfig(outDir, { control = false, relativeDir = null } = {}
 }
 
 export function openCodeConfig({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
-  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control), relativeDir: lease.relativeDir ?? null }) : readonlyConfig;
+  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), relativeDir: lease.relativeDir ?? null }) : readonlyConfig;
   if (scopes?.web) {
     config = {
       ...config,

@@ -1262,7 +1262,7 @@ test('parses delegation directives from an agent reply', () => {
   assert.deepEqual(parsed.ignored.map((item) => item.reason), [
     '@gemini already has a step',
     '@opencode is not available in this room',
-    'not a step (expected "@agent: text")',
+    'not a step (expected "@agent: text" or "@agent #2: text")',
   ]);
   assert.deepEqual(parseDirectives('no plan here', { self: 'claude', available: ['gemini'] }), { steps: [], closing: null, ignored: [] });
   // A quoted example followed by prose is not a plan; only a closing block runs.
@@ -1774,28 +1774,37 @@ test('creation lease: granted per human message, inherited by the plan, artifact
       'claude-readonly': async ({ prompt, lease }) => {
         leases.push(['claude', lease?.outDir ?? null]);
         if (/this is your closing turn/.test(prompt)) return { text: 'Codex made the poster.', usage: null };
-        assert.match(prompt, /CREATION LEASE/);
-        return { text: 'Delegating.\n\n```pulse\n@codex: generate poster.png in the lease directory\n@claude: confirm\n```', usage: null };
+        assert.match(prompt, /CREATE \(#2\)[\s\S]*where they belong/);
+        return { text: 'Delegating.\n\n```pulse\n@codex: generate poster.png where images live\n@claude: confirm\n```', usage: null };
       },
       'codex-readonly': async ({ prompt, lease }) => {
         leases.push(['codex', lease?.outDir ?? null]);
-        assert.match(prompt, /CREATION LEASE[\s\S]*generate images/);
-        await writeFile(join(lease.outDir, 'poster.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-        return { text: 'Saved poster.png', usage: null };
+        assert.match(prompt, /CREATE \(#2\)[\s\S]*generate images/);
+        // The agent puts the poster where it belongs, adds a folder, and also touches an existing file: only the additions may stay.
+        await mkdir(join(lease.outDir, 'assets'), { recursive: true });
+        await writeFile(join(lease.outDir, 'assets', 'poster.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        await writeFile(join(lease.outDir, 'README.md'), 'overwritten by the agent\n');
+        return { text: 'Saved assets/poster.png', usage: null };
       },
     };
+    await writeFile(join(root, 'README.md'), 'original\n');
     const room = new Room({ store, agents, projectRoot: root, invokers });
     await room.send({ text: 'make me a poster', target: 'claude', create: true });
     const events = await store.readAll();
     const granted = events.find((event) => event.type === 'lease.granted');
     assert.equal(granted.payload.agent, 'claude');
-    assert.match(granted.payload.outDir, /^\.pulse\/out\//);
-    assert.ok(leases.every(([, dir]) => dir && dir.endsWith(granted.payload.outDir)), 'orchestrator, delegate and closing turn share the lease');
+    assert.equal(granted.payload.outDir, '.', 'the project itself is the lease');
+    assert.match(granted.payload.scratchDir, /^\.pulse\/out\//, 'with a scratch folder for what has no place');
+    assert.ok(leases.every(([, dir]) => dir === root), 'orchestrator, delegate and closing turn share the project lease');
     const created = events.find((event) => event.type === 'artifacts.created');
     assert.equal(created.payload.agent, 'codex');
-    assert.deepEqual(created.payload.files.map((file) => file.name), ['poster.png']);
+    assert.deepEqual(created.payload.files.map((file) => file.path), ['assets/poster.png'], 'the new file is the artifact, with its project path');
     const codexReply = events.find((event) => event.type === 'message.created' && event.payload.sender === 'codex');
     assert.equal(codexReply.payload.artifacts[0].contentType, 'image/png');
+    assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'original\n', 'CREATE only adds: the existing file is put back');
+    const reverted = events.find((event) => event.type === 'create.reverted');
+    assert.deepEqual(reverted.payload.existing, ['README.md']);
+    assert.match(reverted.payload.message, /created 1 file[\s\S]*1 change\(s\) to existing files were put back/);
     assert.equal(codexReply.payload.leaseId, granted.payload.leaseId);
     const user = events.find((event) => event.type === 'message.created' && event.payload.role === 'user');
     assert.equal(user.payload.create, true);

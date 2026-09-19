@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
-import { access, mkdtemp, readdir, rm, unlink } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
+import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -25,13 +26,33 @@ export const FORBIDDEN = [
 ];
 export const isForbidden = (path) => FORBIDDEN.some((pattern) => pattern.test(path));
 
-async function git(root, args, { env = {} } = {}) {
-  const { stdout } = await execFileAsync('git', ['-c', 'core.quotepath=off', ...args], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 16 * 1024 * 1024 });
-  return stdout;
-}
-
 export async function isGitRepo(root) {
   return access(join(root, '.git')).then(() => true, () => false);
+}
+
+// A project that is not a git repository still gets photographs: MADRE keeps a shadow
+// repository of its own outside the project (one per project path) and runs git with the
+// project as work tree. Nothing appears inside the project; UNDO and diffs work the same.
+const shadows = new Map();
+async function shadowFor(root) {
+  const canonical = resolve(root);
+  if (!shadows.has(canonical)) {
+    const dir = join(tmpdir(), 'madre-shadow', createHash('sha1').update(canonical).digest('hex').slice(0, 16));
+    await mkdir(dir, { recursive: true });
+    const isRepo = await access(join(dir, 'HEAD')).then(() => true, () => false);
+    if (!isRepo) await execFileAsync('git', ['init', '-q', '--bare', dir]);
+    shadows.set(canonical, dir);
+  }
+  return shadows.get(canonical);
+}
+async function gitArgs(root) {
+  if (await isGitRepo(root)) return [];
+  return ['--git-dir', await shadowFor(root), '--work-tree', root];
+}
+
+async function git(root, args, { env = {} } = {}) {
+  const { stdout } = await execFileAsync('git', ['-c', 'core.quotepath=off', ...(await gitArgs(root)), ...args], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 16 * 1024 * 1024 });
+  return stdout;
 }
 
 // A tree object of the working tree as it is right now: tracked and untracked
@@ -41,6 +62,7 @@ export async function worktreeTree(root, { exclude = [] } = {}) {
   const index = join(dir, 'index');
   try {
     const env = { GIT_INDEX_FILE: index };
+    const extra = await gitArgs(root);
     await git(root, ['read-tree', '--empty'], { env });
     // Every file of the working tree that git would not ignore, listed against the empty
     // index. Nested repositories come back as `dir/` entries and are left out: they are
@@ -50,7 +72,7 @@ export async function worktreeTree(root, { exclude = [] } = {}) {
     const files = listed.split('\0').filter((path) => path && !path.endsWith('/') && ![...skip].some((dir) => path === dir || path.startsWith(`${dir}/`)));
     if (files.length) {
       await new Promise((resolvePromise, reject) => {
-        const child = execFile('git', ['-c', 'core.quotepath=off', 'update-index', '--add', '-z', '--stdin'], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 64 * 1024 * 1024 }, (error) => (error ? reject(error) : resolvePromise()));
+        const child = execFile('git', ['-c', 'core.quotepath=off', ...extra, 'update-index', '--add', '-z', '--stdin'], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 64 * 1024 * 1024 }, (error) => (error ? reject(error) : resolvePromise()));
         child.stdin.end(files.join('\0') + '\0');
       });
     }

@@ -63,19 +63,24 @@ export function diffSnapshots(before, after, { relativeDir }) {
   return artifacts.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false }) {
+export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false, create = false, scratchDir = null }) {
   const canImage = Boolean(scopes.imageGen);
   const couldImage = capable ? Boolean(capable.imageGen?.capable) : canImage;
+  const scratch = scratchDir ? `${outDir}/${scratchDir}` : null;
   return [
     control
       ? `CONTROL (#3): the human put you in command of this project at ${outDir}. You may read, create and modify its files without asking, one change at a time, minimal and reversible. MADRE took a checkpoint before this turn; everything you change is listed to the human afterwards and can be undone in one click.`
-      : `CREATION LEASE: the human allows you to create files for this request, only inside ${outDir}.`,
+      : create
+        ? `CREATE (#2): the human allows you to create new files and folders anywhere in this project, at ${outDir}, where they belong by the project's own conventions (a page next to the other pages, a component with the components, a document with the documents). Create folders when the structure calls for it.${scratch ? ` If something has no natural place, put it in the scratch folder ${scratch}.` : ''}`
+        : `CREATION LEASE: the human allows you to create files for this request, only inside ${outDir}.`,
     control
-      ? 'Never touch .git, .pulse, .env files or credentials: writes there are denied and reverted. Do not run destructive commands. Do not delegate this power: other agents you involve work read-only.'
-      : 'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
-    control ? 'End with a short list of the files you changed and why.' : 'Reading the project stays allowed. Do not modify project files.',
-    imageStudio ? `You can generate images with the MCP tool ${imageStudio.tool} (server ${imageStudio.name}): pass a detailed prompt and a file_name; it saves the PNG into the lease directory and returns the path.`
-      : canImage ? 'You can generate images; save them into the lease directory with a descriptive file name.'
+      ? 'Never touch .git, .pulse, .madre, .env files or credentials: writes there are denied and reverted. Do not run destructive commands. Do not delegate this power: other agents you involve work read-only unless a step of yours names a mode.'
+      : create
+        ? 'Do not modify, overwrite, rename or delete files that already exist: MADRE restores them after your turn and tells the human. If a change to an existing file is truly needed, say so and stop; the human can grant #3 CONTROL. Never touch .git, .pulse, .madre, .env files or credentials.'
+        : 'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
+    control ? 'End with a short list of the files you changed and why.' : create ? 'End with a short list of the files you created, with their paths, and why there.' : 'Reading the project stays allowed. Do not modify project files.',
+    imageStudio ? `You can generate images with the MCP tool ${imageStudio.tool} (server ${imageStudio.name}): pass a detailed prompt and a file_name; it saves the PNG${scratch ? ` into ${scratch}` : ' into the lease directory'} and returns the path.`
+      : canImage ? `You can generate images; save them${create ? ' where images live in this project, or in the scratch folder,' : ' into the lease directory'} with a descriptive file name.`
       : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'
         : 'You cannot generate images from this CLI; if asked for one, say so plainly instead of attempting it.',
     'List the files you created (or "none") before any plan block; nothing may follow a plan block.',
