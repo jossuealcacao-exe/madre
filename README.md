@@ -242,7 +242,7 @@ En `⚙ CONNECTIONS → MEMORY` se ajusta la memoria sin terminal y se aplica al
 
 ## @madre, el quinto agente
 
-Cuando Ollama corre con un modelo de chat, aparece en la sala un quinto agente: `@madre`. Es la memoria del proyecto convertida en interlocutor: responde desde el archivo completo, notas destiladas y citas exactas con su secuencia `[#n]`, más lo que lleve el mensaje. No escribe, no dibuja, no navega ni delega; cuando la sala nunca habló de algo, lo dice. Los demás agentes pueden delegarle un paso para comprobar qué se decidió. Sus tokens son locales y no cuentan contra ningún presupuesto. Entra y sale con Ollama, y MU/TH/UR lo anuncia; el interruptor `@MADRE IN THE ROOM` en MODULES → OLLAMA lo apaga.
+Cuando Ollama corre con un modelo de chat, aparece en la sala un quinto agente: `@madre`. Es la memoria del proyecto convertida en interlocutor: responde desde el archivo completo, notas destiladas y citas exactas con su secuencia `[#n]`, más lo que lleve el mensaje. No escribe, no dibuja, no navega ni delega; cuando la sala nunca habló de algo, lo dice. Sí convoca: «@madre, pregúntale al crew …» abre una ronda con un paso por agente en línea y `@madre` cierra con un resumen citado. El archivista es su otra mitad, el mismo modelo local de fondo que destila la sala cada pocos intercambios; por eso a `@madre` no se le dicta la memoria, se trabaja en la sala y se destila sola, o un agente guarda una nota con `memory_note`. Los demás agentes pueden delegarle un paso para comprobar qué se decidió. Sus tokens son locales y no cuentan contra ningún presupuesto. Entra y sale con Ollama, y MU/TH/UR lo anuncia; el interruptor `@MADRE IN THE ROOM` en MODULES → OLLAMA lo apaga.
 
 ## El modelo del proyecto
 

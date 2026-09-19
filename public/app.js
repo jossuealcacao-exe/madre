@@ -729,8 +729,8 @@ function renderPicker() {
     text.append('to ');
     text.append(el('b', null, `@${current.id}`));
     if (current.local) {
-      const note = el('span', 'pick-note', 'memory · answers, does not act');
-      note.title = '@madre runs on this machine and speaks only for what the room said. To convene the crew or change files, write to a CLI agent.';
+      const note = el('span', 'pick-note', 'memory · answers & asks the crew · never writes');
+      note.title = '@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.';
       text.append(note);
     }
     const modeChip = el('button', `mode-chip m${state.mode}`);

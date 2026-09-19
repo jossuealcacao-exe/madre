@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { madreAgent, madreInvoker, gather, actionRequest, briefingFor, MADRE_ADAPTER } from '../src/adapters/madre.mjs';
+import { madreAgent, madreInvoker, gather, actionRequest, briefingFor, localReply, roundTable, whoAmI, memoryRequest, MADRE_ADAPTER } from '../src/adapters/madre.mjs';
+import { parseDirectives } from '../src/directives.mjs';
+import { buildConversationContext } from '../src/conversation-context.mjs';
 import { EventStore } from '../src/event-store.mjs';
 import { RoomMemory } from '../src/memory.mjs';
 import { createPulseServer } from '../src/server.mjs';
@@ -57,8 +59,9 @@ test('@madre: answers from the whole archive with a grounded system prompt, and 
     const before = calls.length;
     const declined = await invoke({ prompt: 'p', text: 'Directiva, convoca a una reunión con el crew y comparte los detalles del proyecto' });
     assert.match(declined.text, /Solo respondo desde la memoria[\s\S]*@codex, @claude, @gemini u @opencode/);
+    assert.equal(declined.synthetic, 'declined');
     assert.deepEqual([declined.declined, declined.usage.totalTokens, declined.usage.local, calls.length], ['action', 0, true, before]);
-    assert.match((await invoke({ prompt: 'p', text: 'Convene the crew and tell @codex to start' })).text, /I only answer from the room's memory/);
+    assert.match((await invoke({ prompt: 'p', text: 'Convene the crew and tell @codex to start' })).text, /I only answer from the room's memory/, 'delegation off: convening is declined');
     assert.equal(actionRequest('No realizaste la reunión convoca a todos')?.startsWith('Solo respondo'), true);
     assert.equal(actionRequest('¿qué decidimos sobre la reunión del lunes?'), null, 'questions pass through');
     assert.equal(actionRequest('what did we decide about RIPLEY and scripts?'), null);
@@ -116,6 +119,64 @@ test('@madre: joins the roster when Ollama is up, answers a turn, is never the a
     assert.match(updates.at(-1).payload.reason, /left the room/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
+test('@madre settles identity, memory requests and round tables without the model; closing turns and questions reach it', async () => {
+  const crew = ['codex', 'claude', 'gemini', 'opencode'];
+  // Identity, in the asker's language, naming the archivist as its other half.
+  assert.match(whoAmI('madre que haces?', { model: 'qwen2.5:7b' }), /Soy @madre[\s\S]*qwen2\.5:7b[\s\S]*archivista es mi otra mitad[\s\S]*memory_note/);
+  assert.match(whoAmI('Pero se supone que tu eres el archivista'), /Soy @madre/);
+  assert.match(whoAmI('who are you?'), /I am @madre[\s\S]*archivist is my other half/);
+  assert.equal(whoAmI('what did we decide about RIPLEY?'), null);
+
+  // Memory requests: agents are pointed at memory_note, humans at the archivist.
+  assert.match(memoryRequest('Genera una memoria nueva de esta sala, tipo fact/summary, sobre la ronda', { requester: 'codex' }), /Yo no escribo memorias[\s\S]*memory_note/);
+  assert.match(memoryRequest('La directiva actual es que aprendas de las respuestas que te comparte el crew', { requester: 'you' }), /La memoria no se dicta, se destila/);
+  assert.match(memoryRequest('remember this: the API key lives in the keychain', { requester: 'you' }), /Memory is not dictated/);
+  assert.equal(memoryRequest('¿recuerdas qué decidimos sobre el empaque?'), null, 'a question about memory goes to the archive');
+
+  // Round table: a plan the room writes, one step per agent online, @madre closes.
+  const round = roundTable('@madre, pregúntale al crew qué harían si vivieran como humanos un día', { crew });
+  assert.equal(round.question, 'qué harían si vivieran como humanos un día');
+  const plan = parseDirectives(round.text, { self: 'madre', available: crew });
+  assert.deepEqual(plan.steps.map((step) => step.agent), crew);
+  assert.match(plan.steps[0].text, /Pregunta de la sala, vía @madre: «qué harían si vivieran como humanos un día»/);
+  assert.match(plan.closing, /^Resume con citas \[#n\][\s\S]*sin inventar consenso\.$/);
+  assert.equal(plan.ignored.length, 0);
+  assert.match(roundTable('Directiva, convoca a una reunión con el crew y comparte los detalles del proyecto', { crew }).question, /^comparte los detalles del proyecto$/);
+  assert.match(roundTable('convoca al crew', { crew }).question, /^¿Qué sabes de este proyecto/, 'no question given: the default one, in Spanish');
+  assert.equal(parseDirectives(roundTable('ask the crew which files changed', { crew: ['codex', 'gemini'] }).text, { self: 'madre', available: ['codex', 'gemini'] }).steps.length, 2);
+  assert.match(roundTable('convoca al crew', { crew: [] }).text, /No hay agentes CLI en la fila/);
+  assert.equal(roundTable('¿qué decidimos sobre RIPLEY?', { crew }), null);
+
+  // The dispatcher: order, who may convene, what passes through.
+  assert.equal(localReply('convoca al crew', { requester: 'you', crew, delegation: true }).kind, 'roundtable');
+  assert.equal(localReply('convoca al crew', { requester: 'you', crew, delegation: false }).kind, 'declined', 'delegation off: no plan, a refusal that says how to ask');
+  assert.equal(localReply('Convoca a todos y dile a @gemini que empiece', { requester: 'codex', crew, delegation: true }).kind, 'declined', 'agents never convene through @madre');
+  assert.match(localReply('Convoca a todos y dile a @gemini que empiece', { requester: 'codex', crew, delegation: true }).text, /memory_note/);
+  assert.equal(localReply('Resume con citas [#n] lo que el crew respondió a: «convoca y crea archivos».\n(The delegated agents have answered above; this is your closing turn.)', { requester: 'madre', crew, delegation: false }), null, 'the closing turn always reaches the model');
+  assert.equal(localReply('resume lo que se dijo sobre el empaque', { requester: 'you', crew, delegation: true }), null);
+
+  // Synthetic replies are dropped from @madre's transcript and from the archive.
+  const events = [
+    { sequence: 1, type: 'message.created', payload: { messageId: 'a', role: 'user', sender: 'you', target: 'madre', text: 'convoca al crew' } },
+    { sequence: 2, type: 'message.created', payload: { messageId: 'b', role: 'assistant', sender: 'madre', target: 'you', text: 'Convoco al crew…', synthetic: 'roundtable' } },
+    { sequence: 3, type: 'message.created', payload: { messageId: 'c', role: 'assistant', sender: 'codex', target: 'madre', text: 'Sé que el proyecto usa SQLite.' } },
+  ];
+  assert.deepEqual(buildConversationContext(events, { omitSynthetic: true }).messages.map((m) => m.messageId), ['a', 'c']);
+  assert.deepEqual(buildConversationContext(events).messages.map((m) => m.messageId), ['a', 'b', 'c'], 'CLIs still see what @madre said');
+  const root = await mkdtemp(join(tmpdir(), 'pulse-madre-syn-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (const event of events) await store.append(event.type, event.payload);
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    assert.equal(memory.count(), 2, 'the canned reply never enters the archive');
+    assert.ok(memory.recall('Convoco al crew', { limit: 5 }).entries.every((entry) => entry.sender !== 'madre'), 'nothing @madre said by rote is quotable');
+    memory.close();
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

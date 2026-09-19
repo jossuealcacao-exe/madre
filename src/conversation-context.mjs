@@ -17,9 +17,11 @@ export function messageEntry(event) {
   return { sequence: event.sequence, messageId, role, sender, target, text: text.trim() };
 }
 
-export function buildConversationContext(events, { excludeMessageId, maxChars = 16000 } = {}) {
+// `omitSynthetic` drops MADRE's own canned replies (identity, refusals, round-table plans):
+// @madre must never read them back, or a small model starts echoing them.
+export function buildConversationContext(events, { excludeMessageId, maxChars = 16000, omitSynthetic = false } = {}) {
   const messages = events
-    .map(messageEntry)
+    .map((event) => (omitSynthetic && event?.payload?.synthetic ? null : messageEntry(event)))
     .filter((message) => message && message.messageId !== excludeMessageId);
   const selected = [];
   let remaining = Math.max(0, Number(maxChars) || 0);

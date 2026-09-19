@@ -226,8 +226,8 @@ export class Room {
   }
   embedNow() { return this.#vectors.runNow(); }
 
-  #contextFor(priorEvents, { messageId, text }) {
-    return contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events) });
+  #contextFor(priorEvents, { messageId, text, omitSynthetic = false }) {
+    return contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic });
   }
 
   // The human tunes the archive from MU/TH/UR; changes apply to the next run.
@@ -626,7 +626,8 @@ export class Room {
     }
 
     const priorEvents = await this.#store.readAll();
-    const { context, recall, memories } = await this.#contextFor(priorEvents, { messageId, text });
+    // @madre never reads its own canned replies back: a small model would echo them.
+    const { context, recall, memories } = await this.#contextFor(priorEvents, { messageId, text, omitSynthetic: Boolean(agent.local) });
     let handoffId = null;
     if (context.previousAgent && context.previousAgent !== targetId) {
       handoffId = randomUUID();
@@ -756,6 +757,8 @@ export class Room {
       const before = lease && !lease.control ? await snapshot(lease.outDir) : null;
       const responseMessageId = randomUUID();
       const notesBefore = this.#memory ? this.#memory.maxMemoryId() : 0;
+      const others = this.delegatesFor(agent.id);
+      const mayDelegate = allowDelegation && this.#delegation && depth === 0;
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
@@ -769,12 +772,16 @@ export class Room {
         scopes: turnScopes,
         imageStudio,
         memoryServer: memoryServerForTurn(this.#memoryServer, { agent: agent.id, messageId: responseMessageId, mode: turnMode }),
+        // For @madre: who asks, who it may convene, and whether a plan would run at all.
+        requester,
+        crew: others,
+        delegation: mayDelegate,
+        maxSteps: this.#maxPlanSteps,
       });
       const artifacts = lease && !lease.control ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
       // CONTROL: what really changed in the project, forbidden zones reverted on the spot.
       const controlChanges = controlRun ? await this.#controlDesk.settle(controlRun) : null;
-      const others = this.delegatesFor(agent.id);
-      const directives = allowDelegation && this.#delegation && depth === 0
+      const directives = mayDelegate
         ? parseDirectives(result.text, { self: agent.id, available: others, maxSteps: this.#maxPlanSteps })
         : { steps: [], closing: null, ignored: [] };
       if (directives.steps.length === 0 && directives.ignored.length && depth === 0) {
@@ -798,6 +805,7 @@ export class Room {
         status: 'completed',
         planId,
         model,
+        synthetic: result.synthetic || undefined,
         mode: turnMode,
         leaseId: lease?.leaseId,
         artifacts: artifacts.length ? artifacts : undefined,

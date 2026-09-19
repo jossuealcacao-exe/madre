@@ -443,6 +443,8 @@ export class RoomMemory {
       for (const event of events) {
         if (!event || event.ghost || !Number.isInteger(event.sequence)) continue;
         if (event.sequence > last) last = event.sequence;
+        // MADRE's canned replies are not the room's knowledge; they never enter the archive.
+        if (event.payload?.synthetic) continue;
         const entry = messageEntry(event);
         if (!entry) continue;
         const result = this.#insert.run(event.sequence, event.id ?? `seq-${event.sequence}`, event.timestamp ?? null, event.type, entry.role, entry.sender, entry.target ?? null, entry.messageId ?? null, entry.text);
