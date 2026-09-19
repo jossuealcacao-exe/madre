@@ -42,6 +42,7 @@ import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
+import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { discoverModels } from './models.mjs';
 import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
@@ -131,7 +132,9 @@ export async function createPulseServer({
   const historicalEvents = await store.readAll();
   // The room's memory: derived from the ledger, rebuilt if missing or stale,
   // and never a reason for the room not to open.
-  const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).initialize(store)
+  // Privacy: the terms that never travel through this room, from config.json and the environment.
+  const privacy = new Privacy(privacySettings(await readConfig(root)));
+  const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).attachPrivacy(privacy).initialize(store)
     .catch((error) => { console.error(`MADRE memory unavailable, turns get the recent window only: ${error.message}`); return null; });
   // Meaning-aware recall through the user's own Gemini key, when there is one;
   // and the memory as MCP tools for every agent's turn.
@@ -188,6 +191,7 @@ export async function createPulseServer({
     store,
     agents,
     projectRoot,
+    privacy,
     softTokenBudget,
     contextMaxChars,
     recallShare: Number(process.env.PULSE_RECALL_SHARE ?? startupMemory.recallShare),
@@ -236,6 +240,7 @@ export async function createPulseServer({
       geminiRetries: Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
       capabilities: room.capabilities(),
       memory: memorySettingsView(),
+      privacy: { terms: privacy.terms, marker: privacy.marker, envWins: privacySettings({}, process.env).envWins },
     };
   }
   // What MU/TH/UR shows under MEMORY: the live values, who could distil, and what embeds today.
@@ -713,9 +718,33 @@ export async function createPulseServer({
           const manifest = await readFile(join(dir, 'manifest.json'), 'utf8').then(JSON.parse).catch(() => null);
           return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null });
         }
-        const result = await exportDataset({ events: await store.readAll(), notes: memory ? memory.memories({ limit: 5000 }) : [], dir, project: basename(canonicalProjectRoot), home: homedir() });
+        const result = await exportDataset({ events: await store.readAll(), notes: memory ? memory.memories({ limit: 5000 }) : [], dir, project: basename(canonicalProjectRoot), home: homedir(), privacy });
         await room.record('dataset.exported', { pairs: result.pairs, turns: result.turns, notes: result.notes, train: result.train, valid: result.valid, dir });
         return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null });
+      }
+      // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
+      if (request.method === 'GET' && url.pathname === '/api/privacy') {
+        return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, exposure: room.privacyExposure(await store.readAll()) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/privacy') {
+        const patch = await body(request).catch(() => ({}));
+        const current = (await readConfig(root)).privacy ?? {};
+        const next = { ...current };
+        if ('terms' in patch) next.terms = normalizeTerms(patch.terms);
+        if (typeof patch.marker === 'string' && patch.marker.trim()) next.marker = patch.marker.trim().slice(0, 40);
+        await updateConfig(root, { privacy: next });
+        privacy.set(next.terms ?? [], next.marker);
+        await room.record('privacy.updated', { terms: privacy.terms.length, marker: privacy.marker });
+        return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, exposure: room.privacyExposure(await store.readAll()) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/privacy/purge') {
+        const payload = await body(request).catch(() => ({}));
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!privacy.enabled) return sendJson(response, 412, { error: 'No private terms are set. Write them first.' });
+        const result = await room.purgePrivate();
+        // The log was rewritten in place: the broadcaster's byte offset is stale, the sequences are not.
+        tailOffset = (await store.tail(0)).offset;
+        return sendJson(response, 200, { purged: result, exposure: room.privacyExposure(await store.readAll()) });
       }
       if (request.method === 'GET' && url.pathname === '/api/mother') {
         return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });

@@ -74,6 +74,7 @@ export class RoomMemory {
   #meta;
   #setMeta;
   #embedder = null;
+  #privacy = null;
 
   constructor(file) {
     this.#file = file;
@@ -172,6 +173,62 @@ export class RoomMemory {
   /* ---------- embeddings ---------- */
 
   attachEmbedder(embedder) { this.#embedder = embedder ?? null; return this; }
+
+  // Private terms never enter the index or the notes, whoever wrote them.
+  attachPrivacy(privacy) { this.#privacy = privacy ?? null; return this; }
+  #guard(text) { return this.#privacy ? this.#privacy.redact(text).text : text; }
+
+  // What the archive still carries: entries and notes with a private term, for MU/TH/UR.
+  exposure() {
+    if (!this.#privacy?.enabled) return { entries: 0, memories: 0 };
+    let entries = 0;
+    for (const row of this.#db.prepare('SELECT text FROM entries').iterate()) if (this.#privacy.hits(row.text)) entries += 1;
+    let memories = 0;
+    for (const row of this.#db.prepare('SELECT text FROM memories').iterate()) if (this.#privacy.hits(row.text)) memories += 1;
+    return { entries, memories };
+  }
+
+  // Replaces private terms in every entry and note already kept. FTS tables are external
+  // content with insert/delete triggers only, so a changed row is deleted and re-inserted
+  // with its own rowid; its vector goes with it and is recomputed later. Distilled flags stay.
+  purge() {
+    if (!this.#privacy?.enabled) return { entries: 0, memories: 0 };
+    const counts = { entries: 0, memories: 0 };
+    const entryRows = this.#db.prepare('SELECT sequence, event_id, timestamp, type, role, sender, target, message_id, text, distilled FROM entries').all();
+    const memoryRows = this.#db.prepare('SELECT id, created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id FROM memories').all();
+    const deleteEntry = this.#db.prepare('DELETE FROM entries WHERE sequence = ?');
+    const deleteEntryVector = this.#db.prepare('DELETE FROM entry_vectors WHERE sequence = ?');
+    const insertEntry = this.#db.prepare('INSERT INTO entries (sequence, event_id, timestamp, type, role, sender, target, message_id, text, distilled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const deleteMemory = this.#db.prepare('DELETE FROM memories WHERE id = ?');
+    const deleteMemoryVector = this.#db.prepare('DELETE FROM memory_vectors WHERE id = ?');
+    const insertMemory = this.#db.prepare('INSERT INTO memories (id, created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    this.#db.exec('BEGIN');
+    try {
+      for (const row of entryRows) {
+        const { text, hits } = this.#privacy.redact(row.text);
+        if (!hits) continue;
+        deleteEntryVector.run(row.sequence);
+        deleteEntry.run(row.sequence);
+        insertEntry.run(row.sequence, row.event_id, row.timestamp, row.type, row.role, row.sender, row.target, row.message_id, text, row.distilled);
+        counts.entries += 1;
+      }
+      for (const row of memoryRows) {
+        const { text, hits } = this.#privacy.redact(row.text);
+        if (!hits) continue;
+        deleteMemoryVector.run(row.id);
+        deleteMemory.run(row.id);
+        // Two notes may collapse into the same redacted sentence: the later one is dropped.
+        const clash = this.#db.prepare('SELECT id FROM memories WHERE norm = ?').get(normalizeMemory(text));
+        if (!clash) insertMemory.run(row.id, row.created, row.kind, text, normalizeMemory(text), row.from_sequence, row.through_sequence, row.sources, row.agent, row.origin, row.message_id);
+        counts.memories += 1;
+      }
+      this.#db.exec('COMMIT');
+    } catch (error) {
+      this.#db.exec('ROLLBACK');
+      throw error;
+    }
+    return counts;
+  }
   get embedder() { return this.#embedder; }
 
   // Entries and notes without a vector for the current model, oldest first.
@@ -296,7 +353,7 @@ export class RoomMemory {
     this.#db.exec('BEGIN');
     try {
       for (const memory of list) {
-        const text = String(memory.text ?? '').trim();
+        const text = this.#guard(String(memory.text ?? '').trim());
         if (!text) continue;
         const kind = MEMORY_KINDS.includes(memory.kind) ? memory.kind : 'fact';
         const sources = (Array.isArray(memory.sources) ? memory.sources : []).filter((n) => Number.isInteger(n));
@@ -447,7 +504,7 @@ export class RoomMemory {
         if (event.payload?.synthetic) continue;
         const entry = messageEntry(event);
         if (!entry) continue;
-        const result = this.#insert.run(event.sequence, event.id ?? `seq-${event.sequence}`, event.timestamp ?? null, event.type, entry.role, entry.sender, entry.target ?? null, entry.messageId ?? null, entry.text);
+        const result = this.#insert.run(event.sequence, event.id ?? `seq-${event.sequence}`, event.timestamp ?? null, event.type, entry.role, entry.sender, entry.target ?? null, entry.messageId ?? null, this.#guard(entry.text));
         added += Number(result.changes ?? 0);
       }
       this.#setMeta.run('last_sequence', String(last));

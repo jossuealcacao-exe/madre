@@ -16,7 +16,10 @@ function system(project, agent) {
 }
 
 // Pairs a user message with the assistant reply that answered it (parentMessageId).
-export function pairsFromEvents(events, { project = 'project', home, user } = {}) {
+const guard = (privacy) => (text) => (privacy ? privacy.redact(text).text : text);
+
+export function pairsFromEvents(events, { project = 'project', home, user, privacy = null } = {}) {
+  const clean = guard(privacy);
   const users = new Map();
   const pairs = [];
   for (const event of events) {
@@ -37,8 +40,8 @@ export function pairsFromEvents(events, { project = 'project', home, user } = {}
       at: event.timestamp,
       messages: [
         { role: 'system', content: system(project, p.sender) },
-        { role: 'user', content: redact(ask.text, { home, user }) },
-        { role: 'assistant', content: redact(answer, { home, user }) },
+        { role: 'user', content: clean(redact(ask.text, { home, user })) },
+        { role: 'assistant', content: clean(redact(answer, { home, user })) },
       ],
     });
   }
@@ -46,7 +49,8 @@ export function pairsFromEvents(events, { project = 'project', home, user } = {}
 }
 
 // Distilled notes become recall pairs: "what does the room remember about …" → the note.
-export function pairsFromNotes(notes, { project = 'project', home, user } = {}) {
+export function pairsFromNotes(notes, { project = 'project', home, user, privacy = null } = {}) {
+  const clean = guard(privacy);
   return notes.map((note) => ({
     kind: 'note',
     agent: 'madre',
@@ -55,8 +59,8 @@ export function pairsFromNotes(notes, { project = 'project', home, user } = {}) 
     at: note.created,
     messages: [
       { role: 'system', content: `You are @madre, the memory of the MADRE room of the project "${project}". Answer only from what the room decided and recorded.` },
-      { role: 'user', content: `What does the room remember about this? Kind: ${note.kind}. Topic: ${redact(note.text, { home, user }).split(/[.;:]/)[0].slice(0, 80)}` },
-      { role: 'assistant', content: `${redact(note.text, { home, user })} [#${note.fromSequence}${note.throughSequence !== note.fromSequence ? `–#${note.throughSequence}` : ''}]` },
+      { role: 'user', content: `What does the room remember about this? Kind: ${note.kind}. Topic: ${clean(redact(note.text, { home, user })).split(/[.;:]/)[0].slice(0, 80)}` },
+      { role: 'assistant', content: `${clean(redact(note.text, { home, user }))} [#${note.fromSequence}${note.throughSequence !== note.fromSequence ? `–#${note.throughSequence}` : ''}]` },
     ],
   }));
 }
@@ -70,8 +74,8 @@ export function split(pairs, { validEvery = 10 } = {}) {
   return { train, valid };
 }
 
-export async function exportDataset({ events, notes = [], dir, project = 'project', home, user }) {
-  const pairs = [...pairsFromEvents(events, { project, home, user }), ...pairsFromNotes(notes, { project, home, user })].sort((a, b) => a.sequence - b.sequence);
+export async function exportDataset({ events, notes = [], dir, project = 'project', home, user, privacy = null }) {
+  const pairs = [...pairsFromEvents(events, { project, home, user, privacy }), ...pairsFromNotes(notes, { project, home, user, privacy })].sort((a, b) => a.sequence - b.sequence);
   const { train, valid } = split(pairs);
   await mkdir(dir, { recursive: true });
   const line = (pair) => JSON.stringify({ messages: pair.messages });

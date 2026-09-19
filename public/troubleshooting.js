@@ -443,6 +443,15 @@ export const CONDITIONS = [
     fixes: same(['ollama serve', 'ollama pull qwen2.5:3b', '@madre what did we decide about the webhook?']),
   },
   {
+    id: 'privacy-leak',
+    severity: 'warning',
+    title: 'Privacy: an agent brought its own configuration into the room',
+    match: /privacy\.redacted|privacy\.purged|private terms?|\[ENTIDAD-ORG\]|organi[sz]ation(al)? instructions|leak(ed)? (a|the) (name|company|domain)/i,
+    diagnosis: 'A CLI agent runs with its own system context: organisation instructions, the account it is signed in with, CLAUDE.md files elsewhere. It can mistake that private context for shared context and write a company, a brand or a domain into a reply. Once in the ledger the term reaches the archivist, every other agent and the dataset.',
+    remedy: 'Name the terms in ⚙ CONNECTIONS → PRIVACY. From then on MADRE replaces them with the marker before the ledger, the index, the notes and the dataset see them, and every reply that needed it shows a privacy line. PURGE ROOM rewrites what the room already holds; re-export the dataset afterwards. The terms never leave config.json.',
+    fixes: same(['# ⚙ CONNECTIONS → PRIVACY → one term per line → PURGE ROOM', 'export PULSE_PRIVATE_TERMS="Acme Corp,acme.com"   # same list from the environment', 'grep -c "ENTIDAD-ORG" ~/.pulse/rooms/*/events.jsonl']),
+  },
+  {
     id: 'control-changes',
     severity: 'informational',
     title: 'CONTROL: what changed, what was reverted, UNDO',

@@ -80,6 +80,7 @@ export class Room {
   #attachments = new Attachments();
   #scopeConfig = {};
   #delegation;
+  #privacy = null;
   #maxPlanSteps;
   #maxConcurrentTurns;
   #planMaxAgeMs;
@@ -96,6 +97,7 @@ export class Room {
     distill = {},
     memoryServer = null,
     mother = null,
+    privacy = null,
     historicalEvents = [],
     invokers = defaultInvokers,
     agentTimeouts = {},
@@ -114,6 +116,7 @@ export class Room {
     this.#recallShare = Math.min(0.6, Math.max(0, Number.isFinite(recallShare) ? recallShare : 0.3));
     this.#memoryServer = memoryServer;
     this.#mother = mother;
+    this.#privacy = privacy;
     this.#invokers = invokers;
     this.#agentTimeouts = agentTimeouts;
     this.#maxMessageChars = maxMessageChars;
@@ -291,6 +294,37 @@ export class Room {
   memoryResearch() {
     if (!this.#memory) return null;
     return { stats: this.memoryStats(), memories: this.#memory.memories({ limit: 500 }), links: this.#memory.memoryLinks() };
+  }
+
+  /* ---------- privacy: terms that never travel through the room ---------- */
+
+  privacy() { return this.#privacy; }
+  setPrivacy(terms, marker) {
+    if (!this.#privacy) return null;
+    this.#privacy.set(terms, marker);
+    return this.#privacy;
+  }
+  privacyExposure(events = []) {
+    if (!this.#privacy?.enabled) return { events: 0, entries: 0, memories: 0 };
+    let hits = 0;
+    for (const event of events) if (this.#privacy.redactDeep(event.payload).hits) hits += 1;
+    return { events: hits, ...(this.#memory ? this.#memory.exposure() : { entries: 0, memories: 0 }) };
+  }
+
+  // The human's hand on the ledger: every private term already recorded becomes the marker,
+  // in the log, the index and the notes. Recorded like anything else the human does.
+  async purgePrivate() {
+    if (!this.#privacy?.enabled) return { events: 0, entries: 0, memories: 0 };
+    const privacy = this.#privacy;
+    const rewritten = await this.#store.rewrite((event) => {
+      const { value, hits } = privacy.redactDeep(event.payload);
+      return hits ? { ...event, payload: value } : event;
+    });
+    const memory = this.#memory ? this.#memory.purge() : { entries: 0, memories: 0 };
+    if (this.#memory) this.#vectors.schedule();
+    const result = { events: rewritten.changed, ...memory };
+    await this.#emit('privacy.purged', { ...result, terms: privacy.terms.length });
+    return result;
   }
 
   // Forgetting is recorded in the ledger like anything else the human does to the room.
@@ -508,6 +542,9 @@ export class Room {
       references: references.length ? references.map(({ excerpt, ...reference }) => reference) : undefined,
       create: create === true ? true : undefined,
     });
+    // The human may say what they like; the room only says so, because every agent will read it.
+    const exposed = this.#privacy?.hits(text2) ?? 0;
+    if (exposed && !ghost) await this.#emit('privacy.warning', { messageId, hits: exposed });
     // The human's creation lease: one directory for this message and any plan
     // it starts. Granted before the agent runs, recorded, revocable by STOPALL.
     // The lease carries the scopes enabled for the target; if the target cannot
@@ -685,6 +722,7 @@ export class Room {
       motherLines: this.#mother ? this.#mother.recent() : [],
       memoryServer: this.#memoryServer,
       controlHolder: this.#controlDesk.holder?.agent ?? null,
+      privacyMarker: this.#privacy?.marker ?? '[ENTIDAD-ORG]',
     });
   }
 
@@ -778,6 +816,10 @@ export class Room {
         delegation: mayDelegate,
         maxSteps: this.#maxPlanSteps,
       });
+      // Privacy: a private term in a reply is replaced before the ledger, the plan parser,
+      // the archivist or any other agent can see it. The reply says how many, not which.
+      const guarded = this.#privacy?.redact(result.text ?? '') ?? { text: result.text, hits: 0 };
+      if (guarded.hits) result.text = guarded.text;
       const artifacts = lease && !lease.control ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
       // CONTROL: what really changed in the project, forbidden zones reverted on the spot.
       const controlChanges = controlRun ? await this.#controlDesk.settle(controlRun) : null;
@@ -806,11 +848,13 @@ export class Room {
         planId,
         model,
         synthetic: result.synthetic || undefined,
+        redacted: guarded.hits || undefined,
         mode: turnMode,
         leaseId: lease?.leaseId,
         artifacts: artifacts.length ? artifacts : undefined,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
       });
+      if (guarded.hits) await this.#emit('privacy.redacted', { agent: agent.id, messageId, responseMessageId, hits: guarded.hits, marker: this.#privacy.marker });
       if (artifacts.length) {
         await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });
       }
@@ -827,7 +871,7 @@ export class Room {
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId });
       return { responseMessageId, directives };
     } catch (error) {
-      await this.#emit('message.failed', { messageId, target: agent.id, planId, error: failureMessage(error) });
+      await this.#emit('message.failed', { messageId, target: agent.id, planId, error: this.#privacy ? this.#privacy.redact(failureMessage(error)).text : failureMessage(error) });
       return null;
     } finally {
       // Release CONTROL whichever way the turn ended; the checkpoint stays for UNDO.

@@ -1251,6 +1251,20 @@ function renderThinking(event) {
 }
 
 // The archivist reports: which agent read which stretch of the room and how many notes it kept.
+// privacy · @agent · 2 private terms replaced with [ENTIDAD-ORG]
+function renderPrivacy(event) {
+  const node = el('div', 'system memory privacy');
+  if (event.type === 'privacy.purged') {
+    const { events, entries, memories } = event.payload;
+    node.append('privacy · ', el('b', 'who', 'PURGE'), ` · ${events} event${events === 1 ? '' : 's'} · ${entries} indexed exchange${entries === 1 ? '' : 's'} · ${memories} memor${memories === 1 ? 'y' : 'ies'} rewritten with the marker`);
+    return node;
+  }
+  const { agent, hits, marker } = event.payload;
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append('privacy · ', el('b', 'who', `@${agent}`), ` · ${hits} private term${hits === 1 ? '' : 's'} replaced with ${marker}`);
+  return node;
+}
+
 function renderDistilled(event) {
   const { agent, added, considered, fromSequence, throughSequence, remaining, error, skipped, total, next } = event.payload;
   const node = el('div', `system memory${error ? ' warn' : ''}`);
@@ -1775,6 +1789,9 @@ function renderEventNode(event) {
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'memory.distilled': node = renderDistilled(event); break;
+    case 'privacy.redacted': node = renderPrivacy(event); break;
+    case 'privacy.purged': node = renderPrivacy(event); break;
+    case 'privacy.warning': if (!replaying) toast(`MU/TH/UR › your message carries ${event.payload.hits} private term${event.payload.hits === 1 ? '' : 's'}. Agents will read it as you wrote it; their replies are guarded.`); return;
     case 'memory.forgotten': node = renderForgotten(event); break;
     case 'memory.noted': attachMemoryHint(event); return;
     case 'dataset.exported': return;
@@ -3526,6 +3543,59 @@ function renderSettings() {
     if (mem.envWins) mform.append(el('span', 'note full', 'ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.'));
     mform.addEventListener('submit', (event) => event.preventDefault());
     section.append(mform);
+  }
+
+  // PRIVACY: terms that never travel through the room. Replaced at every hop: agent replies,
+  // the index, the notes, the dataset. PURGE does the same to what the room already holds.
+  const priv = data.settings.privacy;
+  if (priv) {
+    section.append(el('h3', null, `PRIVACY · ${priv.terms.length ? `${priv.terms.length} PRIVATE TERM${priv.terms.length === 1 ? '' : 'S'}` : 'NO PRIVATE TERMS'}`));
+    section.append(el('p', 'note', 'AN AGENT\'S OWN CONFIGURATION CAN LEAK INTO ITS REPLY: A COMPANY, A BRAND, A DOMAIN. NAME THEM HERE AND MADRE REPLACES THEM BEFORE THE LEDGER, THE ARCHIVIST, THE OTHER AGENTS OR THE DATASET SEE THEM. THE TERMS STAY IN CONFIG.JSON; THE ROOM ONLY EVER RECORDS HOW MANY.'));
+    const pform = el('form', 'room-form privacy-form');
+    const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
+    const terms = el('textarea'); terms.rows = 3; terms.value = priv.terms.join('\n'); terms.placeholder = 'one term per line · a company, a brand, a domain, a name'; terms.spellcheck = false;
+    const marker = el('input'); marker.value = priv.marker; marker.maxLength = 40; marker.spellcheck = false;
+    const exposure = el('span', 'note full', 'CHECKING THE ROOM…');
+    const purge = el('button', null, 'PURGE ROOM');
+    purge.type = 'button';
+    purge.title = 'Replace every private term already in the ledger, the index and the memories with the marker. Asks for the project designation.';
+    const showExposure = (payload) => {
+      const x = payload?.exposure;
+      if (!x) { exposure.textContent = ''; return; }
+      const total = x.events + x.entries + x.memories;
+      exposure.textContent = !payload.terms?.length ? 'WRITE THE TERMS FIRST.' : total ? `STILL IN THE ROOM: ${x.events} EVENT${x.events === 1 ? '' : 'S'} · ${x.entries} INDEXED EXCHANGE${x.entries === 1 ? '' : 'S'} · ${x.memories} MEMOR${x.memories === 1 ? 'Y' : 'IES'} · PURGE REPLACES THEM.` : 'THE ROOM IS CLEAN: NO PRIVATE TERM IN THE LEDGER, THE INDEX OR THE MEMORIES.';
+      purge.disabled = !payload.terms?.length || !total;
+    };
+    const savePrivacy = async (patch, describe) => {
+      try {
+        const payload = await fetch('/api/privacy', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).then((response) => response.json());
+        if (payload.error) throw new Error(payload.error);
+        terms.value = payload.terms.join('\n'); marker.value = payload.marker; showExposure(payload);
+        toast(`MU/TH/UR › ${describe(payload)}`);
+      } catch (error) { toast(`Privacy setting was not saved: ${error.message}`); }
+    };
+    terms.addEventListener('change', () => savePrivacy({ terms: terms.value.split('\n') }, (payload) => `${payload.terms.length} private term${payload.terms.length === 1 ? '' : 's'} guarded from now on.`));
+    marker.addEventListener('change', () => savePrivacy({ marker: marker.value }, (payload) => `private terms appear as ${payload.marker}.`));
+    pform.append(field('PRIVATE TERMS · ONE PER LINE', terms));
+    pform.append(field('REPLACED WITH', marker));
+    const row = el('div', 'full dataset-row');
+    purge.addEventListener('click', async () => {
+      const designation = window.prompt('PURGE ROOM · Every private term already recorded becomes the marker, in the ledger, the index and the memories. This cannot be undone. Type the project designation to confirm:');
+      if (designation === null) return;
+      purge.disabled = true;
+      try {
+        const payload = await fetch('/api/privacy/purge', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation }) }).then((response) => response.json());
+        if (payload.error) throw new Error(payload.error);
+        toast(`MU/TH/UR › purged: ${payload.purged.events} events · ${payload.purged.entries} exchanges · ${payload.purged.memories} memories. Reloading.`);
+        setTimeout(() => location.reload(), 1600);
+      } catch (error) { toast(`Purge did not run: ${error.message}`); purge.disabled = false; }
+    });
+    row.append(purge, exposure);
+    pform.append(row);
+    if (priv.envWins) pform.append(el('span', 'note full', 'PULSE_PRIVATE_TERMS IS SET; THOSE TERMS ARE ADDED TO THIS LIST ON EVERY LAUNCH.'));
+    pform.addEventListener('submit', (event) => event.preventDefault());
+    section.append(pform);
+    fetch('/api/privacy').then((response) => response.json()).then(showExposure).catch(() => { exposure.textContent = 'EXPOSURE CHECK UNAVAILABLE'; });
   }
 }
 

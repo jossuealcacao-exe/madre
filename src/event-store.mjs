@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -118,6 +118,34 @@ export class EventStore {
       }
     }
     throw new Error(`Timed out waiting for event store lock: ${this.#file}`);
+  }
+
+  // Rewrites every event through `transform` (which returns the event to keep, changed or
+  // not), atomically, under the lock, in the same order and with the same sequences. The
+  // ledger is append-only for the room; this is the human's hand on it, used by the privacy
+  // purge. Appends queued behind it see the new file.
+  rewrite(transform) {
+    const operation = async () => {
+      const release = await this.#acquireLock();
+      try {
+        const existing = await this.#readAllUnlocked();
+        let changed = 0;
+        const next = existing.map((event) => {
+          const out = transform(event) ?? event;
+          if (out !== event) changed += 1;
+          return out;
+        });
+        const temp = `${this.#file}.rewrite-${process.pid}`;
+        await writeFile(temp, next.map((event) => JSON.stringify(event)).join('\n') + (next.length ? '\n' : ''));
+        await rename(temp, this.#file);
+        this.#nextSequence = (next.at(-1)?.sequence ?? 0) + 1;
+        return { total: next.length, changed };
+      } finally {
+        await release();
+      }
+    };
+    this.#writeQueue = this.#writeQueue.then(operation, operation);
+    return this.#writeQueue;
   }
 
   append(type, payload) {
