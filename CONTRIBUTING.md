@@ -37,6 +37,10 @@ export default defineModule({
 
 `ctx` carries `projectRoot`, `config`, `settings`, `agents`, `room`, `readConfig()`, `updateConfig(patch)`, `record(type, payload)` and `services` (what the server offers: `imageKey`, `setImageModule`, `ollama`). A builtin gets a default switch that flips `enabled`, persists and records `extension.toggled`. Add a card branch in `public/app.js` only if the generic switch is not enough, and a condition in `public/troubleshooting.js` so MU/TH/UR knows it.
 
+## Look and voice
+
+Everything visual and every string the room says follows `docs/DESIGN.md`: three layers (dialogue, metadata, MOTHER), one colour per meaning, the MU/TH/UR voice. Read it before touching `public/`. A new component that needs a new colour is a sign the component is wrong, not the palette.
+
 ## Where things live
 
 ```

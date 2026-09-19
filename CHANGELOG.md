@@ -10,6 +10,9 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - MADRE consulta en npm la versión `latest` una vez al día (`~/.pulse/updates.json` como caché, compartida por todas las salas). Viaja el nombre del paquete y nada más, la misma petición que hace `npx`. Encendido por defecto; se apaga en MU/TH/UR → RELEASE CHANNEL o con `PULSE_UPDATE_CHECK=0`.
 - Si hay versión nueva, una alerta ámbar en la barra, del mismo corte que STOP ALL, lo dice y MU/TH/UR muestra el comando exacto según cómo corre esta copia (npx, dependencia del proyecto, global o fuente), con botón de copiar y enlace a lo que trae la release. MADRE nunca se actualiza sola mientras trabajas. `madre doctor` imprime la misma línea. Los usuarios de 0.3.0 no reciben aviso: el canal nace aquí.
 
+### Guía de diseño
+- `docs/DESIGN.md`: la guía oficial de la MADRE UX, concepto por concepto y con los valores exactos de `styles.css`, para que otra persona u otro agente replique el estilo en otro servicio. Viaja en el paquete de npm y se enlaza desde README y CONTRIBUTING.
+
 ### Consola
 - La barra es más ancha que el hilo: la raíz del proyecto se lee completa junto a MADRE, STOP ALL va en una línea. En MU/TH/UR la lista de condiciones conocidas se colapsa como la de condiciones registradas, y RELEASE CHANNEL viste como el resto del panel.
 
