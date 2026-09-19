@@ -112,6 +112,8 @@ body {
   grid-template-rows: auto 1fr auto auto auto;
 }
 .bar, .onboarding, .composer, .safety, .thread-inner { width: var(--column); margin-left: auto; margin-right: auto; }
+/* The bar is the ship's console: wider than the thread so the project root, the crew and the alerts share one line. */
+.shell > .bar { width: min(1280px, 100% - 40px); }
 .shell > .bar { grid-row: 1; } .shell > .onboarding { grid-row: 2; } .shell > .thread { grid-row: 3; } .shell > .composer { grid-row: 4; } .shell > .safety { grid-row: 5; }
 .shell > .bar, .shell > .onboarding, .shell > .thread, .shell > .composer, .shell > .safety, .shell > .tree { grid-column: 1; }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -124,7 +126,7 @@ body {
   font-family: var(--mono); font-size: 11px; letter-spacing: .04em;
   color: var(--text-2);
 }
-.bar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.bar-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 auto; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; letter-spacing: .22em; font-size: 11px; text-decoration: none; cursor: pointer; }
 .brand:hover .brand-mark { filter: drop-shadow(0 0 10px var(--phosphor)); } .brand:hover .brand-word { color: var(--phosphor); }
 .brand-mark { width: 64px; height: 18px; color: var(--phosphor); overflow: visible; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--phosphor) 55%, transparent)); }
@@ -140,12 +142,14 @@ body {
   .brand-mark .beat-dot { animation: none; opacity: 1; }
   .brand-word { animation: none; opacity: 1; transform: none; }
 }
-.project { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
-.update-pill { border: 1px solid color-mix(in srgb, var(--warn) 60%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); color: var(--warn); font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; animation: hint-glow 2.4s ease-out 1; }
-.update-pill:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+.project { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
 .update-command { display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
 .update-command code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--text); }
-.update-command button, .mother-section.update .sentinel-controls button { font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.update-command button { font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.mother-section.update .update-command { border: 1px solid var(--ph-dim); border-radius: 0; background: var(--ph-faint); margin: 8px 0 10px; }
+.mother-section.update .update-command code { color: var(--ph); font-size: 11px; letter-spacing: .04em; }
+.mother-section.update .update-command button { border-color: var(--ph-dim); color: var(--ph); border-radius: 0; }
+.mother-section.update .update-link { color: var(--ph); }
 .update-link { display: inline-block; margin: 2px 0 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--phosphor); }
 .train-card { margin-top: 8px; }
 .train-head { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-2); }
@@ -154,7 +158,7 @@ body {
 .train-steps li.note { list-style: none; margin-left: -18px; }
 .train-step-label { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
 .project::before { content: "/ "; }
-.agents { display: flex; gap: 8px; margin-left: auto; }
+.agents { display: flex; gap: 8px; margin-left: 0; flex: none; }
 .connection { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); text-transform: uppercase; font-size: 10px; }
 .connection-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
 .connection[data-state="live"] .connection-dot { background: var(--phosphor); box-shadow: 0 0 10px var(--phosphor); }
@@ -553,11 +557,16 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .system.plan .stop:disabled { opacity: .4; cursor: default; }
 
 /* ================= STOPALL ================= */
-.stop-all { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; cursor: default; opacity: .55; transition: color .3s, border-color .3s, opacity .3s; }
+.stop-all { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; white-space: nowrap; flex: none; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; cursor: default; opacity: .55; transition: color .3s, border-color .3s, opacity .3s; }
 .stop-all:disabled { cursor: default; }
 .stop-all.armed { opacity: 1; cursor: pointer; border-color: var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); animation: blink 1.4s infinite; }
 .stop-all.armed:hover { background: var(--terror); color: #fff; text-shadow: none; animation: none; }
 .stop-all-glyph { width: 8px; height: 8px; background: currentColor; }
+.update-pill { opacity: 1; cursor: pointer; border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); text-shadow: 0 0 8px color-mix(in srgb, var(--warn) 60%, transparent); animation: update-breathe 2.8s ease-in-out infinite; }
+.update-pill:hover { background: var(--warn); color: #050605; text-shadow: none; animation: none; }
+.update-pill .update-glyph { border-radius: 50%; }
+@keyframes update-breathe { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 0%, transparent); } 50% { box-shadow: 0 0 14px 0 color-mix(in srgb, var(--warn) 45%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .update-pill { animation: none; } }
 .system.alert { color: var(--terror); text-shadow: 0 0 10px color-mix(in srgb, var(--terror) 70%, transparent); letter-spacing: .14em; animation: terror-in 1.4s steps(3, end) 1; }
 .system.alert b { color: var(--terror); }
 .system.alert .cmd { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid var(--terror); letter-spacing: .2em; }
@@ -1039,12 +1048,12 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 :root[data-scheme="light"] .crew-label { text-shadow: none; animation: none; }
 
 /* MU/TH/UR: the sentinel section. */
-.mother-section.sentinel .sentinel-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 6px 0 12px; }
-.mother-section.sentinel .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph-dim); cursor: pointer; }
-.mother-section.sentinel .toggle input { accent-color: #9bff66; }
+.mother-section.sentinel .sentinel-controls, .mother-section.update .sentinel-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 6px 0 12px; }
+.mother-section.sentinel .toggle, .mother-section.update .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph-dim); cursor: pointer; }
+.mother-section.sentinel .toggle input, .mother-section.update .toggle input { accent-color: #9bff66; }
 .mother-section.sentinel .toggle input:disabled + * , .mother-section.sentinel .toggle:has(input:disabled) { opacity: .6; cursor: default; }
-.mother-section.sentinel button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
-.mother-section.sentinel button:hover { background: var(--ph-faint); }
+.mother-section.sentinel button, .mother-section.update button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.mother-section.sentinel button:hover, .mother-section.update button:hover { background: var(--ph-faint); }
 .mother-section.sentinel .sentinel-report.sent { opacity: .65; }
 .settings .memory-form .toggle { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; text-transform: uppercase; }
 .settings .memory-form .toggle input { accent-color: #9bff66; width: auto; }
@@ -1054,4 +1063,4 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .module-card .ollama-status dt { color: var(--ph-dim); } .module-card .ollama-status dd { margin: 0; color: rgba(210, 255, 190, .85); overflow-wrap: anywhere; }
 .module-card .actions .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }
 .module-card .actions .toggle input { accent-color: #9bff66; }
-.mother-section.sentinel .note { margin: 0 0 10px; font-size: 10px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }
+.mother-section.sentinel .note, .mother-section.update .note { margin: 0 0 10px; font-size: 10px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }

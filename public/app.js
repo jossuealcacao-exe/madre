@@ -2711,7 +2711,23 @@ function renderMotherRecorded() {
 
 function renderMotherKnown(list = CONDITIONS, hits = new Set(), agent = null) {
   mother.known.replaceChildren();
-  mother.known.append(el('h3', null, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`));
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('pulse.mother.known') === 'collapsed'; } catch { /* no storage */ }
+  // An inquiry that narrowed the list always shows its answer, whatever the stored state.
+  if (list.length !== CONDITIONS.length) collapsed = false;
+  const head = el('h3', 'toggle');
+  const headButton = el('button', null, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`);
+  headButton.type = 'button';
+  headButton.setAttribute('aria-expanded', String(!collapsed));
+  headButton.append(el('span', 'caret', collapsed ? '▸ EXPAND' : '▾ COLLAPSE'));
+  headButton.addEventListener('click', () => {
+    try { localStorage.setItem('pulse.mother.known', collapsed ? 'expanded' : 'collapsed'); } catch { /* no storage */ }
+    renderMotherKnown(list, hits, agent);
+  });
+  head.append(headButton);
+  mother.known.append(head);
+  mother.known.classList.toggle('collapsed', collapsed);
+  if (collapsed) return;
   const grid = el('div', 'mother-grid');
   const ordered = [...list].sort((a, b) => Number(hits.has(b.id)) - Number(hits.has(a.id)));
   for (const condition of ordered) grid.append(conditionCard(condition, { hit: hits.has(condition.id), agent: agent && condition.perAgent ? agent : null, hintAgent: agent }));
@@ -4487,7 +4503,7 @@ function renderUpdate() {
   const pill = updateUI.pill;
   if (pill) {
     pill.hidden = !info?.available;
-    if (info?.available) pill.textContent = `${info.latest} AVAILABLE`;
+    if (info?.available) { pill.replaceChildren(el('span', 'stop-all-glyph update-glyph'), `${info.latest} AVAILABLE`); pill.title = `MADRE ${info.latest} is on npm · you run ${info.current} · open MU/TH/UR for the command`; }
   }
   const section = updateUI.section;
   if (!section) return;
