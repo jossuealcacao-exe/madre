@@ -457,8 +457,12 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-os button { border: 0; background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
 .mother-os button[aria-checked="true"] { background: var(--ph); color: #041004; text-shadow: none; }
 .mother-answer { margin: 14px 0 6px; font-size: 12px; letter-spacing: .14em; min-height: 1.4em; }
-.mother-section { margin-top: 22px; }
 .mother-section h3 { margin: 0 0 12px; font-size: 10px; letter-spacing: .28em; color: var(--ph-dim); font-weight: 400; }
+/* Air between the blocks of one MU/TH/UR screen: every heading after the first starts a new block. */
+.mother-section { margin-top: 34px; }
+.mother-section h3:not(:first-child) { margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--ph-faint); }
+.mother-section h3.toggle:not(:first-child) { margin-top: 40px; }
+.settings .room-form, .settings .conn-grid, .settings .mother-grid { margin-bottom: 8px; }
 .mother-section h3::before { content: "▌ "; color: var(--ph); }
 .mother-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
 .mother-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; gap: 8px; align-content: start; }
