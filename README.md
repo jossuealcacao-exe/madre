@@ -292,6 +292,9 @@ Cada agente tiene un timeout de 180 s por defecto; la burbuja de espera muestra 
 | `PULSE_OLLAMA_HOST` | `http://127.0.0.1:11434` | Dónde escucha Ollama |
 | `PULSE_OLLAMA_MODEL` | el mejor disponible | Modelo local para destilar |
 | `PULSE_OLLAMA_EMBED_MODEL` | el mejor disponible | Modelo local de embeddings |
+| `PULSE_UPDATE_CHECK` | `1` | `0` apaga la consulta diaria a npm de versiones nuevas |
+| `PULSE_PRIVATE_TERMS` | vacío | Términos privados extra, separados por coma, además de los de `config.json` |
+| `PULSE_PRIVATE_MARKER` | `[ENTIDAD-ORG]` | Con qué se sustituye un término privado |
 | `PULSE_EMBED_MODEL` | `gemini-embedding-001` | Modelo de embeddings |
 | `PULSE_EMBED_DIMS` | `768` | Dimensiones del vector |
 | `PULSE_MEMORY_TOOLS` | `1` | Servidor MCP `pulse-memory` adjunto a cada turno (`0` lo quita) |
