@@ -11,18 +11,22 @@ export function claudeTools({ lease = null, scopes = null } = {}) {
   return tools;
 }
 
-export function mcpServersFor({ imageStudio = null, memoryServer = null } = {}) {
+export function mcpServersFor({ imageStudio = null, memoryServer = null, mcpServers = [] } = {}) {
   const servers = {};
   if (memoryServer) servers[memoryServer.name] = { command: memoryServer.command, args: memoryServer.args, env: memoryServer.env };
   if (imageStudio) servers[imageStudio.name] = { command: imageStudio.command, args: imageStudio.args, env: imageStudio.env };
+  for (const server of mcpServers) servers[server.name] = { command: server.command, args: server.args ?? [], env: server.env ?? {} };
   return servers;
 }
+// Claude's permission names for a module's server: each tool, or the whole server when the list is open.
+export const claudeMcpTools = (server) => (server.tools?.length ? server.tools.map((tool) => `mcp__${server.name}__${tool}`) : [`mcp__${server.name}`]);
 
-export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null, memoryServer = null }) {
+export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] }) {
   const tools = claudeTools({ lease, scopes });
   const mcpTools = [
     ...(memoryServer ? memoryServer.tools.map((tool) => `mcp__${memoryServer.name}__${tool}`) : []),
     ...(imageStudio ? [`mcp__${imageStudio.name}__${imageStudio.tool}`] : []),
+    ...mcpServers.flatMap(claudeMcpTools),
   ];
   const allowed = [
     'Read', 'Glob', 'Grep',
@@ -37,8 +41,8 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
   ];
   // Only MADRE's own MCP servers ever reach Claude here; --strict-mcp-config
   // keeps the user's servers out of the isolated run.
-  const anyMcp = Boolean(imageStudio || memoryServer);
-  const mcpConfig = JSON.stringify({ mcpServers: mcpServersFor({ imageStudio, memoryServer }) });
+  const anyMcp = Boolean(imageStudio || memoryServer || mcpServers.length);
+  const mcpConfig = JSON.stringify({ mcpServers: mcpServersFor({ imageStudio, memoryServer, mcpServers }) });
   return [
     '-p',
     ...(model ? ['--model', model] : []),
@@ -97,10 +101,10 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] }) {
   return runReadonlyProcess({
     executable,
-    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer }),
+    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer, mcpServers }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

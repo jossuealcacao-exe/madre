@@ -38,6 +38,9 @@ export default defineModule({
 
 `ctx` carries `projectRoot`, `config`, `settings`, `agents`, `room`, `readConfig()`, `updateConfig(patch)`, `record(type, payload)` and `services` (what the server offers: `imageKey`, `setImageModule`, `ollama`). A builtin gets a default switch that flips `enabled`, persists and records `extension.toggled`. Add a card branch in `public/app.js` only if the generic switch is not enough, and a condition in `public/troubleshooting.js` so MU/TH/UR knows it.
 
+
+A module may hand tools to every turn: declare `toolsForTurn(ctx, turn)` and return MCP server specs `{ name, command, args, env, tools, brief }`. MADRE attaches them to the CLI of that turn only, in its isolated run, for all four agents, and puts `brief` in the agent's briefing. `turn` carries `agent`, `mode`, `lease`, the absolute `scratchDir` and the room's `port`. Return `[]` when there is nothing to hand; throw and MADRE hands nothing for you. `src/modules/playwright.mjs` is the reference.
+
 ## Look and voice
 
 Three layers that never mix: the dialogue reads like a chat (system font, bubbles), the metadata reads like a terminal (mono, 10px, uppercase, grey), and MOTHER's screens (diagnosis, memory, control) are phosphor on black. One colour per meaning: phosphor is MADRE, amber is CREATE, red is CONTROL, each provider keeps its own colour. Toasts speak as `MU/TH/UR › …`. A new component that needs a new colour is a sign the component is wrong, not the palette.

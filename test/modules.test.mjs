@@ -48,8 +48,8 @@ test('sdk: a guarded switch refuses without confirm, an installer has no switch,
   assert.equal(matchRoute(routes, 'DELETE', '/api/r'), null);
 });
 
-test('registry: six modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
-  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ashcode', 'ripley', 'ollama']);
+test('registry: seven modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
+  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ashcode', 'ripley', 'ollama', 'playwright']);
   assert.equal(EXTENSIONS, MODULES);
   assert.equal(extensionById('ahp'), moduleById('ahp'));
   assert.equal(typeof moduleById('ahp').installCommand, 'function');

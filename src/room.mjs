@@ -83,6 +83,7 @@ export class Room {
   #scopeConfig = {};
   #delegation;
   #privacy = null;
+  #toolsForTurn = null;
   #maxPlanSteps;
   #maxConcurrentTurns;
   #planMaxAgeMs;
@@ -100,6 +101,7 @@ export class Room {
     memoryServer = null,
     mother = null,
     privacy = null,
+    toolsForTurn = null,   // async ({ agent, mode, lease, scratchDir }) => MCP server specs from the modules
     historicalEvents = [],
     invokers = defaultInvokers,
     agentTimeouts = {},
@@ -119,6 +121,7 @@ export class Room {
     this.#memoryServer = memoryServer;
     this.#mother = mother;
     this.#privacy = privacy;
+    this.#toolsForTurn = toolsForTurn;
     this.#invokers = invokers;
     this.#agentTimeouts = agentTimeouts;
     this.#maxMessageChars = maxMessageChars;
@@ -839,11 +842,15 @@ export class Room {
       const notesBefore = this.#memory ? this.#memory.maxMemoryId() : 0;
       const others = this.delegatesFor(agent.id);
       const mayDelegate = allowDelegation && this.#delegation && depth === 0;
+      // Tools the modules hand to this turn (a browser, say), attached to the CLI for this run only.
+      const mcpServers = this.#toolsForTurn && agent.adapter !== 'madre-local'
+        ? await this.#toolsForTurn({ agent: agent.id, mode: turnMode, lease, scratchDir: lease?.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : null }).catch(() => [])
+        : [];
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
         text,
-        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
+        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,
@@ -852,6 +859,7 @@ export class Room {
         scopes: turnScopes,
         imageStudio,
         memoryServer: memoryServerForTurn(this.#memoryServer, { agent: agent.id, messageId: responseMessageId, mode: turnMode }),
+        mcpServers,
         // For @madre: who asks, who it may convene, and whether a plan would run at all.
         requester,
         crew: others,

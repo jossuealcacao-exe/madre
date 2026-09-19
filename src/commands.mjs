@@ -25,8 +25,8 @@ export const COMMANDS = [
     name: 'git',
     module: 'git-pulse',
     title: 'Git Pulse',
-    usage: '/git [status|log|diff|branches]',
-    summary: 'Repository status, recent commits, uncommitted changes and branches, read-only, from the project itself.',
+    usage: '/git [status|log|diff|branches|commit "message"|push [confirm]]',
+    summary: 'Repository status, recent commits, uncommitted changes and branches from the project itself; commit and push by your own hand, with a confirmation before anything leaves.',
     async available({ projectRoot }) {
       return exists(join(projectRoot, '.git'));
     },
@@ -48,8 +48,30 @@ export const COMMANDS = [
         await add('staged (stat)', ['-c', 'color.ui=never', 'diff', '--cached', '--stat']);
       } else if (what === 'branches') {
         await add('branches', ['-c', 'color.ui=never', 'branch', '-avv']);
+      } else if (what === 'commit') {
+        // The human commits what the room produced. Everything in the tree, one message, local: reversible with git.
+        const message = args.slice(1).join(' ').replace(/^["'“]+|["'”]+$/g, '').trim();
+        if (!message) return { ok: false, title: 'Git Pulse · commit', text: 'Give the commit a message: /git commit "what and why".' };
+        const staged = await run('git', ['add', '-A', '--', '.'], projectRoot);
+        if (!staged.ok) return { ok: false, title: 'Git Pulse · commit', text: staged.text };
+        const committed = await run('git', ['-c', 'color.ui=never', 'commit', '-m', message], projectRoot);
+        if (!committed.ok) return { ok: false, title: 'Git Pulse · commit', text: committed.text || 'Nothing to commit.' };
+        await add('committed', ['-c', 'color.ui=never', 'show', '--stat', '--format=%h %s', 'HEAD']);
+        return { ok: true, title: 'Git Pulse · commit', text: sections.join('\n\n') };
+      } else if (what === 'push') {
+        // Nothing leaves without the word: first the preview of what would go, then /git push confirm.
+        const upstream = await run('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], projectRoot);
+        if (!upstream.ok) return { ok: false, title: 'Git Pulse · push', text: `This branch has no upstream. Set it once from your terminal: git push -u <remote> <branch>.` };
+        const ahead = await run('git', ['-c', 'color.ui=never', 'log', '--oneline', '@{u}..HEAD'], projectRoot);
+        const commits = ahead.text ? ahead.text.split('\n').filter(Boolean) : [];
+        if (!commits.length) return { ok: true, title: 'Git Pulse · push', text: `Nothing to push: ${upstream.text} already has everything.` };
+        if ((args[1] ?? '').toLowerCase() !== 'confirm') {
+          return { ok: true, title: 'Git Pulse · push · preview', text: `## would leave for ${upstream.text}\n${commits.join('\n')}\n\nThis leaves the machine and cannot be undone by MADRE. Send it with: /git push confirm` };
+        }
+        const pushed = await run('git', ['-c', 'color.ui=never', 'push'], projectRoot, 120000);
+        return { ok: pushed.ok, title: 'Git Pulse · push', text: `## sent to ${upstream.text}\n${commits.join('\n')}\n\n${pushed.text || '(pushed)'}` };
       } else {
-        return { ok: false, title: 'Git Pulse', text: `Unknown subcommand "${what}". Use /git status, /git log [n], /git diff or /git branches.` };
+        return { ok: false, title: 'Git Pulse', text: `Unknown subcommand "${what}". Use /git status, /git log [n], /git diff, /git branches, /git commit "message" or /git push [confirm].` };
       }
       return { ok: true, title: `Git Pulse · ${what}`, text: sections.join('\n\n') };
     },

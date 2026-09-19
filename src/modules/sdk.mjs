@@ -6,6 +6,11 @@
 //   ctx = { projectRoot, stateRoot, config, settings, env, agents, room, readConfig(), updateConfig(patch),
 //           record(type, payload), services: { ... what the server offers } }
 //
+// A module may also hand tools to every turn: `toolsForTurn(ctx, turn)` returns MCP server
+// specs `{ name, command, args, env, tools: [names], brief }` that MADRE attaches to the CLI for
+// that turn only, in its isolated run, and describes to the agent. `turn` carries the agent,
+// the mode, the lease (if any), the absolute scratch folder and the room's port.
+//
 // Kinds: 'builtin' switches MADRE's own behaviour (config.json only);
 // 'installer' writes into the project through a confirmed command.
 
@@ -31,6 +36,12 @@ export function defineModule(spec) {
     routes: (spec.routes ?? []).map((route) => ({ ...route, method: route.method.toUpperCase() })),
     onEvent: spec.onEvent ?? null,
     conditions: spec.conditions ?? [],
+    // Tools for a turn, only while the module is on. Failures never break a turn.
+    toolsForTurn: spec.toolsForTurn ? async (ctx, turn) => {
+      const settings = settingsFrom(ctx.config);
+      if (kind === 'builtin' && !settings.enabled) return [];
+      try { return (await spec.toolsForTurn({ ...ctx, settings }, turn)) ?? []; } catch (error) { console.error(`MADRE module ${spec.id}: toolsForTurn failed: ${error.message}`); return []; }
+    } : null,
     // Legacy installer hooks, kept on the object so the confirm-and-run path can use them.
     detect: spec.detect ?? null,
     preflight: spec.preflight ?? null,

@@ -66,12 +66,13 @@ priority = 999
 interactive = false
 `;
 
-export function geminiPolicy({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
-  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}`;
+export function geminiPolicy({ lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] } = {}) {
+  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}${mcpServers.map(geminiMemoryPolicy).join('')}`;
 }
 
+// Allow rules for a server's tools, by bare name and by server-prefixed name; an open tool list allows the server's prefix.
 export function geminiMemoryPolicy(memoryServer) {
-  const names = memoryServer.tools.flatMap((tool) => [tool, `${memoryServer.name}__${tool}`]);
+  const names = memoryServer.tools?.length ? memoryServer.tools.flatMap((tool) => [tool, `${memoryServer.name}__${tool}`]) : [`${memoryServer.name}__*`];
   return `
 [[rule]]
 toolName = [${names.map((name) => `"${name}"`).join(', ')}]
@@ -120,10 +121,10 @@ export function buildGeminiEnvironment({ runtimeRoot, environment = process.env 
   };
 }
 
-export function isolateGeminiSettings(settings, { imageStudio = null, memoryServer = null } = {}) {
+export function isolateGeminiSettings(settings, { imageStudio = null, memoryServer = null, mcpServers = [] } = {}) {
   const auth = settings?.security?.auth;
   const isolated = auth ? { security: { auth } } : {};
-  for (const server of [memoryServer, imageStudio]) {
+  for (const server of [memoryServer, imageStudio, ...mcpServers]) {
     if (!server) continue;
     isolated.mcpServers ??= {};
     isolated.mcpServers[server.name] = { command: server.command, args: server.args, env: server.env, trust: true };
@@ -141,7 +142,7 @@ interactive = false
 `;
 }
 
-export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir(), '.gemini'), imageStudio = null, memoryServer = null }) {
+export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir(), '.gemini'), imageStudio = null, memoryServer = null, mcpServers = [] }) {
   const geminiDir = join(runtimeRoot, '.gemini');
   await mkdir(geminiDir, { recursive: true, mode: 0o700 });
   for (const name of geminiCredentialFiles) {
@@ -155,7 +156,7 @@ export async function prepareGeminiHome({ runtimeRoot, sourceHome = join(homedir
   } catch (error) {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
   }
-  await writeFile(join(geminiDir, 'settings.json'), JSON.stringify(isolateGeminiSettings(settings, { imageStudio, memoryServer })), { mode: 0o600 });
+  await writeFile(join(geminiDir, 'settings.json'), JSON.stringify(isolateGeminiSettings(settings, { imageStudio, memoryServer, mcpServers })), { mode: 0o600 });
   return geminiDir;
 }
 
@@ -267,6 +268,7 @@ export async function invokeGemini({
   scopes = null,
   imageStudio = null,
   memoryServer = null,
+  mcpServers = [],
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
   fallbackModel = process.env.PULSE_GEMINI_FALLBACK_MODEL ?? 'gemini-2.5-flash',
@@ -276,8 +278,8 @@ export async function invokeGemini({
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'pulse-gemini-'));
   const policyPath = join(runtimeRoot, 'readonly.toml');
   try {
-    await writeFile(policyPath, geminiPolicy({ lease, scopes, imageStudio: lease ? imageStudio : null, memoryServer }), { mode: 0o600 });
-    await prepareGeminiHome({ runtimeRoot, imageStudio: lease ? imageStudio : null, memoryServer });
+    await writeFile(policyPath, geminiPolicy({ lease, scopes, imageStudio: lease ? imageStudio : null, memoryServer, mcpServers }), { mode: 0o600 });
+    await prepareGeminiHome({ runtimeRoot, imageStudio: lease ? imageStudio : null, memoryServer, mcpServers });
     let attempt = 0;
     let currentModel = model;
     let switched = false;

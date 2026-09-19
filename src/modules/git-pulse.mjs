@@ -8,10 +8,10 @@ export default defineModule({
   id: 'git-pulse',
   name: 'Git Pulse',
   vendor: 'MADRE',
-  summary: 'Type /git in the composer to bring the repository\'s branch, uncommitted changes, recent commits or diff stats into the room as a shared fact card, read-only, without spending an agent turn.',
-  creates: ['nothing: read-only git commands run inside the project'],
+  summary: 'Type /git in the composer to bring the repository\'s branch, uncommitted changes, recent commits or diff stats into the room as a shared fact card, without spending an agent turn. /git commit and /git push are your own hand on the repository: a commit is local, a push shows what would leave and only goes with /git push confirm.',
+  creates: ['nothing by itself: the read commands are read-only', 'a commit or a push only when you type /git commit or /git push confirm'],
   requires: ['the project is a git repository'],
-  commands: ['/git status', '/git log [n]', '/git diff', '/git branches'],
+  commands: ['/git status', '/git log [n]', '/git diff', '/git branches', '/git commit "message"', '/git push [confirm]'],
   card: 'fixed',
   async status(ctx) {
     const isRepo = await gitToplevel(ctx.projectRoot);

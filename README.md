@@ -64,7 +64,7 @@ npx @jossuealcala/madre start --no-open --project RUTA
 | `@codex`, `@claude`, `@gemini`, `@opencode`, `@madre` | Menciona a un agente; `@` abre la lista |
 | `!src/room.mjs:12-20` | Adjunta un archivo del proyecto, con líneas si las das; `!` busca entre los archivos |
 | `#0` a `#3` | Fija el modo de permiso de ese mensaje |
-| `/create …`, `/image …`, `/stopall`, `/git …`, `/ahp …` | Comandos; `/` abre el menú |
+| `/create …`, `/image …`, `/stopall`, `/git …`, `/ahp …` | Comandos; `/` abre el menú. `/git push` muestra qué saldría; solo `/git push confirm` lo envía |
 | `STOPALL` | Freno maestro |
 | Clip, arrastrar o pegar una imagen | Adjunto para la sala, nunca en el proyecto |
 | `@madre, pregúntale al crew …` | Mesa redonda: un paso por agente en línea, cierre citado |
@@ -185,14 +185,15 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 
 | Módulo | Qué añade |
 |---|---|
-| **Git Pulse** | `/git status`, `/git log [n]`, `/git diff`, `/git branches`: hechos del repositorio como tarjeta en el hilo, que los agentes también leen |
+| **Git Pulse** | `/git status`, `/git log [n]`, `/git diff`, `/git branches`: hechos del repositorio como tarjeta en el hilo, que los agentes también leen. `/git commit "mensaje"` y `/git push confirm`: tu mano sobre el repositorio, con vista previa de lo que saldría |
 | **Image Studio** | `generate_image` para Claude, Gemini y OpenCode, con tu key de Gemini, dentro de CREATE |
 | **RIPLEY** | El visor renderiza HTML, SVG y Markdown en un marco sellado, con recarga automática |
 | **OLLAMA** | Embeddings, archivista y `@madre` en local |
+| **PLAYWRIGHT** | Un navegador headless por turno que solo alcanza esta MADRE: abrir la vista previa de RIPLEY, hacer clic, leer consola, capturas al borrador del turno. Requiere `@playwright/mcp` |
 | **AshCode** (beta) | `$ ash_code`: abrevia mensajes localmente antes de enviarlos y pide respuestas concisas. Puede cambiar el significado; el original siempre queda |
 | **AHP+** | Integración externa opcional: estado verificado del proyecto, checkpoints y handoffs en `.ahp/`; `/ahp status`, `/ahp check`, `/ahp context` |
 
-Cada módulo es un archivo en `src/modules/` declarado con `defineModule`. Cómo escribir uno, en [CONTRIBUTING.md](https://github.com/jossuealcacao-exe/madre/blob/main/CONTRIBUTING.md#writing-a-module).
+Cada módulo es un archivo en `src/modules/` declarado con `defineModule`; un módulo puede entregar herramientas MCP a cada turno con `toolsForTurn`, como hace PLAYWRIGHT. Cómo escribir uno, en [CONTRIBUTING.md](https://github.com/jossuealcacao-exe/madre/blob/main/CONTRIBUTING.md#writing-a-module).
 
 ---
 

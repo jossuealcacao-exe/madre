@@ -6,6 +6,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.3.3 · Sin publicar
 
+### El SDK entrega herramientas a los turnos, y PLAYWRIGHT es el primero en usarlo
+- `defineModule` acepta `toolsForTurn(ctx, turn)`: un módulo encendido devuelve servidores MCP (`name, command, args, env, tools, brief`) y MADRE los adjunta a la CLI de ese turno, en su corrida aislada, en Codex, Claude Code, Gemini CLI y OpenCode, y se los describe al agente en el briefing. Un módulo que falla no entrega nada y nunca rompe el turno. Image Studio y la memoria conservan su cableado propio; los módulos nuevos nacen sobre el gancho.
+- Módulo **PLAYWRIGHT**: un navegador headless por turno, `@playwright/mcp` aislado, con orígenes permitidos solo en la dirección de esta MADRE. Los agentes abren la vista previa de RIPLEY, hacen clic, leen consola y red y guardan capturas en la carpeta de borrador del turno. Requiere `npm install -g @playwright/mcp` y un navegador de Playwright; el módulo lo detecta y lo dice. Apagado en GHOST.
+- Git Pulse gana la mano del humano: `/git commit "mensaje"` confirma todo el árbol en local, y `/git push` muestra qué saldría y solo envía con `/git push confirm`. Ningún agente puede escribir esos comandos por ti; los comandos corren en el servidor con tu propia sesión de git.
+
 ### #4 AIRLOCK: la compuerta
 - Un cuarto modo, pedido desde una sala real por un agente que no podía desplegar en `#2`. AIRLOCK es CONTROL más comandos: pruebas, builds, `git commit` y `git push`, deploys con las CLIs y las sesiones que ya viven en la máquina. Los archivos siguen bajo checkpoint y `UNDO`; lo que sale de la nave no vuelve, y por eso la anulación pide dos llaves: la designación del proyecto y la palabra `AIRLOCK`. Un titular a la vez, como CONTROL.
 - Cada CLI recibe su herramienta de comandos solo en `#4`: Codex `--sandbox danger-full-access`, Claude Code `Bash`, Gemini `run_shell_command`, OpenCode `bash`. Las zonas prohibidas siguen bloqueadas. El briefing exige decir en una línea qué va a salir y adónde antes de que salga, y cerrar con los comandos corridos y lo que dejó la máquina.

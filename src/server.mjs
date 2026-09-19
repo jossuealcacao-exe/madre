@@ -13,7 +13,7 @@ import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
-import { moduleById, describeModules, findModuleRoute } from './modules/index.mjs';
+import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 
@@ -208,11 +208,15 @@ export async function createPulseServer({
   const mother = new MotherChannel(join(canonicalProjectRoot, '.pulse', 'mother.env'), { meta: memory ? { get: (key) => memory.metaGet(key), set: (key, value) => memory.metaSet(key, value) } : null });
   const motherOutcome = await mother.load().catch((error) => { console.error(`MADRE could not open MOTHER's channel: ${error.message}`); return null; });
   const startupMemory = await memoryConfig();
+  let listening = null;
+  const listeningPort = () => listening?.address?.()?.port ?? Number(process.env.PULSE_PORT ?? 4317);
   room = new Room({
     store,
     agents,
     projectRoot,
     privacy,
+    // Modules may hand tools to a turn; the room asks once per turn, the server knows the port.
+    toolsForTurn: async (turn) => modulesToolsForTurn(await moduleContext(), { ...turn, port: listeningPort(), roomDir }),
     softTokenBudget,
     contextMaxChars,
     recallShare: Number(process.env.PULSE_RECALL_SHARE ?? startupMemory.recallShare),
@@ -926,6 +930,7 @@ export async function createPulseServer({
       sendJson(response, 400, { error: error.message });
     }
   });
+  listening = server;
   // `server.close()` only resolves once every connection has ended, so the
   // long-lived SSE responses must be ended before the native close runs.
   const nativeClose = server.close.bind(server);
