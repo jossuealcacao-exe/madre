@@ -332,10 +332,6 @@ Gemini CLI lee `@algo` en el prompt como un archivo a incluir, incluso en modo h
 
 Todos los adaptadores corren en su propio grupo de procesos. Si un agente no responde antes del timeout, MADRE termina el árbol completo (SIGTERM y, tras un periodo de gracia, SIGKILL), no solo el lanzador.
 
-## Diseño
-
-La guía oficial de la MADRE UX está en [`docs/DESIGN.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/DESIGN.md): concepto, tokens, tipografía, voz, geometría, componentes, la pantalla de MOTHER, NOSTROMO, movimiento y accesibilidad, con los valores exactos y el orden de trabajo para replicar el estilo en otro servicio.
-
 ## Cambios
 
 Ver [CHANGELOG.md](https://github.com/jossuealcacao-exe/madre/blob/main/CHANGELOG.md) y el [roadmap](https://github.com/jossuealcacao-exe/madre/blob/main/docs/ROADMAP.md). La versión actual es 0.3.0, beta pública: el núcleo está probado y bajo CI, la superficie sigue cambiando y las decisiones que aún duelen están escritas en el modelo de amenazas. Los problemas se reportan desde MU/TH/UR (`✎ FEEDBACK` o el sentinel) o en [issues](https://github.com/jossuealcacao-exe/madre/issues); la seguridad, según [SECURITY.md](https://github.com/jossuealcacao-exe/madre/blob/main/SECURITY.md).

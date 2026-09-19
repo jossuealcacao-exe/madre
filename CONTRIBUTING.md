@@ -39,7 +39,7 @@ export default defineModule({
 
 ## Look and voice
 
-Everything visual and every string the room says follows `docs/DESIGN.md`: three layers (dialogue, metadata, MOTHER), one colour per meaning, the MU/TH/UR voice. Read it before touching `public/`. A new component that needs a new colour is a sign the component is wrong, not the palette.
+Three layers that never mix: the dialogue reads like a chat (system font, bubbles), the metadata reads like a terminal (mono, 10px, uppercase, grey), and MOTHER's screens (diagnosis, memory, control) are phosphor on black. One colour per meaning: phosphor is MADRE, amber is CREATE, red is CONTROL, each provider keeps its own colour. Toasts speak as `MU/TH/UR › …`. A new component that needs a new colour is a sign the component is wrong, not the palette.
 
 ## Where things live
 
