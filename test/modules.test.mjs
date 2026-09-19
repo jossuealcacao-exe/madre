@@ -71,7 +71,7 @@ test('registry: seven modules in MODULES order, the compat layer answers with th
   assert.equal(byId.ahp.kind, 'installer');
   // describeModules with a fuller ctx is what the server uses.
   const { ctx } = fakeCtx({ modules: {} });
-  assert.equal((await describeModules(ctx)).length, 6);
+  assert.equal((await describeModules(ctx)).length, 7);
 });
 
 test('registry: the AshCode switch confirms, persists under ashCode and tells the room it is beta', async () => {
