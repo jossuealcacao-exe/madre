@@ -2699,6 +2699,8 @@ function renderMotherRecorded() {
       jump.type = 'button';
       jump.addEventListener('click', () => {
         mother.input.value = '';
+        // Choosing a fix from the log is a request to see it: the list opens and stays open.
+        try { localStorage.setItem('pulse.mother.known', 'expanded'); } catch { /* no storage */ }
         renderMotherKnown(CONDITIONS, new Set(matches.map((item) => item.id)), failure.agent);
         document.getElementById(`mother-${condition.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
@@ -2713,8 +2715,8 @@ function renderMotherKnown(list = CONDITIONS, hits = new Set(), agent = null) {
   mother.known.replaceChildren();
   let collapsed = false;
   try { collapsed = localStorage.getItem('pulse.mother.known') === 'collapsed'; } catch { /* no storage */ }
-  // An inquiry that narrowed the list always shows its answer, whatever the stored state.
-  if (list.length !== CONDITIONS.length) collapsed = false;
+  // An inquiry that narrowed the list, or a fix chosen from the log, always shows its answer, whatever the stored state.
+  if (list.length !== CONDITIONS.length || hits.size) collapsed = false;
   const head = el('h3', 'toggle');
   const headButton = el('button', null, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`);
   headButton.type = 'button';
