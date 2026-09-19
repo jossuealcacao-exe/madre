@@ -6,3 +6,6 @@ coverage/
 
 # Private notes of the author, never published
 docs/private/
+
+# Cloudflare Wrangler local cache (account ids), never published
+.wrangler/

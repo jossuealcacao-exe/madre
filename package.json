@@ -1,7 +1,7 @@
 {
   "name": "@jossuealcala/madre",
   "version": "0.3.1",
-  "description": "MADRE: one local room where the AI coding agents already installed on your machine (Codex, Claude Code, Gemini CLI, OpenCode) work on a project together over the PULSE channel: read-only by default, per-message permission modes up to a checkpointed CONTROL, a shared memory every agent recalls and queries, and NOSTROMO to browse it.",
+  "description": "MADRE · one local room where the AI coding agents already on your machine (Codex, Claude Code, Gemini CLI, OpenCode) work on a project together, with a shared memory every one of them recalls and a local @madre that speaks for it. Read-only by default, per-message permission modes up to a checkpointed CONTROL. Nothing leaves your machine on its own.",
   "keywords": [
     "ai-agents",
     "codex",
@@ -43,6 +43,7 @@
     "NOTICE",
     "docs/madre-banner.svg",
     "docs/training",
+    "docs/INTERNALS.md",
     "SECURITY.md",
     "CONTRIBUTING.md"
   ],

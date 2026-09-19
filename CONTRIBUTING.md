@@ -6,9 +6,10 @@ MADRE is one local room where several AI coding CLIs work on a project together.
 
 ```
 node --version          # ≥ 22.5
-npm test                # 111 tests, no model calls
+npm test                # the whole suite, no model calls
 npm run pack:check      # packs, installs, exercises the CLI
 node ./bin/madre.mjs doctor --catalog   # what MU/TH/UR already knows
+node ./bin/madre.mjs start --no-open    # the room from source, URL in the terminal
 ```
 
 ## What a good change looks like
