@@ -69,12 +69,20 @@ export async function worktreeTree(root, { exclude = [] } = {}) {
     // photographed on their own, and `git add` would refuse one without commits anyway.
     const listed = await git(root, ['ls-files', '-z', '--others', '--exclude-standard', '--', '.'], { env });
     const skip = new Set(exclude.map((path) => path.replace(/\/$/, '')));
-    const files = listed.split('\0').filter((path) => path && !path.endsWith('/') && ![...skip].some((dir) => path === dir || path.startsWith(`${dir}/`)));
+    // Lock folders (MADRE's own `*.lock/`) come and go between the listing and the indexing.
+    const files = listed.split('\0').filter((path) => path && !path.endsWith('/') && !/(^|\/)[^/]+\.lock\//.test(path) && ![...skip].some((dir) => path === dir || path.startsWith(`${dir}/`)));
     if (files.length) {
-      await new Promise((resolvePromise, reject) => {
-        const child = execFile('git', ['-c', 'core.quotepath=off', ...extra, 'update-index', '--add', '-z', '--stdin'], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 64 * 1024 * 1024 }, (error) => (error ? reject(error) : resolvePromise()));
-        child.stdin.end(files.join('\0') + '\0');
+      // --remove: a file that vanished since the listing is dropped instead of aborting the photograph.
+      const index_ = (list) => new Promise((resolvePromise, reject) => {
+        const child = execFile('git', ['-c', 'core.quotepath=off', ...extra, 'update-index', '--add', '--remove', '-z', '--stdin'], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 64 * 1024 * 1024 }, (error) => (error ? reject(error) : resolvePromise()));
+        child.stdin.end(list.join('\0') + '\0');
       });
+      try { await index_(files); } catch {
+        // Something still raced us: photograph what exists right now.
+        const alive = [];
+        for (const path of files) if (await access(join(root, path)).then(() => true, () => false)) alive.push(path);
+        if (alive.length) await index_(alive);
+      }
     }
     return (await git(root, ['write-tree'], { env })).trim();
   } finally {
