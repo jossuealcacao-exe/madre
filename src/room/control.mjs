@@ -30,11 +30,11 @@ export class ControlDesk {
     // Prevention first: .env files and MADRE's folders are read-only for the length of the turn.
     const guard = await guardForbidden(this.#projectRoot);
     const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString(), guard, mode };
-    if (mode === 3) this.#holder = run;
-    const lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabledScopes, write: true }, control: mode === 3, create: mode === 2, checkpoint };
-    if (mode !== 3) return { run, lease, announcement: null };
+    if (mode >= 3) this.#holder = run;
+    const lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabledScopes, write: true }, control: mode >= 3, airlock: mode === 4, create: mode === 2, checkpoint };
+    if (mode < 3) return { run, lease, announcement: null };
     const guarded = guard.locked.length ? ` ${guard.locked.length} forbidden path${guard.locked.length === 1 ? '' : 's'} locked read-only for the turn (${guard.locked.slice(0, 4).join(', ')}${guard.locked.length > 4 ? ', …' : ''}).` : '';
-    const announcement = { checkpointId: checkpoint.id, commit: checkpoint.commit, head: checkpoint.head, agent: agent.id, messageId, guarded: guard.locked, message: `@${agent.id} holds CONTROL of the project. Checkpoint ${checkpoint.commit.slice(0, 7)} taken; UNDO will be one click.${guarded}` };
+    const announcement = { checkpointId: checkpoint.id, commit: checkpoint.commit, head: checkpoint.head, agent: agent.id, messageId, guarded: guard.locked, mode, message: `@${agent.id} holds ${mode === 4 ? 'AIRLOCK' : 'CONTROL'} of the project.${mode === 4 ? ' Commands run; pushes and deploys leave the ship and do not come back with UNDO.' : ''} Checkpoint ${checkpoint.commit.slice(0, 7)} taken; UNDO will be one click.${guarded}` };
     return { run, lease, announcement };
   }
 

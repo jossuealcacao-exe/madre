@@ -45,7 +45,7 @@ export function writeRules(relativeDir, { control = false, create = false } = {}
   return { '*': 'deny', [dir && dir !== '.' ? `${dir}/**` : '**']: 'allow' };
 }
 
-export function leaseConfig(outDir, { control = false, create = false, relativeDir = null } = {}) {
+export function leaseConfig(outDir, { control = false, create = false, airlock = false, relativeDir = null } = {}) {
   const rules = writeRules(relativeDir ?? outDir, { control, create });
   // OpenCode gates its `write` tool behind the `edit` permission as well (denying edit leaves "no
   // file-writing tool"), so CREATE allows both and the room restores existing files afterwards.
@@ -55,7 +55,9 @@ export function leaseConfig(outDir, { control = false, create = false, relativeD
     agent: {
       'pulse-readonly': {
         ...readonlyConfig.agent['pulse-readonly'],
-        prompt: control
+        prompt: airlock
+          ? 'Answer the user directly. AIRLOCK: you are in command of this project and may run commands in it, including git and deploy CLIs with the sessions already on this machine. Say what will leave the machine before it does. Never print secrets. Do not launch subagents.'
+          : control
           ? 'Answer the user directly. You are in CONTROL of this project: create and edit files anywhere inside it except .git, .pulse, .madre and .env files. Do not run commands, browse the web, or launch subagents.'
           : create
             ? 'Answer the user directly. You may create new files and folders anywhere in this project where they belong; do not modify or delete existing files. Do not run commands, browse the web, or launch subagents.'
@@ -64,6 +66,7 @@ export function leaseConfig(outDir, { control = false, create = false, relativeD
           ...readonlyConfig.agent['pulse-readonly'].permission,
           edit: editRules,
           write: rules,
+          ...(airlock ? { bash: 'allow' } : {}),   // AIRLOCK (#4): commands, git, deploy CLIs
         },
       },
     },
@@ -71,7 +74,7 @@ export function leaseConfig(outDir, { control = false, create = false, relativeD
 }
 
 export function openCodeConfig({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
-  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), relativeDir: lease.relativeDir ?? null }) : readonlyConfig;
+  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock), relativeDir: lease.relativeDir ?? null }) : readonlyConfig;
   if (scopes?.web) {
     config = {
       ...config,

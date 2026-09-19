@@ -28,7 +28,6 @@ import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
 import { compressAshCode } from './ashcode.mjs';
-import { isGitRepo } from './checkpoint.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -357,11 +356,12 @@ export class Room {
     const wanted = normalizeMode(mode, create === true ? 2 : 1);
     if (!parsed.target) return { ok: true, mode: wanted };
     const scopes = this.scopesFor(parsed.target);
-    if (wanted === 3) {
-      if (scopes.maxMode < 3) return { ok: false, status: 403, mode: wanted, maxMode: scopes.maxMode, error: `@${parsed.target} is capped at #${scopes.maxMode} ${MODES[scopes.maxMode].label}; raise its MAX MODE to #3 in CONNECTIONS first.` };
-      if (!(await isGitRepo(this.#projectRoot))) return { ok: false, status: 412, mode: wanted, maxMode: scopes.maxMode, error: 'CONTROL needs the project to be a git repository: the checkpoint that makes UNDO possible is a git commit. Run git init first.' };
-      if (this.#controlDesk.holder) return { ok: false, status: 409, mode: wanted, maxMode: scopes.maxMode, error: `@${this.#controlDesk.holder.agent} already holds CONTROL of this project; one holder at a time. STOPALL revokes it.` };
-      return { ok: true, mode: 3, maxMode: scopes.maxMode };
+    if (wanted >= 3) {
+      // #3 CONTROL and #4 AIRLOCK: the ceiling must allow it, and there is one holder at a time.
+      // A project without git still checkpoints, in MADRE's shadow repository.
+      if (scopes.maxMode < wanted) return { ok: false, status: 403, mode: wanted, maxMode: scopes.maxMode, error: `@${parsed.target} is capped at #${scopes.maxMode} ${MODES[scopes.maxMode].label}; raise its MAX MODE to #${wanted} in CONNECTIONS to arm ${MODES[wanted].label}.` };
+      if (this.#controlDesk.holder) return { ok: false, status: 409, mode: wanted, maxMode: scopes.maxMode, error: `@${this.#controlDesk.holder.agent} already holds ${MODES[this.#controlDesk.holder.mode ?? 3].label} of this project; one holder at a time. STOPALL revokes it.` };
+      return { ok: true, mode: wanted, maxMode: scopes.maxMode };
     }
     // #2 above the agent's ceiling still goes out: the room answers read-only
     // and says why (lease.refused), the way CREATE has always behaved.
@@ -520,7 +520,7 @@ export class Room {
     if (!gate.ok) throw new Error(gate.error);
     create = requestedMode === 2;
     const ghost = requestedMode === 0;
-    const control = requestedMode === 3;
+    const control = requestedMode >= 3;
     const files = (Array.isArray(attachments) ? attachments : []).map((id) => this.attachment(id)).filter(Boolean);
     if (!parsed.text && !files.length) throw new Error('Write a message first.');
     if (!parsed.target) throw new Error('Choose an agent or begin with @agent.');
@@ -539,7 +539,7 @@ export class Room {
     if (ghost) this.#ghost.add(messageId);
     await this.#emit('message.created', {
       messageId,
-      mode: ghost ? 0 : control ? 3 : (standing || create ? 2 : 1),
+      mode: ghost ? 0 : control ? requestedMode : (standing || create ? 2 : 1),
       role: 'user',
       sender: 'you',
       target: parsed.target,
@@ -609,7 +609,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? 3 : (lease ? 2 : 1) }));
+    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? requestedMode : (lease ? 2 : 1) }));
   }
 
   // A #2 lease: the project itself is where new files go, and MADRE keeps a scratch folder
@@ -768,14 +768,14 @@ export class Room {
     let lease = null;
     let controlRun = null;
     let createRun = null;
-    if (mode === 3 && (requester === 'you' || planId) && depth <= 1 && agentScopes.maxMode >= 3 && enabled.write) {
+    if (mode >= 3 && (requester === 'you' || planId) && depth <= 1 && agentScopes.maxMode >= mode && enabled.write) {
       // CONTROL: the project itself is the writable root, and a checkpoint
       // taken now makes every change of this turn reversible. A plan step gets
       // it when the orchestrator, itself in #3, named #3 for that step.
       if (this.#controlDesk.holder) {
         await this.#alert('control-busy', `@${this.#controlDesk.holder.agent} still holds CONTROL; @${agent.id} answers read-only this turn.`, `control-busy:${agent.id}`);
       } else {
-        const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled });
+        const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode });
         controlRun = seat.run;
         lease = seat.lease;
         await this.#emit('control.started', seat.announcement);
@@ -830,7 +830,7 @@ export class Room {
       ? imageStudioFor({ enabled: true, model: studio.model, outDir: lease.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : lease.outDir })
       : null;
     // The turn's effective mode: #0 for ghosts, #3 in control, #2 only while it holds a lease.
-    const turnMode = mode === 0 ? 0 : controlRun ? 3 : lease ? 2 : 1;
+    const turnMode = mode === 0 ? 0 : controlRun ? controlRun.mode : lease ? 2 : 1;
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
@@ -932,7 +932,7 @@ export class Room {
     // The plan's ceiling is the human's mode: #3 when the orchestrator held CONTROL, #2 while a
     // lease exists, #1 otherwise. A step may ask for a mode ("@codex #2: …"); it gets the lowest
     // of what it asked, the ceiling and its own MAX MODE. Without a number it inherits the plan.
-    const ceiling = mode >= 3 ? 3 : lease ? 2 : 1;
+    const ceiling = mode >= 3 ? mode : lease ? 2 : 1;
     const stepMode = (step) => {
       const scopes = this.scopesFor(step.agent);
       const asked = normalizeMode(step.mode, lease ? 2 : 1);
@@ -967,7 +967,7 @@ export class Room {
         const wanted = stepMode(step);
         // Under a #3 ceiling the orchestrator's word is enough: a #2 step gets its project lease,
         // a #3 step gets CONTROL for its turn. Under #1 a creation step still asks the human.
-        if (ceiling === 3 && !stepLease && wanted === 2) {
+        if (ceiling >= 3 && !stepLease && wanted === 2) {
           stepLease = await this.#projectLease({ leaseId: randomUUID(), messageId });
           stepLease.scopeCeiling = { write: true, imageGen: true, web: true };
           stepLease.scopes = Object.fromEntries(SCOPES.map((scope) => [scope, stepScopes[scope].enabled && stepScopes[scope].wired]));
@@ -989,12 +989,12 @@ export class Room {
           ashCode: ashCode ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
           status: 'delegated',
           planId,
-          mode: wanted === 3 ? 3 : stepLease && stepScopes.write.enabled ? 2 : 1,
+          mode: wanted >= 3 ? wanted : stepLease && stepScopes.write.enabled ? 2 : 1,
           escalation: escalation ?? undefined,
           step: index + 1,
           totalSteps: directives.steps.length + (directives.closing ? 1 : 0),
         });
-        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: wanted === 3 ? null : stepLease, ashCode, mode: wanted === 3 ? 3 : stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
+        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: wanted >= 3 ? null : stepLease, ashCode, mode: wanted >= 3 ? wanted : stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
       }
       if (!plan.stopped && directives.closing) {
         plan.step = directives.steps.length + 1;

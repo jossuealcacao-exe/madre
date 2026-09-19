@@ -44,6 +44,7 @@ const PLACEHOLDERS = {
   order: 'Priority one. Terse transmissions; the original stays in the record.',
   ghost: 'Off the record. Ask anything; nothing is saved, nobody else will remember it.',
   control: 'Control armed. Say what to change in the project; every action runs without asking.',
+  airlock: 'Airlock open. Commands run; pushes and deploys leave the ship. Say exactly what should go out.',
   expendable: 'Type here, human. MOTHER is listening.',
   memory: 'Ask what the room remembers. @madre answers from memory with citations; it does not act.',
 };
@@ -57,6 +58,7 @@ const MODES = {
   1: { key: 'exchange', label: 'EXCHANGE', hint: 'Read the project and talk to the room. Writes nothing.' },
   2: { key: 'create', label: 'CREATE', hint: 'Add new files where they belong in the project. Existing files stay untouched.' },
   3: { key: 'control', label: 'CONTROL', hint: 'Edit the project itself, no approval per action. Override required.' },
+  4: { key: 'airlock', label: 'AIRLOCK', hint: 'Run commands, push, deploy. What leaves the ship does not come back. Override, twice.' },
 };
 
 const state = {
@@ -841,28 +843,28 @@ function toggleModeMenu(id, anchor) {
   title.append(el('b', null, `@${id}`), ` · mode for this message · ceiling #${cap}`);
   modeMenu.append(title);
   const ladder = el('div', 'mode-ladder');
-  for (const n of [0, 1, 2, 3]) {
+  for (const n of [0, 1, 2, 3, 4]) {
     const locked = n > cap;
-    const raise = locked && n === 3 && canRaise;
+    const raise = locked && n >= 3 && canRaise;
     const option = el('button', `mode-option o${n}${state.mode === n ? ' current' : ''}${locked ? ' locked' : ''}`);
     option.type = 'button';
     option.disabled = locked && !raise;
     const body = el('span', 'body');
     body.append(el('span', 'name', MODES[n].label), el('span', 'hint', MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
-    const tag = state.mode === n ? 'NOW' : raise ? 'RAISE TO #3 ›' : locked ? 'LOCKED' : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) ? 'DEFAULT' : '';
+    const tag = state.mode === n ? 'NOW' : raise ? `RAISE TO #${n} ›` : locked ? 'LOCKED' : n === 4 ? 'OVERRIDE ×2' : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) ? 'DEFAULT' : '';
     if (tag) {
       const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
       if (state.mode === n) label.append(el('span', 'dot'));
       option.append(label);
     }
     option.title = !locked ? MODES[n].hint
-      : raise ? `@${id} is capped at #${cap}. This raises MAX MODE to #3 in CONNECTIONS and opens the override.`
-      : n === 3 ? `@${id}'s CLI cannot write files, so CONTROL is not possible for it.`
+      : raise ? `@${id} is capped at #${cap}. This raises MAX MODE to #${n} in CONNECTIONS and opens the override.`
+      : n >= 3 ? `@${id}'s CLI cannot write files, so ${MODES[n].label} is not possible for it.`
       : `Above @${id}'s MAX MODE (#${cap}). Raise it in CONNECTIONS.`;
     option.addEventListener('click', () => {
       closeModeMenu();
-      if (n === 3) { openOverride(id, { raise }); return; }
+      if (n >= 3) { openOverride(id, { raise, mode: n }); return; }
       setMode(n, { wink: n === 0 });
     });
     ladder.append(option);
@@ -878,20 +880,21 @@ function toggleModeMenu(id, anchor) {
 
 // One place changes the mode: chip, classes, label, placeholder and the old CREATE state.
 function setMode(n, { wink = false } = {}) {
-  const mode = [0, 1, 2, 3].includes(n) ? n : 1;
+  const mode = [0, 1, 2, 3, 4].includes(n) ? n : 1;
   state.mode = mode;
   state.create = mode === 2;
-  if (mode !== 3) state.modeArmedFor = null;
+  if (mode < 3) state.modeArmedFor = null;
   els.createToggle.setAttribute('aria-pressed', String(state.create));
   els.composer.classList.toggle('creating', mode === 2);
   els.composer.classList.toggle('ghost', mode === 0);
-  els.composer.classList.toggle('control', mode === 3);
-  for (const n of [0, 1, 2, 3]) els.composer.classList.toggle(`m${n}`, mode === n);
+  els.composer.classList.toggle('control', mode >= 3);
+  els.composer.classList.toggle('airlock', mode === 4);
+  for (const n of [0, 1, 2, 3, 4]) els.composer.classList.toggle(`m${n}`, mode === n);
   if (typeof renderCreateScopes === 'function') renderCreateScopes();
   if (typeof updateCrewLabel === 'function') { updateCrewLabel(); updatePlaceholder(); }
   if (typeof renderPicker === 'function') renderPicker();
   if (typeof autosize === 'function') autosize();
-  if (wink && typeof winkField === 'function') winkField(mode === 3 ? 'control' : mode === 0 ? 'ghost' : 'ash');
+  if (wink && typeof winkField === 'function') winkField(mode >= 3 ? 'control' : mode === 0 ? 'ghost' : 'ash');
 }
 // After a message goes out the mode falls back to the target's default: #2 for a standing lease, else #1.
 function resetModeAfterSend() { setMode(defaultModeFor(els.target.value)); }
@@ -907,14 +910,25 @@ const override = {
   cancel: document.querySelector('#override-cancel'),
   frame: document.querySelector('#override .override-frame'),
   agent: null,
-  raise: false,   // the agent is capped below #3: arming also raises MAX MODE in CONNECTIONS
+  raise: false,   // the agent is capped below the mode: arming also raises MAX MODE in CONNECTIONS
+  mode: 3,        // #3 CONTROL or #4 AIRLOCK
+  stage: 'designation',   // AIRLOCK asks twice: the designation, then the word AIRLOCK
+};
+const OVERRIDE_BRIEF = {
+  3: (id, raise) => `PRIORITY ONE. CONTROL GIVES @${id} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.${raise ? ` THIS ALSO RAISES @${id} MAX MODE TO #3 IN CONNECTIONS.` : ''} TYPE THE PROJECT DESIGNATION TO ARM.`,
+  4: (id, raise) => `PRIORITY ONE. AIRLOCK OPENS THE SHIP FOR @${id}: EVERYTHING CONTROL ALLOWS, PLUS COMMANDS, GIT PUSH AND DEPLOYS WITH THE SESSIONS ON THIS MACHINE. FILES COME BACK WITH UNDO; WHAT LEAVES THE SHIP DOES NOT.${raise ? ` THIS ALSO RAISES @${id} MAX MODE TO #4 IN CONNECTIONS.` : ''} TYPE THE PROJECT DESIGNATION, THEN THE WORD AIRLOCK.`,
 };
 function projectDesignation() { return (state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''; }
-function openOverride(id, { raise = false } = {}) {
+function openOverride(id, { raise = false, mode = 3 } = {}) {
   if (!override.dialog) return;
   override.agent = id;
   override.raise = raise;
-  override.brief.textContent = `PRIORITY ONE. CONTROL GIVES @${id.toUpperCase()} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.${raise ? ` THIS ALSO RAISES @${id.toUpperCase()} MAX MODE TO #3 IN CONNECTIONS.` : ''} TYPE THE PROJECT DESIGNATION TO ARM.`;
+  override.mode = mode;
+  override.stage = 'designation';
+    override.form.querySelector('.k').textContent = 'DESIGNATION ›';
+  override.input.placeholder = "type the current project's folder name to arm";
+  override.dialog.querySelector('.mother-sub').textContent = mode === 4 ? 'AIRLOCK OVERRIDE 100375 · SECOND KEY REQUIRED' : 'EMERGENCY COMMAND OVERRIDE 100375';
+  override.brief.textContent = OVERRIDE_BRIEF[mode](id.toUpperCase(), raise);
   override.reply.textContent = '';
   override.reply.className = 'mother-answer override-reply';
   override.input.value = '';
@@ -925,33 +939,50 @@ override.cancel?.addEventListener('click', () => override.dialog.close());
 override.form?.addEventListener('submit', (event) => {
   event.preventDefault();
   const typed = override.input.value.trim();
-  const expected = projectDesignation();
-  if (!typed || typed.toLowerCase() !== expected.toLowerCase()) {
-    override.reply.textContent = 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.';
+  const deny = (text = 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.') => {
+    override.reply.textContent = text;
     override.reply.className = 'mother-answer override-reply denied';
     override.frame.classList.remove('shake'); void override.frame.offsetWidth; override.frame.classList.add('shake');
     override.input.select();
-    return;
-  }
-  override.reply.textContent = `SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @${override.agent.toUpperCase()}. CREW IN COMMAND.`;
+  };
+  if (override.stage === 'designation') {
+    const expected = projectDesignation();
+    if (!typed || typed.toLowerCase() !== expected.toLowerCase()) { deny(); return; }
+    if (override.mode === 4) {
+      // The second key: the word itself, so an airlock is never opened by a folder name alone.
+      override.stage = 'confirm';
+      override.reply.textContent = 'DESIGNATION ACCEPTED. SECOND KEY: TYPE AIRLOCK TO OPEN THE SHIP.';
+      override.reply.className = 'mother-answer override-reply';
+      override.form.querySelector('.k').textContent = 'SECOND KEY ›';
+      override.input.value = ''; override.input.placeholder = 'AIRLOCK';
+      override.input.focus();
+      return;
+    }
+  } else if (typed.toUpperCase() !== 'AIRLOCK') { deny('SECOND KEY REJECTED. TYPE AIRLOCK, OR CANCEL.'); return; }
+  override.reply.textContent = override.mode === 4
+    ? `SPECIAL ORDER 937 ACKNOWLEDGED. AIRLOCK OPEN FOR @${override.agent.toUpperCase()}. WHAT LEAVES DOES NOT COME BACK.`
+    : `SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @${override.agent.toUpperCase()}. CREW IN COMMAND.`;
   override.reply.className = 'mother-answer override-reply granted';
   const agent = override.agent;
   const raise = override.raise;
+  const mode = override.mode;
   setTimeout(async () => {
     override.dialog.close();
     if (raise) {
       try {
-        await saveSettingNow({ scopes: { [agent]: { maxMode: 3, write: true } } });
+        await saveSettingNow({ scopes: { [agent]: { maxMode: mode } } });
         if (settingsUI.open) renderSettings();
       } catch (error) {
-        toast(`MU/TH/UR › MAX MODE was not raised for @${agent}: ${error.message}. CONTROL stays off.`);
+        toast(`MU/TH/UR › MAX MODE was not raised for @${agent}: ${error.message}. ${MODES[mode].label} stays off.`);
         return;
       }
     }
     state.modeArmedFor = agent;
     els.target.value = agent;
-    setMode(3, { wink: true });
-    toast(`MU/TH/UR › CONTROL armed for @${agent} for this message.${raise ? ` MAX MODE is now #3 in CONNECTIONS.` : ''} A checkpoint is taken before it runs; every change is listed and UNDO is one click.`);
+    setMode(mode, { wink: true });
+    toast(mode === 4
+      ? `MU/TH/UR › AIRLOCK open for @${agent} for this message.${raise ? ' MAX MODE is now #4 in CONNECTIONS.' : ''} Files are checkpointed; what leaves the machine is not undone.`
+      : `MU/TH/UR › CONTROL armed for @${agent} for this message.${raise ? ' MAX MODE is now #3 in CONNECTIONS.' : ''} A checkpoint is taken before it runs; every change is listed and UNDO is one click.`);
   }, 900);
 });
 
@@ -2235,7 +2266,7 @@ function renderMenu() {
   if (found.kind === '!') return fileMenu(found);
   if (found.kind === '#') {
     const cap = ceilingFor(els.target.value);
-    const items = [0, 1, 2, 3].filter((n) => String(n).startsWith(found.query)).map((n) => ({ key: `#${n} ${MODES[n].label}`, insert: `#${n} `, what: n > cap ? `${MODES[n].hint} · above @${els.target.value}'s max mode` : MODES[n].hint, off: n > cap }));
+    const items = [0, 1, 2, 3, 4].filter((n) => String(n).startsWith(found.query)).map((n) => ({ key: `#${n} ${MODES[n].label}`, insert: `#${n} `, what: n > cap ? `${MODES[n].hint} · above @${els.target.value}'s max mode` : MODES[n].hint, off: n > cap }));
     if (!items.length) return closeMenu();
     return showMenu(items, { ...found, hint: 'MODE · ↑↓ · TAB OR ENTER' });
   }
@@ -2400,7 +2431,7 @@ fetch('/api/mother').then((response) => response.json()).then((status) => { if (
 
 function updateCrewLabel() {
   const order = state.ashCode && state.ashCodeInstalled;
-  els.crewLabel.textContent = state.intruder && state.mode !== 3 ? 'INTRUDER ›' : state.mode === 3 ? `MU/TH/UR · CONTROL @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
+  els.crewLabel.textContent = state.intruder && state.mode < 3 ? 'INTRUDER ›' : state.mode >= 3 ? `MU/TH/UR · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
     : state.mode === 0 ? 'HUMAN · GHOST ›'
       : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH CODE ›')
         : state.create ? 'HUMAN · CREATE ›'
@@ -2408,7 +2439,7 @@ function updateCrewLabel() {
 }
 function updatePlaceholder() {
   const local = Boolean(state.agents.get(els.target.value)?.local);
-  els.input.placeholder = state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
+  els.input.placeholder = state.mode === 4 ? PLACEHOLDERS.airlock : state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
 }
 function setOrder937(on, { wink = false } = {}) {
   state.ashCode = on;
@@ -2541,7 +2572,7 @@ els.composer.addEventListener('submit', async (event) => {
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
       toast(`MU/TH/UR › ${result.error ?? 'The room rejected the message.'}`);
-      if (state.mode === 3 && [403, 409, 412].includes(response.status)) setMode(1);
+      if (state.mode >= 3 && [403, 409, 412].includes(response.status)) setMode(1);
     } else {
       els.input.value = '';
       state.pending = [];
@@ -3359,7 +3390,7 @@ function connectionCard(agent) {
   ceiling.append(el('span', 'k', 'MAX MODE'));
   const seg = el('div', 'seg');
   const currentCap = agentScopes.maxMode ?? 1;
-  for (const n of [0, 1, 2, 3]) {
+  for (const n of [0, 1, 2, 3, 4]) {
     const button = el('button', `seg-option o${n}${currentCap === n ? ' current' : ''}`, `#${n}`);
     button.type = 'button';
     button.title = `${MODES[n].label} · ${MODES[n].hint}`;
@@ -3369,7 +3400,7 @@ function connectionCard(agent) {
       if (n === currentCap) return;
       for (const other of seg.children) other.disabled = true;
       try {
-        await saveSettingNow({ scopes: { [agent.id]: { maxMode: n, ...(n >= 2 ? { write: true } : {}) } } }, `@${agent.id} is now capped at #${n} ${MODES[n].label}.${n === 3 ? ' CONTROL still needs the override per message.' : ''}`);
+        await saveSettingNow({ scopes: { [agent.id]: { maxMode: n } } }, `@${agent.id} is now capped at #${n} ${MODES[n].label}.${n === 3 ? ' CONTROL still needs the override per message.' : ''}`);
         await loadSettings();
       } catch (error) { toast(`Max mode was not saved: ${error.message}`); for (const other of seg.children) other.disabled = false; }
     });

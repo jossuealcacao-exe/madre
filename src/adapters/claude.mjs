@@ -6,6 +6,7 @@ import { runReadonlyProcess } from './process.mjs';
 export function claudeTools({ lease = null, scopes = null } = {}) {
   const tools = ['Read', 'Glob', 'Grep'];
   if (lease) tools.push('Write', 'Edit');
+  if (lease?.airlock) tools.push('Bash');   // AIRLOCK (#4): commands, git, deploy CLIs
   if (scopes?.web) tools.push('WebFetch', 'WebSearch');
   return tools;
 }
@@ -30,6 +31,7 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     // CLI: a lone Write rule is denied under dontAsk), so both come together; in CREATE the room
     // restores existing files after the turn.
     ...(lease ? [`Write(//${lease.outDir}/**)`, `Edit(//${lease.outDir}/**)`] : []),
+    ...(lease?.airlock ? ['Bash'] : []),
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
     ...mcpTools,
   ];

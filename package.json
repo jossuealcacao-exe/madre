@@ -1,6 +1,6 @@
 {
   "name": "@jossuealcala/madre",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "MADRE · one local room where the AI coding agents already on your machine (Codex, Claude Code, Gemini CLI, OpenCode) work on a project together, with a shared memory every one of them recalls and a local @madre that speaks for it. Read-only by default, per-message permission modes up to a checkpointed CONTROL. Nothing leaves your machine on its own.",
   "keywords": [
     "ai-agents",

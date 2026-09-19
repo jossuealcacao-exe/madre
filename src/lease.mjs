@@ -63,12 +63,14 @@ export function diffSnapshots(before, after, { relativeDir }) {
   return artifacts.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false, create = false, scratchDir = null }) {
+export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false, create = false, airlock = false, scratchDir = null }) {
   const canImage = Boolean(scopes.imageGen);
   const couldImage = capable ? Boolean(capable.imageGen?.capable) : canImage;
   const scratch = scratchDir ? `${outDir}/${scratchDir}` : null;
   return [
-    control
+    airlock
+      ? `AIRLOCK (#4): the human opened the airlock for you on this project at ${outDir}. Everything CONTROL allows, and you may run commands inside it: tests, builds, git commit and push, deploys with the CLIs and sessions already on this machine. Files are checkpointed and UNDO restores them; what leaves the machine (a push, a deploy, an API call) does not come back. Before anything leaves, state in one line exactly what goes out and where, then do it. Never print, copy or move secrets. Use git commands, never .git internals.`
+      : control
       ? `CONTROL (#3): the human put you in command of this project at ${outDir}. You may read, create and modify its files without asking, one change at a time, minimal and reversible. MADRE took a checkpoint before this turn; everything you change is listed to the human afterwards and can be undone in one click.`
       : create
         ? `CREATE (#2): the human allows you to create new files and folders anywhere in this project, at ${outDir}, where they belong by the project's own conventions (a page next to the other pages, a component with the components, a document with the documents). Create folders when the structure calls for it.${scratch ? ` If something has no natural place, put it in the scratch folder ${scratch}.` : ''}`
@@ -78,7 +80,7 @@ export function leaseInstructions({ outDir, agentId, scopes = { write: true, ima
       : create
         ? 'Do not modify, overwrite, rename or delete files that already exist: MADRE restores them after your turn and tells the human. If a change to an existing file is truly needed, say so and stop; the human can grant #3 CONTROL. Never touch .git, .pulse, .madre, .env files or credentials.'
         : 'Write every file you produce there (images, code, documents); paths elsewhere are denied.',
-    control ? 'End with a short list of the files you changed and why.' : create ? 'End with a short list of the files you created, with their paths, and why there.' : 'Reading the project stays allowed. Do not modify project files.',
+    airlock ? 'End with the commands you ran, what left the machine, and the files you changed.' : control ? 'End with a short list of the files you changed and why.' : create ? 'End with a short list of the files you created, with their paths, and why there.' : 'Reading the project stays allowed. Do not modify project files.',
     imageStudio ? `You can generate images with the MCP tool ${imageStudio.tool} (server ${imageStudio.name}): pass a detailed prompt and a file_name; it saves the PNG${scratch ? ` into ${scratch}` : ' into the lease directory'} and returns the path.`
       : canImage ? `You can generate images; save them${create ? ' where images live in this project, or in the scratch folder,' : ' into the lease directory'} with a descriptive file name.`
       : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'

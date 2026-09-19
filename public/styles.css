@@ -39,6 +39,7 @@
   --mode-1: var(--phosphor); --mode-1-ink: var(--phosphor-ink);   /* EXCHANGE · phosphor */
   --mode-2: #ffb000; --mode-2-ink: #1a1000;        /* CREATE · amber phosphor */
   --mode-3: var(--terror); --mode-3-ink: #fff3f1;  /* CONTROL · the red screen */
+  --mode-4: #8fd3ff; --mode-4-ink: #04131c;        /* AIRLOCK · the cold outside */
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -65,6 +66,7 @@
     --mode-0: #6f786e; --mode-0-ink: #ffffff;
     --mode-2: #a06e00; --mode-2-ink: #ffffff;
     --mode-3: #d81b12; --mode-3-ink: #ffffff;
+    --mode-4: #0b6fa8; --mode-4-ink: #ffffff;
   }
 }
 :root[data-theme="light"] {
@@ -395,6 +397,7 @@ textarea::placeholder { color: var(--text-3); }
 .composer.m0 { --mode: var(--mode-0); --mode-ink: var(--mode-0-ink); }
 .composer.m2 { --mode: var(--mode-2); --mode-ink: var(--mode-2-ink); }
 .composer.m3 { --mode: var(--mode-3); --mode-ink: var(--mode-3-ink); }
+.composer.m4 { --mode: var(--mode-4); --mode-ink: var(--mode-4-ink); }
 .field button[type="submit"] { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: var(--mode, var(--phosphor)); color: var(--mode-ink, var(--phosphor-ink)); cursor: pointer; display: grid; place-items: center; box-shadow: 0 0 18px color-mix(in srgb, var(--mode, var(--phosphor)) 45%, transparent); transition: background .25s, box-shadow .25s; }
 .field button[type="submit"] svg { width: 18px; height: 18px; }
 .field button[type="submit"]:hover { filter: brightness(1.06); }
@@ -647,6 +650,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .picker .mode-chip.m1 { --mode: var(--mode-1); }
 .picker .mode-chip.m2 { --mode: var(--mode-2); }
 .picker .mode-chip.m3 { --mode: var(--mode-3); }
+.picker .mode-chip.m4 { --mode: var(--mode-4); }
 .mode-menu { width: min(380px, calc(100vw - 24px)); padding: 12px; }
 .mode-menu .model-menu-title { margin: 4px 10px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode-menu .mode-ladder { display: grid; gap: 2px; }
@@ -657,6 +661,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mode-menu .mode-option.o1.current { --mode: var(--mode-1); }
 .mode-menu .mode-option.o2.current { --mode: var(--mode-2); }
 .mode-menu .mode-option.o3 { --mode: var(--mode-3); }
+.mode-menu .mode-option.o4 { --mode: var(--mode-4); }
 .mode-menu .mode-option.locked { opacity: .45; }
 .mode-menu .mode-option.locked:hover { opacity: 1; }
 .mode-menu .mode-option:disabled { opacity: .3; cursor: default; }
@@ -665,11 +670,11 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mode-menu .mode-option .body { display: grid; gap: 3px; min-width: 0; }
 .mode-menu .mode-option .name { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--mode); }
 .mode-menu .mode-option.current .name, .mode-menu .mode-option:hover .name { color: var(--mode); }
-.mode-menu .mode-option:not(.current):not(.o3) .name { color: var(--text); }
+.mode-menu .mode-option:not(.current):not(.o3):not(.o4) .name { color: var(--text); }
 .mode-menu .mode-option .body { gap: 5px; }
 .mode-menu .mode-option .hint { display: block; font-size: 10.5px; line-height: 1.5; letter-spacing: 0; color: var(--text-2); text-transform: none; font-family: var(--sans, inherit); }
 .mode-menu .mode-option .tag { display: inline-flex; align-items: center; gap: 7px; font-size: 8.5px; font-weight: 700; letter-spacing: .16em; color: var(--mode); white-space: nowrap; align-self: center; margin-left: 4px; }
-.mode-menu .mode-option .tag.raise { border: 1px solid var(--mode-3); border-radius: 999px; padding: 3px 9px; }
+.mode-menu .mode-option .tag.raise { border: 1px solid var(--mode); border-radius: 999px; padding: 3px 9px; }
 .mode-menu .mode-option .tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mode); box-shadow: 0 0 8px var(--mode); animation: mode-dot 1.4s ease-in-out infinite; }
 @keyframes mode-dot { 0%, 100% { opacity: 1; } 50% { opacity: .15; } }
 @media (prefers-reduced-motion: reduce) { .mode-menu .mode-option .tag .dot { animation: none; } }
@@ -681,10 +686,13 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .composer.control { width: min(1180px, 100% - 40px); }
 .composer.control .field { border-color: var(--terror); box-shadow: 0 0 0 3px color-mix(in srgb, var(--terror) 18%, transparent), 0 0 30px color-mix(in srgb, var(--terror) 20%, transparent); }
 .composer.control .crew-label { color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); }
+/* AIRLOCK: the same width as CONTROL, a cold ring instead of the red one. */
+.composer.airlock .field { border-color: var(--mode-4); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode-4) 18%, transparent), 0 0 30px color-mix(in srgb, var(--mode-4) 16%, transparent); }
+.composer.airlock .crew-label { color: var(--mode-4); text-shadow: 0 0 8px color-mix(in srgb, var(--mode-4) 55%, transparent); }
 .composer.intruder .crew-label { color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 60%, transparent); animation: blink 1.6s steps(1) infinite; }
 /* Mode badges on bubbles and plan steps */
 .who .badge.mode { font-weight: 700; letter-spacing: .1em; }
-.who .badge.mode.m0 { color: var(--mode-0); border-color: color-mix(in srgb, var(--mode-0) 50%, transparent); } .who .badge.mode.m1 { color: var(--mode-1); border-color: color-mix(in srgb, var(--mode-1) 45%, transparent); } .who .badge.mode.m2 { color: var(--mode-2); border-color: color-mix(in srgb, var(--mode-2) 50%, transparent); } .who .badge.mode.m3 { color: var(--mode-3); border-color: var(--mode-3); }
+.who .badge.mode.m0 { color: var(--mode-0); border-color: color-mix(in srgb, var(--mode-0) 50%, transparent); } .who .badge.mode.m1 { color: var(--mode-1); border-color: color-mix(in srgb, var(--mode-1) 45%, transparent); } .who .badge.mode.m2 { color: var(--mode-2); border-color: color-mix(in srgb, var(--mode-2) 50%, transparent); } .who .badge.mode.m3 { color: var(--mode-3); border-color: var(--mode-3); } .who .badge.mode.m4 { color: var(--mode-4); border-color: var(--mode-4); }
 .row.ghost .bubble { border: 1px dashed var(--line-2); background: transparent; opacity: .85; }
 .row.ghost.user .bubble { background: transparent; color: var(--text); border-color: var(--text-3); }
 .row.ghost .stamp::after { content: ' · not recorded'; color: var(--text-3); }
@@ -1044,6 +1052,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 :root[data-scheme="light"] .field button[type="submit"] { box-shadow: 0 2px 8px rgba(0, 0, 0, .14); }
 :root[data-scheme="light"] .user .bubble { box-shadow: 0 3px 12px rgba(0, 0, 0, .08); }
 :root[data-scheme="light"] .composer.control .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--terror) 30%, transparent); }
+:root[data-scheme="light"] .composer.airlock .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mode-4) 35%, transparent); }
 :root[data-scheme="light"] .composer.creating .field, :root[data-scheme="light"] .composer.creating.ordering .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mode-2) 30%, transparent); }
 :root[data-scheme="light"] .composer.ordering .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brew) 22%, transparent); }
 :root[data-scheme="light"] .composer.dropping .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--phosphor) 35%, transparent); }

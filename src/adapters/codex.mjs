@@ -25,7 +25,8 @@ export function codexMcpOverrides(memoryServer) {
 export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [], lease = null, scopes = null, memoryServer = null }) {
   const images = attachments.filter((file) => /^image\//.test(file.contentType ?? ''));
   return [
-    '--sandbox', lease ? 'workspace-write' : 'read-only',
+    // AIRLOCK (#4): commands with network, so pushes and deploys can leave; otherwise the sandbox.
+    '--sandbox', lease?.airlock ? 'danger-full-access' : lease ? 'workspace-write' : 'read-only',
     '--ask-for-approval', 'never',
     // Live web search is a global Codex flag; the human's web scope decides.
     ...(scopes?.web ? ['--search'] : []),

@@ -87,8 +87,9 @@ export const MODES = {
   1: { key: 'exchange', label: 'EXCHANGE', hint: 'read the project and coordinate · default' },
   2: { key: 'create', label: 'CREATE', hint: 'create files and images inside .pulse/out/' },
   3: { key: 'control', label: 'CONTROL', hint: 'modify the project itself · only this agent · needs the override' },
+  4: { key: 'airlock', label: 'AIRLOCK', hint: 'run commands, push, deploy · what leaves the ship does not come back · override, twice' },
 };
-export const MODE_MAX = 3;
+export const MODE_MAX = 4;
 export const normalizeMode = (value, fallback = 1) => {
   const mode = Number(value);
   return Number.isInteger(mode) && mode >= 0 && mode <= MODE_MAX ? mode : fallback;
@@ -110,8 +111,8 @@ export function resolveScopes(agentId, configured = {}) {
   }
   // One ceiling per agent: MAX MODE. Writing follows from it: an agent capped at #1 never
   // writes, one allowed to #2 or #3 does. A `write: false` from an older config reads as #1.
-  const capableMax = scopes.write.capable ? 3 : 1;
-  const legacyCap = configured.write === false ? 1 : 3;
+  const capableMax = scopes.write.capable ? 4 : 1;
+  const legacyCap = configured.write === false ? 1 : 4;
   scopes.maxMode = Math.min(normalizeMode(configured.maxMode, scopes.write.capable ? 2 : 1), legacyCap, capableMax);
   scopes.write.enabled = scopes.write.capable && scopes.maxMode >= 2;
   // One start per agent: DEFAULT MODE, #1 or #2, never above the ceiling. An older

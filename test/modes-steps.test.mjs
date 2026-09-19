@@ -8,6 +8,10 @@ import { EventStore } from '../src/event-store.mjs';
 import { Room } from '../src/room.mjs';
 import { resolveScopes } from '../src/capabilities.mjs';
 import { parseDirectives } from '../src/directives.mjs';
+import { buildCodexArgs } from '../src/adapters/codex.mjs';
+import { buildClaudeArgs } from '../src/adapters/claude.mjs';
+import { geminiLeasePolicy } from '../src/adapters/gemini.mjs';
+import { leaseConfig } from '../src/adapters/opencode.mjs';
 
 const gitInit = (cwd) => new Promise((resolve, reject) => execFile('git', ['init', '-q'], { cwd }, (error) => (error ? reject(error) : resolve())));
 
@@ -78,6 +82,55 @@ test('plan steps carry the mode the orchestrator asked for, capped by the human 
     assert.deepEqual(events.find((event) => event.type === 'plan.created').payload.steps.map((step) => step.mode), [1], 'a #3 request under a #1 message is capped at #1');
     assert.equal(events.filter((event) => event.type === 'control.started').length, 0);
     assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'v2 by gemini\n', 'nothing changed');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(logDir, { recursive: true, force: true });
+  }
+});
+
+
+test('#4 AIRLOCK: CONTROL plus commands, one holder, only where the ceiling reaches it; each CLI gets its command tool only there', async () => {
+  assert.equal(resolveScopes('codex', { maxMode: 4 }).maxMode, 4);
+  assert.equal(resolveScopes('codex').maxMode, 2, 'the default ceiling stays #2');
+  const control = { leaseId: 'c', outDir: '/p', relativeDir: '.', scopes: { write: true }, control: true, airlock: false };
+  const airlock = { ...control, airlock: true };
+  assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q', lease: control })[1], 'workspace-write');
+  assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q', lease: airlock })[1], 'danger-full-access');
+  const claudeControl = buildClaudeArgs({ prompt: 'q', lease: control }); const claudeAirlock = buildClaudeArgs({ prompt: 'q', lease: airlock });
+  assert.ok(!claudeControl[claudeControl.indexOf('--tools') + 1].includes('Bash') && claudeAirlock[claudeAirlock.indexOf('--tools') + 1].includes('Bash'));
+  assert.ok(claudeAirlock[claudeAirlock.indexOf('--allowedTools') + 1].split(',').includes('Bash'));
+  assert.ok(!/toolName = "run_shell_command"\ndecision = "allow"/.test(geminiLeasePolicy('/p', { control: true })) && /toolName = "run_shell_command"\ndecision = "allow"/.test(geminiLeasePolicy('/p', { control: true, airlock: true })));
+  assert.equal(leaseConfig('/p', { control: true, relativeDir: '.' }).agent['pulse-readonly'].permission.bash, undefined);
+  assert.equal(leaseConfig('/p', { control: true, airlock: true, relativeDir: '.' }).agent['pulse-readonly'].permission.bash, 'allow');
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-airlock-'));
+  const logDir = await mkdtemp(join(tmpdir(), 'pulse-airlock-log-'));
+  try {
+    await writeFile(join(root, 'README.md'), 'v1\n');   // no git: the shadow repository photographs it
+    const store = await new EventStore(join(logDir, 'events.jsonl')).initialize();
+    const agents = ['opencode', 'codex'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' }));
+    const seen = [];
+    const invokers = {
+      'opencode-readonly': async ({ prompt, lease }) => { seen.push(['opencode', lease?.airlock ? 'airlock' : lease?.control ? 'control' : 'other']); assert.match(prompt, /AIRLOCK \(#4\)[\s\S]*what goes out and where/); await writeFile(join(root, 'deploy.log'), 'deployed\n'); return { text: 'ran the deploy', usage: null }; },
+      'codex-readonly': async ({ lease }) => { seen.push(['codex', lease?.airlock ? 'airlock' : lease?.control ? 'control' : 'other']); return { text: 'ok', usage: null }; },
+    };
+    const room = new Room({ store, agents, projectRoot: root, invokers });
+    assert.equal((await room.modeCheck({ target: 'opencode', text: 'x', mode: 4 })).status, 403, 'capped at #2: no airlock');
+    room.setScopes({ opencode: { maxMode: 3 } });
+    assert.match((await room.modeCheck({ target: 'opencode', text: 'x', mode: 4 })).error, /raise its MAX MODE to #4 in CONNECTIONS to arm AIRLOCK/);
+    room.setScopes({ opencode: { maxMode: 4 }, codex: { maxMode: 4 } });
+    assert.equal((await room.modeCheck({ target: 'opencode', text: 'x', mode: 4 })).ok, true, 'no git repository is not an obstacle any more');
+    await room.send({ text: 'deploy to preview', target: 'opencode', mode: 4 });
+    const events = await store.readAll();
+    assert.deepEqual(seen, [['opencode', 'airlock']]);
+    const started = events.find((event) => event.type === 'control.started');
+    assert.equal(started.payload.mode, 4);
+    assert.match(started.payload.message, /holds AIRLOCK/);
+    assert.equal(events.find((event) => event.type === 'message.created' && event.payload.role === 'user').payload.mode, 4);
+    assert.equal(events.find((event) => event.type === 'message.created' && event.payload.sender === 'opencode').payload.mode, 4);
+    const changed = events.find((event) => event.type === 'control.changed');
+    assert.deepEqual(changed.payload.files.map((file) => file.path), ['deploy.log'], 'files are still photographed and listed');
+    assert.equal(room.control(), null, 'the seat is free again');
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(logDir, { recursive: true, force: true });
