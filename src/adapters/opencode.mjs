@@ -34,8 +34,19 @@ export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PUL
   ];
 }
 
-export function leaseConfig(outDir, { control = false } = {}) {
-  const forbidden = control ? Object.fromEntries(['.git/**', '.pulse/**', '.env', '.env.*', '**/.env', '**/.env.*'].map((glob) => [`${outDir}/${glob}`, 'deny'])) : {};
+// OpenCode matches permission patterns against paths relative to `--dir`, last matching rule
+// wins, and creating a file is the `write` tool while changing one is `edit`: both need a rule.
+// Verified against opencode 1.18.4: absolute patterns never match, so the lease is named by
+// its directory relative to the project.
+export const FORBIDDEN_GLOBS = ['.git/**', '.pulse/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'];
+export function writeRules(relativeDir, { control = false } = {}) {
+  if (control) return { '*': 'allow', ...Object.fromEntries(FORBIDDEN_GLOBS.map((glob) => [glob, 'deny'])) };
+  const dir = String(relativeDir ?? '.').replace(/^\.\/+/, '').replace(/\/+$/, '');
+  return { '*': 'deny', [dir && dir !== '.' ? `${dir}/**` : '**']: 'allow' };
+}
+
+export function leaseConfig(outDir, { control = false, relativeDir = null } = {}) {
+  const rules = writeRules(relativeDir ?? outDir, { control });
   return {
     ...readonlyConfig,
     agent: {
@@ -46,7 +57,8 @@ export function leaseConfig(outDir, { control = false } = {}) {
           : 'Answer the user directly. Inspect project files when necessary. You may create or edit files only inside the creation lease directory named in the request; never elsewhere. Do not run commands, browse the web, or launch subagents.',
         permission: {
           ...readonlyConfig.agent['pulse-readonly'].permission,
-          edit: { '*': 'deny', [`${outDir}/**`]: 'allow', ...forbidden },
+          edit: rules,
+          write: rules,
         },
       },
     },
@@ -54,7 +66,7 @@ export function leaseConfig(outDir, { control = false } = {}) {
 }
 
 export function openCodeConfig({ lease = null, scopes = null, imageStudio = null, memoryServer = null } = {}) {
-  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control) }) : readonlyConfig;
+  let config = lease ? leaseConfig(lease.outDir, { control: Boolean(lease.control), relativeDir: lease.relativeDir ?? null }) : readonlyConfig;
   if (scopes?.web) {
     config = {
       ...config,

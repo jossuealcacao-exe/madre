@@ -1750,9 +1750,15 @@ test('creation lease: a fresh directory under .pulse/out, artifacts detected by 
     assert.match(policy, /toolName = \["write_file", "replace", "edit"\]/);
     assert.match(policy, /argsPattern = '"file_path"\\s\*:\\s\*"\/p\/\\\.pulse\/out\/x\/'/);
     assert.match(policy, /toolName = "\*"\ndecision = "deny"/, 'the deny-all rule stays');
-    const oc = leaseConfig('/p/.pulse/out/x');
-    assert.deepEqual(oc.agent['pulse-readonly'].permission.edit, { '*': 'deny', '/p/.pulse/out/x/**': 'allow' });
+    // OpenCode matches patterns relative to --dir and creates files with `write`, edits with `edit`.
+    const oc = leaseConfig('/p/.pulse/out/x', { relativeDir: '.pulse/out/x' });
+    assert.deepEqual(oc.agent['pulse-readonly'].permission.edit, { '*': 'deny', '.pulse/out/x/**': 'allow' });
+    assert.deepEqual(oc.agent['pulse-readonly'].permission.write, oc.agent['pulse-readonly'].permission.edit);
     assert.equal(oc.agent['pulse-readonly'].permission.read, 'allow');
+    const occ = leaseConfig('/p', { control: true, relativeDir: '.' });
+    assert.equal(occ.agent['pulse-readonly'].permission.write['*'], 'allow');
+    assert.equal(occ.agent['pulse-readonly'].permission.write['.git/**'], 'deny');
+    assert.equal(occ.agent['pulse-readonly'].permission.edit['**/.env.*'], 'deny');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
