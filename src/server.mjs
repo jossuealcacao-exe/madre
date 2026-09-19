@@ -133,7 +133,10 @@ export async function createPulseServer({
   // The room's memory: derived from the ledger, rebuilt if missing or stale,
   // and never a reason for the room not to open.
   // Privacy: the terms that never travel through this room, from config.json and the environment.
+  // config.json is shared by every room on this machine, so the list is re-read before each
+  // human message and whenever MU/TH/UR looks: a term named in one room guards them all.
   const privacy = new Privacy(privacySettings(await readConfig(root)));
+  const refreshPrivacy = async () => { const { terms, marker } = privacySettings(await readConfig(root)); privacy.set(terms, marker); return privacy; };
   const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).attachPrivacy(privacy).initialize(store)
     .catch((error) => { console.error(`MADRE memory unavailable, turns get the recent window only: ${error.message}`); return null; });
   // Meaning-aware recall through the user's own Gemini key, when there is one;
@@ -680,6 +683,7 @@ export async function createPulseServer({
         return sendJson(response, 201, { attachment: { id: record.id, name: record.name, fileName: record.fileName, size: record.size, contentType: record.contentType, url: `/api/files?root=attachments&path=${encodeURIComponent(record.fileName)}` } });
       }
       if (request.method === 'GET' && url.pathname === '/api/settings') {
+        await refreshPrivacy();
         return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent) })) });
       }
       if (request.method === 'POST' && url.pathname === '/api/settings') {
@@ -724,6 +728,7 @@ export async function createPulseServer({
       }
       // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
       if (request.method === 'GET' && url.pathname === '/api/privacy') {
+        await refreshPrivacy();
         return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, exposure: room.privacyExposure(await store.readAll()) });
       }
       if (request.method === 'POST' && url.pathname === '/api/privacy') {
@@ -740,6 +745,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/privacy/purge') {
         const payload = await body(request).catch(() => ({}));
         if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        await refreshPrivacy();
         if (!privacy.enabled) return sendJson(response, 412, { error: 'No private terms are set. Write them first.' });
         const result = await room.purgePrivate();
         // The log was rewritten in place: the broadcaster's byte offset is stale, the sequences are not.
@@ -840,6 +846,7 @@ export async function createPulseServer({
         // hears "no" with a reason instead of a silent log line.
         const gate = await room.modeCheck(payload);
         if (!gate.ok) return sendJson(response, gate.status ?? 403, { error: gate.error, mode: gate.mode, maxMode: gate.maxMode });
+        await refreshPrivacy();
         void room.send(payload).catch((error) => {
           console.error(`MADRE room error: ${error.message}`);
         });
