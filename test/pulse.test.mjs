@@ -1499,8 +1499,8 @@ test('connections: settings are read, saved to config, applied live; sign-in str
     assert.equal(saved.status, 200);
     assert.equal(saved.body.settings.capabilities.codex.scopes.imageGen.enabled, false, 'scope switched off');
     assert.equal(saved.body.settings.capabilities.gemini.scopes.imageGen.enabled, false, 'cannot enable an ability the CLI lacks');
-    assert.deepEqual({ ...saved.body.settings, timeouts: undefined, capabilities: undefined, memory: undefined, privacy: undefined }, {
-      timeouts: undefined, capabilities: undefined, memory: undefined, privacy: undefined, defaultTimeout: 240000, delegation: false, maxPlanSteps: 2, softTokenBudget: 750000, opencodeModel: 'openai/gpt-5.6-sol', geminiIdleMs: 60000, geminiRetries: 2,
+    assert.deepEqual({ ...saved.body.settings, timeouts: undefined, capabilities: undefined, memory: undefined, privacy: undefined, updates: undefined }, {
+      timeouts: undefined, capabilities: undefined, memory: undefined, privacy: undefined, updates: undefined, defaultTimeout: 240000, delegation: false, maxPlanSteps: 2, softTokenBudget: 750000, opencodeModel: 'openai/gpt-5.6-sol', geminiIdleMs: 60000, geminiRetries: 2,
     });
     assert.equal(saved.body.settings.timeouts.gemini, 90000);
     assert.equal(saved.body.settings.timeouts.codex, 240000, 'a cleared per-agent value falls back to the default');

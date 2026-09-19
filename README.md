@@ -250,7 +250,7 @@ Cuando Ollama corre con un modelo de chat, aparece en la sala un quinto agente: 
 
 ## El modelo del proyecto
 
-`MEMORY → EXPORT DATASET` (o `madre dataset`) escribe junto al ledger los turnos reales de la sala como pares de chat redactados, más las notas destiladas, en el formato que leen `mlx-lm` y los demás entrenadores. [`docs/training/`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/training/README.md) explica cómo entrenar un LoRA local sobre un modelo pequeño y registrarlo en Ollama como `madre-<proyecto>`; en cuanto existe, `@madre` responde con él. Es la destilación de MADRE AI: la sala produce el dato, tú decides cuándo entrenar, y el modelo se evalúa contra lo que la sala sí decidió antes de confiar en él.
+`MEMORY` muestra en vivo cuántos pares limpios lleva la sala hacia un LoRA (objetivo 300): turnos humano→agente, pasos delegados agente→agente y notas destiladas; fuera quedan las respuestas de `@madre`, las enlatadas y lo que marques como mala respuesta con el pulgar de cada burbuja. `EXPORT DATASET` (o `madre dataset`) escribe `train.jsonl` y `valid.jsonl` junto al ledger, redactados. La tarjeta TRAIN trae los comandos ya rellenados con tu carpeta de sala y el modelo base que cabe en tu máquina; el entrenamiento corre fuera de MADRE, con mlx en Apple Silicon, y la receta completa vive en [`docs/training/`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/training/README.md). En cuanto en Ollama existe `madre-<proyecto>`, `@madre` responde con él y las demás CLIs reciben la indicación de preguntarle primero: la memoria del proyecto deja de costar tokens.
 
 ## Ollama: la inteligencia local
 
@@ -261,6 +261,10 @@ Si Ollama corre en la máquina, MADRE lo usa sin configurar nada: los embeddings
 MU/TH/UR tiene una sección SENTINEL. Cuando un turno falla con un error que ninguna condición conocida explica, o el proceso de MADRE se cae, el sentinel guarda un reporte en el registro de la sala (`sentinel.report`): el error con rutas, nombres de usuario, correos y claves eliminados, la versión de MADRE y de Node, la plataforma y las versiones de los agentes detectados. Los repetidos se agrupan por huella durante 24 horas.
 
 Nada sale de la máquina por sí solo. Cada reporte tiene `REPORT ON GITHUB ↗`, que abre un issue prellenado en el repositorio para que lo leas antes de publicarlo, y el botón `✎ FEEDBACK` de la cabecera abre uno en blanco con tu entorno. El colector del autor viene configurado por defecto (`https://madre-reports.jossue-alcala-o.workers.dev/v1/reports`; `PULSE_REPORT_URL` o `telemetry.reportUrl` en `~/.pulse/config.json` lo cambian, y un valor vacío lo quita), así que cada reporte tiene `SEND` y existe el interruptor `AUTO-REPORT`, apagado por defecto, que envía los nuevos reportes redactados al colector sin preguntar. `docs/report-collector/` trae un Worker de Cloudflare listo para desplegar que convierte cada reporte en un issue.
+
+## Canal de liberación
+
+MADRE consulta en npm una vez al día si hay versión nueva: viaja el nombre del paquete y nada más, la misma petición que hace `npx`. Si la hay, una pastilla en la barra lo dice y MU/TH/UR muestra el comando exacto para cómo corre tu copia, con copiar. MADRE nunca se actualiza sola mientras trabajas. Se apaga en MU/TH/UR → RELEASE CHANNEL o con `PULSE_UPDATE_CHECK=0`.
 
 ## Recuperación operativa
 

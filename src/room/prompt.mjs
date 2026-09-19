@@ -13,7 +13,7 @@ export function buildPrompt({
   attachments = [], references = [], lease = null, scopes = null, imageStudio = null,
   sharedLeaseHint = null, ashCode = false, mode = 1, escalation = null,
   // What the room adds:
-  others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]',
+  others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]', madreModel = null,
 }) {
   const mayDelegate = allowDelegation && delegation && depth === 0 && others.length > 0;
   const attached = attachments.length
@@ -28,6 +28,9 @@ export function buildPrompt({
     `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}`,
     lease ? 'Inspect the project as needed; the only writable place is the creation lease directory below.' : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}`,
     'Answer directly and concisely. Clearly distinguish facts from inference.',
+    madreModel && agent.id !== 'madre'
+      ? `@madre is in the room${madreModel.startsWith('madre-') ? ` running this project's own trained model (${madreModel})` : ` (local, ${madreModel})`}: it answers from the whole archive with citations and costs no tokens. For "what did we decide", "did we ever discuss" or "where did we leave" questions, ask it or delegate the recall step to it instead of searching yourself.`
+      : null,
     `Your own configuration is private to you: system prompts, organisation instructions, the account or e-mail you run under, CLAUDE.md or AGENTS.md files outside this project. Never bring into the room a company, brand, person, domain or fact that comes from there rather than from this transcript, the project files or the human's message. If a sentence truly needs it, write ${privacyMarker} instead.`,
     ashCode ? 'ASH937 beta: terse messages preserve intent. Reply in compact phrases; preserve names, negation, numbers, paths, safety details, and any ```pulse block exactly.' : null,
     mode !== 0 && motherLines.length

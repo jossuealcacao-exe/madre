@@ -112,6 +112,13 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
     agents: report,
     ollama: { running: Boolean(ollama.running), chatModel: ollama.chatModel ?? null, embedModel: ollama.embedModel ?? null, madre: madreOnline(ollama) },
   };
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const { checkForUpdate, detectInstall, updateCommand } = await import('../src/updates.mjs');
+  const { join: joinPath } = await import('node:path');
+  const { homedir } = await import('node:os');
+  const check = await checkForUpdate({ name: pkg.name, current: pkg.version, cacheFile: joinPath(process.env.PULSE_HOME ?? joinPath(homedir(), '.pulse'), 'updates.json'), enabled: process.env.PULSE_UPDATE_CHECK !== '0' });
+  const update = { ...check, command: updateCommand(detectInstall({ projectRoot }), pkg.name, check.latest ?? 'latest') };
+  result.update = update;
 
   if (has('--json')) {
     console.log(JSON.stringify(result, null, 2));
@@ -123,6 +130,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
       console.log(`  ${agent.label.padEnd(10)} ${mark}${agent.version ? ` · ${agent.version}` : ''}${session}`);
     }
     console.log(`  ${'Ollama'.padEnd(10)} ${ollama.disabled ? 'ignored (PULSE_OLLAMA=0)' : ollama.running ? `running${ollama.chatModel ? ` · @madre with ${ollama.chatModel}` : ' · no chat model yet'}${ollama.embedModel ? ` · embeddings ${ollama.embedModel}` : ''}` : 'not running · optional'}`);
+    console.log(`  ${'MADRE'.padEnd(10)} ${update.current}${update.available ? ` · ${update.latest} available · ${update.command}` : update.latest ? ' · up to date' : update.enabled ? ' · npm not reachable' : ' · update check off (PULSE_UPDATE_CHECK=0)'}`);
     console.log(`\n  Project    ${result.project}`);
     console.log(result.ok ? '\nReady to start. Known conditions and fixes: `madre doctor --catalog [query]`.\n' : '\nNo agent is online. Run `madre setup`. Known conditions and fixes: `madre doctor --catalog`.\n');
   }

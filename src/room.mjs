@@ -327,6 +327,13 @@ export class Room {
     return result;
   }
 
+  // The human's verdict on a reply: good, bad, or cleared. The dataset listens.
+  async rateMessage(messageId, rating) {
+    if (typeof messageId !== 'string' || !messageId.trim()) throw new Error('Which reply? Give its messageId.');
+    if (!['good', 'bad', 'none'].includes(rating)) throw new Error('A rating is good, bad or none.');
+    return this.#emit('message.rated', { messageId, rating, by: 'you' });
+  }
+
   // Forgetting is recorded in the ledger like anything else the human does to the room.
   async forgetMemory(id) {
     if (!this.#memory) return null;
@@ -723,6 +730,7 @@ export class Room {
       memoryServer: this.#memoryServer,
       controlHolder: this.#controlDesk.holder?.agent ?? null,
       privacyMarker: this.#privacy?.marker ?? '[ENTIDAD-ORG]',
+      madreModel: this.#agents.find((agent) => agent.id === 'madre' && agent.ready)?.version ?? null,
     });
   }
 

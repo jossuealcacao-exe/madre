@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pairsFromEvents, pairsFromNotes, split, exportDataset } from '../src/dataset.mjs';
+import { pairsFromEvents, pairsFromNotes, split, exportDataset, readiness, ratingsFrom } from '../src/dataset.mjs';
 import { createPulseServer } from '../src/server.mjs';
 
 const ev = (sequence, payload, extra = {}) => ({ sequence, type: 'message.created', timestamp: `2026-09-18T00:00:${String(sequence).padStart(2, '0')}Z`, payload, ...extra });
@@ -18,9 +18,27 @@ test('dataset: user/assistant pairs by parent, redacted, without ghosts, delegat
     { sequence: null, ghost: true, type: 'message.created', payload: { messageId: 'g', parentMessageId: 'u1', role: 'assistant', sender: 'codex', text: 'ghost words that must never train anything at all, ever.' } },
     ev(10, { messageId: 'u3', role: 'user', sender: 'you', target: 'codex', text: 'And the tests?', mode: 2 }),
     ev(11, { messageId: 'a4', parentMessageId: 'u3', role: 'assistant', sender: 'codex', target: 'you', text: 'Tests live in test/pulse.test.mjs and run with node --test on every push.', originalText: undefined, mode: 2 }),
+    // A delegated step and its answer: a real instruction with a real answer, kept as a pair of its own kind.
+    ev(12, { messageId: 's1', role: 'assistant', sender: 'codex', target: 'gemini', text: 'Check whether the router handles HEAD requests and say where.', status: 'delegated', planId: 'p1', step: 1, totalSteps: 2 }),
+    ev(13, { messageId: 'a5', parentMessageId: 's1', role: 'assistant', sender: 'gemini', target: 'codex', text: 'It does: HEAD falls through the same handler as GET in src/router.mjs, line 40, and sends no body.', planId: 'p1' }),
+    ev(14, { messageId: 's2', role: 'assistant', sender: 'codex', target: 'codex', text: 'Close the plan with a summary.', status: 'delegated', planId: 'p1', step: 2, totalSteps: 2 }),
+    ev(15, { messageId: 'a6', parentMessageId: 's2', role: 'assistant', sender: 'codex', target: 'codex', text: 'Summary: HEAD is handled with GET and the tests cover it; nothing else to do here.', planId: 'p1' }),
+    // Never teachers: @madre's own answers, MADRE's canned replies, and what the human marked bad.
+    ev(16, { messageId: 'u4', role: 'user', sender: 'you', target: 'madre', text: 'What did we decide about HEAD?', mode: 1 }),
+    ev(17, { messageId: 'a7', parentMessageId: 'u4', role: 'assistant', sender: 'madre', target: 'you', text: 'The room decided HEAD is served by the GET handler [#13], nothing more was said.', mode: 1 }),
+    ev(18, { messageId: 'u5', role: 'user', sender: 'you', target: 'claude', text: 'Convene the crew about caching', mode: 1 }),
+    ev(19, { messageId: 'a8', parentMessageId: 'u5', role: 'assistant', sender: 'claude', target: 'you', text: 'I only answer from the room memory: I do not convene, delegate, run or write. Ask a CLI agent.', synthetic: 'declined', mode: 1 }),
+    ev(20, { messageId: 'u6', role: 'user', sender: 'you', target: 'claude', text: 'Which paper says 15% of agents hallucinate?', mode: 1 }),
+    ev(21, { messageId: 'a9', parentMessageId: 'u6', role: 'assistant', sender: 'claude', target: 'you', text: 'Liu et al. 2024 report a 15% hallucination rate in multi-agent rooms, page 7, table 3.', mode: 1 }),
+    { sequence: 22, type: 'message.rated', timestamp: '2026-09-19T00:00:00Z', payload: { messageId: 'a9', rating: 'bad', by: 'you' } },
+    { sequence: 23, type: 'message.rated', timestamp: '2026-09-19T00:00:00Z', payload: { messageId: 'a4', rating: 'good', by: 'you' } },
   ];
   const pairs = pairsFromEvents(events, { project: 'pulse', home: '/Users/dallas', user: 'dallas' });
-  assert.equal(pairs.length, 2);
+  assert.deepEqual(pairs.map((pair) => [pair.kind, pair.agent, pair.askedBy, pair.rating]), [['turn', 'codex', 'you', null], ['turn', 'codex', 'you', 'good'], ['delegated', 'gemini', 'codex', null]], 'human turns and delegated steps in; the closing turn, @madre, canned and bad-rated replies out');
+  assert.match(pairs[2].messages[1].content, /^Check whether the router handles HEAD/);
+  assert.deepEqual(readiness(events, [{ kind: 'fact' }]), { pairs: 4, turns: 2, delegated: 1, notes: 1, good: 1, bad: 1, target: 300, ready: false });
+  assert.equal(ratingsFrom([...events, { sequence: 24, type: 'message.rated', payload: { messageId: 'a9', rating: 'none' } }]).has('a9'), false, 'a rating can be cleared');
+  assert.equal(pairs.filter((pair) => pair.kind === 'turn').length, 2);
   assert.equal(pairs[0].agent, 'codex');
   assert.match(pairs[0].messages[0].content, /You are @codex in the MADRE room of the project "pulse"/);
   assert.match(pairs[0].messages[1].content, /\[key\]/);
@@ -32,13 +50,13 @@ test('dataset: user/assistant pairs by parent, redacted, without ghosts, delegat
   assert.match(notes[0].messages[1].content, /^What does the room remember about this\? Kind: decision\. Topic: The webhook verifies the Stripe signature before parsing/);
   assert.match(notes[0].messages[2].content, /\[#1–#4\]$/);
   const { train, valid } = split([...pairs, ...notes]);
-  assert.equal(valid.length, 1, 'sequence 10 lands in valid');
-  assert.equal(train.length, 2);
+  assert.equal(valid.length, 1, 'one of the four lands in valid');
+  assert.equal(train.length, 3);
 
   const dir = await mkdtemp(join(tmpdir(), 'pulse-dataset-'));
   try {
     const result = await exportDataset({ events, notes: [{ kind: 'decision', text: 'Note.', fromSequence: 1, throughSequence: 1, created: '2026-09-18T00:00:00Z' }], dir, project: 'pulse', home: '/Users/dallas' });
-    assert.deepEqual({ pairs: result.pairs, turns: result.turns, notes: result.notes }, { pairs: 3, turns: 2, notes: 1 });
+    assert.deepEqual({ pairs: result.pairs, turns: result.turns, delegated: result.delegated, notes: result.notes }, { pairs: 4, turns: 2, delegated: 1, notes: 1 });
     const trainLines = (await readFile(join(dir, 'train.jsonl'), 'utf8')).trim().split('\n');
     assert.equal(trainLines.length, result.train);
     assert.deepEqual(Object.keys(JSON.parse(trainLines[0])), ['messages']);

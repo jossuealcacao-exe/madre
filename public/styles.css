@@ -141,6 +141,18 @@ body {
   .brand-word { animation: none; opacity: 1; transform: none; }
 }
 .project { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
+.update-pill { border: 1px solid color-mix(in srgb, var(--warn) 60%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); color: var(--warn); font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; animation: hint-glow 2.4s ease-out 1; }
+.update-pill:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); }
+.update-command { display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.update-command code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--text); }
+.update-command button, .mother-section.update .sentinel-controls button { font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.update-link { display: inline-block; margin: 2px 0 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--phosphor); }
+.train-card { margin-top: 8px; }
+.train-head { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-2); }
+.train-steps { margin: 6px 0 0; padding-left: 18px; }
+.train-steps li { margin: 6px 0; }
+.train-steps li.note { list-style: none; margin-left: -18px; }
+.train-step-label { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
 .project::before { content: "/ "; }
 .agents { display: flex; gap: 8px; margin-left: auto; }
 .connection { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); text-transform: uppercase; font-size: 10px; }
@@ -997,6 +1009,8 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bubble-actions .act { width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--text-3); cursor: pointer; padding: 0; transition: color .15s, background .15s; }
 .bubble-actions .act svg { width: 15px; height: 15px; }
 .bubble-actions .act:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.bubble-actions .act.good.on { color: var(--phosphor); }
+.bubble-actions .act.bad.on { color: var(--terror); }
 .bubble-actions .act.done { color: var(--phosphor); }
 .reply-menu { width: min(280px, calc(100vw - 24px)); padding: 8px; }
 .reply-menu .model-menu-title { margin: 4px 8px 6px; }

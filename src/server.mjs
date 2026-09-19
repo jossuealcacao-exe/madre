@@ -15,7 +15,7 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
 import { moduleById, describeModules, findModuleRoute } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
-import { exportDataset } from './dataset.mjs';
+import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -43,6 +43,8 @@ import { extensionById, runInstaller } from './extensions.mjs';
 import { loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
+import { checkForUpdate, detectInstall, updateCommand, releaseUrl } from './updates.mjs';
+import { totalmem } from 'node:os';
 import { discoverModels } from './models.mjs';
 import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
@@ -132,6 +134,15 @@ export async function createPulseServer({
   const historicalEvents = await store.readAll();
   // The room's memory: derived from the ledger, rebuilt if missing or stale,
   // and never a reason for the room not to open.
+  // Release channel: one registry read a day, cached for every room on this machine. On by
+  // default; PULSE_UPDATE_CHECK=0 or the switch in MU/TH/UR turns it off. Never self-updates.
+  const updatesEnabled = () => (process.env.PULSE_UPDATE_CHECK !== undefined ? process.env.PULSE_UPDATE_CHECK !== '0' : updatesConfig.check !== false);
+  let updatesConfig = { ...((await readConfig(root)).updates ?? {}) };
+  const install = detectInstall({ projectRoot: canonicalProjectRoot });
+  async function versionView({ force = false } = {}) {
+    const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
+    return { ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
+  }
   // Privacy: the terms that never travel through this room, from config.json and the environment.
   // config.json is shared by every room on this machine, so the list is re-read before each
   // human message and whenever MU/TH/UR looks: a term named in one room guards them all.
@@ -145,6 +156,12 @@ export async function createPulseServer({
   // start and again from MODULES; wired live, no restart.
   let ollama = { running: false, host: null, models: [], embedModel: null, chatModel: null };
   const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, agent: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
+  // What the TRAIN card needs: where the recipe ships, the room, the model name @madre will pick up, a base that fits this machine.
+  function trainingInfo() {
+    const slug = basename(canonicalProjectRoot).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const gb = Math.round(totalmem() / 1024 ** 3);
+    return { roomDir, recipeDir: fileURLToPath(new URL('../docs/training/', import.meta.url)), modelName: `madre-${slug}`, baseModel: gb >= 32 ? 'Qwen/Qwen2.5-3B-Instruct' : 'Qwen/Qwen2.5-1.5B-Instruct', memoryGb: gb };
+  }
   async function wireOllama({ probe: doProbe = true } = {}) {
     if (doProbe) ollama = await ollamaProbe();
     // A model trained on this room (docs/training) is named madre-<project>: @madre uses it when it exists.
@@ -243,6 +260,7 @@ export async function createPulseServer({
       geminiRetries: Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
       capabilities: room.capabilities(),
       memory: memorySettingsView(),
+      updates: { check: updatesEnabled(), envWins: process.env.PULSE_UPDATE_CHECK !== undefined },
       privacy: { terms: privacy.terms, marker: privacy.marker, envWins: privacySettings({}, process.env).envWins },
     };
   }
@@ -718,13 +736,15 @@ export async function createPulseServer({
       // The dataset behind MADRE AI: exported on demand next to the ledger.
       if (url.pathname === '/api/dataset' && (request.method === 'GET' || request.method === 'POST')) {
         const dir = join(roomDir, 'dataset');
+        const notes = memory ? memory.memories({ limit: 5000 }) : [];
         if (request.method === 'GET') {
           const manifest = await readFile(join(dir, 'manifest.json'), 'utf8').then(JSON.parse).catch(() => null);
-          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null });
+          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null, readiness: datasetReadiness(await store.readAll(), notes), training: trainingInfo() });
         }
-        const result = await exportDataset({ events: await store.readAll(), notes: memory ? memory.memories({ limit: 5000 }) : [], dir, project: basename(canonicalProjectRoot), home: homedir(), privacy });
+        const events = await store.readAll();
+        const result = await exportDataset({ events, notes, dir, project: basename(canonicalProjectRoot), home: homedir(), privacy });
         await room.record('dataset.exported', { pairs: result.pairs, turns: result.turns, notes: result.notes, train: result.train, valid: result.valid, dir });
-        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null });
+        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null, readiness: datasetReadiness(events, notes), training: trainingInfo() });
       }
       // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
       if (request.method === 'GET' && url.pathname === '/api/privacy') {
@@ -751,6 +771,23 @@ export async function createPulseServer({
         // The log was rewritten in place: the broadcaster's byte offset is stale, the sequences are not.
         tailOffset = (await store.tail(0)).offset;
         return sendJson(response, 200, { purged: result, exposure: room.privacyExposure(await store.readAll()) });
+      }
+      // The human's verdict on a reply, for the dataset: good, bad, none.
+      if (request.method === 'POST' && url.pathname === '/api/messages/rate') {
+        const payload = await body(request).catch(() => ({}));
+        try {
+          const event = await room.rateMessage(String(payload.messageId ?? ''), String(payload.rating ?? ''));
+          return sendJson(response, 200, { rated: event.payload });
+        } catch (error) { return sendJson(response, 400, { error: error.message }); }
+      }
+      // Release channel: current, latest on npm, and the command for how this copy runs.
+      if (request.method === 'GET' && url.pathname === '/api/version') {
+        return sendJson(response, 200, await versionView({ force: url.searchParams.get('force') === '1' }));
+      }
+      if (request.method === 'POST' && url.pathname === '/api/updates/settings') {
+        const patch = await body(request).catch(() => ({}));
+        if (typeof patch.check === 'boolean') { updatesConfig = { ...updatesConfig, check: patch.check }; await updateConfig(root, { updates: updatesConfig }); }
+        return sendJson(response, 200, { updates: { check: updatesEnabled(), envWins: process.env.PULSE_UPDATE_CHECK !== undefined } });
       }
       if (request.method === 'GET' && url.pathname === '/api/mother') {
         return sendJson(response, 200, { mother: room.motherStatus(), strikes: CODE000_STRIKES });

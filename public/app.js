@@ -64,7 +64,9 @@ const state = {
   budget: null,
   timeouts: {},
   seen: new Set(),
-  userMessages: new Map(), // messageId -> { text, target }
+  userMessages: new Map(),
+  ratings: new Map(),        // messageId → good | bad, from the ledger
+  ratingNodes: new Map(),    // messageId → the buttons of that bubble // messageId -> { text, target }
   lastSequence: 0,
   lastSender: null,        // for iMessage-style grouping of consecutive bubbles
   failures: [],            // recorded conditions for MU/TH/UR
@@ -1059,7 +1061,7 @@ function renderAssistantMessage(event) {
   bubble.append(renderMarkdown(text));
   if (originalText) bubble.append(ashOriginal(originalText, ashCode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
-  bubble.append(bubbleActions({ text: originalText ?? text, sender, sequence: event.sequence }));
+  bubble.append(bubbleActions({ text: originalText ?? text, sender, sequence: event.sequence, messageId: delegated ? null : messageId }));
   col.append(bubble);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
@@ -1082,7 +1084,27 @@ function iconButton(svg, title, className) {
   button.innerHTML = svg;
   return button;
 }
-function bubbleActions({ text, sender, sequence }) {
+const ICON_GOOD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 7.5v5.5H3.2a.7.7 0 0 1-.7-.7V8.2a.7.7 0 0 1 .7-.7h2.3Zm0 0 2.6-4.6a1.3 1.3 0 0 1 2.4.8L10 6.8h2.6a1.3 1.3 0 0 1 1.3 1.5l-.8 3.9a1.3 1.3 0 0 1-1.3 1H5.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const ICON_BAD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 8.5V3H12.8a.7.7 0 0 1 .7.7v4.1a.7.7 0 0 1-.7.7h-2.3Zm0 0-2.6 4.6a1.3 1.3 0 0 1-2.4-.8L6 9.2H3.4a1.3 1.3 0 0 1-1.3-1.5l.8-3.9A1.3 1.3 0 0 1 4.2 3h6.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+// The human's verdict on a reply. Saved in the ledger; the dataset drops what is marked bad.
+function ratingButtons(messageId, sender) {
+  const good = iconButton(ICON_GOOD, 'Good reply · keep it for MADRE AI', 'rate good');
+  const bad = iconButton(ICON_BAD, 'Bad reply · keep it out of the dataset', 'rate bad');
+  const apply = (rating) => { good.classList.toggle('on', rating === 'good'); bad.classList.toggle('on', rating === 'bad'); };
+  apply(state.ratings.get(messageId) ?? null);
+  const send = async (rating) => {
+    const current = state.ratings.get(messageId) ?? null;
+    const next = current === rating ? 'none' : rating;
+    try {
+      const payload = await fetch('/api/messages/rate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messageId, rating: next }) }).then((response) => response.json());
+      if (payload.error) throw new Error(payload.error);
+    } catch (error) { toast(`Rating was not saved: ${error.message}`); }
+  };
+  good.addEventListener('click', (event) => { event.stopPropagation(); void send('good'); });
+  bad.addEventListener('click', (event) => { event.stopPropagation(); void send('bad'); });
+  return { good, bad, apply, sender };
+}
+function bubbleActions({ text, sender, sequence, messageId = null }) {
   const bar = el('div', 'bubble-actions');
   const copy = iconButton(ICON_COPY, 'Copy this reply', 'copy');
   copy.addEventListener('click', async (event) => {
@@ -1102,6 +1124,11 @@ function bubbleActions({ text, sender, sequence }) {
     const rect = reply.getBoundingClientRect();
     showReplyMenu({ text, sender, sequence }, rect.left, rect.bottom + 6);
   });
+  if (messageId && sender !== 'madre') {
+    const rating = ratingButtons(messageId, sender);
+    state.ratingNodes.set(messageId, rating);
+    bar.append(rating.good, rating.bad);
+  }
   bar.append(copy, reply);
   return bar;
 }
@@ -1789,6 +1816,7 @@ function renderEventNode(event) {
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
     case 'memory.distilled': node = renderDistilled(event); break;
+    case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
     case 'privacy.redacted': node = renderPrivacy(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
     case 'privacy.warning': if (!replaying) toast(`MU/TH/UR › your message carries ${event.payload.hits} private term${event.payload.hits === 1 ? '' : 's'}. Agents will read it as you wrote it; their replies are guarded.`); return;
@@ -3529,7 +3557,11 @@ function renderSettings() {
     const datasetNote = el('span', 'note', 'LOADING…');
     const showDataset = (payload) => {
       const d = payload?.dataset;
-      datasetNote.textContent = d ? `${d.pairs} PAIRS · ${d.turns} TURNS · ${d.notes} NOTES · TRAIN ${d.train} · VALID ${d.valid} · ${new Date(d.exportedAt).toLocaleString()}${payload.trained ? ` · TRAINED MODEL ${payload.trained.toUpperCase()} IN USE` : ' · NO TRAINED MODEL YET · SEE docs/training'}` : 'NOT EXPORTED YET · PRESS EXPORT, THEN TRAIN WITH docs/training';
+      const r = payload?.readiness;
+      const live = r ? `${r.pairs} / ${r.target} CLEAN PAIRS${r.ready ? ' · READY TO TRAIN' : ''} · ${r.turns} TURNS · ${r.delegated} DELEGATED · ${r.notes} NOTES${r.good ? ` · ${r.good} RATED GOOD` : ''}${r.bad ? ` · ${r.bad} DROPPED AS BAD` : ''}` : '';
+      const exported = d ? `LAST EXPORT ${new Date(d.exportedAt).toLocaleString()} · TRAIN ${d.train} · VALID ${d.valid}` : 'NOT EXPORTED YET';
+      const trained = payload?.trained ? `TRAINED MODEL ${payload.trained.toUpperCase()} IN USE` : 'NO TRAINED MODEL YET · SEE docs/training';
+      datasetNote.textContent = [live, exported, trained].filter(Boolean).join(' · ');
     };
     fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => { datasetNote.textContent = 'DATASET UNAVAILABLE'; });
     exportButton.addEventListener('click', async () => {
@@ -3540,6 +3572,38 @@ function renderSettings() {
     });
     dataset.append(exportButton, datasetNote);
     mform.append(dataset);
+    // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.
+    const train = el('div', 'full train-card');
+    const trainHead = el('div', 'train-head', 'TRAIN MADRE AI · LOCAL, WITH MLX ON APPLE SILICON · NOTHING LEAVES THIS MACHINE');
+    const trainNote = el('p', 'note', 'EXPORT THE DATASET FIRST. EACH STEP IS ONE COMMAND FOR YOUR TERMINAL; COPY, RUN, COME BACK. WHEN THE MODEL EXISTS IN OLLAMA, @MADRE SWITCHES TO IT AT THE NEXT RECHECK AND EVERY AGENT IS TOLD TO ASK IT FIRST.');
+    const steps = el('ol', 'train-steps');
+    train.append(trainHead, trainNote, steps);
+    const renderTraining = (payload) => {
+      const t = payload?.training;
+      steps.replaceChildren();
+      if (!t) { steps.append(el('li', null, 'TRAINING INFO UNAVAILABLE')); return; }
+      const quote = (path) => `"${path.replace(/\/$/, '')}"`;
+      const items = [
+        ['ONCE · A PYTHON ENVIRONMENT WITH MLX-LM', 'python3 -m venv ~/.madre-train && source ~/.madre-train/bin/activate && pip install mlx-lm'],
+        [`TRAIN THE LORA · BASE ${t.baseModel} FOR ${t.memoryGb} GB`, `source ~/.madre-train/bin/activate && bash ${quote(`${t.recipeDir}train.sh`)} ${quote(t.roomDir)} ${t.baseModel}`],
+        ['FUSE THE ADAPTER INTO THE BASE', `source ~/.madre-train/bin/activate && cd ${quote(t.roomDir)} && mlx_lm.fuse --model ${t.baseModel} --adapter-path adapters --save-path fused`],
+        [`REGISTER IN OLLAMA AS ${t.modelName}`, `cd ${quote(t.roomDir)} && cp ${quote(`${t.recipeDir}Modelfile`)} . && ollama create ${t.modelName} -f Modelfile`],
+      ];
+      for (const [label, command] of items) {
+        const li = el('li');
+        const head = el('div', 'train-step-label', label);
+        const row = el('div', 'update-command');
+        const code = el('code', null, command);
+        const copy = el('button', null, 'COPY'); copy.type = 'button';
+        copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(command); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1400); } catch { toast('MU/TH/UR › select the command and copy it.'); } });
+        row.append(code, copy);
+        li.append(head, row);
+        steps.append(li);
+      }
+      steps.append(el('li', 'note', `QWEN NEEDS A GGUF BEFORE OLLAMA READS IT: ${quote(`${t.recipeDir}README.md`)} · SECTION 3 HAS THE TWO LINES. THEN ASK @MADRE TEN THINGS THE ROOM DECIDED AND FIVE IT NEVER DISCUSSED BEFORE TRUSTING IT.`));
+    };
+    fetch('/api/dataset').then((response) => response.json()).then(renderTraining).catch(() => renderTraining(null));
+    mform.append(train);
     if (mem.envWins) mform.append(el('span', 'note full', 'ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.'));
     mform.addEventListener('submit', (event) => event.preventDefault());
     section.append(mform);
@@ -4405,6 +4469,60 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
   }
 });
 
+
+/* ---------- Release channel: is there a newer MADRE? A pill in the bar, the command in MU/TH/UR. ---------- */
+
+const updateUI = { section: document.querySelector('#mother-update'), pill: document.querySelector('#update-pill'), info: null, timer: null };
+async function loadVersion({ force = false } = {}) {
+  try {
+    updateUI.info = await fetch(`/api/version${force ? '?force=1' : ''}`).then((response) => response.json());
+  } catch { updateUI.info = null; }
+  renderUpdate();
+  clearTimeout(updateUI.timer);
+  updateUI.timer = setTimeout(() => void loadVersion(), 60 * 60 * 1000);
+  updateUI.timer?.unref?.();   // a browser ignores this; the smoke test's Node must not stay alive for it
+}
+function renderUpdate() {
+  const info = updateUI.info;
+  const pill = updateUI.pill;
+  if (pill) {
+    pill.hidden = !info?.available;
+    if (info?.available) pill.textContent = `${info.latest} AVAILABLE`;
+  }
+  const section = updateUI.section;
+  if (!section) return;
+  section.replaceChildren();
+  if (!info) { section.append(el('h3', null, 'RELEASE CHANNEL · UNAVAILABLE')); return; }
+  const when = info.checkedAt ? new Date(info.checkedAt).toLocaleString() : null;
+  section.append(el('h3', null, info.available ? `RELEASE CHANNEL · ${info.latest} AVAILABLE · YOU RUN ${info.current}` : `RELEASE CHANNEL · MADRE ${info.current}${info.latest ? ' · UP TO DATE' : info.enabled ? ' · NPM NOT REACHED YET' : ' · CHECK OFF'}`));
+  if (info.available) {
+    section.append(el('p', 'note', `A NEWER MADRE IS ON NPM. THIS COPY RUNS ${info.install === 'npx' ? 'FROM THE NPX CACHE' : info.install === 'project' ? 'FROM THIS PROJECT\'S NODE_MODULES' : info.install === 'global' ? 'AS A GLOBAL INSTALL' : 'FROM SOURCE'}; STOP THE ROOM, RUN THIS IN YOUR TERMINAL, START AGAIN. MADRE NEVER UPDATES ITSELF WHILE YOU WORK.`));
+    const row = el('div', 'update-command');
+    const code = el('code', null, info.command);
+    const copy = el('button', null, 'COPY');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(info.command); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1400); } catch { toast('MU/TH/UR › select the command and copy it.'); } });
+    row.append(code, copy);
+    section.append(row);
+    if (info.release) { const link = el('a', 'update-link', `WHAT ${info.latest} SHIPS ↗`); link.href = info.release; link.target = '_blank'; link.rel = 'noopener noreferrer'; section.append(link); }
+  } else {
+    section.append(el('p', 'note', `MADRE ASKS NPM FOR THE LATEST VERSION ONCE A DAY: THE PACKAGE NAME TRAVELS, NOTHING ELSE, THE SAME REQUEST NPX MAKES.${when ? ` LAST CHECK ${when.toUpperCase()}.` : ''}`));
+  }
+  const controls = el('div', 'sentinel-controls');
+  const toggle = el('label', 'toggle');
+  const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(info.enabled); box.disabled = Boolean(info.envWins);
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    try { await fetch('/api/updates/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ check: box.checked }) }); toast(`MU/TH/UR › release channel ${box.checked ? 'on: one check a day' : 'off: no request leaves for npm'}.`); await loadVersion(); }
+    catch (error) { toast(`Setting was not saved: ${error.message}`); box.disabled = false; }
+  });
+  toggle.append(box, `CHECK NPM FOR NEW VERSIONS ONCE A DAY${info.envWins ? ' · SET BY PULSE_UPDATE_CHECK' : ''}`);
+  controls.append(toggle);
+  if (info.enabled) { const now = el('button', null, 'CHECK NOW'); now.type = 'button'; now.addEventListener('click', () => void loadVersion({ force: true })); controls.append(now); }
+  section.append(controls);
+}
+updateUI.pill?.addEventListener('click', () => { document.querySelector('#mother-button')?.click(); updateUI.section?.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+void loadVersion();
 
 /* ---------- MU/TH/UR: the sentinel. Unknown conditions and crashes, redacted, ready to report. ---------- */
 
