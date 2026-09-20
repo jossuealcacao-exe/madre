@@ -13,7 +13,7 @@ import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
-import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands } from './modules/index.mjs';
+import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, removeExternalModule } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 
@@ -913,6 +913,25 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
         return sendJson(response, 200, { installing, extensions: await describeModules(await moduleContext()), failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md' });
+      }
+      // The human installs a module file an agent wrote (or they did): checked first, then copied into the chosen folder.
+      if (request.method === 'POST' && url.pathname === '/api/extensions/install-file') {
+        const payload = await body(request).catch(() => ({}));
+        const relative = String(payload.path ?? '').replace(/^\/+/, '');
+        if (!relative || relative.includes('..')) return sendJson(response, 400, { error: 'Give the project-relative path of a <id>.module.mjs file.' });
+        try {
+          const installed = await installModuleFile({ source: join(canonicalProjectRoot, relative), scope: payload.scope === 'project' ? 'project' : 'user', stateRoot: root, projectRoot: canonicalProjectRoot, roomDir });
+          await room.record('extension.installed', { id: installed.id, name: installed.name, origin: installed.origin, from: relative, by: 'you' });
+          return sendJson(response, 200, { installed, extensions: await describeModules(await moduleContext()) });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+      }
+      const removeMatch = request.method === 'DELETE' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)$/);
+      if (removeMatch) {
+        try {
+          const removed = await removeExternalModule({ id: removeMatch[1], stateRoot: root, projectRoot: canonicalProjectRoot });
+          await room.record('extension.removed', { id: removed.id, name: removed.name, by: 'you' });
+          return sendJson(response, 200, { removed, extensions: await describeModules(await moduleContext()) });
+        } catch (error) { return sendJson(response, moduleById(removeMatch[1]) ? 403 : 404, { error: error.message }); }
       }
       // The human edited or added a module file: load it again without restarting the room.
       if (request.method === 'POST' && url.pathname === '/api/extensions/reload') {

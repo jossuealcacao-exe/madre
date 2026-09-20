@@ -24,6 +24,7 @@ import { createLease, diffSnapshots, snapshot } from './lease.mjs';
 import { stat as statFile } from 'node:fs/promises';
 import { basename as baseName, join as joinPath } from 'node:path';
 import { contentTypeFor } from './files.mjs';
+import { isModuleFile, sdkPaths } from './modules/index.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
@@ -755,6 +756,7 @@ export class Room {
       memoryServer: this.#memoryServer,
       controlHolder: this.#controlDesk.holder?.agent ?? null,
       privacyMarker: this.#privacy?.marker ?? '[ENTIDAD-ORG]',
+      sdk: sdkPaths(),
       madreModel: this.#agents.find((agent) => agent.id === 'madre' && agent.ready)?.version ?? null,
     });
   }
@@ -909,6 +911,10 @@ export class Room {
       if (guarded.hits) await this.#emit('privacy.redacted', { agent: agent.id, messageId, responseMessageId, hits: guarded.hits, marker: this.#privacy.marker });
       if (artifacts.length) {
         await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });
+        // A <id>.module.mjs is an agent proposing a module: the human installs it from the room, or not.
+        for (const file of artifacts.filter((item) => isModuleFile(item.path))) {
+          await this.#emit('module.proposed', { agent: agent.id, messageId, responseMessageId, path: file.path, name: file.name });
+        }
       }
       if (createChanges && (createChanges.existingReverted.length || createChanges.forbiddenReverted.length)) {
         await this.#emit('create.reverted', { checkpointId: createChanges.checkpointId, agent: agent.id, messageId, responseMessageId, existing: createChanges.existingReverted, forbidden: createChanges.forbiddenReverted, message: createChanges.message });

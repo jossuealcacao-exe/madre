@@ -66,6 +66,24 @@ ctx = {
 - **Falla suave.** Una excepción en `toolsForTurn` entrega nada; en un comando, la tarjeta dice el error. Nunca rompas el turno de un agente.
 - **Voz MADRE.** Rótulos en mayúsculas cortos, notas que digan qué no sale de la máquina, `MU/TH/UR › ` cuando hables en un aviso.
 
+## Que lo construya tu IA, en la sala
+
+MADRE es modular y la sala puede construirse a sí misma. En `#2` o más, pídele a un agente: «crea un módulo que lea mis correos y lo prepare para instalar». Su briefing le dice dónde está esta guía y el ejemplo, y la regla: escribe **un solo archivo** llamado `<id>.module.mjs` en su carpeta de borrador. MADRE lo reconoce por el nombre y pone una tarjeta en la sala: `INSTALL FOR EVERY ROOM` o `INSTALL FOR THIS PROJECT`. Léelo, decide, un clic. MADRE lo valida en una copia, lo guarda como `<id>.mjs` en la carpeta que elegiste y aparece en MODULES con la etiqueta `DEV`.
+
+Los agentes nunca escriben en `~/.pulse/modules` ni en `.madre/modules`: proponen, tú instalas.
+
+Un módulo tuyo se quita desde MODULES → tarjeta `</>` → `REMOVE`; borra su archivo. Los módulos que vienen con MADRE no se quitan, se apagan.
+
+## Lo que un módulo no puede tocar
+
+Un módulo corre dentro del proceso de MADRE con tus permisos: instala solo lo que leíste. MADRE, por su parte, protege su núcleo así:
+
+- Sus rutas HTTP viven bajo `/api/x/<id>/`; un módulo con rutas fuera de ahí no carga, así ninguno puede suplantar `/api/state`, `/api/messages` o cualquier ruta propia de MADRE.
+- No puede usar el `id` de un módulo integrado ni de otro ya cargado.
+- `record()` rechaza los tipos de evento reservados (`message.*`, `agent.*`); no puede fabricar turnos ni mensajes.
+- No recibe credenciales de nadie; usa, como MADRE, las sesiones que ya viven en la máquina.
+- Un error en `toolsForTurn` entrega nada; en un comando, la tarjeta dice el error; al cargar, la tarjeta `</>` dice qué archivo y por qué. Nada de eso detiene la sala.
+
 ## Probarlo
 
 1. Copia el archivo a `~/.pulse/modules/`.

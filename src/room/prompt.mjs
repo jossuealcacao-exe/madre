@@ -13,7 +13,7 @@ export function buildPrompt({
   attachments = [], references = [], lease = null, scopes = null, imageStudio = null,
   sharedLeaseHint = null, ashCode = false, mode = 1, escalation = null, mcpServers = [],
   // What the room adds:
-  others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]', madreModel = null,
+  others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]', madreModel = null, sdk = null,
 }) {
   const mayDelegate = allowDelegation && delegation && depth === 0 && others.length > 0;
   const attached = attachments.length
@@ -53,6 +53,7 @@ export function buildPrompt({
       : null,
     mayDelegate ? DELEGATION_HELP(agent.id, others, maxPlanSteps) : null,
     mayDelegate ? `Abilities right now (route each step to an agent that can do it):\n${[agent.id, ...others].map((id) => abilityLine(id, scopesFor(id))).join('\n')}` : null,
+    lease && sdk ? `Building a MADRE module: MADRE is modular and the human may ask you for a module (a slash command, a tool for the agents, an integration). Read the SDK guide at ${sdk.guide} and the complete example at ${sdk.example}, then write ONE file named <id>.module.mjs (default export a plain spec object) ${lease.scratchDir ? `in ${lease.outDir}/${lease.scratchDir}` : 'in the lease'}. Do not touch ~/.pulse/modules or .madre/modules: MADRE shows the human an INSTALL card and they decide. A module runs inside MADRE with the human's permissions, so keep it small, honest about what it reaches, and never store credentials.` : null,
     lease ? leaseInstructions({ outDir: lease.outDir, agentId: agent.id, scopes: lease.scopes, capable: scopesFor(agent.id), imageStudio, control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock), scratchDir: lease.scratchDir ?? null }) : null,
     !lease?.control && controlHolder && controlHolder !== agent.id ? `Heads-up: @${controlHolder} currently holds CONTROL and may be changing project files while you work; cite the state you actually read.` : null,
     escalation ? `The human was asked to allow file creation for this step and ${escalation === 'timeout' ? 'did not answer in time' : escalation === 'stopped' ? 'stopped the plan' : 'declined'}. Answer read-only: say plainly what you would have created and what it would contain, without creating it.` : null,

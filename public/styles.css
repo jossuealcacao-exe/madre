@@ -1108,3 +1108,12 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .tour-dots .dot.on { background: var(--ph); box-shadow: 0 0 8px rgba(155, 255, 102, .5); }
 .tour-nav { display: inline-flex; gap: 8px; }
 .tour .mother-close.primary { background: var(--ph-faint); }
+
+/* DEV modules and proposals */
+.module-card .dev-tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: .18em; color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); padding: 2px 7px; margin-left: 8px; align-self: center; }
+.module-card .note { font-size: 9.5px; letter-spacing: .1em; color: var(--ph-dim); text-transform: none; }
+.dev-yours { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.dev-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ph-dim); padding: 4px 8px; font-size: 10px; letter-spacing: .08em; color: var(--ph); text-transform: none; }
+.dev-chip .act-link, .module-proposed .act-link { border: 0; background: transparent; color: var(--phosphor); font: inherit; font-size: inherit; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.dev-chip .act-link { color: var(--warn); }
+.system.module-proposed { color: var(--text-3); } .system.module-proposed .who { color: var(--agent, var(--text-2)); }

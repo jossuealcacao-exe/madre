@@ -1309,6 +1309,36 @@ function renderThinking(event) {
 }
 
 // The archivist reports: which agent read which stretch of the room and how many notes it kept.
+// module · @codex wrote read-mail.module.mjs · INSTALL FOR EVERY ROOM · INSTALL FOR THIS PROJECT · LATER
+function renderModuleProposed(event) {
+  const { agent, path, name, responseMessageId } = event.payload;
+  const node = el('div', 'system module-proposed');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append('module · ', el('b', 'who', `@${agent}`), ` wrote `);
+  const link = el('a', 'file-link', name ?? path); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); void openViewer({ root: 'project', path, label: `/${path}` }); });
+  node.append(link, ' · read it, then ');
+  const install = async (scope, button) => {
+    button.disabled = true;
+    try {
+      const payload = await fetch('/api/extensions/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, scope }) }).then((response) => response.json());
+      if (payload.error) throw new Error(payload.error);
+      toast(`MU/TH/UR › ${payload.installed.name} installed for ${scope === 'project' ? 'this project' : 'every room'}. Switch it on in MODULES.`);
+      modules.items = payload.extensions ?? modules.items; if (modules.dialog.open) renderModules();
+    } catch (error) { toast(`Module was not installed: ${error.message}`); button.disabled = false; }
+  };
+  const everyRoom = el('button', 'act-link', 'INSTALL FOR EVERY ROOM'); everyRoom.type = 'button'; everyRoom.addEventListener('click', () => install('user', everyRoom));
+  const thisProject = el('button', 'act-link', 'INSTALL FOR THIS PROJECT'); thisProject.type = 'button'; thisProject.addEventListener('click', () => install('project', thisProject));
+  node.append(everyRoom, ' · ', thisProject, ' · a module runs inside MADRE with your permissions');
+  if (responseMessageId) node.dataset.for = responseMessageId;
+  return node;
+}
+function renderModuleInstalledOrRemoved(event) {
+  const { name, origin, by } = event.payload;
+  const node = el('div', 'system module-proposed');
+  node.append('module · ', el('b', 'who', name), event.type === 'extension.installed' ? ` installed for ${origin === 'project' ? 'this project' : 'every room'} by ${by ?? 'you'} · switch it on in MODULES` : ` removed by ${by ?? 'you'}`);
+  return node;
+}
+
 // privacy · @agent · 2 private terms replaced with [ENTIDAD-ORG]
 function renderPrivacy(event) {
   const node = el('div', 'system memory privacy');
@@ -1868,6 +1898,8 @@ function renderEventNode(event) {
     case 'memory.distilled': node = renderDistilled(event); break;
     case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
     case 'privacy.redacted': node = renderPrivacy(event); break;
+    case 'module.proposed': node = renderModuleProposed(event); break;
+    case 'extension.installed': case 'extension.removed': node = renderModuleInstalledOrRemoved(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
     case 'privacy.warning': if (!replaying) toast(`MU/TH/UR › your message carries ${event.payload.hits} private term${event.payload.hits === 1 ? '' : 's'}. Agents will read it as you wrote it; their replies are guarded.`); return;
     case 'memory.forgotten': node = renderForgotten(event); break;
@@ -2941,9 +2973,11 @@ function builtinCard(item) {
   title.append(el('div', 'vendor', `${item.vendor} · v${item.version}`));
   head.append(title);
   const on = Boolean(item.status?.installed);
+  if (item.external) { const dev = el('span', 'dev-tag', 'DEV'); dev.title = `Your module · ${item.origin === 'project' ? 'this project' : 'every room'} · ${item.file}`; head.append(dev); }
   head.append(el('span', `state${on ? ' installed' : ''}`, on ? 'ENABLED' : 'DISABLED'));
   card.append(head);
   card.append(el('p', null, item.summary));
+  if (item.external) card.append(el('p', 'note', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
   const list = el('ul');
   for (const line of item.creates ?? []) list.append(el('li', null, line));
   for (const line of item.requires ?? []) list.append(el('li', null, `requires ${line}`));
@@ -3197,7 +3231,27 @@ function renderModulesDev() {
   row.append(read, reload);
   body.append(row);
   const yours = modules.items.filter((item) => item.external);
-  if (yours.length) body.append(el('p', 'note', `YOURS, LOADED: ${yours.map((item) => `${item.name} (${item.origin})`).join(' · ')}`));
+  if (yours.length) {
+    const list = el('div', 'dev-yours');
+    list.append(el('span', 'note', 'YOURS · '));
+    for (const item of yours) {
+      const chip = el('span', 'dev-chip');
+      chip.append(el('b', null, item.name), ` · ${item.origin === 'project' ? 'this project' : 'every room'} `);
+      const remove = el('button', 'act-link', 'REMOVE'); remove.type = 'button'; remove.title = `Delete ${item.file}`;
+      remove.addEventListener('click', async () => {
+        if (!window.confirm(`Remove ${item.name}? Its file ${item.file} is deleted. MADRE's own modules cannot be removed.`)) return;
+        remove.disabled = true;
+        try {
+          const payload = await fetch(`/api/extensions/${item.id}`, { method: 'DELETE' }).then((response) => response.json());
+          if (payload.error) throw new Error(payload.error);
+          modules.items = payload.extensions ?? modules.items; toast(`MU/TH/UR › ${item.name} removed.`); renderModules();
+        } catch (error) { toast(`Not removed: ${error.message}`); remove.disabled = false; }
+      });
+      chip.append(remove);
+      list.append(chip);
+    }
+    body.append(list);
+  }
   for (const failure of modules.failures ?? []) {
     const line = el('p', 'note dev-fail');
     line.append(el('b', null, 'DID NOT LOAD · '), el('code', null, failure.file.split('/').slice(-2).join('/')), ` · ${failure.error}`);
