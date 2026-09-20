@@ -4,13 +4,15 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.3.3 · Sin publicar
+## 0.3.4 · Sin publicar
 
 ### Primer contacto y la puerta para desarrollar
 - La sala se construye a sí misma: en `#2` o más, un agente que escribe `<id>.module.mjs` en su borrador hace aparecer una tarjeta `module · @codex wrote …` con `INSTALL FOR EVERY ROOM` e `INSTALL FOR THIS PROJECT`. MADRE valida el archivo en una copia y lo copia a la carpeta elegida; los agentes nunca escriben ahí. Los módulos tuyos llevan la etiqueta `DEV` y se quitan con `REMOVE`; los integrados solo se apagan. Rutas de módulos externos solo bajo `/api/x/<id>/`, para que ninguno suplante una ruta del núcleo.
 - Un recorrido de cuatro pasos la primera vez que se abre la sala: la sala y sus agentes, los modos, la memoria, MU/TH/UR y MODULES. Se puede saltar y vuelve desde un `?` discreto en la cabecera de MU/TH/UR.
 - Módulos de terceros de verdad: un archivo `.mjs` con `export default { … }` en `~/.pulse/modules/` (todas las salas) o en `<proyecto>/.madre/modules/` (ese proyecto) aparece en MODULES con su interruptor, sin build ni registro; `RELOAD MODULES` lo recarga sin reiniciar y muestra el error exacto si no carga. Los agentes no pueden escribir en esas carpetas. El SDK gana `slash` (comandos `/nombre` que corren con el `ctx` del módulo y caen en la sala como tarjeta), `@jossuealcala/madre/sdk` como export del paquete, la guía `docs/SDK.md` y `docs/sdk/hello-module.mjs`, un módulo completo para copiar o darle a una IA.
 - MODULES tiene la tarjeta `</>` "Would you like to develop for MADRE?" con las carpetas, la guía y RELOAD.
+
+## 0.3.3 · 2026-09-19
 
 ### El SDK entrega herramientas a los turnos, y PLAYWRIGHT es el primero en usarlo
 - `defineModule` acepta `toolsForTurn(ctx, turn)`: un módulo encendido devuelve servidores MCP (`name, command, args, env, tools, brief`) y MADRE los adjunta a la CLI de ese turno, en su corrida aislada, en Codex, Claude Code, Gemini CLI y OpenCode, y se los describe al agente en el briefing. Un módulo que falla no entrega nada y nunca rompe el turno. Image Studio y la memoria conservan su cableado propio; los módulos nuevos nacen sobre el gancho.
@@ -22,11 +24,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Cada CLI recibe su herramienta de comandos solo en `#4`: Codex `--sandbox danger-full-access`, Claude Code `Bash`, Gemini `run_shell_command`, OpenCode `bash`. Las zonas prohibidas siguen bloqueadas. El briefing exige decir en una línea qué va a salir y adónde antes de que salga, y cerrar con los comandos corridos y lo que dejó la máquina.
 - `MAX MODE` llega a `#4` en CONNECTIONS; un orquestador en `#4` puede dar `#4` a un paso (`@opencode #4: despliega a preview`). Color propio, hielo, en chip, campo, menú y badges. MU/TH/UR reconoce "modo producción" y "permiso para ejecutar comandos" como peticiones de `#4`.
 
-## 0.3.2 · 2026-09-19
-
 ### Canal de liberación, un clic
 - `RESTART WITH x.y.z` en MU/TH/UR: la sala registra `room.updating`, cierra su puerto, instala la versión según cómo corre esta copia (npx, dependencia del proyecto o global) y vuelve a abrir en la misma dirección; la página espera y se recarga sola. Con agentes trabajando se niega hasta que terminen. Desde el código fuente sigue siendo `git pull`.
 - La primera vez que aparece una versión nueva en la sesión, un aviso de MU/TH/UR lo dice; la alerta de la barra deja de brillar y respirar: línea ámbar fina, relleno suave, transiciones de 220 ms. Todos los controles de MADRE cambian de color con la misma curva; nada salta.
+
+## 0.3.2 · 2026-09-19
 
 ### Modos y permisos, una sola lógica
 - `#2 CREATE` ya no encierra al agente en `.pulse/out/`: crea archivos y carpetas nuevos donde corresponda en el proyecto, según sus convenciones, con `.pulse/out/<turno>/` como borrador. MADRE fotografía el proyecto antes del turno; lo que apareció se conserva y se muestra como artefacto, y todo archivo previo modificado, renombrado o borrado se restaura y se avisa (`create.reverted`). Las CLIs reciben sus herramientas de escritura sobre el proyecto (Claude Code y OpenCode solo escriben si también pueden editar, verificado con los CLIs reales); la garantía de "solo añadir" la da la restauración de MADRE al terminar.
@@ -37,6 +39,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ### Permisos que sí se cumplen
 - OpenCode nunca había podido escribir en CREATE ni en CONTROL: sus reglas de permiso se comparan con rutas relativas al proyecto, no absolutas, y crear un archivo es la herramienta `write`, distinta de `edit`. Verificado contra opencode 1.18.4 con proyectos reales, con y sin espacios en la ruta. Ahora CREATE permite `write` y `edit` solo dentro de la carpeta del turno, y CONTROL permite todo el proyecto menos `.git/`, `.pulse/`, `.madre/`, los `.env` y `.claude/settings.local.json`.
 - El checkpoint de CONTROL fotografía también los repositorios git anidados dentro del proyecto (un monorepo de sitios, cada uno con su `.git`): antes un cambio dentro de uno de ellos era invisible, la sala decía "no cambió nada" y UNDO no lo deshacía. Ahora la lista de cambios, las zonas prohibidas y UNDO cubren cada repositorio, con rutas relativas al proyecto. La fotografía se toma con `ls-files` y no con `add`, así un repo anidado sin commits ya no la rompe.
+
 
 ## 0.3.1 · 2026-09-19
 
