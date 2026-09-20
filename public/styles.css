@@ -1086,3 +1086,25 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .mother-button, .tree-button, .stop-all, .mother-close, .mother-section button, .seg-option, .mode-chip, .model-chip, .bubble-actions .act, .update-command button, .codeblock .copy { transition: background-color .22s ease, color .22s ease, border-color .22s ease, box-shadow .22s ease, opacity .22s ease, transform .16s ease; }
 .mother-button:active, .tree-button:active, .mother-close:active, .mother-section button:active, .update-command button:active { transform: scale(.98); }
 @media (prefers-reduced-motion: reduce) { .mother-button, .tree-button, .stop-all, .mother-close, .mother-section button, .seg-option, .mode-chip, .model-chip, .bubble-actions .act, .update-command button, .update-pill, .update-restart { transition: none; } }
+
+/* Developer card in MODULES and the four-step tour */
+.dev-card { display: grid; grid-template-columns: 64px 1fr; gap: 18px; align-items: start; padding: 18px 20px; }
+.dev-glyph { font-family: var(--mono); font-size: 26px; font-weight: 700; letter-spacing: .08em; color: var(--ph); text-shadow: 0 0 10px rgba(155, 255, 102, .45); line-height: 1; padding-top: 4px; }
+.dev-body h4 { margin: 0 0 8px; font-size: 13px; letter-spacing: .18em; color: var(--ph); }
+.dev-body p { margin: 0 0 10px; font-size: 11.5px; line-height: 1.65; letter-spacing: .04em; color: var(--ph-dim); text-transform: none; }
+.dev-where { margin: 0 0 12px; font-size: 10.5px; letter-spacing: .04em; color: var(--ph-dim); }
+.dev-where code { color: var(--ph); background: var(--ph-faint); padding: 2px 6px; }
+.dev-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.dev-row a.mother-close { text-decoration: none; display: inline-flex; align-items: center; }
+.dev-fail { color: var(--warn); } .dev-fail code { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); padding: 1px 5px; }
+.tour-button { min-width: 30px; padding: 6px 0; text-align: center; font-weight: 700; }
+.tour-frame { width: min(620px, 92vw); padding: 26px 30px 22px; }
+.tour-body { min-height: 190px; padding: 12px 0 6px; }
+.tour-step h3 { margin: 6px 0 14px; font-size: 11px; letter-spacing: .28em; color: var(--ph); font-weight: 700; }
+.tour-step p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.7; letter-spacing: .03em; color: var(--ph); text-transform: none; }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 14px; border-top: 1px solid var(--ph-dim); }
+.tour-dots { display: inline-flex; gap: 8px; }
+.tour-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ph-faint); border: 1px solid var(--ph-dim); transition: background-color .22s ease; }
+.tour-dots .dot.on { background: var(--ph); box-shadow: 0 0 8px rgba(155, 255, 102, .5); }
+.tour-nav { display: inline-flex; gap: 8px; }
+.tour .mother-close.primary { background: var(--ph-faint); }

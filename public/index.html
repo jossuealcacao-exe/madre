@@ -59,7 +59,8 @@
           </header>
           <p class="mother-answer" id="modules-note">BUILT-IN MODULES CHANGE ONLY MADRE SETTINGS. EXTERNAL MODULES WRITE INTO THE PROJECT ONLY AFTER YOU CONFIRM.</p>
           <section id="modules-list" class="mother-section"></section>
-          <footer class="mother-foot">BUILT-INS STAY IN MADRE · PROJECT INSTALLS SHOW THE COMMAND FIRST</footer>
+          <section id="modules-dev" class="mother-section dev"></section>
+          <footer class="mother-foot">BUILT-INS STAY IN MADRE · PROJECT INSTALLS SHOW THE COMMAND FIRST · YOUR MODULES LOAD FROM ~/.pulse/modules</footer>
         </div>
       </dialog>
 
@@ -72,6 +73,7 @@
               <button id="mother-settings-button" class="mother-close" type="button" aria-pressed="false" title="Connections and room settings">⚙ CONNECTIONS</button>
               <button id="nostromo-button" class="mother-close nostromo-button" type="button" title="NOSTROMO · memory research · needs the project designation">◉ NOSTROMO</button>
               <button id="feedback-button" class="mother-close" type="button" title="Tell MADRE's author what happened or what you wish for · opens a prefilled issue">✎ FEEDBACK</button>
+              <button id="tour-button" class="mother-close tour-button" type="button" title="The four-step tour of MADRE" aria-label="Tour">?</button>
               <button id="mother-close" class="mother-close" type="button">END SESSION ×</button>
             </span>
           </header>
@@ -157,6 +159,25 @@
           </form>
           <p class="mother-answer override-reply" id="override-reply" aria-live="polite"></p>
           <footer class="mother-foot">ONE HOLDER AT A TIME · EVERY TURN IS CHECKPOINTED · WHAT LEAVES THE SHIP DOES NOT COME BACK · STOPALL REVOKES IT</footer>
+        </div>
+      </dialog>
+      <dialog id="tour" class="mother override tour" aria-label="MADRE tour">
+        <div class="mother-frame override-frame tour-frame">
+          <header class="mother-head">
+            <span class="mother-title">MADRE</span>
+            <span class="mother-sub" id="tour-sub">INTERFACE 2037 · FIRST CONTACT</span>
+            <button id="tour-skip" class="mother-close" type="button">SKIP ×</button>
+          </header>
+          <div class="tour-body">
+            <div class="tour-step" id="tour-step"></div>
+          </div>
+          <footer class="tour-foot">
+            <span class="tour-dots" id="tour-dots"></span>
+            <span class="tour-nav">
+              <button id="tour-back" class="mother-close" type="button">BACK</button>
+              <button id="tour-next" class="mother-close primary" type="button">NEXT ›</button>
+            </span>
+          </footer>
         </div>
       </dialog>
       <dialog id="nostromo-gate" class="mother override" aria-label="NOSTROMO access">

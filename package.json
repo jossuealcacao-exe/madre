@@ -43,6 +43,8 @@
     "NOTICE",
     "docs/madre-banner.svg",
     "docs/training",
+    "docs/SDK.md",
+    "docs/sdk",
     "docs/INTERNALS.md",
     "SECURITY.md",
     "CONTRIBUTING.md"
@@ -64,5 +66,9 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "exports": {
+    "./sdk": "./src/modules/sdk.mjs",
+    "./package.json": "./package.json"
   }
 }

@@ -13,7 +13,7 @@ import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
-import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn } from './modules/index.mjs';
+import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 
@@ -131,6 +131,8 @@ export async function createPulseServer({
   const agents = providedAgents ?? await detectAgents();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
+  // The human's own modules, from ~/.pulse/modules and <project>/.madre/modules.
+  await loadExternalModules({ stateRoot: root, projectRoot: canonicalProjectRoot }).catch((error) => console.error(`MADRE modules: ${error.message}`));
   const store = await new EventStore(join(roomDir, 'events.jsonl')).initialize();
   const historicalEvents = await store.readAll();
   // The room's memory: derived from the ledger, rebuilt if missing or stale,
@@ -873,21 +875,50 @@ export async function createPulseServer({
         return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: 'No running plan with that id.' });
       }
       if (request.method === 'GET' && url.pathname === '/api/commands') {
-        return sendJson(response, 200, { commands: await listCommands({ projectRoot: canonicalProjectRoot }) });
+        const ctx = await moduleContext();
+        const fromModules = await Promise.all(moduleCommands().map(async (command) => {
+          const settings = command.module.settingsFrom(ctx.config);
+          const on = command.module.kind !== 'builtin' || Boolean(settings.enabled);
+          let available = on;
+          if (on && command.available) { try { available = Boolean(await command.available({ ...ctx, settings })); } catch { available = false; } }
+          return { name: command.name, module: command.module.id, title: command.title, usage: command.usage, summary: command.summary, available };
+        }));
+        return sendJson(response, 200, { commands: [...(await listCommands({ projectRoot: canonicalProjectRoot })), ...fromModules] });
       }
       if (request.method === 'POST' && url.pathname === '/api/commands') {
         const { text } = await body(request);
         const parsed = parseCommand(text);
         if (!parsed) return sendJson(response, 400, { error: 'Not a command. Commands start with "/" followed by a name.' });
-        const command = commandByName(parsed.name);
-        if (!command) return sendJson(response, 404, { error: `Unknown command /${parsed.name}.` });
-        if (!(await command.available({ projectRoot: canonicalProjectRoot }))) return sendJson(response, 412, { error: `/${parsed.name} is not available in this project (${command.title}).` });
-        const result = await command.execute({ projectRoot: canonicalProjectRoot, args: parsed.args });
+        let command = commandByName(parsed.name);
+        let result;
+        if (command) {
+          if (!(await command.available({ projectRoot: canonicalProjectRoot }))) return sendJson(response, 412, { error: `/${parsed.name} is not available in this project (${command.title}).` });
+          result = await command.execute({ projectRoot: canonicalProjectRoot, args: parsed.args });
+        } else {
+          // A module's command: runs with the module's ctx and settings, only while the module is on.
+          const own = moduleCommands().find((item) => item.name === parsed.name);
+          if (!own) return sendJson(response, 404, { error: `Unknown command /${parsed.name}.` });
+          const ctx = await moduleContext();
+          const settings = own.module.settingsFrom(ctx.config);
+          if (own.module.kind === 'builtin' && !settings.enabled) return sendJson(response, 412, { error: `/${parsed.name} belongs to ${own.module.name}, which is off. Enable it in MODULES.` });
+          if (own.available && !(await own.available({ ...ctx, settings }).catch(() => false))) return sendJson(response, 412, { error: `/${parsed.name} is not available here (${own.title}).` });
+          try {
+            const answer = await own.execute({ ...ctx, settings }, parsed.args);
+            result = { ok: answer?.ok !== false, title: answer?.title ?? own.title, text: String(answer?.text ?? '') };
+          } catch (error) { result = { ok: false, title: own.title, text: `/${parsed.name} failed: ${error.message}` }; }
+          command = own;
+        }
         const event = await room.recordCommand({ name: parsed.name, args: parsed.args, ...result });
         return sendJson(response, result.ok ? 200 : 422, { command: parsed.name, title: result.title, ok: result.ok, sequence: event.sequence });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
-        return sendJson(response, 200, { installing, extensions: await describeModules(await moduleContext()) });
+        return sendJson(response, 200, { installing, extensions: await describeModules(await moduleContext()), failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md' });
+      }
+      // The human edited or added a module file: load it again without restarting the room.
+      if (request.method === 'POST' && url.pathname === '/api/extensions/reload') {
+        const outcome = await loadExternalModules({ stateRoot: root, projectRoot: canonicalProjectRoot });
+        await room.record('extension.reloaded', { loaded: outcome.loaded.map((module) => module.id), failures: outcome.failures.length });
+        return sendJson(response, 200, { loaded: outcome.loaded.map((module) => ({ id: module.id, name: module.name, origin: module.origin, file: module.file })), failures: outcome.failures, extensions: await describeModules(await moduleContext()) });
       }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {

@@ -2920,7 +2920,7 @@ function appendModuleOutput(event) {
 async function refreshModules() {
   try {
     const data = await fetch('/api/extensions').then((response) => response.json());
-    modules.items = data.extensions ?? [];
+    modules.failures = data.failures ?? []; modules.folders = data.folders ?? null; modules.sdk = data.sdk ?? null; modules.items = data.extensions ?? [];
     modules.installing = data.installing ?? null;
   } catch (error) {
     modules.items = [];
@@ -3164,6 +3164,47 @@ function renderModules() {
   const grid = el('div', 'mother-grid');
   for (const item of modules.items) grid.append(moduleCard(item));
   modules.list.append(grid);
+  renderModulesDev();
+}
+
+// The developer's card: where your modules live, what failed to load, and the SDK.
+function renderModulesDev() {
+  const section = document.querySelector('#modules-dev');
+  if (!section) return;
+  section.replaceChildren();
+  section.append(el('h3', null, 'DEVELOP FOR MADRE'));
+  const card = el('article', 'module-card dev-card');
+  const glyph = el('div', 'dev-glyph', '</>');
+  const body = el('div', 'dev-body');
+  body.append(el('h4', null, 'Would you like to develop for MADRE?'));
+  body.append(el('p', null, 'Use our SDK to build your own modules: one file, no build, no dependencies. A switch, settings, slash commands, tools for the agents, routes. Write it by hand or with an AI, drop it in a folder, reload.'));
+  const where = el('div', 'dev-where');
+  const folders = modules.folders ?? {};
+  where.append(el('code', null, folders.user ? `${folders.user}/` : '~/.pulse/modules/'), el('span', 'note', ' every project · '), el('code', null, folders.project ? `${folders.project}/` : '<project>/.madre/modules/'), el('span', 'note', ' this project'));
+  body.append(where);
+  const row = el('div', 'dev-row');
+  const read = el('a', 'mother-close', 'READ THE SDK ↗'); read.href = modules.sdk ?? 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md'; read.target = '_blank'; read.rel = 'noopener noreferrer';
+  const reload = el('button', 'mother-close', 'RELOAD MODULES'); reload.type = 'button'; reload.title = 'Load your module files again without restarting the room';
+  reload.addEventListener('click', async () => {
+    reload.disabled = true;
+    try {
+      const payload = await fetch('/api/extensions/reload', { method: 'POST' }).then((response) => response.json());
+      modules.items = payload.extensions ?? modules.items; modules.failures = payload.failures ?? [];
+      toast(`MU/TH/UR › modules reloaded: ${payload.loaded.length} of yours${payload.failures.length ? `, ${payload.failures.length} failed to load` : ''}.`);
+      renderModules();
+    } catch (error) { toast(`Reload failed: ${error.message}`); } finally { reload.disabled = false; }
+  });
+  row.append(read, reload);
+  body.append(row);
+  const yours = modules.items.filter((item) => item.external);
+  if (yours.length) body.append(el('p', 'note', `YOURS, LOADED: ${yours.map((item) => `${item.name} (${item.origin})`).join(' · ')}`));
+  for (const failure of modules.failures ?? []) {
+    const line = el('p', 'note dev-fail');
+    line.append(el('b', null, 'DID NOT LOAD · '), el('code', null, failure.file.split('/').slice(-2).join('/')), ` · ${failure.error}`);
+    body.append(line);
+  }
+  card.append(glyph, body);
+  section.append(card);
 }
 
 modules.button.addEventListener('click', async () => {
@@ -4538,6 +4579,42 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
   }
 });
 
+
+/* ---------- First contact: the four-step tour. Once on the first visit, again from ? in MU/TH/UR. ---------- */
+
+const TOUR_STEPS = [
+  { title: 'ONE ROOM, YOUR AGENTS', lines: ['MADRE is a local room where the AI coding agents already on this machine work on this project together: Codex, Claude Code, Gemini CLI, OpenCode, and @madre, the memory itself.', 'Pick an agent in the row above the composer or type @claude …. Every reply shows who spoke, to whom, in which mode, with which model and how many tokens.', 'Nothing leaves this machine on its own: each agent talks to its own provider with its own session.'] },
+  { title: 'MODES: HOW FAR A MESSAGE MAY GO', lines: ['The chip next to TO @agent sets the mode of that message.', '#0 GHOST · off the record. #1 EXCHANGE · read and talk, the default. #2 CREATE · add new files where they belong; existing files stay untouched. #3 CONTROL · edit the project, checkpointed, UNDO in one click. #4 AIRLOCK · run commands, push, deploy; what leaves the ship does not come back.', 'Each agent has a MAX MODE and a DEFAULT MODE in ⚙ CONNECTIONS.'] },
+  { title: 'A MEMORY EVERY AGENT RECALLS', lines: ['Everything said outside GHOST is indexed. When the conversation grows, each turn gets the older exchanges that match, cited by sequence.', 'The archivist distils decisions, facts, preferences and open questions; with Ollama it runs locally and for free, and @madre answers from the whole archive.', '◉ NOSTROMO shows the memory as a map. PRIVACY keeps names that must never travel through the room.'] },
+  { title: 'MU/TH/UR AND MODULES', lines: ['MU/TH/UR is the console: diagnosis of anything that failed, ⚙ CONNECTIONS to sign agents in and set their ceilings, MEMORY, PRIVACY, the SENTINEL and the release channel.', 'MODULES adds optional powers: Git Pulse, Image Studio, RIPLEY previews, OLLAMA, PLAYWRIGHT, and your own modules from one file.', 'This tour comes back from the ? in MU/TH/UR. Type STOPALL any time to halt every agent.'] },
+];
+const tour = { dialog: document.querySelector('#tour'), step: document.querySelector('#tour-step'), dots: document.querySelector('#tour-dots'), sub: document.querySelector('#tour-sub'), back: document.querySelector('#tour-back'), next: document.querySelector('#tour-next'), skip: document.querySelector('#tour-skip'), index: 0 };
+function renderTour() {
+  const step = TOUR_STEPS[tour.index];
+  tour.step.replaceChildren();
+  tour.step.append(el('h3', null, `${tour.index + 1} / ${TOUR_STEPS.length} · ${step.title}`));
+  for (const line of step.lines) tour.step.append(el('p', null, line));
+  tour.dots.replaceChildren();
+  TOUR_STEPS.forEach((_, i) => tour.dots.append(el('span', `dot${i === tour.index ? ' on' : ''}`)));
+  tour.back.disabled = tour.index === 0;
+  tour.next.textContent = tour.index === TOUR_STEPS.length - 1 ? 'START ›' : 'NEXT ›';
+}
+function endTour() {
+  try { localStorage.setItem('pulse.tour', 'seen'); } catch { /* no storage */ }
+  if (tour.dialog?.open) tour.dialog.close();
+}
+function startTour() {
+  if (!tour.dialog || typeof tour.dialog.showModal !== 'function') return;
+  tour.index = 0;
+  renderTour();
+  if (!tour.dialog.open) tour.dialog.showModal();
+}
+tour.next?.addEventListener('click', () => { if (tour.index >= TOUR_STEPS.length - 1) { endTour(); return; } tour.index += 1; renderTour(); });
+tour.back?.addEventListener('click', () => { tour.index = Math.max(0, tour.index - 1); renderTour(); });
+tour.skip?.addEventListener('click', endTour);
+tour.dialog?.addEventListener('close', () => { try { localStorage.setItem('pulse.tour', 'seen'); } catch { /* no storage */ } });
+document.querySelector('#tour-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); startTour(); });
+(() => { let seen = 'seen'; try { seen = localStorage.getItem('pulse.tour'); } catch { seen = 'seen'; } if (seen !== 'seen') setTimeout(startTour, 900); })();
 
 /* ---------- Release channel: is there a newer MADRE? A pill in the bar, the command in MU/TH/UR. ---------- */
 

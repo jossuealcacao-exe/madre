@@ -24,7 +24,7 @@ export function defineModule(spec) {
   const defaults = { ...(kind === 'builtin' ? { enabled: false } : {}), ...(spec.settings ?? {}) };
   const base = {
     id: spec.id, kind, name: spec.name, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? '0.1.0',
-    summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands,
+    summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
   };
   const settingsFrom = (config) => ({ ...defaults, ...(config?.modules?.[configKey] ?? {}) });
@@ -36,6 +36,13 @@ export function defineModule(spec) {
     routes: (spec.routes ?? []).map((route) => ({ ...route, method: route.method.toUpperCase() })),
     onEvent: spec.onEvent ?? null,
     conditions: spec.conditions ?? [],
+    // Slash commands the human types in the composer; they run on the server with the module's
+    // ctx and settings and land in the room as a fact card everyone reads. Only while the module is on.
+    slash: (spec.slash ?? []).map((command) => {
+      if (!command?.name || !/^[a-z][a-z0-9-]*$/.test(command.name)) throw new Error(`Module ${spec.id}: a slash command needs a kebab-case name.`);
+      if (typeof command.execute !== 'function') throw new Error(`Module ${spec.id}: /${command.name} needs an execute(ctx, args) function.`);
+      return { name: command.name, usage: command.usage ?? `/${command.name}`, summary: command.summary ?? '', title: command.title ?? spec.name, available: command.available ?? null, execute: command.execute };
+    }),
     // Tools for a turn, only while the module is on. Failures never break a turn.
     toolsForTurn: spec.toolsForTurn ? async (ctx, turn) => {
       const settings = settingsFrom(ctx.config);
@@ -54,6 +61,7 @@ export function defineModule(spec) {
       const installed = own.installed ?? (kind === 'builtin' ? Boolean(settings.enabled) : false);
       return {
         ...base,
+        ...(this.external ? { external: true, origin: this.origin, file: this.file } : {}),
         ...own,
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
         preflight: own.preflight ?? { ok: true, problems: [] },

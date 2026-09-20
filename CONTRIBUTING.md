@@ -22,6 +22,8 @@ node ./bin/madre.mjs start --no-open    # the room from source, URL in the termi
 
 ## Writing a module
 
+For a module of your own, outside this repository, read `docs/SDK.md`: one `.mjs` file in `~/.pulse/modules/` or `<project>/.madre/modules/`, no build, reloaded from MODULES. What follows is for modules that ship inside MADRE.
+
 A module is one file in `src/modules/`, registered in `src/modules/index.mjs`:
 
 ```js

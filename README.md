@@ -176,6 +176,7 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 | `SENTINEL` | Fallos que ninguna condición explica y caídas del proceso, con rutas, usuarios, correos y claves eliminados. Cada reporte tiene `REPORT ON GITHUB ↗` para leerlo antes de publicarlo; `AUTO-REPORT`, apagado por defecto, envía los nuevos al colector del proyecto |
 | `RELEASE CHANNEL` | Una consulta a npm al día. Si hay versión nueva, una alerta en la barra y aquí `RESTART WITH x.y.z`: la sala cierra, instala y vuelve en la misma dirección; o el comando para hacerlo tú. Nunca mientras los agentes trabajan |
 | `✎ FEEDBACK` | Un issue en blanco con tu entorno ya escrito |
+| `?` | El recorrido de cuatro pasos, el mismo que se abre la primera vez |
 
 ---
 
@@ -193,7 +194,7 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 | **AshCode** (beta) | `$ ash_code`: abrevia mensajes localmente antes de enviarlos y pide respuestas concisas. Puede cambiar el significado; el original siempre queda |
 | **AHP+** | Integración externa opcional: estado verificado del proyecto, checkpoints y handoffs en `.ahp/`; `/ahp status`, `/ahp check`, `/ahp context` |
 
-Cada módulo es un archivo en `src/modules/` declarado con `defineModule`; un módulo puede entregar herramientas MCP a cada turno con `toolsForTurn`, como hace PLAYWRIGHT. Cómo escribir uno, en [CONTRIBUTING.md](https://github.com/jossuealcacao-exe/madre/blob/main/CONTRIBUTING.md#writing-a-module).
+Cada módulo es un archivo. Los tuyos van en `~/.pulse/modules/` (todas las salas) o en `<proyecto>/.madre/modules/` (ese proyecto): un `.mjs` con `export default { … }`, sin build ni registro, con interruptor, ajustes, comandos `/nombre`, herramientas MCP para los agentes y rutas propias. `RELOAD MODULES` lo recarga sin reiniciar. Guía y ejemplo listo para copiar en [`docs/SDK.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md). Cómo escribir uno, en [CONTRIBUTING.md](https://github.com/jossuealcacao-exe/madre/blob/main/CONTRIBUTING.md#writing-a-module).
 
 ---
 
