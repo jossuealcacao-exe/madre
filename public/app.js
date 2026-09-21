@@ -4257,19 +4257,33 @@ document.querySelector('#nostromo-card-close')?.addEventListener('click', () => 
 
 // Planets: size follows how much ledger a memory covers; they start in their kind's sector
 // and drift toward the memories they agree with, so topics gather on their own.
+// How alive a memory is: how often the room has actually recalled it, how recently, and how
+// woven it is into the rest. 0 is a memory nobody has needed; 1 is one the room leans on.
+function activityOf(memory, degree = 0) {
+  const use = 1 - Math.exp(-Number(memory.recalled ?? 0) / 4);
+  const since = memory.lastRecalled ? (Date.now() - Date.parse(memory.lastRecalled)) / 86400000 : null;
+  const fresh = since === null || Number.isNaN(since) ? 0 : Math.exp(-Math.max(0, since) / 3);
+  const woven = Math.min(1, degree / 4);
+  return Math.max(0.06, Math.min(1, 0.55 * use + 0.3 * fresh + 0.15 * woven));
+}
+
 function buildNostromo(data) {
   const kinds = Object.keys(MEMORY_COLORS);
   const memories = data.memories ?? [];
   nostromo.links = (data.links ?? []).filter((link) => memories.some((m) => m.id === link.a) && memories.some((m) => m.id === link.b));
+  const degree = new Map();
+  for (const link of nostromo.links) { degree.set(link.a, (degree.get(link.a) ?? 0) + 1); degree.set(link.b, (degree.get(link.b) ?? 0) + 1); }
+  nostromo.pulses = [];
   nostromo.nodes = memories.map((memory, index) => {
     const sector = kinds.indexOf(memory.kind) < 0 ? 1 : kinds.indexOf(memory.kind);
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, angle, distance, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, angle, distance, activity: activityOf(memory, degree.get(memory.id) ?? 0), lit: 0, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
   });
   const stats = data.stats ?? {};
-  nostromo.sub.textContent = `MEMORY RESEARCH · ${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
+  const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
+  nostromo.sub.textContent = `MEMORY RESEARCH · ${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${alive} RECALLED · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
   nostromo.empty.hidden = memories.length > 0;
 }
 
@@ -4390,11 +4404,58 @@ function stepNostromo(dt, t) {
   }
   for (const node of nostromo.nodes) if (node.forgetting) node.scale = Math.max(0, node.scale - 0.06 * dt);
   nostromo.nodes = nostromo.nodes.filter((node) => !(node.forgetting && node.scale <= 0.01));
+  // The core turns on its own axis, slowly, the way a body does.
+  nostromo.spin = (nostromo.spin ?? 0) + dt * 0.0024 * (nostromo.cage ? 2.2 : 1);
   // A new beat sends a wave out from the core.
   const { phase } = heartbeat(t);
   if (phase < nostromo.lastPhase && !nostromo.reduced) nostromo.rings.push({ born: t });
   nostromo.lastPhase = phase;
   nostromo.rings = nostromo.rings.filter((ring) => t - ring.born < 2.4);
+  pulseNostromo(dt, t, nodes, byId);
+}
+
+// Life in the network: one pulse at a time, each on its own clock. The core sends more to the
+// memories the room actually leans on, and two memories that share a theme talk to each other
+// without the core in between. Nothing here is synchronised: that is the point.
+const PULSE_SPEED = 330;     // world units per second
+const PULSE_CAP = 48;        // a ceiling, so a large archive stays light
+function pulseNostromo(dt, t, nodes, byId) {
+  const pulses = nostromo.pulses ?? (nostromo.pulses = []);
+  for (const node of nodes) node.lit = Math.max(0, (node.lit ?? 0) - dt * 0.05);
+  nostromo.coreLit = Math.max(0, (nostromo.coreLit ?? 0) - dt * 0.05);
+  if (!nostromo.reduced && pulses.length < PULSE_CAP) {
+    for (const node of nodes) {
+      // An active memory is spoken to often; a forgotten one, rarely.
+      if (Math.random() < node.activity * 0.013 * dt) {
+        const outward = Math.random() > 0.22;   // most travel out; some answer back
+        pulses.push({ from: outward ? null : node, to: outward ? node : null, node, born: t, life: Math.max(0.5, (Math.hypot(node.x, node.y) || 1) / PULSE_SPEED), kind: 'core' });
+      }
+    }
+    for (const link of nostromo.links) {
+      const a = byId.get(link.a);
+      const b = byId.get(link.b);
+      if (!a || !b) continue;
+      const together = Math.min(a.activity, b.activity) * link.weight;
+      if (Math.random() < together * 0.009 * dt) {
+        const forward = Math.random() > 0.5;
+        pulses.push({ from: forward ? a : b, to: forward ? b : a, link, born: t, life: Math.max(0.45, (Math.hypot(b.x - a.x, b.y - a.y) || 1) / PULSE_SPEED), kind: 'link' });
+      }
+    }
+  }
+  for (const pulse of pulses) {
+    if (t - pulse.born < pulse.life) continue;
+    // It arrived: whatever it reached lights up for a moment.
+    if (pulse.kind === 'link') pulse.to.lit = Math.min(1.4, (pulse.to.lit ?? 0) + 0.7);
+    else if (pulse.to) pulse.to.lit = Math.min(1.4, (pulse.to.lit ?? 0) + 0.9);
+    else nostromo.coreLit = Math.min(1.4, (nostromo.coreLit ?? 0) + 0.5);
+  }
+  nostromo.pulses = pulses.filter((pulse) => t - pulse.born < pulse.life);
+}
+
+// Where a pulse is right now, along the same curve its filament is drawn with.
+function alongCurve(x0, y0, cx, cy, x1, y1, u) {
+  const v = 1 - u;
+  return { x: v * v * x0 + 2 * v * u * cx + u * u * x1, y: v * v * y0 + 2 * v * u * cy + u * u * y1 };
 }
 
 // The camera follows the whole system until the human takes over.
@@ -4442,58 +4503,76 @@ function drawNostromo(t) {
   ctx.translate(-cam.x, -cam.y);
   const R = CORE_R * (1 + 0.07 * beat + 0.12 * alarm);
 
-  // Plasma between linked memories: they share a theme, so a filament runs between them.
+  // Plasma between linked memories: they share a theme, so a filament runs between them. Drawn
+  // as a wide breath of colour and a thin bright thread: the same glow as a blur, far cheaper.
+  const byId = new Map(nostromo.nodes.map((node) => [node.memory.id, node]));
   for (const link of nostromo.links) {
-    const a = nostromo.nodes.find((node) => node.memory.id === link.a);
-    const b = nostromo.nodes.find((node) => node.memory.id === link.b);
+    const a = byId.get(link.a);
+    const b = byId.get(link.b);
     if (!a || !b) continue;
     const dx = b.x - a.x, dy = b.y - a.y;
     const d = Math.hypot(dx, dy) || 1;
     const bow = Math.sin(t * 1.3 + a.seed + b.seed) * Math.min(40, d * 0.15);
-    const mx = (a.x + b.x) / 2 - (dy / d) * bow;
-    const my = (a.y + b.y) / 2 + (dx / d) * bow;
+    link.cx = (a.x + b.x) / 2 - (dy / d) * bow;
+    link.cy = (a.y + b.y) / 2 + (dx / d) * bow;
     const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
     grad.addColorStop(0, hexAlpha(a.color, 0.55 * link.weight));
     grad.addColorStop(0.5, 'rgba(255, 240, 235, .25)');
     grad.addColorStop(1, hexAlpha(b.color, 0.55 * link.weight));
     ctx.strokeStyle = grad;
-    ctx.lineWidth = (0.8 + 0.5 * Math.abs(Math.sin(t * 4 + a.seed))) / cam.scale;
-    ctx.shadowColor = hexAlpha(a.color, 0.7);
-    ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(mx, my, b.x, b.y); ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y);
+    ctx.globalAlpha = 0.3; ctx.lineWidth = 3.4 / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = (0.7 + 0.45 * Math.abs(Math.sin(t * 4 + a.seed))) / cam.scale; ctx.stroke();
   }
 
-  // Plasma from the core to every memory: bowing, flickering, a pulse travelling out with each beat.
+  // Plasma from the core to every memory. The filament a memory is spoken to often burns a
+  // little brighter than one nobody has needed.
   for (const node of nostromo.nodes) {
     const d = Math.hypot(node.x, node.y) || 1;
     const nx = -node.y / d, ny = node.x / d;
     const bow = Math.sin(t * 1.7 + node.seed) * Math.min(60, d * 0.18);
-    const mx = node.x / 2 + nx * bow, my = node.y / 2 + ny * bow;
+    node.cx = node.x / 2 + nx * bow; node.cy = node.y / 2 + ny * bow;
+    node.rimX = (node.x / d) * R * 0.92; node.rimY = (node.y / d) * R * 0.92;
+    const life = 0.45 + 0.55 * node.activity;
     const grad = ctx.createLinearGradient(0, 0, node.x, node.y);
-    grad.addColorStop(0, alarm ? 'rgba(255, 230, 220, .95)' : 'rgba(255, 90, 60, .9)');
-    grad.addColorStop(0.5, `rgba(255, 42, 31, ${0.3 + 0.25 * beat})`);
-    grad.addColorStop(1, hexAlpha(node.color, 0.8 * node.scale));
+    grad.addColorStop(0, alarm ? 'rgba(255, 230, 220, .95)' : `rgba(255, 90, 60, ${0.55 + 0.35 * life})`);
+    grad.addColorStop(0.5, `rgba(255, 42, 31, ${(0.2 + 0.25 * beat) * (0.5 + life)})`);
+    grad.addColorStop(1, hexAlpha(node.color, (0.45 + 0.45 * life) * node.scale));
     ctx.strokeStyle = grad;
-    ctx.lineWidth = (1 + 0.7 * Math.abs(Math.sin(t * 5 + node.seed * 3)) + 0.8 * beat) / cam.scale;
-    ctx.shadowColor = 'rgba(255, 60, 40, .8)';
-    ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.moveTo((node.x / d) * R * 0.92, (node.y / d) * R * 0.92);
-    ctx.quadraticCurveTo(mx, my, node.x, node.y);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    // The beat, travelling along the filament.
-    for (const ring of nostromo.rings) {
-      const p = ((t - ring.born) * WAVE_SPEED) / d;
-      if (p < 0 || p > 1) continue;
-      const px = (1 - p) * (1 - p) * 0 + 2 * (1 - p) * p * mx + p * p * node.x;
-      const py = (1 - p) * (1 - p) * 0 + 2 * (1 - p) * p * my + p * p * node.y;
-      ctx.fillStyle = 'rgba(255, 235, 225, .95)';
-      ctx.shadowColor = 'rgba(255, 120, 90, 1)'; ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.arc(px, py, 2.2 / cam.scale, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
+    ctx.moveTo(node.rimX, node.rimY);
+    ctx.quadraticCurveTo(node.cx, node.cy, node.x, node.y);
+    ctx.globalAlpha = 0.26 * (0.5 + life); ctx.lineWidth = 4 / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = (0.8 + 0.5 * life + 0.4 * Math.abs(Math.sin(t * 5 + node.seed * 3)) + 0.5 * beat) / cam.scale; ctx.stroke();
+  }
+
+  // The pulses themselves: each one its own errand, none in step with another. Out from the core
+  // to the memories it leans on, back again, and between two memories that share a theme.
+  for (const pulse of nostromo.pulses ?? []) {
+    const u = Math.min(1, (t - pulse.born) / pulse.life);
+    let at;
+    let color;
+    if (pulse.kind === 'link') {
+      const { from, to, link } = pulse;
+      at = alongCurve(from.x, from.y, link.cx ?? (from.x + to.x) / 2, link.cy ?? (from.y + to.y) / 2, to.x, to.y, u);
+      color = to.color;
+    } else {
+      const node = pulse.node;
+      const outward = pulse.to === node;
+      const rim = { x: node.rimX ?? 0, y: node.rimY ?? 0 };
+      const from = outward ? rim : node;
+      const to = outward ? node : rim;
+      at = alongCurve(from.x, from.y, node.cx ?? node.x / 2, node.cy ?? node.y / 2, to.x, to.y, u);
+      color = outward ? '#ffd0c0' : node.color;
     }
+    const size = (1.9 + 1.3 * Math.sin(u * Math.PI)) / cam.scale;
+    const halo = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, size * 4.5);
+    halo.addColorStop(0, hexAlpha(color, 0.85));
+    halo.addColorStop(1, hexAlpha(color, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(at.x, at.y, size * 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 248, 243, .95)';
+    ctx.beginPath(); ctx.arc(at.x, at.y, size, 0, Math.PI * 2); ctx.fill();
   }
 
   // Shockwaves: one ring per beat, expanding and thinning.
@@ -4527,6 +4606,8 @@ function drawNostromo(t) {
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.clip();
+  // The body turns on its own axis under a fixed light: the veins and the iris travel with it.
+  ctx.rotate(nostromo.spin ?? 0);
   // Veins: filaments under the skin. With every beat a pulse runs outward along
   // each one, the vein swelling and brightening as it passes; each has a branch.
   ctx.lineCap = 'round';
@@ -4539,13 +4620,19 @@ function drawNostromo(t) {
       const qx = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * cx + u * u * x1;
       const qy = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * cy + u * u * y1;
       const pulse = veinPulse(u);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy);
+      // Where the pulse is passing, a wide soft glow under a bright core: the look of a blur
+      // without its cost, and this runs a hundred times a frame.
+      if (pulse > 0.04) {
+        ctx.strokeStyle = `rgba(255, 70, 45, ${0.34 * pulse * alpha})`;
+        ctx.lineWidth = width * (2.6 + 2.4 * pulse);
+        ctx.stroke();
+      }
       ctx.strokeStyle = `rgba(${110 + 130 * pulse}, ${8 + 40 * pulse}, ${14 + 20 * pulse}, ${alpha * (0.55 + 0.45 * pulse)})`;
       ctx.lineWidth = width * (1 + 0.9 * pulse);
-      ctx.shadowColor = `rgba(255, 60, 40, ${0.6 * pulse})`; ctx.shadowBlur = 8 * pulse;
-      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy); ctx.stroke();
+      ctx.stroke();
       px = qx; py = qy;
     }
-    ctx.shadowBlur = 0;
   };
   for (let i = 0; i < 9; i += 1) {
     const a0 = i * 0.7 + t * 0.04;
@@ -4593,9 +4680,10 @@ function drawNostromo(t) {
   }
   ctx.shadowBlur = 0;
   // The rim: white-hot on the beat.
-  ctx.strokeStyle = `rgba(255, ${200 + 55 * beat}, ${190 + 60 * beat}, ${0.45 + 0.45 * beat})`;
-  ctx.lineWidth = (1.2 + 1.6 * beat) / cam.scale;
-  ctx.shadowColor = 'rgba(255, 200, 190, .9)'; ctx.shadowBlur = 18 + 20 * beat;
+  const home = Math.min(1, nostromo.coreLit ?? 0);
+  ctx.strokeStyle = `rgba(255, ${200 + 55 * beat}, ${190 + 60 * beat}, ${0.45 + 0.45 * beat + 0.3 * home})`;
+  ctx.lineWidth = (1.2 + 1.6 * beat + 1.2 * home) / cam.scale;
+  ctx.shadowColor = 'rgba(255, 200, 190, .9)'; ctx.shadowBlur = 18 + 20 * beat + 16 * home;
   ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
   ctx.shadowBlur = 0;
 
@@ -4604,9 +4692,7 @@ function drawNostromo(t) {
   for (const node of nostromo.nodes) {
     const r = node.r * node.scale;
     if (r <= 0) continue;
-    const d = Math.hypot(node.x, node.y) || 1;
-    let arrive = 0;
-    for (const ring of nostromo.rings) { const gap = (t - ring.born) - (d - R) / WAVE_SPEED; if (gap >= 0) arrive = Math.max(arrive, Math.exp(-gap * 6)); }
+    const arrive = Math.min(1.2, node.lit ?? 0);
     for (const puff of node.smoke) {
       const k = puff.age / puff.life;
       ctx.fillStyle = hexAlpha(node.color, (1 - k) * 0.16 * node.scale);
@@ -4868,7 +4954,11 @@ function showNostromoCard(node) {
   document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? ' · on the human\'s request' : ' · distilled'}`;
   document.querySelector('#nostromo-card-when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
   const linked = nostromo.links.filter((link) => link.a === memory.id || link.b === memory.id).length;
-  document.querySelector('#nostromo-card-links').textContent = linked ? `${linked} memor${linked === 1 ? 'y' : 'ies'} on the same theme` : 'nothing yet';
+  // How alive this one is: how many times the room has actually reached for it, and when last.
+  const times = Number(memory.recalled ?? 0);
+  const last = memory.lastRecalled ? new Date(memory.lastRecalled) : null;
+  const life = times ? `recalled ${times} time${times === 1 ? '' : 's'}${last ? ` · last ${last.toLocaleString()}` : ''}` : 'never recalled yet';
+  document.querySelector('#nostromo-card-links').textContent = `${linked ? `${linked} memor${linked === 1 ? 'y' : 'ies'} on the same theme` : 'no theme shared yet'} · ${life}`;
   const forget = document.querySelector('#nostromo-forget');
   forget.textContent = 'FORGET THIS MEMORY';
   forget.classList.remove('confirm');

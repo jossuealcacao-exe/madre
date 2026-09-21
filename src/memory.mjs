@@ -145,7 +145,9 @@ export class RoomMemory {
         from_sequence INTEGER NOT NULL,
         through_sequence INTEGER NOT NULL,
         sources TEXT NOT NULL,
-        agent TEXT NOT NULL
+        agent TEXT NOT NULL,
+        recalled INTEGER NOT NULL DEFAULT 0,
+        last_recalled TEXT
       );
       CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(text, kind, content='memories', content_rowid='id', tokenize='trigram');
       CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
@@ -157,6 +159,10 @@ export class RoomMemory {
       CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
+    // Older files predate the recall counters; adding them is harmless and keeps the notes.
+    for (const column of ['recalled INTEGER NOT NULL DEFAULT 0', 'last_recalled TEXT']) {
+      try { this.#db.exec(`ALTER TABLE memories ADD COLUMN ${column}`); } catch { /* already there */ }
+    }
     // Older files: each entry remembers whether it was distilled (the old watermark seeds it).
     const entryColumns = this.#db.prepare('PRAGMA table_info(entries)').all().map((column) => column.name);
     if (entryColumns.length && !entryColumns.includes('distilled')) {
@@ -436,10 +442,10 @@ export class RoomMemory {
 
   memories({ limit = 50, kind = null } = {}) {
     if (kind) {
-      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
+      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
         .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
     }
-    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories ORDER BY id DESC LIMIT ?').all(limit)
+    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled FROM memories ORDER BY id DESC LIMIT ?').all(limit)
       .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
 
@@ -448,7 +454,7 @@ export class RoomMemory {
   // preferences, all from before `beforeSequence` so they add to the window
   // rather than repeat it, within a character budget.
   // `fallback` fills a thin match with the latest decisions and preferences; @madre turns it off to stay honest.
-  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true } = {}) {
+  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true, track = true } = {}) {
     if (!this.#db) return [];
     const total = this.memoryCount();
     if (!total) return [];
@@ -480,7 +486,19 @@ export class RoomMemory {
       remaining -= cost;
       chosen.push({ ...row, sources: JSON.parse(row.sources) });
     }
+    // A note that just travelled into a turn has been used: the archive counts it, so the room
+    // can tell which memories it actually leans on.
+    if (track && chosen.length) this.#markRecalled(chosen.map((note) => note.id));
     return chosen.sort((a, b) => a.fromSequence - b.fromSequence || a.id - b.id);
+  }
+
+  #markRecalled(ids) {
+    try {
+      const now = new Date().toISOString();
+      const mark = this.#db.prepare('UPDATE memories SET recalled = recalled + 1, last_recalled = ? WHERE id = ?');
+      this.#db.exec('BEGIN');
+      try { for (const id of ids) mark.run(now, id); this.#db.exec('COMMIT'); } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+    } catch (error) { console.error(`MADRE could not count a recall: ${error.message}`); }
   }
 
   #metaValue(key) { return this.#meta.get(key)?.value ?? null; }

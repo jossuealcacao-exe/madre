@@ -874,3 +874,43 @@ test('CONTROL guard: .env files and MADRE folders are read-only while the turn r
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('the archive counts what it is actually asked for: a recalled memory carries its own history', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-recall-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 8; i += 1) {
+      await store.append('message.created', { messageId: `m${i}`, role: i % 2 ? 'user' : 'assistant', sender: i % 2 ? 'you' : 'codex', target: 'you', text: `the webhook verifies the stripe signature, note ${i}` });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([
+      { kind: 'decision', text: 'The webhook verifies the Stripe signature before parsing.', sources: [2] },
+      { kind: 'fact', text: 'The banner uses the phosphor green of the brand.', sources: [4] },
+    ], { agent: 'gemini', fromSequence: 1, throughSequence: 8 });
+
+    const before = memory.memories({ limit: 10 });
+    assert.deepEqual(before.map((note) => note.recalled), [0, 0], 'nothing has been asked for yet');
+    assert.equal(before.every((note) => note.lastRecalled === null), true);
+
+    // Three turns lean on the same decision; the other note is never needed.
+    for (let turn = 0; turn < 3; turn += 1) memory.recallMemories('what did we decide about the stripe webhook signature?', { limit: 3, fallback: false });
+    const after = memory.memories({ limit: 10 });
+    const decision = after.find((note) => note.kind === 'decision');
+    const unused = after.find((note) => note.kind === 'fact');
+    assert.equal(decision.recalled, 3, 'the room counted every time it reached for this one');
+    assert.ok(decision.lastRecalled && !Number.isNaN(Date.parse(decision.lastRecalled)));
+    assert.equal(unused.recalled, 0, 'a memory nobody needed stays at zero');
+
+    // Reading the archive is not using it: NOSTROMO must not inflate what it shows.
+    memory.recallMemories('stripe webhook', { limit: 3, fallback: false, track: false });
+    assert.equal(memory.memories({ limit: 10 }).find((note) => note.kind === 'decision').recalled, 3);
+    memory.close();
+
+    // The counters survive: they live in the notes, which a rebuild keeps.
+    const again = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    assert.equal(again.memories({ limit: 10 }).find((note) => note.kind === 'decision').recalled, 3);
+    again.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -6,6 +6,14 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### NOSTROMO: la sala se ve viva
+- El núcleo de MADRE gira despacio sobre su propio eje. El giro se acelera cuando la memoria está trabajando y vuelve a su calma cuando termina.
+- Los pulsos de vida son aleatorios e independientes: cada uno sale por su cuenta, sin compás común, y viaja por el filamento que le toca hasta encender el recuerdo al que llega.
+- Los recuerdos que la sala usa reciben más pulsos. La actividad se mide de verdad: cuántas veces se recuperó ese recuerdo en un turno, hace cuánto fue la última, y cuántos temas comparte con otros. Un recuerdo que nadie pide casi no se enciende.
+- También hay pulsos entre recuerdos vinculados, sin pasar por el centro: dos notas que comparten un tema se hablan directo. Lo que se ve es la red que la sala fue tejiendo, no un abanico de radios.
+- La tarjeta de cada recuerdo dice cuántas veces se ha recuperado y cuándo fue la última, y el encabezado cuenta cuántos están vivos.
+- Misma imagen, menos máquina: la vista dejó de recalcular la constelación en cada cuadro y de pedir desenfoques al navegador, así que respira igual en una sala con cientos de recuerdos.
+
 ### El puente: alta completa sin terminal
 - Las partes que asumían un sistema tipo Unix dejaron de asumirlo: la detección reconoce las extensiones ejecutables de Windows, los instaladores se lanzan con el intérprete que toca y el reinicio usa el de cada sistema.
 - El agente local también se atiende desde el puente. Ollama no es un paquete de npm, así que la tarjeta ofrece el paso que toca según el sistema y con el comando a la vista: instalarlo, despertarlo, o descargar el modelo con el que responderá. Donde MADRE no tiene forma honesta de instalarlo, entrega la descarga en vez de inventar un comando. Es el único camino sin cuenta ni tarjeta, y el que enciende la memoria local.
