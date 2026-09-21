@@ -73,6 +73,7 @@
               <button id="mother-settings-button" class="mother-close" type="button" aria-pressed="false" title="Connections and room settings">⚙ CONNECTIONS</button>
               <button id="nostromo-button" class="mother-close nostromo-button" type="button" title="NOSTROMO · memory research · needs the project designation">◉ NOSTROMO</button>
               <button id="feedback-button" class="mother-close" type="button" title="Tell MADRE's author what happened or what you wish for · opens a prefilled issue">✎ FEEDBACK</button>
+              <button id="crew-button" class="mother-close" type="button" title="Add an agent: install and sign in">⚑ CREW</button>
               <button id="tour-button" class="mother-close tour-button" type="button" title="The four-step tour of MADRE" aria-label="Tour">?</button>
               <button id="mother-close" class="mother-close" type="button">END SESSION ×</button>
             </span>
@@ -102,6 +103,7 @@
             </svg>
             <strong>One conversation. Every agent.</strong>
             <span>Pick an agent and ask, or start with a mention such as <code>@codex summarize this project</code>.</span>
+            <div id="empty-starts" class="empty-starts"></div>
           </div>
         </div>
       </main>
@@ -111,6 +113,7 @@
         <h2>One agent is enough to open the room.</h2>
         <p>MADRE works with the AI coding agents on this computer, using the session each one already has. Install one here and sign in: the room opens by itself, no terminal.</p>
         <div id="bridge-crew" class="bridge-crew"></div>
+        <button id="bridge-close" class="bridge-close" type="button" hidden>BACK TO THE ROOM</button>
         <p class="hint">Nothing is installed without you pressing it, and the exact command is always shown. Same diagnosis in a terminal: <code>madre doctor</code></p>
       </section>
 

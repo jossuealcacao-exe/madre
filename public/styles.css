@@ -1133,3 +1133,13 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bridge-card .actions .note { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
 .bridge-log { margin: 0; max-height: 140px; overflow-y: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.55; color: var(--text-2); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
 .bridge-log a { color: var(--phosphor); }
+
+.bridge-card .account { font-size: 11px; line-height: 1.5; color: var(--text-3); }
+.bridge-card .account .free { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--phosphor); border: 1px solid color-mix(in srgb, var(--phosphor) 45%, transparent); border-radius: 999px; padding: 2px 7px; margin-right: 8px; }
+.conn-card .meta .account { margin-top: 4px; color: var(--ph-dim); }
+#bridge-close { margin-top: 4px; }
+.empty-starts { display: grid; gap: 6px; width: 100%; margin-top: 4px; }
+.empty-start { font: inherit; font-size: 12.5px; line-height: 1.45; text-align: left; color: var(--text-2); background: transparent; border: 1px solid var(--line-2); border-radius: 12px; padding: 9px 12px; cursor: pointer; transition: background-color .22s ease, color .22s ease, border-color .22s ease; }
+.empty-start:hover { color: var(--text); border-color: var(--text-3); background: color-mix(in srgb, var(--text) 4%, transparent); }
+.bridge-close { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.bridge-close:hover { color: var(--text); border-color: var(--text-3); }

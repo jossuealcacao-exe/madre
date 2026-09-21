@@ -40,7 +40,7 @@ import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, runInstaller } from './extensions.mjs';
-import { installPlanFor, loginPlanFor, probeAll } from './auth-probe.mjs';
+import { accountNoteFor, installPlanFor, loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
@@ -69,7 +69,7 @@ async function body(request) {
   return JSON.parse(text || '{}');
 }
 
-function openUrl(url) {
+export function openUrl(url) {
   const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
   const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
   execFile(command, args, () => {});
@@ -148,7 +148,7 @@ export async function createPulseServer({
   const install = detectInstall({ projectRoot: canonicalProjectRoot });
   async function versionView({ force = false } = {}) {
     const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
-    return { ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
+    return { project: canonicalProjectRoot, ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
   }
   // Privacy: the terms that never travel through this room, from config.json and the environment.
   // config.json is shared by every room on this machine, so the list is re-read before each
@@ -670,7 +670,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/state') {
         return sendJson(response, 200, {
           projectRoot,
-          agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent) })),
+          agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), ...(accountNoteFor(agent.id) ?? {}) })),
           ashCode: { enabled: room.ashCodeEnabled() },
           ripley: { enabled: await ripleyOn() },
           softTokenBudget,
@@ -777,7 +777,7 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/settings') {
         await refreshPrivacy();
-        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent) })) });
+        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), ...(accountNoteFor(agent.id) ?? {}) })) });
       }
       if (request.method === 'POST' && url.pathname === '/api/settings') {
         return sendJson(response, 200, { settings: await applySettings(await body(request)) });
@@ -911,7 +911,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/agents/probe') {
         // Look for the binaries again too: a CLI installed a moment ago must appear now.
         await redetectAgents();
-        return sendJson(response, 200, { sessions, sessionsAt, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent) })) });
+        return sendJson(response, 200, { sessions, sessionsAt, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), ...(accountNoteFor(agent.id) ?? {}) })) });
       }
       const installAgentMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/install$/);
       if (installAgentMatch) {

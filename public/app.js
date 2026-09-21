@@ -9,6 +9,7 @@ const els = {
   crewLabel: document.querySelector('#crew-label'),
   onboarding: document.querySelector('#onboarding'),
   bridgeCrew: document.querySelector('#bridge-crew'),
+  emptyStarts: document.querySelector('#empty-starts'),
   composer: document.querySelector('#composer'),
   picker: document.querySelector('#picker'),
   target: document.querySelector('#target'),
@@ -67,6 +68,7 @@ const state = {
   timeouts: {},
   seen: new Set(),
   userMessages: new Map(),
+  bridgePinned: false,      // the bridge stays open when the human asked for it
   ratings: new Map(),        // messageId → good | bad, from the ledger
   ratingNodes: new Map(),    // messageId → the buttons of that bubble // messageId -> { text, target }
   lastSequence: 0,
@@ -986,15 +988,43 @@ function renderOnboarding() {
   const crew = [...state.agents.values()];
   const ready = crew.filter((agent) => agent.ready && sessionOf(agent) !== 'signed-out');
   const usable = ready.length ? ready : crew.filter((agent) => agent.ready);
-  els.onboarding.hidden = usable.length > 0;
+  els.onboarding.hidden = usable.length > 0 && !state.bridgePinned;
   els.composer.setAttribute('aria-disabled', usable.length ? 'false' : 'true');
   els.input.disabled = !usable.length;
   els.send.disabled = !usable.length;
-  if (usable.length || !els.bridgeCrew) return;
+  renderEmptyStarts();
+  if (els.onboarding.hidden || !els.bridgeCrew) return;
   els.bridgeCrew.replaceChildren();
   for (const agent of crew) els.bridgeCrew.append(bridgeCard(agent));
+  const close = document.querySelector('#bridge-close');
+  if (close) close.hidden = !usable.length;
 }
 const sessionOf = (agent) => state.sessions?.[agent.id]?.state ?? 'unknown';
+
+// The blank page is its own friction: three first messages, written for this project.
+function renderEmptyStarts() {
+  const box = els.emptyStarts;
+  if (!box) return;
+  const ready = [...state.agents.values()].filter((agent) => agent.ready && agent.id !== 'madre');
+  box.replaceChildren();
+  if (!ready.length) return;
+  const project = (state.projectRoot ?? '').split('/').filter(Boolean).pop() || 'this project';
+  for (const text of [
+    `Explain ${project} to me: what it does, how it runs, and where the important code lives.`,
+    `Read the project and name the three things most likely to break. Say why, with file and line.`,
+    `What would you change first in ${project}, and what would you not touch?`,
+  ]) {
+    const chip = el('button', 'empty-start', text);
+    chip.type = 'button';
+    chip.addEventListener('click', () => {
+      els.input.value = text;
+      els.input.focus();
+      if (typeof autosize === 'function') autosize();
+      if (typeof renderHighlight === 'function') renderHighlight();
+    });
+    box.append(chip);
+  }
+}
 
 function bridgeCard(agent) {
   const card = paint(el('article', 'bridge-card'), agent.id);
@@ -1015,6 +1045,13 @@ function bridgeCard(agent) {
   else if (stage === 'missing') detail.append(agent.install ? `Not on this computer · ${agent.install.display}` : 'Not on this computer.');
   else detail.append(`${agent.version ?? 'version unknown'}${session?.detail ? ` · ${session.detail}` : ''}`);
   card.append(detail);
+  // What is behind this door: the account it needs, and whether there is a way in without paying.
+  if (agent.account) {
+    const account = el('div', 'account');
+    if (agent.paid === false) account.append(el('span', 'free', 'FREE WAY IN'));
+    account.append(agent.account);
+    card.append(account);
+  }
   const actions = el('div', 'actions');
   if (stage === 'missing' && agent.install) actions.append(bridgeInstallButton(agent));
   if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
@@ -1030,6 +1067,15 @@ function bridgeCard(agent) {
   card.append(log);
   return card;
 }
+// The bridge is first contact, but it also opens on demand to add another agent later.
+function openBridge() {
+  state.bridgePinned = true;
+  renderOnboarding();
+  els.onboarding.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+document.querySelector('#crew-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); openBridge(); });
+document.querySelector('#bridge-close')?.addEventListener('click', () => { state.bridgePinned = false; renderOnboarding(); });
+
 function bridgeInstallButton(agent) {
   const button = el('button', 'primary', `INSTALL · ${agent.install.display}`);
   button.type = 'button';
@@ -3520,6 +3566,7 @@ function connectionCard(agent) {
   const meta = el('div', 'meta');
   meta.append(agent.detected ? `${agent.version ?? 'version unknown'} · ${agent.path}` : (agent.login?.install ?? []).join(' · '));
   if (session?.detail) meta.append(el('div', null, `session: ${session.detail}`));
+  if (agent.account) meta.append(el('div', 'account', `${agent.paid === false ? 'FREE WAY IN · ' : ''}${agent.account}`));
   card.append(meta);
   const scopes = el('div', 'scopes');
   const agentScopes = settingsUI.data.settings.capabilities?.[agent.id]?.scopes ?? {};

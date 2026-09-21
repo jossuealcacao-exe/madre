@@ -7,6 +7,10 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ## 0.3.4 · Sin publicar
 
 ### El puente: alta completa sin terminal
+- Cada tarjeta dice qué hay detrás de esa puerta: con qué cuenta se firma ese agente y si hay una entrada sin pagar, con una marca `FREE WAY IN` donde la hay. La misma línea aparece en `⚙ CONNECTIONS`.
+- El puente se puede volver a abrir en cualquier momento desde `⚑ CREW`, en la cabecera de MU/TH/UR, para sumar otro agente sin salir de la sala.
+- Correr el comando otra vez sobre un proyecto que ya tiene sala abierta deja de levantar una segunda: MADRE reconoce la que ya está escuchando y te lleva a ella.
+- La sala vacía deja de ser una página en blanco: tres primeras frases, escritas con el nombre del proyecto, que llenan el campo de texto al tocarlas.
 - `madre start` ya no secuestra el arranque: la sala abre siempre, con agentes o sin ellos, y el asistente de terminal queda para quien lo pida (`madre setup`, o `madre start --setup`).
 - Sin nadie en línea, la sala abre en el PUENTE: una tarjeta por agente con su estado real y la única acción que le toca. `INSTALL` corre el comando en tu máquina, a la vista y transmitido línea a línea a esa misma tarjeta; `SIGN IN` lanza el login del propio CLI para Codex y Claude Code, con su enlace; Gemini y OpenCode muestran el comando de su prompt. Los mismos botones viven ahora en `⚙ CONNECTIONS`.
 - La sala vuelve a buscar los binarios cuando termina una instalación y cuando pulsas `RECHECK`: un CLI instalado desde la UX aparece en la fila sin reiniciar, y las páginas abiertas se enteran con `agents.updated`. El compositor se desbloquea solo en cuanto un agente queda listo.

@@ -90,23 +90,37 @@ export const AGENT_SETUP = {
     login: ['login'],
     loginNote: 'Opens your browser to sign in with ChatGPT.',
     browser: true,
+    // What a newcomer needs to know before choosing this door: which account, and whether
+    // there is a way in without paying. `paid: null` means it depends on the provider you pick.
+    vendor: 'OpenAI',
+    account: 'Signs in with a ChatGPT account. An OpenAI API key works too.',
+    paid: true,
   },
   claude: {
     install: ['npm install -g @anthropic-ai/claude-code', 'or: brew install --cask claude-code'],
     login: ['auth', 'login'],
     loginNote: 'Opens your browser to sign in with your Claude account.',
     browser: true,
+    vendor: 'Anthropic',
+    account: 'Signs in with a Claude account. An Anthropic API key works too.',
+    paid: true,
   },
   gemini: {
     install: ['npm install -g @google/gemini-cli'],
     login: [],
     loginNote: 'Gemini signs in from its own prompt: run `gemini`, type /auth, pick "Use Gemini API key" (get one at aistudio.google.com/app/apikey) or Google login.',
     interactive: true,
+    vendor: 'Google',
+    account: 'Signs in with a Google account and has a free tier. A Gemini API key from AI Studio works too.',
+    paid: false,
   },
   opencode: {
     install: ['brew install opencode', 'or: npm install -g opencode-ai'],
     login: ['auth', 'login'],
     loginNote: 'Pick a provider and paste its key or complete its OAuth flow.',
+    vendor: 'OpenCode',
+    account: 'Brings no model of its own: you point it at a provider you already use, in the cloud or on this computer.',
+    paid: null,
   },
 };
 
@@ -119,6 +133,13 @@ export const AGENT_PACKAGE = {
   gemini: '@google/gemini-cli',
   opencode: 'opencode-ai',
 };
+// One honest line per agent about the account it needs, for the bridge and for CONNECTIONS.
+export function accountNoteFor(id) {
+  if (id === 'madre') return { account: 'Free and local through Ollama: no account, no tokens. It answers from the room\'s memory.', paid: false, vendor: 'MADRE' };
+  const setup = AGENT_SETUP[id];
+  return setup ? { account: setup.account, paid: setup.paid, vendor: setup.vendor } : null;
+}
+
 export function installPlanFor(agent) {
   const name = AGENT_PACKAGE[agent?.id];
   if (!name) return null;

@@ -53,7 +53,7 @@ npx @jossuealcala/madre start --no-open --project RUTA
 
 ## LA SALA
 
-**El puente.** Sin agentes en línea la sala abre en el puente: una tarjeta por agente con su estado real y la única acción que le toca, `INSTALL` o `SIGN IN`. Todo corre en tu máquina, con el comando a la vista, y la salida se transmite a la misma pantalla. Codex y Claude Code se firman con un clic porque su CLI abre el navegador; Gemini y OpenCode te dan su comando para su propio prompt. El puente se repliega en cuanto un agente queda listo, y los mismos botones viven después en `⚙ CONNECTIONS`.
+**El puente.** Sin agentes en línea la sala abre en el puente: una tarjeta por agente con su estado real y la única acción que le toca, `INSTALL` o `SIGN IN`. Todo corre en tu máquina, con el comando a la vista, y la salida se transmite a la misma pantalla. Codex y Claude Code se firman con un clic porque su CLI abre el navegador; Gemini y OpenCode te dan su comando para su propio prompt. Cada tarjeta dice además con qué cuenta se firma ese agente y si hay una entrada sin pagar, para que elegir no sea a ciegas. El puente se repliega en cuanto un agente queda listo, vuelve con `⚑ CREW` en MU/TH/UR, y los mismos botones viven después en `⚙ CONNECTIONS`.
 
 **La barra.** La marca con su latido, la raíz del proyecto, la tripulación, `LIVE`, las alertas (`STOP ALL`, versión nueva), `MODULES`, `MU/TH/UR`, tema y panel de archivos. Cada esfera de agente lleva un anillo con su consumo: el límite real del proveedor cuando el CLI lo publica, si no, la ventana local de MADRE. Un clic la despliega.
 

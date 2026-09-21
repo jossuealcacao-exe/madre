@@ -3,7 +3,8 @@
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
-import { startPulse } from '../src/server.mjs';
+import { openUrl, startPulse } from '../src/server.mjs';
+import { realpath } from 'node:fs/promises';
 import { detectAgents } from '../src/runtime-detection.mjs';
 import { probeAll } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig } from '../src/config.mjs';
@@ -13,6 +14,26 @@ import { parseArgs } from '../src/cli-args.mjs';
 const cli = parseArgs(process.argv.slice(2));
 const { command } = cli;
 const option = (name, fallback) => cli.option(name.replace(/^--/, ''), fallback);
+
+// Is a MADRE already serving this very project nearby? `start` walks ports, so look along the
+// same short stretch and compare the project each one reports.
+async function roomAlreadyOpen(port, projectRoot, span = 8) {
+  const mine = await realpath(projectRoot).catch(() => resolve(projectRoot));
+  for (let candidate = port; candidate < port + span; candidate += 1) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${candidate}/api/version`, { signal: AbortSignal.timeout(500) });
+      if (!response.ok) continue;
+      const info = await response.json();
+      const theirs = info?.project ? await realpath(info.project).catch(() => info.project) : null;
+      if (theirs && theirs === mine) return { url: `http://127.0.0.1:${candidate}`, version: info.current ?? null };
+    } catch {
+      // nothing listening there, or not a MADRE: keep looking.
+    }
+  }
+  return null;
+}
+
+
 const has = (name) => cli.has(name.replace(/^--/, ''));
 
 // With an explicit --port a busy port is an error the user asked for. Without
@@ -151,6 +172,13 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   if (has('--setup')) {
     const { action } = await runSetup({ projectRoot, stateRoot });
     if (action !== 'start') process.exit(0);
+  }
+  // A room for this project may already be open. Show that one instead of starting a second.
+  const running = await roomAlreadyOpen(port, projectRoot);
+  if (running) {
+    console.log(`\nMADRE is already open for this project\n\n  ${running.url}\n  Project: ${projectRoot}\n  Close that room first if you want a fresh one.\n`);
+    if (!noOpen) openUrl(running.url);
+    process.exit(0);
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen });
 } else if (command === 'help') {
