@@ -47,13 +47,24 @@ async function executable(path) {
   }
 }
 
-export async function findExecutable(candidates, envPath = process.env.PATH ?? '') {
+// On Windows a CLI on PATH is `name.cmd`, `name.exe` or `name.ps1`: npm installs a .cmd shim.
+// PATHEXT is the system's own list of what counts as runnable, and the file has no execute bit.
+const extensions = (env = process.env) => (process.platform === 'win32'
+  ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean).map((extension) => extension.toLowerCase())
+  : ['']);
+
+export async function findExecutable(candidates, envPath = process.env.PATH ?? '', env = process.env) {
+  const suffixes = extensions(env);
+  const runnable = async (path) => (process.platform === 'win32' ? access(path).then(() => true, () => false) : executable(path));
   for (const candidate of candidates) {
-    if (candidate.includes('/') && await executable(candidate)) return candidate;
-    if (!candidate.includes('/')) {
-      for (const directory of envPath.split(delimiter).filter(Boolean)) {
-        const path = join(directory, candidate);
-        if (await executable(path)) return path;
+    if (candidate.includes('/') || candidate.includes('\\')) {
+      for (const suffix of candidate.includes('.') ? [''] : suffixes) if (await runnable(`${candidate}${suffix}`)) return `${candidate}${suffix}`;
+      continue;
+    }
+    for (const directory of envPath.split(delimiter).filter(Boolean)) {
+      for (const suffix of suffixes) {
+        const path = join(directory, `${candidate}${suffix}`);
+        if (await runnable(path)) return path;
       }
     }
   }

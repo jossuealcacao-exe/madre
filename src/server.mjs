@@ -602,7 +602,7 @@ export async function createPulseServer({
             const binary = await findOnPath('ollama');
             if (!binary) return { ok: false, error: 'Ollama is not on this computer yet.' };
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: 'ollama serve', platforms: [], alreadyInstalled: true });
-            const child = spawn(binary, ['serve'], { detached: true, stdio: 'ignore' });
+            const child = spawn(binary, ['serve'], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' });
             child.unref();
             // It answers in a moment or it does not: poll its own port rather than guess.
             let status = ollama;
@@ -917,7 +917,9 @@ export async function createPulseServer({
         sendJson(response, 202, { restarting: true, from: info.current, to: info.latest, command });
         setTimeout(() => {
           server.close(() => {
-            const child = spawn('/bin/sh', ['-c', command], { cwd: canonicalProjectRoot, detached: true, stdio: 'ignore', env: { ...process.env, PULSE_UPDATE_RESTART: '1' } });
+            // Each system has its own shell: the command is one line either way.
+            const shell = process.platform === 'win32' ? { file: process.env.COMSPEC ?? 'cmd.exe', args: ['/d', '/s', '/c', command] } : { file: '/bin/sh', args: ['-c', command] };
+            const child = spawn(shell.file, shell.args, { cwd: canonicalProjectRoot, detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore', env: { ...process.env, PULSE_UPDATE_RESTART: '1' } });
             child.unref();
             setTimeout(() => process.exit(0), 200);
           });

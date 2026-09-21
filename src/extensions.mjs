@@ -26,9 +26,10 @@ export async function listExtensions({ projectRoot, agents = [], config = {}, im
 
 // Runs one installer inside the project, streaming output lines. `runner`
 // lets tests substitute the real installer with a local script.
+// `npm` and other Node CLIs are .cmd shims on Windows, which cannot be spawned directly.
 export function runInstaller({ command, args, projectRoot, onLine, timeoutMs = 600000, heartbeatMs = 8000, env = process.env }) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32', windowsHide: true });
     const started = Date.now();
     let lastOutput = started;
     // Installers go quiet for long stretches (npm install, git status); say so.
