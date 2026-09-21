@@ -4396,10 +4396,39 @@ const CORE_CELLS = [
 // near the pointer has to be. Lower this and the whole constellation gives the core more room.
 const MEMORY_SCALE = 0.8;
 
-// The lava lamp: each blob keeps its own rate of rising and its own drift around the body, so
-// the halo never falls into step with itself.
-const LAVA_RATE = [0.061, 0.043, 0.078, 0.052, 0.036, 0.067, 0.047];
-const LAVA_DRIFT = [0.021, -0.014, 0.017, -0.026, 0.011, -0.019, 0.024];
+// ---- The corona.
+// The shell of plasma around the body is walked in fixed steps like the bands are, so the sine
+// and cosine of every wave that shapes it are worked out once here and read from a table.
+const CORONA_STEPS = 72;
+const CORONA_FREQS = [1, 2, 3, 5, 7, 8];
+const CORONA_SIN = {};
+const CORONA_COS = {};
+for (const freq of CORONA_FREQS) {
+  CORONA_SIN[freq] = Array.from({ length: CORONA_STEPS + 1 }, (_, k) => Math.sin(freq * (k / CORONA_STEPS) * Math.PI * 2));
+  CORONA_COS[freq] = Array.from({ length: CORONA_STEPS + 1 }, (_, k) => Math.cos(freq * (k / CORONA_STEPS) * Math.PI * 2));
+}
+// Four shells of plasma, each a closed edge made of waves: [how many times the wave goes round,
+// how deep it cuts, how fast its phase turns]. The speeds share no common multiple, so no shell
+// ever returns to a shape it has already held, and the four of them never line up.
+const CORONA_SHELLS = [
+  { reach: 1.30, alpha: 0.34, hot: '255, 196, 128', cool: '255, 108, 52', waves: [[2, 0.09, 0.118], [3, 0.065, -0.177], [5, 0.042, 0.255], [8, 0.026, -0.331]] },
+  { reach: 1.68, alpha: 0.24, hot: '255, 150, 74', cool: '236, 66, 34', waves: [[2, 0.125, -0.096], [3, 0.085, 0.156], [5, 0.055, -0.217], [7, 0.036, 0.281]] },
+  { reach: 2.22, alpha: 0.16, hot: '246, 96, 44', cool: '186, 30, 26', waves: [[1, 0.155, 0.080], [2, 0.115, -0.125], [3, 0.075, 0.191], [5, 0.048, -0.264]] },
+  { reach: 2.95, alpha: 0.1, hot: '214, 54, 34', cool: '128, 12, 18', waves: [[1, 0.2, -0.064], [2, 0.14, 0.102], [3, 0.09, -0.162], [5, 0.055, 0.232]] },
+];
+// Streamers drawn out along the field. `long` is how far this one reaches, `wide` how broad it
+// is at the limb, `curve` how much it leans away from straight, and the three rates decide when
+// it breathes, sways and drifts. No two share a rate.
+const CORONA_RAYS = [
+  { at: 0.0, long: 2.40, wide: 0.30, curve: 0.24, pulse: 0.284, sway: 0.164, drift: 0.0183 },
+  { at: 0.8, long: 0.60, wide: 0.22, curve: -0.19, pulse: 0.212, sway: -0.116, drift: -0.0129 },
+  { at: 1.7, long: 2.90, wide: 0.36, curve: 0.31, pulse: 0.356, sway: 0.148, drift: 0.0231 },
+  { at: 2.5, long: 0.45, wide: 0.19, curve: -0.27, pulse: 0.172, sway: -0.204, drift: -0.0177 },
+  { at: 3.3, long: 1.70, wide: 0.27, curve: 0.17, pulse: 0.268, sway: 0.092, drift: 0.0111 },
+  { at: 4.1, long: 2.20, wide: 0.33, curve: -0.22, pulse: 0.148, sway: -0.188, drift: -0.0213 },
+  { at: 4.9, long: 0.75, wide: 0.21, curve: 0.29, pulse: 0.316, sway: 0.124, drift: 0.0147 },
+  { at: 5.6, long: 1.35, wide: 0.25, curve: -0.15, pulse: 0.236, sway: -0.172, drift: -0.0093 },
+];
 
 function stepNostromo(dt, t) {
   const nodes = nostromo.nodes.filter((node) => node.scale > 0.01);
@@ -4654,73 +4683,86 @@ function drawNostromo(t) {
     return { x: px, y, z, light: Math.max(0, px * CORE_LIGHT.x + y * CORE_LIGHT.y + z * CORE_LIGHT.z) };
   };
 
-  // ---- The halo: a lava lamp.
+  // ---- The corona: liquid plasma, not a ring.
   //
-  // Heavy blobs of molten matter drift around the body, swell, lean toward each other and pull
-  // apart again. They are drawn with `lighter`, so where two overlap the light sums and a neck
-  // forms between them, the way wax behaves in oil. Their rise and fall dwells at the top and
-  // at the bottom instead of sliding evenly: that dwell is what makes it read as thick.
-  const haze = ctx.createRadialGradient(0, 0, R * 0.5, 0, 0, R * (3.2 + 0.5 * beat));
-  haze.addColorStop(0, `rgba(255, 42, 31, ${0.42 + 0.18 * beat})`);
-  haze.addColorStop(0.3, `rgba(180, 20, 20, ${0.2 + 0.09 * beat})`);
-  haze.addColorStop(1, 'rgba(120, 0, 10, 0)');
-  ctx.fillStyle = haze;
-  ctx.beginPath(); ctx.arc(0, 0, R * (3.2 + 0.5 * beat), 0, Math.PI * 2); ctx.fill();
-
-  const lavaTime = nostromo.reduced ? 0 : t;
-  const dwell = (s) => Math.tanh(1.9 * s) / 0.9562;   // a sine that lingers at both ends
-  const lavaAt = (i, time) => {
-    const rise = dwell(Math.sin(time * LAVA_RATE[i] + i * 1.7));
-    const reach = R * (1.5 + 1.05 * (0.5 + 0.5 * rise));
-    const angle = i * 2.3999 + time * LAVA_DRIFT[i] + 0.22 * Math.sin(time * 0.11 + i);
-    return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach * 0.86 };
-  };
-  // One blob of molten matter, stretched along the way it is going: slow means round, moving
-  // means drawn out. Area is kept, so it never looks like it changed size while turning.
-  const gooBlob = (x, y, radius, alpha, stretch, heading) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(heading);
-    ctx.scale(1 + stretch, 1 / (1 + stretch));
-    const skin = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, radius);
-    skin.addColorStop(0, `rgba(255, 138, 74, ${alpha})`);
-    skin.addColorStop(0.42, `rgba(236, 52, 30, ${alpha * 0.82})`);
-    skin.addColorStop(0.78, `rgba(150, 12, 18, ${alpha * 0.34})`);
-    skin.addColorStop(1, 'rgba(90, 0, 12, 0)');
-    ctx.fillStyle = skin;
-    ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  };
-
+  // The sun in space is not a disc with a glow drawn around it. It is a body inside a shell of
+  // plasma that never holds still: the shell is thicker here than there, it flows, and its edge
+  // is ragged in a way that keeps changing. Each shell's edge is the sum of a few waves turning
+  // at speeds that share no common multiple, so the shape drifts without ever coming back round
+  // to itself. Nothing here repeats, and nothing here is a circle.
+  //
+  // The shells are drawn additively, so where they pile up the light sums and the corona
+  // brightens exactly where the plasma is densest, the way it does on the real thing.
+  const coronaTime = nostromo.reduced ? 0 : t;
   ctx.globalCompositeOperation = 'lighter';
-  const lava = [];
-  for (let i = 0; i < LAVA_RATE.length; i += 1) {
-    const now = lavaAt(i, lavaTime);
-    const then = lavaAt(i, lavaTime - 0.09);
-    const vx = now.x - then.x;
-    const vy = now.y - then.y;
-    const speed = Math.hypot(vx, vy);
-    const radius = R * (0.42 + 0.2 * Math.sin(lavaTime * 0.21 + i * 2.1));
-    lava.push({ ...now, radius });
-    gooBlob(now.x, now.y, radius, 0.2 + 0.09 * beat, Math.min(0.42, speed * 0.5), Math.atan2(vy, vx));
-  }
-  // Where two blobs come close the matter between them thins into a neck instead of breaking
-  // cleanly. A few smaller blobs strung along the gap make that neck, and it pinches off on
-  // its own as they part.
-  for (let i = 0; i < lava.length; i += 1) {
-    for (let j = i + 1; j < lava.length; j += 1) {
-      const a = lava[i];
-      const b = lava[j];
-      const gap = Math.hypot(b.x - a.x, b.y - a.y) - (a.radius + b.radius);
-      if (gap > R * 0.55 || gap < -R * 0.9) continue;
-      const pull = 1 - Math.max(0, gap) / (R * 0.55);
-      for (let k = 1; k <= 3; k += 1) {
-        const u = k / 4;
-        const waist = Math.min(a.radius, b.radius) * (0.34 + 0.4 * pull) * (1 - 0.45 * Math.sin(u * Math.PI));
-        gooBlob(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, waist, 0.13 * pull, 0, 0);
-      }
+  for (const shell of CORONA_SHELLS) {
+    // Each wave's phase is worked out once for the whole ring, then carried around it by angle
+    // addition against the tables: four waves cost four sines a frame instead of three hundred.
+    const waves = shell.waves.map(([freq, amp, speed]) => {
+      const phase = coronaTime * speed;
+      return { sin: CORONA_SIN[freq], cos: CORONA_COS[freq], amp, cp: Math.cos(phase), sp: Math.sin(phase) };
+    });
+    const reach = shell.reach * (1 + 0.06 * beat + 0.14 * alarm);
+    let furthest = 0;
+    ctx.beginPath();
+    for (let k = 0; k <= CORONA_STEPS; k += 1) {
+      let wobble = 0;
+      for (const wave of waves) wobble += wave.amp * (wave.sin[k] * wave.cp + wave.cos[k] * wave.sp);
+      const radius = R * reach * (1 + wobble);
+      if (radius > furthest) furthest = radius;
+      const x = CORONA_COS[1][k] * radius;
+      const y = CORONA_SIN[1][k] * radius;
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
+    ctx.closePath();
+    // The body sits in the middle of this and covers it, so the middle is not painted: a hole
+    // wound the other way turns the shell into what it actually is, a ring of plasma.
+    ctx.arc(0, 0, R * 0.96, Math.PI * 2, 0, true);
+    ctx.closePath();
+    // Plasma is thin against the body and thickens a little way out before it thins into space.
+    const plasma = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, Math.max(R * 1.01, furthest));
+    plasma.addColorStop(0, `rgba(${shell.hot}, ${shell.alpha * (0.55 + 0.45 * beat)})`);
+    plasma.addColorStop(0.34, `rgba(${shell.hot}, ${shell.alpha * 0.72})`);
+    plasma.addColorStop(0.72, `rgba(${shell.cool}, ${shell.alpha * 0.3})`);
+    plasma.addColorStop(1, `rgba(${shell.cool}, 0)`);
+    ctx.fillStyle = plasma;
+    ctx.fill();
   }
+
+  // Streamers: the corona does not end evenly. Plasma is drawn out along the field into long
+  // rays that lean, stretch and fade on their own clocks. They are what makes the shape read as
+  // the sun rather than as a lamp.
+  for (let i = 0; i < CORONA_RAYS.length; i += 1) {
+    const ray = CORONA_RAYS[i];
+    const angle = ray.at + coronaTime * ray.drift + 0.16 * Math.sin(coronaTime * ray.sway + i);
+    const breath = 0.5 + 0.5 * Math.sin(coronaTime * ray.pulse + i * 2.1);
+    const reach = R * (1.5 + ray.long * (0.45 + 0.55 * breath)) * (1 + 0.1 * beat + 0.3 * alarm);
+    const half = ray.wide * (1.15 - 0.35 * breath);
+    // The tip leans off the radius, so a streamer curves away instead of pointing straight out.
+    const lean = angle + ray.curve * (0.6 + 0.4 * Math.sin(coronaTime * ray.sway * 1.7 + i));
+    const tipX = Math.cos(lean) * reach;
+    const tipY = Math.sin(lean) * reach;
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.98, angle - half, angle + half);
+    ctx.quadraticCurveTo(Math.cos(angle + half * 0.4) * reach * 0.62, Math.sin(angle + half * 0.4) * reach * 0.62, tipX, tipY);
+    ctx.quadraticCurveTo(Math.cos(angle - half * 0.4) * reach * 0.62, Math.sin(angle - half * 0.4) * reach * 0.62, Math.cos(angle - half) * R * 0.98, Math.sin(angle - half) * R * 0.98);
+    ctx.closePath();
+    const light = ctx.createLinearGradient(Math.cos(angle) * R, Math.sin(angle) * R, tipX, tipY);
+    light.addColorStop(0, `rgba(255, 176, 104, ${(0.2 + 0.12 * breath) * (0.7 + 0.3 * beat)})`);
+    light.addColorStop(0.42, `rgba(255, 96, 48, ${0.1 + 0.07 * breath})`);
+    light.addColorStop(1, 'rgba(180, 24, 24, 0)');
+    ctx.fillStyle = light;
+    ctx.fill();
+  }
+
+  // The chromosphere: where the plasma meets the body it is at its densest and brightest, a
+  // thin skin of fire sitting right on the limb.
+  const skin = ctx.createRadialGradient(0, 0, R * 0.88, 0, 0, R * 1.3);
+  skin.addColorStop(0, 'rgba(255, 92, 44, 0)');
+  skin.addColorStop(0.42, `rgba(255, 128, 62, ${0.3 + 0.18 * beat})`);
+  skin.addColorStop(1, 'rgba(255, 70, 34, 0)');
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(0, 0, R * 1.3, 0, Math.PI * 2); ctx.fill();
   ctx.globalCompositeOperation = 'source-over';
 
   // ---- The body.

@@ -119,12 +119,21 @@ async function nostromoRenderer(room, { conic = false } = {}) {
     set: (target, key, value) => { calls.push({ name: `set:${String(key)}`, args: [value] }); state[key] = value; return true; },
   });
 
+  // The corona's tables are filled by a loop, so that whole stretch of the file comes across.
+  const region = (from, to) => {
+    const start = source.indexOf(from);
+    const end = source.indexOf(to, start);
+    assert.ok(start >= 0 && end > start, `${from} .. ${to} is gone from public/app.js`);
+    return source.slice(start, source.indexOf('];', end) + 2);
+  };
+
   const run = new Function('ctx', 'nostromo', `
     const document = { querySelector: () => null };
     const window = { devicePixelRatio: 1 };
-    ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')}
+    ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
-    ${block('CORE_BANDS')} ${block('CORE_CELLS')} ${block('LAVA_RATE')} ${block('LAVA_DRIFT')}
+    ${block('CORE_BANDS')} ${block('CORE_CELLS')}
+    ${region('const CORONA_STEPS', 'const CORONA_RAYS')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')}
     ${fn('drawNostromo')}
@@ -195,67 +204,126 @@ test('nostromo: the core is a body, so its surface goes round the back as it tur
   assert.ok(widest <= radius * 1.3, `surface drawing stayed on the body, widest was ${widest.toFixed(1)}`);
 });
 
-test('nostromo: the lava halo keeps moving and never falls into step with itself', async () => {
+test('nostromo: the corona is liquid, and no two shells of it move together', async () => {
   const room = fakeRoom();
   const { run, calls } = await nostromoRenderer(room);
 
-  // The lava is drawn in `lighter`, so the frame has to switch into it and back out again:
+  // The plasma is drawn additively, so the frame has to switch into it and back out again:
   // leaving it on would wash out everything drawn afterwards.
   run(0);
   const composites = calls.filter((c) => c.name === 'set:globalCompositeOperation').map((c) => c.args[0]);
-  assert.ok(composites.includes('lighter'), 'the lava never blends');
+  assert.ok(composites.includes('lighter'), 'the plasma never blends');
   assert.equal(composites.at(-1), 'source-over', 'the frame left additive blending switched on');
 
-  // Blob positions over two minutes: each has to travel, and no two may march together.
-  const tracks = [];
-  for (let frame = 0; frame < 120; frame += 1) {
-    calls.length = 0;
-    run(frame);
-    // The blobs are the translate() calls made while `lighter` is on.
-    let blending = false;
-    const here = [];
-    for (const call of calls) {
-      if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
-      else if (blending && call.name === 'translate') here.push(call.args);
-    }
-    tracks.push(here);
-  }
-  const blobs = Math.min(...tracks.map((frameTrack) => frameTrack.length));
-  assert.ok(blobs >= 7, `the halo should carry a handful of blobs, saw ${blobs}`);
-
-  const path = (index) => tracks.map((frameTrack) => frameTrack[index]);
-  const travelled = (index) => path(index).reduce((total, point, i, all) => (i === 0 ? 0 : total + Math.hypot(point[0] - all[i - 1][0], point[1] - all[i - 1][1])), 0);
-  for (let i = 0; i < 7; i += 1) assert.ok(travelled(i) > 60, `blob ${i} barely moved (${travelled(i).toFixed(1)})`);
-
-  // Independence: two blobs that rose and fell together would have the same distance-from-core
-  // curve. Compare the first two and require them to disagree somewhere.
-  const reach = (index) => path(index).map(([x, y]) => Math.hypot(x, y));
-  const [a, b] = [reach(0), reach(1)];
-  const drift = a.map((value, i) => Math.abs(value - b[i]));
-  assert.ok(Math.max(...drift) > 20, 'two blobs are rising and falling in lockstep');
-});
-
-test('nostromo: reduced motion stills the lava without emptying the room', async () => {
-  const room = { ...fakeRoom(), reduced: true };
-  const { run, calls } = await nostromoRenderer(room);
-  // Where each blob sits around the body. The room still breathes with its heartbeat, which is
-  // not motion anyone asked to be spared; what must not happen is drifting, rising and falling.
-  const bearings = (t) => {
+  // Each shell is one closed edge walked in steps: how far the plasma reaches at every point of
+  // the compass. Collect those edges across a long stretch of time and measure them.
+  const shellsAt = (t) => {
     calls.length = 0;
     run(t);
     let blending = false;
-    const angles = [];
+    const edges = [];
+    let edge = null;
     for (const call of calls) {
       if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
-      else if (blending && call.name === 'translate') angles.push(Math.atan2(call.args[1], call.args[0]));
+      else if (blending && call.name === 'moveTo') edge = [Math.hypot(...call.args)];
+      else if (blending && call.name === 'lineTo' && edge) edge.push(Math.hypot(...call.args));
+      else if (blending && call.name === 'fill' && edge) { if (edge.length > 60) edges.push(edge); edge = null; }
     }
-    return angles.slice(0, 7);
+    return edges;
   };
-  const first = bearings(0);
-  assert.equal(first.length, 7, 'a still room still draws its halo');
-  for (const later of [bearings(25), bearings(140)]) {
-    for (let i = 0; i < 7; i += 1) {
-      assert.ok(Math.abs(later[i] - first[i]) < 1e-9, `blob ${i} drifted for someone who asked for stillness`);
+
+  const first = shellsAt(0);
+  assert.equal(first.length, 4, `the corona should be four shells, saw ${first.length}`);
+
+  // Liquid, not a ring: the edge is never the same distance out all the way round.
+  for (const shell of first) {
+    const spread = (Math.max(...shell) - Math.min(...shell)) / Math.max(...shell);
+    assert.ok(spread > 0.1, `a shell came out round to within ${(spread * 100).toFixed(1)}%`);
+  }
+
+  // It flows, and it never comes back round to a shape it has already held.
+  const history = [];
+  for (let minute = 0; minute < 120; minute += 1) history.push(shellsAt(minute));
+  for (let i = 0; i < 4; i += 1) {
+    const shapes = history.map((frame) => frame[i]);
+    const moved = shapes.slice(1).map((shape, k) => shape.reduce((sum, value, j) => sum + Math.abs(value - shapes[k][j]), 0) / shape.length);
+    assert.ok(Math.min(...moved) > 0.2, `shell ${i} held still for a while`);
+    let nearest = Infinity;
+    for (let a = 0; a < shapes.length; a += 1) {
+      for (let b = a + 12; b < shapes.length; b += 1) {
+        const diff = shapes[a].reduce((sum, value, j) => sum + Math.abs(value - shapes[b][j]), 0) / shapes[a].length;
+        nearest = Math.min(nearest, diff);
+      }
+    }
+    assert.ok(nearest > 0.4, `shell ${i} came back round to an old shape (within ${nearest.toFixed(2)})`);
+  }
+
+  // And the shells do not move together. What turns is the shape, not the size, so the thing to
+  // watch is where each shell bulges furthest out: if two of them flowed in step, the angle
+  // between their bulges would hold. It has to wander instead.
+  const bulge = (i) => history.map((frame) => {
+    const shell = frame[i];
+    let best = 0;
+    for (let k = 1; k < shell.length; k += 1) if (shell[k] > shell[best]) best = k;
+    return (best / (shell.length - 1)) * Math.PI * 2;
+  });
+  const wrap = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
+  for (const [a, b] of [[0, 1], [1, 2], [2, 3], [0, 3]]) {
+    const between = bulge(a).map((angle, i) => wrap(angle - bulge(b)[i]));
+    const mean = between.reduce((sum, value) => sum + value, 0) / between.length;
+    const wander = Math.sqrt(between.reduce((sum, value) => sum + (value - mean) ** 2, 0) / between.length);
+    assert.ok(wander > 0.5, `shells ${a} and ${b} are flowing in lockstep (${wander.toFixed(2)} rad of wander)`);
+  }
+});
+
+test('nostromo: the streamers reach out unevenly and lean as they go', async () => {
+  const room = fakeRoom();
+  const { run, calls } = await nostromoRenderer(room);
+  // A streamer is a wedge: an arc at the limb, then two curves out to a tip and back. The tips
+  // are what give the corona its silhouette, so they have to differ and to keep changing.
+  const tips = (t) => {
+    calls.length = 0;
+    run(t);
+    let blending = false;
+    const out = [];
+    for (const call of calls) {
+      if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
+      else if (blending && call.name === 'quadraticCurveTo') out.push(Math.hypot(call.args[2], call.args[3]));
+    }
+    return out.filter((_, i) => i % 2 === 0);
+  };
+  const now = tips(0);
+  assert.ok(now.length >= 8, `the corona should carry streamers, saw ${now.length}`);
+  assert.ok(Math.max(...now) > Math.min(...now) * 1.4, 'every streamer reaches exactly as far as the others');
+
+  const later = tips(90);
+  assert.ok(now.some((value, i) => Math.abs(value - later[i]) > 4), 'the streamers are frozen');
+  for (const value of [...now, ...later]) assert.ok(Number.isFinite(value) && value > 0);
+});
+
+test('nostromo: reduced motion stills the plasma without emptying the room', async () => {
+  const room = { ...fakeRoom(), reduced: true };
+  const { run, calls } = await nostromoRenderer(room);
+  // Where the plasma reaches, all the way round. The room still breathes with its heartbeat,
+  // which is not motion anyone asked to be spared; what must stop is the flowing and the drift.
+  const shape = (t) => {
+    calls.length = 0;
+    run(t);
+    let blending = false;
+    const out = [];
+    for (const call of calls) {
+      if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
+      else if (blending && (call.name === 'lineTo' || call.name === 'moveTo')) out.push(Math.hypot(...call.args));
+    }
+    const mean = out.reduce((a, b) => a + b, 0) / out.length;
+    return out.map((value) => value / mean);   // the shape alone, with the heartbeat divided out
+  };
+  const first = shape(0);
+  assert.ok(first.length > 200, 'a still room still draws its corona');
+  for (const t of [25, 140]) {
+    const later = shape(t);
+    for (let i = 0; i < first.length; i += 1) {
+      assert.ok(Math.abs(later[i] - first[i]) < 1e-9, `the plasma flowed at ${t}s for someone who asked for stillness`);
     }
   }
 });
