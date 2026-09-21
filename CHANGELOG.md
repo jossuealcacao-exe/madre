@@ -7,13 +7,17 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ## 0.4.0 · Sin publicar
 
 ### NOSTROMO: la sala se ve viva
-- El núcleo de MADRE gira despacio sobre su propio eje. El giro se acelera cuando la memoria está trabajando y vuelve a su calma cuando termina.
+- El núcleo de MADRE es un cuerpo, no un disco. Todo lo que vive en su superficie tiene latitud y longitud, y se proyecta antes de dibujarse: las bandas de plasma se angostan hacia el borde y se van por detrás conforme el planeta gira, y las tormentas cruzan la cara y desaparecen en el limbo.
+- Hay un sol fijo. El planeta gira debajo de él, así que hay lado de día y lado de noche, con un terminador suave entre los dos, el borde más denso que el centro y un brillo apretado donde la luz pega de verdad. Esas tres cosas son las que convierten un círculo en una esfera.
+- Alrededor, una lámpara de lava. Gotas pesadas de materia fundida suben, se hinchan, se inclinan unas hacia otras y se vuelven a separar. Se dibujan sumando luz, así que donde dos se enciman la luz se suma y aparece el cuello entre ellas, como se comporta la cera en el aceite. Cada gota sube y baja a su propio ritmo y se demora arriba y abajo: esa demora es lo que se siente viscoso.
+- El núcleo de MADRE gira despacio sobre su propio eje, y el eje va inclinado. El giro se acelera cuando la memoria está trabajando y vuelve a su calma cuando termina.
 - Los pulsos de vida son aleatorios e independientes: cada uno sale por su cuenta, sin compás común, y viaja por el filamento que le toca hasta encender el recuerdo al que llega.
 - Los recuerdos que la sala usa reciben más pulsos. La actividad se mide de verdad: cuántas veces se recuperó ese recuerdo en un turno, hace cuánto fue la última, y cuántos temas comparte con otros. Un recuerdo que nadie pide casi no se enciende.
 - La constelación se lee contra sí misma: el recuerdo más activo es el más brillante y los demás se escalan debajo. Una sala recién abierta, donde todavía no se ha recuperado nada, se sostiene con los vínculos que ya tejió; en cuanto los turnos empiezan a pedir recuerdos, el uso manda.
 - También hay pulsos entre recuerdos vinculados, sin pasar por el centro: dos notas que comparten un tema se hablan directo. Lo que se ve es la red que la sala fue tejiendo, no un abanico de radios.
 - La tarjeta de cada recuerdo dice cuántas veces se ha recuperado y cuándo fue la última, y el encabezado cuenta cuántos están vivos.
-- Misma imagen, menos máquina: la vista dejó de recalcular la constelación en cada cuadro y de pedir desenfoques al navegador, así que respira igual en una sala con cientos de recuerdos.
+- Misma imagen, menos máquina: la vista dejó de recalcular la constelación en cada cuadro y de pedir desenfoques al navegador. Un archivo con cuatrocientos recuerdos cuesta los mismos desenfoques que uno con doce, y son diez por cuadro en vez de noventa.
+- Con movimiento reducido el halo se queda quieto: las gotas dejan de subir y de derivar, y la sala sigue dibujándose completa.
 
 ### El puente: alta completa sin terminal
 - Las partes que asumían un sistema tipo Unix dejaron de asumirlo: la detección reconoce las extensiones ejecutables de Windows, los instaladores se lanzan con el intérprete que toca y el reinicio usa el de cada sistema.
