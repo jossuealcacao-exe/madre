@@ -76,7 +76,7 @@ test('nostromo: activity is bounded, so no memory can burn out the view', async 
 // it needs a canvas. So the drawing path is lifted out of the shipped client and run against a
 // context that records instead of paints. It catches what a screenshot cannot: a reference that
 // does not resolve, a colour that comes out as `NaN`, geometry that leaves the body.
-async function nostromoRenderer(room, { conic = false } = {}) {
+async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) {
   const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
   const fn = (name) => {
     const start = source.indexOf(`function ${name}(`);
@@ -127,20 +127,38 @@ async function nostromoRenderer(room, { conic = false } = {}) {
     return source.slice(start, source.indexOf('];', end) + 2);
   };
 
-  const run = new Function('ctx', 'nostromo', `
-    const document = { querySelector: () => null };
+  // The star builds its granulation into a canvas of its own, so the harness has to be able to
+  // hand it one. It records like the main context does, and reports a size, which is what the
+  // wrapping reads back.
+  const offscreen = [];
+  const makeCanvas = () => {
+    const own = [];
+    const paint = new Proxy({
+      createRadialGradient: () => gradient(), createLinearGradient: () => gradient(),
+      fillRect: (...args) => own.push({ name: 'fillRect', args }), beginPath: () => {}, closePath: () => {},
+      arc: (...args) => own.push({ name: 'arc', args }), fill: () => own.push({ name: 'fill', args: [] }),
+      moveTo: () => {}, lineTo: () => {}, stroke: () => {}, save: () => {}, restore: () => {},
+    }, { get: (target, key) => (key in target ? target[key] : undefined), set: () => true });
+    const canvas = { width: 0, height: 0, getContext: () => paint, calls: own };
+    offscreen.push(canvas);
+    return canvas;
+  };
+
+  const run = new Function('ctx', 'nostromo', 'makeCanvas', 'NO_CANVAS', `
+    const document = { querySelector: () => null, createElement: (tag) => { if (NO_CANVAS) throw new Error('no canvas here'); return tag === 'canvas' ? makeCanvas() : null; } };
     const window = { devicePixelRatio: 1 };
     ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
     ${block('CORE_BANDS')} ${block('CORE_CELLS')}
+    ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${region('const CORONA_STEPS', 'const CORONA_RAYS')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')}
     ${fn('drawNostromo')}
     nostromo.canvas = { getContext: () => ctx };
     return (t) => drawNostromo(t);
-  `)(ctx, room);
-  return { run, calls };
+  `)(ctx, room, makeCanvas, noCanvas);
+  return { run, calls, offscreen };
 }
 
 function fakeRoom() {
@@ -149,7 +167,7 @@ function fakeRoom() {
     memory: { id: i + 1, kind: kinds[i % 4], text: `memory ${i}`, sources: [1], fromSequence: 1, throughSequence: 9, recalled: i, lastRecalled: new Date().toISOString() },
     angle: i, distance: 0.5 + (i % 5) * 0.1, activity: 0.08 + i * 0.07, lit: i % 3 === 0 ? 0.8 : 0,
     x: Math.cos(i) * 300, y: Math.sin(i) * 300, vx: 0, vy: 0, r: 9, scale: 1, seed: i, smoke: [],
-    color: '#ff5f4a', placed: true, spin: i * 0.3,
+    color: '#ff5f4a', placed: true, spin: i * 0.3, rate: 0.5 + (i % 7) * 0.13,
   }));
   return {
     nodes, links: [{ a: 1, b: 2, weight: 0.8 }, { a: 3, b: 5, weight: 0.4 }],
@@ -345,29 +363,119 @@ test('nostromo: a room in lockdown turns faster, and an alarm swells the body', 
   }
 });
 
-test('nostromo: the atmosphere is drawn whole on a modern engine and still drawn on an old one', async () => {
-  // A shell of air is one shell. Where the engine can shade a stroke as it goes round, it is
-  // one stroke; where it cannot, the day side and the night side are two. Neither may leave a
-  // bad number behind, and both have to put the night side in shadow.
-  const alphas = (calls) => calls.filter((c) => c.name === 'addColorStop' || c.name === 'set:strokeStyle')
-    .map((c) => String(c.args.at(-1)))
-    .filter((value) => value.startsWith('rgba(255, 19'))
-    .map((value) => Number(value.match(/,\s*([\d.]+)\)$/)?.[1]));
+test('nostromo: the core lights itself, so it has no dark side and no highlight', async () => {
+  const { run, calls } = await nostromoRenderer(fakeRoom());
+  run(0.4);
 
-  const modern = await nostromoRenderer(fakeRoom(), { conic: true });
-  modern.run(0.4);
-  assert.equal(modern.calls.filter((c) => c.name === 'createConicGradient').length, 1, 'the shell should be one gradient');
+  // A star is bright all the way across and dims only at the very edge. A gradient that starts
+  // dark in the middle and ends clear would be a planet's terminator, and there must be none.
+  const limb = calls.filter((c) => c.name === 'createRadialGradient' && c.args[0] === 0 && c.args[1] === 0 && c.args[4] === 0);
+  assert.ok(limb.length > 0, 'the body is not drawn from its own middle');
 
-  const older = await nostromoRenderer(fakeRoom());
-  older.run(0.4);
-  assert.equal(older.calls.filter((c) => c.name === 'createConicGradient').length, 0);
+  // The chromosphere at the limb is one ring, the same brightness the whole way round: it is a
+  // single stroke, not a gradient that turns with a light.
+  assert.equal(calls.filter((c) => c.name === 'createConicGradient').length, 0, 'the limb is still being lit from one side');
+});
 
-  for (const [label, frame] of [['modern', modern], ['older', older]]) {
-    const shell = alphas(frame.calls);
-    assert.ok(shell.length >= 2, `${label} drew no atmosphere`);
-    assert.ok(Math.max(...shell) > Math.min(...shell) * 2, `${label} lit the night side as brightly as the day side`);
-    for (const value of shell) assert.ok(Number.isFinite(value) && value >= 0 && value <= 1, `${label} produced alpha ${value}`);
+test('nostromo: the surface boils, and turning the star moves the grain across its face', async () => {
+  const room = fakeRoom();
+  const { run, calls, offscreen } = await nostromoRenderer(room);
+  run(0);
+
+  // The granulation is built once, into a strip twice as wide as it is used, so the window can
+  // slide along it without ever meeting a seam.
+  assert.equal(offscreen.length, 1, `the grain should be built once, saw ${offscreen.length}`);
+  const strip = offscreen[0];
+  assert.ok(strip.width >= strip.height * 2, 'the strip is not wide enough to wrap the body');
+  assert.ok(strip.calls.filter((c) => c.name === 'arc').length > 3000, 'the surface has too few cells to boil');
+
+  // It is built once and no more: a second frame must not pay for it again.
+  const before = strip.calls.length;
+  run(1);
+  assert.equal(offscreen.length, 1, 'the grain was rebuilt mid-flight');
+  assert.equal(strip.calls.length, before, 'the grain was repainted mid-flight');
+
+  // Turning the star slides the window along the strip. Same rows, different source.
+  const windows = (spin) => {
+    room.spin = spin;
+    calls.length = 0;
+    run(2);
+    return calls.filter((c) => c.name === 'drawImage').map((c) => c.args[1]);
+  };
+  const first = windows(0);
+  assert.ok(first.length > 60, `the face should be drawn in rows and pieces, saw ${first.length}`);
+  const turned = windows(Math.PI / 2);
+  assert.equal(first.length, turned.length, 'the face changed shape as it turned');
+  assert.ok(first.some((value, i) => Math.abs(value - turned[i]) > 1), 'the grain did not move when the star turned');
+
+  // A quarter turn and a quarter turn past a full one land on the same place: the strip wraps.
+  const round = windows(Math.PI / 2 + Math.PI * 2);
+  for (let i = 0; i < first.length; i += 1) assert.ok(Math.abs(turned[i] - round[i]) < 1e-6, 'the wrap does not come back round');
+});
+
+test('nostromo: a star with no canvas to build its grain in still draws', async () => {
+  // Some engines refuse a second canvas. The room has to lose the texture and keep the star.
+  const { run, calls } = await nostromoRenderer(fakeRoom(), { noCanvas: true });
+  run(0.3);
+  assert.equal(calls.filter((c) => c.name === 'drawImage').length, 0, 'it drew a texture it never built');
+  assert.ok(calls.length > 1500, 'the star vanished along with its grain');
+  for (const call of calls) {
+    for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
   }
+});
+
+test('nostromo: every memory is a lit sphere, and each breathes on its own', async () => {
+  const room = fakeRoom();
+  const { run, calls } = await nostromoRenderer(room);
+
+  // The light in this room comes from one place. A memory's body is the radial gradient whose
+  // outer circle sits exactly on it; its inner circle is the highlight, and that has to lean
+  // toward MOTHER at the origin, never away from her.
+  run(0);
+  let checked = 0;
+  for (const node of room.nodes) {
+    // Centred on the memory, but with its bright point off to one side: the halo and a pulse
+    // arriving are both centred there too, and both are concentric.
+    const body = calls.find((c) => c.name === 'createRadialGradient'
+      && c.args[3] === node.x && c.args[4] === node.y && c.args[2] < 1
+      && (c.args[0] !== node.x || c.args[1] !== node.y));
+    assert.ok(body, 'a memory was drawn without a lit face');
+    const lean = -((body.args[0] - node.x) * node.x + (body.args[1] - node.y) * node.y);
+    assert.ok(lean > 0, 'a memory is lit from the side facing away from the core');
+    checked += 1;
+  }
+  assert.equal(checked, room.nodes.length);
+
+  // Micro-pulsation: the body's own radius, frame by frame. Each memory breathes, none of them
+  // together, and none of it is big enough to read as a flash.
+  // The body itself is the one arc round a memory that is closed into a path to clip with;
+  // everything else centred there is a halo, a rim or a pulse landing.
+  const radiusOf = (node) => {
+    for (let i = 0; i < calls.length - 1; i += 1) {
+      const call = calls[i];
+      if (call.name !== 'arc' || call.args[0] !== node.x || call.args[1] !== node.y) continue;
+      if (calls[i + 1].name === 'closePath') return call.args[2];
+    }
+    return NaN;
+  };
+  const tracks = room.nodes.map(() => []);
+  for (let frame = 0; frame < 240; frame += 1) {
+    calls.length = 0;
+    run(frame * 0.25);
+    room.nodes.forEach((node, i) => tracks[i].push(radiusOf(node)));
+  }
+  const swing = (series) => (Math.max(...series) - Math.min(...series)) / Math.max(...series);
+  for (let i = 0; i < tracks.length; i += 1) {
+    const series = tracks[i];
+    assert.ok(series.every(Number.isFinite), `memory ${i} was not drawn in every frame`);
+    assert.ok(swing(series) > 0.04, `memory ${i} does not breathe (${(swing(series) * 100).toFixed(1)}%)`);
+    assert.ok(swing(series) < 0.2, `memory ${i} pulses hard enough to read as a flash (${(swing(series) * 100).toFixed(0)}%)`);
+  }
+
+  // Lives of their own: memories given different rates must not reach their fullest together.
+  const peak = (series) => series.indexOf(Math.max(...series));
+  const peaks = new Set(tracks.map(peak));
+  assert.ok(peaks.size > tracks.length / 2, `${tracks.length - peaks.size} memories are breathing in step`);
 });
 
 test('nostromo: a crowded archive does not cost a blur for every memory in it', async () => {

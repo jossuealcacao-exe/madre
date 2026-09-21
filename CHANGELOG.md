@@ -7,8 +7,10 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ## 0.4.0 · Sin publicar
 
 ### NOSTROMO: la sala se ve viva
-- El núcleo de MADRE es un cuerpo, no un disco. Todo lo que vive en su superficie tiene latitud y longitud, y se proyecta antes de dibujarse: las bandas de plasma se angostan hacia el borde y se van por detrás conforme el planeta gira, y las tormentas cruzan la cara y desaparecen en el limbo.
-- Hay un sol fijo. El planeta gira debajo de él, así que hay lado de día y lado de noche, con un terminador suave entre los dos, el borde más denso que el centro y un brillo apretado donde la luz pega de verdad. Esas tres cosas son las que convierten un círculo en una esfera.
+- El núcleo de MADRE es una estrella, no un planeta. Se alumbra sola, así que no tiene lado de día ni lado de noche: está encendida de lado a lado y solo se apaga en el borde, donde la mirada atraviesa más de su propia atmósfera.
+- Su superficie hierve. La granulación se construye una sola vez como una tira que se repite, y se envuelve alrededor del cuerpo: cada fila de la cara toma el trozo de tira que le corresponde, cortado en pedazos para que la longitud corra como en una esfera y los gránulos se angosten hacia el limbo en vez de embarrarse. Girar la estrella es correr la ventana sobre la tira, así que la animación no cuesta nada.
+- Sobre eso, las regiones activas: donde el campo rompe la superficie, el plasma arde en blanco. Cada una está en su propia latitud, cruza la cara y se va por detrás, y prende y se apaga con su propio reloj. Entre ellas cuelgan filamentos oscuros, hilos de gas más frío tendidos a lo largo del campo.
+- Todo lo que vive en la superficie tiene latitud y longitud, y se proyecta antes de dibujarse.
 - Alrededor, una corona de plasma líquido, como el sol en el espacio. No es un anillo: son cuatro capas de plasma cuyo borde es la suma de varias ondas que giran a velocidades sin múltiplo común, así que la forma fluye sin volver nunca a una que ya tuvo, y las cuatro capas nunca se alinean entre sí. Se dibujan sumando luz, de modo que donde el plasma se amontona la corona se aviva sola.
 - De la corona salen penachos, como los del sol. Unos llegan lejos y otros apenas asoman, cada uno se alarga, se inclina y se apaga con su propio reloj, y ninguno apunta recto hacia afuera. Son los que le dan la silueta.
 - Pegada al cuerpo, la cromosfera: la piel de fuego donde el plasma toca la superficie, que es donde más denso y más brillante está.
@@ -18,6 +20,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - La constelación se lee contra sí misma: el recuerdo más activo es el más brillante y los demás se escalan debajo. Una sala recién abierta, donde todavía no se ha recuperado nada, se sostiene con los vínculos que ya tejió; en cuanto los turnos empiezan a pedir recuerdos, el uso manda.
 - También hay pulsos entre recuerdos vinculados, sin pasar por el centro: dos notas que comparten un tema se hablan directo. Lo que se ve es la red que la sala fue tejiendo, no un abanico de radios.
 - Los recuerdos se dibujan 20% más chicos. Quedan como lunas alrededor del cuerpo de MADRE en vez de competirle, y como la separación entre ellos no se encogió, la constelación abre más aire.
+- Cada recuerdo es una esfera iluminada desde MADRE. La luz de la sala sale toda del mismo lugar, así que cada uno tiene su propio terminador, su creciente de luz del lado que mira al núcleo y su lado oscuro del otro.
+- Y cada uno respira a su propio ritmo: una micro pulsación, lo bastante chica para no leerse nunca como un destello y nunca al compás de sus vecinos.
 - La tarjeta de cada recuerdo dice cuántas veces se ha recuperado y cuándo fue la última, y el encabezado cuenta cuántos están vivos.
 - Misma imagen, menos máquina: la vista dejó de recalcular la constelación en cada cuadro y de pedir desenfoques al navegador. Un archivo con cuatrocientos recuerdos cuesta los mismos desenfoques que uno con doce, y son diez por cuadro en vez de noventa.
 - Con movimiento reducido el halo se queda quieto: las gotas dejan de subir y de derivar, y la sala sigue dibujándose completa.
