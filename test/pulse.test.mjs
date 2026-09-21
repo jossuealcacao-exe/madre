@@ -1028,7 +1028,7 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.equal(detectPlatform({ platform: 'MacIntel' }), 'darwin');
   assert.equal(detectPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0)' }), 'win32');
   assert.equal(detectPlatform({ platform: 'Linux x86_64' }), 'linux');
-  assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.agent}`)));
+  assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.remedy} ${c.agent}`)), 'the search reads the remedy too');
   assert.equal(searchConditions('').length, CONDITIONS.length);
 });
 

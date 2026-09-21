@@ -8,7 +8,7 @@ const els = {
   column: document.querySelector('#thread-inner'),
   crewLabel: document.querySelector('#crew-label'),
   onboarding: document.querySelector('#onboarding'),
-  onboardingList: document.querySelector('#onboarding-list'),
+  bridgeCrew: document.querySelector('#bridge-crew'),
   composer: document.querySelector('#composer'),
   picker: document.querySelector('#picker'),
   target: document.querySelector('#target'),
@@ -94,12 +94,6 @@ const state = {
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
 
-const AGENT_HINTS = {
-  codex: 'Install the Codex CLI and sign in with your ChatGPT account.',
-  claude: 'Install Claude Code and run `claude` once to sign in.',
-  gemini: 'Install Gemini CLI and sign in or set GEMINI_API_KEY.',
-  opencode: 'Install OpenCode and run `opencode auth login`.',
-};
 
 /* ---------- helpers ---------- */
 
@@ -986,24 +980,86 @@ override.form?.addEventListener('submit', (event) => {
   }, 900);
 });
 
+// THE BRIDGE: first contact. Every agent as a card with the one action it needs right now,
+// install or sign in, run here and streamed here. The room opens the moment one turns green.
 function renderOnboarding() {
-  const ready = [...state.agents.values()].filter((agent) => agent.ready);
-  els.onboarding.hidden = ready.length > 0;
-  els.composer.setAttribute('aria-disabled', ready.length ? 'false' : 'true');
-  els.input.disabled = !ready.length;
-  els.send.disabled = !ready.length;
-  if (ready.length) return;
-  els.onboardingList.replaceChildren();
-  for (const agent of state.agents.values()) {
-    const item = paint(el('li'), agent.id);
-    item.append(avatar(agent.id, { size: 28, status: agent.detected ? 'detected' : 'offline' }));
-    item.append(el('span', 'name', agent.label));
-    const status = el('span', 'state');
-    status.append(el('b', null, agent.ready ? 'Ready' : agent.detected ? 'Installed, adapter not enabled' : 'Not installed'));
-    status.append(` · ${agent.detected ? (agent.version ?? 'version unknown') : AGENT_HINTS[agent.id] ?? 'Install it and reload.'}`);
-    item.append(status);
-    els.onboardingList.append(item);
+  const crew = [...state.agents.values()];
+  const ready = crew.filter((agent) => agent.ready && sessionOf(agent) !== 'signed-out');
+  const usable = ready.length ? ready : crew.filter((agent) => agent.ready);
+  els.onboarding.hidden = usable.length > 0;
+  els.composer.setAttribute('aria-disabled', usable.length ? 'false' : 'true');
+  els.input.disabled = !usable.length;
+  els.send.disabled = !usable.length;
+  if (usable.length || !els.bridgeCrew) return;
+  els.bridgeCrew.replaceChildren();
+  for (const agent of crew) els.bridgeCrew.append(bridgeCard(agent));
+}
+const sessionOf = (agent) => state.sessions?.[agent.id]?.state ?? 'unknown';
+
+function bridgeCard(agent) {
+  const card = paint(el('article', 'bridge-card'), agent.id);
+  card.id = `bridge-${agent.id}`;
+  const session = state.sessions?.[agent.id];
+  const signedIn = session?.state === 'signed-in';
+  const stage = !agent.detected ? 'missing' : !agent.ready ? 'inert' : signedIn ? 'ready' : 'signed-out';
+  const head = el('div', 'head');
+  head.append(avatar(agent.id, { size: 30, status: stage === 'ready' ? 'ready' : agent.detected ? 'detected' : 'offline' }));
+  const title = el('div', 'title');
+  title.append(el('b', null, agent.label));
+  title.append(el('span', 'vendor', brandOf(agent.id).vendor));
+  head.append(title);
+  head.append(el('span', `state ${stage}`, stage === 'missing' ? 'NOT INSTALLED' : stage === 'inert' ? 'NO ADAPTER' : stage === 'ready' ? 'READY' : 'SIGNED OUT'));
+  card.append(head);
+  const detail = el('div', 'detail');
+  if (agent.id === 'madre') detail.append(agent.detected ? `Local, through Ollama${agent.version ? ` · ${agent.version}` : ''}` : 'Optional: run Ollama with a chat model and @madre joins the room.');
+  else if (stage === 'missing') detail.append(agent.install ? `Not on this computer · ${agent.install.display}` : 'Not on this computer.');
+  else detail.append(`${agent.version ?? 'version unknown'}${session?.detail ? ` · ${session.detail}` : ''}`);
+  card.append(detail);
+  const actions = el('div', 'actions');
+  if (stage === 'missing' && agent.install) actions.append(bridgeInstallButton(agent));
+  if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
+    if (agent.login?.headless) actions.append(bridgeSignInButton(agent, stage === 'ready'));
+    else if (agent.login) actions.append(el('span', 'note', 'signs in from its own prompt:'));
   }
+  if (actions.childNodes.length) card.append(actions);
+  if (stage !== 'missing' && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
+  const log = el('pre', 'bridge-log');
+  log.id = `bridge-log-${agent.id}`;
+  for (const entry of state.loginLogs.get(agent.id) ?? []) log.append(loginLine(entry));
+  log.hidden = !log.childNodes.length;
+  card.append(log);
+  return card;
+}
+function bridgeInstallButton(agent) {
+  const button = el('button', 'primary', `INSTALL · ${agent.install.display}`);
+  button.type = 'button';
+  button.title = `MADRE runs this command on this computer and shows every line. ${agent.install.alternatives?.join(' · ') ?? ''}`.trim();
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    button.textContent = 'INSTALLING…';
+    state.loginLogs.set(agent.id, []);
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/install`, { method: 'POST' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+    } catch (error) { toast(`MU/TH/UR › ${agent.label} was not installed: ${error.message}`); renderOnboarding(); }
+  });
+  return button;
+}
+function bridgeSignInButton(agent, again = false) {
+  const button = el('button', again ? null : 'primary', again ? 'SIGN IN AGAIN' : 'SIGN IN');
+  button.type = 'button';
+  button.title = agent.login.note;
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    state.loginLogs.set(agent.id, []);
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/login`, { method: 'POST' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+    } catch (error) { toast(`MU/TH/UR › sign-in did not start: ${error.message}`); renderOnboarding(); }
+  });
+  return button;
 }
 
 /* ---------- thread rendering ---------- */
@@ -1881,6 +1937,9 @@ function renderEventNode(event) {
       node = renderLoginEvent(event);
       break;
     case 'connection.login.output': appendLoginOutput(event); return;
+    case 'connection.install.started':
+    case 'connection.install.finished': node = renderAgentInstall(event); break;
+    case 'connection.install.output': appendLoginOutput(event); return;
     case 'room.settings': return;
     case 'extension.toggled':
       if (event.payload.id === 'ashcode') syncAshCodeUI(Boolean(event.payload.enabled));
@@ -3396,17 +3455,37 @@ function renderLoginEvent(event) {
   node.append(finished
     ? (ok ? `@${agent} signed in${session?.detail ? ` · ${session.detail}` : ''}` : `@${agent} sign-in did not complete${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
     : `signing in @${agent} · ${command}`);
-  if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; if (state.settingsOpen) void loadSettings(); }
+  if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
   state.lastSender = null;
   return node;
 }
+// connections › installing @codex · npm install -g @openai/codex
+function renderAgentInstall(event) {
+  const { agent, label, command, code, error, detected, version } = event.payload;
+  const finished = event.type === 'connection.install.finished';
+  const node = paint(el('div', `system connections${finished && !detected ? ' failed' : ''}`), agent);
+  node.append(el('b', null, 'connections › '));
+  node.append(finished
+    ? (detected ? `${label ?? agent} installed${version ? ` · ${version}` : ''} · sign in to finish` : `${label ?? agent} was not installed${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
+    : `installing ${label ?? agent} · ${command}`);
+  if (finished && !replaying) toast(detected ? `MU/TH/UR › ${label ?? agent} is on this computer. Sign in and the room opens.` : `MU/TH/UR › ${label ?? agent} could not be installed. The log is above.`);
+  if (finished) { renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
+  state.lastSender = null;
+  return node;
+}
+
 function appendLoginOutput(event) {
   const { agent, line, url } = event.payload;
   const log = state.loginLogs.get(agent) ?? [];
   log.push({ line, url });
   state.loginLogs.set(agent, log.slice(-60));
-  const box = document.getElementById(`login-log-${agent}`);
-  if (box) { box.append(loginLine({ line, url })); box.scrollTop = box.scrollHeight; }
+  for (const id of [`login-log-${agent}`, `bridge-log-${agent}`]) {
+    const box = document.getElementById(id);
+    if (!box) continue;
+    box.hidden = false;
+    box.append(loginLine({ line, url }));
+    box.scrollTop = box.scrollHeight;
+  }
   if (url) toast(`@${agent}: open ${url} to finish signing in`);
 }
 function loginLine({ line, url }) {
@@ -3535,10 +3614,26 @@ function connectionCard(agent) {
   recheck.addEventListener('click', async () => {
     recheck.disabled = true;
     const result = await fetch('/api/agents/probe', { method: 'POST' }).then((response) => response.json()).catch(() => null);
-    if (result?.sessions) { settingsUI.data.sessions = result.sessions; state.sessions = result.sessions; renderSettings(); }
+    if (result?.sessions) { settingsUI.data.sessions = result.sessions; state.sessions = result.sessions; }
+    if (result?.agents) { settingsUI.data.agents = result.agents; for (const agent of result.agents) state.agents.set(agent.id, { ...(state.agents.get(agent.id) ?? {}), ...agent }); renderAgents(); renderPicker(); renderOnboarding(); }
+    if (result?.sessions) renderSettings();
     recheck.disabled = false;
   });
   row.append(recheck);
+  if (!agent.detected && agent.install) {
+    const install = el('button', 'primary', 'INSTALL');
+    install.type = 'button';
+    install.title = `${agent.install.display} · run here, streamed to the room`;
+    install.disabled = Boolean(settingsUI.data.loggingIn);
+    install.addEventListener('click', async () => {
+      install.disabled = true;
+      state.loginLogs.set(agent.id, []);
+      const response = await fetch(`/api/agents/${agent.id}/install`, { method: 'POST' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) { toast(result.error ?? 'Install could not start.'); install.disabled = false; }
+    });
+    row.append(install);
+  }
   if (agent.detected && agent.login) {
     if (agent.login.headless) {
       const login = el('button', 'primary', session?.state === 'signed-in' ? 'SIGN IN AGAIN' : 'SIGN IN');

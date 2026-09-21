@@ -40,7 +40,7 @@ import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, runInstaller } from './extensions.mjs';
-import { loginPlanFor, probeAll } from './auth-probe.mjs';
+import { installPlanFor, loginPlanFor, probeAll } from './auth-probe.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
@@ -115,6 +115,9 @@ export async function createPulseServer({
   // Tests substitute the real installers with local scripts.
   installers = {},
   loginRunners = {},
+  // Looking again for the CLIs on this computer. A test that hands a fixed roster also hands
+  // this, or the room keeps the roster it was given.
+  detect = null,
   probe = probeAll,
   imageKey = resolveGeminiKey,
   // The sentinel's outbound channel; tests hand in a fake.
@@ -128,7 +131,8 @@ export async function createPulseServer({
   // RIPLEY renders HTML in the viewer only while the human has it switched on; read live, the switch is the module's.
   const ripleyOn = async () => Boolean((await readConfig(root)).modules?.ripley?.enabled);
   agentTimeouts ??= agentTimeoutsFromEnv();
-  const agents = providedAgents ?? await detectAgents();
+  const detector = detect ?? (providedAgents ? null : detectAgents);
+  const agents = providedAgents ?? await detector();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
   // The human's own modules, from ~/.pulse/modules and <project>/.madre/modules.
@@ -379,6 +383,68 @@ export async function createPulseServer({
     return { status: 202, body: { accepted: true, command: plan.display } };
   }
 
+  // A CLI installed from the room appears without restarting: detection runs again, the roster
+  // is updated in place (the room holds the same array) and the change is announced.
+  async function redetectAgents({ announce = true } = {}) {
+    if (!detector) return { changed: false, agents };
+    let changed = false;
+    for (const next of await detector()) {
+      const index = agents.findIndex((item) => item.id === next.id);
+      if (index === -1) { agents.push(next); changed = true; continue; }
+      const before = agents[index];
+      if (before.detected !== next.detected || before.ready !== next.ready || before.version !== next.version || before.path !== next.path) {
+        agents[index] = { ...before, ...next };
+        changed = true;
+      }
+    }
+    await refreshSessions();
+    if (changed && announce) {
+      await room.record('agents.updated', {
+        agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local) })),
+        removed: [],
+        reason: 'the room looked again for the agents on this computer',
+      });
+    }
+    return { changed, agents };
+  }
+
+  // The bridge installs a CLI with its own package manager, streaming into the room like any
+  // other install, and looks again when it finishes. Nothing is written into the project.
+  async function installAgent(id) {
+    const agent = agents.find((item) => item.id === id);
+    if (!agent) return { status: 404, body: { error: `Unknown agent: ${id}.` } };
+    if (agent.detected) return { status: 409, body: { error: `${agent.label} is already installed.` } };
+    const plan = installPlanFor(agent);
+    if (!plan) return { status: 404, body: { error: `MADRE does not know how to install ${id}.` } };
+    if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
+    installing = `agent:${id}`;
+    await room.record('connection.install.started', { agent: id, label: agent.label, command: plan.display });
+    void (async () => {
+      const lines = [];
+      const result = await (installers[id] ?? runInstaller)({
+        command: plan.command,
+        args: plan.args,
+        projectRoot: canonicalProjectRoot,
+        timeoutMs: 600000,
+        onLine: (line) => { lines.push(line); void room.record('connection.install.output', { agent: id, line: line.slice(0, 500) }); },
+      });
+      await redetectAgents();
+      const found = agents.find((item) => item.id === id);
+      await room.record('connection.install.finished', {
+        agent: id,
+        label: agent.label,
+        code: result.code ?? null,
+        error: result.error ?? null,
+        detected: Boolean(found?.detected),
+        version: found?.version ?? null,
+        session: sessions[id] ?? null,
+        tail: lines.slice(-6),
+      });
+      installing = null;
+    })();
+    return { status: 202, body: { accepted: true, command: plan.display } };
+  }
+
   // Attachments live beside the room log, never inside the project.
   const roomDirectory = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
   const attachmentsRoot = join(roomDirectory, 'attachments');
@@ -604,7 +670,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/state') {
         return sendJson(response, 200, {
           projectRoot,
-          agents,
+          agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent) })),
           ashCode: { enabled: room.ashCodeEnabled() },
           ripley: { enabled: await ripleyOn() },
           softTokenBudget,
@@ -711,7 +777,7 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/settings') {
         await refreshPrivacy();
-        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent) })) });
+        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent) })) });
       }
       if (request.method === 'POST' && url.pathname === '/api/settings') {
         return sendJson(response, 200, { settings: await applySettings(await body(request)) });
@@ -843,7 +909,14 @@ export async function createPulseServer({
         return row ? sendJson(response, 200, { forgotten: row, stats: room.memoryStats() }) : sendJson(response, 404, { error: 'No such memory.' });
       }
       if (request.method === 'POST' && url.pathname === '/api/agents/probe') {
-        return sendJson(response, 200, { sessions: await refreshSessions(), sessionsAt });
+        // Look for the binaries again too: a CLI installed a moment ago must appear now.
+        await redetectAgents();
+        return sendJson(response, 200, { sessions, sessionsAt, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent) })) });
+      }
+      const installAgentMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/install$/);
+      if (installAgentMatch) {
+        const result = await installAgent(installAgentMatch[1]);
+        return sendJson(response, result.status, result.body);
       }
       const loginMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/login$/);
       if (loginMatch) {

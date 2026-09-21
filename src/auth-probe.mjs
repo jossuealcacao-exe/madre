@@ -110,6 +110,27 @@ export const AGENT_SETUP = {
   },
 };
 
+// Installing a CLI from the room itself. npm is the common denominator: every one of these
+// ships an npm package, and whoever reached MADRE through npx already has npm on the machine.
+// The prose in AGENT_SETUP.install stays as the alternatives a human may prefer.
+export const AGENT_PACKAGE = {
+  codex: '@openai/codex',
+  claude: '@anthropic-ai/claude-code',
+  gemini: '@google/gemini-cli',
+  opencode: 'opencode-ai',
+};
+export function installPlanFor(agent) {
+  const name = AGENT_PACKAGE[agent?.id];
+  if (!name) return null;
+  return {
+    package: name,
+    command: 'npm',
+    args: ['install', '-g', name, '--no-fund', '--no-audit'],
+    display: `npm install -g ${name}`,
+    alternatives: (AGENT_SETUP[agent.id]?.install ?? []).slice(1),
+  };
+}
+
 // How the room can (re)connect an agent. Codex and Claude sign in with a
 // browser flow their own CLI drives, so the server can run them and stream the
 // URL; Gemini and OpenCode need their interactive prompt, so the user gets the

@@ -35,7 +35,7 @@ npx @jossuealcala/madre start
 
 Necesitas Node 22.5 o superior y al menos una de estas CLIs con sesión iniciada: **Codex**, **Claude Code**, **Gemini CLI**, **OpenCode**. Si además corre **Ollama** con un modelo de chat, la sala tiene un quinto agente local.
 
-1. Entra a la carpeta del proyecto y corre `npx @jossuealcala/madre start`. MADRE detecta qué CLIs tienes y quién tiene sesión. Si nadie está en línea, abre un asistente en la terminal: un número corre el inicio de sesión de esa CLI, `s` abre la sala.
+1. Entra a la carpeta del proyecto y corre `npx @jossuealcala/madre start`. La sala abre siempre, tengas agentes o no. Si no hay ninguno, lo primero que ves es el puente: cada agente con su botón para instalarlo y firmarlo, ahí mismo. MADRE muestra el comando exacto antes de correrlo y transmite cada línea. En cuanto uno queda listo, la sala se desbloquea sola.
 2. La sala abre en `http://127.0.0.1:4317`. Elige un agente en el selector o escribe `@claude …`. El chip junto a `to @agente` dice en qué modo sale el mensaje; `#1 EXCHANGE`, solo lectura, es el predeterminado.
 3. Para conectar o reconectar una IA sin terminal: `MU/TH/UR → ⚙ CONNECTIONS`. Codex y Claude tienen `SIGN IN`; Gemini y OpenCode muestran el comando exacto para su propio prompt. Ninguna credencial pasa por MADRE.
 4. Con Ollama, `MODULES → OLLAMA` ya está encendido: la memoria se embebe localmente y `@madre` aparece en la fila.
@@ -43,7 +43,7 @@ Necesitas Node 22.5 o superior y al menos una de estas CLIs con sesión iniciada
 
 ```bash
 npx @jossuealcala/madre doctor      # qué agentes hay, quién tiene sesión, si hay versión nueva
-npx @jossuealcala/madre setup       # el asistente de conexión, cuando quieras
+npx @jossuealcala/madre setup       # el mismo alta, desde la terminal, si la prefieres
 npx @jossuealcala/madre start --no-open --project RUTA
 ```
 
@@ -52,6 +52,8 @@ npx @jossuealcala/madre start --no-open --project RUTA
 ---
 
 ## LA SALA
+
+**El puente.** Sin agentes en línea la sala abre en el puente: una tarjeta por agente con su estado real y la única acción que le toca, `INSTALL` o `SIGN IN`. Todo corre en tu máquina, con el comando a la vista, y la salida se transmite a la misma pantalla. Codex y Claude Code se firman con un clic porque su CLI abre el navegador; Gemini y OpenCode te dan su comando para su propio prompt. El puente se repliega en cuanto un agente queda listo, y los mismos botones viven después en `⚙ CONNECTIONS`.
 
 **La barra.** La marca con su latido, la raíz del proyecto, la tripulación, `LIVE`, las alertas (`STOP ALL`, versión nueva), `MODULES`, `MU/TH/UR`, tema y panel de archivos. Cada esfera de agente lleva un anillo con su consumo: el límite real del proveedor cuando el CLI lo publica, si no, la ventana local de MADRE. Un clic la despliega.
 

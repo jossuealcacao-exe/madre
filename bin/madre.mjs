@@ -145,22 +145,18 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
 } else if (command === 'start') {
   const port = Number(option('--port', '4317'));
   const noOpen = has('--no-open');
-  // First contact: in a terminal with nobody online, MOTHER walks the user
-  // through configuring an agent before the room opens.
-  if (process.stdin.isTTY && process.stdout.isTTY && !has('--no-setup')) {
-    const agents = await detectAgents();
-    const probes = await probeAll(agents);
-    const { localIntelligence, madreOnline } = await import('../src/setup.mjs');
-    if (!agents.some((agent) => isOnline(agent, probes[agent.id])) && !madreOnline(await localIntelligence())) {
-      const { action } = await runSetup({ projectRoot, stateRoot });
-      if (action !== 'start') process.exit(0);
-    }
+  // First contact happens in the room, not here: MADRE opens even with nobody online and the
+  // bridge walks the human through installing and signing in. `madre setup` keeps the terminal
+  // wizard for whoever prefers it, and `--setup` asks for it explicitly.
+  if (has('--setup')) {
+    const { action } = await runSetup({ projectRoot, stateRoot });
+    if (action !== 'start') process.exit(0);
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen });
 } else if (command === 'help') {
   console.log(`MADRE
 
-  madre start [--project PATH] [--port 4317] [--no-open] [--no-setup]
+  madre start [--project PATH] [--port 4317] [--no-open] [--setup]
               Without --port, a busy 4317 falls through to the next free port.
   madre setup [--project PATH] [--port 4317] [--no-open]
   madre doctor [--project PATH] [--json]
