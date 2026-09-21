@@ -153,7 +153,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
     console.log(`  ${'Ollama'.padEnd(10)} ${ollama.disabled ? 'ignored (PULSE_OLLAMA=0)' : ollama.running ? `running${ollama.chatModel ? ` · @madre with ${ollama.chatModel}` : ' · no chat model yet'}${ollama.embedModel ? ` · embeddings ${ollama.embedModel}` : ''}` : 'not running · optional'}`);
     console.log(`  ${'MADRE'.padEnd(10)} ${update.current}${update.available ? ` · ${update.latest} available · ${update.command}` : update.latest ? ' · up to date' : update.enabled ? ' · npm not reachable' : ' · update check off (PULSE_UPDATE_CHECK=0)'}`);
     console.log(`\n  Project    ${result.project}`);
-    console.log(result.ok ? '\nReady to start. Known conditions and fixes: `madre doctor --catalog [query]`.\n' : '\nNo agent is online. Run `madre setup`. Known conditions and fixes: `madre doctor --catalog`.\n');
+    console.log(result.ok ? '\nReady to start. Known conditions and fixes: `madre doctor --catalog [query]`.\n' : '\nNo agent is online yet. Run `madre start`: the room opens anyway and walks you through installing and signing one in. Known conditions and fixes: `madre doctor --catalog`.\n');
   }
   process.exitCode = result.ok ? 0 : 1;
 } else if (command === 'setup') {

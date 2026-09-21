@@ -103,7 +103,7 @@ export function renderReport({ agents, probes, projectRoot, config = {}, palette
   const verdict = online.length
     ? `${online.length} OF ${agents.length} AGENTS ONLINE${local ? ' · @MADRE LOCAL' : ''}. ROOM CAN OPEN.`
     : local ? 'NO CLI ONLINE · @MADRE (LOCAL) IS. THE ROOM CAN OPEN WITH MEMORY ALONE; CONNECT A CLI TO WORK ON FILES.'
-      : `NO AGENT ONLINE. CONFIGURE ONE TO OPEN THE ROOM.`;
+      : `NO AGENT ONLINE. THE ROOM OPENS ANYWAY AND WALKS YOU THROUGH CONNECTING ONE.`;
   lines.push('');
   lines.push(`  ${p.phosphor('MOTHER')}${p.dim(' ›')} ${p.bold(verdict)}`);
   return lines.join('\n');

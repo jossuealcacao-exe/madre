@@ -69,6 +69,7 @@ const state = {
   seen: new Set(),
   userMessages: new Map(),
   bridgePinned: false,      // the bridge stays open when the human asked for it
+  tourArmed: false,         // the tour fires once, and only when the room can be used
   ratings: new Map(),        // messageId → good | bad, from the ledger
   ratingNodes: new Map(),    // messageId → the buttons of that bubble // messageId -> { text, target }
   lastSequence: 0,
@@ -993,6 +994,8 @@ function renderOnboarding() {
   els.input.disabled = !usable.length;
   els.send.disabled = !usable.length;
   renderEmptyStarts();
+  // The tour explains a room you can already use; while the bridge is up, the bridge is the lesson.
+  if (usable.length) maybeStartTour();
   if (els.onboarding.hidden || !els.bridgeCrew) return;
   els.bridgeCrew.replaceChildren();
   for (const agent of crew) els.bridgeCrew.append(bridgeCard(agent));
@@ -4887,7 +4890,13 @@ tour.back?.addEventListener('click', () => { tour.index = Math.max(0, tour.index
 tour.skip?.addEventListener('click', endTour);
 tour.dialog?.addEventListener('close', () => { try { localStorage.setItem('pulse.tour', 'seen'); } catch { /* no storage */ } });
 document.querySelector('#tour-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); startTour(); });
-(() => { let seen = 'seen'; try { seen = localStorage.getItem('pulse.tour'); } catch { seen = 'seen'; } if (seen !== 'seen') setTimeout(startTour, 900); })();
+function maybeStartTour() {
+  if (state.tourArmed) return;
+  state.tourArmed = true;
+  let seen = 'seen';
+  try { seen = localStorage.getItem('pulse.tour'); } catch { seen = 'seen'; }
+  if (seen !== 'seen') setTimeout(startTour, 900);
+}
 
 /* ---------- Release channel: is there a newer MADRE? A pill in the bar, the command in MU/TH/UR. ---------- */
 

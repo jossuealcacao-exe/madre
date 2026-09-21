@@ -37,7 +37,7 @@ Necesitas Node 22.5 o superior y al menos una de estas CLIs con sesión iniciada
 
 1. Entra a la carpeta del proyecto y corre `npx @jossuealcala/madre start`. La sala abre siempre, tengas agentes o no. Si no hay ninguno, lo primero que ves es el puente: cada agente con su botón para instalarlo y firmarlo, ahí mismo. MADRE muestra el comando exacto antes de correrlo y transmite cada línea. En cuanto uno queda listo, la sala se desbloquea sola.
 2. La sala abre en `http://127.0.0.1:4317`. Elige un agente en el selector o escribe `@claude …`. El chip junto a `to @agente` dice en qué modo sale el mensaje; `#1 EXCHANGE`, solo lectura, es el predeterminado.
-3. Para conectar o reconectar una IA sin terminal: `MU/TH/UR → ⚙ CONNECTIONS`. Codex y Claude tienen `SIGN IN`; Gemini y OpenCode muestran el comando exacto para su propio prompt. Ninguna credencial pasa por MADRE.
+3. Para sumar o reconectar una IA más tarde: `⚑ CREW` en MU/TH/UR reabre el puente, y `⚙ CONNECTIONS` tiene los mismos botones junto al resto de los ajustes. Codex y Claude Code se firman con un clic; Gemini y OpenCode aceptan su llave ahí mismo. MADRE no guarda credenciales: cada llave va al archivo de su propio CLI.
 4. Con Ollama, `MODULES → OLLAMA` ya está encendido: la memoria se embebe localmente y `@madre` aparece en la fila.
 5. `⚙ CONNECTIONS → MEMORY` ajusta quién destila la memoria y cada cuánto. `◉ NOSTROMO` muestra lo que la sala recuerda.
 
