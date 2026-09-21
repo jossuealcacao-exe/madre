@@ -4258,13 +4258,21 @@ document.querySelector('#nostromo-card-close')?.addEventListener('click', () => 
 // Planets: size follows how much ledger a memory covers; they start in their kind's sector
 // and drift toward the memories they agree with, so topics gather on their own.
 // How alive a memory is: how often the room has actually recalled it, how recently, and how
-// woven it is into the rest. 0 is a memory nobody has needed; 1 is one the room leans on.
-function activityOf(memory, degree = 0) {
+// woven it is into the rest.
+function rawActivity(memory, degree = 0) {
   const use = 1 - Math.exp(-Number(memory.recalled ?? 0) / 4);
   const since = memory.lastRecalled ? (Date.now() - Date.parse(memory.lastRecalled)) / 86400000 : null;
   const fresh = since === null || Number.isNaN(since) ? 0 : Math.exp(-Math.max(0, since) / 3);
   const woven = Math.min(1, degree / 4);
-  return Math.max(0.06, Math.min(1, 0.55 * use + 0.3 * fresh + 0.15 * woven));
+  return 0.55 * use + 0.3 * fresh + 0.15 * woven;
+}
+
+// The constellation is read against itself: the busiest memory is the brightest and the rest
+// scale beneath it, so the network has contrast in a young archive and in an old one. Before
+// the room has recalled anything, how woven a memory is carries the picture; the moment turns
+// start reaching for memories, use takes over. The card always reports the true counts.
+function activityOf(raw, top) {
+  return top > 0 ? Math.max(0.08, Math.min(1, 0.08 + 0.92 * (raw / top))) : 0.08;
 }
 
 function buildNostromo(data) {
@@ -4274,12 +4282,14 @@ function buildNostromo(data) {
   const degree = new Map();
   for (const link of nostromo.links) { degree.set(link.a, (degree.get(link.a) ?? 0) + 1); degree.set(link.b, (degree.get(link.b) ?? 0) + 1); }
   nostromo.pulses = [];
+  const raw = memories.map((memory) => rawActivity(memory, degree.get(memory.id) ?? 0));
+  const top = raw.reduce((best, value) => (value > best ? value : best), 0);
   nostromo.nodes = memories.map((memory, index) => {
     const sector = kinds.indexOf(memory.kind) < 0 ? 1 : kinds.indexOf(memory.kind);
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, angle, distance, activity: activityOf(memory, degree.get(memory.id) ?? 0), lit: 0, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;

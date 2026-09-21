@@ -10,6 +10,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - El núcleo de MADRE gira despacio sobre su propio eje. El giro se acelera cuando la memoria está trabajando y vuelve a su calma cuando termina.
 - Los pulsos de vida son aleatorios e independientes: cada uno sale por su cuenta, sin compás común, y viaja por el filamento que le toca hasta encender el recuerdo al que llega.
 - Los recuerdos que la sala usa reciben más pulsos. La actividad se mide de verdad: cuántas veces se recuperó ese recuerdo en un turno, hace cuánto fue la última, y cuántos temas comparte con otros. Un recuerdo que nadie pide casi no se enciende.
+- La constelación se lee contra sí misma: el recuerdo más activo es el más brillante y los demás se escalan debajo. Una sala recién abierta, donde todavía no se ha recuperado nada, se sostiene con los vínculos que ya tejió; en cuanto los turnos empiezan a pedir recuerdos, el uso manda.
 - También hay pulsos entre recuerdos vinculados, sin pasar por el centro: dos notas que comparten un tema se hablan directo. Lo que se ve es la red que la sala fue tejiendo, no un abanico de radios.
 - La tarjeta de cada recuerdo dice cuántas veces se ha recuperado y cuándo fue la última, y el encabezado cuenta cuántos están vivos.
 - Misma imagen, menos máquina: la vista dejó de recalcular la constelación en cada cuadro y de pedir desenfoques al navegador, así que respira igual en una sala con cientos de recuerdos.
