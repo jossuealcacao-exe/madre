@@ -40,7 +40,8 @@ import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, runInstaller } from './extensions.mjs';
-import { accountNoteFor, installPlanFor, loginPlanFor, probeAll } from './auth-probe.mjs';
+import { accountNoteFor, installPlanFor, loginPlanFor, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
+import { applyKey, keyPlanFor } from './credentials.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
@@ -118,6 +119,8 @@ export async function createPulseServer({
   // Looking again for the CLIs on this computer. A test that hands a fixed roster also hands
   // this, or the room keeps the roster it was given.
   detect = null,
+  // Where a pasted provider key is written: each CLI's own place under the human's home.
+  credentialHome = homedir(),
   probe = probeAll,
   imageKey = resolveGeminiKey,
   // The sentinel's outbound channel; tests hand in a fake.
@@ -670,7 +673,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/state') {
         return sendJson(response, 200, {
           projectRoot,
-          agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), ...(accountNoteFor(agent.id) ?? {}) })),
+          agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
           ashCode: { enabled: room.ashCodeEnabled() },
           ripley: { enabled: await ripleyOn() },
           softTokenBudget,
@@ -777,7 +780,7 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/settings') {
         await refreshPrivacy();
-        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), ...(accountNoteFor(agent.id) ?? {}) })) });
+        return sendJson(response, 200, { settings: effectiveSettings(), config: await readConfig(root), sessions, sessionsAt, loggingIn, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })) });
       }
       if (request.method === 'POST' && url.pathname === '/api/settings') {
         return sendJson(response, 200, { settings: await applySettings(await body(request)) });
@@ -911,7 +914,35 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/agents/probe') {
         // Look for the binaries again too: a CLI installed a moment ago must appear now.
         await redetectAgents();
-        return sendJson(response, 200, { sessions, sessionsAt, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), ...(accountNoteFor(agent.id) ?? {}) })) });
+        return sendJson(response, 200, { sessions, sessionsAt, agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })) });
+      }
+      // A provider key for a CLI that signs in from its own prompt. Local connections only: a key
+      // pasted from another machine would travel the network. It is written where that CLI looks
+      // for it and never reaches MADRE's config, its ledger or its logs.
+      const keyMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/key$/);
+      if (keyMatch) {
+        const id = keyMatch[1];
+        const address = request.socket.remoteAddress ?? '';
+        if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address)) {
+          return sendJson(response, 403, { error: 'A key is only accepted from this computer, never over the network.' });
+        }
+        const agent = agents.find((item) => item.id === id);
+        if (!agent?.detected) return sendJson(response, 412, { error: `${agent?.label ?? id} is not installed on this computer.` });
+        if (!TAKES_KEY.has(id)) return sendJson(response, 400, { error: `${agent.label} signs in with a click, not with a key.` });
+        const payload = await body(request).catch(() => ({}));
+        const result = await applyKey({
+          agent: id,
+          key: payload.key,
+          provider: payload.provider ?? null,
+          home: credentialHome,
+          executable: agent.path ?? id,
+          probe: () => probeAgentAuth(agent),
+        });
+        if (!result.ok) return sendJson(response, 422, { error: result.error });
+        await refreshSessions();
+        // What the room remembers: that a key was set, and for which provider. Never the key.
+        await room.record('connection.key.set', { agent: id, label: agent.label, provider: payload.provider ?? null, detail: result.detail ?? null });
+        return sendJson(response, 200, { ok: true, session: sessions[id] ?? null });
       }
       const installAgentMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/install$/);
       if (installAgentMatch) {

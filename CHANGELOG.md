@@ -7,6 +7,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ## 0.3.4 · Sin publicar
 
 ### El puente: alta completa sin terminal
+- Gemini y OpenCode, que se firman desde su propio prompt, aceptan ahora su llave en el puente y en `⚙ CONNECTIONS`. MADRE la escribe donde ese CLI la busca, con el archivo cerrado a su dueño, y no guarda copia: ni en `config.json`, ni en el registro de la sala, ni en un log. Lo único que la sala recuerda es que se puso una llave y para qué proveedor. Solo se acepta desde esta computadora, nunca por red.
+- Cada escritura se verifica en el acto preguntándole al propio CLI si ya está firmado; si dice que no, MADRE devuelve los archivos como estaban y lo explica, en lugar de dejar una credencial a medias.
 - Cada tarjeta dice qué hay detrás de esa puerta: con qué cuenta se firma ese agente y si hay una entrada sin pagar, con una marca `FREE WAY IN` donde la hay. La misma línea aparece en `⚙ CONNECTIONS`.
 - El puente se puede volver a abrir en cualquier momento desde `⚑ CREW`, en la cabecera de MU/TH/UR, para sumar otro agente sin salir de la sala.
 - Correr el comando otra vez sobre un proyecto que ya tiene sala abierta deja de levantar una segunda: MADRE reconoce la que ya está escuchando y te lleva a ella.

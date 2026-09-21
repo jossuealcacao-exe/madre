@@ -1054,12 +1054,24 @@ function bridgeCard(agent) {
   }
   const actions = el('div', 'actions');
   if (stage === 'missing' && agent.install) actions.append(bridgeInstallButton(agent));
+  let reveal = null;
   if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
     if (agent.login?.headless) actions.append(bridgeSignInButton(agent, stage === 'ready'));
-    else if (agent.login) actions.append(el('span', 'note', 'signs in from its own prompt:'));
+    else if (agent.key) {
+      reveal = el('button', 'primary', 'PASTE KEY');
+      reveal.type = 'button';
+      actions.append(reveal);
+    } else if (agent.login) actions.append(el('span', 'note', 'signs in from its own prompt:'));
   }
   if (actions.childNodes.length) card.append(actions);
-  if (stage !== 'missing' && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
+  if (reveal) {
+    const slot = el('div', 'key-slot');
+    slot.hidden = true;
+    slot.append(keyForm(agent, { onDone: () => renderOnboarding() }));
+    slot.append(el('p', 'key-note', `Or do it from a terminal: ${agent.login.display}`));
+    reveal.addEventListener('click', () => { slot.hidden = !slot.hidden; if (!slot.hidden) slot.querySelector('input')?.focus(); });
+    card.append(slot);
+  } else if (stage !== 'missing' && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
   const log = el('pre', 'bridge-log');
   log.id = `bridge-log-${agent.id}`;
   for (const entry of state.loginLogs.get(agent.id) ?? []) log.append(loginLine(entry));
@@ -1067,6 +1079,63 @@ function bridgeCard(agent) {
   card.append(log);
   return card;
 }
+// Handing a key to a CLI that signs in from its own prompt. The field is a password field, the
+// value is sent once and never comes back, and MADRE says where it will be written before saving.
+function keyForm(agent, { onDone } = {}) {
+  const plan = agent.key;
+  const form = el('form', 'key-form');
+  const providers = plan.providers ?? null;
+  let select = null;
+  if (providers) {
+    select = el('select');
+    for (const provider of providers) { const option = el('option', null, provider.label); option.value = provider.id; select.append(option); }
+    const label = el('label');
+    label.append(el('span', 'k', 'PROVIDER'), select);
+    form.append(label);
+  }
+  const input = el('input');
+  input.type = 'password';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.placeholder = plan.label;
+  const field = el('label');
+  field.append(el('span', 'k', plan.label.toUpperCase()), input);
+  form.append(field);
+  const row = el('div', 'key-row');
+  const save = el('button', 'primary', 'SAVE KEY');
+  save.type = 'submit';
+  row.append(save);
+  const where = providers ? (providers.find((provider) => provider.id === select.value)?.keyUrl ?? null) : plan.keyUrl;
+  const link = el('a', 'key-link', 'WHERE DO I GET ONE ↗');
+  link.target = '_blank'; link.rel = 'noopener noreferrer';
+  if (where) { link.href = where; row.append(link); }
+  if (providers) select.addEventListener('change', () => { const next = providers.find((provider) => provider.id === select.value)?.keyUrl; if (next) link.href = next; });
+  form.append(row);
+  form.append(el('p', 'key-note', plan.note));
+  const said = el('p', 'key-said');
+  form.append(said);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    save.disabled = true;
+    said.textContent = 'CHECKING…';
+    said.className = 'key-said';
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/key`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: input.value, provider: select?.value ?? null }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      input.value = '';
+      state.sessions[agent.id] = result.session ?? state.sessions[agent.id];
+      toast(`MU/TH/UR › @${agent.id} is signed in.`);
+      onDone?.();
+    } catch (error) {
+      said.textContent = error.message;
+      said.className = 'key-said bad';
+      save.disabled = false;
+    }
+  });
+  return form;
+}
+
 // The bridge is first contact, but it also opens on demand to add another agent later.
 function openBridge() {
   state.bridgePinned = true;
@@ -1986,6 +2055,13 @@ function renderEventNode(event) {
     case 'connection.install.started':
     case 'connection.install.finished': node = renderAgentInstall(event); break;
     case 'connection.install.output': appendLoginOutput(event); return;
+    case 'connection.key.set': {
+      const { agent, label, provider, detail } = event.payload;
+      node = paint(el('div', 'system connections'), agent);
+      node.append(el('b', null, 'connections › '), `${label ?? agent} signed in with a key${provider ? ` · ${provider}` : ''}${detail ? ` · ${detail}` : ''}`);
+      state.lastSender = null;
+      break;
+    }
     case 'room.settings': return;
     case 'extension.toggled':
       if (event.payload.id === 'ashcode') syncAshCodeUI(Boolean(event.payload.enabled));
@@ -3702,6 +3778,7 @@ function connectionCard(agent) {
   }
   card.append(row);
   const slot = el('div', 'slot');
+  if (agent.detected && agent.key) slot.append(keyForm(agent, { onDone: () => { void loadSettings(); renderOnboarding(); } }));
   if (agent.detected && agent.login && !agent.login.headless) slot.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
   card.append(slot);
 

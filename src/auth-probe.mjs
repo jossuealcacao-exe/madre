@@ -78,7 +78,9 @@ export async function probeGemini({ env = process.env } = {}) {
     settings = null;
   }
   const hasOauth = await exists(join(dir, 'oauth_creds.json'));
-  const hasApiKey = Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY) || await geminiHasKeychainKey();
+  // The CLI reads ~/.gemini/.env as well as the environment and the system keychain.
+  const dotEnv = await readFile(join(dir, '.env'), 'utf8').catch(() => '');
+  const hasApiKey = Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY) || /^\s*(GEMINI_API_KEY|GOOGLE_API_KEY)\s*=\s*\S/m.test(dotEnv) || await geminiHasKeychainKey();
   return geminiAuthState({ settings, hasOauth, hasApiKey });
 }
 
@@ -134,6 +136,9 @@ export const AGENT_PACKAGE = {
   opencode: 'opencode-ai',
 };
 // One honest line per agent about the account it needs, for the bridge and for CONNECTIONS.
+// Which agents take a pasted key instead of a browser flow.
+export const TAKES_KEY = new Set(['gemini', 'opencode']);
+
 export function accountNoteFor(id) {
   if (id === 'madre') return { account: 'Free and local through Ollama: no account, no tokens. It answers from the room\'s memory.', paid: false, vendor: 'MADRE' };
   const setup = AGENT_SETUP[id];
