@@ -52,6 +52,12 @@ export const COMMANDS = [
         // The human commits what the room produced. Everything in the tree, one message, local: reversible with git.
         const message = args.slice(1).join(' ').replace(/^["'“]+|["'”]+$/g, '').trim();
         if (!message) return { ok: false, title: 'Git Pulse · commit', text: 'Give the commit a message: /git commit "what and why".' };
+        // Without an identity git refuses the commit with a wall of advice; say the one thing to do.
+        const email = await run('git', ['config', '--get', 'user.email'], projectRoot);
+        const who = await run('git', ['config', '--get', 'user.name'], projectRoot);
+        if (!email.text.trim() || !who.text.trim()) {
+          return { ok: false, title: 'Git Pulse · commit', text: 'This computer has no git identity, so the commit would have no author. Set it once in your terminal:\n\n  git config --global user.name "Your Name"\n  git config --global user.email you@example.com' };
+        }
         const staged = await run('git', ['add', '-A', '--', '.'], projectRoot);
         if (!staged.ok) return { ok: false, title: 'Git Pulse · commit', text: staged.text };
         const committed = await run('git', ['-c', 'color.ui=never', 'commit', '-m', message], projectRoot);

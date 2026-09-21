@@ -72,7 +72,16 @@ test('/git commit is the human\'s hand on the tree; /git push shows what would l
   const remote = await mkdtemp(join(tmpdir(), 'pulse-gitcmd-remote-'));
   try {
     git(root, 'init', '-q', '-b', 'main');
+    // A machine with no git identity gets one sentence, not git's wall of advice.
+    const command0 = commandByName('git');
     await writeFile(join(root, 'README.md'), 'v1\n');
+    git(root, 'config', 'user.email', '');   // deterministic: this machine may well have a global identity
+    git(root, 'config', 'user.name', '');
+    const nameless = await command0.execute({ projectRoot: root, args: ['commit', 'first'] });
+    assert.equal(nameless.ok, false);
+    assert.match(nameless.text, /no git identity[\s\S]*git config --global user\.email/);
+    git(root, 'config', 'user.email', 't@t');
+    git(root, 'config', 'user.name', 't');
     git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'first');
     const command = commandByName('git');
     assert.equal(await command.available({ projectRoot: root }), true);
