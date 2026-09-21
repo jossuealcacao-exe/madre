@@ -70,6 +70,9 @@ const state = {
   userMessages: new Map(),
   bridgePinned: false,      // the bridge stays open when the human asked for it
   tourArmed: false,         // the tour fires once, and only when the room can be used
+  ollama: null,             // the local brain's state, for the bridge
+  ollamaAsked: false,
+  ollamaRecommended: null,
   ratings: new Map(),        // messageId → good | bad, from the ledger
   ratingNodes: new Map(),    // messageId → the buttons of that bubble // messageId -> { text, target }
   lastSequence: 0,
@@ -997,6 +1000,7 @@ function renderOnboarding() {
   // The tour explains a room you can already use; while the bridge is up, the bridge is the lesson.
   if (usable.length) maybeStartTour();
   if (els.onboarding.hidden || !els.bridgeCrew) return;
+  if (state.ollama === null && !state.ollamaAsked) { state.ollamaAsked = true; void loadOllama(); }
   els.bridgeCrew.replaceChildren();
   for (const agent of crew) els.bridgeCrew.append(bridgeCard(agent));
   const close = document.querySelector('#bridge-close');
@@ -1044,7 +1048,7 @@ function bridgeCard(agent) {
   head.append(el('span', `state ${stage}`, stage === 'missing' ? 'NOT INSTALLED' : stage === 'inert' ? 'NO ADAPTER' : stage === 'ready' ? 'READY' : 'SIGNED OUT'));
   card.append(head);
   const detail = el('div', 'detail');
-  if (agent.id === 'madre') detail.append(agent.detected ? `Local, through Ollama${agent.version ? ` · ${agent.version}` : ''}` : 'Optional: run Ollama with a chat model and @madre joins the room.');
+  if (agent.id === 'madre') detail.append(ollamaDetail(agent));
   else if (stage === 'missing') detail.append(agent.install ? `Not on this computer · ${agent.install.display}` : 'Not on this computer.');
   else detail.append(`${agent.version ?? 'version unknown'}${session?.detail ? ` · ${session.detail}` : ''}`);
   card.append(detail);
@@ -1056,7 +1060,8 @@ function bridgeCard(agent) {
     card.append(account);
   }
   const actions = el('div', 'actions');
-  if (stage === 'missing' && agent.install) actions.append(bridgeInstallButton(agent));
+  if (agent.id === 'madre') for (const button of ollamaActions()) actions.append(button);
+  else if (stage === 'missing' && agent.install) actions.append(bridgeInstallButton(agent));
   let reveal = null;
   if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
     if (agent.login?.headless) actions.append(bridgeSignInButton(agent, stage === 'ready'));
@@ -1147,6 +1152,56 @@ function openBridge() {
 }
 document.querySelector('#crew-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); openBridge(); });
 document.querySelector('#bridge-close')?.addEventListener('click', () => { state.bridgePinned = false; renderOnboarding(); });
+
+// The local agent is not a CLI: it is Ollama, in one of four states. The card shows the one
+// step that moves it forward, with the command it will run in plain sight.
+function ollamaDetail(agent) {
+  const info = state.ollama;
+  if (agent.detected) return `Local, through Ollama${agent.version ? ` · ${agent.version}` : ''} · free, no account, no tokens`;
+  if (!info) return 'Optional and free: Ollama on this computer gives the room a local memory and @madre.';
+  if (!info.binary) return `Not on this computer. ${info.install?.note ?? ''}`.trim();
+  if (!info.running) return 'Installed but asleep. Wake it and the room gets a local memory and @madre.';
+  return 'Running, with no chat model yet. Pull one and @madre joins the room.';
+}
+function ollamaActions() {
+  const info = state.ollama;
+  if (!info || (info.running && info.chatModel)) return [];
+  const act = (label, title, run) => {
+    const button = el('button', 'primary', label);
+    button.type = 'button';
+    button.title = title;
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const before = button.textContent;
+      button.textContent = 'WORKING…';
+      try { await run(); } catch (error) { toast(`MU/TH/UR › ${error.message}`); button.textContent = before; button.disabled = false; }
+    });
+    return button;
+  };
+  const call = async (path, body) => {
+    const response = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) { if (result.download) window.open(result.download, '_blank', 'noopener'); throw new Error(result.error ?? `HTTP ${response.status}`); }
+    await loadOllama();
+    return result;
+  };
+  if (!info.binary) {
+    return info.install?.display
+      ? [act(`INSTALL · ${info.install.display}`, info.install.note ?? '', () => call('/api/ollama/install'))]
+      : [act('GET OLLAMA ↗', info.install?.note ?? '', async () => { window.open(info.install?.download ?? 'https://ollama.com/download', '_blank', 'noopener'); })];
+  }
+  if (!info.running) return [act('START OLLAMA', 'Wakes Ollama on this computer, nothing leaves it.', () => call('/api/ollama/start'))];
+  const model = state.ollamaRecommended?.chat ?? 'qwen2.5:3b';
+  return [act(`PULL ${model}`, `Downloads the model Ollama will answer with. It stays on this computer.`, () => call('/api/ollama/pull', { model }))];
+}
+async function loadOllama() {
+  try {
+    const data = await fetch('/api/ollama').then((response) => response.json());
+    state.ollama = data.ollama ?? null;
+    state.ollamaRecommended = data.recommended ?? null;
+  } catch { state.ollama = null; }
+  renderOnboarding();
+}
 
 function bridgeInstallButton(agent) {
   const button = el('button', 'primary', `INSTALL · ${agent.install.display}`);
@@ -2111,6 +2166,7 @@ function renderEventNode(event) {
     case 'quota.updated': applyQuota(event); return;
     case 'extension.install.started':
     case 'extension.install.finished':
+      if (event.payload.id === 'ollama' && !replaying) void loadOllama();
     case 'extension.install.refused':
       node = renderModuleEvent(event);
       break;

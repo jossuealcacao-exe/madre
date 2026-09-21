@@ -39,7 +39,7 @@ import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
-import { extensionById, runInstaller } from './extensions.mjs';
+import { extensionById, findOnPath, runInstaller } from './extensions.mjs';
 import { accountNoteFor, installPlanFor, looksLikeAdminProblem, loginPlanFor, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
 import { applyKey, keyPlanFor } from './credentials.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
@@ -580,6 +580,39 @@ export async function createPulseServer({
         ollama: {
           state: () => ollama,
           wire: (options) => wireOllama(options),
+          // Getting Ollama onto this computer, with the command in plain sight, and waking it.
+          install: async () => {
+            if (installing) return { ok: false, error: `Another install is running (${installing}).` };
+            const { ollamaInstallPlan } = await import('./modules/ollama.mjs');
+            const plan = ollamaInstallPlan({ brew: await findOnPath('brew') });
+            if (!plan.command) return { ok: false, error: plan.note, download: plan.download };
+            installing = 'ollama';
+            await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: plan.display, platforms: [], alreadyInstalled: false });
+            void (async () => {
+              const lines = [];
+              const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { lines.push(line); void room.record('extension.install.output', { id: 'ollama', lines: [line.slice(0, 500)] }); } });
+              const status = await wireOllama();
+              await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: result.code === 0, installed: Boolean(await findOnPath('ollama')), detail: result.code === 0 ? 'Ollama installed · START it to wake it' : (result.error ?? `exit ${result.code}`), ollama: status });
+              installing = null;
+            })();
+            return { ok: true, command: plan.display };
+          },
+          start: async () => {
+            if (ollama.running) return { ok: true, already: true };
+            const binary = await findOnPath('ollama');
+            if (!binary) return { ok: false, error: 'Ollama is not on this computer yet.' };
+            await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: 'ollama serve', platforms: [], alreadyInstalled: true });
+            const child = spawn(binary, ['serve'], { detached: true, stdio: 'ignore' });
+            child.unref();
+            // It answers in a moment or it does not: poll its own port rather than guess.
+            let status = ollama;
+            for (let attempt = 0; attempt < 20 && !status.running; attempt += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              status = await wireOllama();
+            }
+            await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: status.running, installed: true, detail: status.running ? `running · ${status.chatModel ? `@madre with ${status.chatModel}` : 'no chat model yet'}` : 'Ollama did not answer; open the Ollama app and press RECHECK.', ollama: status });
+            return status.running ? { ok: true } : { ok: false, error: 'Ollama did not answer. Open the Ollama app, then press RECHECK.' };
+          },
           // Pulls stream into the room like a module install; one at a time.
           pull: async (model) => {
             if (installing) return { ok: false, error: `Another install is running (${installing}).` };

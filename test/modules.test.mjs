@@ -65,7 +65,7 @@ test('registry: seven modules in MODULES order, the compat layer answers with th
   assert.equal(byId.ashcode.status.detail, 'off · beta');
   assert.match(byId.ashcode.warning, /^Beta:/);
   assert.equal(byId['git-pulse'].fixed, true);
-  assert.equal(byId.ollama.status.detail, 'not running · start Ollama and RECHECK');
+  assert.equal(byId.ollama.status.detail, (await (await import('../src/modules/helpers.mjs')).findOnPath('ollama') ? 'installed, not running · START it here' : 'not installed · INSTALL it here'));
   assert.equal(byId.ollama.recommended.embed, 'nomic-embed-text');
   assert.equal(byId['image-studio'].preflight.ok, false);
   assert.equal(byId.ahp.kind, 'installer');

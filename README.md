@@ -191,7 +191,7 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 | **Git Pulse** | `/git status`, `/git log [n]`, `/git diff`, `/git branches`: hechos del repositorio como tarjeta en el hilo, que los agentes también leen. `/git commit "mensaje"` y `/git push confirm`: tu mano sobre el repositorio, con vista previa de lo que saldría |
 | **Image Studio** | `generate_image` para Claude, Gemini y OpenCode, con tu key de Gemini, dentro de CREATE |
 | **RIPLEY** | El visor renderiza HTML, SVG y Markdown en un marco sellado, con recarga automática |
-| **OLLAMA** | Embeddings, archivista y `@madre` en local |
+| **OLLAMA** | Embeddings, archivista y `@madre` en local, gratis y sin cuenta. Se instala, se despierta y descarga su modelo desde el puente |
 | **PLAYWRIGHT** | Un navegador headless por turno que solo alcanza esta MADRE: abrir la vista previa de RIPLEY, hacer clic, leer consola, capturas al borrador del turno. Requiere `@playwright/mcp` |
 | **AshCode** (beta) | `$ ash_code`: abrevia mensajes localmente antes de enviarlos y pide respuestas concisas. Puede cambiar el significado; el original siempre queda |
 | **AHP+** | Integración externa opcional: estado verificado del proyecto, checkpoints y handoffs en `.ahp/`; `/ahp status`, `/ahp check`, `/ahp context` |

@@ -142,3 +142,47 @@ test('detection looks in MADRE\'s own tools folder as well as along PATH', async
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test('the local brain: one step at a time, with the command for this system in plain sight', async () => {
+  const { ollamaInstallPlan, ollamaStartPlan } = await import('../src/modules/ollama.mjs');
+  const withBrew = ollamaInstallPlan({ platform: 'darwin', brew: '/opt/homebrew/bin/brew' });
+  assert.deepEqual([withBrew.command, withBrew.args, withBrew.display], ['/opt/homebrew/bin/brew', ['install', 'ollama'], 'brew install ollama']);
+  const withoutBrew = ollamaInstallPlan({ platform: 'darwin', brew: null });
+  assert.equal(withoutBrew.command, null, 'nothing is run behind the human when MADRE has no way in');
+  assert.equal(withoutBrew.download, 'https://ollama.com/download');
+  const linux = ollamaInstallPlan({ platform: 'linux' });
+  assert.deepEqual([linux.command, linux.display], ['sh', 'curl -fsSL https://ollama.com/install.sh | sh']);
+  assert.match(linux.note, /own install script/);
+  assert.equal(ollamaInstallPlan({ platform: 'win32' }).download, 'https://ollama.com/download');
+  assert.deepEqual(ollamaStartPlan(), { command: 'ollama', args: ['serve'], display: 'ollama serve' });
+});
+
+test('the local brain refuses to start when it is not here, and says so instead of guessing', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ollama-'));
+  const project = await mkdtemp(join(tmpdir(), 'pulse-ollama-project-'));
+  try {
+    const { server } = await createPulseServer({
+      projectRoot: project,
+      stateRoot: root,
+      agents: [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: '1' }],
+      probe: async () => ({ codex: { state: 'signed-in', detail: '' } }),
+      // No Ollama anywhere: the room must offer the way in, never pretend.
+      ollamaProbe: async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null }),
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const seen = await fetch(`${base}/api/ollama`).then((response) => response.json());
+      assert.equal(seen.ollama.running, false);
+      assert.ok('binary' in seen.ollama && 'install' in seen.ollama && 'start' in seen.ollama, 'the bridge is told what it can offer');
+      assert.equal(seen.recommended.chat, 'qwen2.5:3b');
+      const pulled = await fetch(`${base}/api/ollama/pull`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'qwen2.5:3b' }) });
+      assert.equal(pulled.status, 412, 'nothing is pulled into an Ollama that is not running');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(project, { recursive: true, force: true });
+  }
+});

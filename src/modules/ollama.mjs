@@ -2,7 +2,32 @@
 // Ollama runs. The server offers the wiring through ctx.services.ollama.
 
 import { defineModule } from './sdk.mjs';
+import { findOnPath } from './helpers.mjs';
 import { RECOMMENDED } from '../ollama.mjs';
+
+// Ollama is not an npm package, so each system has its own way in. Where MADRE can run it, the
+// command is shown on the button before it runs; where it cannot, it hands over the download.
+export function ollamaInstallPlan({ platform = process.platform, brew = null } = {}) {
+  if (platform === 'darwin') {
+    return brew
+      ? { command: brew, args: ['install', 'ollama'], display: 'brew install ollama', note: 'Installs Ollama with Homebrew, the package manager already on this computer.' }
+      : { command: null, download: 'https://ollama.com/download', display: null, note: 'Homebrew is not on this computer. Download Ollama from ollama.com, open it once, and press RECHECK.' };
+  }
+  if (platform === 'linux') {
+    return { command: 'sh', args: ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'], display: 'curl -fsSL https://ollama.com/install.sh | sh', note: "Ollama's own install script, downloaded from ollama.com and run on this computer." };
+  }
+  return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the Ollama installer from ollama.com, run it, and press RECHECK.' };
+}
+
+// Waking it: the same command on every system, and the app on macOS does it too.
+export const ollamaStartPlan = () => ({ command: 'ollama', args: ['serve'], display: 'ollama serve' });
+
+// What the room needs to know about the local brain: its own state, whether it is even on this
+// computer, and the one step that moves it forward. The card and the routes share this.
+export async function ollamaView(probe, settings) {
+  const binary = await findOnPath('ollama');
+  return { ...probe, settings, binary, install: ollamaInstallPlan({ brew: await findOnPath('brew') }), start: ollamaStartPlan() };
+}
 
 export default defineModule({
   id: 'ollama',
@@ -15,15 +40,17 @@ export default defineModule({
   card: 'ollama',
   async status(ctx) {
     const probe = ctx.services.ollama?.state() ?? { running: false, models: [], embedModel: null, chatModel: null };
+    const view = await ollamaView(probe, ctx.settings);
+    const binary = view.binary;
     const settings = ctx.settings;
     const roles = [settings.embeddings && probe.embedModel ? `embeddings · ${probe.embedModel}` : null, settings.archivist && probe.chatModel ? `archivist · ${probe.chatModel}` : null, settings.agent !== false && probe.chatModel ? '@madre in the room' : null].filter(Boolean);
-    const detail = !probe.running ? 'not running · start Ollama and RECHECK'
+    const detail = !probe.running ? (binary ? 'installed, not running · START it here' : 'not installed · INSTALL it here')
       : !settings.enabled ? `off · ${probe.models.length} model${probe.models.length === 1 ? '' : 's'} available`
         : roles.length ? `on · ${roles.join(' · ')}` : 'on · no usable model yet · PULL one';
     return {
       models: probe.models.map((model) => model.name),
       status: { installed: settings.enabled && probe.running && roles.length > 0, detail },
-      ollama: { ...probe, settings },
+      ollama: view,
       recommended: RECOMMENDED,
       preflight: probe.running ? { ok: true, problems: [] } : { ok: false, problems: ['Ollama is not running: open the Ollama app or run `ollama serve`, then RECHECK.'] },
       install: { display: settings.enabled ? 'disable Ollama' : 'enable Ollama (config.json)', platforms: [] },
@@ -37,13 +64,21 @@ export default defineModule({
     return { status: 200, body: { enabled, ollama: status } };
   },
   routes: [
-    { method: 'GET', path: '/api/ollama', handler: async (ctx) => ({ status: 200, body: { ollama: await ctx.services.ollama.wire({ probe: false }), recommended: RECOMMENDED } }) },
-    { method: 'POST', path: '/api/ollama/probe', handler: async (ctx) => ({ status: 200, body: { ollama: await ctx.services.ollama.wire(), recommended: RECOMMENDED } }) },
+    { method: 'GET', path: '/api/ollama', handler: async (ctx) => ({ status: 200, body: { ollama: await ollamaView(await ctx.services.ollama.wire({ probe: false }), ctx.settings), recommended: RECOMMENDED } }) },
+    { method: 'POST', path: '/api/ollama/probe', handler: async (ctx) => ({ status: 200, body: { ollama: await ollamaView(await ctx.services.ollama.wire(), ctx.settings), recommended: RECOMMENDED } }) },
     { method: 'POST', path: '/api/ollama/settings', handler: async (ctx, { payload }) => {
       const next = { ...(ctx.config.modules?.ollama ?? {}) };
       for (const key of ['embeddings', 'archivist', 'agent', 'enabled']) if (typeof payload[key] === 'boolean') next[key] = payload[key];
       await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), ollama: next } });
       return { status: 200, body: { ollama: await ctx.services.ollama.wire({ probe: false }) } };
+    } },
+    { method: 'POST', path: '/api/ollama/install', handler: async (ctx) => {
+      const started = await ctx.services.ollama.install();
+      return started.ok ? { status: 202, body: { installing: true, command: started.command } } : { status: started.download ? 412 : 409, body: { error: started.error, download: started.download ?? null } };
+    } },
+    { method: 'POST', path: '/api/ollama/start', handler: async (ctx) => {
+      const started = await ctx.services.ollama.start();
+      return started.ok ? { status: 200, body: { ollama: ctx.services.ollama.state() } } : { status: 412, body: { error: started.error } };
     } },
     { method: 'POST', path: '/api/ollama/pull', handler: async (ctx, { payload }) => {
       const model = String(payload.model ?? '').trim();
