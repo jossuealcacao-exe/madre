@@ -317,3 +317,29 @@ test('nostromo: a crowded archive does not cost a blur for every memory in it', 
   assert.equal(small, large, `blurred draws grew from ${small} to ${large} as the archive grew`);
   assert.ok(large < 12, `a frame should blur a handful of times, not ${large}`);
 });
+
+test('nostromo: a memory reads as a moon beside the core, never as a rival to it', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const value = (name) => {
+    const match = source.match(new RegExp(`const ${name} = ([\\d.]+);`));
+    assert.ok(match, `${name} is gone from public/app.js`);
+    return Number(match[1]);
+  };
+  const scale = value('MEMORY_SCALE');
+  const core = value('CORE_R');
+
+  // The radius as buildNostromo works it out, for the smallest memory in an archive and for one
+  // that covers the whole ledger and cites everything.
+  const radius = (span, sources) => scale * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + sources * 0.6));
+  const smallest = radius(1, 1);
+  const largest = radius(100000, 40);
+
+  assert.ok(smallest > 0, 'a memory has to be visible');
+  assert.ok(largest < core / 4, `the biggest memory should stay well under the core, got ${largest.toFixed(1)} against ${core}`);
+  // The pointer gets 8 world units of slack on top of the radius, so even the smallest memory
+  // keeps a target a person can actually hit.
+  assert.ok(smallest + 8 >= 14, `the smallest memory is hard to click at ${(smallest + 8).toFixed(1)} units`);
+  // Two memories at rest are pushed apart by their radii plus a fixed gap: shrinking them must
+  // open the field up, not let them pile on top of each other.
+  assert.ok(smallest * 2 + 30 > largest, 'memories would overlap at rest');
+});

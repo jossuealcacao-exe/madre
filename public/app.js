@@ -4289,7 +4289,7 @@ function buildNostromo(data) {
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
@@ -4391,6 +4391,11 @@ const CORE_CELLS = [
   { lat: 0.12, lon: 4.8, size: 0.34, drift: -0.003, hot: false },
   { lat: 0.72, lon: 1.2, size: 0.2, drift: 0.005, hot: true },
 ];
+// How big a memory is drawn against the core. Everything else follows from the radius: how far
+// two memories push each other apart, how wide the view opens, where the label sits, and how
+// near the pointer has to be. Lower this and the whole constellation gives the core more room.
+const MEMORY_SCALE = 0.8;
+
 // The lava lamp: each blob keeps its own rate of rising and its own drift around the body, so
 // the halo never falls into step with itself.
 const LAVA_RATE = [0.061, 0.043, 0.078, 0.052, 0.036, 0.067, 0.047];

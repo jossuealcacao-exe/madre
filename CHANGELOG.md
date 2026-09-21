@@ -15,6 +15,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Los recuerdos que la sala usa reciben más pulsos. La actividad se mide de verdad: cuántas veces se recuperó ese recuerdo en un turno, hace cuánto fue la última, y cuántos temas comparte con otros. Un recuerdo que nadie pide casi no se enciende.
 - La constelación se lee contra sí misma: el recuerdo más activo es el más brillante y los demás se escalan debajo. Una sala recién abierta, donde todavía no se ha recuperado nada, se sostiene con los vínculos que ya tejió; en cuanto los turnos empiezan a pedir recuerdos, el uso manda.
 - También hay pulsos entre recuerdos vinculados, sin pasar por el centro: dos notas que comparten un tema se hablan directo. Lo que se ve es la red que la sala fue tejiendo, no un abanico de radios.
+- Los recuerdos se dibujan 20% más chicos. Quedan como lunas alrededor del cuerpo de MADRE en vez de competirle, y como la separación entre ellos no se encogió, la constelación abre más aire.
 - La tarjeta de cada recuerdo dice cuántas veces se ha recuperado y cuándo fue la última, y el encabezado cuenta cuántos están vivos.
 - Misma imagen, menos máquina: la vista dejó de recalcular la constelación en cada cuadro y de pedir desenfoques al navegador. Un archivo con cuatrocientos recuerdos cuesta los mismos desenfoques que uno con doce, y son diez por cuadro en vez de noventa.
 - Con movimiento reducido el halo se queda quieto: las gotas dejan de subir y de derivar, y la sala sigue dibujándose completa.
