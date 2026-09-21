@@ -1002,16 +1002,6 @@ function renderOnboarding() {
   if (els.onboarding.hidden || !els.bridgeCrew) return;
   if (state.ollama === null && !state.ollamaAsked) { state.ollamaAsked = true; void loadOllama(); }
   els.bridgeCrew.replaceChildren();
-  if (state.platform === 'win32') {
-    const note = el('article', 'bridge-card bridge-warn');
-    note.append(el('div', 'detail'), el('div', 'detail'));
-    note.firstChild.append(el('b', null, 'MADRE is supported on macOS and Linux.'));
-    note.lastChild.append('On Windows the room opens, but the coding agents may not start. Run MADRE inside WSL and everything works as it does on Linux.');
-    const link = el('a', 'key-link', 'HOW TO INSTALL WSL ↗');
-    link.href = 'https://learn.microsoft.com/windows/wsl/install'; link.target = '_blank'; link.rel = 'noopener noreferrer';
-    note.append(link);
-    els.bridgeCrew.append(note);
-  }
   for (const agent of crew) els.bridgeCrew.append(bridgeCard(agent));
   const close = document.querySelector('#bridge-close');
   if (close) close.hidden = !usable.length;

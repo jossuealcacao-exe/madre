@@ -173,9 +173,6 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
     const { action } = await runSetup({ projectRoot, stateRoot });
     if (action !== 'start') process.exit(0);
   }
-  if (process.platform === 'win32') {
-    console.log('\n  MOTHER › MADRE is supported on macOS and Linux. On Windows, run it inside WSL:\n  the room opens here, but the coding agents may not start.\n  https://learn.microsoft.com/windows/wsl/install\n');
-  }
   // A room for this project may already be open. Show that one instead of starting a second.
   const running = await roomAlreadyOpen(port, projectRoot);
   if (running) {
