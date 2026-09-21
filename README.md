@@ -33,7 +33,7 @@ npx @jossuealcala/madre start
 
 ## ARRANQUE · LOS PRIMEROS CINCO MINUTOS
 
-Necesitas Node 22.5 o superior y al menos una de estas CLIs con sesión iniciada: **Codex**, **Claude Code**, **Gemini CLI**, **OpenCode**. Si además corre **Ollama** con un modelo de chat, la sala tiene un quinto agente local.
+MADRE corre en macOS y Linux. En Windows, dentro de WSL, donde se comporta igual que en Linux. Necesitas Node 22.5 o superior y al menos una de estas CLIs con sesión iniciada: **Codex**, **Claude Code**, **Gemini CLI**, **OpenCode**. Si además corre **Ollama** con un modelo de chat, la sala tiene un quinto agente local.
 
 1. Entra a la carpeta del proyecto y corre `npx @jossuealcala/madre start`. La sala abre siempre, tengas agentes o no. Si no hay ninguno, lo primero que ves es el puente: cada agente con su botón para instalarlo y firmarlo, ahí mismo. MADRE muestra el comando exacto antes de correrlo y transmite cada línea. En cuanto uno queda listo, la sala se desbloquea sola.
 2. La sala abre en `http://127.0.0.1:4317`. Elige un agente en el selector o escribe `@claude …`. El chip junto a `to @agente` dice en qué modo sale el mensaje; `#1 EXCHANGE`, solo lectura, es el predeterminado.

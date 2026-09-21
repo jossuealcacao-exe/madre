@@ -1160,3 +1160,5 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .key-said { margin: 0; min-height: 1em; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--text-3); }
 .key-said.bad { color: var(--danger); text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 11.5px; line-height: 1.5; }
 .conn-card .key-form { margin-bottom: 10px; }
+.bridge-card.bridge-warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 6%, transparent); }
+.bridge-card.bridge-warn b { color: var(--warn); }

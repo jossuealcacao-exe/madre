@@ -443,6 +443,15 @@ export const CONDITIONS = [
     fixes: same(['ollama serve', 'ollama pull qwen2.5:3b', '@madre what did we decide about the webhook?']),
   },
   {
+    id: 'windows-wsl',
+    severity: 'blocking',
+    title: 'Windows: run MADRE inside WSL',
+    match: /windows|wsl|win32|\.cmd|EINVAL.*spawn/i,
+    diagnosis: 'MADRE is supported on macOS and Linux. On Windows the room itself opens, but the coding agents are installed as .cmd shims, and Node only starts those through a shell, which cannot carry a prompt of several kilobytes without mangling it. Rather than half-work, MADRE says so. Inside WSL everything behaves exactly as on Linux: the CLIs, their sessions, the memory and the modules.',
+    remedy: 'Install WSL, open your project inside it, and run MADRE there. The room still opens in your Windows browser at the same address.',
+    fixes: { darwin: ['# not needed on macOS'], linux: ['# not needed on Linux'], win32: ['wsl --install', '# then, inside WSL:', 'npx @jossuealcala/madre start'] },
+  },
+  {
     id: 'install-needs-admin',
     severity: 'informational',
     title: 'Installing a CLI: npm cannot write to the system folder',

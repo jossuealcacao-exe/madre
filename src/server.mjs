@@ -716,6 +716,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/state') {
         return sendJson(response, 200, {
           projectRoot,
+          platform: process.platform,
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
           ashCode: { enabled: room.ashCodeEnabled() },
           ripley: { enabled: await ripleyOn() },
