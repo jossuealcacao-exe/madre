@@ -1,5 +1,6 @@
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -68,9 +69,16 @@ async function readVersion(path, args) {
   }
 }
 
-export async function detectAgents() {
+// Where MADRE puts a CLI when the system folders are not writable: its own prefix, no
+// administrator, nothing outside ~/.pulse. Detection looks here as well as along PATH, so an
+// agent installed this way is found without the human touching their PATH.
+export const toolsPrefix = (env = process.env) => join(env.PULSE_HOME ?? join(homedir(), '.pulse'), 'tools');
+export const toolsBin = (env = process.env) => (process.platform === 'win32' ? toolsPrefix(env) : join(toolsPrefix(env), 'bin'));
+
+export async function detectAgents({ env = process.env } = {}) {
+  const searchPath = [env.PATH ?? '', toolsBin(env)].filter(Boolean).join(delimiter);
   return Promise.all(definitions.map(async (definition) => {
-    const path = await findExecutable(definition.candidates);
+    const path = await findExecutable(definition.candidates, searchPath);
     const detected = Boolean(path);
     return {
       id: definition.id,

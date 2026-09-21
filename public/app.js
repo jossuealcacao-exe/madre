@@ -3586,12 +3586,12 @@ function renderLoginEvent(event) {
 }
 // connections › installing @codex · npm install -g @openai/codex
 function renderAgentInstall(event) {
-  const { agent, label, command, code, error, detected, version } = event.payload;
+  const { agent, label, command, code, error, detected, version, where, prefix } = event.payload;
   const finished = event.type === 'connection.install.finished';
   const node = paint(el('div', `system connections${finished && !detected ? ' failed' : ''}`), agent);
   node.append(el('b', null, 'connections › '));
   node.append(finished
-    ? (detected ? `${label ?? agent} installed${version ? ` · ${version}` : ''} · sign in to finish` : `${label ?? agent} was not installed${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
+    ? (detected ? `${label ?? agent} installed${version ? ` · ${version}` : ''}${where === 'madre' ? ` · in MADRE's own folder (${prefix}), no administrator needed` : ''} · sign in to finish` : `${label ?? agent} was not installed${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
     : `installing ${label ?? agent} · ${command}`);
   if (finished && !replaying) toast(detected ? `MU/TH/UR › ${label ?? agent} is on this computer. Sign in and the room opens.` : `MU/TH/UR › ${label ?? agent} could not be installed. The log is above.`);
   if (finished) { renderOnboarding(); if (state.settingsOpen) void loadSettings(); }

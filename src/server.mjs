@@ -5,7 +5,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
-import { detectAgents } from './runtime-detection.mjs';
+import { detectAgents, toolsPrefix } from './runtime-detection.mjs';
 import { EventStore } from './event-store.mjs';
 import { RoomMemory } from './memory.mjs';
 import { createEmbedder } from './embeddings.mjs';
@@ -40,7 +40,7 @@ import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
 import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, runInstaller } from './extensions.mjs';
-import { accountNoteFor, installPlanFor, loginPlanFor, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
+import { accountNoteFor, installPlanFor, looksLikeAdminProblem, loginPlanFor, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
 import { applyKey, keyPlanFor } from './credentials.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
@@ -417,25 +417,35 @@ export async function createPulseServer({
     const agent = agents.find((item) => item.id === id);
     if (!agent) return { status: 404, body: { error: `Unknown agent: ${id}.` } };
     if (agent.detected) return { status: 409, body: { error: `${agent.label} is already installed.` } };
-    const plan = installPlanFor(agent);
+    const plan = installPlanFor(agent, { prefix: toolsPrefix() });
     if (!plan) return { status: 404, body: { error: `MADRE does not know how to install ${id}.` } };
     if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
     installing = `agent:${id}`;
     await room.record('connection.install.started', { agent: id, label: agent.label, command: plan.display });
     void (async () => {
       const lines = [];
-      const result = await (installers[id] ?? runInstaller)({
-        command: plan.command,
-        args: plan.args,
+      const attempt = (step) => (installers[id] ?? runInstaller)({
+        command: step.command,
+        args: step.args,
         projectRoot: canonicalProjectRoot,
         timeoutMs: 600000,
         onLine: (line) => { lines.push(line); void room.record('connection.install.output', { agent: id, line: line.slice(0, 500) }); },
       });
+      let result = await attempt(plan);
+      let where = 'system';
+      // Walled out of the system folders: install into MADRE's own, where it will be found.
+      if (result.code !== 0 && plan.fallback && looksLikeAdminProblem(`${lines.join('\n')}\n${result.error ?? ''}`)) {
+        await room.record('connection.install.output', { agent: id, line: `npm cannot write to this computer's system folder without an administrator. Installing into MADRE's own folder instead: ${toolsPrefix()}` });
+        result = await attempt(plan.fallback);
+        where = 'madre';
+      }
       await redetectAgents();
       const found = agents.find((item) => item.id === id);
       await room.record('connection.install.finished', {
         agent: id,
         label: agent.label,
+        where,
+        prefix: where === 'madre' ? toolsPrefix() : null,
         code: result.code ?? null,
         error: result.error ?? null,
         detected: Boolean(found?.detected),

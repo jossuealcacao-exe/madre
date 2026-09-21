@@ -145,7 +145,13 @@ export function accountNoteFor(id) {
   return setup ? { account: setup.account, paid: setup.paid, vendor: setup.vendor } : null;
 }
 
-export function installPlanFor(agent) {
+// npm cannot always write to the system folders: with Node installed from its own installer,
+// a global install asks for an administrator. Rather than send the human to a terminal with
+// sudo, MADRE installs into a folder of its own and finds the CLI there.
+export const NEEDS_ADMIN = /EACCES|EPERM|permission denied|Missing write access|operation not permitted|npm ERR! code E401.*sudo|need (?:root|sudo)/i;
+export const looksLikeAdminProblem = (output) => NEEDS_ADMIN.test(String(output ?? ''));
+
+export function installPlanFor(agent, { prefix = null } = {}) {
   const name = AGENT_PACKAGE[agent?.id];
   if (!name) return null;
   return {
@@ -153,6 +159,8 @@ export function installPlanFor(agent) {
     command: 'npm',
     args: ['install', '-g', name, '--no-fund', '--no-audit'],
     display: `npm install -g ${name}`,
+    // The same install, into MADRE's own prefix: no administrator, nothing outside ~/.pulse.
+    fallback: prefix ? { command: 'npm', args: ['install', '-g', name, '--prefix', prefix, '--no-fund', '--no-audit'], display: `npm install -g ${name} --prefix ${prefix}` } : null,
     alternatives: (AGENT_SETUP[agent.id]?.install ?? []).slice(1),
   };
 }

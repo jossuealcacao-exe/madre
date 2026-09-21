@@ -443,6 +443,19 @@ export const CONDITIONS = [
     fixes: same(['ollama serve', 'ollama pull qwen2.5:3b', '@madre what did we decide about the webhook?']),
   },
   {
+    id: 'install-needs-admin',
+    severity: 'informational',
+    title: 'Installing a CLI: npm cannot write to the system folder',
+    match: /EACCES|EPERM|permission denied|Missing write access|npm ERR!.*sudo|administrator/i,
+    diagnosis: 'A global npm install writes into a folder that belongs to the system. With Node installed from its own installer that folder needs an administrator, so npm stops with a permission error. MADRE does not ask for your password: when it sees that wall it installs the CLI into a folder of its own, ~/.pulse/tools, and looks there as well as along PATH. The agent works the same; only the file lives somewhere else.',
+    remedy: 'Nothing to do: press INSTALL again and MADRE takes the second way by itself. If you would rather have the CLI everywhere in your terminal, install it yourself with your package manager, or give npm a folder of your own.',
+    fixes: {
+      darwin: ['# MADRE does this for you; these are the alternatives:', 'brew install --cask claude-code', 'npm config set prefix ~/.npm-global   # then add ~/.npm-global/bin to your PATH'],
+      linux: ['# MADRE does this for you; these are the alternatives:', 'npm config set prefix ~/.npm-global   # then add ~/.npm-global/bin to your PATH'],
+      win32: ['# MADRE does this for you; the alternative is an elevated terminal:', 'npm install -g @openai/codex'],
+    },
+  },
+  {
     id: 'privacy-leak',
     severity: 'warning',
     title: 'Privacy: an agent brought its own configuration into the room',
