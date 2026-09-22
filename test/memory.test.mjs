@@ -993,3 +993,49 @@ test('memory: an aberration is kept, is never recalled, and takes what it refute
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('memory: an aberration the archivist files takes down the note that says the same thing', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-wire-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 8; i += 1) await store.append('message.created', { messageId: `m${i}`, role: 'user', sender: 'you', target: 'codex', text: `the lab test server and its default port, note ${i}` });
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+
+    memory.addMemories([
+      { kind: 'fact', text: 'The lab starts its test server on port 7100 by default.', sources: [1] },
+      { kind: 'fact', text: 'The lab keeps its backups in the backups/daily folder.', sources: [2] },
+    ], { agent: 'ollama', fromSequence: 1, throughSequence: 8 });
+
+    // The archivist hears the correction and files the false claim. It cannot name an id, so the
+    // store has to find what the claim refutes on its own, or the room keeps handing it out.
+    memory.addMemories([
+      { kind: 'aberration', text: 'The lab starts its test server on port 7100 by default, not another.', correction: 'It starts on port 8200.', sources: [5] },
+    ], { agent: 'ollama', fromSequence: 1, throughSequence: 8 });
+
+    const all = memory.memories({ limit: 10 });
+    const aberration = all.find((note) => note.kind === 'aberration');
+    const wrong = all.find((note) => /port 7100 by default\.$/.test(note.text));
+    const unrelated = all.find((note) => /backups/.test(note.text));
+    assert.equal(aberration.contradicts, wrong.id, 'the aberration was filed without naming what it refutes');
+    assert.equal(wrong.refutedBy, aberration.id, 'the false note is still standing');
+    assert.equal(unrelated.refutedBy, null, 'an unrelated note was taken down with it');
+
+    // And that is the whole point: the claim stops reaching turns.
+    const reached = memory.recallMemories('what port does the lab test server start on', { limit: 6, fallback: false, track: false });
+    assert.ok(!reached.some((note) => /7100/.test(note.text)), 'the room is still handing out a claim it recorded as false');
+    assert.ok(reached.some((note) => /backups/.test(note.text)), 'everything else stopped travelling too');
+
+    // A claim about something else entirely takes nothing down, however it is worded.
+    memory.addMemories([{ kind: 'aberration', text: 'The lab compiles a Rust core with cargo every night.', sources: [6] }], { agent: 'ollama', fromSequence: 1, throughSequence: 8 });
+    const loose = memory.memories({ limit: 10 }).find((note) => /Rust core/.test(note.text));
+    assert.equal(loose.contradicts, null, 'an aberration about something else took a note down');
+    assert.equal(memory.memories({ limit: 10 }).filter((note) => note.refutedBy !== null).length, 1);
+
+    // Clearing it puts the note back, wired or not.
+    memory.clearAberration(aberration.id);
+    assert.equal(memory.memories({ limit: 10 }).find((note) => note.id === wrong.id).refutedBy, null);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

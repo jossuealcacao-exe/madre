@@ -407,6 +407,14 @@ export class RoomMemory {
         const correction = aberrant ? this.#guard(String(memory.correction ?? '').trim()) || null : null;
         const result = insert.run(now, kind, text, memoryKey(kind, text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent, origin, messageId, correction, aberrant ? (memory.detector ?? agent) : null, aberrant ? (Number.isFinite(memory.confidence) ? memory.confidence : null) : null);
         added += Number(result.changes ?? 0);
+        if (aberrant && Number(result.changes ?? 0)) {
+          const id = Number(result.lastInsertRowid);
+          const target = this.#refutedBy(text);
+          if (target) {
+            this.#db.prepare('UPDATE memories SET contradicts = ? WHERE id = ?').run(target, id);
+            this.#db.prepare('UPDATE memories SET refuted_by = ? WHERE id = ? AND refuted_by IS NULL').run(id, target);
+          }
+        }
       }
       this.#db.exec('COMMIT');
     } catch (error) {
@@ -414,6 +422,31 @@ export class RoomMemory {
       throw error;
     }
     return added;
+  }
+
+  // An aberration filed by the archivist cannot name an id: the archivist reads exchanges, not
+  // the archive. So when the room records that a claim is false, the store looks for the note
+  // already standing that says the same thing, and wires the two together. Without this the
+  // room quarantines the refutation and goes on handing agents the very claim it just recorded
+  // as false, which is the one outcome all of this exists to prevent.
+  //
+  // The bar is high on purpose: almost every distinctive word of one has to be in the other.
+  // A merely related note is not the same claim, and taking down the wrong one is worse than
+  // taking down none.
+  #refutedBy(text) {
+    const terms = new Set(normalizeMemory(text).split(' ').filter((word) => word.length > 2));
+    if (terms.size < 3) return null;
+    let best = null;
+    const standing = this.#db.prepare(`SELECT id, text FROM memories WHERE kind != '${ABERRATION}' AND refuted_by IS NULL ORDER BY id DESC LIMIT 200`).all();
+    for (const row of standing) {
+      const other = new Set(normalizeMemory(row.text).split(' ').filter((word) => word.length > 2));
+      if (other.size < 3) continue;
+      let shared = 0;
+      for (const term of other) if (terms.has(term)) shared += 1;
+      const overlap = shared / Math.min(terms.size, other.size);
+      if (overlap >= 0.8 && (!best || overlap > best.overlap)) best = { id: row.id, overlap };
+    }
+    return best?.id ?? null;
   }
 
   // Flagging an aberration is two writes that have to happen together: the claim is filed, and

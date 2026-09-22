@@ -121,6 +121,13 @@ test('dataset: what the room got wrong trains against itself, and never as somet
   assert.equal(preferences[0].chosen, 'It verifies the signature before parsing anything.');
   assert.match(preferences[0].prompt, /^Is this true of the project "pulse"\?/);
 
+  // A correction that only restates the claim is not a pair: there is nothing to prefer, and a
+  // model asked to choose between two near-identical answers learns from the noise between them.
+  // A weak archivist writes these, so they are caught before they ship.
+  assert.deepEqual(preferencesFromAberrations([
+    { id: 5, kind: 'aberration', text: 'The lab starts its test server on port 7100 by default, not another.', correction: 'The lab starts its test server on port 7100 by default.', contradicts: null, fromSequence: 1, throughSequence: 1, created: '2026-09-02T10:00:00.000Z' },
+  ], { project: 'pulse' }), []);
+
   // An aberration that only refutes a stored note takes its truth from the note it points at.
   const fromNote = preferencesFromAberrations([
     { id: 3, kind: 'fact', text: 'Checkpoints live under refs/madre/checkpoints.', fromSequence: 1, throughSequence: 1, created: '2026-09-01T10:00:00.000Z' },

@@ -128,7 +128,16 @@ export function preferencesFromAberrations(notes, { project = 'project', home, u
     if (!truth) continue;
     const claim = say(note.text);
     const better = say(truth);
-    if (!claim || !better || claim === better) continue;
+    if (!claim || !better) continue;
+    // A correction that restates the claim teaches nothing, and a model asked to prefer one of
+    // two near-identical answers learns the wrong lesson from the noise between them. A weak
+    // archivist writes these, so they are caught here rather than shipped.
+    const words = (text) => new Set(String(text).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').filter((word) => word.length > 2));
+    const [left, right] = [words(claim), words(better)];
+    if (!left.size || !right.size) continue;
+    let shared = 0;
+    for (const word of right) if (left.has(word)) shared += 1;
+    if (shared / Math.min(left.size, right.size) > 0.8) continue;
     pairs.push({
       kind: 'aberration',
       sequence: note.throughSequence,
