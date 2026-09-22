@@ -289,7 +289,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .system.memory .brief { text-transform: none; letter-spacing: 0; color: var(--text-2); }
 
 /* NOSTROMO: the archive as a small solar system. One colour per kind of memory. */
-:root { --mem-decision: #ffb000; --mem-fact: #9bff66; --mem-preference: #d78cff; --mem-question: #5fd6ff; --nostromo-sun: #ff2a1f; }
+:root { --mem-decision: #ffdc3c; --mem-fact: #dfeeff; --mem-preference: #fa4632; --mem-question: #3dc6ff; --nostromo-sun: #ff2a1f; }
 .nostromo-button { color: var(--terror); border-color: color-mix(in srgb, var(--terror) 55%, transparent); }
 .nostromo-button:hover { background: color-mix(in srgb, var(--terror) 14%, transparent); }
 dialog.nostromo { color: #eef1ea; }
@@ -298,8 +298,10 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-head { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 18px; align-items: center; padding: 18px 26px 14px; border-bottom: 1px solid var(--ph-faint); color: var(--ph); position: relative; z-index: 2; }
 .nostromo-head .mother-title { color: var(--nostromo-sun); text-shadow: 0 0 18px color-mix(in srgb, var(--nostromo-sun) 60%, transparent); }
 .nostromo-head .mother-sub { color: var(--ph-dim); }
-.nostromo-legend { display: flex; gap: 8px; }
-.nostromo-legend .k { font-size: 9px; letter-spacing: .16em; padding: 3px 8px; border: 1px solid; border-radius: 999px; }
+.nostromo-legend { display: flex; gap: 8px; align-items: center; }
+.nostromo-legend .k { display: inline-flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: .16em; padding: 3px 8px 3px 4px; border: 1px solid; border-radius: 999px; }
+.nostromo-legend .k canvas { display: block; border-radius: 50%; }
+.nostromo-legend .k i { font-style: normal; }
 .nostromo-legend .k.decision { color: var(--mem-decision); } .nostromo-legend .k.fact { color: var(--mem-fact); } .nostromo-legend .k.preference { color: var(--mem-preference); } .nostromo-legend .k.question { color: var(--mem-question); }
 .nostromo-frame .mother-close { color: var(--ph); border-color: var(--ph-dim); }
 .nostromo-frame .mother-close:hover { background: var(--ph-faint); }

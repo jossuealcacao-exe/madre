@@ -125,8 +125,11 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
   const offscreen = [];
   const makeCanvas = () => {
     const own = [];
+    // Its own recorder. A shared one would push every stop of a texture being built into the
+    // middle of the frame's call list, which silently moves everything measured after it.
+    const ownGradient = () => ({ addColorStop: (stop, colour) => own.push({ name: 'addColorStop', args: [stop, colour] }) });
     const paint = new Proxy({
-      createRadialGradient: () => gradient(), createLinearGradient: () => gradient(),
+      createRadialGradient: () => ownGradient(), createLinearGradient: () => ownGradient(),
       fillRect: (...args) => own.push({ name: 'fillRect', args }), beginPath: () => {}, closePath: () => {},
       arc: (...args) => own.push({ name: 'arc', args }), fill: () => own.push({ name: 'fill', args: [] }),
       moveTo: () => {}, lineTo: () => {}, stroke: () => {}, save: () => {}, restore: () => {},
@@ -143,6 +146,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
     ${block('CORE_FLOWS')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
+    ${block('dwarfSkins')} ${fn('dwarfTexture')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawNostromo')}
@@ -199,7 +203,9 @@ test('nostromo: the skin is wrapped on a sphere, so it narrows toward the limb',
     room.spin = spin;
     calls.length = 0;
     run(2);
-    return calls.filter((c) => c.name === 'drawImage').map((c) => ({ x: c.args[5], y: c.args[6], w: c.args[7], h: c.args[8] }));
+    return calls.filter((c) => c.name === 'drawImage')
+      .map((c) => ({ x: c.args[5], y: c.args[6], w: c.args[7], h: c.args[8] }))
+      .filter((piece) => Math.abs(piece.x) < 104 * 1.6 && Math.abs(piece.y) < 104 * 1.6);
   };
   const laid = pieces(0);
   assert.ok(laid.length > 60, `the face should be laid in rows and pieces, saw ${laid.length}`);
@@ -348,16 +354,18 @@ test('nostromo: the surface boils, and turning the star moves the grain across i
   run(0);
 
   // The granulation is built once, into a strip twice as wide as it is used, so the window can
-  // slide along it without ever meeting a seam.
-  assert.equal(offscreen.length, 1, `the grain should be built once, saw ${offscreen.length}`);
+  // slide along it without ever meeting a seam. The memories build their own, one per class of
+  // star and not one per memory, so a crowded archive pays for four and no more.
   const strip = offscreen[0];
+  assert.ok(offscreen.length <= 1 + 4, `skins should be shared by class, saw ${offscreen.length}`);
   assert.ok(strip.width >= strip.height * 2, 'the strip is not wide enough to wrap the body');
   assert.ok(strip.calls.filter((c) => c.name === 'arc').length > 3000, 'the surface has too few cells to boil');
 
   // It is built once and no more: a second frame must not pay for it again.
   const before = strip.calls.length;
+  const built = offscreen.length;
   run(1);
-  assert.equal(offscreen.length, 1, 'the grain was rebuilt mid-flight');
+  assert.equal(offscreen.length, built, 'a skin was rebuilt mid-flight');
   assert.equal(strip.calls.length, before, 'the grain was repainted mid-flight');
 
   // Turning the star slides the window along the strip. Same rows, different source.
@@ -365,7 +373,7 @@ test('nostromo: the surface boils, and turning the star moves the grain across i
     room.spin = spin;
     calls.length = 0;
     run(2);
-    return calls.filter((c) => c.name === 'drawImage').map((c) => c.args[1]);
+    return calls.filter((c) => c.name === 'drawImage' && Math.abs(c.args[5]) < 104 * 1.6 && Math.abs(c.args[6]) < 104 * 1.6).map((c) => c.args[1]);
   };
   const first = windows(0);
   assert.ok(first.length > 60, `the face should be drawn in rows and pieces, saw ${first.length}`);
@@ -556,43 +564,54 @@ test('nostromo: current runs along a wire without ever handing the canvas a bad 
   assert.equal(stops.length, 3, 'a starved wire is still sparking');
 });
 
-test('nostromo: feeding a memory lights it, and starving it puts it out', async () => {
+test('nostromo: a dwarf burns by what it has become and by what it is being given', async () => {
   const room = fakeRoom();
   const { run, calls } = await nostromoRenderer(room);
 
-  // Two memories side by side, one the room keeps feeding and one it has forgotten.
-  const [full, starved] = [room.nodes[0], room.nodes[1]];
-  full.charge = 1;
-  full.lit = 0;
-  starved.charge = 0;
-  starved.lit = 0;
+  // Four memories: nothing, grown but starved, young but fed, and both at once. Brightness has
+  // to answer to each, and a memory that is mature and fed has to outshine one that is neither.
+  const [out, grown, fed, full] = room.nodes;
+  for (const node of [out, grown, fed, full]) { node.charge = 0; node.lit = 0; node.activity = 0.05; }
+  grown.activity = 1;
+  fed.charge = 1;
+  full.activity = 1; full.charge = 1;
 
+  // How brightly a memory's face is laid down, and how much night is left on it.
   const readingOf = (node) => {
-    const halo = calls.find((c) => c.name === 'createRadialGradient' && c.args[0] === node.x && c.args[1] === node.y && c.args[2] > 1);
+    const at = calls.findIndex((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (node.x - node.r * 1.04)) < 4);
+    const alpha = calls.slice(Math.max(0, at - 3), at).findLast((c) => c.name === 'set:globalAlpha');
     const body = calls.find((c) => c.name === 'createRadialGradient' && c.args[3] === node.x && c.args[4] === node.y && c.args[2] < 1
       && (c.args[0] !== node.x || c.args[1] !== node.y));
-    const at = calls.indexOf(body);
-    const night = calls.slice(at, at + 12).find((c) => c.name === 'addColorStop' && /rgba\(0, 0, 0/.test(String(c.args[1])));
-    return { halo: halo?.args[5], night: Number(String(night?.args[1]).match(/,\s*([\d.]+)\)/)?.[1]) };
+    // Two black gradients are laid on a body. The limb is struck from the body's own centre and
+    // every star has one. The night is struck from a point pushed away from MOTHER and reaches
+    // twice the body's width; that is the one that burns off as the star lights itself.
+    const cast = calls.find((c) => c.name === 'createRadialGradient'
+      && c.args[3] !== node.x && Math.hypot(c.args[3] - node.x, c.args[4] - node.y) < node.r * 2
+      && c.args[5] > node.r * 1.5 && c.args[5] < node.r * 2.6);
+    const struck = calls.indexOf(cast);
+    const first = struck < 0 ? null : calls.slice(struck + 1, struck + 2).find((c) => c.name === 'addColorStop');
+    return { face: alpha?.args[0], night: Number(String(first?.args[1]).match(/,\s*([\d.]+)\)/)?.[1]) };
   };
 
   calls.length = 0;
   run(0);
-  const lit = readingOf(full);
-  const dim = readingOf(starved);
+  const [dark, old, young, bright] = [out, grown, fed, full].map(readingOf);
 
-  assert.ok(lit.halo > dim.halo * 1.3, `a fed memory should carry the wider halo (${lit.halo?.toFixed(1)} against ${dim.halo?.toFixed(1)})`);
-  assert.ok(lit.night < dim.night * 0.4, `a fed memory should have burned off its own night (${lit.night} against ${dim.night})`);
+  assert.ok(Number.isFinite(dark.face) && Number.isFinite(bright.face), 'the faces were not drawn');
+  assert.ok(old.face > dark.face, 'maturity alone does not brighten a memory');
+  assert.ok(young.face > dark.face, 'feeding alone does not brighten a memory');
+  assert.ok(bright.face > old.face && bright.face > young.face, 'the two together are worth no more than either');
+  assert.ok(bright.night < dark.night * 0.35, `a burning dwarf should have lost its night (${bright.night} against ${dark.night})`);
 
-  // And the wire into it runs thicker: current follows the charge.
-  const widths = [];
-  let seen = 0;
-  for (const call of calls) {
-    if (call.name === 'set:lineWidth') widths.push(call.args[0]);
-    if (call.name === 'quadraticCurveTo') seen += 1;
+  // And nothing hangs off any of them. A halo is a filled gradient struck at the body's centre
+  // and reaching past its edge; rings that mark an arriving pulse are strokes, and stay.
+  for (const node of room.nodes) {
+    for (const call of calls) {
+      if (call.name !== 'createRadialGradient') continue;
+      if (call.args[0] !== node.x || call.args[1] !== node.y) continue;
+      assert.ok(call.args[5] <= node.r * 1.2, `a memory is wearing a halo out to ${(call.args[5] / node.r).toFixed(1)} of its own radius`);
+    }
   }
-  assert.ok(seen > room.nodes.length, 'the wires were not drawn');
-  assert.ok(widths.some((value) => value > 4), 'no wire is carrying a full charge');
 });
 
 test('nostromo: charge is fed by the core and by neighbours, and drains when nobody feeds it', async () => {
@@ -653,4 +672,55 @@ test('nostromo: a wire leaves MOTHER red and arrives wearing the star it feeds',
     matched += 1;
   }
   assert.equal(matched, 4, 'not every class of star got its own wire');
+});
+
+test('nostromo: the legend shows a real star for each class, not a swatch', async () => {
+  const [app, page, css] = await Promise.all([
+    readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8'),
+    readFile(join(import.meta.dirname, '..', 'public', 'index.html'), 'utf8'),
+    readFile(join(import.meta.dirname, '..', 'public', 'styles.css'), 'utf8'),
+  ]);
+
+  // Every class is named, and each name is the star it burns as next to the kind of memory.
+  const named = app.match(/const DWARF_CLASS = (\{[^}]*\});/);
+  assert.ok(named, 'DWARF_CLASS is gone from public/app.js');
+  const classes = new Function(`return ${named[1]}`)();
+  assert.deepEqual(Object.keys(classes).sort(), ['decision', 'fact', 'preference', 'question']);
+  for (const [kind, label] of Object.entries(classes)) {
+    assert.match(label, /DWARF$/, `${kind} is not named as a star`);
+    assert.match(page, new RegExp(`${label} · ${kind.toUpperCase()}`, 'i'), `the page never shows "${label} · ${kind}"`);
+  }
+
+  // The chip carries a drawn star, and it is drawn the way the ones in the constellation are:
+  // a ground, the class's own boiling face, and a limb.
+  const chip = app.slice(app.indexOf('function dwarfChip('), app.indexOf('function paintLegend('));
+  for (const piece of ['createElement', 'clip()', 'dwarfTexture', 'drawImage', 'limb']) {
+    assert.ok(chip.includes(piece), `the legend's star is missing its ${piece}`);
+  }
+  assert.ok(app.includes('paintLegend();'), 'the legend is never painted');
+
+  // The font is the one the header already uses: the chip may only set size and spacing, never
+  // a family of its own.
+  const rule = css.slice(css.indexOf('.nostromo-legend'), css.indexOf('.nostromo-frame .mother-close'));
+  assert.ok(/font-size: 9px/.test(rule) && /letter-spacing: \.16em/.test(rule), 'the legend lost its lettering');
+  assert.ok(!/font-family/.test(rule), 'the legend set a font of its own');
+
+  // And the stylesheet's colours are the same stars the canvas paints.
+  const palette = new Function(`return ${app.match(/const MEMORY_COLORS = (\{[^}]*\});/)[1]}`)();
+  for (const [kind, hex] of Object.entries(palette)) {
+    assert.ok(css.includes(`--mem-${kind}: ${hex}`), `the page and the canvas disagree about a ${kind}`);
+  }
+});
+
+test('nostromo: a class of star is built once, however many memories wear it', async () => {
+  const room = fakeRoom();
+  // Forty memories across the four classes: the skins must be shared, not built per memory.
+  const palette = ['#ffdc3c', '#dfeeff', '#fa4632', '#3dc6ff'];
+  room.nodes = Array.from({ length: 40 }, (_, i) => ({ ...room.nodes[i % room.nodes.length], x: Math.cos(i) * 320, y: Math.sin(i) * 320, color: palette[i % 4] }));
+  const { run, offscreen } = await nostromoRenderer(room);
+  run(0);
+  run(1);
+  run(2);
+  // One strip for MOTHER, one for each class of star that is actually on screen.
+  assert.equal(offscreen.length, 5, `skins should be built once per class, saw ${offscreen.length}`);
 });

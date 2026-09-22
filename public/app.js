@@ -4225,10 +4225,66 @@ nostromo.gate.form?.addEventListener('submit', (event) => {
   setTimeout(() => { nostromo.gate.dialog.close(); void openNostromo(); }, 700);
 });
 
+// What each class of memory is called as a star, for the legend above the constellation.
+const DWARF_CLASS = { decision: 'YELLOW DWARF', fact: 'WHITE DWARF', preference: 'RED DWARF', question: 'BLUE DWARF' };
+
+// A real dwarf, small enough to sit in a chip: the same ground, the same boiling face and the
+// same limb the ones in the constellation wear, so the legend shows the thing and not a swatch.
+function dwarfChip(hex, px) {
+  const canvas = document.createElement('canvas');
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(px * dpr);
+  canvas.height = Math.round(px * dpr);
+  canvas.style.width = `${px}px`;
+  canvas.style.height = `${px}px`;
+  const paint = canvas.getContext('2d');
+  if (!paint) return canvas;
+  paint.scale(dpr, dpr);
+  const r = px / 2;
+  paint.save();
+  paint.beginPath(); paint.arc(r, r, r, 0, Math.PI * 2); paint.closePath();
+  const ground = paint.createRadialGradient(r * 0.72, r * 0.72, r * 0.04, r, r, r * 1.1);
+  ground.addColorStop(0, hexMix(hex, '#ffffff', 0.75));
+  ground.addColorStop(0.42, hex);
+  ground.addColorStop(1, hexMix(hex, '#000000', 0.62));
+  paint.fillStyle = ground;
+  paint.fill();
+  paint.clip();
+  const skin = dwarfTexture(hex);
+  if (skin) {
+    paint.globalAlpha = 0.72;
+    paint.drawImage(skin, 0, 0, skin.width * 0.28, skin.height, -r * 0.08, -r * 0.08, px * 1.08, px * 1.08);
+    paint.globalAlpha = 1;
+  }
+  const limb = paint.createRadialGradient(r, r, r * 0.3, r, r, r);
+  limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  limb.addColorStop(0.78, 'rgba(0, 0, 0, .18)');
+  limb.addColorStop(1, 'rgba(0, 0, 0, .6)');
+  paint.fillStyle = limb;
+  paint.fillRect(0, 0, px, px);
+  paint.restore();
+  return canvas;
+}
+
+// The legend: one real star per class, with the kind of memory that burns as that class.
+function paintLegend() {
+  const host = document.querySelector('.nostromo-legend');
+  if (!host || host.dataset.lit === 'yes') return;
+  const chips = [];
+  for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
+    const chip = el('span', `k ${kind}`);
+    chip.append(dwarfChip(hex, 13), el('i', null, `${DWARF_CLASS[kind]} · ${kind.toUpperCase()}`));
+    chips.push(chip);
+  }
+  host.replaceChildren(...chips);
+  host.dataset.lit = 'yes';
+}
+
 async function openNostromo() {
   if (!nostromo.dialog) return;
   mother.dialog?.close?.();
   nostromo.dialog.showModal();
+  paintLegend();
   nostromo.sub.textContent = 'MEMORY RESEARCH · LOADING…';
   nostromo.card.hidden = true;
   nostromo.selected = null;
@@ -4433,6 +4489,58 @@ function granuleTexture() {
 const CIRCLE_STEPS = 44;
 const CIRCLE_COS = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.cos((k / CIRCLE_STEPS) * Math.PI * 2));
 const CIRCLE_SIN = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.sin((k / CIRCLE_STEPS) * Math.PI * 2));
+// ---- The skin of a dwarf.
+// A star of any class has the same boiling surface; what changes is the colour it boils in. One
+// strip is built per class, the first time that class is asked for, and every memory of that
+// class wears it. The strip repeats left to right, so a body can turn inside it without a seam.
+const dwarfSkins = new Map();
+function dwarfTexture(hex) {
+  if (dwarfSkins.has(hex)) return dwarfSkins.get(hex);
+  let skin = null;
+  try {
+    const base = [1, 3, 5].map((at) => Number.parseInt(String(hex).slice(at, at + 2), 16));
+    if (base.some((value) => !Number.isFinite(value))) throw new Error('not a colour');
+    const shade = (amount, alpha) => `rgba(${base.map((value) => Math.round(Math.min(255, value * amount))).join(', ')}, ${alpha})`;
+    const white = (amount, alpha) => `rgba(${base.map((value) => Math.round(value + (255 - value) * amount)).join(', ')}, ${alpha})`;
+    const width = 320;
+    const height = 160;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * 2;
+    canvas.height = height;
+    const paint = canvas.getContext('2d');
+    if (!paint) throw new Error('no context');
+    // A dark ground in the star's own colour: most of a dwarf's face is far from its hottest.
+    paint.fillStyle = shade(0.18, 1);
+    paint.fillRect(0, 0, width * 2, height);
+    const cell = (x, y, size, heat) => {
+      for (const at of [x - width, x, x + width]) {
+        const glow = paint.createRadialGradient(at, y, 0, at, y, size);
+        if (heat > 0.88) {
+          // The few points that are truly alight, which is what the eye finds first.
+          glow.addColorStop(0, white(0.85, 0.95));
+          glow.addColorStop(0.4, white(0.35, 0.5));
+        } else if (heat > 0.6) {
+          glow.addColorStop(0, shade(1.1, 0.5 + heat * 0.3));
+          glow.addColorStop(0.5, shade(0.8, 0.22));
+        } else {
+          glow.addColorStop(0, shade(0.24 + heat * 0.3, 0.45));
+          glow.addColorStop(0.5, shade(0.2, 0.2));
+        }
+        glow.addColorStop(1, shade(0.3, 0));
+        paint.fillStyle = glow;
+        paint.beginPath(); paint.arc(at, y, size, 0, Math.PI * 2); paint.fill();
+      }
+    };
+    for (let i = 0; i < 420; i += 1) cell(Math.random() * width, Math.random() * height, 7 + Math.random() * 15, Math.random() * 0.82);
+    for (let i = 0; i < 1100; i += 1) cell(Math.random() * width, Math.random() * height, 1.8 + Math.random() * 4.5, Math.random());
+    skin = canvas;
+  } catch {
+    skin = null;   // no canvas to build in: the star keeps its gradient and loses its grain
+  }
+  dwarfSkins.set(hex, skin);
+  return skin;
+}
+
 // Masses of molten matter riding the surface: `size` is how much of the face one covers, `rate`
 // how slowly it swells and settles, `drift` how it crawls against the turning body. None of the
 // rates match, so the face is never the same face twice.
@@ -4901,10 +5009,13 @@ function drawNostromo(t) {
     const r = node.r * node.scale * micro;
     if (r <= 0) continue;
     const arrive = Math.min(1.2, node.lit ?? 0);
-    // How fed this one is. A starved memory is a cold body that only MOTHER's light finds; a
-    // well fed one burns on its own account and no longer needs her to be seen. Everything
-    // about how bright it is comes from here, so it changes as the room feeds it.
+    // Two things decide how brightly a dwarf burns. Maturity is what the room has made of it
+    // over time: how often it has been reached for, how lately, how woven into the rest. Feeding
+    // is what it is being given right now, by MOTHER and by its neighbours at once. A young
+    // memory nobody feeds is nearly out; an old one the room leans on runs white.
+    const grown = node.activity ?? 0;
     const fed = Math.min(1, (node.charge ?? 0) + 0.25 * arrive);
+    const burn = Math.min(1, 0.4 * grown + 0.75 * fed);
     // Which way MOTHER lies from here: the light falls from there, so the highlight sits on
     // that side and the shadow gathers opposite it.
     const away = Math.hypot(node.x, node.y) || 1;
@@ -4917,28 +5028,39 @@ function drawNostromo(t) {
     }
     // The halo is drawn, not blurred: a gradient here costs the same at one planet or at three
     // hundred, and a shadow behind every one of them does not.
-    const halo = r * (2.2 + 1.5 * fed + 1.1 * arrive) * micro;
-    const glow = ctx.createRadialGradient(node.x, node.y, r * 0.45, node.x, node.y, halo);
-    glow.addColorStop(0, hexAlpha(node.color, (0.24 + 0.46 * fed + 0.22 * arrive) * micro));
-    glow.addColorStop(0.45, hexAlpha(node.color, (0.07 + 0.16 * fed + 0.12 * arrive) * micro));
-    glow.addColorStop(1, hexAlpha(node.color, 0));
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(node.x, node.y, halo, 0, Math.PI * 2); ctx.fill();
+    // No halo. A cloud hanging off a star makes it read as a smudge with a bead in the middle;
+    // what light escapes a dwarf clings to its limb, and that is drawn at the end.
     ctx.save();
     ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
     // The lit face, offset toward MOTHER: the highlight sits where the light lands and the
     // colour falls away to nearly black on the side turned from it.
-    // The lit face leans toward MOTHER, and the better fed the star is the hotter its own
-    // middle runs: a starved one barely clears its own colour, a full one is white at the core.
+    // The ground of the star, banked toward MOTHER so the body still turns in the light, and
+    // running hotter in the middle the more it burns.
     const sphere = ctx.createRadialGradient(node.x + lx * r * 0.46, node.y + ly * r * 0.46, r * 0.04, node.x, node.y, r * 1.12);
-    sphere.addColorStop(0, hexMix(node.color, '#ffffff', 0.45 + 0.55 * fed));
-    sphere.addColorStop(0.18, hexMix(node.color, '#ffffff', 0.12 + 0.5 * fed));
-    sphere.addColorStop(0.5, hexMix(node.color, '#000000', 0.3 - 0.3 * fed));
-    sphere.addColorStop(0.8, hexMix(node.color, '#000000', 0.7 - 0.32 * fed));
-    sphere.addColorStop(1, hexMix(node.color, '#000000', 0.92 - 0.3 * fed));
+    sphere.addColorStop(0, hexMix(node.color, '#ffffff', 0.3 + 0.6 * burn));
+    sphere.addColorStop(0.3, hexMix(node.color, '#000000', 0.34 - 0.34 * burn));
+    sphere.addColorStop(0.72, hexMix(node.color, '#000000', 0.72 - 0.4 * burn));
+    sphere.addColorStop(1, hexMix(node.color, '#000000', 0.9 - 0.32 * burn));
     ctx.fillStyle = sphere;
     ctx.fill();
     ctx.clip();
+    // The face itself: the same boiling surface a star of this class has, turning slowly. One
+    // patch of the class's strip, cropped to the body by the clip already in force.
+    const face = dwarfTexture(node.color);
+    if (face) {
+      const strip = face.width / 2;
+      const turn = ((node.spin * 0.1 + node.seed) / (Math.PI * 2) % 1 + 1) % 1;
+      ctx.globalAlpha = 0.5 + 0.45 * burn;
+      ctx.drawImage(face, turn * strip, 0, strip * 0.62, face.height, node.x - r * 1.04, node.y - r * 1.04, r * 2.08, r * 2.08);
+      ctx.globalAlpha = 1;
+    }
+    // Limb darkening, as on any body seen through more of its own gas at the edge.
+    const rim = ctx.createRadialGradient(node.x, node.y, r * 0.4, node.x, node.y, r);
+    rim.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    rim.addColorStop(0.8, `rgba(0, 0, 0, ${0.24 - 0.12 * burn})`);
+    rim.addColorStop(1, `rgba(0, 0, 0, ${0.62 - 0.26 * burn})`);
+    ctx.fillStyle = rim;
+    ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
     // Nothing is stroked across the face. A line drawn on a ball reads as a line drawn on a
     // disc, however it is curved; what makes the shape is where the light stops, and that is
     // done with shading alone.
@@ -4946,7 +5068,7 @@ function drawNostromo(t) {
     // a ball. It is cast inside the clip, so it stops exactly at the edge of the world.
     // The night on a small world, and it recedes as the star lights itself: at full charge only
     // the faintest limb remains, which is what a body that makes its own light looks like.
-    const night = 1 - 0.78 * fed;
+    const night = 1 - 0.8 * burn;
     const dark = ctx.createRadialGradient(node.x - lx * r * 1.35, node.y - ly * r * 1.35, r * 0.1, node.x - lx * r * 0.45, node.y - ly * r * 0.45, r * 2.0);
     dark.addColorStop(0, `rgba(0, 0, 0, ${0.82 * night})`);
     dark.addColorStop(0.42, `rgba(0, 0, 0, ${0.5 * night})`);
@@ -4957,8 +5079,8 @@ function drawNostromo(t) {
     ctx.restore();
     // The faintest thread of light round the whole edge, so the body parts from the dark
     // without a drawn outline. No crescent: a bright arc on one side reads as an eyebrow.
-    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.4 + 0.4 * fed), 0.14 + 0.3 * fed + 0.2 * arrive);
-    ctx.lineWidth = (0.7 + 0.4 * fed + 0.5 * arrive) / cam.scale;
+    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.3 + 0.5 * burn), 0.16 + 0.5 * burn + 0.2 * arrive);
+    ctx.lineWidth = (0.7 + 0.5 * burn + 0.5 * arrive) / cam.scale;
     ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.4 / cam.scale, 0, Math.PI * 2); ctx.stroke();
     if (arrive > 0.05) {
       ctx.strokeStyle = hexAlpha(node.color, arrive * 0.6);
