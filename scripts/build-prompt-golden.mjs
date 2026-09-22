@@ -1,5 +1,13 @@
+// Rebuilds the frozen prompts in test/fixtures/prompt-golden.json.
+//
+// Run it only when the words an agent reads are meant to change, never to make a failing test
+// pass: the point of the fixture is that moving a prompt is a decision, not a side effect. It
+// lives outside test/ because everything under there is run as a test.
+//
+//   node scripts/build-prompt-golden.mjs
+
 import { writeFile } from 'node:fs/promises';
-import { buildPrompt } from '/Users/eljochuaxd/pulse/src/room/prompt.mjs';
+import { buildPrompt } from '../src/room/prompt.mjs';
 
 const agent = { id: 'codex' };
 const others = [{ id: 'claude' }, { id: 'gemini' }, { id: 'madre' }];
@@ -27,5 +35,5 @@ const shapes = {
 };
 const golden = {};
 for (const [name, opts] of Object.entries(shapes)) golden[name] = buildPrompt(opts);
-await writeFile('/Users/eljochuaxd/pulse/test/fixtures/prompt-golden.json', `${JSON.stringify(golden, null, 2)}\n`);
+await writeFile(new URL('../test/fixtures/prompt-golden.json', import.meta.url), `${JSON.stringify(golden, null, 2)}\n`);
 console.log('congelados:', Object.entries(golden).map(([k, v]) => `${k} ${v.length}`).join(' · '));

@@ -74,3 +74,16 @@ test('prompt: the blocks a turn cannot use are not built for it', () => {
     assert.ok(promptParts(given[name]).some((part) => part.id === 'ask'), `the ${name} turn never asks anything`);
   }
 });
+
+test('prompt: the fixture is rebuilt by a script that runs anywhere, and never from inside the suite', async () => {
+  const { readdir } = await import('node:fs/promises');
+  // Everything under test/ is run as a test. A helper living there ran on this machine and
+  // nowhere else, and the suite passed locally for the wrong reason while CI could not resolve
+  // a single import. It lives in scripts/ now.
+  const inTests = await readdir(join(import.meta.dirname, 'fixtures'));
+  assert.deepEqual(inTests.filter((name) => name.endsWith('.mjs')), [], 'something runnable is sitting under test/fixtures');
+
+  const script = await readFile(join(import.meta.dirname, '..', 'scripts', 'build-prompt-golden.mjs'), 'utf8');
+  assert.ok(!/\/Users\/|\/home\/|[A-Z]:\\\\/.test(script), 'the fixture builder only runs on one machine');
+  assert.match(script, /import\.meta\.url/, 'the fixture builder does not resolve its own paths');
+});
