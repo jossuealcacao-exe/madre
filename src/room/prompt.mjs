@@ -21,6 +21,16 @@ export function wantsModule(text) {
   return /\b(m[oó]dulo?s?|modules?|plugins?|sdk|extension(?:es)?|slash\s*command|comando\s+\/|\.module\.mjs|definemodule)\b/i.test(String(text ?? ''));
 }
 
+// What a turn chose not to send. The SDK guide is the block the room withholds on purpose, so
+// what it would have weighed is counted rather than guessed: the same text, measured, and left
+// out. Anything else that is gated later belongs here too.
+export function sparedChars(options) {
+  const { lease = null, sdk = null, text = '' } = options ?? {};
+  if (!lease || !sdk || wantsModule(text)) return 0;
+  const full = promptParts({ ...options, text: `${text} module` });
+  return full.find((part) => part.id === 'sdk')?.text.length ?? 0;
+}
+
 export function promptParts({
   agent, text, requester, depth, allowDelegation, context, recall = null, memories = null,
   attachments = [], references = [], lease = null, scopes = null, imageStudio = null,

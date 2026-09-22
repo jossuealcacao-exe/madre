@@ -6,7 +6,7 @@ import { parseMessage } from './router.mjs';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { UsageSentinel } from './usage-sentinel.mjs';
-import { buildPrompt, promptParts } from './room/prompt.mjs';
+import { buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
 import { turnCost } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { ControlDesk } from './room/control.mjs';
@@ -430,13 +430,13 @@ export class Room {
   // guess at which part of a prompt is expensive, and a guess in characters is not an answer in
   // tokens. The words themselves are never written here, only how many of them each block was.
   async #recordCost(agent, responseMessageId, usage, mode) {
-    const parts = this.#promptShape.get(responseMessageId);
+    const shape = this.#promptShape.get(responseMessageId);
     this.#promptShape.delete(responseMessageId);
-    if (!parts) return;
+    if (!shape) return;
     // A ghost turn is off the record in every sense, this one included.
     if (mode === 0) return;
     try {
-      await this.#emit('turn.cost', { agent, mode, responseMessageId, ...turnCost(parts, usage) });
+      await this.#emit('turn.cost', { agent, mode, responseMessageId, spared: shape.spared, ...turnCost(shape.parts, usage) });
     } catch (error) {
       console.error(`MADRE could not weigh a turn: ${error.message}`);
     }
@@ -789,7 +789,7 @@ export class Room {
   #promptFor(input) {
     const options = this.#promptOptions(input);
     const parts = promptParts(options);
-    return { text: parts.map((part) => part.text).join('\n'), parts };
+    return { text: parts.map((part) => part.text).join('\n'), parts, spared: sparedChars(options) };
   }
 
   #prompt(input) {
@@ -902,7 +902,7 @@ export class Room {
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
       const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
-      this.#promptShape.set(responseMessageId, shaped.parts);
+      this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared });
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,

@@ -3399,6 +3399,49 @@ function builtinCard(item) {
     return card;
   }
   if (item.id === 'ash') {
+    // What the economy has actually done in this room. Not a setting: a reading, on the card of
+    // the thing it is about. It fills as the room is used, because it weighs turns, not history.
+    const reading = el('div', 'ash-economy');
+    reading.append(el('p', 'note', 'READING…'));
+    card.append(reading);
+    const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
+    const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
+    fetch('/api/economy').then((response) => response.json()).then((read) => {
+      reading.replaceChildren();
+      if (!read?.turns) {
+        reading.append(el('p', 'note', 'NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS'));
+        return;
+      }
+      const totals = read.totals;
+      const saved = read.saved ?? {};
+      const head = el('div', 'ash-totals');
+      for (const [label, value, hint] of [
+        ['TOKENS SAVED', count(saved.tokens), 'read back from the CLI cache, plus what was never sent'],
+        ['FROM CACHE', `${count(saved.cachedTokens)} · ${pct(saved.cachedShare)}`, 'input the CLI did not charge again'],
+        ['NEVER SENT', `${count(saved.unsentChars)} CH`, 'briefing a turn had no use for'],
+        ['SPENT IN', count(totals.input), 'input tokens actually charged'],
+        ['SPENT OUT', count(totals.output), 'output tokens, the dearer half'],
+        ['TURNS', count(read.turns), 'weighed so far'],
+      ]) {
+        const cell = el('div', 'ash-total');
+        cell.title = hint;
+        cell.append(el('b', null, String(value)), el('span', null, label));
+        head.append(cell);
+      }
+      reading.append(head);
+      reading.append(el('p', 'note', `${pct(totals.prefixShare)} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · ${totals.charsPerInputToken ?? '—'} CHARACTERS PER TOKEN IN THIS ROOM`));
+      const widest = read.blocks[0]?.chars || 1;
+      const bars = el('div', 'ash-blocks');
+      for (const block of read.blocks.slice(0, 8)) {
+        const row = el('div', 'ash-block');
+        const bar = el('i');
+        bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
+        row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CH/TURN${block.always ? ' · ALWAYS' : ''}`));
+        bars.append(row);
+      }
+      reading.append(bars);
+    }).catch(() => { reading.replaceChildren(el('p', 'note', 'ECONOMY UNAVAILABLE')); });
+
     const actions = el('div', 'actions');
     const toggle = el('button', on ? null : 'primary', on ? 'STOP ASKING FOR COMPACT REPLIES' : 'ASK FOR COMPACT REPLIES');
     toggle.type = 'button';
@@ -4111,49 +4154,7 @@ function renderSettings() {
     dataset.append(exportButton, datasetNote);
     mform.append(dataset);
 
-    // ASH: where this room's tokens actually go. Not a setting, a reading. Most of the economy
-    // is always on and has nothing to switch; what is worth seeing is whether it worked.
-    section.append(el('h3', null, 'ASH · WHERE THE TOKENS GO'));
-    section.append(el('p', 'note', 'EVERY TURN IS WEIGHED AGAINST WHAT ITS CLI SAID IT COST. THE BRIEFING CARRIES ONLY THE BLOCKS A TURN CAN USE, WHAT NEVER CHANGES IS READ FIRST SO A CACHE CAN MATCH IT, AND THE TRANSCRIPT HOLDS STILL INSTEAD OF SLIDING. NOTHING YOU WRITE IS EVER ALTERED.'));
-    const ashBox = el('div', 'ash-economy');
-    ashBox.append(el('p', 'note', 'READING…'));
-    section.append(ashBox);
-    const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
-    fetch('/api/economy').then((response) => response.json()).then((read) => {
-      ashBox.replaceChildren();
-      if (!read?.turns) {
-        ashBox.append(el('p', 'note', 'NO TURNS WEIGHED YET · THIS FILLS AS THE ROOM IS USED'));
-        return;
-      }
-      const t = read.totals;
-      const head = el('div', 'ash-totals');
-      for (const [label, value] of [
-        ['TURNS', read.turns],
-        ['INPUT TOKENS', t.input.toLocaleString()],
-        ['READ FROM CACHE', pct(t.cacheShare)],
-        ['CACHEABLE HEAD', pct(t.prefixShare)],
-        ['OUTPUT TOKENS', t.output.toLocaleString()],
-        ['CHARS PER TOKEN', t.charsPerInputToken ?? '—'],
-      ]) {
-        const cell = el('div', 'ash-total');
-        cell.append(el('b', null, String(value)), el('span', null, label));
-        head.append(cell);
-      }
-      ashBox.append(head);
-      const widest = read.blocks[0]?.chars || 1;
-      const bars = el('div', 'ash-blocks');
-      for (const block of read.blocks.slice(0, 10)) {
-        const row = el('div', 'ash-block');
-        const bar = el('i');
-        bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
-        row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CHARS/TURN · ${pct(block.share)}${block.always ? ' · EVERY TURN' : ''}`));
-        bars.append(row);
-      }
-      ashBox.append(bars);
-      for (const agent of read.agents) {
-        ashBox.append(el('p', 'note', `@${agent.agent.toUpperCase()} · ${agent.turns} TURNS · ${agent.input.toLocaleString()} IN · ${agent.output.toLocaleString()} OUT · ${pct(agent.cacheShare)} FROM CACHE`));
-      }
-    }).catch(() => { ashBox.replaceChildren(el('p', 'note', 'ECONOMY UNAVAILABLE')); });
+
     // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.
     const train = el('div', 'full train-card');
     const trainHead = el('div', 'train-head', 'TRAIN MADRE AI · LOCAL, WITH MLX ON APPLE SILICON · NOTHING LEAVES THIS MACHINE');

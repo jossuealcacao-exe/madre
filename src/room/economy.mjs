@@ -92,8 +92,27 @@ export function economy(events = []) {
     .map((block) => ({ ...block, share: totals.chars ? Number((block.chars / totals.chars).toFixed(4)) : 0, perTurn: Math.round(block.chars / block.turns) }))
     .sort((a, b) => b.chars - a.chars);
 
+  // What was not paid for. Two kinds, and only one of them is a measurement.
+  //
+  // Cache reads are real: the CLI said it read those tokens back instead of charging them as
+  // fresh input, so they are money the room did not spend. Everything else here is what the
+  // room chose not to send in the first place, counted in characters because that is the unit
+  // the room controls; it becomes tokens at whatever rate this room's turns have shown.
+  const perToken = totals.input > 0 ? totals.chars / totals.input : null;
+  const spared = turns.reduce((sum, turn) => sum + (Number(turn.spared ?? 0) || 0), 0);
+  const saved = {
+    cachedTokens: totals.cached,
+    cachedShare: totals.input + totals.cached > 0 ? Number((totals.cached / (totals.input + totals.cached)).toFixed(3)) : null,
+    unsentChars: spared,
+    unsentTokens: perToken ? Math.round(spared / perToken) : null,
+    // Where it would have been charged had nothing changed: what was read back plus what was
+    // never sent. A room with no cache and nothing trimmed would show zero here.
+    tokens: totals.cached + (perToken ? Math.round(spared / perToken) : 0),
+  };
+
   return {
     turns: turns.length,
+    saved,
     blocks: ranked,
     agents: [...agents.values()]
       .map((agent) => ({ ...agent, charsPerInputToken: agent.input > 0 ? Number((agent.chars / agent.input).toFixed(2)) : null, cacheShare: agent.input + agent.cached > 0 ? Number((agent.cached / (agent.input + agent.cached)).toFixed(3)) : null }))

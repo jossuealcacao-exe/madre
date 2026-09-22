@@ -87,3 +87,43 @@ test('economy: many turns read together say where a room spends', () => {
   assert.equal(economy([]).turns, 0);
   assert.deepEqual(economy([]).blocks, []);
 });
+
+test('economy: what was saved is what was not charged, and it is measured rather than claimed', async () => {
+  const { sparedChars } = await import('../src/room/prompt.mjs');
+  const turn = (blocks, usage, spared = 0) => ({ type: 'turn.cost', payload: { agent: 'codex', spared, ...turnCost(parts(blocks), usage) } });
+
+  const read = economy([
+    // Two turns that could have carried the SDK guide and did not, and one cache hit.
+    turn({ room: 200, ask: 40, lease: 1500 }, { inputTokens: 500, cachedInputTokens: 1500, outputTokens: 300 }, 560),
+    turn({ room: 200, ask: 40, lease: 1500 }, { inputTokens: 440, cachedInputTokens: 0, outputTokens: 200 }, 560),
+  ]);
+
+  // Cache reads are a measurement: the CLI said it did not charge them again.
+  assert.equal(read.saved.cachedTokens, 1500);
+  assert.ok(read.saved.cachedShare > 0.6);
+  // What was never sent is counted in characters, the unit the room controls, and turned into
+  // tokens at the rate this room's own turns have shown rather than at a guessed one.
+  assert.equal(read.saved.unsentChars, 1120);
+  const rate = read.totals.chars / read.totals.input;
+  assert.equal(read.saved.unsentTokens, Math.round(1120 / rate));
+  assert.equal(read.saved.tokens, read.saved.cachedTokens + read.saved.unsentTokens);
+
+  // A room where nothing was cached and nothing was withheld saves nothing, and says so.
+  const plain = economy([turn({ room: 200, ask: 40 }, { inputTokens: 300, cachedInputTokens: 0, outputTokens: 100 }, 0)]);
+  assert.equal(plain.saved.tokens, 0);
+  assert.equal(plain.saved.cachedShare, 0);
+  assert.equal(plain.saved.unsentChars, 0);
+
+  // And the withheld block is measured, not assumed: the same text, built and left out.
+  const options = {
+    agent: { id: 'codex' }, text: 'arregla el router', requester: 'you', depth: 0, allowDelegation: false,
+    context: { messages: [], omittedMessages: 0 }, others: [], mode: 2,
+    lease: { outDir: '.pulse/out', scopes: {}, create: true, scratchDir: 't' }, sdk: { guide: 'docs/SDK.md', example: 'docs/sdk/hello-module.mjs' },
+  };
+  const withheld = sparedChars(options);
+  assert.ok(withheld > 300, `the withheld guide measured ${withheld} characters`);
+  // Asked for, nothing is withheld, because nothing was left out.
+  assert.equal(sparedChars({ ...options, text: 'hazme un modulo' }), 0);
+  // And with no lease there was never a guide to withhold in the first place.
+  assert.equal(sparedChars({ ...options, lease: null }), 0);
+});
