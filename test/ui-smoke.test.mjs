@@ -124,7 +124,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
     return { json: async () => ({
       projectRoot: '/Users/demo/pulse',
       softTokenBudget: 500000,
-      ashCode: { enabled: true },
+      ash: { enabled: true },
       agents: ['codex', 'claude', 'gemini', 'opencode'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/x', version: '1' })),
       events,
     }) };
@@ -156,12 +156,12 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(firstUser, 'a human message rendered');
   assert.match(firstUser.textContent, /YOU · CREW/, 'human messages carry the crew label');
   assert.equal(registry.get('crew-label') !== undefined, true);
-  const ashToggle = registry.get('ashcode-toggle');
+  const ashToggle = registry.get('ash-toggle');
   assert.equal(ashToggle.hidden, false, 'enabled beta module exposes ORDER 937 in the composer');
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'true', 'ORDER 937 starts illuminated');
   ashToggle.listeners.click[0]();
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'false', 'the human can turn it off per message');
-  assert.equal(globalThis.__pulse.state.ashCode, false);
+  assert.equal(globalThis.__pulse.state.ash, false);
   // Click on a sphere expands session usage, replayed history included.
   const sphere = registry.get('agents').children.find((child) => child instanceof FakeElement);
   assert.ok(sphere, 'agent spheres rendered');

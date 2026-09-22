@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Ash: el compresor se retira y queda la economía
+- AshCode reescribía tu mensaje antes de mandarlo. Se retiró: alteraba lo único que nadie le pidió tocar, perdía información, y medido contra un turno real ahorraba una quinta parte de un uno por ciento. Ya no existe. Nada de lo que escribes se altera, ni lo que responde un agente, así que tampoco hay un "original" guardado al lado de una abreviación.
+- Ash es ahora el nombre de la economía de tokens de la sala. Casi toda está siempre encendida y no se nota, porque nada de eso pierde información. Lo único que queda por decidir es lo que cambia cómo responde un agente, no lo que se le pide: si pedirle prosa compacta. La salida es la mitad cara de una cuenta, así que ese es el interruptor que vale la pena tener, y es tuyo.
+- El interruptor dejó de ser beta y dejó de pedir confirmación: ya no hay nada que pueda cambiar de significado.
+- ORDER 937 queda libre. Ya no le pertenece a Ash ni aparece en su botón, su etiqueta ni su aviso; se reserva para otra cosa.
+- En `⚙ CONNECTIONS` hay una lectura nueva, `ASH · WHERE THE TOKENS GO`: cuántos turnos se han pesado, cuántos tokens de entrada y de salida, cuánto volvió del caché de la CLI, cuánto del prompt era recuperable, cuántos caracteres se mandan por token, y una barra por bloque del briefing con lo que pesa por turno.
+
 ### Ahorro de tokens medido, no supuesto
 - MADRE razonaba el costo en caracteres, y una cadena más corta no son menos tokens. Las CLIs llevaban todo este tiempo reportando lo que de verdad gastan, lecturas de caché incluidas, así que la sala dejó de adivinar. Cada turno fuera de GHOST registra de qué estuvo hecho contra lo que se cobró: el tamaño de cada bloque, lo fijo que se paga siempre, lo que la forma de ese turno cargó, y los tokens de entrada, de caché y de salida. Las palabras nunca se escriben, solo cuántas fueron.
 - El prompt se arma con bloques con nombre. Al introducirlos no se movió un solo byte: siete formas de turno quedaron congeladas como fixture y se comparan exactas, porque cualquier cambio a la economía de un prompt tiene que probar que no cambió nada de lo que el agente lee.

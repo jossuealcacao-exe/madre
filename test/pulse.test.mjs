@@ -54,7 +54,6 @@ import { buildConversationContext, formatConversationContext } from '../src/conv
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
-import { ashLanguage, compressAshCode } from '../src/ashcode.mjs';
 
 
 // Opens an SSE connection and resolves each parsed frame through `onEvent`.
@@ -2062,110 +2061,91 @@ test('Image Studio wiring: module grants imageGen; CLIs receive MADRE\'s MCP ser
   }
 });
 
-test('AshCode beta abbreviates Spanish and English but leaves uncertain or sensitive structure unchanged', () => {
-  const spanish = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
-  const english = 'Please create an image for the Core Cloud project for the header inside the home page of the main site';
-  assert.equal(ashLanguage(spanish), 'es');
-  assert.equal(ashLanguage(english), 'en');
-  assert.equal(compressAshCode(spanish).text, 'ASH937/es: crear imagen para proyecto Core Cloud para head en home');
-  assert.equal(compressAshCode(english).text, 'ASH937/en: create image for Core Cloud project for header inside home page');
-  for (const original of [
-    'crear una imagen para el proyecto Core Cloud no para el home',
-    'crear una imagen para el proyecto Core Cloud para la pagina principal de 2026',
-    'create an image for the project at https://example.com/page',
-    'create an image for the project at src/home.ts',
-    'create an image for the project in `src/home.ts`',
-    'ok',
-  ]) {
-    const result = compressAshCode(original);
-    assert.equal(result.applied, false, original);
-    assert.equal(result.text, original, original);
-  }
+test('Ash asks for compact prose and never touches what the human wrote', async () => {
+  const { promptParts } = await import('../src/room/prompt.mjs');
+  const base = { agent: { id: 'codex' }, text: 'crear una imagen para el proyecto Core Cloud', requester: 'you', depth: 0, allowDelegation: false, context: { messages: [], omittedMessages: 0 }, others: [], mode: 1 };
+
+  // Off, the briefing says nothing about how to answer.
+  assert.ok(!promptParts(base).some((part) => part.id === 'ash'));
+
+  // On, it adds one line, and that line is about the reply rather than the request. Ash used to
+  // rewrite the human's message before sending it; the message now leaves exactly as written.
+  const asked = promptParts({ ...base, ash: true });
+  const line = asked.find((part) => part.id === 'ash');
+  assert.ok(line, 'Ash was switched on and changed nothing');
+  assert.match(line.text, /compact prose/);
+  assert.match(line.text, /never in what you leave out/);
+  assert.ok(!/937|beta|abbreviat/i.test(line.text), 'Ash still speaks of abbreviating, or still claims Order 937');
+  assert.equal(asked.find((part) => part.id === 'ask').text, 'User message: crear una imagen para el proyecto Core Cloud');
 });
 
-test('AshCode beta is opt-in per message, records the original, and uses abbreviated context', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pulse-ashcode-room-'));
+test('Ash is opt-in per message, asks for compact prose, and never rewrites a word', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ash-room-'));
   try {
     const store = await new EventStore(join(root, 'events.jsonl')).initialize();
     const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }];
     const prompts = [];
-    const answer = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
+    const answer = 'El router monta /api antes de los archivos estaticos, y el head se resuelve ahi mismo.';
     const room = new Room({ store, agents, projectRoot: root, invokers: { 'claude-readonly': async ({ prompt }) => { prompts.push(prompt); return { text: answer, usage: { totalTokens: 30 } }; } } });
     const request = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
-    await room.send({ text: request, target: 'claude', ashCode: true });
-    assert.match(prompts[0], new RegExp(request), 'disabled module must not rewrite the prompt');
-    room.setAshCode(true);
-    await room.send({ text: request, target: 'claude', ashCode: true });
+
+    // Asked for while the switch is off: nothing happens at all.
+    await room.send({ text: request, target: 'claude', ash: true });
+    assert.match(prompts[0], new RegExp(request), 'the request did not reach the agent as it was written');
+    assert.ok(!/Ash: answer in compact prose/.test(prompts[0]), 'a switched-off module reached the briefing');
+
+    // Switched on and asked for: one line is added, about the reply.
+    room.setAsh(true);
+    await room.send({ text: request, target: 'claude', ash: true });
+    assert.match(prompts[1], /Ash: answer in compact prose/);
+    assert.match(prompts[1], new RegExp(request), 'Ash altered the human message on its way out');
+
+    // What the room recorded is what was said, on both sides. There is no original kept beside
+    // an abbreviation, because nothing is abbreviated.
     const events = (await store.readAll()).filter((event) => event.type === 'message.created');
-    assert.equal(events[2].payload.text, compressAshCode(request).text);
-    assert.equal(events[2].payload.originalText, request);
-    assert.equal(events[2].payload.ashCode.applied, true);
-    assert.equal(events[3].payload.text, compressAshCode(answer).text);
-    assert.equal(events[3].payload.originalText, answer);
-    assert.match(prompts[1], /ASH937\/es:/);
-    await room.send({ text: 'Resume brevemente', target: 'claude', ashCode: false });
-    assert.match(prompts[2], /ASH937\/es:/, 'abbreviated events enter subsequent context');
-    assert.equal(prompts[2].split(request).length - 1, 2, 'only the earlier non-AshCode turn keeps the full request and answer in context');
-    const latest = (await store.readAll()).filter((event) => event.type === 'message.created').at(-2);
-    assert.equal(latest.payload.text, 'Resume brevemente', 'bubble switch off bypasses compression');
+    assert.equal(events[2].payload.text, request);
+    assert.equal(events[2].payload.originalText, undefined);
+    assert.deepEqual(events[2].payload.ash, { active: true });
+    assert.equal(events[3].payload.text, answer, 'the reply came back rewritten');
+    assert.equal(events[3].payload.originalText, undefined);
+
+    // And what enters the next turn's transcript is the same words again.
+    await room.send({ text: 'Resume brevemente', target: 'claude', ash: false });
+    assert.equal(prompts[2].split(request).length - 1, 2, 'both earlier turns should carry the request as written');
+    assert.ok(!/Ash: answer in compact prose/.test(prompts[2]), 'Ash was not asked for and came anyway');
+    assert.equal(events.at(-1).payload.text, answer);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('AshCode beta carries abbreviated instructions into a cross-agent plan', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pulse-ashcode-plan-'));
+test('Ash reaches every step of a cross-agent plan, and the steps are still written plainly', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ash-plan-'));
   try {
     const store = await new EventStore(join(root, 'events.jsonl')).initialize();
-    const agents = ['claude', 'gemini'].map((id) => ({ id, label: id, detected: true, ready: true, adapter: `${id}-readonly`, path: '/fake', version: 'test' }));
-    const brief = 'crear una imagen para el proyecto Core Cloud para el head dentro del home de la pagina principal';
-    let delegatePrompt = '';
-    // The brief asks for an image, so the #1 plan pauses to ask the human; a 200 ms clock denies it here.
-    const room = new Room({ store, agents, projectRoot: root, escalationMs: 200, invokers: {
-      'claude-readonly': async () => ({ text: `Delegating.\n\n\`\`\`pulse\n@gemini: ${brief}\n\`\`\``, usage: null }),
-      'gemini-readonly': async ({ prompt }) => { delegatePrompt = prompt; return { text: 'Entendido.', usage: null }; },
-    } });
-    room.setAshCode(true);
-    await room.send({ text: brief, target: 'claude', ashCode: true });
-    const delegated = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.status === 'delegated');
-    assert.ok(delegated);
-    assert.equal(delegated.payload.text, compressAshCode(brief).text);
-    assert.equal(delegated.payload.originalText, brief);
-    assert.match(delegatePrompt, /ASH937\/es:/);
+    const agents = [
+      { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' },
+      { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake', version: 'test' },
+    ];
+    const prompts = [];
+    const room = new Room({
+      store, agents, projectRoot: root,
+      invokers: {
+        'claude-readonly': async ({ prompt }) => { prompts.push({ agent: 'claude', prompt }); return { text: '```pulse\n@gemini: revisa el router del proyecto y reporta\n```', usage: null }; },
+        'gemini-readonly': async ({ prompt }) => { prompts.push({ agent: 'gemini', prompt }); return { text: 'Revisado: monta /api primero.', usage: null }; },
+      },
+    });
+    room.setAsh(true);
+    await room.send({ text: 'coordina esto con el equipo', target: 'claude', ash: true });
+    const step = prompts.find((entry) => entry.agent === 'gemini');
+    assert.ok(step, 'the delegated step never ran');
+    assert.match(step.prompt, /Ash: answer in compact prose/, 'a delegated step was not asked for compact prose');
+    assert.match(step.prompt, /revisa el router del proyecto y reporta/, 'the step was rewritten on its way to the delegate');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('AshCode module requires beta confirmation, persists its switch, and preserves other module settings', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pulse-ashcode-api-'));
-  const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }];
-  await updateConfig(root, { modules: { imageStudio: { enabled: false, model: 'gemini-2.5-flash-image' } } });
-  const { server, store } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: {} });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
-  const api = (path, options) => fetch(`http://127.0.0.1:${port}${path}`, options).then(async (response) => ({ status: response.status, body: await response.json() }));
-  try {
-    const listed = await api('/api/extensions');
-    assert.equal(listed.body.extensions.find((item) => item.id === 'ashcode').status.installed, false);
-    const denied = await api('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    assert.equal(denied.status, 400);
-    const on = await api('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
-    assert.equal(on.status, 200);
-    assert.equal(on.body.enabled, true);
-    assert.equal((await api('/api/state')).body.ashCode.enabled, true);
-    assert.deepEqual((JSON.parse(await readFile(join(root, 'config.json'), 'utf8'))).modules, {
-      imageStudio: { enabled: false, model: 'gemini-2.5-flash-image' }, ashCode: { enabled: true },
-    });
-    assert.ok((await store.readAll()).some((event) => event.type === 'extension.toggled' && event.payload.id === 'ashcode' && event.payload.beta));
-    const off = await api('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    assert.equal(off.body.enabled, false);
-    assert.equal((await api('/api/state')).body.ashCode.enabled, false);
-  } finally {
-    await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
-  }
-});
 
 test('Image Studio module: toggled from the modules API, gated on a Gemini key, persisted in config', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-studio-api-'));

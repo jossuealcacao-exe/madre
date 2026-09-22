@@ -52,7 +52,7 @@ defineModule({
 })
 ```
 
-Con eso RIPLEY, Git Pulse, Image Studio, AshCode, el sentinel y el futuro Ollama se vuelven archivos en `src/modules/`, y la sala no cambia cuando llega uno nuevo.
+Con eso RIPLEY, Git Pulse, Image Studio, Ash, el sentinel y el futuro Ollama se vuelven archivos en `src/modules/`, y la sala no cambia cuando llega uno nuevo.
 
 ## Fuera del alcance, a conciencia
 

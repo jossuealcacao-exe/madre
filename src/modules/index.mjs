@@ -11,13 +11,13 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import ahp from './ahp.mjs';
 import imageStudio from './image-studio.mjs';
 import gitPulse from './git-pulse.mjs';
-import ashcode from './ashcode.mjs';
+import ash from './ash.mjs';
 import ripley from './ripley.mjs';
 import ollama from './ollama.mjs';
 import playwright from './playwright.mjs';
 import { defineModule, matchRoute } from './sdk.mjs';
 
-export const MODULES = [ahp, imageStudio, gitPulse, ashcode, ripley, ollama, playwright];
+export const MODULES = [ahp, imageStudio, gitPulse, ash, ripley, ollama, playwright];
 export const BUILTIN_IDS = new Set(MODULES.map((module) => module.id));
 export const loadFailures = [];   // { file, error } for MODULES to show
 export const moduleFolders = ({ stateRoot, projectRoot }) => ({ user: join(stateRoot, 'modules'), project: join(projectRoot, '.madre', 'modules') });

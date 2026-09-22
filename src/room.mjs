@@ -30,7 +30,6 @@ import { isModuleFile, sdkPaths } from './modules/index.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
-import { compressAshCode } from './ashcode.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -90,7 +89,7 @@ export class Room {
   #maxPlanSteps;
   #maxConcurrentTurns;
   #planMaxAgeMs;
-  #ashCodeEnabled = false;
+  #ashEnabled = false;
 
   constructor({
     store,
@@ -476,13 +475,13 @@ export class Room {
     return this.capabilities();
   }
 
-  setAshCode(enabled) {
-    this.#ashCodeEnabled = Boolean(enabled);
-    return this.#ashCodeEnabled;
+  setAsh(enabled) {
+    this.#ashEnabled = Boolean(enabled);
+    return this.#ashEnabled;
   }
 
-  ashCodeEnabled() {
-    return this.#ashCodeEnabled;
+  ashEnabled() {
+    return this.#ashEnabled;
   }
 
   // A slash command's result, shared with everyone (and with agents through
@@ -557,7 +556,7 @@ export class Room {
     this.#vectors.stop();
   }
 
-  async send({ text, target, model = null, attachments = [], create = false, ashCode = false, mode = undefined }) {
+  async send({ text, target, model = null, attachments = [], create = false, ash = false, mode = undefined }) {
     const parsed = parseMessage(text, target);
     const requestedMode = normalizeMode(mode, create === true ? 2 : 1);
     const gate = await this.modeCheck({ target, text, mode: requestedMode });
@@ -570,12 +569,12 @@ export class Room {
     if (!parsed.target) throw new Error('Choose an agent or begin with @agent.');
     if (model !== null && model !== undefined && model !== '' && !isValidModelName(model)) throw new Error('Model name is not valid.');
     const chosenModel = model || null;
-    const originalText = parsed.text || `(${files.length} attached file${files.length === 1 ? '' : 's'})`;
-    const ashActive = ashCode === true && this.#ashCodeEnabled;
-    const abbreviated = ashActive ? compressAshCode(originalText) : null;
-    const text2 = abbreviated?.text ?? originalText;
+    // What the human wrote, sent as they wrote it. Ash used to rewrite this line before it left
+    // the room; it does not any more, so there is no original to keep beside an abbreviation.
+    const text2 = parsed.text || `(${files.length} attached file${files.length === 1 ? '' : 's'})`;
+    const ashActive = ash === true && this.#ashEnabled;
     // "!path" tokens point the agent at project files; only existing files count.
-    const references = await resolveReferences(this.#projectRoot, originalText);
+    const references = await resolveReferences(this.#projectRoot, text2);
 
     // A standing lease (default #2) needs no arming; a ghost never writes.
     const standing = !ghost && !create && Boolean(this.scopesFor(parsed.target).write.always);
@@ -588,8 +587,7 @@ export class Room {
       sender: 'you',
       target: parsed.target,
       text: text2,
-      originalText: abbreviated?.applied ? originalText : undefined,
-      ashCode: ashActive ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
+      ash: ashActive ? { active: true } : undefined,
       status: 'sent',
       model: chosenModel,
       attachments: files.length ? files.map((file) => ({ id: file.id, name: file.name, fileName: file.fileName, size: file.size, contentType: file.contentType })) : undefined,
@@ -653,7 +651,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ashCode: ashActive, mode: ghost ? 0 : control ? requestedMode : (lease ? 2 : 1) }));
+    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ash: ashActive, mode: ghost ? 0 : control ? requestedMode : (lease ? 2 : 1) }));
   }
 
   // A #2 lease: the project itself is where new files go, and MADRE keeps a scratch folder
@@ -723,7 +721,7 @@ export class Room {
 
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
-  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ashCode = false, mode = 1, escalation = null }) {
+  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ash = false, mode = 1, escalation = null }) {
     if (this.#shuttingDown) return null;
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
@@ -768,7 +766,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, attachments, references, lease, ashCode, mode, escalation });
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, attachments, references, lease, ash, mode, escalation });
     this.#turns.set(messageId, turn);
     let outcome = null;
     try {
@@ -780,7 +778,7 @@ export class Room {
     // The orchestrator's turn is over before its plan starts, so it is never
     // counted as in flight while the others work.
     if (outcome?.directives?.steps.length) {
-      await this.#runPlan({ orchestrator: agent.id, parentMessageId: outcome.responseMessageId, directives: outcome.directives, lease, ashCode, mode });
+      await this.#runPlan({ orchestrator: agent.id, parentMessageId: outcome.responseMessageId, directives: outcome.directives, lease, ash, mode });
     }
     return outcome?.responseMessageId ?? null;
   }
@@ -814,7 +812,7 @@ export class Room {
     });
   }
 
-  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall = null, memories = null, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ashCode = false, mode = 1, escalation = null }) {
+  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall = null, memories = null, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ash = false, mode = 1, escalation = null }) {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
     // read-only even while the plan holds a lease.
@@ -903,7 +901,7 @@ export class Room {
         : [];
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
-      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
+      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, shaped.parts);
       const result = await invoke({
         executable: agent.path,
@@ -945,16 +943,14 @@ export class Room {
       if (depth > 0 && /```pulse/i.test(result.text)) {
         await this.#alert('nested-delegation', `@${agent.id} tried to open a plan from inside a plan. It was ignored; the sequence stays under @${requester}. STOPALL if the room drifts.`, `nested:${agent.id}`);
       }
-      const abbreviated = ashCode ? compressAshCode(result.text) : null;
       await this.#emit('message.created', {
         messageId: responseMessageId,
         parentMessageId: messageId,
         role: 'assistant',
         sender: agent.id,
         target: requester,
-        text: abbreviated?.text ?? result.text,
-        originalText: abbreviated?.applied ? result.text : undefined,
-        ashCode: ashCode ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
+        text: result.text,
+        ash: ash ? { active: true } : undefined,
         status: 'completed',
         planId,
         model,
@@ -999,7 +995,7 @@ export class Room {
     }
   }
 
-  async #runPlan({ orchestrator, parentMessageId, directives, lease = null, ashCode = false, mode = 1 }) {
+  async #runPlan({ orchestrator, parentMessageId, directives, lease = null, ash = false, mode = 1 }) {
     const planId = randomUUID();
     // The plan's ceiling is the human's mode: #3 when the orchestrator held CONTROL, #2 while a
     // lease exists, #1 otherwise. A step may ask for a mode ("@codex #2: …"); it gets the lowest
@@ -1028,8 +1024,7 @@ export class Room {
         if (plan.stopped) break;
         plan.step = index + 1;
         const messageId = randomUUID();
-        const abbreviated = ashCode ? compressAshCode(step.text) : null;
-        const stepText = abbreviated?.text ?? step.text;
+        const stepText = step.text;
         // A creation step in a #1 plan: stop and ask the human before the
         // agent starts, once, with a clock. Permission written by the
         // orchestrator inside the step text never counts.
@@ -1057,8 +1052,7 @@ export class Room {
           sender: orchestrator,
           target: step.agent,
           text: stepText,
-          originalText: abbreviated?.applied ? step.text : undefined,
-          ashCode: ashCode ? { active: true, applied: abbreviated.applied, reason: abbreviated.reason, language: abbreviated.language, originalChars: abbreviated.originalChars, encodedChars: abbreviated.encodedChars } : undefined,
+          ash: ash ? { active: true } : undefined,
           status: 'delegated',
           planId,
           mode: wanted >= 3 ? wanted : stepLease && stepScopes.write.enabled ? 2 : 1,
@@ -1066,7 +1060,7 @@ export class Room {
           step: index + 1,
           totalSteps: directives.steps.length + (directives.closing ? 1 : 0),
         });
-        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: wanted >= 3 ? null : stepLease, ashCode, mode: wanted >= 3 ? wanted : stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
+        await this.#dispatch({ messageId, targetId: step.agent, text: stepText, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease: wanted >= 3 ? null : stepLease, ash, mode: wanted >= 3 ? wanted : stepLease && stepScopes.write.enabled ? 2 : 1, escalation });
       }
       if (!plan.stopped && directives.closing) {
         plan.step = directives.steps.length + 1;
@@ -1082,7 +1076,7 @@ export class Room {
           step: plan.step,
           totalSteps: plan.step,
         });
-        await this.#dispatch({ messageId, targetId: orchestrator, text: `${directives.closing}\n(The delegated agents have answered above; this is your closing turn.)`, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ashCode });
+        await this.#dispatch({ messageId, targetId: orchestrator, text: `${directives.closing}\n(The delegated agents have answered above; this is your closing turn.)`, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ash });
       }
     } finally {
       this.#plans.delete(planId);

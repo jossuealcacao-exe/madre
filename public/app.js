@@ -20,7 +20,7 @@ const els = {
   slashMenu: document.querySelector('#slash-menu'),
   attach: document.querySelector('#attach'),
   createToggle: document.querySelector('#create-toggle'),
-  ashToggle: document.querySelector('#ashcode-toggle'),
+  ashToggle: document.querySelector('#ash-toggle'),
   fileInput: document.querySelector('#file-input'),
   attachments: document.querySelector('#attachments'),
   send: document.querySelector('#composer button[type="submit"]'),
@@ -44,7 +44,7 @@ const CLIENT_COMMANDS = [
 const PLACEHOLDERS = {
   plain: 'Type here, human. Ask the room…',
   create: 'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.',
-  order: 'Priority one. Terse transmissions; the original stays in the record.',
+  ash: 'Compact prose. Nothing you write is altered; only the answers get shorter.',
   ghost: 'Off the record. Ask anything; nothing is saved, nobody else will remember it.',
   control: 'Control armed. Say what to change in the project; every action runs without asking.',
   airlock: 'Airlock open. Commands run; pushes and deploys leave the ship. Say exactly what should go out.',
@@ -97,8 +97,8 @@ const state = {
   pending: [],             // attachments uploaded for the next message
   projectRoot: '',
   create: false,           // creation lease armed for the next message
-  ashCodeInstalled: false,
-  ashCode: false,          // ASH CODE active for this message and its replies
+  ashInstalled: false,
+  ash: false,              // Ash asked for on this message: compact replies, nothing rewritten
   chosenModel: {},         // id -> model name picked in the composer
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
@@ -1258,8 +1258,8 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text, originalText, ashCode, model, attachments = [], create, mode } = event.payload;
-  state.userMessages.set(messageId, { text: originalText ?? text, target, model });
+  const { messageId, target, text, ash, model, attachments = [], create, mode } = event.payload;
+  state.userMessages.set(messageId, { text, target, model });
   const reviewed = state.expendable;
   const node = row('user');
   if (event.ghost || mode === 0) node.classList.add('ghost');
@@ -1270,10 +1270,9 @@ function renderUserMessage(event) {
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
   const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
   if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, `#${shownMode} ${MODES[shownMode].label}`));
-  if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ASH CODE' : 'ASH CODE · unchanged'));
+  if (ash?.active) who.append(el('span', 'badge ash', 'ASH'));
   col.append(who);
   const bubble = el('div', 'bubble', text);
-  if (originalText) bubble.append(ashOriginal(originalText, ashCode));
   if (attachments.length) bubble.append(fileTiles(attachments));
   col.append(bubble);
   const stamp = paint(el('div', 'stamp'), target);
@@ -1288,9 +1287,9 @@ function renderUserMessage(event) {
 }
 
 function renderAssistantMessage(event) {
-  const { messageId, parentMessageId, sender, target, text, originalText, ashCode, status, step, totalSteps, model, mode } = event.payload;
+  const { messageId, parentMessageId, sender, target, text, ash, status, step, totalSteps, model, mode } = event.payload;
   const delegated = status === 'delegated';
-  const compact = state.lastSender === sender && !delegated && !ashCode?.active && !event.ghost;
+  const compact = state.lastSender === sender && !delegated && !ash?.active && !event.ghost;
   const node = row('assistant', sender, { compact });
   if (event.ghost || mode === 0) node.classList.add('ghost');
   if (delegated) node.classList.add('delegated');
@@ -1311,7 +1310,7 @@ function renderAssistantMessage(event) {
     if (model) who.append(el('span', 'badge model', model));
     if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
     if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
-    if (ashCode?.active) who.append(el('span', `badge ash${ashCode.applied ? '' : ' skipped'}`, ashCode.applied ? 'ASH CODE' : 'ASH CODE · unchanged'));
+    if (ash?.active) who.append(el('span', 'badge ash', 'ASH'));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
@@ -1322,9 +1321,8 @@ function renderAssistantMessage(event) {
   }
   const bubble = el('div', 'bubble');
   bubble.append(renderMarkdown(text));
-  if (originalText) bubble.append(ashOriginal(originalText, ashCode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
-  bubble.append(bubbleActions({ text: originalText ?? text, sender, sequence: event.sequence, messageId: delegated ? null : messageId }));
+  bubble.append(bubbleActions({ text, sender, sequence: event.sequence, messageId: delegated ? null : messageId }));
   col.append(bubble);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
@@ -1466,14 +1464,6 @@ function replyWith(agentId, source) {
 }
 document.addEventListener('click', (event) => { if (!replyMenu.hidden && !replyMenu.contains(event.target) && !event.target.closest?.('.bubble-actions .reply')) hideReplyMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hideReplyMenu(); });
-
-function ashOriginal(originalText, info) {
-  const details = el('details', 'ash-original');
-  const saved = Math.max(0, (info?.originalChars ?? originalText.length) - (info?.encodedChars ?? originalText.length));
-  details.append(el('summary', null, `Original · ${saved} fewer characters (not verified tokens)`));
-  details.append(el('pre', null, originalText));
-  return details;
-}
 
 function fileTiles(files) {
   const wrap = el('div', 'files');
@@ -2157,7 +2147,7 @@ function renderEventNode(event) {
     }
     case 'room.settings': return;
     case 'extension.toggled':
-      if (event.payload.id === 'ashcode') syncAshCodeUI(Boolean(event.payload.enabled));
+      if (event.payload.id === 'ash') syncAshUI(Boolean(event.payload.enabled));
       if (event.payload.id === 'ripley') { state.ripley = Boolean(event.payload.enabled); syncViewerMode(); }
       if (!replaying) void refreshModules();
       return;
@@ -2438,7 +2428,7 @@ state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudg
 state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
 state.capabilities = initial.capabilities ?? {};
-syncAshCodeUI(Boolean(initial.ashCode?.enabled));
+syncAshUI(Boolean(initial.ash?.enabled));
 state.ripley = Boolean(initial.ripley?.enabled);
 state.projectRoot = initial.projectRoot ?? '';
 state.platform = initial.platform ?? null;
@@ -2742,22 +2732,22 @@ function markIntruder(ms) {
 fetch('/api/mother').then((response) => response.json()).then((status) => { if ((status?.mother?.lockedForMs ?? 0) > 0) markIntruder(status.mother.lockedForMs); }).catch(() => {});
 
 function updateCrewLabel() {
-  const order = state.ashCode && state.ashCodeInstalled;
+  const order = state.ash && state.ashInstalled;
   els.crewLabel.textContent = state.intruder && state.mode < 3 ? 'INTRUDER ›' : state.mode >= 3 ? `MU/TH/UR · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
     : state.mode === 0 ? 'HUMAN · GHOST ›'
-      : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH CODE ›')
+      : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH ›')
         : state.create ? 'HUMAN · CREATE ›'
           : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
 }
 function updatePlaceholder() {
   const local = Boolean(state.agents.get(els.target.value)?.local);
-  els.input.placeholder = state.mode === 4 ? PLACEHOLDERS.airlock : state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ashCode && state.ashCodeInstalled) ? PLACEHOLDERS.order : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
+  els.input.placeholder = state.mode === 4 ? PLACEHOLDERS.airlock : state.mode === 3 ? PLACEHOLDERS.control : state.mode === 0 ? PLACEHOLDERS.ghost : local ? PLACEHOLDERS.memory : state.create ? PLACEHOLDERS.create : (state.ash && state.ashInstalled) ? PLACEHOLDERS.ash : state.expendable ? PLACEHOLDERS.expendable : PLACEHOLDERS.plain;
 }
-function setOrder937(on, { wink = false } = {}) {
-  state.ashCode = on;
+function setAsh(on, { wink = false } = {}) {
+  state.ash = on;
   els.ashToggle.setAttribute('aria-pressed', String(on));
-  els.ashToggle.textContent = on ? 'ASH_CODE' : 'ash_code';
-  els.composer.classList.toggle('ordering', on);
+  els.ashToggle.textContent = on ? 'ASH' : 'ash';
+  els.composer.classList.toggle('ash-on', on);
   updateCrewLabel();
   updatePlaceholder();
   autosize();
@@ -2767,7 +2757,7 @@ function setOrder937(on, { wink = false } = {}) {
     els.composer.classList.remove('ash-wink');
   }
 }
-// The wink to MOTHER. Three of them: ASH CODE is one green CRT sweep across the field ('ash'),
+// The wink to MOTHER. Three of them: Ash is one green CRT sweep across the field ('ash'),
 // GHOST fills the field with smoke that clears at once ('ghost'), CONTROL rains red binary over
 // the field and the whole room ('control'). Then business as usual.
 const WINKS = { ash: 1600, ghost: 1200, control: 3000 };
@@ -2825,15 +2815,15 @@ function binaryRain(host, { duration = 2400, fixed = false, cell = 11, size = 10
   };
   requestAnimationFrame(frame);
 }
-function syncAshCodeUI(enabled) {
-  state.ashCodeInstalled = enabled;
+function syncAshUI(enabled) {
+  state.ashInstalled = enabled;
   els.ashToggle.hidden = !enabled;
-  setOrder937(enabled);
+  setAsh(enabled);
 }
 els.ashToggle.addEventListener('click', () => {
-  if (!state.ashCodeInstalled) return;
-  setOrder937(!state.ashCode, { wink: true });
-  if (state.ashCode) toast('MU/TH/UR › ASH CODE · BETA: abbreviation may change meaning or cause errors. Check the original. Fewer characters are not verified token savings.');
+  if (!state.ashInstalled) return;
+  setAsh(!state.ash, { wink: true });
+  if (state.ash) toast('MU/TH/UR › ASH: every agent will answer in compact prose. What you write is never altered.');
   els.input.focus();
 });
 els.attach.addEventListener('click', () => els.fileInput.click());
@@ -2881,7 +2871,7 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ashCode: state.ashCodeInstalled && state.ashCode }),
+      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ash: state.ashInstalled && state.ash }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
@@ -3408,21 +3398,20 @@ function builtinCard(item) {
     card.append(actions);
     return card;
   }
-  if (item.id === 'ashcode') {
-    card.append(el('p', 'ash-beta', item.warning ?? 'BETA · May change meaning; review the original.'));
+  if (item.id === 'ash') {
     const actions = el('div', 'actions');
-    const toggle = el('button', on ? null : 'primary', on ? 'DISABLE ASH CODE' : 'ENABLE BETA');
+    const toggle = el('button', on ? null : 'primary', on ? 'STOP ASKING FOR COMPACT REPLIES' : 'ASK FOR COMPACT REPLIES');
     toggle.type = 'button';
     toggle.addEventListener('click', async () => {
       toggle.disabled = true;
       try {
-        const response = await fetch('/api/extensions/ashcode/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+        const response = await fetch('/api/extensions/ash/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-        syncAshCodeUI(Boolean(result.enabled));
+        syncAshUI(Boolean(result.enabled));
         toast(result.enabled
-          ? 'ASH CODE ON · BETA: prompts and replies may change meaning. Inspect the original; shorter characters are not verified token savings.'
-          : 'ASH CODE OFF · messages are sent normally.');
+          ? 'ASH ON · every agent answers in compact prose. What you write is never altered.'
+          : 'ASH OFF · agents answer at their own length.');
         await refreshModules();
       } catch (error) {
         toast(`AshCode could not change state: ${error.message}`);
@@ -4121,6 +4110,50 @@ function renderSettings() {
     });
     dataset.append(exportButton, datasetNote);
     mform.append(dataset);
+
+    // ASH: where this room's tokens actually go. Not a setting, a reading. Most of the economy
+    // is always on and has nothing to switch; what is worth seeing is whether it worked.
+    section.append(el('h3', null, 'ASH · WHERE THE TOKENS GO'));
+    section.append(el('p', 'note', 'EVERY TURN IS WEIGHED AGAINST WHAT ITS CLI SAID IT COST. THE BRIEFING CARRIES ONLY THE BLOCKS A TURN CAN USE, WHAT NEVER CHANGES IS READ FIRST SO A CACHE CAN MATCH IT, AND THE TRANSCRIPT HOLDS STILL INSTEAD OF SLIDING. NOTHING YOU WRITE IS EVER ALTERED.'));
+    const ashBox = el('div', 'ash-economy');
+    ashBox.append(el('p', 'note', 'READING…'));
+    section.append(ashBox);
+    const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
+    fetch('/api/economy').then((response) => response.json()).then((read) => {
+      ashBox.replaceChildren();
+      if (!read?.turns) {
+        ashBox.append(el('p', 'note', 'NO TURNS WEIGHED YET · THIS FILLS AS THE ROOM IS USED'));
+        return;
+      }
+      const t = read.totals;
+      const head = el('div', 'ash-totals');
+      for (const [label, value] of [
+        ['TURNS', read.turns],
+        ['INPUT TOKENS', t.input.toLocaleString()],
+        ['READ FROM CACHE', pct(t.cacheShare)],
+        ['CACHEABLE HEAD', pct(t.prefixShare)],
+        ['OUTPUT TOKENS', t.output.toLocaleString()],
+        ['CHARS PER TOKEN', t.charsPerInputToken ?? '—'],
+      ]) {
+        const cell = el('div', 'ash-total');
+        cell.append(el('b', null, String(value)), el('span', null, label));
+        head.append(cell);
+      }
+      ashBox.append(head);
+      const widest = read.blocks[0]?.chars || 1;
+      const bars = el('div', 'ash-blocks');
+      for (const block of read.blocks.slice(0, 10)) {
+        const row = el('div', 'ash-block');
+        const bar = el('i');
+        bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
+        row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CHARS/TURN · ${pct(block.share)}${block.always ? ' · EVERY TURN' : ''}`));
+        bars.append(row);
+      }
+      ashBox.append(bars);
+      for (const agent of read.agents) {
+        ashBox.append(el('p', 'note', `@${agent.agent.toUpperCase()} · ${agent.turns} TURNS · ${agent.input.toLocaleString()} IN · ${agent.output.toLocaleString()} OUT · ${pct(agent.cacheShare)} FROM CACHE`));
+      }
+    }).catch(() => { ashBox.replaceChildren(el('p', 'note', 'ECONOMY UNAVAILABLE')); });
     // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.
     const train = el('div', 'full train-card');
     const trainHead = el('div', 'train-head', 'TRAIN MADRE AI · LOCAL, WITH MLX ON APPLE SILICON · NOTHING LEAVES THIS MACHINE');

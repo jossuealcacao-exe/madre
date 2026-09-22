@@ -481,7 +481,8 @@ export async function createPulseServer({
   const startupConfig = await readConfig(root);
   room.setScopes(startupConfig.scopes ?? {});
   setImageModule(startupConfig.modules?.imageStudio ?? {});
-  room.setAshCode(Boolean(startupConfig.modules?.ashCode?.enabled));
+  // Rooms opened before Ash was renamed carry the old key; the human's switch is not lost.
+  room.setAsh(Boolean(startupConfig.modules?.ash?.enabled ?? startupConfig.modules?.ash?.enabled));
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`MADRE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -733,7 +734,7 @@ export async function createPulseServer({
           projectRoot,
           platform: process.platform,
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
-          ashCode: { enabled: room.ashCodeEnabled() },
+          ash: { enabled: room.ashEnabled() },
           ripley: { enabled: await ripleyOn() },
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),

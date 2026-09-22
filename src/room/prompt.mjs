@@ -24,7 +24,7 @@ export function wantsModule(text) {
 export function promptParts({
   agent, text, requester, depth, allowDelegation, context, recall = null, memories = null,
   attachments = [], references = [], lease = null, scopes = null, imageStudio = null,
-  sharedLeaseHint = null, ashCode = false, mode = 1, escalation = null, mcpServers = [],
+  sharedLeaseHint = null, ash = false, mode = 1, escalation = null, mcpServers = [],
   // What the room adds:
   others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]', madreModel = null, sdk = null,
 }) {
@@ -50,7 +50,7 @@ export function promptParts({
         : null },
     { id: 'mode', text: `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}` },
     { id: 'inspect', text: lease ? (lease.airlock ? 'Inspect the project as needed; the airlock is open for you this turn, as described below.' : lease.control ? 'Inspect the project as needed; you hold it for this turn, as described below.' : lease.create ? 'Inspect the project as needed; you may add new files to it as described below, never change existing ones.' : 'Inspect the project as needed; the only writable place is the creation lease directory below.') : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}` },
-    { id: 'ash', text: ashCode ? 'ASH937 beta: terse messages preserve intent. Reply in compact phrases; preserve names, negation, numbers, paths, safety details, and any ```pulse block exactly.' : null },
+    { id: 'ash', text: ash ? 'Ash: answer in compact prose. Say it once, drop the preamble and the summary of what you are about to say, and keep names, negation, numbers, paths, safety details and any ```pulse block exactly as they are. Brevity is in how you write, never in what you leave out.' : null },
     { id: 'mother', text:
       mode !== 0 && motherLines.length
         ? `MU/TH/UR's channel, decoded for you (the human sees only the code in the room):\n<mother>\n${motherLines.map((alert) => `[${alert.at} · ${alert.kind}] ${alert.text}`).join('\n')}\n</mother>`
