@@ -20,7 +20,7 @@ try {
   const files = pack.files.map((file) => file.path);
   check(files.some((file) => file.startsWith('bin/')), 'tarball contains bin/');
   check(files.some((file) => file.startsWith('src/')), 'tarball contains src/');
-  check(files.includes('src/ashcode.mjs'), 'tarball contains AshCode transformer');
+  check(files.includes('src/room/economy.mjs'), 'tarball contains the turn economy');
   check(files.some((file) => file.startsWith('public/')), 'tarball contains public/');
   check(!files.some((file) => file.startsWith('test/') || file.startsWith('scripts/')), 'tarball excludes test/ and scripts/');
 
@@ -54,11 +54,14 @@ try {
     const html = await fetch(`http://127.0.0.1:${port}/`).then((response) => response.text());
     check(/MADRE/.test(html), 'server serves the room page');
     const modules = await fetch(`http://127.0.0.1:${port}/api/extensions`).then((response) => response.json());
-    check(modules.extensions.some((item) => item.id === 'ashcode' && item.kind === 'builtin'), 'installed server lists AshCode');
-    const activated = await fetch(`http://127.0.0.1:${port}/api/extensions/ashcode/install`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }),
+    check(modules.extensions.some((item) => item.id === 'ash' && item.kind === 'builtin'), 'installed server lists Ash');
+    // No confirmation: Ash stopped being able to change the meaning of anything.
+    const activated = await fetch(`http://127.0.0.1:${port}/api/extensions/ash/install`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}),
     }).then((response) => response.json());
-    check(activated.enabled === true, 'installed server enables AshCode beta in isolated state');
+    check(activated.enabled === true, 'installed server switches Ash on in isolated state');
+    const economy = await fetch(`http://127.0.0.1:${port}/api/economy`).then((response) => response.json());
+    check(Number.isInteger(economy.turns), 'installed server reports the turn economy');
   }
   const exited = new Promise((resolveExit) => server.once('close', (code, signal) => resolveExit({ code, signal })));
   server.kill('SIGTERM');
