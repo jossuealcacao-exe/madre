@@ -2191,6 +2191,8 @@ function renderEventNode(event) {
     case 'plan.ignored': node = renderPlanIgnored(event); break;
     case 'artifacts.created': attachArtifacts(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); return;
     case 'command.output': node = renderCommandCard(event); break;
+    case 'eyecat.flagged': node = renderEyecat(event); break;
+    case 'eyecat.settled': settleEyecat(event); return;
     default: return;
   }
   removeEmpty();
@@ -3176,6 +3178,69 @@ function renderCommandCard(event) {
   node.append(head, pre);
   state.lastSender = null;
   return node;
+}
+
+// EYECAT found two things the room wrote down that cannot both be true, or a note its own
+// citations do not support. The card is a question, never a verdict: the room changes nothing
+// until a person answers it, and either answer is final for that pair.
+function renderEyecat(event) {
+  const finding = event.payload;
+  const node = el('div', 'command-card eyecat');
+  node.dataset.eyecat = finding.key;
+  const head = el('div', 'head');
+  head.append(el('b', null, '◉ EYECAT'), el('span', null, finding.kind === 'unsupported' ? 'a note its own sources do not support' : 'two memories that cannot both be true'));
+  if (finding.confidence !== null && finding.confidence !== undefined) head.append(el('span', 'args', `${Math.round(finding.confidence * 100)}% · judged by @${finding.judge}`));
+  else head.append(el('span', 'args', `judged by @${finding.judge}`));
+  node.append(head);
+
+  const claim = el('div', 'eyecat-claim');
+  claim.append(el('b', null, 'IN DOUBT'), el('p', null, finding.claim.text));
+  node.append(claim);
+  if (finding.against) {
+    const against = el('div', 'eyecat-against');
+    against.append(el('b', null, 'AGAINST'), el('p', null, finding.against.text));
+    node.append(against);
+  }
+  if (finding.correction) {
+    const better = el('div', 'eyecat-correction');
+    better.append(el('b', null, 'WHAT SEEMS TRUE'), el('p', null, finding.correction));
+    node.append(better);
+  }
+
+  const actions = el('div', 'eyecat-actions');
+  const answer = async (verdict) => {
+    for (const button of actions.querySelectorAll('button')) button.disabled = true;
+    const response = await fetch(`/api/eyecat/${verdict}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key: finding.key, designation: nostromoDesignation() }),
+    }).then((res) => res.json()).catch(() => null);
+    if (!response || response.error) {
+      for (const button of actions.querySelectorAll('button')) button.disabled = false;
+      toast(response?.error ?? 'EYECAT could not be answered.');
+    }
+  };
+  const confirm = el('button', 'primary', 'IT IS FALSE');
+  confirm.title = 'Files it as an aberration and takes the memory out of every turn. Reversible from NOSTROMO.';
+  confirm.addEventListener('click', () => { void answer('confirm'); });
+  const dismiss = el('button', null, 'IT STANDS');
+  dismiss.title = 'The room was right. This pair is never raised again.';
+  dismiss.addEventListener('click', () => { void answer('dismiss'); });
+  actions.append(confirm, dismiss);
+  node.append(actions);
+  state.lastSender = null;
+  return node;
+}
+
+// Answered, here or in another window: the card says what was decided and stops asking.
+function settleEyecat(event) {
+  const { key, verdict } = event.payload ?? {};
+  const card = document.querySelector(`[data-eyecat="${CSS.escape(String(key ?? ''))}"]`);
+  if (!card) return;
+  card.querySelector('.eyecat-actions')?.remove();
+  const settled = el('div', 'eyecat-settled');
+  settled.textContent = verdict === 'aberration' ? 'FILED AS AN ABERRATION · THE MEMORY IT REFUTES NO LONGER TRAVELS' : 'THE ROOM STANDS BY IT';
+  card.classList.add(verdict === 'aberration' ? 'filed' : 'stands');
+  card.append(settled);
 }
 
 function appendModuleOutput(event) {

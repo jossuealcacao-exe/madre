@@ -1014,6 +1014,23 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 
 .command-card { margin: 10px 0 6px; max-width: min(860px, 100%); border: 1px solid var(--line-2); border-radius: 12px; background: color-mix(in srgb, var(--panel) 80%, transparent); overflow: hidden; }
 .command-card.failed { border-color: color-mix(in srgb, var(--crit) 60%, transparent); }
+
+/* EYECAT: a question the room is asking the human, so it reads as one thing until it is answered. */
+.command-card.eyecat { border-color: color-mix(in srgb, var(--mem-aberration) 55%, transparent); }
+.command-card.eyecat .head b { color: var(--mem-aberration); }
+.command-card.eyecat > div:not(.head):not(.eyecat-actions):not(.eyecat-settled) { padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
+.command-card.eyecat b { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--text-2); margin-bottom: 4px; }
+.command-card.eyecat p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.command-card.eyecat .eyecat-claim p { color: var(--mem-aberration); }
+.command-card.eyecat .eyecat-correction p { color: var(--ok, #9bff66); }
+.eyecat-actions { display: flex; gap: 8px; padding: 10px 12px; }
+.eyecat-actions button { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; }
+.eyecat-actions button.primary { border-color: color-mix(in srgb, var(--mem-aberration) 70%, transparent); color: var(--mem-aberration); }
+.eyecat-actions button:hover:not(:disabled) { background: var(--ph-faint); }
+.eyecat-actions button:disabled { opacity: .45; cursor: default; }
+.eyecat-settled { padding: 9px 12px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; color: var(--text-2); }
+.command-card.eyecat.filed { border-color: color-mix(in srgb, var(--mem-aberration) 75%, transparent); }
+.command-card.eyecat.stands { border-color: var(--line-2); opacity: .7; }
 .command-card .head { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; color: var(--text-2); border-bottom: 1px solid var(--line-2); }
 .command-card .head b { color: var(--phosphor); font-weight: 600; }
 .command-card .head .args { color: var(--text-3); letter-spacing: .04em; }

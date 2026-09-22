@@ -52,6 +52,7 @@ import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { listDirectory, searchFiles, readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
+import { Eyecat } from './eyecat-watch.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -561,6 +562,19 @@ export async function createPulseServer({
       });
     }
   }
+  // EYECAT: the watcher that asks whether the room still believes what it wrote down. It is not
+  // a module and takes no turn: it subscribes from outside, the way the error sentinel does, and
+  // everything it finds is a question for the human rather than an entry in the archive.
+  const eyecat = new Eyecat({
+    enabled: () => process.env.PULSE_EYECAT !== '0',
+    research: () => room.memoryResearch(),
+    entriesFor: (notes) => (memory ? memory.entriesAt(notes.flatMap((note) => note.sources ?? [])) : []),
+    bench: () => room.bench(),
+    emit: (type, payload) => room.record(type, payload),
+  });
+  eyecat.seed(historicalEvents);
+  const unsubscribeEyecat = room.subscribe((event) => { void eyecat.observe(event).catch(() => null); });
+
   const unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
   const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
   poller.unref();
@@ -855,6 +869,42 @@ export async function createPulseServer({
         const result = await moduleRoute.route.handler(await moduleContext(), { request, url, params: moduleRoute.params, payload });
         return sendJson(response, result.status ?? 200, result.body ?? {});
       }
+      // EYECAT: what it is holding, and the two answers a person can give it. Confirming writes
+      // the aberration and takes the note it refutes out of circulation; dismissing says the room
+      // was right all along and the pair is never raised again.
+      if (url.pathname === '/api/eyecat' && request.method === 'GET') {
+        return sendJson(response, 200, { findings: eyecat.findings(), settings: eyecat.settings(), aberrations: memory ? memory.aberrations({ limit: 100 }) : [] });
+      }
+      if (url.pathname === '/api/eyecat/sweep' && request.method === 'POST') {
+        const payload = await body(request).catch(() => ({}));
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        const raised = await eyecat.sweep({ reason: 'asked' }).catch(() => null);
+        return sendJson(response, 200, { raised: raised?.length ?? 0, findings: eyecat.findings() });
+      }
+      const eyecatVerdict = request.method === 'POST' && url.pathname.match(/^\/api\/eyecat\/(confirm|dismiss)$/);
+      if (eyecatVerdict) {
+        const payload = await body(request).catch(() => ({}));
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!memory) return sendJson(response, 503, { error: 'The room has no memory.' });
+        const finding = eyecat.findings().find((item) => item.key === payload.key);
+        if (!finding) return sendJson(response, 404, { error: 'EYECAT is not holding that one.' });
+        const settled = eyecat.settle(finding.key, { verdict: eyecatVerdict[1] === 'confirm' ? 'aberration' : 'dismissed' });
+        let flagged = null;
+        if (eyecatVerdict[1] === 'confirm') {
+          flagged = memory.flagAberration({
+            text: finding.claim.text,
+            correction: finding.correction,
+            contradicts: finding.claim.id,
+            sources: [],
+            agent: finding.judge,
+            detector: 'eyecat',
+            confidence: finding.confidence,
+          });
+        }
+        await room.record('eyecat.settled', { key: finding.key, verdict: settled?.settledAs ?? 'dismissed', aberration: flagged?.id ?? null, refuted: flagged?.refuted ?? null });
+        return sendJson(response, 200, { settled: settled?.settledAs ?? 'dismissed', aberration: flagged, findings: eyecat.findings() });
+      }
+
       // The dataset behind MADRE AI: exported on demand next to the ledger.
       if (url.pathname === '/api/dataset' && (request.method === 'GET' || request.method === 'POST')) {
         const dir = join(roomDir, 'dataset');
@@ -1145,6 +1195,7 @@ export async function createPulseServer({
       void broadcastPending().then(() => {
         unsubscribe();
         unsubscribeSentinel();
+        unsubscribeEyecat();
     unsubscribeGhost();
         for (const client of clients.keys()) client.end();
         clients.clear();

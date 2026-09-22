@@ -6,6 +6,16 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### EYECAT: el vigía que pregunta si la sala sigue creyendo lo que escribió
+- No es un módulo ni parte de la sala. Vigila desde afuera, igual que el sentinel de errores: se suscribe al registro, no toma turno, no escribe archivos y no tiene permisos. Lo que produce es una pregunta para ti, nunca una entrada en el archivo.
+- La independencia es todo el diseño. Una afirmación nunca la juzga quien la escribió, ni quien escribió aquello con lo que choca. Al juez se le entregan las dos frases y nada más: sin transcripción, sin historia del proyecto y sin nombres, así que no se le puede decir a quién creerle ni se le puede discutir. Si los únicos libres son los dos autores, el caso espera en vez de ir a alguien con interés en la respuesta.
+- Dos etapas, para que preguntar salga barato. Primero un filtro determinista sobre los vínculos que la constelación ya calcula: un vínculo dice que dos notas hablan de lo mismo, y EYECAT hace la siguiente pregunta, si además se contradicen. Solo pasan las que dan una señal barata de que podrían no coincidir: una negación de más, un orden invertido, un número distinto, una ruta distinta. Funciona en español y en inglés.
+- El segundo detector busca notas que sus propias citas no sostienen. Si casi nada de lo que hace distintiva a una nota aparece en los intercambios que dice haber leído, o se inventó o se destiló de otro lado.
+- Corre entre turnos, cuando el archivo acaba de cambiar, y no responde a ninguna otra cosa: nada de lo que diga un agente lo alcanza. Como máximo tres casos por barrida, para que un archivo grande no levante una cuenta.
+- Cada hallazgo llega como tarjeta en la sala con la afirmación en duda, contra qué choca, qué parece ser cierto y quién lo juzgó. Dos respuestas: ES FALSA la archiva como aberración y saca de circulación la memoria que refuta; SE SOSTIENE dice que la sala tenía razón. Cualquiera de las dos cierra ese par para siempre, y el registro lo recuerda entre reinicios.
+- Un veredicto mal formado, o con menos de la mitad de confianza, no es un hallazgo: el caso se queda pendiente para ti en vez de gastarte la atención.
+- `PULSE_EYECAT=0` lo apaga.
+
 ### ABERRACIÓN: lo que la sala estableció que es falso
 - Un quinto tipo de memoria, y el único que no es conocimiento: alucinaciones, afirmaciones sin fundamento, distorsiones, refutaciones y memorias que se desviaron de lo que el proyecto había acordado. Se guarda porque vale para entrenar en contra, y se guarda fuera de cada turno porque una sala que recuerda sus propias alucinaciones las repite.
 - Una aberración puede señalar la nota que refuta. Cuando lo hace, esa nota deja de circular: no se reescribe lo que dijo, se le quita el paso. Es reversible, cosa que una edición no sería, y desmarcarla la devuelve intacta.

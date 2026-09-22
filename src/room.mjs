@@ -15,6 +15,7 @@ import { Escalation } from './room/escalation.mjs';
 import { Budget, budgetTokens } from './room/budget.mjs';
 import { VectorWorker } from './room/vectors.mjs';
 import { Archivist, distillDefaults } from './room/archivist.mjs';
+import { OLLAMA_ARCHIVIST } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
 import { CODE000_STRIKES } from './mother.mjs';
 import { parseDirectives } from './directives.mjs';
@@ -292,6 +293,19 @@ export class Room {
       await this.#track(this.#dispatch({ messageId: randomUUID(), targetId: id, text: alert.text, requester: 'mother', depth: 1, allowDelegation: false, mode: 1 })).catch((error) => console.error(`MADRE: @${id} did not hear MOTHER: ${error.message}`));
     }
     return { ...alert, crew };
+  }
+
+  // Who is free to answer a question that is not a turn: the same pool the archivist draws on,
+  // with the local model in it when there is one. EYECAT reads this to find an impartial judge.
+  bench() {
+    const invokers = this.#invokers;
+    const agents = this.#agents.filter((agent) => agent.adapter !== 'madre-local');
+    return {
+      agents: invokers.ollama ? [OLLAMA_ARCHIVIST, ...agents] : agents,
+      invokers,
+      busy: new Set([...this.#turns.values()].map((turn) => turn.agent).filter(Boolean)),
+      benched: new Set(),
+    };
   }
 
   /* ---------- NOSTROMO: the human's view of the archive ---------- */

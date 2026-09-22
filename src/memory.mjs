@@ -356,6 +356,15 @@ export class RoomMemory {
     }
   }
   undistilledCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM entries WHERE distilled = 0').get().n; }
+
+  // The exchanges a note says it came from, for anyone checking whether they say what it says.
+  entriesAt(sequences = []) {
+    if (!this.#db) return [];
+    const wanted = [...new Set(sequences.filter((n) => Number.isInteger(n)))].slice(0, 60);
+    if (!wanted.length) return [];
+    const fetch = this.#db.prepare('SELECT sequence, sender, text FROM entries WHERE sequence = ?');
+    return wanted.map((sequence) => fetch.get(sequence)).filter(Boolean);
+  }
   memoryCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM memories').get().n; }
 
   // The next batch to distil: the NEWEST entries nobody has distilled, cut at a
