@@ -17,7 +17,7 @@
   --text-3: #626a5f;
 
   --phosphor: #9bff66;           /* MOTHER */
-  --brew: #28fe14;               /* ORDER 937: Terminal.app 'Homebrew' green */
+  --brew: #28fe14;               /* Terminal.app 'Homebrew' green */
   --brew-ink: #041004;
   --phosphor-ink: #0a1405;
   --accent: var(--phosphor);
@@ -833,7 +833,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .conn-card .seg-option:disabled { opacity: .35; cursor: default; }
 .create-toggle[aria-pressed="true"] .lock.closed { display: none; }
 .create-toggle[aria-pressed="true"] .lock.open { display: block; }
-/* ORDER 937: a bash prompt on a black terminal, Homebrew green. */
+/* Ash: a bash prompt on a black terminal, Homebrew green. */
 /* Off: a dormant prompt, grey like the other idle controls. On: the terminal lights up. */
 .ash-toggle { height: 30px; padding: 0 10px 0 9px; border-radius: 7px; border: 1px dashed var(--line-2); background: transparent; color: var(--text-3); font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: none; cursor: pointer; align-self: center; display: inline-flex; align-items: center; gap: 6px; opacity: .8; transition: color .2s, border-color .2s, box-shadow .2s, background .2s, opacity .2s; }
 .ash-toggle::before { content: '$'; color: var(--text-3); font-weight: 700; }
@@ -845,7 +845,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .ash-toggle[aria-pressed="true"]:hover { color: var(--brew); border-color: var(--brew); }
 :root[data-theme="light"] .ash-toggle, .ash-toggle { /* stays a black terminal in every theme */ }
 
-/* With ORDER 937 lit, the field widens like CREATE and glows Homebrew green. */
+/* With Ash lit, the field widens like CREATE and glows Homebrew green. */
 .composer.ash-on { width: min(1180px, 100% - 40px); }
 .composer.ash-on .field { position: relative; border-color: color-mix(in srgb, var(--brew) 70%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brew) 14%, transparent); }
 .composer.ash-on .crew-label { color: var(--brew); text-shadow: 0 0 8px color-mix(in srgb, var(--brew) 55%, transparent); }

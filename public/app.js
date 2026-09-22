@@ -3414,7 +3414,7 @@ function builtinCard(item) {
           : 'ASH OFF · agents answer at their own length.');
         await refreshModules();
       } catch (error) {
-        toast(`AshCode could not change state: ${error.message}`);
+        toast(`Ash could not change state: ${error.message}`);
       } finally {
         toggle.disabled = false;
       }
