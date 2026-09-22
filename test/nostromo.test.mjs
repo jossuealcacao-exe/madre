@@ -144,7 +144,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     const window = { devicePixelRatio: 1 };
     ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
-    ${block('CORE_FLOWS')}
+    ${block('CORE_FLOWS')} ${block('COLLAPSED')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${block('dwarfSkins')} ${fn('dwarfTexture')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
@@ -498,7 +498,9 @@ test('nostromo: memories burn as star classes, and the four are told apart at a 
   const line = source.match(/const MEMORY_COLORS = (\{[^}]*\});/);
   assert.ok(line, 'MEMORY_COLORS is gone from public/app.js');
   const palette = new Function(`return ${line[1]}`)();
-  assert.deepEqual(Object.keys(palette).sort(), ['decision', 'fact', 'preference', 'question']);
+  // Four classes of star, and one thing that is not a star at all: an aberration is a claim the
+  // room established is false, so it burns nothing and is held to none of the rules below.
+  assert.deepEqual(Object.keys(palette).sort(), ['aberration', 'decision', 'fact', 'preference', 'question']);
 
   const rgb = (hex) => [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
   const named = Object.fromEntries(Object.entries(palette).map(([kind, hex]) => [kind, rgb(hex)]));
@@ -514,7 +516,7 @@ test('nostromo: memories burn as star classes, and the four are told apart at a 
   // Electric, not muted: every one of them has to carry real colour.
   for (const [kind, hex] of Object.entries(palette)) {
     const [r, g, b] = rgb(hex);
-    assert.ok(Math.max(r, g, b) > 200, `${kind} is too dim to read as a star`);
+    assert.ok(Math.max(r, g, b) > 200, `${kind} is too dim to read across the room`);
   }
   // And no two may be confusable across the room.
   const kinds = Object.keys(palette);
@@ -675,15 +677,26 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   const named = app.match(/const DWARF_CLASS = (\{[^}]*\});/);
   assert.ok(named, 'DWARF_CLASS is gone from public/app.js');
   const classes = new Function(`return ${named[1]}`)();
-  assert.deepEqual(Object.keys(classes).sort(), ['decision', 'fact', 'preference', 'question']);
+  assert.deepEqual(Object.keys(classes).sort(), ['aberration', 'decision', 'fact', 'preference', 'question']);
   for (const [kind, label] of Object.entries(classes)) {
-    assert.match(label, /DWARF$/, `${kind} is not named as a star`);
+    // Every class is a dwarf but one. The aberration is a collapsed body: naming it as a star
+    // would say it burns, and the whole point of it is that it does not.
+    if (kind === 'aberration') assert.equal(label, 'COLLAPSED', 'an aberration is being named as a star');
+    else assert.match(label, /DWARF$/, `${kind} is not named as a star`);
     // The class belongs on hover, not on the chip: the drawn star already says which it is, and
     // writing it out beside the star says the same thing twice.
+    if (kind === 'aberration') continue;   // the legend markup is a placeholder; paintLegend fills it
     assert.match(page, new RegExp(`title="${label} · ${kind.toUpperCase()}"`, 'i'), `${kind} never names its class anywhere`);
     assert.ok(!new RegExp(`<i>${label}`, 'i').test(page), `${kind} still spells out its class beside the star`);
     assert.match(page, new RegExp(`<i>${kind.toUpperCase()}</i>`, 'i'), `${kind} is not labelled`);
   }
+  // The collapsed body gets a chip of its own, drawn as a hole with a ring rather than as a star.
+  const collapsed = app.slice(app.indexOf('function collapsedChip('), app.indexOf('// The legend:'));
+  for (const piece of ['ellipse', "'#000000'", 'createElement']) {
+    assert.ok(collapsed.includes(piece), `the collapsed chip is missing its ${piece}`);
+  }
+  assert.ok(!collapsed.includes('dwarfTexture'), 'the collapsed body was given a burning surface');
+  assert.ok(app.includes('kind === COLLAPSED ? collapsedChip('), 'the legend draws an aberration as a star');
 
   // The chip carries a drawn star, and it is drawn the way the ones in the constellation are:
   // a ground, the class's own boiling face, and a limb.

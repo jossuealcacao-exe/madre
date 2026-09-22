@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pairsFromEvents, pairsFromNotes, split, exportDataset, readiness, ratingsFrom } from '../src/dataset.mjs';
+import { pairsFromEvents, pairsFromNotes, preferencesFromAberrations, split, exportDataset, readiness, ratingsFrom } from '../src/dataset.mjs';
 import { createPulseServer } from '../src/server.mjs';
 
 const ev = (sequence, payload, extra = {}) => ({ sequence, type: 'message.created', timestamp: `2026-09-18T00:00:${String(sequence).padStart(2, '0')}Z`, payload, ...extra });
@@ -36,7 +36,7 @@ test('dataset: user/assistant pairs by parent, redacted, without ghosts, delegat
   const pairs = pairsFromEvents(events, { project: 'pulse', home: '/Users/dallas', user: 'dallas' });
   assert.deepEqual(pairs.map((pair) => [pair.kind, pair.agent, pair.askedBy, pair.rating]), [['turn', 'codex', 'you', null], ['turn', 'codex', 'you', 'good'], ['delegated', 'gemini', 'codex', null]], 'human turns and delegated steps in; the closing turn, @madre, canned and bad-rated replies out');
   assert.match(pairs[2].messages[1].content, /^Check whether the router handles HEAD/);
-  assert.deepEqual(readiness(events, [{ kind: 'fact' }]), { pairs: 4, turns: 2, delegated: 1, notes: 1, good: 1, bad: 1, target: 300, ready: false });
+  assert.deepEqual(readiness(events, [{ kind: 'fact' }]), { pairs: 4, turns: 2, delegated: 1, notes: 1, aberrations: 0, good: 1, bad: 1, target: 300, ready: false });
   assert.equal(ratingsFrom([...events, { sequence: 24, type: 'message.rated', payload: { messageId: 'a9', rating: 'none' } }]).has('a9'), false, 'a rating can be cleared');
   assert.equal(pairs.filter((pair) => pair.kind === 'turn').length, 2);
   assert.equal(pairs[0].agent, 'codex');
@@ -94,5 +94,60 @@ test('dataset: the server exports next to the ledger, records it, and @madre pre
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('dataset: what the room got wrong trains against itself, and never as something to recall', async () => {
+  const notes = [
+    { id: 1, kind: 'fact', text: 'The webhook verifies the Stripe signature after parsing the body.', fromSequence: 2, throughSequence: 4, created: '2026-09-01T10:00:00.000Z', refutedBy: 9 },
+    { id: 2, kind: 'decision', text: 'The room listens on port 4317 by default.', fromSequence: 5, throughSequence: 5, created: '2026-09-01T11:00:00.000Z', refutedBy: null },
+    { id: 9, kind: 'aberration', text: 'The webhook verifies the Stripe signature after parsing the body.', correction: 'It verifies the signature before parsing anything.', contradicts: 1, detector: 'eyecat', confidence: 0.82, fromSequence: 2, throughSequence: 4, created: '2026-09-02T09:00:00.000Z', refutedBy: null },
+    { id: 10, kind: 'aberration', text: 'The project ships a Rust core.', correction: null, contradicts: null, detector: 'you', confidence: null, fromSequence: 7, throughSequence: 7, created: '2026-09-02T10:00:00.000Z', refutedBy: null },
+  ];
+
+  // Nothing false and nothing refuted becomes something to recall. Only the decision survives.
+  const recall = pairsFromNotes(notes, { project: 'pulse' });
+  assert.equal(recall.length, 1, 'a false or refuted note reached the recall corpus');
+  assert.match(recall[0].messages[2].content, /port 4317/);
+  for (const pair of recall) {
+    assert.ok(!/Stripe signature after parsing/.test(JSON.stringify(pair)), 'the hallucination is being taught as memory');
+    assert.ok(!/Rust core/.test(JSON.stringify(pair)));
+  }
+
+  // It trains the other way instead: same ask, the false claim to avoid, the true one to prefer.
+  const preferences = preferencesFromAberrations(notes, { project: 'pulse' });
+  assert.equal(preferences.length, 1, 'an aberration with nothing true to put in its place is not a pair');
+  assert.equal(preferences[0].rejected, 'The webhook verifies the Stripe signature after parsing the body.');
+  assert.equal(preferences[0].chosen, 'It verifies the signature before parsing anything.');
+  assert.match(preferences[0].prompt, /^Is this true of the project "pulse"\?/);
+
+  // An aberration that only refutes a stored note takes its truth from the note it points at.
+  const fromNote = preferencesFromAberrations([
+    { id: 3, kind: 'fact', text: 'Checkpoints live under refs/madre/checkpoints.', fromSequence: 1, throughSequence: 1, created: '2026-09-01T10:00:00.000Z' },
+    { id: 4, kind: 'aberration', text: 'Checkpoints live in a hidden .madre folder.', correction: null, contradicts: 3, fromSequence: 1, throughSequence: 1, created: '2026-09-02T10:00:00.000Z' },
+  ], { project: 'pulse' });
+  assert.equal(fromNote.length, 1);
+  assert.match(fromNote[0].chosen, /refs\/madre\/checkpoints/);
+
+  // Readiness counts what the model will learn to say, so aberrations are counted apart.
+  const state = readiness([], notes);
+  assert.equal(state.notes, 1, 'a refuted or false note was counted as ready training');
+  assert.equal(state.aberrations, 2);
+
+  // And the export keeps them in a file of their own, so nothing reading the chat files trips
+  // over a shape it does not expect.
+  const dir = await mkdtemp(join(tmpdir(), 'pulse-aberration-'));
+  try {
+    const result = await exportDataset({ events: [], notes, dir, project: 'pulse' });
+    assert.deepEqual(result.files, ['train.jsonl', 'valid.jsonl', 'preferences.jsonl']);
+    assert.equal(result.aberrations, 1);
+    const written = await readFile(join(dir, 'preferences.jsonl'), 'utf8');
+    assert.deepEqual(Object.keys(JSON.parse(written.trim())).sort(), ['chosen', 'prompt', 'rejected']);
+    for (const file of ['train.jsonl', 'valid.jsonl']) {
+      const body = await readFile(join(dir, file), 'utf8');
+      assert.ok(!/after parsing the body|Rust core/.test(body), `${file} carries a hallucination`);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });

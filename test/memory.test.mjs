@@ -157,7 +157,7 @@ test('distiller: keeps only well-formed memories, in range, deduplicated, capped
     '```json',
     '{"kind":"decision","text":"Use SQLite FTS5 for room memory; embeddings wait for phase C.","sources":[3,4]}',
     '- {"kind":"fact","text":"  The event log lives in ~/.pulse/rooms/<room>/events.jsonl.  ","sources":[2, 99]}',
-    '{"kind":"nonsense","text":"Kind falls back to fact","sources":"nope"}',
+    '{"kind":"nonsense","text":"An unknown kind is dropped, never filed as a fact","sources":"nope"}',
     '{"text":""}',
     'not json at all',
     '{"kind":"decision","text":"use sqlite fts5 for room memory; embeddings wait for phase c.","sources":[3]}',
@@ -171,9 +171,23 @@ test('distiller: keeps only well-formed memories, in range, deduplicated, capped
   assert.deepEqual(memories[0], { kind: 'decision', text: 'Use SQLite FTS5 for room memory; embeddings wait for phase C.', sources: [3, 4] });
   assert.deepEqual(memories[1].sources, [2]);
   assert.equal(memories[1].text, 'The event log lives in ~/.pulse/rooms/<room>/events.jsonl.');
-  assert.equal(memories[2].kind, 'fact');
-  assert.equal(memories[3].text.length, 240);
+  // A kind nobody recognises is dropped. It used to become a fact, which was harmless while
+  // every kind was knowledge; with aberrations in the list a typo either way would put a
+  // hallucination where the room trusts it.
+  assert.ok(!memories.some((memory) => /unknown kind is dropped/.test(memory.text)), 'an unrecognised kind was filed anyway');
+  assert.equal(memories[2].kind, 'question');
+  assert.equal(memories[2].text.length, 240);
   assert.deepEqual(parseDistillation('NONE'), []);
+
+  // An aberration carries what turned out to be true; nothing else does, whatever the model says.
+  const flagged = parseDistillation([
+    '{"kind":"aberration","text":"The webhook verifies the signature after parsing.","correction":"It verifies before parsing.","sources":[2]}',
+    '{"kind":"fact","text":"The room listens on 4317.","correction":"nonsense on a fact","sources":[3]}',
+  ].join('\n'), { fromSequence: 1, throughSequence: 6 });
+  assert.equal(flagged[0].kind, 'aberration');
+  assert.equal(flagged[0].correction, 'It verifies before parsing.');
+  assert.ok(!('correction' in flagged[1]), 'a fact came back carrying a correction');
+
   const prompt = distillPrompt({ entries: [{ sequence: 7, role: 'user', sender: 'you', target: 'codex', text: 'hola' }], projectName: 'pulse', existing: [{ text: 'Known thing.' }] });
   assert.match(prompt, /\[#7 · @you \(user\) → @codex\] hola/);
   assert.match(prompt, /Already remembered[\s\S]*- Known thing\./);
@@ -909,6 +923,71 @@ test('the archive counts what it is actually asked for: a recalled memory carrie
     // The counters survive: they live in the notes, which a rebuild keeps.
     const again = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
     assert.equal(again.memories({ limit: 10 }).find((note) => note.kind === 'decision').recalled, 3);
+    again.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('memory: an aberration is kept, is never recalled, and takes what it refutes out of circulation', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-aberration-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 10; i += 1) {
+      await store.append('message.created', { messageId: `m${i}`, role: i % 2 ? 'user' : 'assistant', sender: i % 2 ? 'you' : 'codex', target: 'you', text: `the stripe webhook and its signature, note ${i}` });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([
+      { kind: 'fact', text: 'The webhook verifies the Stripe signature after parsing the body.', sources: [2] },
+      { kind: 'fact', text: 'The Stripe webhook endpoint answers on /hooks/stripe.', sources: [4] },
+    ], { agent: 'codex', fromSequence: 1, throughSequence: 10 });
+
+    const before = memory.recallMemories('stripe webhook signature', { limit: 6, fallback: false });
+    assert.equal(before.length, 2, 'both facts stand before anything is refuted');
+
+    // The room finds out the first one is false.
+    const wrong = memory.memories({ limit: 10 }).find((note) => /after parsing/.test(note.text));
+    const flagged = memory.flagAberration({
+      text: 'The webhook verifies the Stripe signature after parsing the body.',
+      correction: 'It verifies the signature before parsing anything.',
+      contradicts: wrong.id, sources: [2], detector: 'eyecat', confidence: 0.82,
+    });
+    assert.ok(flagged?.id, 'the aberration was not filed');
+    assert.equal(flagged.refuted, wrong.id);
+
+    // Neither the false claim nor the note it refutes may travel into a turn again.
+    const after = memory.recallMemories('stripe webhook signature', { limit: 6, fallback: false });
+    assert.equal(after.length, 1, 'a refuted note or an aberration reached a turn');
+    assert.match(after[0].text, /\/hooks\/stripe/);
+    // Not even by meaning: a search that matches the wording exactly must still come back empty.
+    assert.equal(memory.recallMemories('verifies the signature after parsing the body', { limit: 6, fallback: false }).length, 0);
+    // Nor through the fallback, which hands over recent decisions when a search finds little.
+    memory.addMemories([{ kind: 'decision', text: 'Signature checks run before any parsing.', sources: [6] }], { agent: 'you', fromSequence: 1, throughSequence: 10 });
+    const fell = memory.recallMemories('zzzz nothing matches this', { limit: 6, fallback: true });
+    assert.ok(!fell.some((note) => /after parsing the body/.test(note.text)), 'the fallback handed over a refuted note');
+
+    // But it is kept, with everything needed to train against it.
+    const kept = memory.aberrations();
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0].correction, 'It verifies the signature before parsing anything.');
+    assert.equal(kept[0].detector, 'eyecat');
+    assert.equal(kept[0].contradicts, wrong.id);
+    assert.match(kept[0].contradictsText, /after parsing/);
+
+    // Filing the same claim twice does not double it.
+    assert.equal(memory.flagAberration({ text: 'The webhook verifies the Stripe signature after parsing the body.', contradicts: wrong.id }), null);
+
+    // And being wrong about being wrong is reversible: the note stands again.
+    const cleared = memory.clearAberration(flagged.id);
+    assert.equal(cleared.restored, wrong.id);
+    assert.equal(memory.aberrations().length, 0);
+    const back = memory.recallMemories('stripe webhook signature', { limit: 6, fallback: false });
+    assert.ok(back.some((note) => /after parsing the body/.test(note.text)), 'clearing an aberration did not put the note back');
+    memory.close();
+
+    // The columns survive a reopen, because they are added in place like the others.
+    const again = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    assert.equal(again.memories({ limit: 10 }).every((note) => note.refutedBy === null), true);
     again.close();
   } finally {
     await rm(root, { recursive: true, force: true });

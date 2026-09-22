@@ -57,7 +57,7 @@ export const TOOLS = [
     name: 'memory_note',
     description: 'Save one durable memory of this room, ONLY when the human explicitly asks you to remember, note or save something (memories are otherwise distilled automatically; never save on your own initiative). One self-contained sentence, at most 240 characters, in the language the room uses, with the ledger sequences it comes from when you know them. Refused in a GHOST turn.',
     inputSchema: { type: 'object', properties: {
-      kind: { type: 'string', enum: MEMORY_KINDS, description: 'decision, fact, preference or question.' },
+      kind: { type: 'string', enum: MEMORY_KINDS, description: 'decision, fact, preference, question, or aberration for a claim this room established is false.' },
       text: { type: 'string', description: 'The memory, one sentence, names and numbers exact.' },
       sources: { type: 'array', items: { type: 'integer' }, description: 'Ledger sequences it comes from, if known.' },
     }, required: ['kind', 'text'] },

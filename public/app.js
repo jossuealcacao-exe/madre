@@ -4169,7 +4169,12 @@ function askMotherAbout(conditionId) {
 // the steady kind a system is built around. A fact is a white dwarf: cold, dense, settled. A
 // preference is a red dwarf, dim and personal and very long lived. A question is a blue dwarf,
 // the hottest thing in the sky and the least settled.
-const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#fa4632', question: '#3dc6ff' };
+const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#fa4632', question: '#3dc6ff', aberration: '#b14cff' };
+// One kind is not a star. An aberration is a claim the room established is false, and it burns
+// nothing: it is a collapsed body with a ring of what fell into it, and it gives off no light
+// of its own. It is drawn dark on purpose, because it is the one thing in here nobody should
+// read as knowledge.
+const COLLAPSED = 'aberration';
 const nostromo = {
   button: document.querySelector('#nostromo-button'),
   dialog: document.querySelector('#nostromo'),
@@ -4226,7 +4231,7 @@ nostromo.gate.form?.addEventListener('submit', (event) => {
 });
 
 // What each class of memory is called as a star, for the legend above the constellation.
-const DWARF_CLASS = { decision: 'YELLOW DWARF', fact: 'WHITE DWARF', preference: 'RED DWARF', question: 'BLUE DWARF' };
+const DWARF_CLASS = { decision: 'YELLOW DWARF', fact: 'WHITE DWARF', preference: 'RED DWARF', question: 'BLUE DWARF', aberration: 'COLLAPSED' };
 
 // A real dwarf, small enough to sit in a chip: the same ground, the same boiling face and the
 // same limb the ones in the constellation wear, so the legend shows the thing and not a swatch.
@@ -4266,6 +4271,31 @@ function dwarfChip(hex, px) {
   return canvas;
 }
 
+// The collapsed body, small enough for a chip: a hole with the ring of what fell into it.
+function collapsedChip(hex, px) {
+  const canvas = document.createElement('canvas');
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(px * dpr);
+  canvas.height = Math.round(px * dpr);
+  canvas.style.width = `${px}px`;
+  canvas.style.height = `${px}px`;
+  const paint = canvas.getContext('2d');
+  if (!paint) return canvas;
+  paint.scale(dpr, dpr);
+  const r = px / 2;
+  paint.fillStyle = '#05000a';
+  paint.beginPath(); paint.arc(r, r, r, 0, Math.PI * 2); paint.fill();
+  paint.strokeStyle = hexAlpha(hexMix(hex, '#ffffff', 0.3), 0.85);
+  paint.lineWidth = 1.1;
+  paint.beginPath(); paint.ellipse(r, r, r * 0.92, r * 0.28, -0.5, 0, Math.PI * 2); paint.stroke();
+  paint.fillStyle = '#000000';
+  paint.beginPath(); paint.arc(r, r, r * 0.44, 0, Math.PI * 2); paint.fill();
+  paint.strokeStyle = hexAlpha(hexMix(hex, '#ffffff', 0.5), 0.7);
+  paint.lineWidth = 0.8;
+  paint.beginPath(); paint.arc(r, r, r * 0.46, 0, Math.PI * 2); paint.stroke();
+  return canvas;
+}
+
 // The legend: one real star per class, with the kind of memory that burns as that class.
 function paintLegend() {
   const host = document.querySelector('.nostromo-legend');
@@ -4274,7 +4304,7 @@ function paintLegend() {
   for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
     const chip = el('span', `k ${kind}`);
     // The star is the name of its class. Writing it out as well says the same thing twice.
-    chip.append(dwarfChip(hex, 14), el('i', null, kind.toUpperCase()));
+    chip.append(kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), el('i', null, kind.toUpperCase()));
     chip.title = `${DWARF_CLASS[kind]} · ${kind.toUpperCase()}`;
     chips.push(chip);
   }
@@ -5018,6 +5048,47 @@ function drawNostromo(t) {
     const grown = node.activity ?? 0;
     const fed = Math.min(1, (node.charge ?? 0) + 0.25 * arrive);
     const burn = Math.min(1, 0.4 * grown + 0.75 * fed);
+
+    // A collapsed body. This one is not a star: it is a claim the room established is false, so
+    // it burns nothing and gives off no light of its own. What can be seen is the ring of matter
+    // falling into it, edge on, and the dark it puts over whatever lies behind.
+    if (node.memory.kind === COLLAPSED) {
+      const tilt = node.seed;
+      const ring = r * 2.1;
+      // The dark first: it takes light out of the field rather than adding any.
+      const pit = ctx.createRadialGradient(node.x, node.y, r * 0.8, node.x, node.y, ring * 1.25);
+      pit.addColorStop(0, 'rgba(0, 0, 0, .95)');
+      pit.addColorStop(0.42, 'rgba(2, 0, 6, .6)');
+      pit.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = pit;
+      ctx.beginPath(); ctx.arc(node.x, node.y, ring * 1.25, 0, Math.PI * 2); ctx.fill();
+      // The ring of what fell in, seen almost edge on and turning.
+      ctx.save();
+      ctx.translate(node.x, node.y);
+      ctx.rotate(tilt + node.spin * 0.22);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let band = 0; band < 3; band += 1) {
+        const width = ring * (1 - band * 0.16);
+        const height = width * (0.2 + band * 0.05);
+        ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.15 + 0.3 * band), (0.5 - 0.13 * band) * (0.45 + 0.55 * burn));
+        ctx.lineWidth = (1.5 - 0.4 * band) / cam.scale;
+        ctx.beginPath(); ctx.ellipse(0, 0, width, height, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+      // The body itself: a hole, with a thin edge where the light bends round it.
+      ctx.fillStyle = '#000000';
+      ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.55), 0.5 + 0.35 * arrive);
+      ctx.lineWidth = 0.9 / cam.scale;
+      ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.02, 0, Math.PI * 2); ctx.stroke();
+      if (node === nostromo.selected || node === nostromo.hover) {
+        ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
+        ctx.lineWidth = 1.2 / cam.scale;
+        ctx.beginPath(); ctx.arc(node.x, node.y, r + 6 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
+      }
+      continue;
+    }
 
     ctx.save();
     ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();

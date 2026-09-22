@@ -16,7 +16,23 @@ import { messageEntry } from './conversation-context.mjs';
 import { cosine, toBlob, fromBlob } from './embeddings.mjs';
 
 export const MEMORY_SCHEMA_VERSION = 3;
-export const MEMORY_KINDS = ['decision', 'fact', 'preference', 'question'];
+// An aberration is the one kind that is not knowledge. It is a claim the room decided is false:
+// a hallucination, an unfounded assertion, a distortion, or a memory that drifted away from what
+// the project actually settled. It is kept because it is worth training against, and it is kept
+// out of every turn because a room that recalls its own hallucinations repeats them.
+export const ABERRATION = 'aberration';
+export const MEMORY_KINDS = ['decision', 'fact', 'preference', 'question', ABERRATION];
+// What the room will hand an agent: knowledge that still stands. Everything else is archive.
+export const STANDING_KINDS = MEMORY_KINDS.filter((kind) => kind !== ABERRATION);
+
+// The dedup key. An aberration almost always quotes the claim it refutes word for word, so on a
+// shared key the archive would silently drop the refutation as a duplicate of the thing it is
+// refuting. Aberrations are keyed in their own space: one of each still dedupes, and a false
+// claim can sit beside the note it takes down.
+export function memoryKey(kind, text) {
+  const norm = normalizeMemory(text);
+  return kind === ABERRATION ? `${ABERRATION}:${norm}` : norm;
+}
 
 // Words that carry no meaning for recall, in the two languages the rooms speak.
 const STOPWORDS = new Set(('the and for with that this from what which where when have has are was were will would could should about into your you our their there here they them then than also just like only over under some any all not but can does did done been being make made use used using please into onto ' +
@@ -174,6 +190,16 @@ export class RoomMemory {
     const columns = this.#db.prepare('PRAGMA table_info(memories)').all().map((column) => column.name);
     if (!columns.includes('origin')) this.#db.exec("ALTER TABLE memories ADD COLUMN origin TEXT NOT NULL DEFAULT 'distilled'");
     if (!columns.includes('message_id')) this.#db.exec('ALTER TABLE memories ADD COLUMN message_id TEXT');
+    // Aberrations, and what they do to the notes they refute. A memory's text is never rewritten
+    // here: what a refutation changes is its standing, not what it said.
+    //   contradicts  on an aberration, the note it refutes
+    //   correction   on an aberration, what is true instead, when the room knows
+    //   detector     who caught it: a person, the archivist, or a watcher
+    //   confidence   0..1 from whoever caught it
+    //   refuted_by   on a note, the aberration that took it out of circulation
+    for (const column of ['contradicts INTEGER', 'correction TEXT', 'detector TEXT', 'confidence REAL', 'refuted_by INTEGER']) {
+      if (!columns.includes(column.split(' ')[0])) this.#db.exec(`ALTER TABLE memories ADD COLUMN ${column}`);
+    }
   }
 
   /* ---------- embeddings ---------- */
@@ -353,7 +379,7 @@ export class RoomMemory {
   // Stores distilled memories; a note already held (same text, ignoring case
   // and punctuation) is not stored twice. Returns how many were new.
   addMemories(list, { agent, fromSequence, throughSequence, origin = 'distilled', messageId = null }) {
-    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id, correction, detector, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const now = new Date().toISOString();
     let added = 0;
     this.#db.exec('BEGIN');
@@ -361,9 +387,16 @@ export class RoomMemory {
       for (const memory of list) {
         const text = this.#guard(String(memory.text ?? '').trim());
         if (!text) continue;
-        const kind = MEMORY_KINDS.includes(memory.kind) ? memory.kind : 'fact';
+        // An unknown kind is dropped, never filed as a fact: with one kind in the list that is
+        // not knowledge, a typo either way would put a hallucination where the room trusts it.
+        if (!MEMORY_KINDS.includes(memory.kind)) continue;
+        const kind = memory.kind;
         const sources = (Array.isArray(memory.sources) ? memory.sources : []).filter((n) => Number.isInteger(n));
-        const result = insert.run(now, kind, text, normalizeMemory(text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent, origin, messageId);
+        // Only an aberration carries a correction, and only ever as the archivist heard it: the
+        // note that refutes it is wired up later, by whoever can name the id.
+        const aberrant = kind === ABERRATION;
+        const correction = aberrant ? this.#guard(String(memory.correction ?? '').trim()) || null : null;
+        const result = insert.run(now, kind, text, memoryKey(kind, text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent, origin, messageId, correction, aberrant ? (memory.detector ?? agent) : null, aberrant ? (Number.isFinite(memory.confidence) ? memory.confidence : null) : null);
         added += Number(result.changes ?? 0);
       }
       this.#db.exec('COMMIT');
@@ -372,6 +405,58 @@ export class RoomMemory {
       throw error;
     }
     return added;
+  }
+
+  // Flagging an aberration is two writes that have to happen together: the claim is filed, and
+  // whatever it refutes stops being handed to agents. A refutation does not rewrite what a note
+  // said; it takes it out of circulation, which is reversible, where an edit would not be.
+  flagAberration({ text, correction = null, contradicts = null, sources = [], agent = 'eyecat', detector = 'eyecat', confidence = null, fromSequence = null, throughSequence = null }) {
+    if (!this.#db) return null;
+    const claim = this.#guard(String(text ?? '').trim());
+    if (!claim) return null;
+    const cites = (Array.isArray(sources) ? sources : []).filter((n) => Number.isInteger(n));
+    const refuted = Number.isInteger(contradicts) ? this.#db.prepare(`SELECT id, kind FROM memories WHERE id = ? AND kind != '${ABERRATION}'`).get(contradicts) : null;
+    this.#db.exec('BEGIN');
+    try {
+      const result = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, contradicts, correction, detector, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(new Date().toISOString(), ABERRATION, claim, memoryKey(ABERRATION, claim), fromSequence ?? cites[0] ?? 0, throughSequence ?? cites.at(-1) ?? 0, JSON.stringify(cites), agent, 'flagged', refuted?.id ?? null, this.#guard(String(correction ?? '').trim()) || null, detector, Number.isFinite(confidence) ? confidence : null);
+      if (!Number(result.changes ?? 0)) { this.#db.exec('ROLLBACK'); return null; }   // already known
+      const id = Number(result.lastInsertRowid);
+      if (refuted) this.#db.prepare('UPDATE memories SET refuted_by = ? WHERE id = ? AND refuted_by IS NULL').run(id, refuted.id);
+      this.#db.exec('COMMIT');
+      return { id, refuted: refuted?.id ?? null };
+    } catch (error) {
+      this.#db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  // The other direction, for when the room was wrong about being wrong: the aberration goes and
+  // whatever it took out of circulation stands again.
+  clearAberration(id) {
+    if (!this.#db) return null;
+    const row = this.#db.prepare(`SELECT id, text, contradicts FROM memories WHERE id = ? AND kind = '${ABERRATION}'`).get(Number(id));
+    if (!row) return null;
+    this.#db.exec('BEGIN');
+    try {
+      this.#db.prepare('UPDATE memories SET refuted_by = NULL WHERE refuted_by = ?').run(row.id);
+      this.#db.prepare('DELETE FROM memories WHERE id = ?').run(row.id);
+      this.#db.prepare('DELETE FROM memory_vectors WHERE id = ?').run(row.id);
+      this.#db.exec('COMMIT');
+      return { id: row.id, text: row.text, restored: row.contradicts ?? null };
+    } catch (error) {
+      this.#db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  // Everything the room has decided is false, newest first, with what it took down.
+  aberrations({ limit = 50 } = {}) {
+    if (!this.#db) return [];
+    return this.#db.prepare(`SELECT a.id, a.created, a.text, a.correction, a.detector, a.confidence, a.contradicts, a.sources, a.agent, m.text AS contradictsText
+      FROM memories a LEFT JOIN memories m ON m.id = a.contradicts
+      WHERE a.kind = '${ABERRATION}' ORDER BY a.id DESC LIMIT ?`).all(limit)
+      .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
 
   // Exact text of a stretch of the ledger, capped so a tool answer stays readable.
@@ -442,10 +527,10 @@ export class RoomMemory {
 
   memories({ limit = 50, kind = null } = {}) {
     if (kind) {
-      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
+      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
         .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
     }
-    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled FROM memories ORDER BY id DESC LIMIT ?').all(limit)
+    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories ORDER BY id DESC LIMIT ?').all(limit)
       .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
 
@@ -461,7 +546,9 @@ export class RoomMemory {
     const terms = queryTerms(text);
     const semantic = this.#semanticScores('memory_vectors', 'id', queryVector, { beforeSequence, floor: semanticFloor });
     const scores = new Map();
-    const lookup = this.#db.prepare('SELECT m.id FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid WHERE memories_fts MATCH ? AND m.through_sequence < ? LIMIT 500');
+    // Nothing that is false and nothing that has been refuted travels into a turn. This is the
+    // gate: an archive that hands its own hallucinations back to the room repeats them.
+    const lookup = this.#db.prepare(`SELECT m.id FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid WHERE memories_fts MATCH ? AND m.through_sequence < ? AND m.kind != '${ABERRATION}' AND m.refuted_by IS NULL LIMIT 500`);
     for (const term of terms) {
       let rows;
       try { rows = lookup.all(`"${term.replaceAll('"', '""')}"`, beforeSequence); } catch { continue; }
@@ -471,16 +558,18 @@ export class RoomMemory {
     }
     const ids = RoomMemory.fuse(scores, semantic).map(([id]) => id);
     if (fallback && ids.length < 2) {
-      const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
+      const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') AND refuted_by IS NULL ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
       for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
     }
-    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId FROM memories WHERE id = ?');
+    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories WHERE id = ?');
     const chosen = [];
     let remaining = Math.max(0, maxChars);
     for (const id of ids) {
       if (chosen.length >= limit) break;
       const row = fetch.get(id);
-      if (!row) continue;
+      // The semantic side of the search does not go through the gate above, so it is checked
+      // here as well: one path in means one path to keep clean, and there are two.
+      if (!row || row.kind === ABERRATION || row.refutedBy !== null) continue;
       const cost = row.text.length + 24;
       if (cost > remaining) continue;
       remaining -= cost;

@@ -6,6 +6,17 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### ABERRACIÓN: lo que la sala estableció que es falso
+- Un quinto tipo de memoria, y el único que no es conocimiento: alucinaciones, afirmaciones sin fundamento, distorsiones, refutaciones y memorias que se desviaron de lo que el proyecto había acordado. Se guarda porque vale para entrenar en contra, y se guarda fuera de cada turno porque una sala que recuerda sus propias alucinaciones las repite.
+- Una aberración puede señalar la nota que refuta. Cuando lo hace, esa nota deja de circular: no se reescribe lo que dijo, se le quita el paso. Es reversible, cosa que una edición no sería, y desmarcarla la devuelve intacta.
+- Dos puertas al turno, dos candados. Ni una aberración ni una nota refutada entran por la búsqueda por palabras, por la búsqueda por significado, ni por el respaldo que entrega decisiones recientes cuando una búsqueda encuentra poco.
+- El destilador aprendió a reconocerlas, pero solo cuando la conversación misma refutó algo en voz alta: alguien afirmó y alguien corrigió. Nunca por sospecha, nunca por desacuerdo de opinión, nunca por algo simplemente no verificado. La aberración lleva la afirmación falsa y, aparte, lo que resultó ser cierto.
+- Un tipo que nadie reconoce ya no se archiva como hecho, se descarta. Era inofensivo mientras todos los tipos eran conocimiento; con uno en la lista que no lo es, un dedazo en cualquier dirección metía una alucinación donde la sala confía.
+- Las aberraciones dejaron de poder entrenar al modelo local como algo que recordar. Entrenan al revés: cada una sale como par de preferencia, con la misma pregunta, la afirmación falsa como lo que hay que evitar y la corrección como lo que hay que decir. Un negativo solo enseña poco; un par dice cuál de dos respuestas preferir, que es lo que leen DPO y ORPO. Va en `preferences.jsonl`, aparte, para que nada que lea los archivos de chat lo levante por accidente.
+- El contador de listos tampoco las cuenta: nunca serán una respuesta que el modelo aprenda a dar, y contarlas diría que la sala está más adelante de lo que está.
+- En NOSTROMO una aberración no es una enana. Es un cuerpo colapsado: no arde, no da luz propia, y lo que se ve es el anillo de lo que cayó dentro y la oscuridad que pone sobre lo que queda detrás.
+
+
 ### NOSTROMO: la sala se ve viva
 - El núcleo de MADRE es una estrella: grande, oscura e imponente. Se alumbra sola, así que no tiene lado de día ni lado de noche, y no está encendida de par en par: arde hondo y se apaga casi por completo en el borde. Lo que la hace temible no es cuánto brilla sino cuánto de ella está casi apagado.
 - Su superficie es roca fundida moviéndose despacio. La piel se construye una sola vez como una tira de celdas hirviendo y se envuelve alrededor del cuerpo; una segunda pasada de la misma tira corre a otro ritmo, y ese desacuerdo entre las dos es lo que se lee como flujo. Encima, masas de materia fundida cruzan la cara al paso de la lava, cada una con su propia deriva.

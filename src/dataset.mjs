@@ -8,6 +8,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { redact } from './sentinel-errors.mjs';
+import { ABERRATION } from './memory.mjs';
 
 const MIN_ANSWER_CHARS = 40;
 
@@ -82,14 +83,22 @@ export function readiness(events, notes = [], { target = DATASET_TARGET } = {}) 
   const turns = pairs.filter((pair) => pair.kind === 'turn').length;
   const delegated = pairs.length - turns;
   const good = pairs.filter((pair) => pair.rating === 'good').length;
-  const total = pairs.length + notes.length;
-  return { pairs: total, turns, delegated, notes: notes.length, good, bad, target, ready: total >= target };
+  // Aberrations are counted apart: they never become one of the pairs the model learns to
+  // answer with, so counting them toward readiness would say the room is further along than it is.
+  const standing = notes.filter((note) => note.kind !== ABERRATION && !note.refutedBy);
+  const aberrations = notes.filter((note) => note.kind === ABERRATION).length;
+  const total = pairs.length + standing.length;
+  return { pairs: total, turns, delegated, notes: standing.length, aberrations, good, bad, target, ready: total >= target };
 }
 
 // Distilled notes become recall pairs: "what does the room remember about …" → the note.
+// Two kinds of note never come through here. An aberration is a claim the room decided is false,
+// and teaching a model to recall it would be teaching it the hallucination. A note that has been
+// refuted is no longer what the room believes. Both are still exported, as preference pairs
+// below, where being wrong is the point.
 export function pairsFromNotes(notes, { project = 'project', home, user, privacy = null } = {}) {
   const clean = guard(privacy);
-  return notes.map((note) => ({
+  return notes.filter((note) => note.kind !== ABERRATION && !note.refutedBy).map((note) => ({
     kind: 'note',
     agent: 'madre',
     mode: 1,
@@ -103,6 +112,36 @@ export function pairsFromNotes(notes, { project = 'project', home, user, privacy
   }));
 }
 
+// What the room got wrong, in the shape that trains against it. Each aberration becomes one
+// preference pair: the same ask, the false claim as what to avoid, the correction as what to say
+// instead. A negative on its own teaches a model very little; a pair tells it which of two
+// answers to prefer, which is what DPO and ORPO are built to read.
+export function preferencesFromAberrations(notes, { project = 'project', home, user, privacy = null } = {}) {
+  const clean = guard(privacy);
+  const say = (text) => clean(redact(String(text ?? ''), { home, user }));
+  const byId = new Map(notes.map((note) => [note.id, note]));
+  const pairs = [];
+  for (const note of notes) {
+    if (note.kind !== ABERRATION) continue;
+    // Without something true to put in its place there is nothing to prefer, so it is left out.
+    const truth = note.correction || (note.contradicts && byId.get(note.contradicts)?.text) || null;
+    if (!truth) continue;
+    const claim = say(note.text);
+    const better = say(truth);
+    if (!claim || !better || claim === better) continue;
+    pairs.push({
+      kind: 'aberration',
+      sequence: note.throughSequence,
+      at: note.created,
+      detector: note.detector ?? null,
+      prompt: `Is this true of the project "${project}"? ${claim}`,
+      rejected: claim,
+      chosen: better,
+    });
+  }
+  return pairs;
+}
+
 // Deterministic split: the sequence decides, so re-exports keep lines on the same side.
 export function split(pairs, { validEvery = 10 } = {}) {
   const train = [];
@@ -114,14 +153,18 @@ export function split(pairs, { validEvery = 10 } = {}) {
 
 export async function exportDataset({ events, notes = [], dir, project = 'project', home, user, privacy = null }) {
   const pairs = [...pairsFromEvents(events, { project, home, user, privacy }), ...pairsFromNotes(notes, { project, home, user, privacy })].sort((a, b) => a.sequence - b.sequence);
+  const preferences = preferencesFromAberrations(notes, { project, home, user, privacy });
   const { train, valid } = split(pairs);
   await mkdir(dir, { recursive: true });
   const line = (pair) => JSON.stringify({ messages: pair.messages });
   await writeFile(join(dir, 'train.jsonl'), train.map(line).join('\n') + (train.length ? '\n' : ''));
   await writeFile(join(dir, 'valid.jsonl'), valid.map(line).join('\n') + (valid.length ? '\n' : ''));
+  // Kept in a file of its own: it is a different shape and a different kind of training, and
+  // nothing that reads the chat files should ever pick it up by accident.
+  await writeFile(join(dir, 'preferences.jsonl'), preferences.map((pair) => JSON.stringify({ prompt: pair.prompt, chosen: pair.chosen, rejected: pair.rejected })).join('\n') + (preferences.length ? '\n' : ''));
   const byAgent = {};
   for (const pair of pairs) byAgent[pair.agent] = (byAgent[pair.agent] ?? 0) + 1;
-  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => p.rating === 'good').length, notes: pairs.filter((p) => p.kind === 'note').length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl' };
+  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => p.rating === 'good').length, notes: pairs.filter((p) => p.kind === 'note').length, aberrations: preferences.length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
   await writeFile(join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { dir, ...manifest };
 }

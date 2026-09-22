@@ -3,7 +3,7 @@
 // keeping for every later turn. Pure functions here; the room schedules and
 // invokes. Nothing in this file talks to a model.
 
-import { MEMORY_KINDS } from './memory.mjs';
+import { ABERRATION, MEMORY_KINDS } from './memory.mjs';
 
 // Cheapest first, by the models these CLIs run by default.
 // Ollama, when the room has it, is the cheapest of all: local and free.
@@ -42,11 +42,12 @@ export function distillPrompt({ entries, projectName = 'the project', existing =
     `- fact: a verified statement about the project or its environment that is not obvious from the code`,
     `- preference: how the human wants things done or said`,
     `- question: something left open that a later turn should not forget`,
+    `- aberration: a claim the exchanges themselves showed to be false. Only when it was refuted out loud: someone stated something about this project and someone else corrected it, or the exchanges proved it wrong. Put the false claim in "text" and what turned out to be true in "correction". Never guess, never file a disagreement of opinion, and never file something merely unverified.`,
     'Skip greetings, restatements, transient status, anything a reader of the code would see anyway, and anything the exchanges do not actually establish.',
     json
-      ? `Output one JSON object and nothing else: {"memories":[...]} with at most ${MAX_MEMORIES_PER_RUN} items, each {"kind":"decision|fact|preference|question","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","sources":[sequence numbers it comes from]}. If nothing durable was said: {"memories":[]}`
+      ? `Output one JSON object and nothing else: {"memories":[...]} with at most ${MAX_MEMORIES_PER_RUN} items, each {"kind":"${MEMORY_KINDS.join('|')}","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","correction":"only on an aberration: what is true instead","sources":[sequence numbers it comes from]}. If nothing durable was said: {"memories":[]}`
       : `Output only JSON lines, one object per memory, at most ${MAX_MEMORIES_PER_RUN}, nothing else:`,
-    json ? null : `{"kind":"decision|fact|preference|question","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","sources":[sequence numbers it comes from]}`,
+    json ? null : `{"kind":"${MEMORY_KINDS.join('|')}","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","correction":"only on an aberration: what is true instead","sources":[sequence numbers it comes from]}`,
     json ? null : 'If nothing durable was said, output exactly: NONE',
     known,
     '<exchanges>',
@@ -76,13 +77,19 @@ export function parseDistillation(text, { fromSequence, throughSequence } = {}) 
     if (!parsed || typeof parsed !== 'object') continue;
     const memoryText = String(parsed.text ?? '').replace(/\s+/g, ' ').trim();
     if (!memoryText) continue;
-    const kind = MEMORY_KINDS.includes(parsed.kind) ? parsed.kind : 'fact';
+    // An unknown kind used to be filed as a fact. That was harmless while every kind was
+    // knowledge; now the list has one that is not, and a typo would turn a hallucination into
+    // something the room believes. Anything unrecognised is dropped instead.
+    if (!MEMORY_KINDS.includes(parsed.kind)) continue;
+    const kind = parsed.kind;
     const inRange = (n) => Number.isInteger(n) && (fromSequence == null || n >= fromSequence) && (throughSequence == null || n <= throughSequence);
     const sources = (Array.isArray(parsed.sources) ? parsed.sources : []).map(Number).filter(inRange);
     const key = memoryText.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    memories.push({ kind, text: memoryText.length > MAX_MEMORY_CHARS ? `${memoryText.slice(0, MAX_MEMORY_CHARS - 1)}…` : memoryText, sources });
+    const clip = (value) => (value.length > MAX_MEMORY_CHARS ? `${value.slice(0, MAX_MEMORY_CHARS - 1)}…` : value);
+    const correction = kind === ABERRATION ? clip(String(parsed.correction ?? '').replace(/\s+/g, ' ').trim()) : '';
+    memories.push({ kind, text: clip(memoryText), sources, ...(correction ? { correction } : {}) });
     if (memories.length >= MAX_MEMORIES_PER_RUN) break;
   }
   return memories;
