@@ -4314,7 +4314,7 @@ function sizeNostromo() {
   canvas.height = Math.round(rect.height * dpr);
   for (const node of nostromo.nodes) {
     if (node.placed) continue;
-    const radius = NOSTROMO_ORBIT * (0.5 + node.distance);
+    const radius = NOSTROMO_ORBIT * (0.92 + node.distance * 0.7);
     node.x = Math.cos(node.angle) * radius;
     node.y = Math.sin(node.angle) * radius;
     node.placed = true;
@@ -4360,7 +4360,7 @@ function heartbeat(t) {
 function coreRadius() { return Math.max(46, Math.min(nostromo.size.w, nostromo.size.h) * 0.085) / Math.max(0.35, nostromo.cam?.scale ?? 1) * 0.9; }
 
 // The core's radius in world units: constant so the layout does not depend on the window.
-const CORE_R = 64;
+const CORE_R = 104;
 
 // ---- The shape of MOTHER's body.
 // The axis leans, so we look a little down on the planet rather than straight at its equator:
@@ -4390,21 +4390,28 @@ function granuleTexture() {
     canvas.height = height;
     const paint = canvas.getContext('2d');
     if (!paint) return grainCanvas;
-    paint.fillStyle = '#d6390f';
+    // A dark ground. What makes a star frightening is not how bright it is but how much of it
+    // is nearly out: the molten matter has to burn against something almost black.
+    paint.fillStyle = '#5e1305';
     paint.fillRect(0, 0, width * 2, height);
     // Boiling cells: hot ones with a bright middle, cool lanes between them. Every cell is laid
     // down twice, a strip apart, so any window of one strip's width joins itself seamlessly.
     const cell = (x, y, size, warm) => {
       for (const at of [x - width, x, x + width]) {
         const skin = paint.createRadialGradient(at, y, 0, at, y, size);
-        if (warm > 0.62) {
-          skin.addColorStop(0, `rgba(255, ${196 + Math.round(warm * 48)}, ${96 + Math.round(warm * 90)}, ${0.5 + warm * 0.4})`);
-          skin.addColorStop(0.55, `rgba(255, 128, 34, ${0.2 + warm * 0.2})`);
+        if (warm > 0.78) {
+          // The few that are truly alight, and they are what the eye goes to.
+          skin.addColorStop(0, `rgba(255, ${186 + Math.round(warm * 58)}, ${88 + Math.round(warm * 96)}, ${0.5 + warm * 0.45})`);
+          skin.addColorStop(0.5, `rgba(255, 110, 26, ${0.22 + warm * 0.22})`);
+        } else if (warm > 0.5) {
+          skin.addColorStop(0, `rgba(${196 + Math.round(warm * 40)}, ${58 + Math.round(warm * 40)}, 12, ${0.24 + warm * 0.2})`);
+          skin.addColorStop(0.5, `rgba(168, 44, 10, 0.12)`);
         } else {
-          skin.addColorStop(0, `rgba(${118 + Math.round(warm * 70)}, ${14 + Math.round(warm * 26)}, 6, ${0.36 + (1 - warm) * 0.3})`);
-          skin.addColorStop(0.55, `rgba(150, 40, 10, ${0.16})`);
+          // Cool crust, and most of the surface is this.
+          skin.addColorStop(0, `rgba(${44 + Math.round(warm * 58)}, ${6 + Math.round(warm * 16)}, 4, ${0.46 + (0.5 - warm) * 0.5})`);
+          skin.addColorStop(0.55, `rgba(60, 12, 4, ${0.2})`);
         }
-        skin.addColorStop(1, 'rgba(180, 60, 20, 0)');
+        skin.addColorStop(1, 'rgba(120, 30, 10, 0)');
         paint.fillStyle = skin;
         paint.beginPath(); paint.arc(at, y, size, 0, Math.PI * 2); paint.fill();
       }
@@ -4422,66 +4429,24 @@ function granuleTexture() {
 const CIRCLE_STEPS = 44;
 const CIRCLE_COS = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.cos((k / CIRCLE_STEPS) * Math.PI * 2));
 const CIRCLE_SIN = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.sin((k / CIRCLE_STEPS) * Math.PI * 2));
-// Filaments: threads of cooler gas lying along the field, dark against the surface. `inc` tilts
-// the arc they follow, `node` is where it starts, `rate` lets it slip against the surface, and
-// `from`/`to` make each one an arc rather than a ring, the way they lie on the real thing.
-const CORE_BANDS = [
-  { inc: 0.10, node: 0.0, rate: 1.0, width: 2.4, alpha: 0.9, from: 0.06, to: 0.36 },
-  { inc: 0.52, node: 1.1, rate: 0.94, width: 1.9, alpha: 0.8, from: 0.55, to: 0.82 },
-  { inc: -0.44, node: 2.4, rate: 1.06, width: 2.1, alpha: 0.75, from: 0.18, to: 0.44 },
-  { inc: 1.05, node: 0.6, rate: 0.9, width: 1.4, alpha: 0.6, from: 0.7, to: 0.92 },
-  { inc: -1.12, node: 3.3, rate: 1.1, width: 1.3, alpha: 0.55, from: 0.3, to: 0.52 },
-  { inc: 1.46, node: 2.0, rate: 0.97, width: 1.1, alpha: 0.45, from: 0.8, to: 1.02 },
+// Masses of molten matter riding the surface: `size` is how much of the face one covers, `rate`
+// how slowly it swells and settles, `drift` how it crawls against the turning body. None of the
+// rates match, so the face is never the same face twice.
+const CORE_FLOWS = [
+  { lat: -0.22, lon: 0.0, size: 0.46, drift: 0.0031, rate: 0.083, hot: false },
+  { lat: 0.42, lon: 2.1, size: 0.34, drift: -0.0047, rate: 0.117, hot: true },
+  { lat: -0.54, lon: 3.6, size: 0.28, drift: 0.0062, rate: 0.061, hot: true },
+  { lat: 0.12, lon: 4.8, size: 0.52, drift: -0.0023, rate: 0.094, hot: false },
+  { lat: 0.68, lon: 1.2, size: 0.24, drift: 0.0039, rate: 0.139, hot: true },
+  { lat: -0.34, lon: 5.6, size: 0.38, drift: -0.0055, rate: 0.073, hot: true },
+  { lat: 0.3, lon: 3.0, size: 0.44, drift: 0.0017, rate: 0.107, hot: false },
+  { lat: -0.7, lon: 0.9, size: 0.22, drift: -0.0033, rate: 0.126, hot: true },
 ];
-// Active regions: where the field breaks through, the surface burns white. A couple of cooler,
-// darker patches sit among them. `rate` is how fast each one flares and settles, its own.
-const CORE_CELLS = [
-  { lat: -0.22, lon: 0.0, size: 0.2, drift: 0.004, hot: true, rate: 0.37 },
-  { lat: 0.46, lon: 2.1, size: 0.15, drift: -0.006, hot: true, rate: 0.53 },
-  { lat: -0.58, lon: 3.6, size: 0.13, drift: 0.008, hot: true, rate: 0.29 },
-  { lat: 0.12, lon: 4.8, size: 0.26, drift: -0.003, hot: false, rate: 0 },
-  { lat: 0.72, lon: 1.2, size: 0.11, drift: 0.005, hot: true, rate: 0.61 },
-  { lat: -0.34, lon: 5.6, size: 0.17, drift: -0.005, hot: true, rate: 0.43 },
-  { lat: 0.3, lon: 3.0, size: 0.22, drift: 0.002, hot: false, rate: 0 },
-];
+
 // How big a memory is drawn against the core. Everything else follows from the radius: how far
 // two memories push each other apart, how wide the view opens, where the label sits, and how
 // near the pointer has to be. Lower this and the whole constellation gives the core more room.
 const MEMORY_SCALE = 0.8;
-
-// ---- The corona.
-// The shell of plasma around the body is walked in fixed steps like the bands are, so the sine
-// and cosine of every wave that shapes it are worked out once here and read from a table.
-const CORONA_STEPS = 72;
-const CORONA_FREQS = [1, 2, 3, 5, 7, 8];
-const CORONA_SIN = {};
-const CORONA_COS = {};
-for (const freq of CORONA_FREQS) {
-  CORONA_SIN[freq] = Array.from({ length: CORONA_STEPS + 1 }, (_, k) => Math.sin(freq * (k / CORONA_STEPS) * Math.PI * 2));
-  CORONA_COS[freq] = Array.from({ length: CORONA_STEPS + 1 }, (_, k) => Math.cos(freq * (k / CORONA_STEPS) * Math.PI * 2));
-}
-// Four shells of plasma, each a closed edge made of waves: [how many times the wave goes round,
-// how deep it cuts, how fast its phase turns]. The speeds share no common multiple, so no shell
-// ever returns to a shape it has already held, and the four of them never line up.
-const CORONA_SHELLS = [
-  { reach: 1.30, alpha: 0.34, hot: '255, 196, 128', cool: '255, 108, 52', waves: [[2, 0.09, 0.118], [3, 0.065, -0.177], [5, 0.042, 0.255], [8, 0.026, -0.331]] },
-  { reach: 1.68, alpha: 0.24, hot: '255, 150, 74', cool: '236, 66, 34', waves: [[2, 0.125, -0.096], [3, 0.085, 0.156], [5, 0.055, -0.217], [7, 0.036, 0.281]] },
-  { reach: 2.22, alpha: 0.16, hot: '246, 96, 44', cool: '186, 30, 26', waves: [[1, 0.155, 0.080], [2, 0.115, -0.125], [3, 0.075, 0.191], [5, 0.048, -0.264]] },
-  { reach: 2.95, alpha: 0.1, hot: '214, 54, 34', cool: '128, 12, 18', waves: [[1, 0.2, -0.064], [2, 0.14, 0.102], [3, 0.09, -0.162], [5, 0.055, 0.232]] },
-];
-// Streamers drawn out along the field. `long` is how far this one reaches, `wide` how broad it
-// is at the limb, `curve` how much it leans away from straight, and the three rates decide when
-// it breathes, sways and drifts. No two share a rate.
-const CORONA_RAYS = [
-  { at: 0.0, long: 2.40, wide: 0.30, curve: 0.24, pulse: 0.284, sway: 0.164, drift: 0.0183 },
-  { at: 0.8, long: 0.60, wide: 0.22, curve: -0.19, pulse: 0.212, sway: -0.116, drift: -0.0129 },
-  { at: 1.7, long: 2.90, wide: 0.36, curve: 0.31, pulse: 0.356, sway: 0.148, drift: 0.0231 },
-  { at: 2.5, long: 0.45, wide: 0.19, curve: -0.27, pulse: 0.172, sway: -0.204, drift: -0.0177 },
-  { at: 3.3, long: 1.70, wide: 0.27, curve: 0.17, pulse: 0.268, sway: 0.092, drift: 0.0111 },
-  { at: 4.1, long: 2.20, wide: 0.33, curve: -0.22, pulse: 0.148, sway: -0.188, drift: -0.0213 },
-  { at: 4.9, long: 0.75, wide: 0.21, curve: 0.29, pulse: 0.316, sway: 0.124, drift: 0.0147 },
-  { at: 5.6, long: 1.35, wide: 0.25, curve: -0.15, pulse: 0.236, sway: -0.172, drift: -0.0093 },
-];
 
 function stepNostromo(dt, t) {
   const nodes = nostromo.nodes.filter((node) => node.scale > 0.01);
@@ -4491,11 +4456,11 @@ function stepNostromo(dt, t) {
     let fy = 0;
     const dist = Math.hypot(node.x, node.y) || 1;
     // A soft ring around the core: too close is pushed out, too far pulled in.
-    const target = NOSTROMO_ORBIT * (0.55 + node.distance * 0.6);
+    const target = NOSTROMO_ORBIT * (0.98 + node.distance * 0.62);
     const pull = (target - dist) * 0.004;
     fx += (node.x / dist) * pull;
     fy += (node.y / dist) * pull;
-    if (dist < CORE_R * 2.2) { const push = (CORE_R * 2.2 - dist) * 0.02; fx += (node.x / dist) * push; fy += (node.y / dist) * push; }
+    if (dist < CORE_R * 1.7) { const push = (CORE_R * 1.7 - dist) * 0.02; fx += (node.x / dist) * push; fy += (node.y / dist) * push; }
     for (const other of nodes) {
       if (other === node) continue;
       const ox = node.x - other.x;
@@ -4736,238 +4701,146 @@ function drawNostromo(t) {
     return { x: px, y, z, light: Math.max(0, px * CORE_LIGHT.x + y * CORE_LIGHT.y + z * CORE_LIGHT.z) };
   };
 
-  // ---- The corona: liquid plasma, not a ring.
+  // ---- What the star sits in.
   //
-  // The sun in space is not a disc with a glow drawn around it. It is a body inside a shell of
-  // plasma that never holds still: the shell is thicker here than there, it flows, and its edge
-  // is ragged in a way that keeps changing. Each shell's edge is the sum of a few waves turning
-  // at speeds that share no common multiple, so the shape drifts without ever coming back round
-  // to itself. Nothing here repeats, and nothing here is a circle.
+  // No wide halo. A body this size does not need a cloud around it to be felt, and a soft
+  // smudge only makes it look smaller. What surrounds it is darkness: one tight, fierce skin of
+  // light gripping the limb and falling away almost at once, and beyond that a deep red stain
+  // so faint it reads as the dark being lit rather than as anything drawn.
+  const stain = ctx.createRadialGradient(0, 0, R, 0, 0, R * 4.6);
+  stain.addColorStop(0, `rgba(122, 12, 6, ${0.3 + 0.08 * beat})`);
+  stain.addColorStop(0.24, `rgba(88, 6, 6, ${0.14 + 0.04 * beat})`);
+  stain.addColorStop(0.62, 'rgba(46, 2, 6, .05)');
+  stain.addColorStop(1, 'rgba(20, 0, 4, 0)');
+  ctx.fillStyle = stain;
+  ctx.beginPath(); ctx.arc(0, 0, R * 4.6, 0, Math.PI * 2); ctx.fill();
+
+  // ---- The body: a star, dark and molten.
   //
-  // The shells are drawn additively, so where they pile up the light sums and the corona
-  // brightens exactly where the plasma is densest, the way it does on the real thing.
-  const coronaTime = nostromo.reduced ? 0 : t;
-  ctx.globalCompositeOperation = 'lighter';
-  for (const shell of CORONA_SHELLS) {
-    // Each wave's phase is worked out once for the whole ring, then carried around it by angle
-    // addition against the tables: four waves cost four sines a frame instead of three hundred.
-    const waves = shell.waves.map(([freq, amp, speed]) => {
-      const phase = coronaTime * speed;
-      return { sin: CORONA_SIN[freq], cos: CORONA_COS[freq], amp, cp: Math.cos(phase), sp: Math.sin(phase) };
-    });
-    const reach = shell.reach * (1 + 0.06 * beat + 0.14 * alarm);
-    let furthest = 0;
-    ctx.beginPath();
-    for (let k = 0; k <= CORONA_STEPS; k += 1) {
-      let wobble = 0;
-      for (const wave of waves) wobble += wave.amp * (wave.sin[k] * wave.cp + wave.cos[k] * wave.sp);
-      const radius = R * reach * (1 + wobble);
-      if (radius > furthest) furthest = radius;
-      const x = CORONA_COS[1][k] * radius;
-      const y = CORONA_SIN[1][k] * radius;
-      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    // The body sits in the middle of this and covers it, so the middle is not painted: a hole
-    // wound the other way turns the shell into what it actually is, a ring of plasma.
-    ctx.arc(0, 0, R * 0.96, Math.PI * 2, 0, true);
-    ctx.closePath();
-    // Plasma is thin against the body and thickens a little way out before it thins into space.
-    const plasma = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, Math.max(R * 1.01, furthest));
-    plasma.addColorStop(0, `rgba(${shell.hot}, ${shell.alpha * (0.55 + 0.45 * beat)})`);
-    plasma.addColorStop(0.34, `rgba(${shell.hot}, ${shell.alpha * 0.72})`);
-    plasma.addColorStop(0.72, `rgba(${shell.cool}, ${shell.alpha * 0.3})`);
-    plasma.addColorStop(1, `rgba(${shell.cool}, 0)`);
-    ctx.fillStyle = plasma;
-    ctx.fill();
-  }
-
-  // Streamers: the corona does not end evenly. Plasma is drawn out along the field into long
-  // rays that lean, stretch and fade on their own clocks. They are what makes the shape read as
-  // the sun rather than as a lamp.
-  for (let i = 0; i < CORONA_RAYS.length; i += 1) {
-    const ray = CORONA_RAYS[i];
-    const angle = ray.at + coronaTime * ray.drift + 0.16 * Math.sin(coronaTime * ray.sway + i);
-    const breath = 0.5 + 0.5 * Math.sin(coronaTime * ray.pulse + i * 2.1);
-    const reach = R * (1.5 + ray.long * (0.45 + 0.55 * breath)) * (1 + 0.1 * beat + 0.3 * alarm);
-    const half = ray.wide * (1.15 - 0.35 * breath);
-    // The tip leans off the radius, so a streamer curves away instead of pointing straight out.
-    const lean = angle + ray.curve * (0.6 + 0.4 * Math.sin(coronaTime * ray.sway * 1.7 + i));
-    const tipX = Math.cos(lean) * reach;
-    const tipY = Math.sin(lean) * reach;
-    ctx.beginPath();
-    ctx.arc(0, 0, R * 0.98, angle - half, angle + half);
-    ctx.quadraticCurveTo(Math.cos(angle + half * 0.4) * reach * 0.62, Math.sin(angle + half * 0.4) * reach * 0.62, tipX, tipY);
-    ctx.quadraticCurveTo(Math.cos(angle - half * 0.4) * reach * 0.62, Math.sin(angle - half * 0.4) * reach * 0.62, Math.cos(angle - half) * R * 0.98, Math.sin(angle - half) * R * 0.98);
-    ctx.closePath();
-    const light = ctx.createLinearGradient(Math.cos(angle) * R, Math.sin(angle) * R, tipX, tipY);
-    light.addColorStop(0, `rgba(255, 176, 104, ${(0.2 + 0.12 * breath) * (0.7 + 0.3 * beat)})`);
-    light.addColorStop(0.42, `rgba(255, 96, 48, ${0.1 + 0.07 * breath})`);
-    light.addColorStop(1, 'rgba(180, 24, 24, 0)');
-    ctx.fillStyle = light;
-    ctx.fill();
-  }
-
-  // The chromosphere: where the plasma meets the body it is at its densest and brightest, a
-  // thin skin of fire sitting right on the limb.
-  const skin = ctx.createRadialGradient(0, 0, R * 0.88, 0, 0, R * 1.3);
-  skin.addColorStop(0, 'rgba(255, 92, 44, 0)');
-  skin.addColorStop(0.42, `rgba(255, 128, 62, ${0.3 + 0.18 * beat})`);
-  skin.addColorStop(1, 'rgba(255, 70, 34, 0)');
-  ctx.fillStyle = skin;
-  ctx.beginPath(); ctx.arc(0, 0, R * 1.3, 0, Math.PI * 2); ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-
-  // ---- The body: a star, not a planet.
-  //
-  // A star makes its own light, so it has no day side and no night side and no highlight where
-  // something else strikes it. What it has is a boiling surface, bright all the way across and
-  // falling off only at the very edge, where we look through more of its own atmosphere. Three
-  // things carry it: granulation that turns with the body, active regions that burn white, and
-  // dark filaments lying over the top of both.
+  // A star makes its own light, so it has no day side, no night side and no highlight struck
+  // off it by something else. This one is not a bright disc either: it burns deep, almost
+  // black at the limb, and what moves on it is liquid rock. The skin is a strip of boiling
+  // cells built once and wrapped round the body; a second pass of the same strip, sliding at a
+  // different rate, makes the two disagree, and that disagreement is what reads as flow. Over
+  // both, masses of molten matter drift across the face at a walking pace.
   ctx.save();
   ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
-  ctx.shadowColor = `rgba(255, 82, 31, ${0.7 + 0.2 * beat})`;
-  ctx.shadowBlur = 44 + 26 * beat;
+  ctx.shadowColor = `rgba(220, 44, 12, ${0.55 + 0.2 * beat})`;
+  ctx.shadowBlur = 40 + 26 * beat;
   const body = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R);
-  body.addColorStop(0, `hsl(${18 + 6 * beat} 100% ${58 + 10 * beat}%)`);
-  body.addColorStop(0.62, 'hsl(14 100% 46%)');
-  body.addColorStop(1, 'hsl(8 100% 34%)');
+  body.addColorStop(0, `hsl(${14 + 5 * beat} 100% ${28 + 8 * beat}%)`);
+  body.addColorStop(0.58, 'hsl(9 100% 20%)');
+  body.addColorStop(1, 'hsl(5 100% 10%)');
   ctx.fillStyle = body;
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.clip();
 
-  // The photosphere. The granulation is a strip of boiling cells built once and wrapped round
-  // the body: each row of the disc takes the slice of that strip belonging to its latitude, cut
-  // into pieces so the longitude runs as a sphere's does and the cells narrow toward the limb
-  // instead of smearing across it. Turning the body is moving the window along the strip.
+  // The skin, wrapped on. Each row of the disc takes the slice of the strip belonging to its
+  // latitude, cut into pieces so longitude runs as a sphere's does and the cells narrow toward
+  // the limb instead of smearing along it. Turning the star is moving the window along.
+  // Someone who asked for stillness gets a star that turns and breathes but does not churn.
+  const flowTime = nostromo.reduced ? 0 : t;
   const grain = granuleTexture();
   if (grain) {
     const width = grain.width / 2;
-    const turn = ((spin / (Math.PI * 2)) % 1 + 1) % 1;
-    ctx.globalAlpha = 0.92;
-    for (let row = 0; row < GRAIN_ROWS; row += 1) {
-      const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
-      const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
-      const mid = (y0 + y1) * 0.5;
-      const half = Math.sqrt(Math.max(0, R * R - mid * mid));
-      if (half < 0.5) continue;
-      const v0 = ((y0 + R) / (2 * R)) * grain.height;
-      const v1 = ((y1 + R) / (2 * R)) * grain.height;
-      for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
-        // Longitude across the visible face, so a cell at the edge covers far less of the disc
-        // than one in the middle: that narrowing is what a sphere does.
-        const lonA = (piece / GRAIN_PIECES - 0.5) * Math.PI;
-        const lonB = ((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI;
-        const xA = Math.sin(lonA) * half;
-        const xB = Math.sin(lonB) * half;
-        const uA = (turn + piece / GRAIN_PIECES * 0.5) * width;
-        ctx.drawImage(grain, uA, v0, (width * 0.5) / GRAIN_PIECES, Math.max(1, v1 - v0), xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
+    const wrapAt = (turn, alpha, lift) => {
+      ctx.globalAlpha = alpha;
+      for (let row = 0; row < GRAIN_ROWS; row += 1) {
+        const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
+        const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
+        const mid = (y0 + y1) * 0.5;
+        const half = Math.sqrt(Math.max(0, R * R - mid * mid));
+        if (half < 0.5) continue;
+        const v0 = (((y0 + R) / (2 * R) + lift) % 1 + 1) % 1 * grain.height;
+        const dv = Math.max(1, ((y1 - y0) / (2 * R)) * grain.height);
+        for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
+          const xA = Math.sin((piece / GRAIN_PIECES - 0.5) * Math.PI) * half;
+          const xB = Math.sin(((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI) * half;
+          const u = (turn + (piece / GRAIN_PIECES) * 0.5) * width;
+          ctx.drawImage(grain, u, Math.min(v0, grain.height - dv), (width * 0.5) / GRAIN_PIECES, dv, xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
+        }
       }
-    }
-    ctx.globalAlpha = 1;
+      ctx.globalAlpha = 1;
+    };
+    const turn = ((spin / (Math.PI * 2)) % 1 + 1) % 1;
+    wrapAt(turn, 0.95, 0);
+    // The same skin again, crawling at its own pace: where the two pull apart the surface
+    // churns, and that is the slowness of lava rather than the flicker of fire.
+    ctx.globalCompositeOperation = 'lighter';
+    wrapAt(((turn * 0.83 + flowTime * 0.0042) % 1 + 1) % 1, 0.32, 0.37);
+    ctx.globalCompositeOperation = 'source-over';
   }
 
-  // Active regions: where the field breaks through, the surface burns white. They sit at their
-  // own latitude, so they cross the face and go round the back, and they brighten and fade on
-  // their own clocks rather than together.
-  for (let i = 0; i < CORE_CELLS.length; i += 1) {
-    const cell = CORE_CELLS[i];
-    const p = surface(cell.lat, cell.lon + spin * 0.97 + t * cell.drift);
+  // Masses of molten matter riding the surface. They are slow, they are large, and each keeps
+  // its own drift, so the face is never the same face twice.
+  for (let i = 0; i < CORE_FLOWS.length; i += 1) {
+    const flow = CORE_FLOWS[i];
+    const p = surface(flow.lat + 0.1 * Math.sin(flowTime * flow.rate * 0.6 + i), flow.lon + spin * 0.96 + flowTime * flow.drift);
     if (p.z <= 0.02) continue;
-    const flare = cell.hot ? 0.55 + 0.45 * Math.sin(t * cell.rate + i * 1.9) : 1;
-    const fade = Math.min(1, p.z * 2.6) * flare;
+    const swell = 0.62 + 0.38 * Math.sin(flowTime * flow.rate + i * 1.7);
+    const fade = Math.min(1, p.z * 2.3) * swell;
     ctx.save();
     ctx.translate(p.x * R, p.y * R);
     ctx.rotate(Math.atan2(p.y, p.x));
     ctx.scale(Math.max(0.05, p.z), 1);
-    const patch = ctx.createRadialGradient(0, 0, 0, 0, 0, R * cell.size);
-    if (cell.hot) {
-      patch.addColorStop(0, `rgba(255, 252, 226, ${0.82 * fade})`);
-      patch.addColorStop(0.3, `rgba(255, 216, 130, ${0.5 * fade})`);
-      patch.addColorStop(0.68, `rgba(255, 138, 48, ${0.22 * fade})`);
-    } else {
-      patch.addColorStop(0, `rgba(122, 16, 6, ${0.6 * fade})`);
-      patch.addColorStop(0.55, `rgba(150, 30, 10, ${0.3 * fade})`);
-    }
-    patch.addColorStop(1, 'rgba(180, 60, 20, 0)');
-    ctx.fillStyle = patch;
-    ctx.beginPath(); ctx.arc(0, 0, R * cell.size, 0, Math.PI * 2); ctx.fill();
+    const molten = ctx.createRadialGradient(0, 0, 0, 0, 0, R * flow.size);
+    molten.addColorStop(0, `rgba(255, ${flow.hot ? 214 : 96}, ${flow.hot ? 132 : 30}, ${(flow.hot ? 0.46 : 0.2) * fade})`);
+    molten.addColorStop(0.42, `rgba(${flow.hot ? '255, 122, 36' : '176, 34, 10'}, ${(flow.hot ? 0.24 : 0.14) * fade})`);
+    molten.addColorStop(1, 'rgba(120, 16, 8, 0)');
+    ctx.fillStyle = molten;
+    ctx.beginPath(); ctx.arc(0, 0, R * flow.size, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
-  // Filaments: long dark threads of cooler gas lying over the surface, following the field.
-  // Each is an arc of a great circle, so it disappears round the back like everything else.
-  ctx.lineCap = 'round';
-  for (let i = 0; i < CORE_BANDS.length; i += 1) {
-    const band = CORE_BANDS[i];
-    const theta = band.node + spin * band.rate;
-    const si = Math.sin(band.inc);
-    const ci = Math.cos(band.inc);
-    const st = Math.sin(theta);
-    const ct = Math.cos(theta);
-    const from = Math.floor(band.from * CIRCLE_STEPS);
-    const to = Math.floor(band.to * CIRCLE_STEPS);
-    let drawing = false;
-    ctx.beginPath();
-    for (let k = from; k <= to; k += 1) {
-      const step = ((k % CIRCLE_STEPS) + CIRCLE_STEPS) % CIRCLE_STEPS;
-      const pz0 = CIRCLE_SIN[step] * ci;
-      const px = CIRCLE_COS[step] * ct + pz0 * st;
-      const pz1 = -CIRCLE_COS[step] * st + pz0 * ct;
-      const py = CIRCLE_SIN[step] * si;
-      const z = py * sinT + pz1 * cosT;
-      if (z <= 0.06) { drawing = false; continue; }
-      // The thread lies on the surface, so it wanders a little rather than running true.
-      const wander = 1 + 0.03 * Math.sin(k * 0.9 + t * 0.4 + i);
-      const x = px * R * wander;
-      const y = (py * cosT - pz1 * sinT) * R * wander;
-      if (drawing) ctx.lineTo(x, y); else { ctx.moveTo(x, y); drawing = true; }
-    }
-    ctx.strokeStyle = `rgba(96, 10, 4, ${band.alpha * (0.62 - 0.12 * beat)})`;
-    ctx.lineWidth = band.width;
-    ctx.stroke();
-  }
-
-  // Limb darkening. Looking at the edge of a star means looking through more of its own gas, so
-  // it dims and reddens there. On a self-lit body this is the whole of the illusion.
-  const limb = ctx.createRadialGradient(0, 0, R * 0.52, 0, 0, R);
+  // Limb darkening, hard. Looking at the edge of a star means looking through far more of its
+  // own gas, and on a body this dark the edge goes almost to black. This is the whole of the
+  // illusion: it is what gives the thing its weight.
+  const limb = ctx.createRadialGradient(0, 0, R * 0.34, 0, 0, R);
   limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  limb.addColorStop(0.72, `rgba(126, 14, 6, ${0.26 - 0.06 * beat})`);
-  limb.addColorStop(0.93, `rgba(84, 6, 4, ${0.5 - 0.08 * beat})`);
-  limb.addColorStop(1, `rgba(52, 2, 4, ${0.72 - 0.1 * beat})`);
+  limb.addColorStop(0.58, `rgba(96, 8, 4, ${0.3 - 0.05 * beat})`);
+  limb.addColorStop(0.85, `rgba(50, 2, 4, ${0.62 - 0.08 * beat})`);
+  limb.addColorStop(1, `rgba(14, 0, 2, ${0.9 - 0.1 * beat})`);
   ctx.fillStyle = limb;
   ctx.fillRect(-R, -R, R * 2, R * 2);
   ctx.restore();
 
-  // Plasma prominences: arcs leaping off the surface and falling back, flickering.
+  // Prominences: arches of matter torn off the limb, standing up and falling back. Few, large
+  // and slow. A star this size does not flicker; it heaves.
   ctx.lineCap = 'round';
-  for (let i = 0; i < 5; i += 1) {
-    const base = i * 1.256 + t * 0.12;
-    const spread = 0.35 + 0.15 * Math.sin(t * 2.1 + i);
-    const lift = R * (0.25 + 0.2 * Math.abs(Math.sin(t * 1.6 + i * 1.7)) + 0.3 * alarm);
-    const x0 = Math.cos(base - spread) * R, y0 = Math.sin(base - spread) * R;
-    const x1 = Math.cos(base + spread) * R, y1 = Math.sin(base + spread) * R;
-    const cxp = Math.cos(base) * (R + lift), cyp = Math.sin(base) * (R + lift);
-    ctx.strokeStyle = `rgba(255, ${120 + 80 * beat}, ${80 + 60 * beat}, ${0.35 + 0.4 * Math.abs(Math.sin(t * 6 + i))})`;
-    ctx.lineWidth = (1.4 + 0.8 * beat) / cam.scale;
-    ctx.shadowColor = 'rgba(255, 90, 60, .9)'; ctx.shadowBlur = 14;
+  for (let i = 0; i < 4; i += 1) {
+    const base = i * 1.5708 + t * 0.05;
+    const spread = 0.28 + 0.1 * Math.sin(t * 0.37 + i);
+    const lift = R * (0.2 + 0.26 * Math.abs(Math.sin(t * 0.21 + i * 1.7)) + 0.3 * alarm);
+    const x0 = Math.cos(base - spread) * R * 0.99, y0 = Math.sin(base - spread) * R * 0.99;
+    const x1 = Math.cos(base + spread) * R * 0.99, y1 = Math.sin(base + spread) * R * 0.99;
+    const cxp = Math.cos(base) * (R + lift * 2.1), cyp = Math.sin(base) * (R + lift * 2.1);
+    // A wide dull body of matter with a thin hot thread running through it.
+    ctx.strokeStyle = `rgba(190, 34, 14, ${0.2 + 0.14 * Math.abs(Math.sin(t * 0.6 + i))})`;
+    ctx.lineWidth = (5.5 + 3 * beat) / cam.scale;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
+    ctx.strokeStyle = `rgba(255, ${128 + 70 * beat}, ${64 + 60 * beat}, ${0.3 + 0.28 * Math.abs(Math.sin(t * 0.6 + i))})`;
+    ctx.lineWidth = (1.5 + 0.9 * beat) / cam.scale;
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
   }
-  ctx.shadowBlur = 0;
 
-  // The chromosphere at the limb: a thin skin of burning gas standing all the way round the
-  // body. A star lights itself, so this ring is as bright behind as it is in front, the same
-  // everywhere. It is also what answers when a pulse comes home.
+  // The limb. One fierce skin of light gripping the edge, gone within a fraction of a radius:
+  // it is what separates the body from the dark, and it holds the whole shape together. It is
+  // also what answers when a pulse comes home.
   const home = Math.min(1, nostromo.coreLit ?? 0);
-  const strength = 0.5 + 0.4 * beat + 0.35 * home;
-  ctx.strokeStyle = `rgba(255, ${164 + 70 * beat}, ${92 + 90 * beat}, ${Math.min(0.95, 0.68 * strength)})`;
-  ctx.lineWidth = (1.4 + 1.5 * beat + 1.2 * home) / cam.scale;
-  ctx.shadowColor = 'rgba(255, 150, 80, .9)';
-  ctx.shadowBlur = 16 + 18 * beat + 16 * home;
+  const fierce = 0.55 + 0.35 * beat + 0.4 * home;
+  ctx.globalCompositeOperation = 'lighter';
+  const edge = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 1.22);
+  edge.addColorStop(0, 'rgba(255, 96, 34, 0)');
+  edge.addColorStop(0.42, `rgba(255, ${132 + 60 * beat}, 62, ${0.5 * fierce})`);
+  edge.addColorStop(0.52, `rgba(255, ${176 + 60 * beat}, ${110 + 60 * beat}, ${0.62 * fierce})`);
+  edge.addColorStop(1, 'rgba(210, 40, 16, 0)');
+  ctx.fillStyle = edge;
+  ctx.beginPath(); ctx.arc(0, 0, R * 1.22, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = `rgba(255, ${186 + 60 * beat}, ${128 + 80 * beat}, ${Math.min(0.92, 0.7 * fierce)})`;
+  ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
   ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
-  ctx.shadowBlur = 0;
 
   // Memories: small worlds. Each one is a sphere lit from MOTHER, so the light in this room all
   // comes from one place and every memory carries its own terminator, its own crescent and its
@@ -5010,31 +4883,24 @@ function drawNostromo(t) {
     ctx.fillStyle = sphere;
     ctx.fill();
     ctx.clip();
-    // Plasma currents under the skin, two bands turning at different speeds.
-    for (let k = 0; k < 2; k += 1) {
-      const a = node.spin * (k ? -0.7 : 1) + k * 2.1;
-      ctx.strokeStyle = hexAlpha(k ? '#ffffff' : hexMix(node.color, '#ffffff', 0.5), 0.2 + 0.2 * arrive);
-      ctx.lineWidth = r * (0.22 - k * 0.08);
-      ctx.beginPath(); ctx.ellipse(node.x, node.y, r * 0.95, r * (0.35 + 0.15 * k), a, 0.3, Math.PI - 0.3); ctx.stroke();
-    }
+    // Nothing is stroked across the face. A line drawn on a ball reads as a line drawn on a
+    // disc, however it is curved; what makes the shape is where the light stops, and that is
+    // done with shading alone.
     // The dark side: a shadow gathering away from MOTHER, which is what turns a lit disc into
     // a ball. It is cast inside the clip, so it stops exactly at the edge of the world.
-    const dark = ctx.createRadialGradient(node.x - lx * r * 1.25, node.y - ly * r * 1.25, r * 0.12, node.x - lx * r * 0.5, node.y - ly * r * 0.5, r * 1.9);
-    dark.addColorStop(0, 'rgba(0, 0, 0, .66)');
-    dark.addColorStop(0.55, 'rgba(0, 0, 0, .3)');
+    const dark = ctx.createRadialGradient(node.x - lx * r * 1.35, node.y - ly * r * 1.35, r * 0.1, node.x - lx * r * 0.45, node.y - ly * r * 0.45, r * 2.0);
+    dark.addColorStop(0, 'rgba(0, 0, 0, .82)');
+    dark.addColorStop(0.42, 'rgba(0, 0, 0, .5)');
+    dark.addColorStop(0.78, 'rgba(0, 0, 0, .16)');
     dark.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = dark;
     ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
     ctx.restore();
-    // A crescent of light along the edge nearest MOTHER, and the faintest line of it round the
-    // rest: the sunlit limb of a small body seen from beside its star.
-    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.25), 0.16 + 0.2 * arrive);
-    ctx.lineWidth = (0.8 + arrive) / cam.scale;
-    ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.6 / cam.scale, 0, Math.PI * 2); ctx.stroke();
-    const face = Math.atan2(ly, lx);
-    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.6), 0.6 + 0.35 * arrive);
-    ctx.lineWidth = (1 + arrive) / cam.scale;
-    ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.6 / cam.scale, face - 1.15, face + 1.15); ctx.stroke();
+    // The faintest thread of light round the whole edge, so the body parts from the dark
+    // without a drawn outline. No crescent: a bright arc on one side reads as an eyebrow.
+    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.5), 0.2 + 0.25 * arrive);
+    ctx.lineWidth = (0.7 + 0.6 * arrive) / cam.scale;
+    ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.4 / cam.scale, 0, Math.PI * 2); ctx.stroke();
     if (arrive > 0.05) {
       ctx.strokeStyle = hexAlpha(node.color, arrive * 0.6);
       ctx.lineWidth = 1 / cam.scale;

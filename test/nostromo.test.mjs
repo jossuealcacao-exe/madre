@@ -119,16 +119,8 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     set: (target, key, value) => { calls.push({ name: `set:${String(key)}`, args: [value] }); state[key] = value; return true; },
   });
 
-  // The corona's tables are filled by a loop, so that whole stretch of the file comes across.
-  const region = (from, to) => {
-    const start = source.indexOf(from);
-    const end = source.indexOf(to, start);
-    assert.ok(start >= 0 && end > start, `${from} .. ${to} is gone from public/app.js`);
-    return source.slice(start, source.indexOf('];', end) + 2);
-  };
-
   // The star builds its granulation into a canvas of its own, so the harness has to be able to
-  // hand it one. It records like the main context does, and reports a size, which is what the
+  // hand it one. It records like the main context does and reports a size, which is what the
   // wrapping reads back.
   const offscreen = [];
   const makeCanvas = () => {
@@ -149,9 +141,8 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     const window = { devicePixelRatio: 1 };
     ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
-    ${block('CORE_BANDS')} ${block('CORE_CELLS')}
+    ${block('CORE_FLOWS')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
-    ${region('const CORONA_STEPS', 'const CORONA_RAYS')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')}
     ${fn('drawNostromo')}
@@ -197,153 +188,127 @@ test('nostromo: the renderer draws a whole frame without a single bad number', a
   }
 });
 
-test('nostromo: the core is a body, so its surface goes round the back as it turns', async () => {
+test('nostromo: the skin is wrapped on a sphere, so it narrows toward the limb', async () => {
   const room = fakeRoom();
   const { run, calls } = await nostromoRenderer(room);
 
-  // Everything drawn on the surface is a great circle walked in steps; collect where those
-  // steps land across a full rotation.
-  const surfacePoints = () => calls.filter((c) => c.name === 'lineTo' || c.name === 'moveTo').map((c) => c.args);
-  const radius = 64;   // CORE_R, before the beat swells it
-
-  let everBehind = false;
-  let widest = 0;
-  for (let frame = 0; frame < 160; frame += 1) {
+  // Each piece of the skin is laid down as a destination rectangle on the face. Nothing may be
+  // laid outside the body, and the rows have to narrow toward the top and bottom the way a
+  // sphere's do, or the star is a cylinder.
+  const pieces = (spin) => {
+    room.spin = spin;
     calls.length = 0;
-    room.spin = (frame / 160) * Math.PI * 2;
-    run(frame * 0.05);
-    const near = surfacePoints().filter(([x, y]) => Math.hypot(x, y) <= radius * 1.3);
-    // No point of the surface may fall outside the body: that is what being on a sphere means.
-    for (const [x, y] of near) widest = Math.max(widest, Math.hypot(x, y));
-    // A band that is fully visible every frame would be a flat ring, not a circle on a body.
-    if (near.length > 0 && near.length < 44 * 6) everBehind = true;
+    run(2);
+    return calls.filter((c) => c.name === 'drawImage').map((c) => ({ x: c.args[5], y: c.args[6], w: c.args[7], h: c.args[8] }));
+  };
+  const laid = pieces(0);
+  assert.ok(laid.length > 60, `the face should be laid in rows and pieces, saw ${laid.length}`);
+
+  // The widest row is the one across the middle, and the rows at the poles are the narrowest.
+  const rows = new Map();
+  for (const piece of laid) rows.set(piece.y, (rows.get(piece.y) ?? 0) + piece.w);
+  const ordered = [...rows.entries()].sort((a, b) => a[0] - b[0]);
+  const middle = ordered[Math.floor(ordered.length / 2)][1];
+  assert.ok(ordered[0][1] < middle * 0.5, 'the top of the body is as wide as its middle');
+  assert.ok(ordered.at(-1)[1] < middle * 0.5, 'the bottom of the body is as wide as its middle');
+
+  // Nothing is laid beyond the body, at any angle.
+  for (const spin of [0, 1, 2, 3, 4, 5, 6]) {
+    for (const piece of pieces(spin)) {
+      const far = Math.max(Math.hypot(piece.x, piece.y), Math.hypot(piece.x + piece.w, piece.y + piece.h));
+      assert.ok(far < 104 * 1.6, `a piece of skin was laid ${(far / 104).toFixed(2)} radii out`);
+    }
   }
-  assert.ok(everBehind, 'the far side of the body is never drawn');
-  assert.ok(widest <= radius * 1.3, `surface drawing stayed on the body, widest was ${widest.toFixed(1)}`);
 });
 
-test('nostromo: the corona is liquid, and no two shells of it move together', async () => {
+test('nostromo: the star wears no halo, only darkness', async () => {
+  const { run, calls } = await nostromoRenderer(fakeRoom());
+  run(0.4);
+  const core = 104;   // CORE_R
+
+  // A soft cloud around a star makes it look smaller, not bigger. Nothing additive may be laid
+  // down far from the body: the light stops close to the limb and the rest is dark.
+  let blending = false;
+  for (let i = 0; i < calls.length; i += 1) {
+    const call = calls[i];
+    if (call.name === 'set:globalCompositeOperation') { blending = call.args[0] === 'lighter'; continue; }
+    if (!blending || call.name !== 'arc') continue;
+    const reach = Math.hypot(call.args[0], call.args[1]) + call.args[2];
+    // Memories carry their own light and sit far out; the star's own additive work is near it.
+    if (Math.hypot(call.args[0], call.args[1]) > core * 2) continue;
+    assert.ok(reach < core * 1.6, `the star is glowing out to ${reach.toFixed(0)}, ${(reach / core).toFixed(1)} radii`);
+  }
+});
+
+test('nostromo: the surface is molten and moves at the pace of rock, not of fire', async () => {
   const room = fakeRoom();
   const { run, calls } = await nostromoRenderer(room);
 
-  // The plasma is drawn additively, so the frame has to switch into it and back out again:
-  // leaving it on would wash out everything drawn afterwards.
-  run(0);
-  const composites = calls.filter((c) => c.name === 'set:globalCompositeOperation').map((c) => c.args[0]);
-  assert.ok(composites.includes('lighter'), 'the plasma never blends');
-  assert.equal(composites.at(-1), 'source-over', 'the frame left additive blending switched on');
-
-  // Each shell is one closed edge walked in steps: how far the plasma reaches at every point of
-  // the compass. Collect those edges across a long stretch of time and measure them.
-  const shellsAt = (t) => {
+  // Masses of molten matter are the gradients struck at the origin of their own frame: they are
+  // drawn translated onto the face, so this is what identifies them.
+  // The body swells and settles with the room's heartbeat, so a mass measured in raw units
+  // seems to jump when it has not moved at all. Everything here is measured against the body's
+  // own radius that frame, which is the smallest circle struck at its centre.
+  const massesAt = (t) => {
     calls.length = 0;
     run(t);
-    let blending = false;
-    const edges = [];
-    let edge = null;
+    let radius = Infinity;
     for (const call of calls) {
-      if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
-      else if (blending && call.name === 'moveTo') edge = [Math.hypot(...call.args)];
-      else if (blending && call.name === 'lineTo' && edge) edge.push(Math.hypot(...call.args));
-      else if (blending && call.name === 'fill' && edge) { if (edge.length > 60) edges.push(edge); edge = null; }
+      if (call.name === 'arc' && call.args[0] === 0 && call.args[1] === 0 && call.args[2] < radius) radius = call.args[2];
     }
-    return edges;
-  };
-
-  const first = shellsAt(0);
-  assert.equal(first.length, 4, `the corona should be four shells, saw ${first.length}`);
-
-  // Liquid, not a ring: the edge is never the same distance out all the way round.
-  for (const shell of first) {
-    const spread = (Math.max(...shell) - Math.min(...shell)) / Math.max(...shell);
-    assert.ok(spread > 0.1, `a shell came out round to within ${(spread * 100).toFixed(1)}%`);
-  }
-
-  // It flows, and it never comes back round to a shape it has already held.
-  const history = [];
-  for (let minute = 0; minute < 120; minute += 1) history.push(shellsAt(minute));
-  for (let i = 0; i < 4; i += 1) {
-    const shapes = history.map((frame) => frame[i]);
-    const moved = shapes.slice(1).map((shape, k) => shape.reduce((sum, value, j) => sum + Math.abs(value - shapes[k][j]), 0) / shape.length);
-    assert.ok(Math.min(...moved) > 0.2, `shell ${i} held still for a while`);
-    let nearest = Infinity;
-    for (let a = 0; a < shapes.length; a += 1) {
-      for (let b = a + 12; b < shapes.length; b += 1) {
-        const diff = shapes[a].reduce((sum, value, j) => sum + Math.abs(value - shapes[b][j]), 0) / shapes[a].length;
-        nearest = Math.min(nearest, diff);
+    const out = [];
+    for (let i = 0; i < calls.length; i += 1) {
+      const call = calls[i];
+      if (call.name !== 'createRadialGradient') continue;
+      if (call.args[0] === 0 && call.args[1] === 0 && call.args[2] === 0 && call.args[3] === 0 && call.args[4] === 0 && call.args[5] > 0) {
+        const at = calls.slice(Math.max(0, i - 6), i).findLast((c) => c.name === 'translate');
+        if (at) out.push({ x: at.args[0] / radius, y: at.args[1] / radius, size: call.args[5] / radius });
       }
     }
-    assert.ok(nearest > 0.4, `shell ${i} came back round to an old shape (within ${nearest.toFixed(2)})`);
-  }
-
-  // And the shells do not move together. What turns is the shape, not the size, so the thing to
-  // watch is where each shell bulges furthest out: if two of them flowed in step, the angle
-  // between their bulges would hold. It has to wander instead.
-  const bulge = (i) => history.map((frame) => {
-    const shell = frame[i];
-    let best = 0;
-    for (let k = 1; k < shell.length; k += 1) if (shell[k] > shell[best]) best = k;
-    return (best / (shell.length - 1)) * Math.PI * 2;
-  });
-  const wrap = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
-  for (const [a, b] of [[0, 1], [1, 2], [2, 3], [0, 3]]) {
-    const between = bulge(a).map((angle, i) => wrap(angle - bulge(b)[i]));
-    const mean = between.reduce((sum, value) => sum + value, 0) / between.length;
-    const wander = Math.sqrt(between.reduce((sum, value) => sum + (value - mean) ** 2, 0) / between.length);
-    assert.ok(wander > 0.5, `shells ${a} and ${b} are flowing in lockstep (${wander.toFixed(2)} rad of wander)`);
-  }
-});
-
-test('nostromo: the streamers reach out unevenly and lean as they go', async () => {
-  const room = fakeRoom();
-  const { run, calls } = await nostromoRenderer(room);
-  // A streamer is a wedge: an arc at the limb, then two curves out to a tip and back. The tips
-  // are what give the corona its silhouette, so they have to differ and to keep changing.
-  const tips = (t) => {
-    calls.length = 0;
-    run(t);
-    let blending = false;
-    const out = [];
-    for (const call of calls) {
-      if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
-      else if (blending && call.name === 'quadraticCurveTo') out.push(Math.hypot(call.args[2], call.args[3]));
-    }
-    return out.filter((_, i) => i % 2 === 0);
+    return out;
   };
-  const now = tips(0);
-  assert.ok(now.length >= 8, `the corona should carry streamers, saw ${now.length}`);
-  assert.ok(Math.max(...now) > Math.min(...now) * 1.4, 'every streamer reaches exactly as far as the others');
 
-  const later = tips(90);
-  assert.ok(now.some((value, i) => Math.abs(value - later[i]) > 4), 'the streamers are frozen');
-  for (const value of [...now, ...later]) assert.ok(Number.isFinite(value) && value > 0);
+  const now = massesAt(0);
+  assert.ok(now.length >= 4, `the face should carry molten masses, saw ${now.length}`);
+  assert.ok(now.length <= 8, 'more masses were drawn than there are');
+  assert.ok(now.some((mass) => mass.size > 0.3), 'the masses are too small to read as flow');
+
+  // Slow: over a second nothing on the face may jump. Lava crawls.
+  const soon = massesAt(1);
+  for (let i = 0; i < Math.min(now.length, soon.length); i += 1) {
+    const step = Math.hypot(soon[i].x - now[i].x, soon[i].y - now[i].y);
+    assert.ok(step < 0.04, `a mass crossed ${(step * 100).toFixed(1)}% of the body in a second, which is not lava`);
+  }
+
+  // But it does move, and it goes round the back: over a full turn the face keeps changing and
+  // some of the masses are hidden.
+  const counts = new Set();
+  let travelled = 0;
+  let previous = massesAt(0);
+  for (let step = 1; step <= 60; step += 1) {
+    room.spin = (step / 60) * Math.PI * 2;
+    const here = massesAt(step * 2);
+    counts.add(here.length);
+    if (here.length === previous.length) travelled += here.reduce((sum, mass, i) => sum + Math.hypot(mass.x - previous[i].x, mass.y - previous[i].y), 0);
+    previous = here;
+  }
+  assert.ok(counts.size > 1, 'every mass is visible at every angle, so none of them goes round the back');
+  assert.ok(travelled > 4, 'the surface never actually flowed');
 });
 
-test('nostromo: reduced motion stills the plasma without emptying the room', async () => {
+test('nostromo: reduced motion stills the molten surface without emptying the room', async () => {
   const room = { ...fakeRoom(), reduced: true };
   const { run, calls } = await nostromoRenderer(room);
-  // Where the plasma reaches, all the way round. The room still breathes with its heartbeat,
-  // which is not motion anyone asked to be spared; what must stop is the flowing and the drift.
-  const shape = (t) => {
+  // With the body held at one angle, nothing on the face may move for someone who asked for
+  // stillness. The star still breathes with the room's heartbeat; the rock does not crawl.
+  const face = (t) => {
     calls.length = 0;
     run(t);
-    let blending = false;
-    const out = [];
-    for (const call of calls) {
-      if (call.name === 'set:globalCompositeOperation') blending = call.args[0] === 'lighter';
-      else if (blending && (call.name === 'lineTo' || call.name === 'moveTo')) out.push(Math.hypot(...call.args));
-    }
-    const mean = out.reduce((a, b) => a + b, 0) / out.length;
-    return out.map((value) => value / mean);   // the shape alone, with the heartbeat divided out
+    return calls.filter((c) => c.name === 'drawImage').map((c) => `${c.args[1]}:${c.args[2]}`).join('|');
   };
-  const first = shape(0);
-  assert.ok(first.length > 200, 'a still room still draws its corona');
-  for (const t of [25, 140]) {
-    const later = shape(t);
-    for (let i = 0; i < first.length; i += 1) {
-      assert.ok(Math.abs(later[i] - first[i]) < 1e-9, `the plasma flowed at ${t}s for someone who asked for stillness`);
-    }
-  }
+  const first = face(0);
+  assert.ok(first.length > 0, 'a still room still draws its surface');
+  for (const t of [25, 140]) assert.equal(face(t), first, `the surface churned at ${t}s for someone who asked for stillness`);
 });
 
 test('nostromo: a room in lockdown turns faster, and an alarm swells the body', async () => {
@@ -418,7 +383,7 @@ test('nostromo: a star with no canvas to build its grain in still draws', async 
   const { run, calls } = await nostromoRenderer(fakeRoom(), { noCanvas: true });
   run(0.3);
   assert.equal(calls.filter((c) => c.name === 'drawImage').length, 0, 'it drew a texture it never built');
-  assert.ok(calls.length > 1500, 'the star vanished along with its grain');
+  assert.ok(calls.length > 600, 'the star vanished along with its grain');
   for (const call of calls) {
     for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
   }
