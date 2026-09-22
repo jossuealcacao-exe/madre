@@ -4511,8 +4511,10 @@ function dwarfTexture(hex) {
     canvas.height = height;
     const paint = canvas.getContext('2d');
     if (!paint) throw new Error('no context');
-    // A dark ground in the star's own colour: most of a dwarf's face is far from its hottest.
-    paint.fillStyle = shade(0.18, 1);
+    // The ground of the face, in the star's own colour. A dwarf is bright from edge to edge, so
+    // this is the colour at rest rather than a dark floor: the mottling reads against it both
+    // ways, darker where the gas is cooler and white where it is alight.
+    paint.fillStyle = shade(0.46, 1);
     paint.fillRect(0, 0, width * 2, height);
     const cell = (x, y, size, heat) => {
       for (const at of [x - width, x, x + width]) {
@@ -4521,14 +4523,14 @@ function dwarfTexture(hex) {
           // The few points that are truly alight, which is what the eye finds first.
           glow.addColorStop(0, white(0.85, 0.95));
           glow.addColorStop(0.4, white(0.35, 0.5));
-        } else if (heat > 0.6) {
-          glow.addColorStop(0, shade(1.1, 0.5 + heat * 0.3));
-          glow.addColorStop(0.5, shade(0.8, 0.22));
+        } else if (heat > 0.52) {
+          glow.addColorStop(0, white(0.2 + heat * 0.3, 0.45 + heat * 0.35));
+          glow.addColorStop(0.5, shade(1.05, 0.24));
         } else {
-          glow.addColorStop(0, shade(0.24 + heat * 0.3, 0.45));
-          glow.addColorStop(0.5, shade(0.2, 0.2));
+          glow.addColorStop(0, shade(0.2 + heat * 0.5, 0.5));
+          glow.addColorStop(0.5, shade(0.22, 0.24));
         }
-        glow.addColorStop(1, shade(0.3, 0));
+        glow.addColorStop(1, shade(0.5, 0));
         paint.fillStyle = glow;
         paint.beginPath(); paint.arc(at, y, size, 0, Math.PI * 2); paint.fill();
       }
@@ -4996,10 +4998,14 @@ function drawNostromo(t) {
   ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
   ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
 
-  // Memories: small worlds. Each one is a sphere lit from MOTHER, so the light in this room all
-  // comes from one place and every memory carries its own terminator, its own crescent and its
-  // own dark side. On top of that each breathes at a rate of its own: a micro-pulsation, small
-  // enough that it is never a flash and never in time with its neighbours.
+  // ---- Memories: dwarf stars.
+  //
+  // A dwarf makes its own light, so none of it is in shadow. It is bright from edge to edge, its
+  // face boils all over, its limb is the brightest part of it rather than the darkest, and what
+  // light escapes clings to it in a tight bloom the width of a finger. There is no side turned
+  // away from anything, because nothing else is lighting it. On top of that each breathes at a
+  // rate of its own: a micro-pulsation, small enough that it is never a flash and never in time
+  // with its neighbours.
   for (const node of nostromo.nodes) {
     const micro = 1 + 0.05 * Math.sin(t * node.rate + node.seed);
     const r = node.r * node.scale * micro;
@@ -5012,65 +5018,54 @@ function drawNostromo(t) {
     const grown = node.activity ?? 0;
     const fed = Math.min(1, (node.charge ?? 0) + 0.25 * arrive);
     const burn = Math.min(1, 0.4 * grown + 0.75 * fed);
-    // Which way MOTHER lies from here: the light falls from there, so the highlight sits on
-    // that side and the shadow gathers opposite it.
-    const away = Math.hypot(node.x, node.y) || 1;
-    const lx = -node.x / away;
-    const ly = -node.y / away;
-    // The halo is drawn, not blurred: a gradient here costs the same at one planet or at three
-    // hundred, and a shadow behind every one of them does not.
-    // No halo. A cloud hanging off a star makes it read as a smudge with a bead in the middle;
-    // what light escapes a dwarf clings to its limb, and that is drawn at the end.
+
     ctx.save();
     ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
-    // The lit face, offset toward MOTHER: the highlight sits where the light lands and the
-    // colour falls away to nearly black on the side turned from it.
-    // The ground of the star, banked toward MOTHER so the body still turns in the light, and
-    // running hotter in the middle the more it burns.
-    const sphere = ctx.createRadialGradient(node.x + lx * r * 0.46, node.y + ly * r * 0.46, r * 0.04, node.x, node.y, r * 1.12);
-    sphere.addColorStop(0, hexMix(node.color, '#ffffff', 0.3 + 0.6 * burn));
-    sphere.addColorStop(0.3, hexMix(node.color, '#000000', 0.34 - 0.34 * burn));
-    sphere.addColorStop(0.72, hexMix(node.color, '#000000', 0.72 - 0.4 * burn));
-    sphere.addColorStop(1, hexMix(node.color, '#000000', 0.9 - 0.32 * burn));
-    ctx.fillStyle = sphere;
+    // The ground, struck from the body's own middle: a star is not lit from a corner. It runs
+    // white at the centre the harder it burns and keeps its class's colour outward.
+    const ground = ctx.createRadialGradient(node.x, node.y, r * 0.03, node.x, node.y, r);
+    ground.addColorStop(0, hexMix(node.color, '#ffffff', 0.5 + 0.5 * burn));
+    ground.addColorStop(0.45, hexMix(node.color, '#ffffff', 0.12 + 0.4 * burn));
+    ground.addColorStop(0.85, hexMix(node.color, '#000000', 0.2 - 0.2 * burn));
+    ground.addColorStop(1, hexMix(node.color, '#000000', 0.34 - 0.24 * burn));
+    ctx.fillStyle = ground;
     ctx.fill();
     ctx.clip();
-    // The face itself: the same boiling surface a star of this class has, turning slowly. One
-    // patch of the class's strip, cropped to the body by the clip already in force.
+    // The face: the boiling surface a star of this class has, turning slowly, laid over the
+    // whole body. This is most of what is seen, so it is laid down at close to full strength.
     const face = dwarfTexture(node.color);
     if (face) {
       const strip = face.width / 2;
       const turn = ((node.spin * 0.1 + node.seed) / (Math.PI * 2) % 1 + 1) % 1;
-      ctx.globalAlpha = 0.5 + 0.45 * burn;
-      ctx.drawImage(face, turn * strip, 0, strip * 0.62, face.height, node.x - r * 1.04, node.y - r * 1.04, r * 2.08, r * 2.08);
+      ctx.globalAlpha = 0.72 + 0.26 * burn;
+      ctx.drawImage(face, turn * strip, 0, strip * 0.62, face.height, node.x - r * 1.06, node.y - r * 1.06, r * 2.12, r * 2.12);
       ctx.globalAlpha = 1;
     }
-    // Limb darkening, as on any body seen through more of its own gas at the edge.
-    const rim = ctx.createRadialGradient(node.x, node.y, r * 0.4, node.x, node.y, r);
-    rim.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    rim.addColorStop(0.8, `rgba(0, 0, 0, ${0.24 - 0.12 * burn})`);
-    rim.addColorStop(1, `rgba(0, 0, 0, ${0.62 - 0.26 * burn})`);
-    ctx.fillStyle = rim;
+    // The hottest of it burns through the face, the way an active region does.
+    ctx.globalCompositeOperation = 'lighter';
+    const core = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 0.92);
+    core.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.9), 0.2 + 0.45 * burn));
+    core.addColorStop(0.5, hexAlpha(hexMix(node.color, '#ffffff', 0.5), 0.08 + 0.2 * burn));
+    core.addColorStop(1, hexAlpha(node.color, 0));
+    ctx.fillStyle = core;
     ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
-    // Nothing is stroked across the face. A line drawn on a ball reads as a line drawn on a
-    // disc, however it is curved; what makes the shape is where the light stops, and that is
-    // done with shading alone.
-    // The dark side: a shadow gathering away from MOTHER, which is what turns a lit disc into
-    // a ball. It is cast inside the clip, so it stops exactly at the edge of the world.
-    // The night on a small world, and it recedes as the star lights itself: at full charge only
-    // the faintest limb remains, which is what a body that makes its own light looks like.
-    const night = 1 - 0.8 * burn;
-    const dark = ctx.createRadialGradient(node.x - lx * r * 1.35, node.y - ly * r * 1.35, r * 0.1, node.x - lx * r * 0.45, node.y - ly * r * 0.45, r * 2.0);
-    dark.addColorStop(0, `rgba(0, 0, 0, ${0.82 * night})`);
-    dark.addColorStop(0.42, `rgba(0, 0, 0, ${0.5 * night})`);
-    dark.addColorStop(0.78, `rgba(0, 0, 0, ${0.16 * night})`);
-    dark.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = dark;
-    ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
+    ctx.globalCompositeOperation = 'source-over';
     ctx.restore();
-    // Nothing is drawn round the edge. An outline is the one thing that stops a ball reading as
-    // a ball, however thin it is, and a ring thrown off when a pulse lands is an outline too.
-    // What says a pulse arrived is the body itself brightening, which it already does.
+
+    // The limb and the bloom, in one pass. On a body that lights itself the edge is the
+    // brightest part of it: the light leaving sideways has the most of its own air to shine
+    // through. It carries a finger's width past the body and stops there, so it belongs to the
+    // star rather than hanging off it.
+    ctx.globalCompositeOperation = 'lighter';
+    const air = ctx.createRadialGradient(node.x, node.y, r * 0.74, node.x, node.y, r * 1.34);
+    air.addColorStop(0, hexAlpha(node.color, 0));
+    air.addColorStop(0.42, hexAlpha(hexMix(node.color, '#ffffff', 0.35 + 0.3 * burn), 0.2 + 0.45 * burn + 0.2 * arrive));
+    air.addColorStop(0.58, hexAlpha(hexMix(node.color, '#ffffff', 0.2 + 0.2 * burn), 0.12 + 0.3 * burn + 0.15 * arrive));
+    air.addColorStop(1, hexAlpha(node.color, 0));
+    ctx.fillStyle = air;
+    ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.34, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
     if (node === nostromo.selected || node === nostromo.hover) {
       ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
       ctx.lineWidth = 1.2 / cam.scale;

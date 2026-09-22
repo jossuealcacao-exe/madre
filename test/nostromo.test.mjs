@@ -397,32 +397,36 @@ test('nostromo: a star with no canvas to build its grain in still draws', async 
   }
 });
 
-test('nostromo: every memory is a lit sphere, and each breathes on its own', async () => {
+test('nostromo: every memory is a star struck from its own middle, and each breathes on its own', async () => {
   const room = fakeRoom();
   const { run, calls } = await nostromoRenderer(room);
 
-  // The light in this room comes from one place. A memory's body is the radial gradient whose
-  // outer circle sits exactly on it; its inner circle is the highlight, and that has to lean
-  // toward MOTHER at the origin, never away from her.
+  // A dwarf makes its own light, so nothing about it may be banked toward anything else. The
+  // ground of the body is struck from the body's own centre, not from a point pushed to one
+  // side: an offset middle is a highlight, and a highlight means something else is doing the
+  // lighting.
   run(0);
   let checked = 0;
   for (const node of room.nodes) {
-    // Centred on the memory, but with its bright point off to one side: the halo and a pulse
-    // arriving are both centred there too, and both are concentric.
-    const body = calls.find((c) => c.name === 'createRadialGradient'
-      && c.args[3] === node.x && c.args[4] === node.y && c.args[2] < 1
-      && (c.args[0] !== node.x || c.args[1] !== node.y));
-    assert.ok(body, 'a memory was drawn without a lit face');
-    const lean = -((body.args[0] - node.x) * node.x + (body.args[1] - node.y) * node.y);
-    assert.ok(lean > 0, 'a memory is lit from the side facing away from the core');
+    const ground = calls.find((c) => c.name === 'createRadialGradient'
+      && c.args[0] === node.x && c.args[1] === node.y && c.args[3] === node.x && c.args[4] === node.y
+      && c.args[2] < 1);
+    assert.ok(ground, 'a memory was drawn without a face');
     checked += 1;
   }
   assert.equal(checked, room.nodes.length);
+  // And nothing is struck off-centre on a body at all.
+  for (const node of room.nodes) {
+    for (const call of calls) {
+      if (call.name !== 'createRadialGradient') continue;
+      const off = Math.hypot(call.args[3] - node.x, call.args[4] - node.y);
+      if (off < 0.001 || off > node.r * 2) continue;
+      assert.fail('a memory is being lit from one side');
+    }
+  }
 
-  // Micro-pulsation: the body's own radius, frame by frame. Each memory breathes, none of them
-  // together, and none of it is big enough to read as a flash.
-  // The body itself is the one arc round a memory that is closed into a path to clip with;
-  // everything else centred there is a halo, a rim or a pulse landing.
+  // Micro-pulsation: the body's own radius, frame by frame. The body is the one arc round a
+  // memory that is closed into a path to clip with.
   const radiusOf = (node) => {
     for (let i = 0; i < calls.length - 1; i += 1) {
       const call = calls[i];
@@ -439,16 +443,12 @@ test('nostromo: every memory is a lit sphere, and each breathes on its own', asy
   }
   const swing = (series) => (Math.max(...series) - Math.min(...series)) / Math.max(...series);
   for (let i = 0; i < tracks.length; i += 1) {
-    const series = tracks[i];
-    assert.ok(series.every(Number.isFinite), `memory ${i} was not drawn in every frame`);
-    assert.ok(swing(series) > 0.04, `memory ${i} does not breathe (${(swing(series) * 100).toFixed(1)}%)`);
-    assert.ok(swing(series) < 0.2, `memory ${i} pulses hard enough to read as a flash (${(swing(series) * 100).toFixed(0)}%)`);
+    assert.ok(tracks[i].every(Number.isFinite), `memory ${i} was not drawn in every frame`);
+    assert.ok(swing(tracks[i]) > 0.04, `memory ${i} does not breathe (${(swing(tracks[i]) * 100).toFixed(1)}%)`);
+    assert.ok(swing(tracks[i]) < 0.2, `memory ${i} pulses hard enough to read as a flash`);
   }
-
-  // Lives of their own: memories given different rates must not reach their fullest together.
-  const peak = (series) => series.indexOf(Math.max(...series));
-  const peaks = new Set(tracks.map(peak));
-  assert.ok(peaks.size > tracks.length / 2, `${tracks.length - peaks.size} memories are breathing in step`);
+  const peaks = new Set(tracks.map((series) => series.indexOf(Math.max(...series))));
+  assert.ok(peaks.size > tracks.length / 2, 'memories are breathing in step');
 });
 
 test('nostromo: a crowded archive does not cost a blur for every memory in it', async () => {
@@ -569,28 +569,28 @@ test('nostromo: a dwarf burns by what it has become and by what it is being give
   const { run, calls } = await nostromoRenderer(room);
 
   // Four memories: nothing, grown but starved, young but fed, and both at once. Brightness has
-  // to answer to each, and a memory that is mature and fed has to outshine one that is neither.
+  // to answer to each, and one that is mature and fed has to outshine one that is neither.
   const [out, grown, fed, full] = room.nodes;
   for (const node of [out, grown, fed, full]) { node.charge = 0; node.lit = 0; node.activity = 0.05; }
   grown.activity = 1;
   fed.charge = 1;
   full.activity = 1; full.charge = 1;
 
-  // How brightly a memory's face is laid down, and how much night is left on it.
+  // How strongly the face is laid on, and how much light the limb gives off.
   const readingOf = (node) => {
-    const at = calls.findIndex((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (node.x - node.r * 1.04)) < 4);
+    const at = calls.findIndex((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (node.x - node.r * 1.06)) < 4);
     const alpha = calls.slice(Math.max(0, at - 3), at).findLast((c) => c.name === 'set:globalAlpha');
-    const body = calls.find((c) => c.name === 'createRadialGradient' && c.args[3] === node.x && c.args[4] === node.y && c.args[2] < 1
-      && (c.args[0] !== node.x || c.args[1] !== node.y));
-    // Two black gradients are laid on a body. The limb is struck from the body's own centre and
-    // every star has one. The night is struck from a point pushed away from MOTHER and reaches
-    // twice the body's width; that is the one that burns off as the star lights itself.
-    const cast = calls.find((c) => c.name === 'createRadialGradient'
-      && c.args[3] !== node.x && Math.hypot(c.args[3] - node.x, c.args[4] - node.y) < node.r * 2
-      && c.args[5] > node.r * 1.5 && c.args[5] < node.r * 2.6);
-    const struck = calls.indexOf(cast);
-    const first = struck < 0 ? null : calls.slice(struck + 1, struck + 2).find((c) => c.name === 'addColorStop');
-    return { face: alpha?.args[0], night: Number(String(first?.args[1]).match(/,\s*([\d.]+)\)/)?.[1]) };
+    // The limb and the bloom are one gradient, struck from inside the body and reaching a
+    // finger past it; the light it gives is its brightest stop.
+    const air = calls.find((c) => c.name === 'createRadialGradient'
+      && c.args[0] === node.x && c.args[1] === node.y && c.args[2] > node.r * 0.5 && c.args[5] > node.r);
+    const from = calls.indexOf(air);
+    let limb = 0;
+    for (const call of calls.slice(from + 1, from + 5)) {
+      if (call.name !== 'addColorStop') continue;
+      limb = Math.max(limb, Number(String(call.args[1]).match(/,\s*([\d.]+)\)$/)?.[1] ?? 0));
+    }
+    return { face: alpha?.args[0], limb };
   };
 
   calls.length = 0;
@@ -601,17 +601,7 @@ test('nostromo: a dwarf burns by what it has become and by what it is being give
   assert.ok(old.face > dark.face, 'maturity alone does not brighten a memory');
   assert.ok(young.face > dark.face, 'feeding alone does not brighten a memory');
   assert.ok(bright.face > old.face && bright.face > young.face, 'the two together are worth no more than either');
-  assert.ok(bright.night < dark.night * 0.35, `a burning dwarf should have lost its night (${bright.night} against ${dark.night})`);
-
-  // And nothing hangs off any of them. A halo is a filled gradient struck at the body's centre
-  // and reaching past its edge; rings that mark an arriving pulse are strokes, and stay.
-  for (const node of room.nodes) {
-    for (const call of calls) {
-      if (call.name !== 'createRadialGradient') continue;
-      if (call.args[0] !== node.x || call.args[1] !== node.y) continue;
-      assert.ok(call.args[5] <= node.r * 1.2, `a memory is wearing a halo out to ${(call.args[5] / node.r).toFixed(1)} of its own radius`);
-    }
-  }
+  assert.ok(bright.limb > dark.limb * 2, `a burning dwarf should light its own limb (${bright.limb} against ${dark.limb})`);
 });
 
 test('nostromo: charge is fed by the core and by neighbours, and drains when nobody feeds it', async () => {
@@ -741,14 +731,19 @@ test('nostromo: a memory is a ball, with nothing ringed round it and nothing com
   const { run, calls } = await nostromoRenderer(room);
   run(0.5);
 
-  // Nothing is struck round a body but the body itself. An outline, however thin, and a ring
-  // thrown off when a pulse lands are both circles drawn on a ball, and both flatten it.
+  // A star's own light reaches a little past it, and that bloom belongs to the star. What may
+  // never be drawn is an outline: a circle stroked round a ball flattens it however thin it is,
+  // and so does a ring thrown off when a pulse lands. So every circle round a body is checked
+  // for what is done with it, and only a fill, close in, is allowed.
   for (const node of room.nodes) {
-    const r = node.r * node.scale * 1.06;   // the widest the micro-pulsation can push it
-    for (const call of calls) {
+    const body = node.r * node.scale * 1.06;   // the widest the micro-pulsation can push it
+    for (let i = 0; i < calls.length; i += 1) {
+      const call = calls[i];
       if (call.name !== 'arc') continue;
       if (Math.abs(call.args[0] - node.x) > 0.001 || Math.abs(call.args[1] - node.y) > 0.001) continue;
-      assert.ok(call.args[2] <= r, `a memory is ringed at ${(call.args[2] / node.r).toFixed(2)} of its own radius`);
+      const done = calls.slice(i + 1, i + 4).find((c) => c.name === 'fill' || c.name === 'stroke' || c.name === 'clip');
+      assert.notEqual(done?.name, 'stroke', `a memory is outlined at ${(call.args[2] / node.r).toFixed(2)} of its own radius`);
+      assert.ok(call.args[2] <= body * 1.4, `a memory is haloed out to ${(call.args[2] / node.r).toFixed(2)} of its own radius`);
     }
   }
 
