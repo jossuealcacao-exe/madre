@@ -237,8 +237,17 @@ export class Room {
   }
   embedNow() { return this.#vectors.runNow(); }
 
-  #contextFor(priorEvents, { messageId, text, omitSynthetic = false }) {
-    return contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic });
+  // Where the transcript an agent reads begins. Held still across turns on purpose: a window
+  // that starts one message later every time is a window a CLI can never match against what it
+  // read last turn, and the transcript is most of what a loaded turn costs.
+  #contextAnchor = null;
+
+  async #contextFor(priorEvents, { messageId, text, omitSynthetic = false }) {
+    const built = await contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic, anchor: this.#contextAnchor });
+    // @madre reads a different transcript to everyone else, so it never sets where the room's
+    // window begins; it only borrows it.
+    if (!omitSynthetic && Number.isInteger(built.context?.anchor)) this.#contextAnchor = built.context.anchor;
+    return built;
   }
 
   // The human tunes the archive from MU/TH/UR; changes apply to the next run.

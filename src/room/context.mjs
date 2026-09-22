@@ -4,15 +4,15 @@
 
 import { buildConversationContext } from '../conversation-context.mjs';
 
-export async function contextFor({ memory, priorEvents, messageId, text, contextMaxChars, recallShare, remember = () => {}, omitSynthetic = false }) {
-  const full = buildConversationContext(priorEvents, { excludeMessageId: messageId, maxChars: contextMaxChars, omitSynthetic });
+export async function contextFor({ memory, priorEvents, messageId, text, contextMaxChars, recallShare, remember = () => {}, omitSynthetic = false, anchor = null }) {
+  const full = buildConversationContext(priorEvents, { excludeMessageId: messageId, maxChars: contextMaxChars, omitSynthetic, anchor });
   const none = { context: full, recall: null, memories: null };
   if (!memory || !full.omittedMessages || recallShare <= 0) return none;
   // Another server may have written this room: index what we have not seen.
   const last = memory.lastSequence();
   remember(priorEvents.filter((event) => event.sequence > last));
   const recallBudget = Math.floor(contextMaxChars * recallShare);
-  const recent = buildConversationContext(priorEvents, { excludeMessageId: messageId, maxChars: contextMaxChars - recallBudget, omitSynthetic });
+  const recent = buildConversationContext(priorEvents, { excludeMessageId: messageId, maxChars: contextMaxChars - recallBudget, omitSynthetic, anchor });
   const before = recent.firstSequence ?? Number.MAX_SAFE_INTEGER;
   let memories = null;
   let recall = null;
