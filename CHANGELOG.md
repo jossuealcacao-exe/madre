@@ -8,6 +8,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### MU/TH/UR se pliega
 - Todo lo que corre largo en el panel se pliega: `CONNECTIONS`, `ROOM SETTINGS`, `MEMORY`, `PRIVACY`, `SENTINEL` y el canal de liberación, todo por el mismo camino.
+- Cada sección plegable lleva su propio botón que dice qué va a pasar al tocarlo: `▸ EXPAND` o `▾ COLLAPSE`. El panel ya tenía ese botón en dos listas desde antes; ahora todas pliegan por el mismo camino y se ven igual, en vez de que unas tuvieran botón y otras un signo.
+- Las dos listas que ya se plegaban, condiciones registradas y condiciones conocidas, dejaron de armar su propia cabecera y pasaron al mismo ayudante. Lo que tuvieras guardado de antes se respeta: se lee una vez como estado inicial y de ahí en adelante lo recuerda el pliegue, sin dos lugares acordándose de lo mismo.
 - Un botón `EXPAND ALL` en la cabecera abre o cierra el panel entero. Dice lo que va a hacer, no lo que el panel es: mientras quede algo cerrado abre todo, y cuando todo está abierto se convierte en `COLLAPSE ALL`. No aparece si no hay al menos dos secciones que mover.
 - Los comandos de entrenamiento no se veían. Estaban dibujados con el color de texto de la página, y sobre el fondo del panel eso es casi invisible; ahora van en fósforo como todo lo demás de ahí.
 - Los pasos los numeraba el navegador al tamaño del panel, y gritaban. Ahora son un índice discreto en el margen, y la nota de cierre dejó de contarse como un paso.

@@ -105,3 +105,40 @@ test('mother: a command in the panel can be read, and the steps do not shout', a
   // The closing note is not a step and is not numbered as one.
   assert.match(css, /\.mother-section \.train-steps > li\.note::before \{ content: none; \}/);
 });
+
+test('mother: every section that folds carries the same button, and there is only one kind', async () => {
+  const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
+
+  // The panel had two ways of folding: a pair of sections with a real EXPAND/COLLAPSE button,
+  // and the newer ones with a bare glyph. One way now, and it is the one that uses words.
+  const helper = app.slice(app.indexOf('function folding('), app.indexOf('function connectionCard('));
+  assert.match(helper, /'▾ COLLAPSE' : '▸ EXPAND'/, 'the fold does not say what clicking it will do');
+  assert.match(helper, /box\.addEventListener\('toggle', \(\) => \{ label\(\)/, 'the button does not change when the section does');
+
+  // The older pair go through the same helper now, so nothing is left rendering its own header.
+  for (const key of ['recorded', 'known']) {
+    assert.match(app, new RegExp(`key: '${key}'`), `the ${key} list no longer folds`);
+  }
+  assert.ok(!app.includes("el('h3', 'toggle')"), 'a section is still building its own folding header');
+  assert.ok(!app.includes("headButton.setAttribute('aria-expanded'"), 'a hand-rolled disclosure survived');
+  // And a native disclosure needs no aria of its own, which is half the reason for using one.
+  assert.equal((app.match(/el\('details', 'fold'\)/g) ?? []).length, 1, 'folds are being built in more than one place');
+
+  // The glyph is gone from the stylesheet with it.
+  assert.ok(!/fold > summary::after \{ content: '\+'/.test(css), 'the bare glyph is still styled');
+  assert.match(css, /\.fold > summary \.caret \{/, 'the button has no styling of its own');
+});
+
+test('mother: a preference set before the folds existed is not thrown away', async () => {
+  const app = await read('app.js');
+  // Both lists were remembered under their own keys long before there was one helper. Those are
+  // read once as the default, and from then on the fold remembers like every other section.
+  assert.match(app, /localStorage\.getItem\('pulse\.mother\.log'\)/, 'the old preference for the log is ignored');
+  assert.match(app, /localStorage\.getItem\('pulse\.mother\.known'\)/, 'the old preference for the list is ignored');
+  assert.match(app, /open: !collapsed/, 'the old preference is read but not used');
+  // Nothing writes to the old keys any more: two places remembering the same thing is one too many.
+  assert.ok(!app.includes("localStorage.setItem('pulse.mother.log'"), 'the log still writes to its old key');
+  assert.ok(!app.includes("localStorage.setItem('pulse.mother.known'"), 'the list still writes to its old key');
+  // Choosing a fix from the log opens the list through the fold, not behind its back.
+  assert.match(app, /rememberFold\('known', true\)/);
+});

@@ -3048,22 +3048,14 @@ function renderMotherOs() {
 function renderMotherRecorded() {
   mother.recorded.replaceChildren();
   let collapsed = false;
+  // What this section was set to before it folded like the rest; the fold remembers from here on.
   try { collapsed = localStorage.getItem('pulse.mother.log') === 'collapsed'; } catch { /* no storage */ }
-  const head = el('h3', 'toggle');
-  const headButton = el('button', null, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`);
-  headButton.type = 'button';
-  headButton.setAttribute('aria-expanded', String(!collapsed));
-  headButton.append(el('span', 'caret', collapsed ? '▸ EXPAND' : '▾ COLLAPSE'));
-  headButton.addEventListener('click', () => {
-    try { localStorage.setItem('pulse.mother.log', collapsed ? 'expanded' : 'collapsed'); } catch { /* no storage */ }
-    renderMotherRecorded();
+  const body = folding(mother.recorded, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`, {
+    key: 'recorded', open: !collapsed,
+    badge: state.failures.length ? { text: String(state.failures.length) } : null,
   });
-  head.append(headButton);
-  mother.recorded.append(head);
-  mother.recorded.classList.toggle('collapsed', collapsed);
-  if (collapsed) return;
   if (!state.failures.length) {
-    mother.recorded.append(el('p', 'mother-answer', 'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.'));
+    body.append(el('p', 'mother-answer', 'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.'));
     return;
   }
   for (const failure of [...state.failures].reverse().slice(0, 40)) {
@@ -3096,14 +3088,14 @@ function renderMotherRecorded() {
       jump.addEventListener('click', () => {
         mother.input.value = '';
         // Choosing a fix from the log is a request to see it: the list opens and stays open.
-        try { localStorage.setItem('pulse.mother.known', 'expanded'); } catch { /* no storage */ }
+        rememberFold('known', true);
         renderMotherKnown(CONDITIONS, new Set(matches.map((item) => item.id)), failure.agent);
         document.getElementById(`mother-${condition.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       links.append(jump);
     }
     rowNode.append(links);
-    mother.recorded.append(rowNode);
+    body.append(rowNode);
   }
 }
 
@@ -3113,23 +3105,13 @@ function renderMotherKnown(list = CONDITIONS, hits = new Set(), agent = null) {
   try { collapsed = localStorage.getItem('pulse.mother.known') === 'collapsed'; } catch { /* no storage */ }
   // An inquiry that narrowed the list, or a fix chosen from the log, always shows its answer, whatever the stored state.
   if (list.length !== CONDITIONS.length || hits.size) collapsed = false;
-  const head = el('h3', 'toggle');
-  const headButton = el('button', null, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`);
-  headButton.type = 'button';
-  headButton.setAttribute('aria-expanded', String(!collapsed));
-  headButton.append(el('span', 'caret', collapsed ? '▸ EXPAND' : '▾ COLLAPSE'));
-  headButton.addEventListener('click', () => {
-    try { localStorage.setItem('pulse.mother.known', collapsed ? 'expanded' : 'collapsed'); } catch { /* no storage */ }
-    renderMotherKnown(list, hits, agent);
+  const body = folding(mother.known, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`, {
+    key: 'known', open: !collapsed,
   });
-  head.append(headButton);
-  mother.known.append(head);
-  mother.known.classList.toggle('collapsed', collapsed);
-  if (collapsed) return;
   const grid = el('div', 'mother-grid');
   const ordered = [...list].sort((a, b) => Number(hits.has(b.id)) - Number(hits.has(a.id)));
   for (const condition of ordered) grid.append(conditionCard(condition, { hit: hits.has(condition.id), agent: agent && condition.perAgent ? agent : null, hintAgent: agent }));
-  mother.known.append(grid);
+  body.append(grid);
 }
 
 function answerQuery(query) {
@@ -3901,9 +3883,15 @@ function folding(section, title, { key, open = false, badge = null } = {}) {
     if (badge.title) mark.title = badge.title;
     head.append(mark);
   }
+  // The same button every other section in this panel already had: it says what clicking it
+  // will do, not what the section currently is.
+  const caret = el('span', 'caret');
+  const label = () => { caret.textContent = box.open ? '▾ COLLAPSE' : '▸ EXPAND'; };
+  label();
+  head.append(caret);
   const body = el('div', 'fold-body');
   box.append(head, body);
-  box.addEventListener('toggle', () => { rememberFold(key, box.open); syncFoldAll(); });
+  box.addEventListener('toggle', () => { label(); rememberFold(key, box.open); syncFoldAll(); });
   section.append(box);
   syncFoldAll();
   return body;

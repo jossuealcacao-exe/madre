@@ -488,9 +488,9 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-section .fold + .fold { margin-top: 26px; }
 .mother-section .fold > summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; }
 .mother-section .fold > summary::-webkit-details-marker { display: none; }
-.mother-section .fold > summary::after { content: '+'; margin-left: auto; font-family: var(--mono); font-size: 12px; line-height: 1; color: var(--ph-dim); opacity: .7; }
-.mother-section .fold[open] > summary::after { content: '−'; }
-.mother-section .fold > summary:hover h3, .mother-section .fold > summary:hover::after { color: var(--ph); opacity: 1; }
+/* The button is a word, not a glyph: the panel already said EXPAND and COLLAPSE elsewhere. */
+.mother-section .fold > summary .caret { margin-left: auto; font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--ph); white-space: nowrap; }
+.mother-section .fold > summary:hover h3 { color: var(--ph); }
 .mother-section .fold > summary h3 { margin: 0 0 12px; }
 .mother-section .fold > summary h3:not(:first-child) { margin-top: 0; padding-top: 0; border-top: 0; }
 .fold-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
