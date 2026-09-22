@@ -1301,7 +1301,7 @@ test('an orchestrating agent puts the others to work in order, then closes; dele
 
     const events = await store.readAll();
     const types = events.map((event) => `${event.type}${event.payload.status ? `:${event.payload.status}` : ''}${event.payload.sender ? `:${event.payload.sender}→${event.payload.target}` : event.payload.agent ? `:${event.payload.agent}` : ''}`);
-    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('handoff.') && !type.startsWith('room.alert')), [
+    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('turn.cost') && !type.startsWith('handoff.') && !type.startsWith('room.alert')), [
       'message.created:sent:you→claude',
       'agent.started:claude',
       'message.created:completed:claude→you',

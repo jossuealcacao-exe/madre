@@ -6,7 +6,8 @@ import { parseMessage } from './router.mjs';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { UsageSentinel } from './usage-sentinel.mjs';
-import { buildPrompt } from './room/prompt.mjs';
+import { buildPrompt, promptParts } from './room/prompt.mjs';
+import { turnCost } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
@@ -417,6 +418,22 @@ export class Room {
 
   budgetWindow() { return this.#budget.view(this.#agents); }
 
+  // What the turn was made of, against what it was charged. A room that cannot see this can only
+  // guess at which part of a prompt is expensive, and a guess in characters is not an answer in
+  // tokens. The words themselves are never written here, only how many of them each block was.
+  async #recordCost(agent, responseMessageId, usage, mode) {
+    const parts = this.#promptShape.get(responseMessageId);
+    this.#promptShape.delete(responseMessageId);
+    if (!parts) return;
+    // A ghost turn is off the record in every sense, this one included.
+    if (mode === 0) return;
+    try {
+      await this.#emit('turn.cost', { agent, mode, responseMessageId, ...turnCost(parts, usage) });
+    } catch (error) {
+      console.error(`MADRE could not weigh a turn: ${error.message}`);
+    }
+  }
+
   async #recordUsage(agent, usage, { messageId = null, responseMessageId = null } = {}) {
     if (!usage) return;
     const charged = this.#budget.record(agent, usage);
@@ -759,8 +776,21 @@ export class Room {
     return outcome?.responseMessageId ?? null;
   }
 
+  // What the last prompt for each turn was made of, kept only until its bill arrives.
+  #promptShape = new Map();
+
+  #promptFor(input) {
+    const options = this.#promptOptions(input);
+    const parts = promptParts(options);
+    return { text: parts.map((part) => part.text).join('\n'), parts };
+  }
+
   #prompt(input) {
-    return buildPrompt({
+    return buildPrompt(this.#promptOptions(input));
+  }
+
+  #promptOptions(input) {
+    return ({
       ...input,
       others: this.delegatesFor(input.agent.id),
       delegation: this.#delegation,
@@ -862,11 +892,15 @@ export class Room {
       const mcpServers = this.#toolsForTurn && agent.adapter !== 'madre-local'
         ? await this.#toolsForTurn({ agent: agent.id, mode: turnMode, lease, scratchDir: lease?.scratchDir ? joinPath(this.#projectRoot, lease.scratchDir) : null }).catch(() => [])
         : [];
+      // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
+      // says what it cost, so the bill can be attributed to the blocks that caused it.
+      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
+      this.#promptShape.set(responseMessageId, shaped.parts);
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,
         text,
-        prompt: this.#prompt({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ashCode, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null }),
+        prompt: shaped.text,
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,
@@ -943,6 +977,7 @@ export class Room {
       }
       if (controlChanges) await this.#emit('control.changed', { ...controlChanges, responseMessageId });
       await this.#recordUsage(agent.id, result.usage, { messageId, responseMessageId });
+      await this.#recordCost(agent.id, responseMessageId, result.usage, turnMode);
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId });
       return { responseMessageId, directives };
     } catch (error) {

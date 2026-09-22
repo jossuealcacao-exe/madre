@@ -53,6 +53,7 @@ import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { listDirectory, searchFiles, readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
+import { economy } from './room/economy.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -869,6 +870,12 @@ export async function createPulseServer({
         const result = await moduleRoute.route.handler(await moduleContext(), { request, url, params: moduleRoute.params, payload });
         return sendJson(response, result.status ?? 200, result.body ?? {});
       }
+      // Where this room's tokens go: what each block of the briefing has cost, how much came back
+      // from a CLI's own cache, and how many characters the room spends per token it is charged.
+      if (url.pathname === '/api/economy' && request.method === 'GET') {
+        return sendJson(response, 200, economy(await store.readAll()));
+      }
+
       // EYECAT: what it is holding, and the two answers a person can give it. Confirming writes
       // the aberration and takes the note it refutes out of circulation; dismissing says the room
       // was right all along and the pair is never raised again.
