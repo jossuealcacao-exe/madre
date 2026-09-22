@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### El compositor y la barra, más tranquilos
+- Arrobar a un agente ya no lo mete en una píldora. Una mención es una palabra de la frase que estás escribiendo, no un campo por llenar: conserva el color del agente y pierde la caja, que rompía el ritmo al releer la línea.
+- Lo que estás respondiendo se distingue de lo que estás diciendo. La cita va en su propio bloque, más tenue, y se recorta a ciento veinte caracteres en vez de doscientos veinte: antes llenaba el campo y empujaba fuera de vista lo que ibas a escribir.
+- En modo claro los botones de la barra superior brillan apenas. Un halo que se lee como luz sobre fondo oscuro se lee como mancha sobre uno pálido; el borde y el color ya dicen que el botón está vivo.
+
+
 ### EYECAT: el vigía que pregunta si la sala sigue creyendo lo que escribió
 - No es un módulo ni parte de la sala. Vigila desde afuera, igual que el sentinel de errores: se suscribe al registro, no toma turno, no escribe archivos y no tiene permisos. Lo que produce es una pregunta para ti, nunca una entrada en el archivo.
 - La independencia es todo el diseño. Una afirmación nunca la juzga quien la escribió, ni quien escribió aquello con lo que choca. Al juez se le entregan las dos frases y nada más: sin transcripción, sin historia del proyecto y sin nombres, así que no se le puede decir a quién creerle ni se le puede discutir. Si los únicos libres son los dos autores, el caso espera en vez de ir a alguien con interés en la respuesta.

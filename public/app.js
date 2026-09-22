@@ -1417,10 +1417,13 @@ function showReplyMenu(source, x, y) {
   replyMenu.style.left = `${Math.max(12, Math.min(x, window.innerWidth - width - 12))}px`;
   replyMenu.style.top = `${Math.min(y, window.innerHeight - height - 12)}px`;
 }
+// The head of a reply, as the composer writes it: ↩ @agent #123: “…”
+const QUOTE_LINE = /^(↩ @[\w-]+(?: #\d+)?: “[^]*?”)$/m;
+
 function replyWith(agentId, source) {
   hideReplyMenu();
   const excerpt = source.text.replace(/\s+/g, ' ').trim();
-  const quoted = excerpt.length > 220 ? `${excerpt.slice(0, 219)}…` : excerpt;
+  const quoted = excerpt.length > 120 ? `${excerpt.slice(0, 119)}…` : excerpt;
   const head = `↩ @${source.sender}${source.sequence ? ` #${source.sequence}` : ''}: “${quoted}”\n`;
   const current = els.input.value.replace(/^↩ @[^\n]*\n/, '');
   els.input.value = `${head}${current}`;
@@ -2493,7 +2496,10 @@ function renderHighlight() {
     if (!command) return whole;
     return `${lead}<span class="chip cmd${command.available ? '' : ' unknown'}">/${escapeHtml(name)}</span>`;
   });
-  els.highlight.innerHTML = `${html}${text.endsWith('\n') ? '\n' : ''}` || '';
+  // The quoted reply reads as something you are answering rather than something you are
+  // writing, so it is set apart before the field is painted.
+  const marked = html.replace(QUOTE_LINE, (line) => `<span class="quote">${line.replace(/^(↩ @[\w-]+(?: #\d+)?):/, '<b>$1</b>:')}</span>`);
+  els.highlight.innerHTML = `${marked}${text.endsWith('\n') ? '\n' : ''}` || '';
   syncHighlightScroll();
 }
 
