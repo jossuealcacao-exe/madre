@@ -53,3 +53,55 @@ test('mother: the checkbox lines up with the words above it', async () => {
   const row = css.match(/\.mother-section\.sentinel \.sentinel-controls, \.mother-section\.update \.sentinel-controls \{[^}]*margin-left: 0/);
   assert.ok(row, 'the row that holds it is still indented');
 });
+
+test('mother: every long section folds, and one button moves all of them', async () => {
+  const [app, page, css] = await Promise.all([read('app.js'), read('index.html'), read('styles.css')]);
+
+  // Everything in the panel that runs long folds, and all of it through the same helper.
+  for (const [key, header] of [
+    ['connections', 'CONNECTIONS'], ['room-settings', 'ROOM SETTINGS'], ['memory', 'MEMORY'],
+    ['privacy', 'PRIVACY'], ['sentinel', 'SENTINEL'], ['update', 'RELEASE CHANNEL'],
+  ]) {
+    const at = app.indexOf(`key: '${key}'`);
+    assert.ok(at > 0, `${header} does not fold`);
+    // The key belongs to the call that folds that header, not to some other one nearby.
+    const call = app.slice(Math.max(0, at - 400), at);
+    assert.ok(call.includes('folding(section'), `${header}'s key is not on a folding call`);
+    assert.ok(call.includes(header), `the ${key} fold does not carry the ${header} header`);
+  }
+
+  // Nothing appends a bare header any more where a fold should be.
+  for (const header of ['ROOM SETTINGS', 'SENTINEL ·', 'PRIVACY ·', 'MEMORY ·']) {
+    assert.ok(!app.includes(`section.append(el('h3', null, '${header}'`), `${header} is still a plain header`);
+  }
+
+  // One button for the panel, and it says what it will do rather than what the panel is.
+  assert.match(page, /id="fold-all"/, 'there is no way to open everything at once');
+  const all = app.slice(app.indexOf('function everyFold('), app.indexOf('function folding('));
+  assert.match(all, /some\(\(fold\) => !fold\.open\) \? 'EXPAND ALL' : 'COLLAPSE ALL'/, 'the button does not say what it will do');
+  assert.match(all, /button\.hidden = folds\.length < 2/, 'the button shows even when there is nothing to move');
+  assert.match(all, /rememberFold\(fold\.dataset\.fold, open\)/, 'moving everything at once is not remembered');
+});
+
+test('mother: a command in the panel can be read, and the steps do not shout', async () => {
+  const css = await read('styles.css');
+
+  // The panel is phosphor on black. A command drawn in the page's own text colour was all but
+  // invisible there, which is how it shipped.
+  const code = css.match(/\.mother-section \.update-command code \{([^}]*)\}/);
+  assert.ok(code, 'commands in the panel have no colour of their own');
+  assert.match(code[1], /color: var\(--ph\)/);
+
+  // The browser numbered the steps at the panel's own size, which made them shout. They are an
+  // index in the margin now.
+  const steps = css.match(/\.mother-section \.train-steps \{([^}]*)\}/);
+  assert.ok(steps, 'the steps are still numbered by the browser');
+  assert.match(steps[1], /list-style: none/);
+  const marker = css.match(/\.mother-section \.train-steps > li::before \{([^}]*)\}/);
+  assert.ok(marker, 'the steps lost their numbers entirely');
+  assert.match(marker[1], /content: counter\(step\)/);
+  const size = Number(marker[1].match(/font-size: ([\d.]+)px/)?.[1]);
+  assert.ok(size && size <= 10, `a step number at ${size}px is still shouting`);
+  // The closing note is not a step and is not numbered as one.
+  assert.match(css, /\.mother-section \.train-steps > li\.note::before \{ content: none; \}/);
+});

@@ -497,6 +497,22 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 /* Red, and only red, when there is something new: that is the whole message. */
 .fold-badge.urgent { border-color: var(--danger); background: var(--danger); color: #fff; }
 .fold-body { padding-top: 2px; }
+
+/* Inside MU/TH/UR everything is phosphor. A command in the panel was drawn in the page's own
+   text colour, which on this ground is all but invisible. */
+.mother-section .update-command { border-color: var(--ph-dim); border-radius: 0; background: var(--ph-faint); }
+.mother-section .update-command code { color: var(--ph); }
+.mother-section .update-command button { border-color: var(--ph-dim); color: var(--ph-dim); }
+.mother-section .update-command button:hover { color: var(--ph); border-color: var(--ph); }
+
+/* The steps were numbered by the browser, at the panel's own size, which made them shout. They
+   are a quiet index in the margin now, like everything else here. */
+.mother-section .train-steps { list-style: none; padding-left: 26px; counter-reset: step; }
+.mother-section .train-steps > li { counter-increment: step; position: relative; margin: 14px 0; }
+.mother-section .train-steps > li::before { content: counter(step); position: absolute; left: -26px; top: 1px; width: 18px; text-align: right; font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); opacity: .8; }
+.mother-section .train-steps > li.note { counter-increment: none; margin-left: 0; }
+.mother-section .train-steps > li.note::before { content: none; }
+.mother-section .train-step-label { color: var(--ph-dim); }
 .mother-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
 .mother-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; gap: 8px; align-content: start; }
 .mother-card.hit { border-color: var(--ph); box-shadow: inset 0 0 0 1px var(--ph-faint), 0 0 22px rgba(155, 255, 102, .12); }

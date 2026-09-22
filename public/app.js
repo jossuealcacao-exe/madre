@@ -3872,8 +3872,26 @@ function foldState() {
 function rememberFold(key, open) {
   try { localStorage.setItem(FOLD_KEY, JSON.stringify({ ...foldState(), [key]: open })); } catch { /* a private window remembers nothing, and that is fine */ }
 }
+// One button for the whole panel. It says what it will do, not what the panel is: if anything is
+// still shut, it opens everything; once everything is open it closes it again.
+function everyFold() { return [...document.querySelectorAll('.mother-section .fold')]; }
+function syncFoldAll() {
+  const button = document.querySelector('#fold-all');
+  if (!button) return;
+  const folds = everyFold();
+  button.hidden = folds.length < 2;
+  button.textContent = folds.some((fold) => !fold.open) ? 'EXPAND ALL' : 'COLLAPSE ALL';
+}
+document.querySelector('#fold-all')?.addEventListener('click', () => {
+  const folds = everyFold();
+  const open = folds.some((fold) => !fold.open);
+  for (const fold of folds) { fold.open = open; rememberFold(fold.dataset.fold, open); }
+  syncFoldAll();
+});
+
 function folding(section, title, { key, open = false, badge = null } = {}) {
   const box = el('details', 'fold');
+  box.dataset.fold = key;
   box.open = foldState()[key] ?? open;
   const head = el('summary');
   head.append(el('h3', null, title));
@@ -3885,8 +3903,9 @@ function folding(section, title, { key, open = false, badge = null } = {}) {
   }
   const body = el('div', 'fold-body');
   box.append(head, body);
-  box.addEventListener('toggle', () => rememberFold(key, box.open));
+  box.addEventListener('toggle', () => { rememberFold(key, box.open); syncFoldAll(); });
   section.append(box);
+  syncFoldAll();
   return body;
 }
 
@@ -4084,7 +4103,7 @@ function renderSettings() {
   for (const agent of data.agents) grid.append(connectionCard(agent));
   crew.append(grid);
 
-  section.append(el('h3', null, 'ROOM SETTINGS'));
+  const settingsBody = folding(section, 'ROOM SETTINGS', { key: 'room-settings' });
   const form = el('form', 'room-form');
   const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
   const num = (name, value, min, step) => { const input = el('input'); input.type = 'number'; input.name = name; input.value = String(value); input.min = String(min); input.step = String(step); return input; };
@@ -4158,13 +4177,13 @@ function renderSettings() {
     } else toast(result.error ?? 'Settings were not saved.');
     save.disabled = false;
   });
-  section.append(form);
+  settingsBody.append(form);
 
   // MEMORY: who distils, with whom, how often, where it embeds, how much recall a turn gets. Saves as you change it.
   const mem = data.settings.memory;
   if (mem) {
-    section.append(el('h3', null, `MEMORY · ${mem.stats ? `${mem.stats.entries} EXCHANGES · ${mem.stats.memories} MEMORIES · ${mem.stats.pending} WAITING` : 'NO INDEX'}`));
-    section.append(el('p', 'note', 'THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.'));
+    const memoryBody = folding(section, `MEMORY · ${mem.stats ? `${mem.stats.entries} EXCHANGES · ${mem.stats.memories} MEMORIES · ${mem.stats.pending} WAITING` : 'NO INDEX'}`, { key: 'memory', badge: mem.stats?.pending ? { text: String(mem.stats.pending), title: `${mem.stats.pending} exchange(s) nobody has distilled yet` } : null });
+    memoryBody.append(el('p', 'note', 'THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.'));
     const mform = el('form', 'room-form memory-form');
     const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(`Memory setting was not saved: ${error.message}`); } };
     const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
@@ -4261,15 +4280,15 @@ function renderSettings() {
     mform.append(train);
     if (mem.envWins) mform.append(el('span', 'note full', 'ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.'));
     mform.addEventListener('submit', (event) => event.preventDefault());
-    section.append(mform);
+    memoryBody.append(mform);
   }
 
   // PRIVACY: terms that never travel through the room. Replaced at every hop: agent replies,
   // the index, the notes, the dataset. PURGE does the same to what the room already holds.
   const priv = data.settings.privacy;
   if (priv) {
-    section.append(el('h3', null, `PRIVACY · ${priv.terms.length ? `${priv.terms.length} PRIVATE TERM${priv.terms.length === 1 ? '' : 'S'}` : 'NO PRIVATE TERMS'}`));
-    section.append(el('p', 'note', 'AN AGENT\'S OWN CONFIGURATION CAN LEAK INTO ITS REPLY: A COMPANY, A BRAND, A DOMAIN. NAME THEM HERE AND MADRE REPLACES THEM BEFORE THE LEDGER, THE ARCHIVIST, THE OTHER AGENTS OR THE DATASET SEE THEM. THE TERMS STAY IN CONFIG.JSON; THE ROOM ONLY EVER RECORDS HOW MANY.'));
+    const privacyBody = folding(section, `PRIVACY · ${priv.terms.length ? `${priv.terms.length} PRIVATE TERM${priv.terms.length === 1 ? '' : 'S'}` : 'NO PRIVATE TERMS'}`, { key: 'privacy', badge: priv.terms.length ? { text: String(priv.terms.length) } : null });
+    privacyBody.append(el('p', 'note', 'AN AGENT\'S OWN CONFIGURATION CAN LEAK INTO ITS REPLY: A COMPANY, A BRAND, A DOMAIN. NAME THEM HERE AND MADRE REPLACES THEM BEFORE THE LEDGER, THE ARCHIVIST, THE OTHER AGENTS OR THE DATASET SEE THEM. THE TERMS STAY IN CONFIG.JSON; THE ROOM ONLY EVER RECORDS HOW MANY.'));
     const pform = el('form', 'room-form privacy-form');
     const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
     const terms = el('textarea'); terms.rows = 3; terms.value = priv.terms.join('\n'); terms.placeholder = 'one term per line · a company, a brand, a domain, a name'; terms.spellcheck = false;
@@ -4313,7 +4332,7 @@ function renderSettings() {
     pform.append(row);
     if (priv.envWins) pform.append(el('span', 'note full', 'PULSE_PRIVATE_TERMS IS SET; THOSE TERMS ARE ADDED TO THIS LIST ON EVERY LAUNCH.'));
     pform.addEventListener('submit', (event) => event.preventDefault());
-    section.append(pform);
+    privacyBody.append(pform);
     fetch('/api/privacy').then((response) => response.json()).then(showExposure).catch(() => { exposure.textContent = 'EXPOSURE CHECK UNAVAILABLE'; });
   }
 }
@@ -5822,10 +5841,10 @@ function renderMotherSentinel() {
   section.replaceChildren();
   const reports = [...state.reports.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
   const unsent = reports.filter((report) => !report.sent?.ok).length;
-  section.append(el('h3', null, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`));
+  const sentinelBody = folding(section, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`, { key: 'sentinel', badge: unsent ? { text: String(unsent), urgent: true, title: `${unsent} report${unsent === 1 ? '' : 's'} not sent` } : null });
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
   const what = el('p', 'note', 'THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.');
-  section.append(what);
+  sentinelBody.append(what);
   const controls = el('div', 'sentinel-controls');
   const auto = el('label', 'toggle');
   const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(settings.autoReport); box.disabled = !settings.canSend;
@@ -5844,7 +5863,7 @@ function renderMotherSentinel() {
   feedback.type = 'button';
   feedback.addEventListener('click', () => openFeedback());
   controls.append(feedback);
-  section.append(controls);
+  sentinelBody.append(controls);
   for (const report of reports.slice(0, 20)) {
     const rowNode = paint(el('div', `mother-record sentinel-report${report.sent?.ok ? ' sent' : ''}`), report.agent ?? 'room');
     rowNode.append(el('span', 't', formatTime(report.at)));
@@ -5875,7 +5894,7 @@ function renderMotherSentinel() {
       actions.append(send);
     }
     rowNode.append(actions);
-    section.append(rowNode);
+    sentinelBody.append(rowNode);
   }
 }
 function openFeedback() {

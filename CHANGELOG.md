@@ -7,7 +7,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ## 0.4.0 · Sin publicar
 
 ### MU/TH/UR se pliega
-- Las dos secciones que llenaban el panel ahora están plegadas: `CONNECTIONS` y el canal de liberación. El encabezado es el mismo de siempre y se hace clic sobre él; lo que abre va adentro.
+- Todo lo que corre largo en el panel se pliega: `CONNECTIONS`, `ROOM SETTINGS`, `MEMORY`, `PRIVACY`, `SENTINEL` y el canal de liberación, todo por el mismo camino.
+- Un botón `EXPAND ALL` en la cabecera abre o cierra el panel entero. Dice lo que va a hacer, no lo que el panel es: mientras quede algo cerrado abre todo, y cuando todo está abierto se convierte en `COLLAPSE ALL`. No aparece si no hay al menos dos secciones que mover.
+- Los comandos de entrenamiento no se veían. Estaban dibujados con el color de texto de la página, y sobre el fondo del panel eso es casi invisible; ahora van en fósforo como todo lo demás de ahí.
+- Los pasos los numeraba el navegador al tamaño del panel, y gritaban. Ahora son un índice discreto en el margen, y la nota de cierre dejó de contarse como un paso.
+- Las dos primeras secciones que se plegaron fueron `CONNECTIONS` y el canal de liberación. El encabezado es el mismo de siempre y se hace clic sobre él; lo que abre va adentro.
 - El canal de liberación no anuncia nada en su título. Cuando hay versión nueva lleva una marca roja y nada más, y lo que significa está adentro. Las marcas que no son urgentes no son rojas, para que el rojo siga queriendo decir algo: `CONNECTIONS` lleva un conteo en gris cuando algún agente no está firmado.
 - Si dejaste una sección abierta, se queda abierta la próxima vez. Un panel que olvida es uno con el que peleas cada vez que lo abres. Un navegador que no deja guardar nada simplemente abre en cerrado, sin romperse.
 - El checkbox del canal de liberación estaba unos píxeles adentro respecto al párrafo de arriba, por un margen propio del navegador, así que la columna no se leía derecha. Ya alinea.
