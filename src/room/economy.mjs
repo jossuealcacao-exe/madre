@@ -13,6 +13,24 @@
 // shape of the turn calls for them. The split is what makes the fixed cost of a room visible.
 export const ALWAYS = new Set(['room', 'who', 'mode', 'inspect', 'style', 'privacy', 'ask']);
 
+// The blocks that read the same on every turn of a given agent in a given room. Kept together
+// at the head of the prompt so the longest possible run of it comes back from the CLI's own
+// cache instead of being charged again. Anything that can change between two turns belongs
+// after them, however short it is: one differing byte early throws away everything after it.
+export const STABLE = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server'];
+
+// How much of a prompt could be read back from a cache: the run of unchanging blocks at its
+// head, in the order they were actually built. It stops at the first block that can vary,
+// because that is exactly where a prefix match stops.
+export function stablePrefix(parts = []) {
+  let chars = 0;
+  for (let i = 0; i < parts.length; i += 1) {
+    if (!STABLE.includes(parts[i]?.id)) break;
+    chars += String(parts[i].text ?? '').length + (i > 0 ? 1 : 0);
+  }
+  return chars;
+}
+
 // One turn, measured. `parts` is what promptParts gave, `usage` is what the CLI said it spent.
 export function turnCost(parts = [], usage = null) {
   const blocks = {};
@@ -33,7 +51,7 @@ export function turnCost(parts = [], usage = null) {
   // most of the prompt came back from its cache.
   const perToken = input > 0 ? Number((chars / input).toFixed(2)) : null;
   return {
-    chars, fixed, carried: chars - fixed, blocks,
+    chars, fixed, carried: chars - fixed, blocks, prefix: stablePrefix(parts),
     input, cached, created, output,
     cacheShare: input + cached > 0 ? Number((cached / (input + cached)).toFixed(3)) : null,
     charsPerInputToken: perToken,
@@ -52,7 +70,7 @@ export function economy(events = []) {
 
   const blocks = new Map();
   const agents = new Map();
-  const totals = { chars: 0, fixed: 0, carried: 0, input: 0, cached: 0, created: 0, output: 0 };
+  const totals = { chars: 0, fixed: 0, carried: 0, prefix: 0, input: 0, cached: 0, created: 0, output: 0 };
   for (const turn of turns) {
     for (const key of Object.keys(totals)) totals[key] += Number(turn[key] ?? 0) || 0;
     for (const [id, size] of Object.entries(turn.blocks ?? {})) {
@@ -83,6 +101,7 @@ export function economy(events = []) {
     totals: {
       ...totals,
       fixedShare: totals.chars ? Number((totals.fixed / totals.chars).toFixed(4)) : null,
+      prefixShare: totals.chars ? Number((totals.prefix / totals.chars).toFixed(4)) : null,
       cacheShare: totals.input + totals.cached > 0 ? Number((totals.cached / (totals.input + totals.cached)).toFixed(3)) : null,
       charsPerInputToken: totals.input > 0 ? Number((totals.chars / totals.input).toFixed(2)) : null,
     },

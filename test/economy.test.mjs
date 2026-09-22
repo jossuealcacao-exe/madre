@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { turnCost, economy, ALWAYS } from '../src/room/economy.mjs';
+import { turnCost, economy, ALWAYS, STABLE } from '../src/room/economy.mjs';
 import { PROMPT_BLOCKS } from '../src/room/prompt.mjs';
 
 const parts = (sizes) => Object.entries(sizes).map(([id, n]) => ({ id, text: 'x'.repeat(n) }));
@@ -35,6 +35,14 @@ test('economy: a turn is weighed by what it was made of, against what it was cha
   // Nothing empty and nothing unnamed reaches the reading.
   const noisy = turnCost([{ id: 'room', text: 'abc' }, { id: 'mode', text: '' }, { text: 'orphan' }, null]);
   assert.deepEqual(noisy.blocks, { room: 3 });
+});
+
+test('economy: the stable head is made only of blocks that exist and never vary', () => {
+  for (const id of STABLE) assert.ok(PROMPT_BLOCKS.includes(id), `${id} is held to be stable but is not a block`);
+  // What is stable and what is charged to every turn are different questions. The mode is paid
+  // by every turn and changes between them; @madre never changes and is not paid by all.
+  assert.ok(ALWAYS.has('mode') && !STABLE.includes('mode'), 'the mode is being treated as unchanging');
+  assert.ok(STABLE.includes('madre') && !ALWAYS.has('madre'), 'the room is charging every turn for a block it does not always send');
 });
 
 test('economy: every block a prompt can carry is one the reading knows', () => {
@@ -72,6 +80,10 @@ test('economy: many turns read together say where a room spends', () => {
   assert.equal(read.totals.input, 3500);
   assert.equal(read.totals.output, 1250);
   assert.ok(read.totals.fixedShare < 0.05, 'the fixed briefing is being counted as most of the room');
+  // And how much of what the room sent could have come back from a cache, which is the number
+  // that says whether keeping the head of the prompt still was worth anything.
+  assert.equal(typeof read.totals.prefixShare, 'number');
+  assert.ok(read.totals.prefix > 0, 'no part of any turn was cacheable');
   assert.equal(economy([]).turns, 0);
   assert.deepEqual(economy([]).blocks, []);
 });

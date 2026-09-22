@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildPrompt, promptParts, PROMPT_BLOCKS } from '../src/room/prompt.mjs';
+import { buildPrompt, promptParts, PROMPT_BLOCKS, wantsModule } from '../src/room/prompt.mjs';
 
 // Seven shapes of turn, frozen as they were before any of this was measured or moved. Every
 // change to the economy of a prompt has to prove it changed nothing an agent reads, so these are
@@ -66,9 +66,20 @@ test('prompt: the blocks a turn cannot use are not built for it', () => {
     assert.ok(!bare.includes(absent), `a bare turn is still carrying the ${absent} block`);
   }
   const loaded = promptParts(given.loaded).map((part) => part.id);
-  for (const present of ['lease', 'delegation', 'abilities', 'memory-server', 'sdk', 'memories', 'recall', 'context', 'ask']) {
+  for (const present of ['lease', 'delegation', 'abilities', 'memory-server', 'memories', 'recall', 'context', 'ask']) {
     assert.ok(loaded.includes(present), `a loaded turn is missing the ${present} block`);
   }
+  // How to write a module is long, and only ever of use when someone is asking for one. A turn
+  // about anything else does not carry it, however much else it is allowed to do.
+  assert.ok(!loaded.includes('sdk'), 'a turn that was not about a module carried the SDK guide');
+  for (const asking of ['hazme un modulo para esto', 'write a MADRE module', 'quiero un slash command', 'read the SDK first', 'a plugin that reads jira']) {
+    assert.ok(wantsModule(asking), `"${asking}" was not read as asking for a module`);
+    assert.ok(promptParts({ ...given.loaded, text: asking }).some((part) => part.id === 'sdk'), `"${asking}" did not get the SDK guide`);
+  }
+  for (const not of ['revisa el router', 'arregla el bug del puerto', 'modulo'.slice(0, 3), 'summarise the thread']) {
+    assert.ok(!wantsModule(not) || promptParts({ ...given.loaded, text: not }).some((part) => part.id === 'sdk'));
+  }
+  assert.ok(!wantsModule('revisa el router y el modal de settings'), 'a modal was read as a module');
   // Every turn says who is asking, whatever else it carries.
   for (const name of Object.keys(given)) {
     assert.ok(promptParts(given[name]).some((part) => part.id === 'ask'), `the ${name} turn never asks anything`);
@@ -86,4 +97,43 @@ test('prompt: the fixture is rebuilt by a script that runs anywhere, and never f
   const script = await readFile(join(import.meta.dirname, '..', 'scripts', 'build-prompt-golden.mjs'), 'utf8');
   assert.ok(!/\/Users\/|\/home\/|[A-Z]:\\\\/.test(script), 'the fixture builder only runs on one machine');
   assert.match(script, /import\.meta\.url/, 'the fixture builder does not resolve its own paths');
+});
+
+test('prompt: what never changes is read first, so a cache has the longest run to match', async () => {
+  const { STABLE, stablePrefix } = await import('../src/room/economy.mjs');
+
+  // The head of every prompt is the part that reads the same on every turn of this agent in this
+  // room. One differing byte early throws away everything after it, so anything that can vary
+  // belongs behind them however short it is.
+  assert.deepEqual(PROMPT_BLOCKS.slice(0, STABLE.length), STABLE, 'something that varies has moved into the stable head');
+  for (const varying of ['mode', 'inspect', 'ash', 'mother', 'lease', 'context', 'ask']) {
+    assert.ok(!STABLE.includes(varying), `${varying} changes between turns and cannot be part of the stable head`);
+  }
+
+  // Two turns of the same agent in the same room, as different as the room allows: same agent,
+  // different question, different mode, one with a lease and one without.
+  const agent = { id: 'codex' };
+  const others = [{ id: 'claude' }, { id: 'madre' }];
+  const base = { agent, requester: 'you', depth: 0, allowDelegation: true, context: { messages: [], omittedMessages: 0 }, others, memoryServer: { name: 'p' }, madreModel: 'm', maxPlanSteps: 4, scopesFor: () => ({}) };
+  const one = promptParts({ ...base, text: 'una pregunta', mode: 1 });
+  const two = promptParts({ ...base, text: 'otra distinta y mas larga', mode: 2, lease: { outDir: '.pulse/out', scopes: {}, create: true } });
+
+  let shared = 0;
+  for (let i = 0; i < Math.min(one.length, two.length); i += 1) {
+    if (one[i].id !== two[i].id || one[i].text !== two[i].text) break;
+    shared += one[i].text.length + (i > 0 ? 1 : 0);
+  }
+  assert.ok(shared > 1500, `only ${shared} characters are shared between two turns, so almost nothing can be cached`);
+  // And what the room reports as cacheable is what is actually shared, not a hopeful guess.
+  assert.equal(stablePrefix(one), shared);
+  assert.equal(stablePrefix(two), shared);
+
+  // A different agent shares less, because it is told who it is: its own cache, its own prefix.
+  const elsewhere = promptParts({ ...base, agent: { id: 'claude' }, text: 'una pregunta', mode: 1 });
+  assert.notEqual(elsewhere[1].text, one[1].text, 'two agents are being told they are the same one');
+
+  // The head stops at the first block that can vary, wherever that falls.
+  assert.equal(stablePrefix([{ id: 'room', text: 'abc' }, { id: 'mode', text: 'xyz' }, { id: 'who', text: 'ignored' }]), 3);
+  assert.equal(stablePrefix([{ id: 'mode', text: 'abc' }]), 0);
+  assert.equal(stablePrefix([]), 0);
 });

@@ -6,6 +6,14 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Ahorro de tokens medido, no supuesto
+- MADRE razonaba el costo en caracteres, y una cadena más corta no son menos tokens. Las CLIs llevaban todo este tiempo reportando lo que de verdad gastan, lecturas de caché incluidas, así que la sala dejó de adivinar. Cada turno fuera de GHOST registra de qué estuvo hecho contra lo que se cobró: el tamaño de cada bloque, lo fijo que se paga siempre, lo que la forma de ese turno cargó, y los tokens de entrada, de caché y de salida. Las palabras nunca se escriben, solo cuántas fueron.
+- El prompt se arma con bloques con nombre. Al introducirlos no se movió un solo byte: siete formas de turno quedaron congeladas como fixture y se comparan exactas, porque cualquier cambio a la economía de un prompt tiene que probar que no cambió nada de lo que el agente lee.
+- Lo que nunca cambia va primero. El encabezado de cada prompt es ahora la parte que se lee igual en cada turno de ese agente en esa sala, y todo lo que puede variar quedó detrás, por corto que sea: un byte distinto temprano tira a la basura todo lo que venga después. Entre un turno `#1` y uno `#2` del mismo agente ahora hay 1,690 caracteres idénticos al principio contra unos 120 de antes, que es lo que la CLI puede recuperar de su propio caché en vez de que se lo vuelvan a cobrar.
+- El bloque que explica cómo escribir un módulo dejó de viajar en todo turno con permiso de escritura. Es largo y solo sirve cuando alguien está pidiendo un módulo, así que ahora se manda cuando el mensaje lo menciona, en español o en inglés. Un turno `#2` que no era sobre módulos bajó 11%.
+- `GET /api/economy` lee todos los turnos juntos: qué bloque cuesta más, qué gasta cada agente, cuánto volvió de caché, cuánto del prompt era recuperable, y cuántos caracteres manda la sala por cada token que le cobran.
+
+
 ### El compositor y la barra, más tranquilos
 - Arrobar a un agente ya no lo mete en una píldora. Una mención es una palabra de la frase que estás escribiendo, no un campo por llenar: conserva el color del agente y pierde la caja, que rompía el ritmo al releer la línea.
 - Lo que estás respondiendo vive dentro de la caja de texto, en su propio renglón arriba de la línea donde escribes, en un badge tenue: dos puntos más chico que lo que tecleas, recortado a dos líneas y a ciento veinte caracteres. Salió del textarea, donde todo comparte un solo tamaño y solo podía parecer algo que tú habías escrito.
