@@ -1517,6 +1517,35 @@ function workingPhrases(agent, prompt = '') {
   return [voice.early, middle, voice.late, voice.long];
 }
 
+// What a turn is reading, while it reads it. The prompt is already built by the time this
+// arrives, so the size is exact; the tokens are that size at the rate this room's own turns have
+// shown, which is why a room that has never been billed shows characters and no tokens at all.
+function showReading(event) {
+  const { messageId, chars, tokens } = event.payload ?? {};
+  const meter = document.querySelector(`#working-${messageId} .tokens`);
+  if (!meter) return;
+  meter.textContent = tokens ? `~${tokens.toLocaleString()} tok in` : `${chars.toLocaleString()} ch in`;
+  meter.title = tokens
+    ? `${chars.toLocaleString()} characters of briefing and transcript, about ${tokens.toLocaleString()} tokens at this room's measured rate. The exact figure arrives when the agent answers.`
+    : `${chars.toLocaleString()} characters. This room has not been billed yet, so there is no rate to convert them at.`;
+}
+
+// The bill arrived: the estimate is replaced by what was actually charged, and stays on the
+// exchange so the guess can be checked against the truth.
+function settleReading(event) {
+  const cost = event.payload ?? {};
+  if (!cost.responseMessageId) return;
+  // The working row is gone by now; the figure belongs on the reply it paid for, where it can be
+  // read back later against what the room guessed it would cost.
+  const who = document.querySelector(`#msg-${cost.responseMessageId} .who`);
+  if (!who) return;
+  const badge = who.querySelector('.spent') ?? el('span', 'badge spent');
+  const cached = cost.cached ? ` · ${cost.cached.toLocaleString()} cached` : '';
+  badge.textContent = `${cost.input.toLocaleString()} in · ${cost.output.toLocaleString()} out${cached}`;
+  badge.title = `Charged by this agent's own CLI: ${cost.input.toLocaleString()} input tokens${cost.cached ? `, and ${cost.cached.toLocaleString()} more it read back from its own cache instead of being charged again` : ''}, ${cost.output.toLocaleString()} output.`;
+  if (!badge.isConnected) who.append(badge);
+}
+
 function renderThinking(event) {
   const { messageId, agent } = event.payload;
   const node = row('thinking', agent);
@@ -1524,8 +1553,9 @@ function renderThinking(event) {
   const bubble = el('div', 'bubble');
   bubble.append(el('i'), el('i'), el('i'));
   const status = el('span', 'status');
+  const tokens = el('span', 'tokens');
   const elapsed = el('span', 'elapsed');
-  bubble.append(status, elapsed);
+  bubble.append(status, tokens, elapsed);
   node.append(bubble);
   const startedAt = event.timestamp ? new Date(event.timestamp).getTime() : Date.now();
   const phrases = workingPhrases(agent, state.userMessages.get(messageId)?.text ?? '');
@@ -2156,6 +2186,8 @@ function renderEventNode(event) {
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
       break;
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
+    case 'turn.reading': showReading(event); return;
+    case 'turn.cost': settleReading(event); return;
     case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;

@@ -269,6 +269,9 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 @keyframes status-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @keyframes cursor-blink { 50% { opacity: 0; } }
 .row.thinking .elapsed { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; }
+/* What a turn is reading, while it reads it, and what it was charged once it is done. */
+.row.thinking .tokens { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; opacity: .75; }
+.who .badge.spent { font-family: var(--mono); letter-spacing: .06em; opacity: .7; }
 .row.thinking .elapsed.late { color: var(--warn); }
 .row.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--agent, var(--text-2)); animation: bounce 1.2s infinite; opacity: .5; }
 .row.thinking i:nth-child(2) { animation-delay: .18s; } .row.thinking i:nth-child(3) { animation-delay: .36s; }

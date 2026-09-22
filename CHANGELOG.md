@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### El turno dice lo que está gastando mientras lo gasta
+- Mientras un agente trabaja, la fila de "pensando" muestra lo que ese turno está leyendo. El tamaño es exacto, porque el prompt ya está armado cuando se anuncia; lo único estimado es la conversión a tokens, y se hace al ritmo que los turnos de esta misma sala han mostrado. Una sala a la que nunca le han cobrado no inventa un ritmo: muestra caracteres y dice que todavía no tiene con qué convertirlos.
+- Cada cuenta le enseña a la sala lo que cuestan sus propias palabras, así que el ritmo se ajusta solo, con las últimas veinte cuentas y no con la historia entera: una sala que cambió de modelo no debería seguir cotizándose por lo que era antes.
+- Cuando el agente responde, la estimación se reemplaza por lo que su CLI cobró de verdad, y esa cifra se queda en la respuesta: tokens de entrada, de salida, y cuántos leyó de su propio caché en vez de que se los volvieran a cobrar. Así se puede comparar lo que la sala calculó contra lo que pasó.
+- La lectura en vivo no se escribe en el registro. Es un medidor, no un hecho de la sala: guardarlo gastaría un número de secuencia en algo que nadie va a recordar y correría de lugar todo lo dicho después. Va a quien esté mirando y a ningún otro lado.
+
 ### Ash: el compresor se retira y queda la economía
 - AshCode reescribía tu mensaje antes de mandarlo. Se retiró: alteraba lo único que nadie le pidió tocar, perdía información, y medido contra un turno real ahorraba una quinta parte de un uno por ciento. Ya no existe. Nada de lo que escribes se altera, ni lo que responde un agente, así que tampoco hay un "original" guardado al lado de una abreviación.
 - Ash es ahora el nombre de la economía de tokens de la sala. Casi toda está siempre encendida y no se nota, porque nada de eso pierde información. Lo único que queda por decidir es lo que cambia cómo responde un agente, no lo que se le pide: si pedirle prosa compacta. La salida es la mitad cara de una cuenta, así que ese es el interruptor que vale la pena tener, y es tuyo.

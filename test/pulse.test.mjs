@@ -912,7 +912,7 @@ test('shutdown interrupts in-flight turns and records them as failed', async () 
     await room.shutdown();
     await turn;
     const events = await store.readAll();
-    assert.deepEqual(events.map((event) => event.type), ['message.created', 'agent.started', 'message.failed']);
+    assert.deepEqual(events.map((event) => event.type).filter((type) => !type.startsWith('turn.')), ['message.created', 'agent.started', 'message.failed']);
     assert.match(events.at(-1).payload.error, /interrupted: MADRE is shutting down/);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -1300,7 +1300,7 @@ test('an orchestrating agent puts the others to work in order, then closes; dele
 
     const events = await store.readAll();
     const types = events.map((event) => `${event.type}${event.payload.status ? `:${event.payload.status}` : ''}${event.payload.sender ? `:${event.payload.sender}→${event.payload.target}` : event.payload.agent ? `:${event.payload.agent}` : ''}`);
-    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('turn.cost') && !type.startsWith('handoff.') && !type.startsWith('room.alert')), [
+    assert.deepEqual(types.filter((type) => !type.startsWith('usage.') && !type.startsWith('turn.') && !type.startsWith('handoff.') && !type.startsWith('room.alert')), [
       'message.created:sent:you→claude',
       'agent.started:claude',
       'message.created:completed:claude→you',

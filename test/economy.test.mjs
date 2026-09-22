@@ -127,3 +127,65 @@ test('economy: what was saved is what was not charged, and it is measured rather
   // And with no lease there was never a guide to withhold in the first place.
   assert.equal(sparedChars({ ...options, lease: null }), 0);
 });
+
+test('economy: the room learns what its own words cost, and says nothing until it has been billed', async () => {
+  const { observedRate, RATE_WINDOW } = await import('../src/room/economy.mjs');
+  const turn = (chars, input) => ({ type: 'turn.cost', payload: { chars, input } });
+
+  // A room that has never been charged has no rate, and inventing one would be worse than
+  // saying so: every model counts differently and every room writes differently.
+  assert.equal(observedRate([]), null);
+  assert.equal(observedRate([{ type: 'message.created', payload: {} }]), null);
+  assert.equal(observedRate([turn(4000, 0)]), null, 'a turn nobody charged for taught the room a rate');
+
+  // With bills, it is plain arithmetic over this room's own turns.
+  assert.equal(observedRate([turn(4000, 1000), turn(2000, 500)]), 4);
+  // Only the recent ones: a room that changed models should not be priced by what it used to be.
+  const old = Array.from({ length: RATE_WINDOW }, () => turn(8000, 1000));
+  const now = Array.from({ length: RATE_WINDOW }, () => turn(3000, 1000));
+  assert.equal(observedRate([...old, ...now]), 3, 'the rate is still being set by turns long past');
+});
+
+test('economy: a turn says what it is reading while it reads it, and is never written down for it', async () => {
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { EventStore } = await import('../src/event-store.mjs');
+  const { Room } = await import('../src/room.mjs');
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-reading-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+    const room = new Room({ store, agents, projectRoot: root, invokers: { 'codex-readonly': async () => ({ text: 'Listo.', usage: { inputTokens: 400, outputTokens: 50, totalTokens: 450 } }) } });
+    const live = [];
+    room.subscribeLive((event) => live.push(event));
+
+    await room.send({ text: 'revisa el router', target: 'codex' });
+
+    const reading = live.find((event) => event.type === 'turn.reading');
+    assert.ok(reading, 'the room never said what it was about to read');
+    assert.equal(reading.payload.agent, 'codex');
+    assert.ok(reading.payload.chars > 500, 'the reading reports no size');
+    // The first turn of a room has nothing to convert by, and says so rather than guessing.
+    assert.equal(reading.payload.tokens, null);
+    assert.equal(reading.payload.rate, null);
+
+    // It is a reading, not a fact: nothing about it reaches the ledger, and it spends no
+    // sequence number, so everything said after it keeps the place it would have had.
+    const written = await store.readAll();
+    assert.ok(!written.some((event) => event.type === 'turn.reading'), 'a live reading was written to the ledger');
+    assert.equal(reading.sequence, null);
+    assert.equal(reading.live, true);
+    const sequences = written.filter((event) => Number.isInteger(event.sequence)).map((event) => event.sequence);
+    assert.deepEqual(sequences, sequences.map((_, i) => i + 1), 'the ledger skipped a sequence');
+
+    // Once billed, the room knows its own rate and the next turn can say what it will cost.
+    await room.send({ text: 'y ahora el resto', target: 'codex' });
+    const second = live.filter((event) => event.type === 'turn.reading').at(-1);
+    assert.ok(second.payload.rate > 0, 'the room did not learn from its own bill');
+    assert.equal(second.payload.tokens, Math.round(second.payload.chars / second.payload.rate));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

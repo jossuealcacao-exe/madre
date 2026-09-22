@@ -31,6 +31,24 @@ export function stablePrefix(parts = []) {
   return chars;
 }
 
+// How many characters this room has been sending per token it was charged for reading. Every
+// model counts differently and every room writes differently, so a number borrowed from anywhere
+// else would be a guess. This one is the room's own arithmetic, and until it has turns to divide
+// there is no answer to give.
+export const RATE_WINDOW = 20;
+export function observedRate(events = []) {
+  let chars = 0;
+  let input = 0;
+  const recent = [];
+  for (const event of events) if (event?.type === 'turn.cost' && event.payload) recent.push(event.payload);
+  for (const turn of recent.slice(-RATE_WINDOW)) {
+    if (!(Number(turn.input) > 0)) continue;
+    chars += Number(turn.chars) || 0;
+    input += Number(turn.input) || 0;
+  }
+  return input > 0 ? chars / input : null;
+}
+
 // One turn, measured. `parts` is what promptParts gave, `usage` is what the CLI said it spent.
 export function turnCost(parts = [], usage = null) {
   const blocks = {};

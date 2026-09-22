@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { UsageSentinel } from './usage-sentinel.mjs';
 import { buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
-import { turnCost } from './room/economy.mjs';
+import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
@@ -71,6 +71,7 @@ export class Room {
   #vectors;                // room/vectors: embeddings filled in the background
   #escalation;             // room/escalation: plan steps waiting for the human
   #ghost = new GhostLedger();
+  #liveListeners = new Set();
   #memoryServer;           // MCP descriptor handed to every turn so the agent can query the memory itself
   #mother = null;          // MotherChannel: her coded words to the crew
   #shuttingDown = false;
@@ -135,6 +136,8 @@ export class Room {
     this.#controlDesk = new ControlDesk({ projectRoot });
     this.#budget = new Budget({ softBudget: softTokenBudget });
     this.#budget.seed(historicalEvents, this.#sentinel);
+    // What this room has been charged per character, from its own past turns.
+    this.#rate = observedRate(historicalEvents);
     this.#vectors = new VectorWorker({ memory, stopped: () => this.#shuttingDown });
     this.#archivist = new Archivist({
       memory,
@@ -220,6 +223,23 @@ export class Room {
   decideMode(requestId, decision) { return this.#escalation.decide(requestId, decision); }
 
   subscribeGhost(listener) { return this.#ghost.subscribe(listener); }
+
+  // A live meter is not a fact about the room: it says what a turn is reading while it reads it,
+  // and a second later the bill says what it really cost. Writing it to the ledger would spend a
+  // sequence number on something nothing will ever recall, and shift everything said after it.
+  // It goes out to whoever is watching and nowhere else.
+  #say(type, payload) {
+    const event = { id: `live-${randomUUID()}`, sequence: null, live: true, timestamp: new Date().toISOString(), type, payload };
+    for (const listener of this.#liveListeners) listener(event);
+    return event;
+  }
+
+  // Whoever is watching the room right now. Separate from the ghost channel, which carries turns
+  // that happened off the record: these never happened at all, they are only being reported.
+  subscribeLive(listener) {
+    this.#liveListeners.add(listener);
+    return () => this.#liveListeners.delete(listener);
+  }
   async #emit(type, payload) {
     if (this.#ghost.isGhost(type, payload)) return this.#ghost.emit(type, payload);
     const event = await this.#store.append(type, payload);
@@ -240,6 +260,9 @@ export class Room {
   // that starts one message later every time is a window a CLI can never match against what it
   // read last turn, and the transcript is most of what a loaded turn costs.
   #contextAnchor = null;
+
+  // Characters per input token, as this room's own turns have shown. Null until it has one.
+  #rate = null;
 
   async #contextFor(priorEvents, { messageId, text, omitSynthetic = false }) {
     const built = await contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic, anchor: this.#contextAnchor });
@@ -302,6 +325,15 @@ export class Room {
       await this.#track(this.#dispatch({ messageId: randomUUID(), targetId: id, text: alert.text, requester: 'mother', depth: 1, allowDelegation: false, mode: 1 })).catch((error) => console.error(`MADRE: @${id} did not hear MOTHER: ${error.message}`));
     }
     return { ...alert, crew };
+  }
+
+  // What the room is about to hand this turn, measured rather than guessed. The prompt is
+  // already built when the turn is announced, so its size is known exactly; only the conversion
+  // to tokens is an estimate, and it is made at the rate this room's own turns have shown. Until
+  // the room has been billed once there is no rate, and it says so rather than inventing one.
+  #reading(parts) {
+    const chars = parts.reduce((sum, part) => sum + part.text.length, 0);
+    return { chars, rate: this.#rate ? Number(this.#rate.toFixed(2)) : null, tokens: this.#rate ? Math.round(chars / this.#rate) : null };
   }
 
   // Who is free to answer a question that is not a turn: the same pool the archivist draws on,
@@ -436,7 +468,11 @@ export class Room {
     // A ghost turn is off the record in every sense, this one included.
     if (mode === 0) return;
     try {
-      await this.#emit('turn.cost', { agent, mode, responseMessageId, spared: shape.spared, ...turnCost(shape.parts, usage) });
+      const cost = turnCost(shape.parts, usage);
+      // Each bill teaches the room what its own words cost, so the next turn can say what it is
+      // about to spend before it spends it.
+      if (cost.charsPerInputToken) this.#rate = this.#rate ? this.#rate * 0.7 + cost.charsPerInputToken * 0.3 : cost.charsPerInputToken;
+      await this.#emit('turn.cost', { agent, mode, responseMessageId, spared: shape.spared, ...cost });
     } catch (error) {
       console.error(`MADRE could not weigh a turn: ${error.message}`);
     }
@@ -903,6 +939,9 @@ export class Room {
       // says what it cost, so the bill can be attributed to the blocks that caused it.
       const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared });
+      // What this turn is about to read, said while it is still reading it. The size is exact;
+      // only the conversion to tokens is an estimate, and it is made at this room's own rate.
+      this.#say('turn.reading', { messageId, agent: agent.id, ...this.#reading(shaped.parts) });
       const result = await invoke({
         executable: agent.path,
         projectRoot: this.#projectRoot,

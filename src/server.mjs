@@ -578,6 +578,9 @@ export async function createPulseServer({
   const unsubscribeEyecat = room.subscribe((event) => { void eyecat.observe(event).catch(() => null); });
 
   const unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
+  // Live readings go straight to whoever is watching and are never stored, so a page that opens
+  // later simply never sees them: there is nothing to catch up on.
+  const unsubscribeLive = room.subscribeLive((event) => { for (const client of clients.keys()) writeEvent(client, event); });
   const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
   poller.unref();
 
@@ -1204,6 +1207,7 @@ export async function createPulseServer({
         unsubscribe();
         unsubscribeSentinel();
         unsubscribeEyecat();
+        unsubscribeLive();
     unsubscribeGhost();
         for (const client of clients.keys()) client.end();
         clients.clear();
