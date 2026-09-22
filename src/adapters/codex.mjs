@@ -73,8 +73,9 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [] }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
+    onProgress: onProgress ? (out) => onProgress({ chars: parseCodexOutput(out).text.length }) : null,
     executable,
     args: buildCodexArgs({ projectRoot, prompt, model, attachments, lease, scopes, memoryServer, mcpServers }),
     cwd: lease ? lease.outDir : projectRoot,

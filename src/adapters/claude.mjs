@@ -101,8 +101,9 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
+    onProgress: onProgress ? (out) => onProgress({ chars: (() => { try { return String(JSON.parse(out)?.result ?? '').length; } catch { return 0; } })() }) : null,
     executable,
     args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer, mcpServers }),
     cwd: projectRoot,

@@ -41,6 +41,10 @@ export function runReadonlyProcess({
   label,
   parse,
   signal,
+  // Called as output arrives, with everything received so far. The adapter decides what that
+  // means: a CLI that streams its answer can be read as it writes, one that hands over a single
+  // blob at the end will simply say nothing until then, and saying nothing is the honest answer.
+  onProgress = null,
 }) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -103,7 +107,14 @@ export function runReadonlyProcess({
     // Only complete stdout lines count as activity: a CLI's stderr spinner or
     // progress noise must not keep a silent model alive past the idle limit.
     // Blank keep-alive lines are not activity either.
-    child.stdout.on('data', (chunk) => { stdout += chunk; if (/\S/.test(String(chunk)) && String(chunk).includes('\n')) lastActivity = Date.now(); });
+    let toldAt = 0;
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+      if (/\S/.test(String(chunk)) && String(chunk).includes('\n')) lastActivity = Date.now();
+      // Throttled: a chatty CLI can produce hundreds of chunks a second and nobody needs to see
+      // a number move that fast.
+      if (onProgress && Date.now() - toldAt > 400) { toldAt = Date.now(); try { onProgress(stdout); } catch { /* a meter must never break a turn */ } }
+    });
     child.stderr.on('data', (chunk) => {
       stderr += chunk;
       if (!watchStderr || settled) return;

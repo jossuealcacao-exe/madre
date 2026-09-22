@@ -941,8 +941,19 @@ export class Room {
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared });
       // What this turn is about to read, said while it is still reading it. The size is exact;
       // only the conversion to tokens is an estimate, and it is made at this room's own rate.
-      this.#say('turn.reading', { messageId, agent: agent.id, ...this.#reading(shaped.parts) });
+      const reading = this.#reading(shaped.parts);
+      this.#say('turn.reading', { messageId, agent: agent.id, ...reading });
+      // And again as the answer arrives. What is counted is the answer itself, not the protocol
+      // around it, so a CLI that hands over one blob at the end honestly reports nothing until
+      // then rather than a number that means the shape of its own output format.
+      let told = 0;
+      const onProgress = ({ chars }) => {
+        if (!Number.isFinite(chars) || chars <= told) return;
+        told = chars;
+        this.#say('turn.reading', { messageId, agent: agent.id, ...reading, out: chars, outTokens: this.#rate ? Math.round(chars / this.#rate) : null });
+      };
       const result = await invoke({
+        onProgress,
         executable: agent.path,
         projectRoot: this.#projectRoot,
         text,

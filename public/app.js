@@ -1521,12 +1521,16 @@ function workingPhrases(agent, prompt = '') {
 // arrives, so the size is exact; the tokens are that size at the rate this room's own turns have
 // shown, which is why a room that has never been billed shows characters and no tokens at all.
 function showReading(event) {
-  const { messageId, chars, tokens } = event.payload ?? {};
+  const { messageId, chars, tokens, out, outTokens } = event.payload ?? {};
   const meter = document.querySelector(`#working-${messageId} .tokens`);
   if (!meter) return;
-  meter.textContent = tokens ? `~${tokens.toLocaleString()} tok in` : `${chars.toLocaleString()} ch in`;
+  const read = tokens ? `${tokens.toLocaleString()} in` : `${chars.toLocaleString()} ch in`;
+  // The answer as it is written. A CLI that says nothing until it is done shows nothing here,
+  // which is the truth rather than a number invented to keep something moving.
+  const wrote = out ? ` · ${(outTokens ?? 0).toLocaleString() || `${out.toLocaleString()} ch`} out` : '';
+  meter.textContent = `~${read}${wrote}`;
   meter.title = tokens
-    ? `${chars.toLocaleString()} characters of briefing and transcript, about ${tokens.toLocaleString()} tokens at this room's measured rate. The exact figure arrives when the agent answers.`
+    ? `${chars.toLocaleString()} characters of briefing and transcript, about ${tokens.toLocaleString()} tokens at this room's measured rate${out ? `, and ${out.toLocaleString()} characters written back so far` : ''}. The exact figure arrives when the agent answers.`
     : `${chars.toLocaleString()} characters. This room has not been billed yet, so there is no rate to convert them at.`;
 }
 
@@ -1539,10 +1543,13 @@ function settleReading(event) {
   // read back later against what the room guessed it would cost.
   const who = document.querySelector(`#msg-${cost.responseMessageId} .who`);
   if (!who) return;
-  const badge = who.querySelector('.spent') ?? el('span', 'badge spent');
-  const cached = cost.cached ? ` · ${cost.cached.toLocaleString()} cached` : '';
-  badge.textContent = `${cost.input.toLocaleString()} in · ${cost.output.toLocaleString()} out${cached}`;
-  badge.title = `Charged by this agent's own CLI: ${cost.input.toLocaleString()} input tokens${cost.cached ? `, and ${cost.cached.toLocaleString()} more it read back from its own cache instead of being charged again` : ''}, ${cost.output.toLocaleString()} output.`;
+  const badge = who.querySelector('.spent') ?? el('span', 'spent');
+  // Short enough to sit on the same line as everything else above the bubble. What was read back
+  // from the cache is money not spent, so it is the part worth naming.
+  const brief = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+  const saved = cost.cached ? ` · ${brief(cost.cached)} saved` : '';
+  badge.textContent = `${brief(cost.input)}↓ ${brief(cost.output)}↑${saved}`;
+  badge.title = `Charged by this agent's own CLI: ${cost.input.toLocaleString()} input tokens, ${cost.output.toLocaleString()} output${cost.cached ? `. Another ${cost.cached.toLocaleString()} were read back from its own cache instead of being charged again` : ''}.`;
   if (!badge.isConnected) who.append(badge);
 }
 

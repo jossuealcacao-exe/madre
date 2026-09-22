@@ -189,3 +189,22 @@ test('economy: a turn says what it is reading while it reads it, and is never wr
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('economy: the answer is counted as it is written, and a silent CLI reports nothing', async () => {
+  const { parseCodexOutput } = await import('../src/adapters/codex.mjs');
+
+  // Codex says what it is writing as it writes it, in events. What must be counted is the answer
+  // itself: counting raw output would be counting the shape of its own protocol.
+  const partial = [
+    '{"type":"item.started","item":{"type":"agent_message"}}',
+    '{"type":"item.completed","item":{"type":"agent_message","text":"El router monta /api primero."}}',
+  ].join('\n');
+  assert.equal(parseCodexOutput(partial).text.length, 'El router monta /api primero.'.length);
+  assert.equal(parseCodexOutput(partial).usage, null, 'a half-finished turn reported a bill');
+  // The protocol around it is many times the answer, which is why it is not what gets counted.
+  assert.ok(partial.length > parseCodexOutput(partial).text.length * 2);
+
+  // Half a line of JSON does not break the count; it is simply not counted yet.
+  assert.equal(parseCodexOutput(`${partial}\n{"type":"item.comp`).text.length, 'El router monta /api primero.'.length);
+  assert.equal(parseCodexOutput('').text, '');
+});

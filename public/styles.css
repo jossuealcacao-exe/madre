@@ -215,7 +215,9 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .row.compact .avatar { visibility: hidden; }
 .row.user { grid-template-columns: 1fr; align-self: flex-end; justify-items: end; }
 .row .col { display: grid; gap: 6px; min-width: 0; }
-.who { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--agent, var(--text-2)); margin: 0 0 2px 12px; display: flex; gap: 10px; align-items: baseline; }
+.who { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--agent, var(--text-2)); margin: 0 0 2px 12px; display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+/* The quoted line gives way first: the cost and who spoke are short and must not be pushed out. */
+.who .reply { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .user .who { color: var(--text-3); margin: 0 12px 2px 0; justify-content: flex-end; }
 .user .who b { color: var(--phosphor); font-weight: 600; }
 .user.expendable .who b { color: var(--crit); }
@@ -271,7 +273,8 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .row.thinking .elapsed { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; }
 /* What a turn is reading, while it reads it, and what it was charged once it is done. */
 .row.thinking .tokens { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; opacity: .75; }
-.who .badge.spent { font-family: var(--mono); letter-spacing: .06em; opacity: .7; }
+/* What a reply cost, on the same line as everything else above the bubble: no pill, no wrap. */
+.who .spent { flex: none; margin-left: auto; padding: 0; border: 0; background: none; font-family: var(--mono); font-size: 10px; letter-spacing: .04em; color: var(--text-3); white-space: nowrap; }
 .row.thinking .elapsed.late { color: var(--warn); }
 .row.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--agent, var(--text-2)); animation: bounce 1.2s infinite; opacity: .5; }
 .row.thinking i:nth-child(2) { animation-delay: .18s; } .row.thinking i:nth-child(3) { animation-delay: .36s; }
