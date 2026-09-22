@@ -144,7 +144,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('CORE_FLOWS')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
-    ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')}
+    ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawNostromo')}
     nostromo.canvas = { getContext: () => ctx };
     return (t) => drawNostromo(t);
@@ -483,4 +483,174 @@ test('nostromo: a memory reads as a moon beside the core, never as a rival to it
   // Two memories at rest are pushed apart by their radii plus a fixed gap: shrinking them must
   // open the field up, not let them pile on top of each other.
   assert.ok(smallest * 2 + 30 > largest, 'memories would overlap at rest');
+});
+
+test('nostromo: memories burn as star classes, and the four are told apart at a glance', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const line = source.match(/const MEMORY_COLORS = (\{[^}]*\});/);
+  assert.ok(line, 'MEMORY_COLORS is gone from public/app.js');
+  const palette = new Function(`return ${line[1]}`)();
+  assert.deepEqual(Object.keys(palette).sort(), ['decision', 'fact', 'preference', 'question']);
+
+  const rgb = (hex) => [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
+  const named = Object.fromEntries(Object.entries(palette).map(([kind, hex]) => [kind, rgb(hex)]));
+
+  // A white dwarf is white: all three channels near the top and close together. A red dwarf
+  // leans red, a blue one blue, a yellow one red and green together with little blue.
+  const [wr, wg, wb] = named.fact;
+  assert.ok(Math.min(wr, wg, wb) > 190 && Math.max(wr, wg, wb) - Math.min(wr, wg, wb) < 60, 'a fact is not a white dwarf');
+  assert.ok(named.preference[0] > named.preference[2] + 100, 'a preference is not a red dwarf');
+  assert.ok(named.question[2] > named.question[0] + 100, 'a question is not a blue dwarf');
+  assert.ok(named.decision[0] > 200 && named.decision[1] > 150 && named.decision[2] < 120, 'a decision is not a yellow dwarf');
+
+  // Electric, not muted: every one of them has to carry real colour.
+  for (const [kind, hex] of Object.entries(palette)) {
+    const [r, g, b] = rgb(hex);
+    assert.ok(Math.max(r, g, b) > 200, `${kind} is too dim to read as a star`);
+  }
+  // And no two may be confusable across the room.
+  const kinds = Object.keys(palette);
+  for (let i = 0; i < kinds.length; i += 1) {
+    for (let j = i + 1; j < kinds.length; j += 1) {
+      const apart = named[kinds[i]].reduce((sum, value, k) => sum + Math.abs(value - named[kinds[j]][k]), 0);
+      assert.ok(apart > 150, `${kinds[i]} and ${kinds[j]} look like the same star`);
+    }
+  }
+});
+
+test('nostromo: current runs along a wire without ever handing the canvas a bad stop', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const start = source.indexOf('function currentAlong(');
+  assert.notEqual(start, -1, 'currentAlong is gone from public/app.js');
+  let depth = 0;
+  let body = '';
+  for (let i = source.indexOf('{', start); i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}' && (depth -= 1) === 0) { body = source.slice(start, i + 1); break; }
+  }
+  const currentAlong = new Function(`${body} return currentAlong;`)();
+
+  // A real canvas throws on a stop outside 0..1, and a gradient whose stops run backwards drops
+  // colours without a word. Walk the band from one end of the wire to the other and check both.
+  const stops = [];
+  const ctx = { createLinearGradient: () => ({ addColorStop: (at, colour) => stops.push([at, colour]) }) };
+  for (let step = 0; step <= 200; step += 1) {
+    stops.length = 0;
+    const head = step / 200;
+    currentAlong(ctx, 0, 0, 100, 0, 'rgba(255, 74, 44, .8)', { mid: 'rgba(255, 140, 90, .4)', end: 'rgba(76, 201, 255, .6)' }, head, 1);
+    assert.ok(stops.length >= 3, `the wire lost its colour at ${head}`);
+    let last = -1;
+    for (const [at, colour] of stops) {
+      assert.ok(Number.isFinite(at) && at >= 0 && at <= 1, `a stop landed at ${at}`);
+      assert.ok(at > last, `stops ran backwards at ${head}: ${at} after ${last}`);
+      assert.ok(typeof colour === 'string' && !/NaN|undefined/.test(colour), `a stop was handed "${colour}"`);
+      last = at;
+    }
+    // The band itself: somewhere in the middle of the run there has to be white heat.
+    if (head > 0.2 && head < 0.8) assert.ok(stops.some(([, colour]) => /255, 255, 255/.test(colour)), `no current at ${head}`);
+  }
+
+  // A wire nobody is feeding carries colour and no band at all.
+  stops.length = 0;
+  currentAlong(ctx, 0, 0, 100, 0, 'rgba(255, 74, 44, .8)', { mid: 'rgba(255, 140, 90, .4)', end: 'rgba(76, 201, 255, .6)' }, 0.5, 0);
+  assert.equal(stops.length, 3, 'a starved wire is still sparking');
+});
+
+test('nostromo: feeding a memory lights it, and starving it puts it out', async () => {
+  const room = fakeRoom();
+  const { run, calls } = await nostromoRenderer(room);
+
+  // Two memories side by side, one the room keeps feeding and one it has forgotten.
+  const [full, starved] = [room.nodes[0], room.nodes[1]];
+  full.charge = 1;
+  full.lit = 0;
+  starved.charge = 0;
+  starved.lit = 0;
+
+  const readingOf = (node) => {
+    const halo = calls.find((c) => c.name === 'createRadialGradient' && c.args[0] === node.x && c.args[1] === node.y && c.args[2] > 1);
+    const body = calls.find((c) => c.name === 'createRadialGradient' && c.args[3] === node.x && c.args[4] === node.y && c.args[2] < 1
+      && (c.args[0] !== node.x || c.args[1] !== node.y));
+    const at = calls.indexOf(body);
+    const night = calls.slice(at, at + 12).find((c) => c.name === 'addColorStop' && /rgba\(0, 0, 0/.test(String(c.args[1])));
+    return { halo: halo?.args[5], night: Number(String(night?.args[1]).match(/,\s*([\d.]+)\)/)?.[1]) };
+  };
+
+  calls.length = 0;
+  run(0);
+  const lit = readingOf(full);
+  const dim = readingOf(starved);
+
+  assert.ok(lit.halo > dim.halo * 1.3, `a fed memory should carry the wider halo (${lit.halo?.toFixed(1)} against ${dim.halo?.toFixed(1)})`);
+  assert.ok(lit.night < dim.night * 0.4, `a fed memory should have burned off its own night (${lit.night} against ${dim.night})`);
+
+  // And the wire into it runs thicker: current follows the charge.
+  const widths = [];
+  let seen = 0;
+  for (const call of calls) {
+    if (call.name === 'set:lineWidth') widths.push(call.args[0]);
+    if (call.name === 'quadraticCurveTo') seen += 1;
+  }
+  assert.ok(seen > room.nodes.length, 'the wires were not drawn');
+  assert.ok(widths.some((value) => value > 4), 'no wire is carrying a full charge');
+});
+
+test('nostromo: charge is fed by the core and by neighbours, and drains when nobody feeds it', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  // Both kinds of pulse have to feed the memory they land on, not just light it for a moment.
+  const landing = source.slice(source.indexOf('// It arrived:'), source.indexOf('// It arrived:') + 700);
+  assert.match(landing, /kind === 'link'[\s\S]*charge/, 'a pulse between two memories feeds neither');
+  assert.match(landing, /else if \(pulse\.to\)[\s\S]*charge/, "a pulse from the core does not feed what it reaches");
+
+  // And it drains far more slowly than the flash does, or it would just be the flash again.
+  const decay = source.match(/node\.lit = Math\.max\(0, \(node\.lit \?\? 0\) - dt \* ([\d.]+)\)/);
+  const cooling = source.match(/node\.charge = Math\.max\(0, \(node\.charge \?\? 0\) - dt \* ([\d.]+)\)/);
+  assert.ok(decay && cooling, 'the two are no longer kept apart');
+  assert.ok(Number(cooling[1]) < Number(decay[1]) / 5, 'charge fades as fast as a flash, so it says nothing new');
+});
+
+test('nostromo: a wire leaves MOTHER red and arrives wearing the star it feeds', async () => {
+  const room = fakeRoom();
+  // One memory of each class, so every wire has a different colour to arrive in.
+  const palette = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#fa4632', question: '#3dc6ff' };
+  room.nodes = room.nodes.slice(0, 4);
+  Object.values(palette).forEach((hex, i) => { room.nodes[i].color = hex; room.nodes[i].charge = 0.5; });
+  room.links = [];
+  room.pulses = [];
+  const { run, calls } = await nostromoRenderer(room);
+  run(0.3);
+
+  // Each wire is one gradient struck from the limb out to its memory; read the colours it was
+  // given in the order they were given.
+  const wires = [];
+  let current = null;
+  for (const call of calls) {
+    if (call.name === 'createLinearGradient') { current = []; wires.push(current); }
+    else if (call.name === 'createRadialGradient') current = null;   // a body, not a wire
+    else if (call.name === 'addColorStop' && current) current.push(String(call.args[1]));
+  }
+  const channels = (colour) => {
+    const hex = colour.match(/#([0-9a-f]{6})/i);
+    if (hex) return [0, 2, 4].map((at) => Number.parseInt(hex[1].slice(at, at + 2), 16));
+    const parts = colour.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+    return parts ? [Number(parts[1]), Number(parts[2]), Number(parts[3])] : null;
+  };
+
+  let matched = 0;
+  for (const hex of Object.values(palette)) {
+    const want = channels(hex);
+    const wire = wires.find((stops) => stops.some((colour) => {
+      const got = channels(colour);
+      return got && got.every((value, i) => Math.abs(value - want[i]) < 12);
+    }));
+    assert.ok(wire, `no wire arrives as ${hex}`);
+    // It starts as MOTHER: deep red, far more red than anything else.
+    const first = channels(wire[0]);
+    assert.ok(first && first[0] > 180 && first[0] > first[1] * 2.5 && first[0] > first[2] * 2.5, `a wire leaves the core as ${wire[0]} rather than red`);
+    // And the last colour it is given is the star's own, not the core's.
+    const last = channels(wire.at(-1));
+    assert.ok(last.every((value, i) => Math.abs(value - want[i]) < 12), `a wire arrives as ${wire.at(-1)} instead of ${hex}`);
+    matched += 1;
+  }
+  assert.equal(matched, 4, 'not every class of star got its own wire');
 });

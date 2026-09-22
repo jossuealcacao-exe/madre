@@ -4165,7 +4165,11 @@ function askMotherAbout(conditionId) {
 
 /* ---------- NOSTROMO: memory research. The archive as a solar system: the room is a red sun, every distilled memory a smoking planet, plasma between them. ---------- */
 
-const MEMORY_COLORS = { decision: '#ffb000', fact: '#9bff66', preference: '#d78cff', question: '#5fd6ff' };
+// Memories burn as stars burn, and a star's colour is its class. A decision is a yellow dwarf,
+// the steady kind a system is built around. A fact is a white dwarf: cold, dense, settled. A
+// preference is a red dwarf, dim and personal and very long lived. A question is a blue dwarf,
+// the hottest thing in the sky and the least settled.
+const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#fa4632', question: '#3dc6ff' };
 const nostromo = {
   button: document.querySelector('#nostromo-button'),
   dialog: document.querySelector('#nostromo'),
@@ -4289,7 +4293,7 @@ function buildNostromo(data) {
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
@@ -4517,7 +4521,12 @@ const PULSE_SPEED = 330;     // world units per second
 const PULSE_CAP = 48;        // a ceiling, so a large archive stays light
 function pulseNostromo(dt, t, nodes, byId) {
   const pulses = nostromo.pulses ?? (nostromo.pulses = []);
-  for (const node of nodes) node.lit = Math.max(0, (node.lit ?? 0) - dt * 0.05);
+  for (const node of nodes) {
+    node.lit = Math.max(0, (node.lit ?? 0) - dt * 0.05);
+    // Charge is the slow one: a memory being fed from the core and from its neighbours at once
+    // builds it up, and one nobody feeds cools off over a minute or so.
+    node.charge = Math.max(0, (node.charge ?? 0) - dt * 0.0035);
+  }
   nostromo.coreLit = Math.max(0, (nostromo.coreLit ?? 0) - dt * 0.05);
   if (!nostromo.reduced && pulses.length < PULSE_CAP) {
     for (const node of nodes) {
@@ -4541,11 +4550,41 @@ function pulseNostromo(dt, t, nodes, byId) {
   for (const pulse of pulses) {
     if (t - pulse.born < pulse.life) continue;
     // It arrived: whatever it reached lights up for a moment.
-    if (pulse.kind === 'link') pulse.to.lit = Math.min(1.4, (pulse.to.lit ?? 0) + 0.7);
-    else if (pulse.to) pulse.to.lit = Math.min(1.4, (pulse.to.lit ?? 0) + 0.9);
+    if (pulse.kind === 'link') {
+      pulse.to.lit = Math.min(1.4, (pulse.to.lit ?? 0) + 0.7);
+      pulse.to.charge = Math.min(1, (pulse.to.charge ?? 0) + 0.09);
+    } else if (pulse.to) {
+      pulse.to.lit = Math.min(1.4, (pulse.to.lit ?? 0) + 0.9);
+      pulse.to.charge = Math.min(1, (pulse.to.charge ?? 0) + 0.13);
+    }
     else nostromo.coreLit = Math.min(1.4, (nostromo.coreLit ?? 0) + 0.5);
   }
   nostromo.pulses = pulses.filter((pulse) => t - pulse.born < pulse.life);
+}
+
+// A line with current running along it. The gradient carries the colour of the wire from end to
+// end, and riding on it is a narrow band of white heat that travels from one end to the other
+// and comes round again. Moving the band is all it takes: one gradient a frame, not a hundred
+// little strokes, and the eye reads it as charge on its way somewhere.
+function currentAlong(ctx, x0, y0, x1, y1, from, to, head, bright) {
+  const line = ctx.createLinearGradient(x0, y0, x1, y1);
+  // The wire's own colour, and then the band riding on it. Where the two want the same place
+  // along the wire the band wins: it is the thing in motion, and dropping it there would make
+  // the current blink out every time it passed the middle.
+  const stops = [[0, from, 0], [0.5, to.mid ?? to.end, 0], [1, to.end, 0]];
+  if (bright > 0.01) {
+    const band = [[head - 0.07, `rgba(255, 246, 238, ${0.34 * bright})`], [head, `rgba(255, 255, 255, ${0.82 * bright})`], [head + 0.07, `rgba(255, 234, 222, ${0.3 * bright})`]];
+    for (const [at, colour] of band) if (at > 0.001 && at < 0.999) stops.push([at, colour, 1]);
+  }
+  stops.sort((a, b) => a[0] - b[0] || b[2] - a[2]);
+  let last = -1;
+  for (const [at, colour] of stops) {
+    const place = Math.min(1, Math.max(0, at));
+    if (place <= last) continue;
+    line.addColorStop(place, colour);
+    last = place;
+  }
+  return line;
 }
 
 // Where a pulse is right now, along the same curve its filament is drawn with.
@@ -4611,14 +4650,21 @@ function drawNostromo(t) {
     const bow = Math.sin(t * 1.3 + a.seed + b.seed) * Math.min(40, d * 0.15);
     link.cx = (a.x + b.x) / 2 - (dy / d) * bow;
     link.cy = (a.y + b.y) / 2 + (dx / d) * bow;
-    const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-    grad.addColorStop(0, hexAlpha(a.color, 0.55 * link.weight));
-    grad.addColorStop(0.5, 'rgba(255, 240, 235, .25)');
-    grad.addColorStop(1, hexAlpha(b.color, 0.55 * link.weight));
-    ctx.strokeStyle = grad;
+    // Between two memories the wire takes the colour of whichever is nearer, so it leaves one
+    // star as that star and arrives as the other, trading hands where they meet.
+    const charged = Math.max(a.charge ?? 0, b.charge ?? 0);
+    const downhill = (a.charge ?? 0) >= (b.charge ?? 0);
+    const near = downhill ? a : b;
+    const far = downhill ? b : a;
+    // Current runs the way charge does: out of the fuller one and into the emptier.
+    const spark = ((t * (0.13 + 0.2 * charged) + a.seed * 0.29 + b.seed * 0.17) % 1 + 1) % 1;
+    ctx.strokeStyle = currentAlong(ctx, near.x, near.y, far.x, far.y,
+      hexAlpha(near.color, 0.6 * link.weight),
+      { mid: hexAlpha(hexMix(near.color, far.color, 0.5), 0.3 * link.weight), end: hexAlpha(far.color, 0.6 * link.weight) },
+      spark, 0.18 + 0.7 * charged);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y);
-    ctx.globalAlpha = 0.3; ctx.lineWidth = 3.4 / cam.scale; ctx.stroke();
-    ctx.globalAlpha = 1; ctx.lineWidth = (0.7 + 0.45 * Math.abs(Math.sin(t * 4 + a.seed))) / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 0.3; ctx.lineWidth = (3.4 + 1.6 * charged) / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = (0.7 + 0.4 * charged + 0.35 * Math.abs(Math.sin(t * 4 + a.seed))) / cam.scale; ctx.stroke();
   }
 
   // Plasma from the core to every memory. The filament a memory is spoken to often burns a
@@ -4630,16 +4676,20 @@ function drawNostromo(t) {
     node.cx = node.x / 2 + nx * bow; node.cy = node.y / 2 + ny * bow;
     node.rimX = (node.x / d) * R * 0.92; node.rimY = (node.y / d) * R * 0.92;
     const life = 0.45 + 0.55 * node.activity;
-    const grad = ctx.createLinearGradient(0, 0, node.x, node.y);
-    grad.addColorStop(0, alarm ? 'rgba(255, 230, 220, .95)' : `rgba(255, 90, 60, ${0.55 + 0.35 * life})`);
-    grad.addColorStop(0.5, `rgba(255, 42, 31, ${(0.2 + 0.25 * beat) * (0.5 + life)})`);
-    grad.addColorStop(1, hexAlpha(node.color, (0.45 + 0.45 * life) * node.scale));
-    ctx.strokeStyle = grad;
+    const fed = node.charge ?? 0;
+    // The wire leaves MOTHER her colour and arrives wearing the star's, changing hands along
+    // the way. Current runs down it toward the memory, faster and brighter the better fed it is.
+    const head = ((t * (0.16 + 0.22 * fed) + node.seed * 0.37) % 1 + 1) % 1;
+    const wire = currentAlong(ctx, node.rimX, node.rimY, node.x, node.y,
+      alarm ? 'rgba(255, 230, 220, .95)' : `rgba(226, 40, 22, ${0.62 + 0.3 * life})`,
+      { mid: hexAlpha(hexMix('#e22816', node.color, 0.55), (0.3 + 0.3 * life) * (0.6 + 0.5 * fed)), end: hexAlpha(node.color, (0.45 + 0.45 * life) * node.scale) },
+      head, 0.25 + 0.75 * fed);
+    ctx.strokeStyle = wire;
     ctx.beginPath();
     ctx.moveTo(node.rimX, node.rimY);
     ctx.quadraticCurveTo(node.cx, node.cy, node.x, node.y);
-    ctx.globalAlpha = 0.26 * (0.5 + life); ctx.lineWidth = 4 / cam.scale; ctx.stroke();
-    ctx.globalAlpha = 1; ctx.lineWidth = (0.8 + 0.5 * life + 0.4 * Math.abs(Math.sin(t * 5 + node.seed * 3)) + 0.5 * beat) / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 0.26 * (0.5 + life); ctx.lineWidth = (4 + 2 * fed) / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = (0.8 + 0.5 * life + 0.5 * fed + 0.3 * Math.abs(Math.sin(t * 5 + node.seed * 3)) + 0.5 * beat) / cam.scale; ctx.stroke();
   }
 
   // The pulses themselves: each one its own errand, none in step with another. Out from the core
@@ -4851,6 +4901,10 @@ function drawNostromo(t) {
     const r = node.r * node.scale * micro;
     if (r <= 0) continue;
     const arrive = Math.min(1.2, node.lit ?? 0);
+    // How fed this one is. A starved memory is a cold body that only MOTHER's light finds; a
+    // well fed one burns on its own account and no longer needs her to be seen. Everything
+    // about how bright it is comes from here, so it changes as the room feeds it.
+    const fed = Math.min(1, (node.charge ?? 0) + 0.25 * arrive);
     // Which way MOTHER lies from here: the light falls from there, so the highlight sits on
     // that side and the shadow gathers opposite it.
     const away = Math.hypot(node.x, node.y) || 1;
@@ -4863,10 +4917,10 @@ function drawNostromo(t) {
     }
     // The halo is drawn, not blurred: a gradient here costs the same at one planet or at three
     // hundred, and a shadow behind every one of them does not.
-    const halo = r * (2.8 + 1.3 * arrive) * micro;
+    const halo = r * (2.2 + 1.5 * fed + 1.1 * arrive) * micro;
     const glow = ctx.createRadialGradient(node.x, node.y, r * 0.45, node.x, node.y, halo);
-    glow.addColorStop(0, hexAlpha(node.color, (0.5 + 0.3 * arrive) * micro));
-    glow.addColorStop(0.45, hexAlpha(node.color, (0.17 + 0.16 * arrive) * micro));
+    glow.addColorStop(0, hexAlpha(node.color, (0.24 + 0.46 * fed + 0.22 * arrive) * micro));
+    glow.addColorStop(0.45, hexAlpha(node.color, (0.07 + 0.16 * fed + 0.12 * arrive) * micro));
     glow.addColorStop(1, hexAlpha(node.color, 0));
     ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(node.x, node.y, halo, 0, Math.PI * 2); ctx.fill();
@@ -4874,12 +4928,14 @@ function drawNostromo(t) {
     ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
     // The lit face, offset toward MOTHER: the highlight sits where the light lands and the
     // colour falls away to nearly black on the side turned from it.
+    // The lit face leans toward MOTHER, and the better fed the star is the hotter its own
+    // middle runs: a starved one barely clears its own colour, a full one is white at the core.
     const sphere = ctx.createRadialGradient(node.x + lx * r * 0.46, node.y + ly * r * 0.46, r * 0.04, node.x, node.y, r * 1.12);
-    sphere.addColorStop(0, '#ffffff');
-    sphere.addColorStop(0.16, hexMix(node.color, '#ffffff', 0.45));
-    sphere.addColorStop(0.46, node.color);
-    sphere.addColorStop(0.78, hexMix(node.color, '#000000', 0.62));
-    sphere.addColorStop(1, hexMix(node.color, '#000000', 0.9));
+    sphere.addColorStop(0, hexMix(node.color, '#ffffff', 0.45 + 0.55 * fed));
+    sphere.addColorStop(0.18, hexMix(node.color, '#ffffff', 0.12 + 0.5 * fed));
+    sphere.addColorStop(0.5, hexMix(node.color, '#000000', 0.3 - 0.3 * fed));
+    sphere.addColorStop(0.8, hexMix(node.color, '#000000', 0.7 - 0.32 * fed));
+    sphere.addColorStop(1, hexMix(node.color, '#000000', 0.92 - 0.3 * fed));
     ctx.fillStyle = sphere;
     ctx.fill();
     ctx.clip();
@@ -4888,18 +4944,21 @@ function drawNostromo(t) {
     // done with shading alone.
     // The dark side: a shadow gathering away from MOTHER, which is what turns a lit disc into
     // a ball. It is cast inside the clip, so it stops exactly at the edge of the world.
+    // The night on a small world, and it recedes as the star lights itself: at full charge only
+    // the faintest limb remains, which is what a body that makes its own light looks like.
+    const night = 1 - 0.78 * fed;
     const dark = ctx.createRadialGradient(node.x - lx * r * 1.35, node.y - ly * r * 1.35, r * 0.1, node.x - lx * r * 0.45, node.y - ly * r * 0.45, r * 2.0);
-    dark.addColorStop(0, 'rgba(0, 0, 0, .82)');
-    dark.addColorStop(0.42, 'rgba(0, 0, 0, .5)');
-    dark.addColorStop(0.78, 'rgba(0, 0, 0, .16)');
+    dark.addColorStop(0, `rgba(0, 0, 0, ${0.82 * night})`);
+    dark.addColorStop(0.42, `rgba(0, 0, 0, ${0.5 * night})`);
+    dark.addColorStop(0.78, `rgba(0, 0, 0, ${0.16 * night})`);
     dark.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = dark;
     ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
     ctx.restore();
     // The faintest thread of light round the whole edge, so the body parts from the dark
     // without a drawn outline. No crescent: a bright arc on one side reads as an eyebrow.
-    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.5), 0.2 + 0.25 * arrive);
-    ctx.lineWidth = (0.7 + 0.6 * arrive) / cam.scale;
+    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.4 + 0.4 * fed), 0.14 + 0.3 * fed + 0.2 * arrive);
+    ctx.lineWidth = (0.7 + 0.4 * fed + 0.5 * arrive) / cam.scale;
     ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.4 / cam.scale, 0, Math.PI * 2); ctx.stroke();
     if (arrive > 0.05) {
       ctx.strokeStyle = hexAlpha(node.color, arrive * 0.6);
