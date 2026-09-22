@@ -3862,6 +3862,34 @@ async function loadSettings() {
   renderSettings();
 }
 
+// A section of MU/TH/UR that folds. The header stays what it was, so nothing about the look
+// changes; what it opens onto goes into the body. Whether it was left open is remembered on this
+// browser, because a panel that forgets is a panel you fight with every time you open it.
+const FOLD_KEY = 'madre.folds';
+function foldState() {
+  try { return JSON.parse(localStorage.getItem(FOLD_KEY) ?? '{}') ?? {}; } catch { return {}; }
+}
+function rememberFold(key, open) {
+  try { localStorage.setItem(FOLD_KEY, JSON.stringify({ ...foldState(), [key]: open })); } catch { /* a private window remembers nothing, and that is fine */ }
+}
+function folding(section, title, { key, open = false, badge = null } = {}) {
+  const box = el('details', 'fold');
+  box.open = foldState()[key] ?? open;
+  const head = el('summary');
+  head.append(el('h3', null, title));
+  if (badge) {
+    const mark = el('span', 'fold-badge', badge.text ?? '');
+    if (badge.urgent) mark.classList.add('urgent');
+    if (badge.title) mark.title = badge.title;
+    head.append(mark);
+  }
+  const body = el('div', 'fold-body');
+  box.append(head, body);
+  box.addEventListener('toggle', () => rememberFold(key, box.open));
+  section.append(box);
+  return body;
+}
+
 function connectionCard(agent) {
   const card = paint(el('article', 'conn-card'), agent.id);
   const session = settingsUI.data.sessions?.[agent.id];
@@ -4045,11 +4073,16 @@ function renderSettings() {
   if (!data) return;
   const section = settingsUI.section;
   section.replaceChildren();
-  section.append(el('h3', null, `CONNECTIONS · ${Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length} OF ${data.agents.length} SIGNED IN${data.sessionsAt ? ` · CHECKED ${formatTime(data.sessionsAt)}` : ''}`));
-  section.append(el('p', 'note', 'EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. MADRE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.'));
+  const signedIn = Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length;
+  const out = data.agents.length - signedIn;
+  const crew = folding(section, `CONNECTIONS · ${signedIn} OF ${data.agents.length} SIGNED IN${data.sessionsAt ? ` · CHECKED ${formatTime(data.sessionsAt)}` : ''}`, {
+    key: 'connections',
+    badge: out > 0 ? { text: String(out), urgent: true, title: `${out} agent${out === 1 ? '' : 's'} not signed in` } : null,
+  });
+  crew.append(el('p', 'note', 'EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. MADRE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.'));
   const grid = el('div', 'conn-grid');
   for (const agent of data.agents) grid.append(connectionCard(agent));
-  section.append(grid);
+  crew.append(grid);
 
   section.append(el('h3', null, 'ROOM SETTINGS'));
   const form = el('form', 'room-form');
@@ -5710,10 +5743,16 @@ function renderUpdate() {
   section.replaceChildren();
   if (!info) { section.append(el('h3', null, 'RELEASE CHANNEL · UNAVAILABLE')); return; }
   const when = info.checkedAt ? new Date(info.checkedAt).toLocaleString() : null;
-  section.append(el('h3', null, info.available ? `RELEASE CHANNEL · ${info.latest} AVAILABLE · YOU RUN ${info.current}` : `RELEASE CHANNEL · MADRE ${info.current}${info.latest ? ' · UP TO DATE' : info.enabled ? ' · NPM NOT REACHED YET' : ' · CHECK OFF'}`));
+  // Folded by default: a room that is up to date has nothing to say here. When there is a new
+  // version the header carries a red mark and nothing else, and what it means is inside.
+  const body = folding(section, `RELEASE CHANNEL · MADRE ${info.current}${info.available ? '' : info.latest ? ' · UP TO DATE' : info.enabled ? ' · NPM NOT REACHED YET' : ' · CHECK OFF'}`, {
+    key: 'update',
+    open: false,
+    badge: info.available ? { text: info.latest, urgent: true, title: `MADRE ${info.latest} is on npm · you run ${info.current}` } : null,
+  });
   if (info.available) {
     const canRestart = info.install !== 'source';
-    section.append(el('p', 'note', `A NEWER MADRE IS ON NPM. THIS COPY RUNS ${info.install === 'npx' ? 'FROM THE NPX CACHE' : info.install === 'project' ? 'FROM THIS PROJECT\'S NODE_MODULES' : info.install === 'global' ? 'AS A GLOBAL INSTALL' : 'FROM SOURCE'}. ${canRestart ? 'RESTART WITH IT HERE: THE ROOM CLOSES, INSTALLS, AND COMES BACK ON THIS SAME ADDRESS IN A FEW SECONDS. NOTHING IN THE LEDGER IS LOST. OR RUN THE COMMAND YOURSELF.' : 'PULL THE REPOSITORY AND START IT AGAIN.'}`));
+    body.append(el('p', 'note', `A NEWER MADRE IS ON NPM. THIS COPY RUNS ${info.install === 'npx' ? 'FROM THE NPX CACHE' : info.install === 'project' ? 'FROM THIS PROJECT\'S NODE_MODULES' : info.install === 'global' ? 'AS A GLOBAL INSTALL' : 'FROM SOURCE'}. ${canRestart ? 'RESTART WITH IT HERE: THE ROOM CLOSES, INSTALLS, AND COMES BACK ON THIS SAME ADDRESS IN A FEW SECONDS. NOTHING IN THE LEDGER IS LOST. OR RUN THE COMMAND YOURSELF.' : 'PULL THE REPOSITORY AND START IT AGAIN.'}`));
     if (canRestart) {
       const restart = el('button', 'update-restart', updateUI.restarting ? 'RESTARTING…' : `RESTART WITH ${info.latest}`);
       restart.type = 'button';
@@ -5735,7 +5774,7 @@ function renderUpdate() {
           void wait();
         } catch (error) { updateUI.restarting = false; renderUpdate(); toast(`Update did not start: ${error.message}`); }
       });
-      section.append(restart);
+      body.append(restart);
     }
     const row = el('div', 'update-command');
     const code = el('code', null, info.command);
@@ -5743,10 +5782,10 @@ function renderUpdate() {
     copy.type = 'button';
     copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(info.command); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1400); } catch { toast('MU/TH/UR › select the command and copy it.'); } });
     row.append(code, copy);
-    section.append(row);
-    if (info.release) { const link = el('a', 'update-link', `WHAT ${info.latest} SHIPS ↗`); link.href = info.release; link.target = '_blank'; link.rel = 'noopener noreferrer'; section.append(link); }
+    body.append(row);
+    if (info.release) { const link = el('a', 'update-link', `WHAT ${info.latest} SHIPS ↗`); link.href = info.release; link.target = '_blank'; link.rel = 'noopener noreferrer'; body.append(link); }
   } else {
-    section.append(el('p', 'note', `MADRE ASKS NPM FOR THE LATEST VERSION ONCE A DAY: THE PACKAGE NAME TRAVELS, NOTHING ELSE, THE SAME REQUEST NPX MAKES.${when ? ` LAST CHECK ${when.toUpperCase()}.` : ''}`));
+    body.append(el('p', 'note', `MADRE ASKS NPM FOR THE LATEST VERSION ONCE A DAY: THE PACKAGE NAME TRAVELS, NOTHING ELSE, THE SAME REQUEST NPX MAKES.${when ? ` LAST CHECK ${when.toUpperCase()}.` : ''}`));
   }
   const controls = el('div', 'sentinel-controls');
   const toggle = el('label', 'toggle');
@@ -5759,7 +5798,7 @@ function renderUpdate() {
   toggle.append(box, `CHECK NPM FOR NEW VERSIONS ONCE A DAY${info.envWins ? ' · SET BY PULSE_UPDATE_CHECK' : ''}`);
   controls.append(toggle);
   if (info.enabled) { const now = el('button', null, 'CHECK NOW'); now.type = 'button'; now.addEventListener('click', () => void loadVersion({ force: true })); controls.append(now); }
-  section.append(controls);
+  body.append(controls);
 }
 updateUI.pill?.addEventListener('click', () => { document.querySelector('#mother-button')?.click(); updateUI.section?.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
 void loadVersion();

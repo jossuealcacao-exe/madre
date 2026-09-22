@@ -481,6 +481,22 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-section h3.toggle:not(:first-child) { margin-top: 40px; }
 .settings .room-form, .settings .conn-grid, .settings .mother-grid { margin-bottom: 8px; }
 .mother-section h3::before { content: "▌ "; color: var(--ph); }
+
+/* A section that folds. The summary carries the same header it always had, plus a mark on the
+   right when there is something behind it worth opening. */
+.mother-section .fold { margin: 0; }
+.mother-section .fold + .fold { margin-top: 26px; }
+.mother-section .fold > summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; }
+.mother-section .fold > summary::-webkit-details-marker { display: none; }
+.mother-section .fold > summary::after { content: '+'; margin-left: auto; font-family: var(--mono); font-size: 12px; line-height: 1; color: var(--ph-dim); opacity: .7; }
+.mother-section .fold[open] > summary::after { content: '−'; }
+.mother-section .fold > summary:hover h3, .mother-section .fold > summary:hover::after { color: var(--ph); opacity: 1; }
+.mother-section .fold > summary h3 { margin: 0 0 12px; }
+.mother-section .fold > summary h3:not(:first-child) { margin-top: 0; padding-top: 0; border-top: 0; }
+.fold-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
+/* Red, and only red, when there is something new: that is the whole message. */
+.fold-badge.urgent { border-color: var(--danger); background: var(--danger); color: #fff; }
+.fold-body { padding-top: 2px; }
 .mother-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
 .mother-card { border: 1px solid var(--ph-dim); padding: 14px 16px; background: rgba(2, 6, 2, .6); display: grid; gap: 8px; align-content: start; }
 .mother-card.hit { border-color: var(--ph); box-shadow: inset 0 0 0 1px var(--ph-faint), 0 0 22px rgba(155, 255, 102, .12); }
@@ -1116,7 +1132,9 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* MU/TH/UR: the sentinel section. */
 .mother-section.sentinel .sentinel-controls, .mother-section.update .sentinel-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 6px 0 12px; }
 .mother-section.sentinel .toggle, .mother-section.update .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph-dim); cursor: pointer; }
-.mother-section.sentinel .toggle input, .mother-section.update .toggle input { accent-color: #9bff66; }
+.mother-section.sentinel .toggle input, .mother-section.update .toggle input { accent-color: #9bff66; margin: 0; flex: none; }
+/* The row starts where the text above it starts, so the column reads straight down. */
+.mother-section.sentinel .sentinel-controls, .mother-section.update .sentinel-controls { margin-left: 0; padding-left: 0; }
 .mother-section.sentinel .toggle input:disabled + * , .mother-section.sentinel .toggle:has(input:disabled) { opacity: .6; cursor: default; }
 .mother-section.sentinel button, .mother-section.update button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
 .mother-section.sentinel button:hover, .mother-section.update button:hover { background: var(--ph-faint); }

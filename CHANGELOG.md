@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### MU/TH/UR se pliega
+- Las dos secciones que llenaban el panel ahora están plegadas: `CONNECTIONS` y el canal de liberación. El encabezado es el mismo de siempre y se hace clic sobre él; lo que abre va adentro.
+- El canal de liberación no anuncia nada en su título. Cuando hay versión nueva lleva una marca roja y nada más, y lo que significa está adentro. Las marcas que no son urgentes no son rojas, para que el rojo siga queriendo decir algo: `CONNECTIONS` lleva un conteo en gris cuando algún agente no está firmado.
+- Si dejaste una sección abierta, se queda abierta la próxima vez. Un panel que olvida es uno con el que peleas cada vez que lo abres. Un navegador que no deja guardar nada simplemente abre en cerrado, sin romperse.
+- El checkbox del canal de liberación estaba unos píxeles adentro respecto al párrafo de arriba, por un margen propio del navegador, así que la columna no se leía derecha. Ya alinea.
+
+
 ### El turno dice lo que está gastando mientras lo gasta
 - Mientras un agente trabaja, la fila de "pensando" muestra lo que ese turno está leyendo. El tamaño es exacto, porque el prompt ya está armado cuando se anuncia; lo único estimado es la conversión a tokens, y se hace al ritmo que los turnos de esta misma sala han mostrado. Una sala a la que nunca le han cobrado no inventa un ritmo: muestra caracteres y dice que todavía no tiene con qué convertirlos.
 - Cada cuenta le enseña a la sala lo que cuestan sus propias palabras, así que el ritmo se ajusta solo, con las últimas veinte cuentas y no con la historia entera: una sala que cambió de modelo no debería seguir cotizándose por lo que era antes.
