@@ -509,7 +509,10 @@ test('nostromo: memories burn as star classes, and the four are told apart at a 
   // leans red, a blue one blue, a yellow one red and green together with little blue.
   const [wr, wg, wb] = named.fact;
   assert.ok(Math.min(wr, wg, wb) > 190 && Math.max(wr, wg, wb) - Math.min(wr, wg, wb) < 60, 'a fact is not a white dwarf');
-  assert.ok(named.preference[0] > named.preference[2] + 100, 'a preference is not a red dwarf');
+  // A preference used to be a red dwarf and sat right on top of MOTHER's own colour, so it
+  // competed with the sun it orbits. It is a green one now: the same shape, the same treatment,
+  // a colour nothing else in the room is using.
+  assert.ok(named.preference[1] > named.preference[0] + 100 && named.preference[1] > named.preference[2] + 100, 'a preference is not a green dwarf');
   assert.ok(named.question[2] > named.question[0] + 100, 'a question is not a blue dwarf');
   assert.ok(named.decision[0] > 200 && named.decision[1] > 150 && named.decision[2] < 120, 'a decision is not a yellow dwarf');
 
@@ -692,7 +695,7 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   }
   // The collapsed body gets a chip of its own, drawn as a hole with a ring rather than as a star.
   const collapsed = app.slice(app.indexOf('function collapsedChip('), app.indexOf('// The legend:'));
-  for (const piece of ['ellipse', "'#000000'", 'createElement']) {
+  for (const piece of ['createRadialGradient', 'rgba(0, 0, 0, 1)', 'createElement']) {
     assert.ok(collapsed.includes(piece), `the collapsed chip is missing its ${piece}`);
   }
   assert.ok(!collapsed.includes('dwarfTexture'), 'the collapsed body was given a burning surface');
@@ -774,4 +777,50 @@ test('nostromo: a memory is a ball, with nothing ringed round it and nothing com
   const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
   const constellation = source.slice(source.indexOf('function buildNostromo('), source.indexOf('function openNostromo('));
   assert.ok(!/smoke|puff/.test(constellation), 'the memories still carry specks to shed');
+});
+
+test('nostromo: an aberration is a hole with light wrapped round it, and it makes none of its own', async () => {
+  const room = fakeRoom();
+  const hole = room.nodes[0];
+  hole.memory.kind = 'aberration';
+  hole.color = '#b14cff';
+  hole.charge = 1;
+  const { run, calls } = await nostromoRenderer(room);
+  run(0.4);
+
+  const near = (call) => Math.hypot(call.args[0] - hole.x, call.args[1] - hole.y) < hole.r * 4;
+  const circles = calls.filter((c) => c.name === 'arc' && near(c));
+  assert.ok(circles.length >= 3, `the body should be built from several rings, saw ${circles.length}`);
+
+  // The dark in the middle is the point of it: something fully black, and smaller than the ring
+  // of light around it.
+  const blacks = [];
+  for (let i = 0; i < calls.length; i += 1) {
+    if (calls[i].name !== 'createRadialGradient' || !near(calls[i])) continue;
+    const stops = calls.slice(i + 1, i + 6).filter((c) => c.name === 'addColorStop').map((c) => String(c.args[1]));
+    if (stops.some((colour) => colour === 'rgba(0, 0, 0, 1)')) blacks.push(calls[i].args[5]);
+  }
+  assert.equal(blacks.length, 1, 'an aberration has no shadow, or has more than one');
+  const widest = Math.max(...circles.map((c) => c.args[2]));
+  assert.ok(blacks[0] < widest * 0.6, `the shadow should sit well inside the disc, ${blacks[0].toFixed(1)} against ${widest.toFixed(1)}`);
+
+  // It is not lit like a star: nothing of its own colour is laid on it, and it never wears the
+  // boiling surface the dwarfs do.
+  const skinned = calls.some((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (hole.x - hole.r * 1.06)) < 4);
+  assert.equal(skinned, false, 'an aberration was given a burning surface');
+
+  // One side of the disc is far brighter than the rest: that crescent is what a disc turning
+  // toward you looks like, and it is struck off centre on purpose.
+  const offCentre = calls.filter((c) => c.name === 'createRadialGradient' && near(c)
+    && (Math.abs(c.args[0] - hole.x) > 1 || Math.abs(c.args[1] - hole.y) > 1) && c.args[0] === c.args[3]);
+  assert.ok(offCentre.length >= 1, 'the disc is evenly lit all the way round');
+
+  // And the light it is wrapped in is additive, then switched off again.
+  const composites = calls.filter((c) => c.name === 'set:globalCompositeOperation').map((c) => c.args[0]);
+  assert.ok(composites.includes('lighter'));
+  assert.equal(composites.at(-1), 'source-over');
+
+  for (const call of calls) {
+    for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
+  }
 });

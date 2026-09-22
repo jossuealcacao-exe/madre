@@ -289,7 +289,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .system.memory .brief { text-transform: none; letter-spacing: 0; color: var(--text-2); }
 
 /* NOSTROMO: the archive as a small solar system. One colour per kind of memory. */
-:root { --mem-decision: #ffdc3c; --mem-fact: #dfeeff; --mem-preference: #fa4632; --mem-question: #3dc6ff; --mem-aberration: #b14cff; --nostromo-sun: #ff2a1f; }
+:root { --mem-decision: #ffdc3c; --mem-fact: #dfeeff; --mem-preference: #5cf07a; --mem-question: #3dc6ff; --mem-aberration: #b14cff; --nostromo-sun: #ff2a1f; }
 .nostromo-button { color: var(--terror); border-color: color-mix(in srgb, var(--terror) 55%, transparent); }
 .nostromo-button:hover { background: color-mix(in srgb, var(--terror) 14%, transparent); }
 dialog.nostromo { color: #eef1ea; }

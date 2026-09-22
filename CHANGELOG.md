@@ -24,7 +24,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Un tipo que nadie reconoce ya no se archiva como hecho, se descarta. Era inofensivo mientras todos los tipos eran conocimiento; con uno en la lista que no lo es, un dedazo en cualquier dirección metía una alucinación donde la sala confía.
 - Las aberraciones dejaron de poder entrenar al modelo local como algo que recordar. Entrenan al revés: cada una sale como par de preferencia, con la misma pregunta, la afirmación falsa como lo que hay que evitar y la corrección como lo que hay que decir. Un negativo solo enseña poco; un par dice cuál de dos respuestas preferir, que es lo que leen DPO y ORPO. Va en `preferences.jsonl`, aparte, para que nada que lea los archivos de chat lo levante por accidente.
 - El contador de listos tampoco las cuenta: nunca serán una respuesta que el modelo aprenda a dar, y contarlas diría que la sala está más adelante de lo que está.
-- En NOSTROMO una aberración no es una enana. Es un cuerpo colapsado: no arde, no da luz propia, y lo que se ve es el anillo de lo que cayó dentro y la oscuridad que pone sobre lo que queda detrás.
+- En NOSTROMO una aberración no es una enana. Es un cuerpo colapsado: no hace luz propia, y lo que se ve es la materia cayendo dentro y el redondo oscuro del medio, de donde la luz ya no puede salir. Nada ahí tiene filo, porque la cosa no tiene superficie: el disco es un toro grueso y suave, más rojo por fuera y dorado donde está más caliente, y el lado que viene hacia nosotros brilla mucho más que el resto. Esa creciente es lo que se ve en la foto del horizonte de sucesos.
+- Las preferencias dejaron de ser enanas rojas y pasaron a enanas verdes. Misma forma y mismo trato, otro color: en rojo competían con el sol que orbitan.
 
 
 ### NOSTROMO: la sala se ve viva
