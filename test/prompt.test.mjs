@@ -137,3 +137,35 @@ test('prompt: what never changes is read first, so a cache has the longest run t
   assert.equal(stablePrefix([{ id: 'mode', text: 'abc' }]), 0);
   assert.equal(stablePrefix([]), 0);
 });
+
+test('prompt: @madre reads the briefing by shape, and the shape still holds', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'src', 'adapters', 'madre.mjs'), 'utf8');
+  // @madre is the one agent that takes the room's briefing apart instead of just reading it: it
+  // pulls the transcript out to answer from, and the human's question to answer. Both are found
+  // by pattern, so moving a block can break it silently. Nothing guarded that until now.
+  const patterns = [...source.matchAll(/prompt\.match\((\/.*?\/)\)/g)].map((match) => match[1]);
+  assert.equal(patterns.length, 2, `@madre reads ${patterns.length} things out of the briefing; this test knows about two`);
+
+  const agent = { id: 'codex' };
+  const built = buildPrompt({
+    agent, text: 'en que puerto abre la sala', requester: 'you', depth: 0, allowDelegation: true,
+    context: { messages: [{}], omittedMessages: 2, text: 'x' }, others: [{ id: 'claude' }], mode: 2,
+    memoryServer: { name: 'p' }, madreModel: 'm', maxPlanSteps: 4, scopesFor: () => ({}),
+    lease: { outDir: '.pulse/out', scopes: {}, create: true, scratchDir: 't' },
+    memories: [{ kind: 'fact', text: 'Una memoria.', fromSequence: 1, throughSequence: 2 }],
+    recall: { entries: [{ sequence: 4, sender: 'codex', role: 'assistant', text: 'Una cita.' }] },
+    attachments: [{ path: 'a.png', contentType: 'image/png', size: 10 }],
+    references: [{ path: 'src/x.mjs', contentType: 'text/plain', size: 20 }],
+  });
+
+  // The transcript comes out whole, found by its own tags rather than by where it sits.
+  const transcript = built.match(new Function(`return ${patterns[0]}`)());
+  assert.ok(transcript?.[1], '@madre can no longer find the transcript in the briefing');
+
+  // The question is anchored to the end of the briefing, so whatever else moves, the human's
+  // message stays last. Everything after it would be read as part of the question.
+  const question = built.match(new Function(`return ${patterns[1]}`)());
+  assert.equal(question?.[1], 'en que puerto abre la sala', '@madre would answer the wrong question');
+  assert.equal(PROMPT_BLOCKS.at(-1), 'ask', 'something was put after the human message');
+  assert.ok(built.endsWith('en que puerto abre la sala'), 'the briefing no longer ends with what was asked');
+});
