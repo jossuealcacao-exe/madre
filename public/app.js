@@ -4273,7 +4273,9 @@ function paintLegend() {
   const chips = [];
   for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
     const chip = el('span', `k ${kind}`);
-    chip.append(dwarfChip(hex, 13), el('i', null, `${DWARF_CLASS[kind]} · ${kind.toUpperCase()}`));
+    // The star is the name of its class. Writing it out as well says the same thing twice.
+    chip.append(dwarfChip(hex, 14), el('i', null, kind.toUpperCase()));
+    chip.title = `${DWARF_CLASS[kind]} · ${kind.toUpperCase()}`;
     chips.push(chip);
   }
   host.replaceChildren(...chips);
@@ -4349,7 +4351,7 @@ function buildNostromo(data) {
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, smoke: [], color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
@@ -4603,12 +4605,6 @@ function stepNostromo(dt, t) {
     node.x += node.vx * dt;
     node.y += node.vy * dt;
     node.spin = (node.spin ?? node.seed) + dt * 0.012 * (1 + (node.seed % 1));
-    if (!nostromo.reduced) {
-      // Plasma wisps: a few tendrils rising off each planet, fading as they climb.
-      if (node.smoke.length < 5 && Math.random() < 0.05 * dt) node.smoke.push({ x: (Math.random() - 0.5) * node.r, y: -node.r * 0.4, age: 0, life: 80 + Math.random() * 60, drift: (Math.random() - 0.5) * 0.2, size: node.r * (0.3 + Math.random() * 0.3) });
-      for (const puff of node.smoke) { puff.age += dt; puff.y -= 0.3 * dt; puff.x += puff.drift * dt; puff.size += 0.08 * dt; }
-      node.smoke = node.smoke.filter((puff) => puff.age < puff.life);
-    }
   }
   for (const node of nostromo.nodes) if (node.forgetting) node.scale = Math.max(0, node.scale - 0.06 * dt);
   nostromo.nodes = nostromo.nodes.filter((node) => !(node.forgetting && node.scale <= 0.01));
@@ -5021,11 +5017,6 @@ function drawNostromo(t) {
     const away = Math.hypot(node.x, node.y) || 1;
     const lx = -node.x / away;
     const ly = -node.y / away;
-    for (const puff of node.smoke) {
-      const k = puff.age / puff.life;
-      ctx.fillStyle = hexAlpha(node.color, (1 - k) * 0.16 * node.scale);
-      ctx.beginPath(); ctx.arc(node.x + puff.x, node.y + puff.y, puff.size, 0, Math.PI * 2); ctx.fill();
-    }
     // The halo is drawn, not blurred: a gradient here costs the same at one planet or at three
     // hundred, and a shadow behind every one of them does not.
     // No halo. A cloud hanging off a star makes it read as a smudge with a bead in the middle;
@@ -5077,16 +5068,9 @@ function drawNostromo(t) {
     ctx.fillStyle = dark;
     ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
     ctx.restore();
-    // The faintest thread of light round the whole edge, so the body parts from the dark
-    // without a drawn outline. No crescent: a bright arc on one side reads as an eyebrow.
-    ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.3 + 0.5 * burn), 0.16 + 0.5 * burn + 0.2 * arrive);
-    ctx.lineWidth = (0.7 + 0.5 * burn + 0.5 * arrive) / cam.scale;
-    ctx.beginPath(); ctx.arc(node.x, node.y, r + 0.4 / cam.scale, 0, Math.PI * 2); ctx.stroke();
-    if (arrive > 0.05) {
-      ctx.strokeStyle = hexAlpha(node.color, arrive * 0.6);
-      ctx.lineWidth = 1 / cam.scale;
-      ctx.beginPath(); ctx.arc(node.x, node.y, r + 4 + (1 - arrive) * 14, 0, Math.PI * 2); ctx.stroke();
-    }
+    // Nothing is drawn round the edge. An outline is the one thing that stops a ball reading as
+    // a ball, however thin it is, and a ring thrown off when a pulse lands is an outline too.
+    // What says a pulse arrived is the body itself brightening, which it already does.
     if (node === nostromo.selected || node === nostromo.hover) {
       ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
       ctx.lineWidth = 1.2 / cam.scale;

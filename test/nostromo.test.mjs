@@ -688,7 +688,11 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   assert.deepEqual(Object.keys(classes).sort(), ['decision', 'fact', 'preference', 'question']);
   for (const [kind, label] of Object.entries(classes)) {
     assert.match(label, /DWARF$/, `${kind} is not named as a star`);
-    assert.match(page, new RegExp(`${label} · ${kind.toUpperCase()}`, 'i'), `the page never shows "${label} · ${kind}"`);
+    // The class belongs on hover, not on the chip: the drawn star already says which it is, and
+    // writing it out beside the star says the same thing twice.
+    assert.match(page, new RegExp(`title="${label} · ${kind.toUpperCase()}"`, 'i'), `${kind} never names its class anywhere`);
+    assert.ok(!new RegExp(`<i>${label}`, 'i').test(page), `${kind} still spells out its class beside the star`);
+    assert.match(page, new RegExp(`<i>${kind.toUpperCase()}</i>`, 'i'), `${kind} is not labelled`);
   }
 
   // The chip carries a drawn star, and it is drawn the way the ones in the constellation are:
@@ -704,6 +708,9 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   const rule = css.slice(css.indexOf('.nostromo-legend'), css.indexOf('.nostromo-frame .mother-close'));
   assert.ok(/font-size: 9px/.test(rule) && /letter-spacing: \.16em/.test(rule), 'the legend lost its lettering');
   assert.ok(!/font-family/.test(rule), 'the legend set a font of its own');
+  // And the chips are not boxed in. A star needs no pill drawn round it.
+  assert.ok(!/border(?!-radius)/.test(rule), 'the legend chips are still fenced in');
+  assert.ok(!/border-radius: 999px/.test(rule), 'the legend chips are still pills');
 
   // And the stylesheet's colours are the same stars the canvas paints.
   const palette = new Function(`return ${app.match(/const MEMORY_COLORS = (\{[^}]*\});/)[1]}`)();
@@ -723,4 +730,40 @@ test('nostromo: a class of star is built once, however many memories wear it', a
   run(2);
   // One strip for MOTHER, one for each class of star that is actually on screen.
   assert.equal(offscreen.length, 5, `skins should be built once per class, saw ${offscreen.length}`);
+});
+
+test('nostromo: a memory is a ball, with nothing ringed round it and nothing coming off it', async () => {
+  const room = fakeRoom();
+  room.selected = null;
+  room.hover = null;
+  // Some of them have just been fed, which used to throw a ring; all of them used to shed specks.
+  room.nodes.forEach((node, i) => { node.lit = i % 3 === 0 ? 1.1 : 0; node.charge = (i % 5) / 4; });
+  const { run, calls } = await nostromoRenderer(room);
+  run(0.5);
+
+  // Nothing is struck round a body but the body itself. An outline, however thin, and a ring
+  // thrown off when a pulse lands are both circles drawn on a ball, and both flatten it.
+  for (const node of room.nodes) {
+    const r = node.r * node.scale * 1.06;   // the widest the micro-pulsation can push it
+    for (const call of calls) {
+      if (call.name !== 'arc') continue;
+      if (Math.abs(call.args[0] - node.x) > 0.001 || Math.abs(call.args[1] - node.y) > 0.001) continue;
+      assert.ok(call.args[2] <= r, `a memory is ringed at ${(call.args[2] / node.r).toFixed(2)} of its own radius`);
+    }
+  }
+
+  // And nothing drifts off them. The specks were filled circles set a little away from a body,
+  // which is the one thing that should never appear near one.
+  for (const node of room.nodes) {
+    for (const call of calls) {
+      if (call.name !== 'arc') continue;
+      const off = Math.hypot(call.args[0] - node.x, call.args[1] - node.y);
+      if (off < 0.001 || off > node.r * 3) continue;
+      assert.fail(`something is drifting ${off.toFixed(1)} units off a memory`);
+    }
+  }
+
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const constellation = source.slice(source.indexOf('function buildNostromo('), source.indexOf('function openNostromo('));
+  assert.ok(!/smoke|puff/.test(constellation), 'the memories still carry specks to shed');
 });
