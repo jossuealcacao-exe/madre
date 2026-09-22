@@ -4240,6 +4240,21 @@ const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#5cf0
 // of its own. It is drawn dark on purpose, because it is the one thing in here nobody should
 // read as knowledge.
 const COLLAPSED = 'aberration';
+// The field of dust and stars a void sits in. Laid out once and shared: every aberration wears
+// the same field turned to its own angle, so a hundred of them cost one table.
+const VOID_DUST = Array.from({ length: 64 }, (_, i) => {
+  const spiral = i * 2.39996;                                  // golden angle: no clumps, no rows
+  const out = Math.sqrt((i + 0.6) / 64);                       // even by area, so it does not crowd the middle
+  const warm = i % 9 === 0;
+  return {
+    angle: spiral,
+    out,
+    size: 0.5 + ((i * 7919) % 100) / 100 * 1.5,
+    rate: 0.6 + ((i * 6151) % 100) / 100 * 1.9,
+    phase: ((i * 4133) % 100) / 100 * Math.PI * 2,
+    colour: warm ? '255, 226, 168' : ((i % 4) ? '226, 238, 255' : '176, 204, 255'),
+  };
+});
 const nostromo = {
   button: document.querySelector('#nostromo-button'),
   dialog: document.querySelector('#nostromo'),
@@ -4348,26 +4363,26 @@ function collapsedChip(hex, px) {
   if (!paint) return canvas;
   paint.scale(dpr, dpr);
   const r = px / 2;
-  // The same thing the constellation draws, small: a thick ring of heat with a round dark in it.
-  const flow = paint.createRadialGradient(r, r, r * 0.16, r, r, r);
-  flow.addColorStop(0, 'rgba(120, 14, 0, 0)');
-  flow.addColorStop(0.42, 'rgba(255, 118, 10, .75)');
-  flow.addColorStop(0.58, 'rgba(255, 196, 96, .95)');
-  flow.addColorStop(0.78, 'rgba(210, 56, 0, .5)');
-  flow.addColorStop(1, 'rgba(90, 10, 0, 0)');
-  paint.fillStyle = flow;
-  paint.beginPath(); paint.arc(r, r, r, 0, Math.PI * 2); paint.fill();
-  const crescent = paint.createRadialGradient(r * 0.7, r * 1.4, 0, r * 0.7, r * 1.4, r * 0.72);
-  crescent.addColorStop(0, 'rgba(255, 246, 214, .8)');
-  crescent.addColorStop(1, 'rgba(255, 150, 40, 0)');
-  paint.fillStyle = crescent;
-  paint.beginPath(); paint.arc(r * 0.7, r * 1.4, r * 0.72, 0, Math.PI * 2); paint.fill();
-  const dark = paint.createRadialGradient(r, r, 0, r, r, r * 0.46);
-  dark.addColorStop(0, 'rgba(0, 0, 0, 1)');
-  dark.addColorStop(0.72, 'rgba(0, 0, 0, 1)');
-  dark.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  paint.fillStyle = dark;
-  paint.beginPath(); paint.arc(r, r, r * 0.46, 0, Math.PI * 2); paint.fill();
+  // The same thing the constellation draws, small: dust, a round black nothing, a cold rim.
+  paint.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 14; i += 1) {
+    const speck = VOID_DUST[i * 4];
+    const at = r * (0.78 + 0.22 * speck.out);
+    const x = r + Math.cos(speck.angle) * at;
+    const y = r + Math.sin(speck.angle) * at;
+    paint.fillStyle = `rgba(${speck.colour}, ${0.8 - 0.4 * speck.out})`;
+    paint.beginPath(); paint.arc(x, y, 0.55, 0, Math.PI * 2); paint.fill();
+  }
+  paint.globalCompositeOperation = 'source-over';
+  paint.fillStyle = '#000000';
+  paint.beginPath(); paint.arc(r, r, r * 0.66, 0, Math.PI * 2); paint.fill();
+  paint.globalCompositeOperation = 'lighter';
+  paint.strokeStyle = 'rgba(168, 204, 255, .75)';
+  paint.lineWidth = 0.9;
+  paint.beginPath(); paint.arc(r, r, r * 0.69, 0.6, 3.5); paint.stroke();
+  paint.strokeStyle = 'rgba(140, 180, 245, .45)';
+  paint.beginPath(); paint.arc(r, r, r * 0.74, 3.9, 5.9); paint.stroke();
+  paint.globalCompositeOperation = 'source-over';
   return canvas;
 }
 
@@ -5124,73 +5139,73 @@ function drawNostromo(t) {
     const fed = Math.min(1, (node.charge ?? 0) + 0.25 * arrive);
     const burn = Math.min(1, 0.4 * grown + 0.75 * fed);
 
-    // A collapsed body. This one is not a star: it is a claim the room established is false. It
-    // makes no light of its own; what can be seen is matter falling in, and the round dark in
-    // the middle where light cannot leave at all.
+    // A collapsed body. This one is not a star and it is not a furnace either: it is a claim the
+    // room established is false, and what it looks like is absence. A round black nothing, the
+    // dust and stars of the field standing around it, and the faint cold light of what passes
+    // close enough to be bent round the rim instead of going straight.
     //
-    // Nothing here has an edge, because the thing has no surface. The disc is a thick, soft
-    // torus of heat, and the side of it running toward us outshines the far side by a long way,
-    // which is what gives it its crescent.
+    // There is no disc and nothing burns. The whole of it is the dark, and the dark is the point.
     if (node.memory.kind === COLLAPSED) {
-      const beam = node.seed + node.spin * 0.34;   // where the flow is coming toward us
-      const horizon = r;
-      const disc = r * 1.62;
-      const reach = r * 3.1;
-      const heat = 0.42 + 0.58 * burn;
+      const hole = r * 1.35;
+      const field = hole * 2.4;
+      const turn = node.seed + node.spin * 0.12;
+      const lit = 0.45 + 0.55 * burn;
+
+      // The field it sits in: specks of dust and far stars, each on its own slow flicker.
       ctx.globalCompositeOperation = 'lighter';
-
-      // The disc, all the way round: deep red at its outside, gold where it is hottest, and no
-      // hard stop anywhere along it.
-      const flow = ctx.createRadialGradient(node.x, node.y, horizon * 0.5, node.x, node.y, reach);
-      flow.addColorStop(0, 'rgba(90, 8, 0, 0)');
-      flow.addColorStop(0.28, `rgba(126, 16, 0, ${0.3 * heat})`);
-      flow.addColorStop(0.44, `rgba(255, 116, 8, ${0.58 * heat})`);
-      flow.addColorStop(0.53, `rgba(255, 186, 86, ${0.74 * heat})`);
-      flow.addColorStop(0.63, `rgba(255, 104, 16, ${0.46 * heat})`);
-      flow.addColorStop(0.8, `rgba(146, 22, 0, ${0.18 * heat})`);
-      flow.addColorStop(1, 'rgba(60, 4, 0, 0)');
-      ctx.fillStyle = flow;
-      ctx.beginPath(); ctx.arc(node.x, node.y, reach, 0, Math.PI * 2); ctx.fill();
-
-      // Matter in the flow, in a few soft bands turning at their own rates. Wide and faint, so
-      // they read as something moving rather than as lines drawn on it.
-      ctx.lineCap = 'butt';
-      for (let band = 0; band < 3; band += 1) {
-        const at = disc * (0.86 + band * 0.26);
-        const from = beam + band * 2.1 + t * (0.05 + band * 0.03);
-        ctx.strokeStyle = `rgba(255, ${140 + band * 40}, ${30 + band * 40}, ${(0.13 - 0.03 * band) * heat})`;
-        ctx.lineWidth = r * (0.62 - 0.12 * band);
-        ctx.beginPath(); ctx.arc(node.x, node.y, at, from, from + 2.4); ctx.stroke();
+      for (let i = 0; i < VOID_DUST.length; i += 1) {
+        const speck = VOID_DUST[i];
+        const at = hole * 1.06 + (field - hole * 1.06) * speck.out;
+        const angle = speck.angle + turn;
+        const x = node.x + Math.cos(angle) * at;
+        const y = node.y + Math.sin(angle) * at;
+        // Fading outward, so the field thins into the dark rather than stopping.
+        const fade = (1 - speck.out * 0.72) * lit * (0.45 + 0.55 * Math.abs(Math.sin(t * speck.rate + speck.phase)));
+        const size = speck.size * (1 + 0.25 * burn) / cam.scale;
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 3.2);
+        glow.addColorStop(0, `rgba(${speck.colour}, ${fade})`);
+        glow.addColorStop(0.35, `rgba(${speck.colour}, ${fade * 0.3})`);
+        glow.addColorStop(1, `rgba(${speck.colour}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(x, y, size * 3.2, 0, Math.PI * 2); ctx.fill();
       }
-
-      // The near side of the disc runs toward us and outshines the rest: one crescent, offset.
-      const cx = node.x + Math.cos(beam) * disc * 0.66;
-      const cy = node.y + Math.sin(beam) * disc * 0.66;
-      const crescent = ctx.createRadialGradient(cx, cy, 0, cx, cy, disc * 1.02);
-      crescent.addColorStop(0, `rgba(255, 246, 216, ${0.6 * heat})`);
-      crescent.addColorStop(0.32, `rgba(255, 196, 96, ${0.4 * heat})`);
-      crescent.addColorStop(0.68, `rgba(255, 120, 24, ${0.14 * heat})`);
-      crescent.addColorStop(1, 'rgba(180, 40, 0, 0)');
-      ctx.fillStyle = crescent;
-      ctx.beginPath(); ctx.arc(cx, cy, disc * 1.02, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
 
-      // The shadow. Not a hole punched in the picture: it is the dark the disc is wrapped
-      // around, and it sits a little off the middle, away from the side that is brightest.
-      const sx = node.x - Math.cos(beam) * horizon * 0.14;
-      const sy = node.y - Math.sin(beam) * horizon * 0.14;
-      const dark = ctx.createRadialGradient(sx, sy, 0, sx, sy, horizon * 1.34);
-      dark.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      dark.addColorStop(0.66, 'rgba(0, 0, 0, 1)');
-      dark.addColorStop(0.86, 'rgba(0, 0, 0, .72)');
-      dark.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = dark;
-      ctx.beginPath(); ctx.arc(sx, sy, horizon * 1.34, 0, Math.PI * 2); ctx.fill();
+      // The void. Black all the way through, with just enough softness at the rim that it reads
+      // as depth rather than as a sticker.
+      const pit = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, hole * 1.1);
+      pit.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      pit.addColorStop(0.86, 'rgba(0, 0, 0, 1)');
+      pit.addColorStop(0.95, 'rgba(0, 0, 2, .82)');
+      pit.addColorStop(1, 'rgba(0, 0, 4, 0)');
+      ctx.fillStyle = pit;
+      ctx.beginPath(); ctx.arc(node.x, node.y, hole * 1.1, 0, Math.PI * 2); ctx.fill();
+
+      // What passes close enough is bent round instead of going straight: a cold ring of
+      // smeared light gripping the rim, in a few arcs that do not quite close.
+      ctx.globalCompositeOperation = 'lighter';
+      const halo = ctx.createRadialGradient(node.x, node.y, hole * 0.94, node.x, node.y, hole * 1.3);
+      halo.addColorStop(0, 'rgba(150, 190, 255, 0)');
+      halo.addColorStop(0.3, `rgba(168, 204, 255, ${0.26 * lit})`);
+      halo.addColorStop(0.55, `rgba(120, 160, 230, ${0.12 * lit})`);
+      halo.addColorStop(1, 'rgba(90, 130, 210, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(node.x, node.y, hole * 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.lineCap = 'round';
+      for (let arc = 0; arc < 4; arc += 1) {
+        const at = hole * (1.005 + arc * 0.028);
+        const from = turn * (1 + arc * 0.35) + arc * 1.9;
+        const span = 0.9 + 0.5 * Math.sin(t * 0.21 + arc);
+        ctx.strokeStyle = `rgba(${arc % 2 ? '198, 222, 255' : '146, 186, 250'}, ${(0.3 - 0.05 * arc) * lit})`;
+        ctx.lineWidth = (1.4 - 0.25 * arc) / cam.scale;
+        ctx.beginPath(); ctx.arc(node.x, node.y, at, from, from + span); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
 
       if (node === nostromo.selected || node === nostromo.hover) {
         ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
         ctx.lineWidth = 1.2 / cam.scale;
-        ctx.beginPath(); ctx.arc(node.x, node.y, reach * 0.78 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(node.x, node.y, field + 4 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
       }
       continue;
     }

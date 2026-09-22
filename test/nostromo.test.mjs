@@ -144,7 +144,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     const window = { devicePixelRatio: 1 };
     ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
-    ${block('CORE_FLOWS')} ${block('COLLAPSED')}
+    ${block('CORE_FLOWS')} ${block('COLLAPSED')} ${block('VOID_DUST')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${block('dwarfSkins')} ${fn('dwarfTexture')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
@@ -695,7 +695,7 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   }
   // The collapsed body gets a chip of its own, drawn as a hole with a ring rather than as a star.
   const collapsed = app.slice(app.indexOf('function collapsedChip('), app.indexOf('// The legend:'));
-  for (const piece of ['createRadialGradient', 'rgba(0, 0, 0, 1)', 'createElement']) {
+  for (const piece of ['VOID_DUST', "'#000000'", 'createElement']) {
     assert.ok(collapsed.includes(piece), `the collapsed chip is missing its ${piece}`);
   }
   assert.ok(!collapsed.includes('dwarfTexture'), 'the collapsed body was given a burning surface');
@@ -779,43 +779,65 @@ test('nostromo: a memory is a ball, with nothing ringed round it and nothing com
   assert.ok(!/smoke|puff/.test(constellation), 'the memories still carry specks to shed');
 });
 
-test('nostromo: an aberration is a hole with light wrapped round it, and it makes none of its own', async () => {
+test('nostromo: an aberration is a void in a field of dust, and nothing about it burns', async () => {
   const room = fakeRoom();
   const hole = room.nodes[0];
   hole.memory.kind = 'aberration';
   hole.color = '#b14cff';
   hole.charge = 1;
+  room.selected = null;
+  room.hover = null;
   const { run, calls } = await nostromoRenderer(room);
   run(0.4);
 
-  const near = (call) => Math.hypot(call.args[0] - hole.x, call.args[1] - hole.y) < hole.r * 4;
-  const circles = calls.filter((c) => c.name === 'arc' && near(c));
-  assert.ok(circles.length >= 3, `the body should be built from several rings, saw ${circles.length}`);
+  const onBody = (call) => Math.abs(call.args[0] - hole.x) < 0.001 && Math.abs(call.args[1] - hole.y) < 0.001;
+  const stopsAfter = (at) => calls.slice(at + 1, at + 6).filter((c) => c.name === 'addColorStop').map((c) => String(c.args[1]));
 
-  // The dark in the middle is the point of it: something fully black, and smaller than the ring
-  // of light around it.
-  const blacks = [];
+  // The void: one thing, struck from the body's own middle, black all the way through, and big.
+  let voids = [];
   for (let i = 0; i < calls.length; i += 1) {
-    if (calls[i].name !== 'createRadialGradient' || !near(calls[i])) continue;
-    const stops = calls.slice(i + 1, i + 6).filter((c) => c.name === 'addColorStop').map((c) => String(c.args[1]));
-    if (stops.some((colour) => colour === 'rgba(0, 0, 0, 1)')) blacks.push(calls[i].args[5]);
+    if (calls[i].name !== 'createRadialGradient' || !onBody(calls[i])) continue;
+    if (stopsAfter(i)[0] === 'rgba(0, 0, 0, 1)') voids.push(calls[i].args[5]);
   }
-  assert.equal(blacks.length, 1, 'an aberration has no shadow, or has more than one');
-  const widest = Math.max(...circles.map((c) => c.args[2]));
-  assert.ok(blacks[0] < widest * 0.6, `the shadow should sit well inside the disc, ${blacks[0].toFixed(1)} against ${widest.toFixed(1)}`);
+  assert.equal(voids.length, 1, 'an aberration has no void, or has more than one');
+  const dark = voids[0];
+  assert.ok(dark > hole.r, `the void should be the size of the thing, got ${dark.toFixed(1)} against a body of ${hole.r}`);
 
-  // It is not lit like a star: nothing of its own colour is laid on it, and it never wears the
-  // boiling surface the dwarfs do.
-  const skinned = calls.some((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (hole.x - hole.r * 1.06)) < 4);
-  assert.equal(skinned, false, 'an aberration was given a burning surface');
+  // Nothing is drawn wide around it. There is no disc and no cloud: what is around a void is the
+  // field it happens to sit in, and past the rim there is only dark.
+  for (let i = 0; i < calls.length; i += 1) {
+    if (calls[i].name !== 'createRadialGradient' || !onBody(calls[i])) continue;
+    assert.ok(calls[i].args[5] < dark * 1.3, `something is wrapped round the void out to ${(calls[i].args[5] / dark).toFixed(2)} of it`);
+  }
 
-  // One side of the disc is far brighter than the rest: that crescent is what a disc turning
-  // toward you looks like, and it is struck off centre on purpose.
-  const offCentre = calls.filter((c) => c.name === 'createRadialGradient' && near(c)
-    && (Math.abs(c.args[0] - hole.x) > 1 || Math.abs(c.args[1] - hole.y) > 1) && c.args[0] === c.args[3]);
-  assert.ok(offCentre.length >= 1, 'the disc is evenly lit all the way round');
+  // The field: specks of dust and far stars, every one of them clear of the void.
+  const specks = calls.filter((c) => c.name === 'createRadialGradient' && !onBody(c)
+    && Math.hypot(c.args[0] - hole.x, c.args[1] - hole.y) < hole.r * 6);
+  assert.ok(specks.length > 40, `the void should sit in a field, saw ${specks.length} specks`);
+  for (const speck of specks) {
+    const out = Math.hypot(speck.args[0] - hole.x, speck.args[1] - hole.y);
+    assert.ok(out > dark * 0.6, `a speck was drawn inside the void, ${out.toFixed(1)} from its middle`);
+  }
 
-  // And the light it is wrapped in is additive, then switched off again.
+  // And light that passes close is bent round the rim rather than going straight: cold arcs,
+  // gripping the edge, none of them crossing it.
+  const arcs = calls.filter((c) => c.name === 'arc' && onBody(c) && c.args[2] > hole.r && c.args[2] < dark * 1.3);
+  assert.ok(arcs.length >= 4, `the rim should carry bent light, saw ${arcs.length} arcs`);
+  assert.ok(arcs.some((arc) => Math.abs((arc.args[4] ?? 0) - (arc.args[3] ?? 0)) < Math.PI * 1.9), 'the bent light closes into a plain ring');
+
+  // Cold, never hot: nothing orange is laid on the body itself. A void is not a furnace.
+  for (let i = 0; i < calls.length; i += 1) {
+    if (calls[i].name !== 'createRadialGradient' || !onBody(calls[i])) continue;
+    for (const colour of stopsAfter(i)) {
+      const parts = colour.match(/rgba?\((\d+), (\d+), (\d+)/);
+      if (!parts) continue;
+      const [red, green, blue] = parts.slice(1).map(Number);
+      assert.ok(!(red > 180 && red > blue + 80), `the void is burning: ${colour}`);
+    }
+  }
+
+  // It never wears the boiling surface a star does, and it leaves blending as it found it.
+  assert.equal(calls.some((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (hole.x - hole.r * 1.06)) < 4), false, 'an aberration was given a burning surface');
   const composites = calls.filter((c) => c.name === 'set:globalCompositeOperation').map((c) => c.args[0]);
   assert.ok(composites.includes('lighter'));
   assert.equal(composites.at(-1), 'source-over');
