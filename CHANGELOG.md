@@ -8,7 +8,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### El compositor y la barra, más tranquilos
 - Arrobar a un agente ya no lo mete en una píldora. Una mención es una palabra de la frase que estás escribiendo, no un campo por llenar: conserva el color del agente y pierde la caja, que rompía el ritmo al releer la línea.
-- Lo que estás respondiendo se distingue de lo que estás diciendo. La cita va en su propio bloque, más tenue, y se recorta a ciento veinte caracteres en vez de doscientos veinte: antes llenaba el campo y empujaba fuera de vista lo que ibas a escribir.
+- Lo que estás respondiendo salió del campo de texto y quedó arriba, en un badge propio: dos puntos más chico que lo que escribes, tenue, y recortado a dos líneas y a ciento veinte caracteres. Antes vivía dentro del textarea, donde todo comparte un solo tamaño y solo podía parecer algo que tú habías tecleado; ahí adentro llenaba el campo y empujaba fuera de vista lo que ibas a escribir. Se puede quitar con una equis sin perder lo que llevas escrito, y sigue saliendo al frente del mensaje, porque el agente necesita ver qué estás contestando.
 - En modo claro los botones de la barra superior brillan apenas. Un halo que se lee como luz sobre fondo oscuro se lee como mancha sobre uno pálido; el borde y el color ya dicen que el botón está vivo.
 
 

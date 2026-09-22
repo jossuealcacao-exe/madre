@@ -15,6 +15,7 @@ const els = {
   target: document.querySelector('#target'),
   input: document.querySelector('#message'),
   highlight: document.querySelector('#highlight'),
+  replyQuote: document.querySelector('#reply-quote'),
   slashMenu: document.querySelector('#slash-menu'),
   attach: document.querySelector('#attach'),
   createToggle: document.querySelector('#create-toggle'),
@@ -68,6 +69,7 @@ const state = {
   timeouts: {},
   seen: new Set(),
   userMessages: new Map(),
+  replyTo: null,            // the message being answered, shown above the field and sent at its head
   bridgePinned: false,      // the bridge stays open when the human asked for it
   tourArmed: false,         // the tour fires once, and only when the room can be used
   ollama: null,             // the local brain's state, for the bridge
@@ -1417,16 +1419,42 @@ function showReplyMenu(source, x, y) {
   replyMenu.style.left = `${Math.max(12, Math.min(x, window.innerWidth - width - 12))}px`;
   replyMenu.style.top = `${Math.min(y, window.innerHeight - height - 12)}px`;
 }
-// The head of a reply, as the composer writes it: ↩ @agent #123: “…”
-const QUOTE_LINE = /^(↩ @[\w-]+(?: #\d+)?: “[^]*?”)$/m;
+// What you are answering rides above the field rather than inside it. A textarea has one size
+// for everything in it, so a quote living there could only ever look like something you typed.
+// Out here it can be smaller, dimmer and set in a badge of its own, and it still goes out at the
+// head of the message, because the agent needs to see what you were answering.
+const REPLY_CLIP = 120;
+
+function quoteHead(reply) {
+  if (!reply) return '';
+  return `↩ @${reply.sender}${reply.sequence ? ` #${reply.sequence}` : ''}: “${reply.text}”\n`;
+}
+
+function renderReplyQuote() {
+  const box = els.replyQuote;
+  if (!box) return;
+  const reply = state.replyTo;
+  box.hidden = !reply;
+  if (!reply) { box.replaceChildren(); return; }
+  const who = el('b', null, `↩ @${reply.sender}${reply.sequence ? ` #${reply.sequence}` : ''}`);
+  const said = el('span', 'said', reply.text);
+  const drop = el('button', 'drop', '×');
+  drop.type = 'button';
+  drop.title = 'Answer without quoting this';
+  drop.setAttribute('aria-label', 'Remove the quoted reply');
+  drop.addEventListener('click', () => { state.replyTo = null; renderReplyQuote(); els.input.focus(); });
+  box.replaceChildren(who, said, drop);
+}
 
 function replyWith(agentId, source) {
   hideReplyMenu();
   const excerpt = source.text.replace(/\s+/g, ' ').trim();
-  const quoted = excerpt.length > 120 ? `${excerpt.slice(0, 119)}…` : excerpt;
-  const head = `↩ @${source.sender}${source.sequence ? ` #${source.sequence}` : ''}: “${quoted}”\n`;
-  const current = els.input.value.replace(/^↩ @[^\n]*\n/, '');
-  els.input.value = `${head}${current}`;
+  state.replyTo = {
+    sender: source.sender,
+    sequence: source.sequence ?? null,
+    text: excerpt.length > REPLY_CLIP ? `${excerpt.slice(0, REPLY_CLIP - 1)}…` : excerpt,
+  };
+  renderReplyQuote();
   if (state.agents.get(agentId)?.ready) { els.target.value = agentId; renderPicker(); }
   autosize();
   els.input.focus();
@@ -2496,10 +2524,7 @@ function renderHighlight() {
     if (!command) return whole;
     return `${lead}<span class="chip cmd${command.available ? '' : ' unknown'}">/${escapeHtml(name)}</span>`;
   });
-  // The quoted reply reads as something you are answering rather than something you are
-  // writing, so it is set apart before the field is painted.
-  const marked = html.replace(QUOTE_LINE, (line) => `<span class="quote">${line.replace(/^(↩ @[\w-]+(?: #\d+)?):/, '<b>$1</b>:')}</span>`);
-  els.highlight.innerHTML = `${marked}${text.endsWith('\n') ? '\n' : ''}` || '';
+  els.highlight.innerHTML = `${html}${text.endsWith('\n') ? '\n' : ''}` || '';
   syncHighlightScroll();
 }
 
@@ -2831,6 +2856,8 @@ els.composer.addEventListener('submit', async (event) => {
   }
   let outgoing = text;
   let target = els.target.value;
+  const quoting = state.replyTo;
+  if (quoting && !text.startsWith('/')) outgoing = `${quoteHead(quoting)}${outgoing}`;
   // "#2" written in the message is the same as choosing it in the chip.
   const modeToken = outgoing.match(/(^|\s)#([0-3])(?=\s|$)/);
   if (modeToken) { setMode(Number(modeToken[2])); outgoing = outgoing.replace(/(^|\s)#[0-3](?=\s|$)/, '$1').replace(/\s{2,}/g, ' ').trim(); }
@@ -2856,6 +2883,8 @@ els.composer.addEventListener('submit', async (event) => {
       if (state.mode >= 3 && [403, 409, 412].includes(response.status)) setMode(1);
     } else {
       els.input.value = '';
+      state.replyTo = null;
+      renderReplyQuote();
       state.pending = [];
       renderPendingAttachments();
       resetModeAfterSend(); // one mode per message; standing leases fall back to #2, everyone else to #1

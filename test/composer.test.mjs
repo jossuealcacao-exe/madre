@@ -22,41 +22,47 @@ test('composer: a mention is coloured, never boxed', async () => {
   assert.ok(!/color:/.test(mention[1]), 'a mention overrode the agent colour it exists to show');
 });
 
-test('composer: what you are replying to is short, and marked apart from what you are writing', async () => {
-  const app = await read('app.js');
+test('composer: what you are answering sits above the field, smaller and in a badge of its own', async () => {
+  const [app, css, page] = await Promise.all([read('app.js'), read('styles.css'), read('index.html')]);
 
-  // The head of a reply is built in one place and matched in another. If either moves the quote
-  // silently stops being set apart, so they are checked against each other here.
-  assert.ok(app.includes('const head = `↩ @${source.sender}'), 'the reply head is gone from app.js');
-  const pattern = app.match(/const QUOTE_LINE = (\/.*\/m);/);
-  assert.ok(pattern, 'QUOTE_LINE is gone from app.js');
-  const quoteLine = new Function(`return ${pattern[1]}`)();
+  // It is no longer typed into the field. A textarea has one size for everything in it, so a
+  // quote living there could only ever look like something you wrote.
+  assert.match(page, /id="reply-quote"/, 'the quote has no place of its own in the page');
+  assert.ok(!/els\.input\.value = `\$\{head\}/.test(app), 'the quote is still being typed into the field');
+  assert.match(app, /state\.replyTo = \{/, 'the composer no longer remembers what it is answering');
 
-  for (const head of [
-    '↩ @claude #4213: “Verificado contra el código de hoy, no contra el resumen.”',
-    '↩ @codex: “A reply with no sequence at all.”',
-    '↩ @opencode #7: “Something with “quotes” inside it, and a line\nbreak.”',
-  ]) {
-    assert.match(head, quoteLine, `the overlay would not mark: ${head.slice(0, 40)}`);
-  }
-  // A line that merely starts with the arrow is not a quote, and neither is ordinary text.
-  for (const plain of ['↩ not a quote at all', 'Ayuda a @gemini a que @codex revise esto', '@claude ¿qué opinas?']) {
-    assert.doesNotMatch(plain, quoteLine, `the overlay would mark plain text: ${plain}`);
-  }
+  // Two points smaller than what you type, which is what the field is set in.
+  const field = css.match(/\.editor textarea, \.editor \.highlight \{[^}]*font-size: (\d+(?:\.\d+)?)px/);
+  assert.ok(field, 'the field no longer declares a size');
+  const badge = css.match(/\.reply-quote \{([^}]*)\}/);
+  assert.ok(badge, 'the quote has no badge');
+  const quoteSize = Number(badge[1].match(/font-size: (\d+(?:\.\d+)?)px/)?.[1]);
+  assert.equal(quoteSize, Number(field[1]) - 2, `the quote is ${quoteSize}px against a field of ${field[1]}px`);
 
-  // Short enough to read at a glance. It used to run to 220 characters, which filled the field
-  // and pushed what you were writing out of sight.
-  const cap = app.match(/excerpt\.length > (\d+) \? `\$\{excerpt\.slice\(0, (\d+)\)\}…`/);
-  assert.ok(cap, 'the quote is no longer clipped');
-  assert.ok(Number(cap[1]) <= 140, `a quote of ${cap[1]} characters is more than a couple of lines`);
-  assert.equal(Number(cap[2]), Number(cap[1]) - 1, 'the ellipsis pushes the quote past its own limit');
+  // A badge faint enough to sit under the line without competing with it, and clipped so a long
+  // answer cannot push the field down the page.
+  assert.match(badge[1], /background: color-mix/);
+  assert.match(badge[1], /border-radius/);
+  assert.match(css, /\.reply-quote \.said \{[^}]*-webkit-line-clamp: 2/, 'a long quote can still run away with the composer');
 
-  // And it is drawn as its own block, dimmer than the line you are typing.
-  const css = await read('styles.css');
-  const quote = css.match(/\.editor \.highlight \.quote \{([^}]*)\}/);
-  assert.ok(quote, 'the quote is not set apart in the overlay');
-  assert.match(quote[1], /display: block/);
-  assert.match(quote[1], /color: var\(--text-3\)/);
+  // And it can be taken off without clearing what you have written.
+  assert.match(css, /\.reply-quote \.drop \{/, 'there is no way to drop the quote');
+  assert.match(app, /state\.replyTo = null; renderReplyQuote\(\)/, 'dropping the quote does nothing');
+
+  // It still goes out at the head of the message: the agent has to see what it is answering.
+  assert.match(app, /if \(quoting && !text\.startsWith\('\/'\)\) outgoing = `\$\{quoteHead\(quoting\)\}\$\{outgoing\}`/, 'the quote never reaches the agent');
+  // A slash command is not an answer to anyone, so it does not carry one.
+  assert.match(app, /!text\.startsWith\('\/'\)/);
+  // And it is let go only once the message is away. Clearing it before the room accepts the
+  // message would lose what you were answering if the send failed.
+  const success = app.indexOf("els.input.value = '';\n      state.replyTo = null;");
+  assert.ok(success > 0, 'the quote is not cleared where the message succeeds');
+  assert.ok(success > app.indexOf("await fetch('/api/messages'"), 'the quote is cleared before the message is away');
+
+  // Short enough to read at a glance: it used to run to 220 characters and fill the field.
+  const clip = Number(app.match(/const REPLY_CLIP = (\d+);/)?.[1]);
+  assert.ok(clip && clip <= 140, `a quote of ${clip} characters is more than a couple of lines`);
+  assert.match(app, /excerpt\.slice\(0, REPLY_CLIP - 1\)/, 'the ellipsis pushes the quote past its own limit');
 });
 
 test('composer: the top bar glows on a dark ground, and barely on a pale one', async () => {
