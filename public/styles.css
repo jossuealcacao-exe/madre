@@ -991,15 +991,18 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* A mention is a word in the sentence you are writing, so it is only ever coloured. A pill drawn
    round it turns the line into a form to fill in and breaks the rhythm of reading it back. */
 .editor .highlight .chip.agent { background: transparent; box-shadow: none; }
-/* What you are answering, above the field and never in it: two points smaller than what you
-   type, in a badge faint enough to sit under the line without competing with it. */
+/* What you are answering, inside the field and above the line you write on. It takes a row of
+   its own, so the box grows by exactly its height and the writing space is never eaten. Two
+   points smaller than what you type, in a badge faint enough not to compete with it. */
 .reply-quote {
+  grid-column: 1 / -1;
   display: flex; align-items: baseline; gap: 7px;
-  margin: 0 0 8px; padding: 6px 8px 6px 10px; border-radius: 8px;
-  background: color-mix(in srgb, var(--text-3) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--line-2) 70%, transparent);
+  margin: 2px 0 0 -6px; padding: 6px 8px 6px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--text-3) 9%, transparent);
   font-size: 13px; line-height: 1.4; color: var(--text-3);
 }
+/* With something quoted the field gives you room to answer in rather than one cramped line. */
+.field.quoting textarea, .field.quoting .highlight { min-height: 42px; }
 .reply-quote b { flex: none; color: var(--text-2); font-weight: 600; }
 .reply-quote .said { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .reply-quote .drop { flex: none; margin-left: auto; width: 18px; height: 18px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); font-size: 14px; line-height: 1; cursor: pointer; }

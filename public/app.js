@@ -16,6 +16,7 @@ const els = {
   input: document.querySelector('#message'),
   highlight: document.querySelector('#highlight'),
   replyQuote: document.querySelector('#reply-quote'),
+  field: document.querySelector('.field'),
   slashMenu: document.querySelector('#slash-menu'),
   attach: document.querySelector('#attach'),
   createToggle: document.querySelector('#create-toggle'),
@@ -1435,7 +1436,9 @@ function renderReplyQuote() {
   if (!box) return;
   const reply = state.replyTo;
   box.hidden = !reply;
-  if (!reply) { box.replaceChildren(); return; }
+  // The field says whether it is holding a quote, so it can give you room to answer in.
+  els.field?.classList.toggle('quoting', Boolean(reply));
+  if (!reply) { box.replaceChildren(); autosize(); return; }
   const who = el('b', null, `↩ @${reply.sender}${reply.sequence ? ` #${reply.sequence}` : ''}`);
   const said = el('span', 'said', reply.text);
   const drop = el('button', 'drop', '×');
@@ -1444,6 +1447,7 @@ function renderReplyQuote() {
   drop.setAttribute('aria-label', 'Remove the quoted reply');
   drop.addEventListener('click', () => { state.replyTo = null; renderReplyQuote(); els.input.focus(); });
   box.replaceChildren(who, said, drop);
+  autosize();
 }
 
 function replyWith(agentId, source) {
@@ -2487,7 +2491,9 @@ function autosize() {
   const padding = 14; // 7px top + bottom, content-box
   const needed = Math.max(1, Math.ceil((els.input.scrollHeight - padding) / LINE_PX));
   const rows = Math.min(Number.isFinite(needed) ? needed : 1, MAX_ROWS);
-  els.input.style.height = `${rows * LINE_PX}px`;
+  // While a quote is held the field asks for more room than one line; the CSS minimum sets it,
+  // so the height is left to grow rather than pinned back to what the text alone needs.
+  els.input.style.height = `${Math.max(rows, els.field?.classList.contains('quoting') ? 2 : 1) * LINE_PX}px`;
   els.highlight.style.height = els.input.style.height;
   renderHighlight();
 }

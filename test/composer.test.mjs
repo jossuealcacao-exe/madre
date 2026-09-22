@@ -25,9 +25,14 @@ test('composer: a mention is coloured, never boxed', async () => {
 test('composer: what you are answering sits above the field, smaller and in a badge of its own', async () => {
   const [app, css, page] = await Promise.all([read('app.js'), read('styles.css'), read('index.html')]);
 
-  // It is no longer typed into the field. A textarea has one size for everything in it, so a
-  // quote living there could only ever look like something you wrote.
-  assert.match(page, /id="reply-quote"/, 'the quote has no place of its own in the page');
+  // It is no longer typed into the textarea, which has one size for everything in it, so a quote
+  // living there could only ever look like something you wrote. It sits inside the box all the
+  // same, on a row of its own above the line you write on.
+  const opens = page.indexOf('<div class="field">');
+  const box = page.slice(opens, page.indexOf('</form>', opens));
+  assert.match(box, /id="reply-quote"/, 'the quote is outside the box it belongs to');
+  assert.ok(box.indexOf('id="reply-quote"') < box.indexOf('id="message"'), 'the quote is below the line you write on');
+  assert.match(css, /\.reply-quote \{[^}]*grid-column: 1 \/ -1/, 'the quote does not take a row of its own, so it steals the writing space');
   assert.ok(!/els\.input\.value = `\$\{head\}/.test(app), 'the quote is still being typed into the field');
   assert.match(app, /state\.replyTo = \{/, 'the composer no longer remembers what it is answering');
 
@@ -48,6 +53,14 @@ test('composer: what you are answering sits above the field, smaller and in a ba
   // And it can be taken off without clearing what you have written.
   assert.match(css, /\.reply-quote \.drop \{/, 'there is no way to drop the quote');
   assert.match(app, /state\.replyTo = null; renderReplyQuote\(\)/, 'dropping the quote does nothing');
+
+  // And the box grows to hold it, so what is quoted never eats the room to answer in.
+  assert.match(css, /\.field\.quoting textarea[^{]*\{[^}]*min-height/, 'the field does not make room for an answer');
+  assert.match(app, /classList\.toggle\('quoting'/, 'the field is never told it is holding a quote');
+  assert.match(app, /Math\.max\(rows, els\.field\?\.classList\.contains\('quoting'\) \? 2 : 1\)/, 'the field is pinned back to one line while quoting');
+  // The height is worked out again whenever the quote comes or goes.
+  const render = app.slice(app.indexOf('function renderReplyQuote('), app.indexOf('function replyWith('));
+  assert.equal((render.match(/autosize\(\)/g) ?? []).length, 2, 'the box does not resize when the quote appears or is dropped');
 
   // It still goes out at the head of the message: the agent has to see what it is answering.
   assert.match(app, /if \(quoting && !text\.startsWith\('\/'\)\) outgoing = `\$\{quoteHead\(quoting\)\}\$\{outgoing\}`/, 'the quote never reaches the agent');
