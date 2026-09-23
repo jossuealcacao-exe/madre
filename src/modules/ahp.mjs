@@ -52,6 +52,7 @@ export default defineModule({
   name: 'AHP+',
   vendor: 'Agent Handoff Protocol Plus',
   package: PACKAGE,
+  tracks: { name: PACKAGE, npm: PACKAGE },
   summary: 'Verified project state, checkpoints and handoffs between AI sessions, stored in .ahp/ next to your code.',
   requires: ['the project is a git repository', 'npx on the PATH of the terminal MADRE was started from'],
   creates: ['.ahp/ with manifest, sessions, handoffs and evidence', 'a project-local pin of @jossuealcala/ahp-plus', 'IDE adapter files for the detected agents'],

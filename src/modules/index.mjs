@@ -101,7 +101,14 @@ export async function removeExternalModule({ id, stateRoot, projectRoot }) {
 }
 
 export const moduleById = (id) => MODULES.find((module) => module.id === id) ?? null;
-export function describeModules(ctx) { return Promise.all(MODULES.map((module) => module.describe(ctx))); }
+// What MODULES shows, with each card's update state attached from the cache when the room offers
+// the service. Never a network read: a screen that waits on a registry is a screen that hangs.
+export async function describeModules(ctx) {
+  const items = await Promise.all(MODULES.map((module) => module.describe(ctx)));
+  const look = ctx.services?.moduleUpdate;
+  if (!look) return items;
+  return Promise.all(items.map(async (item) => ({ ...item, update: await look(item).catch(() => null) })));
+}
 // One flat list of every route a module serves, with the module attached.
 export function findModuleRoute(method, pathname) {
   for (const module of MODULES) {

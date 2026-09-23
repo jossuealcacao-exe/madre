@@ -7,6 +7,7 @@ export default defineModule({
   id: 'ripley',
   name: 'RIPLEY',
   vendor: 'MADRE · PREVIEW',
+  version: '1.0.0',
   summary: 'Renders HTML, SVG and Markdown from the project and from .pulse/out in the file viewer, inside a sealed frame.',
   creates: ['nothing in the project', 'a switch in ~/.pulse/config.json', 'scripts run in the frame \u00b7 nothing leaves, nothing is stored, nothing reaches MADRE'],
   card: 'ripley',

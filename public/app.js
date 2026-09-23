@@ -3321,33 +3321,41 @@ async function refreshModules() {
   if (modules.dialog.open) renderModules();
 }
 
-// Where the version on a card comes from. A module that ships with MADRE has none of its own.
-const VERSION_NOTE = {
-  madre: 'Ships with MADRE: it moves with the release, so this is MADRE\'s own version.',
-  declared: 'The version this module declares for itself.',
-  file: 'This module declares no version; this is the day its file was last written.',
-  none: 'This module declares no version, and its file could not be read.',
-};
+// What the version on a card means. A module that ships with MADRE has its own version, written
+// in its file and starting at 1.0.0; it cannot update by itself, because it arrives in a release.
+// A module that wraps something else — a browser server, a model runner, a CLI — shows that
+// thing's version, found on this computer; nothing found is not a version but an absence, and the
+// line says so rather than inventing a number.
+function versionLabel(item) {
+  if (item.versionSource !== 'tracked') return `v${item.version ?? '1.0.0'}`;
+  if (item.version) return `v${item.version}`;
+  const target = (item.runs ?? []).find((dep) => dep.name === item.tracks?.name)?.target ?? null;
+  return target ? `INSTALLS ${target}` : 'NOT INSTALLED';
+}
 
-// Every version on a card belongs to something nameable: MADRE itself for the modules that ship
-// with it, the module's own file when someone else wrote it, and one tag per outside thing the
-// module drives — a package, a server, a binary — with the version found on this computer, or
-// the plain fact that it is not there.
-function versionTags(item) {
-  const tags = [];
-  if (item.external) {
-    const text = item.versionSource === 'declared' ? `MODULE ${item.version}`
-      : item.versionSource === 'file' ? `FILE ${item.version}` : 'UNVERSIONED';
-    tags.push({ text, title: VERSION_NOTE[item.versionSource] ?? '', kind: 'dev' });
-  } else {
-    tags.push({ text: `MADRE ${item.version}`, title: VERSION_NOTE.madre, kind: 'madre' });
+function updateWord(update) {
+  if (!update) return null;
+  if (update.enabled === false) return { text: 'CHECKS ARE OFF', kind: 'note' };
+  if (update.available) return { text: update.via === 'madre' ? `MADRE ${update.latest} AVAILABLE` : `${update.latest} AVAILABLE`, kind: 'new' };
+  // Nothing installed is not up to date: the newest is simply what installing would bring.
+  if (update.latest && !update.current) return { text: `NEWEST IS ${update.latest}`, kind: 'note' };
+  if (update.latest) return { text: 'UP TO DATE', kind: 'note' };
+  if (update.error) return { text: 'COULD NOT CHECK', kind: 'note' };
+  return null;
+}
+
+function updateNote(item, update) {
+  if (!update) return 'Check for a newer version';
+  if (update.via === 'madre') {
+    return update.available
+      ? `This module ships in MADRE ${update.ships}, and MADRE ${update.latest} is out. A module that comes with MADRE updates when MADRE does.`
+      : `This module ships in MADRE ${update.ships}, which is the newest release. A module that comes with MADRE updates when MADRE does.`;
   }
-  for (const dep of item.runs ?? []) {
-    if (dep.version) tags.push({ text: `${dep.name} ${dep.version}`, title: `${dep.name} found on this computer. MADRE reads the version from the package itself.`, kind: 'found' });
-    else if (dep.target) tags.push({ text: `${dep.name} · INSTALLS ${dep.target}`, title: `${dep.name} is not in this project yet. Installing writes version ${dep.target}.`, kind: 'missing' });
-    else tags.push({ text: `${dep.name} · NOT FOUND`, title: `${dep.name} is not on this computer, so this module cannot run yet.`, kind: 'missing' });
-  }
-  return tags;
+  const what = update.name;
+  if (update.available) return `${what} ${update.latest} is out; this computer has ${update.current}.`;
+  if (update.latest && !update.current) return `${what} ${update.latest} is the newest release. It is not on this computer yet.`;
+  if (update.latest) return `${what} ${update.latest} is the newest, and it is what this computer has.`;
+  return `MADRE could not reach the place that knows about ${what}.`;
 }
 
 // A fold inside a card. It remembers whether it was left open, like every other fold in MADRE,
@@ -3401,7 +3409,36 @@ function cardShell(item, { on, state: stateText }) {
   const head = el('div', 'head');
   const title = el('div');
   title.append(el('h4', null, item.name));
-  title.append(el('div', 'vendor', item.vendor));
+  // The version, and beside it the one button that goes and looks for a newer one.
+  const line = el('div', 'vendor');
+  line.append(el('span', 'who', `${item.vendor} · ${versionLabel(item)}`));
+  const said = el('span', 'update');
+  const known = updateWord(item.update);
+  if (known) { said.className = `update ${known.kind}`; said.textContent = known.text; said.title = updateNote(item, item.update); }
+  const check = el('button', 'check', '↻');
+  check.type = 'button';
+  check.title = `Check for a newer ${item.tracks?.name ?? 'version'}`;
+  check.addEventListener('click', async () => {
+    check.disabled = true;
+    said.className = 'update';
+    said.textContent = 'CHECKING…';
+    said.title = '';
+    try {
+      const response = await fetch(`/api/extensions/${item.id}/updates`, { method: 'POST' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      const word = updateWord(result.update) ?? { text: 'NOTHING KNOWN YET', kind: 'note' };
+      said.className = `update ${word.kind}`;
+      said.textContent = word.text;
+      said.title = updateNote(item, result.update);
+    } catch (error) {
+      said.className = 'update';
+      said.textContent = 'COULD NOT CHECK';
+      said.title = error.message;
+    } finally { check.disabled = false; }
+  });
+  line.append(check, said);
+  title.append(line);
   head.append(title);
   if (item.external) {
     const dev = el('span', 'dev-tag', 'DEV');
@@ -3410,13 +3447,6 @@ function cardShell(item, { on, state: stateText }) {
   }
   head.append(el('span', `state${on ? ' installed' : ''}${stateText === 'INSTALLING' ? ' running' : ''}`, stateText));
   card.append(head);
-  const tags = el('div', 'card-tags');
-  for (const tag of versionTags(item)) {
-    const chip = el('span', `tag ${tag.kind}`, tag.text.toUpperCase());
-    chip.title = tag.title;
-    tags.append(chip);
-  }
-  card.append(tags);
   if (item.status?.detail) card.append(el('div', 'detail', item.status.detail.toUpperCase()));
   if (item.external) card.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
   if (item.summary) card.append(el('p', null, item.summary));

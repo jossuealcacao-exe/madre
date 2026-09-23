@@ -33,6 +33,7 @@ export default defineModule({
   id: 'ollama',
   name: 'OLLAMA',
   vendor: 'MADRE · LOCAL INTELLIGENCE',
+  tracks: { name: 'ollama', github: 'ollama/ollama' },
   summary: 'Recall by meaning and memory distillation on this machine, through Ollama: no provider tokens, nothing leaves.',
   creates: ['nothing in the project', 'a block in ~/.pulse/config.json', 'models in Ollama\'s own store when you press PULL'],
   requires: ['Ollama running (the app, or ollama serve)', 'an embedding model and a chat model \u00b7 MADRE can pull the recommended ones'],

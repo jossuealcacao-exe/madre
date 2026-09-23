@@ -45,6 +45,7 @@ import { applyKey, keyPlanFor } from './credentials.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
+import { moduleUpdate } from './modules/updates.mjs';
 import { spawn } from 'node:child_process';
 import { totalmem } from 'node:os';
 import { discoverModels } from './models.mjs';
@@ -156,6 +157,18 @@ export async function createPulseServer({
     const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
     return { project: canonicalProjectRoot, ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
   }
+  // Keeping the day's cache warm. MODULES is served from what is already on disk, so the looking
+  // happens after the screen is answered, never in front of it: at most once an hour per room,
+  // only while the release channel is on, and each check still holds to its own day-long cache.
+  let warmedAt = 0;
+  async function warmModuleUpdates(items, { now = Date.now() } = {}) {
+    if (!updatesEnabled() || now - warmedAt < 60 * 60 * 1000) return;
+    warmedAt = now;
+    const context = await moduleContext().catch(() => null);
+    if (!context) return;
+    for (const item of items) await context.services.moduleUpdate(item, { cacheOnly: false }).catch(() => null);
+  }
+
   // Privacy: the terms that never travel through this room, from config.json and the environment.
   // config.json is shared by every room on this machine, so the list is re-read before each
   // human message and whenever MU/TH/UR looks: a term named in one room guards them all.
@@ -597,6 +610,12 @@ export async function createPulseServer({
       services: {
         imageKey,
         setImageModule,
+        // What a card knows about being up to date. Reading is free: it answers from the day's
+        // cache. The button on a card is what forces a look outside.
+        moduleUpdate: (item, { force = false, cacheOnly = !force } = {}) => moduleUpdate(item, {
+          stateRoot: root, madre: { name: PACKAGE.name, version: PACKAGE.version },
+          fetchImpl: reportFetch, enabled: updatesEnabled(), force, cacheOnly,
+        }),
         ollama: {
           state: () => ollama,
           wire: (options) => wireOllama(options),
@@ -1134,7 +1153,9 @@ export async function createPulseServer({
         return sendJson(response, result.ok ? 200 : 422, { command: parsed.name, title: result.title, ok: result.ok, sequence: event.sequence });
       }
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
-        return sendJson(response, 200, { installing, extensions: await describeModules(await moduleContext()), failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md' });
+        const extensions = await describeModules(await moduleContext());
+        void warmModuleUpdates(extensions);
+        return sendJson(response, 200, { installing, extensions, failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md' });
       }
       // The human installs a module file an agent wrote (or they did): checked first, then copied into the chosen folder.
       if (request.method === 'POST' && url.pathname === '/api/extensions/install-file') {
@@ -1160,6 +1181,17 @@ export async function createPulseServer({
         const outcome = await loadExternalModules({ stateRoot: root, projectRoot: canonicalProjectRoot });
         await room.record('extension.reloaded', { loaded: outcome.loaded.map((module) => module.id), failures: outcome.failures.length });
         return sendJson(response, 200, { loaded: outcome.loaded.map((module) => ({ id: module.id, name: module.name, origin: module.origin, file: module.file })), failures: outcome.failures, extensions: await describeModules(await moduleContext()) });
+      }
+      // The button beside a version: look now, outside the day's cache. It answers for this card
+      // alone, and what it asks about is the name of a package or a repository, nothing else.
+      const updateMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/updates$/);
+      if (updateMatch) {
+        const context = await moduleContext();
+        const module = moduleById(updateMatch[1]);
+        if (!module) return sendJson(response, 404, { error: `No module "${updateMatch[1]}".` });
+        const item = await module.describe(context);
+        const update = await context.services.moduleUpdate(item, { force: true });
+        return sendJson(response, 200, { id: item.id, version: item.version, update });
       }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {

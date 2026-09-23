@@ -59,15 +59,3 @@ export async function packageVersion(name, { projectRoot = process.cwd(), env = 
   }
   return null;
 }
-
-// What git this computer runs, for the card that depends on it. Cached: it does not change
-// while a room is open.
-let gitStamp;
-export async function gitVersion(env = process.env) {
-  if (gitStamp !== undefined) return gitStamp;
-  try {
-    const { stdout } = await execFileAsync('git', ['--version'], { env, timeout: 5000 });
-    gitStamp = stdout.trim().match(/\d+\.\d+(\.\d+)?/)?.[0] ?? null;
-  } catch { gitStamp = null; }
-  return gitStamp;
-}

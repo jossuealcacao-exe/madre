@@ -27,18 +27,19 @@ export async function madreRelease() {
   return release;
 }
 
-// Where a module's version actually comes from, worked out at read time instead of written in the
-// file. A module that ships with MADRE has no version of its own: it moves with the release, so a
-// literal only ever goes stale — Ash was rebuilt from nothing and still said 1.0.0. A module
-// someone else wrote keeps the version it declares, and when it declares none, the day its file
-// was last written is the only truth on disk.
-export async function versionOf(module, declared = null) {
+// What version a card shows. A module that is a wrapper around something else — a browser server,
+// a local model runner, a CLI — has no version worth showing of its own: what matters is the
+// version of the thing it drives, found on this computer, and `null` means it is not there. Every
+// other module declares its own, starting at 1.0.0. A module someone else wrote and left
+// unversioned falls back to the day its file was written, which is the only truth on disk.
+export async function versionOf(module, { declared = null, tracked } = {}) {
+  if (tracked !== undefined) return { version: tracked, source: 'tracked' };
+  if (declared) return { version: declared, source: 'declared' };
   if (module?.external) {
-    if (declared) return { version: declared, source: 'declared' };
     const when = await stat(module.file).then((info) => info.mtime).catch(() => null);
-    return when ? { version: when.toISOString().slice(0, 10), source: 'file' } : { version: 'unversioned', source: 'none' };
+    return when ? { version: when.toISOString().slice(0, 10), source: 'file' } : { version: null, source: 'none' };
   }
-  return { version: await madreRelease(), source: 'madre' };
+  return { version: '1.0.0', source: 'declared' };
 }
 
 // What a module drives that is not MADRE and not the module itself: an npm package, a server, a
@@ -58,6 +59,9 @@ export function defineModule(spec) {
   const defaults = { ...(kind === 'builtin' ? { enabled: false } : {}), ...(spec.settings ?? {}) };
   const base = {
     id: spec.id, kind, name: spec.name, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
+    // What this module's version follows, when it is not its own: { name, npm } or { name, github }.
+    // MADRE reads the version from there and looks for a newer one on its own, once a day.
+    tracks: spec.tracks ? { name: spec.tracks.name ?? spec.tracks.npm ?? spec.tracks.github ?? null, npm: spec.tracks.npm ?? null, github: spec.tracks.github ?? null } : null,
     summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
   };
@@ -93,14 +97,17 @@ export function defineModule(spec) {
       const settings = settingsFrom(ctx.config);
       const own = spec.status ? await spec.status({ ...ctx, settings }) : {};
       const installed = own.installed ?? (kind === 'builtin' ? Boolean(settings.enabled) : false);
-      const stamp = await versionOf(this, spec.version ?? null);
+      const runs = dependencies(own.runs);
+      const tracked = base.tracks ? (runs.find((dep) => dep.name === base.tracks.name)?.version ?? null) : undefined;
+      const stamp = await versionOf(this, { declared: spec.version ?? null, tracked });
       return {
         ...base,
         ...(this.external ? { external: true, origin: this.origin, file: this.file } : {}),
         ...own,
         version: stamp.version,
         versionSource: stamp.source,
-        runs: dependencies(own.runs),
+        ships: this.external ? null : await madreRelease(),
+        runs,
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
         preflight: own.preflight ?? { ok: true, problems: [] },
         install: own.install ?? (kind === 'builtin' ? { display: installed ? `disable ${base.name}` : `enable ${base.name} (config.json)`, platforms: [] } : { display: '', platforms: [] }),

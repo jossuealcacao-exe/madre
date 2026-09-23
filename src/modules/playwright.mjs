@@ -39,6 +39,7 @@ export default defineModule({
   id: 'playwright',
   name: 'PLAYWRIGHT',
   vendor: 'MADRE · Playwright MCP',
+  tracks: { name: PLAYWRIGHT_PACKAGE, npm: PLAYWRIGHT_PACKAGE },
   summary: 'Hands every agent a headless browser that reaches only this room: it opens the RIPLEY preview of a page, clicks through it, reads the console and takes screenshots.',
   creates: ['nothing in the project \u00b7 screenshots land in .pulse/out/<turn>/', 'a switch in ~/.pulse/config.json', 'a browser per turn, started and stopped by the CLI', 'no origin but this room is reachable through it'],
   requires: ['@playwright/mcp and a chromium browser on this machine', 'RIPLEY on, to have pages to open'],

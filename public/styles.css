@@ -585,7 +585,6 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-grid > * { min-width: 0; }
 .module-card .head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
 .module-card h4 { margin: 0; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; }
-.module-card .vendor { font-size: 10px; letter-spacing: .18em; color: var(--ph-dim); }
 .module-card .state { font-size: 10px; letter-spacing: .18em; padding: 4px 8px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
 .module-card .detail { font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); }
 .module-card .state.installed { color: var(--ph); border-color: var(--ph); }
@@ -1289,15 +1288,15 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* A module card, floor by floor: what it is, what it does, what it touches, how it is doing, and
    then the switch. Everything inside a card wears the panel's phosphor, never the page's palette,
    and every number is given room so it can never land on its own label. */
-/* One tag per version on the card, and every version belongs to something named: MADRE, the
-   module's own file, or the outside thing it drives. Missing is a tag too, in the warning
-   colour — a card must be able to say the package is not there. */
-.module-card .card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.module-card .card-tags:empty { display: none; }
-.module-card .tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; padding: 3px 7px; border: 1px solid var(--ph-faint); color: var(--ph-dim); text-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.module-card .tag.found { border-color: var(--ph-dim); color: var(--ph); }
-.module-card .tag.missing { border-color: color-mix(in srgb, var(--warn) 45%, transparent); color: var(--warn); }
-.module-card .tag.dev { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); }
+/* The version line: who made it, what version is running, the button that goes and looks for a
+   newer one, and what the last look found. */
+.module-card .vendor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .18em; color: var(--ph-dim); }
+.module-card .vendor .check { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; line-height: 1; letter-spacing: 0; padding: 2px 6px; cursor: pointer; }
+.module-card .vendor .check:hover { border-color: var(--ph); color: var(--ph); }
+.module-card .vendor .check:disabled { opacity: .4; cursor: default; }
+.module-card .vendor .update { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); text-shadow: none; }
+.module-card .vendor .update:empty { display: none; }
+.module-card .vendor .update.new { color: var(--warn); }
 .module-card .card-panel { display: grid; gap: 14px; }
 .module-card .card-panel:empty, .module-card .actions:empty { display: none; }
 .module-card .card-block { display: grid; gap: 8px; }

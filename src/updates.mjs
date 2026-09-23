@@ -61,14 +61,16 @@ async function readCache(file) {
 }
 
 // The check. `enabled: false` answers from the cache only and never touches the network.
-export async function checkForUpdate({ name, current, cacheFile, fetchImpl = globalThis.fetch, now = Date.now(), ttlMs = UPDATE_TTL_MS, enabled = true, force = false, timeoutMs = 4000 } = {}) {
+// `cacheOnly` answers from what is already on disk and never touches the network: it is what a
+// screen asks for, so opening MODULES never waits on a registry.
+export async function checkForUpdate({ name, current, cacheFile, fetchImpl = globalThis.fetch, now = Date.now(), ttlMs = UPDATE_TTL_MS, enabled = true, force = false, cacheOnly = false, timeoutMs = 4000 } = {}) {
   const cached = cacheFile ? await readCache(cacheFile) : null;
   const fresh = cached && cached.name === name && Number.isFinite(cached.checkedAt) && now - cached.checkedAt < ttlMs;
   let latest = cached?.name === name ? cached.latest ?? null : null;
   let checkedAt = cached?.name === name ? cached.checkedAt ?? null : null;
   let source = latest ? 'cache' : 'none';
   let error = null;
-  if (enabled && (force || !fresh)) {
+  if (enabled && !cacheOnly && (force || !fresh)) {
     try {
       const response = await fetchImpl(`${REGISTRY}/${encodeURIComponent(name).replace('%40', '@')}/latest`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) });
       if (!response.ok) throw new Error(`registry HTTP ${response.status}`);
