@@ -145,6 +145,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
     ${block('CORE_FLOWS')} ${block('COLLAPSED')} ${block('VOID_DUST')}
+    ${block('NEBULA_CAP')} ${block('NEBULA_CLOUDS')} ${fn('drawNebula')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${block('dwarfSkins')} ${fn('dwarfTexture')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
@@ -763,11 +764,13 @@ test('nostromo: a memory is a ball, with nothing ringed round it and nothing com
     }
   }
 
-  // And nothing drifts off them. The specks were filled circles set a little away from a body,
-  // which is the one thing that should never appear near one.
+  // And nothing drifts off them. The specks were small filled circles set a little away from a
+  // body, which is the one thing that should never appear near one. Anything vast that happens
+  // to pass behind is weather, not a speck: the sky is painted in another space entirely.
   for (const node of room.nodes) {
     for (const call of calls) {
       if (call.name !== 'arc') continue;
+      if (call.args[2] > node.r * 2) continue;
       const off = Math.hypot(call.args[0] - node.x, call.args[1] - node.y);
       if (off < 0.001 || off > node.r * 3) continue;
       assert.fail(`something is drifting ${off.toFixed(1)} units off a memory`);
@@ -845,4 +848,36 @@ test('nostromo: an aberration is a void in a field of dust, and nothing about it
   for (const call of calls) {
     for (const arg of call.args) if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
   }
+});
+
+test('nostromo: the sky is weather behind the room, and never the subject of it', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+
+  // A cap, written down, that no amount of growing can raise. The nebula is the one thing here
+  // that must never compete with the core, the dwarfs or the wires between them.
+  const cap = Number(source.match(/const NEBULA_CAP = ([\d.]+);/)?.[1]);
+  assert.ok(cap && cap <= 0.2, `the sky may reach ${cap} opacity, which is loud enough to read as the subject`);
+
+  // It is painted before anything else, so everything is in front of it.
+  const paints = source.indexOf('drawNebula(ctx, t, w, h, cam);');
+  assert.ok(paints > 0, 'the sky is never painted');
+  assert.ok(paints < source.indexOf('// Stars, with a little parallax'), 'the sky is painted over the stars');
+  assert.ok(paints < source.indexOf("// MOTHER's core") || paints < source.indexOf('---- The body'), 'the sky is painted over the core');
+
+  // In colours nothing in the foreground uses. The room burns red, gold, white, green and blue;
+  // the sky is indigo and violet, which is how it stays behind without being dark on dark.
+  const clouds = new Function(`return ${source.match(/const NEBULA_CLOUDS = (\[[\s\S]*?\]);/)[1]}`)();
+  assert.ok(clouds.length >= 4);
+  for (const cloud of clouds) {
+    const [red, green, blue] = cloud.hue.split(',').map((part) => Number(part.trim()));
+    assert.ok(blue > red && blue > green, `a cloud at rgb(${cloud.hue}) is not cold, so it competes with the core`);
+    assert.ok(blue < 200, `a cloud at rgb(${cloud.hue}) is bright enough to pull the eye`);
+  }
+
+  // What maturity changes is the weather, not the volume: a grown room storms less, not louder.
+  const painter = source.slice(source.indexOf('function drawNebula('), source.indexOf('function drawNostromo('));
+  assert.match(painter, /const every = [\d.]+ \+ [\d.]+ \* grown/, 'strikes do not become rarer as the room grows');
+  assert.match(painter, /nostromo\.reduced/, 'the storm runs for someone who asked for stillness');
+  assert.match(painter, /Math\.min\(1, Math\.max\(0, nostromo\.maturity \?\? 0\)\)/, 'the sky does not read the archive, or is not clamped');
+  assert.ok(!painter.includes('shadowBlur'), 'the sky is asking for blurs, which is the most expensive thing a canvas does');
 });

@@ -54,6 +54,7 @@ import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { listDirectory, searchFiles, readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
 import { economy } from './room/economy.mjs';
+import { maturity } from './maturity.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -922,12 +923,16 @@ export async function createPulseServer({
         const notes = memory ? memory.memories({ limit: 5000 }) : [];
         if (request.method === 'GET') {
           const manifest = await readFile(join(dir, 'manifest.json'), 'utf8').then(JSON.parse).catch(() => null);
-          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null, readiness: datasetReadiness(await store.readAll(), notes), training: trainingInfo() });
+          const ready = datasetReadiness(await store.readAll(), notes);
+          const research = room.memoryResearch();
+          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null, readiness: ready, maturity: maturity({ readiness: ready, notes, links: research?.links ?? [], stats: research?.stats ?? null }), training: trainingInfo() });
         }
         const events = await store.readAll();
         const result = await exportDataset({ events, notes, dir, project: basename(canonicalProjectRoot), home: homedir(), privacy });
         await room.record('dataset.exported', { pairs: result.pairs, turns: result.turns, notes: result.notes, train: result.train, valid: result.valid, dir });
-        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null, readiness: datasetReadiness(events, notes), training: trainingInfo() });
+        const after = datasetReadiness(events, notes);
+        const drawn = room.memoryResearch();
+        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null, readiness: after, maturity: maturity({ readiness: after, notes, links: drawn?.links ?? [], stats: drawn?.stats ?? null }), training: trainingInfo() });
       }
       // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
       if (request.method === 'GET' && url.pathname === '/api/privacy') {
@@ -1008,7 +1013,10 @@ export async function createPulseServer({
         const sealed = room.motherStatus()?.lockedForMs ?? 0;
         if (sealed > 0) return sendJson(response, 423, { error: `CODE000. THE ARCHIVE IS SEALED FOR ${Math.ceil(sealed / 60000)} MORE MINUTE${Math.ceil(sealed / 60000) === 1 ? '' : 'S'}.`, lockedForMs: sealed });
         const research = room.memoryResearch();
-        return research ? sendJson(response, 200, research) : sendJson(response, 503, { error: 'The room has no memory.' });
+        if (!research) return sendJson(response, 503, { error: 'The room has no memory.' });
+        // How grown this archive is, read from the same notes the map draws.
+        const grown = maturity({ readiness: datasetReadiness(await store.readAll(), research.memories), notes: research.memories, links: research.links, stats: research.stats });
+        return sendJson(response, 200, { ...research, maturity: grown });
       }
       const forgetMatch = request.method === 'DELETE' && url.pathname.match(/^\/api\/memory\/(\d+)$/);
       if (forgetMatch) {

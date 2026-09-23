@@ -1267,3 +1267,21 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .ash-block i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); border-radius: 3px; background: color-mix(in srgb, var(--phosphor) 70%, transparent); }
 .ash-block span { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--text-3); white-space: nowrap; }
 @media (max-width: 720px) { .ash-block { grid-template-columns: 1fr; } .ash-block i { display: none; } }
+
+/* How grown the archive is. Six readings, the weakest marked, and what would raise it. */
+.maturity { display: grid; gap: 6px; margin: 12px 0 4px; }
+.maturity-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.maturity-head b { font-family: var(--mono); font-size: 11px; letter-spacing: .24em; }
+.maturity-head span { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--ph-dim); }
+.maturity-head b.stage.empty, .maturity-head b.stage.sparse { color: var(--ph-dim); }
+.maturity-head b.stage.forming { color: var(--ph-dim); }
+.maturity-head b.stage.working, .maturity-head b.stage.mature { color: var(--ph); }
+.maturity-row { display: grid; grid-template-columns: 210px 90px 1fr; gap: 12px; align-items: center; }
+.maturity-row b { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); font-weight: 400; }
+.maturity-row i { height: 5px; background: var(--ph-faint); position: relative; }
+.maturity-row i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: var(--ph-dim); }
+.maturity-row.weakest i::after { background: var(--ph); }
+.maturity-row.weakest b { color: var(--ph); }
+.maturity-row span { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); opacity: .8; }
+.maturity-next { color: var(--ph); }
+@media (max-width: 860px) { .maturity-row { grid-template-columns: 1fr; gap: 2px; } .maturity-row i { display: none; } }

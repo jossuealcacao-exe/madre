@@ -6,6 +6,17 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Madurez: seis lecturas en vez de una barra inventada
+- La barra que se llenaba hacia trescientos se fue. Ese número era una regla de dedo del paper de alguien más, no una medición de tu sala, y un corpus de trescientos pares que hablan todos de la misma tarde enseña menos que ochenta que no. Peor: llegabas al número y la barra decía que estabas listo.
+- En su lugar hay seis lecturas de lo que sí se puede contar de este archivo: cuánto hay, cuánto de eso la sala realmente usa, qué tan tejido está, cuánto de él calificaste tú, cuánto es trabajo real y no preguntas de recuerdo, y qué tan al día está el destilado. Cada una dice en números dónde está y, al pasar el cursor, qué haría falta para subirla.
+- Debajo, la más floja queda marcada y se convierte en el siguiente paso, con una frase de qué hacer en vez de un número que esperar. En esta sala hoy son las calificaciones: un par de ciento treinta y nueve.
+- Una sala vacía se lee vacía. Antes una recién abierta ya marcaba progreso porque el balance salía perfecto cuando no había nada que balancear.
+
+### NOSTROMO tiene cielo
+- Detrás del núcleo, las enanas y la red hay ahora una nebulosa, y es el archivo mismo visto de tan lejos que se vuelve clima. Joven es una tormenta eléctrica: dispersa, fría, parpadeante, con rayos frecuentes. Conforme la sala crece se asienta, se junta en una banda y los rayos se vuelven raros y lentos. Lo que cambia con la madurez es el clima, no el volumen: una sala crecida truena menos, no más fuerte.
+- Su única regla es que nunca es el tema. Se pinta antes que todo lo demás, en colores que nada del primer plano usa, y con un techo de opacidad escrito en el código que ningún grado de madurez puede levantar. Se nota solo si la buscas; si alguna vez le compite al núcleo, a las enanas o a los cables entre ellas, está mal por bonita que se vea.
+
+
 ### MU/TH/UR se pliega
 - Todo lo que corre largo en el panel se pliega: `CONNECTIONS`, `ROOM SETTINGS`, `MEMORY`, `PRIVACY`, `SENTINEL` y el canal de liberación, todo por el mismo camino.
 - Cada sección plegable lleva su propio botón que dice qué va a pasar al tocarlo: `▸ EXPAND` o `▾ COLLAPSE`. El panel ya tenía ese botón en dos listas desde antes; ahora todas pliegan por el mismo camino y se ven igual, en vez de que unas tuvieran botón y otras un signo.

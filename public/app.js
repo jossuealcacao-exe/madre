@@ -4215,13 +4215,34 @@ function renderSettings() {
     exportButton.type = 'button';
     exportButton.title = 'Write train.jsonl and valid.jsonl next to the ledger, redacted, in chat format for mlx-lm';
     const datasetNote = el('span', 'note', 'LOADING…');
+    // How grown this archive is, read from what can actually be counted about it. It replaced a
+    // bar that filled toward a number borrowed from somebody else's paper: a room can reach that
+    // number and still be narrow, unjudged and lopsided, and the bar would have said it was ready.
+    const verdict = el('div', 'maturity');
     const showDataset = (payload) => {
       const d = payload?.dataset;
       const r = payload?.readiness;
-      const live = r ? `${r.pairs} / ${r.target} CLEAN PAIRS${r.ready ? ' · READY TO TRAIN' : ''} · ${r.turns} TURNS · ${r.delegated} DELEGATED · ${r.notes} NOTES${r.good ? ` · ${r.good} RATED GOOD` : ''}${r.bad ? ` · ${r.bad} DROPPED AS BAD` : ''}` : '';
+      const m = payload?.maturity;
       const exported = d ? `LAST EXPORT ${new Date(d.exportedAt).toLocaleString()} · TRAIN ${d.train} · VALID ${d.valid}` : 'NOT EXPORTED YET';
       const trained = payload?.trained ? `TRAINED MODEL ${payload.trained.toUpperCase()} IN USE` : 'NO TRAINED MODEL YET · SEE docs/training';
-      datasetNote.textContent = [live, exported, trained].filter(Boolean).join(' · ');
+      datasetNote.textContent = [exported, trained].filter(Boolean).join(' · ');
+      verdict.replaceChildren();
+      if (!m) return;
+      const head = el('div', 'maturity-head');
+      head.append(el('b', `stage ${m.stage.id}`, m.stage.label), el('span', null, m.stage.says));
+      verdict.append(head);
+      for (const signal of m.signals) {
+        const row = el('div', `maturity-row${signal.id === m.weakest ? ' weakest' : ''}`);
+        const bar = el('i');
+        bar.style.setProperty('--fill', `${Math.round(signal.value * 100)}%`);
+        row.append(el('b', null, signal.label), bar, el('span', null, signal.detail));
+        row.title = signal.next;
+        verdict.append(row);
+      }
+      // What is worth doing next, rather than a number to wait on.
+      const weak = m.signals.find((signal) => signal.id === m.weakest);
+      if (weak) verdict.append(el('p', 'note maturity-next', `NEXT · ${weak.next.toUpperCase()}`));
+      if (r) verdict.append(el('p', 'note', `${r.pairs} CLEAN PAIRS · ${r.turns} TURNS · ${r.delegated} DELEGATED · ${r.notes} NOTES${r.aberrations ? ` · ${r.aberrations} ABERRATIONS HELD BACK` : ''}${r.bad ? ` · ${r.bad} DROPPED AS BAD` : ''}`));
     };
     fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => { datasetNote.textContent = 'DATASET UNAVAILABLE'; });
     exportButton.addEventListener('click', async () => {
@@ -4232,6 +4253,7 @@ function renderSettings() {
     });
     dataset.append(exportButton, datasetNote);
     mform.append(dataset);
+    memoryBody.append(verdict);
 
 
     // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.
@@ -4612,6 +4634,9 @@ function activityOf(raw, top) {
 }
 
 function buildNostromo(data) {
+  // How grown the archive is, for the weather behind it to read.
+  nostromo.maturity = data.maturity?.score ?? 0;
+  nostromo.stage = data.maturity?.stage ?? null;
   const kinds = Object.keys(MEMORY_COLORS);
   const memories = data.memories ?? [];
   nostromo.links = (data.links ?? []).filter((link) => memories.some((m) => m.id === link.a) && memories.some((m) => m.id === link.b));
@@ -4629,7 +4654,7 @@ function buildNostromo(data) {
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
-  nostromo.sub.textContent = `MEMORY RESEARCH · ${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${alive} RECALLED · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
+  nostromo.sub.textContent = `${nostromo.stage ? `${nostromo.stage.label} · ` : ''}${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${alive} RECALLED · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
   nostromo.empty.hidden = memories.length > 0;
 }
 
@@ -4994,6 +5019,103 @@ function fitNostromo() {
 function toScreen(x, y) { const { w, h } = nostromo.size; const cam = nostromo.cam; return { x: w / 2 + (x - cam.x) * cam.scale, y: h / 2 + (y - cam.y) * cam.scale }; }
 function toWorld(sx, sy) { const { w, h } = nostromo.size; const cam = nostromo.cam; return { x: cam.x + (sx - w / 2) / cam.scale, y: cam.y + (sy - h / 2) / cam.scale }; }
 
+// ---- The nebula the room sits in.
+//
+// It is the archive itself, seen from far enough away to be weather. Young, it is an electrical
+// storm: scattered, cold, flickering, striking often. As the room grows it settles, gathers into
+// a band, and the strikes become rare and slow.
+//
+// Its one rule is that it is never the subject. It is painted before anything else, in colours
+// nothing in the foreground uses, at an opacity that is capped no matter how grown the room is.
+// A reader should notice it only on looking for it; if it ever competes with the core, the
+// dwarfs or the wires between them, it is wrong however pretty it looks.
+const NEBULA_CAP = 0.14;          // the most of it that may ever be seen
+const NEBULA_CLOUDS = [
+  { at: 0.00, out: 0.52, size: 0.62, drift: 0.0071, hue: '86, 64, 178' },
+  { at: 1.94, out: 0.74, size: 0.48, drift: -0.0053, hue: '46, 88, 166' },
+  { at: 3.51, out: 0.40, size: 0.70, drift: 0.0039, hue: '112, 52, 156' },
+  { at: 5.02, out: 0.86, size: 0.44, drift: -0.0067, hue: '38, 104, 150' },
+  { at: 2.71, out: 0.62, size: 0.56, drift: 0.0045, hue: '68, 58, 170' },
+];
+
+// The weather of the archive. `grown` is 0 for a room that has distilled nothing and 1 for one
+// worth training on; everything here reads from it and nothing here is ever loud.
+function drawNebula(ctx, t, w, h, cam) {
+  const grown = Math.min(1, Math.max(0, nostromo.maturity ?? 0));
+  if (nostromo.reduced && !nostromo.nebulaSeen) nostromo.nebulaSeen = true;
+  const time = nostromo.reduced ? 0 : t;
+  const across = Math.hypot(w, h);
+  // Young clouds are scattered wide and thin; a grown room draws them in and fills them out.
+  const spread = across * (0.62 - 0.18 * grown);
+  const depth = 0.06;   // how much of the camera it follows: far away things barely move
+  const cx = w / 2 - cam.x * depth;
+  const cy = h / 2 - cam.y * depth;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < NEBULA_CLOUDS.length; i += 1) {
+    const cloud = NEBULA_CLOUDS[i];
+    // As it matures the clouds settle toward one band instead of scattering round the sky.
+    const angle = cloud.at + time * cloud.drift * (1.6 - grown);
+    const lean = 0.42 * grown;
+    const out = spread * cloud.out;
+    const x = cx + Math.cos(angle) * out;
+    const y = cy + Math.sin(angle) * out * (1 - lean * 0.55);
+    const size = across * cloud.size * (0.34 + 0.2 * grown);
+    // Breathing, quick and shallow while it storms, slow and deep once it settles.
+    const breath = 0.86 + 0.14 * Math.sin(time * (0.5 - 0.34 * grown) + i * 1.7);
+    const alpha = NEBULA_CAP * (0.42 + 0.58 * grown) * breath;
+    const cloudy = ctx.createRadialGradient(x, y, 0, x, y, size);
+    cloudy.addColorStop(0, `rgba(${cloud.hue}, ${alpha})`);
+    cloudy.addColorStop(0.42, `rgba(${cloud.hue}, ${alpha * 0.38})`);
+    cloudy.addColorStop(1, `rgba(${cloud.hue}, 0)`);
+    ctx.fillStyle = cloudy;
+    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // The storm. Often and sharp while the room is young, rare and slow once it is grown: what
+  // changes is not how bright a strike is but how often the sky is torn.
+  if (!nostromo.reduced) {
+    nostromo.bolts = (nostromo.bolts ?? []).filter((bolt) => t - bolt.born < bolt.life);
+    const every = 0.9 + 7.5 * grown;   // seconds between strikes, on average
+    if (nostromo.bolts.length < 2 && Math.random() < 1 / (every * 60)) {
+      const from = Math.random() * Math.PI * 2;
+      nostromo.bolts.push({
+        born: t, life: 0.22 + Math.random() * 0.2,
+        x: cx + Math.cos(from) * spread * (0.3 + Math.random() * 0.6),
+        y: cy + Math.sin(from) * spread * (0.3 + Math.random() * 0.6),
+        angle: Math.random() * Math.PI * 2,
+        reach: across * (0.12 + Math.random() * 0.16),
+        seed: Math.random() * 100,
+      });
+    }
+    for (const bolt of nostromo.bolts) {
+      const age = (t - bolt.born) / bolt.life;
+      // It arrives at once and fades: a flash that eased in would read as a lamp, not lightning.
+      const flash = Math.max(0, 1 - age) ** 2 * NEBULA_CAP * 2.4;
+      ctx.strokeStyle = `rgba(150, 168, 255, ${flash})`;
+      ctx.lineWidth = 1.1;
+      ctx.lineCap = 'round';
+      for (let branch = 0; branch < 2; branch += 1) {
+        ctx.beginPath();
+        ctx.moveTo(bolt.x, bolt.y);
+        let px = bolt.x;
+        let py = bolt.y;
+        let heading = bolt.angle + (branch ? 0.7 : 0);
+        for (let step = 1; step <= 5; step += 1) {
+          heading += Math.sin(bolt.seed + step * 2.3 + branch) * 0.6;
+          px += Math.cos(heading) * (bolt.reach / 5);
+          py += Math.sin(heading) * (bolt.reach / 5);
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
 function drawNostromo(t) {
   const ctx = nostromo.canvas.getContext('2d');
   const { w, h, dpr } = nostromo.size;
@@ -5002,6 +5124,9 @@ function drawNostromo(t) {
   const alarm = nostromo.alarm ? Math.max(0, 1 - (t - nostromo.alarm) / 3.6) : 0;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  // The nebula, before anything else and behind everything: it is the ground the room stands on.
+  drawNebula(ctx, t, w, h, cam);
+
   // Stars, with a little parallax against the camera.
   ctx.fillStyle = 'rgba(255, 244, 240, .35)';
   for (let i = 0; i < 120; i += 1) {
