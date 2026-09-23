@@ -6,6 +6,14 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### MODULES: una sola forma para todas las fichas, y una versión que no miente
+- Cada tarjeta tiene ahora los mismos pisos y en el mismo orden, sea el módulo que sea: qué es, qué hace en una frase, qué toca, cómo va, y al final —solo y siempre en el mismo lugar— el botón. El ojo aprende la forma una vez y encuentra el interruptor en todas.
+- Los bullets se fueron a su propia sección plegada, con su número y su botón de abrir y cerrar, y se escribieron más cortos: una idea por línea. Los resúmenes bajaron a una frase; lo que sobraba de ellos bajó a los bullets, que es donde se lee.
+- La versión ya no se escribe a mano. Ash se rehízo entero y seguía diciendo 1.0.0 porque el número vivía en el archivo. Un módulo que viene con MADRE no tiene versión propia: viaja en el release, y eso es lo que muestra. Un instalador dice la versión del paquete que fija. Un módulo tuyo conserva la que declare, y si no declara ninguna, la tarjeta muestra el día en que escribiste el archivo, que es la única verdad que hay en disco. Al pasar el cursor, cada una dice de dónde salió.
+- Los números de la economía se leían encimados con sus etiquetas: iban en el blanco de la página, con el resplandor del panel encima, en una fila que se apretaba. Ahora cada cifra y su nombre son una celda de una rejilla, en fósforo y sin resplandor.
+- Lo que un módulo sabe de sí mismo vive dentro de su tarjeta: la economía en la de Ash, el cerebro local y sus roles en la de OLLAMA, el modelo de imagen en la de Image Studio, y el navegador de PLAYWRIGHT —que hasta ahora solo se podía cambiar a mano en `config.json`—.
+- La tarjeta de OLLAMA decía «START it here» e «INSTALL it here» sin tener ese botón. Ya lo tiene.
+
 ### Privacidad: dos guardas que no necesitan que nadie las nombre
 - Una llave, un token o un correo se reconocen por su forma en cualquier proyecto, y la ruta a una carpeta personal lleva el nombre de quien vive en ella. MADRE ya sabía taparlos, pero solo al exportar el dataset: una llave que un agente repetía en una respuesta se escribía en claro en el registro y ahí se quedaba. Ahora se tapan antes del registro, del archivista, de los demás agentes y del dataset.
 - Las dos vienen encendidas. Nadie debería tener que enterarse de que existen para estar cubierto, y quien quiera un registro literal las apaga.

@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { defineModule } from './sdk.mjs';
 
 const execFileAsync = promisify(execFile);
+export const PLAYWRIGHT_BROWSERS = ['chromium', 'firefox', 'webkit'];
 export const PLAYWRIGHT_SERVER_NAME = 'pulse-playwright';
 // The tools @playwright/mcp exposes that a room turn may use. Screenshots and files land in scratch.
 export const PLAYWRIGHT_TOOLS = ['browser_navigate', 'browser_navigate_back', 'browser_snapshot', 'browser_click', 'browser_type', 'browser_fill_form', 'browser_hover', 'browser_press_key', 'browser_select_option', 'browser_wait_for', 'browser_console_messages', 'browser_network_requests', 'browser_take_screenshot', 'browser_resize', 'browser_tabs', 'browser_close'];
@@ -41,16 +42,17 @@ export default defineModule({
   id: 'playwright',
   name: 'PLAYWRIGHT',
   vendor: 'MADRE · Playwright MCP',
-  summary: 'Hands every agent a headless browser that reaches only this MADRE: open the RIPLEY preview of a page, click through it, read the console, take screenshots into the turn\'s scratch folder. Runs @playwright/mcp isolated per turn; no other origin is reachable.',
-  creates: ['nothing in the project: screenshots land in .pulse/out/<turn>/', 'a playwright switch in ~/.pulse/config.json', 'a browser process per turn, started and stopped by the CLI'],
-  requires: ['@playwright/mcp installed (npm install -g @playwright/mcp) and a browser (npx playwright install chromium)', 'RIPLEY on, to have pages to open'],
+  summary: 'Hands every agent a headless browser that reaches only this room: it opens the RIPLEY preview of a page, clicks through it, reads the console and takes screenshots.',
+  creates: ['nothing in the project \u00b7 screenshots land in .pulse/out/<turn>/', 'a switch in ~/.pulse/config.json', 'a browser per turn, started and stopped by the CLI', 'no origin but this room is reachable through it'],
+  requires: ['@playwright/mcp and a chromium browser on this machine', 'RIPLEY on, to have pages to open'],
   settings: { enabled: false, browser: 'chromium', headless: true },
   card: 'switch',
   async status(ctx) {
     const version = await playwrightVersion({ env: ctx.env });
     return {
-      version: version ?? null,
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `on · @playwright/mcp ${version} · ${ctx.settings.browser}` : 'on · @playwright/mcp not found') : version ? `off · @playwright/mcp ${version} found` : 'off · @playwright/mcp not installed' },
+      runs: version ? `@playwright/mcp ${version}` : null,
+      settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `on · ${ctx.settings.browser}` : 'on · the browser server is not installed') : version ? 'off' : 'off · the browser server is not installed' },
       preflight: version ? { ok: true, problems: [] } : { ok: false, problems: ['Install the browser server first: npm install -g @playwright/mcp && npx playwright install chromium'] },
       install: { display: ctx.settings.enabled ? 'disable PLAYWRIGHT' : 'enable PLAYWRIGHT (config.json)', platforms: ['codex', 'claude', 'gemini', 'opencode'] },
     };
@@ -61,6 +63,20 @@ export default defineModule({
     const outputDir = turn.scratchDir ?? join(turn.roomDir ?? ctx.stateRoot, 'playwright');
     return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false })];
   },
+  // The browser it drives and whether it shows itself: the module's own settings, saved from its
+  // own card. Nothing here reaches a project.
+  routes: [
+    { method: 'POST', path: '/api/playwright/settings', handler: async (ctx, { payload }) => {
+      const next = { ...(ctx.config.modules?.playwright ?? {}) };
+      if (typeof payload.browser === 'string') {
+        if (!PLAYWRIGHT_BROWSERS.includes(payload.browser)) return { status: 400, body: { error: `Browser must be one of ${PLAYWRIGHT_BROWSERS.join(', ')}.` } };
+        next.browser = payload.browser;
+      }
+      if (typeof payload.headless === 'boolean') next.headless = payload.headless;
+      await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), playwright: next } });
+      return { status: 200, body: { settings: { browser: next.browser ?? 'chromium', headless: next.headless !== false } } };
+    } },
+  ],
   conditions: [{
     id: 'playwright-missing',
     severity: 'informational',

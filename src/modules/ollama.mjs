@@ -33,9 +33,9 @@ export default defineModule({
   id: 'ollama',
   name: 'OLLAMA',
   vendor: 'MADRE · LOCAL INTELLIGENCE',
-  summary: 'Recall by meaning and memory distillation on this machine through Ollama: no provider tokens, nothing leaves. Needs Ollama running with an embedding model and a chat model; MADRE can pull the recommended ones.',
-  creates: ['nothing in the project', 'an ollama block in ~/.pulse/config.json', 'models in Ollama\'s own store when you press PULL'],
-  requires: ['Ollama installed and running (ollama serve, or the Ollama app)'],
+  summary: 'Recall by meaning and memory distillation on this machine, through Ollama: no provider tokens, nothing leaves.',
+  creates: ['nothing in the project', 'a block in ~/.pulse/config.json', 'models in Ollama\'s own store when you press PULL'],
+  requires: ['Ollama running (the app, or ollama serve)', 'an embedding model and a chat model \u00b7 MADRE can pull the recommended ones'],
   settings: { enabled: true, embeddings: true, archivist: true, agent: true },
   card: 'ollama',
   async status(ctx) {

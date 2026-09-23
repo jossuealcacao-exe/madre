@@ -54,6 +54,7 @@ export default defineModule({
   package: PACKAGE,
   version: VERSION,
   summary: 'Verified project state, checkpoints and handoffs between AI sessions, stored in .ahp/ next to your code.',
+  requires: ['the project is a git repository', 'npx on the PATH of the terminal MADRE was started from'],
   creates: ['.ahp/ with manifest, sessions, handoffs and evidence', 'a project-local pin of @jossuealcala/ahp-plus', 'IDE adapter files for the detected agents'],
   detect, preflight, installCommand,
   async status(ctx) {

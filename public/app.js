@@ -2445,7 +2445,7 @@ document.querySelector('#mother-button')?.addEventListener('mouseleave', endHove
 document.querySelector('#mother-button')?.addEventListener('click', endHover);
 
 // Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
-globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state };
+globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard };
 
 els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
 let touchY = null;
@@ -3321,39 +3321,191 @@ async function refreshModules() {
   if (modules.dialog.open) renderModules();
 }
 
-function builtinCard(item) {
+// Where the version on a card comes from. A module that ships with MADRE has none of its own.
+const VERSION_NOTE = {
+  madre: 'Ships with MADRE: it moves with the release, so this is MADRE\'s own version.',
+  package: 'The version of the package this module installs into the project.',
+  declared: 'The version this module declares for itself.',
+  file: 'This module declares no version; this is the day its file was last written.',
+  none: 'This module declares no version, and its file could not be read.',
+};
+
+// A fold inside a card. It remembers whether it was left open, like every other fold in MADRE,
+// and it carries its own EXPAND / COLLAPSE. It is deliberately not a `.fold`: the panel's
+// EXPAND ALL belongs to MU/TH/UR's sections, not to fourteen folds in another dialog.
+function cardFold(card, label, { key, count = null, open = false } = {}) {
+  const box = el('details', 'card-fold');
+  box.open = foldState()[key] ?? open;
+  const head = el('summary');
+  head.append(el('b', null, label));
+  if (count !== null) head.append(el('span', 'fold-badge', String(count)));
+  const caret = el('span', 'caret');
+  const mark = () => { caret.textContent = box.open ? '▾ COLLAPSE' : '▸ EXPAND'; };
+  mark();
+  head.append(caret);
+  const body = el('div', 'card-fold-body');
+  box.append(head, body);
+  box.addEventListener('toggle', () => { mark(); rememberFold(key, box.open); });
+  card.append(box);
+  return body;
+}
+
+// A labelled block inside a card: a reading the module takes, or a setting it owns. Whatever a
+// module knows about itself belongs here, on its own card, never in a drawer somewhere else.
+function cardBlock(panel, label) {
+  const box = el('div', 'card-block');
+  box.append(el('h5', null, label));
+  panel.append(box);
+  return box;
+}
+
+// Numbers that have to be read at a glance: the figure large, its name under it, never touching.
+function metrics(box, rows) {
+  const grid = el('div', 'metrics');
+  for (const [label, value, hint] of rows) {
+    const cell = el('div', 'metric');
+    if (hint) cell.title = hint;
+    cell.append(el('b', null, String(value)), el('span', null, label));
+    grid.append(cell);
+  }
+  box.append(grid);
+  return grid;
+}
+
+// Every card has the same floors in the same order, whatever the module is: what it is, what it
+// does, what it touches, how it is doing — and then, last and alone, the switch. The eye learns
+// the shape once and finds the button in the same place on all of them.
+function cardShell(item, { on, state: stateText }) {
   const card = el('article', 'module-card');
   card.id = `module-${item.id}`;
   const head = el('div', 'head');
   const title = el('div');
   title.append(el('h4', null, item.name));
-  title.append(el('div', 'vendor', `${item.vendor} · v${item.version}`));
+  const stamp = item.kind === 'installer' && item.package ? `${item.package}@${item.version}` : `v${item.version}`;
+  const vendor = el('div', 'vendor', `${item.vendor} · ${stamp}`);
+  vendor.title = VERSION_NOTE[item.versionSource] ?? '';
+  title.append(vendor);
   head.append(title);
-  const on = Boolean(item.status?.installed);
-  if (item.external) { const dev = el('span', 'dev-tag', 'DEV'); dev.title = `Your module · ${item.origin === 'project' ? 'this project' : 'every room'} · ${item.file}`; head.append(dev); }
-  head.append(el('span', `state${on ? ' installed' : ''}`, on ? 'ENABLED' : 'DISABLED'));
+  if (item.external) {
+    const dev = el('span', 'dev-tag', 'DEV');
+    dev.title = `Your module · ${item.origin === 'project' ? 'this project' : 'every room'} · ${item.file}`;
+    head.append(dev);
+  }
+  head.append(el('span', `state${on ? ' installed' : ''}${stateText === 'INSTALLING' ? ' running' : ''}`, stateText));
   card.append(head);
-  card.append(el('p', null, item.summary));
-  if (item.external) card.append(el('p', 'note', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
-  const list = el('ul');
-  for (const line of item.creates ?? []) list.append(el('li', null, line));
-  for (const line of item.requires ?? []) list.append(el('li', null, `requires ${line}`));
-  card.append(list);
+  const strip = [item.status?.detail, item.runs].filter(Boolean).join(' · ');
+  if (strip) card.append(el('div', 'detail', strip.toUpperCase()));
+  if (item.external) card.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
+  if (item.summary) card.append(el('p', null, item.summary));
+  const bullets = [
+    ...(item.creates ?? []).map((line) => ['WRITES', line]),
+    ...(item.requires ?? []).map((line) => ['NEEDS', line]),
+  ];
+  if (bullets.length) {
+    const body = cardFold(card, 'WHAT IT TOUCHES', { key: `mod.${item.id}.touches`, count: bullets.length });
+    const list = el('ul');
+    for (const [tag, text] of bullets) { const row = el('li'); row.append(el('i', null, tag), el('span', null, text)); list.append(row); }
+    body.append(list);
+  }
+  if (item.commands?.length) {
+    const body = cardFold(card, 'COMMANDS', { key: `mod.${item.id}.commands`, count: item.commands.length });
+    const list = el('ul', 'card-commands');
+    for (const line of item.commands) list.append(el('li', null, line));
+    body.append(list);
+  }
+  const panel = el('div', 'card-panel');
+  const actions = el('div', 'actions');
+  card.append(panel, actions);
+  return { card, panel, actions };
+}
+
+// The economy, on the card of the thing it is about. It fills as the room is used, because it
+// weighs turns, not history.
+function ashReading(panel) {
+  const box = cardBlock(panel, 'ECONOMY · THIS ROOM');
+  const waiting = el('p', 'note', 'READING…');
+  box.append(waiting);
+  const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
+  const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
+  fetch('/api/economy').then((response) => response.json()).then((read) => {
+    box.replaceChildren(el('h5', null, 'ECONOMY · THIS ROOM'));
+    if (!read?.turns) {
+      box.append(el('p', 'note', 'NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS'));
+      return;
+    }
+    const totals = read.totals;
+    const saved = read.saved ?? {};
+    metrics(box, [
+      ['TOKENS SAVED', count(saved.tokens), 'read back from the CLI cache, plus what was never sent'],
+      ['FROM CACHE', count(saved.cachedTokens), `input the CLI did not charge again · ${pct(saved.cachedShare)} of the input`],
+      ['NEVER SENT', `${count(saved.unsentChars)} CH`, 'briefing a turn had no use for'],
+      ['SPENT IN', count(totals.input), 'input tokens actually charged'],
+      ['SPENT OUT', count(totals.output), 'output tokens, the dearer half'],
+      ['TURNS', count(read.turns), 'weighed so far'],
+    ]);
+    box.append(el('p', 'note', `${pct(totals.prefixShare)} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · ${totals.charsPerInputToken ?? '—'} CHARACTERS PER TOKEN IN THIS ROOM`));
+    const widest = read.blocks[0]?.chars || 1;
+    const bars = el('div', 'ash-blocks');
+    for (const block of read.blocks.slice(0, 8)) {
+      const row = el('div', 'ash-block');
+      const bar = el('i');
+      bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
+      row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CH/TURN${block.always ? ' · ALWAYS' : ''}`));
+      bars.append(row);
+    }
+    box.append(bars);
+  }).catch(() => { box.replaceChildren(el('h5', null, 'ECONOMY · THIS ROOM'), el('p', 'note', 'ECONOMY UNAVAILABLE')); });
+}
+
+function builtinCard(item) {
+  const on = Boolean(item.status?.installed);
+  const fixed = Boolean(item.fixed);
+  const { card, panel, actions } = cardShell(item, { on, state: fixed ? (on ? 'ON' : 'UNAVAILABLE') : on ? 'ENABLED' : 'DISABLED' });
+
   if (item.id === 'ollama') {
     const info = item.ollama ?? { running: false, models: [], settings: {} };
+    const read = cardBlock(panel, 'LOCAL BRAIN');
     const status = el('dl', 'ollama-status');
     const put = (k, v) => { status.append(el('dt', null, k), el('dd', null, v)); };
     put('SERVER', info.running ? `running · ${info.host}` : 'not running');
     put('EMBEDDINGS', info.embedModel ? `${info.embedModel}${info.settings.embeddings === false ? ' · off' : ''}` : 'no embedding model');
     put('ARCHIVIST', info.chatModel ? `${info.chatModel}${info.settings.archivist === false ? ' · off' : ''}` : 'no chat model');
     if (info.models?.length) put('MODELS', info.models.map((model) => model.name).join(', '));
-    card.append(status);
-    const actions = el('div', 'actions');
+    read.append(status);
     const recheck = el('button', null, 'RECHECK');
     recheck.type = 'button';
     recheck.addEventListener('click', async () => { recheck.disabled = true; await fetch('/api/ollama/probe', { method: 'POST' }).catch(() => null); await refreshModules(); });
     actions.append(recheck);
     if (info.running) {
+      // The roles are settings, not actions: what the local brain is allowed to do here.
+      const roles = cardBlock(panel, 'ROLES');
+      const row = el('div', 'card-toggles');
+      for (const [role, model, present, label] of [
+        ['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel), 'EMBEDDINGS'],
+        ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), 'ARCHIVIST'],
+        ['agent', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), '@MADRE IN THE ROOM'],
+      ]) {
+        if (present) {
+          const box = el('label', 'toggle');
+          const input = el('input'); input.type = 'checkbox'; input.checked = info.settings[role] !== false;
+          input.addEventListener('change', async () => { input.disabled = true; await fetch('/api/ollama/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [role]: input.checked }) }).catch(() => null); await refreshModules(); });
+          box.append(input, el('span', null, label));
+          row.append(box);
+        } else {
+          const pull = el('button', 'primary', `PULL ${model}`);
+          pull.type = 'button';
+          pull.title = `Download ${model} into Ollama for ${role}`;
+          pull.addEventListener('click', async () => {
+            pull.disabled = true;
+            const response = await fetch('/api/ollama/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'could not pull'}`); pull.disabled = false; }
+            else toast(`MU/TH/UR › pulling ${model}; progress shows in the room.`);
+          });
+          row.append(pull);
+        }
+      }
+      roles.append(row);
       const toggle = el('button', on ? null : 'primary', info.settings.enabled === false ? 'ENABLE OLLAMA' : 'DISABLE OLLAMA');
       toggle.type = 'button';
       toggle.addEventListener('click', async () => {
@@ -3367,35 +3519,40 @@ function builtinCard(item) {
         } catch (error) { toast(`Ollama could not change state: ${error.message}`); toggle.disabled = false; }
       });
       actions.append(toggle);
-      for (const [role, model, present] of [['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel)], ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel)], ['agent', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel)]]) {
-        if (present) {
-          const box = el('label', 'toggle');
-          const input = el('input'); input.type = 'checkbox'; input.checked = info.settings[role] !== false;
-          input.addEventListener('change', async () => { input.disabled = true; await fetch('/api/ollama/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [role]: input.checked }) }).catch(() => null); await refreshModules(); });
-          box.append(input, role === 'agent' ? '@MADRE IN THE ROOM' : role.toUpperCase());
-          actions.append(box);
-        } else {
-          const pull = el('button', 'primary', `PULL ${model}`);
-          pull.type = 'button';
-          pull.title = `Download ${model} into Ollama for ${role}`;
-          pull.addEventListener('click', async () => {
-            pull.disabled = true;
-            const response = await fetch('/api/ollama/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'could not pull'}`); pull.disabled = false; }
-            else toast(`MU/TH/UR › pulling ${model}; progress shows in the room.`);
-          });
-          actions.append(pull);
-        }
-      }
     } else {
-      card.append(el('p', 'confirm', 'Start Ollama (the app, or `ollama serve` in a terminal), then RECHECK. Without it the room keeps using its providers.'));
+      // The detail line says START it here or INSTALL it here; the button has to be here too.
+      const step = info.binary
+        ? { label: 'START OLLAMA', path: '/api/ollama/start', note: 'Wakes Ollama on this computer. Nothing leaves it.' }
+        : info.install?.display
+          ? { label: `INSTALL · ${info.install.display}`, path: '/api/ollama/install', note: info.install.note ?? '' }
+          : null;
+      if (step) {
+        const go = el('button', 'primary', step.label);
+        go.type = 'button';
+        go.title = step.note;
+        go.addEventListener('click', async () => {
+          go.disabled = true;
+          const response = await fetch(step.path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            if (result.download) window.open(result.download, '_blank', 'noopener');
+            toast(`MU/TH/UR › ${result.error ?? `HTTP ${response.status}`}`);
+            go.disabled = false;
+          } else { await refreshModules(); }
+        });
+        actions.append(go);
+      } else if (info.install?.download) {
+        const get = el('button', 'primary', 'GET OLLAMA ↗');
+        get.type = 'button';
+        get.addEventListener('click', () => window.open(info.install.download, '_blank', 'noopener'));
+        actions.append(get);
+      }
+      panel.append(el('p', 'confirm', 'Without Ollama running, the room keeps using its providers. Start it, then RECHECK.'));
     }
-    card.append(actions);
     return card;
   }
+
   if (item.id === 'ripley') {
-    const actions = el('div', 'actions');
     const toggle = el('button', on ? null : 'primary', on ? 'DISABLE RIPLEY' : 'ENABLE RIPLEY');
     toggle.type = 'button';
     toggle.addEventListener('click', async () => {
@@ -3415,54 +3572,11 @@ function builtinCard(item) {
       }
     });
     actions.append(toggle);
-    card.append(actions);
     return card;
   }
-  if (item.id === 'ash') {
-    // What the economy has actually done in this room. Not a setting: a reading, on the card of
-    // the thing it is about. It fills as the room is used, because it weighs turns, not history.
-    const reading = el('div', 'ash-economy');
-    reading.append(el('p', 'note', 'READING…'));
-    card.append(reading);
-    const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
-    const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
-    fetch('/api/economy').then((response) => response.json()).then((read) => {
-      reading.replaceChildren();
-      if (!read?.turns) {
-        reading.append(el('p', 'note', 'NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS'));
-        return;
-      }
-      const totals = read.totals;
-      const saved = read.saved ?? {};
-      const head = el('div', 'ash-totals');
-      for (const [label, value, hint] of [
-        ['TOKENS SAVED', count(saved.tokens), 'read back from the CLI cache, plus what was never sent'],
-        ['FROM CACHE', `${count(saved.cachedTokens)} · ${pct(saved.cachedShare)}`, 'input the CLI did not charge again'],
-        ['NEVER SENT', `${count(saved.unsentChars)} CH`, 'briefing a turn had no use for'],
-        ['SPENT IN', count(totals.input), 'input tokens actually charged'],
-        ['SPENT OUT', count(totals.output), 'output tokens, the dearer half'],
-        ['TURNS', count(read.turns), 'weighed so far'],
-      ]) {
-        const cell = el('div', 'ash-total');
-        cell.title = hint;
-        cell.append(el('b', null, String(value)), el('span', null, label));
-        head.append(cell);
-      }
-      reading.append(head);
-      reading.append(el('p', 'note', `${pct(totals.prefixShare)} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · ${totals.charsPerInputToken ?? '—'} CHARACTERS PER TOKEN IN THIS ROOM`));
-      const widest = read.blocks[0]?.chars || 1;
-      const bars = el('div', 'ash-blocks');
-      for (const block of read.blocks.slice(0, 8)) {
-        const row = el('div', 'ash-block');
-        const bar = el('i');
-        bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
-        row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CH/TURN${block.always ? ' · ALWAYS' : ''}`));
-        bars.append(row);
-      }
-      reading.append(bars);
-    }).catch(() => { reading.replaceChildren(el('p', 'note', 'ECONOMY UNAVAILABLE')); });
 
-    const actions = el('div', 'actions');
+  if (item.id === 'ash') {
+    ashReading(panel);
     const toggle = el('button', on ? null : 'primary', on ? 'STOP ASKING FOR COMPACT REPLIES' : 'ASK FOR COMPACT REPLIES');
     toggle.type = 'button';
     toggle.addEventListener('click', async () => {
@@ -3483,63 +3597,91 @@ function builtinCard(item) {
       }
     });
     actions.append(toggle);
-    card.append(actions);
     return card;
   }
+
+  if (item.id === 'playwright') {
+    // The browser and whether it shows itself are this module's own settings; they belong here.
+    const box = cardBlock(panel, 'BROWSER');
+    const row = el('div', 'card-toggles');
+    const browsers = el('select');
+    for (const name of ['chromium', 'firefox', 'webkit']) {
+      const option = el('option', null, name.toUpperCase());
+      option.value = name;
+      if (name === (item.settings?.browser ?? 'chromium')) option.selected = true;
+      browsers.append(option);
+    }
+    browsers.title = 'Which browser engine the agents drive';
+    const headed = el('label', 'toggle');
+    const input = el('input'); input.type = 'checkbox'; input.checked = item.settings?.headless === false;
+    headed.append(input, el('span', null, 'SHOW THE WINDOW'));
+    headed.title = 'Off, the browser runs headless. On, it opens on this screen so you can watch.';
+    const save = async (patch) => {
+      const response = await fetch('/api/playwright/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) });
+      if (!response.ok) toast('MU/TH/UR › PLAYWRIGHT settings could not be saved.');
+      await refreshModules();
+    };
+    browsers.addEventListener('change', () => { browsers.disabled = true; save({ browser: browsers.value }); });
+    input.addEventListener('change', () => { input.disabled = true; save({ headless: !input.checked }); });
+    row.append(browsers, headed);
+    box.append(row);
+  }
+
   if (item.preflight && !item.preflight.ok) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', 'CANNOT ENABLE YET'));
     for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
-    card.append(warn);
+    panel.append(warn);
   }
-  const actions = el('div', 'actions');
-  const model = el('select');
-  for (const name of item.models ?? []) { const option = el('option', null, name); option.value = name; if (name === item.model) option.selected = true; model.append(option); }
-  model.title = 'Gemini image model used by Image Studio';
+
+  if (fixed) {
+    actions.append(el('span', 'note', item.install?.display ? item.install.display.toUpperCase() : 'NO SWITCH'));
+    return card;
+  }
+
+  if (item.models?.length) {
+    // Image Studio: the model it draws with is a setting, not a button.
+    const box = cardBlock(panel, 'MODEL');
+    const model = el('select');
+    for (const name of item.models) { const option = el('option', null, name); option.value = name; if (name === item.model) option.selected = true; model.append(option); }
+    model.title = 'Gemini image model used by Image Studio';
+    model.id = `module-model-${item.id}`;
+    box.append(model);
+  }
   const toggle = el('button', on ? null : 'primary', on ? 'DISABLE' : 'ENABLE');
   toggle.type = 'button';
   toggle.disabled = !on && item.preflight && !item.preflight.ok;
   toggle.addEventListener('click', async () => {
     toggle.disabled = true;
-    const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, model: model.value }) });
+    const chosen = card.querySelector(`#module-model-${item.id}`);
+    const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, ...(chosen ? { model: chosen.value } : {}) }) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) toast(result.error ?? `Could not toggle ${item.name}.`);
-    else { toast(`MU/TH/UR › Image Studio ${result.enabled ? 'enabled' : 'disabled'}${result.enabled ? ` · ${result.model}` : ''}. Image scopes for Gemini, Claude and OpenCode ${result.enabled ? 'can now be switched on' : 'are off'} in CONNECTIONS.`); if (result.capabilities) { state.capabilities = result.capabilities; renderCreateScopes(); } }
+    else {
+      toast(`MU/TH/UR › ${item.name} ${result.enabled ? 'enabled' : 'disabled'}${result.enabled && result.model ? ` · ${result.model}` : ''}.`);
+      if (result.capabilities) { state.capabilities = result.capabilities; renderCreateScopes(); }
+    }
     await refreshModules();
   });
-  actions.append(toggle, model);
-  actions.append(el('span', 'note', item.status?.detail ? item.status.detail.toUpperCase() : ''));
-  card.append(actions);
+  actions.append(toggle);
   return card;
 }
 
 function moduleCard(item) {
   if (item.kind === 'builtin') return builtinCard(item);
-  const card = el('article', 'module-card');
-  card.id = `module-${item.id}`;
-  const head = el('div', 'head');
-  const title = el('div');
-  title.append(el('h4', null, item.name));
-  title.append(el('div', 'vendor', `${item.vendor} · ${item.package}@${item.version}`));
-  head.append(title);
   const running = modules.installing === item.id;
-  const stateTag = el('span', `state${item.status?.installed ? ' installed' : ''}${running ? ' running' : ''}`,
-    running ? 'INSTALLING' : item.status?.installed ? 'INSTALLED' : 'NOT IN THIS PROJECT');
-  head.append(stateTag);
-  card.append(head);
-  if (item.status?.installed && item.status.detail) card.append(el('div', 'detail', item.status.detail.toUpperCase()));
-  card.append(el('p', null, item.summary));
-  const creates = el('ul');
-  for (const line of item.creates ?? []) creates.append(el('li', null, line));
-  card.append(creates);
+  const installed = Boolean(item.status?.installed);
+  const { card, panel, actions } = cardShell(item, {
+    on: installed,
+    state: running ? 'INSTALLING' : installed ? 'INSTALLED' : 'NOT IN THIS PROJECT',
+  });
 
-  const actions = el('div', 'actions');
   const blocked = item.preflight && !item.preflight.ok;
   if (blocked) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', 'CANNOT INSTALL HERE YET'));
     for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
-    card.append(warn);
+    panel.append(warn);
   }
   if (modules.confirming === item.id && !blocked) {
     const confirm = el('div', 'confirm');
@@ -3569,16 +3711,14 @@ function moduleCard(item) {
     cancel.type = 'button';
     cancel.addEventListener('click', () => { modules.confirming = null; renderModules(); });
     row.append(go, cancel);
-    confirm.append(row);
-    card.append(confirm);
+    panel.append(confirm, row);
   } else {
-    const install = el('button', item.status?.installed ? null : 'primary', item.status?.installed ? 'REINSTALL / UPGRADE' : 'INSTALL');
+    const install = el('button', installed ? null : 'primary', installed ? 'REINSTALL / UPGRADE' : 'INSTALL');
     install.type = 'button';
     install.disabled = Boolean(modules.installing) || blocked;
     install.addEventListener('click', () => { modules.confirming = item.id; renderModules(); });
     actions.append(install);
     if (modules.installing && modules.installing !== item.id) actions.append(el('span', 'note', 'ANOTHER INSTALL IS RUNNING'));
-    card.append(actions);
   }
   const log = modules.logs.get(item.id) ?? [];
   if (log.length || running) {

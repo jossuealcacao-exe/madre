@@ -21,9 +21,8 @@ export default defineModule({
   configKey: 'ash',
   name: 'Ash',
   vendor: 'MADRE',
-  version: '1.0.0',
   summary: 'Asks every agent for compact prose. The rest of the economy is always on: the briefing carries only what a turn can use, what never changes is read first so a cache can match it, and the transcript holds still instead of sliding.',
-  creates: ['nothing in the project', 'an ash switch in ~/.pulse/config.json'],
+  creates: ['nothing in the project', 'a switch in ~/.pulse/config.json'],
   card: 'ash',
   async status(ctx) {
     return {

@@ -32,7 +32,8 @@ Si prefieres importar el SDK, también vale: `import { defineModule } from '@jos
 
 | Campo | Qué es |
 |---|---|
-| `id`, `name`, `vendor`, `version`, `summary`, `creates`, `requires` | Su ficha en MODULES |
+| `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Su ficha en MODULES. `summary` es una frase: qué hace. `creates` y `requires` son líneas cortas, una idea cada una |
+| `version` | Opcional. Si la declaras, la tarjeta la muestra tal cual; si no, muestra la fecha del archivo. Los módulos que vienen con MADRE no la declaran: se mueven con la versión de MADRE |
 | `settings` | Valores por defecto. Viven en `~/.pulse/config.json` bajo `modules.<idEnCamelCase>`; `enabled` es el interruptor |
 | `status(ctx)` | Qué muestra la tarjeta: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }` |
 | `toggle(ctx, payload)` | Sustituye el interruptor por defecto; `confirm: 'texto'` pide confirmación antes de encender |

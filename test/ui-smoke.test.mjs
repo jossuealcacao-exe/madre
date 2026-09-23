@@ -120,6 +120,12 @@ test('the room UI boots against a real transcript without throwing', async () =>
     if (url === '/api/extensions') return { ok: true, json: async () => ({ installing: null, extensions: [] }) };
     if (url === '/api/commands') return { ok: true, json: async () => ({ commands: [{ name: 'git', module: 'git-pulse', title: 'Git Pulse', usage: '/git', summary: 'repo facts', available: true }] }) };
     if (String(url).startsWith('/api/models')) return { ok: true, json: async () => ({ models: {} }) };
+    if (url === '/api/economy') return { ok: true, json: async () => ({
+      turns: 4,
+      totals: { input: 12000, output: 3400, prefixShare: 0.41, charsPerInputToken: 3.8 },
+      saved: { tokens: 90210, cachedTokens: 88000, cachedShare: 0.62, unsentChars: 2210 },
+      blocks: [{ id: 'context', chars: 4000, perTurn: 1000, always: false }, { id: 'room', chars: 800, perTurn: 200, always: true }],
+    }) };
     assert.equal(url, '/api/state');
     return { json: async () => ({
       projectRoot: '/Users/demo/pulse',
@@ -205,4 +211,45 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(trackHold(false, t0 + 25_000), false, 'an upward push resets');
   assert.equal(trackHold(true, t0 + 30_000), false);
   assert.equal(uiState.expendable, false);
+});
+
+test('a module card has the same floors whatever the module is, and its numbers have room', async () => {
+  // The renderer itself, on the DOM the smoke test already boots: a card is built, not described.
+  const { moduleCard } = globalThis.__pulse;
+  assert.ok(moduleCard, 'the module card renderer is not reachable');
+
+  const ash = moduleCard({
+    id: 'ash', kind: 'builtin', name: 'Ash', vendor: 'MADRE', version: '0.4.0', versionSource: 'madre',
+    summary: 'Asks every agent for compact prose.', creates: ['nothing in the project', 'a switch in ~/.pulse/config.json'],
+    card: 'ash', status: { installed: true, detail: 'on' }, preflight: { ok: true, problems: [] }, install: { display: '', platforms: [] },
+  });
+  const floors = ash.children.filter((child) => typeof child !== 'string');
+  assert.equal(floors[0].className, 'head', 'the card does not open with its name');
+  assert.equal(floors.at(-1).className, 'actions', 'the switch is not the last floor');
+  assert.match(ash.querySelector('.vendor').textContent, /MADRE · v0\.4\.0/, 'the version is not the one the server worked out');
+  assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
+  assert.match(ash.querySelector('.card-fold').textContent, /WHAT IT TOUCHES/);
+  assert.match(ash.querySelector('.card-fold').textContent, /EXPAND|COLLAPSE/, 'the fold has no button');
+
+  // The reading fills the card's own panel once the economy answers.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const figures = ash.querySelectorAll('.metric');
+  assert.equal(figures.length, 6, 'the economy does not report six figures');
+  for (const cell of figures) {
+    const kids = cell.children.filter((child) => typeof child !== 'string');
+    assert.equal(kids.length, 2, 'a figure and its label are not separate elements');
+    assert.equal(kids[0].tagName, 'B');
+    assert.equal(kids[1].tagName, 'SPAN');
+    assert.ok(kids[0].textContent.trim(), 'a figure came out empty');
+  }
+
+  // An installer card is the same shape, with INSTALL where the switch would be.
+  const ahp = moduleCard({
+    id: 'ahp', kind: 'installer', name: 'AHP+', vendor: 'Agent Handoff Protocol Plus', package: '@jossuealcala/ahp-plus',
+    version: '1.4.1', versionSource: 'package', summary: 'Verified project state.', creates: ['.ahp/'], requires: ['a git repository'],
+    status: { installed: false, detail: 'off' }, preflight: { ok: true, problems: [] }, install: { display: 'npx …', platforms: [] },
+  });
+  assert.match(ahp.querySelector('.vendor').textContent, /@jossuealcala\/ahp-plus@1\.4\.1/);
+  assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
+  assert.match(ahp.querySelector('.actions').textContent, /INSTALL/);
 });

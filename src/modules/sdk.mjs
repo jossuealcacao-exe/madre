@@ -14,7 +14,34 @@
 // Kinds: 'builtin' switches MADRE's own behaviour (config.json only);
 // 'installer' writes into the project through a confirmed command.
 
+import { readFile, stat } from 'node:fs/promises';
+
 const camel = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+let release = null;
+// MADRE's own release, read once from the package that is running.
+export async function madreRelease() {
+  if (release) return release;
+  const raw = await readFile(new URL('../../package.json', import.meta.url), 'utf8').catch(() => '');
+  try { release = JSON.parse(raw).version ?? '0.0.0'; } catch { release = '0.0.0'; }
+  return release;
+}
+
+// Where a module's version actually comes from, worked out at read time instead of written in the
+// file. A module that ships with MADRE has no version of its own: it moves with the release, so a
+// literal only ever goes stale — Ash was rebuilt from nothing and still said 1.0.0. An installer
+// names the package version it pins, which is a real thing outside this repository. A module
+// someone else wrote keeps the version it declares, and when it declares none, the day its file
+// was last written is the only truth on disk.
+export async function versionOf(module, declared = null) {
+  if (module?.external) {
+    if (declared) return { version: declared, source: 'declared' };
+    const when = await stat(module.file).then((info) => info.mtime).catch(() => null);
+    return when ? { version: when.toISOString().slice(0, 10), source: 'file' } : { version: 'unversioned', source: 'none' };
+  }
+  if (module?.kind === 'installer' && declared) return { version: declared, source: 'package' };
+  return { version: await madreRelease(), source: 'madre' };
+}
 
 export function defineModule(spec) {
   if (!spec?.id || !/^[a-z][a-z0-9-]*$/.test(spec.id)) throw new Error(`Module id must be kebab-case: ${spec?.id}`);
@@ -23,7 +50,7 @@ export function defineModule(spec) {
   const configKey = spec.configKey ?? camel(spec.id);
   const defaults = { ...(kind === 'builtin' ? { enabled: false } : {}), ...(spec.settings ?? {}) };
   const base = {
-    id: spec.id, kind, name: spec.name, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? '0.1.0',
+    id: spec.id, kind, name: spec.name, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
     summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
   };
@@ -59,10 +86,13 @@ export function defineModule(spec) {
       const settings = settingsFrom(ctx.config);
       const own = spec.status ? await spec.status({ ...ctx, settings }) : {};
       const installed = own.installed ?? (kind === 'builtin' ? Boolean(settings.enabled) : false);
+      const stamp = await versionOf(this, spec.version ?? null);
       return {
         ...base,
         ...(this.external ? { external: true, origin: this.origin, file: this.file } : {}),
         ...own,
+        version: stamp.version,
+        versionSource: stamp.source,
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
         preflight: own.preflight ?? { ok: true, problems: [] },
         install: own.install ?? (kind === 'builtin' ? { display: installed ? `disable ${base.name}` : `enable ${base.name} (config.json)`, platforms: [] } : { display: '', platforms: [] }),

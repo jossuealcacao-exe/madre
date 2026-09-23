@@ -1180,7 +1180,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .settings .memory-form .toggle input { accent-color: var(--brew); width: auto; }
 .settings .memory-form .full .note { margin-right: 12px; }
 .settings .memory-form .dataset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--ph-faint); }
-.module-card .ollama-status { margin: 0 0 10px; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 10px; letter-spacing: .1em; }
+.module-card .ollama-status { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 10px; letter-spacing: .1em; }
 .module-card .ollama-status dt { color: var(--ph-dim); } .module-card .ollama-status dd { margin: 0; color: rgba(210, 255, 190, .85); overflow-wrap: anywhere; }
 .module-card .actions .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }
 .module-card .actions .toggle input { accent-color: var(--brew); }
@@ -1286,19 +1286,44 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bridge-card.bridge-warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 6%, transparent); }
 .bridge-card.bridge-warn b { color: var(--warn); }
 
-/* ASH · where the tokens go. A reading, not a setting: numbers first, then what each block of
-   the briefing weighs against the heaviest one. */
-.ash-economy { display: grid; gap: 12px; margin: 4px 0 10px; }
-.ash-totals { display: flex; flex-wrap: wrap; gap: 18px; }
-.ash-total { display: grid; gap: 2px; }
-.ash-total b { font-family: var(--mono); font-size: 16px; color: var(--text); font-weight: 600; letter-spacing: .02em; }
-.ash-total span { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; color: var(--text-3); }
+/* A module card, floor by floor: what it is, what it does, what it touches, how it is doing, and
+   then the switch. Everything inside a card wears the panel's phosphor, never the page's palette,
+   and every number is given room so it can never land on its own label. */
+.module-card .card-panel { display: grid; gap: 14px; }
+.module-card .card-panel:empty, .module-card .actions:empty { display: none; }
+.module-card .card-block { display: grid; gap: 8px; }
+.module-card .card-block h5 { margin: 0; font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); border: 0; padding: 0; }
+.module-card .card-toggles { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.module-card .card-toggles .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }
+.module-card .card-toggles .toggle input { accent-color: var(--brew); }
+
+/* A fold inside a card: the section name, how many lines are behind it, and its own button. */
+.module-card .card-fold { border-top: 1px solid var(--ph-faint); padding-top: 10px; }
+.module-card .card-fold > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.module-card .card-fold > summary::-webkit-details-marker { display: none; }
+.module-card .card-fold > summary b { font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); }
+.module-card .card-fold > summary:hover b { color: var(--ph); }
+.module-card .card-fold > summary .caret { margin-left: auto; font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph); white-space: nowrap; }
+.module-card .card-fold-body { padding-top: 10px; }
+.module-card .card-fold ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.module-card .card-fold li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 11.5px; line-height: 1.55; color: rgba(210, 255, 190, .82); text-shadow: none; }
+.module-card .card-fold li i { font-style: normal; font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); }
+.module-card .card-fold ul.card-commands { gap: 4px; }
+.module-card .card-fold ul.card-commands li { grid-template-columns: 1fr; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--ph); }
+
+/* Numbers read at a glance: the figure, then its name under it, each in its own cell. */
+.module-card .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 12px 14px; }
+.module-card .metric { display: grid; gap: 3px; align-content: start; min-width: 0; }
+.module-card .metric b { font-family: var(--mono); font-size: 15px; font-weight: 600; line-height: 1.15; letter-spacing: .01em; color: var(--ph); text-shadow: none; overflow-wrap: anywhere; }
+.module-card .metric span { font-family: var(--mono); font-size: 8.5px; line-height: 1.4; letter-spacing: .14em; color: var(--ph-dim); text-shadow: none; }
+
+/* ASH · what each block of the briefing weighs against the heaviest one. */
 .ash-blocks { display: grid; gap: 5px; }
-.ash-block { display: grid; grid-template-columns: 116px minmax(60px, 1fr) auto; gap: 10px; align-items: center; }
-.ash-block b { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--text-2); font-weight: 600; }
-.ash-block i { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--text-3) 16%, transparent); position: relative; }
-.ash-block i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); border-radius: 3px; background: color-mix(in srgb, var(--phosphor) 70%, transparent); }
-.ash-block span { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--text-3); white-space: nowrap; }
+.ash-block { display: grid; grid-template-columns: 96px minmax(50px, 1fr) auto; gap: 10px; align-items: center; }
+.ash-block b { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); font-weight: 600; text-shadow: none; overflow: hidden; text-overflow: ellipsis; }
+.ash-block i { height: 5px; background: var(--ph-faint); position: relative; }
+.ash-block i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--ph) 65%, transparent); }
+.ash-block span { font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--ph-dim); white-space: nowrap; text-shadow: none; }
 @media (max-width: 720px) { .ash-block { grid-template-columns: 1fr; } .ash-block i { display: none; } }
 
 /* How grown the archive is. Six readings, the weakest marked, and what would raise it. */
