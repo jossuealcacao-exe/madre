@@ -5079,20 +5079,39 @@ function drawNebula(ctx, t, w, h, cam) {
     nostromo.bolts = (nostromo.bolts ?? []).filter((bolt) => t - bolt.born < bolt.life);
     const every = 0.9 + 7.5 * grown;   // seconds between strikes, on average
     if (nostromo.bolts.length < 2 && Math.random() < 1 / (every * 60)) {
-      const from = Math.random() * Math.PI * 2;
+      // Inside a cloud, and inside the frame. Strikes used to be thrown onto a circle the size
+      // of the diagonal, so a third of them happened where nobody could see them and the rest
+      // fell through empty sky. Lightning belongs in the weather it comes from.
+      const cloud = NEBULA_CLOUDS[Math.floor(Math.random() * NEBULA_CLOUDS.length)];
+      const angle = cloud.at + time * cloud.drift * (1.6 - grown);
+      const out = spread * cloud.out;
+      const lean = 0.42 * grown;
       nostromo.bolts.push({
-        born: t, life: 0.22 + Math.random() * 0.2,
-        x: cx + Math.cos(from) * spread * (0.3 + Math.random() * 0.6),
-        y: cy + Math.sin(from) * spread * (0.3 + Math.random() * 0.6),
+        born: t, life: 0.5 + Math.random() * 0.45,
+        x: Math.min(w * 0.94, Math.max(w * 0.06, cx + Math.cos(angle) * out + (Math.random() - 0.5) * across * 0.16)),
+        y: Math.min(h * 0.94, Math.max(h * 0.06, cy + Math.sin(angle) * out * (1 - lean * 0.55) + (Math.random() - 0.5) * across * 0.1)),
         angle: Math.random() * Math.PI * 2,
-        reach: across * (0.12 + Math.random() * 0.16),
+        reach: across * (0.1 + Math.random() * 0.14),
         seed: Math.random() * 100,
       });
+      // The lit cloud always contains the thread inside it: a bolt poking out of its own glow
+      // would read as a scratch on the canvas rather than as weather.
+      const bolt = nostromo.bolts.at(-1);
+      bolt.glow = bolt.reach * (1.7 + Math.random() * 0.8);
     }
     for (const bolt of nostromo.bolts) {
       const age = (t - bolt.born) / bolt.life;
       // It arrives at once and fades: a flash that eased in would read as a lamp, not lightning.
       const flash = Math.max(0, 1 - age) ** 2 * NEBULA_CAP * 2.4;
+      // A storm far enough away is seen as the cloud lighting up, not as the bolt. This is what
+      // makes it read at all without ever being bright: the sheet carries it, the thread only
+      // gives it a shape.
+      const sheet = ctx.createRadialGradient(bolt.x, bolt.y, 0, bolt.x, bolt.y, bolt.glow);
+      sheet.addColorStop(0, `rgba(132, 152, 245, ${flash * 0.5})`);
+      sheet.addColorStop(0.45, `rgba(104, 124, 224, ${flash * 0.16})`);
+      sheet.addColorStop(1, 'rgba(90, 110, 210, 0)');
+      ctx.fillStyle = sheet;
+      ctx.beginPath(); ctx.arc(bolt.x, bolt.y, bolt.glow, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = `rgba(150, 168, 255, ${flash})`;
       ctx.lineWidth = 1.1;
       ctx.lineCap = 'round';

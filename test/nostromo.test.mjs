@@ -881,3 +881,66 @@ test('nostromo: the sky is weather behind the room, and never the subject of it'
   assert.match(painter, /Math\.min\(1, Math\.max\(0, nostromo\.maturity \?\? 0\)\)/, 'the sky does not read the archive, or is not clamped');
   assert.ok(!painter.includes('shadowBlur'), 'the sky is asking for blurs, which is the most expensive thing a canvas does');
 });
+
+test('nostromo: the storm happens where it can be seen, and is seen as the cloud lighting up', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const take = (name) => {
+    const start = source.indexOf(`function ${name}(`);
+    let depth = 0;
+    for (let i = source.indexOf('{', start); i < source.length; i += 1) {
+      if (source[i] === '{') depth += 1;
+      else if (source[i] === '}' && (depth -= 1) === 0) return source.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+  const constant = (name) => {
+    const start = source.indexOf(`const ${name} =`);
+    let depth = 0;
+    for (let i = start; i < source.length; i += 1) {
+      if ('[{'.includes(source[i])) depth += 1;
+      else if (']}'.includes(source[i])) depth -= 1;
+      else if (source[i] === ';' && depth === 0) return source.slice(start, i + 1);
+    }
+    throw new Error(name);
+  };
+
+  const width = 1400;
+  const height = 800;
+  const ctx = new Proxy({
+    createRadialGradient: () => ({ addColorStop() {} }), save() {}, restore() {}, beginPath() {},
+    moveTo() {}, lineTo() {}, arc() {}, fill() {}, stroke() {},
+  }, { get: (target, key) => (key in target ? target[key] : undefined), set: () => true });
+
+  const run = (grown) => {
+    const nostromo = { maturity: grown, reduced: false, bolts: [] };
+    const draw = new Function('ctx', 'nostromo', `${constant('NEBULA_CAP')} ${constant('NEBULA_CLOUDS')} ${take('drawNebula')} return (t) => drawNebula(ctx, t, ${width}, ${height}, { x: 0, y: 0, scale: 1 });`)(ctx, nostromo);
+    const seen = new Set();
+    const bolts = [];
+    for (let frame = 0; frame < 60 * 90; frame += 1) {
+      draw(frame / 60);
+      for (const bolt of nostromo.bolts) if (!seen.has(bolt.born)) { seen.add(bolt.born); bolts.push(bolt); }
+    }
+    return bolts;
+  };
+
+  // Strikes used to be thrown onto a circle the size of the diagonal, so a third of them landed
+  // outside the frame and the rest fell through empty sky. A storm nobody can see is not weather.
+  const young = run(0);
+  assert.ok(young.length > 30, `a young room struck ${young.length} times in ninety seconds, which is not a storm`);
+  for (const bolt of young) {
+    assert.ok(bolt.x > 0 && bolt.x < width && bolt.y > 0 && bolt.y < height, `a strike landed at ${Math.round(bolt.x)},${Math.round(bolt.y)}, outside the frame`);
+  }
+
+  // And it settles as the room grows: rarer, never brighter.
+  const grown = run(0.9);
+  assert.ok(grown.length < young.length / 3, `a grown room struck ${grown.length} times against a young one's ${young.length}`);
+  assert.ok(grown.length > 0, 'a grown room stopped storming entirely');
+
+  // What carries it is the cloud lighting up, not the bolt: a storm far enough away is seen that
+  // way, and it is how this reads at all without ever being bright.
+  const painting = take('drawNebula');
+  assert.match(painting, /const sheet = ctx\.createRadialGradient\(bolt\.x, bolt\.y/, 'a strike does not light the cloud around it');
+  assert.ok(young.every((bolt) => bolt.glow > bolt.reach), 'the sheet is smaller than the thread inside it');
+  // The sheet is held under the same cap as everything else in the sky.
+  assert.match(painting, /flash \* 0\.5/, 'the sheet is not a fraction of the flash it belongs to');
+});
