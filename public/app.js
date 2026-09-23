@@ -4992,6 +4992,11 @@ function currentAlong(ctx, x0, y0, x1, y1, from, to, head, bright) {
   return line;
 }
 
+// How big a travelling pulse is drawn. A pulse is a thing passing between two bodies, not a
+// body: at the size it had it read as another small star and competed with the memories it was
+// travelling to. Lower this and the constellation keeps its order of importance.
+const PULSE_SCALE = 0.7;
+
 // Where a pulse is right now, along the same curve its filament is drawn with.
 function alongCurve(x0, y0, cx, cy, x1, y1, u) {
   const v = 1 - u;
@@ -5235,7 +5240,7 @@ function drawNostromo(t) {
       at = alongCurve(from.x, from.y, node.cx ?? node.x / 2, node.cy ?? node.y / 2, to.x, to.y, u);
       color = outward ? '#ffd0c0' : node.color;
     }
-    const size = (1.9 + 1.3 * Math.sin(u * Math.PI)) / cam.scale;
+    const size = PULSE_SCALE * (1.9 + 1.3 * Math.sin(u * Math.PI)) / cam.scale;
     const halo = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, size * 4.5);
     halo.addColorStop(0, hexAlpha(color, 0.85));
     halo.addColorStop(1, hexAlpha(color, 0));

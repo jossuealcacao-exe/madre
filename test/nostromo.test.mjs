@@ -145,7 +145,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('CORE_R')} ${block('CORE_TILT')} ${block('CORE_LIGHT')} ${block('MEMORY_SCALE')}
     ${block('CIRCLE_STEPS')} ${block('CIRCLE_COS')} ${block('CIRCLE_SIN')}
     ${block('CORE_FLOWS')} ${block('COLLAPSED')} ${block('VOID_DUST')}
-    ${block('NEBULA_CAP')} ${block('NEBULA_CLOUDS')} ${fn('drawNebula')}
+    ${block('NEBULA_CAP')} ${block('NEBULA_CLOUDS')} ${fn('drawNebula')} ${block('PULSE_SCALE')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
     ${block('dwarfSkins')} ${fn('dwarfTexture')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
@@ -943,4 +943,25 @@ test('nostromo: the storm happens where it can be seen, and is seen as the cloud
   assert.ok(young.every((bolt) => bolt.glow > bolt.reach), 'the sheet is smaller than the thread inside it');
   // The sheet is held under the same cap as everything else in the sky.
   assert.match(painting, /flash \* 0\.5/, 'the sheet is not a fraction of the flash it belongs to');
+});
+
+test('nostromo: a pulse is something passing, never something to look at', async () => {
+  const source = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const value = (name) => Number(source.match(new RegExp(`const ${name} = ([\\d.]+);`))?.[1]);
+
+  const pulse = value('PULSE_SCALE');
+  const memory = value('MEMORY_SCALE');
+  assert.ok(pulse && memory, 'the sizes are no longer written down');
+
+  // The dot at its widest, mid-flight, against the smallest memory it could be travelling to.
+  // A pulse is a thing passing between two bodies; at the same size it reads as another body.
+  const dot = pulse * (1.9 + 1.3);
+  const smallest = memory * (7 + Math.min(11, Math.log2(2) * 2.2 + 0.6));
+  assert.ok(dot < smallest * 0.4, `a pulse is ${(dot / smallest * 100).toFixed(0)}% of the smallest memory, so it competes with it`);
+
+  // And it is scaled in one place, so the order of importance can be changed without hunting.
+  assert.match(source, /const size = PULSE_SCALE \* \(1\.9 \+ 1\.3 \* Math\.sin\(u \* Math\.PI\)\) \/ cam\.scale;/);
+  assert.equal((source.match(/PULSE_SCALE/g) ?? []).length, 2, 'the pulse size is set in more than one place');
+  // Its halo follows the dot, so shrinking one shrinks both.
+  assert.match(source, /size \* 4\.5/, 'the halo no longer follows the dot it belongs to');
 });
