@@ -3324,11 +3324,31 @@ async function refreshModules() {
 // Where the version on a card comes from. A module that ships with MADRE has none of its own.
 const VERSION_NOTE = {
   madre: 'Ships with MADRE: it moves with the release, so this is MADRE\'s own version.',
-  package: 'The version of the package this module installs into the project.',
   declared: 'The version this module declares for itself.',
   file: 'This module declares no version; this is the day its file was last written.',
   none: 'This module declares no version, and its file could not be read.',
 };
+
+// Every version on a card belongs to something nameable: MADRE itself for the modules that ship
+// with it, the module's own file when someone else wrote it, and one tag per outside thing the
+// module drives — a package, a server, a binary — with the version found on this computer, or
+// the plain fact that it is not there.
+function versionTags(item) {
+  const tags = [];
+  if (item.external) {
+    const text = item.versionSource === 'declared' ? `MODULE ${item.version}`
+      : item.versionSource === 'file' ? `FILE ${item.version}` : 'UNVERSIONED';
+    tags.push({ text, title: VERSION_NOTE[item.versionSource] ?? '', kind: 'dev' });
+  } else {
+    tags.push({ text: `MADRE ${item.version}`, title: VERSION_NOTE.madre, kind: 'madre' });
+  }
+  for (const dep of item.runs ?? []) {
+    if (dep.version) tags.push({ text: `${dep.name} ${dep.version}`, title: `${dep.name} found on this computer. MADRE reads the version from the package itself.`, kind: 'found' });
+    else if (dep.target) tags.push({ text: `${dep.name} · INSTALLS ${dep.target}`, title: `${dep.name} is not in this project yet. Installing writes version ${dep.target}.`, kind: 'missing' });
+    else tags.push({ text: `${dep.name} · NOT FOUND`, title: `${dep.name} is not on this computer, so this module cannot run yet.`, kind: 'missing' });
+  }
+  return tags;
+}
 
 // A fold inside a card. It remembers whether it was left open, like every other fold in MADRE,
 // and it carries its own EXPAND / COLLAPSE. It is deliberately not a `.fold`: the panel's
@@ -3381,10 +3401,7 @@ function cardShell(item, { on, state: stateText }) {
   const head = el('div', 'head');
   const title = el('div');
   title.append(el('h4', null, item.name));
-  const stamp = item.kind === 'installer' && item.package ? `${item.package}@${item.version}` : `v${item.version}`;
-  const vendor = el('div', 'vendor', `${item.vendor} · ${stamp}`);
-  vendor.title = VERSION_NOTE[item.versionSource] ?? '';
-  title.append(vendor);
+  title.append(el('div', 'vendor', item.vendor));
   head.append(title);
   if (item.external) {
     const dev = el('span', 'dev-tag', 'DEV');
@@ -3393,8 +3410,14 @@ function cardShell(item, { on, state: stateText }) {
   }
   head.append(el('span', `state${on ? ' installed' : ''}${stateText === 'INSTALLING' ? ' running' : ''}`, stateText));
   card.append(head);
-  const strip = [item.status?.detail, item.runs].filter(Boolean).join(' · ');
-  if (strip) card.append(el('div', 'detail', strip.toUpperCase()));
+  const tags = el('div', 'card-tags');
+  for (const tag of versionTags(item)) {
+    const chip = el('span', `tag ${tag.kind}`, tag.text.toUpperCase());
+    chip.title = tag.title;
+    tags.append(chip);
+  }
+  card.append(tags);
+  if (item.status?.detail) card.append(el('div', 'detail', item.status.detail.toUpperCase()));
   if (item.external) card.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
   if (item.summary) card.append(el('p', null, item.summary));
   const bullets = [

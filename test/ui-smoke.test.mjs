@@ -221,12 +221,13 @@ test('a module card has the same floors whatever the module is, and its numbers 
   const ash = moduleCard({
     id: 'ash', kind: 'builtin', name: 'Ash', vendor: 'MADRE', version: '0.4.0', versionSource: 'madre',
     summary: 'Asks every agent for compact prose.', creates: ['nothing in the project', 'a switch in ~/.pulse/config.json'],
-    card: 'ash', status: { installed: true, detail: 'on' }, preflight: { ok: true, problems: [] }, install: { display: '', platforms: [] },
+    card: 'ash', runs: [], status: { installed: true, detail: 'on' }, preflight: { ok: true, problems: [] }, install: { display: '', platforms: [] },
   });
   const floors = ash.children.filter((child) => typeof child !== 'string');
   assert.equal(floors[0].className, 'head', 'the card does not open with its name');
   assert.equal(floors.at(-1).className, 'actions', 'the switch is not the last floor');
-  assert.match(ash.querySelector('.vendor').textContent, /MADRE · v0\.4\.0/, 'the version is not the one the server worked out');
+  assert.equal(ash.querySelector('.vendor').textContent, 'MADRE', 'the vendor line carries more than the vendor');
+  assert.match(ash.querySelector('.card-tags').textContent, /MADRE 0\.4\.0/, 'the version is not the one the server worked out');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
   assert.match(ash.querySelector('.card-fold').textContent, /WHAT IT TOUCHES/);
   assert.match(ash.querySelector('.card-fold').textContent, /EXPAND|COLLAPSE/, 'the fold has no button');
@@ -246,10 +247,13 @@ test('a module card has the same floors whatever the module is, and its numbers 
   // An installer card is the same shape, with INSTALL where the switch would be.
   const ahp = moduleCard({
     id: 'ahp', kind: 'installer', name: 'AHP+', vendor: 'Agent Handoff Protocol Plus', package: '@jossuealcala/ahp-plus',
-    version: '1.4.1', versionSource: 'package', summary: 'Verified project state.', creates: ['.ahp/'], requires: ['a git repository'],
+    version: '0.4.0', versionSource: 'madre', runs: [{ name: '@jossuealcala/ahp-plus', version: null, target: '1.4.1' }],
+    summary: 'Verified project state.', creates: ['.ahp/'], requires: ['a git repository'],
     status: { installed: false, detail: 'off' }, preflight: { ok: true, problems: [] }, install: { display: 'npx …', platforms: [] },
   });
-  assert.match(ahp.querySelector('.vendor').textContent, /@jossuealcala\/ahp-plus@1\.4\.1/);
+  // The package it pins is a tag of its own: not installed here, and what installing would write.
+  assert.match(ahp.querySelector('.card-tags').textContent, /@JOSSUEALCALA\/AHP-PLUS · INSTALLS 1\.4\.1/);
+  assert.match(ahp.querySelector('.card-tags').textContent, /MADRE 0\.4\.0/);
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
   assert.match(ahp.querySelector('.actions').textContent, /INSTALL/);
 });

@@ -4,7 +4,7 @@
 import { join, resolve } from 'node:path';
 import { realpath } from 'node:fs/promises';
 import { defineModule } from './sdk.mjs';
-import { readJson, gitToplevel, findOnPath } from './helpers.mjs';
+import { readJson, gitToplevel, findOnPath, packageVersion } from './helpers.mjs';
 
 // AHP+ platform names for the agents MADRE knows about. Gemini has no AHP+
 // adapter yet, so it is simply not requested.
@@ -15,13 +15,13 @@ const VERSION = '1.4.1';
 async function detect(projectRoot) {
   const manifest = await readJson(join(projectRoot, '.ahp', 'manifest.json'));
   if (!manifest) return { installed: false };
-  const pinned = await readJson(join(projectRoot, 'node_modules', '@jossuealcala', 'ahp-plus', 'package.json'));
+  const pinned = await packageVersion(PACKAGE, { projectRoot });
   return {
     installed: true,
-    version: pinned?.version ?? null,
+    version: pinned ?? null,
     protocolVersion: manifest.protocol_version ?? null,
     projectId: manifest.project_id ?? null,
-    detail: [pinned?.version ? `cli ${pinned.version}` : null, manifest.protocol_version ? `protocol ${manifest.protocol_version}` : null].filter(Boolean).join(' · '),
+    detail: [pinned ? `cli ${pinned}` : null, manifest.protocol_version ? `protocol ${manifest.protocol_version}` : null].filter(Boolean).join(' · '),
   };
 }
 
@@ -52,7 +52,6 @@ export default defineModule({
   name: 'AHP+',
   vendor: 'Agent Handoff Protocol Plus',
   package: PACKAGE,
-  version: VERSION,
   summary: 'Verified project state, checkpoints and handoffs between AI sessions, stored in .ahp/ next to your code.',
   requires: ['the project is a git repository', 'npx on the PATH of the terminal MADRE was started from'],
   creates: ['.ahp/ with manifest, sessions, handoffs and evidence', 'a project-local pin of @jossuealcala/ahp-plus', 'IDE adapter files for the detected agents'],
@@ -60,6 +59,6 @@ export default defineModule({
   async status(ctx) {
     const status = await detect(ctx.projectRoot);
     const plan = installCommand({ agents: ctx.agents });
-    return { status, preflight: await preflight(ctx.projectRoot), install: { display: plan.display, platforms: plan.platforms } };
+    return { status, runs: [{ name: PACKAGE, version: await packageVersion(PACKAGE, { projectRoot: ctx.projectRoot }), target: VERSION }], preflight: await preflight(ctx.projectRoot), install: { display: plan.display, platforms: plan.platforms } };
   },
 });

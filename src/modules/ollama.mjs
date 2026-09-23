@@ -48,6 +48,7 @@ export default defineModule({
       : !settings.enabled ? `off · ${probe.models.length} model${probe.models.length === 1 ? '' : 's'} available`
         : roles.length ? `on · ${roles.join(' · ')}` : 'on · no usable model yet · PULL one';
     return {
+      runs: [{ name: 'ollama', version: probe.version ?? null }],
       models: probe.models.map((model) => model.name),
       status: { installed: settings.enabled && probe.running && roles.length > 0, detail },
       ollama: view,

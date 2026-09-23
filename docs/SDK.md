@@ -36,6 +36,7 @@ Si prefieres importar el SDK, también vale: `import { defineModule } from '@jos
 | `version` | Opcional. Si la declaras, la tarjeta la muestra tal cual; si no, muestra la fecha del archivo. Los módulos que vienen con MADRE no la declaran: se mueven con la versión de MADRE |
 | `settings` | Valores por defecto. Viven en `~/.pulse/config.json` bajo `modules.<idEnCamelCase>`; `enabled` es el interruptor |
 | `status(ctx)` | Qué muestra la tarjeta: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }` |
+| `status(ctx)` → `runs` | Lo que tu módulo maneja y no es MADRE: `[{ name, version, target }]`. `version` es lo que encontraste en esta computadora (`null` si no está), `target` lo que instalarías. Cada uno sale como etiqueta en la ficha, y «no está» también es una etiqueta |
 | `toggle(ctx, payload)` | Sustituye el interruptor por defecto; `confirm: 'texto'` pide confirmación antes de encender |
 | `onToggle(ctx, enabled)` | Reacciona al interruptor |
 | `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text }`. La sala los muestra como tarjeta y los agentes los leen |

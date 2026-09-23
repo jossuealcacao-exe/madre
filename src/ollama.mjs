@@ -34,16 +34,19 @@ export async function probeOllama({ host = ollamaHost(), fetchImpl = globalThis.
     const response = await fetchImpl(`${host}/api/tags`, { signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok) return { running: false, host, models: [], embedModel: null, chatModel: null, error: `HTTP ${response.status}` };
     const payload = await response.json();
+    // What Ollama itself is running. It answers or it does not; either way the probe goes on.
+    const version = await fetchImpl(`${host}/api/version`, { signal: AbortSignal.timeout(timeoutMs) })
+      .then((answer) => (answer.ok ? answer.json() : null)).then((body) => body?.version ?? null).catch(() => null);
     const models = (payload.models ?? []).map((model) => ({ name: model.name, size: model.size ?? 0, family: model.details?.family ?? '', details: model.details ?? {} }));
     const embeds = models.filter(isEmbedModel);
     const chats = models.filter((model) => !isEmbedModel(model));
     return {
-      running: true, host, models,
+      running: true, host, version, models,
       embedModel: pick(embeds, EMBED_MODELS, env.PULSE_OLLAMA_EMBED_MODEL),
       chatModel: pick(chats, CHAT_MODELS, env.PULSE_OLLAMA_MODEL),
     };
   } catch (error) {
-    return { running: false, host, models: [], embedModel: null, chatModel: null, error: error.message };
+    return { running: false, host, version: null, models: [], embedModel: null, chatModel: null, error: error.message };
   }
 }
 

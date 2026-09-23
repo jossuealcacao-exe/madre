@@ -2,7 +2,7 @@
 // Nothing to switch: it is on wherever the project is a git repository.
 
 import { defineModule } from './sdk.mjs';
-import { gitToplevel } from './helpers.mjs';
+import { gitToplevel, gitVersion } from './helpers.mjs';
 
 export default defineModule({
   id: 'git-pulse',
@@ -16,6 +16,7 @@ export default defineModule({
   async status(ctx) {
     const isRepo = await gitToplevel(ctx.projectRoot);
     return {
+      runs: [{ name: 'git', version: await gitVersion(ctx.env) }],
       status: { installed: Boolean(isRepo), detail: isRepo ? 'on · project is a git repository' : 'not a git repository' },
       preflight: isRepo ? { ok: true, problems: [] } : { ok: false, problems: ['Run `git init` in the project to use /git.'] },
       install: { display: '/git in the composer', platforms: [] },

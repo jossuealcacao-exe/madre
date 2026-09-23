@@ -3,26 +3,23 @@
 // scratch folder. Runs @playwright/mcp per turn, isolated, with allowed origins limited to the
 // room's own address: nothing else on the network is reachable through it.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { defineModule } from './sdk.mjs';
+import { packageVersion } from './helpers.mjs';
 
-const execFileAsync = promisify(execFile);
+export const PLAYWRIGHT_PACKAGE = '@playwright/mcp';
 export const PLAYWRIGHT_BROWSERS = ['chromium', 'firefox', 'webkit'];
 export const PLAYWRIGHT_SERVER_NAME = 'pulse-playwright';
 // The tools @playwright/mcp exposes that a room turn may use. Screenshots and files land in scratch.
 export const PLAYWRIGHT_TOOLS = ['browser_navigate', 'browser_navigate_back', 'browser_snapshot', 'browser_click', 'browser_type', 'browser_fill_form', 'browser_hover', 'browser_press_key', 'browser_select_option', 'browser_wait_for', 'browser_console_messages', 'browser_network_requests', 'browser_take_screenshot', 'browser_resize', 'browser_tabs', 'browser_close'];
 
 let probe = { at: 0, version: null };
-// Is @playwright/mcp installed where npx can find it without downloading? Cached a minute.
-export async function playwrightVersion({ env = process.env, now = Date.now() } = {}) {
+// Is @playwright/mcp installed where npx can find it without downloading? Read from the package
+// itself, never asked of it: `npx --no <package> --version` answers with npm's own version and
+// exits cleanly when the package is not there, so it said 11.16.0 for a server never installed.
+export async function playwrightVersion({ env = process.env, projectRoot = process.cwd(), now = Date.now() } = {}) {
   if (now - probe.at < 60000) return probe.version;
-  let version = null;
-  try {
-    const { stdout } = await execFileAsync('npx', ['--no', '@playwright/mcp', '--version'], { env, timeout: 15000 });
-    version = stdout.trim().split('\n').pop().trim() || 'installed';
-  } catch { version = null; }
+  const version = await packageVersion(PLAYWRIGHT_PACKAGE, { env, projectRoot });
   probe = { at: now, version };
   return version;
 }
@@ -48,9 +45,9 @@ export default defineModule({
   settings: { enabled: false, browser: 'chromium', headless: true },
   card: 'switch',
   async status(ctx) {
-    const version = await playwrightVersion({ env: ctx.env });
+    const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });
     return {
-      runs: version ? `@playwright/mcp ${version}` : null,
+      runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
       status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `on · ${ctx.settings.browser}` : 'on · the browser server is not installed') : version ? 'off' : 'off · the browser server is not installed' },
       preflight: version ? { ok: true, problems: [] } : { ok: false, problems: ['Install the browser server first: npm install -g @playwright/mcp && npx playwright install chromium'] },
@@ -58,7 +55,7 @@ export default defineModule({
     };
   },
   async toolsForTurn(ctx, turn) {
-    if (!(await playwrightVersion({ env: ctx.env }))) return [];
+    if (!(await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot }))) return [];
     if (turn.mode === 0) return [];   // a ghost turn leaves no screenshots and opens no browser
     const outputDir = turn.scratchDir ?? join(turn.roomDir ?? ctx.stateRoot, 'playwright');
     return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false })];

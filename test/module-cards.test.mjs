@@ -17,8 +17,8 @@ test('a module reports the version it actually has, never one written by hand', 
   // rebuilt from nothing and still said 1.0.0, because the number lived in the file.
   assert.deepEqual(await versionOf({ kind: 'builtin' }, '1.0.0'), { version: release, source: 'madre' });
 
-  // An installer names the package it pins, which is a real thing outside this repository.
-  assert.deepEqual(await versionOf({ kind: 'installer' }, '1.4.1'), { version: '1.4.1', source: 'package' });
+  // An installer ships with MADRE too: what it pins is a dependency, and it says so as a tag.
+  assert.deepEqual(await versionOf({ kind: 'installer' }, '1.4.1'), { version: release, source: 'madre' });
 
   // Someone else's module keeps what it declares.
   assert.deepEqual(await versionOf({ external: true, file: 'x.mjs' }, '2.1.0'), { version: '2.1.0', source: 'declared' });
@@ -37,9 +37,48 @@ test('a module reports the version it actually has, never one written by hand', 
 
 test('the modules that ship with MADRE declare no version of their own', async () => {
   for (const module of MODULES) {
-    if (module.kind === 'installer') continue;   // an installer pins a package, and says which
     assert.equal(module.version, null, `${module.id} writes a version into its file, and it will go stale`);
   }
+});
+
+test('a version on a card belongs to something named, and what is missing says so', async () => {
+  const app = await read('app.js');
+  const tags = app.slice(app.indexOf('function versionTags('), app.indexOf('function cardFold('));
+
+  // MADRE's own modules carry MADRE's release; a module someone wrote carries its own file.
+  assert.match(tags, /MADRE \$\{item\.version\}/);
+  assert.match(tags, /MODULE \$\{item\.version\}/);
+  assert.match(tags, /FILE \$\{item\.version\}/);
+  // And each outside thing it drives is its own tag: found, to be installed, or plainly absent.
+  assert.match(tags, /NOT FOUND/);
+  assert.match(tags, /INSTALLS \$\{dep\.target\}/);
+
+  // The dependencies come normalised from the server, so a module cannot invent a tag shape.
+  const { dependencies } = await import('../src/modules/sdk.mjs');
+  assert.deepEqual(dependencies([{ name: 'git', version: '2.54.0' }, { name: 'x' }, null, { version: '1' }]), [
+    { name: 'git', version: '2.54.0', target: null },
+    { name: 'x', version: null, target: null },
+  ]);
+  assert.deepEqual(dependencies(undefined), []);
+});
+
+test('a dependency version is read from the package, never asked of npx', async () => {
+  const { packageVersion } = await import('../src/modules/helpers.mjs');
+  const here = join(import.meta.dirname, '..');
+
+  // npm is a real package on this machine; nothing in MADRE's tree is called this.
+  assert.equal(await packageVersion('@madre/nothing-is-called-this', { projectRoot: here }), null);
+
+  // The bug this replaces: `npx --no <package> --version` answers with npm's own version and
+  // exits 0 when the package is not installed, so PLAYWRIGHT reported a server that was absent.
+  const playwright = await readFile(join(here, 'src', 'modules', 'playwright.mjs'), 'utf8');
+  assert.ok(!playwright.includes("'--version'"), 'the browser server is still asked for its own version');
+  assert.match(playwright, /packageVersion\(PLAYWRIGHT_PACKAGE/);
+
+  // A package that is really there is read from its own package.json.
+  const own = JSON.parse(await readFile(join(here, 'package.json'), 'utf8'));
+  const dependency = Object.keys(own.devDependencies ?? {})[0];
+  if (dependency) assert.ok(await packageVersion(dependency, { projectRoot: here }), `${dependency} is installed but was not found`);
 });
 
 test('every card has the same floors, and the switch is always the last one', async () => {
@@ -49,7 +88,7 @@ test('every card has the same floors, and the switch is always the last one', as
   // One shape for all of them: name and version, how it is doing, what it does, what it touches,
   // then the module's own panel and, last, the actions.
   assert.ok(shell.includes("el('h4', null, item.name)"), 'the card does not name the module');
-  assert.ok(shell.includes('VERSION_NOTE[item.versionSource]'), 'the version does not say where it came from');
+  assert.ok(shell.includes('versionTags(item)'), 'the card carries no version tags');
   assert.ok(shell.includes("cardFold(card, 'WHAT IT TOUCHES'"), 'the bullets are not a section of their own');
   assert.match(shell, /card\.append\(panel, actions\);/, 'the actions are not the last floor of the card');
 

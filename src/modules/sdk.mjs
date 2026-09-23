@@ -29,8 +29,7 @@ export async function madreRelease() {
 
 // Where a module's version actually comes from, worked out at read time instead of written in the
 // file. A module that ships with MADRE has no version of its own: it moves with the release, so a
-// literal only ever goes stale — Ash was rebuilt from nothing and still said 1.0.0. An installer
-// names the package version it pins, which is a real thing outside this repository. A module
+// literal only ever goes stale — Ash was rebuilt from nothing and still said 1.0.0. A module
 // someone else wrote keeps the version it declares, and when it declares none, the day its file
 // was last written is the only truth on disk.
 export async function versionOf(module, declared = null) {
@@ -39,8 +38,16 @@ export async function versionOf(module, declared = null) {
     const when = await stat(module.file).then((info) => info.mtime).catch(() => null);
     return when ? { version: when.toISOString().slice(0, 10), source: 'file' } : { version: 'unversioned', source: 'none' };
   }
-  if (module?.kind === 'installer' && declared) return { version: declared, source: 'package' };
   return { version: await madreRelease(), source: 'madre' };
+}
+
+// What a module drives that is not MADRE and not the module itself: an npm package, a server, a
+// binary on this computer. `version` is what was found here and now, `null` when it is not
+// installed at all; `target` is what the module would install if asked. The card shows each one
+// as its own tag, so a version on screen always belongs to something nameable.
+export function dependencies(runs) {
+  const list = Array.isArray(runs) ? runs : runs ? [runs] : [];
+  return list.filter((dep) => dep && dep.name).map((dep) => ({ name: String(dep.name), version: dep.version ?? null, target: dep.target ?? null }));
 }
 
 export function defineModule(spec) {
@@ -93,6 +100,7 @@ export function defineModule(spec) {
         ...own,
         version: stamp.version,
         versionSource: stamp.source,
+        runs: dependencies(own.runs),
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
         preflight: own.preflight ?? { ok: true, problems: [] },
         install: own.install ?? (kind === 'builtin' ? { display: installed ? `disable ${base.name}` : `enable ${base.name} (config.json)`, platforms: [] } : { display: '', platforms: [] }),

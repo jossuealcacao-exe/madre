@@ -1289,6 +1289,15 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* A module card, floor by floor: what it is, what it does, what it touches, how it is doing, and
    then the switch. Everything inside a card wears the panel's phosphor, never the page's palette,
    and every number is given room so it can never land on its own label. */
+/* One tag per version on the card, and every version belongs to something named: MADRE, the
+   module's own file, or the outside thing it drives. Missing is a tag too, in the warning
+   colour — a card must be able to say the package is not there. */
+.module-card .card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.module-card .card-tags:empty { display: none; }
+.module-card .tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; padding: 3px 7px; border: 1px solid var(--ph-faint); color: var(--ph-dim); text-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.module-card .tag.found { border-color: var(--ph-dim); color: var(--ph); }
+.module-card .tag.missing { border-color: color-mix(in srgb, var(--warn) 45%, transparent); color: var(--warn); }
+.module-card .tag.dev { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); }
 .module-card .card-panel { display: grid; gap: 14px; }
 .module-card .card-panel:empty, .module-card .actions:empty { display: none; }
 .module-card .card-block { display: grid; gap: 8px; }
