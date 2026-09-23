@@ -159,8 +159,8 @@ export async function createPulseServer({
   // Privacy: the terms that never travel through this room, from config.json and the environment.
   // config.json is shared by every room on this machine, so the list is re-read before each
   // human message and whenever MU/TH/UR looks: a term named in one room guards them all.
-  const privacy = new Privacy(privacySettings(await readConfig(root)));
-  const refreshPrivacy = async () => { const { terms, marker } = privacySettings(await readConfig(root)); privacy.set(terms, marker); return privacy; };
+  const privacy = new Privacy({ ...privacySettings(await readConfig(root)), home: homedir() });
+  const refreshPrivacy = async () => { const { terms, marker, secrets, paths } = privacySettings(await readConfig(root)); privacy.set(terms, marker).setGuards({ secrets, paths }); return privacy; };
   const memory = await new RoomMemory(join(roomDir, 'memory.sqlite')).attachPrivacy(privacy).initialize(store)
     .catch((error) => { console.error(`MADRE memory unavailable, turns get the recent window only: ${error.message}`); return null; });
   // Meaning-aware recall through the user's own Gemini key, when there is one;
@@ -278,7 +278,7 @@ export async function createPulseServer({
       capabilities: room.capabilities(),
       memory: memorySettingsView(),
       updates: { check: updatesEnabled(), envWins: process.env.PULSE_UPDATE_CHECK !== undefined },
-      privacy: { terms: privacy.terms, marker: privacy.marker, envWins: privacySettings({}, process.env).envWins },
+      privacy: { terms: privacy.terms, marker: privacy.marker, envWins: privacySettings({}, process.env).envWins, ...privacy.guards },
     };
   }
   // What MU/TH/UR shows under MEMORY: the live values, who could distil, and what embeds today.
@@ -937,7 +937,7 @@ export async function createPulseServer({
       // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
       if (request.method === 'GET' && url.pathname === '/api/privacy') {
         await refreshPrivacy();
-        return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, exposure: room.privacyExposure(await store.readAll()) });
+        return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, ...privacy.guards, exposure: room.privacyExposure(await store.readAll()) });
       }
       if (request.method === 'POST' && url.pathname === '/api/privacy') {
         const patch = await body(request).catch(() => ({}));
@@ -945,10 +945,13 @@ export async function createPulseServer({
         const next = { ...current };
         if ('terms' in patch) next.terms = normalizeTerms(patch.terms);
         if (typeof patch.marker === 'string' && patch.marker.trim()) next.marker = patch.marker.trim().slice(0, 40);
+        if ('secrets' in patch) next.secrets = Boolean(patch.secrets);
+        if ('paths' in patch) next.paths = Boolean(patch.paths);
         await updateConfig(root, { privacy: next });
-        privacy.set(next.terms ?? [], next.marker);
-        await room.record('privacy.updated', { terms: privacy.terms.length, marker: privacy.marker });
-        return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, exposure: room.privacyExposure(await store.readAll()) });
+        await refreshPrivacy();
+        // The room records that the setting changed and what it is now, never the words.
+        await room.record('privacy.updated', { terms: privacy.terms.length, marker: privacy.marker, ...privacy.guards });
+        return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, ...privacy.guards, exposure: room.privacyExposure(await store.readAll()) });
       }
       if (request.method === 'POST' && url.pathname === '/api/privacy/purge') {
         const payload = await body(request).catch(() => ({}));

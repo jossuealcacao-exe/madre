@@ -342,7 +342,14 @@ dialog.nostromo::backdrop { background: #000; }
 @media (max-width: 720px) { .nostromo-head { grid-template-columns: auto 1fr auto; } .nostromo-legend { display: none; } .nostromo-card { right: 16px; left: 16px; width: auto; } }
 .system.memory.forgotten { color: var(--terror); }
 .system.memory.privacy { color: var(--warn); }
-.privacy-form textarea { min-height: 64px; resize: vertical; }
+/* The list of terms is the subject of this form, so it gets the whole width instead of a cell
+   beside the marker, where it was three lines wide and unreadable. */
+.privacy-form { grid-template-columns: 1fr minmax(160px, 260px); }
+.privacy-form > label:first-child { grid-column: 1 / -1; }
+.privacy-form textarea { min-height: 76px; resize: vertical; line-height: 1.5; }
+.privacy-form .toggle { align-items: flex-start; line-height: 1.5; text-transform: none; letter-spacing: .1em; }
+.privacy-form .toggle input { margin: 2px 0 0; flex: none; }
+@media (max-width: 720px) { .privacy-form { grid-template-columns: 1fr; } }
 .system.mother-alert { display: grid; gap: 6px; justify-items: center; max-width: min(720px, 92%); padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--terror) 60%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--terror) 7%, transparent); color: var(--terror); text-shadow: 0 0 8px color-mix(in srgb, var(--terror) 45%, transparent); }
 .system.mother-alert .head b { color: var(--terror); font-weight: 700; }
 .system.mother-alert .clear { color: var(--text); text-shadow: none; text-transform: none; letter-spacing: 0; font-size: 12px; }
@@ -445,10 +452,11 @@ textarea::placeholder { color: var(--text-3); }
 .mother-glyph { width: 8px; height: 8px; border: 1px solid currentColor; }
 .mother-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--danger); color: #fff; font-size: 9px; letter-spacing: 0; }
 
-dialog.mother { border: 0; padding: 0; margin: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; background: transparent; color: #9bff66; }
+dialog.mother { border: 0; padding: 0; margin: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; background: transparent; color: var(--brew); }
 dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(6px); }
 .mother-frame {
-  --ph: #9bff66; --ph-dim: rgba(155, 255, 102, .45); --ph-faint: rgba(155, 255, 102, .14);
+  /* Terminal.app's Homebrew profile, which is what a room like this should read as. */
+  --ph: #28fe14; --ph-dim: rgba(40, 254, 20, .52); --ph-faint: rgba(40, 254, 20, .13);
   position: relative; height: 100%; overflow-y: auto;
   padding: 26px clamp(16px, 5vw, 64px) 40px;
   background:
@@ -655,14 +663,17 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .conn-card button.primary, .settings .room-form button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
 .conn-card button:disabled, .settings .room-form button:disabled { opacity: .4; cursor: default; }
 .conn-card label, .settings .room-form label { display: grid; gap: 4px; font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
-.conn-card input, .settings .room-form input, .settings .room-form select { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
-.conn-card input:focus, .settings .room-form input:focus { outline: 1px solid var(--ph); }
+/* A textarea is a field like any other here. It was left out of this rule, so what you typed
+   into it was drawn in the page's own colour: invisible on this ground. */
+.conn-card input, .settings .room-form input, .settings .room-form select, .settings .room-form textarea { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
+.settings .room-form textarea::placeholder { color: var(--ph-dim); }
+.conn-card input:focus, .settings .room-form input:focus, .settings .room-form textarea:focus { outline: 1px solid var(--ph); }
 .conn-card .login-log { max-height: 140px; overflow-y: auto; border: 1px solid var(--ph-faint); background: #000; padding: 8px 10px; font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .conn-card .login-log a { color: var(--ph); }
 .settings .room-form { border: 1px solid var(--ph-dim); padding: 14px 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-items: end; }
 .settings .room-form .full { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .settings .room-form .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph); cursor: pointer; }
-.settings .room-form .toggle input { width: auto; accent-color: #9bff66; }
+.settings .room-form .toggle input { width: auto; accent-color: var(--brew); }
 .settings .note { font-size: 10px; letter-spacing: .1em; color: var(--ph-dim); }
 .system.login { color: var(--phosphor); }
 .system.login.failed { color: var(--danger); }
@@ -859,15 +870,25 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.lease.missing button:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); }
 .system.lease.missing button:disabled { opacity: .6; cursor: default; }
 .conn-card .scope.sub { margin-left: 22px; font-size: 9px; margin-top: -2px; }
-.conn-card .ceiling { display: grid; grid-template-columns: auto auto; gap: 8px 12px; align-items: center; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--ph-faint); }
+/* One column for the label, the same width on every row and in every card, so MAX MODE and
+   DEFAULT MODE start at the same place instead of each beginning where its own words end. */
+.conn-card .ceiling { display: grid; grid-template-columns: 104px 1fr; gap: 8px 12px; align-items: center; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--ph-faint); }
+.conn-card .ceiling .seg { justify-self: start; }
 .conn-card .ceiling .k { font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
 .conn-card .ceiling .why { grid-column: 1 / -1; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; line-height: 1.5; }
 .conn-card .seg { display: inline-flex; border: 1px solid var(--ph-dim); }
 .conn-card .seg-option { border: 0; border-right: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .1em; padding: 4px 9px; cursor: pointer; }
 .conn-card .seg-option:last-child { border-right: 0; }
 .conn-card .seg-option:hover { background: var(--ph-faint); color: var(--ph); }
-.conn-card .seg-option.current { background: var(--ph); color: #041004; font-weight: 700; }
-.conn-card .seg-option.o3.current { background: #ff7b72; }
+/* A chosen mode wears its own colour, the same one the composer uses for it. It used to be
+   phosphor for every mode but #3, which made one card look like a warning and the rest like
+   settings, when all five are the same kind of choice. */
+.conn-card .seg-option.current { background: var(--mode, var(--ph)); color: var(--mode-ink, #041004); font-weight: 700; }
+.conn-card .seg-option.o0 { --mode: var(--mode-0); --mode-ink: var(--mode-0-ink); }
+.conn-card .seg-option.o1 { --mode: var(--mode-1); --mode-ink: var(--mode-1-ink); }
+.conn-card .seg-option.o2 { --mode: var(--mode-2); --mode-ink: var(--mode-2-ink); }
+.conn-card .seg-option.o3 { --mode: var(--mode-3); --mode-ink: var(--mode-3-ink); }
+.conn-card .seg-option.o4 { --mode: var(--mode-4); --mode-ink: var(--mode-4-ink); }
 .conn-card .seg-option:disabled { opacity: .35; cursor: default; }
 .create-toggle[aria-pressed="true"] .lock.closed { display: none; }
 .create-toggle[aria-pressed="true"] .lock.open { display: block; }
@@ -1001,7 +1022,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .conn-card .scope .assist { margin-left: 6px; border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 8.5px; letter-spacing: .14em; padding: 1px 6px; cursor: pointer; text-transform: uppercase; }
 .conn-card .scope .assist:hover { background: var(--ph-faint); }
 .conn-card .scope { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .12em; color: var(--ph); cursor: pointer; }
-.conn-card .scope input { accent-color: #9bff66; width: auto; }
+.conn-card .scope input { accent-color: var(--brew); width: auto; }
 .conn-card .scope.unavailable { color: var(--ph-dim); cursor: not-allowed; }
 .conn-card .scope .why { margin-left: auto; font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); text-transform: none; }
 
@@ -1148,7 +1169,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* MU/TH/UR: the sentinel section. */
 .mother-section.sentinel .sentinel-controls, .mother-section.update .sentinel-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 6px 0 12px; }
 .mother-section.sentinel .toggle, .mother-section.update .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph-dim); cursor: pointer; }
-.mother-section.sentinel .toggle input, .mother-section.update .toggle input { accent-color: #9bff66; margin: 0; flex: none; }
+.mother-section.sentinel .toggle input, .mother-section.update .toggle input { accent-color: var(--brew); margin: 0; flex: none; }
 /* The row starts where the text above it starts, so the column reads straight down. */
 .mother-section.sentinel .sentinel-controls, .mother-section.update .sentinel-controls { margin-left: 0; padding-left: 0; }
 .mother-section.sentinel .toggle input:disabled + * , .mother-section.sentinel .toggle:has(input:disabled) { opacity: .6; cursor: default; }
@@ -1156,13 +1177,13 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .mother-section.sentinel button:hover, .mother-section.update button:hover { background: var(--ph-faint); }
 .mother-section.sentinel .sentinel-report.sent { opacity: .65; }
 .settings .memory-form .toggle { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; text-transform: uppercase; }
-.settings .memory-form .toggle input { accent-color: #9bff66; width: auto; }
+.settings .memory-form .toggle input { accent-color: var(--brew); width: auto; }
 .settings .memory-form .full .note { margin-right: 12px; }
 .settings .memory-form .dataset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--ph-faint); }
 .module-card .ollama-status { margin: 0 0 10px; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 10px; letter-spacing: .1em; }
 .module-card .ollama-status dt { color: var(--ph-dim); } .module-card .ollama-status dd { margin: 0; color: rgba(210, 255, 190, .85); overflow-wrap: anywhere; }
 .module-card .actions .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }
-.module-card .actions .toggle input { accent-color: #9bff66; }
+.module-card .actions .toggle input { accent-color: var(--brew); }
 .mother-section.sentinel .note, .mother-section.update .note { margin: 0 0 10px; font-size: 10px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }
 
 /* Motion of controls: every colour change eases over 220 ms. Nothing snaps. */

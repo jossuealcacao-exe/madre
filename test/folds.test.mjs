@@ -142,3 +142,60 @@ test('mother: a preference set before the folds existed is not thrown away', asy
   // Choosing a fix from the log opens the list through the fold, not behind its back.
   assert.match(app, /rememberFold\('known', true\)/);
 });
+
+test('mother: a badge says something the header does not, or it is not there', async () => {
+  const app = await read('app.js');
+  // Four sections carried a badge repeating a number their own header already stated. A mark
+  // that is always there stops being a mark, and the same number twice is noise.
+  const badges = [...app.matchAll(/folding\([^;]*?badge: ([^;]*?)\}\);/gs)];
+  assert.equal(badges.length, 2, `${badges.length} sections carry a badge; only connections and the release channel say something their header does not`);
+  for (const [, body] of badges) assert.match(body, /urgent: true/, 'a badge that is not urgent survived');
+
+  // And the two that remain are the two that add something: how many are NOT signed in, and
+  // which version is waiting. Neither number appears in its own header.
+  assert.match(app, /badge: out > 0 \? \{ text: String\(out\)/, 'connections no longer says how many are out');
+  assert.match(app, /badge: info\.available \? \{ text: info\.latest/, 'the release channel no longer names the version waiting');
+});
+
+test('mother: the panel reads as a terminal, and nothing in it is drawn in the page colour', async () => {
+  const css = await read('styles.css');
+
+  // Terminal.app's own Homebrew profile. The panel used to be a softer yellow-green that read as
+  // a design choice rather than as a terminal.
+  // NOSTROMO has a red phosphor of its own, so this is the panel's, not the first one found.
+  const panel = css.match(/\n\s*\/\* Terminal\.app's Homebrew profile[^\n]*\n\s*--ph: (#[0-9a-f]{6});/i);
+  assert.ok(panel, 'the panel has no phosphor of its own');
+  assert.equal(panel[1].toLowerCase(), '#28fe14');
+  const brew = css.match(/--brew: (#[0-9a-f]{6});/i);
+  assert.equal(brew[1].toLowerCase(), '#28fe14', 'the panel and the terminal green have drifted apart');
+
+  // Every field in these forms is drawn in phosphor on black. A textarea was left out of that
+  // rule, so what you typed into it was invisible; nothing may be left out again.
+  const fields = css.match(/\.conn-card input, \.settings \.room-form input, \.settings \.room-form select([^{]*)\{([^}]*)\}/);
+  assert.ok(fields, 'the fields no longer share one rule');
+  assert.match(fields[1], /textarea/, 'a textarea is not drawn like the other fields');
+  assert.match(fields[2], /color: var\(--ph\)/);
+});
+
+test('mother: a chosen mode wears its own colour, and the rows line up', async () => {
+  const css = await read('styles.css');
+
+  // It was phosphor for every mode but #3, which made one card look like a warning and the rest
+  // like settings, when all five are the same kind of choice.
+  const chosen = css.match(/\.conn-card \.seg-option\.current \{([^}]*)\}/);
+  assert.ok(chosen, 'a chosen mode has no styling');
+  assert.match(chosen[1], /background: var\(--mode/);
+  // The red that used to be painted onto #3 alone. It still belongs elsewhere, so the check is
+  // of the mode chips rather than of the whole stylesheet.
+  const chips = css.slice(css.indexOf('.conn-card .seg {'), css.indexOf('.conn-card .seg-option:disabled'));
+  assert.ok(!/#[0-9a-f]{6}/i.test(chips.replace(/--mode-ink, #041004/g, '')), 'a mode chip still carries a colour of its own instead of the mode\'s');
+  for (const n of [0, 1, 2, 3, 4]) {
+    assert.match(css, new RegExp(`\\.conn-card \\.seg-option\\.o${n} \\{[^}]*--mode: var\\(--mode-${n}\\)`), `mode ${n} does not carry its own colour`);
+  }
+
+  // The label column is one width, so MAX MODE and DEFAULT MODE start at the same place instead
+  // of each beginning where its own words happen to end.
+  const row = css.match(/\.conn-card \.ceiling \{([^}]*)\}/);
+  assert.ok(row, 'the mode rows have no layout');
+  assert.match(row[1], /grid-template-columns: \d+px/, 'the label column is still sized to its own words');
+});

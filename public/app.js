@@ -3052,7 +3052,6 @@ function renderMotherRecorded() {
   try { collapsed = localStorage.getItem('pulse.mother.log') === 'collapsed'; } catch { /* no storage */ }
   const body = folding(mother.recorded, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`, {
     key: 'recorded', open: !collapsed,
-    badge: state.failures.length ? { text: String(state.failures.length) } : null,
   });
   if (!state.failures.length) {
     body.append(el('p', 'mother-answer', 'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.'));
@@ -3871,6 +3870,8 @@ document.querySelector('#fold-all')?.addEventListener('click', () => {
   syncFoldAll();
 });
 
+// A section that folds. A badge belongs on the header only when it says something the header
+// does not: the same number twice is noise, and a mark that is always there stops being a mark.
 function folding(section, title, { key, open = false, badge = null } = {}) {
   const box = el('details', 'fold');
   box.dataset.fold = key;
@@ -4170,7 +4171,7 @@ function renderSettings() {
   // MEMORY: who distils, with whom, how often, where it embeds, how much recall a turn gets. Saves as you change it.
   const mem = data.settings.memory;
   if (mem) {
-    const memoryBody = folding(section, `MEMORY · ${mem.stats ? `${mem.stats.entries} EXCHANGES · ${mem.stats.memories} MEMORIES · ${mem.stats.pending} WAITING` : 'NO INDEX'}`, { key: 'memory', badge: mem.stats?.pending ? { text: String(mem.stats.pending), title: `${mem.stats.pending} exchange(s) nobody has distilled yet` } : null });
+    const memoryBody = folding(section, `MEMORY · ${mem.stats ? `${mem.stats.entries} EXCHANGES · ${mem.stats.memories} MEMORIES · ${mem.stats.pending} WAITING` : 'NO INDEX'}`, { key: 'memory' });
     memoryBody.append(el('p', 'note', 'THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.'));
     const mform = el('form', 'room-form memory-form');
     const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(`Memory setting was not saved: ${error.message}`); } };
@@ -4297,7 +4298,7 @@ function renderSettings() {
   // the index, the notes, the dataset. PURGE does the same to what the room already holds.
   const priv = data.settings.privacy;
   if (priv) {
-    const privacyBody = folding(section, `PRIVACY · ${priv.terms.length ? `${priv.terms.length} PRIVATE TERM${priv.terms.length === 1 ? '' : 'S'}` : 'NO PRIVATE TERMS'}`, { key: 'privacy', badge: priv.terms.length ? { text: String(priv.terms.length) } : null });
+    const privacyBody = folding(section, `PRIVACY · ${priv.terms.length ? `${priv.terms.length} PRIVATE TERM${priv.terms.length === 1 ? '' : 'S'}` : 'NO PRIVATE TERMS'}`, { key: 'privacy' });
     privacyBody.append(el('p', 'note', 'AN AGENT\'S OWN CONFIGURATION CAN LEAK INTO ITS REPLY: A COMPANY, A BRAND, A DOMAIN. NAME THEM HERE AND MADRE REPLACES THEM BEFORE THE LEDGER, THE ARCHIVIST, THE OTHER AGENTS OR THE DATASET SEE THEM. THE TERMS STAY IN CONFIG.JSON; THE ROOM ONLY EVER RECORDS HOW MANY.'));
     const pform = el('form', 'room-form privacy-form');
     const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
@@ -4326,6 +4327,23 @@ function renderSettings() {
     marker.addEventListener('change', () => savePrivacy({ marker: marker.value }, (payload) => `private terms appear as ${payload.marker}.`));
     pform.append(field('PRIVATE TERMS · ONE PER LINE', terms));
     pform.append(field('REPLACED WITH', marker));
+    // Two guards that need no list, because what they catch has a shape rather than a name. They
+    // used to run only on the way into a training file, so a key an agent echoed was written to
+    // the ledger in the clear and stayed there.
+    const guard = (key, labelText, describe, hint) => {
+      const wrap = el('label', 'toggle full');
+      const box = el('input'); box.type = 'checkbox'; box.checked = priv[key] !== false;
+      box.addEventListener('change', () => savePrivacy({ [key]: box.checked }, () => `${describe} ${box.checked ? 'on' : 'off'}.`));
+      wrap.append(box, labelText);
+      wrap.title = hint;
+      pform.append(wrap);
+    };
+    guard('secrets', 'REDACT KEYS, TOKENS AND E-MAIL ADDRESSES ANYWHERE THEY APPEAR',
+      'redaction of keys and addresses',
+      'API keys, GitHub and npm tokens, JWTs and e-mail addresses are recognisable by shape in any project. Caught before the ledger, the archivist, the other agents and the dataset.');
+    guard('paths', 'REPLACE THIS MACHINE\'S HOME PATH WITH ~',
+      'hiding of home paths',
+      'A path like /Users/yourname carries who you are into every reply that quotes it. The path still reads, it just stops naming you.');
     const row = el('div', 'full dataset-row');
     purge.addEventListener('click', async () => {
       const designation = window.prompt('PURGE ROOM · Every private term already recorded becomes the marker, in the ledger, the index and the memories. This cannot be undone. Type the project designation to confirm:');
@@ -5978,7 +5996,7 @@ function renderMotherSentinel() {
   section.replaceChildren();
   const reports = [...state.reports.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
   const unsent = reports.filter((report) => !report.sent?.ok).length;
-  const sentinelBody = folding(section, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`, { key: 'sentinel', badge: unsent ? { text: String(unsent), urgent: true, title: `${unsent} report${unsent === 1 ? '' : 's'} not sent` } : null });
+  const sentinelBody = folding(section, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`, { key: 'sentinel' });
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
   const what = el('p', 'note', 'THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.');
   sentinelBody.append(what);

@@ -6,6 +6,18 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Privacidad: dos guardas que no necesitan que nadie las nombre
+- Una llave, un token o un correo se reconocen por su forma en cualquier proyecto, y la ruta a una carpeta personal lleva el nombre de quien vive en ella. MADRE ya sabía taparlos, pero solo al exportar el dataset: una llave que un agente repetía en una respuesta se escribía en claro en el registro y ahí se quedaba. Ahora se tapan antes del registro, del archivista, de los demás agentes y del dataset.
+- Las dos vienen encendidas. Nadie debería tener que enterarse de que existen para estar cubierto, y quien quiera un registro literal las apaga.
+- Se arreglaron dos cosas rotas de esa pantalla: el campo de términos privados nunca recibió color, así que lo que escribías ahí era invisible sobre el fondo del panel; y peleaba una celda con el marcador, en tres líneas de ancho. Ahora ocupa el renglón completo.
+
+### MU/TH/UR, más terminal
+- El verde del panel es el del perfil Homebrew de Terminal.app. El anterior era un verde amarillento que se leía como decisión de diseño, no como terminal.
+- Las insignias que repetían un número que la cabecera ya decía se fueron. Quedan dos, y las dos dicen algo que la cabecera no: cuántos agentes están sin firmar, y qué versión está esperando. Una marca que siempre está deja de ser una marca.
+- En las tarjetas de conexión, el modo elegido lleva su propio color, el mismo que usa el compositor. Antes era fósforo para todos menos `#3`, así que una tarjeta parecía una advertencia y el resto ajustes, cuando los cinco son la misma clase de decisión.
+- Y las filas de `MAX MODE` y `DEFAULT MODE` empiezan en el mismo punto. Cada una arrancaba donde terminaban sus propias palabras, que es por qué las tarjetas no cuadraban entre sí.
+
+
 ### Madurez: seis lecturas en vez de una barra inventada
 - La barra que se llenaba hacia trescientos se fue. Ese número era una regla de dedo del paper de alguien más, no una medición de tu sala, y un corpus de trescientos pares que hablan todos de la misma tarde enseña menos que ochenta que no. Peor: llegabas al número y la barra decía que estabas listo.
 - En su lugar hay seis lecturas de lo que sí se puede contar de este archivo: cuánto hay, cuánto de eso la sala realmente usa, qué tan tejido está, cuánto de él calificaste tú, cuánto es trabajo real y no preguntas de recuerdo, y qué tan al día está el destilado. Cada una dice en números dónde está y, al pasar el cursor, qué haría falta para subirla.

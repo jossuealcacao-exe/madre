@@ -22,11 +22,14 @@ test('privacy: terms match by meaning of the name, not by exact spelling, and ar
   const deep = privacy.redactDeep({ messageId: 'come verde', text: 'Come Verde decide', steps: [{ agent: 'codex', text: 'pregunta a Come Verde' }], n: 3 });
   assert.equal(deep.hits, 3, 'ids are strings too: a uuid never matches, a name anywhere does');
   assert.equal(deep.value.steps[0].text, `pregunta a ${PRIVACY_MARKER}`);
-  assert.equal(new Privacy().enabled, false);
-  assert.deepEqual(new Privacy().redact('Come Verde'), { text: 'Come Verde', hits: 0 });
+  // A room with no terms named still guards what has a shape rather than a name, so it is not
+  // "off": it is only off when nothing at all would be replaced.
+  assert.equal(new Privacy().enabled, true);
+  assert.equal(new Privacy({ secrets: false, paths: false }).enabled, false);
+  assert.deepEqual(new Privacy().redact('Come Verde'), { text: 'Come Verde', hits: 0 }, 'an ordinary name is not a secret');
   assert.deepEqual(normalizeTerms(['ab', ' Come  Verde ', 'come verde', 'x'.repeat(81)]), ['Come Verde']);
   const settings = privacySettings({ privacy: { terms: ['Acme'], marker: '[ORG]' } }, { PULSE_PRIVATE_TERMS: 'Globex, Acme' });
-  assert.deepEqual(settings, { terms: ['Globex', 'Acme'], marker: '[ORG]', envWins: true });
+  assert.deepEqual(settings, { terms: ['Globex', 'Acme'], marker: '[ORG]', envWins: true, secrets: true, paths: true });
 });
 
 test('privacy: the room guards every hop, and a purge rewrites what it already holds', async () => {
@@ -95,4 +98,39 @@ test('MU/TH/UR knows the privacy condition', () => {
   const hit = CONDITIONS.find((c) => c.id === 'privacy-leak');
   assert.ok(hit && hit.match.test('privacy.redacted · @claude · 2 private terms replaced with [ENTIDAD-ORG]'));
   assert.ok(searchConditions('privacy').some((c) => c.id === 'privacy-leak'));
+});
+
+test('privacy: what has a shape is caught without anyone naming it, and can be turned off', async () => {
+  const { Privacy, privacySettings } = await import('../src/privacy.mjs');
+
+  // A key, a token and an address are recognisable in any project. They used to be redacted only
+  // on the way into a training file, so one echoed into a reply was written to the ledger in the
+  // clear, where it stayed.
+  const guard = new Privacy({ terms: [], home: '/Users/someone' });
+  const leak = 'key sk-abcdefghijklmnopqrstuv and AIzaSyAbcdefghijklmnopqrstuvwxyz012345 and ghp_abcdefghijklmnopqrstuvwxyz01 at /Users/someone/pulse, write to a.b@c.com';
+  const cleaned = guard.redact(leak);
+  for (const secret of ['sk-abcdefghijklmnopqrstuv', 'AIzaSy', 'ghp_', 'a.b@c.com', '/Users/someone']) {
+    assert.ok(!cleaned.text.includes(secret), `${secret} survived into the room`);
+  }
+  assert.ok(cleaned.text.includes('~/pulse'), 'the path was removed rather than shortened, which loses what it meant');
+  assert.equal(cleaned.hits, 5);
+
+  // Someone who wants a verbatim ledger can have one, and then nothing is touched.
+  const verbatim = new Privacy({ terms: [], secrets: false, paths: false, home: '/Users/someone' });
+  assert.equal(verbatim.redact(leak).text, leak);
+  assert.deepEqual(verbatim.guards, { secrets: false, paths: false });
+
+  // Named terms and shape guards work together, each counted.
+  const both = new Privacy({ terms: ['Acme Corp'], home: '/Users/someone' });
+  const mixed = both.redact('Acme Corp uses sk-abcdefghijklmnopqrstuv');
+  assert.match(mixed.text, /\[ENTIDAD-ORG\] uses \[key\]/);
+  assert.equal(mixed.hits, 2);
+
+  // On unless someone says otherwise: nobody should have to know they exist to be covered.
+  assert.equal(privacySettings({}).secrets, true);
+  assert.equal(privacySettings({}).paths, true);
+  assert.equal(privacySettings({ privacy: { secrets: false } }).secrets, false);
+  assert.equal(privacySettings({ privacy: { paths: false } }).paths, false);
+  // And a value with nothing to redact comes back untouched, whatever is switched on.
+  assert.deepEqual(new Privacy().redactDeep({ n: 3, ok: true }).value, { n: 3, ok: true });
 });
