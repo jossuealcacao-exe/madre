@@ -14,6 +14,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ### MU/TH/UR, más terminal
 - El verde del panel es el del perfil Homebrew de Terminal.app. El anterior era un verde amarillento que se leía como decisión de diseño, no como terminal.
 - Las insignias que repetían un número que la cabecera ya decía se fueron. Quedan dos, y las dos dicen algo que la cabecera no: cuántos agentes están sin firmar, y qué versión está esperando. Una marca que siempre está deja de ser una marca.
+- Los campos para pegar una llave, y el selector de proveedor de OpenCode, se veían blancos y redondeados entre controles de terminal. Ese formulario vive en dos lugares, el puente sobre fondo claro y la tarjeta de conexión sobre negro, y llevaba la paleta de la página a los dos. Dentro del panel ahora se viste como el panel. Un `select` dentro de una tarjeta además nunca había entrado a la regla que dibuja los campos.
 - En las tarjetas de conexión, el modo elegido lleva su propio color, el mismo que usa el compositor. Antes era fósforo para todos menos `#3`, así que una tarjeta parecía una advertencia y el resto ajustes, cuando los cinco son la misma clase de decisión.
 - Y las filas de `MAX MODE` y `DEFAULT MODE` empiezan en el mismo punto. Cada una arrancaba donde terminaban sus propias palabras, que es por qué las tarjetas no cuadraban entre sí.
 

@@ -665,7 +665,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .conn-card label, .settings .room-form label { display: grid; gap: 4px; font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
 /* A textarea is a field like any other here. It was left out of this rule, so what you typed
    into it was drawn in the page's own colour: invisible on this ground. */
-.conn-card input, .settings .room-form input, .settings .room-form select, .settings .room-form textarea { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
+.conn-card input, .conn-card select, .settings .room-form input, .settings .room-form select, .settings .room-form textarea { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
 .settings .room-form textarea::placeholder { color: var(--ph-dim); }
 .conn-card input:focus, .settings .room-form input:focus, .settings .room-form textarea:focus { outline: 1px solid var(--ph); }
 .conn-card .login-log { max-height: 140px; overflow-y: auto; border: 1px solid var(--ph-faint); background: #000; padding: 8px 10px; font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1270,7 +1270,19 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .key-note { margin: 0; font-size: 10.5px; line-height: 1.5; color: var(--text-3); }
 .key-said { margin: 0; min-height: 1em; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--text-3); }
 .key-said.bad { color: var(--danger); text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 11.5px; line-height: 1.5; }
+/* The key form is shared: it is the bridge's own, on the page's light ground, and it is also
+   inside a connection card, where the ground is black and everything is phosphor. It carried the
+   page's palette into both, so a key field sat there white and rounded among terminal fields.
+   Inside the panel it wears the panel's clothes. */
 .conn-card .key-form { margin-bottom: 10px; }
+.conn-card .key-form .k, .conn-card .key-link, .conn-card .key-note, .conn-card .key-said { color: var(--ph-dim); }
+.conn-card .key-form input, .conn-card .key-form select { color: var(--ph); background: #000; border: 1px solid var(--ph-dim); border-radius: 0; font-size: 12px; padding: 6px 8px; }
+.conn-card .key-form input::placeholder { color: var(--ph-dim); opacity: .7; }
+.conn-card .key-form input:focus, .conn-card .key-form select:focus { outline: 1px solid var(--ph); border-color: var(--ph); }
+.conn-card .key-row button { border: 1px solid var(--ph); color: #041004; background: var(--ph); border-radius: 0; }
+.conn-card .key-row button:hover:not(:disabled) { background: var(--ph-dim); color: #041004; }
+.conn-card .key-link:hover { color: var(--ph); }
+.conn-card .key-said.bad { color: var(--terror); }
 .bridge-card.bridge-warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 6%, transparent); }
 .bridge-card.bridge-warn b { color: var(--warn); }
 

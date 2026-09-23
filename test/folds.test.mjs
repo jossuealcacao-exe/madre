@@ -171,7 +171,7 @@ test('mother: the panel reads as a terminal, and nothing in it is drawn in the p
 
   // Every field in these forms is drawn in phosphor on black. A textarea was left out of that
   // rule, so what you typed into it was invisible; nothing may be left out again.
-  const fields = css.match(/\.conn-card input, \.settings \.room-form input, \.settings \.room-form select([^{]*)\{([^}]*)\}/);
+  const fields = css.match(/\.conn-card input, \.conn-card select, \.settings \.room-form input([^{]*)\{([^}]*)\}/);
   assert.ok(fields, 'the fields no longer share one rule');
   assert.match(fields[1], /textarea/, 'a textarea is not drawn like the other fields');
   assert.match(fields[2], /color: var\(--ph\)/);
@@ -198,4 +198,33 @@ test('mother: a chosen mode wears its own colour, and the rows line up', async (
   const row = css.match(/\.conn-card \.ceiling \{([^}]*)\}/);
   assert.ok(row, 'the mode rows have no layout');
   assert.match(row[1], /grid-template-columns: \d+px/, 'the label column is still sized to its own words');
+});
+
+test('mother: nothing inside a connection card is drawn in the page palette', async () => {
+  const css = await read('styles.css');
+
+  // The key form belongs to two places: the bridge, on the page's light ground, and a connection
+  // card, where everything is phosphor on black. It carried the page's palette into both, so a
+  // key field sat there white and rounded among terminal fields.
+  const shared = css.match(/\.key-form input, \.key-form select \{([^}]*)\}/);
+  assert.ok(shared, 'the key form lost its own styling, which the bridge still needs');
+  assert.match(shared[1], /var\(--bg\)/, 'the bridge form no longer uses the page palette, so this guard is moot');
+
+  const inside = css.match(/\.conn-card \.key-form input, \.conn-card \.key-form select \{([^}]*)\}/);
+  assert.ok(inside, 'inside a card the key form still wears the page palette');
+  assert.match(inside[1], /color: var\(--ph\)/);
+  assert.match(inside[1], /background: #000/);
+  assert.match(inside[1], /border-radius: 0/, 'a rounded field among square ones reads as borrowed from elsewhere');
+
+  // A select in a card was never in the rule that draws the fields, so the provider dropdown was
+  // a browser default among terminal controls.
+  const fields = css.match(/\.conn-card input, \.conn-card select, [^{]*\{([^}]*)\}/);
+  assert.ok(fields, 'a select inside a card is still left out of the rule that draws the fields');
+  assert.match(fields[1], /background: #000/);
+
+  // Everything else the form brings with it follows the panel too, or the labels and notes stay
+  // in the page's greys while the fields turn green.
+  for (const piece of ['.conn-card .key-form .k', '.conn-card .key-row button', '.conn-card .key-link:hover']) {
+    assert.ok(css.includes(piece), `${piece} is still the page's, not the panel's`);
+  }
 });
