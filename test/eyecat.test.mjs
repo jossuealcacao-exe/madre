@@ -295,6 +295,6 @@ test('eyecat: the room answers EYECAT only from this machine, and only about wha
     assert.deepEqual(swept.findings, []);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

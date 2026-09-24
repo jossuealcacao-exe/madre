@@ -186,7 +186,7 @@ test('economy: a turn says what it is reading while it reads it, and is never wr
     assert.ok(second.payload.rate > 0, 'the room did not learn from its own bill');
     assert.equal(second.payload.tokens, Math.round(second.payload.chars / second.payload.rate));
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 

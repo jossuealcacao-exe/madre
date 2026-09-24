@@ -90,7 +90,7 @@ test('privacy: the room guards every hop, and a purge rewrites what it already h
     assert.ok(pairs.length >= 1 && !JSON.stringify(pairs).includes('Come Verde'));
     await room.shutdown();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 

@@ -86,7 +86,7 @@ export async function worktreeTree(root, { exclude = [] } = {}) {
     }
     return (await git(root, ['write-tree'], { env })).trim();
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 }
 

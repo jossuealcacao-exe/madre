@@ -25,7 +25,7 @@ test('chats: a room that predates conversations opens as one, and no file moves 
     const after = await listChats(dir);
     assert.equal(after.active, made.id, 'starting a conversation does not open it');
     assert.equal(after.chats.length, 2);
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('chats: a conversation takes its name from the first thing said in it, and can be renamed', async () => {
@@ -52,7 +52,7 @@ test('chats: a conversation takes its name from the first thing said in it, and 
     assert.equal(named.named, true);
     // An empty name gives it back to the room rather than leaving a blank row.
     assert.equal((await renameChat(dir, made.id, '   ')).named, false);
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('chats: the project numbers its exchanges once, across every conversation', async () => {
@@ -76,7 +76,7 @@ test('chats: the project numbers its exchanges once, across every conversation',
     const back = await new EventStore(chatLedger(dir, MAIN_CHAT), { floor: await projectFloor(dir, { except: MAIN_CHAT }) }).initialize();
     assert.equal((await back.append('message.created', { text: 'main again' })).sequence, 5);
     assert.equal(await lastSequenceOf(chatLedger(dir, 'nope')), 0, 'a ledger that does not exist is sequence zero, not a crash');
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('chats: deleting takes the transcript and never the last conversation', async () => {
@@ -93,7 +93,7 @@ test('chats: deleting takes the transcript and never the last conversation', asy
     assert.equal(await lastSequenceOf(chatLedger(dir, made.id)), 0, 'the transcript is still on disk');
     assert.deepEqual((await listChats(dir)).chats.map((chat) => chat.id), [MAIN_CHAT]);
     assert.equal(await deleteChat(dir, 'nothing'), null);
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('chats: a conversation on disk that no index knows about is adopted, not ignored', async () => {
@@ -108,7 +108,7 @@ test('chats: a conversation on disk that no index knows about is adopted, not ig
     assert.equal((await listChats(dir)).chats.some((chat) => chat.id === stray), true);
     assert.equal((await openChat(dir, stray)).active, true);
     assert.equal((await chatIndex(dir)).active, stray);
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('chats: the panel is the files panel on the other edge, and its handle is in the canvas', async () => {

@@ -83,7 +83,7 @@ test('memory: indexes the ledger, skips ghosts, recalls older exchanges before t
     rebuilt.close();
     assert.ok(await stat(join(root, 'memory.sqlite')));
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -131,7 +131,7 @@ test('memory: a turn beyond the context window recalls the matching old exchange
     await room.shutdown?.();
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -287,7 +287,7 @@ test('distiller: the room distils with the cheapest agent after enough exchanges
     await room.shutdown();
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -372,7 +372,7 @@ test('memory: vectors are stored in the background and recall fuses meaning with
     assert.equal(rebuilt.count(), 3);
     rebuilt.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -420,7 +420,7 @@ test('memory MCP server: lists five tools; search, recall, notes, timeline and p
     assert.equal(unknown.error.code, -32602);
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -504,7 +504,7 @@ test('room: every turn carries the memory server and is told to use it; the dist
     await room.shutdown();
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -531,7 +531,7 @@ test('memory: forgetting removes the note and its vector; links pair notes that 
     assert.deepEqual(memory.memoryLinks(), []);
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -575,7 +575,7 @@ test('NOSTROMO: the archive answers only to the project designation; forgetting 
     assert.equal(event.payload.remaining, 0);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -637,7 +637,7 @@ test('memory_note: saves a signed note on request, refuses ghosts and duplicates
     await room.shutdown();
     memory2.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -693,7 +693,7 @@ test("MOTHER's channel: sealed words round-trip, the file is born once, deleting
     assert.equal(afterEdit.tampers, 2);
     assert.deepEqual(Object.keys(afterEdit.status()).sort(), ['alerts', 'altered', 'born', 'file', 'lockedForMs', 'tampered', 'tampers']);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -762,7 +762,7 @@ test('CODE000: the archive seals, the crew is told in code, the console reads on
     assert.equal(after.mother.lockedForMs, 0, 'a new seal starts unsealed');
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -798,7 +798,7 @@ test('memory: distillation takes the newest exchanges first and the backlog drai
     assert.equal(migrated.undistilledCount(), 7);
     migrated.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -867,7 +867,7 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
     assert.equal((await fetch(`${base}/preview/project/index.html`)).status, 412);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -899,7 +899,7 @@ test('CONTROL guard: .env files and MADRE folders are read-only while the turn r
     await again.release();
   } finally {
     await guardForbidden(root).then((g) => g.release()).catch(() => {});
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -939,7 +939,7 @@ test('the archive counts what it is actually asked for: a recalled memory carrie
     assert.equal(again.memories({ limit: 10 }).find((note) => note.kind === 'decision').recalled, 3);
     again.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1004,7 +1004,7 @@ test('memory: an aberration is kept, is never recalled, and takes what it refute
     assert.equal(again.memories({ limit: 10 }).every((note) => note.refutedBy === null), true);
     again.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1050,7 +1050,7 @@ test('memory: an aberration the archivist files takes down the note that says th
     assert.equal(memory.memories({ limit: 10 }).find((note) => note.id === wrong.id).refutedBy, null);
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1117,7 +1117,7 @@ test('memory: every recall leaves a trace, so a memory can say who it keeps arri
     assert.equal(memory.recallTraffic(decision.id).fired.some((mate) => mate.id === endpoint.id), false, 'the traffic of a forgotten memory survived it');
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1194,6 +1194,6 @@ test('recall: a memory brings along the one it keeps arriving with, and a cascad
     assert.equal(after.some((note) => note.kind === 'aberration'), false);
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

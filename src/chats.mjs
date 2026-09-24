@@ -112,7 +112,7 @@ export async function deleteChat(roomDir, id) {
   delete index.chats[id];
   if (index.active === id) index.active = Object.keys(index.chats)[0];
   if (id === MAIN_CHAT) await rm(join(roomDir, 'events.jsonl'), { force: true });
-  else await rm(join(roomDir, 'chats', id), { recursive: true, force: true });
+  else await rm(join(roomDir, 'chats', id), { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   await writeIndex(roomDir, index);
   return { deleted: id, active: index.active };
 }

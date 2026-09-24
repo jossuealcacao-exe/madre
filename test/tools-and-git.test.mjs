@@ -64,7 +64,7 @@ test('sdk: a module hands tools to a turn only while it is on, and every CLI att
     assert.equal(seen[0].mcpServers[0].name, 'pulse-playwright');
     assert.match(seen[0].prompt, /Tools from MADRE's modules[\s\S]*- pulse-playwright: a browser on port n\/a for @claude in #1/);
     await room.shutdown();
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('/git commit is the human\'s hand on the tree; /git push shows what would leave and only goes with confirm', async () => {
@@ -108,7 +108,7 @@ test('/git commit is the human\'s hand on the tree; /git push shows what would l
     assert.equal(git(remote, 'log', '--oneline', 'main').split('\n').length, 3, 'now it left');
     assert.match((await command.execute({ projectRoot: root, args: ['push'] })).text, /Nothing to push/);
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(remote, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(remote, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

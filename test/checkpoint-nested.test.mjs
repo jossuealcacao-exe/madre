@@ -46,6 +46,6 @@ test('checkpoint: a project made of nested repositories is photographed, diffed 
     assert.equal(await access(join(site, 'src', 'madre.astro')).then(() => true, () => false), false);
     assert.deepEqual((await diffCheckpoint(root, checkpoint)).files, [], 'UNDO leaves the whole project as photographed');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

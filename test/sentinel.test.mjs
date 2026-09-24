@@ -116,6 +116,6 @@ test('sentinel: the server records unknown failures, serves the issue link, send
     assert.equal((await fetch(`${base}/api/sentinel/ffffffffff/issue`)).status, 404);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

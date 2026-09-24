@@ -40,6 +40,6 @@ test('updates: versions compare as releases, the launch mode picks the command, 
     const down = await checkForUpdate({ name: '@jossuealcala/madre', current: '0.3.1', cacheFile: join(root, 'none.json'), fetchImpl: async () => { throw new Error('offline'); }, now: 5 });
     assert.deepEqual([down.source, down.latest, down.available, down.error], ['error', null, false, 'offline']);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

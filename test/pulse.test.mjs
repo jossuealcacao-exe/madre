@@ -218,8 +218,8 @@ test('isolates Gemini global state and disables the launcher relaunch', async ()
     await assert.rejects(readFile(join(geminiDir, 'GEMINI.md')), { code: 'ENOENT' });
     await assert.rejects(readFile(join(geminiDir, 'google_accounts.json')), { code: 'ENOENT' });
   } finally {
-    await rm(sourceHome, { recursive: true, force: true });
-    await rm(runtimeRoot, { recursive: true, force: true });
+    await rm(sourceHome, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -285,7 +285,7 @@ test('terminates the whole adapter process tree on timeout', async () => {
     }
     assert.fail('grandchild process survived the adapter timeout');
   } finally {
-    await rm(workspace, { recursive: true, force: true });
+    await rm(workspace, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -430,7 +430,7 @@ test('persists ordered room events', async () => {
     const events = await store.readAll();
     assert.deepEqual(events.map((event) => event.sequence), [1, 2]);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -447,7 +447,7 @@ test('serializes event sequences across store instances', async () => {
     const events = await first.readAll();
     assert.deepEqual(events.map((event) => event.sequence), [1, 2]);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -474,7 +474,7 @@ test('serves state and accepts a room message', async () => {
     assert.deepEqual(events.map((event) => event.type), ['message.created', 'message.failed']);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -506,7 +506,7 @@ test('serves the single-room interface', async () => {
     assert.deepEqual(state.timeouts, { codex: 180000 });
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -543,7 +543,7 @@ test('emits escalating handoff warnings through the test-only limit endpoint', a
     assert.equal(events.at(-1).type, 'limit.warning');
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -603,7 +603,7 @@ test('persists context handoffs across agents and room restarts', async () => {
     assert.equal(handoffs.at(-1).payload.fromAgent, 'opencode');
     assert.equal(handoffs.at(-1).payload.toAgent, 'codex');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -630,7 +630,7 @@ test('truncates failure messages to one bounded line', async () => {
     const failed = (await store.readAll()).find((event) => event.type === 'message.failed');
     assert.equal(failed.payload.error, 'Error authenticating: boom');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -658,7 +658,7 @@ test('streams events appended by another store instance', async () => {
   } finally {
     stream?.close();
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -699,7 +699,7 @@ test('replays since a sequence and closes cleanly with open streams', async () =
       new Promise((resolve) => setTimeout(() => resolve('timeout'), 2000)),
     ]);
     stream?.close();
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
   assert.equal(closed, 'closed', 'server.close() must resolve while an SSE client is connected');
 });
@@ -738,7 +738,7 @@ test('warns one turn early when the projected usage would cross a threshold', as
     assert.equal(warning.usedPercent, 45);
     assert.deepEqual(warning.alternatives, ['codex']);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -765,7 +765,7 @@ test('tails only the bytes appended since the last offset', async () => {
     await writeFile(file, '');
     assert.deepEqual(await store.tail(second.offset), { events: [], offset: 0 });
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -793,7 +793,7 @@ test('drops SSE clients that stop draining instead of buffering without bound', 
   } finally {
     stream?.close();
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -837,7 +837,7 @@ test('reads agent timeouts from the environment and passes them to adapters', as
     await room.send({ text: 'b', target: 'codex' });
     assert.deepEqual(seen, { claude: { timeoutMs: 240000, hasSignal: true }, codex: { timeoutMs: 30000, hasSignal: true } });
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -862,7 +862,7 @@ test('rejects oversized messages before invoking the agent', async () => {
     await room.send({ text: 'x'.repeat(50), target: 'codex' });
     assert.equal(invoked, 1);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -889,7 +889,7 @@ test('recovers turns left open by a previous process', async () => {
     // Idempotent: a second start finds nothing open.
     assert.equal(await room.reconcile(), 0);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -919,7 +919,7 @@ test('shutdown interrupts in-flight turns and records them as failed', async () 
     assert.deepEqual(events.map((event) => event.type).filter((type) => !type.startsWith('turn.')), ['message.created', 'agent.started', 'message.failed']);
     assert.match(events.at(-1).payload.error, /interrupted: MADRE is shutting down/);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -977,7 +977,7 @@ test('persists preferences in config.json and lets the environment win', async (
     await writeFile(join(root, 'config.json'), '{not json');
     assert.deepEqual(await loadConfig(root), {});
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1112,7 +1112,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1127,7 +1127,7 @@ test('room.record only accepts namespaced, non-reserved event types', async () =
     await assert.rejects(room.record('agent.started', {}), /reserved/);
     await assert.rejects(room.record('nodots', {}), /reserved or malformed/);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1175,7 +1175,7 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
     assert.match(walked.out, /MADRE is ready/);
   } finally {
     await new Promise((resolve) => busy.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1223,7 +1223,7 @@ test('modules: AHP+ preflight refuses when the git root is not the project or np
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1340,7 +1340,7 @@ test('an orchestrating agent puts the others to work in order, then closes; dele
     const handoffs = events.filter((event) => event.type === 'handoff.created');
     assert.ok(handoffs.some((event) => event.payload.kind === 'delegated'));
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1373,7 +1373,7 @@ test('the human can stop a running plan and delegation can be disabled', async (
     await noDelegation.send({ text: 'go', target: 'claude' });
     assert.equal((await quiet.readAll()).some((event) => event.type === 'plan.created'), false);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1411,7 +1411,7 @@ test('a human message during a plan is answered without starting a second plan, 
     assert.match(alert.payload.message, /no second plan will start.*STOPALL/);
     assert.ok(claudeCalls >= 3, 'orchestrator, interjection and closing turn all ran');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1460,7 +1460,7 @@ test('STOPALL halts every plan and every in-flight turn and is reachable over HT
     assert.deepEqual({ plans: after.plans, turns: after.turns }, { plans: [], turns: [] });
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1548,7 +1548,7 @@ test('connections: settings are read, saved to config, applied live; sign-in str
     delete process.env.PULSE_GEMINI_IDLE_MS;
     delete process.env.PULSE_GEMINI_RETRIES;
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1576,7 +1576,7 @@ test('models: discovered locally, validated, and passed to every CLI as --model'
     assert.deepEqual(found.opencode.models, ['openai/gpt-5.6-sol', 'openai/gpt-5.6-luna']);
     assert.equal(found.gemini.models[0], 'auto');
   } finally {
-    await rm(home, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 
   assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q', model: 'gpt-5.6-luna' }).slice(7, 9), ['--model', 'gpt-5.6-luna']);
@@ -1603,7 +1603,7 @@ test('the chosen model travels with the human turn and is recorded on both messa
     assert.equal(messages[2].payload.model, null);
     await assert.rejects(room.send({ text: 'x', target: 'claude', model: '--bad flag' }), /Model name is not valid/);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1639,8 +1639,8 @@ test('files: only paths inside the root are served, symlinks out are refused, ty
     assert.equal(stored.size, 3);
     await assert.rejects(storeAttachment(join(root, 'att'), { name: 'empty', bytes: Buffer.alloc(0) }), /empty/);
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(outside, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(outside, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1710,7 +1710,7 @@ test('attachments: uploaded to the room folder, served back, handed to every CLI
     assert.equal(state.capabilities.codex.imageGen, true);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1764,7 +1764,7 @@ test('creation lease: a fresh directory under .pulse/out, artifacts detected by 
     assert.equal(occ.agent['pulse-readonly'].permission.write['.git/**'], 'deny');
     assert.equal(occ.agent['pulse-readonly'].permission.edit['**/.env.*'], 'deny');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1829,7 +1829,7 @@ test('creation lease: granted per human message, inherited by the plan, artifact
     await readOnly.send({ text: 'just asking', target: 'codex' });
     assert.equal((await quiet.readAll()).some((event) => event.type === 'lease.granted'), false);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1885,7 +1885,7 @@ test('scopes: what the human enabled, per agent; CREATE is refused with a reason
     assert.match(seen.gemini.prompt, /You cannot generate images from this CLI/);
     assert.equal(seen.claude.lease.outDir, seen.codex.lease.outDir);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1957,7 +1957,7 @@ test('web scope: wired into every CLI, standing per agent, off by default', asyn
     assert.match(seen[1].prompt, /WEB ACCESS: the human enabled web search/);
     assert.equal(seen[1].lease, null, 'web does not need a lease');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -1994,7 +1994,7 @@ test('Image Studio MCP server: protocol, tool, path containment, Google errors e
     // the user's real key, so the stubbed fetch answers 401 and never goes out.
     await assert.rejects(generateImage({ prompt: 'p', fileName: 'x.png', outDir: out, env: {}, fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'unauthorized' } }) }) }), (error) => error.code === 'NO_KEY' || error.code === 'AUTH');
   } finally {
-    await rm(out, { recursive: true, force: true });
+    await rm(out, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2059,7 +2059,7 @@ test('Image Studio wiring: module grants imageGen; CLIs receive MADRE\'s MCP ser
       assert.equal(seen.gemini.imageStudio, null, 'a standing write lease does not enable paid image generation');
       assert.ok((await store.readAll()).some((event) => event.type === 'lease.granted' && event.payload.standing && event.payload.agent === 'gemini'));
     } finally {
-      await rm(root, { recursive: true, force: true });
+      await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     }
   } finally {
     setImageModule({ enabled: false });
@@ -2120,7 +2120,7 @@ test('Ash is opt-in per message, asks for compact prose, and never rewrites a wo
     assert.ok(!/Ash: answer in compact prose/.test(prompts[2]), 'Ash was not asked for and came anyway');
     assert.equal(events.at(-1).payload.text, answer);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2147,7 +2147,7 @@ test('Ash reaches every step of a cross-agent plan, and the steps are still writ
     assert.match(step.prompt, /Ash: answer in compact prose/, 'a delegated step was not asked for compact prose');
     assert.match(step.prompt, /revisa el router del proyecto y reporta/, 'the step was rewritten on its way to the delegate');
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2183,7 +2183,7 @@ test('Image Studio module: toggled from the modules API, gated on a Gemini key, 
   } finally {
     setImageModule({ enabled: false });
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2240,7 +2240,7 @@ test('polls available official quota sources and restores sentinel state', async
   } finally {
     // Close whatever is still listening, or a failed assertion leaves the broadcaster ticking forever.
     await Promise.all(open.map((server) => new Promise((resolve) => (server.listening ? server.close(resolve) : resolve()))));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2276,8 +2276,8 @@ test('Git Pulse runs read-only in a git project and is unavailable elsewhere', a
     const listed = await listCommands({ projectRoot: plain });
     assert.equal(listed.find((command) => command.name === 'git').available, false);
   } finally {
-    await rm(repo, { recursive: true, force: true });
-    await rm(plain, { recursive: true, force: true });
+    await rm(repo, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(plain, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2309,7 +2309,7 @@ test('POST /api/commands records a command.output event the transcript shares wi
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2332,7 +2332,7 @@ test('listDirectory fences to the project, hides .git, sorts folders first and d
     assert.equal((await listDirectory(root, '../')).status, 404);
     assert.equal((await listDirectory(root, 'zeta.txt')).status, 404);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2357,7 +2357,7 @@ test('searchFiles ranks by name match and resolveReferences reads !file:lines fr
     assert.match(refs[1].excerpt, /2 \| two\n\s+3 \| three/);
     assert.equal((await resolveReferences(root, 'no refs here, email a!b.c')).length, 0);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2487,7 +2487,7 @@ test('standing lease: an agent opted in creates files on every turn, and a creat
     assert.equal(seen.codex.lease.scopeCeiling.imageGen, false);
     assert.equal(seen.codex.lease.scopes.imageGen, false);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2518,7 +2518,7 @@ test('readCodexRateLimits takes the newest populated rate_limits and empties a w
     assert.equal(windowLabel(10080), '7d');
     assert.deepEqual(interpretWindow({ usedPercent: 50, resetAt: new Date(now + 1000).toISOString() }, now).stale, false);
   } finally {
-    await rm(home, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2566,7 +2566,7 @@ test('the sentinel announces a cleared window and the room records limit.cleared
     const seeded = new Room({ store, agents, projectRoot: root, invokers: {} });
     assert.deepEqual(Object.keys(seeded.budgetWindow()), ['codex']);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2632,7 +2632,7 @@ test('modes: a ghost turn reaches listeners but never the log, #2 is the lease, 
     assert.equal(gate.status, 403);
     await assert.rejects(room.send({ text: 'take over', target: 'claude', mode: 3 }), /raise its MAX MODE to #3/);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2695,7 +2695,7 @@ test('escalation: a creation step in a #1 plan waits for the human; once, plan, 
     assert.match(seen.codex[2].prompt, /did not answer in time/);
     assert.equal(room.pendingModeRequests().length, 0);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2745,7 +2745,7 @@ test('checkpoint: photographs tracked and untracked files without touching the b
     assert.equal(await readFile(join(root, 'ignored', 'x'), 'utf8'), 'x', 'ignored files are never part of the photograph');
     assert.deepEqual((await diffCheckpoint(root, checkpoint)).files, []);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -2813,6 +2813,6 @@ test('CONTROL: one holder, checkpoint before, changes reported with forbidden wr
     assert.ok((await store.readAll()).some((event) => event.type === 'control.reverted'));
     assert.equal((await room.undoControl('nope')).status, 404);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

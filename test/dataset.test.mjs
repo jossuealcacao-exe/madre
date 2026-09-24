@@ -63,7 +63,7 @@ test('dataset: user/assistant pairs by parent, redacted, without ghosts, delegat
     const manifest = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8'));
     assert.equal(manifest.byAgent.codex, 2);
     assert.match(manifest.format, /mlx-lm/);
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('dataset: the server exports next to the ledger, records it, and @madre prefers a model named after the project', async () => {
@@ -93,7 +93,7 @@ test('dataset: the server exports next to the ledger, records it, and @madre pre
     assert.equal(again.dataset.pairs, 1);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -155,6 +155,6 @@ test('dataset: what the room got wrong trains against itself, and never as somet
       assert.ok(!/after parsing the body|Rust core/.test(body), `${file} carries a hallucination`);
     }
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

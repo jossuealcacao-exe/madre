@@ -77,8 +77,8 @@ test('the bridge installs a CLI from the room, streams it, and the agent appears
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(project, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -123,8 +123,8 @@ test('an install walled out of the system folders takes MADRE\'s own, and the ag
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(project, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -139,7 +139,7 @@ test('detection looks in MADRE\'s own tools folder as well as along PATH', async
     await writeFile(join(bin, 'codex'), '#!/bin/sh\necho 1\n', { mode: 0o755 });
     assert.equal(await findExecutable(['codex'], bin), join(bin, 'codex'), 'a CLI MADRE installed is found where MADRE put it');
   } finally {
-    await rm(home, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -182,7 +182,7 @@ test('the local brain refuses to start when it is not here, and says so instead 
       await new Promise((resolve) => server.close(resolve));
     }
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(project, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

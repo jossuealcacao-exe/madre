@@ -80,7 +80,7 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
     await writeFile(probe, text);
     const module = checkExternal(await importModuleFile(probe), { replace });
     return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null };
-  } finally { await rm(scratch, { recursive: true, force: true }); }
+  } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 }
 
 export async function installModuleText({ text, name = null, scope = 'user', stateRoot, projectRoot, source = null, replace = true }) {

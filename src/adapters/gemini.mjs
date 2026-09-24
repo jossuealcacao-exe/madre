@@ -215,7 +215,7 @@ export function parseGeminiOutput(output) {
 export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 250 } = {}) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      await rm(runtimeRoot, { recursive: true, force: true });
+      await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
       return true;
     } catch (error) {
       if (attempt === attempts) {

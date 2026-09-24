@@ -41,7 +41,7 @@ test('Gemini: the key lands where its CLI reads it, locked to the owner, and a r
     assert.deepEqual(settings, { ui: { theme: 'dark' }, security: { auth: { selectedType: 'gemini-api-key' } } }, 'the CLI is told to use the key, and its other settings survive');
     assert.equal(await mode(join(home, '.gemini', '.env')), 0o600, 'readable only by the owner');
   } finally {
-    await rm(home, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -67,7 +67,7 @@ test('OpenCode: the provider entry is written and confirmed by OpenCode itself, 
     assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), { openai: { type: 'oauth', access: 'x' }, anthropic: { type: 'api', key: KEY } });
     assert.equal(await mode(file), 0o600);
   } finally {
-    await rm(home, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -114,8 +114,8 @@ test('the key route: this computer only, and the room records that a key was set
     }
   } finally {
     if (geminiHome === undefined) delete process.env.GEMINI_CLI_HOME; else process.env.GEMINI_CLI_HOME = geminiHome;
-    await rm(home, { recursive: true, force: true });
-    await rm(root, { recursive: true, force: true });
-    await rm(project, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

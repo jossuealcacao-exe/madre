@@ -122,7 +122,7 @@ test('ollama: the room distils with the local archivist first, charges no budget
     await room.shutdown();
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -170,7 +170,7 @@ test('ollama: the module lists its state, the server wires it live, and PULL str
     assert.equal(toggled.ollama.embeddings, false, 'disabled means no local roles');
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -206,7 +206,7 @@ test('memory settings: MU/TH/UR saves archivist, allow-list, cadence, embeddings
     assert.equal(back.settings.memory.archivists, null, 'empty list means everyone');
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -231,6 +231,6 @@ test('memory settings: an allow-list keeps Ollama out of the archivist chair whe
     await room.shutdown();
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

@@ -91,14 +91,14 @@ export class EventStore {
         return async () => {
           try {
             const owner = JSON.parse(await readFile(ownerFile, 'utf8'));
-            if (owner.token === token) await rm(this.#lockDirectory, { recursive: true, force: true });
+            if (owner.token === token) await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
           } catch (error) {
             if (error.code !== 'ENOENT') throw error;
           }
         };
       } catch (error) {
         if (created) {
-          await rm(this.#lockDirectory, { recursive: true, force: true });
+          await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
           throw error;
         }
         if (error.code !== 'EEXIST') throw error;
@@ -108,7 +108,7 @@ export class EventStore {
             process.kill(owner.pid, 0);
           } catch (ownerError) {
             if (ownerError.code === 'ESRCH') {
-              await rm(this.#lockDirectory, { recursive: true, force: true });
+              await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
               continue;
             }
           }
@@ -116,7 +116,7 @@ export class EventStore {
           if (ownerError.code !== 'ENOENT' && !(ownerError instanceof SyntaxError)) throw ownerError;
           const lock = await stat(this.#lockDirectory).catch(() => null);
           if (lock && Date.now() - lock.mtimeMs > 10000) {
-            await rm(this.#lockDirectory, { recursive: true, force: true });
+            await rm(this.#lockDirectory, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
             continue;
           }
         }

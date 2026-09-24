@@ -32,7 +32,7 @@ test('a version on a card is the module\'s own, or the version of what it wraps'
     await utimes(file, when, when);
     assert.deepEqual(await versionOf({ external: true, file }, {}), { version: '2031-04-09', source: 'file' });
     assert.deepEqual(await versionOf({ external: true, file: join(dir, 'gone.mjs') }, {}), { version: null, source: 'none' });
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('MADRE\'s own modules start at 1.0.0; the ones that wrap something else track it instead', async () => {
@@ -217,7 +217,7 @@ test('a module declares where a newer version would come from, and the check is 
     const off = await checkGithubRelease({ repo: 'ollama/ollama', current: '0.1.0', cacheFile: join(dir, 'x.json'), fetchImpl, enabled: false, force: true });
     assert.equal(off.source, 'off');
     assert.equal(calls.length, before, 'a disabled check still reached out');
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally { await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
 test('a module declares its settings and MADRE draws them, for anyone who writes one', async () => {
@@ -309,5 +309,5 @@ test('modules: one door for every module, and checking is not installing', async
     const newer = await installModuleText({ text: good.replace('2.0.0', '2.1.0'), name: 'probe-upload.mjs', stateRoot: home, projectRoot: home });
     assert.equal(newer.version, '2.1.0');
     assert.equal(newer.replaced, true);
-  } finally { await remove(home, { recursive: true, force: true }); }
+  } finally { await remove(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });

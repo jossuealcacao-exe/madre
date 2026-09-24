@@ -83,8 +83,8 @@ test('plan steps carry the mode the orchestrator asked for, capped by the human 
     assert.equal(events.filter((event) => event.type === 'control.started').length, 0);
     assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'v2 by gemini\n', 'nothing changed');
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(logDir, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -132,7 +132,7 @@ test('#4 AIRLOCK: CONTROL plus commands, one holder, only where the ceiling reac
     assert.deepEqual(changed.payload.files.map((file) => file.path), ['deploy.log'], 'files are still photographed and listed');
     assert.equal(room.control(), null, 'the seat is free again');
   } finally {
-    await rm(root, { recursive: true, force: true });
-    await rm(logDir, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

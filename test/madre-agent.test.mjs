@@ -75,7 +75,7 @@ test('@madre: answers from the whole archive with a grounded system prompt, and 
     await assert.rejects(flaky({ prompt: 'p', text: 'q' }), /needs Ollama running with a chat model/);
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -119,7 +119,7 @@ test('@madre: joins the roster when Ollama is up, answers a turn, is never the a
     assert.match(updates.at(-1).payload.reason, /left the room/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -177,6 +177,6 @@ test('@madre settles identity, memory requests and round tables without the mode
     assert.ok(memory.recall('Convoco al crew', { limit: 5 }).entries.every((entry) => entry.sender !== 'madre'), 'nothing @madre said by rote is quotable');
     memory.close();
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

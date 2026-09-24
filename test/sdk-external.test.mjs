@@ -51,8 +51,8 @@ test('external modules: a plain object in ~/.pulse/modules or .madre/modules bec
     assert.equal(MODULES.filter((m) => m.id === 'hello').length, 1);
   } finally {
     await loadExternalModules({ stateRoot: join(stateRoot, 'none'), projectRoot: join(projectRoot, 'none') });   // leave the registry as the other tests expect it
-    await rm(stateRoot, { recursive: true, force: true });
-    await rm(projectRoot, { recursive: true, force: true });
+    await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
 
@@ -86,7 +86,7 @@ test('an agent proposes <id>.module.mjs, the human installs it into a folder of 
     await assert.rejects(readFile(installed.file), /ENOENT/);
   } finally {
     await loadExternalModules({ stateRoot: join(stateRoot, 'none'), projectRoot: join(projectRoot, 'none') });
-    await rm(stateRoot, { recursive: true, force: true });
-    await rm(projectRoot, { recursive: true, force: true });
+    await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
