@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Actualizar de verdad, y una puerta para la comunidad
+- El `↻` de una ficha miraba y nada más: OLLAMA decía `0.34.3 AVAILABLE` y PLAYWRIGHT `NEWEST IS 0.0.82`, y no había manera de hacer nada al respecto. Ahora, cuando hay algo más nuevo y el módulo sabe ir por ello, junto a la versión aparece el botón. Son dos llamadas: la primera pregunta qué se correría y responde con el comando, la segunda corre exactamente eso. MADRE no corre un comando que no hayas leído, y la salida cae en la sala línea por línea como cualquier otra instalación.
+- No se instala solo a propósito. Instalar software en tu computadora sin avisar rompería justo lo que MADRE promete —el comando se ve antes de correr— y puede romperte el entorno a media sesión. Detectar es automático; correrlo es un clic tuyo sobre un comando a la vista.
+- En el SDK, `updatePlan(ctx, { latest })` dice cómo se trae esa versión. Donde no hay comando posible —un Ollama que no se instaló con Homebrew— la ficha entrega la descarga en vez de fingir.
+- Un módulo tuyo ahora puede actualizarse solo: declara `updates: { url }` donde lo publicas, o instálalo desde un archivo y MADRE recuerda cuál. Su ficha trae **GET A NEWER FILE**: va por el archivo, lo verifica y lo reemplaza si carga y dice otra versión. Comprobar no instala nada —eso costó un error de verdad: el primer intento usaba la maquinaria de instalar para mirar, y mirar te recargaba el registro—. Y reemplazar tu propio módulo dejó de chocar con su propio id, que es lo que una actualización es.
+- Y en la cabecera de MODULES hay **+ ADD A MODULE**: el `.mjs` de alguien más entra por la misma puerta que todo lo demás —copia aparte, importado ahí, revisado contra las reglas de la casa, instalado solo si pasa— y si no pasa, el autor lee exactamente por qué. Se dice claro lo que es: un módulo corre dentro de MADRE con tus permisos, y lo que el código pretende no lo puede comprobar nadie más que tú.
+
 ### Varias conversaciones sobre el mismo proyecto
 - Un proyecto tiene una memoria y muchas conversaciones. El archivo, la tripulación, los módulos y la privacidad son del proyecto y no empiezan de cero porque abras otro hilo; una conversación es solo el registro de una línea de trabajo, y todo lo que se dice en cualquiera alimenta el mismo archivo.
 - El panel está a la izquierda del lienzo y es el mismo panel que el de archivos, en el borde contrario: una sola forma que aprender. Arriba, NEW CONVERSATION; abajo, las recientes con lo último que se dijo y cuándo. Su manija vive en el lienzo, debajo de la barra, donde empieza la conversación que abre.

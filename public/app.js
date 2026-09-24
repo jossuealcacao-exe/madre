@@ -3326,6 +3326,8 @@ const modules = {
   count: document.querySelector('#modules-count'),
   close: document.querySelector('#modules-close'),
   list: document.querySelector('#modules-list'),
+  add: document.querySelector('#modules-add'),
+  file: document.querySelector('#modules-file'),
   note: document.querySelector('#modules-note'),
   items: [],
   installing: null,
@@ -3589,6 +3591,21 @@ function cardShell(item, { on, state: stateText }) {
     } finally { check.disabled = false; }
   });
   line.append(check, said);
+  // Something newer exists and the module knows how to fetch it: the button is right where the
+  // news is. It shows the command first and runs nothing until that has been read.
+  if (item.external) {
+    const fresh = el('button', 'get', 'GET A NEWER FILE');
+    fresh.type = 'button';
+    fresh.title = item.updates?.url ? `From ${item.updates.url}` : 'From the file this module was installed from';
+    fresh.addEventListener('click', () => void refreshModuleFile(item, fresh));
+    line.append(fresh);
+  }
+  if (item.canUpdate && (item.update?.available || (item.versionSource === 'tracked' && !item.version && item.update?.latest))) {
+    const get = el('button', 'get', item.version ? `UPDATE TO ${item.update.latest}` : `INSTALL ${item.update.latest}`);
+    get.type = 'button';
+    get.addEventListener('click', () => void updateModule(item, get));
+    line.append(get);
+  }
   head.append(line);
   if (item.status?.detail) head.append(el('div', 'detail', item.status.detail.toUpperCase()));
   if (item.external) head.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
@@ -3670,6 +3687,98 @@ function cardControls(panel, item) {
     }
   }
   box.append(row);
+}
+
+// Somebody's own module, handed to MADRE from the panel. A module runs inside MADRE with the
+// human's permissions, so the choice is theirs to make knowingly: the file is named, what it
+// means is said in one line, and MADRE checks it before it is installed rather than after.
+modules.add?.addEventListener('click', () => modules.file?.click());
+modules.file?.addEventListener('change', async () => {
+  const file = modules.file.files?.[0];
+  modules.file.value = '';
+  if (!file) return;
+  if (!/\.m?js$/.test(file.name)) { toast('MU/TH/UR › a module is a .mjs file.'); return; }
+  if (!window.confirm(`Install ${file.name}?\n\nA module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.`)) return;
+  let text;
+  try { text = await file.text(); } catch (error) { toast(`Could not read that file: ${error.message}`); return; }
+  modules.add.disabled = true;
+  try {
+    const response = await fetch('/api/extensions/upload', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, name: file.name, scope: 'user' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'that module was not installed.'}`); return; }
+    modules.items = result.extensions ?? modules.items;
+    renderModules();
+    toast(`MU/TH/UR › ${result.installed.name} installed${result.installed.version ? ` · v${result.installed.version}` : ''}. It loads in every room on this computer.`);
+  } catch (error) { toast(`The module was not installed: ${error.message}`); }
+  finally { modules.add.disabled = false; }
+});
+
+// A newer copy of a module somebody wrote, from where they publish it or from the file it came
+// from. Asked for, never automatic: fetching a module means running what comes back.
+async function refreshModuleFile(item, button) {
+  button.disabled = true;
+  const ask = async (confirm) => {
+    const response = await fetch(`/api/extensions/${item.id}/refresh`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm }),
+    });
+    return { ok: response.ok, result: await response.json().catch(() => ({})) };
+  };
+  const looked = await ask(false);
+  if (!looked.ok) { toast(`MU/TH/UR › ${looked.result.error ?? 'that module could not be checked.'}`); button.disabled = false; return; }
+  const { origin, current, candidate, same } = looked.result;
+  if (same) { toast(`MU/TH/UR › ${item.name} is already ${current ?? 'what is published'} · ${origin.from}`); button.disabled = false; return; }
+  if (!window.confirm(`Update ${item.name}?\n\n${current ?? 'unversioned'} → ${candidate ?? 'unversioned'}\nFrom ${origin.from}\n\nIt loads and keeps to the house rules. What it intends, only you can judge.`)) { button.disabled = false; return; }
+  const done = await ask(true);
+  if (!done.ok) { toast(`MU/TH/UR › ${done.result.error ?? 'the module was not updated.'}`); button.disabled = false; return; }
+  modules.items = done.result.extensions ?? modules.items;
+  renderModules();
+  toast(`MU/TH/UR › ${item.name} is now ${done.result.installed.version ?? 'the newest file'}.`);
+}
+
+// Fetching a newer version of what a module drives. MADRE shows the command, the human reads it,
+// and only then does anything run — and what runs lands in the room line by line, like every
+// other install.
+async function updateModule(item, button) {
+  button.disabled = true;
+  const card = document.getElementById(`module-${item.id}`);
+  const ask = async (confirm) => {
+    const response = await fetch(`/api/extensions/${item.id}/update`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm }),
+    });
+    return { ok: response.ok, status: response.status, result: await response.json().catch(() => ({})) };
+  };
+  const asked = await ask(false);
+  if (!asked.ok) {
+    if (asked.result.download) window.open(asked.result.download, '_blank', 'noopener');
+    toast(`MU/TH/UR › ${asked.result.error ?? 'that could not be updated from here.'}`);
+    button.disabled = false;
+    return;
+  }
+  const panel = card?.querySelector('.card-panel');
+  const box = el('div', 'confirm');
+  box.append(el('span', 'warn', `THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT:`));
+  box.append(commandBlock([asked.result.plan.display]));
+  if (asked.result.plan.note) box.append(el('span', 'note', asked.result.plan.note));
+  const row = el('div', 'actions');
+  const go = el('button', 'primary', 'RUN IT');
+  go.type = 'button';
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    const ran = await ask(true);
+    if (!ran.ok) { toast(`MU/TH/UR › ${ran.result.error ?? 'the update did not start.'}`); go.disabled = false; return; }
+    toast('MU/TH/UR › updating. The output is in the room, and the card refreshes when it finishes.');
+    box.remove();
+    await refreshModules();
+  });
+  const no = el('button', null, 'NOT NOW');
+  no.type = 'button';
+  no.addEventListener('click', () => { box.remove(); button.disabled = false; });
+  row.append(go, no);
+  box.append(row);
+  (panel ?? card)?.prepend(box);
 }
 
 // The economy, on the card of the thing it is about. It fills as the room is used, because it

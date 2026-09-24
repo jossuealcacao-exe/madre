@@ -62,6 +62,10 @@ export function defineModule(spec) {
     // What this module's version follows, when it is not its own: { name, npm } or { name, github }.
     // MADRE reads the version from there and looks for a newer one on its own, once a day.
     tracks: spec.tracks ? { name: spec.tracks.name ?? spec.tracks.npm ?? spec.tracks.github ?? null, npm: spec.tracks.npm ?? null, github: spec.tracks.github ?? null } : null,
+    // Where a newer version of this module itself is published. A module you wrote says where it
+    // lives and MADRE can go and get it: the file is fetched, checked the same way an upload is,
+    // and only replaces the one installed if it passes and says it is newer.
+    updates: spec.updates?.url && /^https:\/\//.test(String(spec.updates.url)) ? { url: String(spec.updates.url) } : null,
     summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
     // The settings floor of the card, declared instead of drawn: MADRE renders these and saves
@@ -96,6 +100,10 @@ export function defineModule(spec) {
       if (kind === 'builtin' && !settings.enabled) return [];
       try { return (await spec.toolsForTurn({ ...ctx, settings }, turn)) ?? []; } catch (error) { console.error(`MADRE module ${spec.id}: toolsForTurn failed: ${error.message}`); return []; }
     } : null,
+    // How the outside thing this module drives gets a newer version onto this computer. MADRE
+    // shows the command before it runs and never runs one the human has not read. A module that
+    // cannot update what it drives returns the note that says where to get it instead.
+    updatePlan: spec.updatePlan ? async (ctx, what) => spec.updatePlan({ ...ctx, settings: settingsFrom(ctx.config) }, what) : null,
     // Legacy installer hooks, kept on the object so the confirm-and-run path can use them.
     detect: spec.detect ?? null,
     preflight: spec.preflight ?? null,
@@ -115,6 +123,7 @@ export function defineModule(spec) {
         ...own,
         version: stamp.version,
         versionSource: stamp.source,
+        canUpdate: Boolean(spec.updatePlan),
         controls: base.controls.map((control) => ({ ...control, value: settings[control.key] ?? null })),
         ships: this.external ? null : await madreRelease(),
         runs,

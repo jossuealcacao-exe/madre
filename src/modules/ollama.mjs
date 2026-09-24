@@ -19,6 +19,20 @@ export function ollamaInstallPlan({ platform = process.platform, brew = null } =
   return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the Ollama installer from ollama.com, run it, and press RECHECK.' };
 }
 
+// A newer Ollama. Where MADRE can do it, the command is shown before it runs; where it cannot,
+// it hands over the download rather than pretending.
+export function ollamaUpdatePlan({ platform = process.platform, brew = null } = {}) {
+  if (platform === 'darwin') {
+    return brew
+      ? { command: brew, args: ['upgrade', 'ollama'], display: 'brew upgrade ollama', note: 'Upgrades Ollama with Homebrew. Your models stay where they are.' }
+      : { command: null, download: 'https://ollama.com/download', display: null, note: 'Ollama was not installed with Homebrew. Download the newer one from ollama.com, open it once, and press RECHECK. Your models stay where they are.' };
+  }
+  if (platform === 'linux') {
+    return { command: 'sh', args: ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'], display: 'curl -fsSL https://ollama.com/install.sh | sh', note: "Ollama's own install script upgrades in place. Your models stay where they are." };
+  }
+  return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the newer Ollama from ollama.com and run it. Your models stay where they are.' };
+}
+
 // Waking it: the same command on every system, and the app on macOS does it too.
 export const ollamaStartPlan = () => ({ command: 'ollama', args: ['serve'], display: 'ollama serve' });
 
@@ -57,6 +71,10 @@ export default defineModule({
       preflight: probe.running ? { ok: true, problems: [] } : { ok: false, problems: ['Ollama is not running: open the Ollama app or run `ollama serve`, then RECHECK.'] },
       install: { display: settings.enabled ? 'disable Ollama' : 'enable Ollama (config.json)', platforms: [] },
     };
+  },
+  async updatePlan(ctx) {
+    const { findOnPath } = await import('./helpers.mjs');
+    return ollamaUpdatePlan({ brew: await findOnPath('brew') });
   },
   async toggle(ctx) {
     const enabled = !(ctx.settings.enabled ?? true);

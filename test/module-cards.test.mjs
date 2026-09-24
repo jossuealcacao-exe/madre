@@ -255,3 +255,59 @@ test('a module declares its settings and MADRE draws them, for anyone who writes
   assert.throws(() => defineModule({ id: 'bad-one', name: 'Bad', controls: [{ key: 'x', type: 'select' }] }), /select with no options/);
   assert.throws(() => defineModule({ id: 'bad-two', name: 'Bad', controls: [{ label: 'X' }] }), /needs a key/);
 });
+
+test('modules: a newer version is something the card can go and get, with the command in the open', async () => {
+  const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
+  const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
+
+  // The button is where the news is, and only when there is news and a way to act on it.
+  assert.match(app, /item\.canUpdate && \(item\.update\?\.available \|\| \(item\.versionSource === 'tracked' && !item\.version && item\.update\?\.latest\)\)/);
+  assert.match(app, /UPDATE TO \$\{item\.update\.latest\}/);
+  // Two calls: the first asks what would run, the second runs exactly that. Nothing runs unread.
+  assert.match(app, /const asked = await ask\(false\);/);
+  assert.match(app, /THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT/);
+  assert.match(server, /if \(payload\.confirm !== true\) return sendJson\(response, 200, \{ plan:/);
+  assert.match(server, /extension\.install\.started/);
+  assert.match(css, /\.module-card \.version \.get \{/);
+
+  // And a module that cannot fetch what it drives says so instead of pretending.
+  const { defineModule } = await import('../src/modules/sdk.mjs');
+  const plain = defineModule({ id: 'no-update', name: 'Plain' });
+  assert.equal(plain.updatePlan, null);
+  const { ollamaUpdatePlan } = await import('../src/modules/ollama.mjs');
+  assert.match(ollamaUpdatePlan({ platform: 'darwin', brew: '/opt/homebrew/bin/brew' }).display, /brew upgrade ollama/);
+  assert.equal(ollamaUpdatePlan({ platform: 'darwin', brew: null }).command, null, 'a machine without brew is told where to download, not given a command that will not work');
+  assert.match(ollamaUpdatePlan({ platform: 'win32' }).download, /ollama\.com/);
+});
+
+test('modules: one door for every module, and checking is not installing', async () => {
+  const { verifyModuleText, installModuleText } = await import('../src/modules/index.mjs');
+  const { mkdtemp, rm: remove, readdir } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+
+  const good = `export default { id: 'probe-upload', name: 'Probe', version: '2.0.0', summary: 's' };`;
+  const seen = await verifyModuleText({ text: good, name: 'probe-upload.mjs' });
+  assert.equal(seen.id, 'probe-upload');
+  assert.equal(seen.version, '2.0.0');
+
+  // A module that shadows one of MADRE's own is refused, whatever it is called on disk.
+  await assert.rejects(verifyModuleText({ text: `export default { id: 'ash', name: 'Not Ash' };` }), /already taken/);
+  // So is a file that is not a module, and the author reads why.
+  await assert.rejects(verifyModuleText({ text: 'this is not javascript <<<' }), /Unexpected|Invalid|SyntaxError/);
+  // A route outside its own corner of the API never gets in.
+  await assert.rejects(verifyModuleText({ text: `export default { id: 'probe-route', name: 'P', routes: [{ method: 'GET', path: '/api/state', handler: () => ({}) }] };` }), /must live under \/api\/x\//);
+
+  // Checking installs nothing: the folders it would write to stay as they were.
+  const home = await mkdtemp(join(tmpdir(), 'madre-modules-'));
+  try {
+    await verifyModuleText({ text: good, name: 'probe-upload.mjs' });
+    await assert.rejects(readdir(join(home, 'modules')), /ENOENT/, 'checking a module wrote into the module folder');
+    const installed = await installModuleText({ text: good, name: 'probe-upload.mjs', stateRoot: home, projectRoot: home, source: { kind: 'file', from: '/somewhere/probe.mjs' } });
+    assert.equal(installed.version, '2.0.0');
+    assert.deepEqual((await readdir(join(home, 'modules'))).sort(), ['probe-upload.mjs', 'probe-upload.source.json'], 'where it came from is not remembered, so it can never be asked for a newer one');
+    // Installing a newer copy of your own module is what an update is, so its own id is not "taken".
+    const newer = await installModuleText({ text: good.replace('2.0.0', '2.1.0'), name: 'probe-upload.mjs', stateRoot: home, projectRoot: home });
+    assert.equal(newer.version, '2.1.0');
+    assert.equal(newer.replaced, true);
+  } finally { await remove(home, { recursive: true, force: true }); }
+});

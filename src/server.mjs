@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, realpath, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, realpath, writeFile, mkdir, rm } from 'node:fs/promises';
 import { rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -14,7 +14,7 @@ import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
-import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, removeExternalModule } from './modules/index.mjs';
+import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 
@@ -1171,6 +1171,88 @@ export async function createPulseServer({
         if (payload.stop) return sendJson(response, 200, room.stopExam());
         const result = await room.runExam(String(payload.which ?? ''), { findings: eyecat.findings() });
         return sendJson(response, result?.error ? 409 : 200, { ...result, exams: await room.exams() });
+      }
+      // Somebody's own module, handed to MADRE from the panel. It runs inside MADRE with the
+      // human's permissions, so it goes through the same door as everything else: written to a
+      // scratch copy, imported there, checked against the house rules, and only then installed.
+      if (request.method === 'POST' && url.pathname === '/api/extensions/upload') {
+        const payload = await body(request).catch(() => ({}));
+        const text = String(payload.text ?? '');
+        const name = String(payload.name ?? 'module.mjs');
+        if (!text.trim()) return sendJson(response, 400, { error: 'That file is empty.' });
+        if (text.length > 400_000) return sendJson(response, 413, { error: 'A module file that big is not a module. Keep it under 400 KB.' });
+        if (!/\.m?js$/.test(name)) return sendJson(response, 400, { error: 'A module is a .mjs file.' });
+        try {
+          const installed = await installModuleText({
+            text, name, scope: payload.scope === 'project' ? 'project' : 'user',
+            stateRoot: root, projectRoot: canonicalProjectRoot,
+            // A browser hands over the bytes, not a path: there is nowhere to go back to. A
+            // module that wants to be updatable says so itself, with updates: { url }.
+            source: null,
+          });
+          await room.record('extension.installed', { id: installed.id, name: installed.name, origin: installed.origin, file: installed.file, version: installed.version, by: 'upload' });
+          return sendJson(response, 200, { installed, extensions: await describeModules(await moduleContext()) });
+        } catch (error) {
+          // The author reads exactly what failed: a module that will not load is not installed.
+          return sendJson(response, 422, { error: error.message });
+        }
+      }
+      // A newer copy of somebody's own module, from where they publish it or from the file it was
+      // installed from. Asked for, never automatic: fetching means running what comes back.
+      const refreshMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/refresh$/);
+      if (refreshMatch) {
+        const module = moduleById(refreshMatch[1]);
+        if (!module?.external) return sendJson(response, 404, { error: 'Only a module you installed yourself can be refreshed.' });
+        const origin = await moduleOrigin(module);
+        if (!origin) return sendJson(response, 412, { error: `${module.name} does not say where a newer copy would come from. Declare updates: { url } in the module, or install it again from its file.` });
+        const payload = await body(request).catch(() => ({}));
+        let text;
+        try {
+          text = origin.kind === 'url'
+            ? await reportFetch(origin.from, { signal: AbortSignal.timeout(10000) }).then(async (answer) => { if (!answer.ok) throw new Error(`HTTP ${answer.status}`); return answer.text(); })
+            : await readFile(origin.from, 'utf8');
+        } catch (error) { return sendJson(response, 502, { error: `Could not read ${origin.from}: ${error.message}` }); }
+        if (!payload.confirm) {
+          // What would be installed, checked before it is offered. Checking installs nothing.
+          try {
+            const candidate = await verifyModuleText({ text, name: `${module.id}.mjs` });
+            return sendJson(response, 200, { origin, current: module.version ?? null, candidate: candidate.version ?? null, same: (candidate.version ?? null) === (module.version ?? null) });
+          } catch (error) { return sendJson(response, 422, { error: error.message, origin }); }
+        }
+        try {
+          const installed = await installModuleText({ text, name: `${module.id}.mjs`, scope: module.origin === 'project' ? 'project' : 'user', stateRoot: root, projectRoot: canonicalProjectRoot, source: origin });
+          await room.record('extension.installed', { id: installed.id, name: installed.name, origin: installed.origin, file: installed.file, version: installed.version, by: 'refresh' });
+          return sendJson(response, 200, { installed, extensions: await describeModules(await moduleContext()) });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+      }
+      // Updating what a module drives. Two calls: the first asks what would run and answers with
+      // the command, the second runs exactly that. MADRE never runs a command the human has not
+      // read, and the room carries the output line by line like any other install.
+      const updateRunMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/update$/);
+      if (updateRunMatch) {
+        const module = moduleById(updateRunMatch[1]);
+        if (!module?.updatePlan) return sendJson(response, 405, { error: `${updateRunMatch[1]} cannot update what it drives from here.` });
+        const payload = await body(request).catch(() => ({}));
+        const context = await moduleContext();
+        const item = await module.describe(context);
+        const known = await context.services.moduleUpdate(item, { force: Boolean(payload.check) });
+        const plan = await module.updatePlan(context, { latest: known?.latest ?? null, current: item.version ?? null });
+        if (!plan?.command) return sendJson(response, 412, { error: plan?.note ?? 'There is no way to update this from here.', download: plan?.download ?? null });
+        if (payload.confirm !== true) return sendJson(response, 200, { plan: { display: plan.display, note: plan.note ?? '' }, update: known });
+        if (installing) return sendJson(response, 409, { error: `Another install is running (${installing}).` });
+        installing = module.id;
+        await room.record('extension.install.started', { id: module.id, name: item.name, command: plan.display, platforms: [], alreadyInstalled: true });
+        void (async () => {
+          const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { void room.record('extension.install.output', { id: module.id, lines: [String(line).slice(0, 500)] }); } });
+          await plan.after?.().catch(() => null);
+          const after = await module.describe(await moduleContext()).catch(() => null);
+          await room.record('extension.install.finished', {
+            id: module.id, name: item.name, ok: result.code === 0, installed: Boolean(after?.version),
+            detail: result.code === 0 ? `${item.name} now runs ${after?.version ?? 'what it found'}` : (result.error ?? `exit ${result.code}`),
+          });
+          installing = null;
+        })();
+        return sendJson(response, 202, { running: true, command: plan.display });
       }
       // A question the human has no use for. It stops being offered; nothing else changes.
       if (request.method === 'POST' && url.pathname === '/api/memory/ask/dismiss') {

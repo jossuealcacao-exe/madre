@@ -1391,6 +1391,11 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .module-card .version .check { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 11px; line-height: 1; letter-spacing: 0; padding: 3px 7px; cursor: pointer; }
 .module-card .version .check:hover { border-color: var(--ph); color: var(--ph); }
 .module-card .version .check:disabled { opacity: .4; cursor: default; }
+.mother-head .mother-close.add { color: var(--ph); border-color: var(--ph-dim); }
+.mother-head .mother-close.add:hover { background: color-mix(in srgb, var(--ph) 14%, transparent); }
+.module-card .version .get { border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); font: inherit; font-size: 8.5px; letter-spacing: .16em; padding: 3px 8px; cursor: pointer; }
+.module-card .version .get:hover { background: color-mix(in srgb, var(--warn) 22%, transparent); }
+.module-card .version .get:disabled { opacity: .45; cursor: default; }
 .module-card .version .update { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); text-shadow: none; }
 .module-card .version .update:empty { display: none; }
 .module-card .version .update.new { color: var(--warn); }

@@ -17,8 +17,8 @@ let probe = { at: 0, version: null };
 // Is @playwright/mcp installed where npx can find it without downloading? Read from the package
 // itself, never asked of it: `npx --no <package> --version` answers with npm's own version and
 // exits cleanly when the package is not there, so it said 11.16.0 for a server never installed.
-export async function playwrightVersion({ env = process.env, projectRoot = process.cwd(), now = Date.now() } = {}) {
-  if (now - probe.at < 60000) return probe.version;
+export async function playwrightVersion({ env = process.env, projectRoot = process.cwd(), now = Date.now(), fresh = false } = {}) {
+  if (!fresh && now - probe.at < 60000) return probe.version;
   const version = await packageVersion(PLAYWRIGHT_PACKAGE, { env, projectRoot });
   probe = { at: now, version };
   return version;
@@ -57,6 +57,18 @@ export default defineModule({
       status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `on · ${ctx.settings.browser}` : 'on · the browser server is not installed') : version ? 'off' : 'off · the browser server is not installed' },
       preflight: version ? { ok: true, problems: [] } : { ok: false, problems: ['Install the browser server first: npm install -g @playwright/mcp && npx playwright install chromium'] },
       install: { display: ctx.settings.enabled ? 'disable PLAYWRIGHT' : 'enable PLAYWRIGHT (config.json)', platforms: ['codex', 'claude', 'gemini', 'opencode'] },
+    };
+  },
+  // Getting the browser server onto this computer, or a newer one. Installed globally, which is
+  // where `npx --no` looks for it at turn time without downloading anything.
+  async updatePlan(ctx, { latest = null } = {}) {
+    const target = latest ? `${PLAYWRIGHT_PACKAGE}@${latest}` : PLAYWRIGHT_PACKAGE;
+    return {
+      command: 'npm',
+      args: ['install', '-g', target],
+      display: `npm install -g ${target}`,
+      note: 'Installs the browser server for every project on this computer. A browser itself may still be missing; the card says so if it is.',
+      after: async () => { await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot, fresh: true }); },
     };
   },
   async toolsForTurn(ctx, turn) {

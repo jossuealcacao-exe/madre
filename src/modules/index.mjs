@@ -28,8 +28,11 @@ export const isModuleFile = (path) => /\.module\.mjs$/.test(String(path ?? ''));
 
 // The rules an outside module must keep so it cannot reach MADRE's core: its own id, and its
 // routes under /api/x/<id>/ only, never MADRE's own paths.
-function checkExternal(module) {
-  if (MODULES.some((known) => known.id === module.id)) throw new Error(`the id "${module.id}" is already taken`);
+function checkExternal(module, { replace = false } = {}) {
+  const taken = MODULES.find((known) => known.id === module.id);
+  // A module that ships with MADRE can never be shadowed. One of the human's own can be
+  // replaced, because that is what installing a newer copy of it is.
+  if (taken && (!replace || !taken.external)) throw new Error(`the id "${module.id}" is already taken`);
   for (const route of module.routes ?? []) {
     const path = typeof route.path === 'string' ? route.path : route.path?.source ?? '';
     if (!path.startsWith(`/api/x/${module.id}/`) && !path.startsWith(`\\/api\\/x\\/${module.id}\\/`)) throw new Error(`route ${path} must live under /api/x/${module.id}/`);
@@ -66,28 +69,51 @@ export async function loadExternalModules({ stateRoot, projectRoot }) {
   return { loaded: MODULES.filter((module) => module.external), failures: [...loadFailures], folders };
 }
 
-// The human installs a module an agent (or they) wrote: the file is checked in a scratch copy
-// first, then copied as <id>.mjs into the chosen folder and the registry reloads. `source` must
-// be inside the project or the room folder; agents never reach the module folders themselves.
-export async function installModuleFile({ source, scope = 'user', stateRoot, projectRoot, roomDir = null }) {
-  const canonical = resolve(source);
-  const allowed = [resolve(projectRoot), ...(roomDir ? [resolve(roomDir)] : [])];
-  if (!allowed.some((root) => canonical === root || canonical.startsWith(root + sep))) throw new Error('A module can only be installed from a file inside the project or the room folder.');
-  const text = await readFile(canonical, 'utf8');
+// The one door every module comes through, whoever wrote it and wherever the text came from: it
+// is written to a scratch copy, imported there and checked against the house rules. A module runs
+// inside MADRE with the human's own permissions, so the check is the point. Checking installs
+// nothing and touches no registry — asking what a file is must never change what is loaded.
+export async function verifyModuleText({ text, name = null, replace = true }) {
   const scratch = await mkdtemp(join(tmpdir(), 'madre-module-check-'));
-  let module;
   try {
-    const probe = join(scratch, basename(canonical));
+    const probe = join(scratch, name && /\.m?js$/.test(name) ? basename(name) : 'candidate.mjs');
     await writeFile(probe, text);
-    module = checkExternal(await importModuleFile(probe));
+    const module = checkExternal(await importModuleFile(probe), { replace });
+    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null };
   } finally { await rm(scratch, { recursive: true, force: true }); }
+}
+
+export async function installModuleText({ text, name = null, scope = 'user', stateRoot, projectRoot, source = null, replace = true }) {
+  const module = await verifyModuleText({ text, name, replace });
+  const replaced = Boolean(MODULES.find((known) => known.id === module.id)?.external);
   const folders = moduleFolders({ stateRoot, projectRoot });
   const dir = folders[scope === 'project' ? 'project' : 'user'];
   await mkdir(dir, { recursive: true });
   const target = join(dir, `${module.id}.mjs`);
   await writeFile(target, text);
+  // Where it came from, so the same place can be asked for a newer one later.
+  if (source) await writeFile(join(dir, `${module.id}.source.json`), JSON.stringify({ ...source, at: new Date().toISOString(), version: module.version ?? null }, null, 2)).catch(() => {});
   await loadExternalModules({ stateRoot, projectRoot });
-  return { id: module.id, name: module.name, file: target, origin: scope === 'project' ? 'project' : 'user' };
+  return { id: module.id, name: module.name, version: module.version ?? null, file: target, origin: scope === 'project' ? 'project' : 'user', replaced };
+}
+
+// The same thing from a file already on this computer. `source` must be inside the project or the
+// room folder; agents never reach the module folders themselves.
+export async function installModuleFile({ source, scope = 'user', stateRoot, projectRoot, roomDir = null }) {
+  const canonical = resolve(source);
+  const allowed = [resolve(projectRoot), ...(roomDir ? [resolve(roomDir)] : [])];
+  if (!allowed.some((root) => canonical === root || canonical.startsWith(root + sep))) throw new Error('A module can only be installed from a file inside the project or the room folder.');
+  const text = await readFile(canonical, 'utf8');
+  return installModuleText({ text, name: basename(canonical), scope, stateRoot, projectRoot, source: { kind: 'file', from: canonical } });
+}
+
+// Where a module was installed from, if MADRE was told. This is what "update this module" asks
+// again: the file the author keeps it in, or the address they publish it at.
+export async function moduleOrigin(module) {
+  if (!module?.external || !module.file) return null;
+  const declared = module.updates?.url ? { kind: 'url', from: module.updates.url } : null;
+  const remembered = await readFile(module.file.replace(/\.mjs$/, '.source.json'), 'utf8').then((raw) => JSON.parse(raw)).catch(() => null);
+  return declared ?? (remembered?.from ? { kind: remembered.kind ?? 'file', from: remembered.from, at: remembered.at ?? null } : null);
 }
 
 // Removing is for the human's modules only; MADRE's own stay.

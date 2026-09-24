@@ -35,6 +35,8 @@ Si prefieres importar el SDK, también vale: `import { defineModule } from '@jos
 | `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Su ficha en MODULES. `summary` es una frase: qué hace. `creates` y `requires` son líneas cortas, una idea cada una |
 | `version` | La tuya, y empieza en `1.0.0`. Si no la declaras, la ficha muestra la fecha del archivo |
 | `tracks` | Si tu módulo envuelve algo de fuera, su versión no es la tuya: es la de esa cosa. Declara `{ name, npm }` o `{ name, github }` y devuelve la versión encontrada en `status(ctx)` como `runs: [{ name, version }]`. MADRE muestra esa versión y busca una más nueva sola, una vez al día, con el botón ↻ de la ficha para mirar ahora |
+| `updatePlan(ctx, { latest })` | Cómo se trae esa versión nueva a esta computadora: `{ command, args, display, note, after }`. MADRE enseña `display` y no corre nada hasta que la humana lo leyó; la salida cae en la sala línea por línea. Sin comando, devuelve `{ command: null, note, download }` y la ficha manda a descargarlo |
+| `updates` | `{ url }` https donde publicas **tu propio módulo**. Con eso su ficha trae un botón que va por el archivo, lo verifica igual que una instalación y lo reemplaza si pasa. Si lo instalaste desde un archivo, MADRE recuerda cuál y no necesitas declarar nada: edítalo y pide una copia nueva |
 | `settings` | Valores por defecto. Viven en `~/.pulse/config.json` bajo `modules.<idEnCamelCase>`; `enabled` es el interruptor |
 | `status(ctx)` | Qué muestra la tarjeta: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }` |
 | `status(ctx)` → `runs` | Lo que tu módulo maneja y no es MADRE: `[{ name, version, target }]`. `version` es lo que encontraste en esta computadora (`null` si no está), `target` lo que instalarías. Si coincide con `tracks.name`, esa es la versión de la ficha |
@@ -47,6 +49,12 @@ Si prefieres importar el SDK, también vale: `import { defineModule } from '@jos
 | `controls` | Los ajustes de tu módulo, declarados en vez de dibujados: `[{ key, label, type: 'select' \| 'switch' \| 'text', options, note, invert }]`. MADRE los pinta en la ficha y los guarda en tu bloque de `config.json` |
 | `onSettings(ctx, settings)` | Te avisa cuando la humana cambió uno de tus `controls`, por si algo vivo tiene que enterarse |
 | `conditions` | Entradas para el catálogo de MU/TH/UR, con remedio por plataforma |
+
+## Publicarlo
+
+La ficha de un módulo tuyo trae **GET A NEWER FILE**: MADRE va por el archivo —a la `url` que declaraste o al archivo desde el que lo instalaste—, lo verifica en una copia aparte y solo reemplaza al instalado si carga, respeta las reglas de la casa y dice una versión distinta. Verificar no instala nada.
+
+Y en la cabecera de MODULES hay **+ ADD A MODULE** para instalar el `.mjs` de alguien más. Pasa por la misma puerta que todo lo demás. Dicho claro, porque es lo que es: un módulo corre **dentro de MADRE, con los permisos de quien la abre**. MADRE comprueba que cargue y que no se salga de su corral —id propio, rutas solo bajo `/api/x/<id>/`, jamás encima de un módulo de MADRE—; lo que el código *pretende* no lo puede comprobar nadie más que tú.
 
 ## La ficha
 
