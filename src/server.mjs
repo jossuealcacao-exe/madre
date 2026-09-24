@@ -614,6 +614,10 @@ export async function createPulseServer({
   let unsubscribeGhost = () => {};
   let unsubscribeLive = () => {};
   let unsubscribeChats = () => {};
+  // Writes to the conversation list are fire-and-forget, so the last one has to be waited for
+  // when the room closes: a file that reappears while its folder is being removed is a test that
+  // fails for a reason that has nothing to do with it.
+  let chatWrites = Promise.resolve();
 
   // Everything that listens to the open conversation, attached in one place so that opening
   // another attaches exactly the same things to it. Live readings go straight to whoever is
@@ -629,7 +633,7 @@ export async function createPulseServer({
     unsubscribeChats = room.subscribe((event) => {
       if (event?.type !== 'message.created' || event.ghost) return;
       const human = event.payload?.role === 'user';
-      void touchChat(roomDir, chatId, { text: human ? event.payload.text : null, counts: human }).catch(() => null);
+      chatWrites = chatWrites.then(() => touchChat(roomDir, chatId, { text: human ? event.payload.text : null, counts: human })).catch(() => null);
     });
     sentinel.seed(historicalEvents);
     eyecat.seed(historicalEvents);
@@ -652,6 +656,7 @@ export async function createPulseServer({
     const opened = await openChatIndex(roomDir, id);
     if (!opened) return { error: `No conversation "${id}".` };
     unwireRoom();
+    await chatWrites.catch(() => null);
     await room?.shutdown().catch(() => null);
     chatId = id;
     store = await new EventStore(chatLedger(roomDir, id), { floor: await projectFloor(roomDir, { except: id }) }).initialize();
@@ -1485,7 +1490,7 @@ export async function createPulseServer({
     const shutdown = room.shutdown().catch((error) => console.error(`MADRE shutdown error: ${error.message}`));
     let result;
     shutdown.then(() => {
-      void broadcastPending().then(() => {
+      void broadcastPending().then(() => chatWrites).then(() => {
         unsubscribe();
         unsubscribeSentinel();
         unsubscribeEyecat();
