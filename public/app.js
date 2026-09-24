@@ -30,6 +30,12 @@ const els = {
   treeRoot: document.querySelector('#tree-root'),
   treeButton: document.querySelector('#tree-button'),
   treeClose: document.querySelector('#tree-close'),
+  chats: document.querySelector('#chats'),
+  chatsButton: document.querySelector('#chats-button'),
+  chatsClose: document.querySelector('#chats-close'),
+  chatsBody: document.querySelector('#chats-body'),
+  chatsCount: document.querySelector('#chats-count'),
+  chatsNew: document.querySelector('#chats-new'),
   toast: document.querySelector('#toast'),
 };
 
@@ -2405,6 +2411,96 @@ els.treeButton?.addEventListener('click', () => setTree(!tree.open));
 els.treeClose?.addEventListener('click', () => setTree(false));
 try { if (localStorage.getItem('pulse.tree') === 'open') setTree(true); } catch { /* no storage */ }
 
+/* ---------- conversations ---------- */
+
+// A project has one memory and many conversations. The panel is the files panel's twin on the
+// other edge of the canvas: one shape to learn, and the handle sits where the conversation it
+// opens begins. Opening one is a reload, because a conversation is a different record of the
+// same room and the page is built from a record.
+const chats = { open: false, list: [], active: null, working: false };
+
+function whenWords(iso) {
+  const when = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(when)) return '';
+  const minutes = (Date.now() - when) / 60000;
+  if (minutes < 1) return 'now';
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
+  const days = Math.round(minutes / 1440);
+  return days < 30 ? `${days}d` : new Date(when).toLocaleDateString();
+}
+
+function renderChats() {
+  if (!els.chatsBody) return;
+  els.chatsBody.replaceChildren();
+  if (els.chatsCount) els.chatsCount.textContent = chats.list.length ? `· ${chats.list.length}` : '';
+  for (const chat of chats.list) {
+    const row = el('div', 'chat-row');
+    const open = el('button', `chat${chat.id === chats.active ? ' on' : ''}`);
+    open.type = 'button';
+    open.append(el('span', 'name', chat.title));
+    open.append(el('span', 'when', whenWords(chat.updatedAt)));
+    if (chat.preview && chat.preview !== chat.title) open.append(el('span', 'said', chat.preview));
+    open.title = `${chat.messages} message${chat.messages === 1 ? '' : 's'}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`;
+    open.addEventListener('click', () => { if (chat.id !== chats.active) void openChat(chat.id); });
+    const drop = el('button', 'chat-drop', '×');
+    drop.type = 'button';
+    drop.title = 'Delete this conversation. Its transcript goes; what the archive learned from it stays.';
+    drop.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      if (!drop.classList.contains('sure')) {
+        drop.classList.add('sure');
+        drop.title = 'Press again to delete this conversation.';
+        setTimeout(() => { drop.classList.remove('sure'); }, 4000);
+        return;
+      }
+      const response = await fetch(`/api/chats/${chat.id}`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'the conversation was not deleted.'}`); return; }
+      if (chat.id === chats.active) { window.location.reload(); return; }
+      chats.list = result.chats ?? chats.list;
+      chats.active = result.active ?? chats.active;
+      renderChats();
+    });
+    row.append(open, drop);
+    els.chatsBody.append(row);
+  }
+}
+
+async function loadChats() {
+  try {
+    const payload = await fetch('/api/chats').then((response) => response.json());
+    chats.list = payload.chats ?? [];
+    chats.active = payload.active ?? null;
+    renderChats();
+  } catch { /* the panel simply shows what it had */ }
+}
+
+async function openChat(id) {
+  const response = await fetch(`/api/chats/${id}`, { method: 'POST' });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'that conversation could not be opened.'}`); return; }
+  window.location.reload();
+}
+
+function setChats(open) {
+  chats.open = open;
+  els.chats.hidden = !open;
+  els.chatsButton?.setAttribute('aria-pressed', String(open));
+  try { localStorage.setItem('pulse.chats', open ? 'open' : 'closed'); } catch { /* no storage */ }
+  if (open) void loadChats();
+}
+els.chatsButton?.addEventListener('click', () => setChats(!chats.open));
+els.chatsClose?.addEventListener('click', () => setChats(false));
+els.chatsNew?.addEventListener('click', async () => {
+  els.chatsNew.disabled = true;
+  const response = await fetch('/api/chats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'the conversation was not started.'}`); els.chatsNew.disabled = false; return; }
+  window.location.reload();
+});
+try { if (localStorage.getItem('pulse.chats') === 'open') setChats(true); } catch { /* no storage */ }
+
 /* ---------- easter egg: hold the scroll at the end of the record ---------- */
 
 // A trackpad only reports while the fingers move, so "holding the scroll
@@ -2495,6 +2591,18 @@ els.thread.addEventListener('keydown', (event) => trackHold(event.key === 'Arrow
 const initial = await fetch('/api/state').then((response) => response.json());
 els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;
 els.project.title = initial.projectRoot;
+// Which conversation this page is looking at, beside the project it belongs to — but only once
+// there is more than one, because a name for the only thing there is is noise.
+if (initial.chats?.chats?.length > 1) {
+  const here = initial.chats.chats.find((chat) => chat.id === initial.chats.active);
+  if (here) {
+    const mark = el('span', 'chat-here', here.title);
+    mark.title = `Conversation · ${here.messages} message${here.messages === 1 ? '' : 's'}. The project's memory is shared by all of them.`;
+    els.project.after(mark);
+  }
+}
+chats.list = initial.chats?.chats ?? [];
+chats.active = initial.chats?.active ?? null;
 if (els.treeRoot) els.treeRoot.textContent = `/ ${initial.projectRoot.split('/').filter(Boolean).at(-1) ?? ''}`;
 state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudget > 0 ? initial.softTokenBudget : null;
 state.timeouts = initial.timeouts ?? {};

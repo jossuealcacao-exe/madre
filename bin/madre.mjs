@@ -62,6 +62,8 @@ async function openRoom(options) {
     try {
       return await startPulse({ ...options, port });
     } catch (error) {
+      // The room itself says it is taken, whatever port this attempt used.
+      if (error.code === 'ROOM_IN_USE') { console.error(`\n  MOTHER › ${error.message}\n`); process.exit(2); }
       if (error.code !== 'EADDRINUSE') throw error;
       if (explicit) {
         console.error(`\n  MOTHER › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);

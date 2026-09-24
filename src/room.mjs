@@ -371,6 +371,10 @@ export class Room {
     return this.#memory.recallTraffic(id);
   }
 
+  // Is anything happening in here right now? Asked before a conversation is closed and another
+  // opened: a turn in flight is a reason to wait, not something to race.
+  working() { return this.#turns.size > 0; }
+
   memoryResearch() {
     if (!this.#memory) return null;
     const memories = this.#memory.memories({ limit: 500 });

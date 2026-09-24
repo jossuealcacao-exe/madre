@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { readFile, realpath } from 'node:fs/promises';
+import { readFile, realpath, writeFile, mkdir } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,6 +47,7 @@ import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
 import { moduleUpdate } from './modules/updates.mjs';
+import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, projectFloor, renameChat, touchChat, MAIN_CHAT } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { totalmem } from 'node:os';
 import { discoverModels } from './models.mjs';
@@ -143,10 +145,32 @@ export async function createPulseServer({
   const agents = providedAgents ?? await detector();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
+  // Attachments live beside the room log, never inside the project, and belong to the project
+  // rather than to one conversation.
+  const attachmentsRoot = join(roomDir, 'attachments');
+  // One server per project, and now it is said out loud. A project numbers its exchanges once
+  // across every conversation, so two servers writing different conversations of the same project
+  // would hand out the same number twice and the archive would quietly keep one of them. The CLI
+  // already looked for a room nearby; a room that was started on a distant port walked past that
+  // check. This is the room itself saying it is taken.
+  const openMark = join(roomDir, 'open.json');
+  const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
+  const held = await readFile(openMark, 'utf8').then((raw) => JSON.parse(raw)).catch(() => null);
+  if (held && Number.isInteger(held.pid) && held.pid !== process.pid && alive(held.pid)) {
+    const error = new Error(`MADRE is already open for this project at http://127.0.0.1:${held.port} (process ${held.pid}). Close that room first, or open another conversation inside it.`);
+    error.code = 'ROOM_IN_USE';
+    throw error;
+  }
+  const markOpen = async (port) => { await mkdir(roomDir, { recursive: true }).catch(() => {}); await writeFile(openMark, JSON.stringify({ pid: process.pid, port, at: new Date().toISOString() })).catch(() => {}); };
+  const releaseOpen = () => { try { rmSync(openMark, { force: true }); } catch { /* it was already gone */ } };
   // The human's own modules, from ~/.pulse/modules and <project>/.madre/modules.
   await loadExternalModules({ stateRoot: root, projectRoot: canonicalProjectRoot }).catch((error) => console.error(`MADRE modules: ${error.message}`));
-  const store = await new EventStore(join(roomDir, 'events.jsonl')).initialize();
-  const historicalEvents = await store.readAll();
+  // A project has one memory and many conversations; one of them is open at a time, and the
+  // numbering is the project's, so a citation means the same thing in all of them.
+  await adoptStrays(roomDir).catch(() => null);
+  let chatId = (await chatIndex(roomDir)).active;
+  let store = await new EventStore(chatLedger(roomDir, chatId), { floor: await projectFloor(roomDir, { except: chatId }) }).initialize();
+  let historicalEvents = await store.readAll();
   // The room's memory: derived from the ledger, rebuilt if missing or stale,
   // and never a reason for the room not to open.
   // Release channel: one registry read a day, cached for every room on this machine. On by
@@ -236,7 +260,7 @@ export async function createPulseServer({
   const startupMemory = await memoryConfig();
   let listening = null;
   const listeningPort = () => listening?.address?.()?.port ?? Number(process.env.PULSE_PORT ?? 4317);
-  room = new Room({
+  const roomOptions = () => ({
     store,
     agents,
     projectRoot,
@@ -263,6 +287,7 @@ export async function createPulseServer({
     delegation,
     maxPlanSteps,
   });
+  room = new Room(roomOptions());
   await wireOllama({ probe: false });
   const embedKick = memory?.embedder ? setTimeout(() => void room.embedNow(), 2000) : null;
   embedKick?.unref?.();
@@ -477,12 +502,6 @@ export async function createPulseServer({
     return { status: 202, body: { accepted: true, command: plan.display } };
   }
 
-  // Attachments live beside the room log, never inside the project.
-  const roomDirectory = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
-  const attachmentsRoot = join(roomDirectory, 'attachments');
-  room.restoreAttachments(historicalEvents
-    .filter((event) => event.type === 'attachment.stored')
-    .map((event) => ({ ...event.payload, path: join(attachmentsRoot, event.payload.fileName), dir: attachmentsRoot })));
 
   async function rawBody(request, limit) {
     const chunks = [];
@@ -557,7 +576,7 @@ export async function createPulseServer({
     })();
     return inFlight;
   }
-  const unsubscribe = room.subscribe(() => { void broadcastPending(); });
+  let unsubscribe = () => {};
 
   // The error sentinel: failures MU/TH/UR cannot classify, and crashes, become
   // redacted reports in the ledger. Sending them anywhere is the human's call.
@@ -570,8 +589,7 @@ export async function createPulseServer({
     emit: (type, payload) => room.record(type, payload),
     save: async (settings) => { const current = await readConfig(root); await updateConfig(root, { telemetry: { ...(current.telemetry ?? {}), ...settings } }); },
   });
-  sentinel.seed(historicalEvents);
-  const unsubscribeSentinel = room.subscribe((event) => { void sentinel.observe(event).catch(() => null); });
+  let unsubscribeSentinel = () => {};
   if (!testMode && !crashHandlersInstalled) {
     crashHandlersInstalled = true;
     for (const origin of ['uncaughtException', 'unhandledRejection']) {
@@ -591,13 +609,64 @@ export async function createPulseServer({
     bench: () => room.bench(),
     emit: (type, payload) => room.record(type, payload),
   });
-  eyecat.seed(historicalEvents);
-  const unsubscribeEyecat = room.subscribe((event) => { void eyecat.observe(event).catch(() => null); });
+  let unsubscribeEyecat = () => {};
 
-  const unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
-  // Live readings go straight to whoever is watching and are never stored, so a page that opens
-  // later simply never sees them: there is nothing to catch up on.
-  const unsubscribeLive = room.subscribeLive((event) => { for (const client of clients.keys()) writeEvent(client, event); });
+  let unsubscribeGhost = () => {};
+  let unsubscribeLive = () => {};
+  let unsubscribeChats = () => {};
+
+  // Everything that listens to the open conversation, attached in one place so that opening
+  // another attaches exactly the same things to it. Live readings go straight to whoever is
+  // watching and are never stored, so a page that opens later simply never sees them.
+  function wireRoom() {
+    unsubscribe = room.subscribe(() => { void broadcastPending(); });
+    unsubscribeSentinel = room.subscribe((event) => { void sentinel.observe(event).catch(() => null); });
+    unsubscribeEyecat = room.subscribe((event) => { void eyecat.observe(event).catch(() => null); });
+    unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
+    unsubscribeLive = room.subscribeLive((event) => { for (const client of clients.keys()) writeEvent(client, event); });
+    // What the list of conversations shows, kept as it happens. A conversation with no name of
+    // its own takes the first thing the human said in it.
+    unsubscribeChats = room.subscribe((event) => {
+      if (event?.type !== 'message.created' || event.ghost) return;
+      const human = event.payload?.role === 'user';
+      void touchChat(roomDir, chatId, { text: human ? event.payload.text : null, counts: human }).catch(() => null);
+    });
+    sentinel.seed(historicalEvents);
+    eyecat.seed(historicalEvents);
+    room.restoreAttachments(historicalEvents
+      .filter((event) => event.type === 'attachment.stored')
+      .map((event) => ({ ...event.payload, path: join(attachmentsRoot, event.payload.fileName), dir: attachmentsRoot })));
+  }
+  function unwireRoom() {
+    for (const off of [unsubscribe, unsubscribeSentinel, unsubscribeEyecat, unsubscribeGhost, unsubscribeLive, unsubscribeChats]) { try { off(); } catch { /* already gone */ } }
+    unsubscribe = unsubscribeSentinel = unsubscribeEyecat = unsubscribeGhost = unsubscribeLive = unsubscribeChats = () => {};
+  }
+
+  // Opening another conversation. The project keeps its memory, its crew, its modules, its
+  // privacy list and its numbering; what changes is the record being written and read. One
+  // conversation drives the crew at a time — two threads editing the same working tree at once
+  // is not a feature, it is a way to lose work — so a turn in flight is a reason to refuse.
+  async function mountChat(id) {
+    if (!isChatId(id)) return { error: `No conversation "${id}".` };
+    if (room && room.working()) return { error: 'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.' };
+    const opened = await openChatIndex(roomDir, id);
+    if (!opened) return { error: `No conversation "${id}".` };
+    unwireRoom();
+    await room?.shutdown().catch(() => null);
+    chatId = id;
+    store = await new EventStore(chatLedger(roomDir, id), { floor: await projectFloor(roomDir, { except: id }) }).initialize();
+    historicalEvents = await store.readAll();
+    room = new Room(roomOptions());
+    room.setInvoker(MADRE_ADAPTER, madreInvoker({ memory, ollama: () => ({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }), fetchImpl: reportFetch }));
+    wireRoom();
+    // Whoever is watching is watching the wrong record now: their stream ends and they come back
+    // to the one that is open.
+    lastBroadcastSequence = historicalEvents.at(-1)?.sequence ?? 0;
+    tailOffset = (await store.tail(0)).offset;
+    for (const client of [...clients.keys()]) { clients.delete(client); try { client.end(); } catch { /* already gone */ } }
+    return { chat: opened };
+  }
+  wireRoom();
   const poller = setInterval(() => { void broadcastPending(); }, broadcastIntervalMs);
   poller.unref();
 
@@ -759,6 +828,8 @@ export async function createPulseServer({
         return sendJson(response, 200, {
           projectRoot,
           platform: process.platform,
+          // Which conversation this page is looking at, and the others it could open.
+          chats: await listChats(roomDir),
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
           ash: { enabled: room.ashEnabled() },
           ripley: { enabled: await ripleyOn() },
@@ -1058,6 +1129,38 @@ export async function createPulseServer({
           verdict: verdictFor({ maturity: grown, exams: exams.last, cold: research?.cold, asks: research?.ask?.length ?? 0 }),
         });
       }
+      // The conversations of this project. One memory, one crew, one numbering; many records.
+      if (request.method === 'GET' && url.pathname === '/api/chats') {
+        return sendJson(response, 200, await listChats(roomDir));
+      }
+      if (request.method === 'POST' && url.pathname === '/api/chats') {
+        if (room.working()) return sendJson(response, 409, { error: 'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.' });
+        const payload = await body(request).catch(() => ({}));
+        const made = await createChat(roomDir, { title: typeof payload.title === 'string' ? payload.title : null });
+        const mounted = await mountChat(made.id);
+        if (mounted.error) return sendJson(response, 409, mounted);
+        return sendJson(response, 200, { ...(await listChats(roomDir)), opened: made.id });
+      }
+      const chatMatch = url.pathname.match(/^\/api\/chats\/([a-z0-9]+)$/);
+      if (chatMatch && request.method === 'POST') {
+        const mounted = await mountChat(chatMatch[1]);
+        if (mounted.error) return sendJson(response, 409, mounted);
+        return sendJson(response, 200, { ...(await listChats(roomDir)), opened: chatMatch[1] });
+      }
+      if (chatMatch && request.method === 'PATCH') {
+        const payload = await body(request).catch(() => ({}));
+        const named = await renameChat(roomDir, chatMatch[1], payload.title);
+        return named ? sendJson(response, 200, { ...(await listChats(roomDir)) }) : sendJson(response, 404, { error: 'No such conversation.' });
+      }
+      if (chatMatch && request.method === 'DELETE') {
+        if (chatMatch[1] === chatId && room.working()) return sendJson(response, 409, { error: 'A turn is running in this conversation.' });
+        const gone = await deleteChat(roomDir, chatMatch[1]);
+        if (!gone) return sendJson(response, 404, { error: 'No such conversation.' });
+        if (gone.error) return sendJson(response, 409, gone);
+        // What the archivist distilled from it is the project's memory and stays where it is.
+        if (chatMatch[1] === chatId) { const mounted = await mountChat(gone.active); if (mounted.error) return sendJson(response, 409, mounted); }
+        return sendJson(response, 200, { ...(await listChats(roomDir)), deleted: gone.deleted });
+      }
       // The three tests. Reading is free; running one is the human's call, and the slow one says
       // where it is while it works.
       if (request.method === 'GET' && url.pathname === '/api/maturity/exams') {
@@ -1310,6 +1413,7 @@ export async function createPulseServer({
         clients.clear();
         // The memory file closes last, once nothing else writes to it; WAL and shm go with it.
         try { memory?.close(); } catch { /* already closed */ }
+        releaseOpen();
         result = nativeClose(callback);
         server.closeIdleConnections?.();
       });
@@ -1318,16 +1422,18 @@ export async function createPulseServer({
   };
   server.on('close', () => quotaMonitor.stop());
 
-  return { server, store, agents, quotaMonitor };
+  return { server, store, agents, quotaMonitor, markOpen, releaseOpen };
 }
 
 export async function startPulse({ port, projectRoot, openBrowser }) {
-  const { server, agents } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources() });
+  const { server, agents, markOpen } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources() });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);
   });
   const address = server.address();
+  // The room is taken from here on, and says so on disk for anyone who tries to open it again.
+  await markOpen(address.port);
   const url = `http://127.0.0.1:${address.port}`;
   const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || 'none';
   const detected = agents.filter((agent) => agent.detected).map((agent) => agent.label).join(', ') || 'none';

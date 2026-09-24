@@ -8,16 +8,22 @@ export class EventStore {
   #nextSequence = 1;
   #writeQueue = Promise.resolve();
   #lockDirectory;
+  #floor = 0;
 
-  constructor(file) {
+  // `floor` is the highest sequence the rest of the project has already used. A project keeps one
+  // numbering across all of its conversations, so #1411 means one exchange in this project and
+  // not one in each thread — the memory index, every citation and NOSTROMO all lean on that.
+  // Gaps in a single ledger are fine: sequences are an order, not a count.
+  constructor(file, { floor = 0 } = {}) {
     this.#file = file;
+    this.#floor = Number.isFinite(floor) ? floor : 0;
     this.#lockDirectory = `${file}.lock`;
   }
 
   async initialize() {
     await mkdir(dirname(this.#file), { recursive: true });
     const existing = await this.readAll();
-    this.#nextSequence = (existing.at(-1)?.sequence ?? 0) + 1;
+    this.#nextSequence = Math.max(existing.at(-1)?.sequence ?? 0, this.#floor) + 1;
     return this;
   }
 
@@ -138,7 +144,7 @@ export class EventStore {
         const temp = `${this.#file}.rewrite-${process.pid}`;
         await writeFile(temp, next.map((event) => JSON.stringify(event)).join('\n') + (next.length ? '\n' : ''));
         await rename(temp, this.#file);
-        this.#nextSequence = (next.at(-1)?.sequence ?? 0) + 1;
+        this.#nextSequence = Math.max(next.at(-1)?.sequence ?? 0, this.#floor) + 1;
         return { total: next.length, changed };
       } finally {
         await release();
@@ -153,7 +159,7 @@ export class EventStore {
       const release = await this.#acquireLock();
       try {
         const existing = await this.#readAllUnlocked();
-        const sequence = (existing.at(-1)?.sequence ?? 0) + 1;
+        const sequence = Math.max(existing.at(-1)?.sequence ?? 0, this.#floor) + 1;
         const event = {
           id: randomUUID(),
           sequence,

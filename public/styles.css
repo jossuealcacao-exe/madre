@@ -117,7 +117,7 @@ body {
 /* The bar is the ship's console: wider than the thread so the project root, the crew and the alerts share one line. */
 .shell > .bar { width: min(1280px, 100% - 40px); }
 .shell > .bar { grid-row: 1; } .shell > .onboarding { grid-row: 2; } .shell > .thread { grid-row: 3; } .shell > .composer { grid-row: 4; } .shell > .safety { grid-row: 5; }
-.shell > .bar, .shell > .onboarding, .shell > .thread, .shell > .composer, .shell > .safety, .shell > .tree { grid-column: 1; }
+.shell > .bar, .shell > .onboarding, .shell > .thread, .shell > .composer, .shell > .safety, .shell > .tree, .shell > .chats-button { grid-column: 1; }
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ================= bar ================= */
@@ -1144,6 +1144,33 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .theme-button svg { display: none; }
 .theme-button[data-theme="auto"] .t-auto, .theme-button[data-theme="light"] .t-light, .theme-button[data-theme="dark"] .t-dark { display: block; }
 .tree-button:hover, .tree-button[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 14px color-mix(in srgb, var(--phosphor) 30%, transparent); }
+/* The conversations of this project, on the other side of the canvas from the files: the same
+   panel, so there is one shape to learn, and never both edges at once on a narrow screen. */
+.chats { justify-self: start; margin: 18px 0 10px 20px; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.chats-new { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.chats-new-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 1px dashed var(--line-2); border-radius: 10px; background: transparent; color: var(--text-2); font-family: var(--mono); font-size: 10px; letter-spacing: .16em; padding: 9px 10px; cursor: pointer; }
+.chats-new-button svg { width: 14px; height: 14px; }
+.chats-new-button:hover { color: var(--phosphor); border-color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 8%, transparent); }
+.chats-body { padding: 8px; display: grid; gap: 2px; align-content: start; }
+.chats-body .chat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; width: 100%; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; padding: 8px 10px; border-radius: 9px; cursor: pointer; }
+.chats-body .chat:hover { background: color-mix(in srgb, var(--phosphor) 10%, transparent); color: var(--text); }
+.chats-body .chat.on { background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--text); }
+.chats-body .chat .name { font-family: var(--sans, inherit); font-size: 12.5px; line-height: 1.4; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chats-body .chat .when { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--text-3); white-space: nowrap; }
+.chats-body .chat .said { grid-column: 1 / -1; font-size: 11px; line-height: 1.4; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chats-body .chat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; }
+.chats-body .chat-drop { border: 0; background: transparent; color: var(--text-3); font: inherit; font-size: 13px; line-height: 1; padding: 4px 7px; border-radius: 7px; cursor: pointer; opacity: 0; }
+.chats-body .chat-row:hover .chat-drop, .chats-body .chat-drop:focus-visible { opacity: 1; }
+.chats-body .chat-drop:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.chats-body .chat-drop.sure { opacity: 1; color: #fff; background: var(--danger); }
+.chat-here { font-family: var(--sans, inherit); font-size: 11.5px; color: var(--text-2); padding: 3px 9px; border: 1px solid var(--line-2); border-radius: 999px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chats-foot { padding: 10px 14px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; color: var(--text-3); }
+/* Its handle sits in the canvas, under the bar, where the conversation it opens begins. */
+.chats-button { grid-row: 3; justify-self: start; align-self: start; z-index: 6; margin: 18px 0 0 20px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text-2); cursor: pointer; padding: 0; }
+.chats-button svg { width: 17px; height: 17px; }
+.chats-button:hover, .chats-button[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 14px color-mix(in srgb, var(--phosphor) 30%, transparent); }
+@media (max-width: 1100px) { .chats-button { display: none; } }
+
 .tree { grid-row: 3; justify-self: end; align-self: stretch; z-index: 5; width: clamp(240px, calc((100% - var(--column)) / 2 - 36px), 420px); margin: 18px 20px 10px 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); border: 1px solid var(--line-2); border-radius: 18px; background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .06); overflow: hidden; animation: tree-in .22s ease; }
 @keyframes tree-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 .tree-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 10px; letter-spacing: .18em; color: var(--text-2); }

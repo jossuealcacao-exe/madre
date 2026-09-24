@@ -6,6 +6,15 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Varias conversaciones sobre el mismo proyecto
+- Un proyecto tiene una memoria y muchas conversaciones. El archivo, la tripulación, los módulos y la privacidad son del proyecto y no empiezan de cero porque abras otro hilo; una conversación es solo el registro de una línea de trabajo, y todo lo que se dice en cualquiera alimenta el mismo archivo.
+- El panel está a la izquierda del lienzo y es el mismo panel que el de archivos, en el borde contrario: una sola forma que aprender. Arriba, NEW CONVERSATION; abajo, las recientes con lo último que se dijo y cuándo. Su manija vive en el lienzo, debajo de la barra, donde empieza la conversación que abre.
+- Nada se mueve en disco para que esto exista: la primera conversación es el `events.jsonl` que siempre estuvo ahí, y una sala que ya existía abre como siempre y solo gana un nombre. El nombre lo toma de lo primero que dijiste en ella.
+- La numeración es del proyecto, no del hilo. Una conversación nueva arranca donde llegó el proyecto, así que `#1411` sigue significando un intercambio de este proyecto y las citas, el índice de memoria y NOSTROMO siguen valiendo entre conversaciones.
+- Borrar una se lleva su transcripción y nada más: lo que el archivista destiló de ella es memoria del proyecto y se queda. La última no se puede borrar, y borrar pide dos veces.
+- Una conversación a la vez maneja a la tripulación: dos hilos editando el mismo árbol de trabajo no es una función, es una forma de perder trabajo. Abrir otra mientras corre un turno se niega con un motivo.
+- Y una sala por proyecto, dicho por la sala misma. El aviso del CLI solo miraba ocho puertos; una sala abierta en un puerto lejano se le escapaba, y dos servidores sobre el mismo proyecto repartirían la misma secuencia dos veces. Ahora la sala lleva su pid y su puerto en disco, y el segundo arranque se niega diciendo dónde está la abierta —y que dentro de ella puede abrir otra conversación—.
+
 ### Una sola frase, una sola cosa que hacer
 - MU/TH/UR llegó a mostrar seis lecturas, tres pruebas, una etapa, los recuerdos fríos y las preguntas pendientes. Todo cierto y todo medido, pero nueve números en una pantalla no son un veredicto: son tarea. Arriba del todo hay ahora una frase y una instrucción, y el resto vive a un pliegue de distancia.
 - El orden de lo que se dice no lo decide el puntaje, lo decide qué conviene hacer primero: algo falso que la sala crea gana a algo que la sala aún no aprendió, y los dos le ganan a cualquier cosa sobre tamaño. Y la instrucción dice a dónde ir: hoy, en esta sala, manda a NOSTROMO · ASK porque el archivo no contesta 18 de 30 preguntas y las preguntas que faltan ya están escritas.
