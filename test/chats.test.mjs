@@ -118,8 +118,15 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   // The same panel, so there is one shape to learn: it carries the files panel's own class.
   assert.match(page, /<aside id="chats" class="tree chats"/);
   assert.match(page, /<button id="chats-new"/);
-  assert.match(css, /\.chats \{[^}]*justify-self: start/);
+  // It is the files panel's twin, so it has to win against it: same class, higher specificity.
+  assert.match(css, /\.tree\.chats \{[^}]*justify-self: start/);
   assert.match(css, /\.tree \{[^}]*justify-self: end/);
+  // The conversations are the panel; starting one lives under them, not on top of them.
+  assert.ok(page.indexOf('id="chats-body"') < page.indexOf('id="chats-new"'), 'the way to start a conversation sits above the conversations');
+  // One line each: the title is the summary, so a preview under it says the same thing twice.
+  assert.ok(!app.includes("el('span', 'said', chat.preview)"), 'a conversation is two lines again');
+  // And the handle is lit the way the buttons in the bar are, not with a halo of its own.
+  assert.match(css, /\.chats-button:hover,\n:root\[data-theme="light"\]|:root\[data-theme="light"\] \.chats-button:hover/);
   // The handle sits in the canvas, under the bar, where the conversation it opens begins.
   assert.match(css, /\.chats-button \{[^}]*grid-row: 3[^}]*justify-self: start/);
   // Never both edges at once on a narrow screen.
@@ -128,6 +135,9 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   // Opening one is a reload: a conversation is a different record of the same room, and the page
   // is built from a record.
   assert.match(app, /async function openChat\(id\) \{[\s\S]*window\.location\.reload\(\)/);
+  // Where you are reads as one path: MADRE / project / conversation.
+  assert.match(app, /el\('span', 'project chat-here', here\.title\)/);
+  assert.match(css, /\.project::before \{ content: "\/ "; \}/);
   assert.match(app, /fetch\('\/api\/chats', \{ method: 'POST'/, 'nothing starts a conversation');
   // Deleting says what it takes and what it leaves, and asks twice.
   assert.match(app, /Its transcript goes; what the archive learned from it stays/);

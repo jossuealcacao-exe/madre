@@ -491,12 +491,16 @@ textarea::placeholder { color: var(--text-3); }
   :root:not([data-theme="dark"]) .mother-button:hover,
   :root:not([data-theme="dark"]) .tree-button:hover,
   :root:not([data-theme="dark"]) .tree-button[aria-pressed="true"],
-  :root:not([data-theme="dark"]) .stop-all:hover { box-shadow: 0 0 5px color-mix(in srgb, var(--phosphor) 12%, transparent); }
+  :root:not([data-theme="dark"]) .stop-all:hover,
+  :root:not([data-theme="dark"]) .chats-button:hover,
+  :root:not([data-theme="dark"]) .chats-button[aria-pressed="true"] { box-shadow: 0 0 5px color-mix(in srgb, var(--phosphor) 12%, transparent); }
 }
 :root[data-theme="light"] .mother-button:hover,
 :root[data-theme="light"] .tree-button:hover,
 :root[data-theme="light"] .tree-button[aria-pressed="true"],
-:root[data-theme="light"] .stop-all:hover { box-shadow: 0 0 5px color-mix(in srgb, var(--phosphor) 12%, transparent); }
+:root[data-theme="light"] .stop-all:hover,
+:root[data-theme="light"] .chats-button:hover,
+:root[data-theme="light"] .chats-button[aria-pressed="true"] { box-shadow: 0 0 5px color-mix(in srgb, var(--phosphor) 12%, transparent); }
 
 .mother-glyph { width: 8px; height: 8px; border: 1px solid currentColor; }
 .mother-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--danger); color: #fff; font-size: 9px; letter-spacing: 0; }
@@ -1146,29 +1150,29 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .tree-button:hover, .tree-button[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 14px color-mix(in srgb, var(--phosphor) 30%, transparent); }
 /* The conversations of this project, on the other side of the canvas from the files: the same
    panel, so there is one shape to learn, and never both edges at once on a narrow screen. */
-.chats { justify-self: start; margin: 18px 0 10px 20px; grid-template-rows: auto auto minmax(0, 1fr) auto; }
-.chats-new { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.tree.chats { justify-self: start; margin: 18px 0 10px 20px; grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.chats-new { padding: 10px 12px; border-top: 1px solid var(--line); }
 .chats-new-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 1px dashed var(--line-2); border-radius: 10px; background: transparent; color: var(--text-2); font-family: var(--mono); font-size: 10px; letter-spacing: .16em; padding: 9px 10px; cursor: pointer; }
 .chats-new-button svg { width: 14px; height: 14px; }
 .chats-new-button:hover { color: var(--phosphor); border-color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 8%, transparent); }
-.chats-body { padding: 8px; display: grid; gap: 2px; align-content: start; }
-.chats-body .chat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; width: 100%; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; padding: 8px 10px; border-radius: 9px; cursor: pointer; }
+.chats-body { padding: 10px 8px; display: grid; gap: 6px; align-content: start; }
+.chats-body .chat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: baseline; width: 100%; border: 0; background: transparent; color: var(--text-2); font: inherit; text-align: left; padding: 11px 12px; border-radius: 10px; cursor: pointer; }
 .chats-body .chat:hover { background: color-mix(in srgb, var(--phosphor) 10%, transparent); color: var(--text); }
 .chats-body .chat.on { background: color-mix(in srgb, var(--phosphor) 14%, transparent); color: var(--text); }
 .chats-body .chat .name { font-family: var(--sans, inherit); font-size: 12.5px; line-height: 1.4; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chats-body .chat .when { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--text-3); white-space: nowrap; }
-.chats-body .chat .said { grid-column: 1 / -1; font-size: 11px; line-height: 1.4; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chats-body .chat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; }
 .chats-body .chat-drop { border: 0; background: transparent; color: var(--text-3); font: inherit; font-size: 13px; line-height: 1; padding: 4px 7px; border-radius: 7px; cursor: pointer; opacity: 0; }
 .chats-body .chat-row:hover .chat-drop, .chats-body .chat-drop:focus-visible { opacity: 1; }
 .chats-body .chat-drop:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .chats-body .chat-drop.sure { opacity: 1; color: #fff; background: var(--danger); }
-.chat-here { font-family: var(--sans, inherit); font-size: 11.5px; color: var(--text-2); padding: 3px 9px; border: 1px solid var(--line-2); border-radius: 999px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project.chat-here { flex: 0 1 auto; max-width: 320px; color: var(--text-2); }
 .chats-foot { padding: 10px 14px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; color: var(--text-3); }
 /* Its handle sits in the canvas, under the bar, where the conversation it opens begins. */
-.chats-button { grid-row: 3; justify-self: start; align-self: start; z-index: 6; margin: 18px 0 0 20px; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text-2); cursor: pointer; padding: 0; }
-.chats-button svg { width: 17px; height: 17px; }
+.chats-button { grid-row: 3; justify-self: start; align-self: start; z-index: 6; margin: 18px 0 0 20px; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 36px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text-2); cursor: pointer; padding: 0; }
+.chats-button svg { width: 21px; height: 21px; }
 .chats-button:hover, .chats-button[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 14px color-mix(in srgb, var(--phosphor) 30%, transparent); }
+.chats-button:active { transform: translateY(1px); }
 @media (max-width: 1100px) { .chats-button { display: none; } }
 
 .tree { grid-row: 3; justify-self: end; align-self: stretch; z-index: 5; width: clamp(240px, calc((100% - var(--column)) / 2 - 36px), 420px); margin: 18px 20px 10px 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); border: 1px solid var(--line-2); border-radius: 18px; background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .06); overflow: hidden; animation: tree-in .22s ease; }
@@ -1280,9 +1284,9 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .mother-section.sentinel .note, .mother-section.update .note { margin: 0 0 10px; font-size: 10px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }
 
 /* Motion of controls: every colour change eases over 220 ms. Nothing snaps. */
-.mother-button, .tree-button, .stop-all, .mother-close, .mother-section button, .seg-option, .mode-chip, .model-chip, .bubble-actions .act, .update-command button, .codeblock .copy { transition: background-color .22s ease, color .22s ease, border-color .22s ease, box-shadow .22s ease, opacity .22s ease, transform .16s ease; }
+.mother-button, .tree-button, .chats-button, .stop-all, .mother-close, .mother-section button, .seg-option, .mode-chip, .model-chip, .bubble-actions .act, .update-command button, .codeblock .copy { transition: background-color .22s ease, color .22s ease, border-color .22s ease, box-shadow .22s ease, opacity .22s ease, transform .16s ease; }
 .mother-button:active, .tree-button:active, .mother-close:active, .mother-section button:active, .update-command button:active { transform: scale(.98); }
-@media (prefers-reduced-motion: reduce) { .mother-button, .tree-button, .stop-all, .mother-close, .mother-section button, .seg-option, .mode-chip, .model-chip, .bubble-actions .act, .update-command button, .update-pill, .update-restart { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .mother-button, .tree-button, .chats-button, .stop-all, .mother-close, .mother-section button, .seg-option, .mode-chip, .model-chip, .bubble-actions .act, .update-command button, .update-pill, .update-restart { transition: none; } }
 
 /* Developer card in MODULES and the four-step tour */
 .dev-card { display: grid; grid-template-columns: 64px 1fr; gap: 18px; align-items: start; padding: 18px 20px; }

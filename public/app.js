@@ -2440,7 +2440,6 @@ function renderChats() {
     open.type = 'button';
     open.append(el('span', 'name', chat.title));
     open.append(el('span', 'when', whenWords(chat.updatedAt)));
-    if (chat.preview && chat.preview !== chat.title) open.append(el('span', 'said', chat.preview));
     open.title = `${chat.messages} message${chat.messages === 1 ? '' : 's'}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`;
     open.addEventListener('click', () => { if (chat.id !== chats.active) void openChat(chat.id); });
     const drop = el('button', 'chat-drop', '×');
@@ -2596,7 +2595,7 @@ els.project.title = initial.projectRoot;
 if (initial.chats?.chats?.length > 1) {
   const here = initial.chats.chats.find((chat) => chat.id === initial.chats.active);
   if (here) {
-    const mark = el('span', 'chat-here', here.title);
+    const mark = el('span', 'project chat-here', here.title);
     mark.title = `Conversation · ${here.messages} message${here.messages === 1 ? '' : 's'}. The project's memory is shared by all of them.`;
     els.project.after(mark);
   }
