@@ -1039,3 +1039,70 @@ test('memory: an aberration the archivist files takes down the note that says th
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('memory: every recall leaves a trace, so a memory can say who it keeps arriving with', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-traffic-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 12; i += 1) {
+      await store.append('message.created', { messageId: `m${i}`, role: i % 2 ? 'user' : 'assistant', sender: i % 2 ? 'you' : 'codex', target: 'you', text: `the stripe webhook, its signature and the phosphor banner, note ${i}` });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([
+      { kind: 'decision', text: 'The webhook verifies the Stripe signature before parsing.', sources: [2] },
+      { kind: 'fact', text: 'The Stripe webhook endpoint answers on /hooks/stripe.', sources: [4] },
+      { kind: 'preference', text: 'The banner uses the phosphor green of the brand.', sources: [6] },
+    ], { agent: 'gemini', fromSequence: 1, throughSequence: 12 });
+    const [banner, endpoint, decision] = ['phosphor', '/hooks/stripe', 'before parsing']
+      .map((needle) => memory.memories({ limit: 10 }).find((note) => note.text.includes(needle)));
+
+    // A memory nobody has needed says so, and says it without pretending to know more.
+    const quiet = memory.recallTraffic(decision.id);
+    assert.equal(quiet.recalled, 0);
+    assert.deepEqual(quiet.fired, []);
+    assert.deepEqual(quiet.recent, []);
+    assert.equal(memory.recallTraffic(9999), null, 'a memory that is not there answers with nothing');
+
+    // Two turns about the webhook: both notes travel together each time, and the room knows who
+    // asked. The banner is never part of that conversation.
+    for (const agent of ['claude', 'codex']) {
+      const chosen = memory.recallMemories('stripe webhook signature', { limit: 4, fallback: false, by: { agent, turn: `turn-${agent}` } });
+      assert.ok(chosen.length >= 2, 'the turn did not carry both webhook notes');
+    }
+    const traffic = memory.recallTraffic(decision.id);
+    assert.equal(traffic.recalled, 2, 'the counter and the trace disagree');
+    assert.deepEqual(traffic.askers.map((asker) => asker.agent).sort(), ['claude', 'codex']);
+    assert.equal(traffic.recent.length, 2);
+    assert.equal(traffic.recent[0].turn, 'turn-codex', 'the newest recall is not first');
+
+    // The endpoint note arrived in the same turns: that is the traffic between two memories,
+    // and it is a fact about what happened, not about how alike they read.
+    const together = traffic.fired.find((mate) => mate.id === endpoint.id);
+    assert.ok(together, 'the note that travelled with it is not reported');
+    assert.equal(together.times, 2);
+    assert.equal(traffic.fired.some((mate) => mate.id === banner.id), false, 'a memory that never travelled with it is claimed as company');
+
+    // Reading NOSTROMO is not using the archive: no counter moves and no trace is left.
+    memory.recallMemories('stripe webhook', { limit: 4, fallback: false, track: false });
+    assert.equal(memory.recallTraffic(decision.id).recalled, 2);
+
+    // An aberration and the note it takes down know about each other, from both ends.
+    const flagged = memory.flagAberration({ text: 'The Stripe webhook endpoint answers on /hooks/stripe.', correction: 'It answers on /webhooks/stripe.', contradicts: endpoint.id, detector: 'eyecat', confidence: 0.9 });
+    assert.ok(flagged?.id);
+    assert.deepEqual(memory.recallTraffic(flagged.id).refutes.map((note) => note.id), [endpoint.id]);
+    assert.equal(memory.recallTraffic(endpoint.id).refutedBy.id, flagged.id);
+
+    // And clearing the aberration by forgetting it gives the note back: a memory must never be
+    // lost to a pointer at something that is gone.
+    memory.deleteMemory(flagged.id);
+    assert.equal(memory.recallTraffic(endpoint.id).refutedBy, null, 'the note stayed quarantined by an aberration that no longer exists');
+    assert.equal(memory.recallMemories('stripe webhook endpoint', { limit: 4, fallback: false, track: false }).some((note) => note.id === endpoint.id), true, 'the note never came back into circulation');
+
+    // Forgetting a memory takes its traffic with it.
+    memory.deleteMemory(endpoint.id);
+    assert.equal(memory.recallTraffic(decision.id).fired.some((mate) => mate.id === endpoint.id), false, 'the traffic of a forgotten memory survived it');
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

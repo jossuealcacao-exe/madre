@@ -333,6 +333,21 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-card .text { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-size: 14px; line-height: 1.5; color: #eef1ea; }
 .nostromo-card .meta { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 10px; letter-spacing: .1em; }
 .nostromo-card .meta dt { color: var(--ph-dim); } .nostromo-card .meta dd { margin: 0; color: #c9c2bf; }
+/* What this memory is wired to, and what has actually passed between it and the room. The list
+   is the same set of wires the map draws: hovering a row lights its filament out there. */
+.nostromo-card .wire { display: grid; gap: 7px; border-top: 1px solid rgba(255, 255, 255, .08); padding-top: 11px; }
+.nostromo-card .wire h6 { margin: 0; font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); display: flex; align-items: center; gap: 8px; }
+.nostromo-card .wire h6 .n { color: #c9c2bf; }
+.nostromo-card .wire h6 .live { color: var(--kind, var(--ph)); font-size: 7px; animation: blink 2.4s steps(1) infinite; margin-left: auto; }
+.nostromo-card .exchange { margin: 0; white-space: pre-line; font-size: 10.5px; line-height: 1.6; letter-spacing: .06em; color: #c9c2bf; }
+.nostromo-card .wires { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 148px; overflow-y: auto; }
+.nostromo-card .wires .none { font-size: 10px; letter-spacing: .08em; color: var(--ph-dim); padding: 2px 0; }
+.nostromo-card .wire-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 6px 4px 2px; cursor: pointer; border: 1px solid transparent; }
+.nostromo-card .wire-row:hover { border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .04); }
+.nostromo-card .wire-row i { width: 7px; height: 7px; border-radius: 50%; background: var(--kind, var(--ph)); box-shadow: 0 0 8px var(--kind, var(--ph)); }
+.nostromo-card .wire-row .what { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-size: 11.5px; line-height: 1.4; color: #d7d2cf; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nostromo-card .wire-row b { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .08em; color: var(--ph-dim); }
+.nostromo-card .wire-row.refuted b { color: var(--nostromo-sun); }
 .nostromo-card .forget { border: 1px solid var(--nostromo-sun); background: transparent; color: var(--nostromo-sun); font: inherit; font-size: 10px; letter-spacing: .18em; padding: 9px 12px; cursor: pointer; transition: background .2s; }
 .nostromo-card .forget:hover { background: color-mix(in srgb, var(--nostromo-sun) 14%, transparent); }
 .nostromo-card .forget.confirm { background: var(--nostromo-sun); color: #fff3f1; animation: blink 1s steps(1) infinite; }

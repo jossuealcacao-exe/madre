@@ -1040,6 +1040,16 @@ export async function createPulseServer({
         const grown = maturity({ readiness: datasetReadiness(await store.readAll(), research.memories), notes: research.memories, links: research.links, stats: research.stats });
         return sendJson(response, 200, { ...research, maturity: grown });
       }
+      // One memory's own traffic: who it keeps arriving with, who asked for it, what a
+      // refutation did. Read while its card is open, so the card is alive rather than a snapshot.
+      const trafficMatch = request.method === 'GET' && url.pathname.match(/^\/api\/memory\/(\d+)\/traffic$/);
+      if (trafficMatch) {
+        if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        const sealed = room.motherStatus()?.lockedForMs ?? 0;
+        if (sealed > 0) return sendJson(response, 423, { error: 'CODE000. THE ARCHIVE IS SEALED.', lockedForMs: sealed });
+        const traffic = room.memoryTraffic(Number(trafficMatch[1]));
+        return traffic ? sendJson(response, 200, traffic) : sendJson(response, 404, { error: 'No such memory.' });
+      }
       const forgetMatch = request.method === 'DELETE' && url.pathname.match(/^\/api\/memory\/(\d+)$/);
       if (forgetMatch) {
         const payload = await body(request).catch(() => ({}));

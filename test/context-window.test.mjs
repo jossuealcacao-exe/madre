@@ -66,3 +66,22 @@ test('context: an anchored window still reports what it left behind', () => {
   assert.equal(window.firstSequence, window.anchor, 'the anchor and the first message disagree');
   assert.equal(window.throughSequence, 30);
 });
+
+test('recall carries who asked, so the archive can say which agent leaned on a memory', async () => {
+  const { contextFor } = await import('../src/room/context.mjs');
+  const asked = [];
+  const memory = {
+    lastSequence: () => 0,
+    embedQuery: async () => null,
+    recallMemories: (text, options) => { asked.push(options.by); return [{ id: 1, kind: 'fact', text: 'a note', fromSequence: 1, throughSequence: 2, sources: [] }]; },
+    recall: () => ({ entries: [] }),
+  };
+  // A window long enough that older exchanges have to be recalled rather than carried.
+  const priorEvents = room(40, 600);
+  const built = await contextFor({
+    memory, priorEvents, messageId: 'm41', text: 'what did we decide?',
+    contextMaxChars: 4000, recallShare: 0.4, by: { agent: 'claude', turn: 'm41' },
+  });
+  assert.ok(built.memories?.length, 'nothing was recalled, so nothing proves who asked');
+  assert.deepEqual(asked, [{ agent: 'claude', turn: 'm41' }], 'the archive was not told which agent the recall was for');
+});

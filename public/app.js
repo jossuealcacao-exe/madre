@@ -2150,8 +2150,12 @@ function renderCleared(event) {
   return node;
 }
 
+// Anything that wants to hear the room live hooks in here. NOSTROMO does, while a card is open;
+// it is set further down, once that section exists, so a replay at boot reaches nobody too early.
+let liveWatcher = null;
 function renderEvent(event) {
   if (state.seen.has(event.id)) return;
+  liveWatcher?.(event);
   state.seen.add(event.id);
   state.lastSequence = Math.max(state.lastSequence, event.sequence ?? 0);
   if (event.ghost) state.seen.add(event.id);
@@ -4843,7 +4847,7 @@ async function openNostromo() {
 }
 document.querySelector('#nostromo-close')?.addEventListener('click', () => nostromo.dialog.close());
 nostromo.dialog?.addEventListener('close', stopNostromo);
-document.querySelector('#nostromo-card-close')?.addEventListener('click', () => { nostromo.card.hidden = true; nostromo.selected = null; });
+document.querySelector('#nostromo-card-close')?.addEventListener('click', () => { nostromo.card.hidden = true; nostromo.selected = null; nostromo.focusLink = null; stopTraffic(); });
 
 // Planets: size follows how much ledger a memory covers; they start in their kind's sector
 // and drift toward the memories they agree with, so topics gather on their own.
@@ -4877,6 +4881,7 @@ function buildNostromo(data) {
   nostromo.pulses = [];
   const raw = memories.map((memory) => rawActivity(memory, degree.get(memory.id) ?? 0));
   const top = raw.reduce((best, value) => (value > best ? value : best), 0);
+  nostromo.rawTop = top;
   nostromo.nodes = memories.map((memory, index) => {
     const sector = kinds.indexOf(memory.kind) < 0 ? 1 : kinds.indexOf(memory.kind);
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
@@ -5402,10 +5407,14 @@ function drawNostromo(t) {
   // Plasma between linked memories: they share a theme, so a filament runs between them. Drawn
   // as a wide breath of colour and a thin bright thread: the same glow as a blur, far cheaper.
   const byId = new Map(nostromo.nodes.map((node) => [node.memory.id, node]));
+  // An open card is a question about one memory: its own wires answer a little louder, and the
+  // one under the cursor in the list answers louder still. Nothing else is dimmed for it.
+  const focus = nostromo.selected?.memory.id ?? null;
   for (const link of nostromo.links) {
     const a = byId.get(link.a);
     const b = byId.get(link.b);
     if (!a || !b) continue;
+    const gain = nostromo.focusLink === link ? 2.4 : focus !== null && (link.a === focus || link.b === focus) ? 1.6 : 1;
     const dx = b.x - a.x, dy = b.y - a.y;
     const d = Math.hypot(dx, dy) || 1;
     const bow = Math.sin(t * 1.3 + a.seed + b.seed) * Math.min(40, d * 0.15);
@@ -5420,12 +5429,12 @@ function drawNostromo(t) {
     // Current runs the way charge does: out of the fuller one and into the emptier.
     const spark = ((t * (0.13 + 0.2 * charged) + a.seed * 0.29 + b.seed * 0.17) % 1 + 1) % 1;
     ctx.strokeStyle = currentAlong(ctx, near.x, near.y, far.x, far.y,
-      hexAlpha(near.color, 0.6 * link.weight),
-      { mid: hexAlpha(hexMix(near.color, far.color, 0.5), 0.3 * link.weight), end: hexAlpha(far.color, 0.6 * link.weight) },
+      hexAlpha(near.color, Math.min(0.95, 0.6 * link.weight * gain)),
+      { mid: hexAlpha(hexMix(near.color, far.color, 0.5), Math.min(0.8, 0.3 * link.weight * gain)), end: hexAlpha(far.color, Math.min(0.95, 0.6 * link.weight * gain)) },
       spark, 0.18 + 0.7 * charged);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y);
-    ctx.globalAlpha = 0.3; ctx.lineWidth = (3.4 + 1.6 * charged) / cam.scale; ctx.stroke();
-    ctx.globalAlpha = 1; ctx.lineWidth = (0.7 + 0.4 * charged + 0.35 * Math.abs(Math.sin(t * 4 + a.seed))) / cam.scale; ctx.stroke();
+    ctx.globalAlpha = Math.min(0.7, 0.3 * gain); ctx.lineWidth = (3.4 + 1.6 * charged) * (gain > 1 ? 1.25 : 1) / cam.scale; ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = (0.7 + 0.4 * charged + 0.35 * Math.abs(Math.sin(t * 4 + a.seed))) * (gain > 1 ? 1.5 : 1) / cam.scale; ctx.stroke();
   }
 
   // Plasma from the core to every memory. The filament a memory is spoken to often burns a
@@ -6004,27 +6013,168 @@ async function code000(count) {
 
 document.querySelector('#nostromo-alert')?.addEventListener('click', () => { clearTimeout(alarmTimer); const alert = document.querySelector('#nostromo-alert'); alert.hidden = true; alert.classList.remove('on'); });
 
+// How long ago, in the fewest words that are still true.
+function agoWords(iso) {
+  const when = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(when)) return '';
+  const seconds = Math.max(0, (Date.now() - when) / 1000);
+  if (seconds < 45) return 'just now';
+  const minutes = seconds / 60;
+  if (minutes < 60) return `${Math.round(minutes)} min ago`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.round(hours)} h ago`;
+  const days = hours / 24;
+  return days < 30 ? `${Math.round(days)} d ago` : new Date(when).toLocaleDateString();
+}
+
+// The links this memory has on the map, strongest first. The card shows exactly what is drawn:
+// the same wires, in a list you can walk.
+function neighboursOf(id) {
+  const byId = new Map(nostromo.nodes.map((node) => [node.memory.id, node]));
+  return nostromo.links
+    .filter((link) => link.a === id || link.b === id)
+    .map((link) => ({ link, node: byId.get(link.a === id ? link.b : link.a) }))
+    .filter((pair) => pair.node)
+    .sort((x, y) => y.link.weight - x.link.weight);
+}
+
+// One row of the card's wire lists: the other memory's colour, what it says, and a number.
+function wireRow(node, value, { link = null, title = '' } = {}) {
+  const row = el('li', 'wire-row');
+  const dot = el('i');
+  dot.style.setProperty('--kind', node.color);
+  const what = el('span', 'what', node.memory.text);
+  row.append(dot, what, el('b', null, value));
+  row.title = title || node.memory.text;
+  row.addEventListener('click', () => showNostromoCard(node));
+  // Hovering a row lights the wire it names, so the list and the map are the same thing.
+  if (link) {
+    row.addEventListener('mouseenter', () => { nostromo.focusLink = link; });
+    row.addEventListener('mouseleave', () => { if (nostromo.focusLink === link) nostromo.focusLink = null; });
+  }
+  return row;
+}
+
 function showNostromoCard(node) {
   const { memory } = node;
   nostromo.selected = node;
+  nostromo.focusLink = null;
   nostromo.card.style.setProperty('--kind', node.color);
   document.querySelector('#nostromo-card-kind').textContent = memory.kind.toUpperCase();
   document.querySelector('#nostromo-card-text').textContent = memory.text;
   document.querySelector('#nostromo-card-span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
-  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? ' · on the human\'s request' : ' · distilled'}`;
+  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? ' · on the human\'s request' : memory.origin === 'flagged' ? ` · flagged by ${memory.detector ?? 'the room'}` : ' · distilled'}`;
   document.querySelector('#nostromo-card-when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
-  const linked = nostromo.links.filter((link) => link.a === memory.id || link.b === memory.id).length;
-  // How alive this one is: how many times the room has actually reached for it, and when last.
-  const times = Number(memory.recalled ?? 0);
-  const last = memory.lastRecalled ? new Date(memory.lastRecalled) : null;
-  const life = times ? `recalled ${times} time${times === 1 ? '' : 's'}${last ? ` · last ${last.toLocaleString()}` : ''}` : 'never recalled yet';
-  document.querySelector('#nostromo-card-links').textContent = `${linked ? `${linked} memor${linked === 1 ? 'y' : 'ies'} on the same theme` : 'no theme shared yet'} · ${life}`;
+
+  // The wires it has on the map, strongest first.
+  const neighbours = neighboursOf(memory.id);
+  const links = document.querySelector('#nostromo-card-links');
+  document.querySelector('#nostromo-card-degree').textContent = String(neighbours.length);
+  links.replaceChildren();
+  if (!neighbours.length) links.append(el('li', 'none', 'No theme shared with another memory yet.'));
+  for (const { link, node: other } of neighbours) {
+    links.append(wireRow(other, `${Math.round(link.weight * 100)}%`, { link, title: `${other.memory.kind.toUpperCase()} · ${Math.round(link.weight * 100)}% of the same meaning\n${other.memory.text}` }));
+  }
+
+  // And what has actually passed between it and the room. Filled from the archive, then kept up.
+  document.querySelector('#nostromo-card-exchange').textContent = 'READING…';
+  document.querySelector('#nostromo-card-fired').replaceChildren();
   const forget = document.querySelector('#nostromo-forget');
-  forget.textContent = 'FORGET THIS MEMORY';
+  forget.textContent = memory.kind === 'aberration' ? 'CLEAR THIS ABERRATION' : 'FORGET THIS MEMORY';
   forget.classList.remove('confirm');
   forget.disabled = false;
   nostromo.card.hidden = false;
+  void nostromoTraffic();
+  watchTraffic();
 }
+
+// The traffic of the open card, read from the archive. Every memory is supposed to be in
+// conversation with the rest; this is that conversation, counted.
+async function nostromoTraffic() {
+  const node = nostromo.selected;
+  if (!node || nostromo.card.hidden) return;
+  const id = node.memory.id;
+  let traffic;
+  try {
+    const response = await fetch(`/api/memory/${id}/traffic?designation=${encodeURIComponent(nostromoDesignation())}`);
+    traffic = await response.json();
+    if (!response.ok) throw new Error(traffic.error ?? `HTTP ${response.status}`);
+  } catch (error) {
+    if (nostromo.selected?.memory.id === id) document.querySelector('#nostromo-card-exchange').textContent = String(error.message).toUpperCase();
+    return;
+  }
+  if (nostromo.selected?.memory.id !== id || nostromo.card.hidden) return;   // the human moved on
+  // What the archive counted is the truth about this memory: the map's star follows it live.
+  node.memory.recalled = traffic.recalled;
+  node.memory.lastRecalled = traffic.lastRecalled;
+  const degree = nostromo.links.filter((link) => link.a === id || link.b === id).length;
+  node.activity = activityOf(rawActivity(node.memory, degree), nostromo.rawTop ?? 1);
+
+  const said = [];
+  said.push(traffic.recalled
+    ? `MADRE has reached for this ${traffic.recalled} time${traffic.recalled === 1 ? '' : 's'}${traffic.lastRecalled ? ` · last ${agoWords(traffic.lastRecalled)}` : ''}`
+    : 'MADRE has not reached for this one yet');
+  if (traffic.askers?.length) said.push(traffic.askers.map((asker) => `@${asker.agent} ${asker.times}`).join(' · '));
+  if (traffic.recent?.length) {
+    const last = traffic.recent[0];
+    said.push(`last turn: ${last.agent ? `@${last.agent}` : 'the room'} · ${agoWords(last.at)}`);
+  } else if (traffic.recalled && traffic.since) {
+    // The counters are older than the trail. Saying nothing here would read as "always alone".
+    said.push(`company recorded since ${new Date(traffic.since).toLocaleDateString()} · nothing since`);
+  }
+  document.querySelector('#nostromo-card-exchange').textContent = said.join('\n');
+
+  const fired = document.querySelector('#nostromo-card-fired');
+  fired.replaceChildren();
+  const byId = new Map(nostromo.nodes.map((item) => [item.memory.id, item]));
+  // What it kept arriving with. Two memories that keep travelling into the same turn are in
+  // conversation whether or not they ever looked alike.
+  for (const mate of traffic.fired ?? []) {
+    const other = byId.get(mate.id);
+    if (!other) continue;
+    const link = nostromo.links.find((one) => (one.a === id && one.b === mate.id) || (one.b === id && one.a === mate.id)) ?? null;
+    fired.append(wireRow(other, `×${mate.times}`, { link, title: `Travelled into the same turn ${mate.times} time${mate.times === 1 ? '' : 's'} · last ${agoWords(mate.last)}\n${other.memory.text}` }));
+  }
+  if (!(traffic.fired ?? []).length && traffic.recalled) {
+    fired.append(el('li', 'none', traffic.recent?.length ? 'It has always travelled alone.' : 'No turn has carried it since the room started keeping this trail.'));
+  }
+  // What a refutation did, from whichever end this memory is on.
+  for (const taken of traffic.refutes ?? []) {
+    const other = byId.get(taken.id);
+    const row = el('li', 'wire-row refuted');
+    const dot = el('i');
+    dot.style.setProperty('--kind', MEMORY_COLORS[taken.kind] ?? MEMORY_COLORS.fact);
+    row.append(dot, el('span', 'what', taken.text), el('b', null, 'TAKEN DOWN'));
+    row.title = 'This aberration took that memory out of every future turn.';
+    if (other) row.addEventListener('click', () => showNostromoCard(other));
+    fired.append(row);
+  }
+  if (traffic.refutedBy) {
+    const other = byId.get(traffic.refutedBy.id);
+    const row = el('li', 'wire-row refuted');
+    const dot = el('i');
+    dot.style.setProperty('--kind', MEMORY_COLORS[traffic.refutedBy.kind] ?? MEMORY_COLORS.aberration);
+    row.append(dot, el('span', 'what', traffic.refutedBy.text), el('b', null, 'REFUTES IT'));
+    row.title = 'An aberration took this memory out of every future turn.';
+    if (other) row.addEventListener('click', () => showNostromoCard(other));
+    fired.append(row);
+  }
+}
+
+// While a card is open the reading follows the room: every event nudges it, and a slow tick
+// covers the quiet (a recall is counted as a turn begins, before it has anything to say).
+let trafficTimer = null;
+let trafficSoon = null;
+function watchTraffic() {
+  clearInterval(trafficTimer);
+  trafficTimer = setInterval(() => { if (!nostromo.card.hidden && nostromo.selected) void nostromoTraffic(); else stopTraffic(); }, 6000);
+}
+function stopTraffic() { clearInterval(trafficTimer); trafficTimer = null; clearTimeout(trafficSoon); trafficSoon = null; }
+function nudgeTraffic() {
+  if (nostromo.card.hidden || !nostromo.selected || trafficSoon) return;
+  trafficSoon = setTimeout(() => { trafficSoon = null; void nostromoTraffic(); }, 700);
+}
+liveWatcher = nudgeTraffic;
 
 // Forgetting takes two presses: the second within four seconds.
 let forgetTimer = null;

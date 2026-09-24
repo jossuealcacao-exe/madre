@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### NOSTROMO: abrir un recuerdo y ver con quién habla
+- La tarjeta de un recuerdo —o de una aberración— ya no es una ficha muerta. Debajo de lo que dice trae sus enlaces: los mismos cables que el mapa dibuja, en una lista ordenada por fuerza, con el color de cada estrella y su porcentaje de significado compartido. Pasar el cursor por un renglón enciende ese cable allá afuera; hacer clic salta a ese recuerdo, así que la red se puede caminar.
+- Y trae lo que de verdad ha pasado entre ese recuerdo y la sala: cuántas veces MADRE lo ha ido a buscar, cuándo fue la última, qué agentes lo pidieron, y —lo importante— con qué otros recuerdos viaja. Dos memorias que llegan una y otra vez al mismo turno están conversando, aunque no se parezcan en nada; eso antes no se sabía porque nadie lo anotaba. Ahora cada recuerdo que entra a un turno deja un renglón con el lote que compartió.
+- La lectura sigue viva mientras la tarjeta está abierta: cada evento de la sala la empuja y un latido lento cubre el silencio, de modo que ves el contador subir cuando un turno se lleva ese recuerdo. La estrella en el mapa se aclara con él.
+- En una aberración se ve desde el otro lado: qué nota tumbó. Y en una nota tumbada, qué aberración la tiene fuera de circulación. De paso se arregló algo feo: olvidar una aberración dejaba a su nota marcada por un id que ya no existía, es decir, fuera de todos los turnos para siempre y sin manera de volver. Ahora vuelve.
+- Los contadores viejos son reales, pero la compañía que tuvieron nunca se anotó. La tarjeta lo dice con todas sus letras en vez de mostrar una lista vacía como si el recuerdo siempre hubiera viajado solo.
+
 ### MODULES: una sola forma para todas las fichas, y una versión que no miente
 - Cada tarjeta tiene ahora los mismos pisos y en el mismo orden, sea el módulo que sea: quién es (nombre, estado, versión y actualización), qué hace, qué toca, sus ajustes, y al final —solo y siempre en el mismo lugar— el botón. Cada piso tiene su propio aire y una línea que lo separa del siguiente. El ojo aprende la forma una vez y encuentra el interruptor en todas.
 - Los pisos son parte del SDK, no del dibujo: un módulo declara y MADRE arma la ficha. Los ajustes también, con `controls` —un selector, un interruptor, un campo— que MADRE pinta y guarda en el bloque del módulo en `config.json`, y `onSettings` para que algo vivo se entere. Con eso PLAYWRIGHT perdió su ruta hecha a mano y cualquier módulo que escribas tiene su propio apartado de ajustes sin escribir una línea de interfaz.

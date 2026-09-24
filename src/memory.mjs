@@ -15,6 +15,9 @@ import { dirname } from 'node:path';
 import { messageEntry } from './conversation-context.mjs';
 import { cosine, toBlob, fromBlob } from './embeddings.mjs';
 
+// How many recall rows a room keeps. Six or so per turn, so this is months of work.
+export const RECALL_HISTORY = 20000;
+
 export const MEMORY_SCHEMA_VERSION = 3;
 // An aberration is the one kind that is not knowledge. It is a claim the room decided is false:
 // a hallucination, an unfounded assertion, a distortion, or a memory that drifted away from what
@@ -128,6 +131,10 @@ export class RoomMemory {
     this.#setMeta = this.#db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
     this.#insert = this.#db.prepare('INSERT OR IGNORE INTO entries (sequence, event_id, timestamp, type, role, sender, target, message_id, text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
     if (this.#metaValue('schema') === null) this.#setMeta.run('schema', String(MEMORY_SCHEMA_VERSION));
+    // When this room started keeping the trail of which memories travel together. Counters from
+    // before that day are real; the company they kept was never written down, and a card must be
+    // able to say so instead of showing an empty list as if a memory had always been alone.
+    if (this.#metaValue('recalls_since') === null) this.#setMeta.run('recalls_since', new Date().toISOString());
   }
 
   #createSchema() {
@@ -172,6 +179,19 @@ export class RoomMemory {
       CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
         INSERT INTO memories_fts(memories_fts, rowid, text, kind) VALUES ('delete', old.id, old.text, old.kind);
       END;
+      -- Every time the room reaches for a memory, one row. A turn recalls several at once and
+      -- they share a batch, so the archive knows not only how often a note was used but which
+      -- other notes travelled with it: two memories that keep arriving together are talking.
+      CREATE TABLE IF NOT EXISTS recalls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_id INTEGER NOT NULL,
+        batch TEXT NOT NULL,
+        at TEXT NOT NULL,
+        agent TEXT,
+        turn TEXT
+      );
+      CREATE INDEX IF NOT EXISTS recalls_memory ON recalls(memory_id, id DESC);
+      CREATE INDEX IF NOT EXISTS recalls_batch ON recalls(batch);
       CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
@@ -527,6 +547,10 @@ export class RoomMemory {
     this.#db.exec('BEGIN');
     try {
       this.#db.prepare('DELETE FROM memory_vectors WHERE id = ?').run(id);
+      this.#db.prepare('DELETE FROM recalls WHERE memory_id = ?').run(id);
+      // A note quarantined by this one comes back: with the aberration gone there is nothing
+      // holding it out of circulation, and a memory must never be lost to a pointer at nothing.
+      this.#db.prepare('UPDATE memories SET refuted_by = NULL WHERE refuted_by = ?').run(id);
       this.#db.prepare('DELETE FROM memories WHERE id = ?').run(id);
       this.#db.exec('COMMIT');
     } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
@@ -581,7 +605,7 @@ export class RoomMemory {
   // preferences, all from before `beforeSequence` so they add to the window
   // rather than repeat it, within a character budget.
   // `fallback` fills a thin match with the latest decisions and preferences; @madre turns it off to stay honest.
-  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true, track = true } = {}) {
+  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true, track = true, by = null } = {}) {
     if (!this.#db) return [];
     const total = this.memoryCount();
     if (!total) return [];
@@ -619,17 +643,61 @@ export class RoomMemory {
     }
     // A note that just travelled into a turn has been used: the archive counts it, so the room
     // can tell which memories it actually leans on.
-    if (track && chosen.length) this.#markRecalled(chosen.map((note) => note.id));
+    if (track && chosen.length) this.#markRecalled(chosen.map((note) => note.id), by);
     return chosen.sort((a, b) => a.fromSequence - b.fromSequence || a.id - b.id);
   }
 
-  #markRecalled(ids) {
+  // What one recall leaves behind: the counters the map reads, and one row per note with the
+  // batch they shared, so the traffic between two memories can be read back later.
+  #markRecalled(ids, by = null) {
     try {
       const now = new Date().toISOString();
+      const batch = `${now}/${Math.random().toString(36).slice(2, 10)}`;
+      const agent = by?.agent ? String(by.agent).slice(0, 40) : null;
+      const turn = by?.turn ? String(by.turn).slice(0, 80) : null;
       const mark = this.#db.prepare('UPDATE memories SET recalled = recalled + 1, last_recalled = ? WHERE id = ?');
+      const log = this.#db.prepare('INSERT INTO recalls (memory_id, batch, at, agent, turn) VALUES (?, ?, ?, ?, ?)');
       this.#db.exec('BEGIN');
-      try { for (const id of ids) mark.run(now, id); this.#db.exec('COMMIT'); } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
+      try {
+        for (const id of ids) { mark.run(now, id); log.run(id, batch, now, agent, turn); }
+        // The traffic is a record of the recent past, not an archive of its own.
+        this.#db.prepare(`DELETE FROM recalls WHERE id <= (SELECT MAX(id) FROM recalls) - ${RECALL_HISTORY}`).run();
+        this.#db.exec('COMMIT');
+      } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
     } catch (error) { console.error(`MADRE could not count a recall: ${error.message}`); }
+  }
+
+  // Everything one memory has to say about its own life: how often the room reached for it, who
+  // asked, and which other memories keep arriving in the same turn. A memory that has never been
+  // recalled answers with zeros, which is itself the reading.
+  recallTraffic(id, { limit = 8, together = 8 } = {}) {
+    if (!this.#db) return null;
+    const note = this.#db.prepare('SELECT id, kind, recalled, last_recalled AS lastRecalled, refuted_by AS refutedBy, contradicts FROM memories WHERE id = ?').get(Number(id));
+    if (!note) return null;
+    const recent = this.#db.prepare('SELECT batch, at, agent, turn FROM recalls WHERE memory_id = ? ORDER BY id DESC LIMIT ?').all(note.id, limit);
+    const fired = this.#db.prepare(`
+      SELECT other.memory_id AS id, COUNT(*) AS times, MAX(other.at) AS last
+      FROM recalls mine JOIN recalls other ON mine.batch = other.batch AND other.memory_id != mine.memory_id
+      WHERE mine.memory_id = ? GROUP BY other.memory_id ORDER BY times DESC, last DESC LIMIT ?
+    `).all(note.id, together);
+    const askers = this.#db.prepare('SELECT agent, COUNT(*) AS times FROM recalls WHERE memory_id = ? AND agent IS NOT NULL GROUP BY agent ORDER BY times DESC').all(note.id);
+    // What a refutation did, from either end: the aberration knows what it took down, and a note
+    // taken down knows what took it.
+    const refutes = this.#db.prepare('SELECT id, kind, text FROM memories WHERE refuted_by = ?').all(note.id)
+      .map((row) => ({ ...row, text: row.text.slice(0, 200) }));
+    const refutedBy = note.refutedBy ? this.#db.prepare('SELECT id, kind, text FROM memories WHERE id = ?').get(note.refutedBy) : null;
+    return {
+      id: note.id,
+      kind: note.kind,
+      recalled: Number(note.recalled ?? 0),
+      lastRecalled: note.lastRecalled ?? null,
+      since: this.#metaValue('recalls_since'),
+      recent: recent.map((row) => ({ at: row.at, agent: row.agent, turn: row.turn, batch: row.batch })),
+      fired: fired.map((row) => ({ id: row.id, times: Number(row.times), last: row.last })),
+      askers: askers.map((row) => ({ agent: row.agent, times: Number(row.times) })),
+      refutes,
+      refutedBy: refutedBy ? { ...refutedBy, text: refutedBy.text.slice(0, 200) } : null,
+    };
   }
 
   #metaValue(key) { return this.#meta.get(key)?.value ?? null; }
