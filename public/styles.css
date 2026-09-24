@@ -348,6 +348,9 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-card .wire-row .what { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-size: 11.5px; line-height: 1.4; color: #d7d2cf; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nostromo-card .wire-row b { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .08em; color: var(--ph-dim); }
 .nostromo-card .wire-row.refuted b { color: var(--nostromo-sun); }
+/* Company strong enough that recalling one now brings the other: the association is live. */
+.nostromo-card .wire-row.carries b { color: var(--kind, var(--ph)); }
+.nostromo-card .wire-row.carries b::after { content: ' ⇢'; }
 .nostromo-card .forget { border: 1px solid var(--nostromo-sun); background: transparent; color: var(--nostromo-sun); font: inherit; font-size: 10px; letter-spacing: .18em; padding: 9px 12px; cursor: pointer; transition: background .2s; }
 .nostromo-card .forget:hover { background: color-mix(in srgb, var(--nostromo-sun) 14%, transparent); }
 .nostromo-card .forget.confirm { background: var(--nostromo-sun); color: #fff3f1; animation: blink 1s steps(1) infinite; }

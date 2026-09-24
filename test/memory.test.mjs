@@ -1106,3 +1106,80 @@ test('memory: every recall leaves a trace, so a memory can say who it keeps arri
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('recall: a memory brings along the one it keeps arriving with, and a cascade never feeds itself', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-cascade-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 12; i += 1) {
+      await store.append('message.created', { messageId: `m${i}`, role: i % 2 ? 'user' : 'assistant', sender: i % 2 ? 'you' : 'codex', target: 'you', text: `webhooks, refunds and typography, note ${i}` });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([
+      { kind: 'decision', text: 'The webhook verifies the Stripe signature before parsing.', sources: [2] },
+      { kind: 'decision', text: 'Refunds are issued from the ledger, never from the gateway.', sources: [4] },
+      { kind: 'preference', text: 'Headings are set in the condensed grotesque, never italic.', sources: [6] },
+    ], { agent: 'gemini', fromSequence: 1, throughSequence: 12 });
+    const find = (needle) => memory.memories({ limit: 10 }).find((note) => note.text.includes(needle));
+    const webhook = find('Stripe signature');
+    const refunds = find('Refunds');
+    const type = find('grotesque');
+
+    // Three turns ask about both at once, so the search finds both on their own merits. Nothing
+    // in their wording connects them: one is about webhooks, the other about refunds.
+    for (let turn = 0; turn < 3; turn += 1) {
+      const carried = memory.recallMemories('stripe signature and refunds from the ledger', { limit: 6, fallback: false, by: { agent: 'codex', turn: `t${turn}` } });
+      assert.equal(carried.length, 2, 'the seeding turns did not carry both');
+      assert.ok(carried.every((note) => note.via === 'search'), 'a seeding turn was not the search finding them');
+    }
+    // The archive now holds that association, and knows how strong it is.
+    const mates = memory.associates([webhook.id]);
+    assert.deepEqual(mates.map((mate) => mate.id), [refunds.id]);
+    assert.equal(mates[0].strength, 1, 'they have only ever appeared together, which is a strength of one');
+    assert.equal(memory.associates([type.id]).length, 0, 'a memory nobody carried with anything has no company');
+
+    // A question that matches only the webhook brings the refunds note with it. That is the whole
+    // point: the room's own work is the connection, not the wording.
+    const cascaded = memory.recallMemories('stripe signature', { limit: 6, fallback: false, by: { agent: 'claude', turn: 'later' } });
+    const arrived = cascaded.find((note) => note.id === refunds.id);
+    assert.ok(arrived, 'the memory that always travels with it was left behind');
+    assert.equal(arrived.via, 'cascade');
+    assert.equal(cascaded.find((note) => note.id === webhook.id).via, 'search');
+    assert.equal(cascaded.some((note) => note.id === type.id), false, 'a memory with no association was dragged in');
+
+    // Switched off, the same question carries only what the words match.
+    const plain = memory.recallMemories('stripe signature', { limit: 6, fallback: false, cascade: false, track: false });
+    assert.deepEqual(plain.map((note) => note.id), [webhook.id]);
+
+    // And the cascade is not evidence of itself. Turns keep arriving where the search finds the
+    // webhook alone and the cascade carries the refunds note along; the evidence behind the
+    // association stays at the three turns that actually found both.
+    for (let turn = 0; turn < 2; turn += 1) memory.recallMemories('stripe signature', { limit: 6, fallback: false, by: { agent: 'claude', turn: `echo${turn}` } });
+    const echoed = memory.associates([webhook.id])[0];
+    assert.equal(echoed.times, 3, 'turns the cascade itself created were counted as evidence');
+    // The strength is a ratio, so it falls as one of them keeps appearing without the other: an
+    // association nothing confirms fades on its own instead of standing forever.
+    assert.ok(echoed.strength < 1 && echoed.strength >= 0.34, `a pair that stops meeting reads ${echoed.strength}`);
+    // The traffic card says which company would travel: the counter moved, the association did not.
+    const traffic = memory.recallTraffic(webhook.id);
+    assert.equal(traffic.fired.find((mate) => mate.id === refunds.id).cascades, true);
+
+    // Association never displaces what the search found: with one slot for everything, the
+    // search keeps it.
+    const tight = memory.recallMemories('stripe signature', { limit: 1, fallback: false, track: false });
+    assert.deepEqual(tight.map((note) => note.id), [webhook.id]);
+    // Nor does it spend a budget that is not there.
+    const broke = memory.recallMemories('stripe signature', { limit: 6, maxChars: webhook.text.length + 30, fallback: false, track: false });
+    assert.deepEqual(broke.map((note) => note.id), [webhook.id], 'the cascade spent characters the turn did not have');
+
+    // What is false or refuted never cascades either: the gate is the same on both paths.
+    const flagged = memory.flagAberration({ text: 'Refunds are issued from the ledger, never from the gateway.', correction: 'They are issued from the gateway.', contradicts: refunds.id, detector: 'eyecat', confidence: 0.8 });
+    assert.ok(flagged?.id);
+    const after = memory.recallMemories('stripe signature', { limit: 6, fallback: false, track: false });
+    assert.equal(after.some((note) => note.id === refunds.id), false, 'a refuted note came back through the cascade');
+    assert.equal(after.some((note) => note.kind === 'aberration'), false);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

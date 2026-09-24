@@ -4407,6 +4407,17 @@ function renderSettings() {
     const share = el('input'); share.type = 'number'; share.min = '0'; share.max = '60'; share.step = '5'; share.value = String(Math.round(mem.recallShare * 100));
     wireInstantNumber(share, { min: 0, toPatch: (value) => ({ memory: { recallShare: Math.min(60, value) / 100 } }), describe: (value) => `recall may take ${Math.min(60, value)}% of each turn's context.` });
     mform.append(field('RECALL · % OF CONTEXT', share));
+    // Spreading activation. Two memories that keep arriving in the same turn are associated by
+    // the room's own work, not by how they read; a couple of slots in each recall are kept for
+    // that. It is the one part of recall that owes nothing to wording, so it can be switched off.
+    const cascade = el('label', 'toggle full');
+    const cascadeBox = el('input'); cascadeBox.type = 'checkbox'; cascadeBox.checked = mem.cascade !== false;
+    cascadeBox.addEventListener('change', () => save({ cascade: cascadeBox.checked }, cascadeBox.checked
+      ? 'recall also carries what a memory keeps arriving with.'
+      : 'recall carries only what the words and the meaning match.'));
+    cascade.append(cascadeBox, el('span', null, 'CARRY WHAT A MEMORY KEEPS ARRIVING WITH'));
+    cascade.title = 'Two memories that keep travelling into the same turn are associated, however differently they read. Recall keeps a couple of slots for that company; the search never loses a slot to it.';
+    mform.append(cascade);
     const embed = el('select');
     const embedOptions = [['auto', 'AUTO · Ollama if running, else Gemini'], ['ollama', `OLLAMA · local${mem.ollama.embedModel ? ` · ${mem.ollama.embedModel}` : ' · no model yet'}`], ['gemini', 'GEMINI · needs your key'], ['off', 'OFF · words only']];
     for (const [value, text] of embedOptions) { const option = el('option', null, text); option.value = value; if (value === (mem.embedProvider ?? data.config?.memory?.embedProvider ?? 'auto')) option.selected = true; embed.append(option); }
@@ -6133,7 +6144,9 @@ async function nostromoTraffic() {
     const other = byId.get(mate.id);
     if (!other) continue;
     const link = nostromo.links.find((one) => (one.a === id && one.b === mate.id) || (one.b === id && one.a === mate.id)) ?? null;
-    fired.append(wireRow(other, `×${mate.times}`, { link, title: `Travelled into the same turn ${mate.times} time${mate.times === 1 ? '' : 's'} · last ${agoWords(mate.last)}\n${other.memory.text}` }));
+    const row = wireRow(other, `×${mate.times}`, { link, title: `Travelled into the same turn ${mate.times} time${mate.times === 1 ? '' : 's'} · last ${agoWords(mate.last)}${mate.cascades ? `\nStrong enough that recalling this one now brings it along (${Math.round(mate.strength * 100)}%).` : ''}\n${other.memory.text}` });
+    if (mate.cascades) row.classList.add('carries');
+    fired.append(row);
   }
   if (!(traffic.fired ?? []).length && traffic.recalled) {
     fired.append(el('li', 'none', traffic.recent?.length ? 'It has always travelled alone.' : 'No turn has carried it since the room started keeping this trail.'));

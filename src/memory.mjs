@@ -18,6 +18,16 @@ import { cosine, toBlob, fromBlob } from './embeddings.mjs';
 // How many recall rows a room keeps. Six or so per turn, so this is months of work.
 export const RECALL_HISTORY = 20000;
 
+// Spreading activation. Two memories that keep arriving in the same turn are associated, however
+// differently they read: the room's own work says so. The strength is Jaccard over the turns
+// where each was found by the search on its own merits — so a memory the room reaches for
+// constantly does not end up attached to everything, and one that only ever arrived by cascade
+// never votes on what comes next. Without that second rule the network would feed itself into a
+// clique within a few days.
+export const CASCADE_FLOOR = 0.34;      // of the turns where either appeared, they appeared together
+export const CASCADE_MIN_TIMES = 2;     // once is a coincidence
+export const CASCADE_RESERVE = 2;       // slots the search does not get to fill on its own
+
 export const MEMORY_SCHEMA_VERSION = 3;
 // An aberration is the one kind that is not knowledge. It is a claim the room decided is false:
 // a hallucination, an unfounded assertion, a distortion, or a memory that drifted away from what
@@ -188,13 +198,17 @@ export class RoomMemory {
         batch TEXT NOT NULL,
         at TEXT NOT NULL,
         agent TEXT,
-        turn TEXT
+        turn TEXT,
+        via TEXT NOT NULL DEFAULT 'search'
       );
       CREATE INDEX IF NOT EXISTS recalls_memory ON recalls(memory_id, id DESC);
       CREATE INDEX IF NOT EXISTS recalls_batch ON recalls(batch);
       CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
+    // Older files have recalls without a reason; everything written before the cascade existed
+    // was found by the search, which is what the default says.
+    try { this.#db.exec("ALTER TABLE recalls ADD COLUMN via TEXT NOT NULL DEFAULT 'search'"); } catch { /* already there */ }
     // Older files predate the recall counters; adding them is harmless and keeps the notes.
     for (const column of ['recalled INTEGER NOT NULL DEFAULT 0', 'last_recalled TEXT']) {
       try { this.#db.exec(`ALTER TABLE memories ADD COLUMN ${column}`); } catch { /* already there */ }
@@ -605,7 +619,7 @@ export class RoomMemory {
   // preferences, all from before `beforeSequence` so they add to the window
   // rather than repeat it, within a character budget.
   // `fallback` fills a thin match with the latest decisions and preferences; @madre turns it off to stay honest.
-  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true, track = true, by = null } = {}) {
+  recallMemories(text, { beforeSequence = Number.MAX_SAFE_INTEGER, limit = 6, maxChars = 1200, queryVector = null, semanticFloor = 0.45, fallback = true, track = true, by = null, cascade = true } = {}) {
     if (!this.#db) return [];
     const total = this.memoryCount();
     if (!total) return [];
@@ -630,41 +644,104 @@ export class RoomMemory {
     const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories WHERE id = ?');
     const chosen = [];
     let remaining = Math.max(0, maxChars);
-    for (const id of ids) {
-      if (chosen.length >= limit) break;
-      const row = fetch.get(id);
-      // The semantic side of the search does not go through the gate above, so it is checked
-      // here as well: one path in means one path to keep clean, and there are two.
-      if (!row || row.kind === ABERRATION || row.refutedBy !== null) continue;
+    let cursor = 0;
+    const take = (row, via) => {
       const cost = row.text.length + 24;
-      if (cost > remaining) continue;
+      if (cost > remaining) return false;
       remaining -= cost;
-      chosen.push({ ...row, sources: JSON.parse(row.sources) });
+      chosen.push({ ...row, sources: JSON.parse(row.sources), via });
+      return true;
+    };
+    // What the search itself found, up to a ceiling. The cascade is given the last slots to fill,
+    // and hands back whatever it does not use: association adds to a turn, it never displaces.
+    const fill = (ceiling) => {
+      while (cursor < ids.length && chosen.length < ceiling) {
+        const row = fetch.get(ids[cursor]);
+        cursor += 1;
+        // The semantic side of the search does not go through the gate above, so it is checked
+        // here as well: one path in means one path to keep clean, and there are two.
+        if (!row || row.kind === ABERRATION || row.refutedBy !== null) continue;
+        take(row, 'search');
+      }
+    };
+    const reserve = cascade ? Math.min(CASCADE_RESERVE, Math.max(0, limit - 1)) : 0;
+    fill(limit - reserve);
+    // Spreading activation: what the room has kept carrying alongside what it just found. This is
+    // the one part of recall that owes nothing to how a memory reads — only to what the room has
+    // actually done with it.
+    if (reserve && chosen.length) {
+      const seeds = chosen.map((note) => note.id);
+      for (const mate of this.associates(seeds, { limit: reserve })) {
+        if (chosen.length >= limit) break;
+        const row = fetch.get(mate.id);
+        if (!row || row.kind === ABERRATION || row.refutedBy !== null) continue;
+        if (row.throughSequence >= beforeSequence) continue;   // it is already in the window
+        take(row, 'cascade');
+      }
     }
+    fill(limit);
     // A note that just travelled into a turn has been used: the archive counts it, so the room
-    // can tell which memories it actually leans on.
-    if (track && chosen.length) this.#markRecalled(chosen.map((note) => note.id), by);
+    // can tell which memories it actually leans on, and why each one came.
+    if (track && chosen.length) this.#markRecalled(chosen.map((note) => ({ id: note.id, via: note.via })), by);
     return chosen.sort((a, b) => a.fromSequence - b.fromSequence || a.id - b.id);
   }
 
   // What one recall leaves behind: the counters the map reads, and one row per note with the
   // batch they shared, so the traffic between two memories can be read back later.
-  #markRecalled(ids, by = null) {
+  #markRecalled(entries, by = null) {
     try {
       const now = new Date().toISOString();
       const batch = `${now}/${Math.random().toString(36).slice(2, 10)}`;
       const agent = by?.agent ? String(by.agent).slice(0, 40) : null;
       const turn = by?.turn ? String(by.turn).slice(0, 80) : null;
       const mark = this.#db.prepare('UPDATE memories SET recalled = recalled + 1, last_recalled = ? WHERE id = ?');
-      const log = this.#db.prepare('INSERT INTO recalls (memory_id, batch, at, agent, turn) VALUES (?, ?, ?, ?, ?)');
+      const log = this.#db.prepare('INSERT INTO recalls (memory_id, batch, at, agent, turn, via) VALUES (?, ?, ?, ?, ?, ?)');
       this.#db.exec('BEGIN');
       try {
-        for (const id of ids) { mark.run(now, id); log.run(id, batch, now, agent, turn); }
+        for (const entry of entries) {
+          const id = typeof entry === 'object' ? entry.id : entry;
+          mark.run(now, id);
+          log.run(id, batch, now, agent, turn, (typeof entry === 'object' && entry.via) || 'search');
+        }
         // The traffic is a record of the recent past, not an archive of its own.
         this.#db.prepare(`DELETE FROM recalls WHERE id <= (SELECT MAX(id) FROM recalls) - ${RECALL_HISTORY}`).run();
         this.#db.exec('COMMIT');
       } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
     } catch (error) { console.error(`MADRE could not count a recall: ${error.message}`); }
+  }
+
+  // Which memories keep travelling with these, and how strongly. Only the turns where each was
+  // found by the search itself are counted: a memory that arrived by cascade must never become
+  // the evidence for the next cascade, or the network closes into a clique that carries itself.
+  associates(ids, { floor = CASCADE_FLOOR, minTimes = CASCADE_MIN_TIMES, limit = CASCADE_RESERVE, exclude = [] } = {}) {
+    if (!this.#db) return [];
+    const seeds = [...new Set((ids ?? []).filter((id) => Number.isInteger(id)))];
+    if (!seeds.length || limit <= 0) return [];
+    const blocked = new Set([...seeds, ...(exclude ?? [])]);
+    const holes = seeds.map(() => '?').join(',');
+    const together = this.#db.prepare(`
+      SELECT mine.memory_id AS seed, other.memory_id AS id, COUNT(DISTINCT other.batch) AS times
+      FROM recalls mine JOIN recalls other ON other.batch = mine.batch AND other.memory_id != mine.memory_id
+      WHERE mine.memory_id IN (${holes}) AND mine.via = 'search' AND other.via = 'search'
+      GROUP BY mine.memory_id, other.memory_id
+    `).all(...seeds).filter((row) => !blocked.has(row.id) && Number(row.times) >= minTimes);
+    if (!together.length) return [];
+    // How often each of them was found on its own, for the union underneath the ratio.
+    const involved = [...new Set([...seeds, ...together.map((row) => row.id)])];
+    const alone = new Map(this.#db.prepare(`
+      SELECT memory_id AS id, COUNT(DISTINCT batch) AS times FROM recalls
+      WHERE via = 'search' AND memory_id IN (${involved.map(() => '?').join(',')}) GROUP BY memory_id
+    `).all(...involved).map((row) => [row.id, Number(row.times)]));
+    const best = new Map();
+    for (const row of together) {
+      const times = Number(row.times);
+      const union = (alone.get(row.seed) ?? 0) + (alone.get(row.id) ?? 0) - times;
+      const strength = union > 0 ? times / union : 0;
+      if (strength < floor) continue;
+      const known = best.get(row.id);
+      if (!known || strength > known.strength) best.set(row.id, { id: row.id, strength: Number(strength.toFixed(3)), times, with: row.seed });
+    }
+    return [...best.values()].sort((a, b) => b.strength - a.strength || b.times - a.times).slice(0, limit);
   }
 
   // Everything one memory has to say about its own life: how often the room reached for it, who
@@ -680,6 +757,9 @@ export class RoomMemory {
       FROM recalls mine JOIN recalls other ON mine.batch = other.batch AND other.memory_id != mine.memory_id
       WHERE mine.memory_id = ? GROUP BY other.memory_id ORDER BY times DESC, last DESC LIMIT ?
     `).all(note.id, together);
+    // Which of that company is association rather than coincidence: the ones this memory would
+    // now bring along with it into a turn.
+    const pulls = new Map(this.associates([note.id], { limit: 24 }).map((mate) => [mate.id, mate.strength]));
     const askers = this.#db.prepare('SELECT agent, COUNT(*) AS times FROM recalls WHERE memory_id = ? AND agent IS NOT NULL GROUP BY agent ORDER BY times DESC').all(note.id);
     // What a refutation did, from either end: the aberration knows what it took down, and a note
     // taken down knows what took it.
@@ -693,7 +773,7 @@ export class RoomMemory {
       lastRecalled: note.lastRecalled ?? null,
       since: this.#metaValue('recalls_since'),
       recent: recent.map((row) => ({ at: row.at, agent: row.agent, turn: row.turn, batch: row.batch })),
-      fired: fired.map((row) => ({ id: row.id, times: Number(row.times), last: row.last })),
+      fired: fired.map((row) => ({ id: row.id, times: Number(row.times), last: row.last, strength: pulls.get(row.id) ?? null, cascades: pulls.has(row.id) })),
       askers: askers.map((row) => ({ agent: row.agent, times: Number(row.times) })),
       refutes,
       refutedBy: refutedBy ? { ...refutedBy, text: refutedBy.text.slice(0, 200) } : null,

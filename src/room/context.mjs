@@ -4,7 +4,7 @@
 
 import { buildConversationContext } from '../conversation-context.mjs';
 
-export async function contextFor({ memory, priorEvents, messageId, text, contextMaxChars, recallShare, remember = () => {}, omitSynthetic = false, anchor = null, by = null }) {
+export async function contextFor({ memory, priorEvents, messageId, text, contextMaxChars, recallShare, remember = () => {}, omitSynthetic = false, anchor = null, by = null, cascade = true }) {
   const full = buildConversationContext(priorEvents, { excludeMessageId: messageId, maxChars: contextMaxChars, omitSynthetic, anchor });
   const none = { context: full, recall: null, memories: null };
   if (!memory || !full.omittedMessages || recallShare <= 0) return none;
@@ -20,7 +20,7 @@ export async function contextFor({ memory, priorEvents, messageId, text, context
     // One embedding of the request lets both lookups match meaning; without it they match words.
     const queryVector = await memory.embedQuery(text);
     // Distilled notes first (dense, cheap), exact quotes with what is left.
-    memories = memory.recallMemories(text, { beforeSequence: before, maxChars: Math.floor(recallBudget * 0.4), queryVector, by });
+    memories = memory.recallMemories(text, { beforeSequence: before, maxChars: Math.floor(recallBudget * 0.4), queryVector, by, cascade });
     const spent = memories.reduce((sum, item) => sum + item.text.length + 24, 0);
     recall = memory.recall(text, { beforeSequence: before, excludeMessageId: messageId, maxChars: recallBudget - spent, queryVector });
   } catch (error) {

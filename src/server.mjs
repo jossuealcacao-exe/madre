@@ -217,7 +217,7 @@ export async function createPulseServer({
     return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist), agent: fifth.ready };
   }
   // Memory settings the human keeps in config.json (MU/TH/UR → MEMORY); environment still wins at launch.
-  const memoryConfig = async () => ({ archivist: 'auto', archivists: null, every: 10, idleMinutes: 10, embedProvider: 'auto', recallShare: 0.3, ...((await readConfig(root)).memory ?? {}) });
+  const memoryConfig = async () => ({ archivist: 'auto', archivists: null, every: 10, idleMinutes: 10, embedProvider: 'auto', recallShare: 0.3, cascade: true, ...((await readConfig(root)).memory ?? {}) });
   const embedEnvFor = (cfg) => {
     const view = { ...process.env };
     if (!process.env.PULSE_EMBED_PROVIDER && !process.env.PULSE_EMBED) {
@@ -245,6 +245,7 @@ export async function createPulseServer({
     softTokenBudget,
     contextMaxChars,
     recallShare: Number(process.env.PULSE_RECALL_SHARE ?? startupMemory.recallShare),
+    cascade: process.env.PULSE_RECALL_CASCADE !== undefined ? process.env.PULSE_RECALL_CASCADE !== '0' : startupMemory.cascade !== false,
     distill: {
       every: Number(process.env.PULSE_DISTILL_EVERY ?? startupMemory.every),
       idleMs: Number(process.env.PULSE_DISTILL_IDLE_MS ?? startupMemory.idleMinutes * 60000),
@@ -299,7 +300,7 @@ export async function createPulseServer({
     const distill = room.distillSettings();
     const candidates = [...(distill.ollama ? [{ id: 'ollama', label: `Ollama · ${ollama.chatModel ?? 'local'}`, local: true }] : []), ...agents.filter((agent) => agent.detected && !agent.local).map((agent) => ({ id: agent.id, label: agent.label, local: false }))];
     return {
-      enabled: distill.enabled, every: distill.every, idleMinutes: Math.round(distill.idleMs / 60000), archivist: distill.agent ?? 'auto', archivists: distill.allowed, recallShare: distill.recallShare,
+      enabled: distill.enabled, every: distill.every, idleMinutes: Math.round(distill.idleMs / 60000), archivist: distill.agent ?? 'auto', archivists: distill.allowed, recallShare: distill.recallShare, cascade: distill.cascade,
       candidates, embedder: memory?.embedder?.model ?? null, embedProvider: process.env.PULSE_EMBED === '0' ? 'off' : (process.env.PULSE_EMBED_PROVIDER ?? null),
       ollama: { running: ollama.running, embedModel: ollama.embedModel, chatModel: ollama.chatModel },
       stats: room.memoryStats() ? { entries: room.memoryStats().entries, memories: room.memoryStats().memories, pending: room.memoryStats().pending } : null,
@@ -341,9 +342,10 @@ export async function createPulseServer({
       if (Array.isArray(m.archivists)) next.archivists = m.archivists.length ? m.archivists.map(String) : null;
       if (['auto', 'ollama', 'gemini', 'off'].includes(m.embedProvider)) next.embedProvider = m.embedProvider;
       if (Number.isFinite(Number(m.recallShare))) next.recallShare = Math.min(0.6, Math.max(0, Number(m.recallShare)));
+      if (typeof m.cascade === 'boolean') next.cascade = m.cascade;
       if (typeof m.enabled === 'boolean') next.enabled = m.enabled;
       config.memory = next;
-      room.configureDistill({ every: next.every, idleMs: next.idleMinutes * 60000, agent: next.archivist === 'auto' ? null : next.archivist, allowed: next.archivists, recallShare: next.recallShare, ...(typeof next.enabled === 'boolean' ? { enabled: next.enabled } : {}) });
+      room.configureDistill({ every: next.every, idleMs: next.idleMinutes * 60000, agent: next.archivist === 'auto' ? null : next.archivist, allowed: next.archivists, recallShare: next.recallShare, cascade: next.cascade !== false, ...(typeof next.enabled === 'boolean' ? { enabled: next.enabled } : {}) });
       live.memory = true;
     }
     if (patch.scopes && typeof patch.scopes === 'object') {

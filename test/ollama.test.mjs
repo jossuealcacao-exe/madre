@@ -196,7 +196,11 @@ test('memory settings: MU/TH/UR saves archivist, allow-list, cadence, embeddings
     assert.equal(saved.settings.memory.recallShare, 0.45);
     assert.equal(saved.settings.memory.embedder, null, 'embeddings off applies live');
     const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
-    assert.deepEqual(config.memory, { archivist: 'gemini', archivists: ['gemini', 'codex'], every: 4, idleMinutes: 3, embedProvider: 'off', recallShare: 0.45 });
+    assert.deepEqual(config.memory, { archivist: 'gemini', archivists: ['gemini', 'codex'], every: 4, idleMinutes: 3, embedProvider: 'off', recallShare: 0.45, cascade: true });
+    // Spreading activation is the human's to switch off, and the room stops carrying company live.
+    const off = await fetch(`${base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ memory: { cascade: false } }) }).then((response) => response.json());
+    assert.equal(off.settings.memory.cascade, false, 'the switch did not reach the room');
+    assert.equal(JSON.parse(await readFile(join(root, 'config.json'), 'utf8')).memory.cascade, false);
     const back = await fetch(`${base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ memory: { embedProvider: 'auto', archivists: [] } }) }).then((response) => response.json());
     assert.equal(back.settings.memory.embedder, 'ollama:nomic-embed-text:latest', 'back to local embeddings');
     assert.equal(back.settings.memory.archivists, null, 'empty list means everyone');

@@ -67,6 +67,7 @@ export class Room {
   #contextMaxChars;
   #memory;                 // RoomMemory: durable recall of everything said outside GHOST
   #recallShare;            // fraction of the context budget recall may take
+  #cascade;                // whether recall also carries what a memory keeps arriving with
   #archivist;              // room/archivist: who distils, when, and the bench
   #vectors;                // room/vectors: embeddings filled in the background
   #escalation;             // room/escalation: plan steps waiting for the human
@@ -100,6 +101,7 @@ export class Room {
     contextMaxChars = 16000,
     memory = null,
     recallShare = Number(process.env.PULSE_RECALL_SHARE ?? 0.3),
+    cascade = process.env.PULSE_RECALL_CASCADE !== '0',
     distill = {},
     memoryServer = null,
     mother = null,
@@ -121,6 +123,7 @@ export class Room {
     this.#contextMaxChars = contextMaxChars;
     this.#memory = memory;
     this.#recallShare = Math.min(0.6, Math.max(0, Number.isFinite(recallShare) ? recallShare : 0.3));
+    this.#cascade = cascade !== false;
     this.#memoryServer = memoryServer;
     this.#mother = mother;
     this.#privacy = privacy;
@@ -265,7 +268,7 @@ export class Room {
   #rate = null;
 
   async #contextFor(priorEvents, { messageId, text, omitSynthetic = false, by = null }) {
-    const built = await contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic, anchor: this.#contextAnchor, by });
+    const built = await contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic, anchor: this.#contextAnchor, by, cascade: this.#cascade });
     // @madre reads a different transcript to everyone else, so it never sets where the room's
     // window begins; it only borrows it.
     if (!omitSynthetic && Number.isInteger(built.context?.anchor)) this.#contextAnchor = built.context.anchor;
@@ -274,10 +277,11 @@ export class Room {
 
   // The human tunes the archive from MU/TH/UR; changes apply to the next run.
   distillSettings() {
-    return { ...this.#archivist.settings(), recallShare: this.#recallShare, ollama: Boolean(this.#invokers.ollama) };
+    return { ...this.#archivist.settings(), recallShare: this.#recallShare, cascade: this.#cascade, ollama: Boolean(this.#invokers.ollama) };
   }
   configureDistill(patch = {}) {
     if (Number.isFinite(Number(patch.recallShare))) this.#recallShare = Math.min(0.6, Math.max(0, Number(patch.recallShare)));
+    if (typeof patch.cascade === 'boolean') this.#cascade = patch.cascade;
     this.#archivist.configure(patch);
     return this.distillSettings();
   }

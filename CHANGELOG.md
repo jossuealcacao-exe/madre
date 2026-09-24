@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Memoria: recall por activación en cascada
+- El recall buscaba por palabras y por significado. Ahora también por lo que la sala ha hecho: cada recuerdo que entra a un turno deja constancia del lote que compartió, y dos notas que llegan una y otra vez al mismo turno quedan asociadas aunque no compartan una sola palabra. Al recordar una, viene la otra.
+- Es una red asociativa de verdad, con sus pesos escritos por el trabajo real de la sala y no por la opinión de un modelo. La fuerza es un cociente —de los turnos donde apareció cualquiera de las dos, cuántos las trajeron juntas—, así que un recuerdo que la sala usa a todas horas no termina pegado a todo, y una pareja que deja de coincidir se apaga sola.
+- La regla que la hace honesta: solo cuentan los turnos donde la búsqueda encontró cada nota por mérito propio. Una nota que llegó por cascada nunca es la evidencia de la siguiente cascada. Sin eso, en unos días la red se cierra sobre sí misma y se carga a sí misma.
+- La asociación suma, nunca desplaza: el recall reserva dos huecos para ella y le devuelve los que no use, y no gasta un carácter fuera del presupuesto del turno. Lo falso y lo refutado tampoco entran por ahí: la puerta es la misma en los dos caminos.
+- En la tarjeta de NOSTROMO, la compañía lo bastante fuerte para viajar sola queda marcada con `⇢`. Y en MU/TH/UR hay un interruptor, porque es la única parte del recall que no le debe nada a cómo está escrito un recuerdo.
+
 ### NOSTROMO: abrir un recuerdo y ver con quién habla
 - La tarjeta de un recuerdo —o de una aberración— ya no es una ficha muerta. Debajo de lo que dice trae sus enlaces: los mismos cables que el mapa dibuja, en una lista ordenada por fuerza, con el color de cada estrella y su porcentaje de significado compartido. Pasar el cursor por un renglón enciende ese cable allá afuera; hacer clic salta a ese recuerdo, así que la red se puede caminar.
 - Y trae lo que de verdad ha pasado entre ese recuerdo y la sala: cuántas veces MADRE lo ha ido a buscar, cuándo fue la última, qué agentes lo pidieron, y —lo importante— con qué otros recuerdos viaja. Dos memorias que llegan una y otra vez al mismo turno están conversando, aunque no se parezcan en nada; eso antes no se sabía porque nadie lo anotaba. Ahora cada recuerdo que entra a un turno deja un renglón con el lote que compartió.
