@@ -251,15 +251,17 @@ test('mother: the verdict is written the way the rest of the panel is written', 
   assert.match(says[1], /text-transform: uppercase/);
 });
 
-test('mother: the crew lives in the panel, and the bridge is first contact and nothing else', async () => {
-  const [app, page] = await Promise.all([read('app.js'), read('index.html')]);
+test('mother: one door to the crew, and the bridge is first contact and nothing else', async () => {
+  const [app, page, readme] = await Promise.all([read('app.js'), read('index.html'), readFile(join(import.meta.dirname, '..', 'README.md'), 'utf8')]);
 
-  // ⚑ CREW used to close MU/TH/UR and take over the canvas with a page in the page's own palette.
-  // It opens the panel's own connections now, where the modes, scopes and keys of each agent are.
-  assert.ok(!app.includes("document.querySelector('#mother')?.close?.(); openBridge();"), 'CREW still leaves the panel');
-  assert.match(app, /#crew-button'\)\?\.addEventListener\('click', async \(\) => \{[\s\S]*settingsUI\.button\.click\(\)/);
-  assert.match(app, /fold\[data-fold="connections"\]/, 'CREW does not open the crew');
-  assert.match(app, /fold\.scrollIntoView/);
+  // ⚑ CREW closed the panel and took over the canvas to do what CONNECTIONS already does. Once
+  // it opened CONNECTIONS instead, it was a second button for one thing, and a second button for
+  // one thing is a question the human has to answer for no reason.
+  assert.ok(!page.includes('id="crew-button"'), 'there are two doors to the crew again');
+  assert.ok(!app.includes('crew-button'), 'the second door still has a handler');
+  assert.ok(!readme.includes('⚑ CREW'), 'the README still sends people to a button that is gone');
+  assert.match(page, /id="mother-settings-button"[^>]*>⚙ CONNECTIONS/);
+  assert.match(page, /title="The crew and this room's settings/, 'the one door does not say the crew is behind it');
 
   // The bridge shows when there is nobody to talk to, and that is the whole of its job now.
   assert.match(app, /els\.onboarding\.hidden = usable\.length > 0;/);
@@ -268,5 +270,4 @@ test('mother: the crew lives in the panel, and the bridge is first contact and n
 
   // And what the bridge said about needing only one agent is said where the crew now lives.
   assert.match(app, /ONE AGENT IS ENOUGH TO OPEN THE ROOM/);
-  assert.match(page, /id="crew-button"/);
 });

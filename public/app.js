@@ -1155,25 +1155,6 @@ function keyForm(agent, { onDone } = {}) {
 }
 
 // The bridge is first contact, but it also opens on demand to add another agent later.
-// The crew belongs in MU/TH/UR, written in the panel's own hand. The bridge on the canvas is
-// first contact for a room that has nobody in it — the one moment there is nothing else to show —
-// and adding to a crew that already exists is a settings job, next to the modes, the scopes and
-// the keys it shares a card with.
-document.querySelector('#crew-button')?.addEventListener('click', async () => {
-  if (!settingsUI.open) settingsUI.button.click(); else await loadSettings();
-  // The panel draws itself first; then the crew opens and comes into view.
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const fold = document.querySelector('.mother-section .fold[data-fold="connections"]');
-    if (fold) {
-      fold.open = true;
-      rememberFold('connections', true);
-      syncFoldAll();
-      fold.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-});
 document.querySelector('#bridge-close')?.addEventListener('click', () => { els.onboarding.hidden = true; });
 
 // The local agent is not a CLI: it is Ollama, in one of four states. The card shows the one
