@@ -710,6 +710,17 @@ export class RoomMemory {
     } catch (error) { console.error(`MADRE could not count a recall: ${error.message}`); }
   }
 
+  // Every turn that reached into the archive, oldest first. These are the chances a memory had
+  // to be the answer; a note nothing carried across many of them is adrift, not new.
+  recallBatches() {
+    if (!this.#db) return [];
+    return this.#db.prepare('SELECT MIN(at) AS at FROM recalls GROUP BY batch ORDER BY at').all().map((row) => row.at);
+  }
+
+  // The day this room started keeping that trail. Counters from before it are real; the turns
+  // behind them were never written down.
+  recallsSince() { return this.#metaValue('recalls_since'); }
+
   // Which memories keep travelling with these, and how strongly. Only the turns where each was
   // found by the search itself are counted: a memory that arrived by cascade must never become
   // the evidence for the next cascade, or the network closes into a clique that carries itself.

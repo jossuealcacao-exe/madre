@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### NOSTROMO: las zonas frías del archivo
+- Un recuerdo está frío cuando se cumplen tres cosas a la vez: ningún turno lo ha llevado nunca, no comparte tema con ningún otro, y el archivo se abrió lo suficiente desde que se escribió como para que haya tenido sus oportunidades. La tercera es la que hace honesta a la etiqueta: nunca-recordado es lo que toda nota es el día que nace. Frío es la oportunidad que pasó de largo doce veces.
+- Las oportunidades se cuentan en turnos que de verdad entraron al archivo —son las únicas que existieron— y solo desde el día en que la sala empezó a llevar el rastro. Lo que la sala no anotó no se le cobra a la nota.
+- En la cabecera de NOSTROMO aparece `COLD · N` cuando hay alguna; al pulsarlo, cada una queda rodeada por un anillo tenue de polvo. El resto del mapa no se apaga: estas ya son lo más apagado que hay ahí afuera, y bajarle a todo lo demás para encontrarlas sería apagar el mapa para verlo.
+- Al abrir una, su tarjeta lo dice con número —cuántas veces se abrió el archivo sin que fuera la respuesta— y el botón de olvidar está a un clic. Nada se borra solo.
+
 ### Memoria: recall por activación en cascada
 - El recall buscaba por palabras y por significado. Ahora también por lo que la sala ha hecho: cada recuerdo que entra a un turno deja constancia del lote que compartió, y dos notas que llegan una y otra vez al mismo turno quedan asociadas aunque no compartan una sola palabra. Al recordar una, viene la otra.
 - Es una red asociativa de verdad, con sus pesos escritos por el trabajo real de la sala y no por la opinión de un modelo. La fuerza es un cociente —de los turnos donde apareció cualquiera de las dos, cuántos las trajeron juntas—, así que un recuerdo que la sala usa a todas horas no termina pegado a todo, y una pareja que deja de coincidir se apaga sola.

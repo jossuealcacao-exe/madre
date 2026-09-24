@@ -4685,6 +4685,9 @@ const nostromo = {
   sub: document.querySelector('#nostromo-sub'),
   empty: document.querySelector('#nostromo-empty'),
   card: document.querySelector('#nostromo-card'),
+  coldButton: document.querySelector('#nostromo-cold'),
+  coldOnly: false,        // the cold zone is ringed on the map
+  cold: { count: 0, standing: 0, share: 0 },
   gate: {
     dialog: document.querySelector('#nostromo-gate'),
     form: document.querySelector('#nostromo-gate-form'),
@@ -4856,6 +4859,11 @@ async function openNostromo() {
     if (node) showNostromoCard(node);
   }
 }
+nostromo.coldButton?.addEventListener('click', () => {
+  nostromo.coldOnly = !nostromo.coldOnly;
+  nostromo.coldButton.setAttribute('aria-pressed', String(nostromo.coldOnly));
+  if (nostromo.coldOnly) toast(`NOSTROMO › ${nostromo.cold.count} of ${nostromo.cold.standing} memories have had their chances and were never the answer. Ringed on the map.`);
+});
 document.querySelector('#nostromo-close')?.addEventListener('click', () => nostromo.dialog.close());
 nostromo.dialog?.addEventListener('close', stopNostromo);
 document.querySelector('#nostromo-card-close')?.addEventListener('click', () => { nostromo.card.hidden = true; nostromo.selected = null; nostromo.focusLink = null; stopTraffic(); });
@@ -4898,11 +4906,19 @@ function buildNostromo(data) {
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
-  nostromo.sub.textContent = `${nostromo.stage ? `${nostromo.stage.label} · ` : ''}${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${alive} RECALLED · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
+  // The cold zone: what has had its chances and was never the answer. Named, so it can be
+  // looked at and decided about, instead of sitting in the dark being counted as archive.
+  nostromo.cold = data.cold ?? { count: 0, standing: memories.length, share: 0 };
+  if (nostromo.coldButton) {
+    nostromo.coldButton.hidden = !nostromo.cold.count;
+    nostromo.coldButton.textContent = `COLD · ${nostromo.cold.count}`;
+    if (!nostromo.cold.count) { nostromo.coldOnly = false; nostromo.coldButton.setAttribute('aria-pressed', 'false'); }
+  }
+  nostromo.sub.textContent = `${nostromo.stage ? `${nostromo.stage.label} · ` : ''}${memories.length} MEMOR${memories.length === 1 ? 'Y' : 'IES'} · ${alive} RECALLED · ${nostromo.links.length} LINK${nostromo.links.length === 1 ? '' : 'S'} · ${stats.entries ?? 0} EXCHANGES BEHIND THEM${nostromo.cold?.count ? ` · ${nostromo.cold.count} COLD` : ''}${stats.embeddings ? '' : ' · LINKS NEED EMBEDDINGS'}`;
   nostromo.empty.hidden = memories.length > 0;
 }
 
@@ -5818,6 +5834,23 @@ function drawNostromo(t) {
       ctx.beginPath(); ctx.arc(node.x, node.y, r + 6 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
     }
   }
+  // The cold zone, when it is asked for: a thin dusty ring around every memory the archive has
+  // had its chances with and never once carried. The mark is added rather than taken from the
+  // rest — these are already the dimmest things out here, and dimming everything else to find
+  // them would be turning the map off to look at it.
+  if (nostromo.coldOnly) {
+    ctx.save();
+    ctx.setLineDash([3 / cam.scale, 4 / cam.scale]);
+    ctx.lineWidth = 1 / cam.scale;
+    for (const node of nostromo.nodes) {
+      if (!node.cold || node.scale <= 0.01) continue;
+      const breath = Math.sin(t * 0.8 + node.seed);
+      ctx.strokeStyle = `rgba(150, 176, 198, ${0.36 + 0.14 * breath})`;
+      ctx.beginPath(); ctx.arc(node.x, node.y, node.r * node.scale * 2.2 + 4 + breath, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // CODE000: the safety box. Bars fall from above and lock around the core.
   if (nostromo.cage) {
     const age = t - nostromo.cage.at;
@@ -6122,6 +6155,7 @@ async function nostromoTraffic() {
   node.activity = activityOf(rawActivity(node.memory, degree), nostromo.rawTop ?? 1);
 
   const said = [];
+  if (node.cold) said.push(`COLD · the archive has been opened ${node.cold.chances} times since this was written and never once carried it, and it shares a subject with nothing`);
   said.push(traffic.recalled
     ? `MADRE has reached for this ${traffic.recalled} time${traffic.recalled === 1 ? '' : 's'}${traffic.lastRecalled ? ` · last ${agoWords(traffic.lastRecalled)}` : ''}`
     : 'MADRE has not reached for this one yet');

@@ -9,6 +9,7 @@ import { UsageSentinel } from './usage-sentinel.mjs';
 import { buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
 import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
+import { coldNotes, coldReading } from './cold.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
@@ -365,7 +366,17 @@ export class Room {
 
   memoryResearch() {
     if (!this.#memory) return null;
-    return { stats: this.memoryStats(), memories: this.#memory.memories({ limit: 500 }), links: this.#memory.memoryLinks() };
+    const memories = this.#memory.memories({ limit: 500 });
+    const links = this.#memory.memoryLinks();
+    // The cold zones: what the archive has never reached for, never linked, and has had plenty
+    // of chances to be. Attached to the notes themselves so the map and the card agree.
+    const cold = coldNotes({ notes: memories, links, batches: this.#memory.recallBatches(), since: this.#memory.recallsSince() });
+    return {
+      stats: this.memoryStats(),
+      memories: memories.map((note) => (cold.has(note.id) ? { ...note, cold: cold.get(note.id) } : note)),
+      links,
+      cold: coldReading(cold, memories),
+    };
   }
 
   /* ---------- privacy: terms that never travel through the room ---------- */

@@ -349,6 +349,9 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-card .wire-row b { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .08em; color: var(--ph-dim); }
 .nostromo-card .wire-row.refuted b { color: var(--nostromo-sun); }
 /* Company strong enough that recalling one now brings the other: the association is live. */
+/* The cold zone: a colour that is not a memory kind and not the sun, so it never reads as life. */
+.nostromo-head .mother-close.cold { color: #96b0c6; border-color: color-mix(in srgb, #96b0c6 45%, transparent); }
+.nostromo-head .mother-close.cold[aria-pressed="true"] { background: color-mix(in srgb, #96b0c6 16%, transparent); color: #cfe0ec; }
 .nostromo-card .wire-row.carries b { color: var(--kind, var(--ph)); }
 .nostromo-card .wire-row.carries b::after { content: ' ⇢'; }
 .nostromo-card .forget { border: 1px solid var(--nostromo-sun); background: transparent; color: var(--nostromo-sun); font: inherit; font-size: 10px; letter-spacing: .18em; padding: 9px 12px; cursor: pointer; transition: background .2s; }
