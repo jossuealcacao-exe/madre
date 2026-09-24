@@ -1042,6 +1042,13 @@ export async function createPulseServer({
         const grown = maturity({ readiness: datasetReadiness(await store.readAll(), research.memories), notes: research.memories, links: research.links, stats: research.stats });
         return sendJson(response, 200, { ...research, maturity: grown });
       }
+      // A question the human has no use for. It stops being offered; nothing else changes.
+      if (request.method === 'POST' && url.pathname === '/api/memory/ask/dismiss') {
+        const payload = await body(request).catch(() => ({}));
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        const done = room.dismissAsk(String(payload.id ?? '').slice(0, 80));
+        return done ? sendJson(response, 200, done) : sendJson(response, 404, { error: 'The room has no memory.' });
+      }
       // One memory's own traffic: who it keeps arriving with, who asked for it, what a
       // refutation did. Read while its card is open, so the card is alive rather than a snapshot.
       const trafficMatch = request.method === 'GET' && url.pathname.match(/^\/api\/memory\/(\d+)\/traffic$/);

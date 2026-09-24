@@ -349,6 +349,27 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-card .wire-row b { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .08em; color: var(--ph-dim); }
 .nostromo-card .wire-row.refuted b { color: var(--nostromo-sun); }
 /* Company strong enough that recalling one now brings the other: the association is live. */
+/* What to ask next: a panel on the other side of the map from the memory card, so the two can
+   be open one after the other and never fight for the same corner. */
+.nostromo-card.asks { right: auto; left: 26px; width: min(420px, calc(100vw - 52px)); border-color: rgba(255, 255, 255, .14); }
+.nostromo-card.asks .kind { color: #d7d2cf; text-shadow: none; }
+.nostromo-card.asks .foot { margin: 0; }
+.asks-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; max-height: min(58vh, 520px); overflow-y: auto; }
+.asks-list .none { font-size: 11px; letter-spacing: .06em; color: var(--ph-dim); }
+.asks-list .ask { display: grid; gap: 6px; padding: 11px 12px; border: 1px solid rgba(255, 255, 255, .1); border-left: 2px solid var(--well, rgba(255, 255, 255, .3)); background: rgba(255, 255, 255, .03); }
+.asks-list .ask-open { --well: #3dc6ff; }
+.asks-list .ask-cold { --well: #96b0c6; }
+.asks-list .ask-thin { --well: #ffdc3c; }
+.asks-list .ask .q { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-size: 13px; line-height: 1.5; color: #eef1ea; }
+.asks-list .ask .why { margin: 0; font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; line-height: 1.5; color: var(--ph-dim); }
+.asks-list .ask .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.asks-list .ask button { border: 1px solid rgba(255, 255, 255, .22); background: transparent; color: #d7d2cf; font: inherit; font-size: 9px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.asks-list .ask button.primary { border-color: var(--well); color: var(--well); }
+.asks-list .ask button:hover { background: rgba(255, 255, 255, .06); }
+.asks-list .ask button:disabled { opacity: .45; cursor: default; }
+.nostromo-head .mother-close.ask { color: #d7d2cf; border-color: rgba(255, 255, 255, .28); }
+.nostromo-head .mother-close.ask[aria-pressed="true"] { background: rgba(255, 255, 255, .12); color: #fff; }
+
 /* The cold zone: a colour that is not a memory kind and not the sun, so it never reads as life. */
 .nostromo-head .mother-close.cold { color: #96b0c6; border-color: color-mix(in srgb, #96b0c6 45%, transparent); }
 .nostromo-head .mother-close.cold[aria-pressed="true"] { background: color-mix(in srgb, #96b0c6 16%, transparent); color: #cfe0ec; }

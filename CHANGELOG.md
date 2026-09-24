@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### NOSTROMO: la sala escribe las preguntas que le faltan
+- La lectura de madurez decía dónde está flaco el archivo; no decía qué hacer al respecto un martes por la tarde. Ahora sí. `ASK · N` en la cabecera abre una lista corta de preguntas escritas desde lo que el archivo ya tiene, palabra por palabra, sin inventar un tema que nadie levantó.
+- Tres pozos, porque hay tres tipos de hueco: las preguntas que el archivista registró como abiertas y nadie volvió a tocar —el archivo diciendo en voz alta lo que no sabe—; los recuerdos fríos, donde preguntar es la alternativa honesta a tirar algo que nunca tuvo su oportunidad; y la clase de nota de la que el archivo anda corto, que ninguna cantidad de uso arregla sola. De preguntas no se pide más: un archivo corto de preguntas quiere respuestas.
+- Se toman por turnos, así que un pozo lleno no puede ser la lista entera: seis variaciones del mismo recuerdo frío no son un plan, son un bucle. Y dos formas de preguntar lo mismo cuentan como una —incluida la que el archivista escribe en una segunda pasada, idéntica pero más larga—.
+- Nada se envía ni se gasta. Cada pregunta trae de dónde salió, un botón que la pone en el compositor para que tú elijas quién la responde (@madre no cuesta nada), otro para ver el recuerdo que la levantó, y uno para no volver a verla.
+
 ### NOSTROMO: las zonas frías del archivo
 - Un recuerdo está frío cuando se cumplen tres cosas a la vez: ningún turno lo ha llevado nunca, no comparte tema con ningún otro, y el archivo se abrió lo suficiente desde que se escribió como para que haya tenido sus oportunidades. La tercera es la que hace honesta a la etiqueta: nunca-recordado es lo que toda nota es el día que nace. Frío es la oportunidad que pasó de largo doce veces.
 - Las oportunidades se cuentan en turnos que de verdad entraron al archivo —son las únicas que existieron— y solo desde el día en que la sala empezó a llevar el rastro. Lo que la sala no anotó no se le cobra a la nota.

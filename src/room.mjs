@@ -10,6 +10,7 @@ import { buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
 import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
+import { questionsFor } from './asking.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
@@ -376,7 +377,23 @@ export class Room {
       memories: memories.map((note) => (cold.has(note.id) ? { ...note, cold: cold.get(note.id) } : note)),
       links,
       cold: coldReading(cold, memories),
+      // What the room should ask next, so a thin archive fills where it is thin instead of
+      // deeper where it is already fat. Nothing is sent: the questions are the human's to use.
+      ask: questionsFor({ notes: memories, cold, dismissed: this.#dismissedAsks() }),
     };
+  }
+
+  // Questions the human has waved off. Kept with the archive, because that is what they are about.
+  #dismissedAsks() {
+    try { return JSON.parse(this.#memory?.metaGet('asks_dismissed') ?? '[]'); } catch { return []; }
+  }
+
+  // Waving one off is a small, reversible thing: it stops being offered, and nothing else.
+  dismissAsk(id) {
+    if (!this.#memory || !id) return null;
+    const dismissed = [...new Set([...this.#dismissedAsks(), String(id)])].slice(-200);
+    this.#memory.metaSet('asks_dismissed', JSON.stringify(dismissed));
+    return { dismissed: dismissed.length };
   }
 
   /* ---------- privacy: terms that never travel through the room ---------- */

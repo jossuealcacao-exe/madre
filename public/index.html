@@ -211,6 +211,7 @@
               <span class="k decision" title="YELLOW DWARF · DECISION"><i>DECISION</i></span><span class="k fact" title="WHITE DWARF · FACT"><i>FACT</i></span><span class="k preference" title="GREEN DWARF · PREFERENCE"><i>PREFERENCE</i></span><span class="k question" title="BLUE DWARF · QUESTION"><i>QUESTION</i></span>
             </span>
             <button id="nostromo-cold" class="mother-close cold" type="button" hidden aria-pressed="false" title="The memories nothing has ever reached for, that share a subject with nothing, and that have had their chances">COLD · 0</button>
+            <button id="nostromo-ask" class="mother-close ask" type="button" hidden aria-pressed="false" title="The questions this archive cannot answer yet, written from what it already holds">ASK · 0</button>
             <button id="nostromo-recenter" class="mother-close" type="button" hidden>RECENTER</button>
             <button id="nostromo-close" class="mother-close" type="button">LEAVE ×</button>
           </header>
@@ -226,6 +227,14 @@
               <div class="sub">MU/TH/UR 6000 · SPECIAL ORDER 937 · PRIORITY ONE</div>
             </div>
           </div>
+          <aside id="nostromo-asks" class="nostromo-card asks" hidden>
+            <header>
+              <span class="kind">WHAT TO ASK NEXT</span>
+              <button id="nostromo-asks-close" class="mother-close" type="button">×</button>
+            </header>
+            <p class="foot">WRITTEN FROM WHAT THE ARCHIVE ALREADY HOLDS. NOTHING IS SENT: A QUESTION GOES TO THE COMPOSER AND YOU DECIDE WHO ANSWERS IT.</p>
+            <ul id="nostromo-asks-list" class="asks-list"></ul>
+          </aside>
           <aside id="nostromo-card" class="nostromo-card" hidden>
             <header>
               <span id="nostromo-card-kind" class="kind">MEMORY</span>

@@ -4686,6 +4686,10 @@ const nostromo = {
   empty: document.querySelector('#nostromo-empty'),
   card: document.querySelector('#nostromo-card'),
   coldButton: document.querySelector('#nostromo-cold'),
+  askButton: document.querySelector('#nostromo-ask'),
+  askPanel: document.querySelector('#nostromo-asks'),
+  askList: document.querySelector('#nostromo-asks-list'),
+  asks: [],
   coldOnly: false,        // the cold zone is ringed on the map
   cold: { count: 0, standing: 0, share: 0 },
   gate: {
@@ -4859,6 +4863,66 @@ async function openNostromo() {
     if (node) showNostromoCard(node);
   }
 }
+// The questions, each one traceable to what raised it. Sending is the human's: the button puts
+// the question in the composer and gets out of the way.
+function renderAsks() {
+  if (!nostromo.askList) return;
+  nostromo.askList.replaceChildren();
+  if (!nostromo.asks.length) {
+    nostromo.askList.append(el('li', 'none', 'Nothing to ask: every open question has an answer and nothing is adrift.'));
+    return;
+  }
+  for (const ask of nostromo.asks) {
+    const row = el('li', `ask ask-${ask.source}`);
+    row.append(el('p', 'q', ask.text));
+    row.append(el('p', 'why', ask.why.toUpperCase()));
+    const actions = el('div', 'actions');
+    const put = el('button', 'primary', 'PUT IN THE COMPOSER');
+    put.type = 'button';
+    put.addEventListener('click', () => {
+      els.input.value = ask.text;
+      autosize();
+      nostromo.dialog.close();
+      els.input.focus();
+      els.input.setSelectionRange(els.input.value.length, els.input.value.length);
+      toast('NOSTROMO › the question is in the composer. Send it to whoever should answer it, or to @madre, which costs nothing.');
+    });
+    const drop = el('button', null, 'NOT THIS');
+    drop.type = 'button';
+    drop.title = 'Stop offering this one. Nothing is forgotten and nothing is written.';
+    drop.addEventListener('click', async () => {
+      drop.disabled = true;
+      await fetch('/api/memory/ask/dismiss', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: ask.id, designation: nostromoDesignation() }) }).catch(() => null);
+      nostromo.asks = nostromo.asks.filter((one) => one.id !== ask.id);
+      if (nostromo.askButton) nostromo.askButton.textContent = `ASK · ${nostromo.asks.length}`;
+      renderAsks();
+    });
+    actions.append(put, drop);
+    // Where the question came from: the memory itself, one click away on the map.
+    if (ask.memoryId != null) {
+      const look = el('button', null, 'SEE THE MEMORY');
+      look.type = 'button';
+      look.addEventListener('click', () => {
+        const node = nostromo.nodes.find((one) => one.memory.id === ask.memoryId);
+        if (node) { nostromo.askPanel.hidden = true; nostromo.askButton?.setAttribute('aria-pressed', 'false'); showNostromoCard(node); }
+      });
+      actions.append(look);
+    }
+    row.append(actions);
+    nostromo.askList.append(row);
+  }
+}
+nostromo.askButton?.addEventListener('click', () => {
+  if (!nostromo.askPanel) return;
+  const open = nostromo.askPanel.hidden;
+  nostromo.askPanel.hidden = !open;
+  nostromo.askButton.setAttribute('aria-pressed', String(open));
+  if (open) { nostromo.card.hidden = true; nostromo.selected = null; stopTraffic(); renderAsks(); }
+});
+document.querySelector('#nostromo-asks-close')?.addEventListener('click', () => {
+  nostromo.askPanel.hidden = true;
+  nostromo.askButton?.setAttribute('aria-pressed', 'false');
+});
 nostromo.coldButton?.addEventListener('click', () => {
   nostromo.coldOnly = !nostromo.coldOnly;
   nostromo.coldButton.setAttribute('aria-pressed', String(nostromo.coldOnly));
@@ -4913,6 +4977,14 @@ function buildNostromo(data) {
   // The cold zone: what has had its chances and was never the answer. Named, so it can be
   // looked at and decided about, instead of sitting in the dark being counted as archive.
   nostromo.cold = data.cold ?? { count: 0, standing: memories.length, share: 0 };
+  // What the room should ask next. Written from the archive, never sent by it.
+  nostromo.asks = data.ask ?? [];
+  if (nostromo.askButton) {
+    nostromo.askButton.hidden = !nostromo.asks.length;
+    nostromo.askButton.textContent = `ASK · ${nostromo.asks.length}`;
+    if (!nostromo.asks.length && nostromo.askPanel) { nostromo.askPanel.hidden = true; nostromo.askButton.setAttribute('aria-pressed', 'false'); }
+  }
+  if (nostromo.askPanel && !nostromo.askPanel.hidden) renderAsks();
   if (nostromo.coldButton) {
     nostromo.coldButton.hidden = !nostromo.cold.count;
     nostromo.coldButton.textContent = `COLD · ${nostromo.cold.count}`;
