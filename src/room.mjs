@@ -11,6 +11,8 @@ import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
 import { questionsFor } from './asking.mjs';
+import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE } from './exam.mjs';
+import { MADRE_ADAPTER } from './adapters/madre.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
@@ -70,6 +72,9 @@ export class Room {
   #memory;                 // RoomMemory: durable recall of everything said outside GHOST
   #recallShare;            // fraction of the context budget recall may take
   #cascade;                // whether recall also carries what a memory keeps arriving with
+  #examRunning = null;     // the test in flight, if any
+  #examProgress = null;
+  #examStop = false;
   #archivist;              // room/archivist: who distils, when, and the bench
   #vectors;                // room/vectors: embeddings filled in the background
   #escalation;             // room/escalation: plan steps waiting for the human
@@ -381,6 +386,104 @@ export class Room {
       // deeper where it is already fat. Nothing is sent: the questions are the human's to use.
       ask: questionsFor({ notes: memories, cold, dismissed: this.#dismissedAsks() }),
     };
+  }
+
+  /* ---------- the three tests ---------- */
+
+  // What the room can measure about itself, and whether each test can run right now. A test that
+  // cannot run says why instead of returning a number nobody should trust.
+  async exams() {
+    let last = {};
+    try { last = JSON.parse(this.#memory?.metaGet('exams') ?? '{}'); } catch { last = {}; }
+    const embedder = this.#memory?.embedder?.model ?? null;
+    const localModel = Boolean(this.#invokers[MADRE_ADAPTER]);
+    const cases = this.#memory ? exchanges(await this.#store.readAll()) : [];
+    return {
+      running: this.#examRunning,
+      progress: this.#examProgress,
+      last,
+      can: {
+        coverage: { ok: Boolean(this.#memory) && cases.length > 0, why: !this.#memory ? 'the room has no memory' : cases.length ? null : 'no exchange here is long enough to test with yet', method: embedder ? 'meaning' : 'words' },
+        consistency: { ok: Boolean(this.#memory), why: this.#memory ? null : 'the room has no memory' },
+        match: {
+          ok: Boolean(this.#memory) && localModel && Boolean(embedder) && cases.some((one) => !one.local),
+          why: !localModel ? 'the local model is not running: open MODULES → OLLAMA'
+            : !embedder ? 'this test needs embeddings, which are off'
+              : cases.some((one) => !one.local) ? null : 'nothing here was answered by an agent other than the local one',
+          sample: Math.min(MATCH_SAMPLE, cases.filter((one) => !one.local).length),
+        },
+      },
+      cases: cases.length,
+      embedder,
+    };
+  }
+
+  // Embedding in batches, so a remote embedder is asked a few times and not five hundred.
+  #embedInBatches() {
+    const embedder = this.#memory?.embedder;
+    if (!embedder) return null;
+    return async (texts) => {
+      const out = [];
+      for (let start = 0; start < texts.length; start += 64) out.push(...await embedder.embed(texts.slice(start, start + 64)));
+      return out;
+    };
+  }
+
+  // Running one. Coverage and consistency answer in a moment; the match test asks the local model
+  // a real question at a time and takes minutes, so it runs in the background and reports where
+  // it is. Nothing here writes to the ledger or spends a provider turn.
+  async runExam(which, { findings = [] } = {}) {
+    if (!this.#memory) return { error: 'The room has no memory.' };
+    if (this.#examRunning) return { error: `${this.#examRunning.toUpperCase()} is already running.` };
+    const events = await this.#store.readAll();
+    if (which === 'consistency') {
+      return this.#keepExam(consistencyExam({ findings, notes: this.#memory.memories({ limit: 500 }) }));
+    }
+    if (which === 'coverage') {
+      this.#examRunning = 'coverage';
+      try {
+        const recall = async (text, before) => {
+          const queryVector = await this.#memory.embedQuery(text);
+          const notes = this.#memory.recallMemories(text, { beforeSequence: before, limit: 6, maxChars: 1600, queryVector, fallback: false, track: false, cascade: this.#cascade });
+          const quotes = this.#memory.recall(text, { beforeSequence: before, limit: 6, maxChars: 1600, excerptChars: 420, queryVector });
+          return [...notes.map((note) => note.text), ...(quotes?.entries ?? []).map((entry) => entry.excerpt ?? entry.text)];
+        };
+        return this.#keepExam(await coverageExam({ events, recall, embed: this.#embedInBatches() }));
+      } finally { this.#examRunning = null; }
+    }
+    if (which === 'match') {
+      const invoke = this.#invokers[MADRE_ADAPTER];
+      if (!invoke) return { error: 'The local model is not running. Open MODULES → OLLAMA.' };
+      this.#examRunning = 'match';
+      this.#examProgress = { done: 0, total: 0 };
+      // Answered in the background: the human keeps the room while it runs.
+      void (async () => {
+        try {
+          const result = await matchExam({
+            events,
+            ask: async (question) => (await invoke({ prompt: question, text: question, timeoutMs: 120000 }))?.text ?? '',
+            embed: this.#embedInBatches(),
+            onProgress: (at) => { this.#examProgress = at; },
+            stop: () => this.#examStop,
+          });
+          this.#keepExam(result);
+        } catch (error) {
+          this.#keepExam({ id: 'match', ran: false, at: new Date().toISOString(), says: `The test could not finish: ${error.message}` });
+        } finally { this.#examRunning = null; this.#examStop = false; this.#examProgress = null; }
+      })();
+      return { started: 'match' };
+    }
+    return { error: `No such test "${which}".` };
+  }
+
+  stopExam() { if (this.#examRunning === 'match') this.#examStop = true; return { stopping: this.#examRunning }; }
+
+  #keepExam(result) {
+    let last = {};
+    try { last = JSON.parse(this.#memory?.metaGet('exams') ?? '{}'); } catch { last = {}; }
+    last[result.id] = result;
+    this.#memory?.metaSet('exams', JSON.stringify(last));
+    return result;
   }
 
   // Questions the human has waved off. Kept with the archive, because that is what they are about.

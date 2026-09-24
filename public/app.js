@@ -4061,6 +4061,82 @@ async function loadSettings() {
   renderSettings();
 }
 
+/* ---------- the three tests ---------- */
+
+const EXAM_NAMES = {
+  coverage: 'CAN THE ARCHIVE ANSWER WHAT THIS PROJECT ASKS?',
+  consistency: 'DOES THE ARCHIVE CONTRADICT ITSELF?',
+  match: 'DOES THE LOCAL MODEL LAND WHERE THE AGENTS LANDED?',
+};
+const EXAM_ABOUT = {
+  coverage: 'Real questions from this room, recall run at the moment each one was asked, scored against the reply that was actually given. It asks whether the answer was already in the archive, not whether it was right.',
+  consistency: 'Contradictions EYECAT is still holding, what has been taken out of circulation, and whether aberrations are being filed more often lately than they used to be.',
+  match: 'Real questions answered here by a frontier CLI, asked again of the local model with this archive behind it, and compared against the answer given at the time. It takes minutes and spends nothing.',
+};
+
+function examRow(id, state, run) {
+  const last = state.last?.[id] ?? null;
+  const can = state.can?.[id] ?? { ok: false };
+  const row = el('div', `exam exam-${id}${last?.ran ? (last.passed ? ' passed' : ' failed') : ''}`);
+  const head = el('div', 'exam-head');
+  head.append(el('b', null, EXAM_NAMES[id]));
+  const mark = el('span', 'verdict', last?.ran ? (last.passed ? 'PASSES' : 'NOT YET') : 'NOT RUN');
+  head.append(mark);
+  row.append(head);
+  row.append(el('p', 'note about', EXAM_ABOUT[id]));
+  if (last?.says) {
+    const said = el('p', 'said', last.says);
+    const when = last.at ? ` · ${new Date(last.at).toLocaleString()}` : '';
+    const how = last.ran && last.rate !== undefined ? `${Math.round(last.rate * 100)}% · ${last.n} CASES${last.method ? ` · BY ${last.method.toUpperCase()}` : ''}${last.bar ? ` · BAR ${last.bar}` : ''}${when}` : when.replace(' · ', '');
+    row.append(said);
+    if (how) row.append(el('p', 'note', how.toUpperCase()));
+  }
+  const actions = el('div', 'actions');
+  const button = el('button', can.ok ? 'primary' : null, state.running === id ? 'RUNNING…' : last?.ran ? 'RUN AGAIN' : 'RUN');
+  button.type = 'button';
+  button.disabled = !can.ok || Boolean(state.running);
+  if (!can.ok && can.why) button.title = can.why;
+  button.addEventListener('click', () => run(id));
+  actions.append(button);
+  if (!can.ok && can.why) actions.append(el('span', 'note', can.why.toUpperCase()));
+  if (state.running === id && state.progress?.total) actions.append(el('span', 'note', `${state.progress.done} OF ${state.progress.total}`));
+  row.append(actions);
+  return row;
+}
+
+function examsBlock() {
+  const box = el('div', 'full exams');
+  const draw = (state) => {
+    box.replaceChildren();
+    box.append(el('h4', null, 'THE THREE TESTS'));
+    box.append(el('p', 'note', 'THE READING ABOVE COUNTS WHAT THE ARCHIVE IS MADE OF. THESE ASK WHETHER IT WORKS. NOTHING HERE SPENDS A PROVIDER TURN.'));
+    for (const id of ['coverage', 'consistency', 'match']) box.append(examRow(id, state, run));
+    if (state.running === 'match') {
+      const stop = el('button', null, 'STOP');
+      stop.type = 'button';
+      stop.addEventListener('click', async () => { stop.disabled = true; await fetch('/api/maturity/exam', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stop: true }) }).catch(() => null); });
+      box.append(stop);
+      // While the slow one works, the panel follows it.
+      clearTimeout(examsBlock.timer);
+      examsBlock.timer = setTimeout(() => { void load(); }, 2000);
+    }
+  };
+  const load = async () => {
+    try { draw(await fetch('/api/maturity/exams').then((response) => response.json())); }
+    catch { box.replaceChildren(el('p', 'note', 'THE TESTS ARE UNAVAILABLE')); }
+  };
+  const run = async (id) => {
+    try {
+      const result = await fetch('/api/maturity/exam', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ which: id }) }).then((response) => response.json());
+      if (result.error) toast(`MU/TH/UR › ${result.error}`);
+      else if (result.started) toast('MU/TH/UR › the local model is answering real questions from this room. It takes a few minutes and spends nothing.');
+      if (result.exams) draw(result.exams); else await load();
+    } catch (error) { toast(`The test could not run: ${error.message}`); }
+  };
+  void load();
+  return box;
+}
+
 // A section of MU/TH/UR that folds. The header stays what it was, so nothing about the look
 // changes; what it opens onto goes into the body. Whether it was left open is remembered on this
 // browser, because a panel that forgets is a panel you fight with every time you open it.
@@ -4483,6 +4559,10 @@ function renderSettings() {
     });
     dataset.append(exportButton, datasetNote);
     mform.append(dataset);
+    // The three tests. The reading above counts what the archive is made of; these ask whether it
+    // works. Each one says how it measured and how many cases it had, because a bare number is a
+    // decoration, and each can fail.
+    mform.append(examsBlock());
     memoryBody.append(verdict);
 
 

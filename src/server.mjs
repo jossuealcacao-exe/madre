@@ -1042,6 +1042,17 @@ export async function createPulseServer({
         const grown = maturity({ readiness: datasetReadiness(await store.readAll(), research.memories), notes: research.memories, links: research.links, stats: research.stats });
         return sendJson(response, 200, { ...research, maturity: grown });
       }
+      // The three tests. Reading is free; running one is the human's call, and the slow one says
+      // where it is while it works.
+      if (request.method === 'GET' && url.pathname === '/api/maturity/exams') {
+        return sendJson(response, 200, await room.exams());
+      }
+      if (request.method === 'POST' && url.pathname === '/api/maturity/exam') {
+        const payload = await body(request).catch(() => ({}));
+        if (payload.stop) return sendJson(response, 200, room.stopExam());
+        const result = await room.runExam(String(payload.which ?? ''), { findings: eyecat.findings() });
+        return sendJson(response, result?.error ? 409 : 200, { ...result, exams: await room.exams() });
+      }
       // A question the human has no use for. It stops being offered; nothing else changes.
       if (request.method === 'POST' && url.pathname === '/api/memory/ask/dismiss') {
         const payload = await body(request).catch(() => ({}));

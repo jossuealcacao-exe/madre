@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Madurez: las tres pruebas
+- La lectura de seis señales cuenta de qué está hecho el archivo. No dice si funciona: nada en un montón de notas dice si la correcta vuelve cuando hace falta. Eso solo lo dice una prueba, y una prueba solo vale si puede fallar. En MU/TH/UR, debajo del veredicto, hay tres.
+- **¿Puede el archivo contestar lo que este proyecto pregunta?** Preguntas reales de la sala, el recall corrido en el punto exacto en que cada una se hizo, contra la respuesta que de verdad se dio. Pregunta si el archivo ya tenía con qué, no si la respuesta era correcta.
+- **¿Se contradice el archivo?** Contradicciones que EYECAT sigue sosteniendo, lo que quedó fuera de circulación, y si las aberraciones se archivan más seguido últimamente que antes.
+- **¿Aterriza el modelo local donde aterrizaron los agentes?** Preguntas reales que contestó una CLI de frontera, vueltas a hacer al modelo local con este archivo detrás. Tarda minutos, no gasta un peso, corre en segundo plano y se detiene cuando quieras.
+- Las tres se miden contra un control, y eso fue necesario: la primera corrida de COVERAGE dio treinta de treinta. Dentro de una sala todo habla de lo mismo, así que a un embedder cualquier par de textos le parece cercano. Para contar, lo que el archivo entregó tiene que ganarle a lo que habría entregado para otra pregunta. Con el control, esta sala pasó de 100 % a 40 %, que es un número que sí quiere decir algo.
+
 ### NOSTROMO: la sala escribe las preguntas que le faltan
 - La lectura de madurez decía dónde está flaco el archivo; no decía qué hacer al respecto un martes por la tarde. Ahora sí. `ASK · N` en la cabecera abre una lista corta de preguntas escritas desde lo que el archivo ya tiene, palabra por palabra, sin inventar un tema que nadie levantó.
 - Tres pozos, porque hay tres tipos de hueco: las preguntas que el archivista registró como abiertas y nadie volvió a tocar —el archivo diciendo en voz alta lo que no sabe—; los recuerdos fríos, donde preguntar es la alternativa honesta a tirar algo que nunca tuvo su oportunidad; y la clase de nota de la que el archivo anda corto, que ninguna cantidad de uso arregla sola. De preguntas no se pide más: un archivo corto de preguntas quiere respuestas.

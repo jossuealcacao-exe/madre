@@ -1400,6 +1400,24 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 @media (max-width: 720px) { .ash-block { grid-template-columns: 1fr; } .ash-block i { display: none; } }
 
 /* How grown the archive is. Six readings, the weakest marked, and what would raise it. */
+/* The three tests. A verdict that can say NOT YET is worth more than a bar that only fills. */
+.exams { display: grid; gap: 10px; margin: 18px 0 4px; }
+.exams h4 { margin: 0; font-size: 10px; font-weight: 400; letter-spacing: .22em; color: var(--ph); }
+.exams .exam { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--ph-faint); border-left: 2px solid var(--ph-dim); }
+.exams .exam.passed { border-left-color: var(--ph); }
+.exams .exam.failed { border-left-color: var(--warn); }
+.exams .exam-head { display: flex; align-items: baseline; gap: 12px; }
+.exams .exam-head b { font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .14em; color: rgba(210, 255, 190, .9); }
+.exams .verdict { margin-left: auto; font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--ph-dim); white-space: nowrap; }
+.exams .exam.passed .verdict { color: var(--ph); }
+.exams .exam.failed .verdict { color: var(--warn); }
+.exams .about { text-transform: none; letter-spacing: .02em; line-height: 1.6; }
+.exams .said { margin: 0; font-size: 12px; line-height: 1.55; color: #eaffdf; text-shadow: none; }
+.exams .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 2px; }
+.exams button { border: 1px solid var(--ph); background: transparent; color: var(--ph); font: inherit; font-size: 10px; letter-spacing: .18em; padding: 7px 12px; cursor: pointer; }
+.exams button.primary { background: var(--ph); color: #041004; text-shadow: none; }
+.exams button:disabled { opacity: .4; cursor: default; }
+
 .maturity { display: grid; gap: 6px; margin: 12px 0 4px; }
 .maturity-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .maturity-head b { font-family: var(--mono); font-size: 11px; letter-spacing: .24em; }
