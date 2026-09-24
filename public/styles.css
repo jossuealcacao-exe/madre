@@ -583,10 +583,14 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .modules-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--phosphor); color: var(--phosphor-ink); font-size: 9px; letter-spacing: 0; }
 /* A module card is floors, not a stack of paragraphs: who it is, what it does, what it touches,
    what it lets you set, and the switch. Each floor owns its own padding and is separated by a
-   hairline, so nothing can crowd anything else. The card packs to the top (align-content: start)
-   — as a stretched grid it used to spread the spare height of the tallest card in the row between
-   its own rows, which is why the text drifted apart on some cards and not on others. */
-.module-card { border: 1px solid var(--ph-dim); background: rgba(2, 6, 2, .6); display: grid; align-content: start; gap: 0; padding: 0; max-width: 760px; min-width: 0; overflow-wrap: anywhere; }
+   hairline, so nothing can crowd anything else. The floors stack from the top and the switch is
+   pushed to the bottom — as a stretched grid the card used to spread the spare height of the
+   tallest card in the row between its own rows, which is why the text drifted apart on some
+   cards and not on others. */
+.module-card { border: 1px solid var(--ph-dim); background: rgba(2, 6, 2, .6); display: flex; flex-direction: column; padding: 0; max-width: 760px; min-width: 0; overflow-wrap: anywhere; }
+/* The switch sits on the floor of the card, not wherever the text happens to end: cards in a row
+   are the same height, so their buttons line up along the bottom edge. */
+.module-card > .actions { margin-top: auto; }
 .module-card:not(.dev-card) > * { padding: 16px 20px; }
 .module-card:not(.dev-card) > * + * { border-top: 1px solid var(--ph-faint); }
 .mother-grid > * { min-width: 0; }

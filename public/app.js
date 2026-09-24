@@ -3799,7 +3799,7 @@ function moduleCard(item) {
     const box = el('div', 'module-log');
     box.id = `module-log-${item.id}`;
     for (const line of log) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, line));
-    card.append(box);
+    panel.append(box);
     queueMicrotask(() => { box.scrollTop = box.scrollHeight; });
   }
   return card;

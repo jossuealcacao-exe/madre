@@ -94,6 +94,12 @@ test('every card has the same floors, and the switch is always the last one', as
   assert.ok(shell.includes('versionLabel(item)'), 'the card does not say what version is running');
   assert.ok(shell.includes("cardFold(card, 'WHAT IT TOUCHES'"), 'the bullets are not a section of their own');
   assert.match(shell, /card\.append\(panel, actions\);/, 'the actions are not the last floor of the card');
+  // And the last floor is on the floor: cards in a row are the same height, so every button
+  // lines up along the bottom edge instead of stopping wherever its text ran out.
+  const css = await read('styles.css');
+  assert.match(css, /\.module-card \{[^}]*display: flex[^}]*flex-direction: column/);
+  assert.match(css, /\.module-card > \.actions \{ margin-top: auto; \}/);
+  assert.ok(!/card\.append\(box\);/.test(app.slice(app.indexOf('function moduleCard('))), 'the install log is appended below the button');
 
   // Both kinds of card are built through it, so neither can drift into its own shape.
   assert.match(app, /function builtinCard\(item\) \{[\s\S]{0,400}cardShell\(item/);
