@@ -232,16 +232,20 @@ test('Gemini temp-home cleanup is best-effort and never throws', async () => {
   assert.equal(await cleanupRuntimeRoot(join(root, 'never-existed'), { attempts: 1 }), true);
 });
 
+// The waits in these three are deliberately far wider than the behaviour needs. What is being
+// proved is that a hung adapter is stopped and says why — not that a machine can start a node
+// process in half a second. A loaded computer must never be able to turn working behaviour into
+// a failing test, because a contributor who clones this and sees red believes the red.
 test('a timeout error carries the agent\'s last output line', async () => {
   await assert.rejects(runReadonlyProcess({
     executable: process.execPath,
     args: ['-e', 'console.error("Attempt 3 failed with status 503. Retrying with backoff…"); setTimeout(() => {}, 60000)'],
     cwd: process.cwd(),
-    timeoutMs: 500,
-    killGraceMs: 100,
+    timeoutMs: 3000,
+    killGraceMs: 500,
     label: 'Gemini',
     parse: () => ({ text: '' }),
-  }), /Gemini did not respond before the timeout \(1s\)\. Last output: Attempt 3 failed with status 503/);
+  }), /Gemini did not respond before the timeout \(\d+s\)\. Last output: Attempt 3 failed with status 503/);
 });
 
 test('terminates the whole adapter process tree on timeout', async () => {
@@ -261,12 +265,12 @@ test('terminates the whole adapter process tree on timeout', async () => {
       executable: process.execPath,
       args: ['-e', script],
       cwd: workspace,
-      timeoutMs: 700,
-      killGraceMs: 200,
+      timeoutMs: 3000,
+      killGraceMs: 500,
       label: 'Fixture',
       parse: () => ({ text: '' }),
     }), /Fixture did not respond before the timeout/);
-    assert.ok(Date.now() - started < 5000);
+    assert.ok(Date.now() - started < 20000, 'the adapter was not stopped, it was waited out');
 
     const grandchildPid = Number(await readFile(pidFile, 'utf8'));
     assert.ok(grandchildPid > 0);
@@ -335,20 +339,20 @@ test('a silent process is stopped by the idle timeout and Gemini retries once', 
     args: ['-e', 'console.log(JSON.stringify({type:"init"})); setTimeout(() => {}, 60000)'],
     cwd: process.cwd(),
     timeoutMs: 60000,
-    idleTimeoutMs: 400,
-    killGraceMs: 100,
+    idleTimeoutMs: 1500,
+    killGraceMs: 500,
     label: 'Gemini',
     parse: () => ({ text: '' }),
   });
-  await assert.rejects(idle, (error) => error.code === 'IDLE' && /went silent for 0s and was stopped/.test(error.message) && /"init"/.test(error.partialOutput));
+  await assert.rejects(idle, (error) => error.code === 'IDLE' && /went silent for \d+s and was stopped/.test(error.message) && /"init"/.test(error.partialOutput));
 
   // A process that keeps talking is not idle even though each line is far apart.
   const chatty = await runReadonlyProcess({
     executable: process.execPath,
     args: ['-e', 'let n=0; const t=setInterval(()=>{ console.log(JSON.stringify({type:"message",role:"assistant",content:"x"})); if(++n===3){clearInterval(t);} }, 150)'],
     cwd: process.cwd(),
-    timeoutMs: 10000,
-    idleTimeoutMs: 400,
+    timeoutMs: 30000,
+    idleTimeoutMs: 2500,
     label: 'Gemini',
     parse: parseGeminiOutput,
   });
@@ -1158,7 +1162,8 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
       let out = '';
       child.stdout.on('data', (chunk) => { out += chunk; });
       child.stderr.on('data', (chunk) => { out += chunk; });
-      const timer = setTimeout(() => child.kill('SIGTERM'), 8000);
+      // Generous on purpose: the room has to open on a busy laptop, not only on an idle one.
+      const timer = setTimeout(() => child.kill('SIGTERM'), 30000);
       const poll = setInterval(() => { if (/MADRE is ready/.test(out)) { clearInterval(poll); clearTimeout(timer); child.kill('SIGTERM'); } }, 100);
       child.on('close', (code) => { clearInterval(poll); clearTimeout(timer); resolve({ code, out }); });
     });

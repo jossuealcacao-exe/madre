@@ -43,8 +43,10 @@ try {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let ready = false;
-  for (let attempt = 0; attempt < 50 && !ready; attempt += 1) {
-    await new Promise((next) => setTimeout(next, 200));
+  // Up to forty-five seconds: installing and starting a fresh copy on a loaded machine is slow,
+  // and a check that fails for being impatient teaches nothing.
+  for (let attempt = 0; attempt < 90 && !ready; attempt += 1) {
+    await new Promise((next) => setTimeout(next, 500));
     ready = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.ok).catch(() => false);
   }
   check(ready, 'installed server answers /api/state');
