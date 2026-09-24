@@ -129,6 +129,7 @@ body {
   color: var(--text-2);
 }
 .bar-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1 1 auto; }
+.bar-left .project + .project { margin-left: -6px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; letter-spacing: .22em; font-size: 11px; text-decoration: none; cursor: pointer; }
 .brand:hover .brand-mark { filter: drop-shadow(0 0 10px var(--phosphor)); } .brand:hover .brand-word { color: var(--phosphor); }
 .brand-mark { width: 64px; height: 18px; color: var(--phosphor); overflow: visible; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--phosphor) 55%, transparent)); }
@@ -144,7 +145,7 @@ body {
   .brand-mark .beat-dot { animation: none; opacity: 1; }
   .brand-word { animation: none; opacity: 1; transform: none; }
 }
-.project { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
+.project { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
 .update-command { display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
 .update-command code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--text); }
 .update-command button { font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
@@ -1166,7 +1167,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .chats-body .chat-row:hover .chat-drop, .chats-body .chat-drop:focus-visible { opacity: 1; }
 .chats-body .chat-drop:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .chats-body .chat-drop.sure { opacity: 1; color: #fff; background: var(--danger); }
-.project.chat-here { flex: 0 1 auto; max-width: 320px; color: var(--text-2); }
+.project.chat-here { flex: 0 1 auto; max-width: 340px; color: var(--text-2); }
 .chats-foot { padding: 10px 14px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; color: var(--text-3); }
 /* Its handle sits in the canvas, under the bar, where the conversation it opens begins. */
 .chats-button { grid-row: 3; justify-self: start; align-self: start; z-index: 6; margin: 18px 0 0 20px; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 36px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text-2); cursor: pointer; padding: 0; }
@@ -1463,12 +1464,12 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 
 .maturity { display: grid; gap: 10px; margin: 12px 0 4px; }
 .maturity > .card-fold { border-top: 1px solid var(--ph-faint); padding-top: 10px; }
-.maturity .maturity-next { margin: 0; font-size: 12.5px; line-height: 1.6; color: #eaffdf; text-shadow: none; text-transform: none; letter-spacing: .01em; }
-.maturity .maturity-next b { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; color: var(--ph); margin-right: 8px; }
-.maturity .maturity-next .where { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); white-space: nowrap; }
+.maturity .maturity-next { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.8; letter-spacing: .1em; text-transform: uppercase; color: #eaffdf; text-shadow: 0 0 6px rgba(155, 255, 102, .18); padding: 11px 13px; border: 1px solid var(--ph); border-left-width: 4px; background: var(--ph-faint); }
+.maturity .maturity-next b { font-size: 9px; letter-spacing: .22em; color: var(--ph); margin-right: 10px; }
+.maturity .maturity-next .where { font-size: 9px; letter-spacing: .16em; color: var(--ph); white-space: nowrap; }
 .maturity-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .maturity-head b { font-family: var(--mono); font-size: 11px; letter-spacing: .24em; }
-.maturity-head span { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--ph-dim); }
+.maturity-head span { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; line-height: 1.7; text-transform: uppercase; color: var(--ph-dim); }
 .maturity-head b.stage.empty, .maturity-head b.stage.sparse { color: var(--ph-dim); }
 .maturity-head b.stage.forming { color: var(--ph-dim); }
 .maturity-head b.stage.working, .maturity-head b.stage.mature { color: var(--ph); }

@@ -125,6 +125,8 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   assert.ok(page.indexOf('id="chats-body"') < page.indexOf('id="chats-new"'), 'the way to start a conversation sits above the conversations');
   // One line each: the title is the summary, so a preview under it says the same thing twice.
   assert.ok(!app.includes("el('span', 'said', chat.preview)"), 'a conversation is two lines again');
+  // The handle is how a closed panel is opened; once it is open it would only stand on top of it.
+  assert.match(app, /if \(els\.chatsButton\) els\.chatsButton\.hidden = open;/);
   // And the handle is lit the way the buttons in the bar are, not with a halo of its own.
   assert.match(css, /\.chats-button:hover,\n:root\[data-theme="light"\]|:root\[data-theme="light"\] \.chats-button:hover/);
   // The handle sits in the canvas, under the bar, where the conversation it opens begins.
@@ -138,6 +140,8 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   // Where you are reads as one path: MADRE / project / conversation.
   assert.match(app, /el\('span', 'project chat-here', here\.title\)/);
   assert.match(css, /\.project::before \{ content: "\/ "; \}/);
+  // The conversation sits against the project it belongs to, not at the far end of the bar.
+  assert.match(css, /\.project \{ flex: 0 1 auto/);
   assert.match(app, /fetch\('\/api\/chats', \{ method: 'POST'/, 'nothing starts a conversation');
   // Deleting says what it takes and what it leaves, and asks twice.
   assert.match(app, /Its transcript goes; what the archive learned from it stays/);

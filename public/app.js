@@ -2485,6 +2485,9 @@ async function openChat(id) {
 function setChats(open) {
   chats.open = open;
   els.chats.hidden = !open;
+  // The handle is how a closed panel is opened. Once it is open, the panel has its own way out
+  // and the handle would only stand on top of it.
+  if (els.chatsButton) els.chatsButton.hidden = open;
   els.chatsButton?.setAttribute('aria-pressed', String(open));
   try { localStorage.setItem('pulse.chats', open ? 'open' : 'closed'); } catch { /* no storage */ }
   if (open) void loadChats();

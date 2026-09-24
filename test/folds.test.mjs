@@ -228,3 +228,25 @@ test('mother: nothing inside a connection card is drawn in the page palette', as
     assert.ok(css.includes(piece), `${piece} is still the page's, not the panel's`);
   }
 });
+
+test('mother: a dialog head keeps its buttons on one line, in the order they are used', async () => {
+  const [page, css] = await Promise.all([read('index.html'), read('styles.css')]);
+  // The head is three columns: title, subtitle, and whatever can be pressed. Loose buttons fall
+  // out of the third column onto a line of their own, which is what MODULES was doing.
+  assert.match(css, /\.mother-head \{[^}]*grid-template-columns: auto 1fr auto/);
+  const modules = page.slice(page.indexOf('id="modules"'), page.indexOf('id="modules-note"'));
+  assert.match(modules, /<span class="mother-actions">[\s\S]*modules-add[\s\S]*modules-close[\s\S]*<\/span>/);
+  assert.ok(modules.indexOf('modules-add') < modules.indexOf('modules-close'), 'closing comes before adding');
+});
+
+test('mother: the verdict is written the way the rest of the panel is written', async () => {
+  const css = await read('styles.css');
+  // It was the one paragraph in a terminal that was not in the terminal's own hand.
+  const next = css.match(/\.maturity \.maturity-next \{([^}]*)\}/);
+  assert.ok(next, 'the one thing to do has no styling of its own');
+  assert.match(next[1], /var\(--mono\)/);
+  assert.match(next[1], /text-transform: uppercase/);
+  assert.match(next[1], /border-left-width: 4px/, 'the instruction does not read as an instruction');
+  const says = css.match(/\.maturity-head span \{([^}]*)\}/);
+  assert.match(says[1], /text-transform: uppercase/);
+});
