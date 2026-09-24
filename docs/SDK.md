@@ -44,7 +44,23 @@ Si prefieres importar el SDK, también vale: `import { defineModule } from '@jos
 | `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente |
 | `routes` | Rutas HTTP propias: `{ method, path, handler(ctx, { payload, params, url }) }` → `{ status, body }` |
 | `onEvent(ctx, event)` | Cada evento del ledger |
+| `controls` | Los ajustes de tu módulo, declarados en vez de dibujados: `[{ key, label, type: 'select' \| 'switch' \| 'text', options, note, invert }]`. MADRE los pinta en la ficha y los guarda en tu bloque de `config.json` |
+| `onSettings(ctx, settings)` | Te avisa cuando la humana cambió uno de tus `controls`, por si algo vivo tiene que enterarse |
 | `conditions` | Entradas para el catálogo de MU/TH/UR, con remedio por plataforma |
+
+## La ficha
+
+Todas las fichas de MODULES tienen los mismos pisos, en el mismo orden. No dibujas una tarjeta: declaras, y MADRE la arma. Es lo que hace que siete módulos —y el tuyo— se lean igual.
+
+| Piso | Qué muestra | De dónde sale |
+|---|---|---|
+| 1 · Quién es | el nombre, `ON`/`OFF`, quién lo hizo, la versión, el botón `↻` y lo que encontró la última mirada | `name`, `vendor`, `version` o `tracks`, `status(ctx).status.detail` |
+| 2 · Qué hace | una frase, no tres | `summary` |
+| 3 · Qué toca | lo que escribe y lo que necesita, plegado, con su número al lado | `creates`, `requires` (y `commands`, en su propio pliegue) |
+| 4 · Ajustes | lo tuyo: selectores, interruptores, campos | `controls`, y lo que tu módulo lea de sí mismo |
+| 5 · El interruptor | install, enable o disable. Solo, y siempre abajo | `toggle` / `installCommand` |
+
+El estado es una palabra y un punto —`ON` u `OFF`—, nunca un botón: lo único que se presiona en una ficha es lo de abajo. Un módulo apagado se atenúa entero menos ese botón.
 
 ## El `ctx`
 

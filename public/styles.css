@@ -581,14 +581,28 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 /* ================= MODULES ================= */
 .modules-glyph { border-radius: 50%; }
 .modules-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--phosphor); color: var(--phosphor-ink); font-size: 9px; letter-spacing: 0; }
-.module-card { border: 1px solid var(--ph-dim); padding: 18px 20px; background: rgba(2, 6, 2, .6); display: grid; gap: 12px; max-width: 760px; min-width: 0; overflow-wrap: anywhere; }
+/* A module card is floors, not a stack of paragraphs: who it is, what it does, what it touches,
+   what it lets you set, and the switch. Each floor owns its own padding and is separated by a
+   hairline, so nothing can crowd anything else. The card packs to the top (align-content: start)
+   — as a stretched grid it used to spread the spare height of the tallest card in the row between
+   its own rows, which is why the text drifted apart on some cards and not on others. */
+.module-card { border: 1px solid var(--ph-dim); background: rgba(2, 6, 2, .6); display: grid; align-content: start; gap: 0; padding: 0; max-width: 760px; min-width: 0; overflow-wrap: anywhere; }
+.module-card:not(.dev-card) > * { padding: 16px 20px; }
+.module-card:not(.dev-card) > * + * { border-top: 1px solid var(--ph-faint); }
 .mother-grid > * { min-width: 0; }
-.module-card .head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.module-card .head { display: grid; gap: 7px; }
+.module-card .head .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; }
 .module-card h4 { margin: 0; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; }
-.module-card .state { font-size: 10px; letter-spacing: .18em; padding: 4px 8px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
-.module-card .detail { font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); }
-.module-card .state.installed { color: var(--ph); border-color: var(--ph); }
-.module-card .state.running { color: #ffd166; border-color: #ffd166; animation: blink 1s infinite; }
+/* The state is a state, not a button: a word and a dot, never a box you want to press. */
+.module-card .state { font-family: var(--mono); font-size: 9.5px; letter-spacing: .18em; color: var(--ph-dim); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.module-card .state::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; }
+.module-card .state.on { color: var(--ph); }
+.module-card .state.on::before { opacity: 1; box-shadow: 0 0 8px var(--ph); }
+.module-card .state.running { color: #ffd166; animation: blink 1s infinite; }
+/* Switched off, the whole card steps back — except the switch that turns it on again. */
+.module-card.off { border-color: var(--ph-faint); }
+.module-card.off > *:not(.actions) { opacity: .52; }
+.module-card .detail { font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); line-height: 1.5; }
 .module-card p { margin: 0; font-size: 12.5px; line-height: 1.6; color: rgba(210, 255, 190, .85); text-shadow: none; }
 .module-card ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: rgba(210, 255, 190, .8); text-shadow: none; }
 .module-card .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -1290,23 +1304,28 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
    and every number is given room so it can never land on its own label. */
 /* The version line: who made it, what version is running, the button that goes and looks for a
    newer one, and what the last look found. */
-.module-card .vendor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .18em; color: var(--ph-dim); }
-.module-card .vendor .check { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; line-height: 1; letter-spacing: 0; padding: 2px 6px; cursor: pointer; }
-.module-card .vendor .check:hover { border-color: var(--ph); color: var(--ph); }
-.module-card .vendor .check:disabled { opacity: .4; cursor: default; }
-.module-card .vendor .update { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); text-shadow: none; }
-.module-card .vendor .update:empty { display: none; }
-.module-card .vendor .update.new { color: var(--warn); }
+.module-card .vendor { font-size: 9.5px; letter-spacing: .2em; color: var(--ph-dim); line-height: 1.4; }
+/* The version, the button that goes and looks, and what the last look found. */
+.module-card .version { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.module-card .version b { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--ph); text-shadow: none; }
+.module-card .version .check { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 11px; line-height: 1; letter-spacing: 0; padding: 3px 7px; cursor: pointer; }
+.module-card .version .check:hover { border-color: var(--ph); color: var(--ph); }
+.module-card .version .check:disabled { opacity: .4; cursor: default; }
+.module-card .version .update { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); text-shadow: none; }
+.module-card .version .update:empty { display: none; }
+.module-card .version .update.new { color: var(--warn); }
 .module-card .card-panel { display: grid; gap: 14px; }
 .module-card .card-panel:empty, .module-card .actions:empty { display: none; }
 .module-card .card-block { display: grid; gap: 8px; }
 .module-card .card-block h5 { margin: 0; font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); border: 0; padding: 0; }
-.module-card .card-toggles { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.module-card .card-toggles { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.module-card .card-toggles .control { display: inline-flex; align-items: center; gap: 8px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); }
+.module-card .card-toggles .control input[type="text"] { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .04em; padding: 5px 8px; }
 .module-card .card-toggles .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }
 .module-card .card-toggles .toggle input { accent-color: var(--brew); }
 
 /* A fold inside a card: the section name, how many lines are behind it, and its own button. */
-.module-card .card-fold { border-top: 1px solid var(--ph-faint); padding-top: 10px; }
+.module-card .card-fold > summary .count { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); }
 .module-card .card-fold > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
 .module-card .card-fold > summary::-webkit-details-marker { display: none; }
 .module-card .card-fold > summary b { font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); }

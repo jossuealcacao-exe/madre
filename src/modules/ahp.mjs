@@ -14,7 +14,7 @@ const VERSION = '1.4.1';
 
 async function detect(projectRoot) {
   const manifest = await readJson(join(projectRoot, '.ahp', 'manifest.json'));
-  if (!manifest) return { installed: false };
+  if (!manifest) return { installed: false, detail: 'not in this project' };
   const pinned = await packageVersion(PACKAGE, { projectRoot });
   return {
     installed: true,

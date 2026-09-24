@@ -3366,7 +3366,7 @@ function cardFold(card, label, { key, count = null, open = false } = {}) {
   box.open = foldState()[key] ?? open;
   const head = el('summary');
   head.append(el('b', null, label));
-  if (count !== null) head.append(el('span', 'fold-badge', String(count)));
+  if (count !== null) head.append(el('span', 'count', String(count)));
   const caret = el('span', 'caret');
   const mark = () => { caret.textContent = box.open ? '▾ COLLAPSE' : '▸ EXPAND'; };
   mark();
@@ -3404,14 +3404,24 @@ function metrics(box, rows) {
 // does, what it touches, how it is doing — and then, last and alone, the switch. The eye learns
 // the shape once and finds the button in the same place on all of them.
 function cardShell(item, { on, state: stateText }) {
-  const card = el('article', 'module-card');
+  const card = el('article', `module-card${on ? '' : ' off'}`);
   card.id = `module-${item.id}`;
+
+  // FLOOR 1 · who it is: the name, whether it is on, and then the version with the one button
+  // that goes and looks for a newer one.
   const head = el('div', 'head');
-  const title = el('div');
-  title.append(el('h4', null, item.name));
-  // The version, and beside it the one button that goes and looks for a newer one.
-  const line = el('div', 'vendor');
-  line.append(el('span', 'who', `${item.vendor} · ${versionLabel(item)}`));
+  const top = el('div', 'top');
+  top.append(el('h4', null, item.name));
+  if (item.external) {
+    const dev = el('span', 'dev-tag', 'DEV');
+    dev.title = `Your module · ${item.origin === 'project' ? 'this project' : 'every room'} · ${item.file}`;
+    top.append(dev);
+  }
+  top.append(el('span', `state ${stateText === 'INSTALLING' ? 'running' : on ? 'on' : 'off'}`, stateText));
+  head.append(top);
+  head.append(el('div', 'vendor', item.vendor));
+  const line = el('div', 'version');
+  line.append(el('b', null, versionLabel(item)));
   const said = el('span', 'update');
   const known = updateWord(item.update);
   if (known) { said.className = `update ${known.kind}`; said.textContent = known.text; said.title = updateNote(item, item.update); }
@@ -3438,21 +3448,18 @@ function cardShell(item, { on, state: stateText }) {
     } finally { check.disabled = false; }
   });
   line.append(check, said);
-  title.append(line);
-  head.append(title);
-  if (item.external) {
-    const dev = el('span', 'dev-tag', 'DEV');
-    dev.title = `Your module · ${item.origin === 'project' ? 'this project' : 'every room'} · ${item.file}`;
-    head.append(dev);
-  }
-  head.append(el('span', `state${on ? ' installed' : ''}${stateText === 'INSTALLING' ? ' running' : ''}`, stateText));
+  head.append(line);
+  if (item.status?.detail) head.append(el('div', 'detail', item.status.detail.toUpperCase()));
+  if (item.external) head.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
   card.append(head);
-  if (item.status?.detail) card.append(el('div', 'detail', item.status.detail.toUpperCase()));
-  if (item.external) card.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
-  if (item.summary) card.append(el('p', null, item.summary));
+
+  // FLOOR 2 · what it does, in one paragraph.
+  if (item.summary) { const about = el('div', 'about'); about.append(el('p', null, item.summary)); card.append(about); }
+
+  // FLOOR 3 · what it touches, folded, with the count and nothing else.
   const bullets = [
-    ...(item.creates ?? []).map((line) => ['WRITES', line]),
-    ...(item.requires ?? []).map((line) => ['NEEDS', line]),
+    ...(item.creates ?? []).map((text) => ['WRITES', text]),
+    ...(item.requires ?? []).map((text) => ['NEEDS', text]),
   ];
   if (bullets.length) {
     const body = cardFold(card, 'WHAT IT TOUCHES', { key: `mod.${item.id}.touches`, count: bullets.length });
@@ -3466,10 +3473,62 @@ function cardShell(item, { on, state: stateText }) {
     for (const line of item.commands) list.append(el('li', null, line));
     body.append(list);
   }
+
+  // FLOOR 4 · the module's own: what it reads, what it lets you set.
+  // FLOOR 5 · and the switch, alone, at the bottom of every card.
   const panel = el('div', 'card-panel');
   const actions = el('div', 'actions');
   card.append(panel, actions);
   return { card, panel, actions };
+}
+
+// FLOOR 4, the part every module can have without writing a line of interface: the settings it
+// declared in the SDK. MADRE draws them and saves them into the module's own block of config.
+function cardControls(panel, item) {
+  if (!item.controls?.length) return;
+  const box = cardBlock(panel, 'SETTINGS');
+  const row = el('div', 'card-toggles');
+  const save = async (control, value, field) => {
+    field.disabled = true;
+    const response = await fetch(`/api/extensions/${item.id}/settings`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: control.key, value }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) toast(`MU/TH/UR › ${result.error ?? `${item.name} could not save ${control.label}.`}`);
+    await refreshModules();
+  };
+  for (const control of item.controls) {
+    if (control.type === 'select') {
+      const field = el('label', 'control');
+      field.append(el('span', null, control.label));
+      const select = el('select');
+      for (const option of control.options) { const choice = el('option', null, option); choice.value = option; if (option === control.value) choice.selected = true; select.append(choice); }
+      select.title = control.note;
+      select.addEventListener('change', () => save(control, select.value, select));
+      field.append(select);
+      row.append(field);
+    } else if (control.type === 'switch') {
+      const field = el('label', 'toggle');
+      const box2 = el('input');
+      box2.type = 'checkbox';
+      box2.checked = control.invert ? control.value === false : control.value === true;
+      box2.addEventListener('change', () => save(control, control.invert ? !box2.checked : box2.checked, box2));
+      field.title = control.note;
+      field.append(box2, el('span', null, control.label));
+      row.append(field);
+    } else {
+      const field = el('label', 'control');
+      field.append(el('span', null, control.label));
+      const input = el('input');
+      input.type = 'text';
+      input.value = control.value ?? '';
+      input.title = control.note;
+      input.addEventListener('change', () => save(control, input.value, input));
+      field.append(input);
+      row.append(field);
+    }
+  }
+  box.append(row);
 }
 
 // The economy, on the card of the thing it is about. It fills as the room is used, because it
@@ -3513,7 +3572,8 @@ function ashReading(panel) {
 function builtinCard(item) {
   const on = Boolean(item.status?.installed);
   const fixed = Boolean(item.fixed);
-  const { card, panel, actions } = cardShell(item, { on, state: fixed ? (on ? 'ON' : 'UNAVAILABLE') : on ? 'ENABLED' : 'DISABLED' });
+  const { card, panel, actions } = cardShell(item, { on, state: on ? 'ON' : 'OFF' });
+  cardControls(panel, item);
 
   if (item.id === 'ollama') {
     const info = item.ollama ?? { running: false, models: [], settings: {} };
@@ -3653,33 +3713,6 @@ function builtinCard(item) {
     return card;
   }
 
-  if (item.id === 'playwright') {
-    // The browser and whether it shows itself are this module's own settings; they belong here.
-    const box = cardBlock(panel, 'BROWSER');
-    const row = el('div', 'card-toggles');
-    const browsers = el('select');
-    for (const name of ['chromium', 'firefox', 'webkit']) {
-      const option = el('option', null, name.toUpperCase());
-      option.value = name;
-      if (name === (item.settings?.browser ?? 'chromium')) option.selected = true;
-      browsers.append(option);
-    }
-    browsers.title = 'Which browser engine the agents drive';
-    const headed = el('label', 'toggle');
-    const input = el('input'); input.type = 'checkbox'; input.checked = item.settings?.headless === false;
-    headed.append(input, el('span', null, 'SHOW THE WINDOW'));
-    headed.title = 'Off, the browser runs headless. On, it opens on this screen so you can watch.';
-    const save = async (patch) => {
-      const response = await fetch('/api/playwright/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) });
-      if (!response.ok) toast('MU/TH/UR › PLAYWRIGHT settings could not be saved.');
-      await refreshModules();
-    };
-    browsers.addEventListener('change', () => { browsers.disabled = true; save({ browser: browsers.value }); });
-    input.addEventListener('change', () => { input.disabled = true; save({ headless: !input.checked }); });
-    row.append(browsers, headed);
-    box.append(row);
-  }
-
   if (item.preflight && !item.preflight.ok) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', 'CANNOT ENABLE YET'));
@@ -3692,22 +3725,12 @@ function builtinCard(item) {
     return card;
   }
 
-  if (item.models?.length) {
-    // Image Studio: the model it draws with is a setting, not a button.
-    const box = cardBlock(panel, 'MODEL');
-    const model = el('select');
-    for (const name of item.models) { const option = el('option', null, name); option.value = name; if (name === item.model) option.selected = true; model.append(option); }
-    model.title = 'Gemini image model used by Image Studio';
-    model.id = `module-model-${item.id}`;
-    box.append(model);
-  }
   const toggle = el('button', on ? null : 'primary', on ? 'DISABLE' : 'ENABLE');
   toggle.type = 'button';
   toggle.disabled = !on && item.preflight && !item.preflight.ok;
   toggle.addEventListener('click', async () => {
     toggle.disabled = true;
-    const chosen = card.querySelector(`#module-model-${item.id}`);
-    const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, ...(chosen ? { model: chosen.value } : {}) }) });
+    const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) toast(result.error ?? `Could not toggle ${item.name}.`);
     else {
@@ -3724,10 +3747,8 @@ function moduleCard(item) {
   if (item.kind === 'builtin') return builtinCard(item);
   const running = modules.installing === item.id;
   const installed = Boolean(item.status?.installed);
-  const { card, panel, actions } = cardShell(item, {
-    on: installed,
-    state: running ? 'INSTALLING' : installed ? 'INSTALLED' : 'NOT IN THIS PROJECT',
-  });
+  const { card, panel, actions } = cardShell(item, { on: installed, state: running ? 'INSTALLING' : installed ? 'ON' : 'OFF' });
+  cardControls(panel, item);
 
   const blocked = item.preflight && !item.preflight.ok;
   if (blocked) {

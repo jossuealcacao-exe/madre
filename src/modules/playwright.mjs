@@ -45,6 +45,10 @@ export default defineModule({
   requires: ['@playwright/mcp and a chromium browser on this machine', 'RIPLEY on, to have pages to open'],
   settings: { enabled: false, browser: 'chromium', headless: true },
   card: 'switch',
+  controls: [
+    { key: 'browser', label: 'BROWSER', type: 'select', options: PLAYWRIGHT_BROWSERS, note: 'Which browser engine the agents drive.' },
+    { key: 'headless', label: 'SHOW THE WINDOW', type: 'switch', invert: true, note: 'Off, the browser runs headless. On, it opens on this screen so you can watch.' },
+  ],
   async status(ctx) {
     const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });
     return {
@@ -61,20 +65,6 @@ export default defineModule({
     const outputDir = turn.scratchDir ?? join(turn.roomDir ?? ctx.stateRoot, 'playwright');
     return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false })];
   },
-  // The browser it drives and whether it shows itself: the module's own settings, saved from its
-  // own card. Nothing here reaches a project.
-  routes: [
-    { method: 'POST', path: '/api/playwright/settings', handler: async (ctx, { payload }) => {
-      const next = { ...(ctx.config.modules?.playwright ?? {}) };
-      if (typeof payload.browser === 'string') {
-        if (!PLAYWRIGHT_BROWSERS.includes(payload.browser)) return { status: 400, body: { error: `Browser must be one of ${PLAYWRIGHT_BROWSERS.join(', ')}.` } };
-        next.browser = payload.browser;
-      }
-      if (typeof payload.headless === 'boolean') next.headless = payload.headless;
-      await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), playwright: next } });
-      return { status: 200, body: { settings: { browser: next.browser ?? 'chromium', headless: next.headless !== false } } };
-    } },
-  ],
   conditions: [{
     id: 'playwright-missing',
     severity: 'informational',

@@ -1050,7 +1050,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   const project = join(root, 'project');
   await mkdir(project);
   try {
-    assert.deepEqual(await ahp.detect(project), { installed: false });
+    assert.deepEqual(await ahp.detect(project), { installed: false, detail: 'not in this project' });
     const listed = await listExtensions({ projectRoot: project, agents });
     assert.equal(listed[0].status.installed, false);
     assert.equal(listed[0].install.display, plan.display);

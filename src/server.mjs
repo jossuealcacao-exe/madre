@@ -1193,6 +1193,14 @@ export async function createPulseServer({
         const update = await context.services.moduleUpdate(item, { force: true });
         return sendJson(response, 200, { id: item.id, version: item.version, update });
       }
+      // One setting from a card's own floor. The module declared it; MADRE saves it.
+      const settingMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/settings$/);
+      if (settingMatch) {
+        const module = moduleById(settingMatch[1]);
+        if (!module?.setControl) return sendJson(response, 404, { error: `No settings on "${settingMatch[1]}".` });
+        const result = await module.setControl(await moduleContext(), await body(request));
+        return sendJson(response, result.status, result.body);
+      }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {
         const result = await installExtension(installMatch[1], await body(request));

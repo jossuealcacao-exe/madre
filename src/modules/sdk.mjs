@@ -64,6 +64,15 @@ export function defineModule(spec) {
     tracks: spec.tracks ? { name: spec.tracks.name ?? spec.tracks.npm ?? spec.tracks.github ?? null, npm: spec.tracks.npm ?? null, github: spec.tracks.github ?? null } : null,
     summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
+    // The settings floor of the card, declared instead of drawn: MADRE renders these and saves
+    // them into the module's own block of ~/.pulse/config.json.
+    controls: (spec.controls ?? []).map((control) => {
+      if (!control?.key) throw new Error(`Module ${spec.id}: a control needs a key.`);
+      const type = control.type ?? 'switch';
+      if (!['select', 'switch', 'text'].includes(type)) throw new Error(`Module ${spec.id}: control ${control.key} has no such type "${type}".`);
+      if (type === 'select' && !control.options?.length) throw new Error(`Module ${spec.id}: control ${control.key} is a select with no options.`);
+      return { key: control.key, label: control.label ?? control.key.toUpperCase(), type, options: control.options ?? [], note: control.note ?? '', invert: Boolean(control.invert) };
+    }),
   };
   const settingsFrom = (config) => ({ ...defaults, ...(config?.modules?.[configKey] ?? {}) });
   const module = {
@@ -106,6 +115,7 @@ export function defineModule(spec) {
         ...own,
         version: stamp.version,
         versionSource: stamp.source,
+        controls: base.controls.map((control) => ({ ...control, value: settings[control.key] ?? null })),
         ships: this.external ? null : await madreRelease(),
         runs,
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
@@ -113,6 +123,25 @@ export function defineModule(spec) {
         install: own.install ?? (kind === 'builtin' ? { display: installed ? `disable ${base.name}` : `enable ${base.name} (config.json)`, platforms: [] } : { display: '', platforms: [] }),
       };
     },
+
+    // One setting from the card's own floor. Only a key the module declared, only a value its
+    // type allows, and the module hears about it if it asked to.
+    setControl: base.controls.length ? async (ctx, { key, value } = {}) => {
+      const control = base.controls.find((known) => known.key === key);
+      if (!control) return { status: 400, body: { error: `${base.name} has no setting "${key}".` } };
+      let next = value;
+      if (control.type === 'switch') {
+        if (typeof value !== 'boolean') return { status: 400, body: { error: `${control.label} is on or off.` } };
+      } else if (control.type === 'select') {
+        if (!control.options.includes(value)) return { status: 400, body: { error: `${control.label} must be one of ${control.options.join(', ')}.` } };
+      } else {
+        next = String(value ?? '').slice(0, 500);
+      }
+      const settings = { ...settingsFrom(ctx.config), [key]: next };
+      await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), [configKey]: { ...(ctx.config.modules?.[configKey] ?? {}), [key]: next } } });
+      if (spec.onSettings) await spec.onSettings({ ...ctx, settings }, settings);
+      return { status: 200, body: { settings: Object.fromEntries(base.controls.map((known) => [known.key, settings[known.key] ?? null])) } };
+    } : null,
 
     // The switch. Default for builtins: flip `enabled`, persist, tell the room.
     // A module may guard it (`confirm`) or replace it (`toggle`).

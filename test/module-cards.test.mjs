@@ -103,8 +103,9 @@ test('every card has the same floors, and the switch is always the last one', as
   assert.ok(app.includes("ashReading(panel)"), 'the economy is not on Ash\'s card');
   assert.ok(app.includes("cardBlock(panel, 'LOCAL BRAIN')"), 'Ollama does not report on its own card');
   assert.ok(app.includes("cardBlock(panel, 'ROLES')"), 'the local roles are not settings on the card');
-  assert.ok(app.includes("cardBlock(panel, 'BROWSER')"), 'PLAYWRIGHT keeps its settings out of reach');
-  assert.ok(app.includes("cardBlock(panel, 'MODEL')"), 'the image model is not a setting on the card');
+  // And the settings floor is declared, not drawn: any module gets one by saying what it has.
+  assert.ok(app.includes("cardBlock(panel, 'SETTINGS')"), 'a module cannot have settings on its card');
+  assert.match(app, /cardControls\(panel, item\);/);
 });
 
 test('the numbers on a card can never land on their own labels', async () => {
@@ -147,8 +148,8 @@ test('every card carries a button that goes and looks for a newer version', asyn
   assert.match(app, /const check = el\('button', 'check', '↻'\)/);
   assert.match(app, /fetch\(`\/api\/extensions\/\$\{item\.id\}\/updates`, \{ method: 'POST' \}\)/);
   assert.match(app, /const known = updateWord\(item\.update\)/, 'a card ignores what was already checked');
-  assert.match(css, /\.module-card \.vendor \.check \{/);
-  assert.match(css, /\.module-card \.vendor \.update\.new \{[^}]*var\(--warn\)/, 'a new version is not marked');
+  assert.match(css, /\.module-card \.version \.check \{/);
+  assert.match(css, /\.module-card \.version \.update\.new \{[^}]*var\(--warn\)/, 'a new version is not marked');
 
   // The server answers for one card at a time, and MODULES reads from the cache only.
   const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
@@ -211,4 +212,40 @@ test('a module declares where a newer version would come from, and the check is 
     assert.equal(off.source, 'off');
     assert.equal(calls.length, before, 'a disabled check still reached out');
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('a module declares its settings and MADRE draws them, for anyone who writes one', async () => {
+  const { defineModule } = await import('../src/modules/sdk.mjs');
+  const saved = [];
+  const module = defineModule({
+    id: 'probe-module', name: 'Probe', version: '1.0.0',
+    settings: { enabled: false, browser: 'chromium', loud: true, note: '' },
+    controls: [
+      { key: 'browser', label: 'BROWSER', type: 'select', options: ['chromium', 'firefox'] },
+      { key: 'loud', type: 'switch', invert: true },
+      { key: 'note', type: 'text' },
+    ],
+    async onSettings(ctx, settings) { saved.push(settings.browser ?? settings.note); },
+  });
+  const ctx = { config: { modules: {} }, updateConfig: async (patch) => { ctx.config = { ...ctx.config, ...patch }; } };
+
+  // A key it never declared, and a value of the wrong shape, are both refused.
+  assert.equal((await module.setControl(ctx, { key: 'enabled', value: true })).status, 400, 'an undeclared key was written');
+  assert.equal((await module.setControl(ctx, { key: 'browser', value: 'lynx' })).status, 400, 'a select took a value outside its options');
+  assert.equal((await module.setControl(ctx, { key: 'loud', value: 'yes' })).status, 400, 'a switch took something that is not a switch');
+
+  // A good one is written into the module's own block of config.json, and the module hears
+  // about it. The block is the id in camelCase, the same one `settings` already lives under.
+  const ok = await module.setControl(ctx, { key: 'browser', value: 'firefox' });
+  assert.equal(ok.status, 200);
+  assert.equal(module.configKey, 'probeModule');
+  assert.equal(ctx.config.modules.probeModule.browser, 'firefox');
+  assert.deepEqual(saved, ['firefox']);
+  assert.deepEqual(ok.body.settings, { browser: 'firefox', loud: true, note: '' });
+
+  // A control with no type is a switch, and a select with no options is a mistake, not a card.
+  assert.equal(module.controls[1].type, 'switch');
+  assert.equal(module.controls[1].label, 'LOUD');
+  assert.throws(() => defineModule({ id: 'bad-one', name: 'Bad', controls: [{ key: 'x', type: 'select' }] }), /select with no options/);
+  assert.throws(() => defineModule({ id: 'bad-two', name: 'Bad', controls: [{ label: 'X' }] }), /needs a key/);
 });

@@ -17,6 +17,9 @@ export default defineModule({
   models: MODELS,
   settings: { enabled: false, model: MODELS[0] },
   card: 'image-studio',
+  controls: [{ key: 'model', label: 'MODEL', type: 'select', options: MODELS, note: 'The Gemini image model Image Studio draws with. It bills against your own key.' }],
+  // Changing the model while it is on has to reach the running room, not just the file.
+  async onSettings(ctx, settings) { if (settings.enabled) ctx.services.setImageModule({ enabled: true, model: settings.model }); },
   async status(ctx) {
     const key = await ctx.services.imageKey();
     const model = ctx.settings.model ?? MODELS[0];

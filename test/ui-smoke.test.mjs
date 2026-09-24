@@ -224,10 +224,12 @@ test('a module card has the same floors whatever the module is, and its numbers 
     card: 'ash', runs: [], status: { installed: true, detail: 'on' }, preflight: { ok: true, problems: [] }, install: { display: '', platforms: [] },
   });
   const floors = ash.children.filter((child) => typeof child !== 'string');
-  assert.equal(floors[0].className, 'head', 'the card does not open with its name');
+  assert.deepEqual(floors.map((floor) => floor.className), ['head', 'about', 'card-fold', 'card-panel', 'actions'], 'the floors of a card changed');
   assert.equal(floors.at(-1).className, 'actions', 'the switch is not the last floor');
-  assert.match(ash.querySelector('.vendor').textContent, /MADRE · v1\.0\.0/, 'a module that ships with MADRE does not show its own version');
+  assert.equal(ash.querySelector('.vendor').textContent, 'MADRE');
+  assert.match(ash.querySelector('.version').textContent, /v1\.0\.0/, 'a module that ships with MADRE does not show its own version');
   assert.ok(ash.querySelector('.check'), 'the card has no button to look for a newer version');
+  assert.equal(ash.querySelector('.state').textContent, 'ON', 'the state is not a plain word');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
   assert.match(ash.querySelector('.card-fold').textContent, /WHAT IT TOUCHES/);
   assert.match(ash.querySelector('.card-fold').textContent, /EXPAND|COLLAPSE/, 'the fold has no button');
@@ -254,7 +256,9 @@ test('a module card has the same floors whatever the module is, and its numbers 
   });
   // It wraps a package that is not in this project: not a version, an absence, and what
   // installing would write.
-  assert.match(ahp.querySelector('.vendor').textContent, /INSTALLS 1\.4\.1/);
+  assert.match(ahp.querySelector('.version').textContent, /INSTALLS 1\.4\.1/);
+  assert.equal(ahp.querySelector('.state').textContent, 'OFF');
+  assert.ok(ahp.classList.contains('off'), 'a module that is off does not step back');
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
   assert.match(ahp.querySelector('.actions').textContent, /INSTALL/);
 });
