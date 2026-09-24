@@ -250,3 +250,23 @@ test('mother: the verdict is written the way the rest of the panel is written', 
   const says = css.match(/\.maturity-head span \{([^}]*)\}/);
   assert.match(says[1], /text-transform: uppercase/);
 });
+
+test('mother: the crew lives in the panel, and the bridge is first contact and nothing else', async () => {
+  const [app, page] = await Promise.all([read('app.js'), read('index.html')]);
+
+  // ⚑ CREW used to close MU/TH/UR and take over the canvas with a page in the page's own palette.
+  // It opens the panel's own connections now, where the modes, scopes and keys of each agent are.
+  assert.ok(!app.includes("document.querySelector('#mother')?.close?.(); openBridge();"), 'CREW still leaves the panel');
+  assert.match(app, /#crew-button'\)\?\.addEventListener\('click', async \(\) => \{[\s\S]*settingsUI\.button\.click\(\)/);
+  assert.match(app, /fold\[data-fold="connections"\]/, 'CREW does not open the crew');
+  assert.match(app, /fold\.scrollIntoView/);
+
+  // The bridge shows when there is nobody to talk to, and that is the whole of its job now.
+  assert.match(app, /els\.onboarding\.hidden = usable\.length > 0;/);
+  assert.ok(!app.includes('bridgePinned'), 'the machinery for pinning the bridge open is still there, unreachable');
+  assert.ok(!app.includes('function openBridge'), 'a way to open the bridge on a room that has a crew survives');
+
+  // And what the bridge said about needing only one agent is said where the crew now lives.
+  assert.match(app, /ONE AGENT IS ENOUGH TO OPEN THE ROOM/);
+  assert.match(page, /id="crew-button"/);
+});

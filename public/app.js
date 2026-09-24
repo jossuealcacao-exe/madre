@@ -77,7 +77,6 @@ const state = {
   seen: new Set(),
   userMessages: new Map(),
   replyTo: null,            // the message being answered, shown above the field and sent at its head
-  bridgePinned: false,      // the bridge stays open when the human asked for it
   tourArmed: false,         // the tour fires once, and only when the room can be used
   ollama: null,             // the local brain's state, for the bridge
   ollamaAsked: false,
@@ -1001,7 +1000,9 @@ function renderOnboarding() {
   const crew = [...state.agents.values()];
   const ready = crew.filter((agent) => agent.ready && sessionOf(agent) !== 'signed-out');
   const usable = ready.length ? ready : crew.filter((agent) => agent.ready);
-  els.onboarding.hidden = usable.length > 0 && !state.bridgePinned;
+  // First contact, and only that: the bridge is what a room with nobody in it shows. Adding to a
+  // crew that already exists happens in MU/TH/UR, where the rest of each agent's settings live.
+  els.onboarding.hidden = usable.length > 0;
   els.composer.setAttribute('aria-disabled', usable.length ? 'false' : 'true');
   els.input.disabled = !usable.length;
   els.send.disabled = !usable.length;
@@ -1154,13 +1155,26 @@ function keyForm(agent, { onDone } = {}) {
 }
 
 // The bridge is first contact, but it also opens on demand to add another agent later.
-function openBridge() {
-  state.bridgePinned = true;
-  renderOnboarding();
-  els.onboarding.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-document.querySelector('#crew-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); openBridge(); });
-document.querySelector('#bridge-close')?.addEventListener('click', () => { state.bridgePinned = false; renderOnboarding(); });
+// The crew belongs in MU/TH/UR, written in the panel's own hand. The bridge on the canvas is
+// first contact for a room that has nobody in it — the one moment there is nothing else to show —
+// and adding to a crew that already exists is a settings job, next to the modes, the scopes and
+// the keys it shares a card with.
+document.querySelector('#crew-button')?.addEventListener('click', async () => {
+  if (!settingsUI.open) settingsUI.button.click(); else await loadSettings();
+  // The panel draws itself first; then the crew opens and comes into view.
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const fold = document.querySelector('.mother-section .fold[data-fold="connections"]');
+    if (fold) {
+      fold.open = true;
+      rememberFold('connections', true);
+      syncFoldAll();
+      fold.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+});
+document.querySelector('#bridge-close')?.addEventListener('click', () => { els.onboarding.hidden = true; });
 
 // The local agent is not a CLI: it is Ollama, in one of four states. The card shows the one
 // step that moves it forward, with the command it will run in plain sight.
@@ -4667,6 +4681,7 @@ function renderSettings() {
     key: 'connections',
     badge: out > 0 ? { text: String(out), urgent: true, title: `${out} agent${out === 1 ? '' : 's'} not signed in` } : null,
   });
+  crew.append(el('p', 'note lead', 'ONE AGENT IS ENOUGH TO OPEN THE ROOM. MADRE USES THE SESSION EACH CLI ALREADY HAS: INSTALL ONE HERE OR SIGN IT IN, AND THE ROOM OPENS BY ITSELF.'));
   crew.append(el('p', 'note', 'EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. MADRE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.'));
   const grid = el('div', 'conn-grid');
   for (const agent of data.agents) grid.append(connectionCard(agent));
