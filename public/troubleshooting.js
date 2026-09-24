@@ -3,49 +3,45 @@
 //
 // Pure module (no DOM) so the catalog can be unit-tested and reused by the CLI.
 
+// The two MADRE is tested on. Every remedy below is a command written for one of these two
+// shells; a third set that nobody has ever run would be worse than none.
 export const PLATFORMS = {
   darwin: { label: 'macOS', shell: 'zsh' },
   linux: { label: 'Linux', shell: 'bash' },
-  win32: { label: 'Windows', shell: 'PowerShell' },
 };
 
 const envExport = (name, value) => ({
   darwin: [`export ${name}="${value}"`, `# persist: echo 'export ${name}="${value}"' >> ~/.zshrc`],
-  linux: [`export ${name}="${value}"`, `# persist: echo 'export ${name}="${value}"' >> ~/.bashrc`],
-  win32: [`$env:${name}="${value}"`, `# persist: setx ${name} "${value}"`],
+  linux: [`export ${name}="${value}"`, `# persist: echo 'export ${name}="${value}"' >> ~/.bashrc`]
 });
 
 const installAgent = {
   codex: {
     darwin: ['npm install -g @openai/codex', '# or install the ChatGPT desktop app, which bundles codex'],
-    linux: ['npm install -g @openai/codex'],
-    win32: ['npm install -g @openai/codex'],
+    linux: ['npm install -g @openai/codex']
   },
   claude: {
     darwin: ['brew install --cask claude-code', '# or: npm install -g @anthropic-ai/claude-code'],
-    linux: ['npm install -g @anthropic-ai/claude-code'],
-    win32: ['npm install -g @anthropic-ai/claude-code'],
+    linux: ['npm install -g @anthropic-ai/claude-code']
   },
   gemini: {
     darwin: ['npm install -g @google/gemini-cli'],
-    linux: ['npm install -g @google/gemini-cli'],
-    win32: ['npm install -g @google/gemini-cli'],
+    linux: ['npm install -g @google/gemini-cli']
   },
   opencode: {
     darwin: ['brew install opencode', '# or: npm install -g opencode-ai'],
-    linux: ['curl -fsSL https://opencode.ai/install | bash', '# or: npm install -g opencode-ai'],
-    win32: ['npm install -g opencode-ai'],
+    linux: ['curl -fsSL https://opencode.ai/install | bash', '# or: npm install -g opencode-ai']
   },
 };
 
 const loginAgent = {
-  codex: { darwin: ['codex login', 'codex login status'], linux: ['codex login', 'codex login status'], win32: ['codex login', 'codex login status'] },
-  claude: { darwin: ['claude auth login', 'claude auth status --text'], linux: ['claude auth login', 'claude auth status --text'], win32: ['claude auth login', 'claude auth status --text'] },
-  gemini: { darwin: ['gemini', '# inside gemini: /auth  → "Use Gemini API key" or Google login'], linux: ['gemini', '# inside gemini: /auth'], win32: ['gemini', '# inside gemini: /auth'] },
-  opencode: { darwin: ['opencode auth login', 'opencode auth list'], linux: ['opencode auth login', 'opencode auth list'], win32: ['opencode auth login', 'opencode auth list'] },
+  codex: { darwin: ['codex login', 'codex login status'], linux: ['codex login', 'codex login status']},
+  claude: { darwin: ['claude auth login', 'claude auth status --text'], linux: ['claude auth login', 'claude auth status --text']},
+  gemini: { darwin: ['gemini', '# inside gemini: /auth  → "Use Gemini API key" or Google login'], linux: ['gemini', '# inside gemini: /auth']},
+  opencode: { darwin: ['opencode auth login', 'opencode auth list'], linux: ['opencode auth login', 'opencode auth list']},
 };
 
-const same = (commands) => ({ darwin: commands, linux: commands, win32: commands });
+const same = (commands) => ({ darwin: commands, linux: commands });
 
 export const CONDITIONS = [
   {
@@ -58,8 +54,7 @@ export const CONDITIONS = [
     remedy: 'Switch Gemini to an API key from Google AI Studio. MADRE copies only the auth selection into its isolated home, so the key can stay in the keychain or in ~/.gemini/.env.',
     fixes: {
       darwin: ['gemini', '# inside gemini: /auth → "Use Gemini API key" and paste the key from https://aistudio.google.com/app/apikey', '# or, without the prompt:', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').darwin],
-      linux: ['gemini', '# inside gemini: /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').linux],
-      win32: ['gemini', '# inside gemini: /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').win32],
+      linux: ['gemini', '# inside gemini: /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').linux]
     },
   },
   {
@@ -82,8 +77,7 @@ export const CONDITIONS = [
     remedy: 'Wait a minute and retry, pick an explicit model in the composer (gemini-3-flash-preview skips the router), or raise the key\'s quota in Google AI Studio.',
     fixes: {
       darwin: ['# in the room: click the Gemini sphere twice → choose gemini-3-flash-preview', '# check quota: https://aistudio.google.com/app/apikey', 'gemini --model gemini-3-flash-preview -p "ping"'],
-      linux: ['gemini --model gemini-3-flash-preview -p "ping"', '# quota: https://aistudio.google.com/app/apikey'],
-      win32: ['gemini --model gemini-3-flash-preview -p "ping"', '# quota: https://aistudio.google.com/app/apikey'],
+      linux: ['gemini --model gemini-3-flash-preview -p "ping"', '# quota: https://aistudio.google.com/app/apikey']
     },
   },
   {
@@ -106,8 +100,7 @@ export const CONDITIONS = [
     remedy: 'Tell MADRE which provider/model OpenCode should use in the room, or remove the stale credential so the default changes.',
     fixes: {
       darwin: ['npx @jossuealcala/madre setup', '# press [m] and pick a provider/model that has a session, e.g. openai/gpt-5.6-sol', '# one-off alternative:', 'PULSE_OPENCODE_MODEL=openai/gpt-5.6-sol npx @jossuealcala/madre start', '# or drop the stale key:', 'opencode auth logout anthropic'],
-      linux: ['npx @jossuealcala/madre setup', '# press [m] and pick a provider/model that has a session', 'PULSE_OPENCODE_MODEL=openai/gpt-5.6-sol npx @jossuealcala/madre start', 'opencode auth logout anthropic'],
-      win32: ['npx @jossuealcala/madre setup', '# press [m] and pick a provider/model that has a session', '$env:PULSE_OPENCODE_MODEL="openai/gpt-5.6-sol"; npx @jossuealcala/madre start', 'opencode auth logout anthropic'],
+      linux: ['npx @jossuealcala/madre setup', '# press [m] and pick a provider/model that has a session', 'PULSE_OPENCODE_MODEL=openai/gpt-5.6-sol npx @jossuealcala/madre start', 'opencode auth logout anthropic']
     },
   },
   {
@@ -158,8 +151,7 @@ export const CONDITIONS = [
     remedy: 'Press the RAISE button on this card, or type a new number in ⚙ CONNECTIONS (DEFAULT TIMEOUT · SECONDS, or the field on the agent\'s card): fields save the moment you leave them. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running room never sees a later export.',
     fixes: {
       darwin: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', '# at launch only (env wins over config.json):', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 madre start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}'],
-      linux: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 madre start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}'],
-      win32: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', '$env:PULSE_AGENT_TIMEOUT_MS="300000"; $env:PULSE_CLAUDE_TIMEOUT_MS="600000"; madre start', '# or %USERPROFILE%\\.pulse\\config.json → {"timeouts":{"default":300000,"claude":600000}}'],
+      linux: ['# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE', 'PULSE_AGENT_TIMEOUT_MS=300000 PULSE_CLAUDE_TIMEOUT_MS=600000 madre start', '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}']
     },
   },
   {
@@ -180,8 +172,7 @@ export const CONDITIONS = [
     remedy: 'Split the message, or raise the cap if your CLIs cope.',
     fixes: {
       darwin: ['export PULSE_MAX_MESSAGE_CHARS="40000"'],
-      linux: ['export PULSE_MAX_MESSAGE_CHARS="40000"'],
-      win32: ['$env:PULSE_MAX_MESSAGE_CHARS="40000"'],
+      linux: ['export PULSE_MAX_MESSAGE_CHARS="40000"']
     },
   },
   {
@@ -202,8 +193,7 @@ export const CONDITIONS = [
     remedy: 'Continue with another agent, press RAISE LOCAL BUDGET on this card, or type a number in ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT (saves on leaving the field). The provider\'s real limits show in each sphere\'s popover when the CLI reports them.',
     fixes: {
       darwin: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', '# at launch: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start', '# or ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}'],
-      linux: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', 'PULSE_SOFT_TOKEN_BUDGET=1000000 madre start'],
-      win32: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', '$env:PULSE_SOFT_TOKEN_BUDGET="1000000"; madre start'],
+      linux: ['# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE', 'PULSE_SOFT_TOKEN_BUDGET=1000000 madre start']
     },
   },
   {
@@ -215,8 +205,7 @@ export const CONDITIONS = [
     remedy: 'Use a different port, or find and stop the process holding it.',
     fixes: {
       darwin: ['npx @jossuealcala/madre start --port 4318', '# who holds 4317?', 'lsof -nP -iTCP:4317 -sTCP:LISTEN'],
-      linux: ['npx @jossuealcala/madre start --port 4318', 'ss -ltnp | grep 4317'],
-      win32: ['npx @jossuealcala/madre start --port 4318', 'netstat -ano | findstr :4317', '# then: taskkill /PID <pid> /F'],
+      linux: ['npx @jossuealcala/madre start --port 4318', 'ss -ltnp | grep 4317']
     },
   },
   {
@@ -332,8 +321,7 @@ export const CONDITIONS = [
     remedy: 'Update Node to the current LTS.',
     fixes: {
       darwin: ['node --version', 'brew install node', '# or: nvm install --lts'],
-      linux: ['node --version', 'nvm install --lts', '# or your distro package for Node ≥ 22.5'],
-      win32: ['node --version', 'winget install OpenJS.NodeJS.LTS'],
+      linux: ['node --version', 'nvm install --lts', '# or your distro package for Node ≥ 22.5']
     },
   },
   {
@@ -345,8 +333,7 @@ export const CONDITIONS = [
     remedy: 'The index is derived from the ledger: delete memory.sqlite (and its -wal/-shm siblings) and restart; MADRE rebuilds it. Distilled notes live in the same file, so export them from NOSTROMO first if they matter.',
     fixes: {
       darwin: ['node --version   # must be ≥ 22.5', 'ls ~/.pulse/rooms/*/memory.sqlite*', 'rm ~/.pulse/rooms/<room>/memory.sqlite*   # rebuilt on next start'],
-      linux: ['node --version   # must be ≥ 22.5', 'ls ~/.pulse/rooms/*/memory.sqlite*', 'rm ~/.pulse/rooms/<room>/memory.sqlite*   # rebuilt on next start'],
-      win32: ['node --version   # must be ≥ 22.5', 'dir $env:USERPROFILE\\.pulse\\rooms', 'Remove-Item $env:USERPROFILE\\.pulse\\rooms\\<room>\\memory.sqlite*'],
+      linux: ['node --version   # must be ≥ 22.5', 'ls ~/.pulse/rooms/*/memory.sqlite*', 'rm ~/.pulse/rooms/<room>/memory.sqlite*   # rebuilt on next start']
     },
   },
   {
@@ -376,8 +363,7 @@ export const CONDITIONS = [
     remedy: 'Sign the Gemini CLI in with an API key (/auth) or export GEMINI_API_KEY, then restart. If you do not want embeddings at all, set PULSE_EMBED=0 and the pause message stops.',
     fixes: {
       darwin: ['gemini   # /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').darwin, 'PULSE_EMBED=0 madre start   # lexical only, no messages'],
-      linux: ['gemini   # /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').linux, 'PULSE_EMBED=0 madre start'],
-      win32: ['gemini   # /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').win32, '$env:PULSE_EMBED="0"; madre start'],
+      linux: ['gemini   # /auth → "Use Gemini API key"', ...envExport('GEMINI_API_KEY', 'YOUR_KEY').linux, 'PULSE_EMBED=0 madre start']
     },
   },
   {
@@ -389,8 +375,7 @@ export const CONDITIONS = [
     remedy: 'Update the CLI, then check that it sees the server. Codex can list servers from a config override; Claude accepts an inline --mcp-config. If a CLI keeps failing, PULSE_MEMORY_TOOLS=0 removes the tools for everyone and the room continues on automatic recall.',
     fixes: {
       darwin: ['codex mcp list', 'claude --version', 'gemini --version', 'PULSE_MEMORY_TOOLS=0 madre start   # tools off, recall stays'],
-      linux: ['codex mcp list', 'claude --version', 'gemini --version', 'PULSE_MEMORY_TOOLS=0 madre start'],
-      win32: ['codex mcp list', 'claude --version', 'gemini --version', '$env:PULSE_MEMORY_TOOLS="0"; madre start'],
+      linux: ['codex mcp list', 'claude --version', 'gemini --version', 'PULSE_MEMORY_TOOLS=0 madre start']
     },
   },
   {
@@ -429,8 +414,7 @@ export const CONDITIONS = [
     remedy: 'Install Ollama (ollama.com), start it, then in MODULES press RECHECK and PULL the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.',
     fixes: {
       darwin: ['brew install ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
-      linux: ['curl -fsSL https://ollama.com/install.sh | sh', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
-      win32: ['winget install Ollama.Ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
+      linux: ['curl -fsSL https://ollama.com/install.sh | sh', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b']
     },
   },
   {
@@ -451,8 +435,7 @@ export const CONDITIONS = [
     remedy: 'Nothing to do: press INSTALL again and MADRE takes the second way by itself. If you would rather have the CLI everywhere in your terminal, install it yourself with your package manager, or give npm a folder of your own.',
     fixes: {
       darwin: ['# MADRE does this for you; these are the alternatives:', 'brew install --cask claude-code', 'npm config set prefix ~/.npm-global   # then add ~/.npm-global/bin to your PATH'],
-      linux: ['# MADRE does this for you; these are the alternatives:', 'npm config set prefix ~/.npm-global   # then add ~/.npm-global/bin to your PATH'],
-      win32: ['# MADRE does this for you; the alternative is an elevated terminal:', 'npm install -g @openai/codex'],
+      linux: ['# MADRE does this for you; these are the alternatives:', 'npm config set prefix ~/.npm-global   # then add ~/.npm-global/bin to your PATH']
     },
   },
   {
@@ -473,12 +456,79 @@ export const CONDITIONS = [
     remedy: 'Read the list under the reply before moving on. If the change is wrong press UNDO; if the agent should not have had it, lower its MAX MODE in ⚙ CONNECTIONS.',
     fixes: same(['git log --oneline -5   # checkpoints are ordinary commits on a side ref', 'git stash list', '# room → UNDO under the CONTROL notice']),
   },
+  {
+    id: 'conversations',
+    severity: 'informational',
+    title: 'Conversations: many per project, one memory, one at a time',
+    match: /conversation|already open for this project|ROOM_IN_USE|a turn is running in this conversation|new conversation|chats\.json/i,
+    diagnosis: 'A project has one memory and many conversations. The archive, the crew, the modules and the privacy list belong to the project and do not start over when you open another thread; a conversation is only the record of one line of work, and everything said in any of them feeds the same archive. The first conversation is the ledger that was always there, so a room that existed before opens exactly as it did. The numbering is the project\'s, not the thread\'s: a new conversation starts where the project got to, which is why a citation like #1411 means the same exchange in all of them. One conversation drives the crew at a time — two threads editing the same working tree is a way to lose work — so opening another while a turn runs is refused until it finishes. And one server per project: a second `madre start` on the same project is refused with the address of the room that is already open, because two servers would hand out the same sequence twice and the archive would quietly keep one of them.',
+    remedy: 'The panel on the left of the canvas lists them: open one, or start another at the bottom. Deleting one takes its transcript and nothing else — what the archivist distilled from it is the project\'s memory and stays. If MADRE says the project is already open, use that room and open a conversation inside it instead of starting a second server.',
+    fixes: same(['# room → the handle under the bar, on the left → NEW CONVERSATION', '# the address of the open room is in the refusal itself', 'ls ~/.pulse/rooms/*/chats.json   # their names and which one is open']),
+  },
+  {
+    id: 'memory-aberrations',
+    severity: 'informational',
+    title: 'Aberrations: what the room established is false',
+    match: /aberration|aberraci|eyecat|contradict|refut|false claim|hallucinat|alucina/i,
+    diagnosis: 'An aberration is a claim the room established is false, kept on purpose rather than deleted: it is what the local model learns not to repeat. It never travels into a turn, and the note it refutes is taken out of circulation with it — a refuted memory is never recalled again, by words or by meaning. EYECAT watches for two agents saying opposite things about the same subject and raises the pair for a third agent to judge, one that took no part in either side. Confirming files the aberration and quarantines what it refutes; dismissing says the room was right and the pair is never raised again. Forgetting an aberration gives its note back.',
+    remedy: 'NOSTROMO shows them as collapsed bodies: open one to read what it took down, or clear it if the room was wrong about being wrong. The three tests report open contradictions under CONSISTENCY.',
+    fixes: same(['# room → ◉ NOSTROMO → the dark bodies are aberrations', '# ⚙ CONNECTIONS → MEMORY → THE THREE TESTS → CONSISTENCY']),
+  },
+  {
+    id: 'memory-cascade',
+    severity: 'informational',
+    title: 'Memory used · N by association',
+    match: /by association|cascade|spreading activation|keeps arriving with|memory used/i,
+    diagnosis: 'Under a reply, MADRE says what the archive handed that turn. Most of it was matched to what you asked, by words and by meaning. A note marked "by association" came along for a different reason: this room keeps carrying it in the same turn as one of the others, so the archive brings it too, however differently it reads. The strength is a ratio over the turns where each was found on its own merits — a memory the room reaches for constantly does not end up attached to everything, and a pair that stops meeting fades on its own. Association adds and never displaces: recall keeps two slots for it and hands back the ones it does not use.',
+    remedy: 'Click a note to see it in NOSTROMO, where the wires it travels on are drawn. It is the one part of recall that owes nothing to how a memory reads, so it can be switched off in MEMORY.',
+    fixes: same(['# ⚙ CONNECTIONS → MEMORY → CARRY WHAT A MEMORY KEEPS ARRIVING WITH', 'PULSE_RECALL_CASCADE=0 npx @jossuealcala/madre start']),
+  },
+  {
+    id: 'memory-cold',
+    severity: 'informational',
+    title: 'Cold memories: what the archive has had its chances with',
+    match: /cold memor|cold zone|never once carried|had its chances/i,
+    diagnosis: 'A memory is cold when three things are true at once: no turn has ever carried it, it shares a subject with nothing so nothing can reach it sideways either, and the archive has been opened at least a dozen times since it was written. The third is what makes the label worth acting on — never-recalled is what every memory is on the day it is written. Chances are counted in turns that actually reached into the archive, and only from the day the room started keeping that trail, so what was never written down is not held against the note.',
+    remedy: 'NOSTROMO shows COLD · N in its header when there are any; pressing it rings each one on the map. Open one and its card says the number plainly, with FORGET one press away. Asking about it is the other way out: the room writes that question for you under ASK.',
+    fixes: same(['# room → ◉ NOSTROMO → COLD', '# room → ◉ NOSTROMO → ASK → PUT IN THE COMPOSER']),
+  },
+  {
+    id: 'maturity-tests',
+    severity: 'informational',
+    title: 'The three tests: whether the archive works',
+    match: /three tests|coverage|consistency|held-out|match test|maturity|madurez|ready to be worked in/i,
+    diagnosis: 'The six readings count what the archive is made of; they cannot say whether it works, because nothing about a pile of notes says whether the right one comes back when it is needed. COVERAGE takes real questions from this room, runs recall at the exact point each was asked, and scores what came back against the reply that was actually given. CONSISTENCY reads the contradictions EYECAT still holds and whether aberrations are being filed more often lately. MATCH puts real questions a frontier CLI answered back to the local model with this archive behind it. All three measure against a control, because everything in one room is about the same handful of subjects and any two pieces of it read as close to an embedder: to count, what the archive handed over has to beat what it would have handed over for a different question.',
+    remedy: 'Read the one sentence and the one instruction at the top of MEMORY; the readings and the tests are a fold below it. The free test is read as the panel opens, the cheap one keeps itself fresh once a day while the embeddings are local, and the slow one is yours to start and to stop. None of them spends a provider turn.',
+    fixes: same(['# ⚙ CONNECTIONS → MEMORY → THE THREE TESTS', '# MATCH needs Ollama running with a chat model, and embeddings on']),
+  },
+  {
+    id: 'module-update',
+    severity: 'common',
+    title: 'Updating what a module drives',
+    match: /EACCES|permission denied.*npm|npm ERR!.*EACCES|update to \d|newest is|brew upgrade|install -g @playwright/i,
+    diagnosis: 'When something newer exists and the module knows how to fetch it, the button is beside the version on its card. It asks twice on purpose: the first press answers with the command, the second runs exactly that, and the output lands in the room line by line. Nothing installs by itself — putting software on your computer unannounced would break the one thing MADRE promises, that a command is seen before it runs. The usual failure is npm refusing a global install with EACCES, which means the global prefix belongs to root; sudo works and leaves you with root-owned files, so a user-owned prefix or a version manager is the better answer.',
+    remedy: 'Press the button beside the version, read the command, run it. If npm refuses with EACCES, point npm at a prefix you own or use a version manager, then press it again.',
+    fixes: {
+      darwin: ['npm config get prefix', 'npm config set prefix ~/.npm-global', 'echo \'export PATH="$HOME/.npm-global/bin:$PATH"\' >> ~/.zshrc', '# or: brew install node   # a Homebrew node owns its own prefix'],
+      linux: ['npm config get prefix', 'npm config set prefix ~/.npm-global', 'echo \'export PATH="$HOME/.npm-global/bin:$PATH"\' >> ~/.bashrc', '# or use nvm, which owns the prefix it installs into'],
+    },
+  },
+  {
+    id: 'module-add',
+    severity: 'common',
+    title: 'Installing a module somebody else wrote',
+    match: /already taken|must live under \/api\/x\/|not a module|default export must be a module|module file|\.module\.mjs|add a module/i,
+    diagnosis: 'MODULES has + ADD A MODULE for a .mjs somebody wrote. It comes through the same door as everything else: written to a scratch copy, imported there, checked against the house rules, and installed only if it passes. Three things get a file refused, each with the reason: an id that belongs to a module MADRE ships with, a route outside its own corner of the API (/api/x/<id>/), and a file that will not load at all. Said plainly, because it is what it is: a module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and stays in its corral; what the code intends is the one thing nobody can check for you.',
+    remedy: 'Install it only if you trust where it came from. A module you wrote can also be updated from where you publish it: declare updates: { url } in the file, or install it from a file and MADRE remembers which, and its card carries GET A NEWER FILE.',
+    fixes: same(['# MODULES → + ADD A MODULE', 'ls ~/.pulse/modules   # every module you installed, and where it came from', '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works']),
+  },
 ];
 
+// Which of the two sets of commands to show first. Anything else gets macOS, and the panel says
+// which shells these are written for rather than guessing on the reader's behalf.
 export function detectPlatform(nav = globalThis.navigator) {
   const hint = `${nav?.userAgentData?.platform ?? ''} ${nav?.platform ?? ''} ${nav?.userAgent ?? ''}`.toLowerCase();
   if (/mac|iphone|ipad|darwin/.test(hint)) return 'darwin';
-  if (/win/.test(hint)) return 'win32';
   if (/linux|android|x11/.test(hint)) return 'linux';
   return 'darwin';
 }

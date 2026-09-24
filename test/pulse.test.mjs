@@ -33,7 +33,7 @@ import { runReadonlyProcess } from '../src/adapters/process.mjs';
 import { geminiAuthState, loginPlanFor, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
-import { CONDITIONS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
+import { CONDITIONS, PLATFORMS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
 import { EXTENSIONS, extensionById, gitToplevel, listExtensions } from '../src/extensions.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { parseDirectives, stripDirectives } from '../src/directives.mjs';
@@ -1020,17 +1020,32 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.deepEqual(ids('gemini is not installed on this computer.', 'gemini'), ['not-installed']);
   assert.deepEqual(ids('listen EADDRINUSE: address already in use 127.0.0.1:4317'), ['port-in-use']);
   assert.deepEqual(ids('everything is fine'), []);
+  // Two platforms, the two MADRE is tested on. Every condition answers on both, because a
+  // remedy that exists for one shell and not the other is a dead end for half the readers.
+  assert.deepEqual(Object.keys(PLATFORMS), ['darwin', 'linux']);
   for (const condition of CONDITIONS) {
-    for (const platform of ['darwin', 'linux', 'win32']) {
+    for (const platform of ['darwin', 'linux']) {
       assert.ok(fixesFor(condition, platform).length > 0, `${condition.id} has a ${platform} remedy`);
     }
   }
-  assert.deepEqual(fixesFor(CONDITIONS.find((c) => c.id === 'not-installed'), 'win32', 'gemini'), ['npm install -g @google/gemini-cli']);
+  assert.deepEqual(fixesFor(CONDITIONS.find((c) => c.id === 'not-installed'), 'linux', 'gemini'), ['npm install -g @google/gemini-cli']);
   assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'linux').join('\n'), /ss -ltnp/);
-  assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'win32').join('\n'), /netstat -ano/);
+  assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'darwin').join('\n'), /lsof/);
   assert.equal(detectPlatform({ platform: 'MacIntel' }), 'darwin');
-  assert.equal(detectPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0)' }), 'win32');
   assert.equal(detectPlatform({ platform: 'Linux x86_64' }), 'linux');
+  // Anything else reads the macOS column rather than being handed commands for a shell nobody
+  // here has ever run them in.
+  assert.equal(detectPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0)' }), 'darwin');
+  // Everything the room grew this cycle has an entry, so MU/TH/UR can answer for it: what a
+  // conversation is, what an aberration does, why a note arrived by association, what cold means,
+  // what the three tests measure, and the two ways a module comes in or gets a newer version.
+  for (const id of ['conversations', 'memory-aberrations', 'memory-cascade', 'memory-cold', 'maturity-tests', 'module-update', 'module-add']) {
+    assert.ok(CONDITIONS.some((condition) => condition.id === id), `the catalog cannot answer for ${id}`);
+  }
+  assert.deepEqual(ids('MADRE is already open for this project at http://127.0.0.1:4400'), ['conversations']);
+  assert.deepEqual(ids('memory used · 4 · 1 by association'), ['memory-cascade']);
+  assert.ok(ids('npm ERR! EACCES: permission denied, access \'/usr/local/lib/node_modules\'').includes('module-update'));
+  assert.deepEqual(ids('the id "ash" is already taken'), ['module-add']);
   assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.remedy} ${c.agent}`)), 'the search reads the remedy too');
   assert.equal(searchConditions('').length, CONDITIONS.length);
 });

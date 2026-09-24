@@ -84,6 +84,6 @@ export default defineModule({
     match: /@playwright\/mcp|playwright.*not (found|installed)|browser server/i,
     diagnosis: 'The PLAYWRIGHT module runs @playwright/mcp per turn. It is on, or you tried to open it, but npx cannot find the package without downloading, or no browser is installed.',
     remedy: 'Install it once, globally, then RECHECK in MODULES.',
-    fixes: { darwin: ['npm install -g @playwright/mcp', 'npx playwright install chromium'], linux: ['npm install -g @playwright/mcp', 'npx playwright install --with-deps chromium'], win32: ['npm install -g @playwright/mcp', 'npx playwright install chromium'] },
+    fixes: { darwin: ['npm install -g @playwright/mcp', 'npx playwright install chromium'], linux: ['npm install -g @playwright/mcp', 'npx playwright install --with-deps chromium'] },
   }],
 });
