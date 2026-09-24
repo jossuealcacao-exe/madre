@@ -10,6 +10,7 @@ import { probeAll } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig } from '../src/config.mjs';
 import { isOnline, runSetup } from '../src/setup.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
+import { createServer } from 'node:net';
 
 const cli = parseArgs(process.argv.slice(2));
 const { command } = cli;
@@ -36,11 +37,27 @@ async function roomAlreadyOpen(port, projectRoot, span = 8) {
 
 const has = (name) => cli.has(name.replace(/^--/, ''));
 
+// Is somebody already on that port? Asked before anything is started, because opening a room
+// means finding the agents, opening the archive and waking the memory, and doing all of that only
+// to then refuse is a wait nobody needed. The real bind below stays the authority: this only
+// saves the waiting.
+function portTaken(port, host = '127.0.0.1') {
+  return new Promise((resolve) => {
+    const probe = createServer();
+    probe.once('error', (error) => resolve(error.code === 'EADDRINUSE'));
+    probe.listen(port, host, () => probe.close(() => resolve(false)));
+  });
+}
+
 // With an explicit --port a busy port is an error the user asked for. Without
 // one, MOTHER walks up to the next free port so a second room just opens.
 async function openRoom(options) {
   const explicit = cli.explicit('port');
   let port = options.port;
+  if (explicit && await portTaken(port)) {
+    console.error(`\n  MOTHER › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
+    process.exit(2);
+  }
   for (let attempt = 0; attempt < 20; attempt += 1) {
     try {
       return await startPulse({ ...options, port });

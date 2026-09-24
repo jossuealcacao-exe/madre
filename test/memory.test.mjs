@@ -270,6 +270,20 @@ test('distiller: the room distils with the cheapest agent after enough exchanges
     assert.equal(retried.error, undefined);
     assert.notEqual(retried.agent, 'gemini', 'a failed archivist sits out; the retry goes to another agent');
     assert.ok(memory.lastDistilled() > before);
+
+    // The reply carries what the archive handed the turn, so the room can show its own memory
+    // working. Until this existed, a note travelled into a briefing and nobody ever saw it.
+    const answered = (await store.readAll()).filter((event) => event.type === 'message.created' && event.payload.role === 'assistant').at(-1);
+    assert.ok(answered.payload.recalled?.length, 'the reply does not say which memories it was given');
+    const carried = answered.payload.recalled.find((note) => /Stripe signature before parsing/.test(note.text));
+    assert.ok(carried, 'the note the turn actually leaned on is not among them');
+    assert.equal(carried.kind, 'decision');
+    assert.equal(carried.via, 'search', 'a note the words matched is not marked as found by the search');
+    assert.equal(typeof carried.id, 'number');
+    // A turn that was given nothing says nothing rather than an empty list.
+    const early = (await store.readAll()).find((event) => event.type === 'message.created' && event.payload.role === 'assistant');
+    assert.equal(early.payload.recalled, undefined);
+
     await room.shutdown();
     memory.close();
   } finally {

@@ -13,6 +13,7 @@ import { coldNotes, coldReading } from './cold.mjs';
 import { questionsFor } from './asking.mjs';
 import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE } from './exam.mjs';
 import { MADRE_ADAPTER } from './adapters/madre.mjs';
+import { verdictFor } from './verdict.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
@@ -392,9 +393,11 @@ export class Room {
 
   // What the room can measure about itself, and whether each test can run right now. A test that
   // cannot run says why instead of returning a number nobody should trust.
-  async exams() {
+  async exams({ refresh = false, findings = [] } = {}) {
     let last = {};
     try { last = JSON.parse(this.#memory?.metaGet('exams') ?? '{}'); } catch { last = {}; }
+    // The one test that costs nothing is never something to ask for: it is read, not run.
+    if (refresh && this.#memory) last = { ...last, consistency: this.#keepExam(consistencyExam({ findings, notes: this.#memory.memories({ limit: 500 }) })) };
     const embedder = this.#memory?.embedder?.model ?? null;
     const localModel = Boolean(this.#invokers[MADRE_ADAPTER]);
     const cases = this.#memory ? exchanges(await this.#store.readAll()) : [];
@@ -474,6 +477,21 @@ export class Room {
       return { started: 'match' };
     }
     return { error: `No such test "${which}".` };
+  }
+
+  // Coverage costs a few seconds of local arithmetic and nothing else, so it is kept fresh
+  // behind the screen rather than asked for: once a day, only while the embeddings are local
+  // (a remote embedder is the human's money, and money is never spent without being asked), and
+  // never in front of anything. What the panel shows is whatever the last run left.
+  async freshenCoverage({ now = Date.now(), ttlMs = 24 * 60 * 60 * 1000 } = {}) {
+    if (!this.#memory || this.#examRunning) return null;
+    if (!this.#memory.embedder?.local) return null;
+    let last = {};
+    try { last = JSON.parse(this.#memory.metaGet('exams') ?? '{}'); } catch { last = {}; }
+    const at = Date.parse(last.coverage?.at ?? '');
+    if (Number.isFinite(at) && now - at < ttlMs) return null;
+    void this.runExam('coverage').catch(() => null);
+    return { started: 'coverage' };
   }
 
   stopExam() { if (this.#examRunning === 'match') this.#examStop = true; return { stopping: this.#examRunning }; }
@@ -1142,6 +1160,11 @@ export class Room {
         sender: agent.id,
         target: requester,
         text: result.text,
+        // What the archive handed this turn, so the room can see its own memory working. The
+        // whole point of remembering is invisible until the moment it is used.
+        recalled: memories?.length
+          ? memories.slice(0, 6).map((note) => ({ id: note.id, kind: note.kind, text: note.text.length > 150 ? `${note.text.slice(0, 149)}…` : note.text, via: note.via ?? 'search' }))
+          : undefined,
         ash: ash ? { active: true } : undefined,
         status: 'completed',
         planId,

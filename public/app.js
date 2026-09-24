@@ -1324,6 +1324,8 @@ function renderAssistantMessage(event) {
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
   bubble.append(bubbleActions({ text, sender, sequence: event.sequence, messageId: delegated ? null : messageId }));
   col.append(bubble);
+  const used = attachMemoryUsed(event.payload);
+  if (used) col.append(used);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
   stamp.append(el('span', null, formatTime(event.timestamp)));
@@ -1660,6 +1662,33 @@ function renderDistilled(event) {
     node.append(` read ${considered} exchange${considered === 1 ? '' : 's'} (#${fromSequence}–#${throughSequence}) · kept ${added} memor${added === 1 ? 'y' : 'ies'}${Number.isFinite(total) ? ` · ${total} in the archive` : ''}${remaining ? ` · ${remaining} waiting` : ''}`);
   }
   return node;
+}
+
+// What the archive handed this turn, under the reply it helped write. Remembering is the whole
+// point of the room and until now it happened entirely out of sight: a note travelled into a
+// briefing and nobody ever saw it. Same shape as a memory saved, because the human should have to
+// learn one thing, not two — and a note that came along by association says so, since something
+// that changes an answer must never be invisible.
+function attachMemoryUsed(payload) {
+  const used = payload.recalled ?? [];
+  if (!used.length) return null;
+  const hint = el('div', 'memory-hint used');
+  hint.style.setProperty('--agent', agentColor(payload.sender));
+  const carried = used.filter((note) => note.via === 'cascade').length;
+  hint.append(el('span', 'lead', `◉ memory used · ${used.length}${carried ? ` · ${carried} by association` : ''}`));
+  for (const note of used.slice(0, 3)) {
+    const pill = el('button', `pill ${note.kind}${note.via === 'cascade' ? ' carried' : ''}`);
+    pill.type = 'button';
+    pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
+    pill.append(el('b', null, note.kind), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
+    pill.title = `${note.text}\n${note.via === 'cascade'
+      ? 'Came along because this room keeps carrying it with one of the others.'
+      : 'The archive matched this to what you asked.'} Click to see it in NOSTROMO.`;
+    pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
+    hint.append(pill);
+  }
+  if (used.length > 3) hint.append(el('span', 'more', `+${used.length - 3}`));
+  return hint;
 }
 
 // A memory the agent saved on request shows up under its bubble: one pill per note, in the kind's colour.
@@ -4061,6 +4090,45 @@ async function loadSettings() {
   renderSettings();
 }
 
+/* ---------- where this room stands ---------- */
+
+// One sentence and one thing to do. Everything that decides which sentence was already being
+// measured; what was missing was somebody choosing. The nine numbers are still here, a fold away,
+// for the day someone wants them — but nobody should have to read nine numbers to know whether
+// their room is working.
+async function drawVerdict(box) {
+  box.replaceChildren(el('p', 'note', 'READING…'));
+  let payload;
+  try { payload = await fetch('/api/maturity').then((response) => response.json()); }
+  catch { box.replaceChildren(el('p', 'note', 'THE READING IS UNAVAILABLE')); return; }
+  const m = payload.maturity;
+  const v = payload.verdict;
+  box.replaceChildren();
+  if (!m || !v) { box.append(el('p', 'note', 'NOTHING TO READ YET: THE ROOM HAS NO ARCHIVE.')); return; }
+
+  const head = el('div', 'maturity-head');
+  head.append(el('b', `stage ${m.stage.id}`, m.stage.label), el('span', null, v.says));
+  box.append(head);
+  const next = el('p', 'maturity-next');
+  next.append(el('b', null, 'NEXT'), ` ${v.next.text}`);
+  if (v.next.where) next.append(el('span', 'where', ` → ${v.next.where}`));
+  box.append(next);
+
+  // What it is made of, a fold away.
+  const made = cardFold(box, 'WHAT THE ARCHIVE IS MADE OF', { key: 'madre.maturity.signals', count: m.signals.length });
+  for (const signal of m.signals) {
+    const row = el('div', `maturity-row${signal.id === m.weakest ? ' weakest' : ''}`);
+    const bar = el('i');
+    bar.style.setProperty('--fill', `${Math.round(signal.value * 100)}%`);
+    row.append(el('b', null, signal.label), bar, el('span', null, signal.detail));
+    row.title = signal.next;
+    made.append(row);
+  }
+  // And whether it works, a fold away as well.
+  const tested = cardFold(box, 'THE THREE TESTS', { key: 'madre.maturity.exams', count: 3 });
+  tested.append(examsBlock(payload.exams));
+}
+
 /* ---------- the three tests ---------- */
 
 const EXAM_NAMES = {
@@ -4104,12 +4172,11 @@ function examRow(id, state, run) {
   return row;
 }
 
-function examsBlock() {
+function examsBlock(known = null) {
   const box = el('div', 'full exams');
   const draw = (state) => {
     box.replaceChildren();
-    box.append(el('h4', null, 'THE THREE TESTS'));
-    box.append(el('p', 'note', 'THE READING ABOVE COUNTS WHAT THE ARCHIVE IS MADE OF. THESE ASK WHETHER IT WORKS. NOTHING HERE SPENDS A PROVIDER TURN.'));
+    box.append(el('p', 'note', 'NOTHING HERE SPENDS A PROVIDER TURN. THE FIRST TWO ARE FREE; THE THIRD TAKES MINUTES AND STOPS WHEN YOU SAY.'));
     for (const id of ['coverage', 'consistency', 'match']) box.append(examRow(id, state, run));
     if (state.running === 'match') {
       const stop = el('button', null, 'STOP');
@@ -4133,7 +4200,7 @@ function examsBlock() {
       if (result.exams) draw(result.exams); else await load();
     } catch (error) { toast(`The test could not run: ${error.message}`); }
   };
-  void load();
+  if (known) draw(known); else void load();
   return box;
 }
 
@@ -4527,28 +4594,9 @@ function renderSettings() {
     const verdict = el('div', 'maturity');
     const showDataset = (payload) => {
       const d = payload?.dataset;
-      const r = payload?.readiness;
-      const m = payload?.maturity;
       const exported = d ? `LAST EXPORT ${new Date(d.exportedAt).toLocaleString()} · TRAIN ${d.train} · VALID ${d.valid}` : 'NOT EXPORTED YET';
       const trained = payload?.trained ? `TRAINED MODEL ${payload.trained.toUpperCase()} IN USE` : 'NO TRAINED MODEL YET · SEE docs/training';
       datasetNote.textContent = [exported, trained].filter(Boolean).join(' · ');
-      verdict.replaceChildren();
-      if (!m) return;
-      const head = el('div', 'maturity-head');
-      head.append(el('b', `stage ${m.stage.id}`, m.stage.label), el('span', null, m.stage.says));
-      verdict.append(head);
-      for (const signal of m.signals) {
-        const row = el('div', `maturity-row${signal.id === m.weakest ? ' weakest' : ''}`);
-        const bar = el('i');
-        bar.style.setProperty('--fill', `${Math.round(signal.value * 100)}%`);
-        row.append(el('b', null, signal.label), bar, el('span', null, signal.detail));
-        row.title = signal.next;
-        verdict.append(row);
-      }
-      // What is worth doing next, rather than a number to wait on.
-      const weak = m.signals.find((signal) => signal.id === m.weakest);
-      if (weak) verdict.append(el('p', 'note maturity-next', `NEXT · ${weak.next.toUpperCase()}`));
-      if (r) verdict.append(el('p', 'note', `${r.pairs} CLEAN PAIRS · ${r.turns} TURNS · ${r.delegated} DELEGATED · ${r.notes} NOTES${r.aberrations ? ` · ${r.aberrations} ABERRATIONS HELD BACK` : ''}${r.bad ? ` · ${r.bad} DROPPED AS BAD` : ''}`));
     };
     fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => { datasetNote.textContent = 'DATASET UNAVAILABLE'; });
     exportButton.addEventListener('click', async () => {
@@ -4559,11 +4607,8 @@ function renderSettings() {
     });
     dataset.append(exportButton, datasetNote);
     mform.append(dataset);
-    // The three tests. The reading above counts what the archive is made of; these ask whether it
-    // works. Each one says how it measured and how many cases it had, because a bare number is a
-    // decoration, and each can fail.
-    mform.append(examsBlock());
     memoryBody.append(verdict);
+    drawVerdict(verdict);
 
 
     // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.

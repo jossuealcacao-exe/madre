@@ -143,7 +143,7 @@ test('a fold inside a card is not one of MU/TH/UR\'s sections, and carries its o
   // It says what clicking it will do, and it remembers being left open, like every other fold.
   assert.match(fold, /caret\.textContent = box\.open \? '▾ COLLAPSE' : '▸ EXPAND'/);
   assert.match(fold, /rememberFold\(key, box\.open\)/);
-  assert.match(css, /\.module-card \.card-fold > summary \.caret \{/);
+  assert.match(css, /\.card-fold > summary \.caret \{/);
 });
 
 test('every card carries a button that goes and looks for a newer version', async () => {

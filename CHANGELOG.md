@@ -6,6 +6,18 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.0 · Sin publicar
 
+### Una sola frase, una sola cosa que hacer
+- MU/TH/UR llegó a mostrar seis lecturas, tres pruebas, una etapa, los recuerdos fríos y las preguntas pendientes. Todo cierto y todo medido, pero nueve números en una pantalla no son un veredicto: son tarea. Arriba del todo hay ahora una frase y una instrucción, y el resto vive a un pliegue de distancia.
+- El orden de lo que se dice no lo decide el puntaje, lo decide qué conviene hacer primero: algo falso que la sala crea gana a algo que la sala aún no aprendió, y los dos le ganan a cualquier cosa sobre tamaño. Y la instrucción dice a dónde ir: hoy, en esta sala, manda a NOSTROMO · ASK porque el archivo no contesta 18 de 30 preguntas y las preguntas que faltan ya están escritas.
+- La prueba que no cuesta nada ya no se pide: se lee. La que cuesta unos segundos se mantiene fresca sola una vez al día, en segundo plano y solo con embeddings locales —dinero de la humana no se gasta sin preguntar—. La lenta sigue siendo suya, con su botón y su STOP.
+
+### La memoria se ve cuando se usa
+- Debajo de cada respuesta aparece qué le entregó el archivo a ese turno: `◉ memory used · 4`, con las notas en su color y un clic para verlas en NOSTROMO. Hasta ahora recordar era completamente invisible —una nota entraba al briefing y nadie la veía nunca—, y es lo único que la sala hace que de verdad justifica todo lo demás.
+- Es la misma forma que «memory saved», más callada, para que haya una cosa que aprender y no dos. Lo que llegó por asociación lo dice con `⇢`: algo que cambia una respuesta no puede ser invisible.
+
+### Un puerto ocupado se dice de inmediato
+- `madre start --port <ocupado>` tardaba todo el arranque —encontrar los agentes, abrir el archivo, despertar la memoria— para recién entonces negarse. Ahora se pregunta primero y contesta al instante, con el mismo mensaje de siempre. El bind real sigue siendo la autoridad; esto solo quita la espera.
+
 ### Madurez: las tres pruebas
 - La lectura de seis señales cuenta de qué está hecho el archivo. No dice si funciona: nada en un montón de notas dice si la correcta vuelve cuando hace falta. Eso solo lo dice una prueba, y una prueba solo vale si puede fallar. En MU/TH/UR, debajo del veredicto, hay tres.
 - **¿Puede el archivo contestar lo que este proyecto pregunta?** Preguntas reales de la sala, el recall corrido en el punto exacto en que cada una se hizo, contra la respuesta que de verdad se dio. Pregunta si el archivo ya tenía con qué, no si la respuesta era correcta.

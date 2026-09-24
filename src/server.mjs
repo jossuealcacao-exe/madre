@@ -56,6 +56,7 @@ import { listDirectory, searchFiles, readServable, storeAttachment, MAX_ATTACHME
 import { Eyecat } from './eyecat-watch.mjs';
 import { economy } from './room/economy.mjs';
 import { maturity } from './maturity.mjs';
+import { verdictFor } from './verdict.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -1042,10 +1043,25 @@ export async function createPulseServer({
         const grown = maturity({ readiness: datasetReadiness(await store.readAll(), research.memories), notes: research.memories, links: research.links, stats: research.stats });
         return sendJson(response, 200, { ...research, maturity: grown });
       }
+      // Where this room stands, in one place: what the archive is made of, whether it works, and
+      // the one thing worth doing about it. Nothing here waits on a test — the free one is read
+      // as it is asked for, the cheap one keeps itself fresh behind the screen, and the slow one
+      // is the human's to start.
+      if (request.method === 'GET' && url.pathname === '/api/maturity') {
+        const research = room.memoryResearch();
+        const notes = research?.memories ?? [];
+        const grown = research ? maturity({ readiness: datasetReadiness(await store.readAll(), notes), notes, links: research.links, stats: research.stats }) : null;
+        const exams = await room.exams({ refresh: true, findings: eyecat.findings() });
+        void room.freshenCoverage();
+        return sendJson(response, 200, {
+          maturity: grown, exams, cold: research?.cold ?? null, asks: research?.ask?.length ?? 0,
+          verdict: verdictFor({ maturity: grown, exams: exams.last, cold: research?.cold, asks: research?.ask?.length ?? 0 }),
+        });
+      }
       // The three tests. Reading is free; running one is the human's call, and the slow one says
       // where it is while it works.
       if (request.method === 'GET' && url.pathname === '/api/maturity/exams') {
-        return sendJson(response, 200, await room.exams());
+        return sendJson(response, 200, await room.exams({ refresh: true, findings: eyecat.findings() }));
       }
       if (request.method === 'POST' && url.pathname === '/api/maturity/exam') {
         const payload = await body(request).catch(() => ({}));

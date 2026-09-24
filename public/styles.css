@@ -403,6 +403,13 @@ dialog.nostromo::backdrop { background: #000; }
 .memory-hint .pill b { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--kind); }
 .memory-hint .pill:hover { background: color-mix(in srgb, var(--kind) 18%, transparent); color: var(--text); }
 .memory-hint .more { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
+/* Memory used is not memory saved: saving is an event, using happens on most turns. Same shape so
+   there is one thing to learn, quieter so it never competes with the answer it helped write. */
+.memory-hint.used { margin-top: 4px; opacity: .78; animation: none; }
+.memory-hint.used:hover { opacity: 1; }
+.memory-hint.used .lead { color: var(--text-3); }
+.memory-hint.used .pill { animation: none; box-shadow: none; font-size: 10.5px; padding: 2px 9px; }
+.memory-hint.used .pill.carried b::after { content: ' ⇢'; }
 @keyframes hint-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes hint-glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 55%, transparent); } 40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kind) 0%, transparent), 0 0 18px color-mix(in srgb, var(--kind) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .memory-hint, .memory-hint .pill { animation: none; } }
@@ -1371,13 +1378,13 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .module-card .card-toggles .toggle input { accent-color: var(--brew); }
 
 /* A fold inside a card: the section name, how many lines are behind it, and its own button. */
-.module-card .card-fold > summary .count { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); }
-.module-card .card-fold > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
-.module-card .card-fold > summary::-webkit-details-marker { display: none; }
-.module-card .card-fold > summary b { font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); }
-.module-card .card-fold > summary:hover b { color: var(--ph); }
-.module-card .card-fold > summary .caret { margin-left: auto; font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph); white-space: nowrap; }
-.module-card .card-fold-body { padding-top: 10px; }
+.card-fold > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.card-fold > summary::-webkit-details-marker { display: none; }
+.card-fold > summary b { font-size: 9px; font-weight: 400; letter-spacing: .22em; color: var(--ph-dim); }
+.card-fold > summary:hover b { color: var(--ph); }
+.card-fold > summary .caret { margin-left: auto; font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph); white-space: nowrap; }
+.card-fold > summary .count { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); }
+.card-fold-body { padding-top: 10px; }
 .module-card .card-fold ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .module-card .card-fold li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 11.5px; line-height: 1.55; color: rgba(210, 255, 190, .82); text-shadow: none; }
 .module-card .card-fold li i { font-style: normal; font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); }
@@ -1418,7 +1425,11 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .exams button.primary { background: var(--ph); color: #041004; text-shadow: none; }
 .exams button:disabled { opacity: .4; cursor: default; }
 
-.maturity { display: grid; gap: 6px; margin: 12px 0 4px; }
+.maturity { display: grid; gap: 10px; margin: 12px 0 4px; }
+.maturity > .card-fold { border-top: 1px solid var(--ph-faint); padding-top: 10px; }
+.maturity .maturity-next { margin: 0; font-size: 12.5px; line-height: 1.6; color: #eaffdf; text-shadow: none; text-transform: none; letter-spacing: .01em; }
+.maturity .maturity-next b { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; color: var(--ph); margin-right: 8px; }
+.maturity .maturity-next .where { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); white-space: nowrap; }
 .maturity-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .maturity-head b { font-family: var(--mono); font-size: 11px; letter-spacing: .24em; }
 .maturity-head span { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--ph-dim); }
