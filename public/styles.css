@@ -422,6 +422,19 @@ dialog.nostromo::backdrop { background: #000; }
 .core-total { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--ph); }
 .core-fixed { margin: 0; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); border-left: 2px solid color-mix(in srgb, var(--nostromo-sun) 60%, transparent); padding-left: 12px; }
 @media (max-width: 720px) { .core-block > summary { grid-template-columns: 1fr auto; } .core-block > summary i { display: none; } }
+/* THE LAUNCH: the command under the document, printed as it would be run. */
+.core-launch { display: grid; gap: 10px; border-top: 1px solid var(--ph-faint); padding-top: 14px; }
+.core-launch-head { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); text-transform: uppercase; }
+.core-launch-head b { font-size: 10px; letter-spacing: .28em; color: var(--nostromo-sun); text-shadow: none; }
+.core-launch .mother-cmd { margin: 0; }
+.core-launch .mother-cmd pre { max-height: 32vh; overflow: auto; font-size: 11px; color: rgba(210, 255, 190, .92); text-shadow: none; }
+.core-launch-list { display: grid; gap: 6px; border-left: 2px solid var(--ph-faint); padding-left: 12px; }
+.core-launch-list .k { font-size: 8.5px; letter-spacing: .22em; color: var(--ph-dim); }
+.core-launch-list p { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.65; color: rgba(210, 255, 190, .86); text-shadow: none; }
+.core-launch-list p b { color: var(--ph); letter-spacing: .1em; text-shadow: none; }
+.core-launch-list .where { color: var(--ph-dim); }
+.core-server .tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.core-server .tools i { font-style: normal; font-size: 8.5px; letter-spacing: .1em; color: var(--ph-dim); border: 1px solid var(--ph-faint); padding: 1px 5px; }
 
 /* The cold zone: a colour that is not a memory kind and not the sun, so it never reads as life. */
 .nostromo-head .mother-close.cold { color: #96b0c6; border-color: color-mix(in srgb, #96b0c6 45%, transparent); }

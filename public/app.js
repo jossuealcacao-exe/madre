@@ -4438,6 +4438,73 @@ function renderCoreControls() {
   return controls;
 }
 
+// THE LAUNCH. The document above is the half a person can read; this is the half that runs it.
+// A briefing is handed to a process, and until you can see which process, with which flags, in
+// which directory, reading which servers, "the agent works read-only" is a claim rather than a
+// fact. So the exact command is printed, built by the same adapters that would build it for real.
+//
+// Environment values are never printed — only the names. A command line is something people
+// screenshot, and the values are where keys live.
+function shellArg(value) {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${String(value).replaceAll("'", `'\\''`)}'`;
+}
+
+function renderCoreLaunch(launch) {
+  const floor = el('section', 'core-launch');
+  const head = el('p', 'core-launch-head');
+  head.append(el('b', null, 'THE LAUNCH'));
+  head.append(el('span', null, 'WHAT MADRE WOULD RUN TO DELIVER IT'));
+  floor.append(head);
+
+  if (!launch) { floor.append(el('p', 'note', 'NO AGENT IS PICKED, SO THERE IS NO COMMAND TO SHOW.')); return floor; }
+  if (launch.local || !launch.args) { floor.append(el('p', 'note', String(launch.says ?? '').toUpperCase())); return floor; }
+
+  const command = [launch.executable, ...launch.args].map(shellArg);
+  floor.append(commandBlock([`# run in ${launch.cwd}`, ...command.map((part, at) => (at === 0 ? part : `  ${part}`) + (at === command.length - 1 ? '' : ' \\'))]));
+  floor.append(el('p', 'note', `THE BRIEFING GOES WHERE ${launch.promptMarker.toUpperCase()} IS WRITTEN. NOTHING IS RUN FROM HERE.`));
+
+  if (launch.isolation?.length) {
+    const box = el('div', 'core-launch-list');
+    box.append(el('span', 'k', 'WHAT KEEPS IT TO THIS TURN'));
+    for (const line of launch.isolation) box.append(el('p', null, line));
+    floor.append(box);
+  }
+
+  if (launch.env?.length) {
+    const box = el('div', 'core-launch-list');
+    box.append(el('span', 'k', 'ENVIRONMENT IT IS GIVEN'));
+    for (const one of launch.env) {
+      const row = el('p', null);
+      row.append(el('b', null, one.name));
+      row.append(` — ${one.note}`);
+      box.append(row);
+    }
+    box.append(el('span', 'note', 'NAMES ONLY. NO VALUE IS EVER SHOWN HERE.'));
+    floor.append(box);
+  }
+
+  const servers = [...(launch.memoryServer ? [{ ...launch.memoryServer, brief: 'the archive of this project, read and written through MADRE' }] : []), ...(launch.mcpServers ?? [])]
+    .filter((server, at, all) => all.findIndex((other) => other.name === server.name) === at);
+  if (servers.length) {
+    const box = el('div', 'core-launch-list');
+    box.append(el('span', 'k', `SERVERS IT CAN CALL · ${servers.length}`));
+    for (const server of servers) {
+      const row = el('p', 'core-server');
+      row.append(el('b', null, server.name));
+      if (server.brief) row.append(` — ${server.brief}`);
+      if (server.tools?.length) {
+        const tools = el('span', 'tools');
+        for (const tool of server.tools) tools.append(el('i', null, tool));
+        row.append(tools);
+      }
+      if (server.env?.length) row.append(el('span', 'where', ` · env: ${server.env.join(', ')}`));
+      box.append(row);
+    }
+    floor.append(box);
+  }
+  return floor;
+}
+
 function renderCoreDoc(briefing) {
   const doc = el('div', 'core-doc');
 
@@ -4490,6 +4557,7 @@ function renderCoreDoc(briefing) {
     : 'THE WHOLE ROOM STILL FITS: NOTHING IS LEFT BEHIND AND NOTHING NEEDS RECALLING YET';
   doc.append(el('p', 'note', held));
   doc.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.${briefing.spared ? ` ${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : ''}`));
+  doc.append(renderCoreLaunch(briefing.launch ?? null));
   doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.'));
   return doc;
 }

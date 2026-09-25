@@ -1,7 +1,7 @@
-import { invokeCodex } from './adapters/codex.mjs';
-import { invokeClaude } from './adapters/claude.mjs';
-import { invokeGemini } from './adapters/gemini.mjs';
-import { invokeOpenCode } from './adapters/opencode.mjs';
+import { invokeCodex, buildCodexArgs } from './adapters/codex.mjs';
+import { invokeClaude, buildClaudeArgs } from './adapters/claude.mjs';
+import { invokeGemini, buildGeminiArgs } from './adapters/gemini.mjs';
+import { invokeOpenCode, buildOpenCodeArgs } from './adapters/opencode.mjs';
 import { parseMessage } from './router.mjs';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
@@ -35,6 +35,7 @@ import { isModuleFile, sdkPaths } from './modules/index.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
+import { redactArgs } from './launch.mjs';
 
 // Adapters can fail with multi-line stderr or stack traces. The room keeps only
 // the first meaningful line, bounded, so the event log and the UI stay readable.
@@ -1039,6 +1040,56 @@ export class Room {
       window: { from: built.context?.firstSequence ?? null, through: built.context?.throughSequence ?? null, omitted: built.context?.omittedMessages ?? 0, carried: built.context?.messages?.length ?? 0 },
       recalled: built.memories?.length ?? 0,
       quoted: built.recall?.entries?.length ?? 0,
+    };
+  }
+
+  // How this agent's CLI would actually be started: the command line its own adapter builds, the
+  // folder it runs in, the names of what MADRE sets in its environment, and the tool servers
+  // attached for the turn. Built from the same builders the real run uses, and nothing is spawned.
+  //
+  // Values of environment variables are never reported, only names. One of those variables is a
+  // provider key, and a screen that shows what a process is given must not be the easiest place
+  // in the product to read a secret out of.
+  async launch({ agent: agentId, mode = 1 } = {}) {
+    const agent = this.#agents.find((one) => one.id === agentId && one.detected);
+    if (!agent) return null;
+    if (agent.local || agent.adapter === 'madre-local') {
+      return {
+        agent: agent.id, label: agent.label, local: true,
+        says: 'No process is started for @madre: it is the local model answering inside MADRE, through Ollama on this computer.',
+        mcpServers: [], env: [], isolation: [],
+      };
+    }
+    const scopes = this.scopesFor(agent.id);
+    const ceiling = Math.min(mode, scopes.maxMode ?? 0);
+    const mcpServers = this.#toolsForTurn ? await this.#toolsForTurn({ agent: agent.id, mode: ceiling, lease: null, scratchDir: null }).catch(() => []) : [];
+    const prompt = '<the briefing above>';
+    const shared = { projectRoot: this.#projectRoot, prompt, model: null, attachments: [], lease: null, scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired }, memoryServer: this.#memoryServer, mcpServers };
+    const args = agent.id === 'codex' ? buildCodexArgs(shared)
+      : agent.id === 'claude' ? buildClaudeArgs({ ...shared, attachmentsDir: null, imageStudio: null })
+        : agent.id === 'gemini' ? buildGeminiArgs({ ...shared, policyPath: '<written for this turn, deleted after it>', attachmentsDir: null })
+          : agent.id === 'opencode' ? buildOpenCodeArgs(shared)
+            : null;
+    if (!args) return { agent: agent.id, label: agent.label, local: false, says: `MADRE has no adapter for @${agent.id}.`, mcpServers: [], env: [], isolation: [] };
+    const isolation = {
+      codex: ['--ephemeral: the run keeps no session of its own, so nothing said here reaches another project.'],
+      claude: ['--no-session-persistence: the run keeps no session of its own.', 'Only the project\'s own CLAUDE.md and MADRE\'s briefing are read; hooks, plugins and outside MCP servers are not.'],
+      gemini: ['GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.', 'GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.'],
+      opencode: ['The run is given the model you chose and nothing else of your session.'],
+    }[agent.id] ?? [];
+    const env = {
+      gemini: [{ name: 'GEMINI_CLI_HOME', note: 'the temporary home for this turn' }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: 'so the launcher stays killable' }],
+    }[agent.id] ?? [];
+    return {
+      agent: agent.id, label: agent.label, local: false,
+      executable: agent.path ?? agent.id,
+      cwd: this.#projectRoot,
+      args: redactArgs(args),
+      promptMarker: prompt,
+      isolation,
+      env,
+      mcpServers: mcpServers.map((server) => ({ name: server.name, command: server.command, args: server.args ?? [], tools: server.tools ?? [], brief: server.brief ?? null, env: Object.keys(server.env ?? {}) })),
+      memoryServer: this.#memoryServer ? { name: this.#memoryServer.name, command: this.#memoryServer.command, args: this.#memoryServer.args ?? [], tools: this.#memoryServer.tools ?? [] } : null,
     };
   }
 

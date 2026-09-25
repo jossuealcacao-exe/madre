@@ -1144,6 +1144,7 @@ export async function createPulseServer({
         if (!briefing) return sendJson(response, 404, { error: `No agent "${asked}" on this computer.` });
         return sendJson(response, 200, {
           ...briefing,
+          launch: await room.launch({ agent: asked, mode }),
           agents: agents.filter((agent) => agent.detected).map((agent) => ({ id: agent.id, label: agent.label, ready: agent.ready })),
         });
       }
