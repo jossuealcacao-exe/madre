@@ -1048,9 +1048,9 @@ function renderEmptyStarts() {
   if (!ready.length) return;
   const project = (state.projectRoot ?? '').split('/').filter(Boolean).pop() || 'this project';
   for (const text of [
-    `Explain ${project} to me: what it does, how it runs, and where the important code lives.`,
-    `Read the project and name the three things most likely to break. Say why, with file and line.`,
-    `What would you change first in ${project}, and what would you not touch?`,
+    t('Explain {project} to me: what it does, how it runs, and where the important code lives.', { project }),
+    t('Read the project and name the three things most likely to break. Say why, with file and line.'),
+    t('What would you change first in {project}, and what would you not touch?', { project }),
   ]) {
     const chip = el('button', 'empty-start', text);
     chip.type = 'button';
@@ -1076,17 +1076,17 @@ function bridgeCard(agent) {
   title.append(el('b', null, agent.label));
   title.append(el('span', 'vendor', brandOf(agent.id).vendor));
   head.append(title);
-  head.append(el('span', `state ${stage}`, stage === 'missing' ? 'NOT INSTALLED' : stage === 'inert' ? 'NO ADAPTER' : stage === 'ready' ? 'READY' : 'SIGNED OUT'));
+  head.append(el('span', `state ${stage}`, stage === 'missing' ? t('NOT INSTALLED') : stage === 'inert' ? t('NO ADAPTER') : stage === 'ready' ? t('READY') : t('SIGNED OUT')));
   card.append(head);
   const detail = el('div', 'detail');
   if (agent.id === 'madre') detail.append(ollamaDetail(agent));
-  else if (stage === 'missing') detail.append(agent.install ? `Not on this computer · ${agent.install.display}` : 'Not on this computer.');
-  else detail.append(`${agent.version ?? 'version unknown'}${session?.detail ? ` · ${session.detail}` : ''}`);
+  else if (stage === 'missing') detail.append(agent.install ? t('Not on this computer · {command}', { command: agent.install.display }) : t('Not on this computer.'));
+  else detail.append(`${agent.version ?? t('version unknown')}${session?.detail ? ` · ${session.detail}` : ''}`);
   card.append(detail);
   // What is behind this door: the account it needs, and whether there is a way in without paying.
   if (agent.account) {
     const account = el('div', 'account');
-    if (agent.paid === false) account.append(el('span', 'free', 'FREE WAY IN'));
+    if (agent.paid === false) account.append(el('span', 'free', t('FREE WAY IN')));
     account.append(agent.account);
     card.append(account);
   }
@@ -1097,17 +1097,17 @@ function bridgeCard(agent) {
   if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
     if (agent.login?.headless) actions.append(bridgeSignInButton(agent, stage === 'ready'));
     else if (agent.key) {
-      reveal = el('button', 'primary', 'PASTE KEY');
+      reveal = el('button', 'primary', t('PASTE KEY'));
       reveal.type = 'button';
       actions.append(reveal);
-    } else if (agent.login) actions.append(el('span', 'note', 'signs in from its own prompt:'));
+    } else if (agent.login) actions.append(el('span', 'note', t('signs in from its own prompt:')));
   }
   if (actions.childNodes.length) card.append(actions);
   if (reveal) {
     const slot = el('div', 'key-slot');
     slot.hidden = true;
     slot.append(keyForm(agent, { onDone: () => renderOnboarding() }));
-    slot.append(el('p', 'key-note', `Or do it from a terminal: ${agent.login.display}`));
+    slot.append(el('p', 'key-note', t('Or do it from a terminal: {command}', { command: agent.login.display })));
     reveal.addEventListener('click', () => { slot.hidden = !slot.hidden; if (!slot.hidden) slot.querySelector('input')?.focus(); });
     card.append(slot);
   } else if (stage !== 'missing' && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${agent.login.note}`]));
@@ -2416,7 +2416,7 @@ function applyTheme(mode) {
   rootElement.dataset.scheme = mode === 'auto' ? (systemLight ? 'light' : 'dark') : mode;
   if (themeButton) {
     themeButton.dataset.theme = mode;
-    themeButton.title = mode === 'auto' ? 'Theme · auto (follows the system)' : mode === 'light' ? 'Theme · light' : 'Theme · dark';
+    themeButton.title = mode === 'auto' ? t('Theme · auto (follows the system)') : mode === 'light' ? t('Theme · light') : t('Theme · dark');
   }
 }
 let themeMode = 'auto';
@@ -2449,6 +2449,56 @@ langButton?.addEventListener('click', async () => {
   await fetch('/api/language', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ language: next }) }).catch(() => null);
   location.reload();
 });
+
+// The words that live in the markup. index.html is the English source — the key IS the sentence,
+// so it is written where it is used and not in a table of ids — and this walks the handful of
+// places that hold one, once, before the first paint. An element the page does not have is
+// skipped: the markup and this list are allowed to disagree without anything breaking.
+const STATIC = [
+  ['#project', 'title', 'Project room'],
+  ['#connection', 'title', 'Live updates'],
+  ['#update-pill', 'title', 'A newer MADRE is on npm'],
+  ['#stop-all', 'title', 'STOPALL · halt every plan and every agent turn'],
+  ['#modules-button', 'title', 'Modules · optional integrations for this project'],
+  ['#mother-button', 'title', 'Troubleshooting · MU/TH/UR'],
+  ['#tree-button', 'title', 'Project files panel'],
+  ['#chats-button', 'title', 'Conversations in this project'],
+  ['#chats-new', 'title', 'Start another conversation in this project. The memory stays.'],
+  ['#attach', 'title', 'Attach an image or file (or drop it here)'],
+  ['#attach', 'aria-label', 'Attach'],
+  ['#create-toggle', 'title', 'Creation lease: let the agent create files for this request, only inside .pulse/out/'],
+  ['#ash-toggle', 'title', 'Ash: ask every agent for compact prose. Nothing you write is altered.'],
+  ['#composer button[type="submit"]', 'aria-label', 'Send'],
+  ['#picker', 'aria-label', 'Agent'],
+  ['#crew-label', 'text', 'HUMAN ›'],
+  ['.onboarding-eyebrow', 'text', 'INTERFACE · FIRST CONTACT'],
+  ['.bridge h2', 'text', 'One agent is enough to open the room.'],
+  ['.bridge > p', 'text', 'MADRE works with the AI coding agents on this computer, using the session each one already has. Install one here and sign in: the room opens by itself, no terminal.'],
+  ['#bridge-close', 'text', 'BACK TO THE ROOM'],
+  ['.bridge .hint', 'html', 'Nothing is installed without you pressing it, and the exact command is always shown. Same diagnosis in a terminal:'],
+  ['.safety', 'text', 'Consultation mode · Project writes stay under your control: agents create files only with CREATE or an opt-in standing lease, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.'],
+  ['.chats-foot', 'text', 'ONE PROJECT, ONE MEMORY. EVERY CONVERSATION FEEDS THE SAME ARCHIVE.'],
+];
+
+function applyStaticText() {
+  for (const [selector, where, text] of STATIC) {
+    const node = document.querySelector(selector);
+    if (!node) continue;
+    const said = t(text);
+    // `html` is for a line that ends in something the markup owns — a <code> with a command in
+    // it. The sentence is replaced; what follows it is left exactly where it was.
+    if (where === 'html') { if (node.firstChild) node.firstChild.textContent = `${said} `; }
+    else if (where === 'text') node.textContent = said;
+    else node.setAttribute(where, said);
+  }
+  const files = document.querySelector('.tree:not(.chats) .tree-title');
+  if (files?.firstChild) files.firstChild.textContent = `${t('FILES')} `;
+  const chats = document.querySelector('.chats .tree-title');
+  if (chats?.firstChild) chats.firstChild.textContent = `${t('CONVERSATIONS')} `;
+  const newChat = document.querySelector('#chats-new');
+  if (newChat?.lastChild) newChat.lastChild.textContent = ` ${t('NEW CONVERSATION')} `;
+}
+applyStaticText();
 
 /* ---------- project files panel ---------- */
 
@@ -2750,7 +2800,8 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { a
 
 function setConnection(value) {
   els.connection.dataset.state = value;
-  els.connection.querySelector('.connection-label').textContent = value;
+  // The state stays English in the DOM, because CSS and tests read it; the word does not.
+  els.connection.querySelector('.connection-label').textContent = t(value);
 }
 if (typeof ResizeObserver === 'function' && els.composer) new ResizeObserver(placeToast).observe(els.composer);
 window.addEventListener?.('resize', placeToast);
@@ -3020,11 +3071,11 @@ fetch('/api/mother').then((response) => response.json()).then((status) => { if (
 
 function updateCrewLabel() {
   const order = state.ash && state.ashInstalled;
-  els.crewLabel.textContent = state.intruder && state.mode < 3 ? 'INTRUDER ›' : state.mode >= 3 ? `MU/TH/UR · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
-    : state.mode === 0 ? 'HUMAN · GHOST ›'
+  els.crewLabel.textContent = state.intruder && state.mode < 3 ? t('INTRUDER ›') : state.mode >= 3 ? `MU/TH/UR · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
+    : state.mode === 0 ? t('HUMAN · GHOST ›')
       : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH ›')
-        : state.create ? 'HUMAN · CREATE ›'
-          : state.expendable ? 'CREW · EXPENDABLE ›' : 'HUMAN ›';
+        : state.create ? t('HUMAN · CREATE ›')
+          : state.expendable ? t('CREW · EXPENDABLE ›') : t('HUMAN ›');
 }
 function updatePlaceholder() {
   const local = Boolean(state.agents.get(els.target.value)?.local);

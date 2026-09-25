@@ -178,6 +178,11 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(firstUser, 'a human message rendered');
   assert.match(firstUser.textContent, /YOU · CREW/, 'human messages carry the crew label');
   assert.equal(registry.get('crew-label') !== undefined, true);
+  // And the whole pipe, on a rendered page rather than on the catalogue alone: the markup is
+  // English, the room speaks Spanish, and what the reader sees is Spanish.
+  assert.match(registry.get('message').placeholder, /Prosa compacta|Escribe aquí/, 'the composer prompts the human in English');
+  assert.match(registry.get('bridge-close').textContent, /VOLVER A LA SALA/);
+  assert.match(registry.get('stop-all').attributes.title, /STOPALL · detén/);
   const ashToggle = registry.get('ash-toggle');
   assert.equal(ashToggle.hidden, false, 'enabled beta module exposes ORDER 937 in the composer');
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'true', 'ORDER 937 starts illuminated');
@@ -210,7 +215,8 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(trackHold(true, t0 + 3000), false, 'three pushes but only 3 s');
   assert.equal(trackHold(true, t0 + 4100), true, 'pushes every ~1.5 s spanning 4 s arm MOTHER');
   assert.equal(uiState.expendable, true);
-  assert.match(registry.get('crew-label').textContent, /EXPENDABLE/);
+  // The page boots in the language MADRE speaks, which is Spanish; the crew label says so.
+  assert.match(registry.get('crew-label').textContent, /PRESCINDIBLE/);
   assert.match(column.children.at(-1).textContent, /end of record/);
 
   // The core: four panes, one at a time, with the prompt through all of them. It is the most
@@ -250,7 +256,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   void stream;
   globalThis.__pulse.disarmExpendable();
   assert.equal(uiState.expendable, false);
-  assert.equal(registry.get('crew-label').textContent, 'HUMAN ›');
+  assert.equal(registry.get('crew-label').textContent, 'HUMANA ›');
 
   // Silence longer than two seconds starts over; scrolling up resets.
   assert.equal(trackHold(true, t0 + 20_000), false);

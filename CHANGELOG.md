@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### La primera hora, en español
+- El puente entero —«Con un agente basta para abrir la sala»—, los estados de cada tarjeta (NO INSTALADO, SIN FIRMAR, LISTO), la entrada gratis, pegar la llave y la línea que dice que nada se instala sin que tú lo aprietes.
+- La barra completa por sus títulos, el estado de la conexión (conectando · en vivo · reconectando), el compositor con sus botones y su línea de seguridad, quién habla delante del campo (HUMANA ›, TRIPULACIÓN · PRESCINDIBLE ›) y las tres primeras preguntas que la sala te ofrece cuando la página está en blanco.
+- Los nombres de la nave no se traducen y no se van a traducir: MU/TH/UR, NOSTROMO, CODE000, GHOST, EXCHANGE, CREATE, CONTROL, AIRLOCK, ash. Son nombres, no etiquetas.
+- El marcado sigue siendo la fuente en inglés: `index.html` guarda la frase y la página la cambia una vez antes del primer pintado. Nada de ids que mantener en fila con las pantallas, y un elemento que ya no exista simplemente se salta — el marcado y la lista pueden estar en desacuerdo sin que nada se rompa.
+- Y la prueba de humo ya no comprueba una sala en inglés: arranca en el idioma que MADRE habla, así que la tubería entera —marcado inglés, catálogo, pantalla en español— se prueba sobre una página renderizada y no solo sobre el diccionario.
+
 ### MADRE habla español, y el inglés está a un botón
 - La plomería, no la traducción: el idioma vive en `~/.pulse/config.json`, el español es el valor por defecto y en la barra hay un botón que dice **EN** — lo aprietas y la interfaz vuelve en inglés, diciendo **ES**. Recarga en vez de traducir a medias: media pantalla en cada idioma es peor que cualquiera de las dos.
 - **La clave es la frase en inglés**, tal como está escrita en el código. No hay ids que inventar ni que mantener en fila con las pantallas, y una frase que todavía nadie tradujo **sale en inglés entera** en lugar de dejar un hueco o un `MISSING_KEY_47`. Lo que varía dentro de una frase viaja como ranura con nombre, `{n} bloques`, para que el español lo ponga donde el español lo pone.
