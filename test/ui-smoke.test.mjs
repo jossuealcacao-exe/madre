@@ -180,9 +180,9 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(registry.get('crew-label') !== undefined, true);
   // And the whole pipe, on a rendered page rather than on the catalogue alone: the markup is
   // English, the room speaks Spanish, and what the reader sees is Spanish.
-  assert.match(registry.get('message').placeholder, /Prosa compacta|Escribe aquí/, 'the composer prompts the human in English');
+  assert.match(registry.get('message').placeholder, /Respuestas compactas|Escribe aquí/, 'the composer prompts the human in English');
   assert.match(registry.get('bridge-close').textContent, /VOLVER A LA SALA/);
-  assert.match(registry.get('stop-all').attributes.title, /STOPALL · detén/);
+  assert.match(registry.get('stop-all').attributes.title, /STOPALL · frena/);
   const ashToggle = registry.get('ash-toggle');
   assert.equal(ashToggle.hidden, false, 'enabled beta module exposes ORDER 937 in the composer');
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'true', 'ORDER 937 starts illuminated');
