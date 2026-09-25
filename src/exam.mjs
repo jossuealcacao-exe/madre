@@ -18,6 +18,8 @@
 // (meaning or words), how many cases it had, and the bar it used, because a number without those
 // three is a decoration.
 
+import { t } from './i18n.mjs';
+
 export const COVERAGE_SAMPLE = 30;
 export const COVERAGE_BAR = 0.55;      // cosine between the reply and the closest thing recalled
 export const COVERAGE_WORDS_BAR = 0.25;
@@ -100,7 +102,7 @@ export function spread(items, size) {
 export async function coverageExam({ events = [], recall, embed = null, sample = COVERAGE_SAMPLE, bar = null } = {}) {
   const all = exchanges(events);
   const cases = spread(all, sample);
-  if (!cases.length) return { id: 'coverage', ran: false, says: 'No exchange in this room is long enough to test with yet.' };
+  if (!cases.length) return { id: 'coverage', ran: false, says: t('No exchange in this room is long enough to test with yet.') };
   const found = [];
   for (const one of cases) {
     const held = await recall(one.asked, one.sequence);
@@ -144,7 +146,7 @@ export async function coverageExam({ events = [], recall, embed = null, sample =
     id: 'coverage', ran: true, at: new Date().toISOString(), n: cases.length, hits, rate, method, bar: used,
     mean: mean(scores), control: controlled ? mean(controls) : null,
     passed: rate >= PASS.coverage,
-    says: `${hits} of ${cases.length} questions this room actually asked had their answer already in the archive, matched by ${method}${controlled ? ' and against a control' : ''}.`,
+    says: t('{hits} of {n} questions this room actually asked had their answer already in the archive, matched by {method}{control}.', { hits, n: cases.length, method: t(method), control: controlled ? t(' and against a control') : '' }),
   };
 }
 
@@ -172,10 +174,10 @@ export function consistencyExam({ findings = [], notes = [], now = Date.now() } 
     open, refuted, standing: standing.length, aberrations: aberrations.length, trend,
     passed,
     says: open
-      ? `EYECAT is holding ${open} contradiction${open === 1 ? '' : 's'} nobody has settled.`
+      ? t('EYECAT is holding {n} contradictions nobody has settled.', { n: open })
       : trend === 'rising'
-        ? 'Nothing is open, but aberrations are being filed more often lately than they used to be.'
-        : `Nothing contradicts anything: ${standing.length} notes stand, ${refuted} were taken out of circulation.`,
+        ? t('Nothing is open, but aberrations are being filed more often lately than they used to be.')
+        : t('Nothing contradicts anything: {standing} notes stand, {refuted} were taken out of circulation.', { standing: standing.length, refuted }),
   };
 }
 
@@ -184,13 +186,13 @@ export function consistencyExam({ findings = [], notes = [], now = Date.now() } 
 // `ask(question)` is the local model with this archive behind it. `embed` is needed: comparing
 // two answers by their words rewards copying the question back.
 export async function matchExam({ events = [], ask, embed, sample = MATCH_SAMPLE, bar = MATCH_BAR, onProgress = () => {}, stop = () => false } = {}) {
-  if (!embed) return { id: 'match', ran: false, says: 'This test needs embeddings: two answers cannot be compared by their words alone.' };
+  if (!embed) return { id: 'match', ran: false, says: t('This test needs embeddings: two answers cannot be compared by their words alone.') };
   const all = exchanges(events).filter((one) => !one.local);   // a model is not tested against itself
   const cases = spread(all, sample);
-  if (!cases.length) return { id: 'match', ran: false, says: 'No question in this room was answered by an agent other than the local one yet.' };
+  if (!cases.length) return { id: 'match', ran: false, says: t('No question in this room was answered by an agent other than the local one yet.') };
   const mine = [];
   for (const [index, one] of cases.entries()) {
-    if (stop()) return { id: 'match', ran: false, stopped: true, says: `Stopped after ${index} of ${cases.length}.` };
+    if (stop()) return { id: 'match', ran: false, stopped: true, says: t('Stopped after {index} of {n}.', { index, n: cases.length }) };
     onProgress({ done: index, total: cases.length });
     try { mine.push(String((await ask(one.asked)) ?? '')); } catch { mine.push(''); }
   }
@@ -209,6 +211,30 @@ export async function matchExam({ events = [], ask, embed, sample = MATCH_SAMPLE
   return {
     id: 'match', ran: true, at: new Date().toISOString(), n: cases.length, matched, rate, mean: mean(scores), control: controlled ? mean(controls) : null, bar,
     passed: rate >= PASS.match,
-    says: `On ${matched} of ${cases.length} real questions the local model landed where the agent of the day landed${controlled ? ', and not merely in the same project' : ''}.`,
+    says: t('On {matched} of {n} real questions the local model landed where the agent of the day landed{control}.', { matched, n: cases.length, control: controlled ? t(', and not merely in the same project') : '' }),
   };
+}
+
+// A reading that was taken months ago is still read today, and the room may have changed its
+// language since. The numbers are what was measured; the sentence is only how they are said, so
+// it is said again, now, from the fields that were stored. A stored result that predates this
+// keeps whatever sentence it was written with.
+export function saysFor(result) {
+  if (!result?.ran) return result?.says ?? null;
+  if (result.id === 'coverage' && Number.isFinite(result.hits)) {
+    return t('{hits} of {n} questions this room actually asked had their answer already in the archive, matched by {method}{control}.',
+      { hits: result.hits, n: result.n, method: t(result.method ?? 'words'), control: result.control === null || result.control === undefined ? '' : t(' and against a control') });
+  }
+  if (result.id === 'match' && Number.isFinite(result.matched)) {
+    return t('On {matched} of {n} real questions the local model landed where the agent of the day landed{control}.',
+      { matched: result.matched, n: result.n, control: result.control === null || result.control === undefined ? '' : t(', and not merely in the same project') });
+  }
+  if (result.id === 'consistency' && Number.isFinite(result.open)) {
+    return result.open
+      ? t('EYECAT is holding {n} contradictions nobody has settled.', { n: result.open })
+      : result.trend === 'rising'
+        ? t('Nothing is open, but aberrations are being filed more often lately than they used to be.')
+        : t('Nothing contradicts anything: {standing} notes stand, {refuted} were taken out of circulation.', { standing: result.standing, refuted: result.refuted });
+  }
+  return result.says ?? null;
 }

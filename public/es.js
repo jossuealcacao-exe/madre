@@ -619,6 +619,79 @@ export const ES = {
   'MU/TH/UR › CODE000. The archive is sealed for {n} minutes and the crew has been told, in code. Access to NOSTROMO needs the designation again.':
     'MU/TH/UR › CODE000. El archivo queda sellado {n} minutos y la tripulación ya fue avisada, en clave. Para entrar a NOSTROMO hay que dar la designación otra vez.',
 
+  // ── LAS LECTURAS QUE CALCULA LA SALA ──────────────────────────────────────
+  // De qué está hecho el archivo: seis señales, cada una con lo que la subiría.
+  'HOW MUCH THERE IS': 'CUÁNTO HAY',
+  '{pairs} of about {target} exchanges worth training on': '{pairs} de unos {target} intercambios que valen para entrenar',
+  'Use the room. Nothing else fills this.': 'Usa la sala. Nada más llena esto.',
+  'HOW MUCH OF IT GETS USED': 'CUÁNTO SE USA',
+  '{recalled} of {total} memories have been reached for at least once': 'a {recalled} de {total} memorias se les ha echado mano al menos una vez',
+  'Memories nobody has needed may be noise, or may simply not have come up yet. Ask the room about older decisions and see which ones answer.':
+    'Las memorias que nadie ha necesitado pueden ser ruido, o simplemente no haber salido todavía. Pregúntale a la sala por decisiones viejas y mira cuáles contestan.',
+  'HOW WOVEN IT IS': 'QUÉ TAN TEJIDO ESTÁ',
+  '{connected} of {total} memories share a subject with another': '{connected} de {total} memorias comparten tema con otra',
+  'An archive of unrelated notes is a list. Depth comes from returning to the same subjects.':
+    'Un archivo de notas sueltas es una lista. La profundidad viene de volver a los mismos temas.',
+  'HOW MUCH OF IT YOU JUDGED': 'CUÁNTO HAS JUZGADO',
+  '{rated} of {pairs} replies rated': '{rated} de {pairs} respuestas calificadas',
+  'Rate replies with the thumbs on a bubble. A corpus nobody judged teaches what the agents said, not what you approved.':
+    'Califica las respuestas con los pulgares de cada burbuja. Un corpus que nadie juzgó enseña lo que dijeron los agentes, no lo que tú aprobaste.',
+  'HOW MUCH OF IT IS REAL WORK': 'CUÁNTO ES TRABAJO DE VERDAD',
+  '{share}% of the corpus is recall questions, {turns} exchanges are real work':
+    '{share}% del corpus son preguntas de recall, {turns} intercambios son trabajo de verdad',
+  'Recall pairs are made from notes and cost nothing, so they pile up. Work in the room to balance them.':
+    'Los pares de recall se hacen con notas y no cuestan nada, así que se amontonan. Trabaja en la sala para equilibrarlos.',
+  'HOW CURRENT IT IS': 'QUÉ TAN AL DÍA ESTÁ',
+  '{pending} exchanges nobody has distilled yet, of {entries}': '{pending} intercambios que nadie ha destilado todavía, de {entries}',
+  'The archivist catches up on its own. A backlog that never clears means it cannot run: check who is allowed to distil.':
+    'El archivista se pone al día solo. Una cola que nunca baja significa que no puede correr: revisa quién tiene permiso de destilar.',
+  'Worth training on. Export and run the recipe.': 'Vale para entrenar. Exporta y corre la receta.',
+  'Usable, and it will be better for waiting.': 'Ya sirve, y va a estar mejor si esperas.',
+  'It has a shape. Too thin to train on.': 'Ya tiene forma. Demasiado delgado para entrenar.',
+  'A few things remembered, little connecting them.': 'Unas cuantas cosas recordadas, poco que las conecte.',
+  'Nothing has been distilled yet.': 'Todavía no se ha destilado nada.',
+
+  // El veredicto: una frase y una sola cosa que hacer.
+  'THE ROOM': 'LA SALA',
+  'Settle the {n} contradictions EYECAT is holding. Until they are settled, everything built on this archive inherits them.':
+    'Resuelve las {n} contradicciones que EYECAT sostiene. Hasta que se resuelvan, todo lo que se construya sobre este archivo las hereda.',
+  'Answer the {n} questions the room wrote for itself. They are the holes this test is finding.':
+    'Contesta las {n} preguntas que la sala se escribió sola. Son los huecos que esta prueba está encontrando.',
+  'Keep working in the room. The archive fills where the work happens, and this test measures exactly that.':
+    'Sigue trabajando en la sala. El archivo se llena donde ocurre el trabajo, y eso es justo lo que mide esta prueba.',
+  'Nothing contradicts anything and the archive answers what this room asks.':
+    'Nada contradice nada y el archivo contesta lo que esta sala pregunta.',
+  'Run the third test: it puts real questions from this room back to the local model and says whether it lands where the agents landed.':
+    'Corre la tercera prueba: le hace al modelo local preguntas reales de esta sala y dice si aterriza donde aterrizó la tripulación.',
+  'This room is ready to be worked in with the local model.': 'Esta sala ya se puede trabajar con el modelo local.',
+  'Nothing is wrong. {n} memories have had every chance and were never the answer: look at them and decide.':
+    'No hay nada mal. {n} memorias han tenido todas las oportunidades y nunca fueron la respuesta: míralas y decide.',
+  'Nothing to fix. Keep using the room; the archive grows where the work is.':
+    'Nada que arreglar. Sigue usando la sala; el archivo crece donde está el trabajo.',
+  'The local model does not land where the agents land yet. Keep the archive growing and run this test again in a week.':
+    'El modelo local todavía no aterriza donde aterriza la tripulación. Deja que el archivo siga creciendo y corre esta prueba otra vez en una semana.',
+
+  // Lo que dice cada prueba al terminar.
+  'No exchange in this room is long enough to test with yet.': 'Todavía no hay en esta sala un intercambio lo bastante largo para probar con él.',
+  'meaning': 'significado',
+  'words': 'palabras',
+  ' and against a control': ' y contra un control',
+  '{hits} of {n} questions this room actually asked had their answer already in the archive, matched by {method}{control}.':
+    '{hits} de {n} preguntas que esta sala hizo de verdad ya tenían su respuesta en el archivo, emparejadas por {method}{control}.',
+  'EYECAT is holding {n} contradictions nobody has settled.': 'EYECAT sostiene {n} contradicciones que nadie ha resuelto.',
+  'Nothing is open, but aberrations are being filed more often lately than they used to be.':
+    'No hay nada abierto, pero últimamente se están archivando aberraciones más seguido que antes.',
+  'Nothing contradicts anything: {standing} notes stand, {refuted} were taken out of circulation.':
+    'Nada contradice nada: {standing} notas siguen en pie, {refuted} salieron de circulación.',
+  'This test needs embeddings: two answers cannot be compared by their words alone.':
+    'Esta prueba necesita embeddings: dos respuestas no se pueden comparar solo por sus palabras.',
+  'No question in this room was answered by an agent other than the local one yet.':
+    'Todavía ninguna pregunta de esta sala la contestó un agente que no fuera el local.',
+  'Stopped after {index} of {n}.': 'Detenida después de {index} de {n}.',
+  ', and not merely in the same project': ', y no solo dentro del mismo proyecto',
+  'On {matched} of {n} real questions the local model landed where the agent of the day landed{control}.':
+    'En {matched} de {n} preguntas reales el modelo local aterrizó donde aterrizó el agente de aquel día{control}.',
+
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',
   'Interface in Spanish': 'Interfaz en español',

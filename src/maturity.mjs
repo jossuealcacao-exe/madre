@@ -9,6 +9,8 @@
 
 // How much of the whole each reading is worth. Volume counts, but it is one voice of six: a room
 // can be large and still be narrow, unjudged and lopsided.
+import { t } from './i18n.mjs';
+
 export const WEIGHTS = { volume: 0.2, coverage: 0.2, weave: 0.15, judgement: 0.2, balance: 0.15, upkeep: 0.1 };
 export const VOLUME_TARGET = 300;   // the usual floor for a small adapter, and nothing more than that
 
@@ -31,44 +33,44 @@ export function maturity({ readiness = null, notes = [], links = [], stats = nul
 
   const signals = [
     {
-      id: 'volume', label: 'HOW MUCH THERE IS',
+      id: 'volume', label: t('HOW MUCH THERE IS'),
       value: round(share(pairs, VOLUME_TARGET)),
-      detail: `${pairs} of about ${VOLUME_TARGET} exchanges worth training on`,
-      next: 'Use the room. Nothing else fills this.',
+      detail: t('{pairs} of about {target} exchanges worth training on', { pairs, target: VOLUME_TARGET }),
+      next: t('Use the room. Nothing else fills this.'),
     },
     {
-      id: 'coverage', label: 'HOW MUCH OF IT GETS USED',
+      id: 'coverage', label: t('HOW MUCH OF IT GETS USED'),
       value: round(share(recalled, standing.length)),
-      detail: `${recalled} of ${standing.length} memories have been reached for at least once`,
-      next: 'Memories nobody has needed may be noise, or may simply not have come up yet. Ask the room about older decisions and see which ones answer.',
+      detail: t('{recalled} of {total} memories have been reached for at least once', { recalled, total: standing.length }),
+      next: t('Memories nobody has needed may be noise, or may simply not have come up yet. Ask the room about older decisions and see which ones answer.'),
     },
     {
-      id: 'weave', label: 'HOW WOVEN IT IS',
+      id: 'weave', label: t('HOW WOVEN IT IS'),
       value: round(share(connected, standing.length)),
-      detail: `${connected} of ${standing.length} memories share a subject with another`,
-      next: 'An archive of unrelated notes is a list. Depth comes from returning to the same subjects.',
+      detail: t('{connected} of {total} memories share a subject with another', { connected, total: standing.length }),
+      next: t('An archive of unrelated notes is a list. Depth comes from returning to the same subjects.'),
     },
     {
-      id: 'judgement', label: 'HOW MUCH OF IT YOU JUDGED',
+      id: 'judgement', label: t('HOW MUCH OF IT YOU JUDGED'),
       // A tenth rated is enough to steer a small adapter; asking for all of it would never be met.
       value: round(share(rated, Math.max(1, pairs * 0.1))),
-      detail: `${rated} of ${pairs} replies rated`,
-      next: 'Rate replies with the thumbs on a bubble. A corpus nobody judged teaches what the agents said, not what you approved.',
+      detail: t('{rated} of {pairs} replies rated', { rated, pairs }),
+      next: t('Rate replies with the thumbs on a bubble. A corpus nobody judged teaches what the agents said, not what you approved.'),
     },
     {
-      id: 'balance', label: 'HOW MUCH OF IT IS REAL WORK',
+      id: 'balance', label: t('HOW MUCH OF IT IS REAL WORK'),
       // Half recall pairs is healthy; a corpus that is mostly recall teaches recitation. A room
       // with no corpus at all is not balanced, it is empty, and saying otherwise would show
       // progress where there is none.
       value: pairs > 0 ? round(1 - Math.min(1, Math.max(0, (noteShare - 0.5) / 0.5))) : 0,
-      detail: `${Math.round(noteShare * 100)}% of the corpus is recall questions, ${turns} exchanges are real work`,
-      next: 'Recall pairs are made from notes and cost nothing, so they pile up. Work in the room to balance them.',
+      detail: t('{share}% of the corpus is recall questions, {turns} exchanges are real work', { share: Math.round(noteShare * 100), turns }),
+      next: t('Recall pairs are made from notes and cost nothing, so they pile up. Work in the room to balance them.'),
     },
     {
-      id: 'upkeep', label: 'HOW CURRENT IT IS',
+      id: 'upkeep', label: t('HOW CURRENT IT IS'),
       value: round(entries > 0 ? 1 - share(pending, Math.max(1, entries * 0.15)) : 0),
-      detail: `${pending} exchange${pending === 1 ? '' : 's'} nobody has distilled yet, of ${entries}`,
-      next: 'The archivist catches up on its own. A backlog that never clears means it cannot run: check who is allowed to distil.',
+      detail: t('{pending} exchanges nobody has distilled yet, of {entries}', { pending, entries }),
+      next: t('The archivist catches up on its own. A backlog that never clears means it cannot run: check who is allowed to distil.'),
     },
   ];
 
@@ -84,6 +86,9 @@ export const STAGES = [
   { at: 0.12, id: 'sparse', label: 'SPARSE', says: 'A few things remembered, little connecting them.' },
   { at: 0, id: 'empty', label: 'EMPTY', says: 'Nothing has been distilled yet.' },
 ];
+// The table holds the English, and the stage is said in the room's language when it is asked
+// for: this list is built when the file is imported, and the room learns its language after.
 export function stageOf(score) {
-  return STAGES.find((stage) => score >= stage.at) ?? STAGES.at(-1);
+  const stage = STAGES.find((one) => score >= one.at) ?? STAGES.at(-1);
+  return { ...stage, says: t(stage.says) };
 }

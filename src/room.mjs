@@ -11,7 +11,7 @@ import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
 import { questionsFor } from './asking.mjs';
-import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE } from './exam.mjs';
+import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE, saysFor } from './exam.mjs';
 import { MADRE_ADAPTER, MADRE_AGENT_ID } from './adapters/madre.mjs';
 import { verdictFor } from './verdict.mjs';
 import { ControlDesk } from './room/control.mjs';
@@ -401,6 +401,9 @@ export class Room {
   async exams({ refresh = false, findings = [] } = {}) {
     let last = {};
     try { last = JSON.parse(this.#memory?.metaGet('exams') ?? '{}'); } catch { last = {}; }
+    // Said again in the room's language from the numbers that were stored: a reading taken in
+    // another language is still a reading, and its sentence is only how it is said.
+    last = Object.fromEntries(Object.entries(last).map(([id, result]) => [id, { ...result, says: saysFor(result) ?? result.says }]));
     // The one test that costs nothing is never something to ask for: it is read, not run.
     if (refresh && this.#memory) last = { ...last, consistency: this.#keepExam(consistencyExam({ findings, notes: this.#memory.memories({ limit: 500 }) })) };
     const embedder = this.#memory?.embedder?.model ?? null;

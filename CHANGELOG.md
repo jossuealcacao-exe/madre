@@ -26,6 +26,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Las lecturas de la sala, en español
+- El veredicto, las seis señales de madurez y lo que dice cada prueba al terminar estaban armadas con plantillas dentro de `maturity.mjs`, `verdict.mjs` y `exam.mjs`. Ahora están escritas con ranuras y pasan por el mismo catálogo: «CUÁNTO SE USA · a 58 de 71 memorias se les ha echado mano al menos una vez», «Contesta las 6 preguntas que la sala se escribió sola», «En 10 de 12 preguntas reales el modelo local aterrizó donde aterrizó el agente de aquel día».
+- **Y una lectura guardada se vuelve a decir.** Los resultados de las pruebas viven junto a la memoria, con la frase que tenían el día que corrieron; una sala que cambió de idioma los seguía enseñando en el idioma viejo. Los números son lo que se midió y la frase es solo cómo se dice, así que se rearma ahora, con los campos que quedaron guardados. Lo que se guardó antes de esto conserva su frase.
+- La tabla de etapas —EMPTY, SPARSE, FORMING, WORKING, MATURE— guarda el inglés y se traduce al leerse, no al importarse: esa lista se arma cuando se carga el archivo, y la sala aprende su idioma después.
+
 ### CONNECTIONS y NOSTROMO, en español
 - ⚙ CONNECTIONS entero: las fichas de cada agente con su sesión, sus permisos (GENERAR IMÁGENES, ACCESO A LA WEB), el MODO MÁXIMO y el MODO INICIAL con lo que significa cada uno; los ajustes de la sala; la memoria con su archivista, su destilación y sus embeddings; la tarjeta de entrenamiento paso por paso; y la privacidad con sus términos y su purga.
 - NOSTROMO: la leyenda de estrellas —ENANA AMARILLA, ENANA BLANCA, ENANA VERDE, ENANA AZUL, COLAPSADA—, el subtítulo que cuenta memorias, enlaces y lo que hay detrás, el panel de preguntas que la sala se escribe sola, y las tres pruebas con lo que mide cada una.

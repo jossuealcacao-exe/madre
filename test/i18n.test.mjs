@@ -103,3 +103,23 @@ test('i18n: the switch is one button, it says where it goes, and the page comes 
   assert.match(server, /await updateConfig\(root, \{ language \}\)/);
   assert.match(server, /'\/i18n\.js', '\/es\.js'/, 'the page imports modules the room does not serve');
 });
+
+test('i18n: a reading taken in another language is read in this one', async () => {
+  // The numbers are what was measured; the sentence is only how they are said. A test that ran
+  // months ago, in whatever language the room spoke then, is still read today — so it is said
+  // again, now, from the fields that were stored beside it.
+  const { saysFor } = await import('../src/exam.mjs');
+  const { setLanguage: setRoomLanguage } = await import('../src/i18n.mjs');
+
+  const stored = { id: 'match', ran: true, n: 12, matched: 10, control: 0.4, says: 'On 10 of 12 real questions the local model landed where the agent of the day landed, and not merely in the same project.' };
+  setRoomLanguage('es');
+  assert.match(saysFor(stored), /En 10 de 12 preguntas reales/);
+  setRoomLanguage('en');
+  assert.equal(saysFor(stored), stored.says, 'the English is rebuilt exactly as it was written');
+
+  // Without a control the sentence does not claim one.
+  assert.ok(!saysFor({ ...stored, control: null }).includes('not merely'));
+  // A reading that never ran, or one from before this existed, keeps whatever it has.
+  assert.equal(saysFor({ id: 'match', ran: false, says: 'x' }), 'x');
+  assert.equal(saysFor({ id: 'coverage', ran: true, says: 'older than this' }), 'older than this');
+});
