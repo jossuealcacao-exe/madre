@@ -17,6 +17,7 @@ import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.
 import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
+import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -35,7 +36,6 @@ export function injectRipleyBridge(body) {
   return Buffer.from(RIPLEY_BRIDGE + text);
 }
 // The author's collector: SEND and AUTO-REPORT are available out of the box; AUTO-REPORT stays off until the human turns it on.
-const DEFAULT_REPORT_URL = 'https://madre-reports.jossue-alcala-o.workers.dev/v1/reports';
 import { QuotaMonitor } from './quota-monitor.mjs';
 import { defaultQuotaSources } from './quota-sources.mjs';
 import { Room } from './room.mjs';
@@ -145,6 +145,15 @@ export async function createPulseServer({
   const agents = providedAgents ?? await detector();
   const canonicalProjectRoot = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const roomDir = join(root, 'rooms', projectRoomId(canonicalProjectRoot));
+  // What left this machine. Every fetch this process makes — MADRE's own and any a module makes,
+  // because a module runs in here and cannot opt out — goes through one wrapper and lands in a
+  // line beside the ledger. Bodies, headers and query values are never in it. One room per
+  // process holds the watch; a second would only log what the first already logged.
+  const outbound = await new OutboundLog({ file: join(roomDir, 'outbound.jsonl') }).load();
+  const unwatchOutbound = outbound.install();
+  process.env.PULSE_OUTBOUND_LOG = join(roomDir, 'outbound.jsonl');
+  reportFetch = outbound.watch(reportFetch);
+
   // Attachments live beside the room log, never inside the project, and belong to the project
   // rather than to one conversation.
   const attachmentsRoot = join(roomDir, 'attachments');
@@ -589,6 +598,7 @@ export async function createPulseServer({
     emit: (type, payload) => room.record(type, payload),
     save: async (settings) => { const current = await readConfig(root); await updateConfig(root, { telemetry: { ...(current.telemetry ?? {}), ...settings } }); },
   });
+  outbound.watchReportUrl(sentinel.settings().reportUrl);
   let unsubscribeSentinel = () => {};
   if (!testMode && !crashHandlersInstalled) {
     crashHandlersInstalled = true;
@@ -955,7 +965,9 @@ export async function createPulseServer({
       }
       if (request.method === 'POST' && url.pathname === '/api/sentinel/settings') {
         const patch = await body(request).catch(() => ({}));
-        return sendJson(response, 200, { settings: await sentinel.setSettings(patch) });
+        const saved = await sentinel.setSettings(patch);
+        outbound.watchReportUrl(saved.reportUrl);
+        return sendJson(response, 200, { settings: saved });
       }
       const sentinelMatch = url.pathname.match(/^\/api\/sentinel\/([a-f0-9]{10})\/(issue|send)$/);
       if (sentinelMatch && request.method === (sentinelMatch[2] === 'issue' ? 'GET' : 'POST')) {
@@ -977,6 +989,27 @@ export async function createPulseServer({
       // from a CLI's own cache, and how many characters the room spends per token it is charged.
       if (url.pathname === '/api/economy' && request.method === 'GET') {
         return sendJson(response, 200, economy(await store.readAll()));
+      }
+
+      // What left this machine: every address MADRE may reach, whether it is on today, and the
+      // last requests this process actually made. The declaration is checked against the log.
+      if (url.pathname === '/api/outbound' && request.method === 'GET') {
+        const embedder = memory?.embedder?.model ?? null;
+        const modules = (await readConfig(root)).modules ?? {};
+        return sendJson(response, 200, outboundView({
+          log: outbound,
+          agents,
+          state: {
+            crew: agents.some((agent) => agent.detected && !agent.local),
+            embeddings: Boolean(embedder && /^gemini/i.test(embedder)),
+            image: Boolean(modules['image-studio']?.enabled),
+            npm: updatesEnabled(),
+            github: updatesEnabled(),
+            reports: Boolean(sentinel.settings().autoReport),
+            anthropic: agents.some((agent) => agent.id === 'claude' && agent.ready),
+            ollama: Boolean(ollama.running),
+          },
+        }));
       }
 
       // EYECAT: what it is holding, and the two answers a person can give it. Confirming writes
@@ -1499,6 +1532,7 @@ export async function createPulseServer({
   server.close = (callback) => {
     clearInterval(poller);
     clearTimeout(embedKick);
+    unwatchOutbound();
     // In-flight agent processes are killed and their turns recorded as failed
     // before the SSE clients go away, so open pages see the outcome.
     const shutdown = room.shutdown().catch((error) => console.error(`MADRE shutdown error: ${error.message}`));
@@ -1514,6 +1548,7 @@ export async function createPulseServer({
         clients.clear();
         // The memory file closes last, once nothing else writes to it; WAL and shm go with it.
         try { memory?.close(); } catch { /* already closed */ }
+        void outbound.drain();
         releaseOpen();
         result = nativeClose(callback);
         server.closeIdleConnections?.();

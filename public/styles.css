@@ -435,6 +435,24 @@ dialog.nostromo::backdrop { background: #000; }
 .core-launch-list .where { color: var(--ph-dim); }
 .core-server .tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
 .core-server .tools i { font-style: normal; font-size: 8.5px; letter-spacing: .1em; color: var(--ph-dim); border: 1px solid var(--ph-faint); padding: 1px 5px; }
+/* WHAT LEFT THIS MACHINE: the declaration, and the log that checks it. */
+.core-egress { display: grid; gap: 2px; }
+.egress { display: grid; grid-template-columns: 52px minmax(120px, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 8px; border: 1px solid transparent; }
+.egress:hover { border-color: var(--ph-faint); background: rgba(0, 0, 0, .3); }
+.egress .state { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--nostromo-sun); text-shadow: none; }
+.egress.off .state { color: var(--ph-dim); }
+.egress.local .state { color: #96b0c6; }
+.egress > b { font-size: 10px; letter-spacing: .1em; color: var(--ph); text-shadow: none; }
+.egress .n { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; color: var(--ph-dim); text-align: right; white-space: nowrap; }
+.egress .what, .egress .when { grid-column: 2 / -1; margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.6; color: rgba(210, 255, 190, .86); text-shadow: none; }
+.egress .when { font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); text-transform: uppercase; }
+.egress .when i { font-style: normal; }
+.egress .when .where { color: rgba(210, 255, 190, .72); }
+.egress.off { opacity: .55; }
+.egress.off:hover { opacity: 1; }
+.core-egress-log > summary { grid-template-columns: minmax(120px, 1fr) auto auto; }
+.core-egress-log .core-text pre { max-height: 30vh; font-size: 10.5px; white-space: pre; }
+@media (max-width: 720px) { .egress { grid-template-columns: 52px 1fr; } .egress .n { grid-column: 1 / -1; text-align: left; } }
 
 /* The cold zone: a colour that is not a memory kind and not the sun, so it never reads as life. */
 .nostromo-head .mother-close.cold { color: #96b0c6; border-color: color-mix(in srgb, #96b0c6 45%, transparent); }

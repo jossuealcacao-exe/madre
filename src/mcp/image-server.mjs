@@ -17,6 +17,7 @@ import { execFile } from 'node:child_process';
 import { mkdir, writeFile, realpath } from 'node:fs/promises';
 import { basename, extname, join, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
+import { OutboundLog } from '../outbound.mjs';
 
 const execFileAsync = promisify(execFile);
 const SERVER_NAME = 'pulse-image';
@@ -62,6 +63,16 @@ export function explainGoogleError(status, body) {
   return { code: 'ERROR', message: message || `Google returned HTTP ${status}.` };
 }
 
+// The image studio runs in a process of its own, so it writes its own line into the room's
+// outbound log. Without this, the one request MADRE makes that carries somebody's words to
+// Google would be the one request the log could not see.
+let outboundLog = null;
+function outboundFetch(fetchImpl, file) {
+  if (!file) return fetchImpl;
+  outboundLog ??= new OutboundLog({ file });
+  return outboundLog.watch(fetchImpl);
+}
+
 export async function generateImage({ prompt, fileName, outDir, model = process.env.PULSE_IMAGE_MODEL || DEFAULT_MODEL, env = process.env, fetchImpl = fetch }) {
   if (!prompt || typeof prompt !== 'string') throw Object.assign(new Error('A text prompt is required.'), { code: 'INVALID' });
   const root = await realpath(outDir).catch(() => null);
@@ -76,7 +87,7 @@ export async function generateImage({ prompt, fileName, outDir, model = process.
   }
   const key = await resolveGeminiKey(env);
   if (!key) throw Object.assign(new Error('No Gemini API key: set GEMINI_API_KEY or sign in with the Gemini CLI (/auth → API key).'), { code: 'NO_KEY' });
-  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+  const response = await outboundFetch(fetchImpl, env.PULSE_OUTBOUND_LOG)(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }),

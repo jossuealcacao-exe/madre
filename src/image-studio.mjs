@@ -18,6 +18,8 @@ export function imageStudioFor({ enabled, model, outDir, env = process.env }) {
       PULSE_IMAGE_MODEL: model ?? 'gemini-2.5-flash-image',
       ...(env.GEMINI_API_KEY ? { GEMINI_API_KEY: env.GEMINI_API_KEY } : {}),
       ...(env.PULSE_IMAGE_FAKE ? { PULSE_IMAGE_FAKE: env.PULSE_IMAGE_FAKE } : {}),
+      // So the one request that carries a prompt to Google lands in the same log as the rest.
+      ...(env.PULSE_OUTBOUND_LOG ? { PULSE_OUTBOUND_LOG: env.PULSE_OUTBOUND_LOG } : {}),
     },
   };
 }

@@ -4325,6 +4325,7 @@ const core = {
   typing: null,
   last: null,
   rate: null,
+  outbound: null,
 };
 
 const CORE_BOOT = [
@@ -4360,7 +4361,14 @@ async function openCore() {
   typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; });
   // How many characters this room spends per token it is charged, so the weight below means
   // something in the currency the bill is written in.
-  if (core.rate === null) core.rate = await fetch('/api/economy').then((response) => response.json()).then((read) => read?.totals?.charsPerInputToken ?? 0).catch(() => 0);
+  // What has left this machine is about the room, not about this turn, so it is read once per
+  // visit and not again on every keystroke.
+  const [rate, outbound] = await Promise.all([
+    core.rate === null ? fetch('/api/economy').then((response) => response.json()).then((read) => read?.totals?.charsPerInputToken ?? 0).catch(() => 0) : core.rate,
+    fetch('/api/outbound').then((response) => response.json()).catch(() => null),
+  ]);
+  core.rate = rate;
+  core.outbound = outbound;
   await loadCore();
 }
 
@@ -4505,6 +4513,57 @@ function renderCoreLaunch(launch) {
   return floor;
 }
 
+// WHAT LEFT THIS MACHINE. MADRE keeps what it knows in a file you own, and that sentence is
+// worth exactly as much as the list that qualifies it. This is the list: every address this
+// process may reach, what it says there, what turns it off — and beside it, what actually went
+// out, counted by the wrapper every fetch in this process goes through, a module's included.
+function renderCoreOutbound(view) {
+  const floor = el('section', 'core-launch core-outbound');
+  const head = el('p', 'core-launch-head');
+  head.append(el('b', null, 'WHAT LEFT THIS MACHINE'));
+  head.append(el('span', null, 'EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY'));
+  floor.append(head);
+  if (!view) { floor.append(el('p', 'note', 'THE LOG COULD NOT BE READ.')); return floor; }
+
+  const list = el('div', 'core-egress');
+  for (const one of view.destinations) {
+    const row = el('div', `egress${one.on === false ? ' off' : ''}${one.local ? ' local' : ''}`);
+    const state = el('span', 'state', one.local ? 'LOCAL' : one.on === true ? 'ON' : one.on === false ? 'OFF' : '—');
+    const to = el('b', null, one.to);
+    const what = el('p', 'what', one.what);
+    const when = el('p', 'when');
+    when.append(el('i', null, one.when));
+    if (one.where) when.append(el('span', 'where', ` · ${one.where}`));
+    const count = el('span', 'n', one.calls
+      ? `${one.calls} REQUEST${one.calls === 1 ? '' : 'S'}${one.failed ? ` · ${one.failed} FAILED` : ''}${one.last ? ` · ${agoWords(one.last).toUpperCase()}` : ''}`
+      : one.inside ? 'NOTHING YET' : 'NOT THROUGH MADRE');
+    row.append(state, to, count, what, when);
+    list.append(row);
+  }
+  floor.append(list);
+  floor.append(el('p', 'note', view.says.toUpperCase()));
+
+  // The log itself, which is what makes the list above checkable rather than a promise.
+  const lines = view.recent ?? [];
+  const seen = el('details', 'core-block core-egress-log');
+  const summary = el('summary');
+  summary.append(el('b', null, 'THE LAST REQUESTS THIS PROCESS MADE'));
+  summary.append(el('span', 'n', `${lines.length} LINE${lines.length === 1 ? '' : 'S'}`));
+  const caret = el('span', 'caret', '▸ READ');
+  summary.append(caret);
+  seen.addEventListener('toggle', () => { caret.textContent = seen.open ? '▾ CLOSE' : '▸ READ'; });
+  const body = el('div', 'core-text');
+  const pre = el('pre');
+  pre.textContent = lines.length
+    ? lines.map((line) => `${line.at.replace('T', ' ').slice(0, 19)}  ${line.ok ? 'ok ' : '×  '}${String(line.status ?? line.error ?? '').padEnd(4)} ${line.method.padEnd(4)} ${line.to}${line.path}${line.params ? `?${line.params.join('&')}` : ''}`).join('\n')
+    : 'Nothing has gone out of this process yet.';
+  body.append(pre);
+  body.append(el('p', 'core-from', 'NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE — ONLY WHICH PARAMETERS WERE SET. THE GEMINI EMBEDDING ADDRESS CARRIES THE KEY IN THE URL, AND A LOG OF WHAT LEFT THIS MACHINE WOULD BE A POOR PLACE TO LEAVE IT.'));
+  seen.append(summary, body);
+  floor.append(seen);
+  return floor;
+}
+
 function renderCoreDoc(briefing) {
   const doc = el('div', 'core-doc');
 
@@ -4558,6 +4617,7 @@ function renderCoreDoc(briefing) {
   doc.append(el('p', 'note', held));
   doc.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.${briefing.spared ? ` ${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : ''}`));
   doc.append(renderCoreLaunch(briefing.launch ?? null));
+  doc.append(renderCoreOutbound(core.outbound));
   doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.'));
   return doc;
 }

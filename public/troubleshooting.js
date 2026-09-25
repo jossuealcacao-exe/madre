@@ -522,6 +522,20 @@ export const CONDITIONS = [
     remedy: 'Install it only if you trust where it came from. A module you wrote can also be updated from where you publish it: declare updates: { url } in the file, or install it from a file and MADRE remembers which, and its card carries GET A NEWER FILE.',
     fixes: same(['# MODULES → + ADD A MODULE', 'ls ~/.pulse/modules   # every module you installed, and where it came from', '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works']),
   },
+  {
+    id: 'outbound',
+    severity: 'common',
+    title: 'What leaves this computer, and how to stop each thing that does',
+    match: /what left this machine|outbound|leaves? (this )?(computer|machine)|sends? (my )?(code|data)|telemetry|phone home|privacy/i,
+    diagnosis: 'MADRE runs here and keeps what it knows in a file you own, and the list that qualifies that sentence is inside the core, under WHAT LEFT THIS MACHINE. Seven addresses, each saying what it carries and where it is switched off: the briefing, which goes to whoever runs the agent you sent the turn to; Gemini embeddings, which carry the text of your memories; the image model, which carries the prompt an agent wrote; the npm registry and GitHub, which get a package name and nothing else; the error collector, which gets a redacted condition and only with your press; and Anthropic, for how much of your Claude plan is left. Ollama is on the list to be seen staying here.',
+    remedy: 'Under the list is the log itself: every request this process made, MADRE\'s own and any a module made, because a module runs inside MADRE and cannot opt out of the wrapper. No body, no header and no query value is ever written there — only which parameters were set. An address nothing declares is reported as exactly that.',
+    fixes: same([
+      '# NOSTROMO → click the core → WHAT LEFT THIS MACHINE',
+      'cat ~/.pulse/rooms/*/outbound.jsonl | tail -20   # the same log, on disk',
+      '# embeddings, to keep memories on this computer: MU/TH/UR → MEMORY → EMBEDDINGS → OLLAMA',
+      'PULSE_UPDATE_CHECK=0 madre start   # no version checks at all',
+    ]),
+  },
 ];
 
 // Which of the two sets of commands to show first. Anything else gets macOS, and the panel says
