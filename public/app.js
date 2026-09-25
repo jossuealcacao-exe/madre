@@ -1,6 +1,22 @@
 import { brandOf } from './brands.js';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
+import { DEFAULT_LANGUAGE, LANGUAGES, isLanguage, language, pick, setLanguage, t } from './i18n.js';
+
+// Before anything is written on the screen. The constants below are sentences, and a sentence
+// chosen in the wrong language stays wrong for the life of the page.
+let chosenLanguage = null;
+try { chosenLanguage = localStorage.getItem('pulse.language'); } catch { /* no storage */ }
+setLanguage(isLanguage(chosenLanguage) ? chosenLanguage : DEFAULT_LANGUAGE);
+if (document.documentElement) document.documentElement.lang = language();
+
+// A browser that has never chosen takes what this machine chose, once, and remembers it. It
+// cannot loop: the choice is written before the page is asked to come back.
+function adoptLanguage(fromMachine) {
+  if (chosenLanguage || !isLanguage(fromMachine) || fromMachine === language()) return;
+  try { localStorage.setItem('pulse.language', fromMachine); } catch { return; }
+  location.reload();
+}
 
 const els = {
   project: document.querySelector('#project'),
@@ -49,26 +65,27 @@ const CLIENT_COMMANDS = [
 ];
 
 const PLACEHOLDERS = {
-  plain: 'Type here, human. Ask the room…',
-  create: 'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.',
-  ash: 'Compact prose. Nothing you write is altered; only the answers get shorter.',
-  ghost: 'Off the record. Ask anything; nothing is saved, nobody else will remember it.',
-  control: 'Control armed. Say what to change in the project; every action runs without asking.',
-  airlock: 'Airlock open. Commands run; pushes and deploys leave the ship. Say exactly what should go out.',
-  expendable: 'Type here, human. MOTHER is listening.',
-  memory: 'Ask what the room remembers. @madre answers from memory with citations; it does not act.',
+  plain: t('Type here, human. Ask the room…'),
+  create: t('CREATE on: what to make. New files land where they belong in the project; nothing existing changes.'),
+  ash: t('Compact prose. Nothing you write is altered; only the answers get shorter.'),
+  ghost: t('Off the record. Ask anything; nothing is saved, nobody else will remember it.'),
+  control: t('Control armed. Say what to change in the project; every action runs without asking.'),
+  airlock: t('Airlock open. Commands run; pushes and deploys leave the ship. Say exactly what should go out.'),
+  expendable: t('Type here, human. MOTHER is listening.'),
+  memory: t('Ask what the room remembers. @madre answers from memory with citations; it does not act.'),
 };
 let winkTimer = null;
 const LINE_PX = 21;
 const MAX_ROWS = 3;
 
 // Permission modes: chosen per message, capped per agent in CONNECTIONS.
+// The names are the ship's and are never translated; what each one lets an agent do is.
 const MODES = {
-  0: { key: 'ghost', label: 'GHOST', hint: 'Off the record. Nothing is saved; gone on reload.' },
-  1: { key: 'exchange', label: 'EXCHANGE', hint: 'Read the project and talk to the room. Writes nothing.' },
-  2: { key: 'create', label: 'CREATE', hint: 'Add new files where they belong in the project. Existing files stay untouched.' },
-  3: { key: 'control', label: 'CONTROL', hint: 'Edit the project itself, no approval per action. Override required.' },
-  4: { key: 'airlock', label: 'AIRLOCK', hint: 'Run commands, push, deploy. What leaves the ship does not come back. Override, twice.' },
+  0: { key: 'ghost', label: 'GHOST', hint: t('Off the record. Nothing is saved; gone on reload.') },
+  1: { key: 'exchange', label: 'EXCHANGE', hint: t('Read the project and talk to the room. Writes nothing.') },
+  2: { key: 'create', label: 'CREATE', hint: t('Add new files where they belong in the project. Existing files stay untouched.') },
+  3: { key: 'control', label: 'CONTROL', hint: t('Edit the project itself, no approval per action. Override required.') },
+  4: { key: 'airlock', label: 'AIRLOCK', hint: t('Run commands, push, deploy. What leaves the ship does not come back. Override, twice.') },
 };
 
 const state = {
@@ -2412,6 +2429,27 @@ themeButton?.addEventListener('click', () => {
   toast(`Theme · ${themeMode === 'auto' ? 'auto, following the system' : themeMode}`);
 });
 
+// EN / ES. One button, showing the language it would switch to, and a reload — a page half in
+// one language and half in another is worse than either. What the crew writes is not this
+// switch's business: they answer in the language the human writes in, and that is in the
+// briefing itself.
+const langButton = document.querySelector('#lang-button');
+function drawLanguageButton() {
+  if (!langButton) return;
+  const other = LANGUAGES[language()].other;
+  langButton.textContent = other.toUpperCase();
+  langButton.title = other === 'en' ? t('Interface in English') : t('Interface in Spanish');
+  langButton.dataset.language = language();
+}
+drawLanguageButton();
+langButton?.addEventListener('click', async () => {
+  const next = LANGUAGES[language()].other;
+  try { localStorage.setItem('pulse.language', next); } catch { /* no storage */ }
+  // Kept with the room's other settings too, so the next browser on this machine opens in it.
+  await fetch('/api/language', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ language: next }) }).catch(() => null);
+  location.reload();
+});
+
 /* ---------- project files panel ---------- */
 
 const tree = { open: false, loaded: new Map() };
@@ -2657,6 +2695,7 @@ els.thread.addEventListener('keydown', (event) => trackHold(event.key === 'Arrow
 /* ---------- bootstrap ---------- */
 
 const initial = await fetch('/api/state').then((response) => response.json());
+adoptLanguage(initial.language);
 els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;
 els.project.title = initial.projectRoot;
 // Which conversation this page is looking at, beside the project it belongs to — but only once

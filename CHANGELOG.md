@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### MADRE habla español, y el inglés está a un botón
+- La plomería, no la traducción: el idioma vive en `~/.pulse/config.json`, el español es el valor por defecto y en la barra hay un botón que dice **EN** — lo aprietas y la interfaz vuelve en inglés, diciendo **ES**. Recarga en vez de traducir a medias: media pantalla en cada idioma es peor que cualquiera de las dos.
+- **La clave es la frase en inglés**, tal como está escrita en el código. No hay ids que inventar ni que mantener en fila con las pantallas, y una frase que todavía nadie tradujo **sale en inglés entera** en lugar de dejar un hueco o un `MISSING_KEY_47`. Lo que varía dentro de una frase viaja como ranura con nombre, `{n} bloques`, para que el español lo ponga donde el español lo pone.
+- Lo que ya es *data* —el catálogo de MU/TH/UR, las consultas de la consola, las direcciones de egress— no se traduce clave por clave: lleva su tabla en español al lado, elegida entera. Traducir una tabla palabra por palabra pierde la tabla.
+- Y una prueba la cuida **en los dos sentidos**: una clave que el producto ya no dice es la traducción de algo que nadie lee, y un `t()` que el catálogo no tiene es una pantalla en el idioma equivocado. La segunda no rompe nada —cae en inglés—, que es justamente por qué necesita prueba. Ya cazó dos entradas muertas mientras se escribía.
+- Esta fase traduce trece frases —el compositor y lo que hace cada modo de permiso— para probar la tubería de punta a punta. El resto llega por pantallas, empezando por la primera hora de uso.
+
 ### La tripulación escribe en tu idioma
 - Nadie se lo había dicho nunca. Los agentes contestaban en español solo porque tú escribes en español y un modelo imita lo que lee — que es una costumbre, no una regla, y se rompe justo en los turnos que llevan más inglés alrededor: un paso delegado, un plan, una sala llena de rutas.
 - Ahora el bloque `style` del briefing lo dice: escribe en el idioma en que escribe la humana, y **deja el código, las rutas, los comandos y los identificadores exactamente como están**. Esto es un cuarto para trabajar sobre código.

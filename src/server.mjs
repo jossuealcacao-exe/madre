@@ -842,7 +842,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js'].includes(url.pathname)) {
         const js = await readFile(join(publicDirectory, url.pathname.slice(1)));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
         return response.end(js);
@@ -856,6 +856,8 @@ export async function createPulseServer({
         return sendJson(response, 200, {
           projectRoot,
           platform: process.platform,
+          // What language this machine set MADRE to, for a browser that has never chosen.
+          language: (await readConfig(root)).language === 'en' ? 'en' : 'es',
           // Which conversation this page is looking at, and the others it could open.
           chats: await listChats(roomDir),
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
@@ -1079,6 +1081,14 @@ export async function createPulseServer({
         return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null, readiness: after, maturity: maturity({ readiness: after, notes, links: drawn?.links ?? [], stats: drawn?.stats ?? null }), training: trainingInfo() });
       }
       // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
+      // Which language MADRE speaks. The page keeps its own copy so the first paint needs no
+      // round trip; this is the durable one, shared by every browser on this machine.
+      if (request.method === 'POST' && url.pathname === '/api/language') {
+        const payload = await body(request).catch(() => ({}));
+        const language = payload.language === 'en' ? 'en' : 'es';
+        await updateConfig(root, { language });
+        return sendJson(response, 200, { language });
+      }
       if (request.method === 'GET' && url.pathname === '/api/privacy') {
         await refreshPrivacy();
         return sendJson(response, 200, { terms: privacy.terms, marker: privacy.marker, ...privacy.guards, exposure: room.privacyExposure(await store.readAll()) });
