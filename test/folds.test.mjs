@@ -13,7 +13,7 @@ test('mother: the long sections fold, and remember whether you left them open', 
   const helper = app.slice(app.indexOf('const FOLD_KEY'), app.indexOf('function connectionCard('));
   assert.ok(helper.includes("el('details', 'fold')"), 'folding is not built on a native disclosure');
   assert.ok(helper.includes("el('summary')"), 'the header is not the thing you click');
-  assert.match(app, /folding\(section, `CONNECTIONS/, 'connections does not fold');
+  assert.match(app, /folding\(section, t\('CONNECTIONS · \{n\} OF \{total\} SIGNED IN'/, 'connections does not fold');
   assert.match(app, /folding\(section, `RELEASE CHANNEL/, 'the release channel does not fold');
 
   // A panel that forgets is one you fight with on every visit, and a private window that cannot

@@ -680,7 +680,9 @@ test('nostromo: the legend shows a real star for each class, not a swatch', asyn
   // Every class is named, and each name is the star it burns as next to the kind of memory.
   const named = app.match(/const DWARF_CLASS = (\{[^}]*\});/);
   assert.ok(named, 'DWARF_CLASS is gone from public/app.js');
-  const classes = new Function(`return ${named[1]}`)();
+  // Read in the source language: the names go through the catalogue on screen, and what this
+  // test is about is which star each kind of memory burns as, not how it is said.
+  const classes = new Function('t', `return ${named[1]}`)((text) => text);
   assert.deepEqual(Object.keys(classes).sort(), ['aberration', 'decision', 'fact', 'preference', 'question']);
   for (const [kind, label] of Object.entries(classes)) {
     // Every class is a dwarf but one. The aberration is a collapsed body: naming it as a star
