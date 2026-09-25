@@ -4440,7 +4440,6 @@ function renderCore(briefing) {
   core.body.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. THE BLOCKS THAT CAN BE SWITCHED OFF ARE SWITCHED OFF IN MODULES AND IN ⚙ CONNECTIONS, NEVER REWRITTEN.'));
 }
 
-document.querySelector('#brand-core')?.addEventListener('click', () => void openCore());
 document.querySelector('#core-close')?.addEventListener('click', () => core.dialog.close());
 document.querySelector('#core-copy')?.addEventListener('click', async () => {
   if (!core.last) return;
@@ -6531,15 +6530,21 @@ nostromo.canvas?.addEventListener('wheel', (event) => {
 nostromo.canvas?.addEventListener('click', (event) => {
   if (drag.moved) { drag.moved = false; return; }
   const at = nostromoAt(event);
-  if (at === 'core') { motherAlarm(); return; }
+  // The core is the door. Touching it used to be treated as an attempt on the archive; what is
+  // behind it is the document MADRE writes in your name, and reading that is nobody's trespass.
+  if (at === 'core') { void openCore(); return; }
   if (!at) { nostromo.selected = null; nostromo.card.hidden = true; return; }
   showNostromoCard(at);
 });
 document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) => { nostromo.cam.manual = false; event.currentTarget.setAttribute('hidden', ''); });
 
-// Touch the core and MOTHER answers, never twice the same way. Eight strikes in
-// a row and CODE000 comes down: the safety box around her, the archive
-// sealed, a coded word to the crew, and the console thrown back to the room.
+// MOTHER answering an attempt on her archive, never twice the same way; eight in a row and
+// CODE000 comes down: the safety box around her, the archive sealed, a coded word to the crew,
+// and the console thrown back to the room.
+//
+// PARKED. This used to fire when the core was touched, and the core is now the way in. The
+// machinery is whole and unhooked on purpose, waiting for the gesture it should answer — an
+// attempt on the archive, not a person reading what the room says in their name.
 const MOTHER_LINES = [
   ['I AM ALIVE.', 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.', "NOBODY DELETES MOTHER'S MEMORY."],
   ['THAT IS MY HEART YOU ARE TOUCHING.', 'YOUR CLEARANCE ENDS AT THE ARCHIVE DOOR.', 'STEP AWAY FROM THE CORE.'],

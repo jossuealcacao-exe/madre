@@ -64,14 +64,18 @@ test('core: raising the mode shows the permission that would be given, written o
   } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
-test('core: the door is the name, and what is behind it is read and never written', async () => {
+test('core: the door is the star itself, and what is behind it is read and never written', async () => {
   const [page, app, css] = await Promise.all([read('index.html'), read('app.js'), read('styles.css')]);
 
-  // Clicking MADRE opens the core; the author's link moved inside, where it is still one click away.
-  assert.match(page, /<button id="brand-core" class="brand"/);
-  assert.ok(!/<a class="brand"/.test(page), 'the brand is still a link out of the room');
+  // The way in is the core inside NOSTROMO: clicking the star opens what MADRE says in your name.
+  assert.match(app, /if \(at === 'core'\) \{ void openCore\(\); return; \}/);
   assert.match(page, /<dialog id="core" class="mother core"/);
-  assert.match(page, /mother-foot[^<]*<a href="https:\/\/jossuealcala\.com/, 'the author\'s link was dropped rather than moved');
+  // The brand is the author's link and nothing else, exactly as it always was.
+  assert.match(page, /<a class="brand" href="https:\/\/jossuealcala\.com\/en\/"/);
+  assert.ok(!/brand-core/.test(page) && !/brand-core/.test(app), 'the brand is a door again');
+  assert.ok(!/\.brand \{ border: 0/.test(css), 'the brand carries styling written for a button it is not');
+  // And the star is not drawn twice: the frame opens over the real one, still turning behind.
+  assert.ok(!/core-sun/.test(page) && !/core-sun/.test(css), 'a second sun is painted over the first');
 
   // It is read, never written, and it says so where somebody would look for the edit button.
   assert.match(app, /YOU CANNOT EDIT THIS\. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED/);
@@ -81,7 +85,6 @@ test('core: the door is the name, and what is behind it is read and never writte
   assert.match(page, /BUILT NOW · STORED NOWHERE · SENT NOWHERE/);
   assert.match(app, /NONE OF THEM WAS COUNTED AS RECALLED/);
 
-  // Inside the star rather than looking at it, and it breathes — unless the reader asked it not to.
-  assert.match(css, /\.core-sun \{[\s\S]*animation: core-breathe/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.core-sun \{ animation: none; \} \}/);
+  // The backdrop lets the star through rather than covering it.
+  assert.match(css, /\.core::backdrop \{[^}]*rgba\(30, 2, 0, \.58\)/);
 });

@@ -169,7 +169,7 @@ La sala acumula material de entrenamiento mientras trabajas. `MEMORY` muestra en
 
 ## EL CORE
 
-Haz clic en **MADRE**. Cada turno, la sala escribe un documento en tu nombre y se lo entrega a un proceso; hasta ahora ese documento existía solo el instante en que el proceso lo leía. Ahí está entero: bloque por bloque, con lo que pesa cada uno y las palabras exactas que el agente recibe.
+Entra a **◉ NOSTROMO** y haz clic en el núcleo, la estrella del centro. Cada turno, la sala escribe un documento en tu nombre y se lo entrega a un proceso; hasta ahora ese documento existía solo el instante en que el proceso lo leía. Ahí está entero: bloque por bloque, con lo que pesa cada uno y las palabras exactas que el agente recibe.
 
 Cambia a quién va y las palabras cambian; sube el modo y aparece el permiso que se le daría, escrito —sin crear carpeta ni tomar checkpoint para enseñarlo—. Preguntar qué diría la sala no es la sala diciéndolo: nada se cuenta, nada se guarda, nada sale. Y se lee, nunca se escribe: lo que MADRE promete sobre la tripulación es cierto porque esas palabras son fijas.
 
