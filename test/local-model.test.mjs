@@ -44,3 +44,17 @@ test('local model: the slow test tells the room, and only when it really ran', a
   assert.match(server, /memory\.metaSet\('local\.announced', fifth\.version\);/);
   assert.match(server, /await room\.record\('local\.present', \{/);
 });
+
+test('local model: MU/TH/UR can explain the difference between running and being of use', async () => {
+  const { CONDITIONS, diagnose, PLATFORMS } = await import('../public/troubleshooting.js');
+  const one = CONDITIONS.find((condition) => condition.id === 'local-ready');
+  assert.ok(one, 'the catalogue cannot answer the question the room now raises');
+  assert.match(one.diagnosis, /Running is not the same as being of use/);
+  assert.match(one.remedy, /CHECK IT AGAINST THIS ROOM/);
+  // A person who asks it in their own words finds it.
+  for (const asked of ['is my local model ready', 'ready to be worked in', 'not measured against this room']) {
+    assert.ok(diagnose(asked).some((condition) => condition.id === 'local-ready'), `"${asked}" does not reach it`);
+  }
+  // And it answers on both systems this room is tested on, like everything else in there.
+  for (const platform of Object.keys(PLATFORMS)) assert.ok(one.fixes[platform]?.length, `no answer for ${platform}`);
+});

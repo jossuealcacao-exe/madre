@@ -523,6 +523,19 @@ export const CONDITIONS = [
     fixes: same(['# MODULES → + ADD A MODULE', 'ls ~/.pulse/modules   # every module you installed, and where it came from', '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works']),
   },
   {
+    id: 'local-ready',
+    severity: 'common',
+    title: 'Is the local model ready to be worked in?',
+    match: /is .*(local|madre).*(ready|good|any good)|ready to be worked in|measured against this (room|project)|check it against this room|local\.present|not measured/i,
+    diagnosis: 'Running is not the same as being of use. @madre being in the room means Ollama has a chat model; whether that model is worth your work on THIS project is a different question, and the room measures it: twelve real exchanges from this room are put back to the local model, and each answer is scored against what the crew actually answered that day — against a control, so that talking about the same project does not count. It takes minutes and spends nothing, because all of it runs on your machine.',
+    remedy: 'The room says which of the two it has, once per model, in the line that begins "local · @madre". If nobody has measured it, that line carries CHECK IT AGAINST THIS ROOM; the answer lands in the room when it finishes, with the one thing to do about it. A model that does not pass is not broken — the archive is still thin, and it fills where the work happens. The @madre sphere keeps the reading and its date after the line has scrolled away, and the same test lives in NOSTROMO → THE THREE TESTS.',
+    fixes: same([
+      '# the line in the room: local · @madre → CHECK IT AGAINST THIS ROOM',
+      '# or: NOSTROMO → THE THREE TESTS → the third one',
+      '# it needs embeddings on and some turns answered by a CLI agent, which is what it compares against',
+    ]),
+  },
+  {
     id: 'code000',
     severity: 'blocking',
     title: 'CODE000: the archive is sealed',
