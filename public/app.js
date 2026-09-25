@@ -80,6 +80,7 @@ const state = {
   replyTo: null,            // the message being answered, shown above the field and sent at its head
   tourArmed: false,         // the tour fires once, and only when the room can be used
   ollama: null,             // the local brain's state, for the bridge
+  localModel: null,         // @madre's model, and whether it has been measured against this room
   ollamaAsked: false,
   ollamaRecommended: null,
   ratings: new Map(),        // messageId → good | bad, from the ledger
@@ -743,7 +744,9 @@ function renderPicker() {
     text.append(el('b', null, `@${current.id}`));
     if (current.local) {
       const note = el('span', 'pick-note', 'memory · answers & asks the crew · never writes');
-      note.title = '@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.';
+      const measured = state.localModel?.checked;
+      note.title = `@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.${
+        measured ? `\n\nMeasured against this room ${agoWords(measured.at)}: it landed where the crew landed on ${measured.matched} of ${measured.n} real questions${measured.passed ? '. Ready to be worked in.' : ' — not yet.'}` : '\n\nNobody has measured it against this project yet: MU/TH/UR → the three tests, or the line in the room when it joined.'}`;
       text.append(note);
     }
     const modeChip = el('button', `mode-chip m${state.mode}`);
@@ -1634,6 +1637,62 @@ function renderModuleInstalledOrRemoved(event) {
   return node;
 }
 
+// The local model, and whether it has been measured against THIS project.
+//
+// That it is running is not the question. A local model is ready when it lands where the crew
+// landed on the room's own questions, and the room already has a test that says so — twelve real
+// exchanges, answered again by the local model, scored against a control so that talking about
+// the same project does not count. It takes minutes and spends nothing, and until now its answer
+// lived in a panel somebody had to go back to. So it is offered, and answered, here.
+function renderLocalModel(payload, { asked = false } = {}) {
+  const node = el('div', 'system local-model');
+  node.append('local · ', el('b', 'who', '@madre'));
+  if (payload.model) node.append(` · ${payload.model}`);
+  const line = el('p', 'says');
+  const action = el('div', 'acts');
+
+  const check = (label) => {
+    const button = el('button', null, label);
+    button.type = 'button';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        const result = await fetch('/api/maturity/exam', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ which: 'match' }) }).then((response) => response.json());
+        if (result.error) { toast(`MU/TH/UR › ${result.error}`); button.disabled = false; return; }
+        toast('MU/TH/UR › the local model is answering real questions from this room. It takes a few minutes, it spends nothing, and the answer lands here.');
+      } catch (error) { toast(`The test could not run: ${error.message}`); button.disabled = false; }
+    });
+    return button;
+  };
+
+  const checked = payload.checked ?? null;
+  if (asked || checked) {
+    const matched = checked?.matched ?? payload.matched ?? 0;
+    const n = checked?.n ?? payload.n ?? 0;
+    const passed = checked ? checked.passed : payload.passed;
+    line.textContent = passed
+      ? `It answered ${matched} of ${n} real questions from this room where the crew answered them. It is ready to be worked in.`
+      : `It answered ${matched} of ${n} real questions the way the crew did. Not yet — keep working, the archive fills where the work happens.`;
+    if (passed) {
+      const use = el('button', 'primary', 'SEND THE NEXT TURN TO @MADRE');
+      use.type = 'button';
+      use.addEventListener('click', () => {
+        els.target.value = 'madre';
+        renderPicker();
+        els.input?.focus();
+      });
+      action.append(use);
+    }
+    action.append(check('CHECK AGAIN'));
+    if (checked?.at) action.append(el('span', 'note', `MEASURED ${agoWords(checked.at).toUpperCase()}`));
+  } else {
+    line.textContent = 'It is in the room. Nobody has measured it against this project yet: running here is not the same as being of use here.';
+    action.append(check('CHECK IT AGAINST THIS ROOM'));
+  }
+  node.append(line, action);
+  return node;
+}
+
 // privacy · @agent · 2 private terms replaced with [ENTIDAD-ORG]
 function renderPrivacy(event) {
   const node = el('div', 'system memory privacy');
@@ -2255,6 +2314,17 @@ function renderEventNode(event) {
       renderAgents(); renderPicker(); renderOnboarding();
       if (!replaying && event.payload.reason) toast(`MU/TH/UR › ${event.payload.reason}`);
       return;
+    }
+    case 'local.present': {
+      state.localModel = event.payload;
+      node = renderLocalModel(event.payload);
+      break;
+    }
+    case 'local.checked': {
+      state.localModel = { model: event.payload.model, checked: { passed: event.payload.passed, matched: event.payload.matched, n: event.payload.n, at: event.timestamp } };
+      renderAgents();
+      node = renderLocalModel(event.payload, { asked: true });
+      break;
     }
     case 'mother.alert': node = renderMotherAlert(event); break;
     case 'sentinel.report': state.reports.set(event.payload.id, { ...event.payload }); if (!replaying) { renderMotherSentinel(); toast(`MU/TH/UR › ${event.payload.kind === 'crash' ? 'a crash' : 'an unknown condition'} was recorded by the sentinel. Open MU/TH/UR to report it.`); } return;

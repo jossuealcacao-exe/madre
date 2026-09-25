@@ -247,6 +247,19 @@ export async function createPulseServer({
     if (room) {
       room.setInvoker(MADRE_ADAPTER, fifth.ready ? madreInvoker({ memory, ollama: () => ({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }), fetchImpl: reportFetch }) : null);
       if (changed) await room.record('agents.updated', { agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local) })), removed: fifth.ready ? [] : [MADRE_AGENT_ID], reason: fifth.ready ? `@madre is in the room · ${fifth.version}` : '@madre left the room: Ollama has no chat model running' });
+      // That a local model is running is not the same as it being of use on this project, and
+      // the second thing is the one a person needs told. Said once per model, in the room, with
+      // the one button that settles it — the crew line above fires only when the crew CHANGES,
+      // and a room whose Ollama was already up when it opened would never have heard it.
+      if (fifth.ready && memory && memory.metaGet('local.announced') !== fifth.version) {
+        let checked = null;
+        try { checked = JSON.parse(memory.metaGet('exams') ?? '{}').match ?? null; } catch { checked = null; }
+        memory.metaSet('local.announced', fifth.version);
+        await room.record('local.present', {
+          model: fifth.version,
+          checked: checked?.ran ? { passed: Boolean(checked.passed), matched: checked.matched ?? 0, n: checked.n ?? 0, at: checked.at ?? null } : null,
+        });
+      }
     }
     return { ...ollama, settings, embeddings: Boolean(useEmbeddings), archivist: Boolean(useArchivist), agent: fifth.ready };
   }

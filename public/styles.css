@@ -1451,6 +1451,18 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .dev-chip .act-link { color: var(--warn); }
 .system.module-proposed { color: var(--text-3); } .system.module-proposed .who { color: var(--agent, var(--text-2)); }
 
+/* The local model saying whether it has been measured against this project, and the one button
+   that measures it. Same system line as the rest, with room for an answer and an action. */
+.system.local-model { color: var(--text-3); display: grid; gap: 8px; justify-items: center; }
+.system.local-model .who { color: var(--agent, var(--text-2)); }
+.system.local-model .says { margin: 0; max-width: 52ch; font-size: 11px; letter-spacing: .04em; text-transform: none; line-height: 1.65; color: var(--text-2); }
+.system.local-model .acts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
+.system.local-model button { border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text-2); font: inherit; font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; padding: 5px 12px; cursor: pointer; }
+.system.local-model button:hover:not(:disabled) { border-color: var(--phosphor); color: var(--phosphor); }
+.system.local-model button:disabled { opacity: .5; cursor: default; }
+.system.local-model button.primary { border-color: var(--phosphor); color: var(--phosphor); }
+.system.local-model .note { font-size: 8.5px; letter-spacing: .14em; color: var(--text-3); }
+
 /* THE BRIDGE: first contact, one card per agent with the one action it needs now. */
 .bridge { max-width: 640px; }
 .bridge h2 { margin: 0 0 8px; }

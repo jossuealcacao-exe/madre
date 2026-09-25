@@ -12,7 +12,7 @@ import { contextFor } from './room/context.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
 import { questionsFor } from './asking.mjs';
 import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE } from './exam.mjs';
-import { MADRE_ADAPTER } from './adapters/madre.mjs';
+import { MADRE_ADAPTER, MADRE_AGENT_ID } from './adapters/madre.mjs';
 import { verdictFor } from './verdict.mjs';
 import { ControlDesk } from './room/control.mjs';
 import { Attachments } from './room/attachments.mjs';
@@ -475,6 +475,14 @@ export class Room {
             stop: () => this.#examStop,
           });
           this.#keepExam(result);
+          // The one test that takes minutes is the one whose answer a person is waiting for, and
+          // until now it landed in a panel they had to go back to. It lands in the room.
+          if (result.ran) {
+            await this.#emit('local.checked', {
+              model: this.#agents.find((agent) => agent.id === MADRE_AGENT_ID)?.version ?? null,
+              passed: Boolean(result.passed), matched: result.matched ?? 0, n: result.n ?? 0, says: result.says,
+            });
+          }
         } catch (error) {
           this.#keepExam({ id: 'match', ran: false, at: new Date().toISOString(), says: `The test could not finish: ${error.message}` });
         } finally { this.#examRunning = null; this.#examStop = false; this.#examProgress = null; }
