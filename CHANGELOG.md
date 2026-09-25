@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### El core, en español
+- Las cuatro pestañas y todo lo que hay detrás: EL DOCUMENTO con sus bloques y su peso, LO QUE CARGA, EL LANZAMIENTO con lo que mantiene la corrida dentro del turno, LO QUE SALIÓ DE ESTA COMPUTADORA con sus direcciones y su registro, y la consola de MU/TH/UR entera —las once consultas, sus respuestas y las tres negativas—.
+- Los nombres de los bloques del briefing **no se traducen**: `room`, `who`, `privacy`, `memories`. Son ids del prompt que el agente lee en inglés; traducirlos en pantalla sería enseñar un documento que no existe.
+- `SPECIAL ORDER 937` contesta en español lo mismo que contestaba en inglés, que es lo único que este producto puede contestar: «no hay ninguna orden que no puedas leer».
+- La consola vive en su propio módulo y ahora habla por el mismo catálogo que la página, así que la prueba de cobertura recorre los dos archivos. Y las pruebas de la consola se leen en el idioma fuente a propósito: son sobre qué consulta contesta qué, no sobre cómo está redactado.
+- Una frase que sale igual en los dos idiomas ya no reprueba la revisión: LOCAL es LOCAL. La regla quedó en lo que importa — de dos palabras en adelante, el español tiene que ser español.
+
 ### La primera hora, en español
 - El puente entero —«Con un agente basta para abrir la sala»—, los estados de cada tarjeta (NO INSTALADO, SIN FIRMAR, LISTO), la entrada gratis, pegar la llave y la línea que dice que nada se instala sin que tú lo aprietes.
 - La barra completa por sus títulos, el estado de la conexión (conectando · en vivo · reconectando), el compositor con sus botones y su línea de seguridad, quién habla delante del campo (HUMANA ›, TRIPULACIÓN · PRESCINDIBLE ›) y las tres primeras preguntas que la sala te ofrece cuando la página está en blanco.

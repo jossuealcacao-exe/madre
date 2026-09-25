@@ -4520,8 +4520,8 @@ const CH_PER_TOKEN = 3.5;
 const tokensFor = (chars) => Math.round((Number(chars) || 0) / CH_PER_TOKEN);
 
 const CORE_BOOT = [
-  'INTERFACE 2037 · CORE ACCESS',
-  'MU/TH/UR 6000 READY FOR INQUIRY.',
+  t('INTERFACE 2037 · CORE ACCESS'),
+  t('MU/TH/UR 6000 READY FOR INQUIRY.'),
 ];
 
 // Which pane an inquiry is really asking for. The three that are already a screen open that
@@ -4598,7 +4598,7 @@ async function loadCore() {
   core.agent = briefing.agent;
   // An agent answers at its own ceiling, whatever the strip says.
   const ceiling = core.body.querySelector('.core-ceiling');
-  if (ceiling) ceiling.textContent = briefing.ceiling < briefing.mode ? `MAX MODE FOR @${briefing.agent.toUpperCase()} IS #${briefing.maxMode}, SO THIS TURN WOULD BE ANSWERED AT #${briefing.ceiling}` : '';
+  if (ceiling) ceiling.textContent = briefing.ceiling < briefing.mode ? t('MAX MODE FOR @{agent} IS #{max}, SO THIS TURN WOULD BE ANSWERED AT #{ceiling}', { agent: briefing.agent.toUpperCase(), max: briefing.maxMode, ceiling: briefing.ceiling }) : '';
   paneInto('document', renderCoreDoc(briefing));
   paneInto('launch', renderCoreLaunch(briefing.launch ?? null));
   paneInto('egress', renderCoreOutbound(core.outbound));
@@ -4616,13 +4616,13 @@ function renderCoreStrip() {
   const strip = el('div', 'core-strip');
 
   const pick = el('div', 'core-pick');
-  pick.append(el('span', 'k', 'TO'));
+  pick.append(el('span', 'k', t('TO')));
   const who = el('div', 'core-agents');
   for (const agent of [...state.agents.values()].filter((agent) => agent.detected)) {
     const chip = el('button', `core-agent${agent.id === core.agent ? ' on' : ''}${agent.ready ? '' : ' cold'}`, `@${agent.id}`);
     chip.type = 'button';
     chip.dataset.agent = agent.id;
-    chip.title = agent.ready ? `What @${agent.id} would be told` : `${agent.label} is not signed in; this is what it would be told`;
+    chip.title = agent.ready ? t('What @{agent} would be told', { agent: agent.id }) : t('{label} has no session; this is what it would be told', { label: agent.label });
     chip.addEventListener('click', () => {
       core.agent = agent.id;
       for (const other of who.children) other.classList.toggle('on', other.dataset?.agent === agent.id);
@@ -4630,7 +4630,7 @@ function renderCoreStrip() {
     });
     who.append(chip);
   }
-  pick.append(who, el('span', 'k', 'AT'));
+  pick.append(who, el('span', 'k', t('AT')));
   const modes = el('select');
   for (const [value, label] of [[0, '#0 GHOST'], [1, '#1 EXCHANGE'], [2, '#2 CREATE'], [3, '#3 CONTROL'], [4, '#4 AIRLOCK']]) {
     const option = el('option', null, label);
@@ -4645,11 +4645,11 @@ function renderCoreStrip() {
   // What you are about to ask. Recall, the memories and the closing question are written around
   // it, so a briefing for an empty message is a briefing for a turn nobody is going to have.
   const asking = el('label', 'core-asking');
-  asking.append(el('span', 'k', 'IF YOU SENT'));
+  asking.append(el('span', 'k', t('IF YOU SENT')));
   const field = el('textarea');
   field.id = 'core-text';
   field.rows = 1;
-  field.placeholder = 'the question you would send — the document rebuilds around it';
+  field.placeholder = t('the question you would send — the document rebuilds around it');
   field.value = core.text ?? '';
   field.addEventListener('input', () => {
     core.text = field.value;
@@ -4658,7 +4658,7 @@ function renderCoreStrip() {
     core.typing = setTimeout(() => { void loadCore(); }, 450);
   });
   asking.append(field);
-  asking.append(el('span', 'note', 'NOTHING IS SENT FROM HERE.'));
+  asking.append(el('span', 'note', t('NOTHING IS SENT FROM HERE.')));
   strip.append(asking);
   return strip;
 }
@@ -4666,9 +4666,9 @@ function renderCoreStrip() {
 /* ---------- the panes ---------- */
 
 const CORE_TABS = [
-  { id: 'document', label: 'DOCUMENT' },
-  { id: 'launch', label: 'LAUNCH' },
-  { id: 'egress', label: 'WHAT LEFT' },
+  { id: 'document', label: t('DOCUMENT') },
+  { id: 'launch', label: t('LAUNCH') },
+  { id: 'egress', label: t('WHAT LEFT') },
   { id: 'console', label: 'MU/TH/UR' },
 ];
 
@@ -4693,13 +4693,13 @@ function renderCoreTabs() {
 function drawCoreTabs() {
   if (!core.tabs) return;
   const briefing = core.last;
-  const tokens = briefing ? ` · ≈${tokensFor(briefing.chars).toLocaleString()} TOKENS` : '';
+  const tokens = briefing ? t(' · ≈{n} TOKENS', { n: tokensFor(briefing.chars).toLocaleString() }) : '';
   const on = (core.outbound?.destinations ?? []).filter((one) => one.on === true).length;
   const meta = {
-    document: briefing ? `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH${tokens}` : 'READING…',
-    launch: briefing?.launch ? (briefing.launch.local ? 'NO PROCESS' : `@${briefing.agent} · ${briefing.launch.args.length} ARGS`) : '—',
-    egress: core.outbound ? `${core.outbound.destinations.length} ADDRESSES · ${on} ON` : '—',
-    console: `${core.history.length ? `${core.history.length} ASKED` : 'ASK ME'}`,
+    document: briefing ? t('{n} BLOCKS · {ch} CH', { n: briefing.parts.length, ch: briefing.chars.toLocaleString() }) + tokens : t('READING…'),
+    launch: briefing?.launch ? (briefing.launch.local ? t('NO PROCESS') : t('@{agent} · {n} ARGS', { agent: briefing.agent, n: briefing.launch.args.length })) : '—',
+    egress: core.outbound ? t('{n} ADDRESSES · {on} ON', { n: core.outbound.destinations.length, on }) : '—',
+    console: core.history.length ? t('{n} ASKED', { n: core.history.length }) : t('ASK ME'),
   };
   for (const button of core.tabs.children) {
     button.classList.toggle('on', button.dataset.tab === core.pane);
@@ -4736,8 +4736,8 @@ function showPane(id) {
 
 function renderCoreDoc(briefing) {
   const doc = el('div', 'core-doc');
-  doc.append(brewHead('THE DOCUMENT', `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH · ≈${tokensFor(briefing.chars).toLocaleString()} TOKENS`));
-  doc.append(el('p', 'note', 'BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
+  doc.append(brewHead(t('THE DOCUMENT'), t('{n} BLOCKS · {ch} CH · ≈{tokens} TOKENS', { n: briefing.parts.length, ch: briefing.chars.toLocaleString(), tokens: tokensFor(briefing.chars).toLocaleString() })));
+  doc.append(el('p', 'note', t('BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.')));
 
   // The blocks in the document's own order, which is the order they are said in.
   const widest = briefing.parts.reduce((top, part) => Math.max(top, part.chars), 1);
@@ -4753,25 +4753,25 @@ function renderCoreDoc(briefing) {
     const weigh = el('i', 'weigh');
     weigh.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
     head.append(weigh);
-    head.append(el('span', 'when', part.when === 'always' ? 'ALWAYS' : part.when));
+    head.append(el('span', 'when', part.when === 'always' ? t('ALWAYS') : part.when));
     row.addEventListener('toggle', () => { head.querySelector('.sign').textContent = row.open ? '−' : '+'; });
     const body = el('div', 'core-text');
     // What put these words here, and where the human takes them away. Nothing in the core can be
     // rewritten; some of it can be switched off, and this says exactly where.
     if (part.when || part.where) {
       const from = el('p', 'core-from');
-      from.append(el('b', null, part.when === 'always' ? 'ALWAYS' : 'HERE BECAUSE'));
+      from.append(el('b', null, part.when === 'always' ? t('ALWAYS') : t('HERE BECAUSE')));
       if (part.when !== 'always') from.append(` ${part.when}`);
       if (part.where) from.append(el('span', 'where', ` · ${part.where}`));
-      else if (part.when !== 'always') from.append(el('span', 'where', ' · nothing switches it off; it goes when the reason goes'));
+      else if (part.when !== 'always') from.append(el('span', 'where', t(' · nothing switches it off; it goes when the reason goes')));
       body.append(from);
     }
     body.append(el('pre', null, part.text));
-    const copy = el('button', 'core-copy-one', 'COPY');
+    const copy = el('button', 'core-copy-one', t('COPY'));
     copy.type = 'button';
     copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(part.text); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1200); }
-      catch { toast('The clipboard is not available here.'); }
+      try { await navigator.clipboard.writeText(part.text); copy.textContent = t('COPIED'); setTimeout(() => { copy.textContent = t('COPY'); }, 1200); }
+      catch { toast(t('The clipboard is not available here.')); }
     });
     body.append(copy);
     row.append(head, body);
@@ -4782,20 +4782,20 @@ function renderCoreDoc(briefing) {
   // What the window holds and what it leaves behind: the one thing that explains the heaviest
   // block in the document. As two columns, because it is four facts and not a paragraph.
   const window = briefing.window ?? {};
-  doc.append(brewHead('WHAT IT CARRIES'));
+  doc.append(brewHead(t('WHAT IT CARRIES')));
   const carried = el('div', 'brew-rows');
-  carried.append(brewRow('TRANSCRIPT', window.from && window.through
-    ? `#${window.from} → #${window.through} · ${window.carried} MESSAGE${window.carried === 1 ? '' : 'S'}`
-    : 'THE WHOLE ROOM STILL FITS'));
-  if (window.omitted) carried.append(brewRow('LEFT BEHIND', `${window.omitted} OLDER MESSAGE${window.omitted === 1 ? '' : 'S'} · WHICH IS WHAT RECALL IS FOR`));
-  carried.append(brewRow('READ TO BUILD IT', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} · ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'}`));
-  carried.append(brewRow('NOT COUNTED', 'NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT'));
-  carried.append(brewRow('WEIGHT', `${briefing.chars.toLocaleString()} CH · ≈${tokensFor(briefing.chars).toLocaleString()} TOKENS · ESTIMATED AT ${CH_PER_TOKEN} CH/TOKEN, NOT MEASURED: MADRE DOES NOT HAVE THE PROVIDER'S TOKENIZER`));
-  if (briefing.spared) carried.append(brewRow('LEFT OUT', `${briefing.spared.toLocaleString()} CHARACTERS THIS TURN HAS NO USE FOR`));
+  carried.append(brewRow(t('TRANSCRIPT'), window.from && window.through
+    ? t('#{from} → #{through} · {n} MESSAGES', { from: window.from, through: window.through, n: window.carried })
+    : t('THE WHOLE ROOM STILL FITS')));
+  if (window.omitted) carried.append(brewRow(t('LEFT BEHIND'), t('{n} OLDER MESSAGES · WHICH IS WHAT RECALL IS FOR', { n: window.omitted })));
+  carried.append(brewRow(t('READ TO BUILD IT'), t('{m} MEMORIES · {q} EXACT QUOTES', { m: briefing.recalled, q: briefing.quoted })));
+  carried.append(brewRow(t('NOT COUNTED'), t('NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT')));
+  carried.append(brewRow(t('WEIGHT'), t('{ch} CH · ≈{tokens} TOKENS · ESTIMATED AT {rate} CH/TOKEN, NOT MEASURED: MADRE DOES NOT HAVE THE PROVIDER\'S TOKENIZER', { ch: briefing.chars.toLocaleString(), tokens: tokensFor(briefing.chars).toLocaleString(), rate: CH_PER_TOKEN })));
+  if (briefing.spared) carried.append(brewRow(t('LEFT OUT'), t('{n} CHARACTERS THIS TURN HAS NO USE FOR', { n: briefing.spared.toLocaleString() })));
   doc.append(carried);
 
-  doc.append(brewHead('FIXED'));
-  doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.'));
+  doc.append(brewHead(t('FIXED')));
+  doc.append(el('p', 'core-fixed', t('YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.')));
   return doc;
 }
 
@@ -4814,17 +4814,17 @@ function shellArg(value) {
 
 function renderCoreLaunch(launch) {
   const floor = el('div', 'core-launch');
-  floor.append(brewHead('THE LAUNCH', 'WHAT MADRE WOULD RUN TO DELIVER IT'));
+  floor.append(brewHead(t('THE LAUNCH'), t('WHAT MADRE WOULD RUN TO DELIVER IT')));
 
-  if (!launch) { floor.append(el('p', 'note', 'NO AGENT IS PICKED, SO THERE IS NO COMMAND TO SHOW.')); return floor; }
+  if (!launch) { floor.append(el('p', 'note', t('NO AGENT IS PICKED, SO THERE IS NO COMMAND TO SHOW.'))); return floor; }
   if (launch.local || !launch.args) { floor.append(el('p', 'note', String(launch.says ?? '').toUpperCase())); return floor; }
 
   const command = [launch.executable, ...launch.args].map(shellArg);
-  floor.append(commandBlock([`# run in ${launch.cwd}`, ...command.map((part, at) => (at === 0 ? part : `  ${part}`) + (at === command.length - 1 ? '' : ' \\'))]));
-  floor.append(el('p', 'note', `THE BRIEFING GOES WHERE ${launch.promptMarker.toUpperCase()} IS WRITTEN. NOTHING IS RUN FROM HERE.`));
+  floor.append(commandBlock([t('# run in {dir}', { dir: launch.cwd }), ...command.map((part, at) => (at === 0 ? part : `  ${part}`) + (at === command.length - 1 ? '' : ' \\'))]));
+  floor.append(el('p', 'note', t('THE BRIEFING GOES WHERE {marker} IS WRITTEN. NOTHING IS RUN FROM HERE.', { marker: launch.promptMarker.toUpperCase() })));
 
   if (launch.isolation?.length) {
-    floor.append(brewHead('WHAT KEEPS IT TO THIS TURN'));
+    floor.append(brewHead(t('WHAT KEEPS IT TO THIS TURN')));
     const rows = el('div', 'brew-rows');
     for (const line of launch.isolation) {
       const [name, rest] = line.includes(':') ? [line.slice(0, line.indexOf(':')), line.slice(line.indexOf(':') + 1).trim()] : ['', line];
@@ -4834,16 +4834,16 @@ function renderCoreLaunch(launch) {
   }
 
   if (launch.env?.length) {
-    floor.append(brewHead('ENVIRONMENT IT IS GIVEN', 'NAMES ONLY. NO VALUE IS EVER SHOWN HERE.'));
+    floor.append(brewHead(t('ENVIRONMENT IT IS GIVEN'), t('NAMES ONLY. NO VALUE IS EVER SHOWN HERE.')));
     const rows = el('div', 'brew-rows');
     for (const one of launch.env) rows.append(brewRow(one.name, one.note));
     floor.append(rows);
   }
 
-  const servers = [...(launch.memoryServer ? [{ ...launch.memoryServer, brief: 'the archive of this project, read and written through MADRE' }] : []), ...(launch.mcpServers ?? [])]
+  const servers = [...(launch.memoryServer ? [{ ...launch.memoryServer, brief: t('the archive of this project, read and written through MADRE') }] : []), ...(launch.mcpServers ?? [])]
     .filter((server, at, all) => all.findIndex((other) => other.name === server.name) === at);
   if (servers.length) {
-    floor.append(brewHead(`SERVERS IT CAN CALL`, `${servers.length}`));
+    floor.append(brewHead(t('SERVERS IT CAN CALL'), `${servers.length}`));
     const rows = el('div', 'brew-rows');
     for (const server of servers) {
       const value = el('span');
@@ -4869,21 +4869,21 @@ function renderCoreLaunch(launch) {
 // fetch in this process goes through, a module's included.
 function renderCoreOutbound(view) {
   const floor = el('div', 'core-outbound');
-  floor.append(brewHead('WHAT LEFT THIS MACHINE', 'EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY'));
-  if (!view) { floor.append(el('p', 'note', 'THE LOG COULD NOT BE READ.')); return floor; }
+  floor.append(brewHead(t('WHAT LEFT THIS MACHINE'), t('EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY')));
+  if (!view) { floor.append(el('p', 'note', t('THE LOG COULD NOT BE READ.'))); return floor; }
 
   const list = el('div', 'core-egress');
   for (const one of view.destinations) {
     const row = el('div', `egress${one.on === false ? ' off' : ''}${one.local ? ' local' : ''}`);
-    const state = el('span', 'state', one.local ? 'LOCAL' : one.on === true ? 'ON' : one.on === false ? 'OFF' : '—');
+    const state = el('span', 'state', one.local ? t('LOCAL') : one.on === true ? t('ON') : one.on === false ? t('OFF') : '—');
     const to = el('b', null, one.to);
     const what = el('p', 'what', one.what);
     const when = el('p', 'when');
     when.append(el('i', null, one.when));
     if (one.where) when.append(el('span', 'where', ` · ${one.where}`));
     const count = el('span', 'n', one.calls
-      ? `${one.calls} REQUEST${one.calls === 1 ? '' : 'S'}${one.failed ? ` · ${one.failed} FAILED` : ''}${one.last ? ` · ${agoWords(one.last).toUpperCase()}` : ''}`
-      : one.inside ? 'NOTHING YET' : 'NOT THROUGH MADRE');
+      ? t('{n} REQUESTS', { n: one.calls }) + (one.failed ? t(' · {n} FAILED', { n: one.failed }) : '') + (one.last ? ` · ${agoWords(one.last).toUpperCase()}` : '')
+      : one.inside ? t('NOTHING YET') : t('NOT THROUGH MADRE'));
     row.append(state, to, count, what, when);
     list.append(row);
   }
@@ -4892,13 +4892,13 @@ function renderCoreOutbound(view) {
 
   // The log itself, which is what makes the list above checkable rather than a promise.
   const lines = view.recent ?? [];
-  floor.append(brewHead('THE LAST REQUESTS THIS PROCESS MADE', `${lines.length} LINE${lines.length === 1 ? '' : 'S'}`));
+  floor.append(brewHead(t('THE LAST REQUESTS THIS PROCESS MADE'), t('{n} LINES', { n: lines.length })));
   const pre = el('pre', 'core-egress-log');
   pre.textContent = lines.length
     ? lines.map((line) => `${line.at.replace('T', ' ').slice(0, 19)}  ${line.ok ? 'ok ' : '×  '}${String(line.status ?? line.error ?? '').padEnd(4)} ${line.method.padEnd(4)} ${line.to}${line.path}${line.params ? `?${line.params.join('&')}` : ''}`).join('\n')
-    : 'Nothing has gone out of this process yet.';
+    : t('Nothing has gone out of this process yet.');
   floor.append(pre);
-  floor.append(el('p', 'core-from', 'NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE — ONLY WHICH PARAMETERS WERE SET. THE GEMINI EMBEDDING ADDRESS CARRIES THE KEY IN THE URL, AND A LOG OF WHAT LEFT THIS MACHINE WOULD BE A POOR PLACE TO LEAVE IT.'));
+  floor.append(el('p', 'core-from', t('NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE — ONLY WHICH PARAMETERS WERE SET. THE GEMINI EMBEDDING ADDRESS CARRIES THE KEY IN THE URL, AND A LOG OF WHAT LEFT THIS MACHINE WOULD BE A POOR PLACE TO LEAVE IT.')));
   return floor;
 }
 
@@ -4921,13 +4921,13 @@ function renderCoreConsole() {
     log.append(block);
     if (core.panes) core.panes.scrollTop = core.panes.scrollHeight;
   };
-  core.paneNodes.console?.replaceChildren(brewHead('MU/TH/UR 6000', 'ANSWERED FROM WHAT IS ALREADY IN THIS ROOM'), log);
+  core.paneNodes.console?.replaceChildren(brewHead('MU/TH/UR 6000', t('ANSWERED FROM WHAT IS ALREADY IN THIS ROOM')), log);
 
   const marks = el('span', 'console-strikes');
   const drawStrikes = () => {
     marks.replaceChildren();
     for (let at = 0; at < STRIKES; at += 1) marks.append(el('i', at < core.strikes ? 'on' : null, '▮'));
-    marks.title = `${STRIKES - core.strikes} inquiry attempts left before this interface closes`;
+    marks.title = t('{n} inquiry attempts left before this interface closes', { n: STRIKES - core.strikes });
   };
 
   const line = el('form', 'console-line');
@@ -4935,8 +4935,8 @@ function renderCoreConsole() {
   field.type = 'text';
   field.autocomplete = 'off';
   field.spellcheck = false;
-  field.setAttribute('aria-label', 'Inquiry');
-  field.placeholder = 'READY FOR INQUIRY · TYPE HELP';
+  field.setAttribute('aria-label', t('Inquiry'));
+  field.placeholder = t('READY FOR INQUIRY · TYPE HELP');
   let walked = null;
   field.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;

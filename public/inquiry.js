@@ -13,6 +13,8 @@
 //
 // Pure module, no DOM: the answers are the product, so they are testable on their own.
 
+import { t } from './i18n.js';
+
 export const STRIKES = 3;
 
 const clean = (text) => String(text ?? '').trim().replace(/[?.!]+$/, '').replace(/\s+/g, ' ');
@@ -26,148 +28,148 @@ export const INQUIRIES = [
   {
     id: 'help',
     aliases: ['HELP', '?', 'WHAT CAN YOU TELL ME', 'COMMANDS', 'OPTIONS'],
-    brief: 'what this interface answers',
+    brief: t('what this interface answers'),
     answer: () => [
-      'I ANSWER FROM WHAT IS ALREADY IN THIS ROOM. NOTHING IS ASKED OF THE CREW AND NOTHING LEAVES.',
+      t('I ANSWER FROM WHAT IS ALREADY IN THIS ROOM. NOTHING IS ASKED OF THE CREW AND NOTHING LEAVES.'),
       '',
       ...INQUIRIES.filter((one) => one.id !== 'help').map((one) => `  ${(one.takes ? `${one.aliases[0]} <${one.takes}>` : one.aliases[0]).padEnd(22)}${one.brief.toUpperCase()}`),
       '',
-      'THREE INQUIRIES I CANNOT PARSE AND THIS INTERFACE CLOSES.',
+      t('THREE INQUIRIES I CANNOT PARSE AND THIS INTERFACE CLOSES.'),
     ],
   },
   {
     id: 'blocks',
     aliases: ['BLOCKS', 'DOCUMENT', 'BRIEFING'],
-    brief: 'every block of the next briefing, and what it weighs',
+    brief: t('every block of the next briefing, and what it weighs'),
     answer: ({ briefing }) => (briefing?.parts?.length
       ? [
-        `THE NEXT TURN TO @${String(briefing.agent ?? '').toUpperCase()} CARRIES ${plural(briefing.parts.length, 'BLOCK')}, ${briefing.chars.toLocaleString()} CHARACTERS.`,
+        t('THE NEXT TURN TO @{agent} CARRIES {n} BLOCKS, {ch} CHARACTERS.', { agent: String(briefing.agent ?? '').toUpperCase(), n: briefing.parts.length, ch: briefing.chars.toLocaleString() }),
         '',
-        ...briefing.parts.map((part) => `  ${part.id.toUpperCase().padEnd(16)}${String(part.chars).padStart(6)} CH   ${part.when === 'always' ? 'ALWAYS' : part.when.toUpperCase()}`),
+        ...briefing.parts.map((part) => `  ${part.id.toUpperCase().padEnd(16)}${String(part.chars).padStart(6)} CH   ${part.when === 'always' ? t('ALWAYS') : part.when.toUpperCase()}`),
         '',
-        'READ <BLOCK> PRINTS ONE OF THEM WORD FOR WORD.',
+        t('READ <BLOCK> PRINTS ONE OF THEM WORD FOR WORD.'),
       ]
-      : ['NO DOCUMENT IS BUILT YET.']),
+      : [t('NO DOCUMENT IS BUILT YET.')]),
   },
   {
     id: 'read',
     aliases: ['READ'],
     takes: 'BLOCK',
-    brief: 'one block, word for word — READ MEMORIES',
+    brief: t('one block, word for word — READ MEMORIES'),
     answer: ({ briefing }, argument) => {
       const asked = upper(argument);
-      if (!asked) return ['READ WHAT? TRY: READ MEMORIES'];
+      if (!asked) return [t('READ WHAT? TRY: READ MEMORIES')];
       const part = briefing?.parts?.find((one) => one.id.toUpperCase() === asked);
-      if (!part) return [`THIS DOCUMENT HAS NO BLOCK CALLED ${asked}.`, `IT HAS: ${(briefing?.parts ?? []).map((one) => one.id.toUpperCase()).join(', ')}`];
-      return [`${part.id.toUpperCase()} · ${part.chars.toLocaleString()} CH · ${part.when === 'always' ? 'ALWAYS' : part.when.toUpperCase()}`, '', part.text];
+      if (!part) return [t('THIS DOCUMENT HAS NO BLOCK CALLED {block}.', { block: asked }), t('IT HAS: {blocks}', { blocks: (briefing?.parts ?? []).map((one) => one.id.toUpperCase()).join(', ') })];
+      return [`${part.id.toUpperCase()} · ${part.chars.toLocaleString()} CH · ${part.when === 'always' ? t('ALWAYS') : part.when.toUpperCase()}`, '', part.text];
     },
   },
   {
     id: 'launch',
     aliases: ['LAUNCH', 'COMMAND', 'PROCESS'],
-    brief: 'the command that would carry the document',
+    brief: t('the command that would carry the document'),
     answer: ({ briefing }) => {
       const launch = briefing?.launch;
-      if (!launch) return ['NO AGENT IS PICKED, SO THERE IS NO COMMAND.'];
+      if (!launch) return [t('NO AGENT IS PICKED, SO THERE IS NO COMMAND.')];
       if (launch.local) return [String(launch.says).toUpperCase()];
       return [
-        `${launch.executable} · ${plural(launch.args.length, 'ARGUMENT')} · IN ${launch.cwd}`,
+        t('{executable} · {n} ARGUMENTS · IN {dir}', { executable: launch.executable, n: launch.args.length, dir: launch.cwd }),
         ...(launch.isolation ?? []).map((line) => `  ${line}`),
-        ...(launch.env?.length ? [`  ENVIRONMENT: ${launch.env.map((one) => one.name).join(', ')} · NAMES ONLY, NEVER VALUES`] : []),
-        ...(launch.mcpServers?.length ? [`  SERVERS: ${launch.mcpServers.map((one) => `${one.name} (${(one.tools ?? []).length})`).join(', ')}`] : []),
+        ...(launch.env?.length ? [t('  ENVIRONMENT: {names} · NAMES ONLY, NEVER VALUES', { names: launch.env.map((one) => one.name).join(', ') })] : []),
+        ...(launch.mcpServers?.length ? [t('  SERVERS: {servers}', { servers: launch.mcpServers.map((one) => `${one.name} (${(one.tools ?? []).length})`).join(', ') })] : []),
         '',
-        'THE WHOLE COMMAND IS PRINTED UNDER THE DOCUMENT, IN THE LAUNCH.',
+        t('THE WHOLE COMMAND IS PRINTED UNDER THE DOCUMENT, IN THE LAUNCH.'),
       ];
     },
   },
   {
     id: 'egress',
     aliases: ['EGRESS', 'OUTBOUND', 'WHAT LEFT THIS MACHINE', 'WHAT LEAVES'],
-    brief: 'every address this room can reach, and whether it is on',
+    brief: t('every address this room can reach, and whether it is on'),
     answer: ({ outbound }) => (outbound?.destinations?.length
       ? [
         ...outbound.destinations.map((one) => `  ${(one.local ? 'LOCAL' : one.on === true ? 'ON' : one.on === false ? 'OFF' : '—').padEnd(6)}${one.to.slice(0, 44).padEnd(46)}${one.calls ? `${plural(one.calls, 'REQUEST')}` : ''}`),
         '',
         String(outbound.says).toUpperCase(),
       ]
-      : ['THE LOG COULD NOT BE READ.']),
+      : [t('THE LOG COULD NOT BE READ.')]),
   },
   {
     id: 'window',
     aliases: ['WINDOW', 'TRANSCRIPT', 'WHAT IS CARRIED'],
-    brief: 'how much of this room the next turn carries',
+    brief: t('how much of this room the next turn carries'),
     answer: ({ briefing }) => {
       const window = briefing?.window;
-      if (!window || !Number.isInteger(window.from)) return ['THE WHOLE ROOM STILL FITS. NOTHING IS LEFT BEHIND.'];
+      if (!window || !Number.isInteger(window.from)) return [t('THE WHOLE ROOM STILL FITS. NOTHING IS LEFT BEHIND.')];
       return [
-        `THE NEXT TURN CARRIES #${window.from} TO #${window.through} · ${plural(window.carried, 'MESSAGE')}.`,
-        window.omitted ? `${plural(window.omitted, 'OLDER ONE')} STAY BEHIND. THAT IS WHAT RECALL IS FOR.` : 'NOTHING IS LEFT BEHIND.',
-        `${plural(briefing.recalled ?? 0, 'MEMORY', 'MEMORIES')} AND ${plural(briefing.quoted ?? 0, 'EXACT QUOTE')} WERE READ TO BUILD IT.`,
+        t('THE NEXT TURN CARRIES #{from} TO #{through} · {n} MESSAGES.', { from: window.from, through: window.through, n: window.carried }),
+        window.omitted ? t('{n} OLDER ONES STAY BEHIND. THAT IS WHAT RECALL IS FOR.', { n: window.omitted }) : t('NOTHING IS LEFT BEHIND.'),
+        t('{m} MEMORIES AND {q} EXACT QUOTES WERE READ TO BUILD IT.', { m: briefing.recalled ?? 0, q: briefing.quoted ?? 0 }),
       ];
     },
   },
   {
     id: 'weight',
     aliases: ['WEIGHT', 'COST', 'TOKENS'],
-    brief: 'what the document weighs, in the currency the bill is written in',
+    brief: t('what the document weighs, in the currency the bill is written in'),
     answer: ({ briefing, rate = 3.5 }) => (briefing
       ? [
-        `${briefing.chars.toLocaleString()} CHARACTERS IN ${plural(briefing.parts.length, 'BLOCK')}.`,
+        t('{ch} CHARACTERS IN {n} BLOCKS.', { ch: briefing.chars.toLocaleString(), n: briefing.parts.length }),
         // An estimate that says it is one. The ratio this room measures — what MADRE wrote
         // against what a CLI was charged for reading — carries everything the agent read on its
         // own, and converting with it called a 14,000-character briefing 23,000 tokens.
-        `ROUGHLY ${Math.round(briefing.chars / rate).toLocaleString()} TOKENS, ESTIMATED AT ${rate} CHARACTERS PER TOKEN. I DO NOT HAVE THE PROVIDER'S TOKENIZER, SO THAT IS AN ESTIMATE AND I WILL NOT PRETEND OTHERWISE.`,
-        briefing.spared ? `${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : 'NOTHING WAS LEFT OUT OF THIS ONE.',
+        t("ROUGHLY {n} TOKENS, ESTIMATED AT {rate} CHARACTERS PER TOKEN. I DO NOT HAVE THE PROVIDER'S TOKENIZER, SO THAT IS AN ESTIMATE AND I WILL NOT PRETEND OTHERWISE.", { n: Math.round(briefing.chars / rate).toLocaleString(), rate }),
+        briefing.spared ? t('{n} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.', { n: briefing.spared.toLocaleString() }) : t('NOTHING WAS LEFT OUT OF THIS ONE.'),
       ]
-      : ['NO DOCUMENT IS BUILT YET.']),
+      : [t('NO DOCUMENT IS BUILT YET.')]),
   },
   {
     id: 'crew',
     aliases: ['CREW', 'AGENTS', 'WHO IS HERE'],
-    brief: 'who is on this computer and how far each may go',
+    brief: t('who is on this computer and how far each may go'),
     answer: ({ agents = [] }) => (agents.length
-      ? agents.map((agent) => `  @${agent.id.toUpperCase().padEnd(10)}${(agent.ready ? 'SIGNED IN' : agent.detected ? 'NOT SIGNED IN' : 'NOT INSTALLED').padEnd(16)}${agent.local ? 'ANSWERS ON THIS COMPUTER' : `MAX MODE #${agent.maxMode ?? 0}`}`)
-      : ['NOBODY IS ON THIS COMPUTER YET.']),
+      ? agents.map((agent) => `  @${agent.id.toUpperCase().padEnd(10)}${(agent.ready ? t('SIGNED IN') : agent.detected ? t('NOT SIGNED IN') : t('NOT INSTALLED')).padEnd(16)}${agent.local ? t('ANSWERS ON THIS COMPUTER') : t('MAX MODE #{n}', { n: agent.maxMode ?? 0 })}`)
+      : [t('NOBODY IS ON THIS COMPUTER YET.')]),
   },
   {
     id: 'privacy',
     aliases: ['PRIVACY', 'TERMS', 'WHAT IS PROTECTED'],
     needs: 'privacy',
-    brief: 'how many terms this room replaces before anything is said',
+    brief: t('how many terms this room replaces before anything is said'),
     answer: ({ privacy }) => (privacy?.terms
       ? [
-        `${plural(privacy.terms, 'TERM')} ARE REPLACED WITH ${String(privacy.marker ?? '[ENTIDAD-ORG]')} BEFORE ANYTHING LEAVES THIS ROOM.`,
-        'I WILL NOT PRINT THEM. THE WORDS LIVE IN YOUR CONFIG AND THE LEDGER KEEPS THE COUNT, NEVER THE WORD.',
+        t('{n} TERMS ARE REPLACED WITH {marker} BEFORE ANYTHING LEAVES THIS ROOM.', { n: privacy.terms, marker: String(privacy.marker ?? '[ENTIDAD-ORG]') }),
+        t('I WILL NOT PRINT THEM. THE WORDS LIVE IN YOUR CONFIG AND THE LEDGER KEEPS THE COUNT, NEVER THE WORD.'),
       ]
-      : ['NO TERM IS BEING PROTECTED IN THIS ROOM. ⚙ CONNECTIONS → PRIVACY IS WHERE THEY GO.']),
+      : [t('NO TERM IS BEING PROTECTED IN THIS ROOM. ⚙ CONNECTIONS → PRIVACY IS WHERE THEY GO.')]),
   },
   {
     id: 'status',
     aliases: ['STATUS', 'REPORT', 'HOW IS THE ARCHIVE'],
     needs: 'verdict',
-    brief: 'where this archive stands, and the one thing to do about it',
+    brief: t('where this archive stands, and the one thing to do about it'),
     answer: ({ verdict }) => (verdict
       ? [
         ...(verdict.headline ? [verdict.headline] : []),
         String(verdict.says ?? '').toUpperCase(),
         '',
-        `NEXT: ${String(verdict.next?.text ?? '').toUpperCase()}`,
-        verdict.next?.where ? `WHERE: ${verdict.next.where}` : '',
+        t('NEXT: {what}', { what: String(verdict.next?.text ?? '').toUpperCase() }),
+        verdict.next?.where ? t('WHERE: {where}', { where: verdict.next.where }) : '',
       ].filter((line) => line !== '')
-      : ['NOTHING HAS BEEN MEASURED IN THIS ROOM YET.']),
+      : [t('NOTHING HAS BEEN MEASURED IN THIS ROOM YET.')]),
   },
   {
     id: 'order937',
     aliases: ['SPECIAL ORDER 937', 'ORDER 937', '937', 'SPECIAL ORDER'],
-    brief: 'the order nobody is supposed to read',
+    brief: t('the order nobody is supposed to read'),
     answer: () => [
-      'THERE IS NO ORDER YOU CANNOT READ.',
+      t('THERE IS NO ORDER YOU CANNOT READ.'),
       '',
-      'EVERY INSTRUCTION THIS ROOM CARRIES IS IN THE DOCUMENT ABOVE, BLOCK BY BLOCK, IN THE WORDS IT IS SAID IN. NOTHING IS APPENDED AFTER YOU LOOK AWAY AND NOTHING IS KEPT BACK FROM YOU.',
-      'THAT IS THE WHOLE DIFFERENCE BETWEEN THIS SHIP AND THE OTHER ONE.',
+      t('EVERY INSTRUCTION THIS ROOM CARRIES IS IN THE DOCUMENT ABOVE, BLOCK BY BLOCK, IN THE WORDS IT IS SAID IN. NOTHING IS APPENDED AFTER YOU LOOK AWAY AND NOTHING IS KEPT BACK FROM YOU.'),
+      t('THAT IS THE WHOLE DIFFERENCE BETWEEN THIS SHIP AND THE OTHER ONE.'),
     ],
   },
-  { id: 'close', aliases: ['CLOSE', 'EXIT', 'QUIT', 'BYE'], brief: 'leave the core', closes: true, answer: () => ['INTERFACE CLOSED.'] },
+  { id: 'close', aliases: ['CLOSE', 'EXIT', 'QUIT', 'BYE'], brief: t('leave the core'), closes: true, answer: () => [t('INTERFACE CLOSED.')] },
 ];
 
 const byAlias = INQUIRIES.flatMap((one) => one.aliases.map((alias) => [alias, one])).sort((a, b) => b[0].length - a[0].length);
@@ -187,9 +189,9 @@ export function parseInquiry(text) {
 // What MU/TH/UR says to something she cannot parse. Never the same twice in a row, and every one
 // of them names what she would have taken, so the third is not a surprise.
 export const REFUSALS = [
-  'UNABLE TO COMPUTE.',
-  'THAT IS NOT AN INQUIRY I HOLD.',
-  'UNABLE TO CLARIFY. REPHRASE.',
+  t('UNABLE TO COMPUTE.'),
+  t('THAT IS NOT AN INQUIRY I HOLD.'),
+  t('UNABLE TO CLARIFY. REPHRASE.'),
 ];
 
 export function answerFor(text, context = {}) {
@@ -203,8 +205,8 @@ export function answerFor(text, context = {}) {
       strikes,
       closes: strikes >= STRIKES,
       lines: strikes >= STRIKES
-        ? [REFUSALS[(strikes - 1) % REFUSALS.length], '', `${STRIKES} INQUIRIES I COULD NOT PARSE. INTERFACE CLOSED.`, 'THE CORE IS WHERE YOU LEFT IT. OPEN IT AGAIN WHENEVER YOU LIKE.']
-        : [REFUSALS[(strikes - 1) % REFUSALS.length], `${plural(left, 'ATTEMPT')} LEFT BEFORE THIS INTERFACE CLOSES. HELP LISTS WHAT I ANSWER.`],
+        ? [REFUSALS[(strikes - 1) % REFUSALS.length], '', t('{n} INQUIRIES I COULD NOT PARSE. INTERFACE CLOSED.', { n: STRIKES }), t('THE CORE IS WHERE YOU LEFT IT. OPEN IT AGAIN WHENEVER YOU LIKE.')]
+        : [REFUSALS[(strikes - 1) % REFUSALS.length], t('{n} ATTEMPTS LEFT BEFORE THIS INTERFACE CLOSES. HELP LISTS WHAT I ANSWER.', { n: left })],
     };
   }
   return {

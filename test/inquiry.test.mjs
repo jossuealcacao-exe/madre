@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setLanguage } from '../public/i18n.js';
 import { answerFor, parseInquiry, INQUIRIES, STRIKES } from '../public/inquiry.js';
+
+// These are about which inquiry answers what, and about the counting — not about the wording.
+// They read the source language; the Spanish has a coverage test of its own.
+setLanguage('en');
 
 const read = (file) => readFile(join(import.meta.dirname, '..', 'public', file), 'utf8');
 const room = {

@@ -232,9 +232,11 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.deepEqual(panes.children.map((pane) => pane.dataset.pane), ['document', 'launch', 'egress', 'console']);
   assert.deepEqual(panes.children.map((pane) => pane.hidden), [false, true, true, true], 'more than one pane is showing');
   // Each one filled from the room, and each one with its own `==>` sections.
-  assert.match(panes.children[0].textContent, /THE DOCUMENT[\s\S]*MEMORIES[\s\S]*WHAT IT CARRIES/);
-  assert.match(panes.children[1].textContent, /THE LAUNCH[\s\S]*\/usr\/local\/bin\/codex/);
-  assert.match(panes.children[2].textContent, /WHAT LEFT THIS MACHINE[\s\S]*the npm registry/);
+  // In the language MADRE speaks, which is the point of reading it here rather than in the
+  // catalogue: the page, the panes and the words all came up together.
+  assert.match(panes.children[0].textContent, /EL DOCUMENTO[\s\S]*MEMORIES[\s\S]*LO QUE CARGA/);
+  assert.match(panes.children[1].textContent, /EL LANZAMIENTO[\s\S]*\/usr\/local\/bin\/codex/);
+  assert.match(panes.children[2].textContent, /LO QUE SALIÓ DE ESTA COMPUTADORA[\s\S]*the npm registry/);
   // An inquiry that is already a pane opens it rather than printing it twice.
   const prompt = body.querySelector('.console-line');
   const ask = async (text) => { prompt.querySelector('INPUT').value = text; await prompt.listeners.submit[0]({ preventDefault() {} }); };
@@ -243,11 +245,11 @@ test('the room UI boots against a real transcript without throwing', async () =>
   // Everything else is answered in her own pane, and the count only moves on what she cannot read.
   await ask('weight');
   assert.equal(core.pane, 'console');
-  assert.match(panes.children[3].textContent, /CHARACTERS IN 2 BLOCKS/);
+  assert.match(panes.children[3].textContent, /CARACTERES EN 2 BLOQUES/);
   assert.equal(core.strikes, 0);
   await ask('delete the archive');
   assert.equal(core.strikes, 1);
-  assert.match(panes.children[3].textContent, /ATTEMPTS LEFT/);
+  assert.match(panes.children[3].textContent, /INTENTOS ANTES DE QUE ESTA INTERFAZ SE CIERRE/);
   registry.get('core').close();
 
 
@@ -256,7 +258,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   void stream;
   globalThis.__pulse.disarmExpendable();
   assert.equal(uiState.expendable, false);
-  assert.equal(registry.get('crew-label').textContent, 'HUMANA ›');
+  assert.equal(registry.get('crew-label').textContent, 'HUMANO ›');
 
   // Silence longer than two seconds starts over; scrolling up resets.
   assert.equal(trackHold(true, t0 + 20_000), false);

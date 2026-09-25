@@ -10,7 +10,7 @@
 
 export const ES = {
   // El compositor: lo primero que una persona lee de MADRE.
-  'Type here, human. Ask the room…': 'Escribe aquí, humana. Pregúntale a la sala…',
+  'Type here, human. Ask the room…': 'Escribe aquí, humano. Pregúntale a la sala…',
   'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.':
     'CREATE encendido: di qué crear. Los archivos nuevos caen donde les toca en el proyecto; nada de lo que ya existe se toca.',
   'Compact prose. Nothing you write is altered; only the answers get shorter.':
@@ -21,7 +21,7 @@ export const ES = {
     'Control armado. Di qué cambiar en el proyecto: cada acción se ejecuta sin pedirte permiso.',
   'Airlock open. Commands run; pushes and deploys leave the ship. Say exactly what should go out.':
     'Esclusa abierta. Aquí se ejecutan comandos y los push y los deploys salen de la nave. Di exactamente qué debe salir.',
-  'Type here, human. MOTHER is listening.': 'Escribe aquí, humana. MOTHER está escuchando.',
+  'Type here, human. MOTHER is listening.': 'Escribe aquí, humano. MOTHER está escuchando.',
   'Ask what the room remembers. @madre answers from memory with citations; it does not act.':
     'Pregunta qué recuerda la sala. @madre contesta desde la memoria y cita de dónde lo saca; no ejecuta nada.',
 
@@ -84,11 +84,11 @@ export const ES = {
     'Modo consulta · Tú decides qué se escribe en tu proyecto: los agentes crean archivos solo con CREATE o con un permiso permanente que tú hayas activado, y solo dentro de .pulse/out/ · Lo que un agente lee puede llegar al proveedor de su modelo.',
 
   // Quién habla, delante del campo.
-  'HUMAN ›': 'HUMANA ›',
-  'HUMAN · GHOST ›': 'HUMANA · GHOST ›',
-  'HUMAN · CREATE ›': 'HUMANA · CREATE ›',
-  'CREW · EXPENDABLE ›': 'TRIPULACIÓN PRESCINDIBLE ›',
-  'INTRUDER ›': 'INTRUSA ›',
+  'HUMAN ›': 'HUMANO ›',
+  'HUMAN · GHOST ›': 'HUMANO · GHOST ›',
+  'HUMAN · CREATE ›': 'HUMANO · CREATE ›',
+  'CREW · EXPENDABLE ›': 'PRESCINDIBLE ›',
+  'INTRUDER ›': 'INTRUSO ›',
 
   // ── LA PÁGINA EN BLANCO ───────────────────────────────────────────────────
   'Explain {project} to me: what it does, how it runs, and where the important code lives.':
@@ -106,6 +106,174 @@ export const ES = {
   'ONE PROJECT, ONE MEMORY. EVERY CONVERSATION FEEDS THE SAME ARCHIVE.':
     'UN PROYECTO, UNA MEMORIA. CADA CONVERSACIÓN ALIMENTA EL MISMO ARCHIVO.',
   'FILES': 'ARCHIVOS',
+
+  // ── EL CORE ───────────────────────────────────────────────────────────────
+  'INTERFACE 2037 · CORE ACCESS': 'INTERFAZ 2037 · ACCESO AL NÚCLEO',
+  'MU/TH/UR 6000 READY FOR INQUIRY.': 'MU/TH/UR 6000 LISTA PARA CONSULTA.',
+  'TO': 'PARA',
+  'AT': 'EN MODO',
+  'IF YOU SENT': 'SI MANDARAS',
+  'the question you would send — the document rebuilds around it':
+    'la pregunta que mandarías — el documento se rearma alrededor de ella',
+  'NOTHING IS SENT FROM HERE.': 'DE AQUÍ NO SALE NADA.',
+  'What @{agent} would be told': 'Lo que se le diría a @{agent}',
+  '{label} has no session; this is what it would be told': '{label} no tiene sesión; esto es lo que se le diría',
+  'MAX MODE FOR @{agent} IS #{max}, SO THIS TURN WOULD BE ANSWERED AT #{ceiling}':
+    'EL TECHO DE @{agent} ES #{max}, ASÍ QUE ESTE TURNO SE CONTESTARÍA EN #{ceiling}',
+
+  // Las cuatro pestañas y lo que cada una dice traer.
+  'DOCUMENT': 'DOCUMENTO',
+  'LAUNCH': 'LANZAMIENTO',
+  'WHAT LEFT': 'LO QUE SALIÓ',
+  'READING…': 'LEYENDO…',
+  'NO PROCESS': 'SIN PROCESO',
+  ' · ≈{n} TOKENS': ' · ≈{n} TOKENS',
+  '{n} BLOCKS · {ch} CH': '{n} BLOQUES · {ch} CAR',
+  '@{agent} · {n} ARGS': '@{agent} · {n} ARGUMENTOS',
+  '{n} ADDRESSES · {on} ON': '{n} DIRECCIONES · {on} ENCENDIDAS',
+  '{n} ASKED': '{n} CONSULTAS',
+  'ASK ME': 'PREGÚNTAME',
+
+  // El documento.
+  'THE DOCUMENT': 'EL DOCUMENTO',
+  '{n} BLOCKS · {ch} CH · ≈{tokens} TOKENS': '{n} BLOQUES · {ch} CAR · ≈{tokens} TOKENS',
+  'BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.':
+    'ARMADO AHORA Y MANDADO A NINGÚN LADO. CAMBIA A QUIÉN VA Y CAMBIAN LAS PALABRAS; SUBE EL MODO Y APARECE, ESCRITO, EL PERMISO QUE SE LE DARÍA.',
+  'ALWAYS': 'SIEMPRE',
+  'HERE BECAUSE': 'ESTÁ AQUÍ PORQUE',
+  ' · nothing switches it off; it goes when the reason goes':
+    ' · no hay interruptor; se va cuando se va el motivo',
+  'COPY': 'COPIAR',
+  'COPIED': 'COPIADO',
+  'The clipboard is not available here.': 'El portapapeles no está disponible aquí.',
+  'WHAT IT CARRIES': 'LO QUE CARGA',
+  'TRANSCRIPT': 'TRANSCRIPCIÓN',
+  '#{from} → #{through} · {n} MESSAGES': '#{from} → #{through} · {n} MENSAJES',
+  'THE WHOLE ROOM STILL FITS': 'LA SALA ENTERA TODAVÍA CABE',
+  'LEFT BEHIND': 'SE QUEDAN FUERA',
+  '{n} OLDER MESSAGES · WHICH IS WHAT RECALL IS FOR': '{n} MENSAJES MÁS VIEJOS · PARA ESO EXISTE EL RECALL',
+  'READ TO BUILD IT': 'SE LEYÓ PARA ARMARLO',
+  '{m} MEMORIES · {q} EXACT QUOTES': '{m} MEMORIAS · {q} CITAS EXACTAS',
+  'NOT COUNTED': 'NO CUENTA',
+  'NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT':
+    'NINGUNA SE CONTÓ COMO RECORDADA: PREGUNTAR QUÉ DIRÍA LA SALA NO ES LA SALA DICIÉNDOLO',
+  'WEIGHT': 'PESO',
+  "{ch} CH · ≈{tokens} TOKENS · ESTIMATED AT {rate} CH/TOKEN, NOT MEASURED: MADRE DOES NOT HAVE THE PROVIDER'S TOKENIZER":
+    '{ch} CAR · ≈{tokens} TOKENS · ESTIMADO A {rate} CAR/TOKEN, NO MEDIDO: MADRE NO TIENE EL TOKENIZADOR DEL PROVEEDOR',
+  'LEFT OUT': 'SE DEJÓ FUERA',
+  '{n} CHARACTERS THIS TURN HAS NO USE FOR': '{n} CARACTERES QUE ESTE TURNO NO NECESITA',
+  'FIXED': 'FIJO',
+  'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.':
+    'ESTO NO SE EDITA. LO QUE MADRE PROMETE SOBRE LA TRIPULACIÓN ES CIERTO PORQUE ESTAS PALABRAS SON FIJAS. ABRE UN BLOQUE Y TE DICE QUÉ LO PUSO AHÍ Y DÓNDE SE QUITA: SE APAGA, NUNCA SE REESCRIBE.',
+
+  // El lanzamiento.
+  'THE LAUNCH': 'EL LANZAMIENTO',
+  'WHAT MADRE WOULD RUN TO DELIVER IT': 'LO QUE MADRE CORRERÍA PARA ENTREGARLO',
+  'NO AGENT IS PICKED, SO THERE IS NO COMMAND TO SHOW.': 'NO HAY AGENTE ELEGIDO, ASÍ QUE NO HAY COMANDO QUE ENSEÑAR.',
+  '# run in {dir}': '# se corre en {dir}',
+  'THE BRIEFING GOES WHERE {marker} IS WRITTEN. NOTHING IS RUN FROM HERE.':
+    'EL BRIEFING VA DONDE DICE {marker}. DE AQUÍ NO SE CORRE NADA.',
+  'WHAT KEEPS IT TO THIS TURN': 'LO QUE LO MANTIENE DENTRO DE ESTE TURNO',
+  'ENVIRONMENT IT IS GIVEN': 'EL ENTORNO QUE SE LE DA',
+  'NAMES ONLY. NO VALUE IS EVER SHOWN HERE.': 'SOLO NOMBRES. AQUÍ NUNCA SE MUESTRA UN VALOR.',
+  'SERVERS IT CAN CALL': 'SERVIDORES QUE PUEDE LLAMAR',
+  'the archive of this project, read and written through MADRE':
+    'el archivo de este proyecto, leído y escrito a través de MADRE',
+
+  // Lo que salió de esta computadora.
+  'WHAT LEFT THIS MACHINE': 'LO QUE SALIÓ DE ESTA COMPUTADORA',
+  'EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY':
+    'CADA DIRECCIÓN A LA QUE MADRE PUEDE LLEGAR, Y SI HOY ESTÁ ENCENDIDA',
+  'THE LOG COULD NOT BE READ.': 'NO SE PUDO LEER EL REGISTRO.',
+  'LOCAL': 'LOCAL',
+  'ON': 'SÍ',
+  'OFF': 'NO',
+  '{n} REQUESTS': '{n} PETICIONES',
+  ' · {n} FAILED': ' · {n} FALLARON',
+  'NOTHING YET': 'NADA TODAVÍA',
+  'NOT THROUGH MADRE': 'NO PASA POR MADRE',
+  'THE LAST REQUESTS THIS PROCESS MADE': 'LAS ÚLTIMAS PETICIONES DE ESTE PROCESO',
+  '{n} LINES': '{n} LÍNEAS',
+  'Nothing has gone out of this process yet.': 'De este proceso todavía no ha salido nada.',
+  'NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE — ONLY WHICH PARAMETERS WERE SET. THE GEMINI EMBEDDING ADDRESS CARRIES THE KEY IN THE URL, AND A LOG OF WHAT LEFT THIS MACHINE WOULD BE A POOR PLACE TO LEAVE IT.':
+    'AQUÍ NUNCA SE ESCRIBE UN CUERPO, UN ENCABEZADO NI EL VALOR DE UN PARÁMETRO — SOLO QUÉ PARÁMETROS VENÍAN. LA DIRECCIÓN DE EMBEDDINGS DE GEMINI LLEVA LA LLAVE EN LA URL, Y UN REGISTRO DE LO QUE SALIÓ DE TU COMPUTADORA SERÍA UN PÉSIMO LUGAR PARA DEJARLA.',
+
+  // La consola.
+  'ANSWERED FROM WHAT IS ALREADY IN THIS ROOM': 'CONTESTADO CON LO QUE YA ESTÁ EN ESTA SALA',
+  '{n} inquiry attempts left before this interface closes':
+    'quedan {n} intentos antes de que esta interfaz se cierre',
+  'Inquiry': 'Consulta',
+  'READY FOR INQUIRY · TYPE HELP': 'LISTA PARA CONSULTA · ESCRIBE HELP',
+
+  // ── LA CONSOLA DE MU/TH/UR ────────────────────────────────────────────────
+  'what this interface answers': 'qué contesta esta interfaz',
+  'I ANSWER FROM WHAT IS ALREADY IN THIS ROOM. NOTHING IS ASKED OF THE CREW AND NOTHING LEAVES.':
+    'CONTESTO CON LO QUE YA ESTÁ EN ESTA SALA. NO SE LE PREGUNTA NADA A LA TRIPULACIÓN Y NO SALE NADA.',
+  'THREE INQUIRIES I CANNOT PARSE AND THIS INTERFACE CLOSES.':
+    'TRES CONSULTAS QUE NO PUEDA INTERPRETAR Y ESTA INTERFAZ SE CIERRA.',
+  'every block of the next briefing, and what it weighs': 'cada bloque del próximo briefing, y lo que pesa',
+  'THE NEXT TURN TO @{agent} CARRIES {n} BLOCKS, {ch} CHARACTERS.':
+    'EL PRÓXIMO TURNO A @{agent} LLEVA {n} BLOQUES, {ch} CARACTERES.',
+  'READ <BLOCK> PRINTS ONE OF THEM WORD FOR WORD.': 'READ <BLOQUE> IMPRIME UNO DE ELLOS PALABRA POR PALABRA.',
+  'NO DOCUMENT IS BUILT YET.': 'TODAVÍA NO HAY DOCUMENTO ARMADO.',
+  'one block, word for word — READ MEMORIES': 'un bloque, palabra por palabra — READ MEMORIES',
+  'READ WHAT? TRY: READ MEMORIES': '¿LEER QUÉ? PRUEBA: READ MEMORIES',
+  'THIS DOCUMENT HAS NO BLOCK CALLED {block}.': 'ESTE DOCUMENTO NO TIENE NINGÚN BLOQUE {block}.',
+  'IT HAS: {blocks}': 'TIENE: {blocks}',
+  'the command that would carry the document': 'el comando que llevaría el documento',
+  'NO AGENT IS PICKED, SO THERE IS NO COMMAND.': 'NO HAY AGENTE ELEGIDO, ASÍ QUE NO HAY COMANDO.',
+  '{executable} · {n} ARGUMENTS · IN {dir}': '{executable} · {n} ARGUMENTOS · EN {dir}',
+  '  ENVIRONMENT: {names} · NAMES ONLY, NEVER VALUES': '  ENTORNO: {names} · SOLO NOMBRES, NUNCA VALORES',
+  '  SERVERS: {servers}': '  SERVIDORES: {servers}',
+  'THE WHOLE COMMAND IS PRINTED UNDER THE DOCUMENT, IN THE LAUNCH.':
+    'EL COMANDO COMPLETO ESTÁ IMPRESO DEBAJO DEL DOCUMENTO, EN EL LANZAMIENTO.',
+  'every address this room can reach, and whether it is on': 'cada dirección que esta sala puede alcanzar, y si está encendida',
+  'how much of this room the next turn carries': 'cuánto de esta sala carga el próximo turno',
+  'THE WHOLE ROOM STILL FITS. NOTHING IS LEFT BEHIND.': 'LA SALA ENTERA TODAVÍA CABE. NO SE QUEDA NADA FUERA.',
+  'THE NEXT TURN CARRIES #{from} TO #{through} · {n} MESSAGES.': 'EL PRÓXIMO TURNO LLEVA DEL #{from} AL #{through} · {n} MENSAJES.',
+  '{n} OLDER ONES STAY BEHIND. THAT IS WHAT RECALL IS FOR.': '{n} MÁS VIEJOS SE QUEDAN FUERA. PARA ESO EXISTE EL RECALL.',
+  'NOTHING IS LEFT BEHIND.': 'NO SE QUEDA NADA FUERA.',
+  '{m} MEMORIES AND {q} EXACT QUOTES WERE READ TO BUILD IT.': 'SE LEYERON {m} MEMORIAS Y {q} CITAS EXACTAS PARA ARMARLO.',
+  'what the document weighs, in the currency the bill is written in': 'lo que pesa el documento, en la moneda en que llega la factura',
+  '{ch} CHARACTERS IN {n} BLOCKS.': '{ch} CARACTERES EN {n} BLOQUES.',
+  "ROUGHLY {n} TOKENS, ESTIMATED AT {rate} CHARACTERS PER TOKEN. I DO NOT HAVE THE PROVIDER'S TOKENIZER, SO THAT IS AN ESTIMATE AND I WILL NOT PRETEND OTHERWISE.":
+    'MÁS O MENOS {n} TOKENS, ESTIMADOS A {rate} CARACTERES POR TOKEN. NO TENGO EL TOKENIZADOR DEL PROVEEDOR, ASÍ QUE ES UNA ESTIMACIÓN Y NO VOY A FINGIR LO CONTRARIO.',
+  '{n} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.':
+    'SE DEJARON FUERA {n} CARACTERES PORQUE ESTE TURNO NO LOS NECESITA.',
+  'NOTHING WAS LEFT OUT OF THIS ONE.': 'DE ESTE NO SE DEJÓ NADA FUERA.',
+  'who is on this computer and how far each may go': 'quién está en esta computadora y hasta dónde llega cada uno',
+  'SIGNED IN': 'CON SESIÓN',
+  'NOT SIGNED IN': 'SIN SESIÓN',
+  'ANSWERS ON THIS COMPUTER': 'CONTESTA EN ESTA COMPUTADORA',
+  'MAX MODE #{n}': 'TECHO #{n}',
+  'NOBODY IS ON THIS COMPUTER YET.': 'TODAVÍA NO HAY NADIE EN ESTA COMPUTADORA.',
+  'how many terms this room replaces before anything is said': 'cuántos términos reemplaza esta sala antes de decir nada',
+  '{n} TERMS ARE REPLACED WITH {marker} BEFORE ANYTHING LEAVES THIS ROOM.':
+    '{n} TÉRMINOS SE REEMPLAZAN CON {marker} ANTES DE QUE ALGO SALGA DE ESTA SALA.',
+  'I WILL NOT PRINT THEM. THE WORDS LIVE IN YOUR CONFIG AND THE LEDGER KEEPS THE COUNT, NEVER THE WORD.':
+    'NO LOS VOY A IMPRIMIR. LAS PALABRAS VIVEN EN TU CONFIG Y EL LEDGER GUARDA LA CUENTA, NUNCA LA PALABRA.',
+  'NO TERM IS BEING PROTECTED IN THIS ROOM. ⚙ CONNECTIONS → PRIVACY IS WHERE THEY GO.':
+    'EN ESTA SALA NO SE ESTÁ PROTEGIENDO NINGÚN TÉRMINO. VAN EN ⚙ CONNECTIONS → PRIVACY.',
+  'where this archive stands, and the one thing to do about it': 'dónde está este archivo, y la única cosa que hacer al respecto',
+  'NEXT: {what}': 'SIGUE: {what}',
+  'WHERE: {where}': 'DÓNDE: {where}',
+  'NOTHING HAS BEEN MEASURED IN THIS ROOM YET.': 'EN ESTA SALA TODAVÍA NO SE HA MEDIDO NADA.',
+  'the order nobody is supposed to read': 'la orden que nadie debería poder leer',
+  'THERE IS NO ORDER YOU CANNOT READ.': 'NO HAY NINGUNA ORDEN QUE NO PUEDAS LEER.',
+  'EVERY INSTRUCTION THIS ROOM CARRIES IS IN THE DOCUMENT ABOVE, BLOCK BY BLOCK, IN THE WORDS IT IS SAID IN. NOTHING IS APPENDED AFTER YOU LOOK AWAY AND NOTHING IS KEPT BACK FROM YOU.':
+    'CADA INSTRUCCIÓN QUE ESTA SALA CARGA ESTÁ EN EL DOCUMENTO DE ARRIBA, BLOQUE POR BLOQUE, CON LAS PALABRAS EXACTAS. NADA SE AGREGA CUANDO VOLTEAS Y NADA SE TE OCULTA.',
+  'THAT IS THE WHOLE DIFFERENCE BETWEEN THIS SHIP AND THE OTHER ONE.':
+    'ESA ES TODA LA DIFERENCIA ENTRE ESTA NAVE Y LA OTRA.',
+  'leave the core': 'salir del núcleo',
+  'INTERFACE CLOSED.': 'INTERFAZ CERRADA.',
+  'UNABLE TO COMPUTE.': 'IMPOSIBLE DE PROCESAR.',
+  'THAT IS NOT AN INQUIRY I HOLD.': 'ESA CONSULTA NO ESTÁ EN MI REGISTRO.',
+  'UNABLE TO CLARIFY. REPHRASE.': 'IMPOSIBLE DE ACLARAR. REFORMULA.',
+  '{n} INQUIRIES I COULD NOT PARSE. INTERFACE CLOSED.': '{n} CONSULTAS QUE NO PUDE INTERPRETAR. INTERFAZ CERRADA.',
+  'THE CORE IS WHERE YOU LEFT IT. OPEN IT AGAIN WHENEVER YOU LIKE.':
+    'EL NÚCLEO SIGUE DONDE LO DEJASTE. ÁBRELO OTRA VEZ CUANDO QUIERAS.',
+  '{n} ATTEMPTS LEFT BEFORE THIS INTERFACE CLOSES. HELP LISTS WHAT I ANSWER.':
+    'QUEDAN {n} INTENTOS ANTES DE QUE ESTA INTERFAZ SE CIERRE. HELP LISTA LO QUE CONTESTO.',
 
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',
