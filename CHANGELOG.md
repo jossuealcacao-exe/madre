@@ -26,6 +26,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### La tripulación escribe en tu idioma
+- Nadie se lo había dicho nunca. Los agentes contestaban en español solo porque tú escribes en español y un modelo imita lo que lee — que es una costumbre, no una regla, y se rompe justo en los turnos que llevan más inglés alrededor: un paso delegado, un plan, una sala llena de rutas.
+- Ahora el bloque `style` del briefing lo dice: escribe en el idioma en que escribe la humana, y **deja el código, las rutas, los comandos y los identificadores exactamente como están**. Esto es un cuarto para trabajar sobre código.
+- Va dentro del bloque que ya existía: ningún bloque nuevo, ningún id nuevo, nada que el core lea distinto. Y está en la cabecera estable del prompt, así que son los mismos bytes en cada turno y no le cuesta nada a la caché.
+
 ### Cómo te enteras de que tu modelo local ya sirve
 - Que Ollama esté corriendo no es la pregunta. La sala ya tenía la respuesta buena —la tercera prueba le hace al modelo local doce preguntas reales de esta sala y mide si aterrizó donde aterrizó la tripulación, contra un control para que «hablar del mismo tema» no cuente— pero vivía en un panel al que había que volver. Nadie te lo decía.
 - Ahora la sala lo dice, **una vez por modelo**, donde ya estás leyendo: `local · @madre · qwen2.5:7b` y, debajo, o bien «nadie lo ha medido contra este proyecto todavía: correr aquí no es lo mismo que servir aquí» con un botón **CHECK IT AGAINST THIS ROOM**, o bien el resultado que ya existía. La prueba tarda minutos y **no gasta un centavo**: todo corre en tu máquina.

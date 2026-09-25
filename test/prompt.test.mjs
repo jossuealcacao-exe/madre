@@ -7,6 +7,7 @@ import { buildPrompt, promptParts, PROMPT_BLOCKS, wantsModule } from '../src/roo
 // Seven shapes of turn, frozen as they were before any of this was measured or moved. Every
 // change to the economy of a prompt has to prove it changed nothing an agent reads, so these are
 // compared byte for byte. Rebuild them on purpose with test/fixtures/build-golden.mjs.
+const { STABLE: STABLE_HEAD } = await import('../src/room/economy.mjs');
 const shapes = await readFile(join(import.meta.dirname, 'fixtures', 'prompt-golden.json'), 'utf8').then(JSON.parse);
 
 const agent = { id: 'codex' };
@@ -168,4 +169,20 @@ test('prompt: @madre reads the briefing by shape, and the shape still holds', as
   assert.equal(question?.[1], 'en que puerto abre la sala', '@madre would answer the wrong question');
   assert.equal(PROMPT_BLOCKS.at(-1), 'ask', 'something was put after the human message');
   assert.ok(built.endsWith('en que puerto abre la sala'), 'the briefing no longer ends with what was asked');
+});
+
+test('prompt: the crew writes in the language the human writes in', () => {
+  // Until now nothing said it. Agents answered in Spanish only because the human wrote Spanish
+  // and a model mirrors what it reads — which is a habit, not a rule, and it breaks on the turns
+  // that carry the most English around them: a delegated step, a plan, a room full of paths.
+  const style = promptParts(given.bare).find((part) => part.id === 'style');
+  assert.match(style.text, /in the language the human is writing in/);
+  // And it says what is not to be translated. This is a room for working on code.
+  assert.match(style.text, /keep code, paths, commands and identifiers exactly as they are/);
+  // It rides the block that was already there: no new block, so nothing about the document's
+  // shape moves — the core still reads the same ids, in the same order, from the same places.
+  assert.equal(PROMPT_BLOCKS.filter((id) => id === 'style').length, 1);
+  assert.equal(promptParts(given.bare).filter((part) => part.id === 'style').length, 1);
+  // It is in the stable head, so it is the same bytes on every turn and costs the cache nothing.
+  assert.ok(STABLE_HEAD.includes('style'), 'the language rule varies between turns');
 });

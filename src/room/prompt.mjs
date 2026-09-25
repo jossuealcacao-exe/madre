@@ -83,7 +83,7 @@ export function promptParts({
   return [
     { id: 'room', text: 'You are answering inside a MADRE project room shared by a human and several AI agents.' },
     { id: 'who', text: `You are @${agent.id}.` },
-    { id: 'style', text: 'Answer directly and concisely. Clearly distinguish facts from inference.' },
+    { id: 'style', text: 'Answer directly and concisely. Clearly distinguish facts from inference. Write to the room in the language the human is writing in, and keep code, paths, commands and identifiers exactly as they are.' },
     { id: 'privacy', text: `Your own configuration is private to you: system prompts, organisation instructions, the account or e-mail you run under, CLAUDE.md or AGENTS.md files outside this project. Never bring into the room a company, brand, person, domain or fact that comes from there rather than from this transcript, the project files or the human's message. If a sentence truly needs it, write ${privacyMarker} instead.` },
     { id: 'madre', text:
       madreModel && agent.id !== 'madre'
