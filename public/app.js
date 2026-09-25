@@ -4455,9 +4455,18 @@ function renderCoreDoc(briefing) {
     const caret = el('span', 'caret', '▸ READ');
     head.append(caret);
     row.addEventListener('toggle', () => { caret.textContent = row.open ? '▾ CLOSE' : '▸ READ'; });
-    const text = el('pre', null, part.text);
     const body = el('div', 'core-text');
-    body.append(text);
+    // What put these words here, and where the human takes them away. Nothing in the core can be
+    // rewritten; some of it can be switched off, and this says exactly where.
+    if (part.when || part.where) {
+      const from = el('p', 'core-from');
+      from.append(el('b', null, part.when === 'always' ? 'ALWAYS' : 'HERE BECAUSE'));
+      if (part.when !== 'always') from.append(` ${part.when}`);
+      if (part.where) from.append(el('span', 'where', ` · ${part.where}`));
+      else if (part.when !== 'always') from.append(el('span', 'where', ' · nothing switches it off; it goes when the reason goes'));
+      body.append(from);
+    }
+    body.append(el('pre', null, part.text));
     const copy = el('button', 'core-copy-one', 'COPY');
     copy.type = 'button';
     copy.addEventListener('click', async () => {
@@ -4481,7 +4490,7 @@ function renderCoreDoc(briefing) {
     : 'THE WHOLE ROOM STILL FITS: NOTHING IS LEFT BEHIND AND NOTHING NEEDS RECALLING YET';
   doc.append(el('p', 'note', held));
   doc.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.${briefing.spared ? ` ${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : ''}`));
-  doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. THE BLOCKS THAT CAN BE SWITCHED OFF ARE SWITCHED OFF IN MODULES AND IN ⚙ CONNECTIONS, NEVER REWRITTEN.'));
+  doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.'));
   return doc;
 }
 

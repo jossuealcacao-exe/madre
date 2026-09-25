@@ -6,7 +6,7 @@ import { parseMessage } from './router.mjs';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { UsageSentinel } from './usage-sentinel.mjs';
-import { buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
+import { BLOCK_SOURCES, buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
 import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
@@ -1024,7 +1024,9 @@ export class Room {
       scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired },
       ash: this.ashEnabled(), mode, escalation: null, mcpServers,
     });
-    const parts = promptParts(options).map((part) => ({ id: part.id, text: part.text, chars: part.text.length }));
+    // Each block with what put it here and what would take it away, so "read, never written" can
+    // be checked one block at a time instead of believed.
+    const parts = promptParts(options).map((part) => ({ id: part.id, text: part.text, chars: part.text.length, ...(BLOCK_SOURCES[part.id] ?? { when: null, where: null }) }));
     return {
       agent: agent.id, label: agent.label, mode,
       // What the mode would actually amount to for this agent: its ceiling is its own.

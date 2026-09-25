@@ -11,6 +11,41 @@ import { leaseInstructions } from '../lease.mjs';
 // The names of the blocks a prompt is made of, in the order an agent reads them. Naming them is
 // what lets the room measure what each one costs, and later decide which of them a given turn
 // has any use for. The words themselves are untouched: a block is only ever a label on top.
+// Where each block comes from, and what would take it away. The core shows this beside the words
+// themselves so "you cannot edit this, but you can switch parts of it off" stops being a claim
+// and becomes something a person can check, block by block. It lives here, next to the blocks it
+// describes, and a test refuses a block that was added without saying what governs it.
+//
+//   when   what has to be true for these words to be in the briefing at all
+//   where  where the human changes or removes them; null when nothing can
+export const BLOCK_SOURCES = {
+  room: { when: 'always', where: null },
+  who: { when: 'always', where: null },
+  style: { when: 'always', where: null },
+  privacy: { when: 'always', where: '⚙ CONNECTIONS → PRIVACY sets the marker and the terms it protects' },
+  madre: { when: '@madre is in the room and this turn is somebody else\'s', where: 'MODULES → OLLAMA' },
+  'memory-server': { when: 'the room has a memory', where: 'MODULES → OLLAMA · ⚙ CONNECTIONS → MEMORY' },
+  mode: { when: 'always', where: 'the chip beside TO @agent, or #0..#4 typed in the message' },
+  inspect: { when: 'always', where: 'the mode of the turn and the agent\'s MAX MODE' },
+  ash: { when: 'Ash is on', where: 'MODULES → ASH' },
+  mother: { when: 'MU/TH/UR has spoken to the crew and the turn is not GHOST', where: null },
+  mcp: { when: 'a module hands tools to this turn', where: 'MODULES' },
+  sdk: { when: 'the message asks for a module and the turn may create files', where: null },
+  lease: { when: 'the turn is #2 or higher and this agent may write', where: '⚙ CONNECTIONS → the agent\'s MAX MODE and its abilities' },
+  'control-held': { when: 'another agent holds CONTROL while this one works', where: null },
+  escalation: { when: 'a plan step asked for permission and was refused or ran out of time', where: null },
+  web: { when: 'WEB ACCESS is on for this agent', where: '⚙ CONNECTIONS → the agent\'s card → WEB ACCESS' },
+  'shared-lease': { when: 'a plan holds a lease this delegate may not use', where: null },
+  memories: { when: 'the archive has notes older than the window that match the request', where: '⚙ CONNECTIONS → MEMORY' },
+  recall: { when: 'older exchanges match the request and fit in the budget', where: '⚙ CONNECTIONS → MEMORY · RECALL · % OF CONTEXT' },
+  context: { when: 'the room has a transcript', where: 'PULSE_CONTEXT_MAX_CHARS sets the budget; RECALL · % OF CONTEXT splits it' },
+  delegation: { when: 'this turn may open a plan', where: '⚙ CONNECTIONS → ROOM SETTINGS → DELEGATION' },
+  abilities: { when: 'this turn may open a plan', where: '⚙ CONNECTIONS → each agent\'s abilities and MAX MODE' },
+  attachments: { when: 'the message carries attached files', where: null },
+  references: { when: 'the message points at project files with !', where: null },
+  ask: { when: 'the human is the one asking', where: null },
+};
+
 export const PROMPT_BLOCKS = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'ash', 'mother', 'mcp', 'sdk', 'lease', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'context', 'delegation', 'abilities', 'attachments', 'references', 'ask'];
 
 // Whether this turn could plausibly produce a MADRE module. The SDK block is long and is only

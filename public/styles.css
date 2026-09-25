@@ -413,6 +413,9 @@ dialog.nostromo::backdrop { background: #000; }
 .core-block > summary .caret { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); white-space: nowrap; }
 .core-block > summary:hover .caret { color: var(--ph); }
 .core-text { position: relative; padding: 4px 8px 12px; }
+.core-from { margin: 0 0 8px; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); text-transform: uppercase; }
+.core-from b { color: var(--ph); letter-spacing: .2em; margin-right: 8px; }
+.core-from .where { color: rgba(210, 255, 190, .72); }
 .core-text pre { margin: 0; max-height: 46vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--ph-faint); background: #000; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
 .core-copy-one { position: absolute; top: 12px; right: 18px; border: 1px solid var(--ph-faint); background: #000; color: var(--ph-dim); font: inherit; font-size: 8.5px; letter-spacing: .16em; padding: 4px 8px; cursor: pointer; }
 .core-copy-one:hover { color: var(--ph); border-color: var(--ph-dim); }

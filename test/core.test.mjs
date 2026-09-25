@@ -158,3 +158,37 @@ test('core: what you type survives the rebuild it causes', async () => {
   assert.match(app, /NOTHING IS SENT FROM HERE/);
   assert.match(css, /\.core-doc\.reading \{ opacity: \.45; \}/);
 });
+
+test('core: no block reaches the briefing without saying what put it there', async () => {
+  const { PROMPT_BLOCKS, BLOCK_SOURCES } = await import('../src/room/prompt.mjs');
+
+  // The guard: a block added to the prompt without a word about what governs it fails here,
+  // because the core's promise — read, never written, switched off where it says — is only
+  // checkable if every block answers for itself.
+  assert.deepEqual(Object.keys(BLOCK_SOURCES).sort(), [...PROMPT_BLOCKS].sort());
+  for (const id of PROMPT_BLOCKS) {
+    const source = BLOCK_SOURCES[id];
+    assert.ok(source.when, `${id} does not say what puts it in the briefing`);
+    assert.equal('where' in source, true, `${id} does not say whether anything can take it away`);
+    assert.equal(source.where === null || source.where.length > 0, true, `${id} points nowhere`);
+  }
+  // The ones a person can actually switch off point at a place in the panel, not at prose.
+  for (const id of ['ash', 'web', 'madre', 'delegation']) {
+    assert.match(BLOCK_SOURCES[id].where, /MODULES|CONNECTIONS/, `${id} does not say where it is switched off`);
+  }
+  // And what nothing can remove says so by saying nothing, not by inventing a switch.
+  assert.equal(BLOCK_SOURCES.room.where, null);
+  assert.equal(BLOCK_SOURCES.who.where, null);
+
+  // It travels with the block, so the core reads it from the same place the prompt is written.
+  const root = await mkdtemp(join(tmpdir(), 'pulse-core-sources-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const room = new Room({ store, agents, projectRoot: root, invokers: {} });
+    const briefing = await room.briefing({ agent: 'codex', mode: 1 });
+    for (const part of briefing.parts) {
+      assert.equal(part.when, BLOCK_SOURCES[part.id].when, `${part.id} arrives without what put it there`);
+    }
+    await room.shutdown();
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
+});
