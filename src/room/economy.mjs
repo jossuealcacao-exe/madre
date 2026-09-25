@@ -66,7 +66,7 @@ export function turnCost(parts = [], usage = null) {
   const output = Number(usage?.outputTokens ?? 0) || 0;
   // What the CLI charged for reading, against what the room actually handed it. A ratio well
   // over the prompt's own size means the agent read files or tools of its own; well under means
-  // most of the prompt came back from its cache.
+  // most of the prompt came back from its cache. It is NOT a tokenizer: see CH_PER_TOKEN.
   const perToken = input > 0 ? Number((chars / input).toFixed(2)) : null;
   return {
     chars, fixed, carried: chars - fixed, blocks, prefix: stablePrefix(parts),
@@ -75,6 +75,20 @@ export function turnCost(parts = [], usage = null) {
     charsPerInputToken: perToken,
   };
 }
+
+// Characters to tokens, when a count of tokens is wanted for text nobody was charged for.
+//
+// This is an estimate and it is written as one. MADRE does not have the provider's tokenizer,
+// and the ratio this room DOES measure — what MADRE wrote against what the CLI was charged for
+// reading — is a different quantity entirely: the CLIs bill their own system prompt, their own
+// tools and every file they open during a turn, so that ratio fell to 0.62 in a real room and
+// would have called a 14,000-character briefing 23,000 tokens. A fixed rate cannot do that.
+//
+// 3.5 rather than 4: the briefing is English prose, code, and memories in whatever language the
+// room is worked in, and of the two ways to be wrong, saying a turn costs more than it does is
+// the harmless one.
+export const CH_PER_TOKEN = 3.5;
+export const tokensFor = (chars) => Math.round((Number(chars) || 0) / CH_PER_TOKEN);
 
 // Many turns, read together. This is the view that says where a room's tokens go.
 export function economy(events = []) {
@@ -115,17 +129,18 @@ export function economy(events = []) {
   // Cache reads are real: the CLI said it read those tokens back instead of charging them as
   // fresh input, so they are money the room did not spend. Everything else here is what the
   // room chose not to send in the first place, counted in characters because that is the unit
-  // the room controls; it becomes tokens at whatever rate this room's turns have shown.
-  const perToken = totals.input > 0 ? totals.chars / totals.input : null;
+  // the room controls; it becomes tokens at the estimate above, never at the measured ratio —
+  // that ratio carries whatever the agents read on their own, and using it here made the room
+  // claim it had saved six times what it saved.
   const spared = turns.reduce((sum, turn) => sum + (Number(turn.spared ?? 0) || 0), 0);
   const saved = {
     cachedTokens: totals.cached,
     cachedShare: totals.input + totals.cached > 0 ? Number((totals.cached / (totals.input + totals.cached)).toFixed(3)) : null,
     unsentChars: spared,
-    unsentTokens: perToken ? Math.round(spared / perToken) : null,
+    unsentTokens: spared ? tokensFor(spared) : null,
     // Where it would have been charged had nothing changed: what was read back plus what was
     // never sent. A room with no cache and nothing trimmed would show zero here.
-    tokens: totals.cached + (perToken ? Math.round(spared / perToken) : 0),
+    tokens: totals.cached + tokensFor(spared),
   };
 
   return {

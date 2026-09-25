@@ -40,7 +40,9 @@ test('inquiry: it answers from what the room already has, and nothing it answers
   assert.match(answerFor('launch', room).lines.join('\n'), /NAMES ONLY, NEVER VALUES/);
   assert.match(answerFor('what left this machine', room).lines.join('\n'), /the npm registry/);
   assert.match(answerFor('window', room).lines.join('\n'), /#12 TO #48[\s\S]*11 OLDER ONES STAY BEHIND/);
-  assert.match(answerFor('weight', room).lines.join('\n'), /ABOUT 3,550 TOKENS/);
+  // An estimate that says it is one, rather than a measurement that is not.
+  assert.match(answerFor('weight', room).lines.join('\n'), /ROUGHLY 3,550 TOKENS, ESTIMATED AT 4 CHARACTERS PER TOKEN/);
+  assert.match(answerFor('weight', room).lines.join('\n'), /I DO NOT HAVE THE PROVIDER'S TOKENIZER/);
   assert.match(answerFor('crew', room).lines.join('\n'), /@CLAUDE\s+SIGNED IN\s+MAX MODE #3/);
   assert.match(answerFor('status', room).lines.join('\n'), /NEXT: ANSWER THE 6 QUESTIONS/);
 });

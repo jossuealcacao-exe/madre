@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { turnCost, economy, ALWAYS, STABLE } from '../src/room/economy.mjs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { turnCost, economy, ALWAYS, STABLE, CH_PER_TOKEN, tokensFor } from '../src/room/economy.mjs';
 import { PROMPT_BLOCKS } from '../src/room/prompt.mjs';
 
 const parts = (sizes) => Object.entries(sizes).map(([id, n]) => ({ id, text: 'x'.repeat(n) }));
@@ -102,11 +104,18 @@ test('economy: what was saved is what was not charged, and it is measured rather
   assert.equal(read.saved.cachedTokens, 1500);
   assert.ok(read.saved.cachedShare > 0.6);
   // What was never sent is counted in characters, the unit the room controls, and turned into
-  // tokens at the rate this room's own turns have shown rather than at a guessed one.
+  // tokens at a stated estimate — never at the ratio this room measures. That ratio is what
+  // MADRE wrote against what the CLIs were charged for READING, and a CLI is charged for its
+  // own system prompt, its own tools and every file it opens; converting with it made the room
+  // claim it had saved several times what it saved.
   assert.equal(read.saved.unsentChars, 1120);
-  const rate = read.totals.chars / read.totals.input;
-  assert.equal(read.saved.unsentTokens, Math.round(1120 / rate));
+  assert.equal(read.saved.unsentTokens, tokensFor(1120));
   assert.equal(read.saved.tokens, read.saved.cachedTokens + read.saved.unsentTokens);
+  const measured = read.totals.chars / read.totals.input;
+  assert.notEqual(Math.round(1120 / measured), read.saved.unsentTokens, 'the saved count still rides the measured ratio');
+  // And the estimate is one number, in one place, however many screens print it.
+  const page = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(page, new RegExp(`const CH_PER_TOKEN = ${CH_PER_TOKEN};`), 'the page estimates at a different rate than the room does');
 
   // A room where nothing was cached and nothing was withheld saves nothing, and says so.
   const plain = economy([turn({ room: 200, ask: 40 }, { inputTokens: 300, cachedInputTokens: 0, outputTokens: 100 }, 0)]);

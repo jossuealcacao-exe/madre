@@ -110,10 +110,13 @@ export const INQUIRIES = [
     id: 'weight',
     aliases: ['WEIGHT', 'COST', 'TOKENS'],
     brief: 'what the document weighs, in the currency the bill is written in',
-    answer: ({ briefing, rate }) => (briefing
+    answer: ({ briefing, rate = 3.5 }) => (briefing
       ? [
         `${briefing.chars.toLocaleString()} CHARACTERS IN ${plural(briefing.parts.length, 'BLOCK')}.`,
-        rate ? `ABOUT ${Math.round(briefing.chars / rate).toLocaleString()} TOKENS AT ${rate} CHARACTERS PER TOKEN IN THIS ROOM.` : 'THIS ROOM HAS NOT BEEN BILLED YET, SO THERE IS NO RATE TO CONVERT WITH.',
+        // An estimate that says it is one. The ratio this room measures — what MADRE wrote
+        // against what a CLI was charged for reading — carries everything the agent read on its
+        // own, and converting with it called a 14,000-character briefing 23,000 tokens.
+        `ROUGHLY ${Math.round(briefing.chars / rate).toLocaleString()} TOKENS, ESTIMATED AT ${rate} CHARACTERS PER TOKEN. I DO NOT HAVE THE PROVIDER'S TOKENIZER, SO THAT IS AN ESTIMATE AND I WILL NOT PRETEND OTHERWISE.`,
         briefing.spared ? `${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : 'NOTHING WAS LEFT OUT OF THIS ONE.',
       ]
       : ['NO DOCUMENT IS BUILT YET.']),

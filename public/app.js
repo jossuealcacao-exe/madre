@@ -3803,7 +3803,10 @@ function ashReading(panel) {
       ['SPENT OUT', count(totals.output), 'output tokens, the dearer half'],
       ['TURNS', count(read.turns), 'weighed so far'],
     ]);
-    box.append(el('p', 'note', `${pct(totals.prefixShare)} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · ${totals.charsPerInputToken ?? '—'} CHARACTERS PER TOKEN IN THIS ROOM`));
+    // Not a tokenizer: what MADRE wrote against what the CLIs were charged for reading. The
+    // gap between the two is the agents' own system prompts, their tools and the files they
+    // opened during a turn, which is the useful thing this number has to say.
+    box.append(el('p', 'note', `${pct(totals.prefixShare)} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · MADRE WROTE ${count(totals.chars)} CHARACTERS OF THE ${count(totals.input)} INPUT TOKENS YOU WERE CHARGED FOR; THE REST IS WHAT THE CLIs READ ON THEIR OWN`));
     const widest = read.blocks[0]?.chars || 1;
     const bars = el('div', 'ash-blocks');
     for (const block of read.blocks.slice(0, 8)) {
@@ -4333,7 +4336,6 @@ const core = {
   text: '',
   typing: null,
   last: null,
-  rate: null,
   outbound: null,
   verdict: null,
   privacy: null,
@@ -4345,6 +4347,17 @@ const core = {
   paneNodes: {},
   tabs: null,
 };
+
+// Characters to tokens, in the core. The same estimate the room uses for text nobody was
+// charged for, kept here because the page cannot import from the server: src/room/economy.mjs
+// holds the other copy and a test keeps the two equal.
+//
+// It is an estimate and it is labelled as one. What this room MEASURES — what MADRE wrote
+// against what the CLI was charged for reading — is a different quantity: the CLIs bill their
+// own system prompt, their own tools and every file they open, so in this room that ratio was
+// 0.62 and called a 14,356-character briefing 23,155 tokens.
+const CH_PER_TOKEN = 3.5;
+const tokensFor = (chars) => Math.round((Number(chars) || 0) / CH_PER_TOKEN);
 
 const CORE_BOOT = [
   'INTERFACE 2037 · CORE ACCESS',
@@ -4403,14 +4416,9 @@ async function openCore() {
   core.body.replaceChildren(renderCoreStrip(), renderCoreTabs(), renderCorePanes(), renderCoreConsole());
   core.dialog.showModal();
   typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; core.console?.field?.focus(); });
-  // What this room spends per token it is charged, and what has left this machine. Both are
-  // about the room rather than about this turn, so they are read once per visit.
-  const [rate, outbound] = await Promise.all([
-    core.rate === null ? fetch('/api/economy').then((response) => response.json()).then((read) => read?.totals?.charsPerInputToken ?? 0).catch(() => 0) : core.rate,
-    fetch('/api/outbound').then((response) => response.json()).catch(() => null),
-  ]);
-  core.rate = rate;
-  core.outbound = outbound;
+  // What has left this machine is about the room rather than about this turn, so it is read
+  // once per visit.
+  core.outbound = await fetch('/api/outbound').then((response) => response.json()).catch(() => null);
   await loadCore();
 }
 
@@ -4525,7 +4533,7 @@ function renderCoreTabs() {
 function drawCoreTabs() {
   if (!core.tabs) return;
   const briefing = core.last;
-  const tokens = briefing && core.rate ? ` · ~${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS` : '';
+  const tokens = briefing ? ` · ≈${tokensFor(briefing.chars).toLocaleString()} TOKENS` : '';
   const on = (core.outbound?.destinations ?? []).filter((one) => one.on === true).length;
   const meta = {
     document: briefing ? `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH${tokens}` : 'READING…',
@@ -4568,8 +4576,7 @@ function showPane(id) {
 
 function renderCoreDoc(briefing) {
   const doc = el('div', 'core-doc');
-  const tokens = core.rate ? ` · ~${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS AT ${core.rate} CH/TOKEN HERE` : '';
-  doc.append(brewHead('THE DOCUMENT', `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH${tokens}`));
+  doc.append(brewHead('THE DOCUMENT', `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH · ≈${tokensFor(briefing.chars).toLocaleString()} TOKENS`));
   doc.append(el('p', 'note', 'BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
 
   // The blocks in the document's own order, which is the order they are said in.
@@ -4623,6 +4630,7 @@ function renderCoreDoc(briefing) {
   if (window.omitted) carried.append(brewRow('LEFT BEHIND', `${window.omitted} OLDER MESSAGE${window.omitted === 1 ? '' : 'S'} · WHICH IS WHAT RECALL IS FOR`));
   carried.append(brewRow('READ TO BUILD IT', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} · ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'}`));
   carried.append(brewRow('NOT COUNTED', 'NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT'));
+  carried.append(brewRow('WEIGHT', `${briefing.chars.toLocaleString()} CH · ≈${tokensFor(briefing.chars).toLocaleString()} TOKENS · ESTIMATED AT ${CH_PER_TOKEN} CH/TOKEN, NOT MEASURED: MADRE DOES NOT HAVE THE PROVIDER'S TOKENIZER`));
   if (briefing.spared) carried.append(brewRow('LEFT OUT', `${briefing.spared.toLocaleString()} CHARACTERS THIS TURN HAS NO USE FOR`));
   doc.append(carried);
 
@@ -4807,7 +4815,7 @@ function renderCoreConsole() {
       strikes: core.strikes,
       briefing: core.last,
       outbound: core.outbound,
-      rate: core.rate,
+      rate: CH_PER_TOKEN,
       verdict: core.verdict,
       privacy: core.privacy,
       agents: [...state.agents.values()],
