@@ -412,7 +412,8 @@ dialog.nostromo::backdrop { background: #000; }
 .core-tab.on { color: var(--ph); border-color: var(--ph-faint); border-bottom-color: transparent; background: rgba(0, 0, 0, .45); }
 .core-panes { overflow: auto; min-height: 0; padding: 4px 2px 8px; transition: opacity .18s ease; }
 .core-panes.reading { opacity: .45; }
-.core-pane { display: grid; gap: 10px; align-content: start; }
+.core-pane { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.core-pane > *, .core-blocks, .core-block { min-width: 0; }
 
 /* `==> TITLE   meta`, and facts in two columns: how the terminal this frame is dressed as prints. */
 .brew-head { margin: 6px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
@@ -428,15 +429,15 @@ dialog.nostromo::backdrop { background: #000; }
 .core-doc, .core-launch, .core-outbound { display: grid; gap: 10px; }
 .core-blocks { display: grid; gap: 1px; }
 .core-block { border: 1px solid transparent; }
-.core-block > summary { display: grid; grid-template-columns: 14px 132px 66px 70px minmax(40px, 1fr); gap: 10px; align-items: center; padding: 4px 6px; cursor: pointer; list-style: none; }
+.core-block > summary { display: grid; grid-template-columns: 14px 148px 72px minmax(140px, 1.1fr) minmax(0, 1.4fr); gap: 14px; align-items: center; padding: 5px 6px; cursor: pointer; list-style: none; }
 .core-block > summary::-webkit-details-marker { display: none; }
 .core-block:hover { border-color: var(--ph-faint); }
 .core-block[open] { border-color: var(--ph-faint); background: rgba(0, 0, 0, .35); }
 .core-block > summary .sign { font-style: normal; font-size: 11px; color: var(--nostromo-sun); text-shadow: none; }
 .core-block > summary b { font-size: 9.5px; font-weight: 600; letter-spacing: .16em; color: var(--ph); text-shadow: none; }
 .core-block > summary .n { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); text-align: right; }
-.core-block > summary .bar { height: 4px; background: var(--ph-faint); position: relative; }
-.core-block > summary .bar::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--nostromo-sun) 55%, var(--ph)); }
+.core-block > summary .weigh { height: 6px; background: var(--ph-faint); position: relative; }
+.core-block > summary .weigh::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--nostromo-sun) 55%, var(--ph)); }
 .core-block > summary .when { font-size: 8.5px; letter-spacing: .1em; color: var(--ph-dim); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .core-text { position: relative; padding: 4px 8px 12px; }
 .core-from { margin: 0 0 8px; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); text-transform: uppercase; }
@@ -489,7 +490,7 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 
 @media (max-width: 720px) {
   .core-block > summary { grid-template-columns: 14px 1fr auto; }
-  .core-block > summary .bar, .core-block > summary .when { display: none; }
+  .core-block > summary .weigh, .core-block > summary .when { display: none; }
   .brew-row { grid-template-columns: 1fr; gap: 2px; }
   .egress { grid-template-columns: 52px 1fr; }
   .egress .n { grid-column: 1 / -1; text-align: left; }

@@ -4581,9 +4581,11 @@ function renderCoreDoc(briefing) {
     head.append(el('i', 'sign', '+'));
     head.append(el('b', null, part.id.toUpperCase()));
     head.append(el('span', 'n', `${part.chars.toLocaleString()} CH`));
-    const bar = el('i', 'bar');
-    bar.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
-    head.append(bar);
+    // `weigh`, not `bar`: .bar is the room's own top bar, and a name taken twice in one
+    // stylesheet is a rule you did not write arriving on an element you did not mean.
+    const weigh = el('i', 'weigh');
+    weigh.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
+    head.append(weigh);
     head.append(el('span', 'when', part.when === 'always' ? 'ALWAYS' : part.when));
     row.addEventListener('toggle', () => { head.querySelector('.sign').textContent = row.open ? '−' : '+'; });
     const body = el('div', 'core-text');

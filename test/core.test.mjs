@@ -218,5 +218,9 @@ test('core: four panes, one at a time, and the prompt through all of them', asyn
   }
   // The blocks are a package list, not a wall: a sign, a name, a number, a bar, a reason.
   assert.match(app, /head\.append\(el\('i', 'sign', '\+'\)\);/);
-  assert.match(css, /\.core-block > summary \{ display: grid; grid-template-columns: 14px 132px 66px 70px/);
+  assert.match(css, /\.core-block > summary \{ display: grid; grid-template-columns: 14px 148px 72px minmax\(140px, 1\.1fr\)/);
+  // `.bar` is the room's own top bar — width: var(--column) and 32px of padding — so an <i class="bar">
+  // in here was 1,280px wide and as tall as a toolbar, and it took the whole pane sideways with it.
+  assert.ok(!/el\('i', 'bar'\)/.test(app), 'the core paints a weight bar with the top bar\'s class');
+  assert.match(app, /const weigh = el\('i', 'weigh'\);/);
 });
