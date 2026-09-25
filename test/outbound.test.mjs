@@ -221,7 +221,7 @@ test('outbound: the room answers for what left it, and the log holds what it did
 
 test('outbound: the floor shows the declaration and the log that checks it', async () => {
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
-  assert.match(app, /doc\.append\(renderCoreOutbound\(core\.outbound\)\)/);
+  assert.match(app, /paneInto\('egress', renderCoreOutbound\(core\.outbound\)\)/);
   assert.match(app, /WHAT LEFT THIS MACHINE/);
   assert.match(app, /THE LAST REQUESTS THIS PROCESS MADE/);
   assert.match(app, /NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE/);

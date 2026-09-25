@@ -81,11 +81,11 @@ test('launch: the core prints the command that would run, and printing it runs n
 
 test('launch: the floor under the document shows the command, the isolation and the servers', async () => {
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
-  assert.match(app, /doc\.append\(renderCoreLaunch\(briefing\.launch \?\? null\)\)/);
+  assert.match(app, /paneInto\('launch', renderCoreLaunch\(briefing\.launch \?\? null\)\)/);
   assert.match(app, /WHAT MADRE WOULD RUN TO DELIVER IT/);
   assert.match(app, /WHAT KEEPS IT TO THIS TURN/);
   assert.match(app, /NAMES ONLY\. NO VALUE IS EVER SHOWN HERE\./);
   assert.match(app, /SERVERS IT CAN CALL/);
   assert.match(app, /NOTHING IS RUN FROM HERE/);
-  assert.match(css, /\.core-launch \{/);
+  assert.match(css, /\.core-doc, \.core-launch, \.core-outbound \{/);
 });

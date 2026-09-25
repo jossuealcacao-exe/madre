@@ -382,75 +382,78 @@ dialog.nostromo::backdrop { background: #000; }
 .core .mother-title { color: var(--nostromo-sun); text-shadow: 0 0 20px color-mix(in srgb, var(--nostromo-sun) 55%, transparent); }
 .core .mother-foot a { color: var(--ph-dim); text-decoration: none; }
 .core .mother-foot a:hover { color: var(--ph); }
-.core-body { display: grid; gap: 14px; }
+.core .mother-frame { display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; padding-bottom: 18px; }
+.core .mother-boot { margin: 12px 0 6px; min-height: 2.4em; font-size: 11px; }
+.core-body { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 10px; min-height: 0; }
 
-.core-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 0; border-top: 1px solid var(--ph-faint); border-bottom: 1px solid var(--ph-faint); }
-.core-pick .k { font-size: 9px; letter-spacing: .22em; color: var(--ph-dim); }
-.core-agents { display: flex; flex-wrap: wrap; gap: 6px; }
-.core-agent { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .14em; padding: 5px 10px; cursor: pointer; }
+/* The strip: who it goes to, at what mode, and around what. One line each, never a paragraph. */
+.core-strip { display: grid; gap: 6px; border-bottom: 1px solid var(--ph-faint); padding-bottom: 10px; }
+.core-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.core-pick .k, .core-asking .k { font-size: 8.5px; letter-spacing: .22em; color: var(--ph-dim); }
+.core-agents { display: flex; flex-wrap: wrap; gap: 4px; }
+.core-agent { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .12em; padding: 3px 8px; cursor: pointer; }
 .core-agent:hover { border-color: var(--ph-dim); color: var(--ph); }
 .core-agent.on { border-color: var(--ph); color: var(--ph); background: var(--ph-faint); }
 .core-agent.cold { opacity: .55; }
-.core-controls { display: grid; gap: 12px; }
-/* The console: MU/TH/UR answered by being asked. Three strikes and the frame closes. */
-.core-console { display: grid; gap: 8px; border: 1px solid var(--ph-faint); background: #000; padding: 10px 12px; }
-.console-out { max-height: 26vh; min-height: 68px; overflow: auto; }
-.console-out pre { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
-.console-out .said { color: var(--ph-dim); }
-.console-out .refused { color: var(--warn); }
-.console-line { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--ph-faint); padding-top: 8px; }
-.console-line .prompt { font-family: var(--mono); font-size: 12px; color: var(--nostromo-sun); text-shadow: none; }
-.console-line input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ph); font: inherit; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 0; }
-.console-line input:focus { outline: 0; }
-.console-line input::placeholder { color: var(--ph-dim); opacity: .7; letter-spacing: .14em; }
-.console-line input:disabled { opacity: .4; }
-.console-strikes { display: inline-flex; gap: 3px; }
-.console-strikes i { font-style: normal; font-size: 9px; color: var(--ph-faint); }
-.console-strikes i.on { color: var(--warn); }
-.core-console .note { margin: 0; font-size: 8.5px; letter-spacing: .12em; color: var(--ph-dim); }
-.core-doc { display: grid; gap: 14px; transition: opacity .18s ease; }
-.core-doc.reading { opacity: .45; }
-.core-asking { display: grid; gap: 6px; }
-.core-asking textarea { width: 100%; min-height: 54px; max-height: 180px; resize: vertical; border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-family: var(--mono); font-size: 12px; line-height: 1.6; letter-spacing: .02em; padding: 10px 12px; }
-.core-asking textarea::placeholder { color: var(--ph-dim); opacity: .75; }
-.core-asking textarea:focus { outline: 0; border-color: var(--ph); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ph) 30%, transparent); }
+.core-pick select { border: 1px solid var(--ph-faint); background: #000; color: var(--ph); font: inherit; font-size: 10px; letter-spacing: .12em; padding: 3px 6px; }
 .core-ceiling { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--warn); }
+.core-asking { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.core-asking textarea { width: 100%; resize: none; border: 0; border-bottom: 1px solid var(--ph-faint); background: transparent; color: var(--ph); font: inherit; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; padding: 3px 0; }
+.core-asking textarea::placeholder { color: var(--ph-dim); opacity: .7; }
+.core-asking textarea:focus { outline: 0; border-bottom-color: var(--ph); }
+.core-asking .note { font-size: 8px; letter-spacing: .14em; color: var(--ph-dim); white-space: nowrap; }
 
-.core-blocks { display: grid; gap: 4px; }
+/* Four panes, one at a time, each tab carrying what is behind it. */
+.core-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.core-tab { display: grid; gap: 1px; text-align: left; border: 1px solid transparent; border-bottom: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; padding: 6px 12px; cursor: pointer; }
+.core-tab b { font-size: 10px; font-weight: 600; letter-spacing: .18em; }
+.core-tab .meta { font-size: 8.5px; letter-spacing: .1em; opacity: .8; }
+.core-tab:hover { color: var(--ph); }
+.core-tab.on { color: var(--ph); border-color: var(--ph-faint); border-bottom-color: transparent; background: rgba(0, 0, 0, .45); }
+.core-panes { overflow: auto; min-height: 0; padding: 4px 2px 8px; transition: opacity .18s ease; }
+.core-panes.reading { opacity: .45; }
+.core-pane { display: grid; gap: 10px; align-content: start; }
+
+/* `==> TITLE   meta`, and facts in two columns: how the terminal this frame is dressed as prints. */
+.brew-head { margin: 6px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
+.brew-head b { color: var(--nostromo-sun); text-shadow: none; letter-spacing: 0; }
+.brew-head .title { color: var(--ph); font-size: 10px; letter-spacing: .2em; }
+.brew-head .meta { color: var(--ph-dim); }
+.brew-rows { display: grid; gap: 4px; }
+.brew-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px; align-items: baseline; }
+.brew-row .k { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); text-transform: uppercase; }
+.brew-row .v { font-family: var(--mono); font-size: 10.5px; line-height: 1.6; color: rgba(210, 255, 190, .88); text-shadow: none; }
+.brew-row .v .where { color: var(--ph-dim); }
+
+.core-doc, .core-launch, .core-outbound { display: grid; gap: 10px; }
+.core-blocks { display: grid; gap: 1px; }
 .core-block { border: 1px solid transparent; }
-.core-block > summary { display: grid; grid-template-columns: 150px 74px minmax(40px, 1fr) auto; gap: 12px; align-items: center; padding: 6px 8px; cursor: pointer; list-style: none; }
+.core-block > summary { display: grid; grid-template-columns: 14px 132px 66px 70px minmax(40px, 1fr); gap: 10px; align-items: center; padding: 4px 6px; cursor: pointer; list-style: none; }
 .core-block > summary::-webkit-details-marker { display: none; }
 .core-block:hover { border-color: var(--ph-faint); }
 .core-block[open] { border-color: var(--ph-faint); background: rgba(0, 0, 0, .35); }
-.core-block > summary b { font-size: 9.5px; font-weight: 600; letter-spacing: .18em; color: var(--ph); text-shadow: none; }
+.core-block > summary .sign { font-style: normal; font-size: 11px; color: var(--nostromo-sun); text-shadow: none; }
+.core-block > summary b { font-size: 9.5px; font-weight: 600; letter-spacing: .16em; color: var(--ph); text-shadow: none; }
 .core-block > summary .n { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); text-align: right; }
-.core-block > summary i { height: 5px; background: var(--ph-faint); position: relative; }
-.core-block > summary i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--nostromo-sun) 55%, var(--ph)); }
-.core-block > summary .caret { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); white-space: nowrap; }
-.core-block > summary:hover .caret { color: var(--ph); }
+.core-block > summary .bar { height: 4px; background: var(--ph-faint); position: relative; }
+.core-block > summary .bar::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--nostromo-sun) 55%, var(--ph)); }
+.core-block > summary .when { font-size: 8.5px; letter-spacing: .1em; color: var(--ph-dim); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .core-text { position: relative; padding: 4px 8px 12px; }
 .core-from { margin: 0 0 8px; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); text-transform: uppercase; }
 .core-from b { color: var(--ph); letter-spacing: .2em; margin-right: 8px; }
 .core-from .where { color: rgba(210, 255, 190, .72); }
-.core-text pre { margin: 0; max-height: 46vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--ph-faint); background: #000; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
+.core-text pre { margin: 0; max-height: 40vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--ph-faint); background: #000; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
 .core-copy-one { position: absolute; top: 12px; right: 18px; border: 1px solid var(--ph-faint); background: #000; color: var(--ph-dim); font: inherit; font-size: 8.5px; letter-spacing: .16em; padding: 4px 8px; cursor: pointer; }
 .core-copy-one:hover { color: var(--ph); border-color: var(--ph-dim); }
-.core-total { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--ph); }
 .core-fixed { margin: 0; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); border-left: 2px solid color-mix(in srgb, var(--nostromo-sun) 60%, transparent); padding-left: 12px; }
-@media (max-width: 720px) { .core-block > summary { grid-template-columns: 1fr auto; } .core-block > summary i { display: none; } }
+.core-pane .note { margin: 0; font-size: 8.5px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }
+
 /* THE LAUNCH: the command under the document, printed as it would be run. */
-.core-launch { display: grid; gap: 10px; border-top: 1px solid var(--ph-faint); padding-top: 14px; }
-.core-launch-head { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); text-transform: uppercase; }
-.core-launch-head b { font-size: 10px; letter-spacing: .28em; color: var(--nostromo-sun); text-shadow: none; }
 .core-launch .mother-cmd { margin: 0; }
 .core-launch .mother-cmd pre { max-height: 32vh; overflow: auto; font-size: 11px; color: rgba(210, 255, 190, .92); text-shadow: none; }
-.core-launch-list { display: grid; gap: 6px; border-left: 2px solid var(--ph-faint); padding-left: 12px; }
-.core-launch-list .k { font-size: 8.5px; letter-spacing: .22em; color: var(--ph-dim); }
-.core-launch-list p { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.65; color: rgba(210, 255, 190, .86); text-shadow: none; }
-.core-launch-list p b { color: var(--ph); letter-spacing: .1em; text-shadow: none; }
-.core-launch-list .where { color: var(--ph-dim); }
 .core-server .tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
 .core-server .tools i { font-style: normal; font-size: 8.5px; letter-spacing: .1em; color: var(--ph-dim); border: 1px solid var(--ph-faint); padding: 1px 5px; }
+
 /* WHAT LEFT THIS MACHINE: the declaration, and the log that checks it. */
 .core-egress { display: grid; gap: 2px; }
 .egress { display: grid; grid-template-columns: 52px minmax(120px, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 8px; border: 1px solid transparent; }
@@ -466,9 +469,33 @@ dialog.nostromo::backdrop { background: #000; }
 .egress .when .where { color: rgba(210, 255, 190, .72); }
 .egress.off { opacity: .55; }
 .egress.off:hover { opacity: 1; }
-.core-egress-log > summary { grid-template-columns: minmax(120px, 1fr) auto auto; }
-.core-egress-log .core-text pre { max-height: 30vh; font-size: 10.5px; white-space: pre; }
-@media (max-width: 720px) { .egress { grid-template-columns: 52px 1fr; } .egress .n { grid-column: 1 / -1; text-align: left; } }
+pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--ph-faint); background: #000; font-family: var(--mono); font-size: 10.5px; line-height: 1.6; white-space: pre; color: rgba(210, 255, 190, .92); text-shadow: none; }
+
+/* The prompt: always at the bottom, the way through all four panes. */
+.console-log { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
+.console-log .said { color: var(--ph-dim); }
+.console-log .refused { color: var(--warn); }
+.console-line { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--ph-dim); padding-top: 10px; }
+.console-line .prompt { font-family: var(--mono); font-size: 13px; color: var(--nostromo-sun); text-shadow: none; }
+.console-line input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ph); font: inherit; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 0; }
+.console-line input:focus { outline: 0; }
+.console-line input::placeholder { color: var(--ph-dim); opacity: .7; letter-spacing: .14em; }
+.console-line input:disabled { opacity: .4; }
+.console-strikes { display: inline-flex; gap: 3px; }
+.console-strikes i { font-style: normal; font-size: 9px; color: var(--ph-faint); }
+.console-strikes i.on { color: var(--warn); }
+.console-help { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 8.5px; letter-spacing: .16em; padding: 3px 8px; cursor: pointer; }
+.console-help:hover { color: var(--ph); border-color: var(--ph-dim); }
+
+@media (max-width: 720px) {
+  .core-block > summary { grid-template-columns: 14px 1fr auto; }
+  .core-block > summary .bar, .core-block > summary .when { display: none; }
+  .brew-row { grid-template-columns: 1fr; gap: 2px; }
+  .egress { grid-template-columns: 52px 1fr; }
+  .egress .n { grid-column: 1 / -1; text-align: left; }
+  .core-asking { grid-template-columns: 1fr; }
+  .core-asking .note { display: none; }
+}
 
 /* The cold zone: a colour that is not a memory kind and not the sun, so it never reads as life. */
 .nostromo-head .mother-close.cold { color: #96b0c6; border-color: color-mix(in srgb, #96b0c6 45%, transparent); }

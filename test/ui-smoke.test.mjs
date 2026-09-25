@@ -120,6 +120,22 @@ test('the room UI boots against a real transcript without throwing', async () =>
     if (url === '/api/extensions') return { ok: true, json: async () => ({ installing: null, extensions: [] }) };
     if (url === '/api/commands') return { ok: true, json: async () => ({ commands: [{ name: 'git', module: 'git-pulse', title: 'Git Pulse', usage: '/git', summary: 'repo facts', available: true }] }) };
     if (String(url).startsWith('/api/models')) return { ok: true, json: async () => ({ models: {} }) };
+    if (String(url).startsWith('/api/briefing')) return { ok: true, json: async () => ({
+      agent: 'codex', mode: 1, ceiling: 1, maxMode: 3, lease: false, chars: 2100, recalled: 2, quoted: 1, spared: 300,
+      parts: [
+        { id: 'room', chars: 900, when: 'always', where: null, text: 'You are in a room called MADRE.' },
+        { id: 'memories', chars: 1200, when: 'the archive has something for this turn', where: 'MU/TH/UR → MEMORY', text: '- [decision] The webhook verifies the signature.' },
+      ],
+      window: { from: 3, through: 12, carried: 6, omitted: 2 },
+      launch: { agent: 'codex', label: 'Codex', local: false, executable: '/usr/local/bin/codex', cwd: '/Users/demo/pulse', args: ['--sandbox', 'read-only', '<the briefing above>'], promptMarker: '<the briefing above>', isolation: ['--ephemeral: the run keeps no session of its own.'], env: [{ name: 'X_HOME', note: 'a temporary home' }], mcpServers: [{ name: 'pulse-playwright', tools: ['browse'], env: [] }], memoryServer: { name: 'pulse-memory', tools: ['recall'] } },
+    }) };
+    if (url === '/api/outbound') return { ok: true, json: async () => ({
+      destinations: [{ id: 'npm', to: 'the npm registry', what: 'the name of a package and nothing else', when: 'once a day', where: 'MU/TH/UR → RELEASE CHANNEL', local: false, inside: true, on: true, calls: 2, failed: 0, last: new Date().toISOString() }],
+      recent: [{ at: '2026-09-25T19:13:50.030Z', id: 'npm', to: 'the npm registry', local: false, method: 'GET', path: '/madre/latest', ok: true, status: 200, ms: 343 }],
+      undeclared: 0, says: 'Every request this process made went to an address declared above.',
+    }) };
+    if (url === '/api/maturity') return { ok: true, json: async () => ({ verdict: { headline: 'WORKING', says: 'it is coming along', next: { text: 'keep working', where: 'THE ROOM' } } }) };
+    if (url === '/api/privacy') return { ok: true, json: async () => ({ terms: ['one', 'two'], marker: '[ENTIDAD-ORG]' }) };
     if (url === '/api/economy') return { ok: true, json: async () => ({
       turns: 4,
       totals: { input: 12000, output: 3400, prefixShare: 0.41, charsPerInputToken: 3.8 },
@@ -196,6 +212,38 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(uiState.expendable, true);
   assert.match(registry.get('crew-label').textContent, /EXPENDABLE/);
   assert.match(column.children.at(-1).textContent, /end of record/);
+
+  // The core: four panes, one at a time, with the prompt through all of them. It is the most
+  // built screen in this page and nothing else here would notice if it threw.
+  await globalThis.__pulse.openCore();
+  const { core } = globalThis.__pulse;
+  const body = registry.get('core-body');
+  assert.equal(registry.get('core').open, true, 'the core did not open');
+  assert.ok(body.querySelector('.core-strip'), 'the strip is missing');
+  assert.ok(body.querySelector('.core-tabs'), 'the tabs are missing');
+  assert.ok(body.querySelector('.console-line'), 'the prompt is missing');
+  const panes = body.querySelector('.core-panes');
+  assert.deepEqual(panes.children.map((pane) => pane.dataset.pane), ['document', 'launch', 'egress', 'console']);
+  assert.deepEqual(panes.children.map((pane) => pane.hidden), [false, true, true, true], 'more than one pane is showing');
+  // Each one filled from the room, and each one with its own `==>` sections.
+  assert.match(panes.children[0].textContent, /THE DOCUMENT[\s\S]*MEMORIES[\s\S]*WHAT IT CARRIES/);
+  assert.match(panes.children[1].textContent, /THE LAUNCH[\s\S]*\/usr\/local\/bin\/codex/);
+  assert.match(panes.children[2].textContent, /WHAT LEFT THIS MACHINE[\s\S]*the npm registry/);
+  // An inquiry that is already a pane opens it rather than printing it twice.
+  const prompt = body.querySelector('.console-line');
+  const ask = async (text) => { prompt.querySelector('INPUT').value = text; await prompt.listeners.submit[0]({ preventDefault() {} }); };
+  await ask('launch');
+  assert.equal(core.pane, 'launch');
+  // Everything else is answered in her own pane, and the count only moves on what she cannot read.
+  await ask('weight');
+  assert.equal(core.pane, 'console');
+  assert.match(panes.children[3].textContent, /CHARACTERS IN 2 BLOCKS/);
+  assert.equal(core.strikes, 0);
+  await ask('delete the archive');
+  assert.equal(core.strikes, 1);
+  assert.match(panes.children[3].textContent, /ATTEMPTS LEFT/);
+  registry.get('core').close();
+
 
   // A reviewed human message carries the mark, then everything disarms.
   const stream = new globalThis.EventSource('/x');

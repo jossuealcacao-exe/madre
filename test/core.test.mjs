@@ -149,14 +149,14 @@ test('core: what you type survives the rebuild it causes', async () => {
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
   // The controls are built once and the document is what gets replaced; rebuilding the whole
   // panel on every keystroke would take the caret with it.
-  assert.match(app, /core\.body\.replaceChildren\(renderCoreConsole\(\), renderCoreControls\(\), el\('div', 'core-doc'\)\)/);
-  assert.match(app, /core\.body\.querySelector\('\.core-doc'\)\?\.replaceWith\(renderCoreDoc\(briefing\)\)/);
+  assert.match(app, /core\.body\.replaceChildren\(renderCoreStrip\(\), renderCoreTabs\(\), renderCorePanes\(\), renderCoreConsole\(\)\)/);
+  assert.match(app, /paneInto\('document', renderCoreDoc\(briefing\)\)/);
   assert.match(app, /\.\.\.\(core\.text \? \{ text: core\.text \} : \{\}\)/, 'what you would ask never reaches the document');
   // Half a sentence already in the composer is what you are about to send, so it starts there.
   assert.match(app, /core\.text = els\.input\?\.value\?\.trim\(\) \? els\.input\.value/);
   // Typing does not send anything, and it says so beside the field.
   assert.match(app, /NOTHING IS SENT FROM HERE/);
-  assert.match(css, /\.core-doc\.reading \{ opacity: \.45; \}/);
+  assert.match(css, /\.core-panes\.reading \{ opacity: \.45; \}/);
 });
 
 test('core: no block reaches the briefing without saying what put it there', async () => {
@@ -191,4 +191,32 @@ test('core: no block reaches the briefing without saying what put it there', asy
     }
     await room.shutdown();
   } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
+});
+
+test('core: four panes, one at a time, and the prompt through all of them', async () => {
+  const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
+
+  // The four things there are to see in here. They used to be one scroll, so looking for one of
+  // them meant walking past the other three.
+  assert.match(app, /const CORE_TABS = \[\s*\{ id: 'document'[\s\S]*\{ id: 'launch'[\s\S]*\{ id: 'egress'[\s\S]*\{ id: 'console'/);
+  assert.match(app, /for \(const \[name, pane\] of Object\.entries\(core\.paneNodes\)\) pane\.hidden = name !== id;/);
+  // Each tab says what is behind it, so nobody opens a pane to find out whether it holds anything.
+  assert.match(app, /button\.lastChild\.textContent = meta\[button\.dataset\.tab\] \?\? '';/);
+
+  // The frame is a terminal: head and strip and tabs above, one pane scrolling, the prompt at the
+  // bottom where a prompt goes. The panes scroll, not the whole frame.
+  assert.match(css, /\.core \.mother-frame \{ display: grid; grid-template-rows: auto auto 1fr; overflow: hidden;/);
+  assert.match(css, /\.core-body \{ display: grid; grid-template-rows: auto auto minmax\(0, 1fr\) auto;/);
+  assert.match(css, /\.core-panes \{ overflow: auto; min-height: 0;/);
+
+  // And it is laid out the way the terminal this room is dressed as lays out its own output:
+  // `==>` over each section, names in one column and numbers in the other.
+  assert.match(app, /head\.append\(el\('b', null, '==>'\), el\('span', 'title', title\)\)/);
+  assert.match(app, /function brewRow\(key, value, className = null\)/);
+  for (const title of ['THE DOCUMENT', 'WHAT IT CARRIES', 'THE LAUNCH', 'WHAT KEEPS IT TO THIS TURN', 'WHAT LEFT THIS MACHINE']) {
+    assert.ok(app.includes(`brewHead('${title}'`), `${title} is not a section of its own`);
+  }
+  // The blocks are a package list, not a wall: a sign, a name, a number, a bar, a reason.
+  assert.match(app, /head\.append\(el\('i', 'sign', '\+'\)\);/);
+  assert.match(css, /\.core-block > summary \{ display: grid; grid-template-columns: 14px 132px 66px 70px/);
 });

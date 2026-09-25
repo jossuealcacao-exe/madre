@@ -2572,7 +2572,7 @@ document.querySelector('#mother-button')?.addEventListener('mouseleave', endHove
 document.querySelector('#mother-button')?.addEventListener('click', endHover);
 
 // Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
-globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard };
+globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, openCore: (...args) => openCore(...args), get core() { return core; } };
 
 els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
 let touchY = null;
@@ -4316,6 +4316,14 @@ async function loadSettings() {
 // that they are told not to touch .env — is true because these words are fixed. A core you could
 // edit would turn every one of those sentences into a claim about a text somebody may have
 // changed. Blocks that can be switched off say where their switch is.
+//
+// THE SHAPE OF IT. There are four things to see in here and they used to be one scroll: the
+// document, the command that carries it, what has left this machine, and MU/TH/UR answering. A
+// person looking for one of them had to walk past the other three. So the frame is a terminal —
+// four panes, one at a time, the prompt always at the bottom — and it is laid out the way the
+// terminal this room is styled after lays out its own output: `==>` over each section, names in
+// one column and numbers in another, nothing said twice. Asking for a pane at the prompt opens
+// it, so the console and the panes are one way of working rather than two.
 const core = {
   dialog: document.querySelector('#core'),
   boot: document.querySelector('#core-boot'),
@@ -4332,12 +4340,20 @@ const core = {
   strikes: 0,
   history: [],
   console: null,
+  pane: 'document',
+  panes: null,
+  paneNodes: {},
+  tabs: null,
 };
 
 const CORE_BOOT = [
   'INTERFACE 2037 · CORE ACCESS',
   'MU/TH/UR 6000 READY FOR INQUIRY.',
 ];
+
+// Which pane an inquiry is really asking for. The three that are already a screen open that
+// screen instead of printing it twice.
+const CORE_PANE_FOR = { blocks: 'document', launch: 'launch', egress: 'egress' };
 
 function typeLines(node, lines, done) {
   node.textContent = '';
@@ -4354,6 +4370,26 @@ function typeLines(node, lines, done) {
   tick();
 }
 
+// `==> TITLE        meta`, which is how the terminal this frame is dressed as says "a new thing
+// starts here". One rule for every section in every pane, so nothing needs a heading of its own.
+function brewHead(title, meta = null) {
+  const head = el('p', 'brew-head');
+  head.append(el('b', null, '==>'), el('span', 'title', title));
+  if (meta) head.append(el('span', 'meta', meta));
+  return head;
+}
+
+// A name in one column and its value in the other. Homebrew prints its facts this way and it is
+// the reason its output is readable at a glance; two dense paragraphs of uppercase are not.
+function brewRow(key, value, className = null) {
+  const row = el('div', `brew-row${className ? ` ${className}` : ''}`);
+  row.append(el('span', 'k', key), el('span', 'v'));
+  const slot = row.lastChild;
+  if (typeof value === 'string' || typeof value === 'number') slot.textContent = String(value);
+  else if (value) slot.append(value);
+  return row;
+}
+
 async function openCore() {
   if (!core.dialog) return;
   core.agent ??= [...state.agents.values()].find((agent) => agent.ready && agent.id !== 'madre')?.id
@@ -4361,15 +4397,14 @@ async function openCore() {
   // Whatever is half-written in the composer is what you are about to send, so that is what the
   // document is built around.
   core.text = els.input?.value?.trim() ? els.input.value : (core.text ?? '');
-  core.body.hidden = true;
   core.strikes = 0;
-  core.body.replaceChildren(renderCoreConsole(), renderCoreControls(), el('div', 'core-doc'));
+  core.pane = 'document';
+  core.body.hidden = true;
+  core.body.replaceChildren(renderCoreStrip(), renderCoreTabs(), renderCorePanes(), renderCoreConsole());
   core.dialog.showModal();
   typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; core.console?.field?.focus(); });
-  // How many characters this room spends per token it is charged, so the weight below means
-  // something in the currency the bill is written in.
-  // What has left this machine is about the room, not about this turn, so it is read once per
-  // visit and not again on every keystroke.
+  // What this room spends per token it is charged, and what has left this machine. Both are
+  // about the room rather than about this turn, so they are read once per visit.
   const [rate, outbound] = await Promise.all([
     core.rate === null ? fetch('/api/economy').then((response) => response.json()).then((read) => read?.totals?.charsPerInputToken ?? 0).catch(() => 0) : core.rate,
     fetch('/api/outbound').then((response) => response.json()).catch(() => null),
@@ -4380,35 +4415,343 @@ async function openCore() {
 }
 
 async function loadCore() {
-  const doc = core.body.querySelector('.core-doc');
-  doc?.classList.add('reading');
+  core.panes?.classList.add('reading');
   let briefing;
   try {
     const query = new URLSearchParams({ mode: String(core.mode), ...(core.agent ? { agent: core.agent } : {}), ...(core.text ? { text: core.text } : {}) });
     briefing = await fetch(`/api/briefing?${query}`).then((response) => response.json());
     if (briefing.error) throw new Error(briefing.error);
   } catch (error) {
-    core.body.querySelector('.core-doc')?.replaceWith(el('p', 'mother-answer core-doc', String(error.message).toUpperCase()));
+    paneInto('document', el('p', 'mother-answer', String(error.message).toUpperCase()));
+    core.panes?.classList.remove('reading');
     return;
   }
   core.last = briefing;
   core.agent = briefing.agent;
-  // An agent answers at its own ceiling, whatever the composer says.
+  // An agent answers at its own ceiling, whatever the strip says.
   const ceiling = core.body.querySelector('.core-ceiling');
   if (ceiling) ceiling.textContent = briefing.ceiling < briefing.mode ? `MAX MODE FOR @${briefing.agent.toUpperCase()} IS #${briefing.maxMode}, SO THIS TURN WOULD BE ANSWERED AT #${briefing.ceiling}` : '';
-  core.body.querySelector('.core-doc')?.replaceWith(renderCoreDoc(briefing));
+  paneInto('document', renderCoreDoc(briefing));
+  paneInto('launch', renderCoreLaunch(briefing.launch ?? null));
+  paneInto('egress', renderCoreOutbound(core.outbound));
+  drawCoreTabs();
+  core.panes?.classList.remove('reading');
 }
 
-// The console. MU/TH/UR 6000 answered by being asked, and the core already holds everything an
-// answer would need — the document, the command, what has left this machine. Three inquiries she
-// cannot parse and the frame closes; the count is on screen from the first one, every refusal
-// says what she would have taken, and opening the core again starts over. Nothing is sent from
-// here and nothing is asked of the crew: every answer is built from what this page already has.
+const paneInto = (id, node) => { core.paneNodes[id]?.replaceChildren(node); };
+
+/* ---------- the strip: who it goes to, at what mode, around what ---------- */
+
+// Built once per visit and never rebuilt, so what you are typing survives every rebuild of the
+// panes underneath it.
+function renderCoreStrip() {
+  const strip = el('div', 'core-strip');
+
+  const pick = el('div', 'core-pick');
+  pick.append(el('span', 'k', 'TO'));
+  const who = el('div', 'core-agents');
+  for (const agent of [...state.agents.values()].filter((agent) => agent.detected)) {
+    const chip = el('button', `core-agent${agent.id === core.agent ? ' on' : ''}${agent.ready ? '' : ' cold'}`, `@${agent.id}`);
+    chip.type = 'button';
+    chip.dataset.agent = agent.id;
+    chip.title = agent.ready ? `What @${agent.id} would be told` : `${agent.label} is not signed in; this is what it would be told`;
+    chip.addEventListener('click', () => {
+      core.agent = agent.id;
+      for (const other of who.children) other.classList.toggle('on', other.dataset?.agent === agent.id);
+      void loadCore();
+    });
+    who.append(chip);
+  }
+  pick.append(who, el('span', 'k', 'AT'));
+  const modes = el('select');
+  for (const [value, label] of [[0, '#0 GHOST'], [1, '#1 EXCHANGE'], [2, '#2 CREATE'], [3, '#3 CONTROL'], [4, '#4 AIRLOCK']]) {
+    const option = el('option', null, label);
+    option.value = String(value);
+    if (value === core.mode) option.selected = true;
+    modes.append(option);
+  }
+  modes.addEventListener('change', () => { core.mode = Number(modes.value); void loadCore(); });
+  pick.append(modes, el('span', 'core-ceiling', ''));
+  strip.append(pick);
+
+  // What you are about to ask. Recall, the memories and the closing question are written around
+  // it, so a briefing for an empty message is a briefing for a turn nobody is going to have.
+  const asking = el('label', 'core-asking');
+  asking.append(el('span', 'k', 'IF YOU SENT'));
+  const field = el('textarea');
+  field.id = 'core-text';
+  field.rows = 1;
+  field.placeholder = 'the question you would send — the document rebuilds around it';
+  field.value = core.text ?? '';
+  field.addEventListener('input', () => {
+    core.text = field.value;
+    field.rows = Math.min(3, field.value.split('\n').length);
+    clearTimeout(core.typing);
+    core.typing = setTimeout(() => { void loadCore(); }, 450);
+  });
+  asking.append(field);
+  asking.append(el('span', 'note', 'NOTHING IS SENT FROM HERE.'));
+  strip.append(asking);
+  return strip;
+}
+
+/* ---------- the panes ---------- */
+
+const CORE_TABS = [
+  { id: 'document', label: 'DOCUMENT' },
+  { id: 'launch', label: 'LAUNCH' },
+  { id: 'egress', label: 'WHAT LEFT' },
+  { id: 'console', label: 'MU/TH/UR' },
+];
+
+function renderCoreTabs() {
+  const tabs = el('nav', 'core-tabs');
+  tabs.setAttribute('role', 'tablist');
+  for (const tab of CORE_TABS) {
+    const button = el('button', 'core-tab');
+    button.type = 'button';
+    button.dataset.tab = tab.id;
+    button.setAttribute('role', 'tab');
+    button.append(el('b', null, tab.label), el('span', 'meta', ''));
+    button.addEventListener('click', () => showPane(tab.id));
+    tabs.append(button);
+  }
+  core.tabs = tabs;
+  return tabs;
+}
+
+// What each tab says about what is behind it, so nobody has to open a pane to find out whether
+// it holds anything.
+function drawCoreTabs() {
+  if (!core.tabs) return;
+  const briefing = core.last;
+  const tokens = briefing && core.rate ? ` · ~${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS` : '';
+  const on = (core.outbound?.destinations ?? []).filter((one) => one.on === true).length;
+  const meta = {
+    document: briefing ? `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH${tokens}` : 'READING…',
+    launch: briefing?.launch ? (briefing.launch.local ? 'NO PROCESS' : `@${briefing.agent} · ${briefing.launch.args.length} ARGS`) : '—',
+    egress: core.outbound ? `${core.outbound.destinations.length} ADDRESSES · ${on} ON` : '—',
+    console: `${core.history.length ? `${core.history.length} ASKED` : 'ASK ME'}`,
+  };
+  for (const button of core.tabs.children) {
+    button.classList.toggle('on', button.dataset.tab === core.pane);
+    button.setAttribute('aria-selected', button.dataset.tab === core.pane ? 'true' : 'false');
+    button.lastChild.textContent = meta[button.dataset.tab] ?? '';
+  }
+}
+
+function renderCorePanes() {
+  const panes = el('div', 'core-panes');
+  // The panes are held by name rather than looked up: there are four of them, they never move,
+  // and a selector is a way of being wrong about that later.
+  core.paneNodes = {};
+  for (const tab of CORE_TABS) {
+    const pane = el('section', 'core-pane');
+    pane.dataset.pane = tab.id;
+    pane.setAttribute('role', 'tabpanel');
+    if (tab.id !== core.pane) pane.hidden = true;
+    core.paneNodes[tab.id] = pane;
+    panes.append(pane);
+  }
+  core.panes = panes;
+  return panes;
+}
+
+function showPane(id) {
+  core.pane = id;
+  for (const [name, pane] of Object.entries(core.paneNodes)) pane.hidden = name !== id;
+  drawCoreTabs();
+  if (core.panes) core.panes.scrollTop = 0;
+}
+
+/* ---------- pane · the document ---------- */
+
+function renderCoreDoc(briefing) {
+  const doc = el('div', 'core-doc');
+  const tokens = core.rate ? ` · ~${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS AT ${core.rate} CH/TOKEN HERE` : '';
+  doc.append(brewHead('THE DOCUMENT', `${briefing.parts.length} BLOCKS · ${briefing.chars.toLocaleString()} CH${tokens}`));
+  doc.append(el('p', 'note', 'BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
+
+  // The blocks in the document's own order, which is the order they are said in.
+  const widest = briefing.parts.reduce((top, part) => Math.max(top, part.chars), 1);
+  const blocks = el('div', 'core-blocks');
+  for (const part of briefing.parts) {
+    const row = el('details', 'core-block');
+    const head = el('summary');
+    head.append(el('i', 'sign', '+'));
+    head.append(el('b', null, part.id.toUpperCase()));
+    head.append(el('span', 'n', `${part.chars.toLocaleString()} CH`));
+    const bar = el('i', 'bar');
+    bar.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
+    head.append(bar);
+    head.append(el('span', 'when', part.when === 'always' ? 'ALWAYS' : part.when));
+    row.addEventListener('toggle', () => { head.querySelector('.sign').textContent = row.open ? '−' : '+'; });
+    const body = el('div', 'core-text');
+    // What put these words here, and where the human takes them away. Nothing in the core can be
+    // rewritten; some of it can be switched off, and this says exactly where.
+    if (part.when || part.where) {
+      const from = el('p', 'core-from');
+      from.append(el('b', null, part.when === 'always' ? 'ALWAYS' : 'HERE BECAUSE'));
+      if (part.when !== 'always') from.append(` ${part.when}`);
+      if (part.where) from.append(el('span', 'where', ` · ${part.where}`));
+      else if (part.when !== 'always') from.append(el('span', 'where', ' · nothing switches it off; it goes when the reason goes'));
+      body.append(from);
+    }
+    body.append(el('pre', null, part.text));
+    const copy = el('button', 'core-copy-one', 'COPY');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(part.text); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1200); }
+      catch { toast('The clipboard is not available here.'); }
+    });
+    body.append(copy);
+    row.append(head, body);
+    blocks.append(row);
+  }
+  doc.append(blocks);
+
+  // What the window holds and what it leaves behind: the one thing that explains the heaviest
+  // block in the document. As two columns, because it is four facts and not a paragraph.
+  const window = briefing.window ?? {};
+  doc.append(brewHead('WHAT IT CARRIES'));
+  const carried = el('div', 'brew-rows');
+  carried.append(brewRow('TRANSCRIPT', window.from && window.through
+    ? `#${window.from} → #${window.through} · ${window.carried} MESSAGE${window.carried === 1 ? '' : 'S'}`
+    : 'THE WHOLE ROOM STILL FITS'));
+  if (window.omitted) carried.append(brewRow('LEFT BEHIND', `${window.omitted} OLDER MESSAGE${window.omitted === 1 ? '' : 'S'} · WHICH IS WHAT RECALL IS FOR`));
+  carried.append(brewRow('READ TO BUILD IT', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} · ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'}`));
+  carried.append(brewRow('NOT COUNTED', 'NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT'));
+  if (briefing.spared) carried.append(brewRow('LEFT OUT', `${briefing.spared.toLocaleString()} CHARACTERS THIS TURN HAS NO USE FOR`));
+  doc.append(carried);
+
+  doc.append(brewHead('FIXED'));
+  doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.'));
+  return doc;
+}
+
+/* ---------- pane · the launch ---------- */
+
+// THE LAUNCH. The document is the half a person can read; this is the half that runs it.
+// A briefing is handed to a process, and until you can see which process, with which flags, in
+// which directory, reading which servers, "the agent works read-only" is a claim rather than a
+// fact. So the exact command is printed, built by the same adapters that would build it for real.
+//
+// Environment values are never printed — only the names. A command line is something people
+// screenshot, and the values are where keys live.
+function shellArg(value) {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${String(value).replaceAll("'", `'\\''`)}'`;
+}
+
+function renderCoreLaunch(launch) {
+  const floor = el('div', 'core-launch');
+  floor.append(brewHead('THE LAUNCH', 'WHAT MADRE WOULD RUN TO DELIVER IT'));
+
+  if (!launch) { floor.append(el('p', 'note', 'NO AGENT IS PICKED, SO THERE IS NO COMMAND TO SHOW.')); return floor; }
+  if (launch.local || !launch.args) { floor.append(el('p', 'note', String(launch.says ?? '').toUpperCase())); return floor; }
+
+  const command = [launch.executable, ...launch.args].map(shellArg);
+  floor.append(commandBlock([`# run in ${launch.cwd}`, ...command.map((part, at) => (at === 0 ? part : `  ${part}`) + (at === command.length - 1 ? '' : ' \\'))]));
+  floor.append(el('p', 'note', `THE BRIEFING GOES WHERE ${launch.promptMarker.toUpperCase()} IS WRITTEN. NOTHING IS RUN FROM HERE.`));
+
+  if (launch.isolation?.length) {
+    floor.append(brewHead('WHAT KEEPS IT TO THIS TURN'));
+    const rows = el('div', 'brew-rows');
+    for (const line of launch.isolation) {
+      const [name, rest] = line.includes(':') ? [line.slice(0, line.indexOf(':')), line.slice(line.indexOf(':') + 1).trim()] : ['', line];
+      rows.append(brewRow(name || '—', rest));
+    }
+    floor.append(rows);
+  }
+
+  if (launch.env?.length) {
+    floor.append(brewHead('ENVIRONMENT IT IS GIVEN', 'NAMES ONLY. NO VALUE IS EVER SHOWN HERE.'));
+    const rows = el('div', 'brew-rows');
+    for (const one of launch.env) rows.append(brewRow(one.name, one.note));
+    floor.append(rows);
+  }
+
+  const servers = [...(launch.memoryServer ? [{ ...launch.memoryServer, brief: 'the archive of this project, read and written through MADRE' }] : []), ...(launch.mcpServers ?? [])]
+    .filter((server, at, all) => all.findIndex((other) => other.name === server.name) === at);
+  if (servers.length) {
+    floor.append(brewHead(`SERVERS IT CAN CALL`, `${servers.length}`));
+    const rows = el('div', 'brew-rows');
+    for (const server of servers) {
+      const value = el('span');
+      if (server.brief) value.append(server.brief);
+      if (server.tools?.length) {
+        const tools = el('span', 'tools');
+        for (const tool of server.tools) tools.append(el('i', null, tool));
+        value.append(tools);
+      }
+      if (server.env?.length) value.append(el('span', 'where', ` · env: ${server.env.join(', ')}`));
+      rows.append(brewRow(server.name, value, 'core-server'));
+    }
+    floor.append(rows);
+  }
+  return floor;
+}
+
+/* ---------- pane · what left this machine ---------- */
+
+// MADRE keeps what it knows in a file you own, and that sentence is worth exactly as much as the
+// list that qualifies it. This is the list: every address this process may reach, what it says
+// there, what turns it off — and beside it, what actually went out, counted by the wrapper every
+// fetch in this process goes through, a module's included.
+function renderCoreOutbound(view) {
+  const floor = el('div', 'core-outbound');
+  floor.append(brewHead('WHAT LEFT THIS MACHINE', 'EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY'));
+  if (!view) { floor.append(el('p', 'note', 'THE LOG COULD NOT BE READ.')); return floor; }
+
+  const list = el('div', 'core-egress');
+  for (const one of view.destinations) {
+    const row = el('div', `egress${one.on === false ? ' off' : ''}${one.local ? ' local' : ''}`);
+    const state = el('span', 'state', one.local ? 'LOCAL' : one.on === true ? 'ON' : one.on === false ? 'OFF' : '—');
+    const to = el('b', null, one.to);
+    const what = el('p', 'what', one.what);
+    const when = el('p', 'when');
+    when.append(el('i', null, one.when));
+    if (one.where) when.append(el('span', 'where', ` · ${one.where}`));
+    const count = el('span', 'n', one.calls
+      ? `${one.calls} REQUEST${one.calls === 1 ? '' : 'S'}${one.failed ? ` · ${one.failed} FAILED` : ''}${one.last ? ` · ${agoWords(one.last).toUpperCase()}` : ''}`
+      : one.inside ? 'NOTHING YET' : 'NOT THROUGH MADRE');
+    row.append(state, to, count, what, when);
+    list.append(row);
+  }
+  floor.append(list);
+  floor.append(el('p', 'note', view.says.toUpperCase()));
+
+  // The log itself, which is what makes the list above checkable rather than a promise.
+  const lines = view.recent ?? [];
+  floor.append(brewHead('THE LAST REQUESTS THIS PROCESS MADE', `${lines.length} LINE${lines.length === 1 ? '' : 'S'}`));
+  const pre = el('pre', 'core-egress-log');
+  pre.textContent = lines.length
+    ? lines.map((line) => `${line.at.replace('T', ' ').slice(0, 19)}  ${line.ok ? 'ok ' : '×  '}${String(line.status ?? line.error ?? '').padEnd(4)} ${line.method.padEnd(4)} ${line.to}${line.path}${line.params ? `?${line.params.join('&')}` : ''}`).join('\n')
+    : 'Nothing has gone out of this process yet.';
+  floor.append(pre);
+  floor.append(el('p', 'core-from', 'NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE — ONLY WHICH PARAMETERS WERE SET. THE GEMINI EMBEDDING ADDRESS CARRIES THE KEY IN THE URL, AND A LOG OF WHAT LEFT THIS MACHINE WOULD BE A POOR PLACE TO LEAVE IT.'));
+  return floor;
+}
+
+/* ---------- the prompt, always at the bottom ---------- */
+
+// MU/TH/UR 6000 answered by being asked. The core already holds everything an answer would need,
+// and a person reading four panes still has to find the pane that holds their question. So the
+// prompt is the way through all of it: an inquiry that is a pane opens the pane, and everything
+// else is answered in her own pane, from what this page already has. Nothing is sent from here
+// and nothing is asked of the crew.
+//
+// She answers or she says she cannot. Three inquiries she cannot parse and the frame closes —
+// that is the machine this is, and it is fair about it: every refusal names what she would have
+// taken, the count is on screen from the first one, and opening the core again starts over.
 function renderCoreConsole() {
-  const section = el('section', 'core-console');
-  const out = el('div', 'console-out');
-  const log = el('pre');
-  out.append(log);
+  const log = el('pre', 'console-log');
+  const say = (lines, className = null) => {
+    const block = el('span', className);
+    block.textContent = `${lines.join('\n')}\n\n`;
+    log.append(block);
+    if (core.panes) core.panes.scrollTop = core.panes.scrollHeight;
+  };
+  core.paneNodes.console?.replaceChildren(brewHead('MU/TH/UR 6000', 'ANSWERED FROM WHAT IS ALREADY IN THIS ROOM'), log);
 
   const marks = el('span', 'console-strikes');
   const drawStrikes = () => {
@@ -4417,20 +4760,13 @@ function renderCoreConsole() {
     marks.title = `${STRIKES - core.strikes} inquiry attempts left before this interface closes`;
   };
 
-  const say = (lines, className = null) => {
-    const block = el('span', className);
-    block.textContent = `${lines.join('\n')}\n\n`;
-    log.append(block);
-    out.scrollTop = out.scrollHeight;
-  };
-
   const line = el('form', 'console-line');
   const field = el('input');
   field.type = 'text';
   field.autocomplete = 'off';
   field.spellcheck = false;
   field.setAttribute('aria-label', 'Inquiry');
-  field.placeholder = 'READY FOR INQUIRY';
+  field.placeholder = 'READY FOR INQUIRY · TYPE HELP';
   let walked = null;
   field.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
@@ -4439,7 +4775,10 @@ function renderCoreConsole() {
     walked = walked === null ? core.history.length - 1 : Math.min(core.history.length - 1, Math.max(0, walked + (event.key === 'ArrowUp' ? -1 : 1)));
     field.value = core.history[walked] ?? '';
   });
-  line.append(el('span', 'prompt', '>'), field, marks);
+  const help = el('button', 'console-help', 'HELP');
+  help.type = 'button';
+  help.addEventListener('click', () => { field.value = 'HELP'; line.requestSubmit(); });
+  line.append(el('span', 'prompt', '>'), field, marks, help);
 
   line.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -4474,250 +4813,18 @@ function renderCoreConsole() {
     core.strikes = answer.strikes;
     drawStrikes();
     say(answer.lines, answer.strike ? 'refused' : null);
+    // An inquiry that is already a pane opens it; everything else is read where it was answered.
+    showPane(CORE_PANE_FOR[answer.id] ?? 'console');
     if (answer.closes) {
       field.disabled = true;
       setTimeout(() => core.dialog.close(), 1800);
     }
   });
 
-  section.append(out, line);
-  const hint = el('p', 'note');
-  hint.textContent = `ASK: ${INQUIRIES.map((one) => one.aliases[0]).join(' · ')}`;
-  section.append(hint);
   drawStrikes();
   core.console = { field, say };
   say(['READY FOR INQUIRY. HELP LISTS WHAT I ANSWER.']);
-  return section;
-}
-
-// The controls are built once per visit and never rebuilt, so what you are typing survives every
-// rebuild of the document underneath it.
-function renderCoreControls() {
-  const controls = el('div', 'core-controls');
-  controls.append(el('p', 'note lead', 'THIS IS THE BRIEFING THE NEXT TURN WOULD CARRY, BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
-
-  // Who it goes to, and at what mode: the two things that change what is said.
-  const pick = el('div', 'core-pick');
-  const who = el('div', 'core-agents');
-  for (const agent of [...state.agents.values()].filter((agent) => agent.detected)) {
-    const chip = el('button', `core-agent${agent.id === core.agent ? ' on' : ''}${agent.ready ? '' : ' cold'}`, `@${agent.id}`);
-    chip.type = 'button';
-    chip.dataset.agent = agent.id;
-    chip.title = agent.ready ? `What @${agent.id} would be told` : `${agent.label} is not signed in; this is what it would be told`;
-    chip.addEventListener('click', () => {
-      core.agent = agent.id;
-      for (const other of who.children) other.classList.toggle('on', other.dataset?.agent === agent.id);
-      void loadCore();
-    });
-    who.append(chip);
-  }
-  pick.append(el('span', 'k', 'THE NEXT TURN GOES TO'), who);
-  const modes = el('select');
-  for (const [value, label] of [[0, '#0 GHOST'], [1, '#1 EXCHANGE'], [2, '#2 CREATE'], [3, '#3 CONTROL'], [4, '#4 AIRLOCK']]) {
-    const option = el('option', null, label);
-    option.value = String(value);
-    if (value === core.mode) option.selected = true;
-    modes.append(option);
-  }
-  modes.addEventListener('change', () => { core.mode = Number(modes.value); void loadCore(); });
-  pick.append(el('span', 'k', 'AT MODE'), modes);
-  pick.append(el('span', 'core-ceiling', ''));
-  controls.append(pick);
-
-  // What you are about to ask. Recall, the memories and the closing question are written around
-  // it, so a briefing for an empty message is a briefing for a turn nobody is going to have.
-  const asking = el('div', 'core-asking');
-  asking.append(el('span', 'k', 'IF YOU SENT THIS'));
-  const field = el('textarea');
-  field.id = 'core-text';
-  field.rows = 2;
-  field.placeholder = 'Type what you would ask. The document rebuilds around it: the memories it would summon, the exchanges it would quote, the question it would close with.';
-  field.value = core.text ?? '';
-  field.addEventListener('input', () => {
-    core.text = field.value;
-    clearTimeout(core.typing);
-    core.typing = setTimeout(() => { void loadCore(); }, 450);
-  });
-  asking.append(field);
-  asking.append(el('span', 'note', 'NOTHING IS SENT FROM HERE.'));
-  controls.append(asking);
-  return controls;
-}
-
-// THE LAUNCH. The document above is the half a person can read; this is the half that runs it.
-// A briefing is handed to a process, and until you can see which process, with which flags, in
-// which directory, reading which servers, "the agent works read-only" is a claim rather than a
-// fact. So the exact command is printed, built by the same adapters that would build it for real.
-//
-// Environment values are never printed — only the names. A command line is something people
-// screenshot, and the values are where keys live.
-function shellArg(value) {
-  return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${String(value).replaceAll("'", `'\\''`)}'`;
-}
-
-function renderCoreLaunch(launch) {
-  const floor = el('section', 'core-launch');
-  const head = el('p', 'core-launch-head');
-  head.append(el('b', null, 'THE LAUNCH'));
-  head.append(el('span', null, 'WHAT MADRE WOULD RUN TO DELIVER IT'));
-  floor.append(head);
-
-  if (!launch) { floor.append(el('p', 'note', 'NO AGENT IS PICKED, SO THERE IS NO COMMAND TO SHOW.')); return floor; }
-  if (launch.local || !launch.args) { floor.append(el('p', 'note', String(launch.says ?? '').toUpperCase())); return floor; }
-
-  const command = [launch.executable, ...launch.args].map(shellArg);
-  floor.append(commandBlock([`# run in ${launch.cwd}`, ...command.map((part, at) => (at === 0 ? part : `  ${part}`) + (at === command.length - 1 ? '' : ' \\'))]));
-  floor.append(el('p', 'note', `THE BRIEFING GOES WHERE ${launch.promptMarker.toUpperCase()} IS WRITTEN. NOTHING IS RUN FROM HERE.`));
-
-  if (launch.isolation?.length) {
-    const box = el('div', 'core-launch-list');
-    box.append(el('span', 'k', 'WHAT KEEPS IT TO THIS TURN'));
-    for (const line of launch.isolation) box.append(el('p', null, line));
-    floor.append(box);
-  }
-
-  if (launch.env?.length) {
-    const box = el('div', 'core-launch-list');
-    box.append(el('span', 'k', 'ENVIRONMENT IT IS GIVEN'));
-    for (const one of launch.env) {
-      const row = el('p', null);
-      row.append(el('b', null, one.name));
-      row.append(` — ${one.note}`);
-      box.append(row);
-    }
-    box.append(el('span', 'note', 'NAMES ONLY. NO VALUE IS EVER SHOWN HERE.'));
-    floor.append(box);
-  }
-
-  const servers = [...(launch.memoryServer ? [{ ...launch.memoryServer, brief: 'the archive of this project, read and written through MADRE' }] : []), ...(launch.mcpServers ?? [])]
-    .filter((server, at, all) => all.findIndex((other) => other.name === server.name) === at);
-  if (servers.length) {
-    const box = el('div', 'core-launch-list');
-    box.append(el('span', 'k', `SERVERS IT CAN CALL · ${servers.length}`));
-    for (const server of servers) {
-      const row = el('p', 'core-server');
-      row.append(el('b', null, server.name));
-      if (server.brief) row.append(` — ${server.brief}`);
-      if (server.tools?.length) {
-        const tools = el('span', 'tools');
-        for (const tool of server.tools) tools.append(el('i', null, tool));
-        row.append(tools);
-      }
-      if (server.env?.length) row.append(el('span', 'where', ` · env: ${server.env.join(', ')}`));
-      box.append(row);
-    }
-    floor.append(box);
-  }
-  return floor;
-}
-
-// WHAT LEFT THIS MACHINE. MADRE keeps what it knows in a file you own, and that sentence is
-// worth exactly as much as the list that qualifies it. This is the list: every address this
-// process may reach, what it says there, what turns it off — and beside it, what actually went
-// out, counted by the wrapper every fetch in this process goes through, a module's included.
-function renderCoreOutbound(view) {
-  const floor = el('section', 'core-launch core-outbound');
-  const head = el('p', 'core-launch-head');
-  head.append(el('b', null, 'WHAT LEFT THIS MACHINE'));
-  head.append(el('span', null, 'EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY'));
-  floor.append(head);
-  if (!view) { floor.append(el('p', 'note', 'THE LOG COULD NOT BE READ.')); return floor; }
-
-  const list = el('div', 'core-egress');
-  for (const one of view.destinations) {
-    const row = el('div', `egress${one.on === false ? ' off' : ''}${one.local ? ' local' : ''}`);
-    const state = el('span', 'state', one.local ? 'LOCAL' : one.on === true ? 'ON' : one.on === false ? 'OFF' : '—');
-    const to = el('b', null, one.to);
-    const what = el('p', 'what', one.what);
-    const when = el('p', 'when');
-    when.append(el('i', null, one.when));
-    if (one.where) when.append(el('span', 'where', ` · ${one.where}`));
-    const count = el('span', 'n', one.calls
-      ? `${one.calls} REQUEST${one.calls === 1 ? '' : 'S'}${one.failed ? ` · ${one.failed} FAILED` : ''}${one.last ? ` · ${agoWords(one.last).toUpperCase()}` : ''}`
-      : one.inside ? 'NOTHING YET' : 'NOT THROUGH MADRE');
-    row.append(state, to, count, what, when);
-    list.append(row);
-  }
-  floor.append(list);
-  floor.append(el('p', 'note', view.says.toUpperCase()));
-
-  // The log itself, which is what makes the list above checkable rather than a promise.
-  const lines = view.recent ?? [];
-  const seen = el('details', 'core-block core-egress-log');
-  const summary = el('summary');
-  summary.append(el('b', null, 'THE LAST REQUESTS THIS PROCESS MADE'));
-  summary.append(el('span', 'n', `${lines.length} LINE${lines.length === 1 ? '' : 'S'}`));
-  const caret = el('span', 'caret', '▸ READ');
-  summary.append(caret);
-  seen.addEventListener('toggle', () => { caret.textContent = seen.open ? '▾ CLOSE' : '▸ READ'; });
-  const body = el('div', 'core-text');
-  const pre = el('pre');
-  pre.textContent = lines.length
-    ? lines.map((line) => `${line.at.replace('T', ' ').slice(0, 19)}  ${line.ok ? 'ok ' : '×  '}${String(line.status ?? line.error ?? '').padEnd(4)} ${line.method.padEnd(4)} ${line.to}${line.path}${line.params ? `?${line.params.join('&')}` : ''}`).join('\n')
-    : 'Nothing has gone out of this process yet.';
-  body.append(pre);
-  body.append(el('p', 'core-from', 'NO BODY, NO HEADER AND NO QUERY VALUE IS EVER WRITTEN HERE — ONLY WHICH PARAMETERS WERE SET. THE GEMINI EMBEDDING ADDRESS CARRIES THE KEY IN THE URL, AND A LOG OF WHAT LEFT THIS MACHINE WOULD BE A POOR PLACE TO LEAVE IT.'));
-  seen.append(summary, body);
-  floor.append(seen);
-  return floor;
-}
-
-function renderCoreDoc(briefing) {
-  const doc = el('div', 'core-doc');
-
-  // The blocks in the document's own order, which is the order they are said in.
-  const widest = briefing.parts.reduce((top, part) => Math.max(top, part.chars), 1);
-  const blocks = el('div', 'core-blocks');
-  for (const part of briefing.parts) {
-    const row = el('details', 'core-block');
-    const head = el('summary');
-    head.append(el('b', null, part.id.toUpperCase()));
-    head.append(el('span', 'n', `${part.chars.toLocaleString()} CH`));
-    const bar = el('i');
-    bar.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
-    head.append(bar);
-    const caret = el('span', 'caret', '▸ READ');
-    head.append(caret);
-    row.addEventListener('toggle', () => { caret.textContent = row.open ? '▾ CLOSE' : '▸ READ'; });
-    const body = el('div', 'core-text');
-    // What put these words here, and where the human takes them away. Nothing in the core can be
-    // rewritten; some of it can be switched off, and this says exactly where.
-    if (part.when || part.where) {
-      const from = el('p', 'core-from');
-      from.append(el('b', null, part.when === 'always' ? 'ALWAYS' : 'HERE BECAUSE'));
-      if (part.when !== 'always') from.append(` ${part.when}`);
-      if (part.where) from.append(el('span', 'where', ` · ${part.where}`));
-      else if (part.when !== 'always') from.append(el('span', 'where', ' · nothing switches it off; it goes when the reason goes'));
-      body.append(from);
-    }
-    body.append(el('pre', null, part.text));
-    const copy = el('button', 'core-copy-one', 'COPY');
-    copy.type = 'button';
-    copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(part.text); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1200); }
-      catch { toast('The clipboard is not available here.'); }
-    });
-    body.append(copy);
-    row.append(head, body);
-    blocks.append(row);
-  }
-  doc.append(blocks);
-
-  const tokens = core.rate ? ` · ABOUT ${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS AT ${core.rate} CH/TOKEN IN THIS ROOM` : '';
-  doc.append(el('p', 'core-total', `${briefing.chars.toLocaleString()} CHARACTERS IN ${briefing.parts.length} BLOCKS${tokens}`));
-
-  // What the window holds and what it leaves behind: the one thing that explains the heaviest
-  // block in the document.
-  const window = briefing.window ?? {};
-  const held = window.from && window.through
-    ? `THE TRANSCRIPT IT CARRIES RUNS FROM #${window.from} TO #${window.through} · ${window.carried} MESSAGE${window.carried === 1 ? '' : 'S'}${window.omitted ? ` · ${window.omitted} OLDER ONE${window.omitted === 1 ? '' : 'S'} LEFT BEHIND, WHICH IS WHAT RECALL IS FOR` : ''}`
-    : 'THE WHOLE ROOM STILL FITS: NOTHING IS LEFT BEHIND AND NOTHING NEEDS RECALLING YET';
-  doc.append(el('p', 'note', held));
-  doc.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.${briefing.spared ? ` ${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : ''}`));
-  doc.append(renderCoreLaunch(briefing.launch ?? null));
-  doc.append(renderCoreOutbound(core.outbound));
-  doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. OPEN A BLOCK AND IT SAYS WHAT PUT IT THERE AND WHERE YOU TAKE IT AWAY: SWITCHED OFF, NEVER REWRITTEN.'));
-  return doc;
+  return line;
 }
 
 document.querySelector('#core-close')?.addEventListener('click', () => core.dialog.close());
