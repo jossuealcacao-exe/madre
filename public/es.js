@@ -692,6 +692,280 @@ export const ES = {
   'On {matched} of {n} real questions the local model landed where the agent of the day landed{control}.':
     'En {matched} de {n} preguntas reales el modelo local aterrizó donde aterrizó el agente de aquel día{control}.',
 
+  // ── MODULES · EYECAT · ECONOMÍA · EL SDK ──────────────────────────────────
+  'MODULES › ': 'MÓDULOS › ',
+  '◉ EYECAT': '◉ EYECAT',
+  'IN DOUBT': 'EN DUDA',
+  'AGAINST': 'EN CONTRA',
+  'WHAT SEEMS TRUE': 'LO QUE PARECE CIERTO',
+  'IT IS FALSE': 'ES FALSA',
+  'Files it as an aberration and takes the memory out of every turn. Reversible from NOSTROMO.':
+    'La archiva como aberración y saca esa memoria de todos los turnos. Se puede deshacer desde NOSTROMO.',
+  'IT STANDS': 'SE QUEDA',
+  'The room was right. This pair is never raised again.': 'La sala tenía razón. Este par no se vuelve a levantar.',
+  'DEV': 'DEV',
+  'MU/TH/UR › a module is a .mjs file.': 'MU/TH/UR › un módulo es un archivo .mjs.',
+  'RUN IT': 'CORRERLO',
+  'MU/TH/UR › updating. The output is in the room, and the card refreshes when it finishes.':
+    'MU/TH/UR › actualizando. La salida está en la sala, y la ficha se refresca al terminar.',
+  'NOT NOW': 'AHORA NO',
+  'ECONOMY · THIS ROOM': 'ECONOMÍA · ESTA SALA',
+  'NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS': 'TODAVÍA NO SE HA PESADO NINGÚN TURNO · MANDA UN MENSAJE Y ESTO SE LLENA',
+  'ECONOMY UNAVAILABLE': 'ECONOMÍA NO DISPONIBLE',
+  'LOCAL BRAIN': 'CEREBRO LOCAL',
+  'ROLES': 'PAPELES',
+  'GET OLLAMA ↗': 'CONSEGUIR OLLAMA ↗',
+  'Without Ollama running, the room keeps using its providers. Start it, then RECHECK.':
+    'Sin Ollama corriendo, la sala sigue usando sus proveedores. Enciéndelo y dale REVISAR OTRA VEZ.',
+  'CANNOT ENABLE YET': 'TODAVÍA NO SE PUEDE ENCENDER',
+  'THIS WRITES INTO THE PROJECT. MADRE WILL RUN, IN THE PROJECT FOLDER:':
+    'ESTO ESCRIBE DENTRO DEL PROYECTO. MADRE VA A CORRER, EN LA CARPETA DEL PROYECTO:',
+  'DEVELOP FOR MADRE': 'DESARROLLA PARA MADRE',
+  'Would you like to develop for MADRE?': '¿Te gustaría desarrollar para MADRE?',
+  'Use our SDK to build your own modules: one file, no build, no dependencies. A switch, settings, slash commands, tools for the agents, routes. Write it by hand or with an AI, drop it in a folder, reload.':
+    'Usa nuestro SDK para construir tus propios módulos: un archivo, sin build, sin dependencias. Un interruptor, ajustes, comandos, herramientas para los agentes, rutas. Escríbelo a mano o con una IA, déjalo caer en una carpeta y recarga.',
+  ' every project · ': ' todos los proyectos · ',
+  ' this project': ' este proyecto',
+  'READ THE SDK ↗': 'LEER EL SDK ↗',
+  'RELOAD MODULES': 'RECARGAR MÓDULOS',
+  'Load your module files again without restarting the room': 'Vuelve a cargar tus archivos de módulo sin reiniciar la sala',
+  'YOURS · ': 'TUYOS · ',
+  'REMOVE': 'QUITAR',
+  'DID NOT LOAD · ': 'NO CARGÓ · ',
+  'connections › ': 'conexiones › ',
+  'HELP': 'AYUDA',
+  'MU/TH/UR › the whole briefing is on your clipboard, exactly as the agent receives it.':
+    'MU/TH/UR › el briefing completo está en tu portapapeles, exactamente como lo recibe el agente.',
+  'provider/model': 'proveedor/modelo',
+
+  // Privacidad, lo que faltaba.
+  'Replace every private term already in the ledger, the index and the memories with the marker. Asks for the project designation.':
+    'Reemplaza con el marcador cada término privado que ya esté en el ledger, el índice y las memorias. Pide la designación del proyecto.',
+  'PRIVATE TERMS · ONE PER LINE': 'TÉRMINOS PRIVADOS · UNO POR LÍNEA',
+  'REPLACED WITH': 'SE REEMPLAZAN CON',
+  'REDACT KEYS, TOKENS AND E-MAIL ADDRESSES ANYWHERE THEY APPEAR':
+    'TACHAR LLAVES, TOKENS Y CORREOS DONDEQUIERA QUE APAREZCAN',
+  'redaction of keys and addresses': 'el tachado de llaves y correos',
+  'API keys, GitHub and npm tokens, JWTs and e-mail addresses are recognisable by shape in any project. Caught before the ledger, the archivist, the other agents and the dataset.':
+    'Las API keys, los tokens de GitHub y npm, los JWT y los correos se reconocen por su forma en cualquier proyecto. Se atrapan antes del ledger, del archivista, de los demás agentes y del dataset.',
+  "REPLACE THIS MACHINE'S HOME PATH WITH ~": 'CAMBIAR LA RUTA HOME DE ESTA COMPUTADORA POR ~',
+  'hiding of home paths': 'el ocultamiento de las rutas home',
+  'A path like /Users/yourname carries who you are into every reply that quotes it. The path still reads, it just stops naming you.':
+    'Una ruta como /Users/tunombre mete quién eres en cada respuesta que la cite. La ruta se sigue leyendo, nada más deja de nombrarte.',
+  'PURGE ROOM · Every private term already recorded becomes the marker, in the ledger, the index and the memories. This cannot be undone. Type the project designation to confirm:':
+    'PURGAR LA SALA · Cada término privado ya registrado se convierte en el marcador, en el ledger, el índice y las memorias. Esto no se deshace. Escribe la designación del proyecto para confirmar:',
+  'PULSE_PRIVATE_TERMS IS SET; THOSE TERMS ARE ADDED TO THIS LIST ON EVERY LAUNCH.':
+    'PULSE_PRIVATE_TERMS ESTÁ PUESTA; ESOS TÉRMINOS SE AGREGAN A ESTA LISTA EN CADA INICIO.',
+  'EXPOSURE CHECK UNAVAILABLE': 'LA REVISIÓN DE EXPOSICIÓN NO ESTÁ DISPONIBLE',
+
+  // ── EL HILO: lo que pasa en la sala, mensaje por mensaje ──────────────────
+  'ASH': 'ASH',
+  'acknowledged, human': 'recibido, humano',
+  'handoff note': 'nota de relevo',
+  'handoff ': 'relevo ',
+  'The rating was not saved: {error}': 'La calificación no se guardó: {error}',
+  'MU/TH/UR › the clipboard is not available here; select the text and copy.':
+    'MU/TH/UR › aquí no hay portapapeles; selecciona el texto y cópialo.',
+  'REPLY TO @{agent}{seq} WITH': 'RESPONDER A @{agent}{seq} CON',
+  'the same agent': 'el mismo agente',
+  '{label} · not ready': '{label} · no está listo',
+  'Answer without quoting this': 'Contestar sin citar esto',
+  'Thinking about "{topic}"…': 'Pensando en «{topic}»…',
+  '{n} in': '{n} de entrada',
+  '{n} ch in': '{n} car de entrada',
+  '{n} out': '{n} de salida',
+  '{n} ch': '{n} car',
+  ', and {n} characters written back so far': ', y {n} caracteres escritos de vuelta hasta ahora',
+  '{chars} characters. This room has not been billed yet, so there is no rate to convert them at.':
+    '{chars} caracteres. A esta sala todavía no le han facturado, así que no hay tasa con qué convertirlos.',
+  "{chars} characters of briefing and transcript, about {tokens} tokens at this room's measured rate{written}. The exact figure arrives when the agent answers.":
+    '{chars} caracteres de briefing y transcripción, unos {tokens} tokens a la tasa medida de esta sala{written}. La cifra exacta llega cuando el agente contesta.',
+  '. Another {n} were read back from its own cache instead of being charged again':
+    '. Otros {n} se leyeron de su propia caché en vez de cobrarse otra vez',
+  "Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.":
+    'Cobrado por el propio CLI de este agente: {input} tokens de entrada, {output} de salida{cached}.',
+  '{label} is reading the project… {seconds}s so far; MADRE gives up at {limit}s.':
+    '{label} está leyendo el proyecto… {seconds}s hasta ahora; MADRE se rinde a los {limit}s.',
+  ' · read it, then ': ' · léelo, y luego ',
+  'MU/TH/UR › {name} installed for {where}. Switch it on in MODULES.':
+    'MU/TH/UR › {name} instalado para {where}. Enciéndelo en MÓDULOS.',
+  'The module was not installed: {error}': 'El módulo no se instaló: {error}',
+  'INSTALL FOR EVERY ROOM': 'INSTALAR PARA TODAS LAS SALAS',
+  'INSTALL FOR THIS PROJECT': 'INSTALAR PARA ESTE PROYECTO',
+  ' · a module runs inside MADRE with your permissions': ' · un módulo corre dentro de MADRE con tus permisos',
+  'module · ': 'módulo · ',
+  ' installed for {where} by {who} · switch it on in MODULES': ' instalado para {where} por {who} · enciéndelo en MÓDULOS',
+  'you': 'ti',
+  ' removed by {who}': ' quitado por {who}',
+  '@madre': '@madre',
+  'MU/TH/UR › the local model is answering real questions from this room. It takes a few minutes, it spends nothing, and the answer lands here.':
+    'MU/TH/UR › el modelo local está contestando preguntas reales de esta sala. Tarda unos minutos, no gasta nada, y la respuesta cae aquí.',
+  'It answered {matched} of {n} real questions from this room where the crew answered them. It is ready to be worked in.':
+    'Contestó {matched} de {n} preguntas reales de esta sala donde las contestó la tripulación. Ya se puede trabajar con él.',
+  'It answered {matched} of {n} real questions the way the crew did. Not yet — keep working, the archive fills where the work happens.':
+    'Contestó {matched} de {n} preguntas reales como lo hizo la tripulación. Todavía no — sigue trabajando, el archivo se llena donde ocurre el trabajo.',
+  'SEND THE NEXT TURN TO @MADRE': 'MANDARLE EL PRÓXIMO TURNO A @MADRE',
+  'MEASURED {when}': 'MEDIDO {when}',
+  'It is in the room. Nobody has measured it against this project yet: running here is not the same as being of use here.':
+    'Está en la sala. Nadie lo ha medido contra este proyecto todavía: correr aquí no es lo mismo que servir aquí.',
+  'privacy · ': 'privacidad · ',
+  'PURGE': 'PURGA',
+  '{events} events · {entries} indexed exchanges · {memories} memories rewritten with the marker':
+    '{events} eventos · {entries} intercambios indexados · {memories} memorias reescritas con el marcador',
+  '{n} private terms replaced with {marker}': '{n} términos privados reemplazados con {marker}',
+  'memory · ': 'memoria · ',
+  'memory · the human forgot a ': 'memoria · a la humana se le olvidó un ',
+  ' could not distil #{from}–#{through}: ': ' no pudo destilar #{from}–#{through}: ',
+  ' · batch skipped': ' · lote saltado',
+  ' · @{agent} takes the next run': ' · @{agent} toma la siguiente corrida',
+  ' · will retry': ' · va a reintentar',
+  ' read {considered} exchanges (#{from}–#{through}) · kept {added} memories':
+    ' leyó {considered} intercambios (#{from}–#{through}) · se quedó con {added} memorias',
+  ' · {n} in the archive': ' · {n} en el archivo',
+  ' · {n} waiting': ' · {n} en espera',
+  '◉ memory used · {n}': '◉ memoria usada · {n}',
+  ' · {n} by association': ' · {n} por asociación',
+  '◉ memory saved': '◉ memoria guardada',
+  'Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in NOSTROMO.':
+    'Guardada por @{agent} para todos los turnos que vienen · #{from}–#{through}. Haz clic para verla en NOSTROMO.',
+  'MU/TH/UR › TO ALL CREW': 'MU/TH/UR › A TODA LA TRIPULACIÓN',
+  ' · CHANNEL TAMPERED': ' · CANAL ALTERADO',
+  ' · CODE000 · {n} STRIKES · ARCHIVE SEALED {min} MIN': ' · CODE000 · {n} GOLPES · ARCHIVO SELLADO {min} MIN',
+  "Message #{n}, sealed under MOTHER's key in .pulse/mother.env. Only the crew reads it in clear.":
+    'Mensaje #{n}, sellado con la llave de MOTHER en .pulse/mother.env. Solo la tripulación lo lee en claro.',
+  ' · {n} messages carried': ' · {n} mensajes cargados',
+  ' · {n} older stay in the record': ' · {n} más viejos se quedan en el registro',
+  ' · no prior context': ' · sin contexto previo',
+  'The receiving agent gets the most recent transcript that fits its context allowance ({fit}). Adjust with PULSE_CONTEXT_MAX_CHARS.':
+    'El agente que recibe se lleva la transcripción más reciente que quepa en su contexto ({fit}). Se ajusta con PULSE_CONTEXT_MAX_CHARS.',
+  '{n} older messages did not fit; they remain in the room log': 'no cupieron {n} mensajes más viejos; se quedan en el registro de la sala',
+  'everything fit': 'cupo todo',
+  'local budget': 'presupuesto local',
+  'provider quota': 'cuota del proveedor',
+  'simulated window': 'ventana simulada',
+  'usage window': 'ventana de uso',
+  'projection · ': 'proyección · ',
+  'at {pct}% of {scope} · next turn like the last → {projected}%': 'en {pct}% de {scope} · otro turno como el anterior → {projected}%',
+  '{pct}% of {scope} used': '{pct}% de {scope} usado',
+  ' · continue with {who}': ' · sigue con {who}',
+  'plan · ': 'plan · ',
+  "@{agent}'s plan block was not run · {why} · ask again and it will fix the block":
+    'el bloque de plan de @{agent} no se corrió · {why} · vuelve a pedirlo y lo arregla',
+  'MU/TH/UR › ': 'MU/TH/UR › ',
+  'create · ': 'crear · ',
+  ' · {n} existing files put back, CREATE only adds: {files}': ' · {n} archivos que ya existían se restauraron, CREATE solo agrega: {files}',
+  ' · {n} writes into forbidden zones reverted': ' · {n} escrituras en zonas prohibidas revertidas',
+  ' · need to change existing files? ask again in #3 CONTROL': ' · ¿necesitas cambiar archivos que ya existen? pídelo otra vez en #3 CONTROL',
+  'CONTROL · ': 'CONTROL · ',
+  ' holds the project · checkpoint ': ' tiene el proyecto · checkpoint ',
+  'MU/TH/UR › @{agent} holds CONTROL. Checkpoint taken; UNDO will be one click.':
+    'MU/TH/UR › @{agent} tiene CONTROL. Checkpoint tomado; DESHACER va a ser un clic.',
+  ' changed {n} files': ' cambió {n} archivos',
+  ' changed nothing': ' no cambió nada',
+  'added': 'agregado',
+  'modified': 'modificado',
+  'deleted': 'borrado',
+  'renamed': 'renombrado',
+  '… and {n} more': '… y {n} más',
+  '{n} writes into forbidden zones reverted: {where}': '{n} escrituras en zonas prohibidas revertidas: {where}',
+  'UNDO · RESTORE CHECKPOINT': 'DESHACER · RESTAURAR CHECKPOINT',
+  'Put the project back exactly as it was before this CONTROL turn.':
+    'Deja el proyecto exactamente como estaba antes de este turno de CONTROL.',
+  'RESTORED': 'RESTAURADO',
+  "project restored to the checkpoint before @{agent}'s turn · {restored} restored · {removed} removed":
+    'proyecto restaurado al checkpoint anterior al turno de @{agent} · {restored} restaurados · {removed} quitados',
+  'RESEND TO @{agent} WITH CREATE': 'REENVIAR A @{agent} CON CREATE',
+  'Send this same request from you, with a creation lease.': 'Manda esta misma petición de tu parte, con permiso de creación.',
+  'RESENT WITH CREATE': 'REENVIADO CON CREATE',
+  'It could not be resent: {error}': 'No se pudo reenviar: {error}',
+  'ALWAYS FOR THIS AGENT': 'SIEMPRE PARA ESTE AGENTE',
+  'Give @{agent} a standing lease in CONNECTIONS: every turn may create files.':
+    'Dale a @{agent} un permiso permanente en CONEXIONES: cada turno puede crear archivos.',
+  'GRANT ONCE': 'CONCEDER UNA VEZ',
+  'GRANT FOR PLAN': 'CONCEDER PARA EL PLAN',
+  'Every remaining writable step of this plan shares one lease directory.':
+    'Todos los pasos con escritura que le quedan a este plan comparten una sola carpeta de permiso.',
+  'DENY': 'NEGAR',
+  'anywhere in the project · existing files stay untouched': 'donde sea en el proyecto · los archivos que ya existen no se tocan',
+  ' · scratch ': ' · borrador ',
+  'in ': 'en ',
+  'STOPALL': 'STOPALL',
+  'STOPALL failed to reach the room.': 'STOPALL no llegó a la sala.',
+  'MU/TH/UR › all quiet. nothing was running.': 'MU/TH/UR › todo tranquilo. no había nada corriendo.',
+  'Stop the remaining steps of this plan': 'Detener los pasos que le quedan a este plan',
+  'That plan is no longer running.': 'Ese plan ya no está corriendo.',
+  'clear · ': 'claro · ',
+
+  // ── EL RESTO DE LA SALA ───────────────────────────────────────────────────
+  'Enable it in MODULES.': 'Enciéndelo en MÓDULOS.',
+  'ASK THE ROOM': 'PREGUNTARLE A LA SALA',
+  'Put this error and the file into the composer': 'Pone este error y el archivo en el compositor',
+  'MU/TH/UR › RIPLEY reloaded the page: an agent changed it.': 'MU/TH/UR › RIPLEY recargó la página: un agente la cambió.',
+  'loading…': 'cargando…',
+  'select & copy': 'selecciona y copia',
+  'to ': 'para ',
+  'memory · answers & asks the crew · never writes': 'memoria · contesta y le pregunta a la tripulación · nunca escribe',
+  'Choose the model for this agent': 'Elige el modelo de este agente',
+  'loading models…': 'cargando modelos…',
+  'other model name…': 'otro nombre de modelo…',
+  'DESIGNATION ›': 'DESIGNACIÓN ›',
+  'DESIGNATION ACCEPTED. SECOND KEY: TYPE AIRLOCK TO OPEN THE SHIP.':
+    'DESIGNACIÓN ACEPTADA. SEGUNDA LLAVE: ESCRIBE AIRLOCK PARA ABRIR LA NAVE.',
+  'SECOND KEY ›': 'SEGUNDA LLAVE ›',
+  'AIRLOCK': 'AIRLOCK',
+  'PROVIDER': 'PROVEEDOR',
+  'SAVE KEY': 'GUARDAR LLAVE',
+  'WHERE DO I GET ONE ↗': '¿DÓNDE CONSIGO UNA? ↗',
+  'WORKING…': 'TRABAJANDO…',
+  'INSTALLING…': 'INSTALANDO…',
+  'more entries not shown': 'hay más entradas que no se muestran',
+  'Delete this conversation. Its transcript goes; what the archive learned from it stays.':
+    'Borra esta conversación. Su transcripción se va; lo que el archivo aprendió de ella se queda.',
+  'Press again to delete this conversation.': 'Vuelve a apretar para borrar esta conversación.',
+  'end of record. nothing else is down here, human. crew status under review.':
+    'fin del registro. aquí abajo no hay nada más, humano. estado de la tripulación en revisión.',
+  'MU/TH/UR › nobody in the room can generate images right now: enable Image Studio in MODULES or switch on GENERATE IMAGES for an agent in CONNECTIONS.':
+    'MU/TH/UR › ahora mismo nadie en la sala puede generar imágenes: enciende Image Studio en MÓDULOS o préndele GENERAR IMÁGENES a un agente en CONEXIONES.',
+  'Remove': 'Quitar',
+  'MU/TH/UR › the archive is open again. Behave.': 'MU/TH/UR › el archivo está abierto otra vez. Compórtate.',
+  'MU/TH/UR › ASH: every agent will answer in compact prose. What you write is never altered.':
+    'MU/TH/UR › ASH: cada agente va a contestar en prosa compacta. Lo que tú escribes nunca se altera.',
+  'An attachment is still uploading.': 'Todavía se está subiendo un adjunto.',
+  'SELECT': 'SELECCIONA',
+  'DIAGNOSIS': 'DIAGNÓSTICO',
+  'REMEDY': 'REMEDIO',
+  'APPLIED ✓': 'APLICADO ✓',
+  'APPLIES NOW · TERMINAL COMMANDS BELOW ARE THE LAUNCH-TIME ALTERNATIVE':
+    'SE APLICA AHORA · LOS COMANDOS DE ABAJO SON LA ALTERNATIVA PARA EL PRÓXIMO ARRANQUE',
+  'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.': 'SIN CONDICIONES REGISTRADAS. TODOS LOS SISTEMAS NOMINALES.',
+  'Expand': 'Expandir',
+  'UNCLASSIFIED': 'SIN CLASIFICAR',
+  'NO SPECIAL ORDERS ON THIS SHIP. THE CREW IS NOT EXPENDABLE. RESTATE INQUIRY.':
+    'EN ESTA NAVE NO HAY ÓRDENES ESPECIALES. LA TRIPULACIÓN NO ES PRESCINDIBLE. REFORMULA LA CONSULTA.',
+  'INQUIRY ACCEPTS: AN AGENT NAME · A SYMPTOM · A KEYWORD SUCH AS TIMEOUT, LOGIN, PORT, BUDGET.':
+    'LA CONSULTA ACEPTA: UN NOMBRE DE AGENTE · UN SÍNTOMA · UNA PALABRA COMO TIMEOUT, LOGIN, PUERTO, PRESUPUESTO.',
+  'UNABLE TO COMPUTE. REQUEST CLARIFICATION.': 'IMPOSIBLE DE PROCESAR. SE SOLICITA ACLARACIÓN.',
+  'NOSTROMO › the question is in the composer. Send it to whoever should answer it, or to @madre, which costs nothing.':
+    'NOSTROMO › la pregunta está en el compositor. Mándasela a quien deba contestarla, o a @madre, que no cuesta nada.',
+  'Stop offering this one. Nothing is forgotten and nothing is written.':
+    'Deja de ofrecer esta. No se olvida nada y no se escribe nada.',
+  'No theme shared with another memory yet.': 'Todavía no comparte tema con ninguna otra memoria.',
+  'TAKEN DOWN': 'DADA DE BAJA',
+  'This aberration took that memory out of every future turn.': 'Esta aberración sacó esa memoria de todos los turnos que vienen.',
+  'REFUTES IT': 'LA REFUTA',
+  'An aberration took this memory out of every future turn.': 'Una aberración sacó esta memoria de todos los turnos que vienen.',
+  'PRESS AGAIN TO FORGET · FOREVER': 'VUELVE A APRETAR PARA OLVIDAR · PARA SIEMPRE',
+  'FORGET THIS MEMORY': 'OLVIDAR ESTA MEMORIA',
+  'FORGETTING…': 'OLVIDANDO…',
+  'RELEASE CHANNEL · UNAVAILABLE': 'CANAL DE RELEASES · NO DISPONIBLE',
+  'RESTARTING…': 'REINICIANDO…',
+  'MU/TH/UR › the room did not come back on its own. Start it from your terminal.':
+    'MU/TH/UR › la sala no regresó sola. Arráncala desde tu terminal.',
+  'CHECK NOW': 'REVISAR AHORA',
+  "THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR'S COLLECTOR IF YOU SWITCH THAT ON.":
+    'EL CENTINELA GUARDA LAS FALLAS QUE MU/TH/UR NO SABE EXPLICAR, Y LOS CRASHES, SIN RUTAS, NOMBRES NI LLAVES. NADA SALE DE ESTA COMPUTADORA A MENOS QUE TÚ LO MANDES: A MANO COMO UN ISSUE DE GITHUB QUE LEES PRIMERO, O SOLO AL RECOLECTOR DEL AUTOR SI ENCIENDES ESA OPCIÓN.',
+  '✎ FEEDBACK TO THE AUTHOR': '✎ COMENTARIOS AL AUTOR',
+
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',
   'Interface in Spanish': 'Interfaz en español',

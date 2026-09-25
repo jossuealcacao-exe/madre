@@ -107,8 +107,8 @@ test('every card has the same floors, and the switch is always the last one', as
 
   // What a module knows about itself belongs on its card: a reading, a setting, or both.
   assert.ok(app.includes("ashReading(panel)"), 'the economy is not on Ash\'s card');
-  assert.ok(app.includes("cardBlock(panel, 'LOCAL BRAIN')"), 'Ollama does not report on its own card');
-  assert.ok(app.includes("cardBlock(panel, 'ROLES')"), 'the local roles are not settings on the card');
+  assert.ok(app.includes("cardBlock(panel, t('LOCAL BRAIN'))"), 'Ollama does not report on its own card');
+  assert.ok(app.includes("cardBlock(panel, t('ROLES'))"), 'the local roles are not settings on the card');
   // And the settings floor is declared, not drawn: any module gets one by saying what it has.
   assert.ok(app.includes("cardBlock(panel, t('SETTINGS'))"), 'a module cannot have settings on its card');
   assert.match(app, /cardControls\(panel, item\);/);

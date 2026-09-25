@@ -384,7 +384,7 @@ function showViewerSource() {
   viewer.body.replaceChildren(pre);
   if (!state.ripley && viewerMode.kind) {
     const hint = el('div', 'viewer-hint');
-    hint.append('RIPLEY can render this file. ', el('b', null, 'Enable it in MODULES.'));
+    hint.append('RIPLEY can render this file. ', el('b', null, t('Enable it in MODULES.')));
     viewer.body.prepend(hint);
   }
   if (viewerMode.lines) setSelection(viewerMode.lines.from, viewerMode.lines.to);
@@ -421,9 +421,9 @@ function ripleyShowError({ message, source, line }) {
   const row = el('div', 'err-row');
   row.append(el('span', 'msg', message));
   if (where) row.append(el('span', 'where', where));
-  const ask = el('button', null, 'ASK THE ROOM');
+  const ask = el('button', null, t('ASK THE ROOM'));
   ask.type = 'button';
-  ask.title = 'Put this error and the file into the composer';
+  ask.title = t('Put this error and the file into the composer');
   ask.addEventListener('click', () => {
     const reference = ripley.current ? `!${ripley.current}${line ? `:${line}` : ''} ` : '';
     els.input.value = `${reference}RIPLEY reports an error in the page: ${message}${where ? ` (${where})` : ''}. Find the cause and propose the fix.`;
@@ -467,7 +467,7 @@ function ripleyMaybeReload(paths) {
   if (!hit) return;
   ripleyClearErrors();
   ripley.frame.src = ripley.frame.src;
-  toast('MU/TH/UR › RIPLEY reloaded the page: an agent changed it.');
+  toast(t('MU/TH/UR › RIPLEY reloaded the page: an agent changed it.'));
 }
 
 function showViewerPreview() {
@@ -514,7 +514,7 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
   const src = url ?? `/api/files?root=${root}&path=${encodeURIComponent(path)}`;
   viewer.path.textContent = label ?? (root === 'project' ? `/${path}` : path);
   viewer.open.href = src;
-  viewer.body.replaceChildren(el('div', null, 'loading…'));
+  viewer.body.replaceChildren(el('div', null, t('loading…')));
   viewerUI.path = root === 'project' ? path : null;
   setSelection(null, null);
   viewerMode.kind = null;
@@ -552,7 +552,7 @@ function codeBlock(lines, lang) {
       copy.textContent = 'copied';
       setTimeout(() => { copy.textContent = 'copy'; }, 1500);
     } catch {
-      copy.textContent = 'select & copy';
+      copy.textContent = t('select & copy');
     }
   });
   wrapper.append(copy);
@@ -757,10 +757,10 @@ function renderPicker() {
   const current = state.agents.get(els.target.value);
   if (current) {
     const text = paint(el('span', 'pick-label'), current.id);
-    text.append('to ');
+    text.append(t('to '));
     text.append(el('b', null, `@${current.id}`));
     if (current.local) {
-      const note = el('span', 'pick-note', 'memory · answers & asks the crew · never writes');
+      const note = el('span', 'pick-note', t('memory · answers & asks the crew · never writes'));
       const measured = state.localModel?.checked;
       note.title = `@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.${
         measured ? `\n\nMeasured against this room ${agoWords(measured.at)}: it landed where the crew landed on ${measured.matched} of ${measured.n} real questions${measured.passed ? '. Ready to be worked in.' : ' — not yet.'}` : '\n\nNobody has measured it against this project yet: MU/TH/UR → the three tests, or the line in the room when it joined.'}`;
@@ -775,7 +775,7 @@ function renderPicker() {
     const chosen = state.chosenModel[current.id];
     const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : 'default model ▾');
     modelChip.type = 'button';
-    modelChip.title = 'Choose the model for this agent';
+    modelChip.title = t('Choose the model for this agent');
     modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
     text.append(modelChip);
     els.picker.append(text);
@@ -809,7 +809,7 @@ async function toggleModelMenu(id, anchor) {
   if (!modelMenu.hidden && modelMenuFor === id) { closeModelMenu(); return; }
   modelMenuFor = id;
   paint(modelMenu, id);
-  modelMenu.replaceChildren(el('div', 'model-menu-title', 'loading models…'));
+  modelMenu.replaceChildren(el('div', 'model-menu-title', t('loading models…')));
   modelMenu.hidden = false;
   placeModelMenu(anchor);
   const info = await ensureModels(id);
@@ -828,7 +828,7 @@ async function toggleModelMenu(id, anchor) {
   }
   modelMenu.append(list);
   const custom = el('form', 'model-custom');
-  const input = el('input'); input.placeholder = 'other model name…'; input.spellcheck = false;
+  const input = el('input'); input.placeholder = t('other model name…'); input.spellcheck = false;
   custom.append(input);
   custom.addEventListener('submit', (event) => { event.preventDefault(); const name = input.value.trim(); if (name) { rememberModel(id, name); closeModelMenu(); renderPicker(); } });
   modelMenu.append(custom);
@@ -954,7 +954,7 @@ function openOverride(id, { raise = false, mode = 3 } = {}) {
   override.raise = raise;
   override.mode = mode;
   override.stage = 'designation';
-    override.form.querySelector('.k').textContent = 'DESIGNATION ›';
+    override.form.querySelector('.k').textContent = t('DESIGNATION ›');
   override.input.placeholder = "type the current project's folder name to arm";
   override.dialog.querySelector('.mother-sub').textContent = mode === 4 ? 'AIRLOCK OVERRIDE 100375 · SECOND KEY REQUIRED' : 'EMERGENCY COMMAND OVERRIDE 100375';
   override.brief.textContent = OVERRIDE_BRIEF[mode](id.toUpperCase(), raise);
@@ -980,10 +980,10 @@ override.form?.addEventListener('submit', (event) => {
     if (override.mode === 4) {
       // The second key: the word itself, so an airlock is never opened by a folder name alone.
       override.stage = 'confirm';
-      override.reply.textContent = 'DESIGNATION ACCEPTED. SECOND KEY: TYPE AIRLOCK TO OPEN THE SHIP.';
+      override.reply.textContent = t('DESIGNATION ACCEPTED. SECOND KEY: TYPE AIRLOCK TO OPEN THE SHIP.');
       override.reply.className = 'mother-answer override-reply';
-      override.form.querySelector('.k').textContent = 'SECOND KEY ›';
-      override.input.value = ''; override.input.placeholder = 'AIRLOCK';
+      override.form.querySelector('.k').textContent = t('SECOND KEY ›');
+      override.input.value = ''; override.input.placeholder = t('AIRLOCK');
       override.input.focus();
       return;
     }
@@ -1129,7 +1129,7 @@ function keyForm(agent, { onDone } = {}) {
     select = el('select');
     for (const provider of providers) { const option = el('option', null, provider.label); option.value = provider.id; select.append(option); }
     const label = el('label');
-    label.append(el('span', 'k', 'PROVIDER'), select);
+    label.append(el('span', 'k', t('PROVIDER')), select);
     form.append(label);
   }
   const input = el('input');
@@ -1141,11 +1141,11 @@ function keyForm(agent, { onDone } = {}) {
   field.append(el('span', 'k', plan.label.toUpperCase()), input);
   form.append(field);
   const row = el('div', 'key-row');
-  const save = el('button', 'primary', 'SAVE KEY');
+  const save = el('button', 'primary', t('SAVE KEY'));
   save.type = 'submit';
   row.append(save);
   const where = providers ? (providers.find((provider) => provider.id === select.value)?.keyUrl ?? null) : plan.keyUrl;
-  const link = el('a', 'key-link', 'WHERE DO I GET ONE ↗');
+  const link = el('a', 'key-link', t('WHERE DO I GET ONE ↗'));
   link.target = '_blank'; link.rel = 'noopener noreferrer';
   if (where) { link.href = where; row.append(link); }
   if (providers) select.addEventListener('change', () => { const next = providers.find((provider) => provider.id === select.value)?.keyUrl; if (next) link.href = next; });
@@ -1198,7 +1198,7 @@ function ollamaActions() {
     button.addEventListener('click', async () => {
       button.disabled = true;
       const before = button.textContent;
-      button.textContent = 'WORKING…';
+      button.textContent = t('WORKING…');
       try { await run(); } catch (error) { toast(`MU/TH/UR › ${error.message}`); button.textContent = before; button.disabled = false; }
     });
     return button;
@@ -1234,7 +1234,7 @@ function bridgeInstallButton(agent) {
   button.title = `MADRE runs this command on this computer and shows every line. ${agent.install.alternatives?.join(' · ') ?? ''}`.trim();
   button.addEventListener('click', async () => {
     button.disabled = true;
-    button.textContent = 'INSTALLING…';
+    button.textContent = t('INSTALLING…');
     state.loginLogs.set(agent.id, []);
     try {
       const response = await fetch(`/api/agents/${agent.id}/install`, { method: 'POST' });
@@ -1292,7 +1292,7 @@ function renderUserMessage(event) {
   who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
   const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
   if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, `#${shownMode} ${MODES[shownMode].label}`));
-  if (ash?.active) who.append(el('span', 'badge ash', 'ASH'));
+  if (ash?.active) who.append(el('span', 'badge ash', t('ASH')));
   col.append(who);
   const bubble = el('div', 'bubble', text);
   if (attachments.length) bubble.append(fileTiles(attachments));
@@ -1300,7 +1300,7 @@ function renderUserMessage(event) {
   const stamp = paint(el('div', 'stamp'), target);
   stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}`));
   stamp.append(el('span', null, formatTime(event.timestamp)));
-  if (reviewed) stamp.append(el('span', null, 'acknowledged, human'));
+  if (reviewed) stamp.append(el('span', null, t('acknowledged, human')));
   col.append(stamp);
   node.append(col);
   state.lastSender = 'you';
@@ -1328,11 +1328,11 @@ function renderAssistantMessage(event) {
     } else if (target && target !== 'you') {
       who.append(el('span', 'badge', `answering @${target}`));
     }
-    if (status === 'handoff') who.append(el('span', 'badge', 'handoff note'));
+    if (status === 'handoff') who.append(el('span', 'badge', t('handoff note')));
     if (model) who.append(el('span', 'badge model', model));
     if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
     if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
-    if (ash?.active) who.append(el('span', 'badge ash', 'ASH'));
+    if (ash?.active) who.append(el('span', 'badge ash', t('ASH')));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
@@ -1383,7 +1383,7 @@ function ratingButtons(messageId, sender) {
     try {
       const payload = await fetch('/api/messages/rate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messageId, rating: next }) }).then((response) => response.json());
       if (payload.error) throw new Error(payload.error);
-    } catch (error) { toast(`Rating was not saved: ${error.message}`); }
+    } catch (error) { toast(t('The rating was not saved: {error}', { error: error.message })); }
   };
   good.addEventListener('click', (event) => { event.stopPropagation(); void send('good'); });
   bad.addEventListener('click', (event) => { event.stopPropagation(); void send('bad'); });
@@ -1400,7 +1400,7 @@ function bubbleActions({ text, sender, sequence, messageId = null }) {
       copy.classList.add('done');
       setTimeout(() => { copy.innerHTML = ICON_COPY; copy.classList.remove('done'); }, 1400);
     } catch {
-      toast('MU/TH/UR › the clipboard is not available here; select the text and copy.');
+      toast(t('MU/TH/UR › the clipboard is not available here; select the text and copy.'));
     }
   });
   const reply = iconButton(ICON_REPLY, 'Reply to this through an agent', 'reply');
@@ -1427,11 +1427,11 @@ function hideReplyMenu() { replyMenu.hidden = true; }
 function showReplyMenu(source, x, y) {
   if (!replyMenu.hidden && replyMenu.dataset.for === `${source.sequence}`) { hideReplyMenu(); return; }
   replyMenu.dataset.for = `${source.sequence}`;
-  replyMenu.replaceChildren(el('div', 'model-menu-title', `REPLY TO @${source.sender.toUpperCase()}${source.sequence ? ` · #${source.sequence}` : ''} WITH`));
+  replyMenu.replaceChildren(el('div', 'model-menu-title', t('REPLY TO @{agent}{seq} WITH', { agent: source.sender.toUpperCase(), seq: source.sequence ? ` · #${source.sequence}` : '' })));
   for (const agent of state.agents.values()) {
     const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
     item.type = 'button';
-    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? (agent.id === source.sender ? 'the same agent' : label(agent.id)) : `${label(agent.id)} · not ready`));
+    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? (agent.id === source.sender ? t('the same agent') : label(agent.id)) : t('{label} · not ready', { label: label(agent.id) })));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => replyWith(agent.id, source));
     replyMenu.append(item);
@@ -1465,7 +1465,7 @@ function renderReplyQuote() {
   const said = el('span', 'said', reply.text);
   const drop = el('button', 'drop', '×');
   drop.type = 'button';
-  drop.title = 'Answer without quoting this';
+  drop.title = t('Answer without quoting this');
   drop.setAttribute('aria-label', 'Remove the quoted reply');
   drop.addEventListener('click', () => { state.replyTo = null; renderReplyQuote(); els.input.focus(); });
   box.replaceChildren(who, said, drop);
@@ -1537,7 +1537,7 @@ function workingPhrases(agent, prompt = '') {
   const voice = WORKING_VOICE[agent] ?? { early: ['Reading…'], middle: ['Thinking…'], late: ['Working…'], long: ['Writing…'] };
   const topic = prompt.trim().split(/\s+/).slice(0, 4).join(' ');
   const middle = [...voice.middle];
-  if (topic && topic.length <= 40) middle.splice(1, 0, `Thinking about "${topic}"…`);
+  if (topic && topic.length <= 40) middle.splice(1, 0, t('Thinking about "{topic}"…', { topic }));
   return [voice.early, middle, voice.late, voice.long];
 }
 
@@ -1548,14 +1548,14 @@ function showReading(event) {
   const { messageId, chars, tokens, out, outTokens } = event.payload ?? {};
   const meter = document.querySelector(`#working-${messageId} .tokens`);
   if (!meter) return;
-  const read = tokens ? `${tokens.toLocaleString()} in` : `${chars.toLocaleString()} ch in`;
+  const read = tokens ? t('{n} in', { n: tokens.toLocaleString() }) : t('{n} ch in', { n: chars.toLocaleString() });
   // The answer as it is written. A CLI that says nothing until it is done shows nothing here,
   // which is the truth rather than a number invented to keep something moving.
-  const wrote = out ? ` · ${(outTokens ?? 0).toLocaleString() || `${out.toLocaleString()} ch`} out` : '';
+  const wrote = out ? ` · ${t('{n} out', { n: (outTokens ?? 0).toLocaleString() || t('{n} ch', { n: out.toLocaleString() }) })}` : '';
   meter.textContent = `~${read}${wrote}`;
   meter.title = tokens
-    ? `${chars.toLocaleString()} characters of briefing and transcript, about ${tokens.toLocaleString()} tokens at this room's measured rate${out ? `, and ${out.toLocaleString()} characters written back so far` : ''}. The exact figure arrives when the agent answers.`
-    : `${chars.toLocaleString()} characters. This room has not been billed yet, so there is no rate to convert them at.`;
+    ? t("{chars} characters of briefing and transcript, about {tokens} tokens at this room's measured rate{written}. The exact figure arrives when the agent answers.", { chars: chars.toLocaleString(), tokens: tokens.toLocaleString(), written: out ? t(', and {n} characters written back so far', { n: out.toLocaleString() }) : '' })
+    : t('{chars} characters. This room has not been billed yet, so there is no rate to convert them at.', { chars: chars.toLocaleString() });
 }
 
 // The bill arrived: the estimate is replaced by what was actually charged, and stays on the
@@ -1573,7 +1573,7 @@ function settleReading(event) {
   const brief = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
   const saved = cost.cached ? ` · ${brief(cost.cached)} saved` : '';
   badge.textContent = `${brief(cost.input)}↓ ${brief(cost.output)}↑${saved}`;
-  badge.title = `Charged by this agent's own CLI: ${cost.input.toLocaleString()} input tokens, ${cost.output.toLocaleString()} output${cost.cached ? `. Another ${cost.cached.toLocaleString()} were read back from its own cache instead of being charged again` : ''}.`;
+  badge.title = t("Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.", { input: cost.input.toLocaleString(), output: cost.output.toLocaleString(), cached: cost.cached ? t('. Another {n} were read back from its own cache instead of being charged again', { n: cost.cached.toLocaleString() }) : '' });
   if (!badge.isConnected) who.append(badge);
 }
 
@@ -1615,7 +1615,7 @@ function renderThinking(event) {
     speak(seconds);
     elapsed.textContent = `${seconds}s / ${limit}s`;
     elapsed.classList.toggle('late', seconds >= limit * 0.6);
-    bubble.title = `${label(agent)} is reading the project… ${seconds}s so far; MADRE gives up at ${limit}s.`;
+    bubble.title = t('{label} is reading the project… {seconds}s so far; MADRE gives up at {limit}s.', { label: label(agent), seconds, limit });
   };
   tick();
   timer = setInterval(tick, 1000);
@@ -1631,26 +1631,28 @@ function renderModuleProposed(event) {
   node.style.setProperty('--agent', agentColor(agent));
   node.append('module · ', el('b', 'who', `@${agent}`), ` wrote `);
   const link = el('a', 'file-link', name ?? path); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); void openViewer({ root: 'project', path, label: `/${path}` }); });
-  node.append(link, ' · read it, then ');
+  node.append(link, t(' · read it, then '));
   const install = async (scope, button) => {
     button.disabled = true;
     try {
       const payload = await fetch('/api/extensions/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, scope }) }).then((response) => response.json());
       if (payload.error) throw new Error(payload.error);
-      toast(`MU/TH/UR › ${payload.installed.name} installed for ${scope === 'project' ? 'this project' : 'every room'}. Switch it on in MODULES.`);
+      toast(t('MU/TH/UR › {name} installed for {where}. Switch it on in MODULES.', { name: payload.installed.name, where: scope === 'project' ? t('this project') : t('every room') }));
       modules.items = payload.extensions ?? modules.items; if (modules.dialog.open) renderModules();
-    } catch (error) { toast(`Module was not installed: ${error.message}`); button.disabled = false; }
+    } catch (error) { toast(t('The module was not installed: {error}', { error: error.message })); button.disabled = false; }
   };
-  const everyRoom = el('button', 'act-link', 'INSTALL FOR EVERY ROOM'); everyRoom.type = 'button'; everyRoom.addEventListener('click', () => install('user', everyRoom));
-  const thisProject = el('button', 'act-link', 'INSTALL FOR THIS PROJECT'); thisProject.type = 'button'; thisProject.addEventListener('click', () => install('project', thisProject));
-  node.append(everyRoom, ' · ', thisProject, ' · a module runs inside MADRE with your permissions');
+  const everyRoom = el('button', 'act-link', t('INSTALL FOR EVERY ROOM')); everyRoom.type = 'button'; everyRoom.addEventListener('click', () => install('user', everyRoom));
+  const thisProject = el('button', 'act-link', t('INSTALL FOR THIS PROJECT')); thisProject.type = 'button'; thisProject.addEventListener('click', () => install('project', thisProject));
+  node.append(everyRoom, ' · ', thisProject, t(' · a module runs inside MADRE with your permissions'));
   if (responseMessageId) node.dataset.for = responseMessageId;
   return node;
 }
 function renderModuleInstalledOrRemoved(event) {
   const { name, origin, by } = event.payload;
   const node = el('div', 'system module-proposed');
-  node.append('module · ', el('b', 'who', name), event.type === 'extension.installed' ? ` installed for ${origin === 'project' ? 'this project' : 'every room'} by ${by ?? 'you'} · switch it on in MODULES` : ` removed by ${by ?? 'you'}`);
+  node.append(t('module · '), el('b', 'who', name), event.type === 'extension.installed'
+    ? t(' installed for {where} by {who} · switch it on in MODULES', { where: origin === 'project' ? t('this project') : t('every room'), who: by ?? t('you') })
+    : t(' removed by {who}', { who: by ?? t('you') }));
   return node;
 }
 
@@ -1663,7 +1665,7 @@ function renderModuleInstalledOrRemoved(event) {
 // lived in a panel somebody had to go back to. So it is offered, and answered, here.
 function renderLocalModel(payload, { asked = false } = {}) {
   const node = el('div', 'system local-model');
-  node.append('local · ', el('b', 'who', '@madre'));
+  node.append('local · ', el('b', 'who', t('@madre')));
   if (payload.model) node.append(` · ${payload.model}`);
   const line = el('p', 'says');
   const action = el('div', 'acts');
@@ -1676,7 +1678,7 @@ function renderLocalModel(payload, { asked = false } = {}) {
       try {
         const result = await fetch('/api/maturity/exam', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ which: 'match' }) }).then((response) => response.json());
         if (result.error) { toast(`MU/TH/UR › ${result.error}`); button.disabled = false; return; }
-        toast('MU/TH/UR › the local model is answering real questions from this room. It takes a few minutes, it spends nothing, and the answer lands here.');
+        toast(t('MU/TH/UR › the local model is answering real questions from this room. It takes a few minutes, it spends nothing, and the answer lands here.'));
       } catch (error) { toast(`The test could not run: ${error.message}`); button.disabled = false; }
     });
     return button;
@@ -1688,10 +1690,10 @@ function renderLocalModel(payload, { asked = false } = {}) {
     const n = checked?.n ?? payload.n ?? 0;
     const passed = checked ? checked.passed : payload.passed;
     line.textContent = passed
-      ? `It answered ${matched} of ${n} real questions from this room where the crew answered them. It is ready to be worked in.`
-      : `It answered ${matched} of ${n} real questions the way the crew did. Not yet — keep working, the archive fills where the work happens.`;
+      ? t('It answered {matched} of {n} real questions from this room where the crew answered them. It is ready to be worked in.', { matched, n })
+      : t('It answered {matched} of {n} real questions the way the crew did. Not yet — keep working, the archive fills where the work happens.', { matched, n });
     if (passed) {
-      const use = el('button', 'primary', 'SEND THE NEXT TURN TO @MADRE');
+      const use = el('button', 'primary', t('SEND THE NEXT TURN TO @MADRE'));
       use.type = 'button';
       use.addEventListener('click', () => {
         els.target.value = 'madre';
@@ -1701,9 +1703,9 @@ function renderLocalModel(payload, { asked = false } = {}) {
       action.append(use);
     }
     action.append(check('CHECK AGAIN'));
-    if (checked?.at) action.append(el('span', 'note', `MEASURED ${agoWords(checked.at).toUpperCase()}`));
+    if (checked?.at) action.append(el('span', 'note', t('MEASURED {when}', { when: agoWords(checked.at).toUpperCase() })));
   } else {
-    line.textContent = 'It is in the room. Nobody has measured it against this project yet: running here is not the same as being of use here.';
+    line.textContent = t('It is in the room. Nobody has measured it against this project yet: running here is not the same as being of use here.');
     action.append(check('CHECK IT AGAINST THIS ROOM'));
   }
   node.append(line, action);
@@ -1715,12 +1717,12 @@ function renderPrivacy(event) {
   const node = el('div', 'system memory privacy');
   if (event.type === 'privacy.purged') {
     const { events, entries, memories } = event.payload;
-    node.append('privacy · ', el('b', 'who', 'PURGE'), ` · ${events} event${events === 1 ? '' : 's'} · ${entries} indexed exchange${entries === 1 ? '' : 's'} · ${memories} memor${memories === 1 ? 'y' : 'ies'} rewritten with the marker`);
+    node.append(t('privacy · '), el('b', 'who', t('PURGE')), ' · ', t('{events} events · {entries} indexed exchanges · {memories} memories rewritten with the marker', { events, entries, memories }));
     return node;
   }
   const { agent, hits, marker } = event.payload;
   node.style.setProperty('--agent', agentColor(agent));
-  node.append('privacy · ', el('b', 'who', `@${agent}`), ` · ${hits} private term${hits === 1 ? '' : 's'} replaced with ${marker}`);
+  node.append(t('privacy · '), el('b', 'who', `@${agent}`), ' · ', t('{n} private terms replaced with {marker}', { n: hits, marker }));
   return node;
 }
 
@@ -1728,16 +1730,18 @@ function renderDistilled(event) {
   const { agent, added, considered, fromSequence, throughSequence, remaining, error, skipped, total, next } = event.payload;
   const node = el('div', `system memory${error ? ' warn' : ''}`);
   node.style.setProperty('--agent', agentColor(agent));
-  node.append('memory · ');
+  node.append(t('memory · '));
   node.append(el('b', 'who', `@${agent}`));
   if (error) {
     // One calm sentence; the whole record waits in the tooltip.
     const first = String(error).split(/\s+last output:|\s+stderr:/i)[0].replace(/\s+/g, ' ').trim();
     const brief = el('span', 'brief', first.length > 120 ? `${first.slice(0, 119)}…` : first);
     brief.title = String(error).slice(0, 2000);
-    node.append(` could not distil #${fromSequence}–#${throughSequence}: `, brief, skipped ? ' · batch skipped' : next ? ` · @${next} takes the next run` : ' · will retry');
+    node.append(t(' could not distil #{from}–#{through}: ', { from: fromSequence, through: throughSequence }), brief, skipped ? t(' · batch skipped') : next ? t(' · @{agent} takes the next run', { agent: next }) : t(' · will retry'));
   } else {
-    node.append(` read ${considered} exchange${considered === 1 ? '' : 's'} (#${fromSequence}–#${throughSequence}) · kept ${added} memor${added === 1 ? 'y' : 'ies'}${Number.isFinite(total) ? ` · ${total} in the archive` : ''}${remaining ? ` · ${remaining} waiting` : ''}`);
+    node.append(t(' read {considered} exchanges (#{from}–#{through}) · kept {added} memories', { considered, from: fromSequence, through: throughSequence, added })
+      + (Number.isFinite(total) ? t(' · {n} in the archive', { n: total }) : '')
+      + (remaining ? t(' · {n} waiting', { n: remaining }) : ''));
   }
   return node;
 }
@@ -1753,7 +1757,7 @@ function attachMemoryUsed(payload) {
   const hint = el('div', 'memory-hint used');
   hint.style.setProperty('--agent', agentColor(payload.sender));
   const carried = used.filter((note) => note.via === 'cascade').length;
-  hint.append(el('span', 'lead', `◉ memory used · ${used.length}${carried ? ` · ${carried} by association` : ''}`));
+  hint.append(el('span', 'lead', t('◉ memory used · {n}', { n: used.length }) + (carried ? t(' · {n} by association', { n: carried }) : '')));
   for (const note of used.slice(0, 3)) {
     const pill = el('button', `pill ${note.kind}${note.via === 'cascade' ? ' carried' : ''}`);
     pill.type = 'button';
@@ -1778,13 +1782,13 @@ function attachMemoryHint(event) {
   col.querySelector?.('.memory-hint')?.remove?.();
   const hint = el('div', 'memory-hint');
   hint.style.setProperty('--agent', agentColor(agent));
-  hint.append(el('span', 'lead', '◉ memory saved'));
+  hint.append(el('span', 'lead', t('◉ memory saved')));
   for (const note of notes.slice(0, 3)) {
     const pill = el('button', `pill ${note.kind}`);
     pill.type = 'button';
     pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
     pill.append(el('b', null, note.kind), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
-    pill.title = `${note.text}\nSaved by @${agent} for every future turn · #${note.fromSequence}–#${note.throughSequence}. Click to see it in NOSTROMO.`;
+    pill.title = `${note.text}\n${t('Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in NOSTROMO.', { agent, from: note.fromSequence, through: note.throughSequence })}`;
     pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
     hint.append(pill);
   }
@@ -1798,11 +1802,11 @@ function renderMotherAlert(event) {
   const { kind, code, strikes, lockedForMs, message, n } = event.payload;
   const node = el('div', 'system mother-alert');
   const head = el('div', 'head');
-  head.append(el('b', null, 'MU/TH/UR › TO ALL CREW'), kind === 'tamper' ? ' · CHANNEL TAMPERED' : ` · CODE000 · ${strikes} STRIKES · ARCHIVE SEALED ${Math.max(1, Math.round((lockedForMs ?? 0) / 60000))} MIN`);
+  head.append(el('b', null, t('MU/TH/UR › TO ALL CREW')), kind === 'tamper' ? t(' · CHANNEL TAMPERED') : t(' · CODE000 · {n} STRIKES · ARCHIVE SEALED {min} MIN', { n: strikes, min: Math.max(1, Math.round((lockedForMs ?? 0) / 60000)) }));
   node.append(head);
   if (message) node.append(el('div', 'clear', message));
   const coded = el('code', 'code', code.length > 220 ? `${code.slice(0, 219)}…` : code);
-  coded.title = `Message #${n}, sealed under MOTHER's key in .pulse/mother.env. Only the crew reads it in clear.`;
+  coded.title = t("Message #{n}, sealed under MOTHER's key in .pulse/mother.env. Only the crew reads it in clear.", { n });
   node.append(coded);
   return node;
 }
@@ -1810,7 +1814,7 @@ function renderMotherAlert(event) {
 function renderForgotten(event) {
   const { kind, text, remaining } = event.payload;
   const node = el('div', 'system memory forgotten');
-  node.append('memory · the human forgot a ');
+  node.append(t('memory · the human forgot a '));
   node.append(el('b', 'who', kind));
   node.append(`: “${text}”${Number.isFinite(remaining) ? ` · ${remaining} left in the archive` : ''}`);
   return node;
@@ -1821,15 +1825,15 @@ function renderHandoff(event) {
   const node = el('div', 'system handoff');
   node.style.setProperty('--from', agentColor(fromAgent));
   node.style.setProperty('--to', agentColor(toAgent));
-  node.append('handoff ');
+  node.append(t('handoff '));
   node.append(el('b', 'from', `@${fromAgent}`));
   node.append(' → ');
   node.append(el('b', 'to', `@${toAgent}`));
   node.append(messageCount > 0
-    ? ` · ${messageCount} message${messageCount === 1 ? '' : 's'} carried${omittedMessages ? ` · ${omittedMessages} older stay in the record` : ''}`
-    : ' · no prior context');
+    ? t(' · {n} messages carried', { n: messageCount }) + (omittedMessages ? t(' · {n} older stay in the record', { n: omittedMessages }) : '')
+    : t(' · no prior context'));
   if (kind && kind !== 'automatic') node.append(` · ${kind}`);
-  node.title = `The receiving agent gets the most recent transcript that fits its context allowance (${omittedMessages ? `${omittedMessages} older messages did not fit; they remain in the room log` : 'everything fit'}). Adjust with PULSE_CONTEXT_MAX_CHARS.`;
+  node.title = t('The receiving agent gets the most recent transcript that fits its context allowance ({fit}). Adjust with PULSE_CONTEXT_MAX_CHARS.', { fit: omittedMessages ? t('{n} older messages did not fit; they remain in the room log', { n: omittedMessages }) : t('everything fit') });
   state.lastSender = null;
   return node;
 }
@@ -1842,13 +1846,13 @@ function renderWarning(event) {
   if (level === 'exhausted') recordFailure({ time: event.timestamp, agent, error: message, warning: true });
   const node = el('div', `system ${level === 'warning' ? 'warn' : 'crit'}`);
   node.title = message;
-  const scope = source === 'room-soft-budget' ? 'local budget' : source?.startsWith('official') ? 'provider quota' : source === 'test-simulation' ? 'simulated window' : 'usage window';
-  node.append(el('b', null, byProjection ? 'projection · ' : `${level} · `));
+  const scope = source === 'room-soft-budget' ? t('local budget') : source?.startsWith('official') ? t('provider quota') : source === 'test-simulation' ? t('simulated window') : t('usage window');
+  node.append(el('b', null, byProjection ? t('projection · ') : `${level} · `));
   node.append(el('b', null, `@${agent} `));
   node.append(byProjection
-    ? `at ${Math.round(usedPercent)}% of ${scope} · next turn like the last → ${Math.round(projectedPercent)}%`
-    : `${Math.round(usedPercent)}% of ${scope} used`);
-  if (alternatives.length) node.append(` · continue with ${alternatives.map((id) => `@${id}`).join(' / ')}`);
+    ? t('at {pct}% of {scope} · next turn like the last → {projected}%', { pct: Math.round(usedPercent), scope, projected: Math.round(projectedPercent) })
+    : t('{pct}% of {scope} used', { pct: Math.round(usedPercent), scope }));
+  if (alternatives.length) node.append(t(' · continue with {who}', { who: alternatives.map((id) => `@${id}`).join(' / ') }));
   const gauge = el('span', 'gauge');
   if (byProjection) {
     const next = el('span', 'next');
@@ -1867,8 +1871,8 @@ function renderPlanIgnored(event) {
   const { orchestrator, reasons = [] } = event.payload;
   const node = el('div', 'system plan failed');
   node.style.setProperty('--agent', agentColor(orchestrator));
-  node.append(el('b', null, 'plan · '));
-  node.append(`@${orchestrator}'s plan block was not run · ${[...new Set(reasons)].join(' · ')} · ask again and it will fix the block`);
+  node.append(el('b', null, t('plan · ')));
+  node.append(t("@{agent}'s plan block was not run · {why} · ask again and it will fix the block", { agent: orchestrator, why: [...new Set(reasons)].join(' · ') }));
   state.lastSender = null;
   return node;
 }
@@ -1876,7 +1880,7 @@ function renderPlanIgnored(event) {
 function renderLeaseRefused(event) {
   const { message } = event.payload;
   const node = el('div', 'system lease refused');
-  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(el('b', null, t('MU/TH/UR › ')));
   node.append(message);
   if (!replaying) toast(`MU/TH/UR › ${message}`);
   state.lastSender = null;
@@ -1890,10 +1894,10 @@ function renderCreateReverted(event) {
   const { agent, existing = [], forbidden = [] } = event.payload;
   const node = el('div', 'system memory warn');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append('create · ', el('b', 'who', `@${agent}`));
-  if (existing.length) node.append(` · ${existing.length} existing file${existing.length === 1 ? '' : 's'} put back, CREATE only adds: ${existing.slice(0, 4).join(', ')}${existing.length > 4 ? '…' : ''}`);
-  if (forbidden.length) node.append(` · ${forbidden.length} write${forbidden.length === 1 ? '' : 's'} into forbidden zones reverted`);
-  node.append(' · need to change existing files? ask again in #3 CONTROL');
+  node.append(t('create · '), el('b', 'who', `@${agent}`));
+  if (existing.length) node.append(t(' · {n} existing files put back, CREATE only adds: {files}', { n: existing.length, files: existing.slice(0, 4).join(', ') + (existing.length > 4 ? '…' : '') }));
+  if (forbidden.length) node.append(t(' · {n} writes into forbidden zones reverted', { n: forbidden.length }));
+  node.append(t(' · need to change existing files? ask again in #3 CONTROL'));
   return node;
 }
 
@@ -1901,9 +1905,9 @@ function renderControlStarted(event) {
   const { agent, commit, message } = event.payload;
   const node = el('div', 'system control');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, 'CONTROL · '), el('b', 'who', `@${agent}`), ` holds the project · checkpoint `, el('code', null, (commit ?? '').slice(0, 7)));
+  node.append(el('b', null, t('CONTROL · ')), el('b', 'who', `@${agent}`), t(' holds the project · checkpoint '), el('code', null, (commit ?? '').slice(0, 7)));
   node.title = message;
-  if (!replaying) toast(`MU/TH/UR › @${agent} holds CONTROL. Checkpoint taken; UNDO will be one click.`);
+  if (!replaying) toast(t('MU/TH/UR › @{agent} holds CONTROL. Checkpoint taken; UNDO will be one click.', { agent }));
   state.lastSender = null;
   return node;
 }
@@ -1913,13 +1917,13 @@ function renderControlChanged(event) {
   node.id = `control-${checkpointId}`;
   node.style.setProperty('--agent', agentColor(agent));
   const head = el('div', 'head');
-  head.append(el('b', null, 'CONTROL · '), el('b', 'who', `@${agent}`), files.length ? ` changed ${files.length} file${files.length === 1 ? '' : 's'}` : ' changed nothing');
+  head.append(el('b', null, t('CONTROL · ')), el('b', 'who', `@${agent}`), files.length ? t(' changed {n} files', { n: files.length }) : t(' changed nothing'));
   node.append(head);
   if (files.length) {
     const list = el('ul', 'files');
     for (const file of files.slice(0, 40)) {
       const item = el('li');
-      item.append(el('span', `st ${file.status}`, { A: 'added', M: 'modified', D: 'deleted', R: 'renamed' }[file.status] ?? file.status));
+      item.append(el('span', `st ${file.status}`, { A: t('added'), M: t('modified'), D: t('deleted'), R: t('renamed') }[file.status] ?? file.status));
       const link = el('button', 'file-ref', file.path);
       link.type = 'button';
       if (file.status !== 'D') link.addEventListener('click', () => openViewer({ root: 'project', path: file.path, label: `/${file.path} · ${file.status}` }));
@@ -1927,22 +1931,22 @@ function renderControlChanged(event) {
       item.append(link);
       list.append(item);
     }
-    if (files.length > 40) list.append(el('li', null, `… and ${files.length - 40} more`));
+    if (files.length > 40) list.append(el('li', null, t('… and {n} more', { n: files.length - 40 })));
     node.append(list);
     if (stat) { const pre = el('pre', 'stat', stat.split('\n').slice(-1)[0]); pre.title = stat; node.append(pre); }
   }
-  if (forbiddenReverted.length) node.append(el('div', 'forbidden', `${forbiddenReverted.length} write${forbiddenReverted.length === 1 ? '' : 's'} into forbidden zones reverted: ${forbiddenReverted.join(', ')}`));
+  if (forbiddenReverted.length) node.append(el('div', 'forbidden', t('{n} writes into forbidden zones reverted: {where}', { n: forbiddenReverted.length, where: forbiddenReverted.join(', ') })));
   if (files.length) {
-    const undo = el('button', 'undo', 'UNDO · RESTORE CHECKPOINT');
+    const undo = el('button', 'undo', t('UNDO · RESTORE CHECKPOINT'));
     undo.type = 'button';
-    undo.title = 'Put the project back exactly as it was before this CONTROL turn.';
+    undo.title = t('Put the project back exactly as it was before this CONTROL turn.');
     undo.addEventListener('click', async () => {
       undo.disabled = true;
       try {
         const response = await fetch(`/api/control/${checkpointId}/undo`, { method: 'POST' });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-        undo.textContent = 'RESTORED';
+        undo.textContent = t('RESTORED');
       } catch (error) { toast(`MU/TH/UR › ${error.message}`); undo.disabled = false; }
     });
     node.append(undo);
@@ -1955,10 +1959,10 @@ function renderControlReverted(event) {
   const { agent, checkpointId, restored = [], removed = [], message } = event.payload;
   const node = el('div', 'system control reverted');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, 'CONTROL · '), `project restored to the checkpoint before @${agent}'s turn · ${restored.length} restored · ${removed.length} removed`);
+  node.append(el('b', null, t('CONTROL · ')), t("project restored to the checkpoint before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
   node.title = message;
   const card = document.getElementById(`control-${checkpointId}`);
-  card?.querySelector('.undo')?.replaceWith(el('span', 'outcome', 'RESTORED'));
+  card?.querySelector('.undo')?.replaceWith(el('span', 'outcome', t('RESTORED')));
   if (!replaying) toast(`MU/TH/UR › ${message}`);
   state.lastSender = null;
   return node;
@@ -1968,23 +1972,23 @@ function renderLeaseMissing(event) {
   const { agent, requester, text, message } = event.payload;
   const node = el('div', 'system lease missing');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(el('b', null, t('MU/TH/UR › ')));
   node.append(message);
   const actions = el('span', 'actions');
-  const resend = el('button', 'resend', `RESEND TO @${agent.toUpperCase()} WITH CREATE`);
+  const resend = el('button', 'resend', t('RESEND TO @{agent} WITH CREATE', { agent: agent.toUpperCase() }));
   resend.type = 'button';
-  resend.title = 'Send this same request from you, with a creation lease.';
+  resend.title = t('Send this same request from you, with a creation lease.');
   resend.addEventListener('click', async () => {
     resend.disabled = true;
     try {
       const response = await fetch('/api/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, target: agent, model: state.chosenModel[agent] ?? null, attachments: [], create: true }) });
       if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error ?? `HTTP ${response.status}`); }
-      resend.textContent = 'RESENT WITH CREATE';
-    } catch (error) { toast(`Could not resend: ${error.message}`); resend.disabled = false; }
+      resend.textContent = t('RESENT WITH CREATE');
+    } catch (error) { toast(t('It could not be resent: {error}', { error: error.message })); resend.disabled = false; }
   });
-  const standing = el('button', 'standing', 'ALWAYS FOR THIS AGENT');
+  const standing = el('button', 'standing', t('ALWAYS FOR THIS AGENT'));
   standing.type = 'button';
-  standing.title = `Give @${agent} a standing lease in CONNECTIONS: every turn may create files.`;
+  standing.title = t('Give @{agent} a standing lease in CONNECTIONS: every turn may create files.', { agent });
   standing.addEventListener('click', () => {
     openMother();
     if (!settingsUI.open) settingsUI.button.click();
@@ -2005,7 +2009,7 @@ function renderModeRequest(event) {
   node.id = `mode-request-${requestId}`;
   node.style.setProperty('--agent', agentColor(agent));
   const head = el('div', 'head');
-  head.append(el('b', null, 'MU/TH/UR › '), el('b', 'who', `@${agent}`), ` asks `, el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`), ` for step ${step}/${totalSteps} of @${orchestrator}'s plan`);
+  head.append(el('b', null, t('MU/TH/UR › ')), el('b', 'who', `@${agent}`), ` asks `, el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`), ` for step ${step}/${totalSteps} of @${orchestrator}'s plan`);
   node.append(head);
   const quote = el('div', 'quote', text.length > 220 ? `${text.slice(0, 220)}…` : text);
   quote.title = text;
@@ -2023,9 +2027,9 @@ function renderModeRequest(event) {
       for (const other of actions.querySelectorAll('button')) other.disabled = false;
     }
   };
-  const once = el('button', 'grant', 'GRANT ONCE'); once.type = 'button'; once.title = `@${agent} may add files to the project for this step only.`;
-  const plan = el('button', 'grant plan', 'GRANT FOR PLAN'); plan.type = 'button'; plan.title = 'Every remaining writable step of this plan shares one lease directory.';
-  const deny = el('button', 'deny', 'DENY'); deny.type = 'button'; deny.title = `@${agent} answers read-only and says what it would have created.`;
+  const once = el('button', 'grant', t('GRANT ONCE')); once.type = 'button'; once.title = `@${agent} may add files to the project for this step only.`;
+  const plan = el('button', 'grant plan', t('GRANT FOR PLAN')); plan.type = 'button'; plan.title = t('Every remaining writable step of this plan shares one lease directory.');
+  const deny = el('button', 'deny', t('DENY')); deny.type = 'button'; deny.title = `@${agent} answers read-only and says what it would have created.`;
   once.addEventListener('click', () => decide('once', once));
   plan.addEventListener('click', () => decide('plan', plan));
   deny.addEventListener('click', () => decide('deny', deny));
@@ -2069,10 +2073,10 @@ function renderLease(event) {
   node.append(el('b', null, standing ? 'default #2 · ' : escalated ? `#2 granted on request${escalated === 'plan' ? ' · whole plan' : ''} · ` : delegated ? `#2 by @${grantedBy} · ` : 'create · '));
   node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} `);
   if (outDir === '.' || !outDir) {
-    node.append('anywhere in the project · existing files stay untouched');
-    if (scratchDir) { node.append(' · scratch '); const link = el('a', 'file-link', scratchDir); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); }); node.append(link); }
+    node.append(t('anywhere in the project · existing files stay untouched'));
+    if (scratchDir) { node.append(t(' · scratch ')); const link = el('a', 'file-link', scratchDir); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); }); node.append(link); }
   } else {
-    node.append('in ');
+    node.append(t('in '));
     const link = el('a', 'file-link', outDir);
     link.href = '#';
     link.addEventListener('click', (ev) => { ev.preventDefault(); });
@@ -2118,9 +2122,9 @@ function renderAlert(event) {
   const { message } = event.payload;
   if (!replaying) { state.brakeArmed = true; updateStopAll(); }
   const node = el('div', 'system alert');
-  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(el('b', null, t('MU/TH/UR › ')));
   node.append(message.replace(/\s*Type STOPALL[^.]*\.?$/i, '').replace(/\s*STOPALL halts[^.]*\.?$/i, ''));
-  node.append(el('span', 'cmd', 'STOPALL'));
+  node.append(el('span', 'cmd', t('STOPALL')));
   // A replayed alert is history: it stays in the thread, it does not shout again or arm the brake.
   if (!replaying) toast(`MU/TH/UR › ${message}`);
   state.lastSender = null;
@@ -2131,7 +2135,7 @@ function renderHalted(event) {
   const { reason, plans, turns, agents = [] } = event.payload;
   const node = el('div', 'system halted');
   state.brakeArmed = false;
-  node.append(el('b', null, 'MU/TH/UR › '));
+  node.append(el('b', null, t('MU/TH/UR › ')));
   node.append(plans || turns
     ? `all stop · ${plans} plan${plans === 1 ? '' : 's'}, ${turns} turn${turns === 1 ? '' : 's'} halted${agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : ''} · ${reason}`
     : `all stop · nothing was running · ${reason}`);
@@ -2146,9 +2150,9 @@ async function stopAll() {
   if (button) button.disabled = true;
   try {
     const response = await fetch('/api/stop-all', { method: 'POST' });
-    if (!response.ok) { toast('STOPALL failed to reach the room.'); return; }
+    if (!response.ok) { toast(t('STOPALL failed to reach the room.')); return; }
     const result = await response.json().catch(() => ({}));
-    if (!result.plans && !result.turns) toast('MU/TH/UR › all quiet. nothing was running.');
+    if (!result.plans && !result.turns) toast(t('MU/TH/UR › all quiet. nothing was running.'));
     else toast(`MU/TH/UR › all stop. ${result.plans} plan${result.plans === 1 ? '' : 's'}, ${result.turns} turn${result.turns === 1 ? '' : 's'} halted.`);
   } finally {
     if (button) button.disabled = false;
@@ -2175,7 +2179,7 @@ function renderPlanEvent(event) {
   updateStopAll();
   const node = el('div', `system plan${event.type === 'plan.stopped' ? ' failed' : ''}`);
   node.style.setProperty('--agent', agentColor(orchestrator));
-  node.append(el('b', null, 'plan · '));
+  node.append(el('b', null, t('plan · ')));
   if (event.type === 'plan.created') {
     node.id = `plan-${planId}`;
     node.append(`@${orchestrator} puts `);
@@ -2185,13 +2189,13 @@ function renderPlanEvent(event) {
       if (Number.isInteger(step.mode)) node.append(el('span', `step-mode m${step.mode}`, `#${step.mode}`));
     });
     node.append(` to work${closing ? ', then closes' : ''}`);
-    const stop = el('button', 'stop', 'STOP');
+    const stop = el('button', 'stop', t('STOP'));
     stop.type = 'button';
-    stop.title = 'Stop the remaining steps of this plan';
+    stop.title = t('Stop the remaining steps of this plan');
     stop.addEventListener('click', async () => {
       stop.disabled = true;
       const response = await fetch(`/api/plans/${planId}/stop`, { method: 'POST' });
-      if (!response.ok) toast('That plan is no longer running.');
+      if (!response.ok) toast(t('That plan is no longer running.'));
     });
     node.append(stop);
   } else {
@@ -2247,7 +2251,7 @@ function applyQuota(event) {
 function renderCleared(event) {
   const { agent, usedPercent, source, message } = event.payload;
   const node = el('div', 'system recovered');
-  node.append(el('b', null, 'clear · '), el('b', null, `@${agent} `), `${Math.round(usedPercent)}% of ${source === 'room-soft-budget' ? 'local window' : 'provider limit'} · window reset`);
+  node.append(el('b', null, t('clear · ')), el('b', null, `@${agent} `), `${Math.round(usedPercent)}% of ${source === 'room-soft-budget' ? 'local window' : 'provider limit'} · window reset`);
   node.title = message;
   const entry = state.agents.get(agent);
   if (entry && source !== 'room-soft-budget') { entry.officialPercent = usedPercent; entry.officialResetAt = event.payload.resetAt ?? null; }
@@ -2289,7 +2293,7 @@ function renderEventNode(event) {
     case 'connection.key.set': {
       const { agent, label, provider, detail } = event.payload;
       node = paint(el('div', 'system connections'), agent);
-      node.append(el('b', null, 'connections › '), `${label ?? agent} signed in with a key${provider ? ` · ${provider}` : ''}${detail ? ` · ${detail}` : ''}`);
+      node.append(el('b', null, t('connections › ')), `${label ?? agent} signed in with a key${provider ? ` · ${provider}` : ''}${detail ? ` · ${detail}` : ''}`);
       state.lastSender = null;
       break;
     }
@@ -2507,7 +2511,7 @@ const formatSize = (bytes) => bytes == null ? '' : bytes < 1024 ? `${bytes} B` :
 const CODE_EXT = /\.(m?[jt]sx?|py|rb|go|rs|java|kt|swift|c|h|cpp|hpp|cs|php|sh|zsh|css|scss|html?|json|ya?ml|toml|sql|md)$/i;
 
 async function loadTreeLevel(path, list) {
-  list.replaceChildren(el('li', 'empty-dir', 'loading…'));
+  list.replaceChildren(el('li', 'empty-dir', t('loading…')));
   try {
     const response = await fetch(`/api/tree?path=${encodeURIComponent(path)}`);
     const data = await response.json();
@@ -2515,7 +2519,7 @@ async function loadTreeLevel(path, list) {
     list.replaceChildren();
     if (!data.entries.length) list.append(el('li', 'empty-dir', 'empty'));
     for (const entry of data.entries) list.append(treeNode(path === '.' ? entry.name : `${path}/${entry.name}`, entry));
-    if (data.truncated) list.append(el('li', 'empty-dir', 'more entries not shown'));
+    if (data.truncated) list.append(el('li', 'empty-dir', t('more entries not shown')));
   } catch (error) {
     list.replaceChildren(el('li', 'error', `could not list: ${error.message}`));
   }
@@ -2598,12 +2602,12 @@ function renderChats() {
     open.addEventListener('click', () => { if (chat.id !== chats.active) void openChat(chat.id); });
     const drop = el('button', 'chat-drop', '×');
     drop.type = 'button';
-    drop.title = 'Delete this conversation. Its transcript goes; what the archive learned from it stays.';
+    drop.title = t('Delete this conversation. Its transcript goes; what the archive learned from it stays.');
     drop.addEventListener('click', async (event) => {
       event.stopPropagation();
       if (!drop.classList.contains('sure')) {
         drop.classList.add('sure');
-        drop.title = 'Press again to delete this conversation.';
+        drop.title = t('Press again to delete this conversation.');
         setTimeout(() => { drop.classList.remove('sure'); }, 4000);
         return;
       }
@@ -2681,8 +2685,8 @@ function armExpendable() {
   updateCrewLabel();
   updatePlaceholder();
   const line = el('div', 'system mother');
-  line.append(el('b', null, 'MU/TH/UR › '));
-  line.append('end of record. nothing else is down here, human. crew status under review.');
+  line.append(el('b', null, t('MU/TH/UR › ')));
+  line.append(t('end of record. nothing else is down here, human. crew status under review.'));
   removeEmpty();
   els.column.append(line);
   scrollToEnd();
@@ -2968,7 +2972,7 @@ async function runSlashCommand(text) {
     if (name === 'image') {
       const capable = [...state.agents.values()].filter((agent) => agent.ready && state.capabilities[agent.id]?.scopes?.imageGen?.enabled).map((agent) => agent.id);
       if (!capable.includes(target)) {
-        if (!capable.length) { toast('MU/TH/UR › nobody in the room can generate images right now: enable Image Studio in MODULES or switch on GENERATE IMAGES for an agent in CONNECTIONS.'); return { handled: true }; }
+        if (!capable.length) { toast(t('MU/TH/UR › nobody in the room can generate images right now: enable Image Studio in MODULES or switch on GENERATE IMAGES for an agent in CONNECTIONS.')); return { handled: true }; }
         toast(`MU/TH/UR › @${target} cannot generate images here; routing to @${capable[0]}.`);
         target = capable[0];
         els.target.value = target;
@@ -3011,7 +3015,7 @@ function renderPendingAttachments() {
     else chip.append(el('span', 'kind', (item.name.split('.').pop() ?? 'file').slice(0, 4).toUpperCase()));
     chip.append(el('span', 'name', item.uploading ? `${item.name} · uploading…` : item.name));
     const remove = el('button', 'remove', '×');
-    remove.type = 'button'; remove.title = 'Remove';
+    remove.type = 'button'; remove.title = t('Remove');
     remove.addEventListener('click', () => { state.pending = state.pending.filter((other) => other !== item); renderPendingAttachments(); });
     chip.append(remove);
     els.attachments.append(chip);
@@ -3065,7 +3069,7 @@ function markIntruder(ms) {
   state.intruder = ms > 0;
   els.composer.classList.toggle('intruder', state.intruder);
   updateCrewLabel();
-  if (state.intruder) intruderTimer = setTimeout(() => { state.intruder = false; els.composer.classList.remove('intruder'); updateCrewLabel(); toast('MU/TH/UR › the archive is open again. Behave.'); }, ms);
+  if (state.intruder) intruderTimer = setTimeout(() => { state.intruder = false; els.composer.classList.remove('intruder'); updateCrewLabel(); toast(t('MU/TH/UR › the archive is open again. Behave.')); }, ms);
 }
 fetch('/api/mother').then((response) => response.json()).then((status) => { if ((status?.mother?.lockedForMs ?? 0) > 0) markIntruder(status.mother.lockedForMs); }).catch(() => {});
 
@@ -3162,7 +3166,7 @@ function syncAshUI(enabled) {
 els.ashToggle.addEventListener('click', () => {
   if (!state.ashInstalled) return;
   setAsh(!state.ash, { wink: true });
-  if (state.ash) toast('MU/TH/UR › ASH: every agent will answer in compact prose. What you write is never altered.');
+  if (state.ash) toast(t('MU/TH/UR › ASH: every agent will answer in compact prose. What you write is never altered.'));
   els.input.focus();
 });
 els.attach.addEventListener('click', () => els.fileInput.click());
@@ -3180,7 +3184,7 @@ els.composer.addEventListener('submit', async (event) => {
   const text = els.input.value.trim();
   const ready = state.pending.filter((item) => item.id && !item.uploading);
   if (!text && !ready.length) return;
-  if (state.pending.some((item) => item.uploading)) { toast('An attachment is still uploading.'); return; }
+  if (state.pending.some((item) => item.uploading)) { toast(t('An attachment is still uploading.')); return; }
   if (STOPALL.test(text)) {
     // Master command: never reaches an agent.
     els.input.value = '';
@@ -3265,16 +3269,16 @@ function recordFailure(entry) {
 
 function commandBlock(lines) {
   const block = el('div', 'mother-cmd');
-  const copy = el('button', 'copy', 'COPY');
+  const copy = el('button', 'copy', t('COPY'));
   copy.type = 'button';
   const runnable = lines.filter((line) => !line.trim().startsWith('#'));
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(runnable.join('\n'));
-      copy.textContent = 'COPIED';
-      setTimeout(() => { copy.textContent = 'COPY'; }, 1500);
+      copy.textContent = t('COPIED');
+      setTimeout(() => { copy.textContent = t('COPY'); }, 1500);
     } catch {
-      copy.textContent = 'SELECT';
+      copy.textContent = t('SELECT');
     }
   });
   block.append(copy);
@@ -3297,11 +3301,11 @@ function conditionCard(condition, { hit = false, agent = null, hintAgent = null 
   card.append(tags);
   card.append(el('h4', null, condition.title));
   const diagnosis = el('p');
-  diagnosis.append(el('b', null, 'DIAGNOSIS'));
+  diagnosis.append(el('b', null, t('DIAGNOSIS')));
   diagnosis.append(condition.diagnosis);
   card.append(diagnosis);
   const remedy = el('p', 'remedy');
-  remedy.append(el('b', null, 'REMEDY'));
+  remedy.append(el('b', null, t('REMEDY')));
   remedy.append(condition.remedy);
   card.append(remedy);
   const actions = conditionActions(condition, hintAgent ?? agent ?? condition.agent ?? null);
@@ -3312,12 +3316,12 @@ function conditionCard(condition, { hit = false, agent = null, hintAgent = null 
       button.type = 'button';
       button.addEventListener('click', async () => {
         button.disabled = true;
-        try { await saveSettingNow(action.patch, action.done); button.textContent = 'APPLIED ✓'; }
+        try { await saveSettingNow(action.patch, action.done); button.textContent = t('APPLIED ✓'); }
         catch (error) { toast(`Could not apply: ${error.message}`); button.disabled = false; }
       });
       bar.append(button);
     }
-    bar.append(el('span', 'note', 'APPLIES NOW · TERMINAL COMMANDS BELOW ARE THE LAUNCH-TIME ALTERNATIVE'));
+    bar.append(el('span', 'note', t('APPLIES NOW · TERMINAL COMMANDS BELOW ARE THE LAUNCH-TIME ALTERNATIVE')));
     card.append(bar);
   }
   const chosen = agent ?? condition.agent ?? null;
@@ -3354,7 +3358,7 @@ function renderMotherRecorded() {
     key: 'recorded', open: !collapsed,
   });
   if (!state.failures.length) {
-    body.append(el('p', 'mother-answer', 'NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.'));
+    body.append(el('p', 'mother-answer', t('NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.')));
     return;
   }
   for (const failure of [...state.failures].reverse().slice(0, 40)) {
@@ -3367,7 +3371,7 @@ function renderMotherRecorded() {
     if (full.length > firstLine.length) {
       // One line by default; click to read the whole record and back.
       errorNode.classList.add('more');
-      errorNode.title = 'Expand';
+      errorNode.title = t('Expand');
       errorNode.tabIndex = 0;
       const flip = () => {
         const open = errorNode.classList.toggle('open');
@@ -3380,7 +3384,7 @@ function renderMotherRecorded() {
     rowNode.append(errorNode);
     const matches = diagnose(failure.error, failure.agent);
     const links = el('span', 'k');
-    if (!matches.length) links.append(el('span', 'none', 'UNCLASSIFIED'));
+    if (!matches.length) links.append(el('span', 'none', t('UNCLASSIFIED')));
     for (const condition of matches) {
       const jump = el('button', null, condition.id);
       jump.type = 'button';
@@ -3417,11 +3421,11 @@ function answerQuery(query) {
   const text = query.trim();
   if (!text) { mother.answer.textContent = ''; return renderMotherKnown(); }
   if (/special order|937|expendable/i.test(text)) {
-    mother.answer.textContent = 'NO SPECIAL ORDERS ON THIS SHIP. THE CREW IS NOT EXPENDABLE. RESTATE INQUIRY.';
+    mother.answer.textContent = t('NO SPECIAL ORDERS ON THIS SHIP. THE CREW IS NOT EXPENDABLE. RESTATE INQUIRY.');
     return renderMotherKnown([]);
   }
   if (/^(help|\?)$/i.test(text)) {
-    mother.answer.textContent = 'INQUIRY ACCEPTS: AN AGENT NAME · A SYMPTOM · A KEYWORD SUCH AS TIMEOUT, LOGIN, PORT, BUDGET.';
+    mother.answer.textContent = t('INQUIRY ACCEPTS: AN AGENT NAME · A SYMPTOM · A KEYWORD SUCH AS TIMEOUT, LOGIN, PORT, BUDGET.');
     return renderMotherKnown();
   }
   const byError = diagnose(text);
@@ -3429,7 +3433,7 @@ function answerQuery(query) {
   const list = [...new Set([...byError, ...bySearch])];
   const recordedHits = new Set(state.failures.flatMap((failure) => diagnose(failure.error, failure.agent).map((c) => c.id)));
   if (!list.length) {
-    mother.answer.textContent = 'UNABLE TO COMPUTE. REQUEST CLARIFICATION.';
+    mother.answer.textContent = t('UNABLE TO COMPUTE. REQUEST CLARIFICATION.');
     return renderMotherKnown([]);
   }
   mother.answer.textContent = `${list.length} CONDITION${list.length === 1 ? '' : 'S'} MATCH INQUIRY.${byError.length ? ' PROBABLE CAUSE HIGHLIGHTED.' : ''}`;
@@ -3498,7 +3502,7 @@ function renderModuleEvent(event) {
   const { id, name, command, platforms = [], ok, code, error, status, problems = [] } = event.payload;
   const failed = (event.type.endsWith('finished') && !ok) || event.type.endsWith('refused');
   const node = el('div', `system module${failed ? ' failed' : ''}`);
-  node.append(el('b', null, 'MODULES › '));
+  node.append(el('b', null, t('MODULES › ')));
   if (event.type === 'extension.install.refused') {
     node.append(`${name} not installed · ${problems.join(' ')}`);
     modules.installing = null;
@@ -3541,22 +3545,22 @@ function renderEyecat(event) {
   const node = el('div', 'command-card eyecat');
   node.dataset.eyecat = finding.key;
   const head = el('div', 'head');
-  head.append(el('b', null, '◉ EYECAT'), el('span', null, finding.kind === 'unsupported' ? 'a note its own sources do not support' : 'two memories that cannot both be true'));
+  head.append(el('b', null, t('◉ EYECAT')), el('span', null, finding.kind === 'unsupported' ? 'a note its own sources do not support' : 'two memories that cannot both be true'));
   if (finding.confidence !== null && finding.confidence !== undefined) head.append(el('span', 'args', `${Math.round(finding.confidence * 100)}% · judged by @${finding.judge}`));
   else head.append(el('span', 'args', `judged by @${finding.judge}`));
   node.append(head);
 
   const claim = el('div', 'eyecat-claim');
-  claim.append(el('b', null, 'IN DOUBT'), el('p', null, finding.claim.text));
+  claim.append(el('b', null, t('IN DOUBT')), el('p', null, finding.claim.text));
   node.append(claim);
   if (finding.against) {
     const against = el('div', 'eyecat-against');
-    against.append(el('b', null, 'AGAINST'), el('p', null, finding.against.text));
+    against.append(el('b', null, t('AGAINST')), el('p', null, finding.against.text));
     node.append(against);
   }
   if (finding.correction) {
     const better = el('div', 'eyecat-correction');
-    better.append(el('b', null, 'WHAT SEEMS TRUE'), el('p', null, finding.correction));
+    better.append(el('b', null, t('WHAT SEEMS TRUE')), el('p', null, finding.correction));
     node.append(better);
   }
 
@@ -3572,11 +3576,11 @@ function renderEyecat(event) {
       toast(response?.error ?? 'EYECAT could not be answered.');
     }
   };
-  const confirm = el('button', 'primary', 'IT IS FALSE');
-  confirm.title = 'Files it as an aberration and takes the memory out of every turn. Reversible from NOSTROMO.';
+  const confirm = el('button', 'primary', t('IT IS FALSE'));
+  confirm.title = t('Files it as an aberration and takes the memory out of every turn. Reversible from NOSTROMO.');
   confirm.addEventListener('click', () => { void answer('confirm'); });
-  const dismiss = el('button', null, 'IT STANDS');
-  dismiss.title = 'The room was right. This pair is never raised again.';
+  const dismiss = el('button', null, t('IT STANDS'));
+  dismiss.title = t('The room was right. This pair is never raised again.');
   dismiss.addEventListener('click', () => { void answer('dismiss'); });
   actions.append(confirm, dismiss);
   node.append(actions);
@@ -3715,7 +3719,7 @@ function cardShell(item, { on, state: stateText }) {
   const top = el('div', 'top');
   top.append(el('h4', null, item.name));
   if (item.external) {
-    const dev = el('span', 'dev-tag', 'DEV');
+    const dev = el('span', 'dev-tag', t('DEV'));
     dev.title = t('Your module · {where} · {file}', { where: item.origin === 'project' ? t('this project') : t('every room'), file: item.file });
     top.append(dev);
   }
@@ -3856,7 +3860,7 @@ modules.file?.addEventListener('change', async () => {
   const file = modules.file.files?.[0];
   modules.file.value = '';
   if (!file) return;
-  if (!/\.m?js$/.test(file.name)) { toast('MU/TH/UR › a module is a .mjs file.'); return; }
+  if (!/\.m?js$/.test(file.name)) { toast(t('MU/TH/UR › a module is a .mjs file.')); return; }
   if (!window.confirm(`Install ${file.name}?\n\nA module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.`)) return;
   let text;
   try { text = await file.text(); } catch (error) { toast(`Could not read that file: ${error.message}`); return; }
@@ -3922,17 +3926,17 @@ async function updateModule(item, button) {
   box.append(commandBlock([asked.result.plan.display]));
   if (asked.result.plan.note) box.append(el('span', 'note', asked.result.plan.note));
   const row = el('div', 'actions');
-  const go = el('button', 'primary', 'RUN IT');
+  const go = el('button', 'primary', t('RUN IT'));
   go.type = 'button';
   go.addEventListener('click', async () => {
     go.disabled = true;
     const ran = await ask(true);
     if (!ran.ok) { toast(`MU/TH/UR › ${ran.result.error ?? 'the update did not start.'}`); go.disabled = false; return; }
-    toast('MU/TH/UR › updating. The output is in the room, and the card refreshes when it finishes.');
+    toast(t('MU/TH/UR › updating. The output is in the room, and the card refreshes when it finishes.'));
     box.remove();
     await refreshModules();
   });
-  const no = el('button', null, 'NOT NOW');
+  const no = el('button', null, t('NOT NOW'));
   no.type = 'button';
   no.addEventListener('click', () => { box.remove(); button.disabled = false; });
   row.append(go, no);
@@ -3943,15 +3947,15 @@ async function updateModule(item, button) {
 // The economy, on the card of the thing it is about. It fills as the room is used, because it
 // weighs turns, not history.
 function ashReading(panel) {
-  const box = cardBlock(panel, 'ECONOMY · THIS ROOM');
-  const waiting = el('p', 'note', 'READING…');
+  const box = cardBlock(panel, t('ECONOMY · THIS ROOM'));
+  const waiting = el('p', 'note', t('READING…'));
   box.append(waiting);
   const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
   const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
   fetch('/api/economy').then((response) => response.json()).then((read) => {
-    box.replaceChildren(el('h5', null, 'ECONOMY · THIS ROOM'));
+    box.replaceChildren(el('h5', null, t('ECONOMY · THIS ROOM')));
     if (!read?.turns) {
-      box.append(el('p', 'note', 'NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS'));
+      box.append(el('p', 'note', t('NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS')));
       return;
     }
     const totals = read.totals;
@@ -3978,7 +3982,7 @@ function ashReading(panel) {
       bars.append(row);
     }
     box.append(bars);
-  }).catch(() => { box.replaceChildren(el('h5', null, 'ECONOMY · THIS ROOM'), el('p', 'note', 'ECONOMY UNAVAILABLE')); });
+  }).catch(() => { box.replaceChildren(el('h5', null, t('ECONOMY · THIS ROOM')), el('p', 'note', t('ECONOMY UNAVAILABLE'))); });
 }
 
 function builtinCard(item) {
@@ -3989,7 +3993,7 @@ function builtinCard(item) {
 
   if (item.id === 'ollama') {
     const info = item.ollama ?? { running: false, models: [], settings: {} };
-    const read = cardBlock(panel, 'LOCAL BRAIN');
+    const read = cardBlock(panel, t('LOCAL BRAIN'));
     const status = el('dl', 'ollama-status');
     const put = (k, v) => { status.append(el('dt', null, k), el('dd', null, v)); };
     put('SERVER', info.running ? `running · ${info.host}` : 'not running');
@@ -4003,7 +4007,7 @@ function builtinCard(item) {
     actions.append(recheck);
     if (info.running) {
       // The roles are settings, not actions: what the local brain is allowed to do here.
-      const roles = cardBlock(panel, 'ROLES');
+      const roles = cardBlock(panel, t('ROLES'));
       const row = el('div', 'card-toggles');
       for (const [role, model, present, label] of [
         ['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel), 'EMBEDDINGS'],
@@ -4067,12 +4071,12 @@ function builtinCard(item) {
         });
         actions.append(go);
       } else if (info.install?.download) {
-        const get = el('button', 'primary', 'GET OLLAMA ↗');
+        const get = el('button', 'primary', t('GET OLLAMA ↗'));
         get.type = 'button';
         get.addEventListener('click', () => window.open(info.install.download, '_blank', 'noopener'));
         actions.append(get);
       }
-      panel.append(el('p', 'confirm', 'Without Ollama running, the room keeps using its providers. Start it, then RECHECK.'));
+      panel.append(el('p', 'confirm', t('Without Ollama running, the room keeps using its providers. Start it, then RECHECK.')));
     }
     return card;
   }
@@ -4127,7 +4131,7 @@ function builtinCard(item) {
 
   if (item.preflight && !item.preflight.ok) {
     const warn = el('div', 'confirm');
-    warn.append(el('span', 'warn', 'CANNOT ENABLE YET'));
+    warn.append(el('span', 'warn', t('CANNOT ENABLE YET')));
     for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
     panel.append(warn);
   }
@@ -4171,7 +4175,7 @@ function moduleCard(item) {
   }
   if (modules.confirming === item.id && !blocked) {
     const confirm = el('div', 'confirm');
-    confirm.append(el('span', 'warn', 'THIS WRITES INTO THE PROJECT. MADRE WILL RUN, IN THE PROJECT FOLDER:'));
+    confirm.append(el('span', 'warn', t('THIS WRITES INTO THE PROJECT. MADRE WILL RUN, IN THE PROJECT FOLDER:')));
     confirm.append(commandBlock([item.install.display]));
     confirm.append(el('span', 'note', item.install.platforms?.length
       ? `IDE adapters for the agents detected here: ${item.install.platforms.join(', ')}.`
@@ -4231,19 +4235,19 @@ function renderModulesDev() {
   const section = document.querySelector('#modules-dev');
   if (!section) return;
   section.replaceChildren();
-  section.append(el('h3', null, 'DEVELOP FOR MADRE'));
+  section.append(el('h3', null, t('DEVELOP FOR MADRE')));
   const card = el('article', 'module-card dev-card');
   const glyph = el('div', 'dev-glyph', '</>');
   const body = el('div', 'dev-body');
-  body.append(el('h4', null, 'Would you like to develop for MADRE?'));
-  body.append(el('p', null, 'Use our SDK to build your own modules: one file, no build, no dependencies. A switch, settings, slash commands, tools for the agents, routes. Write it by hand or with an AI, drop it in a folder, reload.'));
+  body.append(el('h4', null, t('Would you like to develop for MADRE?')));
+  body.append(el('p', null, t('Use our SDK to build your own modules: one file, no build, no dependencies. A switch, settings, slash commands, tools for the agents, routes. Write it by hand or with an AI, drop it in a folder, reload.')));
   const where = el('div', 'dev-where');
   const folders = modules.folders ?? {};
-  where.append(el('code', null, folders.user ? `${folders.user}/` : '~/.pulse/modules/'), el('span', 'note', ' every project · '), el('code', null, folders.project ? `${folders.project}/` : '<project>/.madre/modules/'), el('span', 'note', ' this project'));
+  where.append(el('code', null, folders.user ? `${folders.user}/` : '~/.pulse/modules/'), el('span', 'note', t(' every project · ')), el('code', null, folders.project ? `${folders.project}/` : '<project>/.madre/modules/'), el('span', 'note', t(' this project')));
   body.append(where);
   const row = el('div', 'dev-row');
-  const read = el('a', 'mother-close', 'READ THE SDK ↗'); read.href = modules.sdk ?? 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md'; read.target = '_blank'; read.rel = 'noopener noreferrer';
-  const reload = el('button', 'mother-close', 'RELOAD MODULES'); reload.type = 'button'; reload.title = 'Load your module files again without restarting the room';
+  const read = el('a', 'mother-close', t('READ THE SDK ↗')); read.href = modules.sdk ?? 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md'; read.target = '_blank'; read.rel = 'noopener noreferrer';
+  const reload = el('button', 'mother-close', t('RELOAD MODULES')); reload.type = 'button'; reload.title = t('Load your module files again without restarting the room');
   reload.addEventListener('click', async () => {
     reload.disabled = true;
     try {
@@ -4258,11 +4262,11 @@ function renderModulesDev() {
   const yours = modules.items.filter((item) => item.external);
   if (yours.length) {
     const list = el('div', 'dev-yours');
-    list.append(el('span', 'note', 'YOURS · '));
+    list.append(el('span', 'note', t('YOURS · ')));
     for (const item of yours) {
       const chip = el('span', 'dev-chip');
       chip.append(el('b', null, item.name), ` · ${item.origin === 'project' ? 'this project' : 'every room'} `);
-      const remove = el('button', 'act-link', 'REMOVE'); remove.type = 'button'; remove.title = `Delete ${item.file}`;
+      const remove = el('button', 'act-link', t('REMOVE')); remove.type = 'button'; remove.title = `Delete ${item.file}`;
       remove.addEventListener('click', async () => {
         if (!window.confirm(`Remove ${item.name}? Its file ${item.file} is deleted. MADRE's own modules cannot be removed.`)) return;
         remove.disabled = true;
@@ -4279,7 +4283,7 @@ function renderModulesDev() {
   }
   for (const failure of modules.failures ?? []) {
     const line = el('p', 'note dev-fail');
-    line.append(el('b', null, 'DID NOT LOAD · '), el('code', null, failure.file.split('/').slice(-2).join('/')), ` · ${failure.error}`);
+    line.append(el('b', null, t('DID NOT LOAD · ')), el('code', null, failure.file.split('/').slice(-2).join('/')), ` · ${failure.error}`);
     body.append(line);
   }
   card.append(glyph, body);
@@ -4417,7 +4421,7 @@ function renderLoginEvent(event) {
   const ok = finished && session?.state === 'signed-in';
   const node = el('div', `system login${finished && !ok ? ' failed' : ''}`);
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, 'connections › '));
+  node.append(el('b', null, t('connections › ')));
   node.append(finished
     ? (ok ? `@${agent} signed in${session?.detail ? ` · ${session.detail}` : ''}` : `@${agent} sign-in did not complete${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
     : `signing in @${agent} · ${command}`);
@@ -4430,7 +4434,7 @@ function renderAgentInstall(event) {
   const { agent, label, command, code, error, detected, version, where, prefix } = event.payload;
   const finished = event.type === 'connection.install.finished';
   const node = paint(el('div', `system connections${finished && !detected ? ' failed' : ''}`), agent);
-  node.append(el('b', null, 'connections › '));
+  node.append(el('b', null, t('connections › ')));
   node.append(finished
     ? (detected ? `${label ?? agent} installed${version ? ` · ${version}` : ''}${where === 'madre' ? ` · in MADRE's own folder (${prefix}), no administrator needed` : ''} · sign in to finish` : `${label ?? agent} was not installed${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
     : `installing ${label ?? agent} · ${command}`);
@@ -4946,7 +4950,7 @@ function renderCoreConsole() {
     walked = walked === null ? core.history.length - 1 : Math.min(core.history.length - 1, Math.max(0, walked + (event.key === 'ArrowUp' ? -1 : 1)));
     field.value = core.history[walked] ?? '';
   });
-  const help = el('button', 'console-help', 'HELP');
+  const help = el('button', 'console-help', t('HELP'));
   help.type = 'button';
   help.addEventListener('click', () => { field.value = 'HELP'; line.requestSubmit(); });
   line.append(el('span', 'prompt', '>'), field, marks, help);
@@ -5003,8 +5007,8 @@ document.querySelector('#core-copy')?.addEventListener('click', async () => {
   if (!core.last) return;
   try {
     await navigator.clipboard.writeText(core.last.parts.map((part) => part.text).join('\n'));
-    toast('MU/TH/UR › the whole briefing is on your clipboard, exactly as the agent receives it.');
-  } catch { toast('The clipboard is not available here.'); }
+    toast(t('MU/TH/UR › the whole briefing is on your clipboard, exactly as the agent receives it.'));
+  } catch { toast(t('The clipboard is not available here.')); }
 });
 
 /* ---------- where this room stands ---------- */
@@ -5283,7 +5287,7 @@ function connectionCard(agent) {
   card.append(scopes);
 
   const row = el('div', 'row');
-  const recheck = el('button', null, 'RECHECK');
+  const recheck = el('button', null, t('RECHECK'));
   recheck.type = 'button';
   recheck.addEventListener('click', async () => {
     recheck.disabled = true;
@@ -5382,7 +5386,7 @@ function renderSettings() {
   wireInstantNumber(defaultTimeout, { min: 10, toPatch: (seconds) => ({ timeouts: { default: seconds * 1000 } }), describe: (seconds) => t('default timeout saved: {n}s.', { n: seconds }) });
   const idle = num('geminiIdle', Math.round(data.settings.geminiIdleMs / 1000), 10, 10);
   const retries = num('geminiRetries', data.settings.geminiRetries, 0, 1);
-  const model = el('input'); model.name = 'opencodeModel'; model.value = data.settings.opencodeModel ?? ''; model.placeholder = 'provider/model'; model.setAttribute('list', 'opencode-models');
+  const model = el('input'); model.name = 'opencodeModel'; model.value = data.settings.opencodeModel ?? ''; model.placeholder = t('provider/model'); model.setAttribute('list', 'opencode-models');
   const datalist = el('datalist'); datalist.id = 'opencode-models';
   form.append(field(t('LOCAL TOKEN BUDGET PER AGENT'), budget));
   form.append(field(t('DEFAULT TIMEOUT · SECONDS'), defaultTimeout));
@@ -5581,7 +5585,7 @@ function renderSettings() {
     const exposure = el('span', 'note full', t('CHECKING THE ROOM…'));
     const purge = el('button', null, t('PURGE ROOM'));
     purge.type = 'button';
-    purge.title = 'Replace every private term already in the ledger, the index and the memories with the marker. Asks for the project designation.';
+    purge.title = t('Replace every private term already in the ledger, the index and the memories with the marker. Asks for the project designation.');
     const showExposure = (payload) => {
       const x = payload?.exposure;
       if (!x) { exposure.textContent = ''; return; }
@@ -5599,28 +5603,28 @@ function renderSettings() {
     };
     terms.addEventListener('change', () => savePrivacy({ terms: terms.value.split('\n') }, (payload) => `${payload.terms.length} private term${payload.terms.length === 1 ? '' : 's'} guarded from now on.`));
     marker.addEventListener('change', () => savePrivacy({ marker: marker.value }, (payload) => `private terms appear as ${payload.marker}.`));
-    pform.append(field('PRIVATE TERMS · ONE PER LINE', terms));
-    pform.append(field('REPLACED WITH', marker));
+    pform.append(field(t('PRIVATE TERMS · ONE PER LINE'), terms));
+    pform.append(field(t('REPLACED WITH'), marker));
     // Two guards that need no list, because what they catch has a shape rather than a name. They
     // used to run only on the way into a training file, so a key an agent echoed was written to
     // the ledger in the clear and stayed there.
     const guard = (key, labelText, describe, hint) => {
       const wrap = el('label', 'toggle full');
       const box = el('input'); box.type = 'checkbox'; box.checked = priv[key] !== false;
-      box.addEventListener('change', () => savePrivacy({ [key]: box.checked }, () => `${describe} ${box.checked ? 'on' : 'off'}.`));
+      box.addEventListener('change', () => savePrivacy({ [key]: box.checked }, () => `${describe} ${box.checked ? t('on') : t('off')}.`));
       wrap.append(box, labelText);
       wrap.title = hint;
       pform.append(wrap);
     };
-    guard('secrets', 'REDACT KEYS, TOKENS AND E-MAIL ADDRESSES ANYWHERE THEY APPEAR',
-      'redaction of keys and addresses',
-      'API keys, GitHub and npm tokens, JWTs and e-mail addresses are recognisable by shape in any project. Caught before the ledger, the archivist, the other agents and the dataset.');
-    guard('paths', 'REPLACE THIS MACHINE\'S HOME PATH WITH ~',
-      'hiding of home paths',
-      'A path like /Users/yourname carries who you are into every reply that quotes it. The path still reads, it just stops naming you.');
+    guard('secrets', t('REDACT KEYS, TOKENS AND E-MAIL ADDRESSES ANYWHERE THEY APPEAR'),
+      t('redaction of keys and addresses'),
+      t('API keys, GitHub and npm tokens, JWTs and e-mail addresses are recognisable by shape in any project. Caught before the ledger, the archivist, the other agents and the dataset.'));
+    guard('paths', t("REPLACE THIS MACHINE'S HOME PATH WITH ~"),
+      t('hiding of home paths'),
+      t('A path like /Users/yourname carries who you are into every reply that quotes it. The path still reads, it just stops naming you.'));
     const row = el('div', 'full dataset-row');
     purge.addEventListener('click', async () => {
-      const designation = window.prompt('PURGE ROOM · Every private term already recorded becomes the marker, in the ledger, the index and the memories. This cannot be undone. Type the project designation to confirm:');
+      const designation = window.prompt(t('PURGE ROOM · Every private term already recorded becomes the marker, in the ledger, the index and the memories. This cannot be undone. Type the project designation to confirm:'));
       if (designation === null) return;
       purge.disabled = true;
       try {
@@ -5637,10 +5641,10 @@ function renderSettings() {
     });
     row.append(purge, exposure);
     pform.append(row);
-    if (priv.envWins) pform.append(el('span', 'note full', 'PULSE_PRIVATE_TERMS IS SET; THOSE TERMS ARE ADDED TO THIS LIST ON EVERY LAUNCH.'));
+    if (priv.envWins) pform.append(el('span', 'note full', t('PULSE_PRIVATE_TERMS IS SET; THOSE TERMS ARE ADDED TO THIS LIST ON EVERY LAUNCH.')));
     pform.addEventListener('submit', (event) => event.preventDefault());
     privacyBody.append(pform);
-    fetch('/api/privacy').then((response) => response.json()).then(showExposure).catch(() => { exposure.textContent = 'EXPOSURE CHECK UNAVAILABLE'; });
+    fetch('/api/privacy').then((response) => response.json()).then(showExposure).catch(() => { exposure.textContent = t('EXPOSURE CHECK UNAVAILABLE'); });
   }
 }
 
@@ -5935,11 +5939,11 @@ function renderAsks() {
       nostromo.dialog.close();
       els.input.focus();
       els.input.setSelectionRange(els.input.value.length, els.input.value.length);
-      toast('NOSTROMO › the question is in the composer. Send it to whoever should answer it, or to @madre, which costs nothing.');
+      toast(t('NOSTROMO › the question is in the composer. Send it to whoever should answer it, or to @madre, which costs nothing.'));
     });
     const drop = el('button', null, t('NOT THIS'));
     drop.type = 'button';
-    drop.title = 'Stop offering this one. Nothing is forgotten and nothing is written.';
+    drop.title = t('Stop offering this one. Nothing is forgotten and nothing is written.');
     drop.addEventListener('click', async () => {
       drop.disabled = true;
       await fetch('/api/memory/ask/dismiss', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: ask.id, designation: nostromoDesignation() }) }).catch(() => null);
@@ -7271,13 +7275,13 @@ function showNostromoCard(node) {
   const links = document.querySelector('#nostromo-card-links');
   document.querySelector('#nostromo-card-degree').textContent = String(neighbours.length);
   links.replaceChildren();
-  if (!neighbours.length) links.append(el('li', 'none', 'No theme shared with another memory yet.'));
+  if (!neighbours.length) links.append(el('li', 'none', t('No theme shared with another memory yet.')));
   for (const { link, node: other } of neighbours) {
     links.append(wireRow(other, `${Math.round(link.weight * 100)}%`, { link, title: `${other.memory.kind.toUpperCase()} · ${Math.round(link.weight * 100)}% of the same meaning\n${other.memory.text}` }));
   }
 
   // And what has actually passed between it and the room. Filled from the archive, then kept up.
-  document.querySelector('#nostromo-card-exchange').textContent = 'READING…';
+  document.querySelector('#nostromo-card-exchange').textContent = t('READING…');
   document.querySelector('#nostromo-card-fired').replaceChildren();
   const forget = document.querySelector('#nostromo-forget');
   forget.textContent = memory.kind === 'aberration' ? 'CLEAR THIS ABERRATION' : 'FORGET THIS MEMORY';
@@ -7347,8 +7351,8 @@ async function nostromoTraffic() {
     const row = el('li', 'wire-row refuted');
     const dot = el('i');
     dot.style.setProperty('--kind', MEMORY_COLORS[taken.kind] ?? MEMORY_COLORS.fact);
-    row.append(dot, el('span', 'what', taken.text), el('b', null, 'TAKEN DOWN'));
-    row.title = 'This aberration took that memory out of every future turn.';
+    row.append(dot, el('span', 'what', taken.text), el('b', null, t('TAKEN DOWN')));
+    row.title = t('This aberration took that memory out of every future turn.');
     if (other) row.addEventListener('click', () => showNostromoCard(other));
     fired.append(row);
   }
@@ -7357,8 +7361,8 @@ async function nostromoTraffic() {
     const row = el('li', 'wire-row refuted');
     const dot = el('i');
     dot.style.setProperty('--kind', MEMORY_COLORS[traffic.refutedBy.kind] ?? MEMORY_COLORS.aberration);
-    row.append(dot, el('span', 'what', traffic.refutedBy.text), el('b', null, 'REFUTES IT'));
-    row.title = 'An aberration took this memory out of every future turn.';
+    row.append(dot, el('span', 'what', traffic.refutedBy.text), el('b', null, t('REFUTES IT')));
+    row.title = t('An aberration took this memory out of every future turn.');
     if (other) row.addEventListener('click', () => showNostromoCard(other));
     fired.append(row);
   }
@@ -7387,14 +7391,14 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
   if (!node) return;
   if (!button.classList.contains('confirm')) {
     button.classList.add('confirm');
-    button.textContent = 'PRESS AGAIN TO FORGET · FOREVER';
+    button.textContent = t('PRESS AGAIN TO FORGET · FOREVER');
     clearTimeout(forgetTimer);
-    forgetTimer = setTimeout(() => { button.classList.remove('confirm'); button.textContent = 'FORGET THIS MEMORY'; }, 4000);
+    forgetTimer = setTimeout(() => { button.classList.remove('confirm'); button.textContent = t('FORGET THIS MEMORY'); }, 4000);
     return;
   }
   clearTimeout(forgetTimer);
   button.disabled = true;
-  button.textContent = 'FORGETTING…';
+  button.textContent = t('FORGETTING…');
   try {
     const response = await fetch(`/api/memory/${node.memory.id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: nostromoDesignation() }) });
     const result = await response.json().catch(() => ({}));
@@ -7410,7 +7414,7 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
   } catch (error) {
     button.disabled = false;
     button.classList.remove('confirm');
-    button.textContent = 'FORGET THIS MEMORY';
+    button.textContent = t('FORGET THIS MEMORY');
     toast(`MU/TH/UR › could not forget: ${error.message}`);
   }
 });
@@ -7482,7 +7486,7 @@ function renderUpdate() {
   const section = updateUI.section;
   if (!section) return;
   section.replaceChildren();
-  if (!info) { section.append(el('h3', null, 'RELEASE CHANNEL · UNAVAILABLE')); return; }
+  if (!info) { section.append(el('h3', null, t('RELEASE CHANNEL · UNAVAILABLE'))); return; }
   const when = info.checkedAt ? new Date(info.checkedAt).toLocaleString() : null;
   // Folded by default: a room that is up to date has nothing to say here. When there is a new
   // version the header carries a red mark and nothing else, and what it means is inside.
@@ -7499,7 +7503,7 @@ function renderUpdate() {
       restart.type = 'button';
       restart.disabled = updateUI.restarting;
       restart.addEventListener('click', async () => {
-        restart.disabled = true; restart.textContent = 'RESTARTING…'; updateUI.restarting = true;
+        restart.disabled = true; restart.textContent = t('RESTARTING…'); updateUI.restarting = true;
         try {
           const payload = await fetch('/api/updates/apply', { method: 'POST' }).then((response) => response.json());
           if (payload.error) throw new Error(payload.error);
@@ -7510,7 +7514,7 @@ function renderUpdate() {
               await new Promise((resolve) => setTimeout(resolve, 2000));
               try { const next = await fetch('/api/version', { cache: 'no-store' }).then((response) => response.json()); if (next?.current && next.current !== from) { location.reload(); return; } } catch { /* still restarting */ }
             }
-            updateUI.restarting = false; renderUpdate(); toast('MU/TH/UR › the room did not come back on its own. Start it from your terminal.');
+            updateUI.restarting = false; renderUpdate(); toast(t('MU/TH/UR › the room did not come back on its own. Start it from your terminal.'));
           };
           void wait();
         } catch (error) { updateUI.restarting = false; renderUpdate(); toast(`Update did not start: ${error.message}`); }
@@ -7519,9 +7523,9 @@ function renderUpdate() {
     }
     const row = el('div', 'update-command');
     const code = el('code', null, info.command);
-    const copy = el('button', null, 'COPY');
+    const copy = el('button', null, t('COPY'));
     copy.type = 'button';
-    copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(info.command); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1400); } catch { toast('MU/TH/UR › select the command and copy it.'); } });
+    copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(info.command); copy.textContent = t('COPIED'); setTimeout(() => { copy.textContent = t('COPY'); }, 1400); } catch { toast(t('MU/TH/UR › select the command and copy it.')); } });
     row.append(code, copy);
     body.append(row);
     if (info.release) { const link = el('a', 'update-link', `WHAT ${info.latest} SHIPS ↗`); link.href = info.release; link.target = '_blank'; link.rel = 'noopener noreferrer'; body.append(link); }
@@ -7538,7 +7542,7 @@ function renderUpdate() {
   });
   toggle.append(box, `CHECK NPM FOR NEW VERSIONS ONCE A DAY${info.envWins ? ' · SET BY PULSE_UPDATE_CHECK' : ''}`);
   controls.append(toggle);
-  if (info.enabled) { const now = el('button', null, 'CHECK NOW'); now.type = 'button'; now.addEventListener('click', () => void loadVersion({ force: true })); controls.append(now); }
+  if (info.enabled) { const now = el('button', null, t('CHECK NOW')); now.type = 'button'; now.addEventListener('click', () => void loadVersion({ force: true })); controls.append(now); }
   body.append(controls);
 }
 updateUI.pill?.addEventListener('click', () => { document.querySelector('#mother-button')?.click(); updateUI.section?.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
@@ -7565,7 +7569,7 @@ function renderMotherSentinel() {
   const unsent = reports.filter((report) => !report.sent?.ok).length;
   const sentinelBody = folding(section, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`, { key: 'sentinel' });
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
-  const what = el('p', 'note', 'THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.');
+  const what = el('p', 'note', t('THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.'));
   sentinelBody.append(what);
   const controls = el('div', 'sentinel-controls');
   const auto = el('label', 'toggle');
@@ -7581,7 +7585,7 @@ function renderMotherSentinel() {
   });
   auto.append(box, `AUTO-REPORT UNKNOWN CONDITIONS${settings.canSend ? '' : ' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)'}`);
   controls.append(auto);
-  const feedback = el('button', null, '✎ FEEDBACK TO THE AUTHOR');
+  const feedback = el('button', null, t('✎ FEEDBACK TO THE AUTHOR'));
   feedback.type = 'button';
   feedback.addEventListener('click', () => openFeedback());
   controls.append(feedback);

@@ -217,7 +217,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(uiState.expendable, true);
   // The page boots in the language MADRE speaks, which is Spanish; the crew label says so.
   assert.match(registry.get('crew-label').textContent, /PRESCINDIBLE/);
-  assert.match(column.children.at(-1).textContent, /end of record/);
+  assert.match(column.children.at(-1).textContent, /fin del registro/);
 
   // The core: four panes, one at a time, with the prompt through all of them. It is the most
   // built screen in this page and nothing else here would notice if it threw.
