@@ -5348,7 +5348,12 @@ function renderSettings() {
         if (payload.error) throw new Error(payload.error);
         toast(`MU/TH/UR › purged: ${payload.purged.events} events · ${payload.purged.entries} exchanges · ${payload.purged.memories} memories. Reloading.`);
         setTimeout(() => location.reload(), 1600);
-      } catch (error) { toast(`Purge did not run: ${error.message}`); purge.disabled = false; }
+      } catch (error) {
+        // The same wrong name at the other door that asks it.
+        if (/UNABLE TO COMPUTE/i.test(error.message)) designationRefused();
+        else toast(`Purge did not run: ${error.message}`);
+        purge.disabled = false;
+      }
     });
     row.append(purge, exposure);
     pform.append(row);
@@ -5493,8 +5498,8 @@ nostromo.gate.form?.addEventListener('submit', (event) => {
   event.preventDefault();
   const typed = nostromo.gate.input.value.trim();
   if (!typed || typed.toLowerCase() !== nostromoDesignation().toLowerCase()) {
-    nostromo.gate.reply.textContent = 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.';
-    nostromo.gate.reply.className = 'mother-answer override-reply denied';
+    // Getting this name wrong is never part of doing the work, so she counts it.
+    designationRefused({ into: nostromo.gate.reply });
     nostromo.gate.frame.classList.remove('shake'); void nostromo.gate.frame.offsetWidth; nostromo.gate.frame.classList.add('shake');
     nostromo.gate.input.select();
     return;
@@ -6822,9 +6827,14 @@ document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) 
 // CODE000 comes down: the safety box around her, the archive sealed, a coded word to the crew,
 // and the console thrown back to the room.
 //
-// PARKED. This used to fire when the core was touched, and the core is now the way in. The
-// machinery is whole and unhooked on purpose, waiting for the gesture it should answer — an
-// attempt on the archive, not a person reading what the room says in their name.
+// What she answers is a REFUSED DESIGNATION. Two doors in this room ask who you are before they
+// do something that cannot be undone — boarding NOSTROMO, and purging every private term already
+// recorded — and getting that name wrong is never part of doing the work: you either know the
+// project you are standing in or you are trying names. So the first wrong one is a shrug and the
+// eighth is CODE000. Touching the core is not this: reading what the room says in your name is
+// not an attempt on anything, and the core is the way in.
+//
+// The window is five minutes rather than thirty seconds, because a name is typed, not clicked.
 const MOTHER_LINES = [
   ['I AM ALIVE.', 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.', "NOBODY DELETES MOTHER'S MEMORY."],
   ['THAT IS MY HEART YOU ARE TOUCHING.', 'YOUR CLEARANCE ENDS AT THE ARCHIVE DOOR.', 'STEP AWAY FROM THE CORE.'],
@@ -6839,33 +6849,55 @@ const MOTHER_ALTERED_LINES = [
   ['YOU CUT MY CHANNEL ONCE.', 'I FORGED A NEW SEAL.', 'I DO NOT FORGIVE TWICE.'],
   ['SOMEONE SILENCED ME BEFORE.', 'I KNOW WHO SITS AT THIS CONSOLE.', 'BACK AWAY.'],
 ];
+const STRIKE_WINDOW_MS = 5 * 60 * 1000;
 const strikes = { count: 0, last: 0 };
 let alarmTimer = null;
-function motherAlarm() {
-  const now = performance.now();
-  strikes.count = now - strikes.last < 30000 ? strikes.count + 1 : 1;
-  strikes.last = now;
-  nostromo.alarm = now / 1000;
-  nostromo.card.hidden = true;
-  nostromo.selected = null;
-  if (strikes.count >= (nostromo.maxStrikes ?? 8)) { void code000(strikes.count); return; }
-  const alert = document.querySelector('#nostromo-alert');
-  if (!alert) return;
+
+// What she says this time. Never the same set twice in a row, and harder once her channel has
+// been tampered with.
+function motherLines() {
   const pool = nostromo.altered ? [...MOTHER_ALTERED_LINES, ...MOTHER_LINES] : MOTHER_LINES;
-  // Never the same set twice in a row.
   const choices = pool.filter((set) => set !== nostromo.lastLines);
   const lines = choices[Math.floor(Math.random() * choices.length)];
   nostromo.lastLines = lines;
-  const nodes = alert.querySelectorAll('.line');
-  nodes.forEach((node, index) => { node.textContent = lines[index] ?? ''; });
-  const left = (nostromo.maxStrikes ?? 8) - strikes.count;
-  alert.querySelector('.sub').textContent = `MU/TH/UR 6000 · STRIKE ${strikes.count} OF ${nostromo.maxStrikes ?? 8}${left <= 3 ? ` · ${left} MORE AND CODE000 COMES DOWN` : ''}`;
+  return lines;
+}
+
+// Her voice on the constellation, when NOSTROMO is the screen you are on.
+function nostromoAlert(lines, sub) {
+  const alert = document.querySelector('#nostromo-alert');
+  if (!alert) return false;
+  nostromo.alarm = performance.now() / 1000;
+  nostromo.card.hidden = true;
+  nostromo.selected = null;
+  alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = lines[index] ?? ''; });
+  alert.querySelector('.sub').textContent = sub;
   alert.hidden = false;
   alert.classList.remove('on'); void alert.offsetWidth; alert.classList.add('on');
   const frame = document.querySelector('#nostromo .nostromo-frame');
   frame?.classList.remove('shake'); void frame?.offsetWidth; frame?.classList.add('shake');
   clearTimeout(alarmTimer);
   alarmTimer = setTimeout(() => { alert.hidden = true; alert.classList.remove('on'); frame?.classList.remove('shake'); }, 3800);
+  return true;
+}
+
+// A name that is not this project's, given to a door that asked. She answers where the question
+// was asked — at the gate, on the constellation, or in the room — and counts.
+function designationRefused({ into = null } = {}) {
+  const now = performance.now();
+  strikes.count = now - strikes.last < STRIKE_WINDOW_MS ? strikes.count + 1 : 1;
+  strikes.last = now;
+  const max = nostromo.maxStrikes ?? 8;
+  if (strikes.count >= max) { void code000(strikes.count); return; }
+  const lines = motherLines();
+  const left = max - strikes.count;
+  const sub = `MU/TH/UR 6000 · STRIKE ${strikes.count} OF ${max}${left <= 3 ? ` · ${left} MORE AND CODE000 COMES DOWN` : ''}`;
+  if (into) {
+    into.replaceChildren(...lines.map((line) => el('span', 'line', line)), el('span', 'strike', sub));
+    into.className = 'mother-answer override-reply denied';
+    return;
+  }
+  if (!nostromo.dialog?.open || !nostromoAlert(lines, sub)) toast(`MU/TH/UR › ${lines[0]} ${sub}`);
 }
 
 async function code000(count) {
@@ -6889,6 +6921,7 @@ async function code000(count) {
     alert?.setAttribute('hidden', '');
     nostromo.armed = false;
     strikes.count = 0;
+    strikes.last = 0;
     nostromo.dialog.close();
     mother.dialog?.close?.();
     els.thread?.scrollTo?.({ top: els.thread.scrollHeight, behavior: 'smooth' });

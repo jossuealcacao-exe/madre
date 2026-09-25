@@ -120,3 +120,20 @@ test('inquiry: the console is in the frame, with its count on screen and its own
   assert.match(app, /terms: \(read\?\.terms \?\? \[\]\)\.length/);
   assert.match(css, /\.console-strikes i\.on \{ color: var\(--warn\); \}/);
 });
+
+test("inquiry: MOTHER's alarm answers a refused designation, and nothing else", async () => {
+  const app = await read('app.js');
+
+  // The two doors that ask who you are before doing something that cannot be undone.
+  assert.match(app, /designationRefused\(\{ into: nostromo\.gate\.reply \}\)/, 'the gate takes a wrong name without her noticing');
+  assert.match(app, /if \(\/UNABLE TO COMPUTE\/i\.test\(error\.message\)\) designationRefused\(\);/, 'the purge takes a wrong name without her noticing');
+
+  // Eight of them and CODE000 comes down, which is the machinery that was already built.
+  assert.match(app, /if \(strikes\.count >= max\) \{ void code000\(strikes\.count\); return; \}/);
+  assert.match(app, /const STRIKE_WINDOW_MS = 5 \* 60 \* 1000;/, 'a typed name is given the window of a clicked one');
+
+  // And it is not the core. Reading what the room says in your name is not an attempt on it.
+  const core = app.slice(app.indexOf('async function openCore()'), app.indexOf('function renderCoreDoc'));
+  assert.ok(!/designationRefused|code000/.test(core), 'the core reaches for the alarm');
+  assert.ok(!/motherAlarm/.test(app), 'the parked name outlived the parking');
+});

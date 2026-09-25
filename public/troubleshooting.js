@@ -523,6 +523,15 @@ export const CONDITIONS = [
     fixes: same(['# MODULES → + ADD A MODULE', 'ls ~/.pulse/modules   # every module you installed, and where it came from', '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works']),
   },
   {
+    id: 'code000',
+    severity: 'blocking',
+    title: 'CODE000: the archive is sealed',
+    match: /CODE000|THE ARCHIVE IS SEALED|UNABLE TO COMPUTE\. UNABLE TO CLARIFY|designation|intruder/i,
+    diagnosis: 'Two doors ask for the project designation before doing something that cannot be undone: boarding NOSTROMO, and purging every private term already recorded. Getting that name wrong is never part of doing the work — you either know the project you are standing in or you are trying names — so MU/TH/UR counts it. Eight wrong names inside five minutes and CODE000 comes down: the archive is sealed for ten minutes, the crew is told in code, and NOSTROMO asks for the designation again.',
+    remedy: 'The designation is the name of the project folder this room was opened in, lowercase or not. Nothing was lost: the seal is a refusal to change the archive for ten minutes, not a deletion, and it lifts on its own. Reading the core is not one of those doors and never counts — it is the way in.',
+    fixes: same(['basename "$PWD"   # the designation this room asks for', '# the seal lifts on its own; MU/TH/UR › NOSTROMO asks for the name again after it does']),
+  },
+  {
     id: 'core-console',
     severity: 'common',
     title: 'The core closed while I was typing in it',

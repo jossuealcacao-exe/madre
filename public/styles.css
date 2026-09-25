@@ -936,6 +936,9 @@ dialog.override[open] { display: grid; place-items: center; }
 .override-reply { min-height: 22px; letter-spacing: .14em; }
 .override-reply.denied { color: #ff7b72; text-shadow: 0 0 10px rgba(255, 123, 114, .6); animation: terror-in .8s steps(3, end) 1; }
 .override-reply.granted { color: var(--ph); text-shadow: 0 0 10px rgba(155, 255, 102, .6); }
+/* MOTHER answering a name that is not this project's: her lines, and the count. */
+.override-reply .line { display: block; line-height: 1.6; }
+.override-reply .strike { display: block; margin-top: 6px; font-size: 9px; letter-spacing: .18em; color: var(--warn); text-shadow: none; }
 .override-frame.shake { animation: override-shake .35s ease; }
 @keyframes override-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
 .model-menu { position: fixed; z-index: 40; width: min(320px, calc(100vw - 24px)); padding: 10px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text); }
