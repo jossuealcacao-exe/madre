@@ -1134,6 +1134,19 @@ export async function createPulseServer({
           verdict: verdictFor({ maturity: grown, exams: exams.last, cold: research?.cold, asks: research?.ask?.length ?? 0 }),
         });
       }
+      // Inside the core: the document MADRE writes in the human's name for the next turn, block
+      // by block. Built on demand and stored nowhere; asking costs nothing and sends nothing.
+      if (request.method === 'GET' && url.pathname === '/api/briefing') {
+        const asked = url.searchParams.get('agent') ?? agents.find((agent) => agent.ready && !agent.local)?.id ?? agents[0]?.id;
+        const mode = Math.min(4, Math.max(0, Number(url.searchParams.get('mode') ?? 1) || 0));
+        const text = String(url.searchParams.get('text') ?? '').slice(0, 2000);
+        const briefing = await room.briefing({ agent: asked, mode, text });
+        if (!briefing) return sendJson(response, 404, { error: `No agent "${asked}" on this computer.` });
+        return sendJson(response, 200, {
+          ...briefing,
+          agents: agents.filter((agent) => agent.detected).map((agent) => ({ id: agent.id, label: agent.label, ready: agent.ready })),
+        });
+      }
       // The conversations of this project. One memory, one crew, one numbering; many records.
       if (request.method === 'GET' && url.pathname === '/api/chats') {
         return sendJson(response, 200, await listChats(roomDir));

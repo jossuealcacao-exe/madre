@@ -4304,6 +4304,152 @@ async function loadSettings() {
   renderSettings();
 }
 
+/* ---------- the core ---------- */
+
+// Inside the core. Every turn, MADRE writes a document in the human's name and hands it to a
+// process, and until now that document existed only for the instant the process was reading it:
+// nothing stored it, nobody had ever read one. This is that document, built for the turn that
+// has not happened yet, block by block, with what each block weighs and the words themselves.
+//
+// It is read, never written. What MADRE promises about the crew — that they read by default,
+// that they are told not to touch .env — is true because these words are fixed. A core you could
+// edit would turn every one of those sentences into a claim about a text somebody may have
+// changed. Blocks that can be switched off say where their switch is.
+const core = {
+  dialog: document.querySelector('#core'),
+  boot: document.querySelector('#core-boot'),
+  body: document.querySelector('#core-body'),
+  agent: null,
+  mode: 1,
+  last: null,
+  rate: null,
+};
+
+const CORE_BOOT = [
+  'INTERFACE 2037 · CORE ACCESS',
+  'MU/TH/UR 6000 READY FOR INQUIRY.',
+];
+
+function typeLines(node, lines, done) {
+  node.textContent = '';
+  let line = 0;
+  let at = 0;
+  const tick = () => {
+    if (line >= lines.length) { done?.(); return; }
+    const text = lines[line];
+    node.textContent += text[at] ?? '';
+    at += 1;
+    if (at > text.length) { node.textContent += '\n'; line += 1; at = 0; }
+    setTimeout(tick, at === 0 ? 220 : 12);
+  };
+  tick();
+}
+
+async function openCore() {
+  if (!core.dialog) return;
+  core.agent ??= [...state.agents.values()].find((agent) => agent.ready && agent.id !== 'madre')?.id
+    ?? [...state.agents.values()].find((agent) => agent.ready)?.id ?? null;
+  core.body.hidden = true;
+  core.dialog.showModal();
+  typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; });
+  // How many characters this room spends per token it is charged, so the weight below means
+  // something in the currency the bill is written in.
+  if (core.rate === null) core.rate = await fetch('/api/economy').then((response) => response.json()).then((read) => read?.totals?.charsPerInputToken ?? 0).catch(() => 0);
+  await loadCore();
+}
+
+async function loadCore() {
+  core.body.replaceChildren(el('p', 'mother-answer', 'READING THE CORE…'));
+  let briefing;
+  try {
+    const query = new URLSearchParams({ mode: String(core.mode), ...(core.agent ? { agent: core.agent } : {}) });
+    briefing = await fetch(`/api/briefing?${query}`).then((response) => response.json());
+    if (briefing.error) throw new Error(briefing.error);
+  } catch (error) {
+    core.body.replaceChildren(el('p', 'mother-answer', String(error.message).toUpperCase()));
+    return;
+  }
+  core.last = briefing;
+  core.agent = briefing.agent;
+  renderCore(briefing);
+}
+
+function renderCore(briefing) {
+  core.body.replaceChildren();
+  core.body.append(el('p', 'note lead', 'THIS IS THE BRIEFING THE NEXT TURN WOULD CARRY, BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
+
+  // Who it goes to, and at what mode: the two things that change what is said.
+  const pick = el('div', 'core-pick');
+  const who = el('div', 'core-agents');
+  for (const agent of briefing.agents) {
+    const chip = el('button', `core-agent${agent.id === briefing.agent ? ' on' : ''}${agent.ready ? '' : ' cold'}`, `@${agent.id}`);
+    chip.type = 'button';
+    chip.title = agent.ready ? `What @${agent.id} would be told` : `${agent.label} is not signed in; this is what it would be told`;
+    chip.addEventListener('click', () => { core.agent = agent.id; void loadCore(); });
+    who.append(chip);
+  }
+  pick.append(el('span', 'k', 'THE NEXT TURN GOES TO'), who);
+  const modes = el('select');
+  for (const [value, label] of [[0, '#0 GHOST'], [1, '#1 EXCHANGE'], [2, '#2 CREATE'], [3, '#3 CONTROL'], [4, '#4 AIRLOCK']]) {
+    const option = el('option', null, label);
+    option.value = String(value);
+    if (value === briefing.mode) option.selected = true;
+    modes.append(option);
+  }
+  modes.addEventListener('change', () => { core.mode = Number(modes.value); void loadCore(); });
+  pick.append(el('span', 'k', 'AT MODE'), modes);
+  // An agent's own ceiling is the mode it actually answers at, whatever the composer says.
+  if (briefing.ceiling < briefing.mode) {
+    pick.append(el('span', 'core-ceiling', `MAX MODE FOR @${briefing.agent.toUpperCase()} IS #${briefing.maxMode}, SO THIS TURN WOULD BE ANSWERED AT #${briefing.ceiling}`));
+  }
+  core.body.append(pick);
+
+  // The blocks, heaviest first is not the order they are said in: this is the document, so it
+  // keeps the document's own order.
+  const widest = briefing.parts.reduce((top, part) => Math.max(top, part.chars), 1);
+  const blocks = el('div', 'core-blocks');
+  for (const part of briefing.parts) {
+    const row = el('details', 'core-block');
+    const head = el('summary');
+    head.append(el('b', null, part.id.toUpperCase()));
+    head.append(el('span', 'n', `${part.chars.toLocaleString()} CH`));
+    const bar = el('i');
+    bar.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
+    head.append(bar);
+    const caret = el('span', 'caret', '▸ READ');
+    head.append(caret);
+    row.addEventListener('toggle', () => { caret.textContent = row.open ? '▾ CLOSE' : '▸ READ'; });
+    const text = el('pre', null, part.text);
+    const body = el('div', 'core-text');
+    body.append(text);
+    const copy = el('button', 'core-copy-one', 'COPY');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(part.text); copy.textContent = 'COPIED'; setTimeout(() => { copy.textContent = 'COPY'; }, 1200); }
+      catch { toast('The clipboard is not available here.'); }
+    });
+    body.append(copy);
+    row.append(head, body);
+    blocks.append(row);
+  }
+  core.body.append(blocks);
+
+  const tokens = core.rate ? ` · ABOUT ${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS AT ${core.rate} CH/TOKEN IN THIS ROOM` : '';
+  core.body.append(el('p', 'core-total', `${briefing.chars.toLocaleString()} CHARACTERS IN ${briefing.parts.length} BLOCKS${tokens}`));
+  core.body.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.`));
+  core.body.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. THE BLOCKS THAT CAN BE SWITCHED OFF ARE SWITCHED OFF IN MODULES AND IN ⚙ CONNECTIONS, NEVER REWRITTEN.'));
+}
+
+document.querySelector('#brand-core')?.addEventListener('click', () => void openCore());
+document.querySelector('#core-close')?.addEventListener('click', () => core.dialog.close());
+document.querySelector('#core-copy')?.addEventListener('click', async () => {
+  if (!core.last) return;
+  try {
+    await navigator.clipboard.writeText(core.last.parts.map((part) => part.text).join('\n'));
+    toast('MU/TH/UR › the whole briefing is on your clipboard, exactly as the agent receives it.');
+  } catch { toast('The clipboard is not available here.'); }
+});
+
 /* ---------- where this room stands ---------- */
 
 // One sentence and one thing to do. Everything that decides which sentence was already being

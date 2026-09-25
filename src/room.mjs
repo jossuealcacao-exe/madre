@@ -983,6 +983,63 @@ export class Room {
     return outcome?.responseMessageId ?? null;
   }
 
+  // What the next turn to an agent would carry, built exactly the way a turn builds it and sent
+  // nowhere. Nothing here counts: a memory read for this was not recalled, the window does not
+  // move, and no process is started. It is the document MADRE writes in the human's name, which
+  // until now existed only for the instant a CLI was reading it.
+  async briefing({ agent: agentId, mode = 1, text = '' } = {}) {
+    const agent = this.#agents.find((one) => one.id === agentId && one.detected);
+    if (!agent) return null;
+    const priorEvents = await this.#store.readAll();
+    const built = await contextFor({
+      memory: this.#memory, priorEvents, messageId: null, text,
+      contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare,
+      remember: () => {}, omitSynthetic: Boolean(agent.local), anchor: this.#contextAnchor,
+      cascade: this.#cascade, track: false,
+    });
+    const mcpServers = this.#toolsForTurn && agent.adapter !== 'madre-local'
+      ? await this.#toolsForTurn({ agent: agent.id, mode, lease: null, scratchDir: null }).catch(() => [])
+      : [];
+    const scopes = this.scopesFor(agent.id);
+    // The lease a turn at this mode would be given, shaped exactly as the turn shapes it but
+    // creating nothing: no folder is made, no checkpoint is taken. Without it the preview would
+    // quietly under-report what a #2 or a #3 turn is actually told it may do.
+    const ceiling = Math.min(mode, scopes.maxMode ?? 0);
+    const lease = ceiling >= 2 && scopes.write?.enabled && scopes.write?.wired
+      ? {
+        leaseId: 'would-be-granted-when-you-send',
+        outDir: this.#projectRoot,
+        relativeDir: '.',
+        scratchDir: '.pulse/out/<this turn>',
+        scopes: { ...Object.fromEntries(SCOPES.map((scope) => [scope, scopes[scope].enabled && scopes[scope].wired])), write: true },
+        create: ceiling === 2,
+        control: ceiling >= 3,
+        airlock: ceiling === 4,
+      }
+      : null;
+    const options = this.#promptOptions({
+      agent, text, requester: 'you', depth: 0, allowDelegation: true,
+      context: built.context, recall: built.recall, memories: built.memories,
+      attachments: [], references: [], lease,
+      scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired },
+      ash: this.ashEnabled(), mode, escalation: null, mcpServers,
+    });
+    const parts = promptParts(options).map((part) => ({ id: part.id, text: part.text, chars: part.text.length }));
+    return {
+      agent: agent.id, label: agent.label, mode,
+      // What the mode would actually amount to for this agent: its ceiling is its own.
+      ceiling,
+      maxMode: scopes.maxMode ?? 0,
+      lease: Boolean(lease),
+      parts,
+      chars: parts.reduce((sum, part) => sum + part.chars, 0),
+      spared: sparedChars(options),
+      window: { from: built.context?.firstSequence ?? null, through: built.context?.lastSequence ?? null, omitted: built.context?.omittedMessages ?? 0 },
+      recalled: built.memories?.length ?? 0,
+      quoted: built.recall?.entries?.length ?? 0,
+    };
+  }
+
   // What the last prompt for each turn was made of, kept only until its bill arrives.
   #promptShape = new Map();
 

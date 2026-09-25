@@ -371,6 +371,59 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-head .mother-close.ask { color: #d7d2cf; border-color: rgba(255, 255, 255, .28); }
 .nostromo-head .mother-close.ask[aria-pressed="true"] { background: rgba(255, 255, 255, .12); color: #fff; }
 
+/* ================= the core =================
+   Inside the star, not looking at it: the field burns from the edges inward and breathes, and
+   the console sits on top of it in the panel's own phosphor. Nothing here is a new language —
+   the frame, the folds, the bars and the type are the ones MADRE already speaks. */
+.core::backdrop { background: radial-gradient(circle at 50% 50%, rgba(40, 2, 0, .82), rgba(0, 0, 0, .95) 70%); backdrop-filter: blur(3px); }
+.core-sun { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(60% 46% at 50% 108%, rgba(226, 40, 22, .34), rgba(226, 40, 22, 0) 72%),
+    radial-gradient(52% 40% at 50% -10%, rgba(255, 96, 32, .22), rgba(226, 40, 22, 0) 70%),
+    radial-gradient(120% 90% at 50% 50%, rgba(60, 4, 2, .55), rgba(6, 2, 2, .96) 78%);
+  animation: core-breathe 7.5s ease-in-out infinite;
+}
+@keyframes core-breathe { 0%, 100% { opacity: .82; transform: scale(1); } 50% { opacity: 1; transform: scale(1.035); } }
+@media (prefers-reduced-motion: reduce) { .core-sun { animation: none; } }
+.core .mother-frame { position: relative; z-index: 1; border-color: color-mix(in srgb, var(--nostromo-sun) 45%, var(--ph-dim)); box-shadow: 0 0 60px rgba(226, 40, 22, .22), 0 0 0 1px rgba(0, 0, 0, .6); }
+.core .mother-title { color: var(--nostromo-sun); text-shadow: 0 0 20px color-mix(in srgb, var(--nostromo-sun) 55%, transparent); }
+.core .mother-foot a { color: var(--ph-dim); text-decoration: none; }
+.core .mother-foot a:hover { color: var(--ph); }
+.core-body { display: grid; gap: 14px; }
+
+.core-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 0; border-top: 1px solid var(--ph-faint); border-bottom: 1px solid var(--ph-faint); }
+.core-pick .k { font-size: 9px; letter-spacing: .22em; color: var(--ph-dim); }
+.core-agents { display: flex; flex-wrap: wrap; gap: 6px; }
+.core-agent { border: 1px solid var(--ph-faint); background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .14em; padding: 5px 10px; cursor: pointer; }
+.core-agent:hover { border-color: var(--ph-dim); color: var(--ph); }
+.core-agent.on { border-color: var(--ph); color: var(--ph); background: var(--ph-faint); }
+.core-agent.cold { opacity: .55; }
+.core-ceiling { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--warn); }
+
+.core-blocks { display: grid; gap: 4px; }
+.core-block { border: 1px solid transparent; }
+.core-block > summary { display: grid; grid-template-columns: 150px 74px minmax(40px, 1fr) auto; gap: 12px; align-items: center; padding: 6px 8px; cursor: pointer; list-style: none; }
+.core-block > summary::-webkit-details-marker { display: none; }
+.core-block:hover { border-color: var(--ph-faint); }
+.core-block[open] { border-color: var(--ph-faint); background: rgba(0, 0, 0, .35); }
+.core-block > summary b { font-size: 9.5px; font-weight: 600; letter-spacing: .18em; color: var(--ph); text-shadow: none; }
+.core-block > summary .n { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); text-align: right; }
+.core-block > summary i { height: 5px; background: var(--ph-faint); position: relative; }
+.core-block > summary i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--nostromo-sun) 55%, var(--ph)); }
+.core-block > summary .caret { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); white-space: nowrap; }
+.core-block > summary:hover .caret { color: var(--ph); }
+.core-text { position: relative; padding: 4px 8px 12px; }
+.core-text pre { margin: 0; max-height: 46vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--ph-faint); background: #000; font-family: var(--mono); font-size: 11.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
+.core-copy-one { position: absolute; top: 12px; right: 18px; border: 1px solid var(--ph-faint); background: #000; color: var(--ph-dim); font: inherit; font-size: 8.5px; letter-spacing: .16em; padding: 4px 8px; cursor: pointer; }
+.core-copy-one:hover { color: var(--ph); border-color: var(--ph-dim); }
+.core-total { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--ph); }
+.core-fixed { margin: 0; font-family: var(--mono); font-size: 9px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); border-left: 2px solid color-mix(in srgb, var(--nostromo-sun) 60%, transparent); padding-left: 12px; }
+@media (max-width: 720px) { .core-block > summary { grid-template-columns: 1fr auto; } .core-block > summary i { display: none; } }
+
+/* The brand is a door now, so it has to look like one under the cursor without moving. */
+.brand { border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
+.brand:hover .brand-word { color: var(--phosphor); }
+
 /* The cold zone: a colour that is not a memory kind and not the sun, so it never reads as life. */
 .nostromo-head .mother-close.cold { color: #96b0c6; border-color: color-mix(in srgb, #96b0c6 45%, transparent); }
 .nostromo-head .mother-close.cold[aria-pressed="true"] { background: color-mix(in srgb, #96b0c6 16%, transparent); color: #cfe0ec; }

@@ -167,6 +167,12 @@ La sala acumula material de entrenamiento mientras trabajas. `MEMORY` muestra en
 
 ---
 
+## EL CORE
+
+Haz clic en **MADRE**. Cada turno, la sala escribe un documento en tu nombre y se lo entrega a un proceso; hasta ahora ese documento existía solo el instante en que el proceso lo leía. Ahí está entero: bloque por bloque, con lo que pesa cada uno y las palabras exactas que el agente recibe.
+
+Cambia a quién va y las palabras cambian; sube el modo y aparece el permiso que se le daría, escrito —sin crear carpeta ni tomar checkpoint para enseñarlo—. Preguntar qué diría la sala no es la sala diciéndolo: nada se cuenta, nada se guarda, nada sale. Y se lee, nunca se escribe: lo que MADRE promete sobre la tripulación es cierto porque esas palabras son fijas.
+
 ## MU/TH/UR
 
 El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un agente o una palabra y MU/TH/UR clasifica las condiciones registradas en esta sala contra su catálogo, con el remedio para tu sistema operativo. El mismo catálogo en terminal: `madre doctor --catalog [texto]`.
