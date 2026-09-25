@@ -4321,6 +4321,8 @@ const core = {
   body: document.querySelector('#core-body'),
   agent: null,
   mode: 1,
+  text: '',
+  typing: null,
   last: null,
   rate: null,
 };
@@ -4349,7 +4351,11 @@ async function openCore() {
   if (!core.dialog) return;
   core.agent ??= [...state.agents.values()].find((agent) => agent.ready && agent.id !== 'madre')?.id
     ?? [...state.agents.values()].find((agent) => agent.ready)?.id ?? null;
+  // Whatever is half-written in the composer is what you are about to send, so that is what the
+  // document is built around.
+  core.text = els.input?.value?.trim() ? els.input.value : (core.text ?? '');
   core.body.hidden = true;
+  core.body.replaceChildren(renderCoreControls(), el('div', 'core-doc'));
   core.dialog.showModal();
   typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; });
   // How many characters this room spends per token it is charged, so the weight below means
@@ -4359,33 +4365,44 @@ async function openCore() {
 }
 
 async function loadCore() {
-  core.body.replaceChildren(el('p', 'mother-answer', 'READING THE CORE…'));
+  const doc = core.body.querySelector('.core-doc');
+  doc?.classList.add('reading');
   let briefing;
   try {
-    const query = new URLSearchParams({ mode: String(core.mode), ...(core.agent ? { agent: core.agent } : {}) });
+    const query = new URLSearchParams({ mode: String(core.mode), ...(core.agent ? { agent: core.agent } : {}), ...(core.text ? { text: core.text } : {}) });
     briefing = await fetch(`/api/briefing?${query}`).then((response) => response.json());
     if (briefing.error) throw new Error(briefing.error);
   } catch (error) {
-    core.body.replaceChildren(el('p', 'mother-answer', String(error.message).toUpperCase()));
+    core.body.querySelector('.core-doc')?.replaceWith(el('p', 'mother-answer core-doc', String(error.message).toUpperCase()));
     return;
   }
   core.last = briefing;
   core.agent = briefing.agent;
-  renderCore(briefing);
+  // An agent answers at its own ceiling, whatever the composer says.
+  const ceiling = core.body.querySelector('.core-ceiling');
+  if (ceiling) ceiling.textContent = briefing.ceiling < briefing.mode ? `MAX MODE FOR @${briefing.agent.toUpperCase()} IS #${briefing.maxMode}, SO THIS TURN WOULD BE ANSWERED AT #${briefing.ceiling}` : '';
+  core.body.querySelector('.core-doc')?.replaceWith(renderCoreDoc(briefing));
 }
 
-function renderCore(briefing) {
-  core.body.replaceChildren();
-  core.body.append(el('p', 'note lead', 'THIS IS THE BRIEFING THE NEXT TURN WOULD CARRY, BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
+// The controls are built once per visit and never rebuilt, so what you are typing survives every
+// rebuild of the document underneath it.
+function renderCoreControls() {
+  const controls = el('div', 'core-controls');
+  controls.append(el('p', 'note lead', 'THIS IS THE BRIEFING THE NEXT TURN WOULD CARRY, BUILT NOW AND SENT NOWHERE. CHANGE WHO IT GOES TO AND THE WORDS CHANGE; RAISE THE MODE AND THE PERMISSION IT WOULD BE GIVEN APPEARS, WRITTEN OUT.'));
 
   // Who it goes to, and at what mode: the two things that change what is said.
   const pick = el('div', 'core-pick');
   const who = el('div', 'core-agents');
-  for (const agent of briefing.agents) {
-    const chip = el('button', `core-agent${agent.id === briefing.agent ? ' on' : ''}${agent.ready ? '' : ' cold'}`, `@${agent.id}`);
+  for (const agent of [...state.agents.values()].filter((agent) => agent.detected)) {
+    const chip = el('button', `core-agent${agent.id === core.agent ? ' on' : ''}${agent.ready ? '' : ' cold'}`, `@${agent.id}`);
     chip.type = 'button';
+    chip.dataset.agent = agent.id;
     chip.title = agent.ready ? `What @${agent.id} would be told` : `${agent.label} is not signed in; this is what it would be told`;
-    chip.addEventListener('click', () => { core.agent = agent.id; void loadCore(); });
+    chip.addEventListener('click', () => {
+      core.agent = agent.id;
+      for (const other of who.children) other.classList.toggle('on', other.dataset?.agent === agent.id);
+      void loadCore();
+    });
     who.append(chip);
   }
   pick.append(el('span', 'k', 'THE NEXT TURN GOES TO'), who);
@@ -4393,19 +4410,38 @@ function renderCore(briefing) {
   for (const [value, label] of [[0, '#0 GHOST'], [1, '#1 EXCHANGE'], [2, '#2 CREATE'], [3, '#3 CONTROL'], [4, '#4 AIRLOCK']]) {
     const option = el('option', null, label);
     option.value = String(value);
-    if (value === briefing.mode) option.selected = true;
+    if (value === core.mode) option.selected = true;
     modes.append(option);
   }
   modes.addEventListener('change', () => { core.mode = Number(modes.value); void loadCore(); });
   pick.append(el('span', 'k', 'AT MODE'), modes);
-  // An agent's own ceiling is the mode it actually answers at, whatever the composer says.
-  if (briefing.ceiling < briefing.mode) {
-    pick.append(el('span', 'core-ceiling', `MAX MODE FOR @${briefing.agent.toUpperCase()} IS #${briefing.maxMode}, SO THIS TURN WOULD BE ANSWERED AT #${briefing.ceiling}`));
-  }
-  core.body.append(pick);
+  pick.append(el('span', 'core-ceiling', ''));
+  controls.append(pick);
 
-  // The blocks, heaviest first is not the order they are said in: this is the document, so it
-  // keeps the document's own order.
+  // What you are about to ask. Recall, the memories and the closing question are written around
+  // it, so a briefing for an empty message is a briefing for a turn nobody is going to have.
+  const asking = el('div', 'core-asking');
+  asking.append(el('span', 'k', 'IF YOU SENT THIS'));
+  const field = el('textarea');
+  field.id = 'core-text';
+  field.rows = 2;
+  field.placeholder = 'Type what you would ask. The document rebuilds around it: the memories it would summon, the exchanges it would quote, the question it would close with.';
+  field.value = core.text ?? '';
+  field.addEventListener('input', () => {
+    core.text = field.value;
+    clearTimeout(core.typing);
+    core.typing = setTimeout(() => { void loadCore(); }, 450);
+  });
+  asking.append(field);
+  asking.append(el('span', 'note', 'NOTHING IS SENT FROM HERE.'));
+  controls.append(asking);
+  return controls;
+}
+
+function renderCoreDoc(briefing) {
+  const doc = el('div', 'core-doc');
+
+  // The blocks in the document's own order, which is the order they are said in.
   const widest = briefing.parts.reduce((top, part) => Math.max(top, part.chars), 1);
   const blocks = el('div', 'core-blocks');
   for (const part of briefing.parts) {
@@ -4432,12 +4468,21 @@ function renderCore(briefing) {
     row.append(head, body);
     blocks.append(row);
   }
-  core.body.append(blocks);
+  doc.append(blocks);
 
   const tokens = core.rate ? ` · ABOUT ${Math.round(briefing.chars / core.rate).toLocaleString()} TOKENS AT ${core.rate} CH/TOKEN IN THIS ROOM` : '';
-  core.body.append(el('p', 'core-total', `${briefing.chars.toLocaleString()} CHARACTERS IN ${briefing.parts.length} BLOCKS${tokens}`));
-  core.body.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.`));
-  core.body.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. THE BLOCKS THAT CAN BE SWITCHED OFF ARE SWITCHED OFF IN MODULES AND IN ⚙ CONNECTIONS, NEVER REWRITTEN.'));
+  doc.append(el('p', 'core-total', `${briefing.chars.toLocaleString()} CHARACTERS IN ${briefing.parts.length} BLOCKS${tokens}`));
+
+  // What the window holds and what it leaves behind: the one thing that explains the heaviest
+  // block in the document.
+  const window = briefing.window ?? {};
+  const held = window.from && window.through
+    ? `THE TRANSCRIPT IT CARRIES RUNS FROM #${window.from} TO #${window.through} · ${window.carried} MESSAGE${window.carried === 1 ? '' : 'S'}${window.omitted ? ` · ${window.omitted} OLDER ONE${window.omitted === 1 ? '' : 'S'} LEFT BEHIND, WHICH IS WHAT RECALL IS FOR` : ''}`
+    : 'THE WHOLE ROOM STILL FITS: NOTHING IS LEFT BEHIND AND NOTHING NEEDS RECALLING YET';
+  doc.append(el('p', 'note', held));
+  doc.append(el('p', 'note', `${briefing.recalled} MEMOR${briefing.recalled === 1 ? 'Y' : 'IES'} AND ${briefing.quoted} EXACT QUOTE${briefing.quoted === 1 ? '' : 'S'} WERE READ FOR THIS AND NONE OF THEM WAS COUNTED AS RECALLED: ASKING WHAT THE ROOM WOULD SAY IS NOT THE ROOM SAYING IT.${briefing.spared ? ` ${briefing.spared.toLocaleString()} CHARACTERS WERE LEFT OUT BECAUSE THIS TURN HAS NO USE FOR THEM.` : ''}`));
+  doc.append(el('p', 'core-fixed', 'YOU CANNOT EDIT THIS. WHAT MADRE PROMISES ABOUT THE CREW IS TRUE BECAUSE THESE WORDS ARE FIXED. THE BLOCKS THAT CAN BE SWITCHED OFF ARE SWITCHED OFF IN MODULES AND IN ⚙ CONNECTIONS, NEVER REWRITTEN.'));
+  return doc;
 }
 
 document.querySelector('#core-close')?.addEventListener('click', () => core.dialog.close());

@@ -1034,7 +1034,7 @@ export class Room {
       parts,
       chars: parts.reduce((sum, part) => sum + part.chars, 0),
       spared: sparedChars(options),
-      window: { from: built.context?.firstSequence ?? null, through: built.context?.lastSequence ?? null, omitted: built.context?.omittedMessages ?? 0 },
+      window: { from: built.context?.firstSequence ?? null, through: built.context?.throughSequence ?? null, omitted: built.context?.omittedMessages ?? 0, carried: built.context?.messages?.length ?? 0 },
       recalled: built.memories?.length ?? 0,
       quoted: built.recall?.entries?.length ?? 0,
     };

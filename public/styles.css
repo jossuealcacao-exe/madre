@@ -391,6 +391,13 @@ dialog.nostromo::backdrop { background: #000; }
 .core-agent:hover { border-color: var(--ph-dim); color: var(--ph); }
 .core-agent.on { border-color: var(--ph); color: var(--ph); background: var(--ph-faint); }
 .core-agent.cold { opacity: .55; }
+.core-controls { display: grid; gap: 12px; }
+.core-doc { display: grid; gap: 14px; transition: opacity .18s ease; }
+.core-doc.reading { opacity: .45; }
+.core-asking { display: grid; gap: 6px; }
+.core-asking textarea { width: 100%; min-height: 54px; max-height: 180px; resize: vertical; border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-family: var(--mono); font-size: 12px; line-height: 1.6; letter-spacing: .02em; padding: 10px 12px; }
+.core-asking textarea::placeholder { color: var(--ph-dim); opacity: .75; }
+.core-asking textarea:focus { outline: 0; border-color: var(--ph); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ph) 30%, transparent); }
 .core-ceiling { font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em; color: var(--warn); }
 
 .core-blocks { display: grid; gap: 4px; }
