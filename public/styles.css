@@ -392,6 +392,22 @@ dialog.nostromo::backdrop { background: #000; }
 .core-agent.on { border-color: var(--ph); color: var(--ph); background: var(--ph-faint); }
 .core-agent.cold { opacity: .55; }
 .core-controls { display: grid; gap: 12px; }
+/* The console: MU/TH/UR answered by being asked. Three strikes and the frame closes. */
+.core-console { display: grid; gap: 8px; border: 1px solid var(--ph-faint); background: #000; padding: 10px 12px; }
+.console-out { max-height: 26vh; min-height: 68px; overflow: auto; }
+.console-out pre { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: rgba(210, 255, 190, .92); text-shadow: none; }
+.console-out .said { color: var(--ph-dim); }
+.console-out .refused { color: var(--warn); }
+.console-line { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--ph-faint); padding-top: 8px; }
+.console-line .prompt { font-family: var(--mono); font-size: 12px; color: var(--nostromo-sun); text-shadow: none; }
+.console-line input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ph); font: inherit; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 0; }
+.console-line input:focus { outline: 0; }
+.console-line input::placeholder { color: var(--ph-dim); opacity: .7; letter-spacing: .14em; }
+.console-line input:disabled { opacity: .4; }
+.console-strikes { display: inline-flex; gap: 3px; }
+.console-strikes i { font-style: normal; font-size: 9px; color: var(--ph-faint); }
+.console-strikes i.on { color: var(--warn); }
+.core-console .note { margin: 0; font-size: 8.5px; letter-spacing: .12em; color: var(--ph-dim); }
 .core-doc { display: grid; gap: 14px; transition: opacity .18s ease; }
 .core-doc.reading { opacity: .45; }
 .core-asking { display: grid; gap: 6px; }

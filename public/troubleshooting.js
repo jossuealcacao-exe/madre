@@ -523,6 +523,15 @@ export const CONDITIONS = [
     fixes: same(['# MODULES → + ADD A MODULE', 'ls ~/.pulse/modules   # every module you installed, and where it came from', '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works']),
   },
   {
+    id: 'core-console',
+    severity: 'common',
+    title: 'The core closed while I was typing in it',
+    match: /unable to compute|interface closed|core clos|three strikes|inquiry|order 937|mu\/th\/ur 6000/i,
+    diagnosis: 'Inside the core there is a console: MU/TH/UR answers about this room from what the page already has — the blocks of the next briefing and their words, the command that would run it, what has left this machine, how many terms privacy is protecting, where the archive stands. Nothing is asked of the crew and nothing is sent. She answers or she says she cannot, and three inquiries she cannot parse close the frame. The count is on screen from the first one and every refusal names what she would have taken.',
+    remedy: 'Nothing happened to the archive: reading what the room says in your name is not an attempt on it. Open the core again — click the star at the centre of NOSTROMO — and the count starts over. HELP lists every inquiry; READ <BLOCK> prints one block of the briefing word for word.',
+    fixes: same(['# NOSTROMO → click the core → type HELP', '# READ MEMORIES prints the block the next turn would carry', '# SPECIAL ORDER 937 is answered too']),
+  },
+  {
     id: 'outbound',
     severity: 'common',
     title: 'What leaves this computer, and how to stop each thing that does',

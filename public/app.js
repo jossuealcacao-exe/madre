@@ -1,5 +1,6 @@
 import { brandOf } from './brands.js';
 import { CONDITIONS, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
+import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 
 const els = {
   project: document.querySelector('#project'),
@@ -4326,6 +4327,11 @@ const core = {
   last: null,
   rate: null,
   outbound: null,
+  verdict: null,
+  privacy: null,
+  strikes: 0,
+  history: [],
+  console: null,
 };
 
 const CORE_BOOT = [
@@ -4356,9 +4362,10 @@ async function openCore() {
   // document is built around.
   core.text = els.input?.value?.trim() ? els.input.value : (core.text ?? '');
   core.body.hidden = true;
-  core.body.replaceChildren(renderCoreControls(), el('div', 'core-doc'));
+  core.strikes = 0;
+  core.body.replaceChildren(renderCoreConsole(), renderCoreControls(), el('div', 'core-doc'));
   core.dialog.showModal();
-  typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; });
+  typeLines(core.boot, CORE_BOOT, () => { core.body.hidden = false; core.console?.field?.focus(); });
   // How many characters this room spends per token it is charged, so the weight below means
   // something in the currency the bill is written in.
   // What has left this machine is about the room, not about this turn, so it is read once per
@@ -4390,6 +4397,97 @@ async function loadCore() {
   const ceiling = core.body.querySelector('.core-ceiling');
   if (ceiling) ceiling.textContent = briefing.ceiling < briefing.mode ? `MAX MODE FOR @${briefing.agent.toUpperCase()} IS #${briefing.maxMode}, SO THIS TURN WOULD BE ANSWERED AT #${briefing.ceiling}` : '';
   core.body.querySelector('.core-doc')?.replaceWith(renderCoreDoc(briefing));
+}
+
+// The console. MU/TH/UR 6000 answered by being asked, and the core already holds everything an
+// answer would need — the document, the command, what has left this machine. Three inquiries she
+// cannot parse and the frame closes; the count is on screen from the first one, every refusal
+// says what she would have taken, and opening the core again starts over. Nothing is sent from
+// here and nothing is asked of the crew: every answer is built from what this page already has.
+function renderCoreConsole() {
+  const section = el('section', 'core-console');
+  const out = el('div', 'console-out');
+  const log = el('pre');
+  out.append(log);
+
+  const marks = el('span', 'console-strikes');
+  const drawStrikes = () => {
+    marks.replaceChildren();
+    for (let at = 0; at < STRIKES; at += 1) marks.append(el('i', at < core.strikes ? 'on' : null, '▮'));
+    marks.title = `${STRIKES - core.strikes} inquiry attempts left before this interface closes`;
+  };
+
+  const say = (lines, className = null) => {
+    const block = el('span', className);
+    block.textContent = `${lines.join('\n')}\n\n`;
+    log.append(block);
+    out.scrollTop = out.scrollHeight;
+  };
+
+  const line = el('form', 'console-line');
+  const field = el('input');
+  field.type = 'text';
+  field.autocomplete = 'off';
+  field.spellcheck = false;
+  field.setAttribute('aria-label', 'Inquiry');
+  field.placeholder = 'READY FOR INQUIRY';
+  let walked = null;
+  field.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    if (!core.history.length) return;
+    event.preventDefault();
+    walked = walked === null ? core.history.length - 1 : Math.min(core.history.length - 1, Math.max(0, walked + (event.key === 'ArrowUp' ? -1 : 1)));
+    field.value = core.history[walked] ?? '';
+  });
+  line.append(el('span', 'prompt', '>'), field, marks);
+
+  line.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const asked = field.value.trim();
+    if (!asked) return;
+    field.value = '';
+    walked = null;
+    core.history.push(asked);
+    say([`> ${asked.toUpperCase()}`], 'said');
+
+    // Two answers need something this page has not read yet; they are fetched when they are
+    // asked for, so opening the core stays one request.
+    const wanted = answerFor(asked, { strikes: core.strikes });
+    if (wanted.needs === 'verdict' && !core.verdict) {
+      core.verdict = await fetch('/api/maturity').then((response) => response.json()).then((read) => read?.verdict ?? null).catch(() => null);
+    }
+    if (wanted.needs === 'privacy' && !core.privacy) {
+      // Only the count and the marker cross into here. The words themselves never enter the
+      // console, so nothing in it can print them.
+      core.privacy = await fetch('/api/privacy').then((response) => response.json())
+        .then((read) => ({ terms: (read?.terms ?? []).length, marker: read?.marker ?? null })).catch(() => null);
+    }
+    const answer = answerFor(asked, {
+      strikes: core.strikes,
+      briefing: core.last,
+      outbound: core.outbound,
+      rate: core.rate,
+      verdict: core.verdict,
+      privacy: core.privacy,
+      agents: [...state.agents.values()],
+    });
+    core.strikes = answer.strikes;
+    drawStrikes();
+    say(answer.lines, answer.strike ? 'refused' : null);
+    if (answer.closes) {
+      field.disabled = true;
+      setTimeout(() => core.dialog.close(), 1800);
+    }
+  });
+
+  section.append(out, line);
+  const hint = el('p', 'note');
+  hint.textContent = `ASK: ${INQUIRIES.map((one) => one.aliases[0]).join(' · ')}`;
+  section.append(hint);
+  drawStrikes();
+  core.console = { field, say };
+  say(['READY FOR INQUIRY. HELP LISTS WHAT I ANSWER.']);
+  return section;
 }
 
 // The controls are built once per visit and never rebuilt, so what you are typing survives every

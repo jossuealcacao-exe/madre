@@ -149,7 +149,7 @@ test('core: what you type survives the rebuild it causes', async () => {
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
   // The controls are built once and the document is what gets replaced; rebuilding the whole
   // panel on every keystroke would take the caret with it.
-  assert.match(app, /core\.body\.replaceChildren\(renderCoreControls\(\), el\('div', 'core-doc'\)\)/);
+  assert.match(app, /core\.body\.replaceChildren\(renderCoreConsole\(\), renderCoreControls\(\), el\('div', 'core-doc'\)\)/);
   assert.match(app, /core\.body\.querySelector\('\.core-doc'\)\?\.replaceWith\(renderCoreDoc\(briefing\)\)/);
   assert.match(app, /\.\.\.\(core\.text \? \{ text: core\.text \} : \{\}\)/, 'what you would ask never reaches the document');
   // Half a sentence already in the composer is what you are about to send, so it starts there.
