@@ -185,9 +185,12 @@ export const ES = {
   'EVERY ADDRESS MADRE CAN REACH, AND WHETHER IT IS ON TODAY':
     'CADA DIRECCIÓN A LA QUE MADRE PUEDE LLEGAR, Y SI HOY ESTÁ ENCENDIDA',
   'THE LOG COULD NOT BE READ.': 'NO SE PUDO LEER EL REGISTRO.',
+  // ON y OFF se quedan como están: la misma palabra es el interruptor de una ficha de módulo y
+  // el estado de una dirección de salida, y traducirla la partiría en dos según dónde aparezca.
+  // Además, en una interfaz en español ON/OFF se lee sin fricción. LOCAL, por lo mismo.
   'LOCAL': 'LOCAL',
-  'ON': 'SÍ',
-  'OFF': 'NO',
+  'ON': 'ON',
+  'OFF': 'OFF',
   '{n} REQUESTS': '{n} PETICIONES',
   ' · {n} FAILED': ' · {n} FALLARON',
   'NOTHING YET': 'NADA TODAVÍA',
@@ -274,6 +277,114 @@ export const ES = {
     'EL NÚCLEO SIGUE DONDE LO DEJASTE. ÁBRELO OTRA VEZ CUANDO QUIERAS.',
   '{n} ATTEMPTS LEFT BEFORE THIS INTERFACE CLOSES. HELP LISTS WHAT I ANSWER.':
     'QUEDAN {n} INTENTOS ANTES DE QUE ESTA INTERFAZ SE CIERRE. HELP LISTA LO QUE CONTESTO.',
+
+  // ── LOS MÓDULOS (lo que cada uno dice de sí mismo, desde el servidor) ──────
+  'Verified project state, checkpoints and handoffs between AI sessions, stored in .ahp/ next to your code.':
+    'Estado verificado del proyecto, checkpoints y relevos entre sesiones de IA, guardados en .ahp/ junto a tu código.',
+  '.ahp/ with manifest, sessions, handoffs and evidence': '.ahp/ con manifiesto, sesiones, relevos y evidencia',
+  'a project-local pin of @jossuealcala/ahp-plus': 'una versión fijada de @jossuealcala/ahp-plus dentro del proyecto',
+  'IDE adapter files for the detected agents': 'archivos adaptadores de IDE para los agentes detectados',
+  'the project is a git repository': 'que el proyecto sea un repositorio git',
+  'npx on the PATH of the terminal MADRE was started from': 'npx en el PATH de la terminal desde donde arrancó MADRE',
+  'not in this project': 'no está en este proyecto',
+
+  'Gives Gemini CLI, Claude Code and OpenCode an image tool, through a MADRE-owned MCP server on the Gemini image models and your own key and credits.':
+    'Le da a Gemini CLI, Claude Code y OpenCode una herramienta de imagen, con un servidor MCP de MADRE sobre los modelos de imagen de Gemini, tu llave y tus créditos.',
+  'nothing in the project · images land in the lease folder':
+    'nada en el proyecto · las imágenes caen en la carpeta del permiso',
+  'an entry in ~/.pulse/config.json': 'una entrada en ~/.pulse/config.json',
+  'an MCP server per turn, started and stopped by the room':
+    'un servidor MCP por turno, que la sala levanta y apaga',
+  'attached only inside a creation lease with the image scope on':
+    'se engancha solo dentro de un permiso de creación con el alcance de imagen encendido',
+  'a Gemini API key with credits (the one the Gemini CLI stores, or GEMINI_API_KEY)':
+    'una API key de Gemini con créditos (la que guarda el CLI de Gemini, o GEMINI_API_KEY)',
+
+  'Brings the repository into the room: /git posts the branch, the uncommitted changes, the recent commits or the diff stats as a shared fact card, without spending an agent turn.':
+    'Trae el repositorio a la sala: /git publica la rama, los cambios sin commitear, los commits recientes o las estadísticas del diff como una ficha compartida, sin gastar un turno de agente.',
+  'nothing by itself · the read commands only read': 'nada por sí solo · los comandos de lectura solo leen',
+  'a local commit only when you type /git commit': 'un commit local solo cuando escribes /git commit',
+  'a push only when you type /git push confirm, after it shows what would leave':
+    'un push solo cuando escribes /git push confirm, después de enseñarte qué saldría',
+
+  'Asks every agent for compact prose. The rest of the economy is always on: the briefing carries only what a turn can use, what never changes is read first so a cache can match it, and the transcript holds still instead of sliding.':
+    'Le pide a cada agente respuestas compactas. El resto de la economía está siempre encendida: el briefing carga solo lo que el turno puede usar, lo que nunca cambia se lee primero para que una caché lo reconozca, y la transcripción se queda quieta en vez de irse recorriendo.',
+  'nothing in the project': 'nada en el proyecto',
+  'a switch in ~/.pulse/config.json': 'un interruptor en ~/.pulse/config.json',
+
+  'Renders HTML, SVG and Markdown from the project and from .pulse/out in the file viewer, inside a sealed frame.':
+    'Dibuja el HTML, el SVG y el Markdown del proyecto y de .pulse/out en el visor de archivos, dentro de un marco sellado.',
+  'scripts run in the frame · nothing leaves, nothing is stored, nothing reaches MADRE':
+    'los scripts corren dentro del marco · no sale nada, no se guarda nada, nada llega a MADRE',
+
+  'Recall by meaning and memory distillation on this machine, through Ollama: no provider tokens, nothing leaves.':
+    'Recall por significado y destilación de memorias en esta computadora, con Ollama: cero tokens de proveedor, no sale nada.',
+  'a block in ~/.pulse/config.json': 'un bloque en ~/.pulse/config.json',
+  "models in Ollama's own store when you press PULL": 'modelos en el almacén de Ollama cuando aprietas PULL',
+  'Ollama running (the app, or ollama serve)': 'Ollama corriendo (la app, o ollama serve)',
+  'an embedding model and a chat model · MADRE can pull the recommended ones':
+    'un modelo de embeddings y uno de chat · MADRE puede bajar los recomendados',
+
+  'Hands every agent a headless browser that reaches only this room: it opens the RIPLEY preview of a page, clicks through it, reads the console and takes screenshots.':
+    'Le da a cada agente un navegador sin ventana que solo alcanza esta sala: abre la vista previa RIPLEY de una página, le da clic, lee la consola y toma capturas.',
+  'nothing in the project · screenshots land in .pulse/out/<turn>/':
+    'nada en el proyecto · las capturas caen en .pulse/out/<turno>/',
+  'a browser per turn, started and stopped by the CLI': 'un navegador por turno, que el CLI levanta y apaga',
+  'no origin but this room is reachable through it': 'por ahí no se alcanza ningún origen que no sea esta sala',
+  '@playwright/mcp and a chromium browser on this machine': '@playwright/mcp y un navegador chromium en esta computadora',
+  'RIPLEY on, to have pages to open': 'RIPLEY encendido, para que haya páginas que abrir',
+
+  // ── LAS FICHAS DE MÓDULO ──────────────────────────────────────────────────
+  'Your module · {where} · {file}': 'Tu módulo · {where} · {file}',
+  'this project': 'este proyecto',
+  'every room': 'todas las salas',
+  'THIS PROJECT': 'ESTE PROYECTO',
+  'EVERY ROOM': 'TODAS LAS SALAS',
+  'Check for a newer {what}': 'Busca una versión más nueva de {what}',
+  'version': 'versión',
+  'CHECKING…': 'BUSCANDO…',
+  'NOTHING KNOWN YET': 'TODAVÍA NO SE SABE',
+  'COULD NOT CHECK': 'NO SE PUDO BUSCAR',
+  'GET A NEWER FILE': 'TRAER UN ARCHIVO MÁS NUEVO',
+  'From {url}': 'Desde {url}',
+  'From the file this module was installed from': 'Desde el archivo con el que se instaló este módulo',
+  'UPDATE TO {version}': 'ACTUALIZAR A {version}',
+  'INSTALL {version}': 'INSTALAR {version}',
+  'WRITES': 'ESCRIBE',
+  'NEEDS': 'NECESITA',
+  'WHAT IT TOUCHES': 'QUÉ TOCA',
+  'COMMANDS': 'COMANDOS',
+  'SETTINGS': 'AJUSTES',
+  'INSTALLING': 'INSTALANDO',
+  'CANNOT INSTALL HERE YET': 'AQUÍ TODAVÍA NO SE PUEDE INSTALAR',
+  'CONFIRM INSTALL': 'CONFIRMAR INSTALACIÓN',
+  'CANCEL': 'CANCELAR',
+  'REINSTALL / UPGRADE': 'REINSTALAR / ACTUALIZAR',
+  'INSTALL': 'INSTALAR',
+  'ANOTHER INSTALL IS RUNNING': 'HAY OTRA INSTALACIÓN CORRIENDO',
+
+  // El estado de cada módulo, en su ficha.
+  'on': 'encendido',
+  'off': 'apagado',
+  'embeddings': 'embeddings',
+  'archivist': 'archivista',
+  '@madre in the room': '@madre en la sala',
+  'installed, not running · START it here': 'instalado, no está corriendo · ARRÁNCALO aquí',
+  'not installed · INSTALL it here': 'no está instalado · INSTÁLALO aquí',
+  'off · {n} models available': 'apagado · {n} modelos disponibles',
+  'on · no usable model yet · PULL one': 'encendido · todavía no hay un modelo usable · baja uno con PULL',
+
+  'on · project is a git repository': 'encendido · el proyecto es un repositorio git',
+  'not a git repository': 'no es un repositorio git',
+  'on · agents answer in compact prose': 'encendido · los agentes contestan en prosa compacta',
+  'off · agents answer at their own length': 'apagado · los agentes contestan con el largo que quieran',
+  'on · the browser server is not installed': 'encendido · el servidor de navegador no está instalado',
+  'off · the browser server is not installed': 'apagado · el servidor de navegador no está instalado',
+  ' · no Gemini key found': ' · no se encontró llave de Gemini',
+  'key found': 'llave encontrada',
+  'no Gemini key found': 'no se encontró llave de Gemini',
+  'on · PREVIEW in the file viewer': 'encendido · PREVIEW en el visor de archivos',
+  'off · files show as source': 'apagado · los archivos se ven como código',
 
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',

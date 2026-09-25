@@ -5,6 +5,7 @@
 // receiving { defineModule } and returning either. Agents cannot write those folders: .madre/
 // is a forbidden zone, and ~/.pulse lives outside every project.
 import { readdir, readFile, writeFile, mkdir, unlink, mkdtemp, rm, access } from 'node:fs/promises';
+import { translate } from '../i18n.mjs';
 import { join, basename, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -132,8 +133,11 @@ export const moduleById = (id) => MODULES.find((module) => module.id === id) ?? 
 export async function describeModules(ctx) {
   const items = await Promise.all(MODULES.map((module) => module.describe(ctx)));
   const look = ctx.services?.moduleUpdate;
-  if (!look) return items;
-  return Promise.all(items.map(async (item) => ({ ...item, update: await look(item).catch(() => null) })));
+  // One place, at the boundary: what a module says about itself is written in English inside the
+  // module, and it is the card that speaks the room's language. Nothing in the module files
+  // changes, and neither does what a module hands to an agent.
+  if (!look) return translate(items);
+  return translate(await Promise.all(items.map(async (item) => ({ ...item, update: await look(item).catch(() => null) }))));
 }
 // One flat list of every route a module serves, with the module attached.
 export function findModuleRoute(method, pathname) {

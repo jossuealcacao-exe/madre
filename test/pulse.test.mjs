@@ -1069,7 +1069,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   const project = join(root, 'project');
   await mkdir(project);
   try {
-    assert.deepEqual(await ahp.detect(project), { installed: false, detail: 'not in this project' });
+    assert.deepEqual(await ahp.detect(project), { installed: false, detail: t('not in this project') });
     const listed = await listExtensions({ projectRoot: project, agents });
     assert.equal(listed[0].status.installed, false);
     assert.equal(listed[0].install.display, plan.display);
@@ -2717,6 +2717,7 @@ test('escalation: a creation step in a #1 plan waits for the human; once, plan, 
 
 // ---------- CONTROL: checkpoints, forbidden zones, UNDO, one holder ----------
 import { createCheckpoint, diffCheckpoint, isForbidden, restoreCheckpoint } from '../src/checkpoint.mjs';
+import { t } from '../src/i18n.mjs';
 
 test('checkpoint: photographs tracked and untracked files without touching the branch, diffs, and restores including removals', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-checkpoint-'));

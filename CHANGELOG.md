@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### MODULES, en español — y el catálogo cruza al servidor
+- Las fichas completas: el estado de cada módulo, **QUÉ TOCA** con lo que ESCRIBE y lo que NECESITA, **COMANDOS**, **AJUSTES**, y los botones — INSTALAR, CONFIRMAR INSTALACIÓN, ACTUALIZAR A…, TRAER UN ARCHIVO MÁS NUEVO.
+- Lo que un módulo dice de sí mismo vive **dentro del módulo, en inglés**, y ahora se traduce en la frontera: `describeModules()` pasa la ficha por el catálogo antes de mandarla a la pantalla. Ni un archivo de módulo cambió de idioma, y lo que un módulo le entrega a un agente sigue exactamente igual.
+- Para eso el catálogo cruzó al servidor: `src/i18n.mjs` importa **el mismo `public/es.js`**. Un solo archivo para todo el producto, porque una frase que sale en una ficha y en un aviso no se puede traducir dos veces y quedar distinta. La prueba de cobertura ahora recorre los dos lados del cable.
+- `ON` y `OFF` se quedan como están. La misma palabra es el interruptor de una ficha y el estado de una dirección de salida; traducirla la partiría en dos según dónde aparezca, y en una interfaz en español ON/OFF se lee sin fricción.
+- Y las pruebas leen MADRE **en el idioma en que está escrita**, decidido en un solo lugar: `PULSE_LANGUAGE`, que gana sobre el archivo de configuración como todo lo demás aquí. Afirman qué es un módulo, qué hace una sala y qué significa una lectura — no cómo está redactado— así que no se mueven cada vez que el español mejora. El español tiene sus propias pruebas: la cobertura del catálogo y la prueba de humo de la página, que arranca en español a propósito.
+
 ### El core, en español
 - Las cuatro pestañas y todo lo que hay detrás: EL DOCUMENTO con sus bloques y su peso, LO QUE CARGA, EL LANZAMIENTO con lo que mantiene la corrida dentro del turno, LO QUE SALIÓ DE ESTA COMPUTADORA con sus direcciones y su registro, y la consola de MU/TH/UR entera —las once consultas, sus respuestas y las tres negativas—.
 - Los nombres de los bloques del briefing **no se traducen**: `room`, `who`, `privacy`, `memories`. Son ids del prompt que el agente lee en inglés; traducirlos en pantalla sería enseñar un documento que no existe.

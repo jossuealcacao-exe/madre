@@ -287,7 +287,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.ok(ash.querySelector('.check'), 'the card has no button to look for a newer version');
   assert.equal(ash.querySelector('.state').textContent, 'ON', 'the state is not a plain word');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
-  assert.match(ash.querySelector('.card-fold').textContent, /WHAT IT TOUCHES/);
+  assert.match(ash.querySelector('.card-fold').textContent, /QUÉ TOCA/);
   assert.match(ash.querySelector('.card-fold').textContent, /EXPAND|COLLAPSE/, 'the fold has no button');
 
   // The reading fills the card's own panel once the economy answers.
@@ -316,5 +316,5 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.equal(ahp.querySelector('.state').textContent, 'OFF');
   assert.ok(ahp.classList.contains('off'), 'a module that is off does not step back');
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
-  assert.match(ahp.querySelector('.actions').textContent, /INSTALL/);
+  assert.match(ahp.querySelector('.actions').textContent, /INSTALAR/);
 });

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DEFAULT_LANGUAGE, LANGUAGES, catalogue, fill, isLanguage, language, pick, setLanguage, t } from '../public/i18n.js';
 import { ES } from '../public/es.js';
@@ -46,8 +46,21 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   // Both ways round, because both are rot: a key the code no longer uses is a translation of a
   // sentence nobody reads, and a `t()` the catalogue does not have is a screen in the wrong
   // language. The second is not fatal — it falls back — which is exactly why it needs a test.
-  // Both files that speak: the page, and the console inside the core.
-  const app = `${await read('app.js')}\n${await read('inquiry.js')}`;
+  // Everything that speaks: the page, the console inside the core, and the server text that
+  // reaches a screen — a module saying what it is, a reading saying what it means. One
+  // catalogue for both sides of the wire, so a sentence is never translated twice.
+  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js')];
+  const walk = async (at) => {
+    for (const entry of await readdir(at, { withFileTypes: true })) {
+      if (entry.isDirectory()) await walk(join(at, entry.name));
+      else if (entry.name.endsWith('.mjs')) files.push(join(at, entry.name));
+    }
+  };
+  await walk(join(import.meta.dirname, '..', 'src'));
+  // A source file may write a character as an escape — '\u00b7' for '·' — and the catalogue is
+  // keyed by the string, not by how it was typed.
+  const app = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join('\n')
+    .replace(/\\u([0-9a-fA-F]{4})/g, (whole, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
   // The key as JavaScript will hand it to t(): an escaped quote in the source is a plain one in
   // the string, and the catalogue is keyed by the string.
   const used = new Set();

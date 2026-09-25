@@ -1156,7 +1156,7 @@ function keyForm(agent, { onDone } = {}) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     save.disabled = true;
-    said.textContent = 'CHECKING…';
+    said.textContent = t('CHECKING…');
     said.className = 'key-said';
     try {
       const response = await fetch(`/api/agents/${agent.id}/key`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: input.value, provider: select?.value ?? null }) });
@@ -3715,7 +3715,7 @@ function cardShell(item, { on, state: stateText }) {
   top.append(el('h4', null, item.name));
   if (item.external) {
     const dev = el('span', 'dev-tag', 'DEV');
-    dev.title = `Your module · ${item.origin === 'project' ? 'this project' : 'every room'} · ${item.file}`;
+    dev.title = t('Your module · {where} · {file}', { where: item.origin === 'project' ? t('this project') : t('every room'), file: item.file });
     top.append(dev);
   }
   top.append(el('span', `state ${stateText === 'INSTALLING' ? 'running' : on ? 'on' : 'off'}`, stateText));
@@ -3728,23 +3728,23 @@ function cardShell(item, { on, state: stateText }) {
   if (known) { said.className = `update ${known.kind}`; said.textContent = known.text; said.title = updateNote(item, item.update); }
   const check = el('button', 'check', '↻');
   check.type = 'button';
-  check.title = `Check for a newer ${item.tracks?.name ?? 'version'}`;
+  check.title = t('Check for a newer {what}', { what: item.tracks?.name ?? t('version') });
   check.addEventListener('click', async () => {
     check.disabled = true;
     said.className = 'update';
-    said.textContent = 'CHECKING…';
+    said.textContent = t('CHECKING…');
     said.title = '';
     try {
       const response = await fetch(`/api/extensions/${item.id}/updates`, { method: 'POST' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      const word = updateWord(result.update) ?? { text: 'NOTHING KNOWN YET', kind: 'note' };
+      const word = updateWord(result.update) ?? { text: t('NOTHING KNOWN YET'), kind: 'note' };
       said.className = `update ${word.kind}`;
       said.textContent = word.text;
       said.title = updateNote(item, result.update);
     } catch (error) {
       said.className = 'update';
-      said.textContent = 'COULD NOT CHECK';
+      said.textContent = t('COULD NOT CHECK');
       said.title = error.message;
     } finally { check.disabled = false; }
   });
@@ -3752,21 +3752,21 @@ function cardShell(item, { on, state: stateText }) {
   // Something newer exists and the module knows how to fetch it: the button is right where the
   // news is. It shows the command first and runs nothing until that has been read.
   if (item.external) {
-    const fresh = el('button', 'get', 'GET A NEWER FILE');
+    const fresh = el('button', 'get', t('GET A NEWER FILE'));
     fresh.type = 'button';
-    fresh.title = item.updates?.url ? `From ${item.updates.url}` : 'From the file this module was installed from';
+    fresh.title = item.updates?.url ? t('From {url}', { url: item.updates.url }) : t('From the file this module was installed from');
     fresh.addEventListener('click', () => void refreshModuleFile(item, fresh));
     line.append(fresh);
   }
   if (item.canUpdate && (item.update?.available || (item.versionSource === 'tracked' && !item.version && item.update?.latest))) {
-    const get = el('button', 'get', item.version ? `UPDATE TO ${item.update.latest}` : `INSTALL ${item.update.latest}`);
+    const get = el('button', 'get', item.version ? t('UPDATE TO {version}', { version: item.update.latest }) : t('INSTALL {version}', { version: item.update.latest }));
     get.type = 'button';
     get.addEventListener('click', () => void updateModule(item, get));
     line.append(get);
   }
   head.append(line);
   if (item.status?.detail) head.append(el('div', 'detail', item.status.detail.toUpperCase()));
-  if (item.external) head.append(el('div', 'detail', `${item.origin === 'project' ? 'THIS PROJECT' : 'EVERY ROOM'} · ${item.file}`));
+  if (item.external) head.append(el('div', 'detail', `${item.origin === 'project' ? t('THIS PROJECT') : t('EVERY ROOM')} · ${item.file}`));
   card.append(head);
 
   // FLOOR 2 · what it does, in one paragraph.
@@ -3774,17 +3774,17 @@ function cardShell(item, { on, state: stateText }) {
 
   // FLOOR 3 · what it touches, folded, with the count and nothing else.
   const bullets = [
-    ...(item.creates ?? []).map((text) => ['WRITES', text]),
-    ...(item.requires ?? []).map((text) => ['NEEDS', text]),
+    ...(item.creates ?? []).map((text) => [t('WRITES'), text]),
+    ...(item.requires ?? []).map((text) => [t('NEEDS'), text]),
   ];
   if (bullets.length) {
-    const body = cardFold(card, 'WHAT IT TOUCHES', { key: `mod.${item.id}.touches`, count: bullets.length });
+    const body = cardFold(card, t('WHAT IT TOUCHES'), { key: `mod.${item.id}.touches`, count: bullets.length });
     const list = el('ul');
     for (const [tag, text] of bullets) { const row = el('li'); row.append(el('i', null, tag), el('span', null, text)); list.append(row); }
     body.append(list);
   }
   if (item.commands?.length) {
-    const body = cardFold(card, 'COMMANDS', { key: `mod.${item.id}.commands`, count: item.commands.length });
+    const body = cardFold(card, t('COMMANDS'), { key: `mod.${item.id}.commands`, count: item.commands.length });
     const list = el('ul', 'card-commands');
     for (const line of item.commands) list.append(el('li', null, line));
     body.append(list);
@@ -3802,7 +3802,7 @@ function cardShell(item, { on, state: stateText }) {
 // declared in the SDK. MADRE draws them and saves them into the module's own block of config.
 function cardControls(panel, item) {
   if (!item.controls?.length) return;
-  const box = cardBlock(panel, 'SETTINGS');
+  const box = cardBlock(panel, t('SETTINGS'));
   const row = el('div', 'card-toggles');
   const save = async (control, value, field) => {
     field.disabled = true;
@@ -4158,13 +4158,13 @@ function moduleCard(item) {
   if (item.kind === 'builtin') return builtinCard(item);
   const running = modules.installing === item.id;
   const installed = Boolean(item.status?.installed);
-  const { card, panel, actions } = cardShell(item, { on: installed, state: running ? 'INSTALLING' : installed ? 'ON' : 'OFF' });
+  const { card, panel, actions } = cardShell(item, { on: installed, state: running ? t('INSTALLING') : installed ? t('ON') : t('OFF') });
   cardControls(panel, item);
 
   const blocked = item.preflight && !item.preflight.ok;
   if (blocked) {
     const warn = el('div', 'confirm');
-    warn.append(el('span', 'warn', 'CANNOT INSTALL HERE YET'));
+    warn.append(el('span', 'warn', t('CANNOT INSTALL HERE YET')));
     for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
     panel.append(warn);
   }
@@ -4176,7 +4176,7 @@ function moduleCard(item) {
       ? `IDE adapters for the agents detected here: ${item.install.platforms.join(', ')}.`
       : 'No detected agent has an adapter for this module; it installs without IDE adapters.'));
     const row = el('div', 'actions');
-    const go = el('button', 'primary', 'CONFIRM INSTALL');
+    const go = el('button', 'primary', t('CONFIRM INSTALL'));
     go.type = 'button';
     go.addEventListener('click', async () => {
       go.disabled = true;
@@ -4192,18 +4192,18 @@ function moduleCard(item) {
       modules.logs.set(item.id, []);
       renderModules();
     });
-    const cancel = el('button', null, 'CANCEL');
+    const cancel = el('button', null, t('CANCEL'));
     cancel.type = 'button';
     cancel.addEventListener('click', () => { modules.confirming = null; renderModules(); });
     row.append(go, cancel);
     panel.append(confirm, row);
   } else {
-    const install = el('button', installed ? null : 'primary', installed ? 'REINSTALL / UPGRADE' : 'INSTALL');
+    const install = el('button', installed ? null : 'primary', installed ? t('REINSTALL / UPGRADE') : t('INSTALL'));
     install.type = 'button';
     install.disabled = Boolean(modules.installing) || blocked;
     install.addEventListener('click', () => { modules.confirming = item.id; renderModules(); });
     actions.append(install);
-    if (modules.installing && modules.installing !== item.id) actions.append(el('span', 'note', 'ANOTHER INSTALL IS RUNNING'));
+    if (modules.installing && modules.installing !== item.id) actions.append(el('span', 'note', t('ANOTHER INSTALL IS RUNNING')));
   }
   const log = modules.logs.get(item.id) ?? [];
   if (log.length || running) {

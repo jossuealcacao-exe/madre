@@ -4,6 +4,7 @@
 // room's own address: nothing else on the network is reachable through it.
 
 import { join } from 'node:path';
+import { t } from '../i18n.mjs';
 import { defineModule } from './sdk.mjs';
 import { packageVersion } from './helpers.mjs';
 
@@ -54,7 +55,7 @@ export default defineModule({
     return {
       runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `on · ${ctx.settings.browser}` : 'on · the browser server is not installed') : version ? 'off' : 'off · the browser server is not installed' },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `${t('on')} · ${ctx.settings.browser}` : t('on · the browser server is not installed')) : version ? t('off') : t('off · the browser server is not installed') },
       preflight: version ? { ok: true, problems: [] } : { ok: false, problems: ['Install the browser server first: npm install -g @playwright/mcp && npx playwright install chromium'] },
       install: { display: ctx.settings.enabled ? 'disable PLAYWRIGHT' : 'enable PLAYWRIGHT (config.json)', platforms: ['codex', 'claude', 'gemini', 'opencode'] },
     };

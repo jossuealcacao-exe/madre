@@ -92,7 +92,7 @@ test('every card has the same floors, and the switch is always the last one', as
   // then the module's own panel and, last, the actions.
   assert.ok(shell.includes("el('h4', null, item.name)"), 'the card does not name the module');
   assert.ok(shell.includes('versionLabel(item)'), 'the card does not say what version is running');
-  assert.ok(shell.includes("cardFold(card, 'WHAT IT TOUCHES'"), 'the bullets are not a section of their own');
+  assert.ok(shell.includes("cardFold(card, t('WHAT IT TOUCHES')"), 'the bullets are not a section of their own');
   assert.match(shell, /card\.append\(panel, actions\);/, 'the actions are not the last floor of the card');
   // And the last floor is on the floor: cards in a row are the same height, so every button
   // lines up along the bottom edge instead of stopping wherever its text ran out.
@@ -110,7 +110,7 @@ test('every card has the same floors, and the switch is always the last one', as
   assert.ok(app.includes("cardBlock(panel, 'LOCAL BRAIN')"), 'Ollama does not report on its own card');
   assert.ok(app.includes("cardBlock(panel, 'ROLES')"), 'the local roles are not settings on the card');
   // And the settings floor is declared, not drawn: any module gets one by saying what it has.
-  assert.ok(app.includes("cardBlock(panel, 'SETTINGS')"), 'a module cannot have settings on its card');
+  assert.ok(app.includes("cardBlock(panel, t('SETTINGS'))"), 'a module cannot have settings on its card');
   assert.match(app, /cardControls\(panel, item\);/);
 });
 
@@ -262,7 +262,7 @@ test('modules: a newer version is something the card can go and get, with the co
 
   // The button is where the news is, and only when there is news and a way to act on it.
   assert.match(app, /item\.canUpdate && \(item\.update\?\.available \|\| \(item\.versionSource === 'tracked' && !item\.version && item\.update\?\.latest\)\)/);
-  assert.match(app, /UPDATE TO \$\{item\.update\.latest\}/);
+  assert.match(app, /t\('UPDATE TO \{version\}', \{ version: item\.update\.latest \}\)/);
   // Two calls: the first asks what would run, the second runs exactly that. Nothing runs unread.
   assert.match(app, /const asked = await ask\(false\);/);
   assert.match(app, /THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT/);

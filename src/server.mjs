@@ -18,6 +18,7 @@ import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesTo
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
+import { setLanguage as setRoomLanguage } from './i18n.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -138,6 +139,9 @@ export async function createPulseServer({
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
   // ~/.pulse/config.json fills in whatever the environment did not set.
   applyConfigToEnv(await loadConfig(root));
+  // What language the screens speak. The prompt the agents read is not one of them, and the
+  // environment wins over the file, as it does for every other setting here.
+  setRoomLanguage(process.env.PULSE_LANGUAGE ?? (await readConfig(root)).language);
   // RIPLEY renders HTML in the viewer only while the human has it switched on; read live, the switch is the module's.
   const ripleyOn = async () => Boolean((await readConfig(root)).modules?.ripley?.enabled);
   agentTimeouts ??= agentTimeoutsFromEnv();
@@ -1087,6 +1091,7 @@ export async function createPulseServer({
         const payload = await body(request).catch(() => ({}));
         const language = payload.language === 'en' ? 'en' : 'es';
         await updateConfig(root, { language });
+        setRoomLanguage(process.env.PULSE_LANGUAGE ?? language);
         return sendJson(response, 200, { language });
       }
       if (request.method === 'GET' && url.pathname === '/api/privacy') {

@@ -2,6 +2,7 @@
 // A switch in config.json, read live by the preview route.
 
 import { defineModule } from './sdk.mjs';
+import { t } from '../i18n.mjs';
 
 export default defineModule({
   id: 'ripley',
@@ -13,7 +14,7 @@ export default defineModule({
   card: 'ripley',
   async status(ctx) {
     return {
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? 'on · PREVIEW in the file viewer' : 'off · files show as source' },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? t('on · PREVIEW in the file viewer') : t('off · files show as source') },
       install: { display: ctx.settings.enabled ? 'disable RIPLEY' : 'enable RIPLEY (config.json)', platforms: [] },
       fixed: false,
     };

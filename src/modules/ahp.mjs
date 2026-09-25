@@ -2,6 +2,7 @@
 // command. Verified project state, checkpoints and handoffs in .ahp/.
 
 import { join, resolve } from 'node:path';
+import { t } from '../i18n.mjs';
 import { realpath } from 'node:fs/promises';
 import { defineModule } from './sdk.mjs';
 import { readJson, gitToplevel, findOnPath, packageVersion } from './helpers.mjs';
@@ -14,7 +15,7 @@ const VERSION = '1.4.1';
 
 async function detect(projectRoot) {
   const manifest = await readJson(join(projectRoot, '.ahp', 'manifest.json'));
-  if (!manifest) return { installed: false, detail: 'not in this project' };
+  if (!manifest) return { installed: false, detail: t('not in this project') };
   const pinned = await packageVersion(PACKAGE, { projectRoot });
   return {
     installed: true,

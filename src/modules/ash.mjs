@@ -15,6 +15,7 @@
 // the switch worth having, and it is the human's to make.
 
 import { defineModule } from './sdk.mjs';
+import { t } from '../i18n.mjs';
 
 export default defineModule({
   id: 'ash',
@@ -27,7 +28,7 @@ export default defineModule({
   card: 'ash',
   async status(ctx) {
     return {
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? 'on · agents answer in compact prose' : 'off · agents answer at their own length' },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? t('on · agents answer in compact prose') : t('off · agents answer at their own length') },
       install: { display: ctx.settings.enabled ? 'stop asking for compact replies' : 'ask every agent for compact replies', platforms: [] },
     };
   },

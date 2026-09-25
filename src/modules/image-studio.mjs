@@ -2,6 +2,7 @@
 // the CLIs that cannot draw natively. A switch and a model in config.json.
 
 import { defineModule } from './sdk.mjs';
+import { t } from '../i18n.mjs';
 
 const MODELS = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image'];
 
@@ -25,7 +26,7 @@ export default defineModule({
     const model = ctx.settings.model ?? MODELS[0];
     return {
       model,
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? `on · ${model}${key ? '' : ' · no Gemini key found'}` : key ? 'key found' : 'no Gemini key found' },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? `${t('on')} · ${model}${key ? '' : t(' · no Gemini key found')}` : key ? t('key found') : t('no Gemini key found') },
       preflight: key ? { ok: true, problems: [] } : { ok: false, problems: ['No Gemini API key: sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY. Image models bill against that key.'] },
       install: { display: ctx.settings.enabled ? 'disable Image Studio' : 'enable Image Studio (config.json)', platforms: ['gemini', 'claude', 'opencode'] },
     };

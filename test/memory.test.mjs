@@ -819,7 +819,8 @@ test('RIPLEY: off by default, files stay source; on, HTML and SVG render through
     const listed = await listExtensions({ projectRoot: project, config: {} });
     const ripley = listed.find((item) => item.id === 'ripley');
     assert.equal(ripley.status.installed, false);
-    assert.equal((await listExtensions({ projectRoot: project, config: { modules: { ripley: { enabled: true } } } })).find((item) => item.id === 'ripley').status.detail, 'on · PREVIEW in the file viewer');
+    // What it says, not how it words it: the room is open here, so it speaks the room's language.
+    assert.match((await listExtensions({ projectRoot: project, config: { modules: { ripley: { enabled: true } } } })).find((item) => item.id === 'ripley').status.detail, /PREVIEW/);
 
     const state = await fetch(`${base}/api/state`).then((response) => response.json());
     assert.deepEqual(state.ripley, { enabled: false });
