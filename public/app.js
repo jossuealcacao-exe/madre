@@ -2846,7 +2846,7 @@ function renderHighlight() {
   const html = escapeHtml(text).replace(/(^|[\s(,;:])([@/!#])([\w][\w./-]*(?::\d+(?:-\d+)?)?)/g, (whole, lead, sigil, name) => {
     const key = name.toLowerCase();
     if (sigil === '#') {
-      if (!/^[0-3]$/.test(name)) return whole;
+      if (!/^[0-4]$/.test(name)) return whole;
       return `${lead}<span class="chip mode m${name}">#${name} ${MODES[Number(name)].label}</span>`;
     }
     if (sigil === '!') {
@@ -3196,9 +3196,24 @@ els.composer.addEventListener('submit', async (event) => {
   let target = els.target.value;
   const quoting = state.replyTo;
   if (quoting && !text.startsWith('/')) outgoing = `${quoteHead(quoting)}${outgoing}`;
-  // "#2" written in the message is the same as choosing it in the chip.
-  const modeToken = outgoing.match(/(^|\s)#([0-3])(?=\s|$)/);
-  if (modeToken) { setMode(Number(modeToken[2])); outgoing = outgoing.replace(/(^|\s)#[0-3](?=\s|$)/, '$1').replace(/\s{2,}/g, ' ').trim(); }
+  // "#2" written in the message is the same as choosing it in the chip — and so are #3 and #4,
+  // which in the chip open the override instead of arming themselves. A mode that asks for two
+  // keys in the menu must not be free to anyone who can type it: the token is taken out of the
+  // message, the rest goes back in the field, and the override decides. The ceiling is the
+  // server's word either way; this is the ceremony in front of it.
+  const modeToken = outgoing.match(/(^|\s)#([0-4])(?=\s|$)/);
+  if (modeToken) {
+    const wanted = Number(modeToken[2]);
+    outgoing = outgoing.replace(/(^|\s)#[0-4](?=\s|$)/, '$1').replace(/\s{2,}/g, ' ').trim();
+    if (wanted >= 3) {
+      const scopes = state.capabilities[target]?.scopes;
+      els.input.value = outgoing;
+      autosize();
+      openOverride(target, { mode: wanted, raise: wanted > ceilingFor(target) && Boolean(scopes?.write?.capable) });
+      return;
+    }
+    setMode(wanted);
+  }
   if (text.startsWith('/')) {
     els.input.disabled = true;
     const result = await runSlashCommand(text).catch((error) => { toast(t('The command failed: {error}', { error: error.message })); return { handled: true }; });

@@ -26,6 +26,19 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Un modo que solo se alcanzaba con el ratón, y papeles que se contradecían
+
+- **`#4` existía en el menú y no se podía teclear.** El compositor aceptaba `#0` a `#3`; el chip ofrecía los cinco. Ahora acepta los cinco — y al arreglarlo salió lo de verdad: **teclear `#3` armaba CONTROL sin pedir nada**, mientras que hacer clic en `#3` abría la anulación. El mismo modo, dos precios. Ahora los dos altos pasan por la misma puerta: el token sale del mensaje, el texto vuelve al campo y la anulación decide. El techo sigue siendo palabra del servidor (`room.modeCheck`); esto es la ceremonia delante de él.
+- **`SECURITY.md` apuntaba a una sección del README que no existe** — «the short threat model lives in the README under *Modelo de amenazas, en corto*». Ahora apunta a donde de verdad está escrito.
+- **Y no decía una palabra de AIRLOCK.** `#4` corre comandos, hace `git push` y despliega, y el documento de seguridad estaba en blanco sobre la superficie más sensible del producto. Ya está escrito, con lo que hace falta para armarlo y con la frase que importa: tratar `#4` como entregarle tu shell a ese agente.
+- `CONTRIBUTING.md` clavaba la regla de versiones a `0.2.x`. La regla no era de esa versión.
+
+### Un README que vende y una referencia que explica
+
+- El README eran cuatro mil palabras de manual excelente. Un manual no es una portada: quien llega no sabe todavía si esto le sirve. Ahora son **ochocientas** — la promesa, el comando, tres cosas que MADRE hace y una lista de **lo que MADRE no es**, que es lo que de verdad la distingue: sin nube, sin cuenta, sin guardar credenciales, sin que nada salga por su cuenta, y con las pantallas que lo demuestran.
+- Todo lo demás —los modos por dentro, las capacidades de cada agente, la memoria, los módulos, el config y las treinta variables de entorno— vive entero en [`docs/REFERENCE.md`](docs/REFERENCE.md), que viaja en el paquete.
+- Y ahí quedó por fin escrito lo que faltaba: **el idioma** (español por defecto, `EN` a un botón, `PULSE_LANGUAGE`, y por qué la terminal se queda en inglés a propósito), **THE LAUNCH**, el registro de salidas y la consola del núcleo.
+
 ### Los cuatro lugares de la sala tienen nombre en español
 
 - `MODULES` y `THE CORE` se quedaban en inglés porque estaban en la lista de nombres que no se traducen, junto a MU/TH/UR, NOSTROMO, ASH y RIPLEY. Pero esos cuatro son **nombres propios de la nave** y estos dos no: dicen qué hay detrás de la puerta. Ahora son **MÓDULOS** y **EL NÚCLEO**, que es como la prosa de la sala ya los llamaba — «mira MÓDULOS», «aléjate del núcleo».

@@ -136,3 +136,23 @@ test('#4 AIRLOCK: CONTROL plus commands, one holder, only where the ceiling reac
     await rm(logDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('a mode typed into the message goes through the same door as the chip', async () => {
+  const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const send = app.slice(app.indexOf('const modeToken = outgoing.match'), app.indexOf('if (text.startsWith(\'/\'))'));
+
+  // #4 exists in the ladder, so it must be typeable: a mode you can only reach with the mouse is
+  // a mode that half exists. The token covers all five.
+  assert.match(send, /#\(\[0-4\]\)/, 'the composer still refuses a mode the menu offers');
+
+  // And the two that ask for the designation ask for it here too. Before this, typing #3 armed
+  // CONTROL with no override at all while clicking #3 opened the dialog — the same mode, two
+  // prices. The ceiling is still the server's to enforce (room.modeCheck); this is the ceremony.
+  assert.match(send, /if \(wanted >= 3\) \{/, 'a typed #3 or #4 arms itself without the override');
+  assert.match(send, /openOverride\(target, \{ mode: wanted/);
+  assert.match(send, /els\.input\.value = outgoing;/, 'the message is lost while the override is answered');
+  assert.ok(!/setMode\(Number\(modeToken\[2\]\)\)/.test(send), 'the old straight-to-setMode path is still there');
+
+  // The chip that renders #n in the field agrees with what the field accepts.
+  assert.match(app, /if \(!\/\^\[0-4\]\$\/\.test\(name\)\) return whole;/);
+});
