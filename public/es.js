@@ -1589,6 +1589,455 @@ export const ES = {
   'Google rejected the Gemini credentials.': 'Google rechazó las credenciales de Gemini.',
   'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
 
+  // ── EL RECORRIDO DE PRIMER CONTACTO ───────────────────────────────────────
+  'ONE ROOM, YOUR AGENTS': 'UNA SALA, TUS AGENTES',
+  'MADRE is a local room where the AI coding agents already on this machine work on this project together: Codex, Claude Code, Gemini CLI, OpenCode, and @madre, the memory itself.':
+    'MADRE es una sala local donde los agentes de código que ya tienes en esta computadora trabajan juntos sobre este proyecto: Codex, Claude Code, Gemini CLI, OpenCode, y @madre, que es la memoria misma.',
+  'Pick an agent in the row above the composer or type @claude …. Every reply shows who spoke, to whom, in which mode, with which model and how many tokens.':
+    'Elige un agente en la fila de arriba del compositor, o escribe @claude … . Cada respuesta dice quién habló, a quién, en qué modo, con qué modelo y cuántos tokens.',
+  'Nothing leaves this machine on its own: each agent talks to its own provider with its own session.':
+    'De esta computadora no sale nada por su cuenta: cada agente habla con su propio proveedor y con su propia sesión.',
+  'MODES: HOW FAR A MESSAGE MAY GO': 'MODOS: HASTA DÓNDE PUEDE LLEGAR UN MENSAJE',
+  'The chip next to TO @agent sets the mode of that message.': 'El chip que está junto a PARA @agente fija el modo de ese mensaje.',
+  '#0 GHOST · off the record. #1 EXCHANGE · read and talk, the default. #2 CREATE · add new files where they belong; existing files stay untouched. #3 CONTROL · edit the project, checkpointed, UNDO in one click. #4 AIRLOCK · run commands, push, deploy; what leaves the ship does not come back.':
+    '#0 GHOST · fuera de registro. #1 EXCHANGE · leer y hablar, el de siempre. #2 CREATE · agregar archivos nuevos donde les toca; los que ya existen no se tocan. #3 CONTROL · editar el proyecto, con checkpoint y DESHACER a un clic. #4 AIRLOCK · correr comandos, hacer push, desplegar; lo que sale de la nave no regresa.',
+  'Each agent has a MAX MODE and a DEFAULT MODE in ⚙ CONNECTIONS.':
+    'Cada agente tiene su MODO MÁXIMO y su MODO INICIAL en ⚙ CONEXIONES.',
+  'A MEMORY EVERY AGENT RECALLS': 'UNA MEMORIA QUE TODOS RECUERDAN',
+  'Everything said outside GHOST is indexed. When the conversation grows, each turn gets the older exchanges that match, cited by sequence.':
+    'Todo lo que se dice fuera de GHOST queda indexado. Cuando la conversación crece, cada turno recibe los intercambios viejos que coinciden, citados por su número.',
+  'The archivist distils decisions, facts, preferences and open questions; with Ollama it runs locally and for free, and @madre answers from the whole archive.':
+    'El archivista destila decisiones, hechos, preferencias y preguntas abiertas; con Ollama corre local y gratis, y @madre contesta desde el archivo entero.',
+  '◉ NOSTROMO shows the memory as a map. PRIVACY keeps names that must never travel through the room.':
+    '◉ NOSTROMO enseña la memoria como un mapa. PRIVACY guarda los nombres que nunca deben viajar por la sala.',
+  'MU/TH/UR AND MODULES': 'MU/TH/UR Y LOS MÓDULOS',
+  'MU/TH/UR is the console: diagnosis of anything that failed, ⚙ CONNECTIONS to sign agents in and set their ceilings, MEMORY, PRIVACY, the SENTINEL and the release channel.':
+    'MU/TH/UR es la consola: diagnóstico de lo que haya fallado, ⚙ CONEXIONES para iniciar sesiones y fijar techos, MEMORIA, PRIVACY, el CENTINELA y el canal de releases.',
+  'MODULES adds optional powers: Git Pulse, Image Studio, RIPLEY previews, OLLAMA, PLAYWRIGHT, and your own modules from one file.':
+    'MÓDULOS agrega poderes opcionales: Git Pulse, Image Studio, las vistas previas de RIPLEY, OLLAMA, PLAYWRIGHT, y tus propios módulos desde un solo archivo.',
+  'This tour comes back from the ? in MU/TH/UR. Type STOPALL any time to halt every agent.':
+    'Este recorrido vuelve desde el ? de MU/TH/UR. Escribe STOPALL cuando quieras para frenar a todos los agentes.',
+  'START ›': 'EMPEZAR ›',
+
+  // ── EL COMPOSITOR, LOS MODOS Y LA ANULACIÓN ──────────────────────────────
+  'Arm CREATE for this message: the agent may add new files to the project where they belong.':
+    'Arma CREATE para este mensaje: el agente puede agregar archivos nuevos donde les toque en el proyecto.',
+  'Image': 'Imagen',
+  'Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.':
+    'Pide una imagen: arma CREATE con el alcance de imagen y la manda a un agente que sepa generarlas.',
+  'Master brake: halt every plan and turn in flight. Never reaches an agent.':
+    'Freno maestro: detiene todos los planes y turnos en vuelo. Nunca llega a un agente.',
+  'REVIEW {what} WITH': 'REVISAR {what} CON',
+  'RIPLEY can render this file. ': 'RIPLEY puede dibujar este archivo. ',
+  'RIPLEY preview of {path}': 'Vista previa de RIPLEY de {path}',
+  'Show the file as text': 'Ver el archivo como texto',
+  'Render with RIPLEY in a sealed frame': 'Dibujarlo con RIPLEY en un marco sellado',
+  '{label} · click again to choose its model': '{label} · haz clic otra vez para elegir su modelo',
+  'Permission mode for this message · {hint}': 'Modo de permiso de este mensaje · {hint}',
+  'default model ▾': 'modelo por defecto ▾',
+  ' · model for this request': ' · modelo para esta petición',
+  ' · mode for this message · ceiling #{cap}': ' · modo de este mensaje · techo #{cap}',
+  'NOW': 'AHORA',
+  'RAISE TO #{n} ›': 'SUBIR A #{n} ›',
+  'LOCKED': 'BLOQUEADO',
+  'OVERRIDE ×2': 'ANULACIÓN ×2',
+  'OVERRIDE': 'ANULACIÓN',
+  'DEFAULT': 'POR DEFECTO',
+  "Above @{id}'s MAX MODE (#{cap}). Raise it in CONNECTIONS.": 'Por encima del MODO MÁXIMO de @{id} (#{cap}). Súbelo en CONEXIONES.',
+  'PRIORITY ONE. CONTROL GIVES @{id} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.':
+    'PRIORIDAD UNO. CONTROL LE DA A @{id} EL PROYECTO ENTERO: LEER, CREAR, MODIFICAR, SIN APROBAR ACCIÓN POR ACCIÓN.',
+  ' THIS ALSO RAISES @{id} MAX MODE TO #{n} IN CONNECTIONS.': ' ESTO TAMBIÉN SUBE EL MODO MÁXIMO DE @{id} A #{n} EN CONEXIONES.',
+  ' TYPE THE PROJECT DESIGNATION TO ARM.': ' ESCRIBE LA DESIGNACIÓN DEL PROYECTO PARA ARMAR.',
+  'PRIORITY ONE. AIRLOCK OPENS THE SHIP FOR @{id}: EVERYTHING CONTROL ALLOWS, PLUS COMMANDS, GIT PUSH AND DEPLOYS WITH THE SESSIONS ON THIS MACHINE. FILES COME BACK WITH UNDO; WHAT LEAVES THE SHIP DOES NOT.':
+    'PRIORIDAD UNO. AIRLOCK LE ABRE LA NAVE A @{id}: TODO LO QUE PERMITE CONTROL, MÁS COMANDOS, GIT PUSH Y DESPLIEGUES CON LAS SESIONES DE ESTA COMPUTADORA. LOS ARCHIVOS REGRESAN CON DESHACER; LO QUE SALE DE LA NAVE NO.',
+  ' TYPE THE PROJECT DESIGNATION, THEN THE WORD AIRLOCK.': ' ESCRIBE LA DESIGNACIÓN DEL PROYECTO, Y LUEGO LA PALABRA AIRLOCK.',
+  'AIRLOCK OVERRIDE 100375 · SECOND KEY REQUIRED': 'ANULACIÓN AIRLOCK 100375 · SE REQUIERE SEGUNDA LLAVE',
+  'SECOND KEY REJECTED. TYPE AIRLOCK, OR CANCEL.': 'SEGUNDA LLAVE RECHAZADA. ESCRIBE AIRLOCK, O CANCELA.',
+  'SPECIAL ORDER 937 ACKNOWLEDGED. AIRLOCK OPEN FOR @{agent}. WHAT LEAVES DOES NOT COME BACK.':
+    'ORDEN ESPECIAL 937 RECIBIDA. AIRLOCK ABIERTA PARA @{agent}. LO QUE SALE NO REGRESA.',
+  'SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @{agent}. CREW IN COMMAND.':
+    'ORDEN ESPECIAL 937 RECIBIDA. CONTROL ARMADO PARA @{agent}. LA TRIPULACIÓN AL MANDO.',
+  'MU/TH/UR › MAX MODE was not raised for @{agent}: {error}. {mode} stays off.':
+    'MU/TH/UR › no se subió el MODO MÁXIMO de @{agent}: {error}. {mode} se queda apagado.',
+  'MU/TH/UR › @{agent} is signed in.': 'MU/TH/UR › @{agent} ya tiene sesión.',
+
+  // El puente y Ollama.
+  'Local, through Ollama{version} · free, no account, no tokens': 'Local, con Ollama{version} · gratis, sin cuenta, sin tokens',
+  'Optional and free: Ollama on this computer gives the room a local memory and @madre.':
+    'Opcional y gratis: Ollama en esta computadora le da a la sala una memoria local y @madre.',
+  'Installed but asleep. Wake it and the room gets a local memory and @madre.':
+    'Instalado pero dormido. Despiértalo y la sala gana una memoria local y @madre.',
+  'Running, with no chat model yet. Pull one and @madre joins the room.':
+    'Corriendo, pero todavía sin modelo de chat. Baja uno y @madre se suma a la sala.',
+  'START OLLAMA': 'ARRANCAR OLLAMA',
+  'Wakes Ollama on this computer, nothing leaves it.': 'Despierta Ollama en esta computadora; de aquí no sale nada.',
+  'Downloads the model Ollama will answer with. It stays on this computer.':
+    'Baja el modelo con el que Ollama va a contestar. Se queda en esta computadora.',
+  'MADRE runs this command on this computer and shows every line.':
+    'MADRE corre este comando en esta computadora y te enseña cada línea.',
+  'MU/TH/UR › {label} was not installed: {error}': 'MU/TH/UR › {label} no se instaló: {error}',
+  'MU/TH/UR › sign-in did not start: {error}': 'MU/TH/UR › el inicio de sesión no arrancó: {error}',
+
+  // La burbuja.
+  'closing turn': 'turno de cierre',
+  'step {n}/{total}': 'paso {n}/{total}',
+  'Good reply · keep it for MADRE AI': 'Buena respuesta · guárdala para MADRE AI',
+  'Bad reply · keep it out of the dataset': 'Mala respuesta · déjala fuera del dataset',
+  'Copy this reply': 'Copiar esta respuesta',
+  'Reply to this through an agent': 'Responder a esto con un agente',
+  'Remove the quoted reply': 'Quitar la cita',
+
+  // Lo que dice un agente mientras trabaja.
+  'Reading the request…': 'Leyendo la petición…',
+  'Looking around the project…': 'Mirando alrededor del proyecto…',
+  'Opening files…': 'Abriendo archivos…',
+  'Thinking…': 'Pensando…',
+  'Tracing how this fits together…': 'Siguiendo cómo encaja todo esto…',
+  'Cross-checking the code…': 'Contrastando el código…',
+  'Skimming the transcript…': 'Ojeando la transcripción…',
+  'Reasoning…': 'Razonando…',
+  'Weighing the options…': 'Sopesando las opciones…',
+  'Verifying before answering…': 'Verificando antes de contestar…',
+  'Still on it…': 'Sigo en eso…',
+  'Deep in the code…': 'Metido en el código…',
+  'Composing the answer…': 'Componiendo la respuesta…',
+  'Almost there…': 'Ya casi…',
+  'Reading…': 'Leyendo…',
+  'Grepping the project…': 'Buscando en el proyecto…',
+  'Mapping the files…': 'Mapeando los archivos…',
+  'Pondering…': 'Meditándolo…',
+  'Connecting the pieces…': 'Conectando las piezas…',
+  'Reading the relevant files…': 'Leyendo los archivos que importan…',
+  'Ruminating…': 'Rumiando…',
+  'Considering the edge cases…': 'Considerando los casos límite…',
+  'Checking the details…': 'Revisando los detalles…',
+  'Musing…': 'Cavilando…',
+  'Synthesizing…': 'Sintetizando…',
+  'Drafting the reply…': 'Redactando la respuesta…',
+  'Finishing the thought…': 'Terminando la idea…',
+  'Scanning the project…': 'Escaneando el proyecto…',
+  'Loading context…': 'Cargando contexto…',
+  'Reading files…': 'Leyendo archivos…',
+  'Analyzing…': 'Analizando…',
+  'Following the references…': 'Siguiendo las referencias…',
+  'Building the picture…': 'Armando el panorama…',
+  'Reasoning through it…': 'Razonándolo…',
+  'Verifying the findings…': 'Verificando los hallazgos…',
+  'Sorting the evidence…': 'Ordenando la evidencia…',
+  'Formulating the answer…': 'Formulando la respuesta…',
+  'Writing it up…': 'Escribiéndolo…',
+  'Wrapping up…': 'Cerrando…',
+  'Reading the repo…': 'Leyendo el repo…',
+  'Listing files…': 'Listando archivos…',
+  'Grabbing context…': 'Juntando contexto…',
+  'Digging through the code…': 'Escarbando en el código…',
+  'Following the call chain…': 'Siguiendo la cadena de llamadas…',
+  'Looking closer…': 'Mirando más de cerca…',
+  'Working through it…': 'Trabajándolo…',
+  'Double-checking…': 'Revisando dos veces…',
+  'Piecing it together…': 'Juntando las piezas…',
+  'Writing the response…': 'Escribiendo la respuesta…',
+  'Tidying the answer…': 'Puliendo la respuesta…',
+  'Nearly done…': 'Casi listo…',
+  'Working…': 'Trabajando…',
+  'Writing…': 'Escribiendo…',
+
+  // ── LA SALA EN MOVIMIENTO: PLANES, FRENOS, ADJUNTOS Y AVISOS ─────────────
+  'answering @{agent}': 'contestándole a @{agent}',
+  ' · {n} saved': ' · {n} ahorrados',
+  ' wrote ': ' escribió ',
+  'CHECK AGAIN': 'MEDIR OTRA VEZ',
+  'CHECK IT AGAINST THIS ROOM': 'MEDIRLO CONTRA ESTA SALA',
+  'Came along because this room keeps carrying it with one of the others.':
+    'Vino porque esta sala la sigue cargando junto con otra.',
+  'The archive matched this to what you asked.': 'El archivo la emparejó con lo que preguntaste.',
+  'Click to see it in NOSTROMO.': 'Haz clic para verla en NOSTROMO.',
+  'MU/TH/UR › CREATE is off: @{agent} will answer read-only. Use the lock or /create.':
+    'MU/TH/UR › CREATE está apagado: @{agent} va a contestar en solo lectura. Usa el candado o /create.',
+  'MU/TH/UR › @{agent} asks #{mode} {label} for step {step}. The plan waits for you.':
+    'MU/TH/UR › @{agent} pide #{mode} {label} para el paso {step}. El plan te está esperando.',
+  'GRANTED FOR THE PLAN': 'CONCEDIDO PARA EL PLAN',
+  'GRANTED ONCE': 'CONCEDIDO UNA VEZ',
+  'DENIED · NO ANSWER IN TIME': 'NEGADO · NO HUBO RESPUESTA A TIEMPO',
+  'PLAN STOPPED': 'PLAN DETENIDO',
+  'DENIED': 'NEGADO',
+  'created · {n} files': 'creados · {n} archivos',
+  'created': 'creado',
+  'all stop · {plans} plans, {turns} turns halted': 'alto total · {plans} planes, {turns} turnos detenidos',
+  'all stop · nothing was running': 'alto total · no había nada corriendo',
+  'MU/TH/UR › all stop. {plans} plans, {turns} turns halted.': 'MU/TH/UR › alto total. {plans} planes, {turns} turnos detenidos.',
+  'MU/TH/UR detected a runaway sequence. STOP ALL halts every plan and every agent turn.':
+    'MU/TH/UR detectó una secuencia desbocada. PARAR TODO detiene todos los planes y todos los turnos.',
+  'All quiet. STOP ALL arms itself when MU/TH/UR detects a runaway sequence; typing STOPALL always works.':
+    'Todo tranquilo. PARAR TODO se arma solo cuando MU/TH/UR detecta una secuencia desbocada; escribir STOPALL siempre funciona.',
+  'Agents are working normally. STOP ALL arms itself on a MU/TH/UR alert; typing STOPALL always works.':
+    'Los agentes trabajan normal. PARAR TODO se arma con una alerta de MU/TH/UR; escribir STOPALL siempre funciona.',
+  'MU/TH/UR › @{agent} limit window reset · {pct}% used now.':
+    'MU/TH/UR › se reinició la ventana de límite de @{agent} · ahora va en {pct}%.',
+  'MU/TH/UR › {what} was recorded by the sentinel. Open MU/TH/UR to report it.':
+    'MU/TH/UR › el centinela registró {what}. Abre MU/TH/UR para reportarlo.',
+  'a crash': 'un crash',
+  'an unknown condition': 'una condición desconocida',
+  'Theme · {mode}': 'Tema · {mode}',
+  'auto, following the system': 'automático, siguiendo al sistema',
+  'light': 'claro',
+  'dark': 'oscuro',
+  'could not list: {error}': 'no se pudo listar: {error}',
+  'No agent ready': 'Ningún agente listo',
+  'FILE · ↑↓ · TAB OR ENTER · add :12-20 for lines': 'ARCHIVO · ↑↓ · TAB O ENTER · agrega :12-20 para líneas',
+  'MODE · ↑↓ · TAB OR ENTER': 'MODO · ↑↓ · TAB O ENTER',
+  "{hint} · above @{agent}'s max mode": '{hint} · por encima del modo máximo de @{agent}',
+  '{title} is not available here · see MODULES': '{title} no está disponible aquí · mira MÓDULOS',
+  'MU/TH/UR › /{name} needs a request after it, e.g. "/{name} a poster for the launch".':
+    'MU/TH/UR › /{name} necesita una petición después, por ejemplo «/{name} un póster para el lanzamiento».',
+  'MU/TH/UR › unknown command /{name}. Type "/" to see what this room offers.':
+    'MU/TH/UR › comando desconocido /{name}. Escribe «/» para ver lo que ofrece esta sala.',
+  '{name} · uploading…': '{name} · subiendo…',
+  'The attachment was rejected: {error}': 'El adjunto se rechazó: {error}',
+  '{what}: enabled for @{id}': '{what}: encendido para @{id}',
+  "{what}: @{id}'s CLI cannot do this": '{what}: el CLI de @{id} no puede hacer esto',
+  '{what}: not wired yet': '{what}: todavía no está cableado',
+  '{what}: switched off for @{id} in CONNECTIONS': '{what}: apagado para @{id} en CONEXIONES',
+  'The command failed: {error}': 'El comando falló: {error}',
+  'Could not reach MADRE: {error}': 'No se pudo alcanzar a MADRE: {error}',
+  'It could not be applied: {error}': 'No se pudo aplicar: {error}',
+
+  // MU/TH/UR: el catálogo y EYECAT.
+  'KNOWN CONDITIONS · {n} OF {total} · {os} / {shell}': 'CONDICIONES CONOCIDAS · {n} DE {total} · {os} / {shell}',
+  '{n} CONDITIONS MATCH INQUIRY.': '{n} CONDICIONES COINCIDEN CON LA CONSULTA.',
+  ' PROBABLE CAUSE HIGHLIGHTED.': ' CAUSA PROBABLE RESALTADA.',
+  '{name} not installed · {why}': '{name} no está instalado · {why}',
+  '{pct}% · judged by @{judge}': '{pct}% · juzgado por @{judge}',
+  'judged by @{judge}': 'juzgado por @{judge}',
+  'EYECAT could not be answered.': 'No se pudo contestar a EYECAT.',
+  'FILED AS AN ABERRATION · THE MEMORY IT REFUTES NO LONGER TRAVELS':
+    'ARCHIVADA COMO ABERRACIÓN · LA MEMORIA QUE REFUTA YA NO VIAJA',
+  'THE ROOM STANDS BY IT': 'LA SALA LA SOSTIENE',
+
+  // Versiones y actualizaciones de módulos.
+  'UNABLE TO LIST MODULES: {error}': 'NO SE PUDIERON LISTAR LOS MÓDULOS: {error}',
+  'INSTALLS {version}': 'INSTALA {version}',
+  'CHECKS ARE OFF': 'LAS REVISIONES ESTÁN APAGADAS',
+  'MADRE {version} AVAILABLE': 'MADRE {version} DISPONIBLE',
+  '{version} AVAILABLE': '{version} DISPONIBLE',
+  'NEWEST IS {version}': 'LA MÁS NUEVA ES {version}',
+  'UP TO DATE': 'AL DÍA',
+  'Check for a newer version': 'Busca una versión más nueva',
+  'This module ships in MADRE {ships}, and MADRE {latest} is out. A module that comes with MADRE updates when MADRE does.':
+    'Este módulo viene en MADRE {ships}, y ya salió MADRE {latest}. Un módulo que viene con MADRE se actualiza cuando MADRE se actualiza.',
+  'This module ships in MADRE {ships}, which is the newest release. A module that comes with MADRE updates when MADRE does.':
+    'Este módulo viene en MADRE {ships}, que es la versión más nueva. Un módulo que viene con MADRE se actualiza cuando MADRE se actualiza.',
+  '{what} {latest} is out; this computer has {current}.': 'Ya salió {what} {latest}; esta computadora tiene la {current}.',
+  '{what} {latest} is the newest release. It is not on this computer yet.':
+    '{what} {latest} es la versión más nueva. Todavía no está en esta computadora.',
+  '{what} {latest} is the newest, and it is what this computer has.':
+    '{what} {latest} es la más nueva, y es la que tiene esta computadora.',
+  'MADRE could not reach the place that knows about {what}.': 'MADRE no pudo alcanzar el lugar que sabe de {what}.',
+  'Install {name}?': '¿Instalar {name}?',
+  'A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.':
+    'Un módulo corre dentro de MADRE, con tus permisos, en esta computadora. MADRE comprueba que cargue y que respete las reglas de la casa antes de instalarlo — lo que pretende hacer no lo puede comprobar. Instálalo solo si confías en de dónde viene.',
+  'That file could not be read: {error}': 'Ese archivo no se pudo leer: {error}',
+  'MU/TH/UR › {name} is already {version} · {from}': 'MU/TH/UR › {name} ya está en {version} · {from}',
+  'what is published': 'lo que está publicado',
+  'Update {name}?': '¿Actualizar {name}?',
+  'unversioned': 'sin versión',
+  'From {from}': 'Desde {from}',
+  'It loads and keeps to the house rules. What it intends, only you can judge.':
+    'Carga y respeta las reglas de la casa. Lo que pretende hacer, solo tú lo puedes juzgar.',
+  'MU/TH/UR › {name} is now {version}.': 'MU/TH/UR › {name} ya está en {version}.',
+  'the newest file': 'el archivo más nuevo',
+  'THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT:': 'ESTO CORRE EN ESTA COMPUTADORA, FUERA DEL PROYECTO:',
+
+  // La economía de la sala y la ficha de Ollama.
+  'TOKENS SAVED': 'TOKENS AHORRADOS',
+  'read back from the CLI cache, plus what was never sent': 'leídos de la caché del CLI, más lo que nunca se mandó',
+  'FROM CACHE': 'DE LA CACHÉ',
+  'input the CLI did not charge again · {pct} of the input': 'entrada que el CLI no volvió a cobrar · {pct} de la entrada',
+  'NEVER SENT': 'NUNCA SE MANDÓ',
+  'briefing a turn had no use for': 'briefing que ese turno no necesitaba',
+  'SPENT IN': 'GASTADO EN ENTRADA',
+  'input tokens actually charged': 'tokens de entrada realmente cobrados',
+  'SPENT OUT': 'GASTADO EN SALIDA',
+  'output tokens, the dearer half': 'tokens de salida, la mitad más cara',
+  'TURNS': 'TURNOS',
+  'weighed so far': 'pesados hasta ahora',
+  '{pct} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · MADRE WROTE {chars} CHARACTERS OF THE {input} INPUT TOKENS YOU WERE CHARGED FOR; THE REST IS WHAT THE CLIs READ ON THEIR OWN':
+    '{pct} DE CADA PROMPT ES LA CABECERA QUE NO CAMBIA Y QUE UNA CACHÉ PUEDE RECONOCER · MADRE ESCRIBIÓ {chars} CARACTERES DE LOS {input} TOKENS DE ENTRADA QUE TE COBRARON; EL RESTO ES LO QUE LOS CLIs LEYERON POR SU CUENTA',
+  'SERVER': 'SERVIDOR',
+  'running · {host}': 'corriendo · {host}',
+  'not running': 'no está corriendo',
+  'EMBEDDINGS': 'EMBEDDINGS',
+  ' · off': ' · apagado',
+  'no embedding model': 'sin modelo de embeddings',
+  'no chat model': 'sin modelo de chat',
+  'MODELS': 'MODELOS',
+  'Download {model} into Ollama for {role}': 'Baja {model} a Ollama para {role}',
+  'could not pull': 'no se pudo bajar',
+  'MU/TH/UR › pulling {model}; progress shows in the room.': 'MU/TH/UR › bajando {model}; el avance se ve en la sala.',
+  'ENABLE OLLAMA': 'ENCENDER OLLAMA',
+  'DISABLE OLLAMA': 'APAGAR OLLAMA',
+  'MU/TH/UR › OLLAMA ON · memory embeds and distils on this machine.':
+    'MU/TH/UR › OLLAMA ENCENDIDO · la memoria se embebe y se destila en esta computadora.',
+  'MU/TH/UR › OLLAMA OFF · back to the providers.': 'MU/TH/UR › OLLAMA APAGADO · de vuelta a los proveedores.',
+  'Ollama could not change state: {error}': 'Ollama no pudo cambiar de estado: {error}',
+  'Wakes Ollama on this computer. Nothing leaves it.': 'Despierta Ollama en esta computadora. De aquí no sale nada.',
+  'DISABLE RIPLEY': 'APAGAR RIPLEY',
+  'ENABLE RIPLEY': 'ENCENDER RIPLEY',
+  'MU/TH/UR › RIPLEY ON · HTML, SVG and Markdown render in the file viewer, in a sealed frame.':
+    'MU/TH/UR › RIPLEY ENCENDIDO · el HTML, el SVG y el Markdown se dibujan en el visor, dentro de un marco sellado.',
+  'MU/TH/UR › RIPLEY OFF · files show as source.': 'MU/TH/UR › RIPLEY APAGADO · los archivos se ven como código.',
+  'RIPLEY could not change state: {error}': 'RIPLEY no pudo cambiar de estado: {error}',
+  'STOP ASKING FOR COMPACT REPLIES': 'DEJAR DE PEDIR RESPUESTAS COMPACTAS',
+  'ASK FOR COMPACT REPLIES': 'PEDIR RESPUESTAS COMPACTAS',
+  'ASH ON · every agent answers in compact prose. What you write is never altered.':
+    'ASH ENCENDIDO · cada agente contesta en prosa compacta. Lo que tú escribes nunca se altera.',
+  'ASH OFF · agents answer at their own length.': 'ASH APAGADO · los agentes contestan con el largo que quieran.',
+  'Ash could not change state: {error}': 'Ash no pudo cambiar de estado: {error}',
+  'NO SWITCH': 'SIN INTERRUPTOR',
+  '{name} could not be switched.': '{name} no se pudo cambiar.',
+  'IDE adapters for the agents detected here: {agents}.': 'Adaptadores de IDE para los agentes detectados aquí: {agents}.',
+  'AVAILABLE · {n} · PROJECT /{project}': 'DISPONIBLES · {n} · PROYECTO /{project}',
+  'The reload failed: {error}': 'La recarga falló: {error}',
+  "Remove {name}? Its file {file} is deleted. MADRE's own modules cannot be removed.":
+    '¿Quitar {name}? Se borra su archivo {file}. Los módulos propios de MADRE no se pueden quitar.',
+  'MU/TH/UR › {name} removed.': 'MU/TH/UR › {name} quitado.',
+  'It was not removed: {error}': 'No se quitó: {error}',
+
+  // Sesiones, privacidad, ajustes rápidos y NOSTROMO.
+  '@{agent} signed in': '@{agent} inició sesión',
+  '@{agent} sign-in did not complete': 'el inicio de sesión de @{agent} no se completó',
+  ' · exit {code}': ' · salida {code}',
+  'signing in @{agent} · {command}': 'iniciando sesión de @{agent} · {command}',
+  'installing {label} · {command}': 'instalando {label} · {command}',
+  'MU/TH/UR › {label} is on this computer. Sign in and the room opens.':
+    'MU/TH/UR › {label} ya está en esta computadora. Inicia sesión y la sala se abre.',
+  'MU/TH/UR › {label} could not be installed. The log is above.':
+    'MU/TH/UR › {label} no se pudo instalar. El registro está arriba.',
+  'The sign-in could not start.': 'El inicio de sesión no pudo arrancar.',
+  'WRITE THE TERMS FIRST.': 'ESCRIBE PRIMERO LOS TÉRMINOS.',
+  'STILL IN THE ROOM: {events} EVENTS · {entries} INDEXED EXCHANGES · {memories} MEMORIES · PURGE REPLACES THEM.':
+    'TODAVÍA EN LA SALA: {events} EVENTOS · {entries} INTERCAMBIOS INDEXADOS · {memories} MEMORIAS · LA PURGA LOS REEMPLAZA.',
+  'THE ROOM IS CLEAN: NO PRIVATE TERM IN THE LEDGER, THE INDEX OR THE MEMORIES.':
+    'LA SALA ESTÁ LIMPIA: NINGÚN TÉRMINO PRIVADO EN EL LEDGER, EL ÍNDICE NI LAS MEMORIAS.',
+  'The privacy setting was not saved: {error}': 'El ajuste de privacidad no se guardó: {error}',
+  'private terms appear as {marker}.': 'los términos privados aparecen como {marker}.',
+  'MU/TH/UR › purged: {events} events · {entries} exchanges · {memories} memories. Reloading.':
+    'MU/TH/UR › purgado: {events} eventos · {entries} intercambios · {memories} memorias. Recargando.',
+  'The purge did not run: {error}': 'La purga no corrió: {error}',
+  'Applies to the next turn.': 'Aplica desde el próximo turno.',
+  'The setting was not saved: {error}': 'El ajuste no se guardó: {error}',
+  'RAISE @{agent} TIMEOUT TO {n}s': 'SUBIR EL TIEMPO LÍMITE DE @{agent} A {n}s',
+  '@{agent} timeout is now {n}s.': 'el tiempo límite de @{agent} ahora es {n}s.',
+  'RAISE DEFAULT TIMEOUT TO {n}s': 'SUBIR EL TIEMPO LÍMITE POR DEFECTO A {n}s',
+  'default timeout is now {n}s for every agent without its own.':
+    'el tiempo límite por defecto ahora es {n}s para todo agente que no tenga el suyo.',
+  'RAISE LOCAL BUDGET TO {n}': 'SUBIR EL PRESUPUESTO LOCAL A {n}',
+  'local budget is now {n} tokens per agent per 5h window.':
+    'el presupuesto local ahora es {n} tokens por agente cada 5 h.',
+  'ASK': 'PREGUNTAR',
+  'NOSTROMO › {n} of {total} memories have had their chances and were never the answer. Ringed on the map.':
+    'NOSTROMO › {n} de {total} memorias ya tuvieron sus oportunidades y nunca fueron la respuesta. Marcadas en el mapa.',
+  'COLD': 'FRÍAS',
+  '{pct}% of the same meaning': '{pct}% del mismo significado',
+  'CLEAR THIS ABERRATION': 'QUITAR ESTA ABERRACIÓN',
+  'COLD · the archive has been opened {n} times since this was written and never once carried it, and it shares a subject with nothing':
+    'FRÍA · el archivo se ha abierto {n} veces desde que se escribió y ni una sola la cargó, y no comparte tema con nada',
+  'MADRE has reached for this {n} times': 'MADRE ha echado mano de esta {n} veces',
+  ' · last {when}': ' · la última {when}',
+  'MADRE has not reached for this one yet': 'MADRE todavía no ha echado mano de esta',
+  'company recorded since {when} · nothing since': 'compañía registrada desde {when} · nada desde entonces',
+  'It has always travelled alone.': 'Siempre ha viajado sola.',
+  'No turn has carried it since the room started keeping this trail.':
+    'Ningún turno la ha cargado desde que la sala empezó a guardar este rastro.',
+  'MU/TH/UR › memory forgotten: “{text}”. No future turn will read it.':
+    'MU/TH/UR › memoria olvidada: «{text}». Ningún turno futuro la va a leer.',
+  'MU/TH/UR › it could not be forgotten: {error}': 'MU/TH/UR › no se pudo olvidar: {error}',
+  'MU/TH/UR › MADRE {version} is on npm. Open MU/TH/UR to restart with it.':
+    'MU/TH/UR › MADRE {version} está en npm. Abre MU/TH/UR para reiniciar con ella.',
+  'MADRE {latest} is on npm · you run {current} · open MU/TH/UR for the command':
+    'MADRE {latest} está en npm · tú corres la {current} · abre MU/TH/UR para el comando',
+  'It could not be saved: {error}': 'No se pudo guardar: {error}',
+  'default': 'por defecto',
+  'YOU · CREW (EXPENDABLE)': 'TÚ · TRIPULACIÓN (PRESCINDIBLE)',
+  'YOU · CREW': 'TÚ · TRIPULACIÓN',
+  ' · {n} left in the archive': ' · quedan {n} en el archivo',
+  ' asks ': ' pide ',
+  'default #2 · ': '#2 por defecto · ',
+  '#2 granted on request': '#2 concedido a petición',
+  ' · whole plan': ' · el plan entero',
+  '#2 by @{who} · ': '#2 por @{who} · ',
+  '{pct}% of {what} · window reset': '{pct}% de {what} · ventana reiniciada',
+  '{n} {messages}': '{n} {messages}',
+  'message': 'mensaje',
+  'messages': 'mensajes',
+  " for step {step}/{total} of @{who}'s plan": ' para el paso {step}/{total} del plan de @{who}',
+  '{agent} signed in with a key': '{agent} inició sesión con una llave',
+  'MU/TH/UR › your message carries {n} private {term}. Agents will read it as you wrote it; their replies are guarded.':
+    'MU/TH/UR › tu mensaje lleva {n} {term} privado. Los agentes lo van a leer tal como lo escribiste; sus respuestas quedan protegidas.',
+  'term': 'término',
+  'terms': 'términos',
+  'MU/TH/UR › @{agent} cannot generate images here; routing to @{other}.':
+    'MU/TH/UR › @{agent} no puede generar imágenes aquí; se va con @{other}.',
+  'MU/TH/UR › /{name} is not available in this project: {title} (see MODULES).':
+    'MU/TH/UR › /{name} no está disponible en este proyecto: {title} (mira MÓDULOS).',
+  'Upload failed ({status}).': 'Falló la subida ({status}).',
+  'CREATE: let the agent add new files to the project for this request; existing files stay untouched':
+    'CREATE: deja que el agente agregue archivos nuevos al proyecto para esta petición; los que ya existen no se tocan',
+  'MU/TH/UR › @{agent} {why}. CREATE will be refused; pick another agent or change CONNECTIONS.':
+    'MU/TH/UR › @{agent} {why}. CREATE se va a rechazar; elige otro agente o cambia CONEXIONES.',
+  'has file creation switched off': 'tiene apagada la creación de archivos',
+  'cannot create files from its CLI': 'no puede crear archivos desde su CLI',
+  'Request failed ({status}).': 'Falló la petición ({status}).',
+  'installing {name}': 'instalando {name}',
+  ' for {agents}': ' para {agents}',
+  '{name} installed': '{name} instalado',
+  '{name} install failed': 'falló la instalación de {name}',
+  '{name} could not save {label}.': '{name} no pudo guardar {label}.',
+  'It loads in every room on this computer.': 'Se carga en todas las salas de esta computadora.',
+  'DISABLE': 'APAGAR',
+  'ENABLE': 'ENCENDER',
+  'No detected agent has an adapter for this module; it installs without IDE adapters.':
+    'Ningún agente detectado tiene adaptador para este módulo; se instala sin adaptadores de IDE.',
+  'Install request failed ({status}).': 'Falló la petición de instalación ({status}).',
+  'modules reloaded: {n} of yours': 'módulos recargados: {n} tuyos',
+  ', {n} failed to load': ', {n} no cargaron',
+  ' · sign in to finish': ' · inicia sesión para terminar',
+  '{name} was not installed': '{name} no se instaló',
+  'READY FOR INQUIRY. HELP LISTS WHAT I ANSWER.': 'LISTA PARA CONSULTA. HELP LISTA LO QUE CONTESTO.',
+  '{n} private {term} guarded from now on.': '{n} {term} privado protegido de aquí en adelante.',
+  'MU/TH/UR › that value is not valid (minimum {min}).': 'MU/TH/UR › ese valor no es válido (mínimo {min}).',
+  ' · flagged by {who}': ' · marcada por {who}',
+  'the room': 'la sala',
+  ' · distilled': ' · destilada',
+  'last turn: {who} · {when}': 'último turno: {who} · {when}',
+  'Travelled into the same turn {n} {times} · last {when}':
+    'Viajó al mismo turno {n} {times} · la última {when}',
+  'time': 'vez',
+  'times': 'veces',
+  'Strong enough that recalling this one now brings it along ({pct}%).':
+    'Tan fuerte que recordar esta ahora se la lleva consigo ({pct}%).',
+  " · in MADRE's own folder ({prefix}), no administrator needed":
+    ' · en la carpeta propia de MADRE ({prefix}), sin necesidad de administrador',
+  " · on the human's request": ' · a petición del humano',
+  'RIPLEY reports an error in the page: {message}{where}. Find the cause and propose the fix.':
+    'RIPLEY reporta un error en la página: {message}{where}. Encuentra la causa y propón el arreglo.',
+  '@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.':
+    '@madre corre en esta computadora y habla por lo que la sala recuerda. «@madre, pregúntale a la tripulación …» abre una ronda con todos los agentes en línea. Para cambiar archivos, escríbele a un agente de CLI.',
+  'Measured against this room {when}: it landed where the crew landed on {matched} of {n} real questions{verdict}':
+    'Medido contra esta sala {when}: cayó donde cayó la tripulación en {matched} de {n} preguntas reales{verdict}',
+  '. Ready to be worked in.': '. Listo para meterse a trabajar.',
+  ' — not yet.': ' — todavía no.',
+  'Nobody has measured it against this project yet: MU/TH/UR → the three tests, or the line in the room when it joined.':
+    'Nadie lo ha medido contra este proyecto todavía: MU/TH/UR → las tres pruebas, o la línea en la sala de cuando entró.',
+  'MU/TH/UR › AIRLOCK open for @{agent} for this message.{raised} Files are checkpointed; what leaves the machine is not undone.':
+    'MU/TH/UR › AIRLOCK abierta para @{agent} en este mensaje.{raised} Se guarda un punto de control de los archivos; lo que sale de la computadora no se deshace.',
+  ' MAX MODE is now #4 in CONNECTIONS.': ' MODO MÁXIMO ahora es #4 en CONEXIONES.',
+  'MU/TH/UR › CONTROL armed for @{agent} for this message.{raised} A checkpoint is taken before it runs; every change is listed and UNDO is one click.':
+    'MU/TH/UR › CONTROL armado para @{agent} en este mensaje.{raised} Se toma un punto de control antes de que corra; cada cambio se lista y DESHACER está a un clic.',
+  ' MAX MODE is now #3 in CONNECTIONS.': ' MODO MÁXIMO ahora es #3 en CONEXIONES.',
+  "Conversation · {n} messages. The project's memory is shared by all of them.":
+    'Conversación · {n} mensajes. La memoria del proyecto es la misma para todos ellos.',
+
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',
   'Interface in Spanish': 'Interfaz en español',

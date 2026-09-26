@@ -24,7 +24,7 @@ test('local model: running is not ready, and the room says which of the two it h
   // A test that cannot fail says nothing, so the failing sentence is written too.
   assert.match(app, /Not yet — keep working, the archive fills where the work happens\./);
   // And the sphere keeps the reading between visits.
-  assert.match(app, /Measured against this room \$\{agoWords\(measured\.at\)\}/);
+  assert.match(app, /t\('Measured against this room \{when\}: it landed where the crew landed on \{matched\} of \{n\} real questions\{verdict\}', \{ when: agoWords\(measured\.at\)/);
   assert.match(css, /\.system\.local-model \{/);
 });
 

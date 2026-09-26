@@ -136,7 +136,7 @@ test("inquiry: MOTHER's alarm answers a refused designation, and nothing else", 
 
   // The two doors that ask who you are before doing something that cannot be undone.
   assert.match(app, /designationRefused\(\{ into: nostromo\.gate\.reply \}\)/, 'the gate takes a wrong name without her noticing');
-  assert.match(app, /if \(\/UNABLE TO COMPUTE\/i\.test\(error\.message\)\) designationRefused\(\);/, 'the purge takes a wrong name without her noticing');
+  assert.match(app, /if \(error\.message === t\('UNABLE TO COMPUTE\. UNABLE TO CLARIFY\.'\)\) designationRefused\(\);/, 'the purge takes a wrong name without her noticing');
 
   // Eight of them and CODE000 comes down, which is the machinery that was already built.
   assert.match(app, /if \(strikes\.count >= max\) \{ void code000\(strikes\.count\); return; \}/);

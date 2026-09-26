@@ -54,7 +54,7 @@ test('a card says what it is running, and what is not installed is not a version
   const label = app.slice(app.indexOf('function versionLabel('), app.indexOf('function updateWord('));
   assert.match(label, /item\.versionSource !== 'tracked'/);
   assert.match(label, /NOT INSTALLED/);
-  assert.match(label, /INSTALLS \$\{target\}/);
+  assert.match(label, /t\('INSTALLS \{version\}', \{ version: target \}\)/);
 
   // The dependencies come normalised from the server, so a module cannot invent a shape.
   const { dependencies } = await import('../src/modules/sdk.mjs');
@@ -168,7 +168,7 @@ test('every card carries a button that goes and looks for a newer version', asyn
   // while the release channel is on. Nothing installed is never called up to date.
   assert.match(server, /void warmModuleUpdates\(extensions\)/, 'nothing keeps the cache warm, so the cards only ever know what a button found');
   assert.match(server, /if \(!updatesEnabled\(\) \|\| now - warmedAt < 60 \* 60 \* 1000\) return;/);
-  assert.match(app, /NEWEST IS \$\{update\.latest\}/);
+  assert.match(app, /t\('NEWEST IS \{version\}', \{ version: update\.latest \}\)/);
 });
 
 test('a module declares where a newer version would come from, and the check is cached a day', async () => {

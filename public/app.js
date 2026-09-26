@@ -60,9 +60,9 @@ const els = {
 // Built-in commands live in the composer; module commands come from the
 // server (/api/commands) and run there, read-only, as fact cards.
 const CLIENT_COMMANDS = [
-  { name: 'create', title: 'CREATE', usage: '/create <what to make>', summary: 'Arm CREATE for this message: the agent may add new files to the project where they belong.', available: true, client: true },
-  { name: 'image', title: 'Image', usage: '/image <what to draw>', summary: 'Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.', available: true, client: true },
-  { name: 'stopall', title: 'STOP ALL', usage: '/stopall', summary: 'Master brake: halt every plan and turn in flight. Never reaches an agent.', available: true, client: true },
+  { name: 'create', title: 'CREATE', usage: '/create <what to make>', summary: t('Arm CREATE for this message: the agent may add new files to the project where they belong.'), available: true, client: true },
+  { name: 'image', title: t('Image'), usage: '/image <what to draw>', summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
+  { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
 ];
 
 const PLACEHOLDERS = {
@@ -322,11 +322,11 @@ function reviewWith(agentId) {
 }
 function showViewerMenu(x, y) {
   const menuNode = viewerUI.menu;
-  menuNode.replaceChildren(el('div', 'hint', `REVIEW ${referenceForSelection()} WITH`));
+  menuNode.replaceChildren(el('div', 'hint', t('REVIEW {what} WITH', { what: referenceForSelection() })));
   for (const agent of state.agents.values()) {
     const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
     item.type = 'button';
-    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? label(agent.id) : `${label(agent.id)} · not ready`));
+    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? label(agent.id) : t('{label} · not ready', { label: label(agent.id) })));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => reviewWith(agent.id));
     menuNode.append(item);
@@ -385,7 +385,7 @@ function showViewerSource() {
   viewer.body.replaceChildren(pre);
   if (!state.ripley && viewerMode.kind) {
     const hint = el('div', 'viewer-hint');
-    hint.append('RIPLEY can render this file. ', el('b', null, t('Enable it in MODULES.')));
+    hint.append(t('RIPLEY can render this file. '), el('b', null, t('Enable it in MODULES.')));
     viewer.body.prepend(hint);
   }
   if (viewerMode.lines) setSelection(viewerMode.lines.from, viewerMode.lines.to);
@@ -427,7 +427,7 @@ function ripleyShowError({ message, source, line }) {
   ask.title = t('Put this error and the file into the composer');
   ask.addEventListener('click', () => {
     const reference = ripley.current ? `!${ripley.current}${line ? `:${line}` : ''} ` : '';
-    els.input.value = `${reference}RIPLEY reports an error in the page: ${message}${where ? ` (${where})` : ''}. Find the cause and propose the fix.`;
+    els.input.value = `${reference}${t('RIPLEY reports an error in the page: {message}{where}. Find the cause and propose the fix.', { message, where: where ? ` (${where})` : '' })}`;
     viewer.dialog.close();
     autosize();
     els.input.focus();
@@ -483,7 +483,7 @@ function showViewerPreview() {
   const frame = el('iframe', 'ripley');
   frame.setAttribute('sandbox', 'allow-scripts');
   frame.setAttribute('referrerpolicy', 'no-referrer');
-  frame.title = `RIPLEY preview of ${viewer.path.textContent}`;
+  frame.title = t('RIPLEY preview of {path}', { path: viewer.path.textContent });
   ripley.frame = frame;
   ripley.history = [];
   ripleyClearErrors();
@@ -507,7 +507,7 @@ function syncViewerMode() {
   const can = Boolean(viewerMode.kind) && state.ripley;
   viewerMode.button.hidden = !can;
   viewerMode.button.textContent = viewerMode.preview ? 'SOURCE' : 'PREVIEW';
-  viewerMode.button.title = viewerMode.preview ? 'Show the file as text' : 'Render with RIPLEY in a sealed frame';
+  viewerMode.button.title = viewerMode.preview ? t('Show the file as text') : t('Render with RIPLEY in a sealed frame');
 }
 viewerMode.button?.addEventListener('click', () => { viewerMode.preview = !viewerMode.preview; syncViewerMode(); if (viewerMode.preview) showViewerPreview(); else showViewerSource(); });
 
@@ -750,7 +750,7 @@ function renderPicker() {
       setMode(defaultModeFor(agent.id));
       els.input.focus();
     };
-    pick.title = els.target.value === agent.id ? `${agent.label} · click again to choose its model` : agent.label;
+    pick.title = els.target.value === agent.id ? t('{label} · click again to choose its model', { label: agent.label }) : agent.label;
     pick.addEventListener('click', choose);
     pick.addEventListener('keydown', (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); choose(); } });
     els.picker.append(pick);
@@ -763,18 +763,18 @@ function renderPicker() {
     if (current.local) {
       const note = el('span', 'pick-note', t('memory · answers & asks the crew · never writes'));
       const measured = state.localModel?.checked;
-      note.title = `@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.${
-        measured ? `\n\nMeasured against this room ${agoWords(measured.at)}: it landed where the crew landed on ${measured.matched} of ${measured.n} real questions${measured.passed ? '. Ready to be worked in.' : ' — not yet.'}` : '\n\nNobody has measured it against this project yet: MU/TH/UR → the three tests, or the line in the room when it joined.'}`;
+      note.title = `${t('@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.')}${
+        measured ? `\n\n${t('Measured against this room {when}: it landed where the crew landed on {matched} of {n} real questions{verdict}', { when: agoWords(measured.at), matched: measured.matched, n: measured.n, verdict: measured.passed ? t('. Ready to be worked in.') : t(' — not yet.') })}` : `\n\n${t('Nobody has measured it against this project yet: MU/TH/UR → the three tests, or the line in the room when it joined.')}`}`;
       text.append(note);
     }
     const modeChip = el('button', `mode-chip m${state.mode}`);
     modeChip.type = 'button';
     modeChip.append(el('b', null, `#${state.mode}`), `${MODES[state.mode].label} ▾`);
-    modeChip.title = `Permission mode for this message · ${MODES[state.mode].hint}`;
+    modeChip.title = t('Permission mode for this message · {hint}', { hint: MODES[state.mode].hint });
     modeChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModeMenu(current.id, modeChip); });
     text.append(modeChip);
     const chosen = state.chosenModel[current.id];
-    const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : 'default model ▾');
+    const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : t('default model ▾'));
     modelChip.type = 'button';
     modelChip.title = t('Choose the model for this agent');
     modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
@@ -817,10 +817,10 @@ async function toggleModelMenu(id, anchor) {
   if (modelMenuFor !== id) return;
   modelMenu.replaceChildren();
   const title = el('div', 'model-menu-title');
-  title.append(el('b', null, `@${id}`), ` · model for this request`);
+  title.append(el('b', null, `@${id}`), t(' · model for this request'));
   modelMenu.append(title);
   const list = el('div', 'model-list');
-  const options = [{ name: null, label: `default${info.default ? ` · ${info.default}` : ''}` }, ...info.models.map((name) => ({ name, label: name }))];
+  const options = [{ name: null, label: `${t('default')}${info.default ? ` · ${info.default}` : ''}` }, ...info.models.map((name) => ({ name, label: name }))];
   for (const option of options) {
     const button = el('button', `model-option${(state.chosenModel[id] ?? null) === option.name ? ' current' : ''}`, option.label);
     button.type = 'button';
@@ -870,7 +870,7 @@ function toggleModeMenu(id, anchor) {
   const scopes = state.capabilities[id]?.scopes;
   const canRaise = Boolean(scopes?.write?.capable);
   const title = el('div', 'model-menu-title');
-  title.append(el('b', null, `@${id}`), ` · mode for this message · ceiling #${cap}`);
+  title.append(el('b', null, `@${id}`), t(' · mode for this message · ceiling #{cap}', { cap }));
   modeMenu.append(title);
   const ladder = el('div', 'mode-ladder');
   for (const n of [0, 1, 2, 3, 4]) {
@@ -882,7 +882,7 @@ function toggleModeMenu(id, anchor) {
     const body = el('span', 'body');
     body.append(el('span', 'name', MODES[n].label), el('span', 'hint', MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
-    const tag = state.mode === n ? 'NOW' : raise ? `RAISE TO #${n} ›` : locked ? 'LOCKED' : n === 4 ? 'OVERRIDE ×2' : n === 3 ? 'OVERRIDE' : n === defaultModeFor(id) ? 'DEFAULT' : '';
+    const tag = state.mode === n ? t('NOW') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : n === 4 ? t('OVERRIDE ×2') : n === 3 ? t('OVERRIDE') : n === defaultModeFor(id) ? t('DEFAULT') : '';
     if (tag) {
       const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
       if (state.mode === n) label.append(el('span', 'dot'));
@@ -891,7 +891,7 @@ function toggleModeMenu(id, anchor) {
     option.title = !locked ? MODES[n].hint
       : raise ? `@${id} is capped at #${cap}. This raises MAX MODE to #${n} in CONNECTIONS and opens the override.`
       : n >= 3 ? `@${id}'s CLI cannot write files, so ${MODES[n].label} is not possible for it.`
-      : `Above @${id}'s MAX MODE (#${cap}). Raise it in CONNECTIONS.`;
+      : t("Above @{id}'s MAX MODE (#{cap}). Raise it in CONNECTIONS.", { id, cap });
     option.addEventListener('click', () => {
       closeModeMenu();
       if (n >= 3) { openOverride(id, { raise, mode: n }); return; }
@@ -945,8 +945,10 @@ const override = {
   stage: 'designation',   // AIRLOCK asks twice: the designation, then the word AIRLOCK
 };
 const OVERRIDE_BRIEF = {
-  3: (id, raise) => `PRIORITY ONE. CONTROL GIVES @${id} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.${raise ? ` THIS ALSO RAISES @${id} MAX MODE TO #3 IN CONNECTIONS.` : ''} TYPE THE PROJECT DESIGNATION TO ARM.`,
-  4: (id, raise) => `PRIORITY ONE. AIRLOCK OPENS THE SHIP FOR @${id}: EVERYTHING CONTROL ALLOWS, PLUS COMMANDS, GIT PUSH AND DEPLOYS WITH THE SESSIONS ON THIS MACHINE. FILES COME BACK WITH UNDO; WHAT LEAVES THE SHIP DOES NOT.${raise ? ` THIS ALSO RAISES @${id} MAX MODE TO #4 IN CONNECTIONS.` : ''} TYPE THE PROJECT DESIGNATION, THEN THE WORD AIRLOCK.`,
+  3: (id, raise) => t('PRIORITY ONE. CONTROL GIVES @{id} THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.', { id })
+    + (raise ? t(' THIS ALSO RAISES @{id} MAX MODE TO #{n} IN CONNECTIONS.', { id, n: 3 }) : '') + t(' TYPE THE PROJECT DESIGNATION TO ARM.'),
+  4: (id, raise) => t('PRIORITY ONE. AIRLOCK OPENS THE SHIP FOR @{id}: EVERYTHING CONTROL ALLOWS, PLUS COMMANDS, GIT PUSH AND DEPLOYS WITH THE SESSIONS ON THIS MACHINE. FILES COME BACK WITH UNDO; WHAT LEAVES THE SHIP DOES NOT.', { id })
+    + (raise ? t(' THIS ALSO RAISES @{id} MAX MODE TO #{n} IN CONNECTIONS.', { id, n: 4 }) : '') + t(' TYPE THE PROJECT DESIGNATION, THEN THE WORD AIRLOCK.'),
 };
 function projectDesignation() { return (state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''; }
 function openOverride(id, { raise = false, mode = 3 } = {}) {
@@ -957,7 +959,7 @@ function openOverride(id, { raise = false, mode = 3 } = {}) {
   override.stage = 'designation';
     override.form.querySelector('.k').textContent = t('DESIGNATION ›');
   override.input.placeholder = "type the current project's folder name to arm";
-  override.dialog.querySelector('.mother-sub').textContent = mode === 4 ? 'AIRLOCK OVERRIDE 100375 · SECOND KEY REQUIRED' : 'EMERGENCY COMMAND OVERRIDE 100375';
+  override.dialog.querySelector('.mother-sub').textContent = mode === 4 ? t('AIRLOCK OVERRIDE 100375 · SECOND KEY REQUIRED') : t('EMERGENCY COMMAND OVERRIDE 100375');
   override.brief.textContent = OVERRIDE_BRIEF[mode](id.toUpperCase(), raise);
   override.reply.textContent = '';
   override.reply.className = 'mother-answer override-reply';
@@ -969,7 +971,7 @@ override.cancel?.addEventListener('click', () => override.dialog.close());
 override.form?.addEventListener('submit', (event) => {
   event.preventDefault();
   const typed = override.input.value.trim();
-  const deny = (text = 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.') => {
+  const deny = (text = t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.')) => {
     override.reply.textContent = text;
     override.reply.className = 'mother-answer override-reply denied';
     override.frame.classList.remove('shake'); void override.frame.offsetWidth; override.frame.classList.add('shake');
@@ -988,10 +990,10 @@ override.form?.addEventListener('submit', (event) => {
       override.input.focus();
       return;
     }
-  } else if (typed.toUpperCase() !== 'AIRLOCK') { deny('SECOND KEY REJECTED. TYPE AIRLOCK, OR CANCEL.'); return; }
+  } else if (typed.toUpperCase() !== 'AIRLOCK') { deny(t('SECOND KEY REJECTED. TYPE AIRLOCK, OR CANCEL.')); return; }
   override.reply.textContent = override.mode === 4
-    ? `SPECIAL ORDER 937 ACKNOWLEDGED. AIRLOCK OPEN FOR @${override.agent.toUpperCase()}. WHAT LEAVES DOES NOT COME BACK.`
-    : `SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @${override.agent.toUpperCase()}. CREW IN COMMAND.`;
+    ? t('SPECIAL ORDER 937 ACKNOWLEDGED. AIRLOCK OPEN FOR @{agent}. WHAT LEAVES DOES NOT COME BACK.', { agent: override.agent.toUpperCase() })
+    : t('SPECIAL ORDER 937 ACKNOWLEDGED. CONTROL ARMED FOR @{agent}. CREW IN COMMAND.', { agent: override.agent.toUpperCase() });
   override.reply.className = 'mother-answer override-reply granted';
   const agent = override.agent;
   const raise = override.raise;
@@ -1003,7 +1005,7 @@ override.form?.addEventListener('submit', (event) => {
         await saveSettingNow({ scopes: { [agent]: { maxMode: mode } } });
         if (settingsUI.open) renderSettings();
       } catch (error) {
-        toast(`MU/TH/UR › MAX MODE was not raised for @${agent}: ${error.message}. ${MODES[mode].label} stays off.`);
+        toast(t('MU/TH/UR › MAX MODE was not raised for @{agent}: {error}. {mode} stays off.', { agent, error: error.message, mode: MODES[mode].label }));
         return;
       }
     }
@@ -1011,8 +1013,8 @@ override.form?.addEventListener('submit', (event) => {
     els.target.value = agent;
     setMode(mode, { wink: true });
     toast(mode === 4
-      ? `MU/TH/UR › AIRLOCK open for @${agent} for this message.${raise ? ' MAX MODE is now #4 in CONNECTIONS.' : ''} Files are checkpointed; what leaves the machine is not undone.`
-      : `MU/TH/UR › CONTROL armed for @${agent} for this message.${raise ? ' MAX MODE is now #3 in CONNECTIONS.' : ''} A checkpoint is taken before it runs; every change is listed and UNDO is one click.`);
+      ? t('MU/TH/UR › AIRLOCK open for @{agent} for this message.{raised} Files are checkpointed; what leaves the machine is not undone.', { agent, raised: raise ? t(' MAX MODE is now #4 in CONNECTIONS.') : '' })
+      : t('MU/TH/UR › CONTROL armed for @{agent} for this message.{raised} A checkpoint is taken before it runs; every change is listed and UNDO is one click.', { agent, raised: raise ? t(' MAX MODE is now #3 in CONNECTIONS.') : '' }));
   }, 900);
 });
 
@@ -1165,7 +1167,7 @@ function keyForm(agent, { onDone } = {}) {
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       input.value = '';
       state.sessions[agent.id] = result.session ?? state.sessions[agent.id];
-      toast(`MU/TH/UR › @${agent.id} is signed in.`);
+      toast(t('MU/TH/UR › @{agent} is signed in.', { agent: agent.id }));
       onDone?.();
     } catch (error) {
       said.textContent = error.message;
@@ -1183,11 +1185,11 @@ document.querySelector('#bridge-close')?.addEventListener('click', () => { els.o
 // step that moves it forward, with the command it will run in plain sight.
 function ollamaDetail(agent) {
   const info = state.ollama;
-  if (agent.detected) return `Local, through Ollama${agent.version ? ` · ${agent.version}` : ''} · free, no account, no tokens`;
-  if (!info) return 'Optional and free: Ollama on this computer gives the room a local memory and @madre.';
-  if (!info.binary) return `Not on this computer. ${info.install?.note ?? ''}`.trim();
-  if (!info.running) return 'Installed but asleep. Wake it and the room gets a local memory and @madre.';
-  return 'Running, with no chat model yet. Pull one and @madre joins the room.';
+  if (agent.detected) return t('Local, through Ollama{version} · free, no account, no tokens', { version: agent.version ? ` · ${agent.version}` : '' });
+  if (!info) return t('Optional and free: Ollama on this computer gives the room a local memory and @madre.');
+  if (!info.binary) return `${t('Not on this computer.')} ${info.install?.note ?? ''}`.trim();
+  if (!info.running) return t('Installed but asleep. Wake it and the room gets a local memory and @madre.');
+  return t('Running, with no chat model yet. Pull one and @madre joins the room.');
 }
 function ollamaActions() {
   const info = state.ollama;
@@ -1213,12 +1215,12 @@ function ollamaActions() {
   };
   if (!info.binary) {
     return info.install?.display
-      ? [act(`INSTALL · ${info.install.display}`, info.install.note ?? '', () => call('/api/ollama/install'))]
-      : [act('GET OLLAMA ↗', info.install?.note ?? '', async () => { window.open(info.install?.download ?? 'https://ollama.com/download', '_blank', 'noopener'); })];
+      ? [act(`${t('INSTALL')} · ${info.install.display}`, info.install.note ?? '', () => call('/api/ollama/install'))]
+      : [act(t('GET OLLAMA ↗'), info.install?.note ?? '', async () => { window.open(info.install?.download ?? 'https://ollama.com/download', '_blank', 'noopener'); })];
   }
-  if (!info.running) return [act('START OLLAMA', 'Wakes Ollama on this computer, nothing leaves it.', () => call('/api/ollama/start'))];
+  if (!info.running) return [act(t('START OLLAMA'), t('Wakes Ollama on this computer, nothing leaves it.'), () => call('/api/ollama/start'))];
   const model = state.ollamaRecommended?.chat ?? 'qwen2.5:3b';
-  return [act(`PULL ${model}`, `Downloads the model Ollama will answer with. It stays on this computer.`, () => call('/api/ollama/pull', { model }))];
+  return [act(`PULL ${model}`, t('Downloads the model Ollama will answer with. It stays on this computer.'), () => call('/api/ollama/pull', { model }))];
 }
 async function loadOllama() {
   try {
@@ -1230,9 +1232,9 @@ async function loadOllama() {
 }
 
 function bridgeInstallButton(agent) {
-  const button = el('button', 'primary', `INSTALL · ${agent.install.display}`);
+  const button = el('button', 'primary', `${t('INSTALL')} · ${agent.install.display}`);
   button.type = 'button';
-  button.title = `MADRE runs this command on this computer and shows every line. ${agent.install.alternatives?.join(' · ') ?? ''}`.trim();
+  button.title = `${t('MADRE runs this command on this computer and shows every line.')} ${agent.install.alternatives?.join(' · ') ?? ''}`.trim();
   button.addEventListener('click', async () => {
     button.disabled = true;
     button.textContent = t('INSTALLING…');
@@ -1241,12 +1243,12 @@ function bridgeInstallButton(agent) {
       const response = await fetch(`/api/agents/${agent.id}/install`, { method: 'POST' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-    } catch (error) { toast(`MU/TH/UR › ${agent.label} was not installed: ${error.message}`); renderOnboarding(); }
+    } catch (error) { toast(t('MU/TH/UR › {label} was not installed: {error}', { label: agent.label, error: error.message })); renderOnboarding(); }
   });
   return button;
 }
 function bridgeSignInButton(agent, again = false) {
-  const button = el('button', again ? null : 'primary', again ? 'SIGN IN AGAIN' : 'SIGN IN');
+  const button = el('button', again ? null : 'primary', again ? t('SIGN IN AGAIN') : t('SIGN IN'));
   button.type = 'button';
   button.title = agent.login.note;
   button.addEventListener('click', async () => {
@@ -1256,7 +1258,7 @@ function bridgeSignInButton(agent, again = false) {
       const response = await fetch(`/api/agents/${agent.id}/login`, { method: 'POST' });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-    } catch (error) { toast(`MU/TH/UR › sign-in did not start: ${error.message}`); renderOnboarding(); }
+    } catch (error) { toast(t('MU/TH/UR › sign-in did not start: {error}', { error: error.message })); renderOnboarding(); }
   });
   return button;
 }
@@ -1290,7 +1292,7 @@ function renderUserMessage(event) {
   node.id = `msg-${messageId}`;
   const col = el('div', 'col');
   const who = el('div', 'who');
-  who.append(el('b', null, reviewed ? 'YOU · CREW (EXPENDABLE)' : 'YOU · CREW'));
+  who.append(el('b', null, reviewed ? t('YOU · CREW (EXPENDABLE)') : t('YOU · CREW')));
   const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
   if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, `#${shownMode} ${MODES[shownMode].label}`));
   if (ash?.active) who.append(el('span', 'badge ash', t('ASH')));
@@ -1325,9 +1327,9 @@ function renderAssistantMessage(event) {
       const to = paint(el('span', 'to-agent'), target);
       to.append(`→ @${target}`);
       who.append(to);
-      who.append(el('span', 'badge', target === sender ? 'closing turn' : `step ${step}/${totalSteps}`));
+      who.append(el('span', 'badge', target === sender ? t('closing turn') : t('step {n}/{total}', { n: step, total: totalSteps })));
     } else if (target && target !== 'you') {
-      who.append(el('span', 'badge', `answering @${target}`));
+      who.append(el('span', 'badge', t('answering @{agent}', { agent: target })));
     }
     if (status === 'handoff') who.append(el('span', 'badge', t('handoff note')));
     if (model) who.append(el('span', 'badge model', model));
@@ -1374,8 +1376,8 @@ const ICON_GOOD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 7.5
 const ICON_BAD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 8.5V3H12.8a.7.7 0 0 1 .7.7v4.1a.7.7 0 0 1-.7.7h-2.3Zm0 0-2.6 4.6a1.3 1.3 0 0 1-2.4-.8L6 9.2H3.4a1.3 1.3 0 0 1-1.3-1.5l.8-3.9A1.3 1.3 0 0 1 4.2 3h6.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 // The human's verdict on a reply. Saved in the ledger; the dataset drops what is marked bad.
 function ratingButtons(messageId, sender) {
-  const good = iconButton(ICON_GOOD, 'Good reply · keep it for MADRE AI', 'rate good');
-  const bad = iconButton(ICON_BAD, 'Bad reply · keep it out of the dataset', 'rate bad');
+  const good = iconButton(ICON_GOOD, t('Good reply · keep it for MADRE AI'), 'rate good');
+  const bad = iconButton(ICON_BAD, t('Bad reply · keep it out of the dataset'), 'rate bad');
   const apply = (rating) => { good.classList.toggle('on', rating === 'good'); bad.classList.toggle('on', rating === 'bad'); };
   apply(state.ratings.get(messageId) ?? null);
   const send = async (rating) => {
@@ -1392,7 +1394,7 @@ function ratingButtons(messageId, sender) {
 }
 function bubbleActions({ text, sender, sequence, messageId = null }) {
   const bar = el('div', 'bubble-actions');
-  const copy = iconButton(ICON_COPY, 'Copy this reply', 'copy');
+  const copy = iconButton(ICON_COPY, t('Copy this reply'), 'copy');
   copy.addEventListener('click', async (event) => {
     event.stopPropagation();
     try {
@@ -1404,7 +1406,7 @@ function bubbleActions({ text, sender, sequence, messageId = null }) {
       toast(t('MU/TH/UR › the clipboard is not available here; select the text and copy.'));
     }
   });
-  const reply = iconButton(ICON_REPLY, 'Reply to this through an agent', 'reply');
+  const reply = iconButton(ICON_REPLY, t('Reply to this through an agent'), 'reply');
   reply.addEventListener('click', (event) => {
     event.stopPropagation();
     const rect = reply.getBoundingClientRect();
@@ -1467,7 +1469,7 @@ function renderReplyQuote() {
   const drop = el('button', 'drop', '×');
   drop.type = 'button';
   drop.title = t('Answer without quoting this');
-  drop.setAttribute('aria-label', 'Remove the quoted reply');
+  drop.setAttribute('aria-label', t('Remove the quoted reply'));
   drop.addEventListener('click', () => { state.replyTo = null; renderReplyQuote(); els.input.focus(); });
   box.replaceChildren(who, said, drop);
   autosize();
@@ -1510,32 +1512,32 @@ function fileTiles(files) {
 // uses in its own terminal, staged by how long the turn has been running.
 const WORKING_VOICE = {
   codex: {
-    early: ['Reading the request…', 'Looking around the project…', 'Opening files…'],
-    middle: ['Thinking…', 'Tracing how this fits together…', 'Cross-checking the code…', 'Skimming the transcript…'],
-    late: ['Reasoning…', 'Weighing the options…', 'Verifying before answering…', 'Still on it…'],
-    long: ['Deep in the code…', 'Composing the answer…', 'Almost there…'],
+    early: [t('Reading the request…'), t('Looking around the project…'), t('Opening files…')],
+    middle: [t('Thinking…'), t('Tracing how this fits together…'), t('Cross-checking the code…'), t('Skimming the transcript…')],
+    late: [t('Reasoning…'), t('Weighing the options…'), t('Verifying before answering…'), t('Still on it…')],
+    long: [t('Deep in the code…'), t('Composing the answer…'), t('Almost there…')],
   },
   claude: {
-    early: ['Reading…', 'Grepping the project…', 'Mapping the files…'],
-    middle: ['Thinking…', 'Pondering…', 'Connecting the pieces…', 'Reading the relevant files…'],
-    late: ['Ruminating…', 'Considering the edge cases…', 'Checking the details…', 'Musing…'],
-    long: ['Synthesizing…', 'Drafting the reply…', 'Finishing the thought…'],
+    early: [t('Reading…'), t('Grepping the project…'), t('Mapping the files…')],
+    middle: [t('Thinking…'), t('Pondering…'), t('Connecting the pieces…'), t('Reading the relevant files…')],
+    late: [t('Ruminating…'), t('Considering the edge cases…'), t('Checking the details…'), t('Musing…')],
+    long: [t('Synthesizing…'), t('Drafting the reply…'), t('Finishing the thought…')],
   },
   gemini: {
-    early: ['Scanning the project…', 'Loading context…', 'Reading files…'],
-    middle: ['Thinking…', 'Analyzing…', 'Following the references…', 'Building the picture…'],
-    late: ['Reasoning through it…', 'Verifying the findings…', 'Sorting the evidence…'],
-    long: ['Formulating the answer…', 'Writing it up…', 'Wrapping up…'],
+    early: [t('Scanning the project…'), t('Loading context…'), t('Reading files…')],
+    middle: [t('Thinking…'), t('Analyzing…'), t('Following the references…'), t('Building the picture…')],
+    late: [t('Reasoning through it…'), t('Verifying the findings…'), t('Sorting the evidence…')],
+    long: [t('Formulating the answer…'), t('Writing it up…'), t('Wrapping up…')],
   },
   opencode: {
-    early: ['Reading the repo…', 'Listing files…', 'Grabbing context…'],
-    middle: ['Thinking…', 'Digging through the code…', 'Following the call chain…', 'Looking closer…'],
-    late: ['Working through it…', 'Double-checking…', 'Piecing it together…'],
-    long: ['Writing the response…', 'Tidying the answer…', 'Nearly done…'],
+    early: [t('Reading the repo…'), t('Listing files…'), t('Grabbing context…')],
+    middle: [t('Thinking…'), t('Digging through the code…'), t('Following the call chain…'), t('Looking closer…')],
+    late: [t('Working through it…'), t('Double-checking…'), t('Piecing it together…')],
+    long: [t('Writing the response…'), t('Tidying the answer…'), t('Nearly done…')],
   },
 };
 function workingPhrases(agent, prompt = '') {
-  const voice = WORKING_VOICE[agent] ?? { early: ['Reading…'], middle: ['Thinking…'], late: ['Working…'], long: ['Writing…'] };
+  const voice = WORKING_VOICE[agent] ?? { early: [t('Reading…')], middle: [t('Thinking…')], late: [t('Working…')], long: [t('Writing…')] };
   const topic = prompt.trim().split(/\s+/).slice(0, 4).join(' ');
   const middle = [...voice.middle];
   if (topic && topic.length <= 40) middle.splice(1, 0, t('Thinking about "{topic}"…', { topic }));
@@ -1572,7 +1574,7 @@ function settleReading(event) {
   // Short enough to sit on the same line as everything else above the bubble. What was read back
   // from the cache is money not spent, so it is the part worth naming.
   const brief = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
-  const saved = cost.cached ? ` · ${brief(cost.cached)} saved` : '';
+  const saved = cost.cached ? t(' · {n} saved', { n: brief(cost.cached) }) : '';
   badge.textContent = `${brief(cost.input)}↓ ${brief(cost.output)}↑${saved}`;
   badge.title = t("Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.", { input: cost.input.toLocaleString(), output: cost.output.toLocaleString(), cached: cost.cached ? t('. Another {n} were read back from its own cache instead of being charged again', { n: cost.cached.toLocaleString() }) : '' });
   if (!badge.isConnected) who.append(badge);
@@ -1630,7 +1632,7 @@ function renderModuleProposed(event) {
   const { agent, path, name, responseMessageId } = event.payload;
   const node = el('div', 'system module-proposed');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append('module · ', el('b', 'who', `@${agent}`), ` wrote `);
+  node.append(t('module · '), el('b', 'who', `@${agent}`), t(' wrote '));
   const link = el('a', 'file-link', name ?? path); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); void openViewer({ root: 'project', path, label: `/${path}` }); });
   node.append(link, t(' · read it, then '));
   const install = async (scope, button) => {
@@ -1680,7 +1682,7 @@ function renderLocalModel(payload, { asked = false } = {}) {
         const result = await fetch('/api/maturity/exam', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ which: 'match' }) }).then((response) => response.json());
         if (result.error) { toast(`MU/TH/UR › ${result.error}`); button.disabled = false; return; }
         toast(t('MU/TH/UR › the local model is answering real questions from this room. It takes a few minutes, it spends nothing, and the answer lands here.'));
-      } catch (error) { toast(`The test could not run: ${error.message}`); button.disabled = false; }
+      } catch (error) { toast(t('The test could not run: {error}', { error: error.message })); button.disabled = false; }
     });
     return button;
   };
@@ -1703,11 +1705,11 @@ function renderLocalModel(payload, { asked = false } = {}) {
       });
       action.append(use);
     }
-    action.append(check('CHECK AGAIN'));
+    action.append(check(t('CHECK AGAIN')));
     if (checked?.at) action.append(el('span', 'note', t('MEASURED {when}', { when: agoWords(checked.at).toUpperCase() })));
   } else {
     line.textContent = t('It is in the room. Nobody has measured it against this project yet: running here is not the same as being of use here.');
-    action.append(check('CHECK IT AGAINST THIS ROOM'));
+    action.append(check(t('CHECK IT AGAINST THIS ROOM')));
   }
   node.append(line, action);
   return node;
@@ -1765,8 +1767,8 @@ function attachMemoryUsed(payload) {
     pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
     pill.append(el('b', null, note.kind), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
     pill.title = `${note.text}\n${note.via === 'cascade'
-      ? 'Came along because this room keeps carrying it with one of the others.'
-      : 'The archive matched this to what you asked.'} Click to see it in NOSTROMO.`;
+      ? t('Came along because this room keeps carrying it with one of the others.')
+      : t('The archive matched this to what you asked.')} ${t('Click to see it in NOSTROMO.')}`;
     pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
     hint.append(pill);
   }
@@ -1817,7 +1819,7 @@ function renderForgotten(event) {
   const node = el('div', 'system memory forgotten');
   node.append(t('memory · the human forgot a '));
   node.append(el('b', 'who', kind));
-  node.append(`: “${text}”${Number.isFinite(remaining) ? ` · ${remaining} left in the archive` : ''}`);
+  node.append(`: “${text}”${Number.isFinite(remaining) ? t(' · {n} left in the archive', { n: remaining }) : ''}`);
   return node;
 }
 
@@ -1996,7 +1998,7 @@ function renderLeaseMissing(event) {
   });
   actions.append(resend, standing);
   node.append(actions);
-  if (requester === 'you' && !replaying) toast(`MU/TH/UR › CREATE is off: @${agent} will answer read-only. Use the lock or /create.`);
+  if (requester === 'you' && !replaying) toast(t('MU/TH/UR › CREATE is off: @{agent} will answer read-only. Use the lock or /create.', { agent }));
   state.lastSender = null;
   return node;
 }
@@ -2010,7 +2012,7 @@ function renderModeRequest(event) {
   node.id = `mode-request-${requestId}`;
   node.style.setProperty('--agent', agentColor(agent));
   const head = el('div', 'head');
-  head.append(el('b', null, t('MU/TH/UR › ')), el('b', 'who', `@${agent}`), ` asks `, el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`), ` for step ${step}/${totalSteps} of @${orchestrator}'s plan`);
+  head.append(el('b', null, t('MU/TH/UR › ')), el('b', 'who', `@${agent}`), t(' asks '), el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`), t(" for step {step}/{total} of @{who}'s plan", { step, total: totalSteps, who: orchestrator }));
   node.append(head);
   const quote = el('div', 'quote', text.length > 220 ? `${text.slice(0, 220)}…` : text);
   quote.title = text;
@@ -2050,7 +2052,7 @@ function renderModeRequest(event) {
   const timer = setInterval(tick, 1000);
   timer.unref?.();
   modeRequests.set(requestId, { node, timer, actions });
-  if (!replaying) { toast(`MU/TH/UR › @${agent} asks #${mode} ${MODES[mode].label} for step ${step}. The plan waits for you.`); if (typeof armBrake === 'function') { /* no brake: waiting is safe */ } }
+  if (!replaying) { toast(t('MU/TH/UR › @{agent} asks #{mode} {label} for step {step}. The plan waits for you.', { agent, mode, label: MODES[mode].label, step })); if (typeof armBrake === 'function') { /* no brake: waiting is safe */ } }
   state.lastSender = null;
   return node;
 }
@@ -2061,7 +2063,7 @@ function settleModeRequest(event) {
   clearInterval(entry.timer);
   const granted = event.type === 'mode.granted';
   entry.node.classList.add(granted ? 'granted' : 'denied');
-  entry.actions.replaceChildren(el('span', 'outcome', granted ? (scope === 'plan' ? 'GRANTED FOR THE PLAN' : 'GRANTED ONCE') : reason === 'timeout' ? 'DENIED · NO ANSWER IN TIME' : reason === 'stopped' ? 'PLAN STOPPED' : 'DENIED'));
+  entry.actions.replaceChildren(el('span', 'outcome', granted ? (scope === 'plan' ? t('GRANTED FOR THE PLAN') : t('GRANTED ONCE')) : reason === 'timeout' ? t('DENIED · NO ANSWER IN TIME') : reason === 'stopped' ? t('PLAN STOPPED') : t('DENIED')));
   entry.node.title = message ?? '';
   modeRequests.delete(requestId);
 }
@@ -2071,7 +2073,7 @@ function renderLease(event) {
   const node = el('div', 'system lease');
   node.style.setProperty('--agent', agentColor(agent));
   const { delegated = false, scratchDir = null, grantedBy = null } = event.payload;
-  node.append(el('b', null, standing ? 'default #2 · ' : escalated ? `#2 granted on request${escalated === 'plan' ? ' · whole plan' : ''} · ` : delegated ? `#2 by @${grantedBy} · ` : 'create · '));
+  node.append(el('b', null, standing ? t('default #2 · ') : escalated ? `${t('#2 granted on request')}${escalated === 'plan' ? t(' · whole plan') : ''} · ` : delegated ? t('#2 by @{who} · ', { who: grantedBy }) : t('create · ')));
   node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} `);
   if (outDir === '.' || !outDir) {
     node.append(t('anywhere in the project · existing files stay untouched'));
@@ -2096,20 +2098,20 @@ function attachArtifacts(event) {
   // changed and can quote lines back to an agent. Live events only.
   if (!replaying && files.length && !viewer.dialog.open) {
     const first = files.find((file) => (file.contentType ?? '').startsWith('image/') || /^(text\/|application\/(json|x-ndjson))/.test(file.contentType ?? '')) ?? null;
-    if (first) void openViewer({ root: 'project', path: first.path, label: `/${first.path} · ${first.status}` });
+    if (first) void openViewer({ root: 'project', path: first.path, label: `/${first.path} · ${t(first.status)}` });
   }
 }
 
 function artifactTiles(files) {
   const wrap = el('div', 'artifacts');
-  wrap.append(el('span', 'label', `created · ${files.length} file${files.length === 1 ? '' : 's'}`));
+  wrap.append(el('span', 'label', t('created · {n} files', { n: files.length })));
   const tiles = el('div', 'files');
   for (const file of files) {
     const url = `/api/files?path=${encodeURIComponent(file.path)}`;
     const image = (file.contentType ?? '').startsWith('image/');
     const tile = el('button', `file-tile${image ? ' image' : ''}`);
     tile.type = 'button';
-    tile.title = `${file.path} · ${file.size} bytes · ${file.status}`;
+    tile.title = `${file.path} · ${file.size} bytes · ${t(file.status)}`;
     if (image) { const img = el('img'); img.src = url; img.alt = file.name; img.loading = 'lazy'; tile.append(img); }
     else { tile.append(el('span', 'kind', (file.name.split('.').pop() ?? 'file').slice(0, 4).toUpperCase())); tile.append(el('span', 'name', file.name)); }
     tile.addEventListener('click', () => openViewer({ root: 'project', path: file.path, label: `/${file.path}` }));
@@ -2138,8 +2140,8 @@ function renderHalted(event) {
   state.brakeArmed = false;
   node.append(el('b', null, t('MU/TH/UR › ')));
   node.append(plans || turns
-    ? `all stop · ${plans} plan${plans === 1 ? '' : 's'}, ${turns} turn${turns === 1 ? '' : 's'} halted${agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : ''} · ${reason}`
-    : `all stop · nothing was running · ${reason}`);
+    ? t('all stop · {plans} plans, {turns} turns halted', { plans, turns }) + (agents.length ? ` (${agents.map((id) => `@${id}`).join(', ')})` : '') + ` · ${reason}`
+    : t('all stop · nothing was running') + ` · ${reason}`);
   state.plansRunning.clear();
   updateStopAll();
   state.lastSender = null;
@@ -2154,7 +2156,7 @@ async function stopAll() {
     if (!response.ok) { toast(t('STOPALL failed to reach the room.')); return; }
     const result = await response.json().catch(() => ({}));
     if (!result.plans && !result.turns) toast(t('MU/TH/UR › all quiet. nothing was running.'));
-    else toast(`MU/TH/UR › all stop. ${result.plans} plan${result.plans === 1 ? '' : 's'}, ${result.turns} turn${result.turns === 1 ? '' : 's'} halted.`);
+    else toast(t('MU/TH/UR › all stop. {plans} plans, {turns} turns halted.', { plans: result.plans, turns: result.turns }));
   } finally {
     if (button) button.disabled = false;
   }
@@ -2169,9 +2171,9 @@ function updateStopAll() {
   button.disabled = !state.brakeArmed;
   button.classList.toggle('armed', state.brakeArmed);
   button.title = state.brakeArmed
-    ? 'MU/TH/UR detected a runaway sequence. STOP ALL halts every plan and every agent turn.'
-    : idle ? 'All quiet. STOP ALL arms itself when MU/TH/UR detects a runaway sequence; typing STOPALL always works.'
-      : 'Agents are working normally. STOP ALL arms itself on a MU/TH/UR alert; typing STOPALL always works.';
+    ? t('MU/TH/UR detected a runaway sequence. STOP ALL halts every plan and every agent turn.')
+    : idle ? t('All quiet. STOP ALL arms itself when MU/TH/UR detects a runaway sequence; typing STOPALL always works.')
+      : t('Agents are working normally. STOP ALL arms itself on a MU/TH/UR alert; typing STOPALL always works.');
 }
 
 function renderPlanEvent(event) {
@@ -2252,12 +2254,12 @@ function applyQuota(event) {
 function renderCleared(event) {
   const { agent, usedPercent, source, message } = event.payload;
   const node = el('div', 'system recovered');
-  node.append(el('b', null, t('clear · ')), el('b', null, `@${agent} `), `${Math.round(usedPercent)}% of ${source === 'room-soft-budget' ? 'local window' : 'provider limit'} · window reset`);
+  node.append(el('b', null, t('clear · ')), el('b', null, `@${agent} `), t('{pct}% of {what} · window reset', { pct: Math.round(usedPercent), what: source === 'room-soft-budget' ? t('local window') : t('provider limit') }));
   node.title = message;
   const entry = state.agents.get(agent);
   if (entry && source !== 'room-soft-budget') { entry.officialPercent = usedPercent; entry.officialResetAt = event.payload.resetAt ?? null; }
   renderAgents();
-  if (!replaying) toast(`MU/TH/UR › @${agent} limit window reset · ${Math.round(usedPercent)}% used now.`);
+  if (!replaying) toast(t('MU/TH/UR › @{agent} limit window reset · {pct}% used now.', { agent, pct: Math.round(usedPercent) }));
   state.lastSender = null;
   return node;
 }
@@ -2294,7 +2296,7 @@ function renderEventNode(event) {
     case 'connection.key.set': {
       const { agent, label, provider, detail } = event.payload;
       node = paint(el('div', 'system connections'), agent);
-      node.append(el('b', null, t('connections › ')), `${label ?? agent} signed in with a key${provider ? ` · ${provider}` : ''}${detail ? ` · ${detail}` : ''}`);
+      node.append(el('b', null, t('connections › ')), `${t('{agent} signed in with a key', { agent: label ?? agent })}${provider ? ` · ${provider}` : ''}${detail ? ` · ${detail}` : ''}`);
       state.lastSender = null;
       break;
     }
@@ -2320,7 +2322,7 @@ function renderEventNode(event) {
     case 'module.proposed': node = renderModuleProposed(event); break;
     case 'extension.installed': case 'extension.removed': node = renderModuleInstalledOrRemoved(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
-    case 'privacy.warning': if (!replaying) toast(`MU/TH/UR › your message carries ${event.payload.hits} private term${event.payload.hits === 1 ? '' : 's'}. Agents will read it as you wrote it; their replies are guarded.`); return;
+    case 'privacy.warning': if (!replaying) toast(t('MU/TH/UR › your message carries {n} private {term}. Agents will read it as you wrote it; their replies are guarded.', { n: event.payload.hits, term: event.payload.hits === 1 ? t('term') : t('terms') })); return;
     case 'memory.forgotten': node = renderForgotten(event); break;
     case 'memory.noted': attachMemoryHint(event); return;
     case 'dataset.exported': return;
@@ -2349,7 +2351,7 @@ function renderEventNode(event) {
       break;
     }
     case 'mother.alert': node = renderMotherAlert(event); break;
-    case 'sentinel.report': state.reports.set(event.payload.id, { ...event.payload }); if (!replaying) { renderMotherSentinel(); toast(`MU/TH/UR › ${event.payload.kind === 'crash' ? 'a crash' : 'an unknown condition'} was recorded by the sentinel. Open MU/TH/UR to report it.`); } return;
+    case 'sentinel.report': state.reports.set(event.payload.id, { ...event.payload }); if (!replaying) { renderMotherSentinel(); toast(t('MU/TH/UR › {what} was recorded by the sentinel. Open MU/TH/UR to report it.', { what: event.payload.kind === 'crash' ? t('a crash') : t('an unknown condition') })); } return;
     case 'sentinel.sent': { const report = state.reports.get(event.payload.id); if (report) report.sent = { ok: event.payload.ok, status: event.payload.status ?? null, error: event.payload.error ?? null, at: event.timestamp }; if (!replaying) renderMotherSentinel(); return; }
     case 'limit.warning': node = renderWarning(event); break;
     case 'limit.cleared': node = renderCleared(event); break;
@@ -2431,7 +2433,7 @@ themeButton?.addEventListener('click', () => {
   themeMode = themeMode === 'auto' ? 'light' : themeMode === 'light' ? 'dark' : 'auto';
   try { localStorage.setItem('pulse.theme', themeMode); } catch { /* no storage */ }
   applyTheme(themeMode);
-  toast(`Theme · ${themeMode === 'auto' ? 'auto, following the system' : themeMode}`);
+  toast(t('Theme · {mode}', { mode: themeMode === 'auto' ? t('auto, following the system') : t(themeMode) }));
 });
 
 // EN / ES. One button, showing the language it would switch to, and a reload — a page half in
@@ -2512,7 +2514,7 @@ async function loadTreeLevel(path, list) {
     for (const entry of data.entries) list.append(treeNode(path === '.' ? entry.name : `${path}/${entry.name}`, entry));
     if (data.truncated) list.append(el('li', 'empty-dir', t('more entries not shown')));
   } catch (error) {
-    list.replaceChildren(el('li', 'error', `could not list: ${error.message}`));
+    list.replaceChildren(el('li', 'error', t('could not list: {error}', { error: error.message })));
   }
 }
 
@@ -2589,7 +2591,7 @@ function renderChats() {
     open.type = 'button';
     open.append(el('span', 'name', chat.title));
     open.append(el('span', 'when', whenWords(chat.updatedAt)));
-    open.title = `${chat.messages} message${chat.messages === 1 ? '' : 's'}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`;
+    open.title = `${t('{n} {messages}', { n: chat.messages, messages: chat.messages === 1 ? t('message') : t('messages') })}${chat.updatedAt ? ` · ${new Date(chat.updatedAt).toLocaleString()}` : ''}`;
     open.addEventListener('click', () => { if (chat.id !== chats.active) void openChat(chat.id); });
     const drop = el('button', 'chat-drop', '×');
     drop.type = 'button';
@@ -2749,7 +2751,7 @@ if (initial.chats?.chats?.length > 1) {
   const here = initial.chats.chats.find((chat) => chat.id === initial.chats.active);
   if (here) {
     const mark = el('span', 'project chat-here', here.title);
-    mark.title = `Conversation · ${here.messages} message${here.messages === 1 ? '' : 's'}. The project's memory is shared by all of them.`;
+    mark.title = t("Conversation · {n} messages. The project's memory is shared by all of them.", { n: here.messages });
     els.project.after(mark);
   }
 }
@@ -2783,7 +2785,7 @@ async function refreshBudgetWindow() {
   } catch { /* offline; the stream will tell */ }
 }
 if (typeof setInterval === 'function') { const ticker = setInterval(refreshBudgetWindow, 60000); ticker.unref?.(); }
-if (!els.target.options.length) els.target.add(new Option('No agent ready', ''));
+if (!els.target.options.length) els.target.add(new Option(t('No agent ready'), ''));
 renderAgents();
 renderPicker();
 renderOnboarding();
@@ -2891,7 +2893,7 @@ function fileMenu(found) {
       if (!current || current.kind !== '!' || current.query !== found.query) return;
       const items = (data.matches ?? []).map((file) => ({ key: `!${file.name}`, insert: `!${file.path} `, what: file.path, color: null }));
       if (!items.length) return closeMenu();
-      showMenu(items, { ...found, hint: 'FILE · ↑↓ · TAB OR ENTER · add :12-20 for lines' });
+      showMenu(items, { ...found, hint: t('FILE · ↑↓ · TAB OR ENTER · add :12-20 for lines') });
     } catch { closeMenu(); }
   }, 120);
 }
@@ -2901,13 +2903,13 @@ function renderMenu() {
   if (found.kind === '!') return fileMenu(found);
   if (found.kind === '#') {
     const cap = ceilingFor(els.target.value);
-    const items = [0, 1, 2, 3, 4].filter((n) => String(n).startsWith(found.query)).map((n) => ({ key: `#${n} ${MODES[n].label}`, insert: `#${n} `, what: n > cap ? `${MODES[n].hint} · above @${els.target.value}'s max mode` : MODES[n].hint, off: n > cap }));
+    const items = [0, 1, 2, 3, 4].filter((n) => String(n).startsWith(found.query)).map((n) => ({ key: `#${n} ${MODES[n].label}`, insert: `#${n} `, what: n > cap ? t("{hint} · above @{agent}'s max mode", { hint: MODES[n].hint, agent: els.target.value }) : MODES[n].hint, off: n > cap }));
     if (!items.length) return closeMenu();
-    return showMenu(items, { ...found, hint: 'MODE · ↑↓ · TAB OR ENTER' });
+    return showMenu(items, { ...found, hint: t('MODE · ↑↓ · TAB OR ENTER') });
   }
   const items = found.kind === '@'
-    ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : `${label(id)} · not ready`, color: brandOf(id).color, off: !state.agents.get(id)?.ready }))
-    : allCommands().filter((item) => item.name.startsWith(found.query)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : `${item.title} is not available here · see MODULES`, off: !item.available }));
+    ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : t('{label} · not ready', { label: label(id) }), color: brandOf(id).color, off: !state.agents.get(id)?.ready }))
+    : allCommands().filter((item) => item.name.startsWith(found.query)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available }));
   if (!items.length) return closeMenu();
   showMenu(items, found);
 }
@@ -2958,13 +2960,13 @@ async function runSlashCommand(text) {
   const rest = (match[2] ?? '').trim();
   if (name === 'stopall') { await stopAll(); return { handled: true }; }
   if (name === 'create' || name === 'image') {
-    if (!rest) { toast(`MU/TH/UR › /${name} needs a request after it, e.g. "/${name} a poster for the launch".`); return { handled: true }; }
+    if (!rest) { toast(t('MU/TH/UR › /{name} needs a request after it, e.g. "/{name} a poster for the launch".', { name })); return { handled: true }; }
     let target = els.target.value;
     if (name === 'image') {
       const capable = [...state.agents.values()].filter((agent) => agent.ready && state.capabilities[agent.id]?.scopes?.imageGen?.enabled).map((agent) => agent.id);
       if (!capable.includes(target)) {
         if (!capable.length) { toast(t('MU/TH/UR › nobody in the room can generate images right now: enable Image Studio in MODULES or switch on GENERATE IMAGES for an agent in CONNECTIONS.')); return { handled: true }; }
-        toast(`MU/TH/UR › @${target} cannot generate images here; routing to @${capable[0]}.`);
+        toast(t('MU/TH/UR › @{agent} cannot generate images here; routing to @{other}.', { agent: target, other: capable[0] }));
         target = capable[0];
         els.target.value = target;
         renderPicker();
@@ -2974,8 +2976,8 @@ async function runSlashCommand(text) {
     return { handled: false, text: rest, target };
   }
   const known = allCommands().find((item) => item.name === name);
-  if (!known) { toast(`MU/TH/UR › unknown command /${name}. Type "/" to see what this room offers.`); return { handled: true }; }
-  if (!known.available) { toast(`MU/TH/UR › /${name} is not available in this project: ${known.title} (see MODULES).`); return { handled: true }; }
+  if (!known) { toast(t('MU/TH/UR › unknown command /{name}. Type "/" to see what this room offers.', { name })); return { handled: true }; }
+  if (!known.available) { toast(t('MU/TH/UR › /{name} is not available in this project: {title} (see MODULES).', { name, title: known.title })); return { handled: true }; }
   const response = await fetch('/api/commands', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
   if (!response.ok && response.status !== 422) {
     const result = await response.json().catch(() => ({}));
@@ -3004,7 +3006,7 @@ function renderPendingAttachments() {
     const chip = el('span', `attachment-chip${item.uploading ? ' uploading' : ''}`);
     if (item.previewUrl) { const img = el('img'); img.src = item.previewUrl; img.alt = item.name; chip.append(img); }
     else chip.append(el('span', 'kind', (item.name.split('.').pop() ?? 'file').slice(0, 4).toUpperCase()));
-    chip.append(el('span', 'name', item.uploading ? `${item.name} · uploading…` : item.name));
+    chip.append(el('span', 'name', item.uploading ? t('{name} · uploading…', { name: item.name }) : item.name));
     const remove = el('button', 'remove', '×');
     remove.type = 'button'; remove.title = t('Remove');
     remove.addEventListener('click', () => { state.pending = state.pending.filter((other) => other !== item); renderPendingAttachments(); });
@@ -3020,11 +3022,11 @@ async function addFiles(files) {
     try {
       const response = await fetch('/api/attachments', { method: 'POST', headers: { 'x-pulse-filename': encodeURIComponent(item.name), 'content-type': file.type || 'application/octet-stream' }, body: file });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error ?? `Upload failed (${response.status}).`);
+      if (!response.ok) throw new Error(result.error ?? t('Upload failed ({status}).', { status: response.status }));
       item.id = result.attachment.id; item.uploading = false;
     } catch (error) {
       state.pending = state.pending.filter((other) => other !== item);
-      toast(`Attachment rejected: ${error.message}`);
+      toast(t('The attachment was rejected: {error}', { error: error.message }));
     }
     renderPendingAttachments();
   }
@@ -3038,7 +3040,7 @@ function renderCreateScopes() {
   els.createToggle.classList.toggle('standing', standing);
   els.createToggle.title = standing
     ? `@${id} starts in #2 (DEFAULT MODE in CONNECTIONS): every turn may add files to the project. Arming CREATE is not needed.`
-    : 'CREATE: let the agent add new files to the project for this request; existing files stay untouched';
+    : t('CREATE: let the agent add new files to the project for this request; existing files stay untouched');
   box.hidden = !state.create || !scopes;
   if (box.hidden) return;
   box.replaceChildren();
@@ -3046,10 +3048,10 @@ function renderCreateScopes() {
     const scope = scopes[key] ?? {};
     const on = scope.enabled && scope.wired;
     const badge = el('span', `cap${on ? ' on' : scope.capable ? '' : ' no'}`, labelText);
-    badge.title = on ? `${labelText}: enabled for @${id}` : !scope.capable ? `${labelText}: @${id}'s CLI cannot do this` : !scope.wired ? `${labelText}: not wired yet` : `${labelText}: switched off for @${id} in CONNECTIONS`;
+    badge.title = on ? t('{what}: enabled for @{id}', { what: labelText, id }) : !scope.capable ? t("{what}: @{id}'s CLI cannot do this", { what: labelText, id }) : !scope.wired ? t('{what}: not wired yet', { what: labelText }) : t('{what}: switched off for @{id} in CONNECTIONS', { what: labelText, id });
     box.append(badge);
   }
-  if (!scopes.write?.enabled) toast(`MU/TH/UR › @${id} ${scopes.write?.capable ? 'has file creation switched off' : 'cannot create files from its CLI'}. CREATE will be refused; pick another agent or change CONNECTIONS.`);
+  if (!scopes.write?.enabled) toast(t('MU/TH/UR › @{agent} {why}. CREATE will be refused; pick another agent or change CONNECTIONS.', { agent: id, why: scopes.write?.capable ? t('has file creation switched off') : t('cannot create files from its CLI') }));
 }
 els.createToggle.addEventListener('click', () => { setMode(state.mode === 2 ? 1 : 2); els.input.focus(); });
 // The crew label reads the composer's state: order, lease, easter egg, human.
@@ -3193,7 +3195,7 @@ els.composer.addEventListener('submit', async (event) => {
   if (modeToken) { setMode(Number(modeToken[2])); outgoing = outgoing.replace(/(^|\s)#[0-3](?=\s|$)/, '$1').replace(/\s{2,}/g, ' ').trim(); }
   if (text.startsWith('/')) {
     els.input.disabled = true;
-    const result = await runSlashCommand(text).catch((error) => { toast(`Command failed: ${error.message}`); return { handled: true }; });
+    const result = await runSlashCommand(text).catch((error) => { toast(t('The command failed: {error}', { error: error.message })); return { handled: true }; });
     els.input.disabled = false;
     if (result.handled) { els.input.value = ''; autosize(); els.input.focus(); return; }
     outgoing = result.text ?? text;
@@ -3208,7 +3210,7 @@ els.composer.addEventListener('submit', async (event) => {
       body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ash: state.ashInstalled && state.ash }),
     });
     if (!response.ok) {
-      const result = await response.json().catch(() => ({ error: `Request failed (${response.status}).` }));
+      const result = await response.json().catch(() => ({ error: t('Request failed ({status}).', { status: response.status }) }));
       toast(`MU/TH/UR › ${result.error ?? 'The room rejected the message.'}`);
       if (state.mode >= 3 && [403, 409, 412].includes(response.status)) setMode(1);
     } else {
@@ -3221,7 +3223,7 @@ els.composer.addEventListener('submit', async (event) => {
       autosize();
     }
   } catch (error) {
-    toast(`Could not reach MADRE: ${error.message}`);
+    toast(t('Could not reach MADRE: {error}', { error: error.message }));
   } finally {
     els.input.disabled = false;
     els.send.disabled = false;
@@ -3308,7 +3310,7 @@ function conditionCard(condition, { hit = false, agent = null, hintAgent = null 
       button.addEventListener('click', async () => {
         button.disabled = true;
         try { await saveSettingNow(action.patch, action.done); button.textContent = t('APPLIED ✓'); }
-        catch (error) { toast(`Could not apply: ${error.message}`); button.disabled = false; }
+        catch (error) { toast(t('It could not be applied: {error}', { error: error.message })); button.disabled = false; }
       });
       bar.append(button);
     }
@@ -3355,7 +3357,7 @@ function renderMotherRecorded() {
   for (const failure of [...state.failures].reverse().slice(0, 40)) {
     const rowNode = paint(el('div', 'mother-record'), failure.agent);
     rowNode.append(el('span', 't', formatTime(failure.time)));
-    rowNode.append(el('span', 'a', failure.agent ?? 'room'));
+    rowNode.append(el('span', 'a', failure.agent ?? t('room')));
     // A record written in another language is read in this one: the ledger keeps its words.
     const full = resay(String(failure.error).trim());
     const firstLine = full.split('\n')[0].slice(0, 220);
@@ -3400,7 +3402,7 @@ function renderMotherKnown(list = allConditions(), hits = new Set(), agent = nul
   try { collapsed = localStorage.getItem('pulse.mother.known') === 'collapsed'; } catch { /* no storage */ }
   // An inquiry that narrowed the list, or a fix chosen from the log, always shows its answer, whatever the stored state.
   if (list.length !== CONDITIONS.length || hits.size) collapsed = false;
-  const body = folding(mother.known, `KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[mother.platform].label.toUpperCase()} / ${PLATFORMS[mother.platform].shell.toUpperCase()}`, {
+  const body = folding(mother.known, t('KNOWN CONDITIONS · {n} OF {total} · {os} / {shell}', { n: list.length, total: CONDITIONS.length, os: PLATFORMS[mother.platform].label.toUpperCase(), shell: PLATFORMS[mother.platform].shell.toUpperCase() }), {
     key: 'known', open: !collapsed,
   });
   const grid = el('div', 'mother-grid');
@@ -3428,7 +3430,7 @@ function answerQuery(query) {
     mother.answer.textContent = t('UNABLE TO COMPUTE. REQUEST CLARIFICATION.');
     return renderMotherKnown([]);
   }
-  mother.answer.textContent = `${list.length} CONDITION${list.length === 1 ? '' : 'S'} MATCH INQUIRY.${byError.length ? ' PROBABLE CAUSE HIGHLIGHTED.' : ''}`;
+  mother.answer.textContent = t('{n} CONDITIONS MATCH INQUIRY.', { n: list.length }) + (byError.length ? t(' PROBABLE CAUSE HIGHLIGHTED.') : '');
   renderMotherKnown(list, new Set([...byError.map((c) => c.id), ...recordedHits]));
 }
 
@@ -3496,16 +3498,16 @@ function renderModuleEvent(event) {
   const node = el('div', `system module${failed ? ' failed' : ''}`);
   node.append(el('b', null, t('MODULES › ')));
   if (event.type === 'extension.install.refused') {
-    node.append(`${name} not installed · ${problems.join(' ')}`);
+    node.append(t('{name} not installed · {why}', { name, why: problems.join(' ') }));
     modules.installing = null;
   } else if (event.type === 'extension.install.started') {
-    node.append(`installing ${name}${platforms.length ? ` for ${platforms.map((p) => `@${p}`).join(', ')}` : ''}`);
+    node.append(`${t('installing {name}', { name })}${platforms.length ? t(' for {agents}', { agents: platforms.map((p) => `@${p}`).join(', ') }) : ''}`);
     node.append(el('span', 'cmd', command));
     modules.installing = id;
   } else {
     node.append(ok
-      ? `${name} installed${status?.detail ? ` · ${status.detail}` : ''}`
-      : `${name} install failed${error ? ` · ${error}` : code !== undefined ? ` · exit ${code}` : ''}`);
+      ? `${t('{name} installed', { name })}${status?.detail ? ` · ${status.detail}` : ''}`
+      : `${t('{name} install failed', { name })}${error ? ` · ${error}` : code !== undefined ? t(' · exit {code}', { code }) : ''}`);
     modules.installing = null;
     void refreshModules();
 void refreshCommands();
@@ -3538,8 +3540,8 @@ function renderEyecat(event) {
   node.dataset.eyecat = finding.key;
   const head = el('div', 'head');
   head.append(el('b', null, t('◉ EYECAT')), el('span', null, finding.kind === 'unsupported' ? 'a note its own sources do not support' : 'two memories that cannot both be true'));
-  if (finding.confidence !== null && finding.confidence !== undefined) head.append(el('span', 'args', `${Math.round(finding.confidence * 100)}% · judged by @${finding.judge}`));
-  else head.append(el('span', 'args', `judged by @${finding.judge}`));
+  if (finding.confidence !== null && finding.confidence !== undefined) head.append(el('span', 'args', t('{pct}% · judged by @{judge}', { pct: Math.round(finding.confidence * 100), judge: finding.judge })));
+  else head.append(el('span', 'args', t('judged by @{judge}', { judge: finding.judge })));
   node.append(head);
 
   const claim = el('div', 'eyecat-claim');
@@ -3565,7 +3567,7 @@ function renderEyecat(event) {
     }).then((res) => res.json()).catch(() => null);
     if (!response || response.error) {
       for (const button of actions.querySelectorAll('button')) button.disabled = false;
-      toast(response?.error ?? 'EYECAT could not be answered.');
+      toast(response?.error ?? t('EYECAT could not be answered.'));
     }
   };
   const confirm = el('button', 'primary', t('IT IS FALSE'));
@@ -3587,7 +3589,7 @@ function settleEyecat(event) {
   if (!card) return;
   card.querySelector('.eyecat-actions')?.remove();
   const settled = el('div', 'eyecat-settled');
-  settled.textContent = verdict === 'aberration' ? 'FILED AS AN ABERRATION · THE MEMORY IT REFUTES NO LONGER TRAVELS' : 'THE ROOM STANDS BY IT';
+  settled.textContent = verdict === 'aberration' ? t('FILED AS AN ABERRATION · THE MEMORY IT REFUTES NO LONGER TRAVELS') : t('THE ROOM STANDS BY IT');
   card.classList.add(verdict === 'aberration' ? 'filed' : 'stands');
   card.append(settled);
 }
@@ -3611,7 +3613,7 @@ async function refreshModules() {
     modules.installing = data.installing ?? null;
   } catch (error) {
     modules.items = [];
-    modules.note.textContent = `UNABLE TO LIST MODULES: ${error.message}`;
+    modules.note.textContent = t('UNABLE TO LIST MODULES: {error}', { error: error.message });
   }
   const installed = modules.items.filter((item) => item.status?.installed).length;
   modules.count.hidden = installed === 0;
@@ -3628,32 +3630,32 @@ function versionLabel(item) {
   if (item.versionSource !== 'tracked') return `v${item.version ?? '1.0.0'}`;
   if (item.version) return `v${item.version}`;
   const target = (item.runs ?? []).find((dep) => dep.name === item.tracks?.name)?.target ?? null;
-  return target ? `INSTALLS ${target}` : 'NOT INSTALLED';
+  return target ? t('INSTALLS {version}', { version: target }) : t('NOT INSTALLED');
 }
 
 function updateWord(update) {
   if (!update) return null;
-  if (update.enabled === false) return { text: 'CHECKS ARE OFF', kind: 'note' };
-  if (update.available) return { text: update.via === 'madre' ? `MADRE ${update.latest} AVAILABLE` : `${update.latest} AVAILABLE`, kind: 'new' };
+  if (update.enabled === false) return { text: t('CHECKS ARE OFF'), kind: 'note' };
+  if (update.available) return { text: update.via === 'madre' ? t('MADRE {version} AVAILABLE', { version: update.latest }) : t('{version} AVAILABLE', { version: update.latest }), kind: 'new' };
   // Nothing installed is not up to date: the newest is simply what installing would bring.
-  if (update.latest && !update.current) return { text: `NEWEST IS ${update.latest}`, kind: 'note' };
-  if (update.latest) return { text: 'UP TO DATE', kind: 'note' };
-  if (update.error) return { text: 'COULD NOT CHECK', kind: 'note' };
+  if (update.latest && !update.current) return { text: t('NEWEST IS {version}', { version: update.latest }), kind: 'note' };
+  if (update.latest) return { text: t('UP TO DATE'), kind: 'note' };
+  if (update.error) return { text: t('COULD NOT CHECK'), kind: 'note' };
   return null;
 }
 
 function updateNote(item, update) {
-  if (!update) return 'Check for a newer version';
+  if (!update) return t('Check for a newer version');
   if (update.via === 'madre') {
     return update.available
-      ? `This module ships in MADRE ${update.ships}, and MADRE ${update.latest} is out. A module that comes with MADRE updates when MADRE does.`
-      : `This module ships in MADRE ${update.ships}, which is the newest release. A module that comes with MADRE updates when MADRE does.`;
+      ? t('This module ships in MADRE {ships}, and MADRE {latest} is out. A module that comes with MADRE updates when MADRE does.', { ships: update.ships, latest: update.latest })
+      : t('This module ships in MADRE {ships}, which is the newest release. A module that comes with MADRE updates when MADRE does.', { ships: update.ships });
   }
   const what = update.name;
-  if (update.available) return `${what} ${update.latest} is out; this computer has ${update.current}.`;
-  if (update.latest && !update.current) return `${what} ${update.latest} is the newest release. It is not on this computer yet.`;
-  if (update.latest) return `${what} ${update.latest} is the newest, and it is what this computer has.`;
-  return `MADRE could not reach the place that knows about ${what}.`;
+  if (update.available) return t('{what} {latest} is out; this computer has {current}.', { what, latest: update.latest, current: update.current });
+  if (update.latest && !update.current) return t('{what} {latest} is the newest release. It is not on this computer yet.', { what, latest: update.latest });
+  if (update.latest) return t('{what} {latest} is the newest, and it is what this computer has.', { what, latest: update.latest });
+  return t('MADRE could not reach the place that knows about {what}.', { what });
 }
 
 // A fold inside a card. It remembers whether it was left open, like every other fold in MADRE,
@@ -3807,7 +3809,7 @@ function cardControls(panel, item) {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: control.key, value }),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) toast(`MU/TH/UR › ${result.error ?? `${item.name} could not save ${control.label}.`}`);
+    if (!response.ok) toast(`MU/TH/UR › ${result.error ?? t('{name} could not save {label}.', { name: item.name, label: control.label })}`);
     await refreshModules();
   };
   for (const control of item.controls) {
@@ -3853,9 +3855,9 @@ modules.file?.addEventListener('change', async () => {
   modules.file.value = '';
   if (!file) return;
   if (!/\.m?js$/.test(file.name)) { toast(t('MU/TH/UR › a module is a .mjs file.')); return; }
-  if (!window.confirm(`Install ${file.name}?\n\nA module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.`)) return;
+  if (!window.confirm(t('Install {name}?', { name: file.name }) + '\n\n' + t('A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.'))) return;
   let text;
-  try { text = await file.text(); } catch (error) { toast(`Could not read that file: ${error.message}`); return; }
+  try { text = await file.text(); } catch (error) { toast(t('That file could not be read: {error}', { error: error.message })); return; }
   modules.add.disabled = true;
   try {
     const response = await fetch('/api/extensions/upload', {
@@ -3866,8 +3868,8 @@ modules.file?.addEventListener('change', async () => {
     if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'that module was not installed.'}`); return; }
     modules.items = result.extensions ?? modules.items;
     renderModules();
-    toast(`MU/TH/UR › ${result.installed.name} installed${result.installed.version ? ` · v${result.installed.version}` : ''}. It loads in every room on this computer.`);
-  } catch (error) { toast(`The module was not installed: ${error.message}`); }
+    toast(`MU/TH/UR › ${t('{name} installed', { name: result.installed.name })}${result.installed.version ? ` · v${result.installed.version}` : ''}. ${t('It loads in every room on this computer.')}`);
+  } catch (error) { toast(t('The module was not installed: {error}', { error: error.message })); }
   finally { modules.add.disabled = false; }
 });
 
@@ -3884,13 +3886,13 @@ async function refreshModuleFile(item, button) {
   const looked = await ask(false);
   if (!looked.ok) { toast(`MU/TH/UR › ${looked.result.error ?? 'that module could not be checked.'}`); button.disabled = false; return; }
   const { origin, current, candidate, same } = looked.result;
-  if (same) { toast(`MU/TH/UR › ${item.name} is already ${current ?? 'what is published'} · ${origin.from}`); button.disabled = false; return; }
-  if (!window.confirm(`Update ${item.name}?\n\n${current ?? 'unversioned'} → ${candidate ?? 'unversioned'}\nFrom ${origin.from}\n\nIt loads and keeps to the house rules. What it intends, only you can judge.`)) { button.disabled = false; return; }
+  if (same) { toast(t('MU/TH/UR › {name} is already {version} · {from}', { name: item.name, version: current ?? t('what is published'), from: origin.from })); button.disabled = false; return; }
+  if (!window.confirm(t('Update {name}?', { name: item.name }) + `\n\n${current ?? t('unversioned')} → ${candidate ?? t('unversioned')}\n` + t('From {from}', { from: origin.from }) + '\n\n' + t('It loads and keeps to the house rules. What it intends, only you can judge.'))) { button.disabled = false; return; }
   const done = await ask(true);
   if (!done.ok) { toast(`MU/TH/UR › ${done.result.error ?? 'the module was not updated.'}`); button.disabled = false; return; }
   modules.items = done.result.extensions ?? modules.items;
   renderModules();
-  toast(`MU/TH/UR › ${item.name} is now ${done.result.installed.version ?? 'the newest file'}.`);
+  toast(t('MU/TH/UR › {name} is now {version}.', { name: item.name, version: done.result.installed.version ?? t('the newest file') }));
 }
 
 // Fetching a newer version of what a module drives. MADRE shows the command, the human reads it,
@@ -3914,7 +3916,7 @@ async function updateModule(item, button) {
   }
   const panel = card?.querySelector('.card-panel');
   const box = el('div', 'confirm');
-  box.append(el('span', 'warn', `THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT:`));
+  box.append(el('span', 'warn', t('THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT:')));
   box.append(commandBlock([asked.result.plan.display]));
   if (asked.result.plan.note) box.append(el('span', 'note', asked.result.plan.note));
   const row = el('div', 'actions');
@@ -3953,17 +3955,17 @@ function ashReading(panel) {
     const totals = read.totals;
     const saved = read.saved ?? {};
     metrics(box, [
-      ['TOKENS SAVED', count(saved.tokens), 'read back from the CLI cache, plus what was never sent'],
-      ['FROM CACHE', count(saved.cachedTokens), `input the CLI did not charge again · ${pct(saved.cachedShare)} of the input`],
-      ['NEVER SENT', `${count(saved.unsentChars)} CH`, 'briefing a turn had no use for'],
-      ['SPENT IN', count(totals.input), 'input tokens actually charged'],
-      ['SPENT OUT', count(totals.output), 'output tokens, the dearer half'],
-      ['TURNS', count(read.turns), 'weighed so far'],
+      [t('TOKENS SAVED'), count(saved.tokens), t('read back from the CLI cache, plus what was never sent')],
+      [t('FROM CACHE'), count(saved.cachedTokens), t('input the CLI did not charge again · {pct} of the input', { pct: pct(saved.cachedShare) })],
+      [t('NEVER SENT'), `${count(saved.unsentChars)} CH`, t('briefing a turn had no use for')],
+      [t('SPENT IN'), count(totals.input), t('input tokens actually charged')],
+      [t('SPENT OUT'), count(totals.output), t('output tokens, the dearer half')],
+      [t('TURNS'), count(read.turns), t('weighed so far')],
     ]);
     // Not a tokenizer: what MADRE wrote against what the CLIs were charged for reading. The
     // gap between the two is the agents' own system prompts, their tools and the files they
     // opened during a turn, which is the useful thing this number has to say.
-    box.append(el('p', 'note', `${pct(totals.prefixShare)} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · MADRE WROTE ${count(totals.chars)} CHARACTERS OF THE ${count(totals.input)} INPUT TOKENS YOU WERE CHARGED FOR; THE REST IS WHAT THE CLIs READ ON THEIR OWN`));
+    box.append(el('p', 'note', t('{pct} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · MADRE WROTE {chars} CHARACTERS OF THE {input} INPUT TOKENS YOU WERE CHARGED FOR; THE REST IS WHAT THE CLIs READ ON THEIR OWN', { pct: pct(totals.prefixShare), chars: count(totals.chars), input: count(totals.input) })));
     const widest = read.blocks[0]?.chars || 1;
     const bars = el('div', 'ash-blocks');
     for (const block of read.blocks.slice(0, 8)) {
@@ -3980,7 +3982,7 @@ function ashReading(panel) {
 function builtinCard(item) {
   const on = Boolean(item.status?.installed);
   const fixed = Boolean(item.fixed);
-  const { card, panel, actions } = cardShell(item, { on, state: on ? 'ON' : 'OFF' });
+  const { card, panel, actions } = cardShell(item, { on, state: on ? t('ON') : t('OFF') });
   cardControls(panel, item);
 
   if (item.id === 'ollama') {
@@ -3988,10 +3990,10 @@ function builtinCard(item) {
     const read = cardBlock(panel, t('LOCAL BRAIN'));
     const status = el('dl', 'ollama-status');
     const put = (k, v) => { status.append(el('dt', null, k), el('dd', null, v)); };
-    put('SERVER', info.running ? `running · ${info.host}` : 'not running');
-    put('EMBEDDINGS', info.embedModel ? `${info.embedModel}${info.settings.embeddings === false ? ' · off' : ''}` : 'no embedding model');
-    put('ARCHIVIST', info.chatModel ? `${info.chatModel}${info.settings.archivist === false ? ' · off' : ''}` : 'no chat model');
-    if (info.models?.length) put('MODELS', info.models.map((model) => model.name).join(', '));
+    put(t('SERVER'), info.running ? t('running · {host}', { host: info.host }) : t('not running'));
+    put(t('EMBEDDINGS'), info.embedModel ? `${info.embedModel}${info.settings.embeddings === false ? t(' · off') : ''}` : t('no embedding model'));
+    put(t('ARCHIVIST'), info.chatModel ? `${info.chatModel}${info.settings.archivist === false ? t(' · off') : ''}` : t('no chat model'));
+    if (info.models?.length) put(t('MODELS'), info.models.map((model) => model.name).join(', '));
     read.append(status);
     const recheck = el('button', null, t('RECHECK'));
     recheck.type = 'button';
@@ -4002,8 +4004,8 @@ function builtinCard(item) {
       const roles = cardBlock(panel, t('ROLES'));
       const row = el('div', 'card-toggles');
       for (const [role, model, present, label] of [
-        ['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel), 'EMBEDDINGS'],
-        ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), 'ARCHIVIST'],
+        ['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel), t('EMBEDDINGS')],
+        ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), t('ARCHIVIST')],
         ['agent', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), '@MADRE IN THE ROOM'],
       ]) {
         if (present) {
@@ -4015,19 +4017,19 @@ function builtinCard(item) {
         } else {
           const pull = el('button', 'primary', `PULL ${model}`);
           pull.type = 'button';
-          pull.title = `Download ${model} into Ollama for ${role}`;
+          pull.title = t('Download {model} into Ollama for {role}', { model, role });
           pull.addEventListener('click', async () => {
             pull.disabled = true;
             const response = await fetch('/api/ollama/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
             const result = await response.json().catch(() => ({}));
-            if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'could not pull'}`); pull.disabled = false; }
-            else toast(`MU/TH/UR › pulling ${model}; progress shows in the room.`);
+            if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? t('could not pull')}`); pull.disabled = false; }
+            else toast(t('MU/TH/UR › pulling {model}; progress shows in the room.', { model }));
           });
           row.append(pull);
         }
       }
       roles.append(row);
-      const toggle = el('button', on ? null : 'primary', info.settings.enabled === false ? 'ENABLE OLLAMA' : 'DISABLE OLLAMA');
+      const toggle = el('button', on ? null : 'primary', info.settings.enabled === false ? t('ENABLE OLLAMA') : t('DISABLE OLLAMA'));
       toggle.type = 'button';
       toggle.addEventListener('click', async () => {
         toggle.disabled = true;
@@ -4035,17 +4037,17 @@ function builtinCard(item) {
           const response = await fetch('/api/extensions/ollama/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
           const result = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-          toast(result.enabled ? 'MU/TH/UR › OLLAMA ON · memory embeds and distils on this machine.' : 'MU/TH/UR › OLLAMA OFF · back to the providers.');
+          toast(result.enabled ? t('MU/TH/UR › OLLAMA ON · memory embeds and distils on this machine.') : t('MU/TH/UR › OLLAMA OFF · back to the providers.'));
           await refreshModules();
-        } catch (error) { toast(`Ollama could not change state: ${error.message}`); toggle.disabled = false; }
+        } catch (error) { toast(t('Ollama could not change state: {error}', { error: error.message })); toggle.disabled = false; }
       });
       actions.append(toggle);
     } else {
       // The detail line says START it here or INSTALL it here; the button has to be here too.
       const step = info.binary
-        ? { label: 'START OLLAMA', path: '/api/ollama/start', note: 'Wakes Ollama on this computer. Nothing leaves it.' }
+        ? { label: t('START OLLAMA'), path: '/api/ollama/start', note: t('Wakes Ollama on this computer. Nothing leaves it.') }
         : info.install?.display
-          ? { label: `INSTALL · ${info.install.display}`, path: '/api/ollama/install', note: info.install.note ?? '' }
+          ? { label: `${t('INSTALL')} · ${info.install.display}`, path: '/api/ollama/install', note: info.install.note ?? '' }
           : null;
       if (step) {
         const go = el('button', 'primary', step.label);
@@ -4074,7 +4076,7 @@ function builtinCard(item) {
   }
 
   if (item.id === 'ripley') {
-    const toggle = el('button', on ? null : 'primary', on ? 'DISABLE RIPLEY' : 'ENABLE RIPLEY');
+    const toggle = el('button', on ? null : 'primary', on ? t('DISABLE RIPLEY') : t('ENABLE RIPLEY'));
     toggle.type = 'button';
     toggle.addEventListener('click', async () => {
       toggle.disabled = true;
@@ -4084,10 +4086,10 @@ function builtinCard(item) {
         if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
         state.ripley = Boolean(result.enabled);
         syncViewerMode();
-        toast(result.enabled ? 'MU/TH/UR › RIPLEY ON · HTML, SVG and Markdown render in the file viewer, in a sealed frame.' : 'MU/TH/UR › RIPLEY OFF · files show as source.');
+        toast(result.enabled ? t('MU/TH/UR › RIPLEY ON · HTML, SVG and Markdown render in the file viewer, in a sealed frame.') : t('MU/TH/UR › RIPLEY OFF · files show as source.'));
         await refreshModules();
       } catch (error) {
-        toast(`RIPLEY could not change state: ${error.message}`);
+        toast(t('RIPLEY could not change state: {error}', { error: error.message }));
       } finally {
         toggle.disabled = false;
       }
@@ -4098,7 +4100,7 @@ function builtinCard(item) {
 
   if (item.id === 'ash') {
     ashReading(panel);
-    const toggle = el('button', on ? null : 'primary', on ? 'STOP ASKING FOR COMPACT REPLIES' : 'ASK FOR COMPACT REPLIES');
+    const toggle = el('button', on ? null : 'primary', on ? t('STOP ASKING FOR COMPACT REPLIES') : t('ASK FOR COMPACT REPLIES'));
     toggle.type = 'button';
     toggle.addEventListener('click', async () => {
       toggle.disabled = true;
@@ -4108,11 +4110,11 @@ function builtinCard(item) {
         if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
         syncAshUI(Boolean(result.enabled));
         toast(result.enabled
-          ? 'ASH ON · every agent answers in compact prose. What you write is never altered.'
-          : 'ASH OFF · agents answer at their own length.');
+          ? t('ASH ON · every agent answers in compact prose. What you write is never altered.')
+          : t('ASH OFF · agents answer at their own length.'));
         await refreshModules();
       } catch (error) {
-        toast(`Ash could not change state: ${error.message}`);
+        toast(t('Ash could not change state: {error}', { error: error.message }));
       } finally {
         toggle.disabled = false;
       }
@@ -4129,20 +4131,20 @@ function builtinCard(item) {
   }
 
   if (fixed) {
-    actions.append(el('span', 'note', item.install?.display ? item.install.display.toUpperCase() : 'NO SWITCH'));
+    actions.append(el('span', 'note', item.install?.display ? item.install.display.toUpperCase() : t('NO SWITCH')));
     return card;
   }
 
-  const toggle = el('button', on ? null : 'primary', on ? 'DISABLE' : 'ENABLE');
+  const toggle = el('button', on ? null : 'primary', on ? t('DISABLE') : t('ENABLE'));
   toggle.type = 'button';
   toggle.disabled = !on && item.preflight && !item.preflight.ok;
   toggle.addEventListener('click', async () => {
     toggle.disabled = true;
     const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) toast(result.error ?? `Could not toggle ${item.name}.`);
+    if (!response.ok) toast(result.error ?? t('{name} could not be switched.', { name: item.name }));
     else {
-      toast(`MU/TH/UR › ${item.name} ${result.enabled ? 'enabled' : 'disabled'}${result.enabled && result.model ? ` · ${result.model}` : ''}.`);
+      toast(`MU/TH/UR › ${t(result.enabled ? '{name} enabled' : '{name} disabled', { name: item.name })}${result.enabled && result.model ? ` · ${result.model}` : ''}.`);
       if (result.capabilities) { state.capabilities = result.capabilities; renderCreateScopes(); }
     }
     await refreshModules();
@@ -4170,8 +4172,8 @@ function moduleCard(item) {
     confirm.append(el('span', 'warn', t('THIS WRITES INTO THE PROJECT. MADRE WILL RUN, IN THE PROJECT FOLDER:')));
     confirm.append(commandBlock([item.install.display]));
     confirm.append(el('span', 'note', item.install.platforms?.length
-      ? `IDE adapters for the agents detected here: ${item.install.platforms.join(', ')}.`
-      : 'No detected agent has an adapter for this module; it installs without IDE adapters.'));
+      ? t('IDE adapters for the agents detected here: {agents}.', { agents: item.install.platforms.join(', ') })
+      : t('No detected agent has an adapter for this module; it installs without IDE adapters.')));
     const row = el('div', 'actions');
     const go = el('button', 'primary', t('CONFIRM INSTALL'));
     go.type = 'button';
@@ -4183,7 +4185,7 @@ function moduleCard(item) {
         body: JSON.stringify({ confirm: true }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) toast(result.error ?? `Install request failed (${response.status}).`);
+      if (!response.ok) toast(result.error ?? t('Install request failed ({status}).', { status: response.status }));
       modules.confirming = null;
       modules.installing = response.ok ? item.id : modules.installing;
       modules.logs.set(item.id, []);
@@ -4215,7 +4217,7 @@ function moduleCard(item) {
 
 function renderModules() {
   modules.list.replaceChildren();
-  modules.list.append(el('h3', null, `AVAILABLE · ${modules.items.length} · PROJECT /${els.project.textContent}`));
+  modules.list.append(el('h3', null, t('AVAILABLE · {n} · PROJECT /{project}', { n: modules.items.length, project: els.project.textContent })));
   const grid = el('div', 'mother-grid');
   for (const item of modules.items) grid.append(moduleCard(item));
   modules.list.append(grid);
@@ -4245,9 +4247,9 @@ function renderModulesDev() {
     try {
       const payload = await fetch('/api/extensions/reload', { method: 'POST' }).then((response) => response.json());
       modules.items = payload.extensions ?? modules.items; modules.failures = payload.failures ?? [];
-      toast(`MU/TH/UR › modules reloaded: ${payload.loaded.length} of yours${payload.failures.length ? `, ${payload.failures.length} failed to load` : ''}.`);
+      toast(`MU/TH/UR › ${t('modules reloaded: {n} of yours', { n: payload.loaded.length })}${payload.failures.length ? t(', {n} failed to load', { n: payload.failures.length }) : ''}.`);
       renderModules();
-    } catch (error) { toast(`Reload failed: ${error.message}`); } finally { reload.disabled = false; }
+    } catch (error) { toast(t('The reload failed: {error}', { error: error.message })); } finally { reload.disabled = false; }
   });
   row.append(read, reload);
   body.append(row);
@@ -4260,13 +4262,13 @@ function renderModulesDev() {
       chip.append(el('b', null, item.name), ` · ${item.origin === 'project' ? 'this project' : 'every room'} `);
       const remove = el('button', 'act-link', t('REMOVE')); remove.type = 'button'; remove.title = `Delete ${item.file}`;
       remove.addEventListener('click', async () => {
-        if (!window.confirm(`Remove ${item.name}? Its file ${item.file} is deleted. MADRE's own modules cannot be removed.`)) return;
+        if (!window.confirm(t("Remove {name}? Its file {file} is deleted. MADRE's own modules cannot be removed.", { name: item.name, file: item.file }))) return;
         remove.disabled = true;
         try {
           const payload = await fetch(`/api/extensions/${item.id}`, { method: 'DELETE' }).then((response) => response.json());
           if (payload.error) throw new Error(payload.error);
-          modules.items = payload.extensions ?? modules.items; toast(`MU/TH/UR › ${item.name} removed.`); renderModules();
-        } catch (error) { toast(`Not removed: ${error.message}`); remove.disabled = false; }
+          modules.items = payload.extensions ?? modules.items; toast(t('MU/TH/UR › {name} removed.', { name: item.name })); renderModules();
+        } catch (error) { toast(t('It was not removed: {error}', { error: error.message })); remove.disabled = false; }
       });
       chip.append(remove);
       list.append(chip);
@@ -4415,8 +4417,8 @@ function renderLoginEvent(event) {
   node.style.setProperty('--agent', agentColor(agent));
   node.append(el('b', null, t('connections › ')));
   node.append(finished
-    ? (ok ? `@${agent} signed in${session?.detail ? ` · ${session.detail}` : ''}` : `@${agent} sign-in did not complete${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
-    : `signing in @${agent} · ${command}`);
+    ? (ok ? t('@{agent} signed in', { agent }) + (session?.detail ? ` · ${session.detail}` : '') : t('@{agent} sign-in did not complete', { agent }) + (error ? ` · ${error}` : code ? t(' · exit {code}', { code }) : ''))
+    : t('signing in @{agent} · {command}', { agent, command }));
   if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
   state.lastSender = null;
   return node;
@@ -4428,9 +4430,9 @@ function renderAgentInstall(event) {
   const node = paint(el('div', `system connections${finished && !detected ? ' failed' : ''}`), agent);
   node.append(el('b', null, t('connections › ')));
   node.append(finished
-    ? (detected ? `${label ?? agent} installed${version ? ` · ${version}` : ''}${where === 'madre' ? ` · in MADRE's own folder (${prefix}), no administrator needed` : ''} · sign in to finish` : `${label ?? agent} was not installed${error ? ` · ${error}` : code ? ` · exit ${code}` : ''}`)
-    : `installing ${label ?? agent} · ${command}`);
-  if (finished && !replaying) toast(detected ? `MU/TH/UR › ${label ?? agent} is on this computer. Sign in and the room opens.` : `MU/TH/UR › ${label ?? agent} could not be installed. The log is above.`);
+    ? (detected ? `${t('{name} installed', { name: label ?? agent })}${version ? ` · ${version}` : ''}${where === 'madre' ? t(" · in MADRE's own folder ({prefix}), no administrator needed", { prefix }) : ''}${t(' · sign in to finish')}` : `${t('{name} was not installed', { name: label ?? agent })}${error ? ` · ${error}` : code ? t(' · exit {code}', { code }) : ''}`)
+    : t('installing {label} · {command}', { label: label ?? agent, command }));
+  if (finished && !replaying) toast(detected ? t('MU/TH/UR › {label} is on this computer. Sign in and the room opens.', { label: label ?? agent }) : t('MU/TH/UR › {label} could not be installed. The log is above.', { label: label ?? agent }));
   if (finished) { renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
   state.lastSender = null;
   return node;
@@ -4990,7 +4992,7 @@ function renderCoreConsole() {
 
   drawStrikes();
   core.console = { field, say };
-  say(['READY FOR INQUIRY. HELP LISTS WHAT I ANSWER.']);
+  say([t('READY FOR INQUIRY. HELP LISTS WHAT I ANSWER.')]);
   return line;
 }
 
@@ -5315,7 +5317,7 @@ function connectionCard(agent) {
         state.loginLogs.set(agent.id, []);
         const response = await fetch(`/api/agents/${agent.id}/login`, { method: 'POST' });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) toast(result.error ?? 'Sign-in could not start.');
+        if (!response.ok) toast(result.error ?? t('The sign-in could not start.'));
         else { settingsUI.data.loggingIn = agent.id; renderSettings(); }
       });
       row.append(login);
@@ -5582,7 +5584,7 @@ function renderSettings() {
       const x = payload?.exposure;
       if (!x) { exposure.textContent = ''; return; }
       const total = x.events + x.entries + x.memories;
-      exposure.textContent = !payload.terms?.length ? 'WRITE THE TERMS FIRST.' : total ? `STILL IN THE ROOM: ${x.events} EVENT${x.events === 1 ? '' : 'S'} · ${x.entries} INDEXED EXCHANGE${x.entries === 1 ? '' : 'S'} · ${x.memories} MEMOR${x.memories === 1 ? 'Y' : 'IES'} · PURGE REPLACES THEM.` : 'THE ROOM IS CLEAN: NO PRIVATE TERM IN THE LEDGER, THE INDEX OR THE MEMORIES.';
+      exposure.textContent = !payload.terms?.length ? t('WRITE THE TERMS FIRST.') : total ? t('STILL IN THE ROOM: {events} EVENTS · {entries} INDEXED EXCHANGES · {memories} MEMORIES · PURGE REPLACES THEM.', { events: x.events, entries: x.entries, memories: x.memories }) : t('THE ROOM IS CLEAN: NO PRIVATE TERM IN THE LEDGER, THE INDEX OR THE MEMORIES.');
       purge.disabled = !payload.terms?.length || !total;
     };
     const savePrivacy = async (patch, describe) => {
@@ -5591,10 +5593,10 @@ function renderSettings() {
         if (payload.error) throw new Error(payload.error);
         terms.value = payload.terms.join('\n'); marker.value = payload.marker; showExposure(payload);
         toast(`MU/TH/UR › ${describe(payload)}`);
-      } catch (error) { toast(`Privacy setting was not saved: ${error.message}`); }
+      } catch (error) { toast(t('The privacy setting was not saved: {error}', { error: error.message })); }
     };
-    terms.addEventListener('change', () => savePrivacy({ terms: terms.value.split('\n') }, (payload) => `${payload.terms.length} private term${payload.terms.length === 1 ? '' : 's'} guarded from now on.`));
-    marker.addEventListener('change', () => savePrivacy({ marker: marker.value }, (payload) => `private terms appear as ${payload.marker}.`));
+    terms.addEventListener('change', () => savePrivacy({ terms: terms.value.split('\n') }, (payload) => t('{n} private {term} guarded from now on.', { n: payload.terms.length, term: payload.terms.length === 1 ? t('term') : t('terms') })));
+    marker.addEventListener('change', () => savePrivacy({ marker: marker.value }, (payload) => t('private terms appear as {marker}.', { marker: payload.marker })));
     pform.append(field(t('PRIVATE TERMS · ONE PER LINE'), terms));
     pform.append(field(t('REPLACED WITH'), marker));
     // Two guards that need no list, because what they catch has a shape rather than a name. They
@@ -5622,12 +5624,12 @@ function renderSettings() {
       try {
         const payload = await fetch('/api/privacy/purge', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation }) }).then((response) => response.json());
         if (payload.error) throw new Error(payload.error);
-        toast(`MU/TH/UR › purged: ${payload.purged.events} events · ${payload.purged.entries} exchanges · ${payload.purged.memories} memories. Reloading.`);
+        toast(t('MU/TH/UR › purged: {events} events · {entries} exchanges · {memories} memories. Reloading.', { events: payload.purged.events, entries: payload.purged.entries, memories: payload.purged.memories }));
         setTimeout(() => location.reload(), 1600);
       } catch (error) {
         // The same wrong name at the other door that asks it.
-        if (/UNABLE TO COMPUTE/i.test(error.message)) designationRefused();
-        else toast(`Purge did not run: ${error.message}`);
+        if (error.message === t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.')) designationRefused();
+        else toast(t('The purge did not run: {error}', { error: error.message }));
         purge.disabled = false;
       }
     });
@@ -5652,7 +5654,7 @@ async function saveSettingNow(patch, confirmation) {
     if (result.settings.capabilities) { state.capabilities = result.settings.capabilities; renderCreateScopes(); }
     if (settingsUI.data) settingsUI.data.settings = { ...settingsUI.data.settings, ...result.settings };
   }
-  if (confirmation) toast(`MU/TH/UR › ${confirmation} Applies to the next turn.`);
+  if (confirmation) toast(`MU/TH/UR › ${confirmation} ${t('Applies to the next turn.')}`);
   return result.settings ?? null;
 }
 // Number inputs commit on change (blur or Enter); revert and explain on failure.
@@ -5661,10 +5663,10 @@ function wireInstantNumber(input, { toPatch, describe, min = 1 }) {
   input.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); input.blur(); } });
   input.addEventListener('change', async () => {
     const value = Number(input.value);
-    if (!Number.isFinite(value) || value < min) { input.value = last; toast(`MU/TH/UR › that value is not valid (minimum ${min}).`); return; }
+    if (!Number.isFinite(value) || value < min) { input.value = last; toast(t('MU/TH/UR › that value is not valid (minimum {min}).', { min })); return; }
     input.disabled = true;
     try { await saveSettingNow(toPatch(value), describe(value)); last = input.value; }
-    catch (error) { input.value = last; toast(`Setting was not saved: ${error.message}`); }
+    catch (error) { input.value = last; toast(t('The setting was not saved: {error}', { error: error.message })); }
     finally { input.disabled = false; }
   });
 }
@@ -5675,15 +5677,15 @@ function conditionActions(condition, agent) {
   if (condition.id === 'timeout') {
     if (agent && state.agents.has(agent)) {
       const seconds = nextTimeoutSeconds(state.timeouts[agent]);
-      actions.push({ label: `RAISE @${agent.toUpperCase()} TIMEOUT TO ${seconds}s`, patch: { timeouts: { [agent]: seconds * 1000 } }, done: `@${agent} timeout is now ${seconds}s.` });
+      actions.push({ label: t('RAISE @{agent} TIMEOUT TO {n}s', { agent: agent.toUpperCase(), n: seconds }), patch: { timeouts: { [agent]: seconds * 1000 } }, done: t('@{agent} timeout is now {n}s.', { agent, n: seconds }) });
     }
     const defaultMs = Math.min(...Object.values(state.timeouts ?? {}).filter(Number.isFinite), 180000);
     const seconds = nextTimeoutSeconds(defaultMs);
-    actions.push({ label: `RAISE DEFAULT TIMEOUT TO ${seconds}s`, patch: { timeouts: { default: seconds * 1000 } }, done: `default timeout is now ${seconds}s for every agent without its own.` });
+    actions.push({ label: t('RAISE DEFAULT TIMEOUT TO {n}s', { n: seconds }), patch: { timeouts: { default: seconds * 1000 } }, done: t('default timeout is now {n}s for every agent without its own.', { n: seconds }) });
   }
   if (condition.id === 'budget-exhausted') {
     const budget = Math.max(1000000, (state.budget ?? 500000) * 2);
-    actions.push({ label: `RAISE LOCAL BUDGET TO ${formatTokens(budget)}`, patch: { room: { softTokenBudget: budget } }, done: `local budget is now ${formatTokens(budget)} tokens per agent per 5h window.` });
+    actions.push({ label: t('RAISE LOCAL BUDGET TO {n}', { n: formatTokens(budget) }), patch: { room: { softTokenBudget: budget } }, done: t('local budget is now {n} tokens per agent per 5h window.', { n: formatTokens(budget) }) });
   }
   return actions;
 }
@@ -5940,7 +5942,7 @@ function renderAsks() {
       drop.disabled = true;
       await fetch('/api/memory/ask/dismiss', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: ask.id, designation: nostromoDesignation() }) }).catch(() => null);
       nostromo.asks = nostromo.asks.filter((one) => one.id !== ask.id);
-      if (nostromo.askButton) nostromo.askButton.textContent = `ASK · ${nostromo.asks.length}`;
+      if (nostromo.askButton) nostromo.askButton.textContent = `${t('ASK')} · ${nostromo.asks.length}`;
       renderAsks();
     });
     actions.append(put, drop);
@@ -5972,7 +5974,7 @@ document.querySelector('#nostromo-asks-close')?.addEventListener('click', () => 
 nostromo.coldButton?.addEventListener('click', () => {
   nostromo.coldOnly = !nostromo.coldOnly;
   nostromo.coldButton.setAttribute('aria-pressed', String(nostromo.coldOnly));
-  if (nostromo.coldOnly) toast(`NOSTROMO › ${nostromo.cold.count} of ${nostromo.cold.standing} memories have had their chances and were never the answer. Ringed on the map.`);
+  if (nostromo.coldOnly) toast(t('NOSTROMO › {n} of {total} memories have had their chances and were never the answer. Ringed on the map.', { n: nostromo.cold.count, total: nostromo.cold.standing }));
 });
 document.querySelector('#nostromo-close')?.addEventListener('click', () => nostromo.dialog.close());
 nostromo.dialog?.addEventListener('close', stopNostromo);
@@ -6027,13 +6029,13 @@ function buildNostromo(data) {
   nostromo.asks = data.ask ?? [];
   if (nostromo.askButton) {
     nostromo.askButton.hidden = !nostromo.asks.length;
-    nostromo.askButton.textContent = `ASK · ${nostromo.asks.length}`;
+    nostromo.askButton.textContent = `${t('ASK')} · ${nostromo.asks.length}`;
     if (!nostromo.asks.length && nostromo.askPanel) { nostromo.askPanel.hidden = true; nostromo.askButton.setAttribute('aria-pressed', 'false'); }
   }
   if (nostromo.askPanel && !nostromo.askPanel.hidden) renderAsks();
   if (nostromo.coldButton) {
     nostromo.coldButton.hidden = !nostromo.cold.count;
-    nostromo.coldButton.textContent = `COLD · ${nostromo.cold.count}`;
+    nostromo.coldButton.textContent = `${t('COLD')} · ${nostromo.cold.count}`;
     if (!nostromo.cold.count) { nostromo.coldOnly = false; nostromo.coldButton.setAttribute('aria-pressed', 'false'); }
   }
   nostromo.sub.textContent = `${nostromo.stage ? `${nostromo.stage.label} · ` : ''}${t('{n} MEMORIES · {alive} RECALLED · {links} LINKS · {entries} EXCHANGES BEHIND THEM', { n: memories.length, alive, links: nostromo.links.length, entries: stats.entries ?? 0 })}${nostromo.cold?.count ? t(' · {n} COLD', { n: nostromo.cold.count }) : ''}${stats.embeddings ? '' : t(' · LINKS NEED EMBEDDINGS')}`;
@@ -7259,7 +7261,7 @@ function showNostromoCard(node) {
   document.querySelector('#nostromo-card-kind').textContent = memory.kind.toUpperCase();
   document.querySelector('#nostromo-card-text').textContent = memory.text;
   document.querySelector('#nostromo-card-span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
-  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? ' · on the human\'s request' : memory.origin === 'flagged' ? ` · flagged by ${memory.detector ?? 'the room'}` : ' · distilled'}`;
+  document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? t(" · on the human's request") : memory.origin === 'flagged' ? t(' · flagged by {who}', { who: memory.detector ?? t('the room') }) : t(' · distilled')}`;
   document.querySelector('#nostromo-card-when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
 
   // The wires it has on the map, strongest first.
@@ -7269,14 +7271,14 @@ function showNostromoCard(node) {
   links.replaceChildren();
   if (!neighbours.length) links.append(el('li', 'none', t('No theme shared with another memory yet.')));
   for (const { link, node: other } of neighbours) {
-    links.append(wireRow(other, `${Math.round(link.weight * 100)}%`, { link, title: `${other.memory.kind.toUpperCase()} · ${Math.round(link.weight * 100)}% of the same meaning\n${other.memory.text}` }));
+    links.append(wireRow(other, `${Math.round(link.weight * 100)}%`, { link, title: `${other.memory.kind.toUpperCase()} · ${t('{pct}% of the same meaning', { pct: Math.round(link.weight * 100) })}\n${other.memory.text}` }));
   }
 
   // And what has actually passed between it and the room. Filled from the archive, then kept up.
   document.querySelector('#nostromo-card-exchange').textContent = t('READING…');
   document.querySelector('#nostromo-card-fired').replaceChildren();
   const forget = document.querySelector('#nostromo-forget');
-  forget.textContent = memory.kind === 'aberration' ? 'CLEAR THIS ABERRATION' : 'FORGET THIS MEMORY';
+  forget.textContent = memory.kind === 'aberration' ? t('CLEAR THIS ABERRATION') : t('FORGET THIS MEMORY');
   forget.classList.remove('confirm');
   forget.disabled = false;
   nostromo.card.hidden = false;
@@ -7307,17 +7309,17 @@ async function nostromoTraffic() {
   node.activity = activityOf(rawActivity(node.memory, degree), nostromo.rawTop ?? 1);
 
   const said = [];
-  if (node.cold) said.push(`COLD · the archive has been opened ${node.cold.chances} times since this was written and never once carried it, and it shares a subject with nothing`);
+  if (node.cold) said.push(t('COLD · the archive has been opened {n} times since this was written and never once carried it, and it shares a subject with nothing', { n: node.cold.chances }));
   said.push(traffic.recalled
-    ? `MADRE has reached for this ${traffic.recalled} time${traffic.recalled === 1 ? '' : 's'}${traffic.lastRecalled ? ` · last ${agoWords(traffic.lastRecalled)}` : ''}`
-    : 'MADRE has not reached for this one yet');
+    ? t('MADRE has reached for this {n} times', { n: traffic.recalled }) + (traffic.lastRecalled ? t(' · last {when}', { when: agoWords(traffic.lastRecalled) }) : '')
+    : t('MADRE has not reached for this one yet'));
   if (traffic.askers?.length) said.push(traffic.askers.map((asker) => `@${asker.agent} ${asker.times}`).join(' · '));
   if (traffic.recent?.length) {
     const last = traffic.recent[0];
-    said.push(`last turn: ${last.agent ? `@${last.agent}` : 'the room'} · ${agoWords(last.at)}`);
+    said.push(t('last turn: {who} · {when}', { who: last.agent ? `@${last.agent}` : t('the room'), when: agoWords(last.at) }));
   } else if (traffic.recalled && traffic.since) {
     // The counters are older than the trail. Saying nothing here would read as "always alone".
-    said.push(`company recorded since ${new Date(traffic.since).toLocaleDateString()} · nothing since`);
+    said.push(t('company recorded since {when} · nothing since', { when: new Date(traffic.since).toLocaleDateString() }));
   }
   document.querySelector('#nostromo-card-exchange').textContent = said.join('\n');
 
@@ -7330,12 +7332,12 @@ async function nostromoTraffic() {
     const other = byId.get(mate.id);
     if (!other) continue;
     const link = nostromo.links.find((one) => (one.a === id && one.b === mate.id) || (one.b === id && one.a === mate.id)) ?? null;
-    const row = wireRow(other, `×${mate.times}`, { link, title: `Travelled into the same turn ${mate.times} time${mate.times === 1 ? '' : 's'} · last ${agoWords(mate.last)}${mate.cascades ? `\nStrong enough that recalling this one now brings it along (${Math.round(mate.strength * 100)}%).` : ''}\n${other.memory.text}` });
+    const row = wireRow(other, `×${mate.times}`, { link, title: `${t('Travelled into the same turn {n} {times} · last {when}', { n: mate.times, times: mate.times === 1 ? t('time') : t('times'), when: agoWords(mate.last) })}${mate.cascades ? `\n${t('Strong enough that recalling this one now brings it along ({pct}%).', { pct: Math.round(mate.strength * 100) })}` : ''}\n${other.memory.text}` });
     if (mate.cascades) row.classList.add('carries');
     fired.append(row);
   }
   if (!(traffic.fired ?? []).length && traffic.recalled) {
-    fired.append(el('li', 'none', traffic.recent?.length ? 'It has always travelled alone.' : 'No turn has carried it since the room started keeping this trail.'));
+    fired.append(el('li', 'none', traffic.recent?.length ? t('It has always travelled alone.') : t('No turn has carried it since the room started keeping this trail.')));
   }
   // What a refutation did, from whichever end this memory is on.
   for (const taken of traffic.refutes ?? []) {
@@ -7402,12 +7404,12 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
     const left = result.stats?.memories ?? Math.max(0, nostromo.nodes.length - 1);
     nostromo.sub.textContent = t('MEMORY RESEARCH · {n} MEMORIES · {links} LINKS · {entries} EXCHANGES BEHIND THEM', { n: left, links: nostromo.links.length, entries: result.stats?.entries ?? 0 });
     nostromo.empty.hidden = left > 0;
-    toast(`MU/TH/UR › memory forgotten: “${node.memory.text.slice(0, 80)}${node.memory.text.length > 80 ? '…' : ''}”. No future turn will read it.`);
+    toast(t('MU/TH/UR › memory forgotten: “{text}”. No future turn will read it.', { text: node.memory.text.slice(0, 80) + (node.memory.text.length > 80 ? '…' : '') }));
   } catch (error) {
     button.disabled = false;
     button.classList.remove('confirm');
     button.textContent = t('FORGET THIS MEMORY');
-    toast(`MU/TH/UR › could not forget: ${error.message}`);
+    toast(t('MU/TH/UR › it could not be forgotten: {error}', { error: error.message }));
   }
 });
 
@@ -7415,10 +7417,26 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
 /* ---------- First contact: the four-step tour. Once on the first visit, again from ? in MU/TH/UR. ---------- */
 
 const TOUR_STEPS = [
-  { title: 'ONE ROOM, YOUR AGENTS', lines: ['MADRE is a local room where the AI coding agents already on this machine work on this project together: Codex, Claude Code, Gemini CLI, OpenCode, and @madre, the memory itself.', 'Pick an agent in the row above the composer or type @claude …. Every reply shows who spoke, to whom, in which mode, with which model and how many tokens.', 'Nothing leaves this machine on its own: each agent talks to its own provider with its own session.'] },
-  { title: 'MODES: HOW FAR A MESSAGE MAY GO', lines: ['The chip next to TO @agent sets the mode of that message.', '#0 GHOST · off the record. #1 EXCHANGE · read and talk, the default. #2 CREATE · add new files where they belong; existing files stay untouched. #3 CONTROL · edit the project, checkpointed, UNDO in one click. #4 AIRLOCK · run commands, push, deploy; what leaves the ship does not come back.', 'Each agent has a MAX MODE and a DEFAULT MODE in ⚙ CONNECTIONS.'] },
-  { title: 'A MEMORY EVERY AGENT RECALLS', lines: ['Everything said outside GHOST is indexed. When the conversation grows, each turn gets the older exchanges that match, cited by sequence.', 'The archivist distils decisions, facts, preferences and open questions; with Ollama it runs locally and for free, and @madre answers from the whole archive.', '◉ NOSTROMO shows the memory as a map. PRIVACY keeps names that must never travel through the room.'] },
-  { title: 'MU/TH/UR AND MODULES', lines: ['MU/TH/UR is the console: diagnosis of anything that failed, ⚙ CONNECTIONS to sign agents in and set their ceilings, MEMORY, PRIVACY, the SENTINEL and the release channel.', 'MODULES adds optional powers: Git Pulse, Image Studio, RIPLEY previews, OLLAMA, PLAYWRIGHT, and your own modules from one file.', 'This tour comes back from the ? in MU/TH/UR. Type STOPALL any time to halt every agent.'] },
+  { title: t('ONE ROOM, YOUR AGENTS'), lines: [
+    t('MADRE is a local room where the AI coding agents already on this machine work on this project together: Codex, Claude Code, Gemini CLI, OpenCode, and @madre, the memory itself.'),
+    t('Pick an agent in the row above the composer or type @claude …. Every reply shows who spoke, to whom, in which mode, with which model and how many tokens.'),
+    t('Nothing leaves this machine on its own: each agent talks to its own provider with its own session.'),
+  ] },
+  { title: t('MODES: HOW FAR A MESSAGE MAY GO'), lines: [
+    t('The chip next to TO @agent sets the mode of that message.'),
+    t('#0 GHOST · off the record. #1 EXCHANGE · read and talk, the default. #2 CREATE · add new files where they belong; existing files stay untouched. #3 CONTROL · edit the project, checkpointed, UNDO in one click. #4 AIRLOCK · run commands, push, deploy; what leaves the ship does not come back.'),
+    t('Each agent has a MAX MODE and a DEFAULT MODE in ⚙ CONNECTIONS.'),
+  ] },
+  { title: t('A MEMORY EVERY AGENT RECALLS'), lines: [
+    t('Everything said outside GHOST is indexed. When the conversation grows, each turn gets the older exchanges that match, cited by sequence.'),
+    t('The archivist distils decisions, facts, preferences and open questions; with Ollama it runs locally and for free, and @madre answers from the whole archive.'),
+    t('◉ NOSTROMO shows the memory as a map. PRIVACY keeps names that must never travel through the room.'),
+  ] },
+  { title: t('MU/TH/UR AND MODULES'), lines: [
+    t('MU/TH/UR is the console: diagnosis of anything that failed, ⚙ CONNECTIONS to sign agents in and set their ceilings, MEMORY, PRIVACY, the SENTINEL and the release channel.'),
+    t('MODULES adds optional powers: Git Pulse, Image Studio, RIPLEY previews, OLLAMA, PLAYWRIGHT, and your own modules from one file.'),
+    t('This tour comes back from the ? in MU/TH/UR. Type STOPALL any time to halt every agent.'),
+  ] },
 ];
 const tour = { dialog: document.querySelector('#tour'), step: document.querySelector('#tour-step'), dots: document.querySelector('#tour-dots'), sub: document.querySelector('#tour-sub'), back: document.querySelector('#tour-back'), next: document.querySelector('#tour-next'), skip: document.querySelector('#tour-skip'), index: 0 };
 function renderTour() {
@@ -7429,7 +7447,7 @@ function renderTour() {
   tour.dots.replaceChildren();
   TOUR_STEPS.forEach((_, i) => tour.dots.append(el('span', `dot${i === tour.index ? ' on' : ''}`)));
   tour.back.disabled = tour.index === 0;
-  tour.next.textContent = tour.index === TOUR_STEPS.length - 1 ? 'START ›' : 'NEXT ›';
+  tour.next.textContent = tour.index === TOUR_STEPS.length - 1 ? t('START ›') : t('NEXT ›');
 }
 function endTour() {
   try { localStorage.setItem('pulse.tour', 'seen'); } catch { /* no storage */ }
@@ -7462,7 +7480,7 @@ async function loadVersion({ force = false } = {}) {
     updateUI.info = await fetch(`/api/version${force ? '?force=1' : ''}`).then((response) => response.json());
   } catch { updateUI.info = null; }
   // The first time a newer version shows up in this session, say so once; the pill stays.
-  if (updateUI.info?.available && updateUI.announced !== updateUI.info.latest && !replaying) { updateUI.announced = updateUI.info.latest; toast(`MU/TH/UR › MADRE ${updateUI.info.latest} is on npm. Open MU/TH/UR to restart with it.`); }
+  if (updateUI.info?.available && updateUI.announced !== updateUI.info.latest && !replaying) { updateUI.announced = updateUI.info.latest; toast(t('MU/TH/UR › MADRE {version} is on npm. Open MU/TH/UR to restart with it.', { version: updateUI.info.latest })); }
   renderUpdate();
   clearTimeout(updateUI.timer);
   updateUI.timer = setTimeout(() => void loadVersion(), 60 * 60 * 1000);
@@ -7473,7 +7491,7 @@ function renderUpdate() {
   const pill = updateUI.pill;
   if (pill) {
     pill.hidden = !info?.available;
-    if (info?.available) { pill.replaceChildren(el('span', 'stop-all-glyph update-glyph'), `${info.latest} AVAILABLE`); pill.title = `MADRE ${info.latest} is on npm · you run ${info.current} · open MU/TH/UR for the command`; }
+    if (info?.available) { pill.replaceChildren(el('span', 'stop-all-glyph update-glyph'), t('{version} AVAILABLE', { version: info.latest })); pill.title = t('MADRE {latest} is on npm · you run {current} · open MU/TH/UR for the command', { latest: info.latest, current: info.current }); }
   }
   const section = updateUI.section;
   if (!section) return;
@@ -7575,7 +7593,7 @@ function renderMotherSentinel() {
       const result = await fetch('/api/sentinel/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ autoReport: box.checked }) }).then((response) => response.json());
       sentinelUI.settings = result.settings;
       toast(result.settings.autoReport ? t("MU/TH/UR › auto-report on: new unknown conditions go to the author's collector, redacted.") : t('MU/TH/UR › auto-report off: reports stay here until you send one.'));
-    } catch (error) { box.checked = !box.checked; toast(`Could not save: ${error.message}`); }
+    } catch (error) { box.checked = !box.checked; toast(t('It could not be saved: {error}', { error: error.message })); }
     finally { box.disabled = !sentinelUI.settings?.canSend; renderMotherSentinel(); }
   });
   auto.append(box, t('AUTO-REPORT UNKNOWN CONDITIONS') + (settings.canSend ? '' : t(' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)')));

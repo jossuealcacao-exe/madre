@@ -26,6 +26,16 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### El recorrido de la primera vez, y la última pasada
+
+- **Faltaba el onboarding.** Los cuatro pasos que le explican la sala a quien llega por primera vez —el compositor, la tripulación, el árbol del proyecto, MU/TH/UR— seguían en inglés, que es justo el peor lugar para dejarlos: es lo primero que alguien lee de MADRE. Ahora arrancan en español, con `EMPEZAR ›` y `SIGUIENTE ›`.
+- El **compositor entero**: el menú de `/`, el de modos y el de modelos; el diálogo de override con lo que concede `#3` y `#4`; el puente que instala Ollama e inicia sesión; las acciones y las calificaciones de cada burbuja; y las cuarenta y ocho frases con que un agente dice que está pensando.
+- **MU/TH/UR**: la cabecera del catálogo («CONDICIONES CONOCIDAS · 51 DE 51 · darwin / zsh»), lo que responde EYECAT y cómo se archiva una aberración.
+- **MODULES**: las versiones y lo que significa cada una —`INSTALA 1.4.1`, `AL DÍA`, `LA MÁS NUEVA ES 0.0.82`—, los avisos antes de instalar y de actualizar, la economía de la sala con sus cuatro cifras, y las fichas de Ollama, RIPLEY y Ash con sus interruptores.
+- **PRIVACY y NOSTROMO**: lo que queda expuesto, la purga y lo que reemplaza, los ajustes rápidos de tiempo límite y presupuesto, la ficha de cada memoria, sus compañeras de viaje y el olvido.
+- Y un error de verdad que salió de esto: al purgar la sala, MADRE reconocía un nombre de proyecto mal escrito comparando el error del servidor contra un texto en inglés. En una sala en español ese texto nunca coincidía, así que la alarma de MOTHER **no sonaba en la única puerta donde importa**. Ahora ambas orillas dicen la misma frase del mismo catálogo.
+- El escáner volvió a pasar por la página completa hasta no encontrar ni un literal con forma de frase sin traducir. Lo que se queda en inglés se queda a propósito y está declarado: los nombres de la nave (MU/TH/UR, ASH, RIPLEY, GHOST, CREATE, AIRLOCK), `ON`/`OFF`, `HELP` —que es un comando que se teclea— y todo lo que imprime un CLI por su cuenta.
+
 ### Lo que MADRE escribió en otro idioma, dicho otra vez
 - Las condiciones registradas son historia: cada una guarda la frase que MADRE escribió aquel día, y una sala que cambió de idioma las seguía enseñando en inglés. El ledger no se reescribe —eso sería falsificar el registro— pero **las palabras son solo cómo se lee**, así que ahora se vuelven a decir camino a la pantalla: «MADRE agotada: @claude lleva 99% de su presupuesto local de tokens de la sala… Sigue con @codex o @gemini.»
 - Solo se vuelven a decir **las frases que MADRE escribe sobre sí misma**, y están declaradas una por una. Lo que imprimió un CLI se queda exactamente como lo imprimió —`API Error: 500`, un ENOTEMPTY de Node, una traza— porque ese texto no es de MADRE y quien lo lee puede necesitar buscarlo palabra por palabra.

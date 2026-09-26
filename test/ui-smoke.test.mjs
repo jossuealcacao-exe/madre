@@ -176,7 +176,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(column.querySelector('.empty'), null, 'the empty state is gone once messages exist');
   const firstUser = column.children.find((child) => child instanceof FakeElement && child.classList.contains('user'));
   assert.ok(firstUser, 'a human message rendered');
-  assert.match(firstUser.textContent, /YOU · CREW/, 'human messages carry the crew label');
+  assert.match(firstUser.textContent, /TÚ · TRIPULACIÓN/, 'human messages carry the crew label');
   assert.equal(registry.get('crew-label') !== undefined, true);
   // And the whole pipe, on a rendered page rather than on the catalogue alone: what the page
   // itself builds comes out in Spanish. (The markup's own words are walked through the catalogue
@@ -311,7 +311,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
   });
   // It wraps a package that is not in this project: not a version, an absence, and what
   // installing would write.
-  assert.match(ahp.querySelector('.version').textContent, /INSTALLS 1\.4\.1/);
+  assert.match(ahp.querySelector('.version').textContent, /INSTALA 1\.4\.1/);
   assert.equal(ahp.querySelector('.state').textContent, 'OFF');
   assert.ok(ahp.classList.contains('off'), 'a module that is off does not step back');
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
