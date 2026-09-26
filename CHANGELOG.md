@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Lo que seguía en inglés dentro de MU/TH/UR
+- El panel entero: el canal de releases con su aviso y su interruptor, el centinela con sus reportes, el arranque («INTERFAZ 2037 LISTA PARA CONSULTA · TRIPULACIÓN: 5 AGENTES · 5 LISTOS»), las condiciones registradas, y los pliegues — `▸ ABRIR`, `▾ CERRAR`, `ABRIR TODO`.
+- El **globo de cada esfera**, que era todo inglés: la ventana local, el límite del proveedor, los turnos, el último turno, el costo reportado, la sesión, la versión, y las cinco capacidades (lee · ve imágenes · crea · genera imágenes · web).
+- Las cuentas de cada agente, que vienen del servidor: «Gratis y local con Ollama: sin cuenta, sin tokens. Contesta desde la memoria de la sala.»
+- Y **lo que MADRE dice cuando algo se acaba o falla**: los avisos de límite, las interrupciones por reinicio y las explicaciones de los errores de Gemini. Eso se escribe en el ledger, así que lo que ya está registrado conserva las palabras con que se escribió; lo nuevo entra en español. Lo que imprime un CLI por su cuenta sigue siendo suyo y no se toca.
+- **1,120 entradas.** Y el escáner que uso para revisar pasó a buscar cualquier literal con forma de frase, no solo los que están en las posiciones que yo esperaba: así fue como salieron estos.
+
 ### Las 51 condiciones de MU/TH/UR
 - El último bloque grande: el título, el diagnóstico y el remedio de las cincuenta y una condiciones del catálogo. Unas cinco mil palabras, escritas en español, no traducidas — incluidas las largas de verdad: los cinco modos de permiso, cómo funciona la memoria de la sala, qué mide cada una de las tres pruebas, qué es una aberración y por qué una memoria está fría.
 - **Lo que se lee va en español; lo que RECONOCE una falla no.** Los patrones de cada condición se prueban contra lo que imprimió un CLI, y un CLI imprime en inglés hable la sala lo que hable: se quedan exactamente como estaban. Los comandos de cada remedio tampoco se traducen: son comandos.

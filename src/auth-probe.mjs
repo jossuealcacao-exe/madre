@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { t } from './i18n.mjs';
 import { access, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -140,9 +141,10 @@ export const AGENT_PACKAGE = {
 export const TAKES_KEY = new Set(['gemini', 'opencode']);
 
 export function accountNoteFor(id) {
-  if (id === 'madre') return { account: 'Free and local through Ollama: no account, no tokens. It answers from the room\'s memory.', paid: false, vendor: 'MADRE' };
+  // Said in the room's language when it is asked for, not when this file is imported.
+  if (id === 'madre') return { account: t("Free and local through Ollama: no account, no tokens. It answers from the room's memory."), paid: false, vendor: 'MADRE' };
   const setup = AGENT_SETUP[id];
-  return setup ? { account: setup.account, paid: setup.paid, vendor: setup.vendor } : null;
+  return setup ? { account: t(setup.account), paid: setup.paid, vendor: setup.vendor } : null;
 }
 
 // npm cannot always write to the system folders: with Node installed from its own installer,

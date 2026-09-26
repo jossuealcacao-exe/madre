@@ -718,12 +718,12 @@ function renderAgents() {
     });
     node.title = [
       `${agent.label}${brandOf(agent.id).vendor ? ` · ${brandOf(agent.id).vendor}` : ''}`,
-      agent.ready ? 'Ready' : agent.detected ? 'Detected, adapter pending' : 'Not installed',
+      agent.ready ? t('Ready') : agent.detected ? t('Detected, adapter pending') : t('Not installed'),
       agent.version ? agent.version : null,
       official === null
-        ? (agent.tokens ? `Ring: local 5h window · ${Math.round(percent)}% of ${formatTokens(state.budget ?? 0)} budget tokens` : 'Ring: local window · no usage yet')
-        : `Ring: provider limit · ${Math.round(official)}% used${agent.officialResetAt ? ` · resets ${fmtReset(agent.officialResetAt)}` : ''}`,
-      agent.tokens ? `${agent.tokens.toLocaleString()} budget tokens in the local window` : null,
+        ? (agent.tokens ? t('Ring: local 5h window · {pct}% of {total} budget tokens', { pct: Math.round(percent), total: formatTokens(state.budget ?? 0) }) : t('Ring: local window · no usage yet'))
+        : t('Ring: provider limit · {pct}% used', { pct: Math.round(official) }) + (agent.officialResetAt ? t(' · resets {when}', { when: fmtReset(agent.officialResetAt) }) : ''),
+      agent.tokens ? t('{n} budget tokens in the local window', { n: agent.tokens.toLocaleString() }) : null,
     ].filter(Boolean).join('\n');
     els.agents.append(node);
   }
@@ -3344,7 +3344,7 @@ function renderMotherRecorded() {
   let collapsed = false;
   // What this section was set to before it folded like the rest; the fold remembers from here on.
   try { collapsed = localStorage.getItem('pulse.mother.log') === 'collapsed'; } catch { /* no storage */ }
-  const body = folding(mother.recorded, `RECORDED CONDITIONS · THIS ROOM · ${state.failures.length}`, {
+  const body = folding(mother.recorded, t('RECORDED CONDITIONS · THIS ROOM · {n}', { n: state.failures.length }), {
     key: 'recorded', open: !collapsed,
   });
   if (!state.failures.length) {
@@ -3441,9 +3441,9 @@ function bootMother() {
   const online = [...state.agents.values()].filter((agent) => agent.ready).length;
   const open = state.failures.filter((failure) => !failure.recovered).length;
   const lines = [
-    'INTERFACE 2037 READY FOR INQUIRY',
-    `CREW: ${state.agents.size} AGENTS · ${online} READY · ROOM /${els.project.textContent}`,
-    open ? `${open} CONDITION${open === 1 ? '' : 'S'} RECORDED IN THIS ROOM. PROBABLE CAUSES CLASSIFIED BELOW.` : 'NO OPEN CONDITIONS. ALL SYSTEMS NOMINAL.',
+    t('INTERFACE 2037 READY FOR INQUIRY'),
+    t('CREW: {n} AGENTS · {ready} READY · ROOM /{project}', { n: state.agents.size, ready: online, project: els.project.textContent }),
+    open ? t('{n} CONDITIONS RECORDED IN THIS ROOM. PROBABLE CAUSES CLASSIFIED BELOW.', { n: open }) : t('NO OPEN CONDITIONS. ALL SYSTEMS NOMINAL.'),
   ];
   mother.boot.textContent = '';
   let index = 0;
@@ -3664,7 +3664,7 @@ function cardFold(card, label, { key, count = null, open = false } = {}) {
   head.append(el('b', null, label));
   if (count !== null) head.append(el('span', 'count', String(count)));
   const caret = el('span', 'caret');
-  const mark = () => { caret.textContent = box.open ? '▾ COLLAPSE' : '▸ EXPAND'; };
+  const mark = () => { caret.textContent = box.open ? t('▾ COLLAPSE') : t('▸ EXPAND'); };
   mark();
   head.append(caret);
   const body = el('div', 'card-fold-body');
@@ -4313,7 +4313,7 @@ function trackStats(event) {
 
 function fmtMs(ms) { return ms === null ? '—' : ms < 1000 ? `${ms}ms` : `${Math.round(ms / 1000)}s`; }
 
-const CAP_LABELS = { read: 'read', imageIn: 'image in', write: 'create', imageGen: 'image gen', web: 'web' };
+const CAP_LABELS = { read: t('read'), imageIn: t('image in'), write: t('create'), imageGen: t('image gen'), web: t('web') };
 function capabilityBadges(id) {
   const caps = state.capabilities[id] ?? {};
   const wrap = el('div', 'caps');
@@ -4321,7 +4321,7 @@ function capabilityBadges(id) {
   for (const [key, labelText] of Object.entries(CAP_LABELS)) {
     const badge = el('span', `cap${caps[key] ? ' on' : ''}`, labelText);
     const detail = caps.detail?.[key];
-    badge.title = caps[key] ? `${labelText}: ${detail?.how ?? 'available'}${detail?.note ? ` · ${detail.note}` : ''}` : `${labelText}: not available from this CLI`;
+    badge.title = caps[key] ? `${labelText}: ${detail?.how ?? t('available')}${detail?.note ? ` · ${detail.note}` : ''}` : t('{what}: not available from this CLI', { what: labelText });
     wrap.append(badge);
   }
   return wrap;
@@ -4343,7 +4343,7 @@ function openAgentPop(id, anchor) {
   head.append(el('span', 'vendor', brandOf(id).vendor));
   pop.append(head);
   const big = el('div', 'big', official === null ? (formatTokens(agent.tokens ?? 0) || '0') : `${Math.round(official)}%`);
-  big.append(el('small', null, official === null ? 'budget tokens · local 5h window' : `of the provider's ${fmtWindow(agent.officialWindows?.primary?.windowMinutes ?? 300)} limit${agent.officialResetAt ? ` · resets ${fmtReset(agent.officialResetAt)}` : ' · window reset'}`));
+  big.append(el('small', null, official === null ? t('budget tokens · local 5h window') : t("of the provider's {window} limit", { window: fmtWindow(agent.officialWindows?.primary?.windowMinutes ?? 300) }) + (agent.officialResetAt ? t(' · resets {when}', { when: fmtReset(agent.officialResetAt) }) : t(' · window reset'))));
   pop.append(big);
   const gauge = el('div', `gauge${shown >= 80 ? ' hot' : ''}`);
   const fill = el('i'); fill.style.width = `${shown}%`; gauge.append(fill);
@@ -4352,26 +4352,26 @@ function openAgentPop(id, anchor) {
   const row = (k, v, cls) => { dl.append(el('dt', null, k)); dl.append(el('dd', cls, v)); };
   if (agent.officialWindows) {
     const { primary, secondary } = agent.officialWindows;
-    if (primary) row(`${fmtWindow(primary.windowMinutes)} limit`, primary.resetAt ? `${Math.round(primary.usedPercent)}% · resets ${fmtReset(primary.resetAt)}` : `${Math.round(primary.usedPercent)}% · reset, awaiting fresh data`, primary.usedPercent >= 80 ? 'off' : null);
-    if (secondary) row(`${fmtWindow(secondary.windowMinutes)} limit`, `${Math.round(secondary.usedPercent)}%${secondary.resetAt ? ` · resets ${fmtReset(secondary.resetAt)}` : ''}`, secondary.usedPercent >= 80 ? 'off' : null);
-    if (agent.officialObservedAt) row('reported', `${fmtReset(agent.officialObservedAt)} by ${agent.officialSource?.replace('official:', '') ?? 'the CLI'}`);
+    if (primary) row(t('{window} limit', { window: fmtWindow(primary.windowMinutes) }), primary.resetAt ? t('{pct}% · resets {when}', { pct: Math.round(primary.usedPercent), when: fmtReset(primary.resetAt) }) : t('{pct}% · reset, awaiting fresh data', { pct: Math.round(primary.usedPercent) }), primary.usedPercent >= 80 ? 'off' : null);
+    if (secondary) row(t('{window} limit', { window: fmtWindow(secondary.windowMinutes) }), `${Math.round(secondary.usedPercent)}%${secondary.resetAt ? t(' · resets {when}', { when: fmtReset(secondary.resetAt) }) : ''}`, secondary.usedPercent >= 80 ? 'off' : null);
+    if (agent.officialObservedAt) row(t('reported'), t('{when} by {who}', { when: fmtReset(agent.officialObservedAt), who: agent.officialSource?.replace('official:', '') ?? t('the CLI') }));
   } else if (Number.isFinite(agent.officialPercent)) {
-    row('provider limit', `${Math.round(official ?? 0)}% used`);
+    row(t('provider limit'), t('{pct}% used', { pct: Math.round(official ?? 0) }));
   } else {
-    row('provider limit', 'not published by this CLI · ring shows the local window');
+    row(t('provider limit'), t('not published by this CLI · ring shows the local window'));
   }
-  row('local window', state.budget ? `${Math.round(percent)}% of ${formatTokens(state.budget)} · 5h rolling${agent.rollsOverAt ? ` · oldest turn drops ${fmtReset(agent.rollsOverAt)}` : ''}` : 'unbounded');
-  if (agent.rawTokens) row('all-time in room', `${formatTokens(agent.rawTokens)} tok`);
-  row('turns', String(stats.turns));
-  row('last turn', `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)} tok` : ''}`);
-  if (stats.cost > 0) row('cost (reported)', `$${stats.cost.toFixed(2)}`);
-  row('session', session ? session.state.replace('-', ' ') : agent.ready ? 'unknown' : 'not ready', session?.state === 'signed-in' ? 'on' : session?.state === 'signed-out' ? 'off' : null);
-  if (session?.detail) row('via', session.detail);
-  row('timeout', `${Math.round((state.timeouts[id] ?? 180000) / 1000)}s`);
-  if (agent.version) row('version', agent.version);
+  row(t('local window'), state.budget ? t('{pct}% of {total} · 5h rolling', { pct: Math.round(percent), total: formatTokens(state.budget) }) + (agent.rollsOverAt ? t(' · oldest turn drops {when}', { when: fmtReset(agent.rollsOverAt) }) : '') : t('unbounded'));
+  if (agent.rawTokens) row(t('all-time in room'), `${formatTokens(agent.rawTokens)} tok`);
+  row(t('turns'), String(stats.turns));
+  row(t('last turn'), `${fmtMs(stats.lastTurnMs)}${stats.lastTurnTokens ? ` · ${formatTokens(stats.lastTurnTokens)} tok` : ''}`);
+  if (stats.cost > 0) row(t('cost (reported)'), `$${stats.cost.toFixed(2)}`);
+  row(t('session'), session ? t(session.state.replace('-', ' ')) : agent.ready ? t('unknown') : t('not ready'), session?.state === 'signed-in' ? 'on' : session?.state === 'signed-out' ? 'off' : null);
+  if (session?.detail) row(t('via'), session.detail);
+  row(t('timeout'), `${Math.round((state.timeouts[id] ?? 180000) / 1000)}s`);
+  if (agent.version) row(t('version'), agent.version);
   pop.append(dl);
   pop.append(capabilityBadges(id));
-  pop.append(el('div', 'foot', official === null ? 'local window, not the provider\'s bill · ⚙ connections in MU/TH/UR' : 'provider limit as the CLI reports it · ⚙ connections in MU/TH/UR'));
+  pop.append(el('div', 'foot', official === null ? t("local window, not the provider's bill · ⚙ connections in MU/TH/UR") : t('provider limit as the CLI reports it · ⚙ connections in MU/TH/UR')));
   pop.hidden = false;
   const rect = anchor.getBoundingClientRect();
   const width = pop.offsetWidth || 260;
@@ -5133,7 +5133,7 @@ function syncFoldAll() {
   if (!button) return;
   const folds = everyFold();
   button.hidden = folds.length < 2;
-  button.textContent = folds.some((fold) => !fold.open) ? 'EXPAND ALL' : 'COLLAPSE ALL';
+  button.textContent = folds.some((fold) => !fold.open) ? t('EXPAND ALL') : t('COLLAPSE ALL');
 }
 document.querySelector('#fold-all')?.addEventListener('click', () => {
   const folds = everyFold();
@@ -5159,7 +5159,7 @@ function folding(section, title, { key, open = false, badge = null } = {}) {
   // The same button every other section in this panel already had: it says what clicking it
   // will do, not what the section currently is.
   const caret = el('span', 'caret');
-  const label = () => { caret.textContent = box.open ? '▾ COLLAPSE' : '▸ EXPAND'; };
+  const label = () => { caret.textContent = box.open ? t('▾ COLLAPSE') : t('▸ EXPAND'); };
   label();
   head.append(caret);
   const body = el('div', 'fold-body');
@@ -5444,7 +5444,7 @@ function renderSettings() {
   // MEMORY: who distils, with whom, how often, where it embeds, how much recall a turn gets. Saves as you change it.
   const mem = data.settings.memory;
   if (mem) {
-    const memoryBody = folding(section, `MEMORY · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory' });
+    const memoryBody = folding(section, `${t('MEMORY')} · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory' });
     memoryBody.append(el('p', 'note', t('THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.')));
     const mform = el('form', 'room-form memory-form');
     const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(t('Memory setting was not saved: {error}', { error: error.message })); } };
@@ -7480,16 +7480,19 @@ function renderUpdate() {
   const when = info.checkedAt ? new Date(info.checkedAt).toLocaleString() : null;
   // Folded by default: a room that is up to date has nothing to say here. When there is a new
   // version the header carries a red mark and nothing else, and what it means is inside.
-  const body = folding(section, `RELEASE CHANNEL · MADRE ${info.current}${info.available ? '' : info.latest ? ' · UP TO DATE' : info.enabled ? ' · NPM NOT REACHED YET' : ' · CHECK OFF'}`, {
+  const body = folding(section, `${t('RELEASE CHANNEL')} · MADRE ${info.current}${info.available ? '' : info.latest ? t(' · UP TO DATE') : info.enabled ? t(' · NPM NOT REACHED YET') : t(' · CHECK OFF')}`, {
     key: 'update',
     open: false,
-    badge: info.available ? { text: info.latest, urgent: true, title: `MADRE ${info.latest} is on npm · you run ${info.current}` } : null,
+    badge: info.available ? { text: info.latest, urgent: true, title: t('MADRE {latest} is on npm · you run {current}', { latest: info.latest, current: info.current }) } : null,
   });
   if (info.available) {
     const canRestart = info.install !== 'source';
-    body.append(el('p', 'note', `A NEWER MADRE IS ON NPM. THIS COPY RUNS ${info.install === 'npx' ? 'FROM THE NPX CACHE' : info.install === 'project' ? 'FROM THIS PROJECT\'S NODE_MODULES' : info.install === 'global' ? 'AS A GLOBAL INSTALL' : 'FROM SOURCE'}. ${canRestart ? 'RESTART WITH IT HERE: THE ROOM CLOSES, INSTALLS, AND COMES BACK ON THIS SAME ADDRESS IN A FEW SECONDS. NOTHING IN THE LEDGER IS LOST. OR RUN THE COMMAND YOURSELF.' : 'PULL THE REPOSITORY AND START IT AGAIN.'}`));
+    body.append(el('p', 'note', t('A NEWER MADRE IS ON NPM. THIS COPY RUNS {where}. {how}', {
+      where: info.install === 'npx' ? t('FROM THE NPX CACHE') : info.install === 'project' ? t("FROM THIS PROJECT'S NODE_MODULES") : info.install === 'global' ? t('AS A GLOBAL INSTALL') : t('FROM SOURCE'),
+      how: canRestart ? t('RESTART WITH IT HERE: THE ROOM CLOSES, INSTALLS, AND COMES BACK ON THIS SAME ADDRESS IN A FEW SECONDS. NOTHING IN THE LEDGER IS LOST. OR RUN THE COMMAND YOURSELF.') : t('PULL THE REPOSITORY AND START IT AGAIN.'),
+    })));
     if (canRestart) {
-      const restart = el('button', 'update-restart', updateUI.restarting ? 'RESTARTING…' : `RESTART WITH ${info.latest}`);
+      const restart = el('button', 'update-restart', updateUI.restarting ? t('RESTARTING…') : t('RESTART WITH {version}', { version: info.latest }));
       restart.type = 'button';
       restart.disabled = updateUI.restarting;
       restart.addEventListener('click', async () => {
@@ -7497,7 +7500,7 @@ function renderUpdate() {
         try {
           const payload = await fetch('/api/updates/apply', { method: 'POST' }).then((response) => response.json());
           if (payload.error) throw new Error(payload.error);
-          toast(`MU/TH/UR › closing to install ${payload.to}. Back in a moment.`);
+          toast(t('MU/TH/UR › closing to install {version}. Back in a moment.', { version: payload.to }));
           const from = info.current;
           const wait = async () => {
             for (let attempt = 0; attempt < 90; attempt += 1) {
@@ -7507,7 +7510,7 @@ function renderUpdate() {
             updateUI.restarting = false; renderUpdate(); toast(t('MU/TH/UR › the room did not come back on its own. Start it from your terminal.'));
           };
           void wait();
-        } catch (error) { updateUI.restarting = false; renderUpdate(); toast(`Update did not start: ${error.message}`); }
+        } catch (error) { updateUI.restarting = false; renderUpdate(); toast(t('The update did not start: {error}', { error: error.message })); }
       });
       body.append(restart);
     }
@@ -7518,19 +7521,19 @@ function renderUpdate() {
     copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(info.command); copy.textContent = t('COPIED'); setTimeout(() => { copy.textContent = t('COPY'); }, 1400); } catch { toast(t('MU/TH/UR › select the command and copy it.')); } });
     row.append(code, copy);
     body.append(row);
-    if (info.release) { const link = el('a', 'update-link', `WHAT ${info.latest} SHIPS ↗`); link.href = info.release; link.target = '_blank'; link.rel = 'noopener noreferrer'; body.append(link); }
+    if (info.release) { const link = el('a', 'update-link', t('WHAT {version} SHIPS ↗', { version: info.latest })); link.href = info.release; link.target = '_blank'; link.rel = 'noopener noreferrer'; body.append(link); }
   } else {
-    body.append(el('p', 'note', `MADRE ASKS NPM FOR THE LATEST VERSION ONCE A DAY: THE PACKAGE NAME TRAVELS, NOTHING ELSE, THE SAME REQUEST NPX MAKES.${when ? ` LAST CHECK ${when.toUpperCase()}.` : ''}`));
+    body.append(el('p', 'note', t('MADRE ASKS NPM FOR THE LATEST VERSION ONCE A DAY: THE PACKAGE NAME TRAVELS, NOTHING ELSE, THE SAME REQUEST NPX MAKES.') + (when ? t(' LAST CHECK {when}.', { when: when.toUpperCase() }) : '')));
   }
   const controls = el('div', 'sentinel-controls');
   const toggle = el('label', 'toggle');
   const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(info.enabled); box.disabled = Boolean(info.envWins);
   box.addEventListener('change', async () => {
     box.disabled = true;
-    try { await fetch('/api/updates/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ check: box.checked }) }); toast(`MU/TH/UR › release channel ${box.checked ? 'on: one check a day' : 'off: no request leaves for npm'}.`); await loadVersion(); }
-    catch (error) { toast(`Setting was not saved: ${error.message}`); box.disabled = false; }
+    try { await fetch('/api/updates/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ check: box.checked }) }); toast(box.checked ? t('MU/TH/UR › release channel on: one check a day.') : t('MU/TH/UR › release channel off: no request leaves for npm.')); await loadVersion(); }
+    catch (error) { toast(t('The setting was not saved: {error}', { error: error.message })); box.disabled = false; }
   });
-  toggle.append(box, `CHECK NPM FOR NEW VERSIONS ONCE A DAY${info.envWins ? ' · SET BY PULSE_UPDATE_CHECK' : ''}`);
+  toggle.append(box, t('CHECK NPM FOR NEW VERSIONS ONCE A DAY') + (info.envWins ? t(' · SET BY PULSE_UPDATE_CHECK') : ''));
   controls.append(toggle);
   if (info.enabled) { const now = el('button', null, t('CHECK NOW')); now.type = 'button'; now.addEventListener('click', () => void loadVersion({ force: true })); controls.append(now); }
   body.append(controls);
@@ -7557,7 +7560,7 @@ function renderMotherSentinel() {
   section.replaceChildren();
   const reports = [...state.reports.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
   const unsent = reports.filter((report) => !report.sent?.ok).length;
-  const sentinelBody = folding(section, `SENTINEL · ${reports.length ? `${reports.length} REPORT${reports.length === 1 ? '' : 'S'} · ${unsent} NOT SENT` : 'NOTHING TO REPORT'}`, { key: 'sentinel' });
+  const sentinelBody = folding(section, `${t('SENTINEL')} · ${reports.length ? t('{n} REPORTS · {unsent} NOT SENT', { n: reports.length, unsent }) : t('NOTHING TO REPORT')}`, { key: 'sentinel' });
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
   const what = el('p', 'note', t('THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.'));
   sentinelBody.append(what);
@@ -7569,11 +7572,11 @@ function renderMotherSentinel() {
     try {
       const result = await fetch('/api/sentinel/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ autoReport: box.checked }) }).then((response) => response.json());
       sentinelUI.settings = result.settings;
-      toast(`MU/TH/UR › auto-report ${result.settings.autoReport ? 'on: new unknown conditions go to the author\'s collector, redacted.' : 'off: reports stay here until you send one.'}`);
+      toast(result.settings.autoReport ? t("MU/TH/UR › auto-report on: new unknown conditions go to the author's collector, redacted.") : t('MU/TH/UR › auto-report off: reports stay here until you send one.'));
     } catch (error) { box.checked = !box.checked; toast(`Could not save: ${error.message}`); }
     finally { box.disabled = !sentinelUI.settings?.canSend; renderMotherSentinel(); }
   });
-  auto.append(box, `AUTO-REPORT UNKNOWN CONDITIONS${settings.canSend ? '' : ' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)'}`);
+  auto.append(box, t('AUTO-REPORT UNKNOWN CONDITIONS') + (settings.canSend ? '' : t(' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)')));
   controls.append(auto);
   const feedback = el('button', null, t('✎ FEEDBACK TO THE AUTHOR'));
   feedback.type = 'button';
@@ -7583,28 +7586,28 @@ function renderMotherSentinel() {
   for (const report of reports.slice(0, 20)) {
     const rowNode = paint(el('div', `mother-record sentinel-report${report.sent?.ok ? ' sent' : ''}`), report.agent ?? 'room');
     rowNode.append(el('span', 't', formatTime(report.at)));
-    rowNode.append(el('span', 'a', report.kind === 'crash' ? 'CRASH' : `@${report.agent ?? 'room'}`));
+    rowNode.append(el('span', 'a', report.kind === 'crash' ? t('CRASH') : `@${report.agent ?? t('room')}`));
     const errorNode = el('span', 'e', String(report.error).split('\n')[0].slice(0, 200));
     errorNode.title = report.error;
     rowNode.append(errorNode);
     const actions = el('span', 'k');
     if (report.count > 1) actions.append(el('span', 'none', `×${report.count}`));
     actions.append(el('span', 'none', report.fingerprint));
-    if (report.sent?.ok) actions.append(el('span', 'none', 'SENT'));
-    const issue = el('button', null, 'REPORT ON GITHUB ↗');
+    if (report.sent?.ok) actions.append(el('span', 'none', t('SENT')));
+    const issue = el('button', null, t('REPORT ON GITHUB ↗'));
     issue.type = 'button';
     issue.addEventListener('click', async () => {
       const result = await fetch(`/api/sentinel/${report.id}/issue`).then((response) => response.json()).catch(() => ({}));
-      if (result.url) window.open(result.url, '_blank', 'noopener'); else toast('MU/TH/UR › no repository to file this in.');
+      if (result.url) window.open(result.url, '_blank', 'noopener'); else toast(t('MU/TH/UR › no repository to file this in.'));
     });
     actions.append(issue);
     if (settings.canSend && !report.sent?.ok) {
-      const send = el('button', null, 'SEND');
+      const send = el('button', null, t('SEND REPORT'));
       send.type = 'button';
       send.addEventListener('click', async () => {
         send.disabled = true;
         const result = await fetch(`/api/sentinel/${report.id}/send`, { method: 'POST' }).then((response) => response.json()).catch((error) => ({ ok: false, error: error.message }));
-        toast(result.ok ? 'MU/TH/UR › report sent to the author\'s collector.' : `MU/TH/UR › could not send: ${result.error ?? 'unknown error'}`);
+        toast(result.ok ? t("MU/TH/UR › report sent to the author's collector.") : t('MU/TH/UR › could not send: {error}', { error: result.error ?? t('unknown error') }));
         void loadSentinel();
       });
       actions.append(send);
@@ -7614,7 +7617,7 @@ function renderMotherSentinel() {
   }
 }
 function openFeedback() {
-  const go = (url) => { if (url) window.open(url, '_blank', 'noopener'); else toast('MU/TH/UR › no repository configured for feedback.'); };
+  const go = (url) => { if (url) window.open(url, '_blank', 'noopener'); else toast(t('MU/TH/UR › no repository configured for feedback.')); };
   if (sentinelUI.feedbackUrl) { go(sentinelUI.feedbackUrl); return; }
   fetch('/api/sentinel').then((response) => response.json()).then((data) => { sentinelUI.feedbackUrl = data.feedbackUrl; go(data.feedbackUrl); }).catch(() => go(null));
 }
@@ -7631,7 +7634,7 @@ settingsUI.button.addEventListener('click', async () => {
     const node = document.getElementById(id);
     if (node) node.hidden = settingsUI.open;
   }
-  if (settingsUI.open) { settingsUI.section.append(el('p', 'mother-answer', 'CHECKING CONNECTIONS…')); await loadSettings(); }
+  if (settingsUI.open) { settingsUI.section.append(el('p', 'mother-answer', t('CHECKING CONNECTIONS…'))); await loadSettings(); }
 });
 mother.dialog.addEventListener('close', () => {
   if (!settingsUI.open) return;

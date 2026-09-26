@@ -1429,6 +1429,156 @@ export const ES = {
   "Under the list is the log itself: every request this process made, MADRE's own and any a module made, because a module runs inside MADRE and cannot opt out of the wrapper. No body, no header and no query value is ever written there — only which parameters were set. An address nothing declares is reported as exactly that.":
     'Debajo de la lista está el registro: cada petición que hizo este proceso, las de MADRE y las de cualquier módulo, porque un módulo corre dentro de MADRE y no puede salirse del envoltorio. Ahí nunca se escribe un cuerpo, ni un encabezado, ni el valor de un parámetro — solo qué parámetros venían. Una dirección que nadie declara se reporta como exactamente eso.',
 
+  // ── LAS ESFERAS, EL GLOBO DE USO, EL CANAL DE RELEASES Y EL CENTINELA ─────
+  'Ready': 'Listo',
+  'Detected, adapter pending': 'Detectado, falta su adaptador',
+  'Not installed': 'No está instalado',
+  'Ring: local 5h window · {pct}% of {total} budget tokens': 'Anillo: ventana local de 5 h · {pct}% de {total} tokens de presupuesto',
+  'Ring: local window · no usage yet': 'Anillo: ventana local · todavía sin uso',
+  'Ring: provider limit · {pct}% used': 'Anillo: límite del proveedor · {pct}% usado',
+  ' · resets {when}': ' · se reinicia {when}',
+  '{n} budget tokens in the local window': '{n} tokens de presupuesto en la ventana local',
+
+  // El arranque y las condiciones de MU/TH/UR.
+  'INTERFACE 2037 READY FOR INQUIRY': 'INTERFAZ 2037 LISTA PARA CONSULTA',
+  'CREW: {n} AGENTS · {ready} READY · ROOM /{project}': 'TRIPULACIÓN: {n} AGENTES · {ready} LISTOS · SALA /{project}',
+  '{n} CONDITIONS RECORDED IN THIS ROOM. PROBABLE CAUSES CLASSIFIED BELOW.':
+    '{n} CONDICIONES REGISTRADAS EN ESTA SALA. CAUSAS PROBABLES CLASIFICADAS ABAJO.',
+  'NO OPEN CONDITIONS. ALL SYSTEMS NOMINAL.': 'SIN CONDICIONES ABIERTAS. TODOS LOS SISTEMAS NOMINALES.',
+  'RECORDED CONDITIONS · THIS ROOM · {n}': 'CONDICIONES REGISTRADAS · ESTA SALA · {n}',
+  '▾ COLLAPSE': '▾ CERRAR',
+  '▸ EXPAND': '▸ ABRIR',
+
+  // El globo de una esfera: lo que un agente lleva gastado.
+  'read': 'lee',
+  'image in': 've imágenes',
+  'create': 'crea',
+  'image gen': 'genera imágenes',
+  'web': 'web',
+  'available': 'disponible',
+  '{what}: not available from this CLI': '{what}: este CLI no lo puede hacer',
+  'budget tokens · local 5h window': 'tokens de presupuesto · ventana local de 5 h',
+  "of the provider's {window} limit": 'del límite de {window} del proveedor',
+  ' · window reset': ' · ventana reiniciada',
+  '{window} limit': 'límite de {window}',
+  '{pct}% · resets {when}': '{pct}% · se reinicia {when}',
+  '{pct}% · reset, awaiting fresh data': '{pct}% · reiniciada, esperando datos nuevos',
+  'reported': 'reportado',
+  '{when} by {who}': '{when} por {who}',
+  'the CLI': 'el CLI',
+  'provider limit': 'límite del proveedor',
+  '{pct}% used': '{pct}% usado',
+  'not published by this CLI · ring shows the local window': 'este CLI no lo publica · el anillo muestra la ventana local',
+  'local window': 'ventana local',
+  '{pct}% of {total} · 5h rolling': '{pct}% de {total} · 5 h rodantes',
+  ' · oldest turn drops {when}': ' · el turno más viejo se cae {when}',
+  'unbounded': 'sin tope',
+  'all-time in room': 'histórico en la sala',
+  'turns': 'turnos',
+  'last turn': 'último turno',
+  'cost (reported)': 'costo (reportado)',
+  'session': 'sesión',
+  'unknown': 'sin determinar',
+  'not ready': 'no está listo',
+  'via': 'vía',
+  'timeout': 'tiempo límite',
+  'version': 'versión',
+  "local window, not the provider's bill · ⚙ connections in MU/TH/UR":
+    'ventana local, no la factura del proveedor · ⚙ conexiones en MU/TH/UR',
+  'provider limit as the CLI reports it · ⚙ connections in MU/TH/UR':
+    'el límite del proveedor tal como lo reporta el CLI · ⚙ conexiones en MU/TH/UR',
+
+  // El canal de releases.
+  'RELEASE CHANNEL': 'CANAL DE RELEASES',
+  ' · UP TO DATE': ' · AL DÍA',
+  ' · NPM NOT REACHED YET': ' · TODAVÍA NO SE HA ALCANZADO NPM',
+  ' · CHECK OFF': ' · REVISIÓN APAGADA',
+  'MADRE {latest} is on npm · you run {current}': 'MADRE {latest} está en npm · tú corres la {current}',
+  'A NEWER MADRE IS ON NPM. THIS COPY RUNS {where}. {how}': 'HAY UNA MADRE MÁS NUEVA EN NPM. ESTA COPIA CORRE {where}. {how}',
+  'FROM THE NPX CACHE': 'DESDE LA CACHÉ DE NPX',
+  "FROM THIS PROJECT'S NODE_MODULES": 'DESDE EL NODE_MODULES DE ESTE PROYECTO',
+  'AS A GLOBAL INSTALL': 'COMO INSTALACIÓN GLOBAL',
+  'FROM SOURCE': 'DESDE EL CÓDIGO FUENTE',
+  'RESTART WITH IT HERE: THE ROOM CLOSES, INSTALLS, AND COMES BACK ON THIS SAME ADDRESS IN A FEW SECONDS. NOTHING IN THE LEDGER IS LOST. OR RUN THE COMMAND YOURSELF.':
+    'REINICIA CON ELLA DESDE AQUÍ: LA SALA SE CIERRA, INSTALA Y REGRESA EN ESTA MISMA DIRECCIÓN EN UNOS SEGUNDOS. NO SE PIERDE NADA DEL LEDGER. O CORRE TÚ EL COMANDO.',
+  'PULL THE REPOSITORY AND START IT AGAIN.': 'HAZ PULL DEL REPOSITORIO Y ARRÁNCALA OTRA VEZ.',
+  'RESTART WITH {version}': 'REINICIAR CON {version}',
+  'MU/TH/UR › closing to install {version}. Back in a moment.': 'MU/TH/UR › cerrando para instalar la {version}. Regreso en un momento.',
+  'The update did not start: {error}': 'La actualización no arrancó: {error}',
+  'WHAT {version} SHIPS ↗': 'QUÉ TRAE LA {version} ↗',
+  'MADRE ASKS NPM FOR THE LATEST VERSION ONCE A DAY: THE PACKAGE NAME TRAVELS, NOTHING ELSE, THE SAME REQUEST NPX MAKES.':
+    'MADRE LE PREGUNTA A NPM POR LA ÚLTIMA VERSIÓN UNA VEZ AL DÍA: VIAJA EL NOMBRE DEL PAQUETE Y NADA MÁS, LA MISMA PETICIÓN QUE HACE NPX.',
+  ' LAST CHECK {when}.': ' ÚLTIMA REVISIÓN {when}.',
+  'MU/TH/UR › release channel on: one check a day.': 'MU/TH/UR › canal de releases encendido: una revisión al día.',
+  'MU/TH/UR › release channel off: no request leaves for npm.': 'MU/TH/UR › canal de releases apagado: no sale ninguna petición a npm.',
+  'The setting was not saved: {error}': 'El ajuste no se guardó: {error}',
+  'CHECK NPM FOR NEW VERSIONS ONCE A DAY': 'REVISAR NPM UNA VEZ AL DÍA POR VERSIONES NUEVAS',
+  ' · SET BY PULSE_UPDATE_CHECK': ' · LO FIJA PULSE_UPDATE_CHECK',
+
+  // El centinela.
+  'SENTINEL': 'CENTINELA',
+  '{n} REPORTS · {unsent} NOT SENT': '{n} REPORTES · {unsent} SIN MANDAR',
+  'NOTHING TO REPORT': 'NADA QUE REPORTAR',
+  "MU/TH/UR › auto-report on: new unknown conditions go to the author's collector, redacted.":
+    'MU/TH/UR › auto-reporte encendido: las condiciones desconocidas nuevas van al recolector del autor, redactadas.',
+  'MU/TH/UR › auto-report off: reports stay here until you send one.':
+    'MU/TH/UR › auto-reporte apagado: los reportes se quedan aquí hasta que tú mandes uno.',
+  'AUTO-REPORT UNKNOWN CONDITIONS': 'AUTO-REPORTAR CONDICIONES DESCONOCIDAS',
+  ' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)': ' · NO HAY RECOLECTOR CONFIGURADO (PULSE_REPORT_URL)',
+  'CRASH': 'CRASH',
+  'room': 'sala',
+  'SENT': 'MANDADO',
+  'REPORT ON GITHUB ↗': 'REPORTAR EN GITHUB ↗',
+  'MU/TH/UR › no repository to file this in.': 'MU/TH/UR › no hay repositorio donde levantar esto.',
+  'SEND REPORT': 'MANDAR REPORTE',
+  "MU/TH/UR › report sent to the author's collector.": 'MU/TH/UR › reporte mandado al recolector del autor.',
+  'MU/TH/UR › could not send: {error}': 'MU/TH/UR › no se pudo mandar: {error}',
+  'unknown error': 'error desconocido',
+  'MU/TH/UR › no repository configured for feedback.': 'MU/TH/UR › no hay repositorio configurado para comentarios.',
+  'CHECKING CONNECTIONS…': 'REVISANDO LAS CONEXIONES…',
+
+  // Las cuentas de cada agente, y las etapas del archivo.
+  "Free and local through Ollama: no account, no tokens. It answers from the room's memory.":
+    'Gratis y local con Ollama: sin cuenta, sin tokens. Contesta desde la memoria de la sala.',
+  'Signs in with a ChatGPT account. An OpenAI API key works too.': 'Inicia sesión con una cuenta de ChatGPT. También sirve una API key de OpenAI.',
+  'Signs in with a Claude account. An Anthropic API key works too.': 'Inicia sesión con una cuenta de Claude. También sirve una API key de Anthropic.',
+  'Signs in with a Google account and has a free tier. A Gemini API key from AI Studio works too.':
+    'Inicia sesión con una cuenta de Google y tiene capa gratuita. También sirve una API key de Gemini de AI Studio.',
+  'Brings no model of its own: you point it at a provider you already use, in the cloud or on this computer.':
+    'No trae modelo propio: lo apuntas a un proveedor que ya uses, en la nube o en esta computadora.',
+  'MATURE': 'MADURO',
+  'WORKING': 'FUNCIONANDO',
+  'FORMING': 'TOMANDO FORMA',
+  'SPARSE': 'ESCASO',
+  'EMPTY': 'VACÍO',
+
+  // ── LO QUE MADRE DICE CUANDO ALGO FALLA O SE ACABA ───────────────────────
+  // Esto se escribe en el ledger, así que lo viejo conserva las palabras con que se escribió.
+  ' Continue with {who}.': ' Sigue con {who}.',
+  ' Prepare a handoff before the current agent becomes unavailable.':
+    ' Prepara un relevo antes de que el agente actual deje de estar disponible.',
+  'simulated provider usage window': 'ventana de uso simulada del proveedor',
+  'provider usage window': 'ventana de uso del proveedor',
+  "local room token budget (MADRE's own soft limit, not the provider's quota; cache reads count a tenth)":
+    'presupuesto local de tokens de la sala (el límite blando de MADRE, no la cuota del proveedor; las lecturas de caché cuentan una décima)',
+  'has used {pct}% of its {label} and another turn like the last one would reach {projected}%.':
+    'lleva {pct}% de su {label} y otro turno como el anterior llegaría a {projected}%.',
+  'has used {pct}% of its {label}.': 'lleva {pct}% de su {label}.',
+  '{label} was interrupted before it started: {why}.': '{label} se interrumpió antes de arrancar: {why}.',
+  '{label} was interrupted: {why}.': '{label} se interrumpió: {why}.',
+  'MADRE is shutting down': 'MADRE se está cerrando',
+  'Google says the AI Studio project behind this Gemini key has no prepaid credits left; every request is refused (HTTP 429) until it is topped up.':
+    'Google dice que el proyecto de AI Studio detrás de esta llave de Gemini se quedó sin créditos prepagados; cada petición se rechaza (HTTP 429) hasta que se recargue.',
+  'Add credits at https://ai.studio/projects, or switch the Gemini CLI to another key.':
+    'Agrega créditos en https://ai.studio/projects, o cambia el CLI de Gemini a otra llave.',
+  "Wait a minute, or pick an explicit model such as gemini-3-flash-preview to skip the router; check the key's quota at aistudio.google.com.":
+    'Espera un minuto, o elige un modelo explícito como gemini-3-flash-preview para saltarte el enrutador; revisa la cuota de la llave en aistudio.google.com.',
+  'Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.':
+    'Google reportó el modelo como no disponible (HTTP 503) y el CLI siguió reintentando.',
+  'Try again shortly or choose another model.': 'Vuelve a intentar en un momento o elige otro modelo.',
+  'Google rejected the Gemini credentials.': 'Google rechazó las credenciales de Gemini.',
+  'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
+
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',
   'Interface in Spanish': 'Interfaz en español',

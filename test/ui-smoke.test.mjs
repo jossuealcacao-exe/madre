@@ -198,8 +198,8 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.ok(clickHandler, 'sphere click handler installed');
   clickHandler({ target: { closest: () => sphere } });
   assert.equal(popup.hidden, false);
-  assert.match(popup.textContent, /of the provider's [0-9]*[hd] limit|budget tokens · local 5h window/);
-  assert.match(popup.textContent, /turns/);
+  assert.match(popup.textContent, /del límite de [0-9]*[hd] del proveedor|tokens de presupuesto · ventana local/);
+  assert.match(popup.textContent, /turnos/);
   const statsText = popup.textContent;
   assert.ok(/\d+/.test(statsText));
 
@@ -287,7 +287,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.equal(ash.querySelector('.state').textContent, 'ON', 'the state is not a plain word');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
   assert.match(ash.querySelector('.card-fold').textContent, /QUÉ TOCA/);
-  assert.match(ash.querySelector('.card-fold').textContent, /EXPAND|COLLAPSE/, 'the fold has no button');
+  assert.match(ash.querySelector('.card-fold').textContent, /ABRIR|CERRAR/, 'the fold has no button');
 
   // The reading fills the card's own panel once the economy answers.
   await new Promise((resolve) => setTimeout(resolve, 0));

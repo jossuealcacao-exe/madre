@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { t } from '../i18n.mjs';
 
 function signalProcessGroup(child, signal) {
   if (!child.pid) return false;
@@ -48,7 +49,7 @@ export function runReadonlyProcess({
 }) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new Error(`${label} was interrupted before it started: ${typeof signal.reason === 'string' ? signal.reason : 'MADRE is shutting down'}.`));
+      reject(new Error(t('{label} was interrupted before it started: {why}.', { label, why: typeof signal.reason === 'string' ? signal.reason : t('MADRE is shutting down') })));
       return;
     }
     const child = spawn(executable, args, {
@@ -81,8 +82,8 @@ export function runReadonlyProcess({
 
     const onAbort = () => {
       terminateProcessTree(child, { graceMs: killGraceMs });
-      const reason = typeof signal?.reason === 'string' ? signal.reason : 'MADRE is shutting down';
-      finish(() => reject(new Error(`${label} was interrupted: ${reason}.`)));
+      const reason = typeof signal?.reason === 'string' ? signal.reason : t('MADRE is shutting down');
+      finish(() => reject(new Error(t('{label} was interrupted: {why}.', { label, why: reason }))));
     };
     const finish = (operation) => {
       if (settled) return;

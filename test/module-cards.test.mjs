@@ -141,7 +141,7 @@ test('a fold inside a card is not one of MU/TH/UR\'s sections, and carries its o
   assert.match(app, /function everyFold\(\) \{ return \[\.\.\.document\.querySelectorAll\('\.mother-section \.fold'\)\]/);
 
   // It says what clicking it will do, and it remembers being left open, like every other fold.
-  assert.match(fold, /caret\.textContent = box\.open \? '▾ COLLAPSE' : '▸ EXPAND'/);
+  assert.match(fold, /caret\.textContent = box\.open \? t\('▾ COLLAPSE'\) : t\('▸ EXPAND'\)/);
   assert.match(fold, /rememberFold\(key, box\.open\)/);
   assert.match(css, /\.card-fold > summary \.caret \{/);
 });

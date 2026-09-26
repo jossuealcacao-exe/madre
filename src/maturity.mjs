@@ -90,5 +90,5 @@ export const STAGES = [
 // for: this list is built when the file is imported, and the room learns its language after.
 export function stageOf(score) {
   const stage = STAGES.find((one) => score >= one.at) ?? STAGES.at(-1);
-  return { ...stage, says: t(stage.says) };
+  return { ...stage, label: t(stage.label), says: t(stage.says) };
 }

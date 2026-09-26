@@ -14,7 +14,7 @@ test('mother: the long sections fold, and remember whether you left them open', 
   assert.ok(helper.includes("el('details', 'fold')"), 'folding is not built on a native disclosure');
   assert.ok(helper.includes("el('summary')"), 'the header is not the thing you click');
   assert.match(app, /folding\(section, t\('CONNECTIONS · \{n\} OF \{total\} SIGNED IN'/, 'connections does not fold');
-  assert.match(app, /folding\(section, `RELEASE CHANNEL/, 'the release channel does not fold');
+  assert.match(app, /folding\(section, `\$\{t\('RELEASE CHANNEL'\)\}/, 'the release channel does not fold');
 
   // A panel that forgets is one you fight with on every visit, and a private window that cannot
   // remember must still open.
@@ -27,7 +27,7 @@ test('mother: a new version is a red mark and nothing else until it is opened', 
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
 
   // Closed by default: a room that is up to date has nothing to say there.
-  const release = app.slice(app.indexOf('folding(section, `RELEASE CHANNEL'), app.indexOf('folding(section, `RELEASE CHANNEL') + 600);
+  const release = app.slice(app.indexOf("folding(section, `${t('RELEASE CHANNEL')}"), app.indexOf("folding(section, `${t('RELEASE CHANNEL')}") + 700);
   assert.match(release, /open: false/, 'the release channel opens itself');
   assert.match(release, /badge: info\.available \? \{[^}]*urgent: true/, 'a new version raises no mark');
   // The header no longer announces it: that is what the mark is for.
@@ -78,7 +78,7 @@ test('mother: every long section folds, and one button moves all of them', async
   // One button for the panel, and it says what it will do rather than what the panel is.
   assert.match(page, /id="fold-all"/, 'there is no way to open everything at once');
   const all = app.slice(app.indexOf('function everyFold('), app.indexOf('function folding('));
-  assert.match(all, /some\(\(fold\) => !fold\.open\) \? 'EXPAND ALL' : 'COLLAPSE ALL'/, 'the button does not say what it will do');
+  assert.match(all, /some\(\(fold\) => !fold\.open\) \? t\('EXPAND ALL'\) : t\('COLLAPSE ALL'\)/, 'the button does not say what it will do');
   assert.match(all, /button\.hidden = folds\.length < 2/, 'the button shows even when there is nothing to move');
   assert.match(all, /rememberFold\(fold\.dataset\.fold, open\)/, 'moving everything at once is not remembered');
 });
@@ -112,7 +112,7 @@ test('mother: every section that folds carries the same button, and there is onl
   // The panel had two ways of folding: a pair of sections with a real EXPAND/COLLAPSE button,
   // and the newer ones with a bare glyph. One way now, and it is the one that uses words.
   const helper = app.slice(app.indexOf('function folding('), app.indexOf('function connectionCard('));
-  assert.match(helper, /'▾ COLLAPSE' : '▸ EXPAND'/, 'the fold does not say what clicking it will do');
+  assert.match(helper, /t\('▾ COLLAPSE'\) : t\('▸ EXPAND'\)/, 'the fold does not say what clicking it will do');
   assert.match(helper, /box\.addEventListener\('toggle', \(\) => \{ label\(\)/, 'the button does not change when the section does');
 
   // The older pair go through the same helper now, so nothing is left rendering its own header.

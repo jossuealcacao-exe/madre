@@ -1,4 +1,5 @@
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { t } from '../i18n.mjs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runReadonlyProcess } from './process.mjs';
@@ -234,21 +235,21 @@ export async function cleanupRuntimeRoot(runtimeRoot, { attempts = 6, delayMs = 
 export function diagnoseGeminiStderr(stderr) {
   const text = String(stderr ?? '');
   if (/prepayment credits are depleted/i.test(text)) {
-    return { code: 'CREDITS_DEPLETED', message: 'Google says the AI Studio project behind this Gemini key has no prepaid credits left; every request is refused (HTTP 429) until it is topped up.', hint: 'Add credits at https://ai.studio/projects, or switch the Gemini CLI to another key.' };
+    return { code: 'CREDITS_DEPLETED', message: t('Google says the AI Studio project behind this Gemini key has no prepaid credits left; every request is refused (HTTP 429) until it is topped up.'), hint: t('Add credits at https://ai.studio/projects, or switch the Gemini CLI to another key.') };
   }
   if (/status:\s*429|\b429\b|RESOURCE_EXHAUSTED|rate ?limit|quota exceeded/i.test(text)) {
     const router = /ClassifierStrategy|\.route\b/.test(text);
     return {
       code: 'RATE_LIMITED',
       message: `Google is rate-limiting this Gemini key (HTTP 429)${router ? ' while its "auto" router picked a model' : ''}; the CLI kept retrying with backoff.`,
-      hint: 'Wait a minute, or pick an explicit model such as gemini-3-flash-preview to skip the router; check the key\'s quota at aistudio.google.com.',
+      hint: t('Wait a minute, or pick an explicit model such as gemini-3-flash-preview to skip the router; check the key\'s quota at aistudio.google.com.'),
     };
   }
   if (/status:?\s*503|UNAVAILABLE|high demand/i.test(text)) {
-    return { code: 'UNAVAILABLE', message: 'Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.', hint: 'Try again shortly or choose another model.' };
+    return { code: 'UNAVAILABLE', message: t('Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.'), hint: t('Try again shortly or choose another model.') };
   }
   if (/status:\s*40[13]|PERMISSION_DENIED|API key not valid|IneligibleTierError/i.test(text)) {
-    return { code: 'AUTH', message: 'Google rejected the Gemini credentials.', hint: 'Run `gemini` and use /auth, or check GEMINI_API_KEY.' };
+    return { code: 'AUTH', message: t('Google rejected the Gemini credentials.'), hint: t('Run `gemini` and use /auth, or check GEMINI_API_KEY.') };
   }
   return null;
 }

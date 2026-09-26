@@ -1,3 +1,5 @@
+import { t } from './i18n.mjs';
+
 const severity = { normal: 0, warning: 1, critical: 2, exhausted: 3 };
 
 export function classifyUsagePercent(value) {
@@ -40,17 +42,19 @@ export class UsageSentinel {
     }
     if (level === 'normal' || severity[level] <= severity[previous]) return null;
 
+    // Said in the room's language: this is MADRE's own voice, not a CLI's output. What is
+    // already in the ledger keeps the words it was written with.
     const destination = alternatives.length
-      ? ` Continue with ${alternatives.map((item) => `@${item}`).join(' or ')}.`
-      : ' Prepare a handoff before the current agent becomes unavailable.';
+      ? t(' Continue with {who}.', { who: alternatives.map((item) => `@${item}`).join(' or ') })
+      : t(' Prepare a handoff before the current agent becomes unavailable.');
     const label = source === 'room-soft-budget'
-      ? 'local room token budget (MADRE\'s own soft limit, not the provider\'s quota; cache reads count a tenth)'
+      ? t("local room token budget (MADRE's own soft limit, not the provider's quota; cache reads count a tenth)")
       : source === 'test-simulation'
-        ? 'simulated provider usage window'
-        : 'provider usage window';
+        ? t('simulated provider usage window')
+        : t('provider usage window');
     const usage = byProjection
-      ? `has used ${Math.round(percent)}% of its ${label} and another turn like the last one would reach ${Math.round(projected)}%.`
-      : `has used ${Math.round(percent)}% of its ${label}.`;
+      ? t('has used {pct}% of its {label} and another turn like the last one would reach {projected}%.', { pct: Math.round(percent), label, projected: Math.round(projected) })
+      : t('has used {pct}% of its {label}.', { pct: Math.round(percent), label });
     return {
       agent,
       usedPercent: percent,
