@@ -97,7 +97,7 @@ export function runReadonlyProcess({
       terminateProcessTree(child, { graceMs: killGraceMs });
       // The last thing the agent said is usually the reason it was slow.
       const lastLine = `${stderr}\n${stdout}`.split('\n').map((line) => line.trim()).filter(Boolean).at(-1);
-      const error = new Error(`${label} did not respond before the timeout (${Math.round(timeoutMs / 1000)}s).${lastLine ? ` Last output: ${lastLine.slice(0, 200)}` : ''}`);
+      const error = new Error(t('{label} did not respond before the timeout ({seconds}s).', { label, seconds: Math.round(timeoutMs / 1000) }) + (lastLine ? t(' Last output: {output}', { output: lastLine.slice(0, 200) }) : ''));
       error.code = 'TIMEOUT';
       error.partialOutput = stdout;
       error.partialStderr = stderr.slice(-2000);

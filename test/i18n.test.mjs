@@ -177,3 +177,26 @@ test("i18n: every condition MU/TH/UR holds reads in the room's language", async 
   assert.match(allConditions().find((one) => one.id === 'not-installed').title, /not found on this computer/);
   setPage('es');
 });
+
+test('i18n: a failure recorded in another language is read in this one', async () => {
+  const { resay } = await import('../public/resay.js');
+
+  // The ledger keeps the sentence MADRE wrote at the time; the screen says it again, now.
+  const old = "PULSE exhausted: @claude has used 99% of its local room token budget (MADRE's own soft limit, not the provider's quota; cache reads count a tenth) and another turn like the last one would reach 103%. Continue with @codex or @gemini.";
+  const said = resay(old, { when: 'es' });
+  assert.match(said, /^MADRE agotada: @claude lleva 99% de su presupuesto local/);
+  assert.match(said, /otro turno como el anterior llegaría a 103%/);
+  assert.match(said, /Sigue con @codex o @gemini\./, 'the joiner between agents stayed English');
+  assert.match(resay('Gemini was interrupted: STOPALL by the human.', { when: 'es' }), /Gemini se interrumpió: STOPALL por la humana\./);
+
+  // What a CLI printed is not MADRE's to translate: a person may need to search for it word for
+  // word, and it was never MADRE's sentence.
+  for (const theirs of [
+    'API Error: 500 Internal server error. This is a server-side issue, usually temporary.',
+    "ENOTEMPTY: directory not empty, rmdir '/var/folders/ph/x/T/pulse-gemini-cR9NW2/.gemini'",
+    'TypeError: Cannot read properties of undefined (reading \'fixes\')',
+  ]) assert.equal(resay(theirs, { when: 'es' }), theirs);
+
+  // And in English nothing is re-said at all.
+  assert.equal(resay(old, { when: 'en' }), old);
+});

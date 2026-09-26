@@ -26,6 +26,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Lo que MADRE escribió en otro idioma, dicho otra vez
+- Las condiciones registradas son historia: cada una guarda la frase que MADRE escribió aquel día, y una sala que cambió de idioma las seguía enseñando en inglés. El ledger no se reescribe —eso sería falsificar el registro— pero **las palabras son solo cómo se lee**, así que ahora se vuelven a decir camino a la pantalla: «MADRE agotada: @claude lleva 99% de su presupuesto local de tokens de la sala… Sigue con @codex o @gemini.»
+- Solo se vuelven a decir **las frases que MADRE escribe sobre sí misma**, y están declaradas una por una. Lo que imprimió un CLI se queda exactamente como lo imprimió —`API Error: 500`, un ENOTEMPTY de Node, una traza— porque ese texto no es de MADRE y quien lo lee puede necesitar buscarlo palabra por palabra.
+- De paso quedaron en español las piezas que faltaban de esas mismas frases: el nivel del aviso (agotada · en crítico · en aviso), la conjunción entre agentes («@codex **o** @gemini», que un MADRE más viejo escribía en inglés), el STOPALL de la humana y el tiempo límite de un agente que no contestó.
+- Y las salas viejas dicen `PULSE exhausted:` porque así se llamaba esto: al leerse se dice MADRE.
+
 ### Lo que seguía en inglés dentro de MU/TH/UR
 - El panel entero: el canal de releases con su aviso y su interruptor, el centinela con sus reportes, el arranque («INTERFAZ 2037 LISTA PARA CONSULTA · TRIPULACIÓN: 5 AGENTES · 5 LISTOS»), las condiciones registradas, y los pliegues — `▸ ABRIR`, `▾ CERRAR`, `ABRIR TODO`.
 - El **globo de cada esfera**, que era todo inglés: la ventana local, el límite del proveedor, los turnos, el último turno, el costo reportado, la sesión, la versión, y las cinco capacidades (lee · ve imágenes · crea · genera imágenes · web).

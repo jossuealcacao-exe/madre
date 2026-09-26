@@ -1,4 +1,5 @@
 import { invokeCodex, buildCodexArgs } from './adapters/codex.mjs';
+import { t } from './i18n.mjs';
 import { invokeClaude, buildClaudeArgs } from './adapters/claude.mjs';
 import { invokeGemini, buildGeminiArgs } from './adapters/gemini.mjs';
 import { invokeOpenCode, buildOpenCodeArgs } from './adapters/opencode.mjs';
@@ -899,7 +900,7 @@ export class Room {
   }
 
   // Master brake: every plan and every in-flight turn, recorded as one event.
-  async stopAll(reason = 'STOPALL by the human') {
+  async stopAll(reason = t('STOPALL by the human')) {
     const plans = this.#plans.size;
     const turns = this.#turns.size;
     for (const plan of this.#plans.values()) plan.stopped = reason;

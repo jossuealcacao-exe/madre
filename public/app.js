@@ -2,6 +2,7 @@ import { brandOf } from './brands.js';
 import { CONDITIONS, allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, isLanguage, language, pick, setLanguage, t } from './i18n.js';
+import { resay } from './resay.js';
 
 // Before anything is written on the screen. The constants below are sentences, and a sentence
 // chosen in the wrong language stays wrong for the life of the page.
@@ -2213,8 +2214,8 @@ function renderFailure(event) {
   recordFailure({ time: event.timestamp, agent: target, error, recovered });
   removeThinking(messageId);
   const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
-  node.append(el('span', 'label', recovered ? `${label(target)} · turn recovered after restart` : `${label(target)} could not answer`));
-  node.append(error);
+  node.append(el('span', 'label', recovered ? t('{label} · turn recovered after restart', { label: label(target) }) : t('{label} could not answer', { label: label(target) })));
+  node.append(resay(error));
   state.lastSender = null;
   return node;
 }
@@ -3355,7 +3356,8 @@ function renderMotherRecorded() {
     const rowNode = paint(el('div', 'mother-record'), failure.agent);
     rowNode.append(el('span', 't', formatTime(failure.time)));
     rowNode.append(el('span', 'a', failure.agent ?? 'room'));
-    const full = String(failure.error).trim();
+    // A record written in another language is read in this one: the ledger keeps its words.
+    const full = resay(String(failure.error).trim());
     const firstLine = full.split('\n')[0].slice(0, 220);
     const errorNode = el('span', 'e', firstLine);
     if (full.length > firstLine.length) {
@@ -3366,7 +3368,7 @@ function renderMotherRecorded() {
       const flip = () => {
         const open = errorNode.classList.toggle('open');
         errorNode.textContent = open ? full.slice(0, 4000) : firstLine;
-        errorNode.title = open ? 'Collapse' : 'Expand';
+        errorNode.title = open ? t('Collapse') : t('Expand');
       };
       errorNode.addEventListener('click', flip);
       errorNode.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); flip(); } });

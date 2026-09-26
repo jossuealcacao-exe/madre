@@ -1554,6 +1554,14 @@ export const ES = {
 
   // ── LO QUE MADRE DICE CUANDO ALGO FALLA O SE ACABA ───────────────────────
   // Esto se escribe en el ledger, así que lo viejo conserva las palabras con que se escribió.
+  'exhausted': 'agotada',
+  'critical': 'en crítico',
+  'warning': 'en aviso',
+  ' or ': ' o ',
+  'STOPALL by the human': 'STOPALL por la humana',
+  '{label} · turn recovered after restart': '{label} · turno recuperado después del reinicio',
+  '{label} could not answer': '{label} no pudo contestar',
+  'Collapse': 'Cerrar',
   ' Continue with {who}.': ' Sigue con {who}.',
   ' Prepare a handoff before the current agent becomes unavailable.':
     ' Prepara un relevo antes de que el agente actual deje de estar disponible.',
@@ -1566,6 +1574,8 @@ export const ES = {
   'has used {pct}% of its {label}.': 'lleva {pct}% de su {label}.',
   '{label} was interrupted before it started: {why}.': '{label} se interrumpió antes de arrancar: {why}.',
   '{label} was interrupted: {why}.': '{label} se interrumpió: {why}.',
+  '{label} did not respond before the timeout ({seconds}s).': '{label} no contestó antes del tiempo límite ({seconds}s).',
+  ' Last output: {output}': ' Última salida: {output}',
   'MADRE is shutting down': 'MADRE se está cerrando',
   'Google says the AI Studio project behind this Gemini key has no prepaid credits left; every request is refused (HTTP 429) until it is topped up.':
     'Google dice que el proyecto de AI Studio detrás de esta llave de Gemini se quedó sin créditos prepagados; cada petición se rechaza (HTTP 429) hasta que se recargue.',

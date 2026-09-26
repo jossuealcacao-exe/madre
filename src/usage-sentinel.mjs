@@ -45,7 +45,7 @@ export class UsageSentinel {
     // Said in the room's language: this is MADRE's own voice, not a CLI's output. What is
     // already in the ledger keeps the words it was written with.
     const destination = alternatives.length
-      ? t(' Continue with {who}.', { who: alternatives.map((item) => `@${item}`).join(' or ') })
+      ? t(' Continue with {who}.', { who: alternatives.map((item) => `@${item}`).join(t(' or ')) })
       : t(' Prepare a handoff before the current agent becomes unavailable.');
     const label = source === 'room-soft-budget'
       ? t("local room token budget (MADRE's own soft limit, not the provider's quota; cache reads count a tenth)")
@@ -63,7 +63,8 @@ export class UsageSentinel {
       source,
       resetAt,
       alternatives,
-      message: `MADRE ${level}: @${agent} ${usage}${destination}`,
+      // The level is a word on a screen, so it is said in the room's language too.
+      message: `MADRE ${t(level)}: @${agent} ${usage}${destination}`,
     };
   }
 }
