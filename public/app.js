@@ -1843,6 +1843,12 @@ function renderHandoff(event) {
 
 const classify = (percent) => (percent >= 100 ? 'exhausted' : percent >= 90 ? 'critical' : percent >= 80 ? 'warning' : 'normal');
 
+// The level of a limit warning is an id in the ledger and a word on the screen, like a memory's
+// kind. Declared one by one so the catalogue's guard sees all three: the sentence beside them was
+// said in Spanish while the word in front of it stayed English.
+const LEVEL_WORDS = { warning: t('warning'), critical: t('critical'), exhausted: t('exhausted') };
+const levelWord = (level) => LEVEL_WORDS[level] ?? String(level);
+
 function renderWarning(event) {
   const { agent, usedPercent, projectedPercent, level, message, alternatives = [], source } = event.payload;
   const byProjection = Number.isFinite(projectedPercent) && projectedPercent > usedPercent && classify(projectedPercent) !== classify(usedPercent);
@@ -1850,7 +1856,7 @@ function renderWarning(event) {
   const node = el('div', `system ${level === 'warning' ? 'warn' : 'crit'}`);
   node.title = message;
   const scope = source === 'room-soft-budget' ? t('local budget') : source?.startsWith('official') ? t('provider quota') : source === 'test-simulation' ? t('simulated window') : t('usage window');
-  node.append(el('b', null, byProjection ? t('projection · ') : `${level} · `));
+  node.append(el('b', null, byProjection ? t('projection · ') : `${levelWord(level)} · `));
   node.append(el('b', null, `@${agent} `));
   node.append(byProjection
     ? t('at {pct}% of {scope} · next turn like the last → {projected}%', { pct: Math.round(usedPercent), scope, projected: Math.round(projectedPercent) })

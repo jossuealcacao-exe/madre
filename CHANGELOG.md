@@ -26,6 +26,10 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### El nivel de un aviso, en español
+
+- `WARNING · @CODEX 84% DE CUOTA DEL PROVEEDOR USADO · SIGUE CON @CLAUDE`. La frase estaba en español y **la palabra de enfrente no**: el hilo imprimía el id del nivel tal cual. Las tres palabras llevaban meses en el catálogo —el servidor ya las usaba al escribir el aviso— y la página nunca las pidió. Ahora dice `EN AVISO`, `EN CRÍTICO` y `AGOTADA`, como su hermano `CLARO ·` ya decía. Declaradas una por una, para que la guardia del catálogo las vea.
+
 ### Un modo que solo se alcanzaba con el ratón, y papeles que se contradecían
 
 - **`#4` existía en el menú y no se podía teclear.** El compositor aceptaba `#0` a `#3`; el chip ofrecía los cinco. Ahora acepta los cinco — y al arreglarlo salió lo de verdad: **teclear `#3` armaba CONTROL sin pedir nada**, mientras que hacer clic en `#3` abría la anulación. El mismo modo, dos precios. Ahora los dos altos pasan por la misma puerta: el token sale del mensaje, el texto vuelve al campo y la anulación decide. El techo sigue siendo palabra del servidor (`room.modeCheck`); esto es la ceremonia delante de él.
