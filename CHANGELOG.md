@@ -4,7 +4,7 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.4.0 · Sin publicar
+## 0.4.0 · 2026-09-26
 
 ### Actualizar de verdad, y una puerta para la comunidad
 - El `↻` de una ficha miraba y nada más: OLLAMA decía `0.34.3 AVAILABLE` y PLAYWRIGHT `NEWEST IS 0.0.82`, y no había manera de hacer nada al respecto. Ahora, cuando hay algo más nuevo y el módulo sabe ir por ello, junto a la versión aparece el botón. Son dos llamadas: la primera pregunta qué se correría y responde con el comando, la segunda corre exactamente eso. MADRE no corre un comando que no hayas leído, y la salida cae en la sala línea por línea como cualquier otra instalación.
