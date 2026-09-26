@@ -1,5 +1,5 @@
 import { brandOf } from './brands.js';
-import { CONDITIONS, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
+import { CONDITIONS, allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, isLanguage, language, pick, setLanguage, t } from './i18n.js';
 
@@ -3382,7 +3382,7 @@ function renderMotherRecorded() {
         mother.input.value = '';
         // Choosing a fix from the log is a request to see it: the list opens and stays open.
         rememberFold('known', true);
-        renderMotherKnown(CONDITIONS, new Set(matches.map((item) => item.id)), failure.agent);
+        renderMotherKnown(allConditions(), new Set(matches.map((item) => item.id)), failure.agent);
         document.getElementById(`mother-${condition.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       links.append(jump);
@@ -3392,7 +3392,7 @@ function renderMotherRecorded() {
   }
 }
 
-function renderMotherKnown(list = CONDITIONS, hits = new Set(), agent = null) {
+function renderMotherKnown(list = allConditions(), hits = new Set(), agent = null) {
   mother.known.replaceChildren();
   let collapsed = false;
   try { collapsed = localStorage.getItem('pulse.mother.known') === 'collapsed'; } catch { /* no storage */ }

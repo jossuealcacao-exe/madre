@@ -49,7 +49,7 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   // Everything that speaks: the page, the console inside the core, and the server text that
   // reaches a screen — a module saying what it is, a reading saying what it means. One
   // catalogue for both sides of the wire, so a sentence is never translated twice.
-  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html')];
+  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html'), join(import.meta.dirname, '..', 'public', 'troubleshooting.js')];
   const walk = async (at) => {
     for (const entry of await readdir(at, { withFileTypes: true })) {
       if (entry.isDirectory()) await walk(join(at, entry.name));
@@ -151,4 +151,29 @@ test('i18n: every word the markup shows is one the catalogue knows', async () =>
   for (const text of found) {
     assert.ok(Object.hasOwn(ES, text) || NOT_TRANSLATED.has(text), `index.html shows "${text.slice(0, 60)}…" and nothing translates it`);
   }
+});
+
+test("i18n: every condition MU/TH/UR holds reads in the room's language", async () => {
+  const { CONDITIONS, allConditions, diagnose } = await import('../public/troubleshooting.js');
+  const { setLanguage: setPage } = await import('../public/i18n.js');
+
+  // All 51, in all three of the fields a person reads. What MATCHES a failure is not one of
+  // them: those patterns are tested against what a CLI printed, and a CLI prints English.
+  for (const condition of CONDITIONS) {
+    for (const field of ['title', 'diagnosis', 'remedy']) {
+      assert.ok(Object.hasOwn(ES, condition[field]), `${condition.id}.${field} is not in the Spanish catalogue`);
+    }
+  }
+  setPage('es');
+  const said = allConditions();
+  assert.equal(said.length, CONDITIONS.length);
+  assert.match(said.find((one) => one.id === 'not-installed').title, /no está en esta computadora/i);
+  // The patterns come through untouched, so a failure is still recognised by what it printed.
+  for (const [at, condition] of said.entries()) assert.equal(condition.match, CONDITIONS[at].match);
+  assert.equal(diagnose('is not installed on this computer').some((one) => one.id === 'not-installed'), true);
+  // And the commands are commands: they are not translated, in either language.
+  assert.deepEqual(said.find((one) => one.id === 'node-version').fixes, CONDITIONS.find((one) => one.id === 'node-version').fixes);
+  setPage('en');
+  assert.match(allConditions().find((one) => one.id === 'not-installed').title, /not found on this computer/);
+  setPage('es');
 });

@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 // MU/TH/UR knowledge base: known conditions, how to recognise them in the
 // room's own failure records, and the remedy as terminal commands per OS.
 //
@@ -582,13 +584,25 @@ export function detectPlatform(nav = globalThis.navigator) {
 // only match their own agent; generic ones match anyone.
 export function diagnose(errorText, agent = null) {
   const text = String(errorText ?? '');
-  return CONDITIONS.filter((condition) => (!condition.agent || !agent || condition.agent === agent) && condition.match.test(text));
+  return CONDITIONS.filter((condition) => (!condition.agent || !agent || condition.agent === agent) && condition.match.test(text)).map(said);
 }
+
+// A condition reads in the room's language; what it MATCHES does not. The `match` patterns are
+// tested against what a CLI printed, and a CLI prints English whatever the room speaks — so the
+// patterns stay exactly as they are, and only the words a person reads go through the catalogue.
+// Said at call time, because the table is built when this file is imported and the room learns
+// its language after.
+export function said(condition) {
+  return { ...condition, title: t(condition.title), diagnosis: t(condition.diagnosis), remedy: t(condition.remedy) };
+}
+export const allConditions = () => CONDITIONS.map(said);
 
 export function searchConditions(query) {
   const needle = String(query ?? '').trim().toLowerCase();
-  if (!needle) return CONDITIONS;
-  return CONDITIONS.filter((condition) => [condition.id, condition.title, condition.diagnosis, condition.remedy, condition.agent ?? '']
+  const all = allConditions();
+  if (!needle) return all;
+  // Searched in the language it is read in, plus the id and the agent, which are never translated.
+  return all.filter((condition) => [condition.id, condition.title, condition.diagnosis, condition.remedy, condition.agent ?? '']
     .join(' ').toLowerCase().includes(needle));
 }
 

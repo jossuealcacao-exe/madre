@@ -26,6 +26,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Las 51 condiciones de MU/TH/UR
+- El último bloque grande: el título, el diagnóstico y el remedio de las cincuenta y una condiciones del catálogo. Unas cinco mil palabras, escritas en español, no traducidas — incluidas las largas de verdad: los cinco modos de permiso, cómo funciona la memoria de la sala, qué mide cada una de las tres pruebas, qué es una aberración y por qué una memoria está fría.
+- **Lo que se lee va en español; lo que RECONOCE una falla no.** Los patrones de cada condición se prueban contra lo que imprimió un CLI, y un CLI imprime en inglés hable la sala lo que hable: se quedan exactamente como estaban. Los comandos de cada remedio tampoco se traducen: son comandos.
+- Y se dice al momento de leerlas, no al importar el archivo: la tabla se arma cuando se carga el módulo y la sala aprende su idioma después. La búsqueda también busca en el idioma en que se lee, así que escribir «sesión» encuentra lo que antes solo encontraba «session».
+- **1,003 entradas** en el catálogo. Con esto, la interfaz entera de MADRE —la sala, los paneles, el núcleo, los errores, el marcado y el catálogo de diagnóstico— está en español.
+
 ### El marcado entero, y los errores de la sala
 - Quedaban **143 frases dentro de `index.html`** que ninguna tabla alcanzaba: los diálogos de MU/TH/UR y de NOSTROMO, la puerta con la designación, la anulación de mando, el recorrido de cuatro pasos, la ficha de cada memoria, ABRIR TODO y CERRAR TODO, OLVIDAR ESTA MEMORIA, la advertencia de MOTHER. Estaban ahí porque la lista de selectores que las traducía se quedó corta el día que alguien agregó un diálogo.
 - Así que ya no hay lista: la página **recorre su propio marcado** una vez, antes del primer pintado, y pasa por el catálogo cada nodo de texto y cada `title`, `placeholder` y `aria-label`. Lo que el catálogo no conoce vuelve como estaba, así que los comandos dentro de `<code>`, el nombre del proyecto y los nombres de la nave no necesitan excepción: simplemente no están ahí.
