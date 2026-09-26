@@ -26,6 +26,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Un ejemplo se teclea, así que se dice en tu idioma
+
+- La sala vacía invitaba a empezar con `@codex summarize this project`. La caminata que traduce el marcado **salta `CODE` y `PRE` a propósito** —lo que lee una máquina no se traduce, y `madre doctor` tiene que seguir siendo `madre doctor`— pero ese de ahí no era código: era un ejemplo de **lo que tú escribirías**, y eso es una frase como cualquier otra. Ahora se marca con `data-say` quien la escribe a mano, y dice `@codex resume este proyecto`.
+- Con él, el nombre de respaldo cuando MADRE no sabe cómo se llama tu carpeta: «este proyecto», no «this project».
+
 ### La leyenda de NOSTROMO, y una barra que cabía en un renglón
 
 - Las cinco clases de memoria se dibujaban con su **id**, no con su nombre: `DECISION`, `FACT`, `PREFERENCE`, `QUESTION`, `ABERRATION` en una sala entera en español. Ahora la leyenda, la ficha de cada memoria, el globo de cada estrella y las píldoras del hilo dicen DECISIÓN, HECHO, PREFERENCIA, PREGUNTA y ABERRACIÓN. El id en el ledger no se mueve: lo que cambia es la palabra en pantalla, y las cinco están declaradas una por una para que la guardia del catálogo las vea de verdad en vez de dejarlas pasar por parecerse a un identificador del código.

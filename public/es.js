@@ -1958,6 +1958,8 @@ export const ES = {
   'MADRE {latest} is on npm · you run {current} · open MU/TH/UR for the command':
     'MADRE {latest} está en npm · tú corres la {current} · abre MU/TH/UR para el comando',
   'It could not be saved: {error}': 'No se pudo guardar: {error}',
+  '@codex summarize this project': '@codex resume este proyecto',
+  'this project': 'este proyecto',
   'GRANTED': 'CONCEDIDO',
   'just now': 'ahora mismo',
   '{n} min ago': 'hace {n} min',

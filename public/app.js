@@ -1049,7 +1049,7 @@ function renderEmptyStarts() {
   const ready = [...state.agents.values()].filter((agent) => agent.ready && agent.id !== 'madre');
   box.replaceChildren();
   if (!ready.length) return;
-  const project = (state.projectRoot ?? '').split('/').filter(Boolean).pop() || 'this project';
+  const project = (state.projectRoot ?? '').split('/').filter(Boolean).pop() || t('this project');
   for (const text of [
     t('Explain {project} to me: what it does, how it runs, and where the important code lives.', { project }),
     t('Read the project and name the three things most likely to break. Say why, with file and line.'),
@@ -2486,7 +2486,13 @@ function translateMarkup(node) {
       if (text) { const said = t(text); if (said !== text) kid.nodeValue = kid.nodeValue.replace(text, said); }
       continue;
     }
-    if (KEEP_MARKUP.test(kid.tagName ?? '')) continue;
+    // CODE and PRE hold what a machine reads, so the walk leaves them alone. `data-say` is the
+    // exception, written by hand: an example of what to TYPE at MADRE is a sentence a person
+    // says, and it belongs in the reader's language like any other sentence on the page.
+    if (KEEP_MARKUP.test(kid.tagName ?? '')) {
+      if (kid.getAttribute?.('data-say') != null) translateMarkup(kid);
+      continue;
+    }
     for (const name of ['title', 'placeholder', 'aria-label']) {
       const value = kid.getAttribute?.(name);
       if (value) { const said = t(value); if (said !== value) kid.setAttribute(name, said); }
