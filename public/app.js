@@ -1765,7 +1765,7 @@ function attachMemoryUsed(payload) {
     const pill = el('button', `pill ${note.kind}${note.via === 'cascade' ? ' carried' : ''}`);
     pill.type = 'button';
     pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
-    pill.append(el('b', null, note.kind), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
+    pill.append(el('b', null, kindWord(note.kind).toLowerCase()), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
     pill.title = `${note.text}\n${note.via === 'cascade'
       ? t('Came along because this room keeps carrying it with one of the others.')
       : t('The archive matched this to what you asked.')} ${t('Click to see it in NOSTROMO.')}`;
@@ -1790,7 +1790,7 @@ function attachMemoryHint(event) {
     const pill = el('button', `pill ${note.kind}`);
     pill.type = 'button';
     pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
-    pill.append(el('b', null, note.kind), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
+    pill.append(el('b', null, kindWord(note.kind).toLowerCase()), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
     pill.title = `${note.text}\n${t('Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in NOSTROMO.', { agent, from: note.fromSequence, through: note.throughSequence })}`;
     pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
     hint.append(pill);
@@ -2024,7 +2024,7 @@ function renderModeRequest(event) {
       const response = await fetch(`/api/modes/${requestId}/decide`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision }) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      button.textContent = decision === 'deny' ? 'DENIED' : 'GRANTED';
+      button.textContent = decision === 'deny' ? t('DENIED') : t('GRANTED');
     } catch (error) {
       toast(`MU/TH/UR › ${error.message}`);
       for (const other of actions.querySelectorAll('button')) other.disabled = false;
@@ -5706,6 +5706,11 @@ function askMotherAbout(conditionId) {
 // preference is a red dwarf, dim and personal and very long lived. A question is a blue dwarf,
 // the hottest thing in the sky and the least settled.
 const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#5cf07a', question: '#3dc6ff', aberration: '#b14cff' };
+// A memory's kind is an id in the ledger and a word on a screen. Only the word is said in the
+// room's language: what was written down never moves. Declared one by one, so the catalogue's
+// guard sees all five and an id nobody translated cannot slip past as itself.
+const KIND_WORDS = { decision: t('DECISION'), fact: t('FACT'), preference: t('PREFERENCE'), question: t('QUESTION'), aberration: t('ABERRATION') };
+const kindWord = (kind) => KIND_WORDS[kind] ?? String(kind).toUpperCase();
 // One kind is not a star. An aberration is a claim the room established is false, and it burns
 // nothing: it is a collapsed body with a ring of what fell into it, and it gives off no light
 // of its own. It is drawn dark on purpose, because it is the one thing in here nobody should
@@ -5872,8 +5877,8 @@ function paintLegend() {
   for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
     const chip = el('span', `k ${kind}`);
     // The star is the name of its class. Writing it out as well says the same thing twice.
-    chip.append(kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), el('i', null, kind.toUpperCase()));
-    chip.title = `${DWARF_CLASS[kind]} · ${kind.toUpperCase()}`;
+    chip.append(kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), el('i', null, kindWord(kind)));
+    chip.title = `${DWARF_CLASS[kind]} · ${kindWord(kind)}`;
     chips.push(chip);
   }
   host.replaceChildren(...chips);
@@ -7018,7 +7023,7 @@ function drawNostromo(t) {
   if (nostromo.hover && nostromo.hover.scale > 0.5) {
     const node = nostromo.hover;
     const p = toScreen(node.x, node.y);
-    const label = `${node.memory.kind.toUpperCase()} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
+    const label = `${kindWord(node.memory.kind)} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
     ctx.font = '11px ' + (getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace');
     const width = ctx.measureText(label).width + 16;
     const lx = Math.min(w - width - 8, Math.max(8, p.x - width / 2));
@@ -7216,13 +7221,13 @@ function agoWords(iso) {
   const when = iso ? Date.parse(iso) : NaN;
   if (!Number.isFinite(when)) return '';
   const seconds = Math.max(0, (Date.now() - when) / 1000);
-  if (seconds < 45) return 'just now';
+  if (seconds < 45) return t('just now');
   const minutes = seconds / 60;
-  if (minutes < 60) return `${Math.round(minutes)} min ago`;
+  if (minutes < 60) return t('{n} min ago', { n: Math.round(minutes) });
   const hours = minutes / 60;
-  if (hours < 24) return `${Math.round(hours)} h ago`;
+  if (hours < 24) return t('{n} h ago', { n: Math.round(hours) });
   const days = hours / 24;
-  return days < 30 ? `${Math.round(days)} d ago` : new Date(when).toLocaleDateString();
+  return days < 30 ? t('{n} d ago', { n: Math.round(days) }) : new Date(when).toLocaleDateString();
 }
 
 // The links this memory has on the map, strongest first. The card shows exactly what is drawn:
@@ -7258,7 +7263,7 @@ function showNostromoCard(node) {
   nostromo.selected = node;
   nostromo.focusLink = null;
   nostromo.card.style.setProperty('--kind', node.color);
-  document.querySelector('#nostromo-card-kind').textContent = memory.kind.toUpperCase();
+  document.querySelector('#nostromo-card-kind').textContent = kindWord(memory.kind);
   document.querySelector('#nostromo-card-text').textContent = memory.text;
   document.querySelector('#nostromo-card-span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
   document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? t(" · on the human's request") : memory.origin === 'flagged' ? t(' · flagged by {who}', { who: memory.detector ?? t('the room') }) : t(' · distilled')}`;
@@ -7271,7 +7276,7 @@ function showNostromoCard(node) {
   links.replaceChildren();
   if (!neighbours.length) links.append(el('li', 'none', t('No theme shared with another memory yet.')));
   for (const { link, node: other } of neighbours) {
-    links.append(wireRow(other, `${Math.round(link.weight * 100)}%`, { link, title: `${other.memory.kind.toUpperCase()} · ${t('{pct}% of the same meaning', { pct: Math.round(link.weight * 100) })}\n${other.memory.text}` }));
+    links.append(wireRow(other, `${Math.round(link.weight * 100)}%`, { link, title: `${kindWord(other.memory.kind)} · ${t('{pct}% of the same meaning', { pct: Math.round(link.weight * 100) })}\n${other.memory.text}` }));
   }
 
   // And what has actually passed between it and the room. Filled from the archive, then kept up.

@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### La leyenda de NOSTROMO, y una barra que cabía en un renglón
+
+- Las cinco clases de memoria se dibujaban con su **id**, no con su nombre: `DECISION`, `FACT`, `PREFERENCE`, `QUESTION`, `ABERRATION` en una sala entera en español. Ahora la leyenda, la ficha de cada memoria, el globo de cada estrella y las píldoras del hilo dicen DECISIÓN, HECHO, PREFERENCIA, PREGUNTA y ABERRACIÓN. El id en el ledger no se mueve: lo que cambia es la palabra en pantalla, y las cinco están declaradas una por una para que la guardia del catálogo las vea de verdad en vez de dejarlas pasar por parecerse a un identificador del código.
+- **Cuánto hace** también estaba a medias: «MEDIDO 1 D AGO». Ahora es «MEDIDO HACE 1 D», y con él el «ahora mismo», los minutos y las horas que se leen en toda la sala.
+- Y `CONCEDIDO` / `NEGADO` en el botón con que resuelves una petición de permiso, que seguían en inglés justo en el momento de decidir.
+- La barra de NOSTROMO tenía cinco columnas y hasta siete cosas que poner: al aparecer PREGUNTAR y RECENTRAR, **SALIR se caía al renglón de abajo**. Ahora la barra fluye en columnas —le caben las que hagan falta— y el subtítulo se recorta con puntos suspensivos en vez de empujar los botones fuera.
+
 ### El recorrido de la primera vez, y la última pasada
 
 - **Faltaba el onboarding.** Los cuatro pasos que le explican la sala a quien llega por primera vez —el compositor, la tripulación, el árbol del proyecto, MU/TH/UR— seguían en inglés, que es justo el peor lugar para dejarlos: es lo primero que alguien lee de MADRE. Ahora arrancan en español, con `EMPEZAR ›` y `SIGUIENTE ›`.

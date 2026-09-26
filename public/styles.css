@@ -302,9 +302,9 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 dialog.nostromo { color: #eef1ea; }
 dialog.nostromo::backdrop { background: #000; }
 .nostromo-frame { --ph: #ffb4ad; --ph-dim: rgba(255, 42, 31, .55); --ph-faint: rgba(255, 42, 31, .16); position: relative; height: 100%; background: #030203; font-family: var(--mono); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
-.nostromo-head { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 18px; align-items: center; padding: 18px 26px 14px; border-bottom: 1px solid var(--ph-faint); color: var(--ph); position: relative; z-index: 2; }
+.nostromo-head { display: grid; grid-template-columns: auto 1fr; grid-auto-flow: column; grid-auto-columns: max-content; gap: 18px; align-items: center; padding: 18px 26px 14px; border-bottom: 1px solid var(--ph-faint); color: var(--ph); position: relative; z-index: 2; }
 .nostromo-head .mother-title { color: var(--nostromo-sun); text-shadow: 0 0 18px color-mix(in srgb, var(--nostromo-sun) 60%, transparent); }
-.nostromo-head .mother-sub { color: var(--ph-dim); }
+.nostromo-head .mother-sub { color: var(--ph-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nostromo-legend { display: flex; gap: 16px; align-items: center; }
 .nostromo-legend .k { display: inline-flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: .16em; }
 .nostromo-legend .k canvas { display: block; }
@@ -509,7 +509,7 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 .nostromo-card .forget:disabled { opacity: .5; cursor: default; animation: none; }
 .nostromo-card .foot { margin: 0; font-size: 9px; letter-spacing: .1em; color: var(--ph-dim); line-height: 1.5; }
 .nostromo-empty { position: absolute; inset: 50% 0 auto 0; margin: 0; text-align: center; font-size: 11px; letter-spacing: .22em; color: var(--ph-dim); }
-@media (max-width: 720px) { .nostromo-head { grid-template-columns: auto 1fr auto; } .nostromo-legend { display: none; } .nostromo-card { right: 16px; left: 16px; width: auto; } }
+@media (max-width: 720px) { .nostromo-head { grid-template-columns: auto 1fr; gap: 10px; } .nostromo-legend { display: none; } .nostromo-card { right: 16px; left: 16px; width: auto; } }
 .system.memory.forgotten { color: var(--terror); }
 .system.memory.privacy { color: var(--warn); }
 /* The list of terms is the subject of this form, so it gets the whole width instead of a cell
