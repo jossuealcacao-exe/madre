@@ -26,6 +26,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### La sala, en una imagen
+
+- El README no tenía una sola foto del producto. Ahora la primera pantalla es **la sala trabajando**: una pregunta, Codex contestando, y debajo `RELEVO @CODEX → @CLAUDE · 4 MENSAJES CARGADOS` con Claude discutiendo lo que Codex acababa de decir y citando `src/store.mjs:8`. Esa línea de relevo es la promesa entera del producto en un renglón.
+- La conversación es **real**, con dos agentes de verdad sobre un proyecto de demostración escrito para eso —un acortador de enlaces con una carrera de escritura auténtica—, no una maqueta. Y no es la sala de nadie: ni un dato del proyecto de quien la publica aparece en la imagen.
+
 ### El nivel de un aviso, en español
 
 - `WARNING · @CODEX 84% DE CUOTA DEL PROVEEDOR USADO · SIGUE CON @CLAUDE`. La frase estaba en español y **la palabra de enfrente no**: el hilo imprimía el id del nivel tal cual. Las tres palabras llevaban meses en el catálogo —el servidor ya las usaba al escribir el aviso— y la página nunca las pidió. Ahora dice `EN AVISO`, `EN CRÍTICO` y `AGOTADA`, como su hermano `CLARO ·` ya decía. Declaradas una por una, para que la guardia del catálogo las vea.

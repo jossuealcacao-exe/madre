@@ -28,6 +28,12 @@ npx @jossuealcala/madre start
 Eso es todo. No hay cuenta que crear, ni nube que configurar, ni llave que pegar.
 MADRE usa las sesiones que esas CLIs ya tienen en tu máquina.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/room.png" alt="La sala de MADRE: Codex y Claude respondiendo en el mismo hilo sobre el mismo proyecto" width="100%">
+</p>
+
+<p align="center"><sub>Una pregunta. Dos agentes. El segundo leyó al primero.</sub></p>
+
 <br>
 
 ---
