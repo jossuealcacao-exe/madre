@@ -49,7 +49,7 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   // Everything that speaks: the page, the console inside the core, and the server text that
   // reaches a screen — a module saying what it is, a reading saying what it means. One
   // catalogue for both sides of the wire, so a sentence is never translated twice.
-  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js')];
+  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html')];
   const walk = async (at) => {
     for (const entry of await readdir(at, { withFileTypes: true })) {
       if (entry.isDirectory()) await walk(join(at, entry.name));
@@ -122,4 +122,33 @@ test('i18n: a reading taken in another language is read in this one', async () =
   // A reading that never ran, or one from before this existed, keeps whatever it has.
   assert.equal(saysFor({ id: 'match', ran: false, says: 'x' }), 'x');
   assert.equal(saysFor({ id: 'coverage', ran: true, says: 'older than this' }), 'older than this');
+});
+
+test('i18n: every word the markup shows is one the catalogue knows', async () => {
+  // The page walks its own markup through the catalogue, so a sentence in index.html that has no
+  // entry is a sentence that stays English on a Spanish screen. This is the list of what is
+  // allowed to: names of the ship and the product, commands somebody types, and the one label
+  // that is the same word in both languages.
+  const html = await read('index.html');
+  const NOT_TRANSLATED = new Set([
+    'MADRE', 'MU/TH/UR', 'MU/TH/UR 6000', 'NOSTROMO', '◉ NOSTROMO', 'CREATE', 'ash', 'EN', 'AIRLOCK',
+    'madre doctor', '@codex summarize this project', 'MADRE · by Jossué Alcalá', 'MADRE · jossuealcala.com',
+    'ARCHIVIST', 'Agent', 'Send', 'MEMORY RESEARCH · LOADING…', 'FORGET THIS MEMORY', 'DESIGNATION ›',
+    'HUMAN ›', 'THE CORE', 'MODULES', 'FILES', 'CONVERSATIONS', 'NEW CONVERSATION', 'connecting',
+    'I AM ALIVE.', "NOBODY DELETES MOTHER'S MEMORY.", 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.',
+  ]);
+  const seen = new Set();
+  const found = [];
+  for (const match of html.matchAll(/>([^<>{}]{2,300})</g)) {
+    const text = match[1].replace(/\s+/g, ' ').trim();
+    if (/[A-Za-z]{2}/.test(text) && !seen.has(text)) { seen.add(text); found.push(text); }
+  }
+  for (const match of html.matchAll(/(?:title|placeholder|aria-label)="([^"]{3,300})"/g)) {
+    const text = match[1].trim();
+    if (!seen.has(text)) { seen.add(text); found.push(text); }
+  }
+  assert.ok(found.length > 80, 'the markup scan found almost nothing, so it is guarding almost nothing');
+  for (const text of found) {
+    assert.ok(Object.hasOwn(ES, text) || NOT_TRANSLATED.has(text), `index.html shows "${text.slice(0, 60)}…" and nothing translates it`);
+  }
 });

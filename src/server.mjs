@@ -18,7 +18,7 @@ import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesTo
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
-import { setLanguage as setRoomLanguage } from './i18n.mjs';
+import { setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -679,7 +679,7 @@ export async function createPulseServer({
   // is not a feature, it is a way to lose work — so a turn in flight is a reason to refuse.
   async function mountChat(id) {
     if (!isChatId(id)) return { error: `No conversation "${id}".` };
-    if (room && room.working()) return { error: 'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.' };
+    if (room && room.working()) return { error: t('A turn is running in this conversation. Let it finish, or STOP ALL, and try again.') };
     const opened = await openChatIndex(roomDir, id);
     if (!opened) return { error: `No conversation "${id}".` };
     unwireRoom();
@@ -743,7 +743,7 @@ export async function createPulseServer({
           start: async () => {
             if (ollama.running) return { ok: true, already: true };
             const binary = await findOnPath('ollama');
-            if (!binary) return { ok: false, error: 'Ollama is not on this computer yet.' };
+            if (!binary) return { ok: false, error: t('Ollama is not on this computer yet.') };
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: 'ollama serve', platforms: [], alreadyInstalled: true });
             const child = spawn(binary, ['serve'], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' });
             child.unref();
@@ -754,7 +754,7 @@ export async function createPulseServer({
               status = await wireOllama();
             }
             await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: status.running, installed: true, detail: status.running ? `running · ${status.chatModel ? `@madre with ${status.chatModel}` : 'no chat model yet'}` : 'Ollama did not answer; open the Ollama app and press RECHECK.', ollama: status });
-            return status.running ? { ok: true } : { ok: false, error: 'Ollama did not answer. Open the Ollama app, then press RECHECK.' };
+            return status.running ? { ok: true } : { ok: false, error: t('Ollama did not answer. Open the Ollama app, then press RECHECK.') };
           },
           // Pulls stream into the room like a module install; one at a time.
           pull: async (model) => {
@@ -788,7 +788,7 @@ export async function createPulseServer({
     if (!extension) return { status: 404, body: { error: `Unknown module: ${id}.` } };
     // Built-ins are switches the module itself defines.
     if (extension.toggle) return extension.toggle(await moduleContext(), payload);
-    if (confirm !== true) return { status: 400, body: { error: 'Installing a module writes into the project; send { "confirm": true } to proceed.' } };
+    if (confirm !== true) return { status: 400, body: { error: t('Installing a module writes into the project; send { "confirm": true } to proceed.') } };
     if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
     const preflight = extension.preflight ? await extension.preflight(canonicalProjectRoot) : { ok: true, problems: [] };
     if (!preflight.ok && !installers[id]) {
@@ -936,7 +936,7 @@ export async function createPulseServer({
       // resolve to the same route.
       const previewMatch = request.method === 'GET' && url.pathname.match(/^\/preview\/(project|attachments)\/(.*)$/);
       if (previewMatch) {
-        if (!(await ripleyOn())) return sendJson(response, 412, { error: 'RIPLEY is off. Enable it in MODULES to render files.' });
+        if (!(await ripleyOn())) return sendJson(response, 412, { error: t('RIPLEY is off. Enable it in MODULES to render files.') });
         const which = previewMatch[1] === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
         const relative = decodeURIComponent(previewMatch[2]);
         const file = await readServable(which, relative);
@@ -992,7 +992,7 @@ export async function createPulseServer({
       if (sentinelMatch && request.method === (sentinelMatch[2] === 'issue' ? 'GET' : 'POST')) {
         if (sentinelMatch[2] === 'issue') {
           const issue = sentinel.issueUrl(sentinelMatch[1]);
-          return issue ? sendJson(response, 200, { url: issue }) : sendJson(response, 404, { error: 'No such report, or no repository to file it in.' });
+          return issue ? sendJson(response, 200, { url: issue }) : sendJson(response, 404, { error: t('No such report, or no repository to file it in.') });
         }
         const outcome = await sentinel.send(sentinelMatch[1]);
         return sendJson(response, outcome.ok ? 200 : (outcome.status === 404 || outcome.status === 412 ? outcome.status : 502), outcome);
@@ -1039,17 +1039,17 @@ export async function createPulseServer({
       }
       if (url.pathname === '/api/eyecat/sweep' && request.method === 'POST') {
         const payload = await body(request).catch(() => ({}));
-        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
         const raised = await eyecat.sweep({ reason: 'asked' }).catch(() => null);
         return sendJson(response, 200, { raised: raised?.length ?? 0, findings: eyecat.findings() });
       }
       const eyecatVerdict = request.method === 'POST' && url.pathname.match(/^\/api\/eyecat\/(confirm|dismiss)$/);
       if (eyecatVerdict) {
         const payload = await body(request).catch(() => ({}));
-        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
-        if (!memory) return sendJson(response, 503, { error: 'The room has no memory.' });
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
+        if (!memory) return sendJson(response, 503, { error: t('The room has no memory.') });
         const finding = eyecat.findings().find((item) => item.key === payload.key);
-        if (!finding) return sendJson(response, 404, { error: 'EYECAT is not holding that one.' });
+        if (!finding) return sendJson(response, 404, { error: t('EYECAT is not holding that one.') });
         const settled = eyecat.settle(finding.key, { verdict: eyecatVerdict[1] === 'confirm' ? 'aberration' : 'dismissed' });
         let flagged = null;
         if (eyecatVerdict[1] === 'confirm') {
@@ -1114,9 +1114,9 @@ export async function createPulseServer({
       }
       if (request.method === 'POST' && url.pathname === '/api/privacy/purge') {
         const payload = await body(request).catch(() => ({}));
-        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
         await refreshPrivacy();
-        if (!privacy.enabled) return sendJson(response, 412, { error: 'No private terms are set. Write them first.' });
+        if (!privacy.enabled) return sendJson(response, 412, { error: t('No private terms are set. Write them first.') });
         const result = await room.purgePrivate();
         // The log was rewritten in place: the broadcaster's byte offset is stale, the sequences are not.
         tailOffset = (await store.tail(0)).offset;
@@ -1140,8 +1140,8 @@ export async function createPulseServer({
         const info = await versionView();
         if (!info.available) return sendJson(response, 409, { error: `Nothing to apply: ${info.current} is the latest MADRE knows of.` });
         const command = applyCommand({ install, name: PACKAGE.name, version: info.latest, port: request.socket.localPort, projectRoot: canonicalProjectRoot });
-        if (!command) return sendJson(response, 412, { error: 'This copy runs from source: pull the repository and start it again.' });
-        if (room.activeTurns().length || room.activePlans().length) return sendJson(response, 409, { error: 'Agents are still working. STOPALL or wait, then update.' });
+        if (!command) return sendJson(response, 412, { error: t('This copy runs from source: pull the repository and start it again.') });
+        if (room.activeTurns().length || room.activePlans().length) return sendJson(response, 409, { error: t('Agents are still working. STOPALL or wait, then update.') });
         await room.record('room.updating', { from: info.current, to: info.latest, install, command });
         sendJson(response, 202, { restarting: true, from: info.current, to: info.latest, command });
         setTimeout(() => {
@@ -1166,16 +1166,16 @@ export async function createPulseServer({
       }
       if (request.method === 'POST' && url.pathname === '/api/mother/code000') {
         const payload = await body(request).catch(() => ({}));
-        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
         const result = await room.code000({ strikes: Number(payload.strikes) || CODE000_STRIKES });
-        return result ? sendJson(response, 200, { code: result.code, lockedForMs: result.lockedForMs, n: result.n }) : sendJson(response, 503, { error: 'MOTHER is silent.' });
+        return result ? sendJson(response, 200, { code: result.code, lockedForMs: result.lockedForMs, n: result.n }) : sendJson(response, 503, { error: t('MOTHER is silent.') });
       }
       if (request.method === 'GET' && url.pathname === '/api/memory') {
-        if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
         const sealed = room.motherStatus()?.lockedForMs ?? 0;
         if (sealed > 0) return sendJson(response, 423, { error: `CODE000. THE ARCHIVE IS SEALED FOR ${Math.ceil(sealed / 60000)} MORE MINUTE${Math.ceil(sealed / 60000) === 1 ? '' : 'S'}.`, lockedForMs: sealed });
         const research = room.memoryResearch();
-        if (!research) return sendJson(response, 503, { error: 'The room has no memory.' });
+        if (!research) return sendJson(response, 503, { error: t('The room has no memory.') });
         // How grown this archive is, read from the same notes the map draws.
         const grown = maturity({ readiness: datasetReadiness(await store.readAll(), research.memories), notes: research.memories, links: research.links, stats: research.stats });
         return sendJson(response, 200, { ...research, maturity: grown });
@@ -1214,7 +1214,7 @@ export async function createPulseServer({
         return sendJson(response, 200, await listChats(roomDir));
       }
       if (request.method === 'POST' && url.pathname === '/api/chats') {
-        if (room.working()) return sendJson(response, 409, { error: 'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.' });
+        if (room.working()) return sendJson(response, 409, { error: t('A turn is running in this conversation. Let it finish, or STOP ALL, and try again.') });
         const payload = await body(request).catch(() => ({}));
         const made = await createChat(roomDir, { title: typeof payload.title === 'string' ? payload.title : null });
         const mounted = await mountChat(made.id);
@@ -1230,12 +1230,12 @@ export async function createPulseServer({
       if (chatMatch && request.method === 'PATCH') {
         const payload = await body(request).catch(() => ({}));
         const named = await renameChat(roomDir, chatMatch[1], payload.title);
-        return named ? sendJson(response, 200, { ...(await listChats(roomDir)) }) : sendJson(response, 404, { error: 'No such conversation.' });
+        return named ? sendJson(response, 200, { ...(await listChats(roomDir)) }) : sendJson(response, 404, { error: t('No such conversation.') });
       }
       if (chatMatch && request.method === 'DELETE') {
-        if (chatMatch[1] === chatId && room.working()) return sendJson(response, 409, { error: 'A turn is running in this conversation.' });
+        if (chatMatch[1] === chatId && room.working()) return sendJson(response, 409, { error: t('A turn is running in this conversation.') });
         const gone = await deleteChat(roomDir, chatMatch[1]);
-        if (!gone) return sendJson(response, 404, { error: 'No such conversation.' });
+        if (!gone) return sendJson(response, 404, { error: t('No such conversation.') });
         if (gone.error) return sendJson(response, 409, gone);
         // What the archivist distilled from it is the project's memory and stays where it is.
         if (chatMatch[1] === chatId) { const mounted = await mountChat(gone.active); if (mounted.error) return sendJson(response, 409, mounted); }
@@ -1259,9 +1259,9 @@ export async function createPulseServer({
         const payload = await body(request).catch(() => ({}));
         const text = String(payload.text ?? '');
         const name = String(payload.name ?? 'module.mjs');
-        if (!text.trim()) return sendJson(response, 400, { error: 'That file is empty.' });
-        if (text.length > 400_000) return sendJson(response, 413, { error: 'A module file that big is not a module. Keep it under 400 KB.' });
-        if (!/\.m?js$/.test(name)) return sendJson(response, 400, { error: 'A module is a .mjs file.' });
+        if (!text.trim()) return sendJson(response, 400, { error: t('That file is empty.') });
+        if (text.length > 400_000) return sendJson(response, 413, { error: t('A module file that big is not a module. Keep it under 400 KB.') });
+        if (!/\.m?js$/.test(name)) return sendJson(response, 400, { error: t('A module is a .mjs file.') });
         try {
           const installed = await installModuleText({
             text, name, scope: payload.scope === 'project' ? 'project' : 'user',
@@ -1282,7 +1282,7 @@ export async function createPulseServer({
       const refreshMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/refresh$/);
       if (refreshMatch) {
         const module = moduleById(refreshMatch[1]);
-        if (!module?.external) return sendJson(response, 404, { error: 'Only a module you installed yourself can be refreshed.' });
+        if (!module?.external) return sendJson(response, 404, { error: t('Only a module you installed yourself can be refreshed.') });
         const origin = await moduleOrigin(module);
         if (!origin) return sendJson(response, 412, { error: `${module.name} does not say where a newer copy would come from. Declare updates: { url } in the module, or install it again from its file.` });
         const payload = await body(request).catch(() => ({}));
@@ -1337,27 +1337,27 @@ export async function createPulseServer({
       // A question the human has no use for. It stops being offered; nothing else changes.
       if (request.method === 'POST' && url.pathname === '/api/memory/ask/dismiss') {
         const payload = await body(request).catch(() => ({}));
-        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
         const done = room.dismissAsk(String(payload.id ?? '').slice(0, 80));
-        return done ? sendJson(response, 200, done) : sendJson(response, 404, { error: 'The room has no memory.' });
+        return done ? sendJson(response, 200, done) : sendJson(response, 404, { error: t('The room has no memory.') });
       }
       // One memory's own traffic: who it keeps arriving with, who asked for it, what a
       // refutation did. Read while its card is open, so the card is alive rather than a snapshot.
       const trafficMatch = request.method === 'GET' && url.pathname.match(/^\/api\/memory\/(\d+)\/traffic$/);
       if (trafficMatch) {
-        if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
+        if (!designationOk(url.searchParams.get('designation'))) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
         const sealed = room.motherStatus()?.lockedForMs ?? 0;
-        if (sealed > 0) return sendJson(response, 423, { error: 'CODE000. THE ARCHIVE IS SEALED.', lockedForMs: sealed });
+        if (sealed > 0) return sendJson(response, 423, { error: t('CODE000. THE ARCHIVE IS SEALED.'), lockedForMs: sealed });
         const traffic = room.memoryTraffic(Number(trafficMatch[1]));
-        return traffic ? sendJson(response, 200, traffic) : sendJson(response, 404, { error: 'No such memory.' });
+        return traffic ? sendJson(response, 200, traffic) : sendJson(response, 404, { error: t('No such memory.') });
       }
       const forgetMatch = request.method === 'DELETE' && url.pathname.match(/^\/api\/memory\/(\d+)$/);
       if (forgetMatch) {
         const payload = await body(request).catch(() => ({}));
-        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: 'UNABLE TO COMPUTE. UNABLE TO CLARIFY.' });
-        if ((room.motherStatus()?.lockedForMs ?? 0) > 0) return sendJson(response, 423, { error: 'CODE000. THE ARCHIVE IS SEALED.' });
+        if (!designationOk(payload.designation)) return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
+        if ((room.motherStatus()?.lockedForMs ?? 0) > 0) return sendJson(response, 423, { error: t('CODE000. THE ARCHIVE IS SEALED.') });
         const row = await room.forgetMemory(forgetMatch[1]);
-        return row ? sendJson(response, 200, { forgotten: row, stats: room.memoryStats() }) : sendJson(response, 404, { error: 'No such memory.' });
+        return row ? sendJson(response, 200, { forgotten: row, stats: room.memoryStats() }) : sendJson(response, 404, { error: t('No such memory.') });
       }
       if (request.method === 'POST' && url.pathname === '/api/agents/probe') {
         // Look for the binaries again too: a CLI installed a moment ago must appear now.
@@ -1372,7 +1372,7 @@ export async function createPulseServer({
         const id = keyMatch[1];
         const address = request.socket.remoteAddress ?? '';
         if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address)) {
-          return sendJson(response, 403, { error: 'A key is only accepted from this computer, never over the network.' });
+          return sendJson(response, 403, { error: t('A key is only accepted from this computer, never over the network.') });
         }
         const agent = agents.find((item) => item.id === id);
         if (!agent?.detected) return sendJson(response, 412, { error: `${agent?.label ?? id} is not installed on this computer.` });
@@ -1412,7 +1412,7 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/agents/opencode/models') {
         const opencode = agents.find((agent) => agent.id === 'opencode');
-        if (!opencode?.detected) return sendJson(response, 404, { error: 'OpenCode is not installed.' });
+        if (!opencode?.detected) return sendJson(response, 404, { error: t('OpenCode is not installed.') });
         const models = [];
         await runInstaller({ command: opencode.path, args: ['models'], projectRoot: canonicalProjectRoot, timeoutMs: 20000, onLine: (line) => { if (/^[\w.-]+\/[\w.:-]+$/.test(line.trim())) models.push(line.trim()); } });
         return sendJson(response, 200, { models });
@@ -1424,7 +1424,7 @@ export async function createPulseServer({
       const stopMatch = request.method === 'POST' && url.pathname.match(/^\/api\/plans\/([0-9a-f-]+)\/stop$/);
       if (stopMatch) {
         const stopped = await room.stopPlan(stopMatch[1]);
-        return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: 'No running plan with that id.' });
+        return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: t('No running plan with that id.') });
       }
       if (request.method === 'GET' && url.pathname === '/api/commands') {
         const ctx = await moduleContext();
@@ -1440,7 +1440,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/commands') {
         const { text } = await body(request);
         const parsed = parseCommand(text);
-        if (!parsed) return sendJson(response, 400, { error: 'Not a command. Commands start with "/" followed by a name.' });
+        if (!parsed) return sendJson(response, 400, { error: t('Not a command. Commands start with "/" followed by a name.') });
         let command = commandByName(parsed.name);
         let result;
         if (command) {
@@ -1472,7 +1472,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/extensions/install-file') {
         const payload = await body(request).catch(() => ({}));
         const relative = String(payload.path ?? '').replace(/^\/+/, '');
-        if (!relative || relative.includes('..')) return sendJson(response, 400, { error: 'Give the project-relative path of a <id>.module.mjs file.' });
+        if (!relative || relative.includes('..')) return sendJson(response, 400, { error: t('Give the project-relative path of a <id>.module.mjs file.') });
         try {
           const installed = await installModuleFile({ source: join(canonicalProjectRoot, relative), scope: payload.scope === 'project' ? 'project' : 'user', stateRoot: root, projectRoot: canonicalProjectRoot, roomDir });
           await room.record('extension.installed', { id: installed.id, name: installed.name, origin: installed.origin, from: relative, by: 'you' });
@@ -1548,7 +1548,7 @@ export async function createPulseServer({
         });
         return sendJson(response, 200, { emitted: Boolean(warning), warning });
       }
-      sendJson(response, 404, { error: 'Not found.' });
+      sendJson(response, 404, { error: t('Not found.') });
     } catch (error) {
       sendJson(response, 400, { error: error.message });
     }

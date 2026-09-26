@@ -2454,55 +2454,45 @@ langButton?.addEventListener('click', async () => {
   location.reload();
 });
 
-// The words that live in the markup. index.html is the English source — the key IS the sentence,
-// so it is written where it is used and not in a table of ids — and this walks the handful of
-// places that hold one, once, before the first paint. An element the page does not have is
-// skipped: the markup and this list are allowed to disagree without anything breaking.
-const STATIC = [
-  ['#project', 'title', 'Project room'],
-  ['#connection', 'title', 'Live updates'],
-  ['#update-pill', 'title', 'A newer MADRE is on npm'],
-  ['#stop-all', 'title', 'STOPALL · halt every plan and every agent turn'],
-  ['#modules-button', 'title', 'Modules · optional integrations for this project'],
-  ['#mother-button', 'title', 'Troubleshooting · MU/TH/UR'],
-  ['#tree-button', 'title', 'Project files panel'],
-  ['#chats-button', 'title', 'Conversations in this project'],
-  ['#chats-new', 'title', 'Start another conversation in this project. The memory stays.'],
-  ['#attach', 'title', 'Attach an image or file (or drop it here)'],
-  ['#attach', 'aria-label', 'Attach'],
-  ['#create-toggle', 'title', 'Creation lease: let the agent create files for this request, only inside .pulse/out/'],
-  ['#ash-toggle', 'title', 'Ash: ask every agent for compact prose. Nothing you write is altered.'],
-  ['#composer button[type="submit"]', 'aria-label', 'Send'],
-  ['#picker', 'aria-label', 'Agent'],
-  ['#crew-label', 'text', 'HUMAN ›'],
-  ['.onboarding-eyebrow', 'text', 'INTERFACE · FIRST CONTACT'],
-  ['.bridge h2', 'text', 'One agent is enough to open the room.'],
-  ['.bridge > p', 'text', 'MADRE works with the AI coding agents on this computer, using the session each one already has. Install one here and sign in: the room opens by itself, no terminal.'],
-  ['#bridge-close', 'text', 'BACK TO THE ROOM'],
-  ['.bridge .hint', 'html', 'Nothing is installed without you pressing it, and the exact command is always shown. Same diagnosis in a terminal:'],
-  ['.safety', 'text', 'Consultation mode · Project writes stay under your control: agents create files only with CREATE or an opt-in standing lease, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.'],
-  ['.chats-foot', 'text', 'ONE PROJECT, ONE MEMORY. EVERY CONVERSATION FEEDS THE SAME ARCHIVE.'],
-];
+// The words that live in the markup.
+//
+// index.html is the English source — the key IS the sentence, so it is written where it is used
+// and not in a table of ids — and this walks the page once, before the first paint, putting
+// every text node and every title, placeholder and aria-label through the catalogue.
+//
+// It is a walk rather than a list because a list of selectors rots: somebody adds a dialog and
+// the list does not know. A sentence the catalogue has no entry for comes back as it was, so the
+// commands in <code>, the project name and the ship's own names need no exception — they are
+// simply not in it.
+const KEEP_MARKUP = /^(SCRIPT|STYLE|CODE|PRE|SVG|PATH|CIRCLE|RECT)$/;
 
-function applyStaticText() {
-  for (const [selector, where, text] of STATIC) {
-    const node = document.querySelector(selector);
-    if (!node) continue;
-    const said = t(text);
-    // `html` is for a line that ends in something the markup owns — a <code> with a command in
-    // it. The sentence is replaced; what follows it is left exactly where it was.
-    if (where === 'html') { if (node.firstChild) node.firstChild.textContent = `${said} `; }
-    else if (where === 'text') node.textContent = said;
-    else node.setAttribute(where, said);
+function translateMarkup(node) {
+  if (!node) return;
+  const kids = node.childNodes ?? node.children ?? [];
+  const list = [...kids];
+  for (let at = 0; at < list.length; at += 1) {
+    const kid = list[at];
+    // A toy DOM keeps text as a plain string in the children array; a browser keeps text nodes.
+    if (typeof kid === 'string') {
+      const text = kid.trim();
+      if (text) { const said = t(text); if (said !== text && node.children) node.children[at] = kid.replace(text, said); }
+      continue;
+    }
+    if (kid.nodeType === 3) {
+      const text = String(kid.nodeValue ?? '').trim();
+      if (text) { const said = t(text); if (said !== text) kid.nodeValue = kid.nodeValue.replace(text, said); }
+      continue;
+    }
+    if (KEEP_MARKUP.test(kid.tagName ?? '')) continue;
+    for (const name of ['title', 'placeholder', 'aria-label']) {
+      const value = kid.getAttribute?.(name);
+      if (value) { const said = t(value); if (said !== value) kid.setAttribute(name, said); }
+    }
+    if (kid.placeholder && !kid.getAttribute?.('placeholder')) { const said = t(kid.placeholder); if (said !== kid.placeholder) kid.placeholder = said; }
+    translateMarkup(kid);
   }
-  const files = document.querySelector('.tree:not(.chats) .tree-title');
-  if (files?.firstChild) files.firstChild.textContent = `${t('FILES')} `;
-  const chats = document.querySelector('.chats .tree-title');
-  if (chats?.firstChild) chats.firstChild.textContent = `${t('CONVERSATIONS')} `;
-  const newChat = document.querySelector('#chats-new');
-  if (newChat?.lastChild) newChat.lastChild.textContent = ` ${t('NEW CONVERSATION')} `;
 }
-applyStaticText();
+translateMarkup(document.body ?? document);
 
 /* ---------- project files panel ---------- */
 

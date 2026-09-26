@@ -966,6 +966,161 @@ export const ES = {
     'EL CENTINELA GUARDA LAS FALLAS QUE MU/TH/UR NO SABE EXPLICAR, Y LOS CRASHES, SIN RUTAS, NOMBRES NI LLAVES. NADA SALE DE ESTA COMPUTADORA A MENOS QUE TÚ LO MANDES: A MANO COMO UN ISSUE DE GITHUB QUE LEES PRIMERO, O SOLO AL RECOLECTOR DEL AUTOR SI ENCIENDES ESA OPCIÓN.',
   '✎ FEEDBACK TO THE AUTHOR': '✎ COMENTARIOS AL AUTOR',
 
+  // ── EL MARCADO: diálogos, paneles y modales de index.html ─────────────────
+  'STOP ALL': 'PARAR TODO',
+  'MU/TH/UR 6000 · WHAT THIS ROOM SAYS IN YOUR NAME': 'MU/TH/UR 6000 · LO QUE ESTA SALA DICE EN TU NOMBRE',
+  '⧉ COPY ALL': '⧉ COPIAR TODO',
+  'CLOSE ×': 'CERRAR ×',
+  'BUILT NOW · STORED NOWHERE · SENT NOWHERE · READ, NEVER WRITTEN':
+    'ARMADO AHORA · GUARDADO EN NINGÚN LADO · MANDADO A NINGÚN LADO · SE LEE, NUNCA SE ESCRIBE',
+  'MADRE · OPTIONAL INTEGRATIONS · INSTALLED BY THEIR OWN TOOLS':
+    'MADRE · INTEGRACIONES OPCIONALES · INSTALADAS CON SUS PROPIAS HERRAMIENTAS',
+  '+ ADD A MODULE': '+ AGREGAR UN MÓDULO',
+  'BUILT-IN MODULES CHANGE ONLY MADRE SETTINGS. EXTERNAL MODULES WRITE INTO THE PROJECT ONLY AFTER YOU CONFIRM.':
+    'LOS MÓDULOS DE CASA SOLO CAMBIAN AJUSTES DE MADRE. LOS EXTERNOS ESCRIBEN EN EL PROYECTO SOLO DESPUÉS DE QUE CONFIRMES.',
+  'BUILT-INS STAY IN MADRE · PROJECT INSTALLS SHOW THE COMMAND FIRST · YOUR MODULES LOAD FROM ~/.pulse/modules':
+    'LOS DE CASA SE QUEDAN EN MADRE · LAS INSTALACIONES EN EL PROYECTO ENSEÑAN EL COMANDO PRIMERO · TUS MÓDULOS CARGAN DESDE ~/.pulse/modules',
+  'MADRE · INTERFACE 2037 · TROUBLESHOOTING': 'MADRE · INTERFAZ 2037 · DIAGNÓSTICO',
+  '⚙ CONNECTIONS': '⚙ CONEXIONES',
+  '✎ FEEDBACK': '✎ COMENTARIOS',
+  'EXPAND ALL': 'ABRIR TODO',
+  'COLLAPSE ALL': 'CERRAR TODO',
+  'END SESSION ×': 'TERMINAR SESIÓN ×',
+  'NO SPECIAL ORDERS ON THIS SHIP · THE CREW IS NOT EXPENDABLE · ESC TO END SESSION':
+    'EN ESTA NAVE NO HAY ÓRDENES ESPECIALES · LA TRIPULACIÓN NO ES PRESCINDIBLE · ESC PARA TERMINAR LA SESIÓN',
+  'One conversation. Every agent.': 'Una conversación. Todos los agentes.',
+  'Pick an agent and ask, or start with a mention such as': 'Elige un agente y pregunta, o empieza con una mención como',
+  'EMERGENCY COMMAND OVERRIDE 100375': 'ANULACIÓN DE MANDO DE EMERGENCIA 100375',
+  'CANCEL ×': 'CANCELAR ×',
+  'PRIORITY ONE. CONTROL MODE GIVES ONE AGENT THE PROJECT ITSELF: READ, CREATE, MODIFY, NO APPROVAL PER ACTION.':
+    'PRIORIDAD UNO. EL MODO CONTROL LE DA A UN AGENTE EL PROYECTO ENTERO: LEER, CREAR, MODIFICAR, SIN APROBAR ACCIÓN POR ACCIÓN.',
+  'ARM': 'ARMAR',
+  'ONE HOLDER AT A TIME · EVERY TURN IS CHECKPOINTED · WHAT LEAVES THE SHIP DOES NOT COME BACK · STOPALL REVOKES IT':
+    'UN SOLO PORTADOR A LA VEZ · CADA TURNO LLEVA CHECKPOINT · LO QUE SALE DE LA NAVE NO REGRESA · STOPALL LO REVOCA',
+  'INTERFACE 2037 · FIRST CONTACT': 'INTERFAZ 2037 · PRIMER CONTACTO',
+  'SKIP ×': 'SALTAR ×',
+  'BACK': 'ATRÁS',
+  'NEXT ›': 'SIGUIENTE ›',
+  'MEMORY RESEARCH · ACCESS CONTROL': 'INVESTIGACIÓN DE MEMORIA · CONTROL DE ACCESO',
+  'THE ARCHIVE OF THIS ROOM: EVERY MEMORY THE CREW DISTILLED, LINKED BY WHAT THEY SHARE. READING IS FREE; FORGETTING IS FOREVER. TYPE THE PROJECT DESIGNATION TO BOARD.':
+    'EL ARCHIVO DE ESTA SALA: CADA MEMORIA QUE DESTILÓ LA TRIPULACIÓN, ENLAZADA POR LO QUE COMPARTEN. LEER ES GRATIS; OLVIDAR ES PARA SIEMPRE. ESCRIBE LA DESIGNACIÓN DEL PROYECTO PARA ABORDAR.',
+  'BOARD': 'ABORDAR',
+  'ACCESS STAYS OPEN UNTIL THIS PAGE RELOADS · GHOST NEVER REACHES THE ARCHIVE':
+    'EL ACCESO SIGUE ABIERTO HASTA QUE SE RECARGUE LA PÁGINA · GHOST NUNCA LLEGA AL ARCHIVO',
+  'DECISION': 'DECISIÓN',
+  'FACT': 'HECHO',
+  'PREFERENCE': 'PREFERENCIA',
+  'QUESTION': 'PREGUNTA',
+  'COLD · 0': 'FRÍAS · 0',
+  'ASK · 0': 'PREGUNTAR · 0',
+  'RECENTER': 'RECENTRAR',
+  'LEAVE ×': 'SALIR ×',
+  'DRAG TO MOVE · WHEEL TO ZOOM · CLICK A MEMORY · DO NOT TOUCH MOTHER':
+    'ARRASTRA PARA MOVER · RUEDA PARA ACERCAR · CLIC EN UNA MEMORIA · NO TOQUES A MOTHER',
+  '⚠ WARNING ⚠': '⚠ ADVERTENCIA ⚠',
+  'MU/TH/UR 6000 · SPECIAL ORDER 937 · PRIORITY ONE': 'MU/TH/UR 6000 · ORDEN ESPECIAL 937 · PRIORIDAD UNO',
+  'WHAT TO ASK NEXT': 'QUÉ PREGUNTAR AHORA',
+  'WRITTEN FROM WHAT THE ARCHIVE ALREADY HOLDS. NOTHING IS SENT: A QUESTION GOES TO THE COMPOSER AND YOU DECIDE WHO ANSWERS IT.':
+    'ESCRITAS CON LO QUE EL ARCHIVO YA TIENE. NO SE MANDA NADA: LA PREGUNTA VA AL COMPOSITOR Y TÚ DECIDES QUIÉN LA CONTESTA.',
+  'MEMORY': 'MEMORIA',
+  'SOURCE': 'ORIGEN',
+  'DISTILLED': 'DESTILADA',
+  'LINKS': 'ENLACES',
+  'EXCHANGE WITH MADRE': 'INTERCAMBIO CON MADRE',
+  'FORGETTING REMOVES THE NOTE FROM EVERY FUTURE TURN. THE LEDGER IT CAME FROM STAYS.':
+    'OLVIDAR QUITA LA NOTA DE TODOS LOS TURNOS QUE VIENEN. EL LEDGER DEL QUE SALIÓ SE QUEDA.',
+  'NO MEMORIES YET. THE ARCHIVIST WRITES THE FIRST ONES AFTER A FEW EXCHANGES.':
+    'TODAVÍA NO HAY MEMORIAS. EL ARCHIVISTA ESCRIBE LAS PRIMERAS DESPUÉS DE UNOS INTERCAMBIOS.',
+  'REVIEW WITH ▾': 'REVISAR CON ▾',
+  'OPEN RAW ↗': 'ABRIR EN CRUDO ↗',
+
+  // Títulos y etiquetas del marcado.
+  'Agents': 'Agentes',
+  'Language': 'Idioma',
+  'Theme': 'Tema',
+  'Conversations': 'Conversaciones',
+  'Close conversations': 'Cerrar las conversaciones',
+  'Project files': 'Archivos del proyecto',
+  'Close files': 'Cerrar los archivos',
+  'The core': 'El núcleo',
+  'Copy the whole briefing as the agent receives it': 'Copia el briefing completo, tal como lo recibe el agente',
+  'Modules': 'Módulos',
+  'Install a module somebody wrote. MADRE checks it before it runs.':
+    'Instala un módulo que escribió alguien más. MADRE lo revisa antes de que corra.',
+  'MU/TH/UR troubleshooting': 'Diagnóstico de MU/TH/UR',
+  "The crew and this room's settings: install an agent, sign it in, set what each one may do":
+    'La tripulación y los ajustes de esta sala: instala un agente, inicia su sesión, define qué puede hacer cada uno',
+  'NOSTROMO · memory research · needs the project designation':
+    'NOSTROMO · investigación de memoria · necesita la designación del proyecto',
+  "Tell MADRE's author what happened or what you wish for · opens a prefilled issue":
+    'Dile al autor de MADRE qué pasó o qué te gustaría · abre un issue prellenado',
+  'Open or close every section of this panel': 'Abre o cierra todas las secciones de este panel',
+  'The four-step tour of MADRE': 'El recorrido de MADRE en cuatro pasos',
+  'Tour': 'Recorrido',
+  'INQUIRY (type a symptom, an agent, or a keyword)': 'CONSULTA (escribe un síntoma, un agente o una palabra)',
+  'Operating system': 'Sistema operativo',
+  'Attach': 'Adjuntar',
+  'Agent usage': 'Uso del agente',
+  'Emergency command override': 'Anulación de mando de emergencia',
+  "type the current project's folder name to arm": 'escribe el nombre de la carpeta del proyecto para armar',
+  'MADRE tour': 'Recorrido por MADRE',
+  'NOSTROMO access': 'Acceso a NOSTROMO',
+  "type the current project's folder name to board": 'escribe el nombre de la carpeta del proyecto para abordar',
+  'NOSTROMO memory research': 'NOSTROMO · investigación de memoria',
+  'Memory kinds': 'Clases de memoria',
+  'YELLOW DWARF · DECISION': 'ENANA AMARILLA · DECISIÓN',
+  'WHITE DWARF · FACT': 'ENANA BLANCA · HECHO',
+  'GREEN DWARF · PREFERENCE': 'ENANA VERDE · PREFERENCIA',
+  'BLUE DWARF · QUESTION': 'ENANA AZUL · PREGUNTA',
+  'The memories nothing has ever reached for, that share a subject with nothing, and that have had their chances':
+    'Las memorias que nadie ha buscado nunca, que no comparten tema con ninguna otra y que ya tuvieron sus oportunidades',
+  'The questions this archive cannot answer yet, written from what it already holds':
+    'Las preguntas que este archivo todavía no puede contestar, escritas con lo que ya tiene',
+  "Memories orbiting MOTHER's core": 'Memorias orbitando el núcleo de MOTHER',
+  'This reading follows the room while the card is open': 'Esta lectura sigue a la sala mientras la ficha está abierta',
+  'File viewer': 'Visor de archivos',
+  'Back to the previous page': 'Volver a la página anterior',
+  'Back': 'Atrás',
+  'Reload the page': 'Recargar la página',
+  'Reload': 'Recargar',
+
+  // ── LOS ERRORES QUE LA SALA CONTESTA ──────────────────────────────────────
+  'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.':
+    'Hay un turno corriendo en esta conversación. Deja que termine, o dale PARAR TODO, y vuelve a intentar.',
+  'A turn is running in this conversation.': 'Hay un turno corriendo en esta conversación.',
+  'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
+  'Ollama did not answer. Open the Ollama app, then press RECHECK.':
+    'Ollama no contestó. Abre la app de Ollama y dale REVISAR OTRA VEZ.',
+  'Installing a module writes into the project; send { "confirm": true } to proceed.':
+    'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
+  'RIPLEY is off. Enable it in MODULES to render files.': 'RIPLEY está apagado. Enciéndelo en MÓDULOS para dibujar archivos.',
+  'No such report, or no repository to file it in.': 'No existe ese reporte, o no hay repositorio donde levantarlo.',
+  'The room has no memory.': 'La sala no tiene memoria.',
+  'EYECAT is not holding that one.': 'EYECAT no está sosteniendo esa.',
+  'No private terms are set. Write them first.': 'No hay términos privados puestos. Escríbelos primero.',
+  'This copy runs from source: pull the repository and start it again.':
+    'Esta copia corre desde el código fuente: haz pull del repositorio y arráncala otra vez.',
+  'Agents are still working. STOPALL or wait, then update.':
+    'Los agentes siguen trabajando. Dale STOPALL o espera, y luego actualiza.',
+  'MOTHER is silent.': 'MOTHER está callada.',
+  'No such conversation.': 'No existe esa conversación.',
+  'That file is empty.': 'Ese archivo está vacío.',
+  'A module file that big is not a module. Keep it under 400 KB.':
+    'Un archivo de módulo tan grande no es un módulo. Que no pase de 400 KB.',
+  'A module is a .mjs file.': 'Un módulo es un archivo .mjs.',
+  'Only a module you installed yourself can be refreshed.': 'Solo se puede refrescar un módulo que tú mismo instalaste.',
+  'CODE000. THE ARCHIVE IS SEALED.': 'CODE000. EL ARCHIVO ESTÁ SELLADO.',
+  'No such memory.': 'No existe esa memoria.',
+  'A key is only accepted from this computer, never over the network.':
+    'Una llave solo se acepta desde esta computadora, nunca por la red.',
+  'OpenCode is not installed.': 'OpenCode no está instalado.',
+  'No running plan with that id.': 'No hay ningún plan corriendo con ese id.',
+  'Not a command. Commands start with "/" followed by a name.':
+    'Eso no es un comando. Los comandos empiezan con «/» seguido de un nombre.',
+  'Give the project-relative path of a <id>.module.mjs file.':
+    'Da la ruta, relativa al proyecto, de un archivo <id>.module.mjs.',
+  'Not found.': 'No se encontró.',
+
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',
   'Interface in Spanish': 'Interfaz en español',

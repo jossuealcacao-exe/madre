@@ -26,6 +26,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### El marcado entero, y los errores de la sala
+- Quedaban **143 frases dentro de `index.html`** que ninguna tabla alcanzaba: los diálogos de MU/TH/UR y de NOSTROMO, la puerta con la designación, la anulación de mando, el recorrido de cuatro pasos, la ficha de cada memoria, ABRIR TODO y CERRAR TODO, OLVIDAR ESTA MEMORIA, la advertencia de MOTHER. Estaban ahí porque la lista de selectores que las traducía se quedó corta el día que alguien agregó un diálogo.
+- Así que ya no hay lista: la página **recorre su propio marcado** una vez, antes del primer pintado, y pasa por el catálogo cada nodo de texto y cada `title`, `placeholder` y `aria-label`. Lo que el catálogo no conoce vuelve como estaba, así que los comandos dentro de `<code>`, el nombre del proyecto y los nombres de la nave no necesitan excepción: simplemente no están ahí.
+- Y una prueba recorre `index.html` y exige que cada frase visible esté traducida o esté en la lista de las que no se traducen —MADRE, MU/TH/UR, NOSTROMO, CREATE, `madre doctor`—. Una lista de selectores se pudre; esto no.
+- Los **40 errores que el servidor contesta** también hablan español: «No existe esa memoria.», «Hay un turno corriendo en esta conversación.», «CODE000. EL ARCHIVO ESTÁ SELLADO.»
+- 850 entradas en el catálogo.
+
 ### El hilo, y lo que quedaba suelto
 - La conversación entera: quién habla y en qué modo, lo que cuesta un turno mientras se escribe, las memorias que se usaron y las que se guardaron, los relevos entre agentes, los planes, CONTROL con su checkpoint y su DESHACER, los avisos de límite, las alertas de MU/TH/UR a toda la tripulación y el final del registro.
 - Y lo que seguía en inglés en MODULES y CONNECTIONS, que era bastante: EYECAT con sus tres apartados, la economía de la sala, el cerebro local, el SDK, la purga de privacidad con sus dos guardas, el menú de modelos, el visor de archivos, el diálogo de anulación, MU/TH/UR con su diagnóstico y su remedio, la tarjeta de cada memoria en NOSTROMO, el canal de releases y el centinela.
