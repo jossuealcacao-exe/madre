@@ -483,8 +483,6 @@ export const ES = {
 
   // Las fichas de ⚙ CONNECTIONS, una por agente.
   'SIGNING IN': 'INICIANDO SESIÓN',
-  'SIGNED IN': 'CON SESIÓN',
-  'SIGNED OUT': 'SIN SESIÓN',
   'UNKNOWN': 'SIN DETERMINAR',
   'session: {detail}': 'sesión: {detail}',
   'GENERATE IMAGES': 'GENERAR IMÁGENES',
@@ -524,7 +522,6 @@ export const ES = {
   '@{agent} timeout saved: {n}s.': 'tiempo límite de @{agent} guardado: {n}s.',
 
   // ── DÓNDE ESTÁ LA SALA · LAS TRES PRUEBAS ─────────────────────────────────
-  'READING…': 'LEYENDO…',
   'THE READING IS UNAVAILABLE': 'LA LECTURA NO ESTÁ DISPONIBLE',
   'NOTHING TO READ YET: THE ROOM HAS NO ARCHIVE.': 'TODAVÍA NO HAY NADA QUE LEER: LA SALA NO TIENE ARCHIVO.',
   'NEXT': 'SIGUE',
@@ -1483,7 +1480,6 @@ export const ES = {
   'not ready': 'no está listo',
   'via': 'vía',
   'timeout': 'tiempo límite',
-  'version': 'versión',
   "local window, not the provider's bill · ⚙ connections in MU/TH/UR":
     'ventana local, no la factura del proveedor · ⚙ conexiones en MU/TH/UR',
   'provider limit as the CLI reports it · ⚙ connections in MU/TH/UR':
@@ -1926,7 +1922,6 @@ export const ES = {
     'MU/TH/UR › purgado: {events} eventos · {entries} intercambios · {memories} memorias. Recargando.',
   'The purge did not run: {error}': 'La purga no corrió: {error}',
   'Applies to the next turn.': 'Aplica desde el próximo turno.',
-  'The setting was not saved: {error}': 'El ajuste no se guardó: {error}',
   'RAISE @{agent} TIMEOUT TO {n}s': 'SUBIR EL TIEMPO LÍMITE DE @{agent} A {n}s',
   '@{agent} timeout is now {n}s.': 'el tiempo límite de @{agent} ahora es {n}s.',
   'RAISE DEFAULT TIMEOUT TO {n}s': 'SUBIR EL TIEMPO LÍMITE POR DEFECTO A {n}s',
@@ -1959,7 +1954,10 @@ export const ES = {
     'MADRE {latest} está en npm · tú corres la {current} · abre MU/TH/UR para el comando',
   'It could not be saved: {error}': 'No se pudo guardar: {error}',
   '@codex summarize this project': '@codex resume este proyecto',
-  'this project': 'este proyecto',
+  // Los cuatro lugares de la sala. Los nombres de la nave —MU/TH/UR, NOSTROMO, ASH, RIPLEY—
+  // son nombres propios; estos cuatro no lo son: dicen qué hay detrás de la puerta.
+  'MODULES': 'MÓDULOS',
+  'THE CORE': 'EL NÚCLEO',
   'GRANTED': 'CONCEDIDO',
   'just now': 'ahora mismo',
   '{n} min ago': 'hace {n} min',

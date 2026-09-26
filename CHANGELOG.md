@@ -26,6 +26,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y para `@madre` no hay comando: no se arranca ningún proceso, es el modelo local contestando dentro de MADRE. El core lo dice en vez de inventar una línea.
 - Y se siente como entrar dentro del sol porque **es** el sol: el marco se abre encima de la estrella de NOSTROMO, que sigue girando y respirando detrás. Nada de eso es un idioma nuevo — el marco, los pliegues, las barras y la letra son los que MADRE ya habla.
 
+### Los cuatro lugares de la sala tienen nombre en español
+
+- `MODULES` y `THE CORE` se quedaban en inglés porque estaban en la lista de nombres que no se traducen, junto a MU/TH/UR, NOSTROMO, ASH y RIPLEY. Pero esos cuatro son **nombres propios de la nave** y estos dos no: dicen qué hay detrás de la puerta. Ahora son **MÓDULOS** y **EL NÚCLEO**, que es como la prosa de la sala ya los llamaba — «mira MÓDULOS», «aléjate del núcleo».
+- Al quitarlos salió que `FILES`, `CONVERSATIONS` y `NEW CONVERSATION` **ya estaban traducidos** desde hacía rato: la lista de excepciones los dejaba pasar por delante del catálogo, así que la guardia los aprobaba por la razón equivocada. Una guardia que aprueba por accidente no es una guardia.
+- Y de ahí salió algo peor: **seis frases estaban en el catálogo dos veces**. Una llave repetida es JavaScript legal —la segunda gana en silencio y la primera queda muerta—, y en un archivo de más de mil líneas así es como una frase acaba con dos españoles y tu corrección cae en el que nadie lee. Las seis eran idénticas, así que no cambió nada en pantalla; ahora hay una prueba que lee el archivo como texto y no deja entrar la séptima.
+
 ### Un ejemplo se teclea, así que se dice en tu idioma
 
 - La sala vacía invitaba a empezar con `@codex summarize this project`. La caminata que traduce el marcado **salta `CODE` y `PRE` a propósito** —lo que lee una máquina no se traduce, y `madre doctor` tiene que seguir siendo `madre doctor`— pero ese de ahí no era código: era un ejemplo de **lo que tú escribirías**, y eso es una frase como cualquier otra. Ahora se marca con `data-say` quien la escribe a mano, y dice `@codex resume este proyecto`.

@@ -42,6 +42,23 @@ test('i18n: a table that carries both languages is chosen whole, not key by key'
   setLanguage('es');
 });
 
+test('i18n: a sentence is translated once, so the second translation cannot win in silence', async () => {
+  // A duplicate key is legal JavaScript: the later one quietly wins and the earlier one becomes a
+  // translation nobody reads. In a catalogue of well over a thousand lines that is how a sentence
+  // ends up with two Spanishes and a change lands in the one that is dead. The object cannot be
+  // asked — by the time it is built the loser is gone — so the file is read as text.
+  const src = await read('es.js');
+  const seen = new Map();
+  const twice = [];
+  for (const match of src.matchAll(/^ {2}('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:/gm)) {
+    const line = src.slice(0, match.index).split('\n').length;
+    if (seen.has(match[1])) twice.push(`${match[1].slice(0, 50)} on lines ${seen.get(match[1])} and ${line}`);
+    else seen.set(match[1], line);
+  }
+  assert.ok(seen.size > 500, 'the scan read almost no keys, so it is guarding almost nothing');
+  assert.deepEqual(twice, [], 'the Spanish catalogue says the same thing twice');
+});
+
 test('i18n: the catalogue says nothing the product does not say', async () => {
   // Both ways round, because both are rot: a key the code no longer uses is a translation of a
   // sentence nobody reads, and a `t()` the catalogue does not have is a screen in the wrong
