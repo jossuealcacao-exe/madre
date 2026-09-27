@@ -295,8 +295,9 @@ export const ES = {
   'an entry in ~/.pulse/config.json': 'una entrada en ~/.pulse/config.json',
   'an MCP server per turn, started and stopped by the room':
     'un servidor MCP por turno, que la sala levanta y apaga',
+  // Bajo NECESITA es un requisito, no una acción: «necesita: se engancha» no concuerda.
   'attached only inside a creation lease with the image scope on':
-    'se engancha solo dentro de un permiso de creación con el alcance de imagen encendido',
+    'un permiso de creación con el alcance de imagen encendido; solo ahí se engancha',
   'a Gemini API key with credits (the one the Gemini CLI stores, or GEMINI_API_KEY)':
     'una API key de Gemini con créditos (la que guarda el CLI de Gemini, o GEMINI_API_KEY)',
 

@@ -8,6 +8,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### Image Studio buscaba la llave donde MADRE no la guarda
 
+- Y en la misma ficha, una línea estaba bajo la etiqueta equivocada: «se engancha solo dentro de un permiso de creación con el alcance de imagen encendido» no es algo que el módulo *escriba*, es una condición para que se enganche siquiera. Pasó a **NECESITA**, y de paso quedó redactada como requisito: «un permiso de creación con el alcance de imagen encendido; solo ahí se engancha» — bajo *necesita*, la frase anterior no concordaba.
+
 - Cuando pegas una llave de Gemini en ⚙ CONEXIONES, MADRE la escribe en **`~/.gemini/.env`**, que es donde ese CLI la lee. Image Studio miraba tres sitios: `GEMINI_API_KEY`, `GOOGLE_API_KEY` y el llavero de macOS. **Ese archivo no estaba en la lista.** La sala guardaba una llave en un sitio donde después se negaba a mirar, y la ficha contestaba «no se encontró llave de Gemini» por una llave que acababa de escribir ella misma.
 - **En Linux era total:** la rama del llavero es solo de macOS, así que `~/.gemini/.env` era el único lugar posible — y nunca se leía. Image Studio no podía encontrar una llave en Linux salvo exportando una variable a mano.
 - Ahora el orden es: lo que se le dio a este proceso, después el archivo que el CLI lee en cada arranque —y que MADRE escribe—, y al final el llavero, que solo existe si el propio inicio de sesión del CLI lo puso ahí. Entiende la forma citada y la de `export`, y una asignación vacía no es una llave.
