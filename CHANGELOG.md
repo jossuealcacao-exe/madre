@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### Un aviso no es una causa
+
+- Un usuario reportó que MADRE «solo funciona con APIs»: tenía Codex y Claude con sus planes, los dos con sesión iniciada, y ningún turno contestaba. Lo que leía era, en Claude, un aviso sobre `ANTHROPIC_API_KEY`; en Codex, la línea `Reading additional input from stdin...`. Ni una de las dos cosas era la razón.
+- **El defecto estaba en cómo MADRE reporta un turno fallido.** Cuando un turno no producía respuesta, el mensaje era `stderr.trim() || …` — lo que hubiera quedado en stderr, y el `||` **descartaba lo único que diagnostica**: el código de salida, o el hecho de que el CLI salió limpio sin decir nada. Así un aviso sobre un ajuste que no venía al caso se volvía «la causa», y la causa real no llegaba a nadie. Para Codex era peor: su parser nunca devuelve un error propio, así que stderr era literalmente todo lo que quedaba.
+- Ahora el mensaje dice primero **qué pasó** —`salió con código 3`, o `salió limpio sin respuesta`— y después, separado y etiquetado, **lo que el CLI imprimió**. Nunca uno disfrazado del otro. El código de salida viaja en el error para el centinela.
+- Y MU/TH/UR aprendió las dos condiciones. La de Claude explica lo que el usuario no podía saber: MADRE le entrega al CLI el entorno tal como está esta computadora, así que una `ANTHROPIC_API_KEY` exportada en tu perfil **gana sobre el plan de claude.ai** y el turno se le cobra a la API. La de Codex dice lo contrario de lo que parece: esa línea es inofensiva, MADRE lo corre con stdin cerrado, y si el turno falló la razón es la línea de arriba.
+
 ### Lo que encontró quien la probó
 
 - **`PULSE_LANGUAGE` no cambiaba la interfaz** — y el defecto era peor que eso. El servidor sí la respetaba al arrancar y también al presionar el botón; pero `/api/state`, que es de donde la página aprende qué idioma habla esta máquina, **volvía a leer el archivo de configuración** en vez de preguntar por el idioma ya resuelto. Con la variable puesta, la sala quedaba **partida**: los textos del servidor en inglés dentro de una interfaz en español. Una sala partida es peor que cualquiera de los dos idiomas. Ahora la página recibe el idioma que la sala está hablando, no el que está escrito en el archivo, y no hay una segunda expresión que pueda volver a discrepar.

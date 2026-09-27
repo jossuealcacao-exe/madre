@@ -47,6 +47,32 @@ const same = (commands) => ({ darwin: commands, linux: commands });
 
 export const CONDITIONS = [
   {
+    id: 'claude-api-key-shadows-plan',
+    agent: 'claude',
+    severity: 'common',
+    title: 'ANTHROPIC_API_KEY takes precedence over the claude.ai plan',
+    match: /connectors are disabled because ANTHROPIC_API_KEY|another auth source is set and takes precedence|takes precedence over your claude\.ai login/i,
+    diagnosis: 'Claude Code found an API key in the environment as well as the claude.ai login, and the key wins. MADRE hands the CLI the environment exactly as this machine has it, so whatever is exported in your shell profile reaches it. The turn is billed to the API account, not to the plan, and your organisation connectors do not load.',
+    remedy: 'Decide which one you mean. To work on the plan, unset the key where your shell exports it and open the room again; to work on the API, this message is only a notice and can be ignored.',
+    fixes: {
+      darwin: ['grep -rn ANTHROPIC_API_KEY ~/.zshrc ~/.zprofile ~/.zshenv 2>/dev/null', '# remove or comment the line it finds, then:', 'unset ANTHROPIC_API_KEY', '# and start MADRE from a new terminal'],
+      linux: ['grep -rn ANTHROPIC_API_KEY ~/.bashrc ~/.profile ~/.bash_profile 2>/dev/null', 'unset ANTHROPIC_API_KEY', '# and start MADRE from a new terminal'],
+    },
+  },
+  {
+    id: 'codex-reading-stdin',
+    agent: 'codex',
+    severity: 'informational',
+    title: 'Codex says it is reading additional input from stdin',
+    match: /Reading additional input from stdin/i,
+    diagnosis: 'A notice Codex prints, not a failure. MADRE runs it with stdin closed, so the line is harmless and the turn is decided by what Codex returned. If the turn failed, the reason is the line above this one — the exit code, or a clean exit with no answer.',
+    remedy: 'Nothing to do about the notice itself. If turns keep failing, check that this Codex is recent enough for the flags MADRE passes: `codex --version`, then update it.',
+    fixes: {
+      darwin: ['codex --version', 'npm install -g @openai/codex'],
+      linux: ['codex --version', 'npm install -g @openai/codex'],
+    },
+  },
+  {
     id: 'gemini-ineligible-tier',
     agent: 'gemini',
     severity: 'blocking',

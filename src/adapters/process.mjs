@@ -138,7 +138,19 @@ export function runReadonlyProcess({
     child.on('close', (code) => finish(() => {
       const response = parse(stdout);
       if (code === 0 && response.text) return resolve(response);
-      reject(new Error(stderr.trim() || response.error || `${label} exited with code ${code}.`));
+      // What happened first, what the CLI printed second, and never one dressed as the other.
+      // This used to be `stderr.trim() || …`, so anything a CLI wrote on the way out became the
+      // reason: a notice about an unrelated setting, a line saying it was reading stdin. The
+      // facts that actually diagnose the turn — the exit code, or a clean exit with nothing to
+      // show — were discarded by the `||` and never reached the human. A warning is not a cause.
+      const printed = stderr.trim();
+      const why = response.error ?? (code === 0
+        ? `${label} exited cleanly without an answer.`
+        : `${label} exited with code ${code}.`);
+      const error = new Error(printed ? `${why}\n\n${label} printed:\n${printed.slice(-600)}` : why);
+      error.partialStderr = printed.slice(-2000);
+      error.exitCode = code;
+      reject(error);
     }));
   });
 }

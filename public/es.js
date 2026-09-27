@@ -1772,6 +1772,20 @@ export const ES = {
   'TUNABLE': 'AJUSTABLE',
   'WARNING': 'AVISO',
   'a note its own sources do not support': 'una nota que sus propias fuentes no sostienen',
+
+  // ── DOS CONDICIONES QUE REPORTÓ QUIEN LA USA ──────────────────────────────
+  'ANTHROPIC_API_KEY takes precedence over the claude.ai plan':
+    'ANTHROPIC_API_KEY gana sobre el plan de claude.ai',
+  'Claude Code found an API key in the environment as well as the claude.ai login, and the key wins. MADRE hands the CLI the environment exactly as this machine has it, so whatever is exported in your shell profile reaches it. The turn is billed to the API account, not to the plan, and your organisation connectors do not load.':
+    'Claude Code encontró en el entorno una llave de API además del inicio de sesión de claude.ai, y gana la llave. MADRE le entrega al CLI el entorno tal como lo tiene esta computadora, así que lo que esté exportado en el perfil de tu shell le llega. El turno se le cobra a la cuenta de API, no al plan, y los conectores de tu organización no cargan.',
+  'Decide which one you mean. To work on the plan, unset the key where your shell exports it and open the room again; to work on the API, this message is only a notice and can be ignored.':
+    'Decide cuál quieres. Para trabajar con el plan, quita la llave de donde tu shell la exporta y vuelve a abrir la sala; para trabajar con la API, este mensaje es solo un aviso y se puede ignorar.',
+  'Codex says it is reading additional input from stdin':
+    'Codex dice que está leyendo entrada adicional de stdin',
+  'A notice Codex prints, not a failure. MADRE runs it with stdin closed, so the line is harmless and the turn is decided by what Codex returned. If the turn failed, the reason is the line above this one — the exit code, or a clean exit with no answer.':
+    'Un aviso que imprime Codex, no una falla. MADRE lo corre con stdin cerrado, así que la línea es inofensiva y el turno lo decide lo que Codex haya devuelto. Si el turno falló, la razón es la línea de arriba: el código de salida, o una salida limpia sin respuesta.',
+  'Nothing to do about the notice itself. If turns keep failing, check that this Codex is recent enough for the flags MADRE passes: `codex --version`, then update it.':
+    'No hay nada que hacer con el aviso en sí. Si los turnos siguen fallando, revisa que este Codex sea lo bastante reciente para las banderas que MADRE le pasa: `codex --version`, y actualízalo.',
   'two memories that cannot both be true': 'dos memorias que no pueden ser ciertas a la vez',
   'created': 'creado',
   'all stop · {plans} plans, {turns} turns halted': 'alto total · {plans} planes, {turns} turnos detenidos',

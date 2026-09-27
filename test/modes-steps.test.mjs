@@ -156,3 +156,32 @@ test('a mode typed into the message goes through the same door as the chip', asy
   // The chip that renders #n in the field agrees with what the field accepts.
   assert.match(app, /if \(!\/\^\[0-4\]\$\/\.test\(name\)\) return whole;/);
 });
+
+test('a failed turn says what happened, and what the CLI printed is context, not the cause', async () => {
+  const { runReadonlyProcess } = await import('../src/adapters/process.mjs');
+  const parse = (stdout) => ({ text: stdout.trim(), usage: null });
+  const run = (script) => runReadonlyProcess({
+    label: 'Codex', executable: process.execPath, args: ['-e', script],
+    cwd: import.meta.dirname, timeoutMs: 20000, parse,
+  });
+
+  // The report that started this: a CLI exits cleanly, says nothing useful, and writes a NOTICE on
+  // its way out. MADRE used to hand that notice over as the reason, so a user read "Reading
+  // additional input from stdin..." and concluded the product only works with API keys.
+  const quiet = await run("console.error('Reading additional input from stdin...')").then(() => null, (error) => error);
+  assert.match(quiet.message, /exited cleanly without an answer/, 'a clean exit with no answer is still reported as whatever was on stderr');
+  assert.match(quiet.message, /Codex printed:/, 'what the CLI printed is gone, so nobody can diagnose the turn');
+  assert.match(quiet.message, /Reading additional input from stdin/, 'the printed text should be kept — as context');
+  assert.equal(quiet.exitCode, 0);
+
+  // A real failure keeps its exit code, which is the fact that diagnoses it.
+  const broken = await run("console.error('warning: something unrelated'); process.exit(3)").then(() => null, (error) => error);
+  assert.match(broken.message, /exited with code 3/);
+  assert.match(broken.message, /warning: something unrelated/);
+  assert.equal(broken.exitCode, 3);
+
+  // And silence stays legible: no stderr means no empty "printed:" section.
+  const silent = await run('process.exit(1)').then(() => null, (error) => error);
+  assert.equal(silent.message, 'Codex exited with code 1.');
+  assert.ok(!/printed:/.test(silent.message));
+});
