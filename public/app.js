@@ -2110,7 +2110,7 @@ function attachArtifacts(event) {
 
 function artifactTiles(files) {
   const wrap = el('div', 'artifacts');
-  wrap.append(el('span', 'label', t('created · {n} files', { n: files.length })));
+  wrap.append(el('span', 'label', t('created · {n} {files}', { n: files.length, files: files.length === 1 ? t('file') : t('files') })));
   const tiles = el('div', 'files');
   for (const file of files) {
     const url = `/api/files?path=${encodeURIComponent(file.path)}`;
@@ -3311,11 +3311,17 @@ function commandBlock(lines) {
   return block;
 }
 
+// A condition's severity, like a memory's kind and a warning's level: an id in the catalogue and
+// a word on the screen. Keyed in upper case, which is how the tag reads and which keeps `WARNING`
+// the severity apart from `warning` the quota level — the same English word, two different rooms.
+const SEVERITY_WORDS = { blocking: t('BLOCKING'), common: t('COMMON'), degraded: t('DEGRADED'), fixed: t('ALREADY FIXED'), informational: t('INFORMATIONAL'), transient: t('TRANSIENT'), tunable: t('TUNABLE'), warning: t('WARNING') };
+const severityWord = (severity) => SEVERITY_WORDS[severity] ?? String(severity);
+
 function conditionCard(condition, { hit = false, agent = null, hintAgent = null } = {}) {
   const card = el('article', `mother-card${hit ? ' hit' : ''}`);
   card.id = `mother-${condition.id}`;
   const tags = el('div', 'tags');
-  tags.append(el('span', `sev-${condition.severity}`, condition.severity));
+  tags.append(el('span', `sev-${condition.severity}`, severityWord(condition.severity)));
   if (condition.agent) tags.append(paint(el('span', 'agent', `@${condition.agent}`), condition.agent));
   tags.append(el('span', null, condition.id));
   card.append(tags);
@@ -3566,7 +3572,7 @@ function renderEyecat(event) {
   const node = el('div', 'command-card eyecat');
   node.dataset.eyecat = finding.key;
   const head = el('div', 'head');
-  head.append(el('b', null, t('◉ EYECAT')), el('span', null, finding.kind === 'unsupported' ? 'a note its own sources do not support' : 'two memories that cannot both be true'));
+  head.append(el('b', null, t('◉ EYECAT')), el('span', null, finding.kind === 'unsupported' ? t('a note its own sources do not support') : t('two memories that cannot both be true')));
   if (finding.confidence !== null && finding.confidence !== undefined) head.append(el('span', 'args', t('{pct}% · judged by @{judge}', { pct: Math.round(finding.confidence * 100), judge: finding.judge })));
   else head.append(el('span', 'args', t('judged by @{judge}', { judge: finding.judge })));
   node.append(head);

@@ -4,6 +4,24 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
+## 0.4.1 · Sin publicar
+
+### Lo que encontró quien la probó
+
+- **`PULSE_LANGUAGE` no cambiaba la interfaz** — y el defecto era peor que eso. El servidor sí la respetaba al arrancar y también al presionar el botón; pero `/api/state`, que es de donde la página aprende qué idioma habla esta máquina, **volvía a leer el archivo de configuración** en vez de preguntar por el idioma ya resuelto. Con la variable puesta, la sala quedaba **partida**: los textos del servidor en inglés dentro de una interfaz en español. Una sala partida es peor que cualquiera de los dos idiomas. Ahora la página recibe el idioma que la sala está hablando, no el que está escrito en el archivo, y no hay una segunda expresión que pueda volver a discrepar.
+- **«1 ARCHIVOS».** Un archivo creado no son archivos. El defecto venía del inglés —`created · 1 files` decía lo mismo— así que no era de la traducción: estaba ahí desde que existen los artefactos.
+- **EYECAT hablaba inglés.** Sus dos hallazgos —«una nota que sus propias fuentes no sostienen» y «dos memorias que no pueden ser ciertas a la vez»— nunca se envolvieron. Eran frases enteras, no una palabra suelta.
+- Y al buscar esa, apareció una cuarta: **la severidad de cada condición de MU/TH/UR se imprimía cruda**. Ocho fichas diciendo `blocking`, `degraded`, `transient`, `informational` en una pantalla por lo demás en español.
+
+### La tercera vez que pasa lo mismo
+
+- Las clases de memoria, el nivel de un aviso y ahora la severidad de una condición: las tres son **un id en el catálogo y una palabra en la pantalla**, y las tres se imprimieron crudas. La guardia del catálogo no puede verlas por construcción — nunca pasan por `t()`, así que no hay llave que falte. Ahora hay una guardia para **la forma**: falla si un `.kind`, `.level`, `.severity`, `.status` o `.stage` se escribe directo en un nodo, y exige que los tres mapas sigan declarados entrada por entrada, porque calcular la llave los esconde de las dos guardias a la vez.
+- De paso salió un homónimo que un catálogo con llave en inglés no puede sostener: `FIXED` ya era **FIJO** —la parte del prompt que no cambia— y la severidad `fixed` quiere decir **resuelta**. La ficha en inglés pasó a decir `ALREADY FIXED`, que es más claro en los dos idiomas.
+
+### No es un defecto
+
+- **Los agentes contestan en tu idioma, no en el del mensaje.** MADRE sí pide el idioma: el bloque `style` del briefing les dice «escribe a la sala en el idioma en que escribe el humano» (`src/room/prompt.mjs:86`). Lo que pasa es que tus instrucciones globales —tu `CLAUDE.md`, tu `AGENTS.md`— **ganan sobre el briefing**, y así debe ser: son tuyas y son permanentes. Es la consecuencia directa de que MADRE use tus sesiones tal cual, que es justo lo que promete.
+
 ## 0.4.0 · 2026-09-26
 
 ### Actualizar de verdad, y una puerta para la comunidad

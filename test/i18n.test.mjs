@@ -217,3 +217,57 @@ test('i18n: a failure recorded in another language is read in this one', async (
   // And in English nothing is re-said at all.
   assert.equal(resay(old, { when: 'en' }), old);
 });
+
+test('i18n: the page is told the language the room SPEAKS, not the one written in the file', async () => {
+  // The environment wins over the config everywhere in this product. It did at boot and it did
+  // when the switch was pressed, but /api/state read the file again and handed the page the other
+  // answer — so `PULSE_LANGUAGE=en` gave a server talking English inside an interface in Spanish.
+  // A split room is worse than either language, and only a real boot catches it: the bug was one
+  // expression re-deriving what was already decided.
+  const { createPulseServer } = await import('../src/server.mjs');
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+
+  const root = await mkdtemp(joinPath(tmpdir(), 'madre-lang-'));
+  const project = await mkdtemp(joinPath(tmpdir(), 'madre-lang-project-'));
+  try {
+    // The file says Spanish. The environment — which the suite sets to English — says otherwise.
+    await writeFile(joinPath(root, 'config.json'), JSON.stringify({ language: 'es' }));
+    assert.equal(process.env.PULSE_LANGUAGE, 'en', 'this test is only meaningful while the two disagree');
+
+    const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: '1.0.0' }];
+    const { server } = await createPulseServer({ projectRoot: project, stateRoot: root, agents, detect: async () => agents, probe: async () => ({ codex: { state: 'signed-in', detail: 'ok' } }) });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const state = await fetch(`http://127.0.0.1:${server.address().port}/api/state`).then((response) => response.json());
+      assert.equal(state.language, 'en', 'the page was handed the file instead of the language the room is speaking');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test('i18n: an id that is also a word on the screen goes through the catalogue', async () => {
+  // Three defects of one shape got through: a memory's kind, a limit warning's level and a
+  // condition's severity were each printed raw — `decision`, `warning`, `blocking` — inside a room
+  // that was otherwise wholly in Spanish. The catalogue guard is blind to them by construction:
+  // they never pass through t(), so there is no key to be missing. This is the guard for the shape.
+  const app = await read('app.js');
+  const bare = [];
+  const FIELDS = 'kind|type|state|status|level|origin|verdict|severity|role|stage';
+  for (const match of app.matchAll(new RegExp(String.raw`el\('[a-z]+',\s*[^,)]+,\s*([\w.?]+\.(?:${FIELDS}))\s*\)`, 'g'))) bare.push(match[1]);
+  for (const match of app.matchAll(new RegExp(String.raw`textContent\s*=\s*([\w.?]+\.(?:${FIELDS}))\s*;`, 'g'))) bare.push(match[1]);
+  assert.deepEqual(bare, [], 'an id is being written on the screen as if it were a word; give it a declared word, the way KIND_WORDS, LEVEL_WORDS and SEVERITY_WORDS do');
+
+  // And those three maps stay declared one entry at a time, so the catalogue's own guard can see
+  // every word in them. Computing the key — t(kind.toUpperCase()) — hides it from both guards.
+  for (const name of ['KIND_WORDS', 'LEVEL_WORDS', 'SEVERITY_WORDS']) {
+    const declaration = app.slice(app.indexOf(`const ${name} = `), app.indexOf('\n', app.indexOf(`const ${name} = `)));
+    assert.ok(declaration.length > 40, `${name} is gone; the words it held are loose again`);
+    assert.ok(!/toUpperCase\(\)|toLowerCase\(\)/.test(declaration), `${name} computes its keys, so no guard can see the words in it`);
+  }
+});

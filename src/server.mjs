@@ -18,7 +18,7 @@ import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesTo
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
-import { setLanguage as setRoomLanguage, t } from './i18n.mjs';
+import { language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
 const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8').catch(() => '{}'));
 let crashHandlersInstalled = false;
@@ -860,8 +860,11 @@ export async function createPulseServer({
         return sendJson(response, 200, {
           projectRoot,
           platform: process.platform,
-          // What language this machine set MADRE to, for a browser that has never chosen.
-          language: (await readConfig(root)).language === 'en' ? 'en' : 'es',
+          // What language this machine set MADRE to, for a browser that has never chosen. It is
+          // the language the room is SPEAKING, not the one written in the file: PULSE_LANGUAGE
+          // wins over the config here as it does everywhere else, and reading the file again
+          // would hand the page a different answer from the one the server itself is using.
+          language: roomLanguage(),
           // Which conversation this page is looking at, and the others it could open.
           chats: await listChats(roomDir),
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
