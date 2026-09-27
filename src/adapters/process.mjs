@@ -25,6 +25,24 @@ export function terminateProcessTree(child, { graceMs = 2000 } = {}) {
   child.once('close', () => clearTimeout(escalation));
 }
 
+// A number is not a reason. A process that was signalled reports it two ways — node hands the
+// signal itself when it killed the child, and a CLI that handles SIGTERM exits 128+n on its own —
+// and both used to surface as a bare `exited with code 143`, which reads like a crash and is not
+// one: something STOPPED it. Naming the signal is the difference between looking for a bug in the
+// agent and looking for whoever pulled the plug.
+const SIGNAL_MEANING = {
+  SIGTERM: 'was stopped (SIGTERM) — something asked it to quit: STOP ALL, a timeout, or the room shutting down',
+  SIGKILL: 'was killed outright (SIGKILL) — usually this machine running out of memory',
+  SIGINT: 'was interrupted (SIGINT) — a Ctrl+C reached it',
+  SIGHUP: 'lost its terminal (SIGHUP)',
+};
+function endedBy(code, closedBy) {
+  const name = closedBy ?? (Number.isInteger(code) && code > 128 ? Object.keys(SIGNAL_MEANING).find((key) => code === 128 + { SIGHUP: 1, SIGINT: 2, SIGKILL: 9, SIGTERM: 15 }[key]) : null);
+  if (name && SIGNAL_MEANING[name]) return `${SIGNAL_MEANING[name]}.`;
+  if (name) return `ended on ${name}.`;
+  return `exited with code ${code}.`;
+}
+
 // One explanation for a process that never ran, whichever way spawn refused. ENOENT is the
 // ambiguous one: node says it for a missing binary and for a missing working directory alike,
 // so the sentence names both instead of guessing which.
@@ -152,7 +170,7 @@ export function runReadonlyProcess({
     });
     armIdle();
     child.on('error', (error) => finish(() => reject(couldNotStart(error, { label, executable, cwd }))));
-    child.on('close', (code) => finish(() => {
+    child.on('close', (code, closedBy) => finish(() => {
       const response = parse(stdout);
       if (code === 0 && response.text) return resolve(response);
       // What happened first, what the CLI printed second, and never one dressed as the other.
@@ -163,7 +181,7 @@ export function runReadonlyProcess({
       const printed = stderr.trim();
       const why = response.error ?? (code === 0
         ? `${label} exited cleanly without an answer.`
-        : `${label} exited with code ${code}.`);
+        : `${label} ${endedBy(code, closedBy)}`);
       const error = new Error(printed ? `${why}\n\n${label} printed:\n${printed.slice(-600)}` : why);
       error.partialStderr = printed.slice(-2000);
       error.exitCode = code;

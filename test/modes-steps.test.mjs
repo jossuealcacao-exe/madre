@@ -202,3 +202,22 @@ test('a process that never started says so, whichever way spawn refused', async 
   const thrown = await runReadonlyProcess({ label: 'Codex', executable: process.execPath, args: ['-e', '0'], cwd: { not: 'a path' }, timeoutMs: 5000, parse }).then(() => null, (error) => error);
   assert.match(thrown.message, /^Codex could not start: /, 'a synchronous spawn failure still reaches the human as a raw node error');
 });
+
+test('a number is not a reason: a signalled agent says it was stopped, not that it crashed', async () => {
+  const { runReadonlyProcess } = await import('../src/adapters/process.mjs');
+  const parse = (stdout) => ({ text: stdout.trim(), usage: null });
+  const run = (script) => runReadonlyProcess({ label: 'Claude', executable: process.execPath, args: ['-e', script], cwd: import.meta.dirname, timeoutMs: 15000, parse }).then(() => null, (error) => error.message);
+
+  // The report: `Claude exited with code 143.` reads like the agent broke. It did not — 143 is
+  // 128+15, a CLI that handled SIGTERM and quit. Something STOPPED it, which sends a human looking
+  // in a completely different place than a crash does.
+  assert.match(await run('process.exit(143)'), /was stopped \(SIGTERM\)/);
+  assert.ok(!/code 143/.test(await run('process.exit(143)')), 'the bare number is still what the human reads');
+
+  // And when node itself reports the signal, the exit code is null: the second argument of
+  // 'close' carries it, and ignoring it printed `exited with code null`.
+  assert.match(await run('process.kill(process.pid, "SIGTERM")'), /was stopped \(SIGTERM\)/);
+
+  // An ordinary failure keeps its number, which is the thing that diagnoses it.
+  assert.equal(await run('process.exit(3)'), 'Claude exited with code 3.');
+});

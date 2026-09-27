@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### Un número no es una razón
+
+- `Claude exited with code 143.` se lee como que el agente se rompió. No se rompió: **143 es 128+15**, un CLI que atendió un SIGTERM y se despidió. Algo lo **detuvo** — y eso manda a buscar a un lugar completamente distinto que una caída.
+- MADRE además **ignoraba la señal**: `child.on('close', (code) => …)` tiene un segundo argumento que dice qué señal cerró el proceso, y no se leía. Un proceso matado por señal llegaba como `código null`.
+- Ahora las dos formas se dicen con palabras: SIGTERM es «algo le pidió que se fuera: PARAR TODO, un tiempo límite, o la sala cerrándose»; SIGKILL, «matado en seco, casi siempre la máquina quedándose sin memoria»; SIGINT, «un Ctrl+C le llegó». Un fallo ordinario conserva su número, que ahí sí es lo que diagnostica.
+
 ### PLAYWRIGHT nunca conectó, y npm se estaba comiendo las banderas
 
 - Pedirle a un agente que use el navegador contestaba `CONNECTION_CLOSED: "Connection closed"`. La causa: MADRE lanza el servidor con `npx --no @playwright/mcp --headless --isolated …` y **npm se queda con esas banderas como configuración suya** —`Unknown cli config "--headless"`— y le entrega al servidor solo los valores sueltos. El servidor muere con `too many arguments. Expected 0 arguments but got 4` antes de hablar una palabra de MCP. Falta un `--` entre el paquete y sus banderas. Probado: sin el separador el servidor muere con código 1; con él contesta el saludo MCP.
