@@ -83,6 +83,7 @@ export default defineModule({
   },
   conditions: [{
     id: 'playwright-missing',
+    code: 'MU-054',
     severity: 'informational',
     title: 'PLAYWRIGHT: the browser server is not installed',
     match: /@playwright\/mcp|playwright.*not (found|installed)|browser server/i,

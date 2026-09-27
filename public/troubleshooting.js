@@ -48,6 +48,7 @@ const same = (commands) => ({ darwin: commands, linux: commands });
 export const CONDITIONS = [
   {
     id: 'claude-api-key-shadows-plan',
+    code: 'MU-001',
     agent: 'claude',
     severity: 'common',
     title: 'ANTHROPIC_API_KEY takes precedence over the claude.ai plan',
@@ -61,6 +62,7 @@ export const CONDITIONS = [
   },
   {
     id: 'codex-reading-stdin',
+    code: 'MU-002',
     agent: 'codex',
     severity: 'informational',
     title: 'Codex says it is reading additional input from stdin',
@@ -74,6 +76,7 @@ export const CONDITIONS = [
   },
   {
     id: 'gemini-ineligible-tier',
+    code: 'MU-003',
     agent: 'gemini',
     severity: 'blocking',
     title: 'Gemini refuses the personal Google login',
@@ -87,6 +90,7 @@ export const CONDITIONS = [
   },
   {
     id: 'gemini-credits-depleted',
+    code: 'MU-004',
     agent: 'gemini',
     severity: 'blocking',
     title: 'Gemini key out of prepaid credits',
@@ -97,6 +101,7 @@ export const CONDITIONS = [
   },
   {
     id: 'gemini-rate-limited',
+    code: 'MU-005',
     agent: 'gemini',
     severity: 'transient',
     title: 'Gemini key rate-limited by Google (HTTP 429)',
@@ -110,6 +115,7 @@ export const CONDITIONS = [
   },
   {
     id: 'gemini-high-demand',
+    code: 'MU-006',
     agent: 'gemini',
     severity: 'transient',
     title: 'Gemini model under high demand (503)',
@@ -120,6 +126,7 @@ export const CONDITIONS = [
   },
   {
     id: 'opencode-default-provider',
+    code: 'MU-007',
     agent: 'opencode',
     severity: 'blocking',
     title: 'OpenCode picked a provider without a valid session',
@@ -133,6 +140,7 @@ export const CONDITIONS = [
   },
   {
     id: 'not-signed-in',
+    code: 'MU-008',
     severity: 'blocking',
     title: 'Agent installed but signed out',
     match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials/i,
@@ -143,6 +151,7 @@ export const CONDITIONS = [
   },
   {
     id: 'not-installed',
+    code: 'MU-009',
     severity: 'blocking',
     title: 'Agent not found on this computer',
     match: /is not installed on this computer|not found on this computer|ENOENT.*(codex|claude|gemini|opencode)/i,
@@ -153,6 +162,7 @@ export const CONDITIONS = [
   },
   {
     id: 'adapter-pending',
+    code: 'MU-010',
     severity: 'blocking',
     title: 'Agent detected, adapter not enabled',
     match: /adapter is not enabled yet|does not have a supported MADRE adapter/i,
@@ -162,6 +172,7 @@ export const CONDITIONS = [
   },
   {
     id: 'claude-args',
+    code: 'MU-011',
     agent: 'claude',
     severity: 'fixed',
     title: 'Claude read the prompt as an MCP config path',
@@ -172,6 +183,7 @@ export const CONDITIONS = [
   },
   {
     id: 'timeout',
+    code: 'MU-012',
     severity: 'tunable',
     title: 'Agent did not respond before the timeout',
     match: /did not respond before the timeout|went silent for/i,
@@ -184,6 +196,7 @@ export const CONDITIONS = [
   },
   {
     id: 'interrupted',
+    code: 'MU-013',
     severity: 'informational',
     title: 'Turn interrupted by a MADRE restart',
     match: /interrupted because MADRE is shutting down|MADRE stopped while|turn was not completed/i,
@@ -193,6 +206,7 @@ export const CONDITIONS = [
   },
   {
     id: 'message-too-long',
+    code: 'MU-014',
     severity: 'tunable',
     title: 'Message rejected for length',
     match: /Message is too long/i,
@@ -205,6 +219,7 @@ export const CONDITIONS = [
   },
   {
     id: 'limits-real',
+    code: 'MU-015',
     severity: 'informational',
     title: 'Where the rings get their numbers',
     match: /ring|quota|limit window|resets|rollout|oauth usage|window reset|limits-real/i,
@@ -214,6 +229,7 @@ export const CONDITIONS = [
   },
   {
     id: 'budget-exhausted',
+    code: 'MU-016',
     severity: 'tunable',
     title: 'Local token budget exhausted for an agent',
     match: /MADRE exhausted|local room token budget/i,
@@ -226,6 +242,7 @@ export const CONDITIONS = [
   },
   {
     id: 'port-in-use',
+    code: 'MU-017',
     severity: 'blocking',
     title: 'Port already in use',
     match: /EADDRINUSE|already in use/i,
@@ -238,6 +255,7 @@ export const CONDITIONS = [
   },
   {
     id: 'stream-reconnecting',
+    code: 'MU-018',
     severity: 'blocking',
     title: 'Live stream keeps reconnecting',
     match: /reconnecting|EventSource|ECONNREFUSED/i,
@@ -247,6 +265,7 @@ export const CONDITIONS = [
   },
   {
     id: 'opencode-server-error',
+    code: 'MU-019',
     agent: 'opencode',
     severity: 'transient',
     title: 'OpenCode reported an unexpected server error',
@@ -257,6 +276,7 @@ export const CONDITIONS = [
   },
   {
     id: 'runaway-room',
+    code: 'MU-020',
     severity: 'blocking',
     title: 'Too many agents working at once',
     match: /agents are working at once|already answering another turn|no second plan will start|has been running for/i,
@@ -267,6 +287,7 @@ export const CONDITIONS = [
   // ---- capability assistance: how an agent could gain a scope it lacks ----
   {
     id: 'scope-gemini-imageGen',
+    code: 'MU-051',
     agent: 'gemini',
     severity: 'informational',
     title: 'Gemini: generating images',
@@ -277,6 +298,7 @@ export const CONDITIONS = [
   },
   {
     id: 'scope-claude-imageGen',
+    code: 'MU-052',
     agent: 'claude',
     severity: 'informational',
     title: 'Claude Code: generating images',
@@ -287,6 +309,7 @@ export const CONDITIONS = [
   },
   {
     id: 'scope-opencode-imageGen',
+    code: 'MU-053',
     agent: 'opencode',
     severity: 'informational',
     title: 'OpenCode: generating images',
@@ -297,6 +320,7 @@ export const CONDITIONS = [
   },
   {
     id: 'scope-web',
+    code: 'MU-021',
     severity: 'informational',
     title: 'Web access for an agent',
     match: /scope-[a-z]+-web/,
@@ -306,6 +330,7 @@ export const CONDITIONS = [
   },
   {
     id: 'slash-commands',
+    code: 'MU-022',
     severity: 'informational',
     title: 'Commands and mentions in the field box',
     match: /slash|command|\/git|\/ahp|mention|@agent/i,
@@ -315,6 +340,7 @@ export const CONDITIONS = [
   },
   {
     id: 'modes',
+    code: 'MU-023',
     severity: 'informational',
     title: 'Permission modes: #0 GHOST · #1 EXCHANGE · #2 CREATE · #3 CONTROL · #4 AIRLOCK',
     match: /mode|ghost|exchange|control|airlock|deploy|despleg|producci|override|designation|max mode|#[0-4]\b/i,
@@ -324,6 +350,7 @@ export const CONDITIONS = [
   },
   {
     id: 'lease-missing',
+    code: 'MU-024',
     severity: 'informational',
     title: 'Creating files: who grants the permission',
     match: /no CREATE lease|lease-missing|read-only and do not modify|permiso de escritura|solo lectura/i,
@@ -333,6 +360,7 @@ export const CONDITIONS = [
   },
   {
     id: 'scope-write',
+    code: 'MU-025',
     severity: 'informational',
     title: 'Creating files with an agent',
     match: /scope-[a-z]+-write/,
@@ -342,6 +370,7 @@ export const CONDITIONS = [
   },
   {
     id: 'node-version',
+    code: 'MU-026',
     severity: 'blocking',
     title: 'Node.js too old',
     match: /SyntaxError: Unexpected token|ERR_REQUIRE_ESM|engines|Unsupported engine/i,
@@ -354,6 +383,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-unavailable',
+    code: 'MU-027',
     severity: 'degraded',
     title: 'Room memory unavailable: turns get only the recent window',
     match: /memory unavailable|memory index failed|memory recall failed|node:sqlite|SQLITE_|database disk image is malformed|memory\.sqlite/i,
@@ -366,6 +396,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-recall',
+    code: 'MU-028',
     severity: 'informational',
     title: 'Room memory: what an agent remembers and how',
     match: /\brecall\b|recuerd|\bremember\b|memoria de la sala|<memory>|<memories>/i,
@@ -375,6 +406,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-distill',
+    code: 'MU-029',
     severity: 'degraded',
     title: 'Distilled memories: the archivist did not run, or failed',
     match: /could not distil|distill|destil|batch skipped|archivist|memory\.distilled|memories? (were|was) not/i,
@@ -384,6 +416,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-embeddings',
+    code: 'MU-030',
     severity: 'degraded',
     title: 'Embeddings paused: recall is lexical only',
     match: /embeddings paused|embedding timed out|Gemini embeddings HTTP|batchEmbedContents|LINKS NEED EMBEDDINGS/i,
@@ -396,6 +429,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-tools',
+    code: 'MU-031',
     severity: 'degraded',
     title: 'An agent says it cannot search the memory (pulse-memory MCP)',
     match: /pulse-memory|memory_search|memory_recall|memory_notes|memory_timeline|memory_note|mcp.*(failed|error|not found|unavailable)|MCP server/i,
@@ -408,6 +442,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-note',
+    code: 'MU-032',
     severity: 'informational',
     title: 'Saving a memory on request; GHOST refuses',
     match: /save (a |the |this )?memory|guarda.*memoria|memory saved|off the record.*nothing can be saved|remember this|memory_note/i,
@@ -417,6 +452,7 @@ export const CONDITIONS = [
   },
   {
     id: 'nostromo-access',
+    code: 'MU-033',
     severity: 'informational',
     title: 'NOSTROMO: boarding, reading and forgetting',
     match: /nostromo|designation|UNABLE TO COMPUTE|ARCHIVE IS SEALED|forget this memory/i,
@@ -426,6 +462,7 @@ export const CONDITIONS = [
   },
   {
     id: 'ripley',
+    code: 'MU-034',
     severity: 'informational',
     title: 'RIPLEY: rendering HTML, SVG and Markdown in the viewer',
     match: /ripley|RIPLEY is off|renders \.html|render(ed|ing)? (the )?(html|svg|markdown)/i,
@@ -435,6 +472,7 @@ export const CONDITIONS = [
   },
   {
     id: 'ollama',
+    code: 'MU-035',
     severity: 'informational',
     title: 'Ollama: local embeddings and a local archivist',
     match: /ollama|11434|local model|nomic-embed|qwen|llama3/i,
@@ -447,6 +485,7 @@ export const CONDITIONS = [
   },
   {
     id: 'madre-agent',
+    code: 'MU-036',
     severity: 'informational',
     title: '@madre: the room\'s own memory, as an agent',
     match: /@madre|madre-local|needs Ollama running with a chat model/i,
@@ -456,6 +495,7 @@ export const CONDITIONS = [
   },
   {
     id: 'install-needs-admin',
+    code: 'MU-037',
     severity: 'informational',
     title: 'Installing a CLI: npm cannot write to the system folder',
     match: /EACCES|EPERM|permission denied|Missing write access|npm ERR!.*sudo|administrator/i,
@@ -468,6 +508,7 @@ export const CONDITIONS = [
   },
   {
     id: 'privacy-leak',
+    code: 'MU-038',
     severity: 'warning',
     title: 'Privacy: an agent brought its own configuration into the room',
     match: /privacy\.redacted|privacy\.purged|private terms?|\[ENTIDAD-ORG\]|organi[sz]ation(al)? instructions|leak(ed)? (a|the) (name|company|domain)/i,
@@ -477,6 +518,7 @@ export const CONDITIONS = [
   },
   {
     id: 'control-changes',
+    code: 'MU-039',
     severity: 'informational',
     title: 'CONTROL: what changed, what was reverted, UNDO',
     match: /control\.changed|forbidden zones?|reverted|UNDO|checkpoint|changed \d+ file/i,
@@ -486,6 +528,7 @@ export const CONDITIONS = [
   },
   {
     id: 'conversations',
+    code: 'MU-040',
     severity: 'informational',
     title: 'Conversations: many per project, one memory, one at a time',
     match: /conversation|already open for this project|ROOM_IN_USE|a turn is running in this conversation|new conversation|chats\.json/i,
@@ -495,6 +538,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-aberrations',
+    code: 'MU-041',
     severity: 'informational',
     title: 'Aberrations: what the room established is false',
     match: /aberration|aberraci|eyecat|contradict|refut|false claim|hallucinat|alucina/i,
@@ -504,6 +548,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-cascade',
+    code: 'MU-042',
     severity: 'informational',
     title: 'Memory used · N by association',
     match: /by association|cascade|spreading activation|keeps arriving with|memory used/i,
@@ -513,6 +558,7 @@ export const CONDITIONS = [
   },
   {
     id: 'memory-cold',
+    code: 'MU-043',
     severity: 'informational',
     title: 'Cold memories: what the archive has had its chances with',
     match: /cold memor|cold zone|never once carried|had its chances/i,
@@ -522,6 +568,7 @@ export const CONDITIONS = [
   },
   {
     id: 'maturity-tests',
+    code: 'MU-044',
     severity: 'informational',
     title: 'The three tests: whether the archive works',
     match: /three tests|coverage|consistency|held-out|match test|maturity|madurez|ready to be worked in/i,
@@ -531,6 +578,7 @@ export const CONDITIONS = [
   },
   {
     id: 'module-update',
+    code: 'MU-045',
     severity: 'common',
     title: 'Updating what a module drives',
     match: /EACCES|permission denied.*npm|npm ERR!.*EACCES|update to \d|newest is|brew upgrade|install -g @playwright/i,
@@ -543,6 +591,7 @@ export const CONDITIONS = [
   },
   {
     id: 'module-add',
+    code: 'MU-046',
     severity: 'common',
     title: 'Installing a module somebody else wrote',
     match: /already taken|must live under \/api\/x\/|not a module|default export must be a module|module file|\.module\.mjs|add a module/i,
@@ -552,6 +601,7 @@ export const CONDITIONS = [
   },
   {
     id: 'local-ready',
+    code: 'MU-047',
     severity: 'common',
     title: 'Is the local model ready to be worked in?',
     match: /is .*(local|madre).*(ready|good|any good)|ready to be worked in|measured against this (room|project)|check it against this room|local\.present|not measured/i,
@@ -565,6 +615,7 @@ export const CONDITIONS = [
   },
   {
     id: 'code000',
+    code: 'MU-048',
     severity: 'blocking',
     title: 'CODE000: the archive is sealed',
     match: /CODE000|THE ARCHIVE IS SEALED|UNABLE TO COMPUTE\. UNABLE TO CLARIFY|designation|intruder/i,
@@ -574,6 +625,7 @@ export const CONDITIONS = [
   },
   {
     id: 'core-console',
+    code: 'MU-049',
     severity: 'common',
     title: 'The core closed while I was typing in it',
     match: /unable to compute|interface closed|core clos|three strikes|inquiry|order 937|mu\/th\/ur 6000/i,
@@ -583,6 +635,7 @@ export const CONDITIONS = [
   },
   {
     id: 'outbound',
+    code: 'MU-050',
     severity: 'common',
     title: 'What leaves this computer, and how to stop each thing that does',
     match: /what left this machine|outbound|leaves? (this )?(computer|machine)|sends? (my )?(code|data)|telemetry|phone home|privacy/i,

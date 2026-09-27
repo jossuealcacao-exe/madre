@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### El registro de errores: un código que se dicta, y una salida por fila
+
+- **El badge de MU/TH/UR subía y nunca bajaba.** Cada condición registrada se reconstruye del ledger en cada carga, y no había forma de descartar ninguna: veintitantas alertas encima del botón, todas de cosas ya resueltas. Ahora cada fila del registro tiene su `×`, y cuando hay varias, un **DESCARTAR LOS N** de una vez.
+- Descartar **no borra nada**: el ledger es historia y no se reescribe. Es una preferencia de lectura y vive donde viven las preferencias de lectura — este navegador —, atada a lo que el registro *es* (hora, agente, primera línea), así que la misma entrada reproducida del ledger en la siguiente carga sigue descartada. Y hay vuelta atrás: **VER LOS N DESCARTADOS** los trae todos de regreso.
+- El saludo de MU/TH/UR y el badge cuentan ahora lo mismo: lo que sigue abierto.
+- **Cada condición tiene su código de soporte**, `MU-001` a `MU-054`. Sale en la ficha y es lo que el botón del registro enseña, porque es lo que una persona dicta por teléfono cuando pide ayuda. El código vive **en la condición**, no en su posición en la lista: insertar una nueva en medio no renumera a las demás, que es justo lo que arruinaría un código de soporte. Con su prueba: todas lo tienen, ninguna lo repite, y un módulo que declara una condición declara su código con ella.
+
 ### Un número no es una razón
 
 - `Claude exited with code 143.` se lee como que el agente se rompió. No se rompió: **143 es 128+15**, un CLI que atendió un SIGTERM y se despidió. Algo lo **detuvo** — y eso manda a buscar a un lugar completamente distinto que una caída.

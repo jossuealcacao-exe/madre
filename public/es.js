@@ -1787,6 +1787,10 @@ export const ES = {
     'El módulo PLAYWRIGHT corre @playwright/mcp en cada turno. Tienen que estar en esta computadora dos cosas distintas y solo una es el paquete: el servidor, y la versión de navegador que esa versión del servidor espera. Un servidor que arranca sin su navegador contesta a cada herramienta con «Browser … is not installed», y uno que no logra arrancar le llega al agente como CONNECTION_CLOSED.',
   'Install the server once, globally, then its browser — the browser is downloaded by the server itself, not by the playwright CLI — and RECHECK in MODULES.':
     'Instala el servidor una vez, global, y después su navegador —lo baja el servidor mismo, no el CLI de playwright— y dale RE-REVISAR en MÓDULOS.',
+  // El registro de errores: un código que se dicta por teléfono, y una salida por fila.
+  'SHOW THE {n} DISMISSED': 'VER LOS {n} DESCARTADOS',
+  'DISMISS ALL {n}': 'DESCARTAR LOS {n}',
+  'Dismiss this record · it stays in the ledger': 'Descartar este registro · se queda en el ledger',
   'Codex says it is reading additional input from stdin':
     'Codex dice que está leyendo entrada adicional de stdin',
   'A notice Codex prints, not a failure. MADRE runs it with stdin closed, so the line is harmless and the turn is decided by what Codex returned. If the turn failed, the reason is the line above this one — the exit code, or a clean exit with no answer.':

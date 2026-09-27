@@ -289,3 +289,29 @@ test('i18n: an id that is also a word on the screen goes through the catalogue',
     assert.ok(!/toUpperCase\(\)|toLowerCase\(\)/.test(declaration), `${name} computes its keys, so no guard can see the words in it`);
   }
 });
+
+test('every condition carries a support code, and a code means one thing forever', async () => {
+  const { CONDITIONS } = await import('../public/troubleshooting.js');
+  const { readdir: readModules, readFile: readModule } = await import('node:fs/promises');
+
+  // A code is what a person reads out loud when they ask for help, so it has to exist on every
+  // condition and never move. It lives on the condition itself rather than being its position in
+  // the array: inserting one in the middle must not renumber the ones after it.
+  const codes = [];
+  for (const condition of CONDITIONS) {
+    assert.match(condition.code ?? '', /^MU-\d{3}$/, `${condition.id} has no support code`);
+    codes.push(condition.code);
+  }
+  const moduleDir = join(import.meta.dirname, '..', 'src', 'modules');
+  for (const name of await readModules(moduleDir)) {
+    if (!name.endsWith('.mjs')) continue;
+    const source = await readModule(join(moduleDir, name), 'utf8');
+    for (const match of source.matchAll(/\n\s{4}code: '(MU-\d{3})',/g)) codes.push(match[1]);
+    // A module that declares a condition declares its code with it.
+    const declared = [...source.matchAll(/\n\s{4}severity: '[a-z]+',/g)].length;
+    const stamped = [...source.matchAll(/\n\s{4}code: 'MU-\d{3}',/g)].length;
+    assert.equal(stamped, declared, `${name} declares a condition without a support code`);
+  }
+  assert.equal(new Set(codes).size, codes.length, 'two conditions answer to the same code');
+  assert.ok(codes.length >= 53, 'the scan found fewer conditions than this room holds');
+});

@@ -128,6 +128,17 @@ const state = {
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
 
+// What the human has already dealt with. The ledger is history and is never rewritten, so a
+// dismissal is a reading preference and lives where reading preferences live: this browser.
+// Keyed by what a record IS — time, agent and the first line — so the same entry replayed from
+// the ledger on the next load is still the one that was dismissed.
+const dismissed = new Set();
+try { for (const key of JSON.parse(localStorage.getItem('pulse.mother.dismissed') ?? '[]')) dismissed.add(key); } catch { /* no storage */ }
+const failureKey = (failure) => `${failure.time ?? ''}|${failure.agent ?? ''}|${String(failure.error ?? '').split('\n')[0].slice(0, 120)}`;
+const saveDismissed = () => { try { localStorage.setItem('pulse.mother.dismissed', JSON.stringify([...dismissed].slice(-400))); } catch { /* no storage */ } };
+const openFailures = () => state.failures.filter((failure) => !failure.recovered && !dismissed.has(failureKey(failure)));
+
+
 
 /* ---------- helpers ---------- */
 
@@ -3276,15 +3287,19 @@ const mother = {
   bootTimer: null,
 };
 
-function recordFailure(entry) {
-  state.failures.push(entry);
-  const count = state.failures.filter((failure) => !failure.recovered).length;
-  // Called while the transcript is still being replayed, before the MU/TH/UR
-  // block below has initialised, so look the badge up directly.
+function paintMotherBadge() {
   const badge = document.querySelector('#mother-count');
   if (!badge) return;
+  const count = openFailures().length;
   badge.hidden = count === 0;
   badge.textContent = String(count);
+}
+
+function recordFailure(entry) {
+  state.failures.push(entry);
+  // Called while the transcript is still being replayed, before the MU/TH/UR
+  // block below has initialised, so look the badge up directly.
+  paintMotherBadge();
 }
 
 function commandBlock(lines) {
@@ -3323,6 +3338,7 @@ function conditionCard(condition, { hit = false, agent = null, hintAgent = null 
   const tags = el('div', 'tags');
   tags.append(el('span', `sev-${condition.severity}`, severityWord(condition.severity)));
   if (condition.agent) tags.append(paint(el('span', 'agent', `@${condition.agent}`), condition.agent));
+  if (condition.code) tags.append(el('span', 'code', condition.code));
   tags.append(el('span', null, condition.id));
   card.append(tags);
   card.append(el('h4', null, condition.title));
@@ -3380,14 +3396,33 @@ function renderMotherRecorded() {
   let collapsed = false;
   // What this section was set to before it folded like the rest; the fold remembers from here on.
   try { collapsed = localStorage.getItem('pulse.mother.log') === 'collapsed'; } catch { /* no storage */ }
-  const body = folding(mother.recorded, t('RECORDED CONDITIONS · THIS ROOM · {n}', { n: state.failures.length }), {
+  const shown = state.failures.filter((failure) => !dismissed.has(failureKey(failure)));
+  const body = folding(mother.recorded, t('RECORDED CONDITIONS · THIS ROOM · {n}', { n: shown.length }), {
     key: 'recorded', open: !collapsed,
   });
-  if (!state.failures.length) {
+  // Everything dismissed is still in the ledger; this only stops it from being shown again.
+  if (dismissed.size) {
+    const back = el('button', 'mother-clear', t('SHOW THE {n} DISMISSED', { n: dismissed.size }));
+    back.type = 'button';
+    back.addEventListener('click', () => { dismissed.clear(); saveDismissed(); paintMotherBadge(); renderMotherRecorded(); });
+    body.append(back);
+  }
+  if (shown.length > 1) {
+    const all = el('button', 'mother-clear', t('DISMISS ALL {n}', { n: shown.length }));
+    all.type = 'button';
+    all.addEventListener('click', () => {
+      for (const failure of shown) dismissed.add(failureKey(failure));
+      saveDismissed();
+      paintMotherBadge();
+      renderMotherRecorded();
+    });
+    body.append(all);
+  }
+  if (!shown.length) {
     body.append(el('p', 'mother-answer', t('NO CONDITIONS RECORDED. ALL SYSTEMS NOMINAL.')));
     return;
   }
-  for (const failure of [...state.failures].reverse().slice(0, 40)) {
+  for (const failure of [...shown].reverse().slice(0, 40)) {
     const rowNode = paint(el('div', 'mother-record'), failure.agent);
     rowNode.append(el('span', 't', formatTime(failure.time)));
     rowNode.append(el('span', 'a', failure.agent ?? t('room')));
@@ -3413,7 +3448,8 @@ function renderMotherRecorded() {
     const links = el('span', 'k');
     if (!matches.length) links.append(el('span', 'none', t('UNCLASSIFIED')));
     for (const condition of matches) {
-      const jump = el('button', null, condition.id);
+      const jump = el('button', null, condition.code ?? condition.id);
+      jump.title = condition.id;
       jump.type = 'button';
       jump.addEventListener('click', () => {
         mother.input.value = '';
@@ -3425,6 +3461,17 @@ function renderMotherRecorded() {
       links.append(jump);
     }
     rowNode.append(links);
+    // One record, one way out. The ledger keeps it; this room stops counting it.
+    const drop = el('button', 'drop', '×');
+    drop.type = 'button';
+    drop.title = t('Dismiss this record · it stays in the ledger');
+    drop.addEventListener('click', () => {
+      dismissed.add(failureKey(failure));
+      saveDismissed();
+      paintMotherBadge();
+      renderMotherRecorded();
+    });
+    rowNode.append(drop);
     body.append(rowNode);
   }
 }
@@ -3476,7 +3523,7 @@ function renderMother() {
 function bootMother() {
   clearTimeout(mother.bootTimer);
   const online = [...state.agents.values()].filter((agent) => agent.ready).length;
-  const open = state.failures.filter((failure) => !failure.recovered).length;
+  const open = openFailures().length;
   const lines = [
     t('INTERFACE 2037 READY FOR INQUIRY'),
     t('CREW: {n} AGENTS · {ready} READY · ROOM /{project}', { n: state.agents.size, ready: online, project: els.project.textContent }),

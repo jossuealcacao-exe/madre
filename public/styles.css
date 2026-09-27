@@ -1626,3 +1626,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .maturity-row span { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); opacity: .8; }
 .maturity-next { color: var(--ph); }
 @media (max-width: 860px) { .maturity-row { grid-template-columns: 1fr; gap: 2px; } .maturity-row i { display: none; } }
+
+/* A record you have dealt with: the way out sits at the end of its own row. */
+.mother-record .drop { background: none; border: 0; color: var(--ph-faint); cursor: pointer; font: inherit; padding: 0 2px; line-height: 1; }
+.mother-record .drop:hover { color: var(--warn); }
+.mother-card .tags .code { color: var(--ph); border: 1px solid var(--ph-faint); border-radius: 3px; padding: 0 4px; letter-spacing: .1em; }
+.mother-clear { display: block; margin: 8px 0 0; background: none; border: 1px solid var(--ph-faint); border-radius: 4px; color: var(--ph-dim); cursor: pointer; font: inherit; font-size: 9px; letter-spacing: .16em; padding: 4px 10px; }
+.mother-clear:hover { color: var(--ph); border-color: var(--ph-dim); }
