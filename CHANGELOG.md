@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### Los remedios: prosa en español y un botón donde había un comando
+
+- **44 de 53 condiciones explicaban su remedio en inglés.** No los comandos —un comando no se traduce— sino los **comentarios** que los acompañan: 145 líneas de prosa, y la mitad nombrando botones. `# ⚙ CONNECTIONS → Gemini → GENERATE IMAGES → SAVE` en una sala donde esos botones se llaman **CONEXIONES**, **GENERA IMÁGENES** y **GUARDAR**. El remedio mandaba a buscar cosas que no existen con ese nombre.
+- Los 80 comentarios distintos están en español, con los nombres que el usuario de verdad ve. La guardia del catálogo ahora los recorre como recorre el título y el diagnóstico de cada condición — y aprendió que algunos se **componen** al cargar (el helper que arma un `export` los escribe), así que pregunta también a las condiciones y no solo al código fuente.
+- **Ocho remedios eran un comando solo porque nadie había cableado el botón.** Firmar un agente, instalar uno, encender un alcance: MADRE ya hace las tres desde CONEXIONES. Esas condiciones ahora declaran `solvedIn: 'connections'` y su ficha abre el panel **en el agente del que se trata**, en vez de entregar una línea para pegar. Los comandos se quedan debajo, para otra máquina o para quien prefiera teclear.
+- Lo que sigue en terminal, sigue a propósito: los siete remedios que tocan el perfil de tu shell. MADRE no debe editarte el `.zshrc` — ahí vive configuración que no escribió ella.
+
 ### El registro, legible: un icono que no estorba y un archivo que se manda
 
 - **COPIAR se sentaba encima del comando que ofrecía.** Era una palabra flotando en la esquina del bloque, y cualquier comando largo le pasaba por debajo. Ahora es un icono de dos hojas, con su sitio reservado: el comando ya no corre bajo nada, y al copiar el icono se enciende en vez de convertirse en otra palabra.

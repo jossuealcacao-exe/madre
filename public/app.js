@@ -3351,7 +3351,11 @@ function commandBlock(lines) {
   block.append(copy);
   const pre = el('pre');
   for (const line of lines) {
-    const span = el('span', line.trim().startsWith('#') ? 'c' : null, line);
+    // A command is a command in every language and is never touched. A comment is not a command:
+    // it is prose a person reads, and half of them name buttons — which in this room are called
+    // something else. The catalogue's guard walks these the way it walks a condition's title.
+    const comment = line.trim().startsWith('#');
+    const span = el('span', comment ? 'c' : null, comment ? t(line.trim()) : line);
     pre.append(span, '\n');
   }
   block.append(pre);
@@ -3363,6 +3367,23 @@ function commandBlock(lines) {
 // the severity apart from `warning` the quota level — the same English word, two different rooms.
 const SEVERITY_WORDS = { blocking: t('BLOCKING'), common: t('COMMON'), degraded: t('DEGRADED'), fixed: t('ALREADY FIXED'), informational: t('INFORMATIONAL'), transient: t('TRANSIENT'), tunable: t('TUNABLE'), warning: t('WARNING') };
 const severityWord = (severity) => SEVERITY_WORDS[severity] ?? String(severity);
+
+// Some remedies are a command only because nobody wired the button. Signing an agent in,
+// installing one, turning a scope on: MADRE already does all three from CONNECTIONS, so the
+// card opens that panel on the agent in question instead of handing out a line to paste. The
+// commands stay underneath for whoever prefers them, or is on another machine.
+function connectionsShortcut(condition, agent) {
+  const who = condition.agent ?? agent ?? null;
+  const jump = el('button', 'mother-goto', who ? t('OPEN ⚙ CONNECTIONS · @{agent}', { agent: who }) : t('OPEN ⚙ CONNECTIONS'));
+  jump.type = 'button';
+  jump.addEventListener('click', () => {
+    rememberFold('connections', true);
+    renderSettings();
+    const target = who ? document.getElementById(`conn-${who}`) : settingsUI.section;
+    setTimeout(() => target?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+  });
+  return jump;
+}
 
 function conditionCard(condition, { hit = false, agent = null, hintAgent = null } = {}) {
   const card = el('article', `mother-card${hit ? ' hit' : ''}`);
@@ -3399,6 +3420,8 @@ function conditionCard(condition, { hit = false, agent = null, hintAgent = null 
     card.append(bar);
   }
   const chosen = agent ?? condition.agent ?? null;
+  // The button first, the commands under it: this room can do it, and a terminal is a detour.
+  if (condition.solvedIn === 'connections') card.append(connectionsShortcut(condition, chosen));
   card.append(commandBlock(fixesFor(condition, mother.platform, chosen)));
   if (condition.perAgent && !chosen) {
     for (const id of Object.keys(condition.perAgent)) {
@@ -5296,6 +5319,7 @@ function folding(section, title, { key, open = false, badge = null } = {}) {
 
 function connectionCard(agent) {
   const card = paint(el('article', 'conn-card'), agent.id);
+  card.id = `conn-${agent.id}`;
   const session = settingsUI.data.sessions?.[agent.id];
   const head = el('div', 'head');
   head.append(avatar(agent.id, { size: 26, status: agent.ready ? 'ready' : agent.detected ? 'detected' : 'offline' }));

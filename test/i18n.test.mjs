@@ -87,9 +87,15 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   for (const key of used) {
     assert.ok(Object.hasOwn(ES, key), `the page says "${key.slice(0, 60)}…" and the Spanish catalogue does not`);
   }
+  // A condition's fix comments are data, and some are composed at load time from a helper rather
+  // than written out — `envExport` builds the same line for each variable it is given. Those are
+  // said by the product even though the literal never appears in a file, so the scan asks the
+  // conditions themselves as well as the source.
+  const { CONDITIONS: ALL } = await import('../public/troubleshooting.js');
+  const fromData = new Set(ALL.flatMap((condition) => ['darwin', 'linux'].flatMap((os) => condition.fixes?.[os] ?? [])).map((line) => line.trim()));
   for (const key of Object.keys(ES)) {
     const escaped = key.replace(/'/g, "\\'");
-    assert.ok(app.includes(key) || app.includes(escaped), `the catalogue translates "${key.slice(0, 60)}…", which the page no longer says`);
+    assert.ok(app.includes(key) || app.includes(escaped) || fromData.has(key), `the catalogue translates "${key.slice(0, 60)}…", which the page no longer says`);
   }
   // And the Spanish is Spanish: an entry copied from the key is a line somebody forgot to write.
   // A sentence that came out identical is a line somebody forgot to write. A single word may
@@ -197,6 +203,15 @@ test("i18n: every condition MU/TH/UR holds reads in the room's language", async 
   for (const condition of CONDITIONS) {
     for (const field of ['title', 'diagnosis', 'remedy']) {
       assert.ok(Object.hasOwn(ES, condition[field]), `${condition.id}.${field} is not in the Spanish catalogue`);
+    }
+    // The prose inside the commands. A `#` line is not a command: it explains one, and most of
+    // them name buttons — which this room calls something else. The commands themselves are
+    // never translated and are not checked here.
+    for (const os of ['darwin', 'linux']) {
+      for (const line of condition.fixes?.[os] ?? []) {
+        if (!line.trim().startsWith('#')) continue;
+        assert.ok(Object.hasOwn(ES, line.trim()), `${condition.id} explains a fix in English: "${line.trim().slice(0, 50)}…"`);
+      }
     }
   }
   setPage('es');
@@ -314,4 +329,25 @@ test('every condition carries a support code, and a code means one thing forever
   }
   assert.equal(new Set(codes).size, codes.length, 'two conditions answer to the same code');
   assert.ok(codes.length >= 53, 'the scan found fewer conditions than this room holds');
+});
+
+test('a remedy this room can carry out points at its button, not at a terminal', async () => {
+  const { CONDITIONS } = await import('../public/troubleshooting.js');
+  const app = await read('app.js');
+
+  // Signing an agent in, installing one, turning a scope on: MADRE already does all three from
+  // CONNECTIONS. A condition whose fix is one of those used to hand out a line to paste instead,
+  // which sends someone to a terminal for something this room does with a click.
+  const wired = CONDITIONS.filter((condition) => condition.solvedIn === 'connections');
+  assert.ok(wired.length >= 8, 'the remedies that live in CONNECTIONS stopped declaring it');
+  for (const condition of wired) {
+    assert.match(condition.code, /^MU-\d{3}$/);
+    assert.ok((condition.fixes?.darwin ?? []).length, `${condition.id} offers the button and nothing underneath it`);
+  }
+
+  // The button reaches the agent it is about, so the panel opens where the problem is.
+  assert.match(app, /card\.id = `conn-\$\{agent\.id\}`;/, 'an agent card has no anchor, so the shortcut cannot land on it');
+  assert.match(app, /if \(condition\.solvedIn === 'connections'\) card\.append\(connectionsShortcut/);
+  // And the commands stay: another machine, another shell, someone who prefers typing.
+  assert.match(app, /connectionsShortcut\(condition, chosen\)\);\n  card\.append\(commandBlock/, 'the commands were replaced instead of being kept under the button');
 });

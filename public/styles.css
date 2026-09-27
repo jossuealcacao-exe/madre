@@ -1635,3 +1635,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .mother-card .tags .code { color: var(--ph); border: 1px solid var(--ph-faint); border-radius: 3px; padding: 0 4px; letter-spacing: .1em; }
 .mother-clear { display: inline-block; margin: 8px 10px 10px 0; background: none; border: 1px solid var(--ph-faint); border-radius: 4px; color: var(--ph-dim); cursor: pointer; font: inherit; font-size: 9px; letter-spacing: .16em; padding: 4px 10px; }
 .mother-clear:hover { color: var(--ph); border-color: var(--ph-dim); }
+
+/* A remedy this room can carry out itself: the button goes above the commands it replaces. */
+.mother-goto { display: block; margin: 6px 0 0; border: 1px solid var(--ph-dim); border-radius: 4px; background: transparent; color: var(--ph); cursor: pointer; font: inherit; font-size: 10px; letter-spacing: .14em; padding: 6px 12px; text-transform: uppercase; }
+.mother-goto:hover { background: color-mix(in srgb, var(--ph) 12%, transparent); }

@@ -63,6 +63,7 @@ export const CONDITIONS = [
   {
     id: 'codex-reading-stdin',
     code: 'MU-002',
+    solvedIn: 'connections',
     agent: 'codex',
     severity: 'informational',
     title: 'Codex says it is reading additional input from stdin',
@@ -77,6 +78,7 @@ export const CONDITIONS = [
   {
     id: 'gemini-ineligible-tier',
     code: 'MU-003',
+    solvedIn: 'connections',
     agent: 'gemini',
     severity: 'blocking',
     title: 'Gemini refuses the personal Google login',
@@ -91,6 +93,7 @@ export const CONDITIONS = [
   {
     id: 'gemini-credits-depleted',
     code: 'MU-004',
+    solvedIn: 'connections',
     agent: 'gemini',
     severity: 'blocking',
     title: 'Gemini key out of prepaid credits',
@@ -102,6 +105,7 @@ export const CONDITIONS = [
   {
     id: 'gemini-rate-limited',
     code: 'MU-005',
+    solvedIn: 'connections',
     agent: 'gemini',
     severity: 'transient',
     title: 'Gemini key rate-limited by Google (HTTP 429)',
@@ -127,6 +131,7 @@ export const CONDITIONS = [
   {
     id: 'opencode-default-provider',
     code: 'MU-007',
+    solvedIn: 'connections',
     agent: 'opencode',
     severity: 'blocking',
     title: 'OpenCode picked a provider without a valid session',
@@ -141,6 +146,7 @@ export const CONDITIONS = [
   {
     id: 'not-signed-in',
     code: 'MU-008',
+    solvedIn: 'connections',
     severity: 'blocking',
     title: 'Agent installed but signed out',
     match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials/i,
@@ -417,6 +423,7 @@ export const CONDITIONS = [
   {
     id: 'memory-embeddings',
     code: 'MU-030',
+    solvedIn: 'connections',
     severity: 'degraded',
     title: 'Embeddings paused: recall is lexical only',
     match: /embeddings paused|embedding timed out|Gemini embeddings HTTP|batchEmbedContents|LINKS NEED EMBEDDINGS/i,
@@ -430,6 +437,7 @@ export const CONDITIONS = [
   {
     id: 'memory-tools',
     code: 'MU-031',
+    solvedIn: 'connections',
     severity: 'degraded',
     title: 'An agent says it cannot search the memory (pulse-memory MCP)',
     match: /pulse-memory|memory_search|memory_recall|memory_notes|memory_timeline|memory_note|mcp.*(failed|error|not found|unavailable)|MCP server/i,

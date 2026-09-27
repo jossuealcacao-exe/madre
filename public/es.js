@@ -1791,6 +1791,171 @@ export const ES = {
   'SHOW THE {n} DISMISSED': 'VER LOS {n} DESCARTADOS',
   'DISMISS ALL {n}': 'DESCARTAR LOS {n}',
   'DOWNLOAD THE LOG': 'DESCARGAR EL REGISTRO',
+  'OPEN ⚙ CONNECTIONS · @{agent}': 'ABRIR ⚙ CONEXIONES · @{agent}',
+  'OPEN ⚙ CONNECTIONS': 'ABRIR ⚙ CONEXIONES',
+  // ── LA PROSA DENTRO DE LOS REMEDIOS ──────────────────────────────────────
+  // Un comando no se traduce nunca. Un comentario sí: es prosa que alguien lee, y la
+  // mitad nombra botones que en esta sala se llaman de otra manera.
+  '# remove or comment the line it finds, then:':
+    '# borra o comenta la línea que encuentre, y luego:',
+  '# and start MADRE from a new terminal':
+    '# y arranca MADRE desde una terminal nueva',
+  '# inside gemini: /auth → "Use Gemini API key" and paste the key from https://aistudio.google.com/app/apikey':
+    '# dentro de gemini: /auth → "Use Gemini API key" y pega la llave de https://aistudio.google.com/app/apikey',
+  '# or, without the prompt:':
+    '# o, sin el diálogo:',
+  '# persist: echo \'export GEMINI_API_KEY="YOUR_KEY"\' >> ~/.zshrc':
+    '# para que quede: echo \'export GEMINI_API_KEY="TU_LLAVE"\' >> ~/.zshrc',
+  '# inside gemini: /auth → "Use Gemini API key"':
+    '# dentro de gemini: /auth → "Use Gemini API key"',
+  '# persist: echo \'export GEMINI_API_KEY="YOUR_KEY"\' >> ~/.bashrc':
+    '# para que quede: echo \'export GEMINI_API_KEY="TU_LLAVE"\' >> ~/.bashrc',
+  '# billing: https://ai.studio/projects':
+    '# facturación: https://ai.studio/projects',
+  '# check the key still works:':
+    '# comprueba que la llave siga sirviendo:',
+  '# in the room: click the Gemini sphere twice → choose gemini-3-flash-preview':
+    '# en la sala: doble clic en la esfera de Gemini → elige gemini-3-flash-preview',
+  '# check quota: https://aistudio.google.com/app/apikey':
+    '# revisa la cuota: https://aistudio.google.com/app/apikey',
+  '# quota: https://aistudio.google.com/app/apikey':
+    '# cuota: https://aistudio.google.com/app/apikey',
+  '# wait, then resend — or continue with @codex / @claude / @opencode':
+    '# espera y reenvía — o sigue con @codex / @claude / @opencode',
+  '# press [m] and pick a provider/model that has a session, e.g. openai/gpt-5.6-sol':
+    '# presiona [m] y elige un proveedor/modelo con sesión, por ejemplo openai/gpt-5.6-sol',
+  '# one-off alternative:':
+    '# alternativa de una sola vez:',
+  '# or drop the stale key:':
+    '# o tira la llave vencida:',
+  '# press [m] and pick a provider/model that has a session':
+    '# presiona [m] y elige un proveedor/modelo con sesión',
+  '# or directly:':
+    '# o directo:',
+  '# pick the agent you want; see per-agent commands below':
+    '# elige el agente que quieras; abajo están los comandos de cada uno',
+  '# live, no restart: ⚙ CONNECTIONS → DEFAULT TIMEOUT · SECONDS → SAVE':
+    '# en vivo, sin reiniciar: ⚙ CONEXIONES → TIEMPO LÍMITE POR DEFECTO · SEGUNDOS → GUARDAR',
+  '# at launch only (env wins over config.json):':
+    '# solo al arrancar (el entorno gana sobre config.json):',
+  '# or ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}':
+    '# o ~/.pulse/config.json → {"timeouts":{"default":300000,"claude":600000}}',
+  '# resend the question':
+    '# reenvía la pregunta',
+  '# click the sphere → 5h / 7d windows and reset times':
+    '# clic en la esfera → ventanas de 5 h / 7 d y a qué hora se reinician',
+  '# live: ⚙ CONNECTIONS → LOCAL TOKEN BUDGET PER AGENT → SAVE':
+    '# en vivo: ⚙ CONEXIONES → PRESUPUESTO LOCAL DE TOKENS POR AGENTE → GUARDAR',
+  '# at launch: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start':
+    '# al arrancar: PULSE_SOFT_TOKEN_BUDGET=1000000 madre start',
+  '# or ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}':
+    '# o ~/.pulse/config.json → {"room":{"softTokenBudget":1000000}}',
+  '# who holds 4317?':
+    '# ¿quién tiene tomado el 4317?',
+  '# in the room: type STOPALL, then resend':
+    '# en la sala: escribe STOPALL y reenvía',
+  '# in the room composer:':
+    '# en el compositor de la sala:',
+  '# or from a terminal:':
+    '# o desde una terminal:',
+  '# MODULES → Image Studio → ENABLE':
+    '# MÓDULOS → Image Studio → ENCENDER',
+  '# ⚙ CONNECTIONS → Gemini → GENERATE IMAGES → SAVE':
+    '# ⚙ CONEXIONES → Gemini → GENERA IMÁGENES → GUARDAR',
+  '# then: CREATE + "generate … as name.png"':
+    '# después: CREATE + "genera … como nombre.png"',
+  '# ⚙ CONNECTIONS → Claude → GENERATE IMAGES → SAVE':
+    '# ⚙ CONEXIONES → Claude → GENERA IMÁGENES → GUARDAR',
+  '# ⚙ CONNECTIONS → OpenCode → GENERATE IMAGES → SAVE':
+    '# ⚙ CONEXIONES → OpenCode → GENERA IMÁGENES → GUARDAR',
+  '# ⚙ CONNECTIONS → agent card → WEB ACCESS → SAVE':
+    '# ⚙ CONEXIONES → ficha del agente → ACCESO WEB → GUARDAR',
+  '# type / or @ in the field box':
+    '# escribe / o @ en el campo',
+  '# chip: TO @codex  #1 EXCHANGE ▾  → choose':
+    '# el chip: PARA @codex  #1 EXCHANGE ▾  → elige',
+  '# ⚙ CONNECTIONS → agent card → MAX MODE':
+    '# ⚙ CONEXIONES → ficha del agente → MODO MÁXIMO',
+  '# once: composer → CREATE (lock) → send, or /create <request>':
+    '# una vez: compositor → CREATE (candado) → enviar, o /create <petición>',
+  '# always: ⚙ CONNECTIONS → agent card → DEFAULT MODE → #2':
+    '# siempre: ⚙ CONEXIONES → ficha del agente → MODO POR DEFECTO → #2',
+  '# ⚙ CONNECTIONS → agent card → CREATE FILES → SAVE':
+    '# ⚙ CONEXIONES → ficha del agente → CREAR ARCHIVOS → GUARDAR',
+  '# composer → CREATE (lock) → send':
+    '# compositor → CREATE (candado) → enviar',
+  '# or: nvm install --lts':
+    '# o: nvm install --lts',
+  '# or your distro package for Node ≥ 22.5':
+    '# o el paquete de tu distribución para Node ≥ 22.5',
+  '# more recall per turn':
+    '# más recuerdo por turno',
+  '# persist: echo \'export PULSE_RECALL_SHARE="0.45"\' >> ~/.zshrc':
+    '# para que quede: echo \'export PULSE_RECALL_SHARE="0.45"\' >> ~/.zshrc',
+  '# off':
+    '# apagado',
+  '# persist: echo \'export PULSE_DISTILL_AGENT="claude"\' >> ~/.zshrc':
+    '# para que quede: echo \'export PULSE_DISTILL_AGENT="claude"\' >> ~/.zshrc',
+  '# persist: echo \'export PULSE_DISTILL_EVERY="6"\' >> ~/.zshrc':
+    '# para que quede: echo \'export PULSE_DISTILL_EVERY="6"\' >> ~/.zshrc',
+  '# then: MU/TH/UR → ◉ NOSTROMO':
+    '# después: MU/TH/UR → ◉ NOSTROMO',
+  '# MU/TH/UR → ◉ NOSTROMO → designation = project folder name':
+    '# MU/TH/UR → ◉ NOSTROMO → la designación es el nombre de la carpeta del proyecto',
+  '# MODULES → RIPLEY → ENABLE RIPLEY':
+    '# MÓDULOS → RIPLEY → ENCENDER RIPLEY',
+  '# viewer → PREVIEW / SOURCE':
+    '# el visor → PREVIEW / SOURCE',
+  '# MADRE does this for you; these are the alternatives:':
+    '# MADRE hace esto por ti; estas son las alternativas:',
+  '# ⚙ CONNECTIONS → PRIVACY → one term per line → PURGE ROOM':
+    '# ⚙ CONEXIONES → PRIVACIDAD → un término por línea → PURGAR LA SALA',
+  '# room → UNDO under the CONTROL notice':
+    '# la sala → DESHACER debajo del aviso de CONTROL',
+  '# room → the handle under the bar, on the left → NEW CONVERSATION':
+    '# la sala → la manija bajo la barra, a la izquierda → NUEVA CONVERSACIÓN',
+  '# the address of the open room is in the refusal itself':
+    '# la dirección de la sala abierta viene en el propio rechazo',
+  '# room → ◉ NOSTROMO → the dark bodies are aberrations':
+    '# la sala → ◉ NOSTROMO → los cuerpos oscuros son aberraciones',
+  '# ⚙ CONNECTIONS → MEMORY → THE THREE TESTS → CONSISTENCY':
+    '# ⚙ CONEXIONES → MEMORIA → LAS TRES PRUEBAS → CONSISTENCIA',
+  '# ⚙ CONNECTIONS → MEMORY → CARRY WHAT A MEMORY KEEPS ARRIVING WITH':
+    '# ⚙ CONEXIONES → MEMORIA → LLEVAR AQUELLO CON LO QUE UNA MEMORIA SIEMPRE LLEGA',
+  '# room → ◉ NOSTROMO → COLD':
+    '# la sala → ◉ NOSTROMO → FRÍAS',
+  '# room → ◉ NOSTROMO → ASK → PUT IN THE COMPOSER':
+    '# la sala → ◉ NOSTROMO → PREGUNTAR → PONER EN EL COMPOSITOR',
+  '# ⚙ CONNECTIONS → MEMORY → THE THREE TESTS':
+    '# ⚙ CONEXIONES → MEMORIA → LAS TRES PRUEBAS',
+  '# MATCH needs Ollama running with a chat model, and embeddings on':
+    '# COINCIDENCIA necesita Ollama corriendo con un modelo de chat, y los embeddings encendidos',
+  '# or: brew install node   # a Homebrew node owns its own prefix':
+    '# o: brew install node   # un node de Homebrew es dueño de su propio prefijo',
+  '# or use nvm, which owns the prefix it installs into':
+    '# o usa nvm, que es dueño del prefijo donde instala',
+  '# MODULES → + ADD A MODULE':
+    '# MÓDULOS → + AGREGAR UN MÓDULO',
+  '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works':
+    '# docs/SDK.md es el contrato entero, y docs/sdk/hello-module.mjs es uno que funciona',
+  '# the line in the room: local · @madre → CHECK IT AGAINST THIS ROOM':
+    '# la línea en la sala: local · @madre → MEDIRLO CONTRA ESTA SALA',
+  '# or: NOSTROMO → THE THREE TESTS → the third one':
+    '# o: NOSTROMO → LAS TRES PRUEBAS → la tercera',
+  '# it needs embeddings on and some turns answered by a CLI agent, which is what it compares against':
+    '# necesita los embeddings encendidos y algunos turnos contestados por un agente de CLI, que es contra lo que compara',
+  '# the seal lifts on its own; MU/TH/UR › NOSTROMO asks for the name again after it does':
+    '# el sello se levanta solo; MU/TH/UR › NOSTROMO vuelve a pedir el nombre cuando pase',
+  '# NOSTROMO → click the core → type HELP':
+    '# NOSTROMO → clic en el núcleo → escribe HELP',
+  '# READ MEMORIES prints the block the next turn would carry':
+    '# LEER MEMORIAS imprime el bloque que llevaría el próximo turno',
+  '# SPECIAL ORDER 937 is answered too':
+    '# la ORDEN ESPECIAL 937 también se contesta',
+  '# NOSTROMO → click the core → WHAT LEFT THIS MACHINE':
+    '# NOSTROMO → clic en el núcleo → LO QUE SALIÓ DE ESTA MÁQUINA',
+  '# embeddings, to keep memories on this computer: MU/TH/UR → MEMORY → EMBEDDINGS → OLLAMA':
+    '# embeddings, para que las memorias se queden en esta computadora: MU/TH/UR → MEMORIA → EMBEDDINGS → OLLAMA',
   'Dismiss this record · it stays in the ledger': 'Descartar este registro · se queda en el ledger',
   'Codex says it is reading additional input from stdin':
     'Codex dice que está leyendo entrada adicional de stdin',
