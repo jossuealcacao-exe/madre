@@ -29,6 +29,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### Entrar a NOSTROMO no puede dejarte encima de la salida
 
+- Y el arreglo dejó su propia marca: al darle el foco al mapa, el navegador le dibujaba **un marco azul alrededor de toda la constelación**. Al mapa no se llega con Tab —está fuera del orden de tabulación a propósito—, así que ese anillo no le señalaba nada a nadie. Quitado; no se esconde ninguna pista al hacerlo, porque no hay adónde tabular.
+
 - Escribías la designación, dabas Enter, y el foco quedaba en **SALIR**: el siguiente Enter te echaba de donde acababas de entrar. Un diálogo le entrega el foco a su primer hijo enfocable, y con COLD, PREGUNTAR y RECENTRAR ocultos, ese primero era la salida. Ahora lo toma el mapa, que es a lo que fuiste.
 
 ### El registro de errores: un código que se dicta, y una salida por fila

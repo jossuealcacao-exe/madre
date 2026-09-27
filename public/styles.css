@@ -313,6 +313,10 @@ dialog.nostromo::backdrop { background: #000; }
 .nostromo-frame .mother-close { color: var(--ph); border-color: var(--ph-dim); }
 .nostromo-frame .mother-close:hover { background: var(--ph-faint); }
 .nostromo-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+/* The map takes focus when NOSTROMO opens, so that Enter does not land on LEAVE. It is not in
+   the tab order (tabindex="-1"), so the ring the browser draws around it points at nothing and
+   boxes the constellation in blue. Nothing is hidden by removing it: there is nowhere to tab. */
+.nostromo-canvas:focus, .nostromo-canvas:focus-visible { outline: none; }
 .nostromo-canvas.over { cursor: pointer; }
 .nostromo-canvas.dragging { cursor: grabbing; }
 .nostromo-help { position: absolute; left: 26px; bottom: 16px; margin: 0; font-size: 9px; letter-spacing: .2em; color: var(--ph-dim); pointer-events: none; }
