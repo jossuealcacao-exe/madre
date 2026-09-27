@@ -1790,6 +1790,7 @@ export const ES = {
   // El registro de errores: un código que se dicta por teléfono, y una salida por fila.
   'SHOW THE {n} DISMISSED': 'VER LOS {n} DESCARTADOS',
   'DISMISS ALL {n}': 'DESCARTAR LOS {n}',
+  'DOWNLOAD THE LOG': 'DESCARGAR EL REGISTRO',
   'Dismiss this record · it stays in the ledger': 'Descartar este registro · se queda en el ledger',
   'Codex says it is reading additional input from stdin':
     'Codex dice que está leyendo entrada adicional de stdin',

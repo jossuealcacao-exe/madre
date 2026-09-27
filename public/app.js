@@ -3302,16 +3302,48 @@ function recordFailure(entry) {
   paintMotherBadge();
 }
 
+// The recorded conditions as a file. One row per record, the columns a person would ask for,
+// and the support code beside each so it can be looked up without this room open.
+function downloadConditionLog(records) {
+  const cell = (value) => `"${String(value ?? '').replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`;
+  const header = ['when', 'agent', 'code', 'condition', 'error'].map(cell).join(',');
+  const rows = [...records].reverse().map((failure) => {
+    const matches = diagnose(failure.error, failure.agent);
+    return [
+      failure.time ?? '',
+      failure.agent ?? 'room',
+      matches.map((condition) => condition.code ?? condition.id).join(' ') || 'unclassified',
+      matches.map((condition) => condition.id).join(' '),
+      resay(String(failure.error ?? '').trim()),
+    ].map(cell).join(',');
+  });
+  // A BOM, or a spreadsheet opens the accents as mojibake.
+  const blob = new Blob([`\uFEFF${[header, ...rows].join('\n')}\n`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = el('a');
+  link.href = url;
+  link.download = `madre-conditions-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
 function commandBlock(lines) {
   const block = el('div', 'mother-cmd');
-  const copy = el('button', 'copy', t('COPY'));
+  const copy = el('button', 'copy');
   copy.type = 'button';
+  copy.title = t('COPY');
+  copy.setAttribute('aria-label', t('COPY'));
+  // Two sheets, drawn rather than written: a word here sat on top of the command it was offering.
+  copy.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" width="12" height="12"><rect x="5.5" y="5.5" width="8" height="9" rx="1.5" fill="none" stroke="currentColor"/><path d="M10.5 3.5H3.5a1 1 0 0 0-1 1v7" fill="none" stroke="currentColor"/></svg>';
   const runnable = lines.filter((line) => !line.trim().startsWith('#'));
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(runnable.join('\n'));
-      copy.textContent = t('COPIED');
-      setTimeout(() => { copy.textContent = t('COPY'); }, 1500);
+      copy.classList.add('done');
+      copy.title = t('COPIED');
+      setTimeout(() => { copy.classList.remove('done'); copy.title = t('COPY'); }, 1500);
     } catch {
       copy.textContent = t('SELECT');
     }
@@ -3406,6 +3438,14 @@ function renderMotherRecorded() {
     back.type = 'button';
     back.addEventListener('click', () => { dismissed.clear(); saveDismissed(); paintMotherBadge(); renderMotherRecorded(); });
     body.append(back);
+  }
+  if (shown.length) {
+    // A file to send to whoever is helping. CSV because it opens in anything and each row
+    // carries its support code: the reader does not have to know MADRE to read it.
+    const save = el('button', 'mother-clear', t('DOWNLOAD THE LOG'));
+    save.type = 'button';
+    save.addEventListener('click', () => downloadConditionLog(shown));
+    body.append(save);
   }
   if (shown.length > 1) {
     const all = el('button', 'mother-clear', t('DISMISS ALL {n}', { n: shown.length }));
@@ -5969,6 +6009,10 @@ async function openNostromo() {
   if (!nostromo.dialog) return;
   mother.dialog?.close?.();
   nostromo.dialog.showModal();
+  // A dialog hands focus to its first focusable child, and with COLD, ASK and RECENTER hidden
+  // that was LEAVE: you pressed Enter to come in and the next Enter threw you out. The map is
+  // what you came for, so the map takes it.
+  nostromo.canvas?.focus?.({ preventScroll: true });
   paintLegend();
   nostromo.sub.textContent = t('MEMORY RESEARCH · LOADING…');
   nostromo.card.hidden = true;

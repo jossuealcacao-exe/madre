@@ -6,6 +6,16 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### El registro, legible: un icono que no estorba y un archivo que se manda
+
+- **COPIAR se sentaba encima del comando que ofrecía.** Era una palabra flotando en la esquina del bloque, y cualquier comando largo le pasaba por debajo. Ahora es un icono de dos hojas, con su sitio reservado: el comando ya no corre bajo nada, y al copiar el icono se enciende en vez de convertirse en otra palabra.
+- **La `×` de descartar se caía al renglón de abajo.** La fila del registro tenía cuatro columnas y al agregarle la salida quedaron cinco cosas. Ahora son cinco columnas, con aire entre ellas.
+- **DESCARGAR EL REGISTRO.** Un CSV con una fila por condición: cuándo, qué agente, **el código de soporte**, la condición y el error. Se abre en cualquier hoja de cálculo y lleva BOM, para que los acentos no se rompan al abrirlo. Quien lo reciba no necesita tener MADRE abierta para leerlo.
+
+### Entrar a NOSTROMO no puede dejarte encima de la salida
+
+- Escribías la designación, dabas Enter, y el foco quedaba en **SALIR**: el siguiente Enter te echaba de donde acababas de entrar. Un diálogo le entrega el foco a su primer hijo enfocable, y con COLD, PREGUNTAR y RECENTRAR ocultos, ese primero era la salida. Ahora lo toma el mapa, que es a lo que fuiste.
+
 ### El registro de errores: un código que se dicta, y una salida por fila
 
 - **El badge de MU/TH/UR subía y nunca bajaba.** Cada condición registrada se reconstruye del ledger en cada carga, y no había forma de descartar ninguna: veintitantas alertas encima del botón, todas de cosas ya resueltas. Ahora cada fila del registro tiene su `×`, y cuando hay varias, un **DESCARTAR LOS N** de una vez.
