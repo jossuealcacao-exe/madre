@@ -185,3 +185,20 @@ test('a failed turn says what happened, and what the CLI printed is context, not
   assert.equal(silent.message, 'Codex exited with code 1.');
   assert.ok(!/printed:/.test(silent.message));
 });
+
+test('a process that never started says so, whichever way spawn refused', async () => {
+  const { runReadonlyProcess } = await import('../src/adapters/process.mjs');
+  const parse = (stdout) => ({ text: stdout.trim(), usage: null });
+
+  // The asynchronous refusal: the child exists long enough to raise 'error'.
+  const missing = await runReadonlyProcess({ label: 'Codex', executable: '/nowhere/codex', args: [], cwd: import.meta.dirname, timeoutMs: 5000, parse }).then(() => null, (error) => error);
+  assert.match(missing.message, /^Codex could not start: /);
+  assert.match(missing.message, /is still installed/);
+  assert.match(missing.message, /updates itself can move out from under a room/, 'the one cause a human cannot guess is not named');
+
+  // The synchronous one, which used to skip the explanation entirely: spawn throws before there
+  // is a child to attach a listener to, so the room recorded a bare node error. This is how a
+  // CLI replaced underneath an open room — an app updating itself — read as a broken product.
+  const thrown = await runReadonlyProcess({ label: 'Codex', executable: process.execPath, args: ['-e', '0'], cwd: { not: 'a path' }, timeoutMs: 5000, parse }).then(() => null, (error) => error);
+  assert.match(thrown.message, /^Codex could not start: /, 'a synchronous spawn failure still reaches the human as a raw node error');
+});

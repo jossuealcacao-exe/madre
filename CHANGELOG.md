@@ -6,6 +6,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### Un CLI que se actualiza solo debajo de una sala abierta
+
+- En un QA salió `spawn /Applications/ChatGPT.app/Contents/Resources/codex ENOENT` con el binario **existiendo y siendo ejecutable**. La app de ChatGPT había actualizado su Codex a media sesión —de `0.154.0-alpha.6.2` a `0.155.0-alpha.9.2`— y MADRE seguía apuntando al que ya no estaba. Reabrir la sala encuentra el nuevo; sin saber eso, parece que el producto se rompió.
+- Lo que hacía ilegible ese momento: **`spawn` falla de dos maneras y solo una estaba explicada.** La asíncrona levanta `error` en el proceso hijo y ahí sí había una frase con qué hacer. La síncrona **lanza antes de que exista un hijo al que escucharle**, así que se saltaba el manejador entero y a la sala llegaba el error crudo de node. Ahora las dos pasan por la misma explicación, y nombra la causa que nadie puede adivinar: un CLI que se actualiza solo puede moverse debajo de una sala ya abierta.
+
 ### Un aviso no es una causa
 
 - Un usuario reportó que MADRE «solo funciona con APIs»: tenía Codex y Claude con sus planes, los dos con sesión iniciada, y ningún turno contestaba. Lo que leía era, en Claude, un aviso sobre `ANTHROPIC_API_KEY`; en Codex, la línea `Reading additional input from stdin...`. Ni una de las dos cosas era la razón.

@@ -25,6 +25,18 @@ export function terminateProcessTree(child, { graceMs = 2000 } = {}) {
   child.once('close', () => clearTimeout(escalation));
 }
 
+// One explanation for a process that never ran, whichever way spawn refused. ENOENT is the
+// ambiguous one: node says it for a missing binary and for a missing working directory alike,
+// so the sentence names both instead of guessing which.
+function couldNotStart(error, { label, executable, cwd }) {
+  if (error?.code === 'ENOENT') {
+    error.message = `${label} could not start: ${error.message}. Check that the project folder ${cwd} exists and that ${executable} is still installed — a CLI that updates itself can move out from under a room that is already open, and reopening it finds the new one.`;
+  } else if (error && !String(error.message ?? '').startsWith(label)) {
+    error.message = `${label} could not start: ${error.message}`;
+  }
+  return error;
+}
+
 export function runReadonlyProcess({
   executable,
   args,
@@ -52,12 +64,23 @@ export function runReadonlyProcess({
       reject(new Error(t('{label} was interrupted before it started: {why}.', { label, why: typeof signal.reason === 'string' ? signal.reason : t('MADRE is shutting down') })));
       return;
     }
-    const child = spawn(executable, args, {
-      cwd,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: process.platform !== 'win32',
-    });
+    // spawn fails two ways, and only one of them used to be explained. The asynchronous one
+    // raises 'error' on the child; the synchronous one throws right here, before there is a
+    // child to listen to — a binary replaced underneath a running room by an app that updates
+    // itself, an option the platform refuses. That path handed the human a bare `spawn … ENOENT`
+    // with nothing to act on, which is how a self-updating CLI looked like a broken product.
+    let child;
+    try {
+      child = spawn(executable, args, {
+        cwd,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: process.platform !== 'win32',
+      });
+    } catch (error) {
+      reject(couldNotStart(error, { label, executable, cwd }));
+      return;
+    }
     let stdout = '';
     let stderr = '';
     let settled = false;
@@ -128,13 +151,7 @@ export function runReadonlyProcess({
       finish(() => reject(verdict));
     });
     armIdle();
-    child.on('error', (error) => finish(() => {
-      // spawn reports ENOENT for a missing cwd as well as a missing binary.
-      if (error.code === 'ENOENT') {
-        error.message = `${label} could not start: ${error.message}. Check that the project folder ${cwd} exists and that ${executable} is still installed.`;
-      }
-      reject(error);
-    }));
+    child.on('error', (error) => finish(() => reject(couldNotStart(error, { label, executable, cwd }))));
     child.on('close', (code) => finish(() => {
       const response = parse(stdout);
       if (code === 0 && response.text) return resolve(response);
