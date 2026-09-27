@@ -1780,6 +1780,13 @@ export const ES = {
     'Claude Code encontró en el entorno una llave de API además del inicio de sesión de claude.ai, y gana la llave. MADRE le entrega al CLI el entorno tal como lo tiene esta computadora, así que lo que esté exportado en el perfil de tu shell le llega. El turno se le cobra a la cuenta de API, no al plan, y los conectores de tu organización no cargan.',
   'Decide which one you mean. To work on the plan, unset the key where your shell exports it and open the room again; to work on the API, this message is only a notice and can be ignored.':
     'Decide cuál quieres. Para trabajar con el plan, quita la llave de donde tu shell la exporta y vuelve a abrir la sala; para trabajar con la API, este mensaje es solo un aviso y se puede ignorar.',
+  // La condición que declara el módulo PLAYWRIGHT. Las de los módulos viven en su archivo, no
+  // en troubleshooting.js, y por eso se quedaron fuera del catálogo hasta ahora.
+  'PLAYWRIGHT: the browser server is not installed': 'PLAYWRIGHT: el servidor de navegador no está instalado',
+  'The PLAYWRIGHT module runs @playwright/mcp per turn. Two different things have to be on this computer and only one of them is the package: the server, and the browser build that this version of it expects. A server that starts without its browser answers every tool call with "Browser … is not installed", and one that cannot start at all reaches the agent as CONNECTION_CLOSED.':
+    'El módulo PLAYWRIGHT corre @playwright/mcp en cada turno. Tienen que estar en esta computadora dos cosas distintas y solo una es el paquete: el servidor, y la versión de navegador que esa versión del servidor espera. Un servidor que arranca sin su navegador contesta a cada herramienta con «Browser … is not installed», y uno que no logra arrancar le llega al agente como CONNECTION_CLOSED.',
+  'Install the server once, globally, then its browser — the browser is downloaded by the server itself, not by the playwright CLI — and RECHECK in MODULES.':
+    'Instala el servidor una vez, global, y después su navegador —lo baja el servidor mismo, no el CLI de playwright— y dale RE-REVISAR en MÓDULOS.',
   'Codex says it is reading additional input from stdin':
     'Codex dice que está leyendo entrada adicional de stdin',
   'A notice Codex prints, not a failure. MADRE runs it with stdin closed, so the line is harmless and the turn is decided by what Codex returned. If the turn failed, the reason is the line above this one — the exit code, or a clean exit with no answer.':

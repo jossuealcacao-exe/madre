@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### PLAYWRIGHT nunca conectó, y npm se estaba comiendo las banderas
+
+- Pedirle a un agente que use el navegador contestaba `CONNECTION_CLOSED: "Connection closed"`. La causa: MADRE lanza el servidor con `npx --no @playwright/mcp --headless --isolated …` y **npm se queda con esas banderas como configuración suya** —`Unknown cli config "--headless"`— y le entrega al servidor solo los valores sueltos. El servidor muere con `too many arguments. Expected 0 arguments but got 4` antes de hablar una palabra de MCP. Falta un `--` entre el paquete y sus banderas. Probado: sin el separador el servidor muere con código 1; con él contesta el saludo MCP.
+- Debajo había un segundo: **el servidor y su navegador son dos cosas distintas**, y la ficha solo comprobaba el paquete. Un PLAYWRIGHT «encendido · chromium» puede no tener navegador, y entonces cada herramienta contesta `Browser "chrome-for-testing" is not installed`. El remedio que mostraba MADRE además ya no era el correcto: hoy el navegador lo baja el propio servidor (`npx @playwright/mcp install-browser chrome-for-testing`), no el CLI de playwright.
+- Y un tercero al ir a traducir lo anterior: **las condiciones que declara un módulo no estaban en el catálogo español**. Viven en el archivo del módulo, no en `troubleshooting.js`, así que la guardia de las 51 nunca las vio y PLAYWRIGHT se explicaba en inglés dentro de una sala en español. La guardia ahora lee también los módulos.
+
 ### Un CLI que se actualiza solo debajo de una sala abierta
 
 - En un QA salió `spawn /Applications/ChatGPT.app/Contents/Resources/codex ENOENT` con el binario **existiendo y siendo ejecutable**. La app de ChatGPT había actualizado su Codex a media sesión —de `0.154.0-alpha.6.2` a `0.155.0-alpha.9.2`— y MADRE seguía apuntando al que ya no estaba. Reabrir la sala encuentra el nuevo; sin saber eso, parece que el producto se rompió.

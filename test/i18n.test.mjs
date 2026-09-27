@@ -176,6 +176,24 @@ test("i18n: every condition MU/TH/UR holds reads in the room's language", async 
 
   // All 51, in all three of the fields a person reads. What MATCHES a failure is not one of
   // them: those patterns are tested against what a CLI printed, and a CLI prints English.
+  // The 51 in troubleshooting.js, and the ones each module declares in its own file. Those lived
+  // outside this guard and so outside the catalogue: PLAYWRIGHT explained itself in English
+  // inside a room that was otherwise wholly Spanish, and nothing could tell.
+  const { readdir: readModules, readFile: readModule } = await import('node:fs/promises');
+  const moduleDir = join(import.meta.dirname, '..', 'src', 'modules');
+  const fromModules = [];
+  for (const name of await readModules(moduleDir)) {
+    if (!name.endsWith('.mjs')) continue;
+    const source = await readModule(join(moduleDir, name), 'utf8');
+    for (const field of ['title', 'diagnosis', 'remedy']) {
+      for (const match of source.matchAll(new RegExp(String.raw`\n\s{4}${field}: '((?:[^'\\]|\\.)*)'`, 'g'))) {
+        fromModules.push([`${name}.${field}`, match[1].replace(/\\(['\\])/g, '$1')]);
+      }
+    }
+  }
+  assert.ok(fromModules.length > 0, 'no module condition was read, so this half guards nothing');
+  for (const [where, text] of fromModules) assert.ok(Object.hasOwn(ES, text), `${where} is not in the Spanish catalogue`);
+
   for (const condition of CONDITIONS) {
     for (const field of ['title', 'diagnosis', 'remedy']) {
       assert.ok(Object.hasOwn(ES, condition[field]), `${condition.id}.${field} is not in the Spanish catalogue`);

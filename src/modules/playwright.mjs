@@ -29,7 +29,10 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
   return {
     name: PLAYWRIGHT_SERVER_NAME,
     command: 'npx',
-    args: ['--no', '@playwright/mcp', ...(headless ? ['--headless'] : []), '--isolated', '--browser', browser, '--allowed-origins', `http://127.0.0.1:${port};http://localhost:${port}`, '--blocked-origins', '*', '--output-dir', outputDir, '--no-sandbox'],
+    // `--` or npm eats them: without the separator npm takes --headless, --isolated and the
+    // rest as its own config, hands the server only their bare values, and the server exits with
+    // "too many arguments" before it speaks a word of MCP. The agent sees CONNECTION_CLOSED.
+    args: ['--no', '@playwright/mcp', '--', ...(headless ? ['--headless'] : []), '--isolated', '--browser', browser, '--allowed-origins', `http://127.0.0.1:${port};http://localhost:${port}`, '--blocked-origins', '*', '--output-dir', outputDir, '--no-sandbox'],
     env: {},
     tools: PLAYWRIGHT_TOOLS,
     brief: `a headless browser that reaches only this MADRE at http://127.0.0.1:${port}. Open a project file rendered by RIPLEY at http://127.0.0.1:${port}/preview/project/<path>, click, read the console and network, take screenshots (they land in ${outputDir}). Nothing else on the network is reachable through it.`,
@@ -56,7 +59,7 @@ export default defineModule({
       runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
       status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (version ? `${t('on')} · ${ctx.settings.browser}` : t('on · the browser server is not installed')) : version ? t('off') : t('off · the browser server is not installed') },
-      preflight: version ? { ok: true, problems: [] } : { ok: false, problems: ['Install the browser server first: npm install -g @playwright/mcp && npx playwright install chromium'] },
+      preflight: version ? { ok: true, problems: [] } : { ok: false, problems: ['Install the browser server first: npm install -g @playwright/mcp, then its browser: npx @playwright/mcp install-browser chrome-for-testing'] },
       install: { display: ctx.settings.enabled ? 'disable PLAYWRIGHT' : 'enable PLAYWRIGHT (config.json)', platforms: ['codex', 'claude', 'gemini', 'opencode'] },
     };
   },
@@ -83,8 +86,8 @@ export default defineModule({
     severity: 'informational',
     title: 'PLAYWRIGHT: the browser server is not installed',
     match: /@playwright\/mcp|playwright.*not (found|installed)|browser server/i,
-    diagnosis: 'The PLAYWRIGHT module runs @playwright/mcp per turn. It is on, or you tried to open it, but npx cannot find the package without downloading, or no browser is installed.',
-    remedy: 'Install it once, globally, then RECHECK in MODULES.',
-    fixes: { darwin: ['npm install -g @playwright/mcp', 'npx playwright install chromium'], linux: ['npm install -g @playwright/mcp', 'npx playwright install --with-deps chromium'] },
+    diagnosis: 'The PLAYWRIGHT module runs @playwright/mcp per turn. Two different things have to be on this computer and only one of them is the package: the server, and the browser build that this version of it expects. A server that starts without its browser answers every tool call with "Browser … is not installed", and one that cannot start at all reaches the agent as CONNECTION_CLOSED.',
+    remedy: 'Install the server once, globally, then its browser — the browser is downloaded by the server itself, not by the playwright CLI — and RECHECK in MODULES.',
+    fixes: { darwin: ['npm install -g @playwright/mcp', 'npx @playwright/mcp install-browser chrome-for-testing'], linux: ['npm install -g @playwright/mcp', 'npx @playwright/mcp install-browser chrome-for-testing'] },
   }],
 });
