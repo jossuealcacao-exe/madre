@@ -983,7 +983,7 @@ export async function createPulseServer({
       const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
       // Sentinel: reports, settings, the manual road (a prefilled issue) and the automatic one.
       if (request.method === 'GET' && url.pathname === '/api/sentinel') {
-        return sendJson(response, 200, { reports: sentinel.reports(), settings: sentinel.settings(), environment: sentinel.environment(), feedbackUrl: sentinel.feedbackUrl() });
+        return sendJson(response, 200, { reports: sentinel.reports(), settings: sentinel.settings(), environment: sentinel.environment(), feedbackUrl: sentinel.feedbackUrl(), formUrl: sentinel.formUrl() });
       }
       if (request.method === 'POST' && url.pathname === '/api/sentinel/settings') {
         const patch = await body(request).catch(() => ({}));
@@ -994,8 +994,13 @@ export async function createPulseServer({
       const sentinelMatch = url.pathname.match(/^\/api\/sentinel\/([a-f0-9]{10})\/(issue|send)$/);
       if (sentinelMatch && request.method === (sentinelMatch[2] === 'issue' ? 'GET' : 'POST')) {
         if (sentinelMatch[2] === 'issue') {
-          const issue = sentinel.issueUrl(sentinelMatch[1]);
-          return issue ? sendJson(response, 200, { url: issue }) : sendJson(response, 404, { error: t('No such report, or no repository to file it in.') });
+          // Both roads, always: the issue for whoever has an account, the form for whoever does
+          // not. Nobody should hit a login wall while holding a bug report. A report that does
+          // not exist still gets neither: the form does not need the report to be built, so it
+          // would otherwise hand out a link for nothing.
+          const known = sentinel.reports().some((one) => one.id === sentinelMatch[1]);
+          const issue = known ? sentinel.issueUrl(sentinelMatch[1]) : null;
+          return known ? sendJson(response, 200, { url: issue, form: sentinel.formUrl({ about: sentinelMatch[1] }) }) : sendJson(response, 404, { error: t('No such report, or no repository to file it in.') });
         }
         const outcome = await sentinel.send(sentinelMatch[1]);
         return sendJson(response, outcome.ok ? 200 : (outcome.status === 404 || outcome.status === 412 ? outcome.status : 502), outcome);

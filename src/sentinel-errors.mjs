@@ -10,6 +10,12 @@
 import { createHash } from 'node:crypto';
 import { homedir, platform, arch, release } from 'node:os';
 import { diagnose } from '../public/troubleshooting.js';
+import { language } from './i18n.mjs';
+
+// The product's own house. The collector lives under it too, so the line a human reads in the
+// outbound log names the product instead of a personal endpoint on someone's cloud account.
+export const HOME_SITE = 'https://madre.run';
+export const REPORT_FORM = { es: `${HOME_SITE}/reportar`, en: `${HOME_SITE}/report` };
 
 export const REPORT_WINDOW_MS = 24 * 3600 * 1000;
 const MAX_ERROR_CHARS = 4000;
@@ -71,7 +77,7 @@ export class ErrorSentinel {
     this.#save = save;
   }
 
-  settings() { return { ...this.#settings, canSend: Boolean(this.#settings.reportUrl), repo: repoFromPackage(this.#pkg) }; }
+  settings() { return { ...this.#settings, canSend: Boolean(this.#settings.reportUrl), repo: repoFromPackage(this.#pkg), home: HOME_SITE }; }
   async setSettings(patch = {}) {
     if (typeof patch.autoReport === 'boolean') this.#settings.autoReport = patch.autoReport;
     if (typeof patch.reportUrl === 'string') this.#settings.reportUrl = patch.reportUrl.trim();
@@ -172,6 +178,18 @@ export class ErrorSentinel {
       '_Redacted automatically by MADRE\'s sentinel: no paths, names or keys._',
     ].join('\n');
     return `https://github.com/${repo}/issues/new?${new URLSearchParams({ title, body, labels: 'sentinel' })}`;
+  }
+
+  // Where a human goes to say something. GitHub is the better home for a report — it is
+  // searchable, it deduplicates, and the answer helps whoever hits it next — but it asks for an
+  // account first, and somebody who arrived from a post in Spanish will not make one to say "it
+  // does not detect Codex". They get the form; the other road stays one click away, both ways.
+  formUrl({ about = '' } = {}) {
+    const base = REPORT_FORM[language()] ?? REPORT_FORM.en;
+    const env = this.environment();
+    const query = new URLSearchParams({ v: env.madre, node: env.node, os: env.platform });
+    if (about) query.set('about', about.slice(0, 120));
+    return `${base}?${query}`;
   }
 
   feedbackUrl({ about = '' } = {}) {

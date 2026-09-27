@@ -47,6 +47,11 @@ test('outbound: every declaration answers for itself, and no address hides from 
     'github.com',                 // the issue a person opens with a report in hand
     'ollama.com',                 // where Ollama is downloaded from, by the human
     'console.anthropic.com', 'platform.openai.com', 'openrouter.ai', 'aistudio.google.com', 'ai.studio', // where a key is made
+    'madre.run',                  // the product's own house: the report form a person opens, and the collector
+    // The collector's address before it had a house. No room on this version sends there, but every
+    // room on 0.4.0 and earlier carries it compiled in, so it has to keep answering and it stays
+    // written down here rather than quietly disappearing from the record.
+    'madre-reports.jossue-alcala-o.workers.dev',
   ]);
   const declared = new Set(DESTINATIONS.map((one) => one.host).filter(Boolean));
   const dir = join(import.meta.dirname, '..', 'src');
@@ -228,4 +233,24 @@ test('outbound: the floor shows the declaration and the log that checks it', asy
   // It is read once per visit, not on every keystroke: it is about the room, not about this turn.
   assert.match(app, /fetch\('\/api\/outbound'\)/);
   assert.match(css, /\.egress\.off \{ opacity: \.55; \}/);
+});
+
+test('a report has two doors, and the one a person sees is the one they can open', async () => {
+  const { DEFAULT_REPORT_URL, LEGACY_REPORT_URL, DESTINATIONS } = await import('../src/outbound.mjs');
+  const { REPORT_FORM, HOME_SITE } = await import('../src/sentinel-errors.mjs');
+
+  // The address a human reads in the outbound log is part of what they are being asked to trust.
+  assert.equal(new URL(DEFAULT_REPORT_URL).hostname, 'madre.run');
+  assert.equal(DESTINATIONS.find((one) => one.id === 'reports').host, 'madre.run');
+
+  // And the address it had before must keep existing in the record: every room on 0.4.0 and
+  // earlier carries it compiled in, so switching it off would stop their reports in silence.
+  assert.match(LEGACY_REPORT_URL, /workers\.dev/);
+  assert.notEqual(LEGACY_REPORT_URL, DEFAULT_REPORT_URL);
+
+  // Machine and human go to different doors on purpose: mixing them dirties what the author reads.
+  assert.ok(!Object.values(REPORT_FORM).some((url) => url.includes('/v1/reports')));
+  for (const [id, url] of Object.entries(REPORT_FORM)) {
+    assert.ok(url.startsWith(`${HOME_SITE}/`), `the ${id} form is not under the product's own house`);
+  }
 });

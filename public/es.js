@@ -1792,6 +1792,8 @@ export const ES = {
   'SHOW THE {n} DISMISSED': 'VER LOS {n} DESCARTADOS',
   'DISMISS ALL {n}': 'DESCARTAR LOS {n}',
   'DOWNLOAD THE LOG': 'DESCARGAR EL REGISTRO',
+  'OR ON MADRE.RUN ↗': 'O EN MADRE.RUN ↗',
+  '✎ REPORT ON MADRE.RUN ↗': '✎ REPORTAR EN MADRE.RUN ↗',
   'OPEN ⚙ CONNECTIONS · @{agent}': 'ABRIR ⚙ CONEXIONES · @{agent}',
   'OPEN ⚙ CONNECTIONS': 'ABRIR ⚙ CONEXIONES',
   // ── LA PROSA DENTRO DE LOS REMEDIOS ──────────────────────────────────────

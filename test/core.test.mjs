@@ -72,7 +72,7 @@ test('core: the door is the star itself, and what is behind it is read and never
   assert.match(app, /if \(at === 'core'\) \{ void openCore\(\); return; \}/);
   assert.match(page, /<dialog id="core" class="mother core"/);
   // The brand is the author's link and nothing else, exactly as it always was.
-  assert.match(page, /<a class="brand" href="https:\/\/jossuealcala\.com\/en\/"/);
+  assert.match(page, /<a class="brand" href="https:\/\/madre\.run"/);
   assert.ok(!/brand-core/.test(page) && !/brand-core/.test(app), 'the brand is a door again');
   assert.ok(!/\.brand \{ border: 0/.test(css), 'the brand carries styling written for a button it is not');
   // And the star is not drawn twice: the frame opens over the real one, still turning behind.

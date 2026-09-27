@@ -7716,12 +7716,13 @@ void loadVersion();
 
 /* ---------- MU/TH/UR: the sentinel. Unknown conditions and crashes, redacted, ready to report. ---------- */
 
-const sentinelUI = { section: document.querySelector('#mother-sentinel'), settings: null, feedbackUrl: null, loaded: false };
+const sentinelUI = { section: document.querySelector('#mother-sentinel'), settings: null, feedbackUrl: null, formUrl: null, loaded: false };
 async function loadSentinel() {
   try {
     const data = await fetch('/api/sentinel').then((response) => response.json());
     sentinelUI.settings = data.settings;
     sentinelUI.feedbackUrl = data.feedbackUrl;
+    sentinelUI.formUrl = data.formUrl;
     for (const report of data.reports ?? []) state.reports.set(report.id, report);
     sentinelUI.loaded = true;
   } catch { /* the room works without it */ }
@@ -7751,10 +7752,17 @@ function renderMotherSentinel() {
   });
   auto.append(box, t('AUTO-REPORT UNKNOWN CONDITIONS') + (settings.canSend ? '' : t(' · NO COLLECTOR CONFIGURED (PULSE_REPORT_URL)')));
   controls.append(auto);
-  const feedback = el('button', null, t('✎ FEEDBACK TO THE AUTHOR'));
+  // Whoever arrived from a post in Spanish will not make a GitHub account to say "it does not
+  // detect Codex". The form leads here; the issue stays one click away, and the other way round
+  // in English, where the person reading this is already holding an account.
+  const spanish = language() === 'es';
+  const feedback = el('button', spanish ? null : 'primary', t('✎ FEEDBACK TO THE AUTHOR'));
   feedback.type = 'button';
   feedback.addEventListener('click', () => openFeedback());
-  controls.append(feedback);
+  const viaForm = el('button', spanish ? 'primary' : null, t('✎ REPORT ON MADRE.RUN ↗'));
+  viaForm.type = 'button';
+  viaForm.addEventListener('click', () => { if (sentinelUI.formUrl) window.open(sentinelUI.formUrl, '_blank', 'noopener'); });
+  controls.append(spanish ? viaForm : feedback, spanish ? feedback : viaForm);
   sentinelBody.append(controls);
   for (const report of reports.slice(0, 20)) {
     const rowNode = paint(el('div', `mother-record sentinel-report${report.sent?.ok ? ' sent' : ''}`), report.agent ?? 'room');
@@ -7767,6 +7775,8 @@ function renderMotherSentinel() {
     if (report.count > 1) actions.append(el('span', 'none', `×${report.count}`));
     actions.append(el('span', 'none', report.fingerprint));
     if (report.sent?.ok) actions.append(el('span', 'none', t('SENT')));
+    // A crash with a trace belongs in issues, where it deduplicates and the answer helps the next
+    // one. The form is beside it for whoever has no account and would otherwise report nothing.
     const issue = el('button', null, t('REPORT ON GITHUB ↗'));
     issue.type = 'button';
     issue.addEventListener('click', async () => {
@@ -7774,6 +7784,13 @@ function renderMotherSentinel() {
       if (result.url) window.open(result.url, '_blank', 'noopener'); else toast(t('MU/TH/UR › no repository to file this in.'));
     });
     actions.append(issue);
+    const form = el('button', null, t('OR ON MADRE.RUN ↗'));
+    form.type = 'button';
+    form.addEventListener('click', async () => {
+      const result = await fetch(`/api/sentinel/${report.id}/issue`).then((response) => response.json()).catch(() => ({}));
+      if (result.form) window.open(result.form, '_blank', 'noopener');
+    });
+    actions.append(form);
     if (settings.canSend && !report.sent?.ok) {
       const send = el('button', null, t('SEND REPORT'));
       send.type = 'button';

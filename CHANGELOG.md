@@ -6,6 +6,15 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### MADRE tiene casa: madre.run
+
+- El colector de errores vivía en `madre-reports.jossue-alcala-o.workers.dev`, y **ese host se le enseña al usuario** en el registro de salidas del núcleo. Un subdominio de `workers.dev` con un nombre de cuenta pegado parece un endpoint improvisado; `madre.run` parece el producto. La dirección es parte de lo que se le pide confiar a alguien.
+- **La dirección vieja sigue contestando, y tiene que seguir.** Cada sala en 0.4.0 y anteriores la lleva compilada dentro: apagarla detendría sus reportes en silencio. Queda escrita en el código y en la prueba, en vez de desaparecer del registro.
+- **Dos puertas para cada reporte humano, siempre.** Un fallo con traza pertenece a GitHub, donde se deduplica y la respuesta le sirve al siguiente; pero pedirle una cuenta a quien llegó de un grupo en español para decir «no me detecta Codex» es perderlo. En español manda el formulario y el issue queda a un clic; en inglés, al revés. Nadie choca con un muro de login con un reporte en la mano.
+- Máquina y humano van a puertas distintas a propósito: `madre.run/v1/reports` para el centinela, `/reportar` y `/report` para personas. Mezclarlos ensucia lo que el autor lee.
+- Y el logo —el del README y la marca de la barra— apunta a la casa del producto en vez de al sitio personal del autor. La atribución se queda donde corresponde, al pie del README.
+- De paso salió un defecto que yo mismo introduje al cablear esto: un identificador de reporte inexistente devolvía 200, porque el formulario no necesita que el reporte exista para construirse. Ahora ninguna de las dos puertas se ofrece para algo que no está.
+
 ### Image Studio buscaba la llave donde MADRE no la guarda
 
 - Y en la misma ficha, una línea estaba bajo la etiqueta equivocada: «se engancha solo dentro de un permiso de creación con el alcance de imagen encendido» no es algo que el módulo *escriba*, es una condición para que se enganche siquiera. Pasó a **NECESITA**, y de paso quedó redactada como requisito: «un permiso de creación con el alcance de imagen encendido; solo ahí se engancha» — bajo *necesita*, la frase anterior no concordaba.

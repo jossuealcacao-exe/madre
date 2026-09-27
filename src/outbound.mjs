@@ -30,7 +30,12 @@ const LOCAL = new Set(['127.0.0.1', 'localhost', '::1', '0.0.0.0', '[::1]']);
 
 // Where an unknown condition goes when somebody presses SEND. It lives here because this is the
 // file that has to name every address MADRE can reach; the room reads it from here.
-export const DEFAULT_REPORT_URL = 'https://madre-reports.jossue-alcala-o.workers.dev/v1/reports';
+// The collector, under the product's own name. The address a human reads in the outbound log is
+// part of what they are being asked to trust, and a workers.dev subdomain with an account name in
+// it reads like somebody's scratch endpoint. The old address must keep answering: every room on
+// 0.4.0 and earlier carries it compiled in, and turning it off would stop their reports silently.
+export const DEFAULT_REPORT_URL = 'https://madre.run/v1/reports';
+export const LEGACY_REPORT_URL = 'https://madre-reports.jossue-alcala-o.workers.dev/v1/reports';
 
 // The declaration. `what` is the honest sentence: what a request carries, not what it is called.
 export const DESTINATIONS = [

@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://jossuealcala.com/en/"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/madre-banner.svg" alt="MADRE · MU/TH/UR 6000 · INTERFACE 2037" width="100%"></a>
+  <a href="https://madre.run"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/madre-banner.svg" alt="MADRE · MU/TH/UR 6000 · INTERFACE 2037" width="100%"></a>
 </p>
 
 <p align="center">
