@@ -221,3 +221,31 @@ test('a number is not a reason: a signalled agent says it was stopped, not that 
   // An ordinary failure keeps its number, which is the thing that diagnoses it.
   assert.equal(await run('process.exit(3)'), 'Claude exited with code 3.');
 });
+
+test('the Gemini key is looked for where MADRE itself puts it', async () => {
+  const { resolveGeminiKey } = await import('../src/mcp/image-server.mjs');
+  const { mkdtemp, mkdir, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+
+  const home = await mkdtemp(joinPath(tmpdir(), 'madre-gemini-'));
+  await mkdir(joinPath(home, '.gemini'), { recursive: true });
+
+  // Pasting a key into CONNECTIONS writes exactly this file (credentials.mjs), and Image Studio
+  // used to answer "no Gemini key found" for it: the room saved a key in a place it then refused
+  // to look. On Linux, where there is no keychain to fall back to, that was the only place it
+  // could have been at all.
+  await writeFile(joinPath(home, '.gemini', '.env'), 'UNRELATED=x\nGEMINI_API_KEY=from-the-file\n');
+  assert.equal(await resolveGeminiKey({ GEMINI_CLI_HOME: home }), 'from-the-file');
+
+  // Quoted and exported forms are what a human writes by hand.
+  await writeFile(joinPath(home, '.gemini', '.env'), 'export GOOGLE_API_KEY="quoted-one"\n');
+  assert.equal(await resolveGeminiKey({ GEMINI_CLI_HOME: home }), 'quoted-one');
+
+  // What this process was given still wins: an explicit key beats a stored one everywhere else.
+  assert.equal(await resolveGeminiKey({ GEMINI_CLI_HOME: home, GEMINI_API_KEY: 'from-the-env' }), 'from-the-env');
+
+  // And an empty assignment is not a key.
+  await writeFile(joinPath(home, '.gemini', '.env'), 'GEMINI_API_KEY=\n');
+  assert.notEqual(await resolveGeminiKey({ GEMINI_CLI_HOME: home }), '');
+});

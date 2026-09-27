@@ -9,12 +9,13 @@
 // Environment:
 //   PULSE_IMAGE_OUT_DIR   required, absolute lease directory
 //   PULSE_IMAGE_MODEL     default gemini-2.5-flash-image
-//   GEMINI_API_KEY        optional; otherwise the macOS keychain entry the
+//   GEMINI_API_KEY        optional; otherwise ~/.gemini/.env, then the macOS keychain entry the
 //                         Gemini CLI stores (service gemini-cli-api-key)
 //   PULSE_IMAGE_FAKE=1    write a 1×1 PNG without calling Google (tests)
 
 import { execFile } from 'node:child_process';
-import { mkdir, writeFile, realpath } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, realpath } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { basename, extname, join, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { OutboundLog } from '../outbound.mjs';
@@ -25,9 +26,30 @@ const SERVER_VERSION = '0.1.0';
 const DEFAULT_MODEL = 'gemini-2.5-flash-image';
 const FAKE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
+// Where a Gemini key can be, in the order the room should trust them: what this process was
+// given, then the file the CLI reads on every run — which is also the file MADRE itself writes
+// when a key is pasted into CONNECTIONS — and last the macOS keychain, which only exists when
+// the CLI's own sign-in put it there. Leaving the file out meant MADRE saved a key in a place it
+// then refused to look, and on Linux, where there is no keychain, that was the only place it
+// could have been: Image Studio could never find a key there at all.
+async function keyFromGeminiEnvFile(env) {
+  const home = env.GEMINI_CLI_HOME ?? homedir();
+  let text;
+  try { text = await readFile(join(home, '.gemini', '.env'), 'utf8'); } catch { return null; }
+  for (const line of text.split('\n')) {
+    const match = line.match(/^\s*(?:export\s+)?(GEMINI_API_KEY|GOOGLE_API_KEY)\s*=\s*(.*)$/);
+    if (!match) continue;
+    const value = match[2].trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+    if (value) return value;
+  }
+  return null;
+}
+
 export async function resolveGeminiKey(env = process.env) {
   if (env.GEMINI_API_KEY) return env.GEMINI_API_KEY;
   if (env.GOOGLE_API_KEY) return env.GOOGLE_API_KEY;
+  const fromFile = await keyFromGeminiEnvFile(env);
+  if (fromFile) return fromFile;
   if (process.platform !== 'darwin') return null;
   // The keychain occasionally answers empty under concurrent reads; one retry.
   for (let attempt = 0; attempt < 2; attempt += 1) {

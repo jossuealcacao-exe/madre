@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.1 · Sin publicar
 
+### Image Studio buscaba la llave donde MADRE no la guarda
+
+- Cuando pegas una llave de Gemini en ⚙ CONEXIONES, MADRE la escribe en **`~/.gemini/.env`**, que es donde ese CLI la lee. Image Studio miraba tres sitios: `GEMINI_API_KEY`, `GOOGLE_API_KEY` y el llavero de macOS. **Ese archivo no estaba en la lista.** La sala guardaba una llave en un sitio donde después se negaba a mirar, y la ficha contestaba «no se encontró llave de Gemini» por una llave que acababa de escribir ella misma.
+- **En Linux era total:** la rama del llavero es solo de macOS, así que `~/.gemini/.env` era el único lugar posible — y nunca se leía. Image Studio no podía encontrar una llave en Linux salvo exportando una variable a mano.
+- Ahora el orden es: lo que se le dio a este proceso, después el archivo que el CLI lee en cada arranque —y que MADRE escribe—, y al final el llavero, que solo existe si el propio inicio de sesión del CLI lo puso ahí. Entiende la forma citada y la de `export`, y una asignación vacía no es una llave.
+
 ### Los remedios: prosa en español y un botón donde había un comando
 
 - **44 de 53 condiciones explicaban su remedio en inglés.** No los comandos —un comando no se traduce— sino los **comentarios** que los acompañan: 145 líneas de prosa, y la mitad nombrando botones. `# ⚙ CONNECTIONS → Gemini → GENERATE IMAGES → SAVE` en una sala donde esos botones se llaman **CONEXIONES**, **GENERA IMÁGENES** y **GUARDAR**. El remedio mandaba a buscar cosas que no existen con ese nombre.
