@@ -4,16 +4,21 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.5.0 · 2026-09-28
+## 0.5.1 · Sin publicar
 
-**Por qué menor y no parche.** Cambia a dónde sale lo que sale de tu máquina —el colector vive ahora bajo `madre.run`— y, sobre todo, **puede impedir que algo salga**: si tienes `OPENAI_BASE_URL` o `ANTHROPIC_BASE_URL` apuntando a un gateway, esos turnos quedan detenidos hasta que quites la variable o autorices ese endpoint con `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS`. Es el arreglo correcto, pero un número de parche se lee como «actualiza sin mirar», y este no lo es. El ledger y la memoria de 0.4.x se siguen leyendo igual.
+Cuatro cosas que salieron del QA de 0.5.0 el mismo día que se publicó. Ninguna cambia modos, módulos, agentes ni a dónde sale nada: son arreglos.
 
-### Tres reportes de la 0.5.0
+### Los cuatro reportes de 0.5.0
 
 - **`/module` nunca llegaba a su tarjeta de instalación** (#5). MADRE le dice al agente en qué carpeta escribir el borrador —`.pulse/out/<turno>/`— y después revertía esa escritura por caer en zona prohibida: `.pulse/` lo es. La sala nombraba un sitio y castigaba por usarlo. Aquí nunca se vio porque **este** repositorio ignora `.pulse/` y git jamás reportó esos archivos; en un proyecto que no lo ignora, la función entera no existía. Ahora la carpeta de borrador de un turno no es zona prohibida **para ese turno**, y solo para ese: todo lo demás bajo `.pulse` se sigue revirtiendo, y hay una prueba con las dos mitades.
 - **El resaltador tomaba el `//` de un regex como comentario** (#6). `/^https?:\/\//` dejaba gris el resto de la línea. Un literal tiene que ser uno de los candidatos que el escáner considera, no algo que revise después — si salta primero al `//`, nunca se entera de que había un literal abierto. Y el error contrario sería peor, así que `a / b / c` sigue siendo una división: una barra abre un literal solo donde puede empezar un valor, y una que no cierra en su línea era división desde el principio.
 - **Dos textos en inglés** (#7). El vendor de `@madre` —«the room · local»— nunca pasó por el catálogo, y quedó a la vista cuando el menú de revisar empezó a mostrarlo. Y la franja de CREATE decía `@CODEX MAY CREA, GENERA IMÁGENES`: los verbos traducidos dentro de una frase que no. Una frase se traduce entera o no se traduce.
+- **El centinela deja de archivar lo que MU/TH/UR ya explica** (#4). El reporte que llegó al repositorio era `Reading additional input from stdin...`, que no es una falla sino un aviso de Codex — llegó ahí porque MADRE entregaba lo último de stderr como si fuera la causa. Desde 0.4.1 el catálogo lo conoce (`MU-002`) y el centinela no archiva lo que el catálogo explica, así que se explica en la sala en vez de enviárselo al autor. Hay una prueba con el texto exacto de ese reporte.
 - De paso, la tercera zona muerta temporal de la semana: el mapa de vendors quedó declarado al fondo del archivo y la fila de agentes se pinta durante el arranque. **Esta vez la atrapó la prueba de humo**, que es para lo que se reforzó.
+
+## 0.5.0 · 2026-09-28
+
+**Por qué menor y no parche.** Cambia a dónde sale lo que sale de tu máquina —el colector vive ahora bajo `madre.run`— y, sobre todo, **puede impedir que algo salga**: si tienes `OPENAI_BASE_URL` o `ANTHROPIC_BASE_URL` apuntando a un gateway, esos turnos quedan detenidos hasta que quites la variable o autorices ese endpoint con `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS`. Es el arreglo correcto, pero un número de parche se lee como «actualiza sin mirar», y este no lo es. El ledger y la memoria de 0.4.x se siguen leyendo igual.
 
 ### Cambiar de conversación deja de recargar la página
 
