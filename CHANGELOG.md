@@ -8,6 +8,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 Tres reportes de la 0.5.1, y la razón por la que ninguno lo atrapó una prueba. Arreglos: nada cambia modos, módulos, agentes ni a dónde sale nada.
 
+### Cerrar una versión abre la siguiente
+
+- Dos veces seguidas una versión salió y los arreglos que llegaron minutos después quedaron escritos **dentro de una sección ya publicada**. Eso es reescribir historia a mano, y hay que moverla de sitio antes de poder cerrar nada — porque un número en npm tiene que significar un código y solo uno: la sala decide si hay algo nuevo comparando versiones, y reescribir una dejaría sin señal, para siempre, a quien ya la tuviera.
+- Ahora `scripts/release.mjs` **abre la siguiente sección en el mismo commit que cierra esta**. Lo que venga después tiene dónde escribirse y nadie tiene que acordarse. Abre un parche por defecto; si lo que sigue resulta ser un menor, cambiar el encabezado es todo el trabajo.
+- Y ya no deja cerrar una versión cuya sección esté vacía. Una nota de versión es cómo alguien decide si la toma; una vacía es peor que no publicar.
+
 ### Los tres reportes de 0.5.1
 
 - **Ningún comando de módulo funcionaba al abrir la sala** (#8). `/git`, `/ahp`, `/pendientes`: todos contestaban «comando desconocido» con el módulo encendido, porque la única llamada que le pide al servidor la lista se había caído **dentro** del bloque que cierra una instalación en vivo. Hasta que ocurriera una instalación, el compositor no conocía ni un comando de módulo. Ahora se pide al cargar, y también cuando un módulo entra, sale o cambia de interruptor — que es cuando cambia lo que el compositor acepta.

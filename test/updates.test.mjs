@@ -51,3 +51,24 @@ test('updates: versions compare as releases, the launch mode picks the command, 
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('closing a version opens the next one, and refuses to close one that says nothing', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { join: joinPath } = await import('node:path');
+  const script = await readFile(joinPath(import.meta.dirname, '..', 'scripts', 'release.mjs'), 'utf8');
+
+  // Twice a version went out and the fixes that followed minutes later landed inside a section
+  // that was already published — history rewritten by hand, because a number in npm has to mean
+  // one code and only one. The next section now opens in the same commit that closes this one,
+  // so whatever comes next has somewhere to be written and nobody has to remember.
+  assert.match(script, /const next = `\$\{major\}\.\$\{minor\}\.\$\{patch \+ 1\}`;/);
+  assert.match(script, /## \$\{next\} · Sin publicar\\n\\n## \$\{version\} · \$\{today\}/, 'closing a version no longer opens the next');
+
+  // And a version whose section is empty cannot be closed: a release note is how somebody decides
+  // whether to take it, and an empty one is worse than no release.
+  assert.match(script, /if \(!openBody\.trim\(\)\) fail\(/);
+
+  // The section still has to exist before anything runs, and the number is still used once.
+  assert.match(script, /CHANGELOG\.md has no "## \$\{version\} · Sin publicar" section/);
+  assert.match(script, /already exists\. A number is used once/);
+});

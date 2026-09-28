@@ -34,6 +34,9 @@ if (published === version) fail(`${version} is already on npm. Open the next num
 let changelog = await readFile(resolve(root, 'CHANGELOG.md'), 'utf8');
 const openHeader = changelog.match(new RegExp(`^## ${version.replace(/\\./g, '\\.')} · Sin publicar.*$`, 'm'));
 if (!openHeader) fail(`CHANGELOG.md has no "## ${version} · Sin publicar" section. Write what this version ships first.`);
+// A version that says nothing is a version nobody can decide to take.
+const openBody = changelog.slice(changelog.indexOf(openHeader[0]) + openHeader[0].length).split(/^## /m)[0];
+if (!openBody.trim()) fail(`The ${version} section is empty. A release note is how someone decides whether to update.`);
 
 console.log(`\nMU/TH/UR › closing ${pkg.name}@${version} · ${today}${dryRun ? ' · DRY RUN' : ''}\n`);
 run('npm', ['test']);
@@ -41,7 +44,13 @@ run('npm', ['run', 'pack:check']);
 
 if (dryRun) { console.log('\n  Dry run: would date the changelog, set package.json, commit, tag, push and create the release.\n'); process.exit(0); }
 
-changelog = changelog.replace(openHeader[0], `## ${version} · ${today}`);
+// Date this one and open the next in the same breath. Twice now a version went out and the
+// fixes that followed minutes later landed inside a section that was already published — history
+// being rewritten by hand, and a number in npm has to mean one code and only one. The next
+// section is a patch by default; if what comes is a minor, renaming a heading is the whole job.
+const [major, minor, patch] = version.split('.').map(Number);
+const next = `${major}.${minor}.${patch + 1}`;
+changelog = changelog.replace(openHeader[0], `## ${next} · Sin publicar\n\n## ${version} · ${today}`);
 await writeFile(resolve(root, 'CHANGELOG.md'), changelog);
 if (pkg.version !== version) { pkg.version = version; await writeFile(resolve(root, 'package.json'), `${JSON.stringify(pkg, null, 2)}\n`); }
 run('git', ['add', 'CHANGELOG.md', 'package.json']);
