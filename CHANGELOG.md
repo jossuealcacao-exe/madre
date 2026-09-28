@@ -4,21 +4,25 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.5.1 · 2026-09-28
+## 0.5.2 · Sin publicar
 
-Cuatro cosas que salieron del QA de 0.5.0 el mismo día que se publicó. Ninguna cambia modos, módulos, agentes ni a dónde sale nada: son arreglos.
+Tres reportes de la 0.5.1, y la razón por la que ninguno lo atrapó una prueba. Arreglos: nada cambia modos, módulos, agentes ni a dónde sale nada.
 
-### Tres más, y el agujero por el que entraron
+### Los tres reportes de 0.5.1
 
 - **Ningún comando de módulo funcionaba al abrir la sala** (#8). `/git`, `/ahp`, `/pendientes`: todos contestaban «comando desconocido» con el módulo encendido, porque la única llamada que le pide al servidor la lista se había caído **dentro** del bloque que cierra una instalación en vivo. Hasta que ocurriera una instalación, el compositor no conocía ni un comando de módulo. Ahora se pide al cargar, y también cuando un módulo entra, sale o cambia de interruptor — que es cuando cambia lo que el compositor acepta.
 - **Las franjas de CREATE del historial no se dibujaban** (#9). `renderLease` leía `CAP_LABELS`, declarada cuatrocientas líneas más abajo; el historial se repite antes de llegar ahí, el `try` de cada renderizador se tragaba el error, y la franja simplemente no aparecía. En vivo salía bien, que es lo que lo hizo invisible.
 - **«@CODEX PUEDE CREA»** (#10). La frase ya se traducía entera, pero `{what}` traía las etiquetas de la ficha, que son imperativos para un botón suelto. Dentro de una oración hace falta el infinitivo, así que ahora hay dos juegos: el de la ficha y el de la frase. Con ello, «instalado por **ti**» en vez de «por you» —el servidor manda `you` y el `??` nunca alcanzaba la traducción—, `@madre en la sala` en la ficha de OLLAMA, y la instrucción de `/module` dice ahora qué poner en `vendor`: sin decirlo, Codex escribió `'you'` y la ficha lo mostró como autor.
 
-### Por qué tres de estos llegaron tan lejos
+### Por qué ninguno de los tres lo atrapó una prueba
 
 - La prueba de humo reproduce un transcript real y falla si algo revienta al dibujarlo. Pero ese transcript tenía **ocho** de los **sesenta y un** tipos de evento que la sala sabe dibujar: los otros cincuenta y tres no los ejecutaba nadie. Por ahí pasaron tres constantes declaradas al fondo del archivo y leídas durante el arranque — y como cada renderizador está envuelto en un `try`, el error se tragaba, la franja no aparecía, y la suite seguía verde.
 - Ahora entra un evento sintético **de cada tipo** detrás del transcript real. Un campo que a mis payloads les falte es culpa de la prueba y solo se exige sobre el transcript de verdad; lo que no se perdona nunca, en ningún tipo de evento, es que un renderizador lea algo que todavía no existe.
 - Encontró una quinta en su primer intento: `modules`, que cuatro renderizadores de instalación leían durante el historial. Cada instalación y cada baja de módulo jamás aparecieron al recargar.
+
+## 0.5.1 · 2026-09-28
+
+Cuatro cosas que salieron del QA de 0.5.0 el mismo día que se publicó. Ninguna cambia modos, módulos, agentes ni a dónde sale nada: son arreglos.
 
 ### Los cuatro reportes de 0.5.0
 
