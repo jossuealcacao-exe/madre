@@ -144,15 +144,18 @@ test('the layer over the field decorates the characters that are there, and not 
   }
   assert.deepEqual(offenders, [], 'a rule over the field changes text metrics, so the caret will drift out of place');
 
-  // A pill may breathe: padding gives it room around the characters without changing where the
-  // next one starts — but only while an equal negative margin gives that room back. Padding on its
-  // own pushes everything after it, which is the same drift by another road.
+  // A pill may grow upward and never sideways. Vertical padding costs nothing — an inline box
+  // overflows its line without moving a character — but horizontal padding paints over the space
+  // that follows, and so does a spread shadow, and then the next word arrives glued to its edge.
+  // A negative margin does not save it: that gives the room back to the text while the background
+  // still covers those pixels. The gap after a chip is the space the human typed; keep it visible.
   const chipRule = css.match(/^\.editor \.highlight \.chip \{([^}]*)\}/m);
   assert.ok(chipRule, 'the chip rule moved and this guard lost sight of it');
-  const pad = chipRule[1].match(/padding:\s*[\d.]+\w*\s+([\d.]+)px/);
-  const side = chipRule[1].match(/margin:\s*[\d.]+\w*\s+(-?[\d.]+)px/);
-  assert.ok(pad && side, 'the chip no longer declares both its padding and the margin that pays for it');
-  assert.equal(Number(side[1]), -Number(pad[1]), 'the chip takes horizontal room it does not give back, so everything after it shifts');
+  const sides = chipRule[1].match(/padding:\s*[\d.]+\w*\s+([\d.]+)(px)?/);
+  assert.ok(sides, 'the chip no longer declares its padding, so nothing here can hold it to zero');
+  assert.equal(Number(sides[1]), 0, 'the chip pads sideways, which paints over the space after it');
+  const shadow = chipRule[1].match(/box-shadow:\s*([^;]*)/);
+  if (shadow) assert.ok(/inset/.test(shadow[1]), 'the chip rings itself outward, which swallows the same space more quietly');
 
   // The textarea and the layer stay one shape: same size, same spacing, same box.
   const shared = css.match(/^\.editor textarea, \.editor \.highlight \{([^}]*)\}/m);
