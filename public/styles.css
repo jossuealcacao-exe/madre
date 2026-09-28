@@ -1288,10 +1288,14 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .composer.stopall .editor .highlight { visibility: hidden; }
 .editor .highlight { color: var(--text); pointer-events: none; scrollbar-width: none; }
 .editor .highlight::-webkit-scrollbar { display: none; }
-.editor .highlight .chip { --chip-bg: color-mix(in srgb, var(--agent, var(--phosphor)) 16%, var(--panel)); border-radius: 5px; padding: 0; margin: 0; background: var(--chip-bg); color: var(--agent, var(--phosphor)); box-shadow: 0 0 0 3px var(--chip-bg), 0 0 0 4px color-mix(in srgb, var(--agent, var(--phosphor)) 40%, transparent); font-weight: 600; }
-.editor .highlight .chip.cmd { --agent: var(--phosphor); font-family: var(--mono); font-size: 13px; letter-spacing: .04em; }
-.editor .highlight .chip.file { --agent: var(--text-2); font-family: var(--mono); font-size: 13px; letter-spacing: 0; font-weight: 500; }
-.editor .highlight .chip.unknown { --agent: var(--text-3); text-decoration: underline dotted; font-weight: 500; }
+/* A chip may take any colour it likes and no metric at all. Font family, size, weight and
+   letter-spacing all change how wide a string draws, and the caret under this layer is placed by
+   the textarea's metrics, not by these: change one and the caret drifts into the pill. Colour,
+   background, radius and box-shadow are free — they paint without moving anything. */
+.editor .highlight .chip { --chip-bg: color-mix(in srgb, var(--agent, var(--phosphor)) 16%, var(--panel)); border-radius: 5px; padding: 0; margin: 0; background: var(--chip-bg); color: var(--agent, var(--phosphor)); box-shadow: 0 0 0 3px var(--chip-bg), 0 0 0 4px color-mix(in srgb, var(--agent, var(--phosphor)) 40%, transparent); }
+.editor .highlight .chip.cmd { --agent: var(--phosphor); }
+.editor .highlight .chip.file { --agent: var(--text-2); }
+.editor .highlight .chip.unknown { --agent: var(--text-3); text-decoration: underline dotted; }
 /* A mention is a word in the sentence you are writing, so it is only ever coloured. A pill drawn
    round it turns the line into a form to fill in and breaks the rhythm of reading it back. */
 .editor .highlight .chip.agent { background: transparent; box-shadow: none; }

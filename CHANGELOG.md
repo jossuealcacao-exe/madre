@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.2 · Sin publicar
 
+### El cursor caía dentro de la píldora
+
+- Escribías una referencia y el cursor aparecía **en medio** de ella: `!public/brands.js|14`. No era el texto — era la capa que dibuja las píldoras encima del campo, desalineada del campo mismo. El cursor lo coloca el textarea con sus propias métricas; la píldora la dibujaba otra tipografía, y dos medidas distintas del mismo texto no pueden terminar en el mismo sitio.
+- Dos causas, y la primera era gruesa. **Teclear `#2` dibujaba `#2 CREATE`**: siete caracteres que nadie escribió, así que todo lo que venía después quedaba siete lugares a la derecha de su propio cursor. La capa ahora dibuja solo lo que hay; el nombre del modo vive en el globo y en el chip sobre el campo, donde ya estaba.
+- La segunda: cada píldora se re-tipografiaba —`font-family: mono`, `font-size: 13px`, `letter-spacing`, `font-weight`— mientras el campo real corre a 15px con la fuente de la interfaz. Ahora una píldora puede tomar el color que quiera y **ninguna métrica**: color, fondo, radio y sombra pintan sin mover nada.
+- La regla quedó escrita en una prueba, porque una sola línea de CSS puede volver a romperlo: ninguna regla sobre el campo puede tocar familia, tamaño, peso, espaciado ni transformación, y el campo y su capa siguen compartiendo una sola declaración de forma.
+
 ### Tres detalles del menú de revisar
 
 - **MADRE te ponía palabras en la boca, y en inglés.** Elegías un rango, elegías un agente, y el compositor se llenaba con `review this:` — una frase en inglés dentro de una sala en español, y peor: lo que escribías después caía *detrás* de ella y se leía como si alguien más lo hubiera empezado por ti. Ahora entra la referencia y el cursor. Nada más. Acabas de elegir un archivo, unas líneas y un agente: ya sabes qué quieres preguntar.

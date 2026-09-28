@@ -115,3 +115,39 @@ test('composer: the top bar glows on a dark ground, and barely on a pale one', a
     for (const also of ['.tree-button:hover', '.stop-all:hover']) assert.ok(rule.includes(also), `${also} was left glowing`);
   }
 });
+
+test('the layer over the field decorates the characters that are there, and not one more', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const here = (file) => join(import.meta.dirname, '..', 'public', file);
+  const app = await readFile(here('app.js'), 'utf8');
+  const css = await readFile(here('styles.css'), 'utf8');
+
+  // The caret belongs to the textarea underneath and is placed by the textarea's own metrics. The
+  // moment this layer writes a word nobody typed, everything after it sits that many characters
+  // away from its own caret — which is how `#2` drawn as `#2 CREATE` put the cursor inside a pill.
+  const render = app.slice(app.indexOf('function renderHighlight()'), app.indexOf('syncHighlightScroll();', app.indexOf('function renderHighlight()')));
+  assert.ok(!/\$\{MODES\[Number\(name\)\]\.label\}<\/span>/.test(render), 'the mode chip spells out a word the human never typed');
+  assert.match(render, /">#\$\{name\}<\/span>/, 'the mode chip no longer draws the token itself');
+  for (const chip of ['file', 'agent', 'cmd']) {
+    assert.ok(render.includes(`class="chip ${chip}`), `the ${chip} chip disappeared from the layer`);
+  }
+
+  // And no rule in that layer may change a metric. Colour, background, radius and box-shadow paint
+  // without moving anything; family, size, weight and letter-spacing all change how wide a string
+  // draws, and the textarea below knows nothing about them.
+  const METRIC = /(font-family|font-size|font-weight|letter-spacing|word-spacing|font-stretch|text-transform)\s*:/;
+  const offenders = [];
+  for (const rule of css.matchAll(/^\.editor \.highlight[^{]*\{([^}]*)\}/gm)) {
+    const selector = rule[0].slice(0, rule[0].indexOf('{')).trim();
+    if (METRIC.test(rule[1])) offenders.push(selector);
+  }
+  assert.deepEqual(offenders, [], 'a rule over the field changes text metrics, so the caret will drift out of place');
+
+  // The textarea and the layer stay one shape: same size, same spacing, same box.
+  const shared = css.match(/^\.editor textarea, \.editor \.highlight \{([^}]*)\}/m);
+  assert.ok(shared, 'the textarea and the layer no longer share one rule');
+  for (const property of ['font-size', 'line-height', 'letter-spacing', 'font-family', 'padding', 'white-space']) {
+    assert.ok(shared[1].includes(`${property}:`), `${property} is no longer shared, so the two can drift apart`);
+  }
+});

@@ -2954,6 +2954,10 @@ function allCommands() { return [...CLIENT_COMMANDS, ...(state.commands ?? [])];
 function knownAgentIds() { return [...state.agents.keys()]; }
 function escapeHtml(text) { return text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
 
+// The layer that draws over the field. Its one law: it decorates the characters that are there
+// and never adds, removes or re-typesets one. The caret belongs to the textarea underneath and is
+// placed by the textarea's own metrics — so the instant this layer writes a word the human did
+// not type, or draws it in another font, the two disagree and the caret lands inside a pill.
 function renderHighlight() {
   const text = els.input.value;
   const agents = knownAgentIds();
@@ -2962,7 +2966,11 @@ function renderHighlight() {
     const key = name.toLowerCase();
     if (sigil === '#') {
       if (!/^[0-4]$/.test(name)) return whole;
-      return `${lead}<span class="chip mode m${name}">#${name} ${MODES[Number(name)].label}</span>`;
+      // Only what was typed. This used to spell the mode out — `#2` drawn as `#2 CREATE` — and
+      // every character after it sat seven places to the right of its own caret. The name of the
+      // mode is already on the chip above the field; here the colour is enough.
+      const chip = `<span class="chip mode m${name}" title="${escapeHtml(MODES[Number(name)].label)}">#${name}</span>`;
+      return `${lead}${chip}`;
     }
     if (sigil === '!') {
       if (!/\.[A-Za-z0-9]{1,8}(?::\d+(?:-\d+)?)?$/.test(name)) return whole;
