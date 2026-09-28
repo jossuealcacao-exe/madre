@@ -4,7 +4,7 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.5.0 · Sin publicar
+## 0.5.0 · 2026-09-28
 
 **Por qué menor y no parche.** Cambia a dónde sale lo que sale de tu máquina —el colector vive ahora bajo `madre.run`— y, sobre todo, **puede impedir que algo salga**: si tienes `OPENAI_BASE_URL` o `ANTHROPIC_BASE_URL` apuntando a un gateway, esos turnos quedan detenidos hasta que quites la variable o autorices ese endpoint con `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS`. Es el arreglo correcto, pero un número de parche se lee como «actualiza sin mirar», y este no lo es. El ledger y la memoria de 0.4.x se siguen leyendo igual.
 
