@@ -186,3 +186,23 @@ test('the row above the field stays on one line, whoever is answering', async ()
   const chips = css.match(/^\.picker \.pick-label > \.mode-chip[^{]*\{([^}]*)\}/m);
   assert.ok(chips && /flex:\s*0 0 auto/.test(chips[1]), 'the chips can be squeezed, and a mode you cannot read is worse than a note you cannot');
 });
+
+test('the bar keeps saying which project you are in', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const css = await readFile(join(import.meta.dirname, '..', 'public', 'styles.css'), 'utf8');
+
+  // Two names share that corner and only one of them says where you are. Both used to shrink
+  // together, so a long conversation title left the project reading `pul…` — which is a room that
+  // has stopped telling you which room it is. The conversation gives way; it has a panel of its
+  // own where its whole name is written, and the project does not.
+  const project = css.match(/^\.project \{([^}]*)\}/m);
+  assert.ok(project, 'the project rule moved and this guard lost sight of it');
+  assert.match(project[1], /flex:\s*0 0 auto/, 'the project name can be squeezed again');
+  const chat = css.match(/^\.project\.chat-here \{([^}]*)\}/m);
+  assert.ok(chat && /flex:\s*0 1 auto/.test(chat[1]), 'the conversation title no longer takes the squeezing');
+
+  // And the live indicator does not fold onto a second line when the bar gets tight.
+  const connection = css.match(/^\.connection \{([^}]*)\}/m);
+  assert.ok(connection && /white-space:\s*nowrap/.test(connection[1]), 'EN VIVO can still break in two');
+});

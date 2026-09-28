@@ -166,7 +166,11 @@ body {
   .brand-mark .beat-dot { animation: none; opacity: 1; }
   .brand-word { animation: none; opacity: 1; transform: none; }
 }
-.project { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
+/* Two names sit here and only one of them tells you where you are. The project never gives way:
+   a room whose project reads `pul…` has stopped saying which project it is. The conversation is
+   the one that shrinks — it has a panel of its own where its whole name is written. */
+.project { flex: 0 0 auto; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
+.project.chat-here { flex: 0 1 auto; min-width: 3ch; max-width: none; }
 .update-command { display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
 .update-command code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; color: var(--text); }
 .update-command button { font: inherit; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
@@ -183,7 +187,7 @@ body {
 .train-step-label { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
 .project::before { content: "/ "; }
 .agents { display: flex; gap: 8px; margin-left: 0; flex: none; }
-.connection { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); text-transform: uppercase; font-size: 10px; }
+.connection { display: inline-flex; flex: 0 0 auto; white-space: nowrap; align-items: center; gap: 6px; color: var(--text-3); text-transform: uppercase; font-size: 10px; }
 .connection-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
 .connection[data-state="live"] .connection-dot { background: var(--phosphor); box-shadow: 0 0 10px var(--phosphor); }
 .connection[data-state="reconnecting"] .connection-dot { background: var(--warn); animation: blink 1s infinite; }

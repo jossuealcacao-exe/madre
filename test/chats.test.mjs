@@ -140,8 +140,12 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   // Where you are reads as one path: MADRE / project / conversation.
   assert.match(app, /el\('span', 'project chat-here', here\.title\)/);
   assert.match(css, /\.project::before \{ content: "\/ "; \}/);
-  // The conversation sits against the project it belongs to, not at the far end of the bar.
-  assert.match(css, /\.project \{ flex: 0 1 auto/);
+  // The conversation sits against the project it belongs to, not at the far end of the bar — and
+  // when the bar runs out of room it is the conversation that gives way, never the project: a room
+  // whose project reads `pul…` has stopped saying which room it is. The conversation has a panel
+  // of its own with its whole name in it; the project has nowhere else to be read.
+  assert.match(css, /\.project \{ flex: 0 0 auto/);
+  assert.match(css, /\.project\.chat-here \{ flex: 0 1 auto/);
   assert.match(app, /fetch\('\/api\/chats', \{ method: 'POST'/, 'nothing starts a conversation');
   // Deleting says what it takes and what it leaves, and asks twice.
   assert.match(app, /Its transcript goes; what the archive learned from it stays/);

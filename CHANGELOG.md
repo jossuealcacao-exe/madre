@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.2 · Sin publicar
 
+### La barra sigue diciendo en qué proyecto estás
+
+- Dos nombres comparten ese rincón y solo uno te dice dónde estás. Los dos encogían por igual, así que una conversación con título largo dejaba el proyecto en **`pul…`** — una sala que dejó de decir qué sala es.
+- Ahora el proyecto **no cede nunca** y la conversación es la que se recorta. Tiene dónde: su panel lleva el nombre entero. El proyecto no tiene otro sitio donde leerse.
+- Y `EN VIVO` se partía en dos renglones cuando la barra se apretaba. Ya no.
+
 ### La fila de @madre cabe en un renglón
 
 - Al elegir `@madre`, la fila sobre el campo se partía en dos: `PARA @MADRE` con una nota de tres cláusulas, el chip de modo, y un `modelo por defecto ▾` empujado abajo.
