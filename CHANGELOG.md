@@ -8,6 +8,10 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### El cursor caía dentro de la píldora
 
+- **Y en tema claro el código era ilegible.** Los colores del visor se eligieron para fósforo sobre negro: ese verde de las cadenas y ese amarillo de los números desaparecen sobre blanco. Ahora cada rol es una variable con su valor propio para cada fondo, como todo lo demás del tema — azul profundo, verde oscuro, ámbar tostado y magenta sobre claro.
+- **La píldora respira.** Tenía el contorno pegado al texto, y el cursor quedaba encima del anillo en vez de después de él. Ahora lleva aire adentro y **lo paga con un margen negativo igual**: el siguiente carácter empieza exactamente donde empezaba. Esa cuenta también quedó en la prueba, porque relleno sin su compensación es la misma deriva por otro camino.
+- Y el corrector del navegador subrayaba en rojo cada referencia, cada arroba y cada comando: el compositor está lleno de cosas que no son palabras. Apagado.
+
 - Escribías una referencia y el cursor aparecía **en medio** de ella: `!public/brands.js|14`. No era el texto — era la capa que dibuja las píldoras encima del campo, desalineada del campo mismo. El cursor lo coloca el textarea con sus propias métricas; la píldora la dibujaba otra tipografía, y dos medidas distintas del mismo texto no pueden terminar en el mismo sitio.
 - Dos causas, y la primera era gruesa. **Teclear `#2` dibujaba `#2 CREATE`**: siete caracteres que nadie escribió, así que todo lo que venía después quedaba siete lugares a la derecha de su propio cursor. La capa ahora dibuja solo lo que hay; el nombre del modo vive en el globo y en el chip sobre el campo, donde ya estaba.
 - La segunda: cada píldora se re-tipografiaba —`font-family: mono`, `font-size: 13px`, `letter-spacing`, `font-weight`— mientras el campo real corre a 15px con la fuente de la interfaz. Ahora una píldora puede tomar el color que quiera y **ninguna métrica**: color, fondo, radio y sombra pintan sin mover nada.
