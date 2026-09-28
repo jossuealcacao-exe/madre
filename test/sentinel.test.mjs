@@ -119,3 +119,22 @@ test('sentinel: the server records unknown failures, serves the issue link, send
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('the sentinel files what nobody can explain, and stops filing what MU/TH/UR learned', async () => {
+  const sentinel = new ErrorSentinel({ pkg: { name: '@jossuealcala/madre', version: '0.5.0', repository: { url: 'git+https://github.com/x/y.git' } }, agents: [] });
+  const failed = (error) => ({ type: 'message.failed', timestamp: new Date().toISOString(), payload: { target: 'codex', error } });
+  {
+
+    // The report that reached the tracker as `unknown`: a user on codex-cli 0.149.0 whose turns
+    // failed while the room showed them this line, which is not a failure at all. MADRE used to
+    // hand over whatever was last on stderr as the reason, so this notice became "the cause" and
+    // the sentinel filed it as a condition nobody could explain. MU/TH/UR knows it now (MU-002),
+    // so it is explained in the room instead of mailed to the author.
+    assert.equal(await sentinel.observe(failed('Reading additional input from stdin...')), null, 'a condition the catalogue explains is still filed as unknown');
+
+    // And it still files what genuinely has no explanation — that is the whole job.
+    const filed = await sentinel.observe(failed('something nobody has ever written a condition for'));
+    assert.ok(filed?.id, 'the sentinel stopped filing unknown conditions');
+    assert.equal(filed.kind, 'unknown');
+  }
+});
