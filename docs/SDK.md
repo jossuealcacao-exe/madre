@@ -50,7 +50,7 @@ export default ({ defineModule }) => defineModule({
 | `updatePlan(ctx, { latest })` | Cómo se trae esa versión nueva a esta computadora: `{ command, args, display, note, after }`. MADRE enseña `display` y no corre nada hasta que la humana lo leyó; la salida cae en la sala línea por línea. Sin comando, devuelve `{ command: null, note, download }` y la ficha manda a descargarlo |
 | `updates` | `{ url }` https donde publicas **tu propio módulo**. Con eso su ficha trae un botón que va por el archivo, lo verifica igual que una instalación y lo reemplaza si pasa. Si lo instalaste desde un archivo, MADRE recuerda cuál y no necesitas declarar nada: edítalo y pide una copia nueva |
 | `settings` | Valores por defecto. Viven en `~/.pulse/config.json` bajo `modules.<idEnCamelCase>`; `enabled` es el interruptor |
-| `status(ctx)` | Qué muestra la tarjeta: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }` |
+| `status(ctx)` | Qué muestra la tarjeta: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }`. `install` se devuelve desde aquí; no es un campo superior del módulo |
 | `status(ctx)` → `runs` | Lo que tu módulo maneja y no es MADRE: `[{ name, version, target }]`. `version` es lo que encontraste en esta computadora (`null` si no está), `target` lo que instalarías. Si coincide con `tracks.name`, esa es la versión de la ficha |
 | `toggle(ctx, payload)` | Sustituye el interruptor por defecto; `confirm: 'texto'` pide confirmación antes de encender |
 | `onToggle(ctx, enabled)` | Reacciona al interruptor |
@@ -80,7 +80,7 @@ Todas las fichas de MODULES tienen los mismos pisos, en el mismo orden. No dibuj
 | 4 · Ajustes | lo tuyo: selectores, interruptores, campos | `controls`, y lo que tu módulo lea de sí mismo |
 | 5 · El interruptor | install, enable o disable. Solo, y siempre abajo | `toggle` / `installCommand` |
 
-El estado es una palabra y un punto —`ON` u `OFF`—, nunca un botón: lo único que se presiona en una ficha es lo de abajo. Un módulo apagado se atenúa entero menos ese botón.
+El estado es una palabra y un punto —`ON` u `OFF`—, nunca un botón: las acciones se presionan abajo. La principal queda al final; un módulo `DEV` también ofrece `DESINSTALAR`, mientras que uno integrado solo puede apagarse. Un módulo apagado se atenúa entero menos esa fila.
 
 ## El `ctx`
 
@@ -107,11 +107,13 @@ ctx = {
 
 ## Que lo construya tu IA, en la sala
 
-MADRE es modular y la sala puede construirse a sí misma. En `#2` o más, pídele a un agente: «crea un módulo que lea mis correos y lo prepare para instalar». Su briefing le dice dónde está esta guía y el ejemplo, y la regla: escribe **un solo archivo** llamado `<id>.module.mjs` en su carpeta de borrador. MADRE lo reconoce por el nombre y pone una tarjeta en la sala: `INSTALL FOR EVERY ROOM` o `INSTALL FOR THIS PROJECT`. Léelo, decide, un clic. MADRE lo valida en una copia, lo guarda como `<id>.mjs` en la carpeta que elegiste y aparece en MODULES con la etiqueta `DEV`.
+Escribe `/module <lo que debe hacer>` en el compositor. Es la entrada explícita al flujo guiado: si `#2 CREATE` no está activo, MADRE te pide elegirlo y conserva intacta tu petición. Con `#2` activo, mantiene el agente que elegiste y le entrega el contrato del SDK y el ejemplo. El agente debe escribir **un solo archivo** llamado `<id>.module.mjs` en su carpeta de borrador; no puede instalarlo por su cuenta.
+
+MADRE reconoce ese nombre y pone una tarjeta en la sala: `INSTALL FOR EVERY ROOM` o `INSTALL FOR THIS PROJECT`. Léelo, decide, un clic. MADRE lo valida en una copia, lo guarda como `<id>.mjs` en la carpeta que elegiste y aparece en MODULES con la etiqueta `DEV`. También puedes pedir lo mismo en lenguaje natural mientras estés en `#2` o más; `/module` hace explícito el formato y no concede permisos por sí solo.
 
 Los agentes nunca escriben en `~/.pulse/modules` ni en `.madre/modules`: proponen, tú instalas.
 
-Un módulo tuyo se quita desde MODULES → tarjeta `</>` → `REMOVE`; borra su archivo. Los módulos que vienen con MADRE no se quitan, se apagan.
+Un módulo tuyo lleva `DEV` y se quita desde su propia tarjeta con `DESINSTALAR` —también aparece en la tarjeta `</>`—. MADRE confirma el archivo exacto, borra ese archivo y su registro de origen para actualizaciones, y lo retira de la sala sin reiniciarla. No borra archivos que el módulo haya creado ni sus ajustes guardados. Los módulos que vienen con MADRE no muestran ese botón: no se quitan, se apagan.
 
 ## Lo que un módulo no puede tocar
 

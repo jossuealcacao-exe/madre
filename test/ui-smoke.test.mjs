@@ -205,6 +205,30 @@ test('the room UI boots against a real transcript without throwing', async () =>
 
   // Easter egg: trackpad-style bursts at the end of the record.
   const { trackHold, state: uiState } = globalThis.__pulse;
+  // /module becomes visibly distinct while it is composed, then turns into a single-file SDK
+  // request without stealing the agent the human already selected.
+  const message = registry.get('message');
+  message.value = '/module un reloj local';
+  for (const listener of message.listeners.input ?? []) listener({});
+  assert.equal(registry.get('composer').classList.contains('module-command'), true, 'the module typebox did not turn on');
+  assert.match(registry.get('crew-label').textContent, /MODULE · REQUIERE #2/);
+  const chosenTarget = registry.get('target').value;
+  const blockedModule = await globalThis.__pulse.runSlashCommand(message.value);
+  assert.deepEqual(blockedModule, { handled: true, preserve: true }, '/module silently armed CREATE instead of asking');
+  assert.equal(uiState.mode, 1, '/module changed the mode without the human');
+  registry.get('create-toggle').listeners.click[0]();
+  assert.match(registry.get('crew-label').textContent, /MODULE · CREATE/);
+  const moduleRequest = await globalThis.__pulse.runSlashCommand(message.value);
+  assert.equal(moduleRequest.handled, false);
+  assert.equal(moduleRequest.target, chosenTarget, '/module changed the selected agent');
+  assert.match(moduleRequest.text, /un reloj local/);
+  assert.match(moduleRequest.text, /<id>\.module\.mjs/);
+  assert.equal(uiState.mode, 2, 'the human could not arm CREATE for /module');
+  message.value = '';
+  for (const listener of message.listeners.input ?? []) listener({});
+  assert.equal(registry.get('composer').classList.contains('module-command'), false, 'the module typebox stayed purple after clearing');
+  registry.get('create-toggle').listeners.click[0]();
+  assert.equal(uiState.mode, 1, 'the module test did not return the composer to EXCHANGE');
   const thread = registry.get('messages');
   thread.scrollHeight = 1000; thread.clientHeight = 400; thread.scrollTop = 600; // at bottom
   const t0 = 1_000_000;
@@ -288,6 +312,14 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
   assert.match(ash.querySelector('.card-fold').textContent, /QUÉ TOCA/);
   assert.match(ash.querySelector('.card-fold').textContent, /ABRIR|CERRAR/, 'the fold has no button');
+  assert.equal(ash.querySelector('.remove-module'), null, 'a module that ships with MADRE offers to delete itself');
+
+  const custom = moduleCard({
+    id: 'hello', kind: 'builtin', name: 'HELLO', vendor: 'YOU', external: true, origin: 'user', file: '/tmp/hello.mjs',
+    version: '1.0.0', versionSource: 'declared', summary: 'A custom module.', creates: [], requires: [], commands: [], controls: [],
+    status: { installed: true, detail: 'on' }, preflight: { ok: true, problems: [] }, install: { display: 'disable HELLO', platforms: [] },
+  });
+  assert.equal(custom.querySelector('.remove-module')?.textContent, 'DESINSTALAR', 'a DEV module cannot be uninstalled from its own card');
 
   // The reading fills the card's own panel once the economy answers.
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -316,4 +348,71 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.ok(ahp.classList.contains('off'), 'a module that is off does not step back');
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
   assert.match(ahp.querySelector('.actions').textContent, /INSTALAR/);
+});
+
+test('the viewer reads a file by what it is, and never rewrites it on the way to the screen', async () => {
+  const { familyOf, tokenize, languageLabel } = await import('../public/syntax.js');
+
+  // The rule that keeps a highlighter honest: what the screen shows and what is on disk are the
+  // same bytes. A selection sent to an agent is the file, not a rendering of it — so every line,
+  // in every family, must come back out of the tokenizer exactly as it went in.
+  const samples = [
+    ['app.mjs', "const saludo = 'hola'; // una nota\nif (x) { return `${y}`; } /* abierto"],
+    ['datos.json', '{ "clave": true, "n": 42, "s": "con \\" comilla" }'],
+    ['hoja.css', '.a { color: #ffcc00; /* un comentario */ padding: 10px; }'],
+    ['pagina.html', '<div class="a"><!-- nota --><span>texto</span></div>'],
+    ['guia.md', '# Título\n\nUn **negrita** y un [enlace](http://x).'],
+    ['s.py', 'def f(self):\n    return None  # nada'],
+    ['x.sh', 'export A="1"   # variable\nif [ -n "$A" ]; then echo ok; fi'],
+    ['q.sql', "SELECT * FROM t WHERE a = 'x' -- nota"],
+    ['sin-familia.xyz', 'cualquier cosa · 42 · "texto"'],
+  ];
+  for (const [name, text] of samples) {
+    const family = familyOf(name);
+    const carry = { inBlock: false };
+    const back = text.split('\n').map((line) => tokenize(line, family, carry).map((piece) => piece.text).join('')).join('\n');
+    assert.equal(back, text, `${name} came back different from what went in`);
+  }
+
+  // A family it does not know is not an error: the file is plain text, which is what it was.
+  assert.equal(languageLabel('sin-familia.xyz'), null);
+  assert.deepEqual(tokenize('lo que sea', familyOf('sin-familia.xyz')), [{ text: 'lo que sea', kind: null }]);
+  assert.equal(languageLabel('app.mjs'), 'JavaScript');
+
+  // And it classifies the three things a person actually looks for.
+  const kinds = new Set(tokenize("const a = 'x'; // y", familyOf('a.js')).map((piece) => piece.kind));
+  assert.ok(kinds.has('keyword') && kinds.has('string') && kinds.has('comment'));
+});
+
+test('the room says who wrote a file, and how to ask about a piece of one', async () => {
+  const here = (file) => join(import.meta.dirname, '..', 'public', file);
+  const app = await readFile(here('app.js'), 'utf8');
+  const page = await readFile(here('index.html'), 'utf8');
+
+  // Which agent last wrote to a path, from what the room already recorded — the artifacts a lease
+  // produced and the files a CONTROL turn changed. Nothing is inferred from the filesystem: a file
+  // MADRE did not see change carries no mark.
+  assert.match(app, /case 'artifacts\.created': markTouched\(event\.payload\.agent/);
+  assert.match(app, /case 'control\.changed': markTouched\(event\.payload\.agent/);
+  assert.match(app, /const dot = paint\(el\('span', 'touched'\), by\);/, 'the mark does not carry the agent colour');
+
+  // REVIEW WITH existed and was invisible until a selection existed, and nobody guesses that a
+  // line number is clickable. The hint appears exactly while there is nothing selected.
+  assert.match(page, /id="viewer-hint-select"/);
+  assert.match(app, /viewerUI\.hintSelect\.hidden = has \|\| !viewerUI\.lineNodes\.length;/);
+  assert.match(page, /id="viewer-lang"/, 'the viewer does not say what kind of file it is reading');
+});
+
+test('/module answers in the room, and never arms the mode by itself', async () => {
+  const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  const block = app.slice(app.indexOf('function moduleModeNotice'), app.indexOf('function syncModuleComposer'));
+
+  // A refusal that only flashes is a refusal the room forgets. This one lands in the thread where
+  // every other decision of the room lands, and carries the way out with it.
+  assert.match(block, /els\.column\.append\(node\)/, 'the refusal never reaches the thread');
+  assert.match(block, /ARM #2 CREATE/);
+  assert.match(block, /arm\.addEventListener\('click', \(\) => \{ setMode\(2/, 'the notice does not offer the way out');
+  // The command asks; the click grants. Writing /module must never be what arms the mode.
+  assert.ok(!/state\.create = true/.test(block), '/module arms CREATE by itself');
+  assert.match(app, /if \(name === 'module' && !state\.create\) \{\n      moduleModeNotice\(\);/);
 });

@@ -54,6 +54,7 @@ import { buildConversationContext, formatConversationContext } from '../src/conv
 import { mkdir } from 'node:fs/promises';
 import { buildOpenCodeArgs, openCodeEnvironment, parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
 import { classifyUsagePercent, UsageSentinel } from '../src/usage-sentinel.mjs';
+import { agentRouteFromEnvironment } from '../src/runtime-detection.mjs';
 
 
 // Opens an SSE connection and resolves each parsed frame through `onEvent`.
@@ -128,6 +129,34 @@ test('extracts Codex response and token usage from JSON events', () => {
     text: 'CODEX_OK',
     usage: { inputTokens: 90, cachedInputTokens: 40, outputTokens: 10, reasoningTokens: 2, totalTokens: 100, source: 'codex-json' },
   });
+});
+
+test('keeps the reason Codex reports when a JSON turn fails', () => {
+  const output = [
+    JSON.stringify({ type: 'error', message: 'connection retry failed' }),
+    JSON.stringify({ type: 'turn.failed', error: { message: 'authentication rejected by the configured endpoint' } }),
+  ].join('\n');
+  assert.deepEqual(parseCodexOutput(output), {
+    text: '',
+    usage: null,
+    error: 'authentication rejected by the configured endpoint',
+  });
+});
+
+test('names custom agent routes without exposing their URL and requires explicit trust', () => {
+  assert.deepEqual(agentRouteFromEnvironment('claude', {}), {
+    kind: 'official', destination: 'Anthropic', source: null, host: null, custom: false, allowed: true,
+  });
+  assert.deepEqual(agentRouteFromEnvironment('claude', { ANTHROPIC_BASE_URL: 'https://gateway.example.test/private?token=secret' }), {
+    kind: 'custom', destination: 'custom endpoint · gateway.example.test', source: 'ANTHROPIC_BASE_URL', host: 'gateway.example.test', custom: true, allowed: false,
+  });
+  assert.equal(agentRouteFromEnvironment('claude', {
+    ANTHROPIC_BASE_URL: 'https://gateway.example.test/private?token=secret',
+    PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS: 'claude',
+  }).allowed, true);
+  assert.equal(JSON.stringify(agentRouteFromEnvironment('claude', { ANTHROPIC_BASE_URL: 'https://gateway.example.test/private?token=secret' })).includes('secret'), false);
+  assert.equal(agentRouteFromEnvironment('codex', { OPENAI_BASE_URL: 'https://api.openai.com/v1' }).custom, false);
+  assert.equal(agentRouteFromEnvironment('claude', { CLAUDE_CODE_USE_BEDROCK: '1' }).destination, 'Amazon Bedrock');
 });
 
 test('runs Claude with only local read tools and no persistent session', () => {
@@ -866,6 +895,30 @@ test('rejects oversized messages before invoking the agent', async () => {
   }
 });
 
+test('blocks an untrusted custom endpoint before building or sending a briefing', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-custom-route-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    let invoked = false;
+    const room = new Room({
+      store,
+      projectRoot: root,
+      agents: [{
+        id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test',
+        route: agentRouteFromEnvironment('claude', { ANTHROPIC_BASE_URL: 'https://gateway.example.test/v1' }),
+      }],
+      invokers: { 'claude-readonly': async () => { invoked = true; return { text: 'should not run', usage: null }; } },
+    });
+    await room.send({ text: 'private question', target: 'claude' });
+    const events = await store.readAll();
+    assert.equal(invoked, false);
+    assert.deepEqual(events.map((event) => event.type), ['message.created', 'message.failed']);
+    assert.match(events.at(-1).payload.error, /blocked @claude before sending the briefing/);
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
 test('recovers turns left open by a previous process', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-recover-'));
   try {
@@ -1046,6 +1099,7 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.deepEqual(ids('memory used · 4 · 1 by association'), ['memory-cascade']);
   assert.ok(ids('npm ERR! EACCES: permission denied, access \'/usr/local/lib/node_modules\'').includes('module-update'));
   assert.deepEqual(ids('the id "ash" is already taken'), ['module-add']);
+  assert.deepEqual(ids('Failed to authenticate. API Error: 403 Subscribe to the Telegram channels @conduitapi to keep FREE access.'), ['custom-agent-endpoint']);
   assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.remedy} ${c.agent}`)), 'the search reads the remedy too');
   assert.equal(searchConditions('').length, CONDITIONS.length);
 });

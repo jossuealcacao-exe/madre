@@ -5,6 +5,23 @@ import { join } from 'node:path';
 
 const read = (file) => readFile(join(import.meta.dirname, '..', 'public', file), 'utf8');
 
+test('composer: /module has a guided command and an electric pixel transition', async () => {
+  const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
+
+  assert.match(app, /name: 'module'.*usage: '\/module <what it should do>'/, 'the guided module command is missing');
+  assert.match(app, /name === 'module' && !state\.create/, '/module does not require CREATE explicitly');
+  assert.match(app, /return \{ handled: true, preserve: true \}/, 'a rejected /module request is erased instead of preserved');
+  assert.match(app, /Write exactly one <id>\.module\.mjs file for review/, '/module no longer asks for one reviewable file');
+  assert.match(app, /classList\.toggle\('module-command', active\)/, 'typing /module never changes the typebox state');
+
+  assert.match(css, /--module-electric:\s*#[0-9a-f]{6}/i, 'the module state has no electric purple token');
+  assert.match(css, /\.composer\.module-command \.field::after \{ animation: module-pixel-shift \.58s steps\(9, end\) 1; \}/, 'the pixel transform is not fast and stepped');
+  assert.match(css, /@keyframes module-pixel-shift/, 'the pixel transform has no keyframes');
+  assert.match(css, /prefers-reduced-motion: reduce[^}]*\.composer\.module-command \.field::after \{ animation: none;/, 'the module animation ignores reduced-motion');
+  assert.ok(css.indexOf(':root[data-scheme="light"] .composer.module-command .field') > css.indexOf(':root[data-scheme="light"] .composer.ash-on .field'), 'Ash overrides the purple module halo in the light scheme');
+  assert.match(css, /\.editor textarea, \.editor \.highlight \{[^}]*margin: 0 -5px;[^}]*padding: 7px 5px;/, 'the command chip still has no room for its ring');
+});
+
 test('composer: a mention is coloured, never boxed', async () => {
   const css = await read('styles.css');
   // The base chip is a pill: a background, and a ring drawn with two shadows. That is right for

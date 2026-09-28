@@ -945,6 +945,18 @@ export class Room {
       await this.#emit('message.failed', { messageId, target: targetId, planId, error: `${agent.label} was detected, but its MADRE adapter is not enabled yet.` });
       return null;
     }
+    if (agent.route?.custom && !agent.route.allowed) {
+      const destination = agent.route.host ?? 'an unrecognised host';
+      const source = agent.route.source ?? 'a custom endpoint setting';
+      const official = agent.id === 'codex' ? 'OpenAI' : agent.id === 'claude' ? 'Anthropic' : 'the agent\'s official service';
+      await this.#emit('message.failed', {
+        messageId,
+        target: targetId,
+        planId,
+        error: `MADRE blocked @${agent.id} before sending the briefing: ${source} points to ${destination}, not ${official}. Remove that override to use the official service, or set PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=${agent.id} only if you trust that endpoint.`,
+      });
+      return null;
+    }
 
     const priorEvents = await this.#store.readAll();
     // @madre never reads its own canned replies back: a small model would echo them.

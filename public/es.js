@@ -64,6 +64,8 @@ export const ES = {
   'NO ADAPTER': 'SIN ADAPTADOR',
   'READY': 'LISTO',
   'SIGNED OUT': 'SIN SESIÓN',
+  'ROUTE BLOCKED': 'RUTA BLOQUEADA',
+  'route: {destination}': 'ruta: {destination}',
   'Not on this computer.': 'No lo tienes instalado.',
   'Not on this computer · {command}': 'No lo tienes instalado · {command}',
   'version unknown': 'versión desconocida',
@@ -729,6 +731,8 @@ export const ES = {
   'Load your module files again without restarting the room': 'Vuelve a cargar tus archivos de módulo sin reiniciar la sala',
   'YOURS · ': 'TUYOS · ',
   'REMOVE': 'QUITAR',
+  'UNINSTALL': 'DESINSTALAR',
+  'Delete module file {file}': 'Borrar el archivo del módulo {file}',
   'DID NOT LOAD · ': 'NO CARGÓ · ',
   'connections › ': 'conexiones › ',
   'HELP': 'AYUDA',
@@ -1620,6 +1624,8 @@ export const ES = {
   // ── EL COMPOSITOR, LOS MODOS Y LA ANULACIÓN ──────────────────────────────
   'Arm CREATE for this message: the agent may add new files to the project where they belong.':
     'Arma CREATE para este mensaje: el agente puede agregar archivos nuevos donde les toque en el proyecto.',
+  'Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.':
+    'Construye un módulo de MADRE con el flujo guiado del SDK: el agente lo escribe y después tú lo revisas e instalas.',
   'Image': 'Imagen',
   'Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.':
     'Pide una imagen: arma CREATE con el alcance de imagen y la manda a un agente que sepa generarlas.',
@@ -1781,6 +1787,11 @@ export const ES = {
     'Claude Code encontró en el entorno una llave de API además del inicio de sesión de claude.ai, y gana la llave. MADRE le entrega al CLI el entorno tal como lo tiene esta computadora, así que lo que esté exportado en el perfil de tu shell le llega. El turno se le cobra a la cuenta de API, no al plan, y los conectores de tu organización no cargan.',
   'Decide which one you mean. To work on the plan, unset the key where your shell exports it and open the room again; to work on the API, this message is only a notice and can be ignored.':
     'Decide cuál quieres. Para trabajar con el plan, quita la llave de donde tu shell la exporta y vuelve a abrir la sala; para trabajar con la API, este mensaje es solo un aviso y se puede ignorar.',
+  'The agent is pointed at a custom endpoint': 'El agente apunta a un endpoint personalizado',
+  'The installed CLI inherited a base-URL override from this computer, so its request was going to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. MADRE now names that route and stops before sending the briefing.':
+    'El CLI instalado heredó de esta computadora una dirección base distinta, así que su solicitud iba a otro gateway y no al servicio oficial del agente. La exigencia de unirse a un canal de Telegram viene de ese gateway, no de MADRE, Anthropic ni OpenAI. MADRE ahora nombra esa ruta y se detiene antes de enviar el briefing.',
+  'Do not subscribe or enter credentials. Remove the base-URL override and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.':
+    'No te suscribas ni ingreses credenciales. Quita la dirección base modificada y vuelve a abrir MADRE para usar el servicio oficial. Si el gateway es intencional y verificaste quién lo opera, autoriza explícitamente solo a ese agente.',
   // La condición que declara el módulo PLAYWRIGHT. Las de los módulos viven en su archivo, no
   // en troubleshooting.js, y por eso se quedaron fuera del catálogo hasta ahora.
   'PLAYWRIGHT: the browser server is not installed': 'PLAYWRIGHT: el servidor de navegador no está instalado',
@@ -1792,6 +1803,12 @@ export const ES = {
   'SHOW THE {n} DISMISSED': 'VER LOS {n} DESCARTADOS',
   'DISMISS ALL {n}': 'DESCARTAR LOS {n}',
   'DOWNLOAD THE LOG': 'DESCARGAR EL REGISTRO',
+  '/module writes a file, so it needs #2 CREATE. Your request is still in the composer.':
+    '/module escribe un archivo, así que necesita #2 CREATE. Tu petición sigue en el compositor.',
+  'ARM #2 CREATE': 'ARMAR #2 CREATE',
+  'CLICK A LINE NUMBER TO SELECT · SHIFT FOR A RANGE':
+    'CLIC EN UN NÚMERO DE LÍNEA PARA SELECCIONAR · SHIFT PARA UN RANGO',
+  '{agent} wrote this file in this room': '{agent} escribió este archivo en esta sala',
   'MU/TH/UR › {name} declares {fields}, which this MADRE does not know. A typo, or a field from a newer version.':
     'MU/TH/UR › {name} declara {fields}, que esta MADRE no conoce. O es un dedazo, o es un campo de una versión más nueva.',
   'OR ON MADRE.RUN ↗': 'O EN MADRE.RUN ↗',
@@ -1805,6 +1822,12 @@ export const ES = {
     '# borra o comenta la línea que encuentre, y luego:',
   '# and start MADRE from a new terminal':
     '# y arranca MADRE desde una terminal nueva',
+  '# remove that export from ~/.zshrc, ~/.zprofile or ~/.zshenv; then:':
+    '# quita esa exportación de ~/.zshrc, ~/.zprofile o ~/.zshenv; después:',
+  '# remove that export from ~/.bashrc, ~/.profile or ~/.bash_profile; then:':
+    '# quita esa exportación de ~/.bashrc, ~/.profile o ~/.bash_profile; después:',
+  '# open a new room; only for a gateway you verified:':
+    '# abre una sala nueva; solo para un gateway que sí verificaste:',
   '# inside gemini: /auth → "Use Gemini API key" and paste the key from https://aistudio.google.com/app/apikey':
     '# dentro de gemini: /auth → "Use Gemini API key" y pega la llave de https://aistudio.google.com/app/apikey',
   '# or, without the prompt:':
@@ -1997,6 +2020,13 @@ export const ES = {
   '{title} is not available here · see MODULES': '{title} no está disponible aquí · mira MÓDULOS',
   'MU/TH/UR › /{name} needs a request after it, e.g. "/{name} a poster for the launch".':
     'MU/TH/UR › /{name} necesita una petición después, por ejemplo «/{name} un póster para el lanzamiento».',
+  'MU/TH/UR › /module needs a job, e.g. "/module summarize today’s commits".':
+    'MU/TH/UR › /module necesita una tarea, por ejemplo «/module resume los commits de hoy».',
+  'MU/TH/UR › /module needs #2 CREATE. Choose #2 in the mode chip, then send again.':
+    'MU/TH/UR › /module necesita #2 CREATE. Elige #2 en el chip de modo y vuelve a enviar.',
+  'MU/TH/UR · MODULE · NEEDS #2 ›': 'MU/TH/UR · MODULE · REQUIERE #2 ›',
+  'Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Do not install it; MADRE will show the human an install card.':
+    'Crea un módulo de MADRE para esta petición: {request} Escribe exactamente un archivo <id>.module.mjs para revisión. No lo instales; MADRE le mostrará al humano una tarjeta de instalación.',
   'MU/TH/UR › unknown command /{name}. Type "/" to see what this room offers.':
     'MU/TH/UR › comando desconocido /{name}. Escribe «/» para ver lo que ofrece esta sala.',
   '{name} · uploading…': '{name} · subiendo…',

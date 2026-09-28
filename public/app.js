@@ -3,6 +3,7 @@ import { CONDITIONS, allConditions, detectPlatform, diagnose, fixesFor, PLATFORM
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, isLanguage, language, pick, setLanguage, t } from './i18n.js';
 import { resay } from './resay.js';
+import { familyOf, languageLabel, tokenize } from './syntax.js';
 
 // Before anything is written on the screen. The constants below are sentences, and a sentence
 // chosen in the wrong language stays wrong for the life of the page.
@@ -61,6 +62,7 @@ const els = {
 // server (/api/commands) and run there, read-only, as fact cards.
 const CLIENT_COMMANDS = [
   { name: 'create', title: 'CREATE', usage: '/create <what to make>', summary: t('Arm CREATE for this message: the agent may add new files to the project where they belong.'), available: true, client: true },
+  { name: 'module', title: 'MODULE', usage: '/module <what it should do>', summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: '/image <what to draw>', summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
 ];
@@ -122,6 +124,7 @@ const state = {
   pending: [],             // attachments uploaded for the next message
   projectRoot: '',
   create: false,           // creation lease armed for the next message
+  moduleCommand: false,    // /module is being composed: CREATE plus the guided SDK contract
   ashInstalled: false,
   ash: false,              // Ash asked for on this message: compact replies, nothing rewritten
   chosenModel: {},         // id -> model name picked in the composer
@@ -297,6 +300,8 @@ const viewer = {
 const viewerUI = {
   selection: document.querySelector('#viewer-selection'),
   review: document.querySelector('#viewer-review'),
+  lang: document.querySelector('#viewer-lang'),
+  hintSelect: document.querySelector('#viewer-hint-select'),
   menu: document.querySelector('#viewer-menu'),
   path: null,      // project-relative path of the open text file, if any
   from: null, to: null,
@@ -312,6 +317,9 @@ function setSelection(from, to) {
   const has = from !== null;
   viewerUI.selection.hidden = !has;
   viewerUI.review.hidden = !has;
+  // The button only exists once something is selected, and nobody guesses that a line number is
+  // clickable. While there is nothing selected and the file is readable as text, say how.
+  if (viewerUI.hintSelect) viewerUI.hintSelect.hidden = has || !viewerUI.lineNodes.length;
   if (has) viewerUI.selection.textContent = lo === hi ? `L${lo}` : `L${lo}-${hi}`;
 }
 function referenceForSelection() {
@@ -355,14 +363,26 @@ viewerUI.review?.addEventListener('click', (event) => {
 viewer.dialog.addEventListener('click', (event) => { if (!viewerUI.menu.hidden && !viewerUI.menu.contains(event.target) && event.target !== viewerUI.review) hideViewerMenu(); });
 viewer.dialog.addEventListener('close', () => { hideViewerMenu(); setSelection(null, null); ripley.frame = null; ripley.history = []; ripleyClearErrors(); if (ripley.nav) ripley.nav.hidden = true; });
 
-function codeView(text, { line = null, lines = null } = {}) {
+function codeView(text, { line = null, lines = null, name = null } = {}) {
   const pre = el('pre', 'code');
   viewerUI.lineNodes = [];
   const rows = text.replace(/\n$/, '').split('\n');
+  // Read by what the file is. The highlighter never rewrites a line — it hands back spans over
+  // the same characters — so what is on screen and what is on disk stay the same bytes, and a
+  // selection sent to an agent is the file, not a rendering of it.
+  const family = familyOf(name ?? '');
+  if (viewerUI.lang) {
+    const label = languageLabel(name ?? '');
+    viewerUI.lang.textContent = label ?? '';
+    viewerUI.lang.hidden = !label;
+  }
+  const carry = { inBlock: false };
   rows.forEach((content, index) => {
     const n = index + 1;
     const ln = el('span', 'ln', String(n));
-    const tx = el('span', 'tx', content || ' ');
+    const tx = el('span', 'tx');
+    if (!content) tx.append(' ');
+    else for (const piece of tokenize(content, family, carry)) tx.append(piece.kind ? el('span', `t-${piece.kind}`, piece.text) : piece.text);
     ln.dataset.n = n; tx.dataset.n = n;
     const marked = lines ? n >= lines.from && n <= lines.to : n === line;
     if (marked) { ln.classList.add('hl'); tx.classList.add('hl'); }
@@ -392,7 +412,7 @@ function showViewerSource() {
   if (ripley.nav) ripley.nav.hidden = true;
   ripleyClearErrors();
   ripley.frame = null;
-  const pre = codeView(viewerMode.text, { line: viewerMode.line, lines: viewerMode.lines });
+  const pre = codeView(viewerMode.text, { line: viewerMode.line, lines: viewerMode.lines, name: viewerUI.path ?? viewer.path.textContent });
   viewer.body.replaceChildren(pre);
   if (!state.ripley && viewerMode.kind) {
     const hint = el('div', 'viewer-hint');
@@ -1083,19 +1103,20 @@ function bridgeCard(agent) {
   card.id = `bridge-${agent.id}`;
   const session = state.sessions?.[agent.id];
   const signedIn = session?.state === 'signed-in';
-  const stage = !agent.detected ? 'missing' : !agent.ready ? 'inert' : signedIn ? 'ready' : 'signed-out';
+  const routeBlocked = Boolean(agent.route?.custom && !agent.route?.allowed);
+  const stage = !agent.detected ? 'missing' : !agent.ready ? 'inert' : routeBlocked ? 'route-blocked' : signedIn ? 'ready' : 'signed-out';
   const head = el('div', 'head');
   head.append(avatar(agent.id, { size: 30, status: stage === 'ready' ? 'ready' : agent.detected ? 'detected' : 'offline' }));
   const title = el('div', 'title');
   title.append(el('b', null, agent.label));
   title.append(el('span', 'vendor', brandOf(agent.id).vendor));
   head.append(title);
-  head.append(el('span', `state ${stage}`, stage === 'missing' ? t('NOT INSTALLED') : stage === 'inert' ? t('NO ADAPTER') : stage === 'ready' ? t('READY') : t('SIGNED OUT')));
+  head.append(el('span', `state ${stage}`, stage === 'missing' ? t('NOT INSTALLED') : stage === 'inert' ? t('NO ADAPTER') : stage === 'route-blocked' ? t('ROUTE BLOCKED') : stage === 'ready' ? t('READY') : t('SIGNED OUT')));
   card.append(head);
   const detail = el('div', 'detail');
   if (agent.id === 'madre') detail.append(ollamaDetail(agent));
   else if (stage === 'missing') detail.append(agent.install ? t('Not on this computer · {command}', { command: agent.install.display }) : t('Not on this computer.'));
-  else detail.append(`${agent.version ?? t('version unknown')}${session?.detail ? ` · ${session.detail}` : ''}`);
+  else detail.append(`${agent.version ?? t('version unknown')}${session?.detail ? ` · ${session.detail}` : ''}${agent.route?.destination ? ` · ${t('route: {destination}', { destination: agent.route.destination })}` : ''}`);
   card.append(detail);
   // What is behind this door: the account it needs, and whether there is a way in without paying.
   if (agent.account) {
@@ -1637,6 +1658,11 @@ function renderThinking(event) {
   return node;
 }
 
+function warnUnknownModuleFields(installed) {
+  const unknown = installed?.unknown ?? [];
+  if (unknown.length) setTimeout(() => toast(t('MU/TH/UR › {name} declares {fields}, which this MADRE does not know. A typo, or a field from a newer version.', { name: installed.name, fields: unknown.join(', ') })), 2600);
+}
+
 // The archivist reports: which agent read which stretch of the room and how many notes it kept.
 // module · @codex wrote read-mail.module.mjs · INSTALL FOR EVERY ROOM · INSTALL FOR THIS PROJECT · LATER
 function renderModuleProposed(event) {
@@ -1652,6 +1678,7 @@ function renderModuleProposed(event) {
       const payload = await fetch('/api/extensions/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, scope }) }).then((response) => response.json());
       if (payload.error) throw new Error(payload.error);
       toast(t('MU/TH/UR › {name} installed for {where}. Switch it on in MODULES.', { name: payload.installed.name, where: scope === 'project' ? t('this project') : t('every room') }));
+      warnUnknownModuleFields(payload.installed);
       modules.items = payload.extensions ?? modules.items; if (modules.dialog.open) renderModules();
     } catch (error) { toast(t('The module was not installed: {error}', { error: error.message })); button.disabled = false; }
   };
@@ -2394,12 +2421,12 @@ function renderEventNode(event) {
     case 'mode.requested': node = renderModeRequest(event); break;
     case 'control.started': node = renderControlStarted(event); break;
     case 'create.reverted': node = renderCreateReverted(event); break;
-    case 'control.changed': node = renderControlChanged(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); break;
+    case 'control.changed': markTouched(event.payload.agent, event.payload.files); node = renderControlChanged(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); break;
     case 'control.reverted': node = renderControlReverted(event); break;
     case 'mode.granted':
     case 'mode.denied': settleModeRequest(event); return;
     case 'plan.ignored': node = renderPlanIgnored(event); break;
-    case 'artifacts.created': attachArtifacts(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); return;
+    case 'artifacts.created': markTouched(event.payload.agent, event.payload.files); attachArtifacts(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); return;
     case 'command.output': node = renderCommandCard(event); break;
     case 'eyecat.flagged': node = renderEyecat(event); break;
     case 'eyecat.settled': settleEyecat(event); return;
@@ -2563,6 +2590,13 @@ function treeNode(path, entry) {
     item.append(button, children);
   } else {
     button.append(el('span', 'caret', ''), el('span', 'name', entry.name), el('span', 'size', formatSize(entry.size)));
+    const by = touched.get(path);
+    if (by) {
+      // Its colour is the agent's own, so the tree reads the same way the thread does.
+      const dot = paint(el('span', 'touched'), by);
+      dot.title = t('{agent} wrote this file in this room', { agent: `@${by}` });
+      button.append(dot);
+    }
     button.addEventListener('click', () => { void openViewer({ root: 'project', path, label: path }); });
     item.append(button);
   }
@@ -2750,7 +2784,7 @@ document.querySelector('#mother-button')?.addEventListener('mouseleave', endHove
 document.querySelector('#mother-button')?.addEventListener('click', endHover);
 
 // Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
-globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, openCore: (...args) => openCore(...args), get core() { return core; } };
+globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, runSlashCommand, syncModuleComposer, openCore: (...args) => openCore(...args), get core() { return core; } };
 
 els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
 let touchY = null;
@@ -2849,6 +2883,42 @@ function syncHighlightScroll() { els.highlight.scrollTop = els.input.scrollTop; 
 els.input.addEventListener('input', autosize);
 els.input.addEventListener('scroll', syncHighlightScroll);
 autosize();
+
+// /module has its own visual language before it ever reaches an agent. The class is also the
+// animation trigger: it is added once when the prefix becomes a command, and removed when the
+// human edits away from it or the message leaves the composer.
+const MODULE_COMMAND = /^\/module(?:\s|$)/i;
+// A refusal that only flashes is a refusal the room forgets. `/module` needs #2 because writing a
+// module is writing a file, so the answer lands in the thread where every other decision of the
+// room lands — and it carries the way out: the button that arms the mode, without arming it.
+function moduleModeNotice() {
+  const node = el('div', 'system alert module-notice');
+  node.append(el('b', null, t('MU/TH/UR › ')));
+  node.append(t('/module writes a file, so it needs #2 CREATE. Your request is still in the composer.'));
+  const arm = el('button', 'cmd', t('ARM #2 CREATE'));
+  arm.type = 'button';
+  // The human arms it, here as everywhere: the command asked, the click grants.
+  arm.addEventListener('click', () => { setMode(2, { wink: true }); els.input.focus(); });
+  node.append(arm);
+  removeEmpty();
+  els.column.append(node);
+  node.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function askForModuleMode() {
+  toast(t('MU/TH/UR › /module needs #2 CREATE. Choose #2 in the mode chip, then send again.'));
+}
+function syncModuleComposer() {
+  const active = MODULE_COMMAND.test(els.input.value.trimStart());
+  if (state.moduleCommand === active) return;
+  state.moduleCommand = active;
+  els.composer.classList.toggle('module-command', active);
+  updateCrewLabel();
+  updatePlaceholder();
+  if (active && !state.create) askForModuleMode();
+}
+els.input.addEventListener('input', syncModuleComposer);
+syncModuleComposer();
 
 /* ---------- labels inside the field: @agent mentions and /commands ---------- */
 
@@ -2961,6 +3031,7 @@ function pickMenu(index = menu.index) {
   els.input.setSelectionRange(caret, caret);
   closeMenu();
   autosize();
+  syncModuleComposer();
   els.input.focus();
 }
 els.input.addEventListener('input', () => { menu.index = 0; renderMenu(); });
@@ -2982,8 +3053,17 @@ async function runSlashCommand(text) {
   const name = match[1].toLowerCase();
   const rest = (match[2] ?? '').trim();
   if (name === 'stopall') { await stopAll(); return { handled: true }; }
-  if (name === 'create' || name === 'image') {
-    if (!rest) { toast(t('MU/TH/UR › /{name} needs a request after it, e.g. "/{name} a poster for the launch".', { name })); return { handled: true }; }
+  if (name === 'create' || name === 'image' || name === 'module') {
+    if (!rest) {
+      toast(name === 'module'
+        ? t('MU/TH/UR › /module needs a job, e.g. "/module summarize today’s commits".')
+        : t('MU/TH/UR › /{name} needs a request after it, e.g. "/{name} a poster for the launch".', { name }));
+      return { handled: true };
+    }
+    if (name === 'module' && !state.create) {
+      moduleModeNotice();
+      return { handled: true, preserve: true };
+    }
     let target = els.target.value;
     if (name === 'image') {
       const capable = [...state.agents.values()].filter((agent) => agent.ready && state.capabilities[agent.id]?.scopes?.imageGen?.enabled).map((agent) => agent.id);
@@ -2996,6 +3076,13 @@ async function runSlashCommand(text) {
       }
     }
     if (!state.create) setMode(2);
+    if (name === 'module') {
+      return {
+        handled: false,
+        target,
+        text: t('Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Do not install it; MADRE will show the human an install card.', { request: rest }),
+      };
+    }
     return { handled: false, text: rest, target };
   }
   const known = allCommands().find((item) => item.name === name);
@@ -3093,6 +3180,7 @@ function updateCrewLabel() {
   const order = state.ash && state.ashInstalled;
   els.crewLabel.textContent = state.intruder && state.mode < 3 ? t('INTRUDER ›') : state.mode >= 3 ? `MU/TH/UR · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
     : state.mode === 0 ? t('HUMAN · GHOST ›')
+      : state.moduleCommand ? (state.create ? 'MU/TH/UR · MODULE · CREATE ›' : t('MU/TH/UR · MODULE · NEEDS #2 ›'))
       : order ? (state.create ? 'MU/TH/UR · ASH · CREATE ›' : 'MU/TH/UR · ASH ›')
         : state.create ? t('HUMAN · CREATE ›')
           : state.expendable ? t('CREW · EXPENDABLE ›') : t('HUMAN ›');
@@ -3206,6 +3294,7 @@ els.composer.addEventListener('submit', async (event) => {
     els.input.value = '';
     els.composer.classList.remove('stopall');
     autosize();
+    syncModuleComposer();
     await stopAll();
     return;
   }
@@ -3235,7 +3324,13 @@ els.composer.addEventListener('submit', async (event) => {
     els.input.disabled = true;
     const result = await runSlashCommand(text).catch((error) => { toast(t('The command failed: {error}', { error: error.message })); return { handled: true }; });
     els.input.disabled = false;
-    if (result.handled) { els.input.value = ''; autosize(); els.input.focus(); return; }
+    if (result.handled) {
+      if (!result.preserve) els.input.value = '';
+      autosize();
+      syncModuleComposer();
+      els.input.focus();
+      return;
+    }
     outgoing = result.text ?? text;
     target = result.target ?? target;
   }
@@ -3259,6 +3354,7 @@ els.composer.addEventListener('submit', async (event) => {
       renderPendingAttachments();
       resetModeAfterSend(); // one mode per message; standing leases fall back to #2, everyone else to #1
       autosize();
+      syncModuleComposer();
     }
   } catch (error) {
     toast(t('Could not reach MADRE: {error}', { error: error.message }));
@@ -3293,6 +3389,17 @@ function paintMotherBadge() {
   const count = openFailures().length;
   badge.hidden = count === 0;
   badge.textContent = String(count);
+}
+
+// Which agent last wrote to a path, taken from what the room already recorded: the artifacts a
+// creation lease produced, and the files a CONTROL turn changed. Nothing new is stored and nothing
+// is inferred from the filesystem — if MADRE did not see it happen, the file carries no mark.
+const touched = new Map();
+function markTouched(agent, files) {
+  for (const file of files ?? []) {
+    const path = typeof file === 'string' ? file : file?.path;
+    if (path && agent) touched.set(String(path).replace(/^\.?\//, ''), agent);
+  }
 }
 
 function recordFailure(entry) {
@@ -3844,8 +3951,30 @@ function metrics(box, rows) {
 }
 
 // Every card has the same floors in the same order, whatever the module is: what it is, what it
-// does, what it touches, how it is doing — and then, last and alone, the switch. The eye learns
-// the shape once and finds the button in the same place on all of them.
+// does, what it touches, how it is doing — and then its actions, with the main switch last. A DEV
+// module also offers uninstall there; a module MADRE ships never does.
+function removeModuleButton(item, { className = 'remove-module', text = t('UNINSTALL') } = {}) {
+  const remove = el('button', className, text);
+  remove.type = 'button';
+  remove.title = t('Delete module file {file}', { file: item.file });
+  remove.addEventListener('click', async () => {
+    if (!window.confirm(t("Remove {name}? Its file {file} is deleted. MADRE's own modules cannot be removed.", { name: item.name, file: item.file }))) return;
+    remove.disabled = true;
+    try {
+      const response = await fetch(`/api/extensions/${item.id}`, { method: 'DELETE' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? `HTTP ${response.status}`);
+      modules.items = payload.extensions ?? modules.items;
+      toast(t('MU/TH/UR › {name} removed.', { name: item.name }));
+      renderModules();
+    } catch (error) {
+      toast(t('It was not removed: {error}', { error: error.message }));
+      remove.disabled = false;
+    }
+  });
+  return remove;
+}
+
 function cardShell(item, { on, state: stateText }) {
   const card = el('article', `module-card${on ? '' : ' off'}`);
   card.id = `module-${item.id}`;
@@ -3933,9 +4062,10 @@ function cardShell(item, { on, state: stateText }) {
   }
 
   // FLOOR 4 · the module's own: what it reads, what it lets you set.
-  // FLOOR 5 · and the switch, alone, at the bottom of every card.
+  // FLOOR 5 · actions at the bottom: DEV uninstall first, the main switch last.
   const panel = el('div', 'card-panel');
   const actions = el('div', 'actions');
+  if (item.external) actions.append(removeModuleButton(item));
   card.append(panel, actions);
   return { card, panel, actions };
 }
@@ -4015,8 +4145,7 @@ modules.file?.addEventListener('change', async () => {
     // A key the contract does not answer to. Not fatal — a module written for a newer MADRE may
     // carry fields this one has not learned — but a misspelling is far likelier, and it used to
     // install in silence and leave the author wondering why their card came out empty.
-    const unknown = result.installed.unknown ?? [];
-    if (unknown.length) setTimeout(() => toast(t('MU/TH/UR › {name} declares {fields}, which this MADRE does not know. A typo, or a field from a newer version.', { name: result.installed.name, fields: unknown.join(', ') })), 2600);
+    warnUnknownModuleFields(result.installed);
   } catch (error) { toast(t('The module was not installed: {error}', { error: error.message })); }
   finally { modules.add.disabled = false; }
 });
@@ -4408,17 +4537,7 @@ function renderModulesDev() {
     for (const item of yours) {
       const chip = el('span', 'dev-chip');
       chip.append(el('b', null, item.name), ` · ${item.origin === 'project' ? 'this project' : 'every room'} `);
-      const remove = el('button', 'act-link', t('REMOVE')); remove.type = 'button'; remove.title = `Delete ${item.file}`;
-      remove.addEventListener('click', async () => {
-        if (!window.confirm(t("Remove {name}? Its file {file} is deleted. MADRE's own modules cannot be removed.", { name: item.name, file: item.file }))) return;
-        remove.disabled = true;
-        try {
-          const payload = await fetch(`/api/extensions/${item.id}`, { method: 'DELETE' }).then((response) => response.json());
-          if (payload.error) throw new Error(payload.error);
-          modules.items = payload.extensions ?? modules.items; toast(t('MU/TH/UR › {name} removed.', { name: item.name })); renderModules();
-        } catch (error) { toast(t('It was not removed: {error}', { error: error.message })); remove.disabled = false; }
-      });
-      chip.append(remove);
+      chip.append(removeModuleButton(item, { className: 'act-link', text: t('REMOVE') }));
       list.append(chip);
     }
     body.append(list);

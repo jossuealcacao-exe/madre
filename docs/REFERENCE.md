@@ -197,7 +197,7 @@ Cada módulo es un archivo. Los tuyos van en `~/.pulse/modules/` (todas las sala
 ## LO QUE SALE DE LA MÁQUINA
 
 - **Nada por sí solo.** MADRE no tiene nube, cuenta ni backend. No guarda credenciales.
-- **Lo que un agente lee, viaja a su proveedor.** Codex a OpenAI, Claude Code a Anthropic, Gemini CLI a Google, OpenCode a quien tenga configurado. Aplican su cuenta, sus límites y sus términos. `@madre` y el archivista con Ollama no salen de la máquina.
+- **Lo que un agente lee, viaja a su proveedor.** Codex a OpenAI, Claude Code a Anthropic, Gemini CLI a Google, OpenCode a quien tenga configurado. Si `OPENAI_BASE_URL` o `ANTHROPIC_BASE_URL` cambia ese destino, MADRE enseña solo el hostname y bloquea el turno antes de armar el briefing; un gateway verificado se autoriza por agente con `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS`. Aplican la cuenta, los límites y los términos del destino efectivo. `@madre` y el archivista con Ollama no salen de la máquina.
 - **Dos envíos propios, ambos bajo tu interruptor.** El sentinel, apagado por defecto, envía reportes redactados al colector del proyecto. El canal de liberación, encendido por defecto, pregunta a npm por la última versión: viaja el nombre del paquete, nada más, la misma petición que hace `npx`. `PULSE_UPDATE_CHECK=0` lo apaga.
 - **Escritura.** En `#1` nadie escribe. En `#2` solo se añade: lo que existía se restaura al terminar el turno. En `#3` todo el proyecto salvo las zonas prohibidas, con checkpoint y `UNDO`. En un proyecto sin git, MADRE guarda sus fotografías en un repositorio sombra fuera del proyecto.
 - **Memoria.** Todo lo dicho fuera de GHOST queda en `~/.pulse/rooms/<sala>/` y vuelve a los prompts de todos los agentes de esa sala. GHOST es la salida para lo que no debe recordarse; PRIVACY, para los nombres que nunca deben aparecer.
@@ -237,6 +237,7 @@ Cada módulo es un archivo. Los tuyos van en `~/.pulse/modules/` (todas las sala
 | `PULSE_UPDATE_CHECK` | `1` | `0` apaga la consulta diaria a npm |
 | `PULSE_REPORT_URL` · `PULSE_AUTO_REPORT` | colector del proyecto · `0` | Sentinel |
 | `PULSE_AGENT_TIMEOUT_MS` · `PULSE_<AGENTE>_TIMEOUT_MS` | `180000` · — | Timeouts |
+| `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS` | — | Lista separada por comas (`codex`, `claude`) de gateways que el humano verificó y permite; sin ella, una dirección base no oficial se bloquea |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Tamaño máximo de un mensaje |
 | `PULSE_DELEGATION` · `PULSE_MAX_PLAN_STEPS` | `1` · `4` | Delegación |
 | `PULSE_ESCALATION_MS` | `180000` | Cronómetro de la escalación |

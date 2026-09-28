@@ -61,6 +61,19 @@ export const CONDITIONS = [
     },
   },
   {
+    id: 'custom-agent-endpoint',
+    code: 'MU-055',
+    severity: 'blocking',
+    title: 'The agent is pointed at a custom endpoint',
+    match: /MADRE blocked @(?:codex|claude) before sending the briefing|Subscribe to (?:the )?Telegram|@conduitapi/i,
+    diagnosis: 'The installed CLI inherited a base-URL override from this computer, so its request was going to another gateway instead of the official agent service. A demand to join a Telegram channel comes from that gateway, not from MADRE, Anthropic or OpenAI. MADRE now names that route and stops before sending the briefing.',
+    remedy: 'Do not subscribe or enter credentials. Remove the base-URL override and reopen MADRE to use the official service. If the gateway is intentional and you have verified who operates it, explicitly allow only that agent.',
+    fixes: {
+      darwin: ['env | grep -E \'^(ANTHROPIC|OPENAI)_BASE_URL=\'', '# remove that export from ~/.zshrc, ~/.zprofile or ~/.zshenv; then:', 'unset ANTHROPIC_BASE_URL OPENAI_BASE_URL', '# open a new room; only for a gateway you verified:', 'PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=claude madre start'],
+      linux: ['env | grep -E \'^(ANTHROPIC|OPENAI)_BASE_URL=\'', '# remove that export from ~/.bashrc, ~/.profile or ~/.bash_profile; then:', 'unset ANTHROPIC_BASE_URL OPENAI_BASE_URL', '# open a new room; only for a gateway you verified:', 'PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS=claude madre start'],
+    },
+  },
+  {
     id: 'codex-reading-stdin',
     code: 'MU-002',
     solvedIn: 'connections',

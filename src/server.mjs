@@ -250,7 +250,7 @@ export async function createPulseServer({
     else if (!fifth.ready && index >= 0) { agents.splice(index, 1); changed = true; }
     if (room) {
       room.setInvoker(MADRE_ADAPTER, fifth.ready ? madreInvoker({ memory, ollama: () => ({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }), fetchImpl: reportFetch }) : null);
-      if (changed) await room.record('agents.updated', { agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local) })), removed: fifth.ready ? [] : [MADRE_AGENT_ID], reason: fifth.ready ? `@madre is in the room · ${fifth.version}` : '@madre left the room: Ollama has no chat model running' });
+      if (changed) await room.record('agents.updated', { agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local), route: agent.route ?? null })), removed: fifth.ready ? [] : [MADRE_AGENT_ID], reason: fifth.ready ? `@madre is in the room · ${fifth.version}` : '@madre left the room: Ollama has no chat model running' });
       // That a local model is running is not the same as it being of use on this project, and
       // the second thing is the one a person needs told. Said once per model, in the room, with
       // the one button that settles it — the crew line above fires only when the crew CHANGES,
@@ -465,7 +465,7 @@ export async function createPulseServer({
       const index = agents.findIndex((item) => item.id === next.id);
       if (index === -1) { agents.push(next); changed = true; continue; }
       const before = agents[index];
-      if (before.detected !== next.detected || before.ready !== next.ready || before.version !== next.version || before.path !== next.path) {
+      if (before.detected !== next.detected || before.ready !== next.ready || before.version !== next.version || before.path !== next.path || JSON.stringify(before.route ?? null) !== JSON.stringify(next.route ?? null)) {
         agents[index] = { ...before, ...next };
         changed = true;
       }
@@ -473,7 +473,7 @@ export async function createPulseServer({
     await refreshSessions();
     if (changed && announce) {
       await room.record('agents.updated', {
-        agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local) })),
+        agents: agents.map((agent) => ({ id: agent.id, label: agent.label, detected: agent.detected, ready: agent.ready, version: agent.version, local: Boolean(agent.local), route: agent.route ?? null })),
         removed: [],
         reason: 'the room looked again for the agents on this computer',
       });
@@ -846,7 +846,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js'].includes(url.pathname)) {
         const js = await readFile(join(publicDirectory, url.pathname.slice(1)));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
         return response.end(js);

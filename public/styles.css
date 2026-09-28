@@ -40,6 +40,7 @@
   --mode-2: #ffb000; --mode-2-ink: #1a1000;        /* CREATE · amber phosphor */
   --mode-3: var(--terror); --mode-3-ink: #fff3f1;  /* CONTROL · the red screen */
   --mode-4: #8fd3ff; --mode-4-ink: #04131c;        /* AIRLOCK · the cold outside */
+  --module-electric: #b44cff; --module-electric-ink: #12001d; /* MODULE · MADRE electric purple */
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -801,6 +802,8 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .module-card .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .module-card .actions button { border: 1px solid var(--ph); background: transparent; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .18em; padding: 8px 14px; cursor: pointer; }
 .module-card .actions button.primary { background: var(--ph); color: #041004; text-shadow: none; }
+.module-card .actions button.remove-module { border-color: color-mix(in srgb, var(--danger) 65%, transparent); color: var(--danger); }
+.module-card .actions button.remove-module:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .module-card .actions button:disabled { opacity: .4; cursor: default; }
 .module-card .actions .note { font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); }
 .module-card .confirm { border: 1px dashed var(--ph); padding: 12px 14px; display: grid; gap: 10px; }
@@ -1204,6 +1207,36 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.escalation.denied { color: var(--text-3); border-color: var(--line-2); background: transparent; }
 .composer.creating .field { border-color: var(--mode-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode-2) 18%, transparent); }
 .composer.creating .crew-label { color: var(--mode-2); }
+/* /module temporarily gives CREATE its own electric MADRE signature. The pixel layer crosses
+   the typebox once, then leaves a clean purple field behind while the request is composed. */
+.composer.module-command { --mode: var(--module-electric); --mode-ink: var(--module-electric-ink); }
+.composer.creating.module-command .field, .composer.module-command .field {
+  border-color: var(--module-electric);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--module-electric) 8%, var(--panel)), var(--panel) 62%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--module-electric) 18%, transparent), 0 0 28px color-mix(in srgb, var(--module-electric) 18%, transparent);
+  transition: border-color .18s ease, background .22s ease, box-shadow .22s ease;
+}
+.composer.module-command .crew-label { color: var(--module-electric); text-shadow: 0 0 9px color-mix(in srgb, var(--module-electric) 58%, transparent); }
+.composer.module-command .editor textarea { caret-color: var(--module-electric); }
+.composer.module-command .editor .highlight .chip.cmd { --agent: var(--module-electric); }
+.composer .field::after {
+  content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; opacity: 0;
+  background:
+    linear-gradient(90deg, transparent 0 10%, color-mix(in srgb, var(--module-electric) 72%, transparent) 46% 54%, transparent 90% 100%),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--module-electric) 78%, transparent) 0 7px, transparent 7px 12px),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--module-electric) 62%, transparent) 0 7px, transparent 7px 12px);
+  background-size: 42% 100%, 100% 12px, 12px 100%;
+  background-position: -55% 0, 0 0, 0 0;
+  mix-blend-mode: normal;
+}
+.composer.module-command .field::after { animation: module-pixel-shift .58s steps(9, end) 1; }
+@keyframes module-pixel-shift {
+  0% { opacity: 0; clip-path: inset(0 100% 0 0); background-position: -55% 0, 0 0, 0 0; }
+  14% { opacity: .82; }
+  58% { opacity: .48; clip-path: inset(0 0 0 0); background-position: 86% 0, 9px 0, 0 7px; }
+  100% { opacity: 0; clip-path: inset(0 0 0 100%); background-position: 155% 0, 18px 0, 0 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .composer.module-command .field::after { animation: none; } }
 .who .badge.lease { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
 .user .stamp .lease { color: var(--warn); }
 .system.lease { color: var(--warn); }
@@ -1244,7 +1277,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .composer.creating { width: min(1180px, 100% - 40px); }
 .editor textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .editor { position: relative; display: grid; min-width: 0; }
-.editor textarea, .editor .highlight { grid-area: 1 / 1; margin: 0; padding: 7px 0; line-height: 21px; font-size: 15px; font-family: inherit; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; box-sizing: content-box; min-height: 0; max-height: none; overflow-y: auto; }
+.editor textarea, .editor .highlight { grid-area: 1 / 1; margin: 0 -5px; padding: 7px 5px; line-height: 21px; font-size: 15px; font-family: inherit; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; box-sizing: content-box; min-height: 0; max-height: none; overflow-y: auto; }
 .editor textarea { position: relative; z-index: 1; color: transparent; caret-color: var(--text); }
 .editor textarea::selection { background: color-mix(in srgb, var(--phosphor) 30%, transparent); }
 .composer.stopall .editor textarea { color: var(--terror); }
@@ -1394,6 +1427,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 :root[data-scheme="light"] .composer.creating .field, :root[data-scheme="light"] .composer.creating.ordering .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mode-2) 30%, transparent); }
 :root[data-scheme="light"] .composer.ash-on .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brew) 22%, transparent); }
 :root[data-scheme="light"] .composer.dropping .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--phosphor) 35%, transparent); }
+:root[data-scheme="light"] .composer.module-command .field { box-shadow: 0 0 0 2px color-mix(in srgb, var(--module-electric) 34%, transparent); }
 :root[data-scheme="light"] .memory-hint .pill { animation: none; box-shadow: none; }
 :root[data-scheme="light"] .mode-menu .mode-option .tag .dot { box-shadow: none; }
 :root[data-scheme="light"] .picker .mode-chip, :root[data-scheme="light"] .who .badge { text-shadow: none; box-shadow: none; }
@@ -1643,3 +1677,15 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 /* A remedy this room can carry out itself: the button goes above the commands it replaces. */
 .mother-goto { display: block; margin: 6px 0 0; border: 1px solid var(--ph-dim); border-radius: 4px; background: transparent; color: var(--ph); cursor: pointer; font: inherit; font-size: 10px; letter-spacing: .14em; padding: 6px 12px; text-transform: uppercase; }
 .mother-goto:hover { background: color-mix(in srgb, var(--ph) 12%, transparent); }
+
+/* A file an agent wrote in this room, in that agent's own colour. */
+.tree .node .touched { width: 6px; height: 6px; border-radius: 50%; background: var(--agent, var(--ph)); box-shadow: 0 0 6px var(--agent, var(--ph)); flex: 0 0 auto; margin-left: 2px; }
+
+/* Read by what the file is. Six roles, the room's own phosphor: enough to find a string or a
+   comment at a glance, and never so many colours that the code stops being the thing you see. */
+.viewer .code .t-keyword { color: #9bb8ff; }
+.viewer .code .t-string  { color: #9bff66; }
+.viewer .code .t-comment { color: var(--ph-dim); font-style: italic; }
+.viewer .code .t-number  { color: #ffd166; }
+.viewer .code .t-literal { color: #ff9ecd; }
+.viewer-lang { color: var(--ph-dim); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }

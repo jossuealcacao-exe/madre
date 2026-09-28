@@ -65,9 +65,12 @@ test('an agent proposes <id>.module.mjs, the human installs it into a folder of 
     assert.equal(isModuleFile('src/module.mjs'), false);
     await mkdir(join(projectRoot, '.pulse', 'out', 't1'), { recursive: true });
     const proposal = join(projectRoot, '.pulse', 'out', 't1', 'read-mail.module.mjs');
-    await writeFile(proposal, `export default { id: 'read-mail', name: 'READ MAIL', summary: 'reads mail', settings: { enabled: false }, slash: [{ name: 'mail', usage: '/mail', async execute() { return { ok: true, title: 'MAIL', text: 'inbox: 0' }; } }] };`);
+    await writeFile(proposal, `export default { id: 'read-mail', name: 'READ MAIL', summary: 'reads mail', sumary: 'this typo must be reported', settings: { enabled: false }, slash: [{ name: 'mail', usage: '/mail', async execute() { return { ok: true, title: 'MAIL', text: 'inbox: 0' }; } }] };`);
     const installed = await installModuleFile({ source: proposal, scope: 'project', stateRoot, projectRoot });
     assert.deepEqual([installed.id, installed.origin, installed.file], ['read-mail', 'project', join(projectRoot, '.madre', 'modules', 'read-mail.mjs')]);
+    assert.deepEqual(installed.unknown, ['sumary'], 'the proposal route must carry the typo back to the UI that installed it');
+    const sourceRecord = installed.file.replace(/\.mjs$/, '.source.json');
+    assert.match(await readFile(sourceRecord, 'utf8'), /read-mail\.module\.mjs/, 'the update origin was not remembered');
     assert.equal(moduleById('read-mail').external, true);
     assert.ok(moduleCommands().some((c) => c.name === 'mail'));
 
@@ -82,8 +85,10 @@ test('an agent proposes <id>.module.mjs, the human installs it into a folder of 
     await assert.rejects(removeExternalModule({ id: 'ripley', stateRoot, projectRoot }), /ships with MADRE/);
     const removed = await removeExternalModule({ id: 'read-mail', stateRoot, projectRoot });
     assert.equal(removed.id, 'read-mail');
+    assert.deepEqual(new Set(removed.removedFiles), new Set([installed.file, sourceRecord]));
     assert.equal(moduleById('read-mail'), null);
     await assert.rejects(readFile(installed.file), /ENOENT/);
+    await assert.rejects(readFile(sourceRecord), /ENOENT/);
   } finally {
     await loadExternalModules({ stateRoot: join(stateRoot, 'none'), projectRoot: join(projectRoot, 'none') });
     await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
@@ -95,12 +100,15 @@ test('the SDK says what it did not understand, and the import that never works e
   const { verifyModuleText } = await import('../src/modules/index.mjs');
   const { defineModule, unknownFields, MODULE_FIELDS } = await import('../src/modules/sdk.mjs');
 
-  // Thirty-three optional fields is generous until you misspell one. `sumary` used to install
+  // Thirty-two optional fields is generous until you misspell one. `sumary` used to install
   // without a word and leave a card with an empty summary — the likeliest mistake anyone makes,
   // an agent included, and the only one the contract answered with silence.
   assert.deepEqual(defineModule({ id: 'a', name: 'A', summary: 'ok' }).unknown, []);
   assert.deepEqual(defineModule({ id: 'b', name: 'B', sumary: 'x', comand: 'y' }).unknown, ['sumary', 'comand']);
+  assert.deepEqual(defineModule({ id: 'c', name: 'C', install: { display: 'ignored before this fix' } }).unknown, ['install']);
+  assert.equal(MODULE_FIELDS.size, 34);
   assert.ok(MODULE_FIELDS.has('summary') && MODULE_FIELDS.has('toolsForTurn'));
+  assert.equal(MODULE_FIELDS.has('install'), false, 'a field the SDK ignores must not be advertised as understood');
   // Said, never refused: a module written for a newer MADRE may carry fields this one lacks.
   const carried = await verifyModuleText({ text: "export default { id: 'futuro', name: 'FUTURO', vibes: true };", name: 'c.mjs' });
   assert.deepEqual(carried.unknown, ['vibes']);

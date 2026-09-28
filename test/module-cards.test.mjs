@@ -65,6 +65,14 @@ test('a card says what it is running, and what is not installed is not a version
   assert.deepEqual(dependencies(undefined), []);
 });
 
+test('every human module install path warns about fields this MADRE does not know', async () => {
+  const app = await read('app.js');
+  const proposal = app.slice(app.indexOf('function renderModuleProposed('), app.indexOf('function renderModuleInstalledOrRemoved('));
+  const upload = app.slice(app.indexOf("modules.file?.addEventListener('change'"), app.indexOf('async function refreshModuleFile('));
+  assert.match(proposal, /warnUnknownModuleFields\(payload\.installed\)/, 'a module proposed by an agent installs without repeating the SDK warning');
+  assert.match(upload, /warnUnknownModuleFields\(result\.installed\)/, 'a module uploaded from MODULES installs without the SDK warning');
+});
+
 test('a dependency version is read from the package, never asked of npx', async () => {
   const { packageVersion } = await import('../src/modules/helpers.mjs');
   const here = join(import.meta.dirname, '..');
@@ -104,6 +112,7 @@ test('every card has the same floors, and the switch is always the last one', as
   // Both kinds of card are built through it, so neither can drift into its own shape.
   assert.match(app, /function builtinCard\(item\) \{[\s\S]{0,400}cardShell\(item/);
   assert.match(app, /function moduleCard\(item\) \{[\s\S]{0,400}cardShell\(item/);
+  assert.match(app, /if \(item\.external\) actions\.append\(removeModuleButton\(item\)\)/, 'DEV modules do not get an uninstall action on their own card');
 
   // What a module knows about itself belongs on its card: a reading, a setting, or both.
   assert.ok(app.includes("ashReading(panel)"), 'the economy is not on Ash\'s card');

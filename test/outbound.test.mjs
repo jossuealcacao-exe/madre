@@ -181,6 +181,9 @@ test('outbound: the view answers for each address and admits what it cannot see'
   // The crew is named by where each agent's own process talks to, and @madre is not in the list
   // because @madre answers here.
   assert.equal(by.crew.to, '@claude → Anthropic');
+  assert.equal(outboundView({
+    agents: [{ id: 'claude', detected: true, route: { destination: 'custom endpoint · gateway.example.test' } }],
+  }).destinations.find((one) => one.id === 'crew').to, '@claude → custom endpoint · gateway.example.test');
   // What MADRE cannot see, it says it cannot see: the crew's own conversation with its provider
   // happens in a process of its own. The image studio also runs outside, but it writes its own
   // line into this log, so it is not in that category.

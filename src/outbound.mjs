@@ -269,7 +269,7 @@ export class OutboundLog {
 export function outboundView({ log = null, state = {}, agents = [] } = {}) {
   const counts = log?.counts() ?? {};
   const vendors = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: 'the provider OpenCode is signed in to' };
-  const crew = agents.filter((agent) => agent.detected && !agent.local).map((agent) => `@${agent.id} → ${vendors[agent.id] ?? 'its own provider'}`);
+  const crew = agents.filter((agent) => agent.detected && !agent.local).map((agent) => `@${agent.id} → ${agent.route?.destination ?? vendors[agent.id] ?? 'its own provider'}`);
   const destinations = DESTINATIONS.map((one) => ({
     id: one.id,
     to: one.id === 'crew' && crew.length ? crew.join(' · ') : one.to,

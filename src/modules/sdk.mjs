@@ -51,14 +51,14 @@ export function dependencies(runs) {
   return list.filter((dep) => dep && dep.name).map((dep) => ({ name: String(dep.name), version: dep.version ?? null, target: dep.target ?? null }));
 }
 
-// Every field this contract answers to. Thirty-three of them and all but two optional, which is
+// Every field this contract answers to. Thirty-four of them and all but two optional, which is
 // generous until you misspell one: `sumary` used to install without a word and leave a card with
 // an empty summary. A key MADRE does not know is not fatal — a module written for a newer MADRE
 // may carry fields this one has not learned yet — so it is said out loud instead of refused.
 export const MODULE_FIELDS = new Set([
   'id', 'kind', 'name', 'vendor', 'package', 'version', 'tracks', 'updates', 'summary', 'creates',
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes',
-  'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'install', 'installCommand',
+  'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
   'toggledBody', 'describe',
 ]);

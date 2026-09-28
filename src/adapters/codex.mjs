@@ -50,6 +50,7 @@ export function buildCodexArgs({ projectRoot, prompt, model = null, attachments 
 export function parseCodexOutput(output) {
   let text = '';
   let usage = null;
+  let error = null;
   for (const line of output.split('\n').filter(Boolean)) {
     try {
       const event = JSON.parse(line);
@@ -66,11 +67,13 @@ export function parseCodexOutput(output) {
           source: 'codex-json',
         };
       }
+      if (event.type === 'error' && typeof event.message === 'string') error = event.message;
+      if (event.type === 'turn.failed' && typeof event.error?.message === 'string') error = event.error.message;
     } catch {
       // Ignore CLI diagnostics that are not JSON events.
     }
   }
-  return { text: text.trim(), usage };
+  return { text: text.trim(), usage, ...(error ? { error } : {}) };
 }
 
 export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [], onProgress = null }) {

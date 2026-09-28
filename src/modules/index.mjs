@@ -134,9 +134,15 @@ export async function removeExternalModule({ id, stateRoot, projectRoot }) {
   const module = MODULES.find((known) => known.id === id);
   if (!module) throw new Error(`No module "${id}".`);
   if (!module.external) throw new Error(`${module.name} ships with MADRE and cannot be removed; switch it off instead.`);
-  await unlink(module.file).catch(() => {});
+  // The origin record goes first: if it cannot be removed, the executable module file remains
+  // installed rather than leaving a live registry entry whose file has already disappeared.
+  const files = [...new Set([module.file.replace(/\.(?:mjs|js)$/, '.source.json'), module.file])];
+  const removedFiles = [];
+  for (const file of files) {
+    try { await unlink(file); removedFiles.push(file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
   await loadExternalModules({ stateRoot, projectRoot });
-  return { id, name: module.name, file: module.file };
+  return { id, name: module.name, file: module.file, removedFiles };
 }
 
 export const moduleById = (id) => MODULES.find((module) => module.id === id) ?? null;
