@@ -591,11 +591,14 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 /* ================= composer ================= */
 .composer { display: grid; gap: 12px; padding: 14px 0 0; }
 .composer[aria-disabled="true"] { opacity: .45; pointer-events: none; }
-.picker { display: flex; gap: 8px; align-items: center; padding: 0 4px; }
+/* One line, always. The spheres and the chips keep their size; the note is the only piece that
+   gives way, because its whole sentence is in its tooltip anyway. */
+.picker { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; padding: 0 4px; }
 .picker .pick { --size: 30px; cursor: pointer; border: 1px solid transparent; background: color-mix(in srgb, var(--agent) 10%, transparent); transition: transform .12s ease, box-shadow .12s ease; }
 .picker .pick:hover { transform: translateY(-1px); }
 .picker .pick[aria-checked="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--agent); background: color-mix(in srgb, var(--agent) 22%, transparent); }
-.picker .pick-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); margin-left: 2px; }
+.picker .pick-label { display: flex; align-items: center; gap: 8px; min-width: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); margin-left: 2px; }
+.picker .pick-label > .mode-chip, .picker .pick-label > .model-chip { flex: 0 0 auto; }
 .picker .pick-label b { color: var(--agent, var(--text)); font-weight: 600; }
 .field { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: end; padding: 6px 6px 6px 18px; border: 1px solid var(--line-2); background: var(--panel); border-radius: 24px; }
 .crew-label { align-self: center; font-family: var(--mono); font-size: 10px; letter-spacing: .18em; color: var(--text-3); white-space: nowrap; transition: color .4s ease; }
@@ -614,7 +617,7 @@ textarea::placeholder { color: var(--text-3); }
 .field button[type="submit"] svg { width: 18px; height: 18px; }
 .field button[type="submit"]:hover { filter: brightness(1.06); }
 .field button[type="submit"]:disabled { opacity: .4; cursor: default; box-shadow: none; }
-.pick-label .pick-note { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-left: 4px; white-space: nowrap; }
+.pick-label .pick-note { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
 .safety { margin: 14px auto 18px; color: var(--text-3); font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
 
 /* toast */

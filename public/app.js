@@ -817,7 +817,7 @@ function renderPicker() {
     text.append(t('to '));
     text.append(el('b', null, `@${current.id}`));
     if (current.local) {
-      const note = el('span', 'pick-note', t('memory · answers & asks the crew · never writes'));
+      const note = el('span', 'pick-note', t('memory · never writes'));
       const measured = state.localModel?.checked;
       note.title = `${t('@madre runs on this machine and speaks for what the room remembers. "@madre, ask the crew …" opens a round with every agent online. To change files, write to a CLI agent.')}${
         measured ? `\n\n${t('Measured against this room {when}: it landed where the crew landed on {matched} of {n} real questions{verdict}', { when: agoWords(measured.at), matched: measured.matched, n: measured.n, verdict: measured.passed ? t('. Ready to be worked in.') : t(' — not yet.') })}` : `\n\n${t('Nobody has measured it against this project yet: MU/TH/UR → the three tests, or the line in the room when it joined.')}`}`;
@@ -829,12 +829,18 @@ function renderPicker() {
     modeChip.title = t('Permission mode for this message · {hint}', { hint: MODES[state.mode].hint });
     modeChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModeMenu(current.id, modeChip); });
     text.append(modeChip);
+    // An agent with no models to choose from gets no chooser. @madre answers on whatever chat
+    // model Ollama holds, which is decided on Ollama's card and not here, so the chip only opened
+    // an empty menu — and it was the piece that pushed this row onto a second line.
     const chosen = state.chosenModel[current.id];
-    const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : t('default model ▾'));
-    modelChip.type = 'button';
-    modelChip.title = t('Choose the model for this agent');
-    modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
-    text.append(modelChip);
+    const choices = state.models[current.id]?.models ?? null;
+    if (!current.local && (choices === null || choices.length)) {
+      const modelChip = el('button', 'model-chip', chosen ? `${chosen} ▾` : t('default model ▾'));
+      modelChip.type = 'button';
+      modelChip.title = t('Choose the model for this agent');
+      modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
+      text.append(modelChip);
+    }
     els.picker.append(text);
   }
   if (typeof renderCreateScopes === 'function') renderCreateScopes();

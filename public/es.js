@@ -906,7 +906,7 @@ export const ES = {
   'loading…': 'cargando…',
   'select & copy': 'selecciona y copia',
   'to ': 'para ',
-  'memory · answers & asks the crew · never writes': 'memoria · contesta y le pregunta a la tripulación · nunca escribe',
+  'memory · never writes': 'memoria · nunca escribe',
   'Choose the model for this agent': 'Elige el modelo de este agente',
   'loading models…': 'cargando modelos…',
   'other model name…': 'otro nombre de modelo…',

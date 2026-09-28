@@ -164,3 +164,25 @@ test('the layer over the field decorates the characters that are there, and not 
     assert.ok(shared[1].includes(`${property}:`), `${property} is no longer shared, so the two can drift apart`);
   }
 });
+
+test('the row above the field stays on one line, whoever is answering', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+  const here = (file) => join(import.meta.dirname, '..', 'public', file);
+  const app = await readFile(here('app.js'), 'utf8');
+  const css = await readFile(here('styles.css'), 'utf8');
+
+  // @madre answers on whatever chat model Ollama holds, decided on Ollama's card. Its chooser
+  // here opened an empty menu, and it was the piece that pushed this row onto a second line.
+  assert.match(app, /const choices = state\.models\[current\.id\]\?\.models \?\? null;/);
+  assert.match(app, /if \(!current\.local && \(choices === null \|\| choices\.length\)\)/, 'an agent with nothing to choose still gets a chooser');
+
+  // The row never wraps. The note is the only piece allowed to give way, because its whole
+  // sentence lives in its tooltip; the spheres and the chips keep their size.
+  const picker = css.match(/^\.picker \{([^}]*)\}/m);
+  assert.ok(picker && /flex-wrap:\s*nowrap/.test(picker[1]), 'the picker row can still wrap onto a second line');
+  const note = css.match(/^\.pick-label \.pick-note \{([^}]*)\}/m);
+  assert.ok(note && /text-overflow:\s*ellipsis/.test(note[1]) && /min-width:\s*0/.test(note[1]), 'the note cannot shrink, so something else has to wrap');
+  const chips = css.match(/^\.picker \.pick-label > \.mode-chip[^{]*\{([^}]*)\}/m);
+  assert.ok(chips && /flex:\s*0 0 auto/.test(chips[1]), 'the chips can be squeezed, and a mode you cannot read is worse than a note you cannot');
+});

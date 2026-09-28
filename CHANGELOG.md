@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.2 · Sin publicar
 
+### La fila de @madre cabe en un renglón
+
+- Al elegir `@madre`, la fila sobre el campo se partía en dos: `PARA @MADRE` con una nota de tres cláusulas, el chip de modo, y un `modelo por defecto ▾` empujado abajo.
+- **Ese chip no tenía nada que ofrecer.** `@madre` contesta con el modelo de chat que tenga Ollama, que se decide en la ficha de Ollama; aquí abría un menú vacío. Un agente sin modelos que elegir ya no trae selector — y era justo la pieza que rompía el renglón.
+- La nota pasó de «memoria · contesta y le pregunta a la tripulación · nunca escribe» a **«memoria · nunca escribe»**. La frase entera sigue en su globo, que es donde estaba de todos modos.
+- Y la fila ya no puede envolver. Si algún día vuelve a faltar espacio, lo que cede es la nota, con puntos suspensivos: un modo que no puedes leer es peor que una nota que no puedes.
+
 ### El cursor caía dentro de la píldora
 
 - **Y en tema claro el código era ilegible.** Los colores del visor se eligieron para fósforo sobre negro: ese verde de las cadenas y ese amarillo de los números desaparecen sobre blanco. Ahora cada rol es una variable con su valor propio para cada fondo, como todo lo demás del tema — azul profundo, verde oscuro, ámbar tostado y magenta sobre claro.
