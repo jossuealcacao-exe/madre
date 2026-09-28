@@ -141,6 +141,17 @@ const failureKey = (failure) => `${failure.time ?? ''}|${failure.agent ?? ''}|${
 const saveDismissed = () => { try { localStorage.setItem('pulse.mother.dismissed', JSON.stringify([...dismissed].slice(-400))); } catch { /* no storage */ } };
 const openFailures = () => state.failures.filter((failure) => !failure.recovered && !dismissed.has(failureKey(failure)));
 
+// Which agent last wrote to a path, taken from what the room already recorded: the artifacts a
+// creation lease produced, and the files a CONTROL turn changed. Nothing new is stored and nothing
+// is inferred from the filesystem — if MADRE did not see it happen, the file carries no mark.
+const touched = new Map();
+function markTouched(agent, files) {
+  for (const file of files ?? []) {
+    const path = typeof file === 'string' ? file : file?.path;
+    if (path && agent) touched.set(String(path).replace(/^\.?\//, ''), agent);
+  }
+}
+
 
 
 /* ---------- helpers ---------- */
@@ -3389,17 +3400,6 @@ function paintMotherBadge() {
   const count = openFailures().length;
   badge.hidden = count === 0;
   badge.textContent = String(count);
-}
-
-// Which agent last wrote to a path, taken from what the room already recorded: the artifacts a
-// creation lease produced, and the files a CONTROL turn changed. Nothing new is stored and nothing
-// is inferred from the filesystem — if MADRE did not see it happen, the file carries no mark.
-const touched = new Map();
-function markTouched(agent, files) {
-  for (const file of files ?? []) {
-    const path = typeof file === 'string' ? file : file?.path;
-    if (path && agent) touched.set(String(path).replace(/^\.?\//, ''), agent);
-  }
 }
 
 function recordFailure(entry) {

@@ -113,10 +113,18 @@ test('the room UI boots against a real transcript without throwing', async () =>
   globalThis.window = globalThis;
   Object.defineProperty(globalThis, 'navigator', { value: { platform: 'MacIntel', userAgent: 'test', clipboard: { writeText: async () => {} } }, configurable: true });
   globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
-  globalThis.localStorage = { store: {}, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
+  // The files panel remembered open, so the tree paints during boot. Twice now a const declared
+  // at the bottom of app.js has been read by a function that runs up here, and both times the
+  // room answered "Cannot access X before initialization" while every test stayed green — the
+  // panel simply never opened. It opens now.
+  globalThis.localStorage = { store: { 'pulse.tree': 'open' }, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
   globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
   globalThis.EventSource = class { constructor(url) { streamUrl = url; } };
   globalThis.fetch = async (url) => {
+    if (String(url).startsWith('/api/tree')) return { ok: true, json: async () => ({ entries: [
+      { name: 'src', kind: 'dir' },
+      { name: 'README.md', kind: 'file', size: 420, contentType: 'text/markdown' },
+    ] }) };
     if (url === '/api/extensions') return { ok: true, json: async () => ({ installing: null, extensions: [] }) };
     if (url === '/api/commands') return { ok: true, json: async () => ({ commands: [{ name: 'git', module: 'git-pulse', title: 'Git Pulse', usage: '/git', summary: 'repo facts', available: true }] }) };
     if (String(url).startsWith('/api/models')) return { ok: true, json: async () => ({ models: {} }) };
@@ -165,6 +173,15 @@ test('the room UI boots against a real transcript without throwing', async () =>
   }
 
   assert.deepEqual(errors, [], 'no event failed to render');
+
+  // The files panel catches its own errors and draws them as a line of text, so nothing throws
+  // and a test that only boots the room stays green while the tree says "could not list". That is
+  // how `Cannot access 'touched' before initialization` reached a person twice: a const declared
+  // at the bottom of app.js, read by a function that runs during boot. Assert it actually painted.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const treePainted = registry.get('tree-body')?.textContent ?? '';
+  assert.ok(!/could not list|Cannot access|is not defined/i.test(treePainted), `the files panel failed while the room looked fine: ${treePainted.slice(0, 140)}`);
+  assert.match(treePainted, /README\.md/, 'the files panel never painted its entries');
   assert.equal(streamUrl, `/api/events?since=${events.at(-1).sequence}`, 'boot reached the live stream with the right cursor');
   const badge = registry.get('mother-count');
   assert.equal(badge.hidden, false);
