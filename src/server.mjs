@@ -193,7 +193,7 @@ export async function createPulseServer({
   const install = detectInstall({ projectRoot: canonicalProjectRoot });
   async function versionView({ force = false } = {}) {
     const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
-    return { project: canonicalProjectRoot, ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
+    return { project: canonicalProjectRoot, ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest, roomLanguage()) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
   }
   // Keeping the day's cache warm. MODULES is served from what is already on disk, so the looking
   // happens after the screen is answered, never in front of it: at most once an hour per room,

@@ -59,6 +59,8 @@ Antes de que alguien pueda pedirle a un agente «hazme un módulo», el contrato
 
 ### MADRE tiene casa: madre.run
 
+- **Y lo que trae una versión se lee en esa casa.** `QUÉ TRAE 0.4.2 ↗` llevaba a la página de releases de GitHub, que está escrita para quien ya trabaja ahí; quien aprieta ese botón solo quería saber qué cambió. Ahora va a `madre.run/cambios/` en español y a `madre.run/en/changelog/` en inglés, con la versión en el ancla (`#v0.4.2`) para que la página lo deje parado en la sección que le toca.
+
 - El colector de errores vivía en `madre-reports.jossue-alcala-o.workers.dev`, y **ese host se le enseña al usuario** en el registro de salidas del núcleo. Un subdominio de `workers.dev` con un nombre de cuenta pegado parece un endpoint improvisado; `madre.run` parece el producto. La dirección es parte de lo que se le pide confiar a alguien.
 - **La dirección vieja sigue contestando, y tiene que seguir.** Cada sala en 0.4.0 y anteriores la lleva compilada dentro: apagarla detendría sus reportes en silencio. Queda escrita en el código y en la prueba, en vez de desaparecer del registro.
 - **Dos puertas para cada reporte humano, siempre.** Un fallo con traza pertenece a GitHub, donde se deduplica y la respuesta le sirve al siguiente; pero pedirle una cuenta a quien llegó de un grupo en español para decir «no me detecta Codex» es perderlo. En español manda el formulario y el issue queda a un clic; en inglés, al revés. Nadie choca con un muro de login con un reporte en la mano.

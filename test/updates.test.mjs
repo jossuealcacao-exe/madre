@@ -20,7 +20,15 @@ test('updates: versions compare as releases, the launch mode picks the command, 
   assert.match(applyCommand({ install: 'project', name: '@jossuealcala/madre', version: '0.3.2', port: 4319, projectRoot: '/p' }), /^npm install @jossuealcala\/madre@0\.3\.2 --no-fund --no-audit && exec npx --no madre start --no-open --port 4319 --project '\/p'$/);
   assert.match(applyCommand({ install: 'global', name: '@jossuealcala/madre', version: '0.3.2', port: 4317, projectRoot: '/p' }), /^npm install -g .* && exec madre start/);
   assert.equal(applyCommand({ install: 'source', name: 'x', version: '1', port: 1, projectRoot: '/p' }), null, 'from source the human pulls');
-  assert.equal(releaseUrl({ type: 'git', url: 'git+https://github.com/jossuealcacao-exe/madre.git' }, '0.3.2'), 'https://github.com/jossuealcacao-exe/madre/releases/tag/v0.3.2');
+  // What a version brought is read in the product's own house, in the room's language. A release
+  // page on a code host is written for people who already work there; whoever pressed this button
+  // only wanted to know what changed.
+  const repository = { type: 'git', url: 'git+https://github.com/jossuealcacao-exe/madre.git' };
+  assert.equal(releaseUrl(repository, '0.3.2', 'es'), 'https://madre.run/cambios/#v0.3.2');
+  assert.equal(releaseUrl(repository, '0.3.2', 'en'), 'https://madre.run/en/changelog/#v0.3.2');
+  assert.equal(releaseUrl(repository, '0.3.2'), 'https://madre.run/cambios/#v0.3.2', 'without a language the room speaks Spanish');
+  // The anchor carries the version, so the page can land the reader on the section that changed.
+  assert.match(releaseUrl(repository, '0.4.2', 'en'), /#v0\.4\.2$/);
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-updates-'));
   try {

@@ -51,7 +51,15 @@ export function applyCommand({ install, name, version, port, projectRoot }) {
   }
 }
 
-export function releaseUrl(repository, version) {
+// Where a person reads what a version brought. The product's own house, in the language the room
+// is speaking — a release page on a code host is written for people who already work there, and
+// whoever pressed this button only wanted to know what changed. The repository stays the fallback
+// for a build with no house to point at.
+export const CHANGES_PAGE = { es: 'https://madre.run/cambios/', en: 'https://madre.run/en/changelog/' };
+
+export function releaseUrl(repository, version, language = 'es') {
+  const page = CHANGES_PAGE[language] ?? CHANGES_PAGE.es;
+  if (page) return version ? `${page}#v${version}` : page;
   const url = String(repository?.url ?? repository ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
   return url ? `${url}/releases/tag/v${version}` : null;
 }
