@@ -249,3 +249,38 @@ test('the Gemini key is looked for where MADRE itself puts it', async () => {
   await writeFile(joinPath(home, '.gemini', '.env'), 'GEMINI_API_KEY=\n');
   assert.notEqual(await resolveGeminiKey({ GEMINI_CLI_HOME: home }), '');
 });
+
+test('a turn is not punished for writing in the folder it was told to draft in', async () => {
+  const { ControlDesk } = await import('../src/room/control.mjs');
+  const { createCheckpoint } = await import('../src/checkpoint.mjs');
+  const { mkdtemp, mkdir, writeFile, rm, access } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+
+  const project = await mkdtemp(joinPath(tmpdir(), 'madre-scratch-'));
+  try {
+    // A project that does NOT ignore .pulse/ — which is every project except this one, and the
+    // reason nobody saw this: git never reported those files here, so they were never reverted.
+    await gitInit(project);
+    await writeFile(joinPath(project, 'README.md'), '# demo\n');
+    await new Promise((resolve, reject) => execFile('git', ['add', '-A'], { cwd: project }, (error) => (error ? reject(error) : resolve())));
+    await new Promise((resolve, reject) => execFile('git', ['-c', 'user.email=d@l', '-c', 'user.name=d', 'commit', '-qm', 'demo'], { cwd: project }, (error) => (error ? reject(error) : resolve())));
+
+    const desk = new ControlDesk({ projectRoot: project });
+    const seat = await desk.begin({ agent: { id: 'codex' }, messageId: 'abcdefgh', enabledScopes: { write: true }, mode: 2 });
+    // MADRE names this folder to the agent in the briefing: "write <id>.module.mjs in …".
+    const scratch = '.pulse/out/turno';
+    seat.run.scratchDir = scratch;
+    await mkdir(joinPath(project, scratch), { recursive: true });
+    await writeFile(joinPath(project, scratch, 'pendientes.module.mjs'), "export default { id: 'pendientes', name: 'PENDIENTES' };\n");
+    // And something that really is out of bounds, to prove the zone still holds.
+    await writeFile(joinPath(project, '.pulse', 'config-robado.json'), '{}\n');
+
+    const changes = await desk.settle(seat.run);
+    await access(joinPath(project, scratch, 'pendientes.module.mjs'));   // throws if it was reverted
+    assert.deepEqual(changes.forbiddenReverted, ['.pulse/config-robado.json'], 'the room undid the folder it told the agent to write in, or stopped guarding the rest of .pulse');
+    assert.ok(changes.files.some((file) => file.path === `${scratch}/pendientes.module.mjs`), 'the draft never reached the room, so no install card can appear');
+  } finally {
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

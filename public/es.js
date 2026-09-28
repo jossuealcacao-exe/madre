@@ -1805,6 +1805,10 @@ export const ES = {
   '/module writes a file, so it needs #2 CREATE. Your request is still in the composer.':
     '/module escribe un archivo, así que necesita #2 CREATE. Tu petición sigue en el compositor.',
   'ARM #2 CREATE': 'ARMAR #2 CREATE',
+  'the room · local': 'la sala · local',
+  '@{agent} may {what}': '@{agent} puede {what}',
+  ' (cannot {what})': ' (no puede {what})',
+  'create files': 'crear archivos',
   'review it with': 'revisarlo con',
   'no session': 'sin sesión',
   'CLICK A LINE NUMBER TO SELECT · SHIFT FOR A RANGE':

@@ -10,7 +10,7 @@
 // are the same bytes. Anything it cannot classify stays plain text rather than being guessed at.
 
 const FAMILIES = {
-  js: { ext: /\.(m|c)?jsx?$|\.tsx?$/i, label: 'JavaScript',
+  js: { ext: /\.(m|c)?jsx?$|\.tsx?$/i, label: 'JavaScript', regex: true,
     keywords: /\b(await|async|break|case|catch|class|const|continue|default|delete|do|else|export|extends|finally|for|from|function|get|if|import|in|instanceof|let|new|of|return|set|static|super|switch|this|throw|try|typeof|var|void|while|yield|as|interface|type|enum|implements|readonly|declare|namespace|satisfies)\b/,
     literals: /\b(true|false|null|undefined|NaN|Infinity)\b/,
     line: /\/\/.*/, block: [/\/\*/, /\*\//], strings: ['"', "'", '`'] },
@@ -73,11 +73,14 @@ export function tokenize(line, family, state = { inBlock: false }) {
     const lineOpen = rest.match(family.line);
     const quote = family.strings.map((q) => rest.indexOf(q)).filter((at) => at >= 0).sort((a, b) => a - b)[0];
 
-    // Whichever comes first on this line decides what happens next.
+    // Whichever comes first on this line decides what happens next. A regular expression has to
+    // be among the candidates and not an afterthought: its own `//` is a line comment to every
+    // other rule here, so if the scan jumps to that `//` first it never learns a literal was open.
     const marks = [
       blockOpen && blockOpen.index === 0 ? { at: 0, what: 'block' } : blockOpen ? { at: blockOpen.index, what: 'block' } : null,
       lineOpen && lineOpen.index !== undefined ? { at: lineOpen.index, what: 'line' } : null,
       quote !== undefined ? { at: quote, what: 'string' } : null,
+      family.regex ? regexMark(rest, line, index, out) : null,
     ].filter(Boolean).sort((a, b) => a.at - b.at);
     const next = marks[0];
 
@@ -93,6 +96,11 @@ export function tokenize(line, family, state = { inBlock: false }) {
       push(rest, 'comment'); index = line.length; state.inBlock = true; break;
     }
 
+    if (next.what === 'regex') {
+      const end = regexEnd(rest);
+      if (end) { push(rest.slice(0, end), 'regex'); index += end; continue; }
+    }
+
     // A string: to its closing quote, respecting a backslash escape.
     const q = rest[0];
     let at = 1;
@@ -105,6 +113,52 @@ export function tokenize(line, family, state = { inBlock: false }) {
     index += at;
   }
   return out;
+}
+
+// The first slash on what is left that could open a regular expression, and only if the literal
+// actually closes on this line: an unclosed one was division after all.
+function regexMark(rest, line, offset, pieces) {
+  for (let at = 0; at < rest.length; at += 1) {
+    if (rest[at] !== '/') continue;
+    if (rest[at + 1] === '/' || rest[at + 1] === '*') return null;   // a comment, not a literal
+    const before = line.slice(0, offset + at);
+    if (!canStartRegex(pieces, before)) continue;
+    return regexEnd(rest.slice(at)) ? { at, what: 'regex' } : null;
+  }
+  return null;
+}
+
+// A slash opens a regular expression only where a value may begin. After a name, a number or a
+// closing bracket it is division, and treating `a / b / c` as a literal would be worse than the
+// bug this fixes. Whitespace does not count as the thing before.
+function canStartRegex(pieces, before = '') {
+  const trimmed = before.trimEnd();
+  if (trimmed) return !/[\w$)\]]$/.test(trimmed);
+  for (let at = pieces.length - 1; at >= 0; at -= 1) {
+    const text = (pieces[at].text ?? '').trimEnd();
+    if (!text) continue;
+    if (pieces[at].kind === 'comment') continue;
+    if (pieces[at].kind === 'string' || pieces[at].kind === 'number') return false;
+    return !/[\w$)\]]$/.test(text);
+  }
+  return true;
+}
+
+// Where the literal ends: the closing slash plus its flags, skipping escapes and anything inside
+// a character class, where an unescaped slash is ordinary. Returns 0 when it never closes, and
+// then the slash was division after all.
+function regexEnd(rest) {
+  let at = 1;
+  let inClass = false;
+  while (at < rest.length) {
+    const char = rest[at];
+    if (char === '\\') { at += 2; continue; }
+    if (inClass) { if (char === ']') inClass = false; at += 1; continue; }
+    if (char === '[') { inClass = true; at += 1; continue; }
+    if (char === '/') { at += 1; while (at < rest.length && /[a-z]/i.test(rest[at])) at += 1; return at; }
+    at += 1;
+  }
+  return 0;
 }
 
 // Code between the comments and the strings: keywords, literals, numbers, and the rest plain.

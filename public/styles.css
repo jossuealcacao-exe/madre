@@ -50,6 +50,7 @@
   --syn-comment: color-mix(in srgb, var(--text-3) 88%, transparent);
   --syn-number: #ffd166;
   --syn-literal: #ff9ecd;
+  --syn-regex: #7ce0d3;
 }
 
 @media (prefers-color-scheme: light) {
@@ -60,6 +61,7 @@
     --syn-comment: #6a7280;
     --syn-number: #9a5000;
     --syn-literal: #9c1f6b;
+    --syn-regex: #0a6a73;
     --bg: #f4f5f2;
     --bg-2: #ffffff;
     --panel: #ffffff;
@@ -92,6 +94,7 @@
     --syn-comment: #6a7280;
     --syn-number: #9a5000;
     --syn-literal: #9c1f6b;
+    --syn-regex: #0a6a73;
     --bg: #f4f5f2;
     --bg-2: #ffffff;
     --panel: #ffffff;
@@ -1733,4 +1736,5 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .viewer .code .t-comment { color: var(--syn-comment); font-style: italic; }
 .viewer .code .t-number  { color: var(--syn-number); }
 .viewer .code .t-literal { color: var(--syn-literal); }
+.viewer .code .t-regex   { color: var(--syn-regex); }
 .viewer-lang { color: var(--ph-dim); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }

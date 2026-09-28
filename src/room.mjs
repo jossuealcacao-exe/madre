@@ -1197,6 +1197,9 @@ export class Room {
       // CREATE: photograph the project now; after the turn only what appeared stays.
       const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode: 2 });
       createRun = seat.run;
+      // The folder this turn was told to draft in, so settling it does not undo what it was
+      // invited to write. Only this turn's own folder; every other `.pulse` path stays forbidden.
+      createRun.scratchDir = lease.scratchDir ?? null;
       lease = { ...lease, checkpoint: seat.run.checkpoint };
     }
     turnScopes.imageGen = Boolean(lease?.scopes?.imageGen);

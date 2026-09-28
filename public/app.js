@@ -141,6 +141,11 @@ const failureKey = (failure) => `${failure.time ?? ''}|${failure.agent ?? ''}|${
 const saveDismissed = () => { try { localStorage.setItem('pulse.mother.dismissed', JSON.stringify([...dismissed].slice(-400))); } catch { /* no storage */ } };
 const openFailures = () => state.failures.filter((failure) => !failure.recovered && !dismissed.has(failureKey(failure)));
 
+// Every other vendor is a company and a company is called the same everywhere. @madre's is a
+// sentence, so it is said in the room's language — declared, not computed, so both guards see it.
+const VENDOR_WORDS = { 'the room · local': t('the room · local'), local: t('local') };
+const vendorWord = (id) => { const said = brandOf(id).vendor ?? ''; return VENDOR_WORDS[said] ?? said; };
+
 // Which agent last wrote to a path, taken from what the room already recorded: the artifacts a
 // creation lease produced, and the files a CONTROL turn changed. Nothing new is stored and nothing
 // is inferred from the filesystem — if MADRE did not see it happen, the file carries no mark.
@@ -368,7 +373,7 @@ function showViewerMenu(x, y) {
     item.type = 'button';
     // `@codex Codex` says one thing twice. The handle is the name; beside it goes only what the
     // handle does not already tell you — the vendor, or why it cannot take this.
-    const aside = agent.ready ? (brandOf(agent.id).vendor ?? '') : t('no session');
+    const aside = agent.ready ? vendorWord(agent.id) : t('no session');
     item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => reviewWith(agent.id));
@@ -774,7 +779,7 @@ function renderAgents() {
       status: agent.ready ? 'ready' : agent.detected ? 'detected' : 'offline',
     });
     node.title = [
-      `${agent.label}${brandOf(agent.id).vendor ? ` · ${brandOf(agent.id).vendor}` : ''}`,
+      `${agent.label}${vendorWord(agent.id) ? ` · ${vendorWord(agent.id)}` : ''}`,
       agent.ready ? t('Ready') : agent.detected ? t('Detected, adapter pending') : t('Not installed'),
       agent.version ? agent.version : null,
       official === null
@@ -1144,7 +1149,7 @@ function bridgeCard(agent) {
   head.append(avatar(agent.id, { size: 30, status: stage === 'ready' ? 'ready' : agent.detected ? 'detected' : 'offline' }));
   const title = el('div', 'title');
   title.append(el('b', null, agent.label));
-  title.append(el('span', 'vendor', brandOf(agent.id).vendor));
+  title.append(el('span', 'vendor', vendorWord(agent.id)));
   head.append(title);
   head.append(el('span', `state ${stage}`, stage === 'missing' ? t('NOT INSTALLED') : stage === 'inert' ? t('NO ADAPTER') : stage === 'route-blocked' ? t('ROUTE BLOCKED') : stage === 'ready' ? t('READY') : t('SIGNED OUT')));
   card.append(head);
@@ -1503,7 +1508,7 @@ function showReplyMenu(source, x, y) {
     item.type = 'button';
     // The same twice-said name as the viewer's menu: the handle IS the name. Beside it goes only
     // what the handle does not carry — that this is the one who just spoke, its vendor, or why not.
-    const aside = !agent.ready ? t('no session') : agent.id === source.sender ? t('the same agent') : (brandOf(agent.id).vendor ?? '');
+    const aside = !agent.ready ? t('no session') : agent.id === source.sender ? t('the same agent') : vendorWord(agent.id);
     item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => replyWith(agent.id, source));
@@ -2156,7 +2161,10 @@ function renderLease(event) {
   node.style.setProperty('--agent', agentColor(agent));
   const { delegated = false, scratchDir = null, grantedBy = null } = event.payload;
   node.append(el('b', null, standing ? t('default #2 · ') : escalated ? `${t('#2 granted on request')}${escalated === 'plan' ? t(' · whole plan') : ''} · ` : delegated ? t('#2 by @{who} · ', { who: grantedBy }) : t('create · ')));
-  node.append(`@${agent} may ${scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') || 'create files'}${unavailable.length ? ` (cannot ${unavailable.join(', ')})` : ''} `);
+  // The verbs were translated and the sentence holding them was not: «@CODEX MAY CREA, GENERA
+  // IMÁGENES». A sentence is translated whole or it is not translated.
+  const can = scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ');
+  node.append(`${t('@{agent} may {what}', { agent, what: can || t('create files') })}${unavailable.length ? t(' (cannot {what})', { what: unavailable.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') }) : ''} `);
   if (outDir === '.' || !outDir) {
     node.append(t('anywhere in the project · existing files stay untouched'));
     if (scratchDir) { node.append(t(' · scratch ')); const link = el('a', 'file-link', scratchDir); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); }); node.append(link); }
@@ -4699,7 +4707,7 @@ function openAgentPop(id, anchor) {
   const head = el('div', 'head');
   head.append(avatar(id, { size: 24 }));
   head.append(el('b', null, agent.label));
-  head.append(el('span', 'vendor', brandOf(id).vendor));
+  head.append(el('span', 'vendor', vendorWord(id)));
   pop.append(head);
   const big = el('div', 'big', official === null ? (formatTokens(agent.tokens ?? 0) || '0') : `${Math.round(official)}%`);
   big.append(el('small', null, official === null ? t('budget tokens · local 5h window') : t("of the provider's {window} limit", { window: fmtWindow(agent.officialWindows?.primary?.windowMinutes ?? 300) }) + (agent.officialResetAt ? t(' · resets {when}', { when: fmtReset(agent.officialResetAt) }) : t(' · window reset'))));

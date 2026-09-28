@@ -29,7 +29,7 @@ export class ControlDesk {
     this.#checkpoints.set(checkpoint.id, checkpoint);
     // Prevention first: .env files and MADRE's folders are read-only for the length of the turn.
     const guard = await guardForbidden(this.#projectRoot);
-    const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString(), guard, mode };
+    const run = { agent: agent.id, messageId, checkpoint, since: new Date().toISOString(), guard, mode, scratchDir: null };
     if (mode >= 3) this.#holder = run;
     const lease = { leaseId: checkpoint.id, outDir: this.#projectRoot, relativeDir: '.', scopes: { ...enabledScopes, write: true }, control: mode >= 3, airlock: mode === 4, create: mode === 2, checkpoint };
     if (mode < 3) return { run, lease, announcement: null };
@@ -43,7 +43,14 @@ export class ControlDesk {
   async settle(run) {
     const diff = await diffCheckpoint(this.#projectRoot, run.checkpoint);
     const additive = run.mode === 2;
-    const toRevert = new Set(diff.forbidden);
+    // The draft folder MADRE itself hands the agent lives under `.pulse/out/`, and `.pulse/` is a
+    // forbidden zone — so the room named a place to write, the agent wrote there, and the room
+    // undid it. Nobody noticed here because this project ignores `.pulse/` and git never reported
+    // the files; in a project that does not, `/module` never reached its install card. A turn's
+    // own scratch folder is not a forbidden zone FOR THAT TURN. Every other `.pulse` path still is.
+    const ownScratch = run.scratchDir ? `${run.scratchDir.replace(/\/$/, '')}/` : null;
+    const mine = (path) => Boolean(ownScratch) && path.startsWith(ownScratch);
+    const toRevert = new Set(diff.forbidden.filter((path) => !mine(path)));
     if (additive) for (const file of diff.files) if (file.status !== 'A') toRevert.add(file.path);
     let reverted = [];
     if (toRevert.size) {
@@ -51,7 +58,7 @@ export class ControlDesk {
       reverted = [...restored.restored, ...restored.removed];
     }
     const kept = diff.files.filter((file) => !toRevert.has(file.path));
-    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, forbiddenReverted: diff.forbidden.length ? reverted.filter((path) => diff.forbidden.includes(path)) : [], existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [] };
+    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, forbiddenReverted: reverted.filter((path) => diff.forbidden.includes(path) && !mine(path)), existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [] };
     const count = changes.files.length;
     const notes = [
       changes.forbiddenReverted.length ? `${changes.forbiddenReverted.length} write(s) into forbidden zones were reverted.` : null,

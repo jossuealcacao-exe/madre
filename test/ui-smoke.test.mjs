@@ -433,3 +433,32 @@ test('/module answers in the room, and never arms the mode by itself', async () 
   assert.ok(!/state\.create = true/.test(block), '/module arms CREATE by itself');
   assert.match(app, /if \(name === 'module' && !state\.create\) \{\n      moduleModeNotice\(\);/);
 });
+
+test('a regular expression is not a comment, and a division is not a regular expression', async () => {
+  const { familyOf, tokenize } = await import('../public/syntax.js');
+  const js = familyOf('a.js');
+  const read = (line) => tokenize(line, js, { inBlock: false });
+  const kindOf = (line, needle) => read(line).find((piece) => piece.text.includes(needle))?.kind ?? null;
+
+  // The report: `//` inside a literal turned the rest of the line grey. Its own slashes look
+  // exactly like the start of a comment to every other rule here, so the literal has to be one of
+  // the things the scan considers rather than something it checks afterwards.
+  const url = String.raw`if (!/^https?:\/\//.test(url)) throw new Error('empieza con http://');`;
+  assert.equal(read(url).map((piece) => piece.text).join(''), url);
+  assert.ok(!read(url).some((piece) => piece.kind === 'comment'), 'the regex still swallows the rest of the line as a comment');
+  assert.equal(kindOf(url, 'https?'), 'regex');
+  assert.equal(kindOf(url, "'empieza"), 'string', 'the string after the literal was lost with it');
+
+  // And the other way is worse than the bug: `a / b / c` is arithmetic, not a literal.
+  const division = 'const mitad = total / dos / tres;';
+  assert.ok(!read(division).some((piece) => piece.kind === 'regex'), 'a division reads as a regular expression');
+  assert.equal(read(division).map((piece) => piece.text).join(''), division);
+
+  // A real comment after a division is still a comment; a slash inside a character class is not
+  // the end of the literal; and an unclosed slash was division all along.
+  assert.equal(kindOf('const x = a / b; // nota', '// nota'), 'comment');
+  assert.equal(read(String.raw`const re = /[/]\//g;`).find((piece) => piece.kind === 'regex')?.text, String.raw`/[/]\//g`);
+  assert.ok(!read('const half = a / b;').some((piece) => piece.kind === 'regex'));
+  // An unterminated slash was division all along, and stays plain rather than eating the line.
+  assert.ok(!read(String.raw`const bad = /[/]\/g;`).some((piece) => piece.kind === 'regex'));
+});
