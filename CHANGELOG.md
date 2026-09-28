@@ -14,7 +14,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### Dos cosas que se leían a medias
 
-- En el menú de modos la cabecera se cortaba en `TEC…`, y lo que escondía era **el techo del agente** — el único número que esa línea lleva. Ahora envuelve; el menú de abajo es alto de todos modos.
+- En el menú de modos la cabecera se cortaba en `TEC…`, y lo que escondía era **el techo del agente**. Ahora dice `@CODEX · TECHO #4` y cabe en un renglón: la lista de abajo son literalmente los modos, así que «modo de este mensaje» no informaba de nada, y que la elección valga solo para este mensaje ya lo dice el globo del chip que abre el menú. La cabecera se queda con los dos datos que nada más lleva: quién, y hasta dónde.
 - **LEER EL SDK** llevaba al archivo en GitHub. Va a `madre.run/sdk/` en español y `madre.run/en/sdk/` en inglés.
 
 ### La barra sigue diciendo en qué proyecto estás

@@ -932,7 +932,11 @@ function toggleModeMenu(id, anchor) {
   const scopes = state.capabilities[id]?.scopes;
   const canRaise = Boolean(scopes?.write?.capable);
   const title = el('div', 'model-menu-title');
-  title.append(el('b', null, `@${id}`), t(' · mode for this message · ceiling #{cap}', { cap }));
+  // Short enough to sit on one line at any width the menu takes. That it applies to this message
+  // and not to every one after it is the mode chip's own tooltip, and the list below is literally
+  // the modes — so the header carries the two facts nothing else here does: who, and how far.
+  title.append(el('b', null, `@${id}`), t(' · ceiling #{cap}', { cap }));
+  title.title = t('Permission mode for this message · {hint}', { hint: MODES[cap].hint });
   modeMenu.append(title);
   const ladder = el('div', 'mode-ladder');
   for (const n of [0, 1, 2, 3, 4]) {

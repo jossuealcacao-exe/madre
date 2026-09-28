@@ -1639,7 +1639,7 @@ export const ES = {
   'Permission mode for this message · {hint}': 'Modo de permiso de este mensaje · {hint}',
   'default model ▾': 'modelo por defecto ▾',
   ' · model for this request': ' · modelo para esta petición',
-  ' · mode for this message · ceiling #{cap}': ' · modo de este mensaje · techo #{cap}',
+  ' · ceiling #{cap}': ' · techo #{cap}',
   'NOW': 'AHORA',
   'RAISE TO #{n} ›': 'SUBIR A #{n} ›',
   'LOCKED': 'BLOQUEADO',
