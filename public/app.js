@@ -146,6 +146,35 @@ const openFailures = () => state.failures.filter((failure) => !failure.recovered
 const VENDOR_WORDS = { 'the room · local': t('the room · local'), local: t('local') };
 const vendorWord = (id) => { const said = brandOf(id).vendor ?? ''; return VENDOR_WORDS[said] ?? said; };
 
+// What an agent can do, said two ways. On its card each one is a tag — a word standing alone —
+// and inside a sentence it has to conjugate: «puede crea» was the button's imperative dropped
+// into a phrase that needed an infinitive. Declared up here because the transcript is replayed at
+// the top of this file, long before half of it has run: `renderLease` reached for these while
+// they were still in their dead zone, the try around it swallowed the error, and every CREATE
+// strip in the history simply never appeared.
+const CAP_LABELS = { read: t('read'), imageIn: t('image in'), write: t('create'), imageGen: t('image gen'), web: t('web') };
+const CAP_VERBS = { read: t('read the project'), imageIn: t('take images'), write: t('create files'), imageGen: t('generate images'), web: t('reach the web') };
+const capVerb = (scope) => CAP_VERBS[scope] ?? CAP_LABELS[scope] ?? scope;
+
+// MODULES' own handles. Up here with the rest of the module's state because the transcript is
+// replayed near the top of this file and an installation line in the history writes to it: four
+// renderers reached for this while it was still in its dead zone, and every install and removal
+// ever recorded vanished from the history without a word.
+const modules = {
+  dialog: document.querySelector('#modules'),
+  button: document.querySelector('#modules-button'),
+  count: document.querySelector('#modules-count'),
+  close: document.querySelector('#modules-close'),
+  list: document.querySelector('#modules-list'),
+  add: document.querySelector('#modules-add'),
+  file: document.querySelector('#modules-file'),
+  note: document.querySelector('#modules-note'),
+  items: [],
+  installing: null,
+  logs: new Map(),   // id -> array of lines
+  confirming: null,
+};
+
 // Which agent last wrote to a path, taken from what the room already recorded: the artifacts a
 // creation lease produced, and the files a CONTROL turn changed. Nothing new is stored and nothing
 // is inferred from the filesystem — if MADRE did not see it happen, the file carries no mark.
@@ -1735,8 +1764,8 @@ function renderModuleInstalledOrRemoved(event) {
   const { name, origin, by } = event.payload;
   const node = el('div', 'system module-proposed');
   node.append(t('module · '), el('b', 'who', name), event.type === 'extension.installed'
-    ? t(' installed for {where} by {who} · switch it on in MODULES', { where: origin === 'project' ? t('this project') : t('every room'), who: by ?? t('you') })
-    : t(' removed by {who}', { who: by ?? t('you') }));
+    ? t(' installed for {where} by {who} · switch it on in MODULES', { where: origin === 'project' ? t('this project') : t('every room'), who: !by || by === 'you' ? t('you') : `@${by}` })
+    : t(' removed by {who}', { who: !by || by === 'you' ? t('you') : `@${by}` }));
   return node;
 }
 
@@ -2163,8 +2192,8 @@ function renderLease(event) {
   node.append(el('b', null, standing ? t('default #2 · ') : escalated ? `${t('#2 granted on request')}${escalated === 'plan' ? t(' · whole plan') : ''} · ` : delegated ? t('#2 by @{who} · ', { who: grantedBy }) : t('create · ')));
   // The verbs were translated and the sentence holding them was not: «@CODEX MAY CREA, GENERA
   // IMÁGENES». A sentence is translated whole or it is not translated.
-  const can = scopes.map((scope) => CAP_LABELS[scope] ?? scope).join(', ');
-  node.append(`${t('@{agent} may {what}', { agent, what: can || t('create files') })}${unavailable.length ? t(' (cannot {what})', { what: unavailable.map((scope) => CAP_LABELS[scope] ?? scope).join(', ') }) : ''} `);
+  const can = scopes.map(capVerb).join(', ');
+  node.append(`${t('@{agent} may {what}', { agent, what: can || t('create files') })}${unavailable.length ? t(' (cannot {what})', { what: unavailable.map(capVerb).join(', ') }) : ''} `);
   if (outDir === '.' || !outDir) {
     node.append(t('anywhere in the project · existing files stay untouched'));
     if (scratchDir) { node.append(t(' · scratch ')); const link = el('a', 'file-link', scratchDir); link.href = '#'; link.addEventListener('click', (ev) => { ev.preventDefault(); }); node.append(link); }
@@ -2392,6 +2421,8 @@ function renderEventNode(event) {
     }
     case 'room.settings': return;
     case 'extension.toggled':
+      // A module switched on or off changes what the composer accepts.
+      if (!replaying) void refreshCommands();
       if (event.payload.id === 'ash') syncAshUI(Boolean(event.payload.enabled));
       if (event.payload.id === 'ripley') { state.ripley = Boolean(event.payload.enabled); syncViewerMode(); }
       if (!replaying) void refreshModules();
@@ -2410,7 +2441,7 @@ function renderEventNode(event) {
     case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
     case 'privacy.redacted': node = renderPrivacy(event); break;
     case 'module.proposed': node = renderModuleProposed(event); break;
-    case 'extension.installed': case 'extension.removed': node = renderModuleInstalledOrRemoved(event); break;
+    case 'extension.installed': case 'extension.removed': if (!replaying) void refreshCommands(); node = renderModuleInstalledOrRemoved(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
     case 'privacy.warning': if (!replaying) toast(t('MU/TH/UR › your message carries {n} private {term}. Agents will read it as you wrote it; their replies are guarded.', { n: event.payload.hits, term: event.payload.hits === 1 ? t('term') : t('terms') })); return;
     case 'memory.forgotten': node = renderForgotten(event); break;
@@ -2896,6 +2927,10 @@ if (!els.target.options.length) els.target.add(new Option(t('No agent ready'), '
 renderAgents();
 renderPicker();
 renderOnboarding();
+// What the composer will accept. A module's commands live on the server, so the page has to ask:
+// this call had slipped inside the branch that ends a live installation, and until one happened
+// `/git` and every module command answered «unknown» in a room that had them enabled all along.
+void refreshCommands();
 for (const event of initial.events) renderEvent(event);
 scrollToEnd();
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { applyTheme(themeMode); renderAgents(); renderPicker(); });
@@ -3187,7 +3222,9 @@ async function runSlashCommand(text) {
       return {
         handled: false,
         target,
-        text: t('Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Do not install it; MADRE will show the human an install card.', { request: rest }),
+        // The card shows `vendor` under the name, so the instruction has to say what it is for.
+        // Left unsaid, Codex wrote `vendor: 'you'` and the room printed it as the author.
+        text: t('Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Set vendor to whoever wrote it — the human\'s name or team if you know it, otherwise leave it out; never the word "you". Do not install it; MADRE will show the human an install card.', { request: rest }),
       };
     }
     return { handled: false, text: rest, target };
@@ -3823,20 +3860,6 @@ mother.dialog.addEventListener('close', () => clearTimeout(mother.bootTimer));
 
 /* ---------- MODULES: optional integrations installed by their own tools ---------- */
 
-const modules = {
-  dialog: document.querySelector('#modules'),
-  button: document.querySelector('#modules-button'),
-  count: document.querySelector('#modules-count'),
-  close: document.querySelector('#modules-close'),
-  list: document.querySelector('#modules-list'),
-  add: document.querySelector('#modules-add'),
-  file: document.querySelector('#modules-file'),
-  note: document.querySelector('#modules-note'),
-  items: [],
-  installing: null,
-  logs: new Map(),   // id -> array of lines
-  confirming: null,
-};
 
 function renderModuleEvent(event) {
   const { id, name, command, platforms = [], ok, code, error, status, problems = [] } = event.payload;
@@ -3856,7 +3879,7 @@ function renderModuleEvent(event) {
       : `${t('{name} install failed', { name })}${error ? ` · ${error}` : code !== undefined ? t(' · exit {code}', { code }) : ''}`);
     modules.installing = null;
     void refreshModules();
-void refreshCommands();
+    void refreshCommands();
   }
   state.lastSender = null;
   return node;
@@ -4379,7 +4402,7 @@ function builtinCard(item) {
       for (const [role, model, present, label] of [
         ['embeddings', item.recommended?.embed ?? 'nomic-embed-text', Boolean(info.embedModel), t('EMBEDDINGS')],
         ['archivist', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), t('ARCHIVIST')],
-        ['agent', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), '@MADRE IN THE ROOM'],
+        ['agent', item.recommended?.chat ?? 'qwen2.5:3b', Boolean(info.chatModel), t('@madre in the room')],
       ]) {
         if (present) {
           const box = el('label', 'toggle');
@@ -4680,7 +4703,6 @@ function trackStats(event) {
 
 function fmtMs(ms) { return ms === null ? '—' : ms < 1000 ? `${ms}ms` : `${Math.round(ms / 1000)}s`; }
 
-const CAP_LABELS = { read: t('read'), imageIn: t('image in'), write: t('create'), imageGen: t('image gen'), web: t('web') };
 function capabilityBadges(id) {
   const caps = state.capabilities[id] ?? {};
   const wrap = el('div', 'caps');

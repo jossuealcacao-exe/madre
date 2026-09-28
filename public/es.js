@@ -1805,6 +1805,12 @@ export const ES = {
   '/module writes a file, so it needs #2 CREATE. Your request is still in the composer.':
     '/module escribe un archivo, así que necesita #2 CREATE. Tu petición sigue en el compositor.',
   'ARM #2 CREATE': 'ARMAR #2 CREATE',
+  // Lo que un agente puede hacer, dicho dentro de una frase: infinitivo, no el imperativo de
+  // la etiqueta suelta de su ficha. «puede crea» era el botón metido en una oración.
+  'read the project': 'leer el proyecto',
+  'take images': 'recibir imágenes',
+  'generate images': 'generar imágenes',
+  'reach the web': 'alcanzar la web',
   'the room · local': 'la sala · local',
   '@{agent} may {what}': '@{agent} puede {what}',
   ' (cannot {what})': ' (no puede {what})',
@@ -2030,8 +2036,8 @@ export const ES = {
   'MU/TH/UR › /module needs #2 CREATE. Choose #2 in the mode chip, then send again.':
     'MU/TH/UR › /module necesita #2 CREATE. Elige #2 en el chip de modo y vuelve a enviar.',
   'MU/TH/UR · MODULE · NEEDS #2 ›': 'MU/TH/UR · MODULE · REQUIERE #2 ›',
-  'Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Do not install it; MADRE will show the human an install card.':
-    'Crea un módulo de MADRE para esta petición: {request} Escribe exactamente un archivo <id>.module.mjs para revisión. No lo instales; MADRE le mostrará al humano una tarjeta de instalación.',
+  'Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Set vendor to whoever wrote it — the human\'s name or team if you know it, otherwise leave it out; never the word "you". Do not install it; MADRE will show the human an install card.':
+    'Crea un módulo de MADRE para esta petición: {request} Escribe exactamente un archivo <id>.module.mjs para revisión. Pon en vendor a quien lo escribió —el nombre o el equipo del humano si lo sabes, y si no, déjalo fuera; nunca la palabra «you»—. No lo instales; MADRE le va a mostrar al humano una tarjeta de instalación.',
   'MU/TH/UR › unknown command /{name}. Type "/" to see what this room offers.':
     'MU/TH/UR › comando desconocido /{name}. Escribe «/» para ver lo que ofrece esta sala.',
   '{name} · uploading…': '{name} · subiendo…',

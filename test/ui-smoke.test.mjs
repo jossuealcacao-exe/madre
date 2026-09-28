@@ -102,8 +102,33 @@ function buildDocument(html) {
 test('the room UI boots against a real transcript without throwing', async () => {
   const html = await readFile(join(process.cwd(), 'public', 'index.html'), 'utf8');
   const lines = (await readFile(join(process.cwd(), 'test', 'fixtures', 'room-events.jsonl'), 'utf8')).split('\n').filter(Boolean);
+  const appSource = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
   const events = lines.map((line) => JSON.parse(line));
   const failures = events.filter((event) => event.type === 'message.failed').length;
+
+  // The transcript on disk exercises eight of the sixty-one kinds of event this page can draw.
+  // The other fifty-three were never once rendered by any test — which is how a constant declared
+  // at the bottom of app.js and read by `renderLease` shipped three times: the try around each
+  // renderer swallowed the error, the strip silently never appeared, and every test stayed green.
+  // One synthetic event of every kind goes in behind the real ones. The payloads are only
+  // plausible, so a missing field is this fixture's fault and is ignored; what is never ignored is
+  // a renderer reaching for something that does not exist yet.
+  const everyKind = [...appSource.matchAll(/case '([a-z]+\.[a-z.]+)':/g)].map((match) => match[1]);
+  const seeded = new Set(events.map((event) => event.type));
+  let sequence = events.at(-1).sequence;
+  const firstSynthetic = sequence + 1;
+  for (const type of everyKind) {
+    if (seeded.has(type)) continue;
+    seeded.add(type);
+    sequence += 1;
+    events.push({ id: `synthetic-${sequence}`, sequence, type, timestamp: new Date().toISOString(), payload: {
+      agent: 'codex', target: 'codex', id: 'ash', name: 'Ash', messageId: 'm1', responseMessageId: 'r1',
+      enabled: true, scopes: ['write'], unavailable: [], files: [], text: 'x', message: 'x', error: 'x',
+      outDir: '.', terms: [], hits: 1, usedPercent: 50, level: 'warning', source: 'provider-window',
+      kind: 'decision', version: '0.5.1', latest: '0.5.1', path: 'a.mjs', model: 'qwen2.5:7b',
+      where: 'user', by: 'you', mode: 2, plans: 0, turns: 0, reason: 'x', n: 1, count: 1,
+    } });
+  }
 
   const errors = [];
   const originalError = console.error;
@@ -113,6 +138,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   globalThis.window = globalThis;
   Object.defineProperty(globalThis, 'navigator', { value: { platform: 'MacIntel', userAgent: 'test', clipboard: { writeText: async () => {} } }, configurable: true });
   globalThis.matchMedia = () => ({ matches: false, addEventListener() {} });
+  globalThis.CSS = { escape: (value) => String(value).replace(/[^\w-]/g, '\\$&') };
   // The files panel remembered open, so the tree paints during boot. Twice now a const declared
   // at the bottom of app.js has been read by a function that runs up here, and both times the
   // room answered "Cannot access X before initialization" while every test stayed green — the
@@ -172,7 +198,12 @@ test('the room UI boots against a real transcript without throwing', async () =>
     console.error = originalError;
   }
 
-  assert.deepEqual(errors, [], 'no event failed to render');
+  // A field my synthetic payloads forgot is this fixture's fault and is only checked on the real
+  // transcript. A renderer reaching for a binding that does not exist yet is never anyone's fault
+  // but the code's, so that shape is checked across every kind of event the page can draw.
+  const ofSynthetic = (line) => { const at = line.match(/could not render event (\d+)/); return at && Number(at[1]) >= firstSynthetic; };
+  assert.deepEqual(errors.filter((line) => /before initialization|is not defined/.test(line)), [], 'a renderer reads something declared below the replay that runs it');
+  assert.deepEqual(errors.filter((line) => !ofSynthetic(line)), [], 'no event failed to render');
 
   // The files panel catches its own errors and draws them as a line of text, so nothing throws
   // and a test that only boots the room stays green while the tree says "could not list". That is
