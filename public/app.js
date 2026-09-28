@@ -2718,10 +2718,14 @@ async function loadChats() {
 }
 
 async function openChat(id) {
+  if (id === chats.active) { setChats(false); return; }
   const response = await fetch(`/api/chats/${id}`, { method: 'POST' });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? 'that conversation could not be opened.'}`); return; }
-  window.location.reload();
+  const payload = await fetch('/api/state').then((one) => one.json()).catch(() => null);
+  if (!payload) { window.location.reload(); return; }
+  await paintConversation(payload);
+  setChats(false);
 }
 
 function setChats(open) {
@@ -2893,10 +2897,59 @@ function setConnection(value) {
 }
 if (typeof ResizeObserver === 'function' && els.composer) new ResizeObserver(placeToast).observe(els.composer);
 window.addEventListener?.('resize', placeToast);
-const stream = new EventSource(`/api/events?since=${state.lastSequence}`);
-stream.onopen = () => { setConnection('live'); replaying = false; };
-stream.onerror = () => setConnection('reconnecting');
-stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
+let stream = null;
+function connectStream() {
+  stream?.close?.();
+  stream = new EventSource(`/api/events?since=${state.lastSequence}`);
+  stream.onopen = () => { setConnection('live'); replaying = false; };
+  stream.onerror = () => setConnection('reconnecting');
+  stream.onmessage = ({ data }) => renderEvent(JSON.parse(data));
+}
+connectStream();
+
+// Everything the thread on screen knows that belongs to ONE conversation. Switching used to
+// reload the page, which is the brute way to be sure none of this was left over — and it cost a
+// whole boot: every fetch again, every panel again, the stream again. Repainting in place is
+// only safe while this list is complete, so it is written out rather than guessed at.
+function forgetConversation() {
+  state.seen.clear();
+  state.userMessages.clear();
+  state.ratings.clear();
+  state.ratingNodes.clear();
+  state.running.clear();
+  state.plansRunning.clear();
+  state.agentStats.clear();
+  touched.clear();
+  state.failures.length = 0;
+  state.pending.length = 0;
+  state.replyTo = null;
+  state.lastSender = null;
+  state.lastSequence = 0;
+  state.brakeArmed = false;
+  els.column.replaceChildren();
+  renderReplyQuote();
+  paintMotherBadge();
+  updateStopAll();
+}
+
+// The new conversation, painted where the old one was. The room, the crew and the archive do not
+// change between conversations — only the transcript does.
+async function paintConversation(payload) {
+  replaying = true;
+  forgetConversation();
+  chats.list = payload.chats?.chats ?? chats.list;
+  chats.active = payload.chats?.active ?? chats.active;
+  renderChats();
+  const here = chats.list.find((chat) => chat.id === chats.active);
+  const mark = document.querySelector('.project.chat-here');
+  if (mark) mark.textContent = here && chats.list.length > 1 ? here.title : '';
+  for (const event of payload.events ?? []) renderEvent(event);
+  renderAgents();
+  renderPicker();
+  renderOnboarding();
+  scrollToEnd();
+  connectStream();
+}
 
 /* ---------- composer ---------- */
 

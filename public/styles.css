@@ -945,7 +945,9 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .picker .mode-chip.m3 { --mode: var(--mode-3); }
 .picker .mode-chip.m4 { --mode: var(--mode-4); }
 .mode-menu { width: min(380px, calc(100vw - 24px)); padding: 12px; }
-.mode-menu .model-menu-title { margin: 4px 10px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The ceiling belongs to this header and was the half being cut off. It wraps instead: the menu
+   below it is tall anyway, and a line that hides the one number it carries is not a header. */
+.mode-menu .model-menu-title { margin: 4px 10px 10px; white-space: normal; line-height: 1.5; }
 .mode-menu .mode-ladder { display: grid; gap: 2px; }
 .mode-menu .mode-option { --mode: var(--text-2); display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: baseline; width: 100%; text-align: left; border: 0; background: transparent; color: var(--text); font: inherit; font-family: var(--mono); padding: 12px 10px; border-radius: 8px; cursor: pointer; transition: background .15s, opacity .15s; }
 .mode-menu .mode-option + .mode-option { border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; }

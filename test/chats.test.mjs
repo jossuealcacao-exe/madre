@@ -167,3 +167,29 @@ test('chats: one server per project, said by the room itself', async () => {
   const cli = await readFile(join(import.meta.dirname, '..', 'bin', 'madre.mjs'), 'utf8');
   assert.match(cli, /if \(error\.code === 'ROOM_IN_USE'\)/);
 });
+
+test('switching conversations repaints in place, and leaves nothing of the last one behind', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { join: joinPath } = await import('node:path');
+  const app = await readFile(joinPath(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+
+  // It used to reload the page, which is the brute way to be sure nothing was left over — and it
+  // cost a whole boot: every fetch again, every panel again, the stream again. In place is faster
+  // and only safe while everything that belongs to one conversation is actually let go.
+  const open = app.slice(app.indexOf('async function openChat(id)'), app.indexOf('function setChats(open)'));
+  assert.ok(!/window\.location\.reload\(\);\n\}/.test(open), 'switching still reloads the whole page');
+  assert.match(open, /await paintConversation\(payload\)/);
+  // A reload is still the honest fallback when the room cannot be re-read.
+  assert.match(open, /if \(!payload\) \{ window\.location\.reload\(\); return; \}/, 'a failed re-read leaves the room showing the old conversation');
+
+  const forget = app.slice(app.indexOf('function forgetConversation()'), app.indexOf('// The new conversation, painted'));
+  for (const held of ['state.seen', 'state.userMessages', 'state.ratings', 'state.ratingNodes', 'state.running', 'state.plansRunning', 'state.agentStats', 'touched', 'state.failures', 'state.pending']) {
+    assert.ok(forget.includes(held), `${held} survives a switch, so one conversation bleeds into the next`);
+  }
+  assert.match(forget, /state\.lastSequence = 0;/, 'the cursor carries over and the new stream asks from the wrong place');
+  assert.match(forget, /els\.column\.replaceChildren\(\);/, 'the old thread stays on screen under the new one');
+
+  // And the stream has to be re-pointed: it was opened once, at boot, against the old cursor.
+  assert.match(app, /function connectStream\(\) \{\n  stream\?\.close\?\.\(\);/, 'the old stream is never closed, so two of them deliver at once');
+  assert.match(app.slice(app.indexOf('async function paintConversation')), /connectStream\(\);/);
+});

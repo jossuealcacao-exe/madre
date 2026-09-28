@@ -47,6 +47,9 @@ import { applyKey, keyPlanFor } from './credentials.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
+
+// Where a person reads the module contract, in the language the room is speaking.
+const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
 import { moduleUpdate } from './modules/updates.mjs';
 import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, projectFloor, renameChat, touchChat, MAIN_CHAT } from './chats.mjs';
 import { spawn } from 'node:child_process';
@@ -1474,7 +1477,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/extensions') {
         const extensions = await describeModules(await moduleContext());
         void warmModuleUpdates(extensions);
-        return sendJson(response, 200, { installing, extensions, failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md' });
+        return sendJson(response, 200, { installing, extensions, failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: SDK_PAGE[roomLanguage()] ?? SDK_PAGE.es });
       }
       // The human installs a module file an agent wrote (or they did): checked first, then copied into the chosen folder.
       if (request.method === 'POST' && url.pathname === '/api/extensions/install-file') {

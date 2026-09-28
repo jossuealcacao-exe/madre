@@ -6,6 +6,17 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.2 · Sin publicar
 
+### Cambiar de conversación deja de recargar la página
+
+- Abrir otra conversación hacía `window.location.reload()`: la sala entera otra vez — cada consulta, cada panel, el flujo de eventos desde cero. Era la forma bruta de asegurarse de que nada de la anterior quedara colgando.
+- Ahora se repinta en sitio, y eso solo es seguro si **de verdad se suelta todo**: lo visto, los mensajes, las calificaciones, los turnos en vuelo, los planes, las estadísticas por agente, los archivos marcados, las condiciones registradas, los adjuntos pendientes, la cita de respuesta y el cursor del flujo. La lista está escrita —no adivinada— y hay una prueba que falla si alguien agrega estado por conversación y olvida soltarlo. Y el flujo se vuelve a apuntar, cerrando el anterior: dos abiertos a la vez entregarían cada evento dos veces.
+- Si la sala no se puede releer, todavía recarga. Quedarse mostrando la conversación vieja sería peor que tardar.
+
+### Dos cosas que se leían a medias
+
+- En el menú de modos la cabecera se cortaba en `TEC…`, y lo que escondía era **el techo del agente** — el único número que esa línea lleva. Ahora envuelve; el menú de abajo es alto de todos modos.
+- **LEER EL SDK** llevaba al archivo en GitHub. Va a `madre.run/sdk/` en español y `madre.run/en/sdk/` en inglés.
+
 ### La barra sigue diciendo en qué proyecto estás
 
 - Dos nombres comparten ese rincón y solo uno te dice dónde estás. Los dos encogían por igual, así que una conversación con título largo dejaba el proyecto en **`pul…`** — una sala que dejó de decir qué sala es.
