@@ -1792,6 +1792,8 @@ export const ES = {
   'SHOW THE {n} DISMISSED': 'VER LOS {n} DESCARTADOS',
   'DISMISS ALL {n}': 'DESCARTAR LOS {n}',
   'DOWNLOAD THE LOG': 'DESCARGAR EL REGISTRO',
+  'MU/TH/UR › {name} declares {fields}, which this MADRE does not know. A typo, or a field from a newer version.':
+    'MU/TH/UR › {name} declara {fields}, que esta MADRE no conoce. O es un dedazo, o es un campo de una versión más nueva.',
   'OR ON MADRE.RUN ↗': 'O EN MADRE.RUN ↗',
   '✎ REPORT ON MADRE.RUN ↗': '✎ REPORTAR EN MADRE.RUN ↗',
   'OPEN ⚙ CONNECTIONS · @{agent}': 'ABRIR ⚙ CONEXIONES · @{agent}',

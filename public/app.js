@@ -4012,6 +4012,11 @@ modules.file?.addEventListener('change', async () => {
     modules.items = result.extensions ?? modules.items;
     renderModules();
     toast(`MU/TH/UR › ${t('{name} installed', { name: result.installed.name })}${result.installed.version ? ` · v${result.installed.version}` : ''}. ${t('It loads in every room on this computer.')}`);
+    // A key the contract does not answer to. Not fatal — a module written for a newer MADRE may
+    // carry fields this one has not learned — but a misspelling is far likelier, and it used to
+    // install in silence and leave the author wondering why their card came out empty.
+    const unknown = result.installed.unknown ?? [];
+    if (unknown.length) setTimeout(() => toast(t('MU/TH/UR › {name} declares {fields}, which this MADRE does not know. A typo, or a field from a newer version.', { name: result.installed.name, fields: unknown.join(', ') })), 2600);
   } catch (error) { toast(t('The module was not installed: {error}', { error: error.message })); }
   finally { modules.add.disabled = false; }
 });

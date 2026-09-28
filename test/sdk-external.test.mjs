@@ -90,3 +90,40 @@ test('an agent proposes <id>.module.mjs, the human installs it into a folder of 
     await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('the SDK says what it did not understand, and the import that never works explains itself', async () => {
+  const { verifyModuleText } = await import('../src/modules/index.mjs');
+  const { defineModule, unknownFields, MODULE_FIELDS } = await import('../src/modules/sdk.mjs');
+
+  // Thirty-three optional fields is generous until you misspell one. `sumary` used to install
+  // without a word and leave a card with an empty summary — the likeliest mistake anyone makes,
+  // an agent included, and the only one the contract answered with silence.
+  assert.deepEqual(defineModule({ id: 'a', name: 'A', summary: 'ok' }).unknown, []);
+  assert.deepEqual(defineModule({ id: 'b', name: 'B', sumary: 'x', comand: 'y' }).unknown, ['sumary', 'comand']);
+  assert.ok(MODULE_FIELDS.has('summary') && MODULE_FIELDS.has('toolsForTurn'));
+  // Said, never refused: a module written for a newer MADRE may carry fields this one lacks.
+  const carried = await verifyModuleText({ text: "export default { id: 'futuro', name: 'FUTURO', vibes: true };", name: 'c.mjs' });
+  assert.deepEqual(carried.unknown, ['vibes']);
+  assert.equal(carried.id, 'futuro', 'a field from the future should not stop a module from loading');
+  assert.deepEqual(unknownFields({ id: 'x', name: 'X' }), []);
+
+  // The one mistake that looks right and never works: MADRE's own modules import the SDK by
+  // relative path because they live inside the package. An agent reads ripley.mjs and copies it.
+  // The file is checked alone in a scratch folder, so nothing resolves — and node's own message
+  // says only that a file is missing, which sends the author looking for the wrong thing.
+  for (const line of ["import { defineModule } from './sdk.mjs';", "import { defineModule } from '@jossuealcala/madre/sdk';"]) {
+    const failed = await verifyModuleText({ text: `${line}\nexport default defineModule({ id: 'z', name: 'Z' });`, name: 'c.mjs' }).then(() => null, (error) => error);
+    assert.ok(failed, `${line} resolved, which it cannot do from a scratch folder`);
+    assert.match(failed.message, /a module imports nothing/);
+    assert.match(failed.message, /\(\{ defineModule \}\) => defineModule/, 'the message names the failure but not the way out');
+  }
+
+  // And the three shapes the documentation teaches all load.
+  for (const [shape, text] of [
+    ['plain object', "export default { id: 'plano', name: 'PLANO' };"],
+    ['function form', "export default ({ defineModule }) => defineModule({ id: 'funcion', name: 'FUNCIÓN' });"],
+  ]) {
+    const ok = await verifyModuleText({ text, name: 'c.mjs' });
+    assert.ok(ok.id, `${shape} no longer loads`);
+  }
+});

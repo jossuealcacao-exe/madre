@@ -4,6 +4,16 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
+## 0.4.2 · Sin publicar
+
+### El SDK deja de tener trampas
+
+Antes de que alguien pueda pedirle a un agente «hazme un módulo», el contrato tiene que perdonar los tres errores que cualquiera comete. Medí ocho módulos —uno bueno y siete rotos— y seis de los siete ya contestaban con precisión. Estos eran los que no.
+
+- **Un campo mal escrito pasaba en silencio.** Escribe `sumary` en vez de `summary` y el módulo instala sin una queja, con la ficha vacía y sin manera de saber por qué. Con treinta y tres campos opcionales ese es *el* error que va a cometer todo el mundo, un agente incluido. Ahora MADRE dice qué campos no conoce — **dice, no rechaza**: un módulo escrito para una MADRE más nueva puede traer campos que esta todavía no aprendió, y eso no debe impedirle cargar.
+- **La documentación prometía un `import` que el instalador rechaza.** `SDK.md` decía que podías `import { defineModule } from '@jossuealcala/madre/sdk'`. El paquete lo exporta bien, pero MADRE copia tu archivo a una carpeta aparte para revisarlo antes de instalarlo —así sabe qué es sin que corra donde vive— y ahí no hay `node_modules`: ningún paquete resuelve. Ahora la guía enseña la forma que sí funciona, que ya existía: exporta una función y **MADRE te entrega el SDK**.
+- **Y la trampa que solo le pasa a un agente.** Los módulos que vienen con MADRE escriben `import { defineModule } from './sdk.mjs'`, porque viven dentro del paquete. Un agente al que le pides un módulo lee `ripley.mjs` antes que cualquier documento y copia esa línea — que es correcta ahí e imposible fuera. Node contestaba solo «no encuentro el archivo», que manda a buscar lo que no es. Ahora el error termina diciendo qué hacer en su lugar, y el ejemplo y la guía lo advierten con esas palabras.
+
 ## 0.4.1 · 2026-09-27
 
 ### MADRE tiene casa: madre.run

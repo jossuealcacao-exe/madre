@@ -51,6 +51,19 @@ export function dependencies(runs) {
   return list.filter((dep) => dep && dep.name).map((dep) => ({ name: String(dep.name), version: dep.version ?? null, target: dep.target ?? null }));
 }
 
+// Every field this contract answers to. Thirty-three of them and all but two optional, which is
+// generous until you misspell one: `sumary` used to install without a word and leave a card with
+// an empty summary. A key MADRE does not know is not fatal — a module written for a newer MADRE
+// may carry fields this one has not learned yet — so it is said out loud instead of refused.
+export const MODULE_FIELDS = new Set([
+  'id', 'kind', 'name', 'vendor', 'package', 'version', 'tracks', 'updates', 'summary', 'creates',
+  'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes',
+  'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'install', 'installCommand',
+  'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
+  'toggledBody', 'describe',
+]);
+export const unknownFields = (spec) => Object.keys(spec ?? {}).filter((key) => !MODULE_FIELDS.has(key));
+
 export function defineModule(spec) {
   if (!spec?.id || !/^[a-z][a-z0-9-]*$/.test(spec.id)) throw new Error(`Module id must be kebab-case: ${spec?.id}`);
   if (!spec.name) throw new Error(`Module ${spec.id} needs a name.`);
@@ -59,6 +72,8 @@ export function defineModule(spec) {
   const defaults = { ...(kind === 'builtin' ? { enabled: false } : {}), ...(spec.settings ?? {}) };
   const base = {
     id: spec.id, kind, name: spec.name, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
+    // Keys this contract does not answer to. Carried so whoever installs the module is told.
+    unknown: unknownFields(spec),
     // What this module's version follows, when it is not its own: { name, npm } or { name, github }.
     // MADRE reads the version from there and looks for a newer one on its own, once a day.
     tracks: spec.tracks ? { name: spec.tracks.name ?? spec.tracks.npm ?? spec.tracks.github ?? null, npm: spec.tracks.npm ?? null, github: spec.tracks.github ?? null } : null,

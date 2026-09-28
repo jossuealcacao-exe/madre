@@ -79,8 +79,20 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
   try {
     const probe = join(scratch, name && /\.m?js$/.test(name) ? basename(name) : 'candidate.mjs');
     await writeFile(probe, text);
-    const module = checkExternal(await importModuleFile(probe), { replace });
-    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null };
+    let module;
+    try {
+      module = checkExternal(await importModuleFile(probe), { replace });
+    } catch (error) {
+      // The one mistake that looks right and never works: MADRE's own modules import the SDK by
+      // relative path because they live inside the package, and anyone — an agent most of all —
+      // reading one of them copies that line. Here the file is alone in a scratch folder, so the
+      // import cannot resolve and node says only that it cannot find a file. Say what to do.
+      if (error?.code === 'ERR_MODULE_NOT_FOUND' || /Cannot find (module|package)/.test(error?.message ?? '')) {
+        throw new Error(`${error.message.split('\n')[0]} — a module imports nothing: MADRE loads it from a folder of its own to check it, where no package resolves. Export a plain object, or a function ({ defineModule }) => defineModule({ … }) and MADRE hands you the SDK.`);
+      }
+      throw error;
+    }
+    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null, unknown: module.unknown ?? [] };
   } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 }
 
@@ -95,7 +107,7 @@ export async function installModuleText({ text, name = null, scope = 'user', sta
   // Where it came from, so the same place can be asked for a newer one later.
   if (source) await writeFile(join(dir, `${module.id}.source.json`), JSON.stringify({ ...source, at: new Date().toISOString(), version: module.version ?? null }, null, 2)).catch(() => {});
   await loadExternalModules({ stateRoot, projectRoot });
-  return { id: module.id, name: module.name, version: module.version ?? null, file: target, origin: scope === 'project' ? 'project' : 'user', replaced };
+  return { id: module.id, name: module.name, version: module.version ?? null, file: target, origin: scope === 'project' ? 'project' : 'user', replaced, unknown: module.unknown ?? [] };
 }
 
 // The same thing from a file already on this computer. `source` must be inside the project or the

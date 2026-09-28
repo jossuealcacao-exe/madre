@@ -26,7 +26,19 @@ export default {
 };
 ```
 
-Si prefieres importar el SDK, también vale: `import { defineModule } from '@jossuealcala/madre/sdk'` y exporta el resultado. Y si necesitas hacer algo antes de definirlo, exporta una función `({ defineModule }) => defineModule({ … })`.
+**Tu módulo no importa nada.** Ni a MADRE, ni al SDK. Antes de instalarlo, MADRE copia tu archivo a una carpeta temporal aparte y lo carga ahí —así revisa qué es sin que corra donde vive— y en esa carpeta no hay `node_modules`: un `import` por nombre de paquete no resuelve y la instalación falla.
+
+Si necesitas `defineModule` —para calcular algo antes de definir el módulo, por ejemplo— **MADRE te lo entrega**: exporta una función y lo recibes como argumento.
+
+```js
+export default ({ defineModule }) => defineModule({
+  id: 'mi-modulo',
+  name: 'MI MÓDULO',
+  // …lo que hayas calculado arriba
+});
+```
+
+> Los módulos que vienen con MADRE sí escriben `import { defineModule } from './sdk.mjs'`, porque viven dentro del paquete. **Si le pides a un agente que te escriba uno, va a leer esos archivos y copiar esa línea** — y no va a funcionar. Dile que exporte un objeto plano, o la función de arriba.
 
 ## Lo que un módulo puede declarar
 

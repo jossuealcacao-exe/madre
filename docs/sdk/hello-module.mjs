@@ -6,6 +6,14 @@
 //
 // The default export is a plain object: MADRE wraps it with defineModule.
 // Everything is optional except id and name.
+//
+// A module imports nothing. MADRE loads your file from a scratch folder to check it before
+// installing, and there is no node_modules there: `import … from '@jossuealcala/madre/sdk'`
+// cannot resolve and the install fails. If you need defineModule, export a function and MADRE
+// hands it to you: ({ defineModule }) => defineModule({ … }).
+//
+// MADRE's own modules do write `import { defineModule } from './sdk.mjs'` — they live inside the
+// package. Copying that line from them is the one mistake that looks right and never works.
 
 export default {
   id: 'hello',                       // kebab-case; also the key under modules in ~/.pulse/config.json (camelCased)
