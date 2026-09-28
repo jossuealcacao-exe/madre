@@ -6,6 +6,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.4.2 · Sin publicar
 
+### Tres detalles del menú de revisar
+
+- **MADRE te ponía palabras en la boca, y en inglés.** Elegías un rango, elegías un agente, y el compositor se llenaba con `review this:` — una frase en inglés dentro de una sala en español, y peor: lo que escribías después caía *detrás* de ella y se leía como si alguien más lo hubiera empezado por ti. Ahora entra la referencia y el cursor. Nada más. Acabas de elegir un archivo, unas líneas y un agente: ya sabes qué quieres preguntar.
+- **`@codex Codex` dice una cosa dos veces.** La arroba **es** el nombre. Al lado va solo lo que la arroba no te dice: de quién es el agente, que es el mismo que acaba de hablar, o que no tiene sesión. Pasaba en los dos menús —el del visor y el de responder desde una burbuja—; los dos.
+- **La cabecera se cortaba a media palabra.** `REVISAR !public/app.js:24 CON` dejaba el verbo en una punta y su preposición en la otra, y el menú cortaba justo en «CON». Ahora son dos renglones: qué se manda, y debajo la pregunta. La referencia es una ruta y puede ser larga, así que envuelve en vez de empujar el menú o quedarse a medias.
+
 ### El árbol dice quién tocó qué, y el visor lee por lo que el archivo es
 
 - Y el panel de archivos se rompió al estrenar ese punto: `no se pudo listar: Cannot access 'touched' before initialization`. La misma zona muerta temporal que ayer — una `const` declarada al fondo del archivo, leída por una función que corre durante el arranque. **Dos veces el mismo error en dos días**, y las dos veces con la suite en verde: el panel **atrapa sus propios fallos y los dibuja como una línea de texto**, así que nada lanzaba y la prueba de humo nunca abría el árbol. Ahora arranca con el panel abierto y **afirma que pintó**, no solo que nada explotó. Comprobado: con el error reintroducido, falla.

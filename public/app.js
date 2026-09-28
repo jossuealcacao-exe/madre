@@ -342,7 +342,11 @@ function referenceForSelection() {
 function reviewWith(agentId) {
   const reference = referenceForSelection();
   const current = els.input.value.trim();
-  els.input.value = `${reference} ${current ? current : 'review this: '}`;
+  // The reference and the cursor, nothing else. This used to seed "review this: " — an English
+  // phrase in a Spanish room, and worse, a sentence MADRE put in the human's mouth: whatever they
+  // typed next landed after it and read like somebody else's words. They just chose an agent and
+  // a range; they know what they want to ask.
+  els.input.value = current ? `${reference} ${current}` : `${reference} `;
   if (agentId && state.agents.get(agentId)?.ready) { els.target.value = agentId; renderPicker(); }
   hideViewerMenu();
   viewer.dialog.close();
@@ -352,17 +356,27 @@ function reviewWith(agentId) {
 }
 function showViewerMenu(x, y) {
   const menuNode = viewerUI.menu;
-  menuNode.replaceChildren(el('div', 'hint', t('REVIEW {what} WITH', { what: referenceForSelection() })));
+  // Two lines: what is being sent, and the question. One line put the verb at one end and its
+  // preposition at the other, and in Spanish the sentence ended on a dangling «CON» that the
+  // menu then cut off.
+  const head = el('div', 'hint');
+  head.append(el('b', null, referenceForSelection()));
+  head.append(el('span', null, t('review it with')));
+  menuNode.replaceChildren(head);
   for (const agent of state.agents.values()) {
     const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
     item.type = 'button';
-    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? label(agent.id) : t('{label} · not ready', { label: label(agent.id) })));
+    // `@codex Codex` says one thing twice. The handle is the name; beside it goes only what the
+    // handle does not already tell you — the vendor, or why it cannot take this.
+    const aside = agent.ready ? (brandOf(agent.id).vendor ?? '') : t('no session');
+    item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => reviewWith(agent.id));
     menuNode.append(item);
   }
   menuNode.hidden = false;
-  const width = 240, height = 40 + 36 * state.agents.size;
+  // The header is two lines now and the reference can wrap; leave room rather than clip it.
+  const width = 260, height = 62 + 36 * state.agents.size;
   menuNode.style.left = `${Math.min(x, window.innerWidth - width - 12)}px`;
   menuNode.style.top = `${Math.min(y, window.innerHeight - height - 12)}px`;
 }
@@ -1477,7 +1491,10 @@ function showReplyMenu(source, x, y) {
   for (const agent of state.agents.values()) {
     const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
     item.type = 'button';
-    item.append(el('b', null, `@${agent.id}`), el('span', null, agent.ready ? (agent.id === source.sender ? t('the same agent') : label(agent.id)) : t('{label} · not ready', { label: label(agent.id) })));
+    // The same twice-said name as the viewer's menu: the handle IS the name. Beside it goes only
+    // what the handle does not carry — that this is the one who just spoke, its vendor, or why not.
+    const aside = !agent.ready ? t('no session') : agent.id === source.sender ? t('the same agent') : (brandOf(agent.id).vendor ?? '');
+    item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => replyWith(agent.id, source));
     replyMenu.append(item);

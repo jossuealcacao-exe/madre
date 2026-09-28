@@ -1631,7 +1631,6 @@ export const ES = {
     'Pide una imagen: arma CREATE con el alcance de imagen y la manda a un agente que sepa generarlas.',
   'Master brake: halt every plan and turn in flight. Never reaches an agent.':
     'Freno maestro: detiene todos los planes y turnos en vuelo. Nunca llega a un agente.',
-  'REVIEW {what} WITH': 'REVISAR {what} CON',
   'RIPLEY can render this file. ': 'RIPLEY puede dibujar este archivo. ',
   'RIPLEY preview of {path}': 'Vista previa de RIPLEY de {path}',
   'Show the file as text': 'Ver el archivo como texto',
@@ -1806,6 +1805,8 @@ export const ES = {
   '/module writes a file, so it needs #2 CREATE. Your request is still in the composer.':
     '/module escribe un archivo, así que necesita #2 CREATE. Tu petición sigue en el compositor.',
   'ARM #2 CREATE': 'ARMAR #2 CREATE',
+  'review it with': 'revisarlo con',
+  'no session': 'sin sesión',
   'CLICK A LINE NUMBER TO SELECT · SHIFT FOR A RANGE':
     'CLIC EN UN NÚMERO DE LÍNEA PARA SELECCIONAR · SHIFT PARA UN RANGO',
   '{agent} wrote this file in this room': '{agent} escribió este archivo en esta sala',
