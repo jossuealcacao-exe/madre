@@ -22,6 +22,9 @@ try {
   check(files.some((file) => file.startsWith('src/')), 'tarball contains src/');
   check(files.includes('src/room/economy.mjs'), 'tarball contains the turn economy');
   check(files.some((file) => file.startsWith('public/')), 'tarball contains public/');
+  for (const asset of ['abduction-cat.png', 'abduction-cat-blink.png', 'abduction-cat-control-left.png', 'abduction-cat-control-right.png']) {
+    check(files.includes(`public/assets/${asset}`), `tarball contains ${asset}`);
+  }
   check(!files.some((file) => file.startsWith('test/') || file.startsWith('scripts/')), 'tarball excludes test/ and scripts/');
 
   const consumer = join(workspace, 'consumer');

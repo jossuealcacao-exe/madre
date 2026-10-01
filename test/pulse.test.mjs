@@ -528,6 +528,12 @@ test('serves the single-room interface', async () => {
     const troubleshooting = await fetch(`http://127.0.0.1:${port}/troubleshooting.js`);
     assert.equal(troubleshooting.status, 200);
     assert.match(await troubleshooting.text(), /export const CONDITIONS/);
+    for (const asset of ['abduction-cat.png', 'abduction-cat-blink.png', 'abduction-cat-control-left.png', 'abduction-cat-control-right.png']) {
+      const abductionCat = await fetch(`http://127.0.0.1:${port}/assets/${asset}`);
+      assert.equal(abductionCat.status, 200);
+      assert.equal(abductionCat.headers.get('content-type'), 'image/png');
+      assert.ok((await abductionCat.arrayBuffer()).byteLength > 1_000_000);
+    }
     assert.match(html, /id="mother"/);
     assert.match(html, /id="modules"/);
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((result) => result.json());

@@ -868,6 +868,21 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
         return response.end(css);
       }
+      const abductionAssets = new Map([
+        ['/assets/abduction-cat.png', 'abduction-cat.png'],
+        ['/assets/abduction-cat-blink.png', 'abduction-cat-blink.png'],
+        ['/assets/abduction-cat-control-left.png', 'abduction-cat-control-left.png'],
+        ['/assets/abduction-cat-control-right.png', 'abduction-cat-control-right.png'],
+      ]);
+      if (request.method === 'GET' && abductionAssets.has(url.pathname)) {
+        const image = await readFile(join(publicDirectory, 'assets', abductionAssets.get(url.pathname)));
+        response.writeHead(200, {
+          'content-type': 'image/png',
+          'content-length': image.length,
+          'cache-control': 'public, max-age=86400',
+        });
+        return response.end(image);
+      }
       if (request.method === 'GET' && url.pathname === '/api/state') {
         return sendJson(response, 200, {
           projectRoot,

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { access } from 'node:fs/promises';
 import { parseChoice, withoutChoice, MIN_OPTIONS, MAX_OPTIONS } from '../src/choices.mjs';
 
 const block = (body) => `Lo veo así.\n\n\`\`\`pulse-ask\n${body}\n\`\`\``;
@@ -142,6 +143,11 @@ test('finder: the project is the world, and the zones the room guards ask for it
 
 test('abduction: the room answers to its name only when that is the whole of what was said', async () => {
   const { calledByName } = await import('../public/abduction.js');
+
+  // Every registered frame ships with the room rather than being fetched when the joke runs.
+  for (const asset of ['abduction-cat.png', 'abduction-cat-blink.png', 'abduction-cat-control-left.png', 'abduction-cat-control-right.png']) {
+    await access(new URL(`../public/assets/${asset}`, import.meta.url));
+  }
 
   // Called by name: the word alone, any casing, space around it.
   assert.equal(calledByName('MADRE'), true);

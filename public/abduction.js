@@ -5,7 +5,7 @@
 // as being called by name, and what answers is a flying saucer with a cat in it.
 //
 // It never reaches a provider, never enters the ledger, never costs a token. The field comes back
-// exactly as it was. Everything here is drawn in this file: no images, no fonts, no network.
+// exactly as it was. The one image ships with MADRE; no font or network request is involved.
 
 // Called by name: the word on its own, in any casing, with nothing around it but space. An @ in
 // front is an agent being addressed and belongs to the room, not here.
@@ -15,12 +15,18 @@ export function calledByName(text, { attachments = 0 } = {}) {
 }
 
 const PHASES = { arrive: 700, beam: 1050, lift: 2000, swallow: 2400, leave: 3000, done: 3400 };
+const SHIP_FRAMES = Object.freeze({
+  idle: '/assets/abduction-cat.png',
+  blink: '/assets/abduction-cat-blink.png',
+  controlLeft: '/assets/abduction-cat-control-left.png',
+  controlRight: '/assets/abduction-cat-control-right.png',
+});
 const ease = (t) => (t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t));
 const span = (now, from, to) => ease((now - from) / (to - from));
 const bounce = (t) => 1 + 0.22 * Math.sin(Math.PI * 2 * t) * (1 - t);
 
 // The saucer, and the passenger. Local space is 0..900 across, 0..520 down; the belly the beam
-// comes out of is (450, 392), which is the one number the page positions everything else from.
+// comes out of is (450, 452), which is the one number the page positions everything else from.
 function shipSVG(doc) {
   const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 900 520');
@@ -73,9 +79,39 @@ function shipSVG(doc) {
       <filter id="ab-soft" x="-40%" y="-40%" width="180%" height="180%">
         <feGaussianBlur stdDeviation="14"/>
       </filter>
+      <filter id="ab-lamp-glow" x="-350%" y="-350%" width="800%" height="800%">
+        <feGaussianBlur stdDeviation="6" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="ab-mask-soft" x="-8%" y="-10%" width="116%" height="120%">
+        <feGaussianBlur stdDeviation="10"/>
+      </filter>
+      <mask id="ab-silhouette" maskUnits="userSpaceOnUse" x="0" y="0" width="900" height="520">
+        <rect width="900" height="520" fill="#000"/>
+        <g fill="#fff" filter="url(#ab-mask-soft)">
+          <!-- Deliberately wider than the photographed silhouette: the fade happens in empty
+               backdrop, never through the metal, glass, antennae or emitter. -->
+          <ellipse cx="450" cy="345" rx="438" ry="174"/>
+          <ellipse cx="450" cy="178" rx="252" ry="218"/>
+          <ellipse cx="450" cy="462" rx="112" ry="58"/>
+        </g>
+      </mask>
     </defs>
 
-    <g class="ab-ship">
+    <!-- Four registered photographs make one tiny performance: idle, blink and two controls.
+         The vector remains underneath as a local fallback if the base frame cannot be decoded. -->
+    <g class="ab-photos" mask="url(#ab-silhouette)">
+      <image class="ab-photo" data-frame="idle" href="${SHIP_FRAMES.idle}" x="60" y="0" width="780" height="520" preserveAspectRatio="xMidYMid meet"/>
+      <image class="ab-photo" data-frame="blink" href="${SHIP_FRAMES.blink}" x="60" y="0" width="780" height="520" preserveAspectRatio="xMidYMid meet"/>
+      <image class="ab-photo" data-frame="controlLeft" href="${SHIP_FRAMES.controlLeft}" x="60" y="0" width="780" height="520" preserveAspectRatio="xMidYMid meet"/>
+      <image class="ab-photo" data-frame="controlRight" href="${SHIP_FRAMES.controlRight}" x="60" y="0" width="780" height="520" preserveAspectRatio="xMidYMid meet"/>
+    </g>
+    <!-- These highlights stay vector-sharp so the hull feels powered rather than baked into a
+         still image. Their positions follow the practical lamps in every registered frame. -->
+    <g class="ab-live-lamps"></g>
+    <ellipse class="ab-live-emitter" cx="450" cy="452" rx="45" ry="9" fill="#ddff9a" opacity=".25" filter="url(#ab-lamp-glow)"/>
+    <path class="ab-glass-sheen" d="M300 265 C318 150 384 91 455 83" fill="none" stroke="#efffe2" stroke-width="8" stroke-linecap="round" opacity=".08"/>
+    <g class="ab-ship ab-vector">
       <!-- the glow the hull sits in -->
       <ellipse cx="450" cy="372" rx="300" ry="54" fill="#9ee23f" opacity=".25" filter="url(#ab-soft)"/>
 
@@ -136,24 +172,30 @@ function shipSVG(doc) {
       <ellipse cx="450" cy="388" rx="58" ry="14" fill="#0a0f15"/>
       <ellipse class="ab-emitter" cx="450" cy="386" rx="46" ry="10" fill="#c9ff79"/>
     </g>`;
+  for (const photo of svg.querySelectorAll('.ab-photo')) {
+    photo.addEventListener('error', () => {
+      if (photo.dataset.frame === 'idle') svg.classList.add('missing-photo');
+      else photo.remove();
+    }, { once: true });
+  }
   return svg;
 }
 
-// The lamps around the rim, placed along the hull rather than typed out one by one: evenly spaced,
-// and they chase around the ring instead of all blinking together.
+// A light laid over each practical bulb makes the photographed ship feel powered. They chase in
+// order, but never go fully dark: this is a living console, not a Christmas garland.
 function growLamps(svg) {
-  const host = svg.querySelector('.ab-lamps');
+  const host = svg.querySelector('.ab-live-lamps');
   if (!host) return [];
+  const doc = svg.ownerDocument;
   const lamps = [];
-  const count = 11;
-  for (let i = 0; i < count; i += 1) {
-    const t = (i + 0.5) / count;
-    const angle = Math.PI * t;
-    const lamp = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    lamp.setAttribute('cx', String(450 - Math.cos(angle) * 300));
-    lamp.setAttribute('cy', String(344 + Math.sin(angle) * 26));
-    lamp.setAttribute('r', '8');
-    lamp.setAttribute('fill', '#c9ff79');
+  const points = [[110, 331], [203, 325], [319, 326], [450, 330], [590, 326], [708, 325], [797, 331]];
+  for (const [x, y] of points) {
+    const lamp = doc.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    lamp.setAttribute('cx', String(x));
+    lamp.setAttribute('cy', String(y));
+    lamp.setAttribute('rx', '10');
+    lamp.setAttribute('ry', '7');
+    lamp.setAttribute('fill', '#e6ffad');
     host.append(lamp);
     lamps.push(lamp);
   }
@@ -166,9 +208,16 @@ function styleOnce(doc) {
   style.id = 'ab-style';
   style.textContent = `
     .ab-stage { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0; overflow: hidden; }
-    .ab-sky { position: absolute; inset: 0; background: radial-gradient(90% 60% at 50% 0%, rgba(120,190,60,.18), rgba(0,0,0,0) 70%); opacity: 0; }
+    .ab-sky { position: absolute; inset: 0; background: radial-gradient(75% 55% at 50% 18%, rgba(171,255,91,.18), rgba(4,12,6,.08) 50%, rgba(0,0,0,.18)); backdrop-filter: blur(1px) saturate(.82); opacity: 0; }
     .ab-wrap { position: absolute; will-change: transform; }
-    .ab-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 26px 50px rgba(0,0,0,.35)); }
+    .ab-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 28px 46px rgba(0,0,0,.42)) drop-shadow(0 0 18px rgba(158,226,63,.12)); }
+    .ab-vector { display: none; }
+    .ab-svg.missing-photo .ab-vector { display: inline; }
+    .ab-svg.missing-photo .ab-photos, .ab-svg.missing-photo .ab-live-lamps, .ab-svg.missing-photo .ab-live-emitter, .ab-svg.missing-photo .ab-glass-sheen { display: none; }
+    .ab-photo { opacity: 0; transform-origin: 50% 60%; }
+    .ab-photo[data-frame="idle"] { opacity: 1; }
+    .ab-live-lamps { filter: url(#ab-lamp-glow); mix-blend-mode: screen; }
+    .ab-glass-sheen { mix-blend-mode: screen; }
     .ab-beam { position: absolute; transform-origin: 50% 0%; will-change: transform, opacity; }
     .ab-mote { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #b7ec5a; box-shadow: 0 0 10px #9ee23f; will-change: transform, opacity; }
     .ab-taken { will-change: transform, filter, opacity; }
@@ -178,6 +227,15 @@ function styleOnce(doc) {
 
 export async function abduct({ composer, shell = document.querySelector('.shell'), doc = document, reduced = false } = {}) {
   if (!composer) return;
+  // The asset lives on disk with the room. Warm it before the first frame so the ship never
+  // arrives as an empty glow on a cold cache; failure falls through to the vector below it.
+  await Promise.all(Object.values(SHIP_FRAMES).map((source) => new Promise((ready) => {
+    const preload = doc.createElement('img');
+    preload.src = source;
+    if (preload.complete) { ready(); return; }
+    preload.addEventListener('load', ready, { once: true });
+    preload.addEventListener('error', ready, { once: true });
+  })));
   styleOnce(doc);
   const box = composer.getBoundingClientRect();
   const stage = doc.createElement('div');
@@ -197,7 +255,7 @@ export async function abduct({ composer, shell = document.querySelector('.shell'
   const centreX = box.left + box.width / 2;
   const bellyY = Math.max(96, box.top - shipH * 0.52);
   wrap.style.left = `${centreX - shipW / 2}px`;
-  wrap.style.top = `${bellyY - 388 * scale}px`;
+  wrap.style.top = `${bellyY - 452 * scale}px`;
   const svg = shipSVG(doc);
   wrap.append(svg);
 
@@ -217,8 +275,10 @@ export async function abduct({ composer, shell = document.querySelector('.shell'
   doc.body.append(stage);
   const lamps = growLamps(svg);
   const lids = [...svg.querySelectorAll('.ab-lid')];
-  const emitter = svg.querySelector('.ab-emitter');
-  const cat = svg.querySelector('.ab-cat');
+  const emitter = svg.querySelector('.ab-live-emitter') ?? svg.querySelector('.ab-emitter');
+  const photos = [...svg.querySelectorAll('.ab-photo')];
+  const photoByFrame = new Map(photos.map((photo) => [photo.dataset.frame, photo]));
+  const sheen = svg.querySelector('.ab-glass-sheen');
   composer.classList.add('ab-taken');
 
   // Motes drifting up the beam, which is what sells a beam as a beam.
@@ -241,6 +301,7 @@ export async function abduct({ composer, shell = document.querySelector('.shell'
   const started = performance.now();
   let lastMote = 0;
   let blinked = false;
+  let activeFrame = 'idle';
 
   await new Promise((resolve) => {
     const frame = (stamp) => {
@@ -256,23 +317,41 @@ export async function abduct({ composer, shell = document.querySelector('.shell'
 
       // Rim lamps chase around the ring; the emitter breathes while the beam is on.
       for (const [i, lamp] of lamps.entries()) {
-        const phase = (now / 420 + i / lamps.length) % 1;
-        lamp.setAttribute('opacity', String(0.25 + 0.75 * Math.max(0, Math.sin(phase * Math.PI * 2))));
+        const phase = (now / 720 - i / lamps.length) % 1;
+        const pulse = 0.5 + 0.5 * Math.sin(phase * Math.PI * 2);
+        lamp.setAttribute('opacity', String(0.18 + 0.82 * pulse));
+        lamp.setAttribute('rx', String(9 + 2.5 * pulse));
+        lamp.setAttribute('ry', String(6 + 1.5 * pulse));
       }
       const live = span(now, PHASES.arrive, PHASES.beam) * (1 - span(now, PHASES.swallow, PHASES.leave));
-      if (emitter) emitter.setAttribute('opacity', String(0.3 + 0.7 * live));
+      if (emitter) emitter.setAttribute('opacity', String(0.22 + 0.7 * live * (0.78 + 0.22 * Math.sin(now / 95))));
+      if (sheen) sheen.setAttribute('opacity', String(0.05 + 0.08 * (0.5 + 0.5 * Math.sin(now / 480))));
 
       // The beam opens, then shuts once the field is aboard.
       beam.style.opacity = String(live * (0.75 + 0.25 * Math.sin(now / 90)));
       beam.style.transform = `scaleX(${0.2 + 0.8 * live}) scaleY(${0.3 + 0.7 * live})`;
 
-      // One blink, while it waits. Cats blink.
+      // The photographic performance: a quick blink, then two small cockpit actions. Hard cuts
+      // keep the registered hull crisp; only the living passenger changes between frames.
+      let wantedFrame = 'idle';
+      if (now >= 1180 && now < 1300) wantedFrame = 'blink';
+      else if (now >= 1460 && now < 1540) wantedFrame = 'blink';
+      else if (now >= 1680 && now < 1980) wantedFrame = 'controlLeft';
+      else if (now >= 1980 && now < 2280) wantedFrame = 'controlRight';
+      else if (now >= 2280 && now < 2400) wantedFrame = 'controlLeft';
+      if (!photoByFrame.has(wantedFrame)) wantedFrame = 'idle';
+      if (wantedFrame !== activeFrame) {
+        for (const photo of photos) photo.style.opacity = photo.dataset.frame === wantedFrame ? '1' : '0';
+        activeFrame = wantedFrame;
+      }
+
+      // The vector fallback still gets its own blink.
       const blink = Math.max(0, Math.sin((now - PHASES.beam - 150) / 90));
       const lidOn = now > PHASES.beam + 150 && now < PHASES.beam + 430;
       for (const lid of lids) lid.setAttribute('opacity', String(lidOn ? blink : 0));
       if (!blinked && lidOn) blinked = true;
       // It leans toward what it is taking.
-      if (cat) cat.setAttribute('transform', `translate(0 ${6 * live}) rotate(${1.5 * Math.sin(now / 520)} 450 230)`);
+      for (const photo of photos) photo.setAttribute('transform', `translate(0 ${3 * live}) scale(${1 + 0.004 * live})`);
 
       // The field goes up. It wobbles on the way, because nothing rides a tractor beam steadily.
       const rise = span(now, PHASES.beam, PHASES.lift);

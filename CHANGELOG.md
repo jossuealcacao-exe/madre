@@ -59,10 +59,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Las preguntas abiertas van en un riel horizontal con la etiqueta centrada encima. Antes envolvían a un segundo renglón y empujaban el compositor hacia abajo.
 - El aviso de modo pasó de cuatro renglones a dos, y en la esquina inferior derecha quedó la versión y el copyright. La versión viene de `/api/state`, no escrita a mano donde se olvide en el siguiente release.
 
-### Un gato
+### El gato ya no es un dibujo: es una pequeña escena
 
-- Escribe `madre` sola en la caja, sin arroba y sin nada más, y envía. Lo que contesta no es un agente.
-- No se enruta, no entra al ledger, no cuesta un token, y ningún agente se entera. El campo vuelve exactamente como estaba.
+- Escribe `madre` sola en la caja, sin arroba ni nada más, y envía. Una nave hiperrealista entra en la sala con su pasajero verde dentro; no responde un agente.
+- Cuatro fotogramas registrados mantienen el casco, el domo y el haz en su sitio mientras el michi parpadea, mira el tablero y juega con los controles. El resultado se siente animado sin los saltos de una colección de imágenes distintas.
+- Las luces del casco persiguen, el emisor respira y el reflejo del domo cambia con la escena. La nave conserva completos sus bordes, antenas y motor durante toda la aparición.
+- Sigue siendo un secreto local: no se enruta, no entra al ledger, no cuesta tokens y ningún agente se entera. Al terminar, el compositor vuelve exactamente como estaba.
 
 ### Arreglos
 
