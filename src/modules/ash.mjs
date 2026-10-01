@@ -23,7 +23,7 @@ export default defineModule({
   name: 'Ash',
   vendor: 'MADRE',
   version: '1.0.0',
-  summary: 'Asks every agent for compact prose. The rest of the economy is always on: the briefing carries only what a turn can use, what never changes is read first so a cache can match it, and the transcript holds still instead of sliding.',
+  summary: 'Asks every agent for compact prose without altering what you write. MADRE shows each turn\'s input, output and cache use; savings depend on the agent, task and cache, so no fixed percentage is promised.',
   creates: ['nothing in the project', 'a switch in ~/.pulse/config.json'],
   card: 'ash',
   async status(ctx) {

@@ -6,6 +6,39 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.5.3 · Sin publicar
 
+### Ash conserva una sola decisión de principio a fin
+
+- El historial ya no puede encender ni apagar Ash al abrir la sala o cambiar de conversación: `/api/state` manda y solo un `extension.toggled` vivo cambia el compositor. La vista previa usa además la selección del mensaje, no solo el interruptor global.
+- Cada turno conserva la decisión tomada al pulsar Enviar antes del primer `await`: `requested` y `active` quedan separados, `turn.cost.ash` confirma si el bloque llegó al prompt y un fallo posterior conserva el coste y limpia su forma pendiente. Los pasos y el cierre de un plan mantienen el mismo Ash y el mismo modo.
+- La prosa compacta se adapta a longitud explícita, código y estructura pedida. Una comprobación local marca respuestas vacías, límites excedidos, bloques sin cerrar, planes con texto posterior y deriva de literales pedidos como exactos. No cambia modelo, contexto, herramientas ni repite automáticamente un turno con permisos.
+- La ficha pública no promete un porcentaje fijo: muestra entrada, salida y caché por turno, y dice que el ahorro depende del agente, la tarea y la caché. El corpus reproducible de `scripts/bench-ash.mjs` solo verifica el contrato; no se presenta como medición de ahorro.
+
+### La economía deja de ser una promesa y pasa a ser una lectura
+
+- El panel ECONOMÍA, a pantalla completa desde la ficha de Ash: lo que nunca se cobró, lo que Ash le hace a una respuesta, a dónde va cada prompt y una tabla por agente. Abre con seis cifras del total —turnos, entrada, salida, no cobrados, caché y caracteres por token— porque seis números de seis naturalezas distintas no tienen forma que dibujar.
+- Cada mensaje dice en su pie cuántos tokens **no** se cobraron: lo que el CLI leyó de su propia caché (medido) más el briefing que la sala nunca envió (estimado). Las dos mitades nunca se suman sin decir cuál es cuál.
+- Ash muestra primero lo que **cuesta** —306 caracteres por turno, medidos del bloque— y después lo que podría ahorrar. Y cuando hay cinco turnos de cada lado, la lectura dice si la diferencia supera la variación propia de ese agente o si todavía no hay nada que leer. Una lectura que solo pudiera darle la razón al interruptor sería publicidad.
+- Los turnos que la sala contestó sola, con `@madre` y sin factura, se cuentan aparte. No se les pone precio: nadie midió lo que habrían costado en otro lado.
+
+### Lo que la sala sabe, puesto donde se decide
+
+- Arriba del hilo, las decisiones vigentes del proyecto. Una decisión refutada no aparece: el archivo la conserva, pero una franja que dice «decidido» no puede cargar algo que la sala ya estableció como falso.
+- Bajo el compositor, con el campo vacío, las preguntas que el archivista registró como abiertas y nadie contestó, las más arrastradas primero. Se van en cuanto escribes.
+- Una pregunta sobre lo que la sala ya dijo ofrece `@madre` antes de gastar: contesta desde el mismo archivo, en esta computadora y sin tokens. Ofrece; tú eliges.
+- Nada de esto entra en un prompt. Son lecturas del archivo que se te muestran a ti.
+
+### Choices · un módulo para devolverte una decisión
+
+- Un agente que tiene que elegir entre tres o más opciones reales puede devolvértelas como botones, con un canal propio e inerte: `pulse-ask`. Pulsar uno escribe la opción en el compositor y para ahí; nada corre ni se gasta hasta que tú mandas.
+- No toca el canal de delegación. Ese parser arranca turnos con permisos reales, y enseñarle una segunda gramática sería poner un parser que puede gastar dinero en el camino de uno que no.
+- Tiene interruptor porque no es gratis: la instrucción cuesta unos 135 tokens por turno mientras está encendido, y aparece como bloque propio en la economía. Una capacidad cuyo costo no se puede ver es una capacidad contra la que nadie puede decidir.
+
+### Arreglos
+
+- Los chips de memoria eran ilegibles en tema claro: el tipo se pintaba con colores elegidos para el mapa oscuro de NOSTROMO, y «HECHO» en un azul casi blanco desaparecía sobre el fondo. Ahora el tipo es un punto con anillo, el texto lleva los colores del texto y la fila perdió la opacidad que la apagaba.
+- La paleta de `/` dejaba sin descripción a cualquier comando con sintaxis larga: la columna del nombre crecía sin límite y la explicación se truncaba hasta desaparecer. La sintaxis bajó a su propio renglón.
+- Un renderizador que declina ya no mete un nulo en la columna de mensajes.
+
 ## 0.5.2 · 2026-09-28
 
 Tres reportes de la 0.5.1, y la razón por la que ninguno lo atrapó una prueba. Arreglos: nada cambia modos, módulos, agentes ni a dónde sale nada.

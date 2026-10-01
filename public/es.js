@@ -15,6 +15,117 @@ export const ES = {
     'CREATE encendido: di qué crear. Los archivos nuevos caen donde les toca en el proyecto; nada de lo que ya existe se toca.',
   'Compact prose. Nothing you write is altered; only the answers get shorter.':
     'Respuestas compactas. Lo que tú escribes no cambia; lo que se acorta son las respuestas.',
+  'In this room: {on} output tokens is the middle turn with ASH ({onTurns} turns), {off} without it ({offTurns}). You choose when to ask for compact prose, so these are different tasks, not the same task twice.':
+    'En esta sala: {on} tokens de salida es el turno de en medio con ASH ({onTurns} turnos), {off} sin ASH ({offTurns}). Tú decides cuándo pedir prosa compacta, así que son tareas distintas, no la misma tarea dos veces.',
+  '{n} uncharged': '{n} no cobrados',
+  '{cached} tokens this CLI read back from its own cache instead of charging them again (measured). {unsent} tokens of briefing the room never sent (estimated at {rate} characters per token). Neither is Ash: Ash shortens the answer, and that is the figure above the bubble.':
+    '{cached} tokens que este CLI leyó de su propia caché en vez de volver a cobrarlos (medido). {unsent} tokens de briefing que la sala nunca envió (estimado a {rate} caracteres por token). Ninguno de los dos es Ash: Ash acorta la respuesta, y esa cifra está arriba de la burbuja.',
+  'TOKENS SAVED': 'TOKENS AHORRADOS',
+  'input the CLI did not charge again · {pct} of the input': 'entrada que el CLI no volvió a cobrar · {pct} de la entrada',
+  'SPENT IN': 'GASTADO EN ENTRADA',
+  'input tokens actually charged': 'tokens de entrada realmente cobrados',
+  '@madre can answer this from the room archive, on this computer, for no tokens · it read {why}':
+    '@madre puede contestar esto desde el archivo de la sala, en esta computadora, sin gastar tokens · leyó {why}',
+  'ASK @madre': 'PREGÚNTALE A @madre',
+  'what was decided': 'qué se decidió',
+  'whether this came up before': 'si esto ya había salido',
+  'where the room left off': 'dónde se quedó la sala',
+  'why something was chosen': 'por qué se eligió algo',
+  'what somebody said': 'qué dijo alguien',
+  'what is still open': 'qué sigue abierto',
+  'TURNS THE ROOM ANSWERED ITSELF': 'TURNOS QUE LA SALA CONTESTÓ SOLA',
+  'FREE TURNS': 'TURNOS SIN COSTO',
+  'answered by @madre on this computer · no provider, no bill':
+    'contestados por @madre en esta computadora · sin proveedor, sin factura',
+  'OF EVERY TURN': 'DEL TOTAL',
+  'of the turns weighed in this room': 'de los turnos pesados en esta sala',
+  'A PAID TURN': 'UN TURNO PAGADO',
+  'the middle paid turn here · what the others cost, not what these would have':
+    'el turno pagado de en medio · lo que costaron los otros, no lo que habrían costado estos',
+  'These turns have no bill because nothing left this computer to answer them. MADRE does not say what they would have cost somewhere else: nobody measured that.':
+    'Estos turnos no tienen factura porque nada salió de esta computadora para contestarlos. MADRE no dice cuánto habrían costado en otro lado: eso nadie lo midió.',
+  '{pct} shorter with ASH, wider than this agent varies here (±{on} and ±{off})':
+    '{pct} más corta con ASH, más que lo que este agente varía aquí (±{on} y ±{off})',
+  'the difference fits inside how much this agent varies anyway (±{on} and ±{off}) · nothing to read yet':
+    'la diferencia cabe dentro de lo que este agente varía de todos modos (±{on} y ±{off}) · todavía no hay nada que leer',
+  'on · agents may ask you to choose': 'encendido · los agentes pueden pedirte que elijas',
+  'off · agents answer in prose': 'apagado · los agentes contestan en prosa',
+  'Lets an agent hand a decision back to you as buttons instead of a paragraph, when the answer turns on three or more real options. Costs about 135 tokens of instruction per turn while it is on, counted in the economy like every other block.':
+    'Deja que un agente te devuelva una decisión como botones en vez de un párrafo, cuando la respuesta depende de tres o más opciones reales. Cuesta unos 135 tokens de instrucción por turno mientras está encendido, contados en la economía como cualquier otro bloque.',
+  'Writes it into the composer · nothing is sent until you press send': 'Lo escribe en el compositor · no se manda nada hasta que le des enviar',
+  '◉ decided here · {n}': '◉ decidido aquí · {n}',
+  'TURNS WEIGHED': 'TURNOS PESADOS',
+  'every turn this room has been billed for': 'cada turno por el que cobraron a esta sala',
+  'INPUT CHARGED': 'ENTRADA COBRADA',
+  'tokens the CLIs charged as fresh reading': 'tokens que los CLIs cobraron como lectura nueva',
+  'OUTPUT CHARGED': 'SALIDA COBRADA',
+  'tokens written back · the dearer half': 'tokens escritos de vuelta · la mitad más cara',
+  'read back from a cache, plus what was never sent': 'leído de una caché, más lo que nunca se envió',
+  'CAME FROM CACHE': 'VINO DE CACHÉ',
+  'of everything read, the share nobody charged twice': 'de todo lo leído, la parte que nadie cobró dos veces',
+  'CH PER TOKEN': 'CAR POR TOKEN',
+  'what MADRE wrote against what the CLIs were charged for reading · not a tokenizer':
+    'lo que MADRE escribió contra lo que a los CLIs les cobraron por leer · no es un tokenizador',
+  'AGENT': 'AGENTE',
+  'INPUT': 'ENTRADA',
+  'OUTPUT': 'SALIDA',
+  'CACHE': 'CACHÉ',
+  'CACHED %': '% CACHEADO',
+  'CH / TOKEN': 'CAR / TOKEN',
+  '◉ still open here': '◉ sigue abierto aquí',
+  'The room has carried this into {n} turn(s) and still has no answer.':
+    'La sala ha arrastrado esto a {n} turno(s) y sigue sin respuesta.',
+  'The archivist recorded this as open and nothing has answered it.':
+    'El archivista lo registró como abierto y nada lo ha contestado.',
+  'SEE THE ECONOMY': 'VER LA ECONOMÍA',
+  'ECONOMY': 'ECONOMÍA',
+  'MADRE · WHAT THIS ROOM SPENT AND WHAT IT NEVER SPENT': 'MADRE · LO QUE ESTA SALA GASTÓ Y LO QUE NUNCA GASTÓ',
+  'MEASURED FROM WHAT THE CLIs CHARGED · A SAVING NOBODY MEASURED IS NEVER SHOWN':
+    'MEDIDO SOBRE LO QUE COBRARON LOS CLIs · UN AHORRO QUE NADIE MIDIÓ NO SE MUESTRA NUNCA',
+  'Token economy': 'Economía de tokens',
+  'NEVER CHARGED FOR': 'NUNCA COBRADO',
+  'FROM THE CACHE': 'DE LA CACHÉ',
+  'the CLI said it read these back instead of charging them again · measured':
+    'el CLI dijo que los leyó de vuelta en vez de volver a cobrarlos · medido',
+  'briefing a turn had no use for · estimated from characters, not measured':
+    'briefing que el turno no iba a usar · estimado a partir de caracteres, no medido',
+  'OF THE INPUT': 'DE LA ENTRADA',
+  'the share of everything read that came back from a cache':
+    'la parte de todo lo leído que volvió de una caché',
+  'One half is measured and the other is estimated, and they are never added without saying so. Neither of them is Ash: Ash shortens the answer, which is the next reading.':
+    'Una mitad es medida y la otra estimada, y nunca se suman sin decirlo. Ninguna de las dos es Ash: Ash acorta la respuesta, que es la lectura siguiente.',
+  'ASH ADDS': 'ASH AÑADE',
+  'to every prompt it is on · measured, not estimated': 'a cada prompt donde está encendido · medido, no estimado',
+  'IN TOKENS': 'EN TOKENS',
+  'at {rate} characters per token · an estimate': 'a {rate} caracteres por token · una estimación',
+  'TURNS CARRYING IT': 'TURNOS QUE LO LLEVAN',
+  'of the {n} weighed in this room': 'de los {n} pesados en esta sala',
+  'What Ash costs is certain and measured here. What it saves is not: the shorter answer below is observed, never promised. Output is the dearer half of every bill, so the trade is usually favourable — MADRE does not turn it into money because it does not know your prices.':
+    'Lo que Ash cuesta es seguro y está medido aquí. Lo que ahorra no lo es: la respuesta más corta de abajo se observa, nunca se promete. La salida es la mitad más cara de cualquier factura, así que el cambio suele convenir — MADRE no lo convierte en dinero porque no conoce tus precios.',
+  'WHAT ASH DOES TO AN ANSWER': 'QUÉ LE HACE ASH A UNA RESPUESTA',
+  'No turns with the switch recorded yet. Leave Ash on for a few turns and off for a few more, and this fills.':
+    'Aún no hay turnos con el interruptor registrado. Deja Ash encendido unos turnos y apagado otros tantos, y esto se llena.',
+  'WHERE EACH PROMPT GOES': 'A DÓNDE VA CADA PROMPT',
+  '{pct} of each prompt is the unchanging head a cache can match. MADRE wrote {chars} characters of the {input} input tokens you were charged for; the rest is what the CLIs read on their own.':
+    '{pct} de cada prompt es la cabecera que no cambia y que una caché puede reconocer. MADRE escribió {chars} caracteres de los {input} tokens de entrada que te cobraron; el resto es lo que los CLIs leyeron por su cuenta.',
+  'BY AGENT': 'POR AGENTE',
+  'with ASH': 'con ASH',
+  'without ASH': 'sin ASH',
+  '{n}↑ · {turns} turns': '{n}↑ · {turns} turnos',
+  '{n} turns with ASH, {m} without · {min} of each before this can be read':
+    '{n} turnos con ASH, {m} sin ASH · hacen falta {min} de cada lado para poder leerlo',
+  'The middle turn of each side, not an average. You choose when to ask for compact prose, so the two sides are different tasks, not the same task twice — MADRE does not claim a percentage saved.':
+    'El turno de en medio de cada lado, no un promedio. Tú decides cuándo pedir prosa compacta, así que los dos lados son tareas distintas y no la misma tarea dos veces: MADRE no afirma un porcentaje ahorrado.',
+  'NEVER CHARGED': 'NUNCA COBRADO',
+  'REVIEW · the local check found: {details}':
+    'REVISAR · la comprobación local encontró: {details}',
+  'empty response': 'respuesta vacía',
+  'unclosed code fence': 'bloque de código sin cerrar',
+  'text after ```pulse block': 'hay texto después del bloque ```pulse',
+  'missing negation': 'falta una negación',
+  '{count} {unit}, maximum {maximum}': '{count} {unit}, máximo {maximum}',
+  'lines': 'líneas',
+  'missing {value}': 'falta {value}',
   'Off the record. Ask anything; nothing is saved, nobody else will remember it.':
     'Fuera de registro. Pregunta lo que quieras: no se guarda nada y nadie más se va a acordar.',
   'Control armed. Say what to change in the project; every action runs without asking.':
@@ -310,8 +421,8 @@ export const ES = {
   'a push only when you type /git push confirm, after it shows what would leave':
     'un push solo cuando escribes /git push confirm, después de enseñarte qué saldría',
 
-  'Asks every agent for compact prose. The rest of the economy is always on: the briefing carries only what a turn can use, what never changes is read first so a cache can match it, and the transcript holds still instead of sliding.':
-    'Le pide a cada agente respuestas compactas. El resto de la economía está siempre encendida: el briefing carga solo lo que el turno puede usar, lo que nunca cambia se lee primero para que una caché lo reconozca, y la transcripción se queda quieta en vez de irse recorriendo.',
+  'Asks every agent for compact prose without altering what you write. MADRE shows each turn\'s input, output and cache use; savings depend on the agent, task and cache, so no fixed percentage is promised.':
+    'Pide a cada agente prosa compacta sin alterar lo que escribes. MADRE muestra la entrada, la salida y el uso de caché de cada turno; el ahorro depende del agente, la tarea y el caché, así que no promete un porcentaje fijo.',
   'nothing in the project': 'nada en el proyecto',
   'a switch in ~/.pulse/config.json': 'un interruptor en ~/.pulse/config.json',
 
@@ -1747,7 +1858,6 @@ export const ES = {
 
   // ── LA SALA EN MOVIMIENTO: PLANES, FRENOS, ADJUNTOS Y AVISOS ─────────────
   'answering @{agent}': 'contestándole a @{agent}',
-  ' · {n} saved': ' · {n} ahorrados',
   ' wrote ': ' escribió ',
   'CHECK AGAIN': 'MEDIR OTRA VEZ',
   'CHECK IT AGAINST THIS ROOM': 'MEDIRLO CONTRA ESTA SALA',
@@ -2097,20 +2207,14 @@ export const ES = {
   'THIS RUNS ON THIS COMPUTER, OUTSIDE THE PROJECT:': 'ESTO CORRE EN ESTA COMPUTADORA, FUERA DEL PROYECTO:',
 
   // La economía de la sala y la ficha de Ollama.
-  'TOKENS SAVED': 'TOKENS AHORRADOS',
   'read back from the CLI cache, plus what was never sent': 'leídos de la caché del CLI, más lo que nunca se mandó',
   'FROM CACHE': 'DE LA CACHÉ',
-  'input the CLI did not charge again · {pct} of the input': 'entrada que el CLI no volvió a cobrar · {pct} de la entrada',
   'NEVER SENT': 'NUNCA SE MANDÓ',
   'briefing a turn had no use for': 'briefing que ese turno no necesitaba',
-  'SPENT IN': 'GASTADO EN ENTRADA',
-  'input tokens actually charged': 'tokens de entrada realmente cobrados',
   'SPENT OUT': 'GASTADO EN SALIDA',
   'output tokens, the dearer half': 'tokens de salida, la mitad más cara',
   'TURNS': 'TURNOS',
   'weighed so far': 'pesados hasta ahora',
-  '{pct} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · MADRE WROTE {chars} CHARACTERS OF THE {input} INPUT TOKENS YOU WERE CHARGED FOR; THE REST IS WHAT THE CLIs READ ON THEIR OWN':
-    '{pct} DE CADA PROMPT ES LA CABECERA QUE NO CAMBIA Y QUE UNA CACHÉ PUEDE RECONOCER · MADRE ESCRIBIÓ {chars} CARACTERES DE LOS {input} TOKENS DE ENTRADA QUE TE COBRARON; EL RESTO ES LO QUE LOS CLIs LEYERON POR SU CUENTA',
   'SERVER': 'SERVIDOR',
   'running · {host}': 'corriendo · {host}',
   'not running': 'no está corriendo',

@@ -1,3 +1,4 @@
+import { archiveQuestion } from './routing.js';
 import { brandOf } from './brands.js';
 import { CONDITIONS, allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
@@ -37,6 +38,9 @@ const els = {
   replyQuote: document.querySelector('#reply-quote'),
   field: document.querySelector('.field'),
   slashMenu: document.querySelector('#slash-menu'),
+  freeOffer: document.querySelector('#free-offer'),
+  settled: document.querySelector('#settled'),
+  openq: document.querySelector('#openq'),
   attach: document.querySelector('#attach'),
   createToggle: document.querySelector('#create-toggle'),
   ashToggle: document.querySelector('#ash-toggle'),
@@ -1667,6 +1671,31 @@ function showReading(event) {
 
 // The bill arrived: the estimate is replaced by what was actually charged, and stays on the
 // exchange so the guess can be checked against the truth.
+// What this room has seen Ash do, kept as the turns arrive so a reply can be read the moment it
+// settles without asking the server again. Same rule as /api/economy, and it has to stay the
+// same: median output per agent, Ash on against Ash off, nothing said until both sides have
+// enough turns to mean something. Turns weighed before the room recorded the switch carry no
+// boolean and are left out — guessing a side for them would poison both.
+const ASH_MIN_TURNS = 5;
+const ashSeen = new Map();   // agent -> { on: [], off: [] }
+const ashMedian = (values) => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+};
+function rememberAsh(cost) {
+  if (cost.failed || typeof cost.ash !== 'boolean') return null;
+  const output = Number(cost.output ?? 0) || 0;
+  if (output <= 0) return null;
+  const who = cost.agent ?? 'unknown';
+  const mine = ashSeen.get(who) ?? { on: [], off: [] };
+  mine[cost.ash ? 'on' : 'off'].push(output);
+  ashSeen.set(who, mine);
+  if (mine.on.length < ASH_MIN_TURNS || mine.off.length < ASH_MIN_TURNS) return null;
+  return { on: ashMedian(mine.on), off: ashMedian(mine.off), onTurns: mine.on.length, offTurns: mine.off.length };
+}
+
 function settleReading(event) {
   const cost = event.payload ?? {};
   if (!cost.responseMessageId) return;
@@ -1678,10 +1707,46 @@ function settleReading(event) {
   // Short enough to sit on the same line as everything else above the bubble. What was read back
   // from the cache is money not spent, so it is the part worth naming.
   const brief = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
-  const saved = cost.cached ? t(' · {n} saved', { n: brief(cost.cached) }) : '';
-  badge.textContent = `${brief(cost.input)}↓ ${brief(cost.output)}↑${saved}`;
+  badge.textContent = `${brief(cost.input)}↓ ${brief(cost.output)}↑`;
   badge.title = t("Charged by this agent's own CLI: {input} input tokens, {output} output{cached}.", { input: cost.input.toLocaleString(), output: cost.output.toLocaleString(), cached: cost.cached ? t('. Another {n} were read back from its own cache instead of being charged again', { n: cost.cached.toLocaleString() }) : '' });
+  // Ash is a property of the turn, not of the room right now: the mark belongs on the reply it
+  // applied to, and stays true when the switch changes later.
+  badge.classList.toggle('ash', cost.ash === true);
+  const seen = rememberAsh(cost);
+  if (seen) {
+    badge.title += ` ${t('In this room: {on} output tokens is the middle turn with ASH ({onTurns} turns), {off} without it ({offTurns}). You choose when to ask for compact prose, so these are different tasks, not the same task twice.', { on: seen.on.toLocaleString(), onTurns: seen.onTurns, off: seen.off.toLocaleString(), offTurns: seen.offTurns })}`;
+  }
   if (!badge.isConnected) who.append(badge);
+  paintUncharged(cost);
+}
+
+// The one number on a message that is money not spent, where the human already reads the bill.
+//
+// Two halves, and only one of them is a measurement: the CLI SAID it read those tokens back from
+// its own cache instead of charging them again, while what the room never sent is counted in the
+// characters the room controls and turned into tokens at an estimate. The title says which is
+// which, because a reading nobody can take apart is a reading nobody can check.
+//
+// None of this is Ash. Ash shortens the answer, and the answer is the badge above the bubble.
+function paintUncharged(cost) {
+  if (!cost.responseMessageId) return;
+  const stamp = document.getElementById(`usage-${cost.responseMessageId}`);
+  if (!stamp) return;
+  const cached = Number(cost.cached ?? 0) || 0;
+  const unsent = tokensFor(cost.spared ?? 0);
+  const total = cached + unsent;
+  if (total <= 0) return;
+  const span = stamp.querySelector('.uncharged') ?? el('span', 'uncharged');
+  span.textContent = t('{n} uncharged', { n: formatTokens(total) });
+  span.title = t('{cached} tokens this CLI read back from its own cache instead of charging them again (measured). {unsent} tokens of briefing the room never sent (estimated at {rate} characters per token). Neither is Ash: Ash shortens the answer, and that is the figure above the bubble.', {
+    cached: cached.toLocaleString(), unsent: unsent.toLocaleString(), rate: CH_PER_TOKEN,
+  });
+  // Before the running total, after the turn's own bill: read left to right it is what this turn
+  // cost, what it did not, and where the room stands.
+  if (!span.isConnected) {
+    const sum = [...stamp.children].find((child) => child.textContent.startsWith('Σ'));
+    if (sum) stamp.insertBefore(span, sum); else stamp.append(span);
+  }
 }
 
 function renderThinking(event) {
@@ -1872,11 +1937,15 @@ function attachMemoryUsed(payload) {
   const carried = used.filter((note) => note.via === 'cascade').length;
   hint.append(el('span', 'lead', t('◉ memory used · {n}', { n: used.length }) + (carried ? t(' · {n} by association', { n: carried }) : '')));
   for (const note of used.slice(0, 3)) {
+    // The kind travels as a dot, not as a word. Those five colours were chosen for NOSTROMO's
+    // dark star map — `fact` is #dfeeff, a near-white blue — so printing the word in them left
+    // "FACT" invisible on a light background. A dot with a hairline ring reads on either, the
+    // word moves into the tooltip, and the chip gets its width back for the memory itself.
     const pill = el('button', `pill ${note.kind}${note.via === 'cascade' ? ' carried' : ''}`);
     pill.type = 'button';
     pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
-    pill.append(el('b', null, kindWord(note.kind).toLowerCase()), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
-    pill.title = `${note.text}\n${note.via === 'cascade'
+    pill.append(el('i', 'dot'), el('span', 'what', note.text.length > 52 ? `${note.text.slice(0, 51)}…` : note.text));
+    pill.title = `${kindWord(note.kind)} · ${note.text}\n${note.via === 'cascade'
       ? t('Came along because this room keeps carrying it with one of the others.')
       : t('The archive matched this to what you asked.')} ${t('Click to see it in NOSTROMO.')}`;
     pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
@@ -2240,6 +2309,99 @@ function artifactTiles(files) {
   return wrap;
 }
 
+// An agent handing a decision back. The options are buttons because a decision between three
+// things is a decision, not a paragraph to answer in prose — and because the room can then show
+// exactly what was offered, in the ledger, instead of a sentence somebody has to re-read.
+//
+// Pressing one writes it into the composer and stops. It does not send: the human may want to
+// add a reason, pick none of them, or ask something else entirely, and a button that sends is a
+// button that decides.
+// What this project already settled, at the head of the conversation.
+//
+// A room outlives the window it is read in: a conversation opened a week later, or by an agent
+// who was not there, starts by relitigating what was decided. This is the archive saying it
+// first — three decisions, newest first, read-only, costing nothing in any prompt. A refuted
+// decision never appears: the archive keeps it, but a strip titled "what we decided" cannot
+// carry something the room has since established is false.
+// What the room still has no answer to, offered while nobody is typing.
+//
+// These are not MADRE's ideas: `questionsFor` writes them from the archive itself, word for
+// word, and never invents a subject the room has not raised. Pressing one writes it into the
+// composer — the same contract as a choice bubble, and for the same reason: a suggestion that
+// sends itself is a suggestion that decided.
+//
+// They cost nothing in any prompt, and they leave the moment the human starts typing. A room at
+// rest can afford to wonder out loud; a room being written to cannot.
+async function renderOpenQuestions() {
+  const box = els.openq;
+  if (!box) return;
+  if (els.input.value.trim() || state.mode >= 2) { box.hidden = true; return; }
+  let questions = [];
+  try { questions = (await fetch('/api/questions?limit=3').then((response) => response.json()))?.questions ?? []; }
+  catch { return; }
+  if (!questions.length) { box.hidden = true; return; }
+  box.replaceChildren();
+  box.append(el('span', 'openq-lead', t('◉ still open here')));
+  for (const question of questions) {
+    const pill = el('button', 'openq-ask');
+    pill.type = 'button';
+    pill.append(el('span', 'what', question.text.length > 64 ? `${question.text.slice(0, 63)}…` : question.text));
+    pill.title = question.carried
+      ? `${question.text}\n${t('The room has carried this into {n} turn(s) and still has no answer.', { n: question.carried })}`
+      : `${question.text}\n${t('The archivist recorded this as open and nothing has answered it.')}`;
+    pill.addEventListener('click', () => {
+      els.input.value = question.text;
+      els.input.dispatchEvent(new Event('input', { bubbles: true }));
+      els.input.focus();
+    });
+    box.append(pill);
+  }
+  box.hidden = false;
+}
+
+async function renderSettled() {
+  const box = els.settled;
+  if (!box) return;
+  let decisions = [];
+  try { decisions = (await fetch('/api/decisions?limit=3').then((response) => response.json()))?.decisions ?? []; }
+  catch { return; }
+  if (!decisions.length) { box.hidden = true; return; }
+  box.replaceChildren();
+  box.append(el('span', 'settled-lead', t('◉ decided here · {n}', { n: decisions.length })));
+  for (const note of decisions) {
+    const pill = el('button', 'settled-note');
+    pill.type = 'button';
+    pill.append(el('i', 'dot'), el('span', 'what', note.text.length > 72 ? `${note.text.slice(0, 71)}…` : note.text));
+    pill.title = `${note.text}\n${t('Click to see it in NOSTROMO.')}`;
+    pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
+    box.append(pill);
+  }
+  box.hidden = false;
+}
+
+function renderChoice(event) {
+  const { question, options = [], agent } = event.payload;
+  if (!options.length) return null;
+  const node = el('div', 'choice');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(el('p', 'choice-q', question));
+  const row = el('div', 'choice-row');
+  for (const option of options) {
+    const button = el('button', 'choice-option', option);
+    button.type = 'button';
+    button.title = t('Writes it into the composer · nothing is sent until you press send');
+    button.addEventListener('click', () => {
+      els.input.value = option;
+      els.input.dispatchEvent(new Event('input', { bubbles: true }));
+      els.input.focus();
+    });
+    row.append(button);
+  }
+  node.append(row);
+  state.lastSender = null;
+  return node;
+}
+
 function renderAlert(event) {
   const { message } = event.payload;
   if (!replaying) { state.brakeArmed = true; updateStopAll(); }
@@ -2249,6 +2411,27 @@ function renderAlert(event) {
   node.append(el('span', 'cmd', t('STOPALL')));
   // A replayed alert is history: it stays in the thread, it does not shout again or arm the brake.
   if (!replaying) toast(`MU/TH/UR › ${message}`);
+  state.lastSender = null;
+  return node;
+}
+
+function renderAshValidation(event) {
+  if (event.payload.ok) return null;
+  const issueText = (issue) => {
+    if (issue === 'empty response') return t('empty response');
+    if (issue === 'unclosed code fence') return t('unclosed code fence');
+    if (issue === 'text after ```pulse block') return t('text after ```pulse block');
+    if (issue === 'missing negation') return t('missing negation');
+    const limit = issue.match(/^(\d+) (words|lines), maximum (\d+)$/);
+    if (limit) return t('{count} {unit}, maximum {maximum}', { count: limit[1], unit: t(limit[2]), maximum: limit[3] });
+    const missing = issue.match(/^missing (.+)$/);
+    if (missing) return t('missing {value}', { value: missing[1] });
+    return issue;
+  };
+  const details = (event.payload.issues ?? []).map(issueText).join(' · ');
+  const node = el('div', 'system alert');
+  node.append(el('b', null, 'ASH › '), t('REVIEW · the local check found: {details}', { details }));
+  if (!replaying) toast(`ASH › ${t('REVIEW · the local check found: {details}', { details })}`);
   state.lastSender = null;
   return node;
 }
@@ -2423,7 +2606,10 @@ function renderEventNode(event) {
     case 'extension.toggled':
       // A module switched on or off changes what the composer accepts.
       if (!replaying) void refreshCommands();
-      if (event.payload.id === 'ash') syncAshUI(Boolean(event.payload.enabled));
+      // The replay is history, not configuration. /api/state already supplied the live switch;
+      // letting an older toggle overwrite it made Ash appear to turn itself off or on at boot
+      // and whenever the human changed conversation.
+      if (!replaying && event.payload.id === 'ash') syncAshUI(Boolean(event.payload.enabled));
       if (event.payload.id === 'ripley') { state.ripley = Boolean(event.payload.enabled); syncViewerMode(); }
       if (!replaying) void refreshModules();
       return;
@@ -2433,7 +2619,14 @@ function renderEventNode(event) {
       break;
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
     case 'turn.reading': showReading(event); return;
-    case 'turn.cost': settleReading(event); return;
+    case 'turn.cost': {
+      settleReading(event);
+      // The card, if the human happens to be looking at it, follows the room instead of the
+      // moment MODULES was opened.
+      const open = document.getElementById('ash-economy');
+      if (open && !replaying) void paintAshEconomy(open);
+      return;
+    }
     case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
@@ -2445,7 +2638,9 @@ function renderEventNode(event) {
     case 'privacy.purged': node = renderPrivacy(event); break;
     case 'privacy.warning': if (!replaying) toast(t('MU/TH/UR › your message carries {n} private {term}. Agents will read it as you wrote it; their replies are guarded.', { n: event.payload.hits, term: event.payload.hits === 1 ? t('term') : t('terms') })); return;
     case 'memory.forgotten': node = renderForgotten(event); break;
-    case 'memory.noted': attachMemoryHint(event); return;
+    // A new decision changes what the head of the conversation should say.
+    case 'memory.noted': attachMemoryHint(event); if (!replaying && (event.payload.notes ?? []).some((note) => note.kind === 'decision')) void renderSettled();
+void renderOpenQuestions(); return;
     case 'dataset.exported': return;
     case 'agents.updated': {
       for (const agent of event.payload.agents ?? []) {
@@ -2490,7 +2685,9 @@ function renderEventNode(event) {
     case 'plan.stopped':
       node = renderPlanEvent(event);
       break;
+    case 'choice.offered': node = renderChoice(event); break;
     case 'room.alert': node = renderAlert(event); break;
+    case 'ash.validated': if (event.payload.ok) return; node = renderAshValidation(event); break;
     case 'room.stopped': node = renderHalted(event); break;
     case 'lease.granted': node = renderLease(event); break;
     case 'lease.refused': node = renderLeaseRefused(event); break;
@@ -2509,6 +2706,10 @@ function renderEventNode(event) {
     case 'eyecat.settled': settleEyecat(event); return;
     default: return;
   }
+  // A renderer may decline: a choice with no options, a reading with nothing to report. Declining
+  // is not an error, but appending the nothing it returned puts a hole in the column that every
+  // later pass over the children trips on.
+  if (!node) return;
   removeEmpty();
   const stickToBottom = els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 120;
   els.column.append(node);
@@ -2901,6 +3102,7 @@ state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
 state.capabilities = initial.capabilities ?? {};
 syncAshUI(Boolean(initial.ash?.enabled));
+void renderSettled();
 state.ripley = Boolean(initial.ripley?.enabled);
 state.projectRoot = initial.projectRoot ?? '';
 state.platform = initial.platform ?? null;
@@ -3051,6 +3253,49 @@ function syncModuleComposer() {
   updatePlaceholder();
   if (active && !state.create) askForModuleMode();
 }
+// A question about what this room already said is a question the room can answer itself, on this
+// computer, for nothing. @madre reads the same archive every paid agent reads and bills no
+// tokens at all — so the saving here is not a shorter answer or a better cache, it is the
+// absence of a charge.
+//
+// It offers and never decides. The human addressed somebody, or addressed nobody and MADRE
+// picked the first ready agent; changing that silently would be MADRE spending — or not
+// spending — in their name. One line, one button, and it says what it matched on.
+const OFFER_WHY = {
+  decision: 'what was decided',
+  discussed: 'whether this came up before',
+  where: 'where the room left off',
+  why: 'why something was chosen',
+  said: 'what somebody said',
+  open: 'what is still open',
+};
+function syncFreeOffer() {
+  const box = els.freeOffer;
+  if (!box) return;
+  const madre = state.agents.get('madre');
+  const chosen = els.target.value;
+  const why = archiveQuestion(els.input.value);
+  // Only worth offering when it is free, ready, and not already where it would go.
+  if (!why || !madre?.ready || chosen === 'madre' || state.mode >= 2) { box.hidden = true; box.replaceChildren(); return; }
+  if (box.dataset.why === why && !box.hidden) return;
+  box.dataset.why = why;
+  box.replaceChildren();
+  box.append(el('span', 'free-what', t('@madre can answer this from the room archive, on this computer, for no tokens · it read {why}', { why: t(OFFER_WHY[why]) })));
+  const go = el('button', 'free-go', t('ASK @madre'));
+  go.type = 'button';
+  go.addEventListener('click', () => {
+    els.target.value = 'madre';
+    renderPicker();
+    box.hidden = true;
+    els.input.focus();
+  });
+  box.append(go);
+  box.hidden = false;
+}
+els.input.addEventListener('input', syncFreeOffer);
+els.input.addEventListener('input', () => { if (els.openq) els.openq.hidden = Boolean(els.input.value.trim()); });
+els.composer?.addEventListener('submit', () => { if (els.freeOffer) { els.freeOffer.hidden = true; els.freeOffer.dataset.why = ''; } });
+
 els.input.addEventListener('input', syncModuleComposer);
 syncModuleComposer();
 
@@ -3157,7 +3402,15 @@ function showMenu(items, found) {
     button.setAttribute('role', 'option');
     button.setAttribute('aria-selected', String(index === menu.index));
     if (item.color) button.style.setProperty('--agent', item.color);
-    button.append(el('span', 'key', item.key), el('span', 'what', item.what));
+    // The name and what it does share the first line; the argument syntax gets its own, because
+    // a usage string like `/git [status|log|diff|commit "message"|push [confirm]]` is wider than
+    // the menu and used to push the description out of the row entirely — leaving a command with
+    // no explanation, which is the one thing this menu exists to give.
+    const [name, ...rest] = String(item.key).split(' ');
+    const args = rest.join(' ');
+    button.append(el('span', 'key', name), el('span', 'what', item.what));
+    if (args) button.append(el('span', 'args', args));
+    button.title = `${item.key} · ${item.what}`;
     button.addEventListener('mousedown', (event) => { event.preventDefault(); pickMenu(index); });
     els.slashMenu.append(button);
   });
@@ -4334,15 +4587,211 @@ async function updateModule(item, button) {
   (panel ?? card)?.prepend(box);
 }
 
+// The economy, at the size it deserves. The card in MODULES is the glance; this is the reading.
+//
+// Order is the argument: what the room never paid for comes first, because it is the only figure
+// here that is money, then what Ash has been seen to do to the answers, then where the tokens
+// that WERE paid for went. Nothing in this panel is a number the room did not measure or cannot
+// name as an estimate.
+const economyPanel = {
+  dialog: document.querySelector('#economy'),
+  close: document.querySelector('#economy-close'),
+  body: document.querySelector('#economy-body'),
+};
+
+function openEconomy() {
+  if (!economyPanel.dialog || economyPanel.dialog.open) return;
+  economyPanel.dialog.showModal();
+  void renderEconomy();
+}
+
+economyPanel.close?.addEventListener('click', () => economyPanel.dialog.close());
+
+async function renderEconomy() {
+  const box = economyPanel.body;
+  if (!box) return;
+  const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
+  const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
+  let read;
+  try { read = await fetch('/api/economy').then((response) => response.json()); }
+  catch { box.replaceChildren(el('p', 'note', t('ECONOMY UNAVAILABLE'))); return; }
+  box.replaceChildren();
+  if (!read?.turns) {
+    box.append(el('p', 'note', t('NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS')));
+    return;
+  }
+  const saved = read.saved ?? {};
+  const totals = read.totals;
+
+  // The room in six figures, across the full width. A stat row, not a chart: six numbers of six
+  // different kinds have no shape to draw, and drawing one anyway is how a panel starts lying.
+  const strip = el('div', 'economy-strip');
+  for (const [value, label, hint] of [
+    [count(read.turns), t('TURNS WEIGHED'), t('every turn this room has been billed for')],
+    [count(totals.input), t('INPUT CHARGED'), t('tokens the CLIs charged as fresh reading')],
+    [count(totals.output), t('OUTPUT CHARGED'), t('tokens written back · the dearer half')],
+    [count(saved.tokens), t('NEVER CHARGED'), t('read back from a cache, plus what was never sent')],
+    [pct(totals.cacheShare), t('CAME FROM CACHE'), t('of everything read, the share nobody charged twice')],
+    [totals.charsPerInputToken ? totals.charsPerInputToken.toFixed(2) : '—', t('CH PER TOKEN'), t('what MADRE wrote against what the CLIs were charged for reading · not a tokenizer')],
+  ]) {
+    const cell = el('div', 'economy-stat');
+    cell.title = hint;
+    cell.append(el('b', null, String(value)), el('span', null, label));
+    strip.append(cell);
+  }
+  box.append(strip);
+
+  // 1 · The only money on this screen.
+  const first = el('div', 'card-block');
+  first.append(el('h5', null, t('NEVER CHARGED FOR')));
+  first.append(el('div', 'economy-headline', count(saved.tokens)));
+  metrics(first, [
+    [t('FROM THE CACHE'), count(saved.cachedTokens), t('the CLI said it read these back instead of charging them again · measured')],
+    [t('NEVER SENT'), count(saved.unsentTokens), t('briefing a turn had no use for · estimated from characters, not measured')],
+    [t('OF THE INPUT'), pct(saved.cachedShare), t('the share of everything read that came back from a cache')],
+  ]);
+  first.append(el('p', 'note', t('One half is measured and the other is estimated, and they are never added without saying so. Neither of them is Ash: Ash shortens the answer, which is the next reading.')));
+  box.append(first);
+
+  // 1b · The turns with no bill at all. Nothing here is compared to anything: a count, and the
+  // scale of a paid turn beside it so the count means something.
+  if (read.free?.turns) {
+    const free = el('div', 'card-block');
+    free.append(el('h5', null, t('TURNS THE ROOM ANSWERED ITSELF')));
+    metrics(free, [
+      [t('FREE TURNS'), count(read.free.turns), t('answered by @madre on this computer · no provider, no bill')],
+      [t('OF EVERY TURN'), pct(read.free.share), t('of the turns weighed in this room')],
+      [t('A PAID TURN'), read.free.paidOutputMedian ? `${count(read.free.paidOutputMedian)}↑` : '—', t('the middle paid turn here · what the others cost, not what these would have')],
+    ]);
+    free.append(el('p', 'note', t('These turns have no bill because nothing left this computer to answer them. MADRE does not say what they would have cost somewhere else: nobody measured that.')));
+    box.append(free);
+  }
+
+  // 2 · Ash, observed rather than claimed.
+  const second = el('div', 'card-block');
+  second.append(el('h5', null, t('WHAT ASH DOES TO AN ANSWER')));
+  // The price before the promise. Ash concatenates an instruction to every prompt it is on, so it
+  // ALWAYS costs input — and the room measures that block exactly, because it is the block the
+  // room itself wrote. Showing only the shorter answer below, which is observed and conditional,
+  // would be an argument for Ash rather than a reading of it.
+  const block = read.blocks.find((one) => one.id === 'ash');
+  if (block) {
+    metrics(second, [
+      [t('ASH ADDS'), `${block.perTurn} CH`, t('to every prompt it is on · measured, not estimated')],
+      [t('IN TOKENS'), `≈${Math.round(block.perTurn / CH_PER_TOKEN)}`, t('at {rate} characters per token · an estimate', { rate: CH_PER_TOKEN })],
+      [t('TURNS CARRYING IT'), count(block.turns), t('of the {n} weighed in this room', { n: count(read.turns) })],
+    ]);
+    second.append(el('p', 'note', t('What Ash costs is certain and measured here. What it saves is not: the shorter answer below is observed, never promised. Output is the dearer half of every bill, so the trade is usually favourable — MADRE does not turn it into money because it does not know your prices.')));
+  }
+  if (read.ash?.agents?.length) ashComparison(second, read.ash);
+  else second.append(el('p', 'note', t('No turns with the switch recorded yet. Leave Ash on for a few turns and off for a few more, and this fills.')));
+  box.append(second);
+
+  // 3 · Where what WAS paid for went.
+  const third = el('div', 'card-block');
+  third.append(el('h5', null, t('WHERE EACH PROMPT GOES')));
+  economyBlocks(third, read);
+  third.append(el('p', 'note', t('{pct} of each prompt is the unchanging head a cache can match. MADRE wrote {chars} characters of the {input} input tokens you were charged for; the rest is what the CLIs read on their own.', { pct: pct(read.totals.prefixShare), chars: count(read.totals.chars), input: count(read.totals.input) })));
+  box.append(third);
+
+  // 4 · One row per agent, because they do not behave alike.
+  // Per agent: turns, two token counts and two shares — five attributes of four different kinds,
+  // which is a table and not a row of bars. A bar can only carry one measure honestly, and these
+  // are read by looking one agent up, not by comparing lengths.
+  const fourth = el('div', 'card-block wide');
+  fourth.append(el('h5', null, t('BY AGENT')));
+  const table = el('table', 'economy-table');
+  const head = el('tr');
+  for (const column of [t('AGENT'), t('TURNS'), t('INPUT'), t('OUTPUT'), t('CACHE'), t('CACHED %'), t('CH / TOKEN')]) head.append(el('th', null, column));
+  table.append(el('thead', null)).lastChild.append(head);
+  const body = el('tbody');
+  for (const agent of read.agents) {
+    const row = el('tr');
+    row.append(el('th', null, String(agent.agent).toUpperCase()));
+    for (const cell of [count(agent.turns), count(agent.input), count(agent.output), count(agent.cached), pct(agent.cacheShare), agent.charsPerInputToken ? agent.charsPerInputToken.toFixed(2) : '—']) {
+      row.append(el('td', null, String(cell)));
+    }
+    body.append(row);
+  }
+  table.append(body);
+  fourth.append(table);
+  box.append(fourth);
+}
+
+// The blocks a prompt is made of, widest first. Shared by the card and the panel so the two
+// cannot drift into saying different things about the same room.
+function economyBlocks(box, read) {
+  const widest = read.blocks[0]?.chars || 1;
+  const bars = el('div', 'ash-blocks');
+  for (const block of read.blocks.slice(0, 10)) {
+    const row = el('div', 'ash-block');
+    const bar = el('i');
+    bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
+    row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CH/TURN${block.always ? ' · ALWAYS' : ''}`));
+    bars.append(row);
+  }
+  box.append(bars);
+}
+
+// What Ash has actually done here, in output tokens, per agent.
+//
+// Never a saving: the room does not run a turn twice, so the number that would say "you saved
+// this" was never measured by anybody. This is the middle turn with Ash against the middle turn
+// without it, in this room, with the count of turns behind each side in plain sight.
+//
+// Two bars on one scale, not one bar of a ratio. A single bar had to encode "what fraction of
+// the usual length is left", which reads backwards — a longer bar meant Ash did less. Two bars
+// say it the way anybody reads a bar: the shorter one is the shorter answer.
+function ashComparison(box, ash) {
+  if (!ash?.agents?.length) return;
+  const widest = Math.max(...ash.agents.flatMap((agent) => [agent.on.medianOutput ?? 0, agent.off.medianOutput ?? 0]), 1);
+  const list = el('div', 'ash-compare');
+  for (const agent of ash.agents) {
+    const group = el('div', 'ash-agent');
+    group.append(el('b', null, String(agent.agent).toUpperCase()));
+    if (agent.comparable) {
+      for (const [side, label, turns] of [['on', t('with ASH'), agent.on.turns], ['off', t('without ASH'), agent.off.turns]]) {
+        const row = el('div', `ash-bar ${side}`);
+        const bar = el('i');
+        bar.style.setProperty('--fill', `${Math.max(2, Math.round((agent[side].medianOutput / widest) * 100))}%`);
+        row.append(el('span', 'ash-side', label), bar, el('span', 'ash-figure', t('{n}↑ · {turns} turns', { n: agent[side].medianOutput.toLocaleString(), turns })));
+        group.append(row);
+      }
+    } else {
+      group.append(el('p', 'ash-waiting', t('{n} turns with ASH, {m} without · {min} of each before this can be read', {
+        n: agent.on.turns, m: agent.off.turns, min: ash.minTurns,
+      })));
+    }
+    // Two medians are not a finding. When the gap is smaller than how much this agent's answers
+    // vary anyway, the honest thing on the screen is that there is nothing to read here yet.
+    if (agent.comparable) {
+      group.append(el('p', agent.readable ? 'ash-verdict' : 'ash-verdict noise', agent.readable
+        ? t('{pct} shorter with ASH, wider than this agent varies here (±{on} and ±{off})', { pct: `${Math.round(Math.abs(agent.share) * 100)}%`, on: agent.on.spread.toLocaleString(), off: agent.off.spread.toLocaleString() })
+        : t('the difference fits inside how much this agent varies anyway (±{on} and ±{off}) · nothing to read yet', { on: agent.on.spread.toLocaleString(), off: agent.off.spread.toLocaleString() })));
+    }
+    list.append(group);
+  }
+  box.append(list);
+  box.append(el('p', 'note', t('The middle turn of each side, not an average. You choose when to ask for compact prose, so the two sides are different tasks, not the same task twice — MADRE does not claim a percentage saved.')));
+}
+
 // The economy, on the card of the thing it is about. It fills as the room is used, because it
 // weighs turns, not history.
 function ashReading(panel) {
   const box = cardBlock(panel, t('ECONOMY · THIS ROOM'));
-  const waiting = el('p', 'note', t('READING…'));
-  box.append(waiting);
+  box.id = 'ash-economy';
+  box.append(el('p', 'note', t('READING…')));
+  paintAshEconomy(box);
+}
+
+// The card is the glance, and a glance is four figures and a door. Everything that needs width —
+// the bars, where each prompt goes, the sentences that say which half is measured — is in the
+// panel behind SEE THE ECONOMY. A card that tries to be the panel ends up being neither: the
+// lines wrap out of their box and nothing on it can be read at a glance.
+function paintAshEconomy(box) {
   const pct = (value) => (Number.isFinite(value) ? `${Math.round(value * 100)}%` : '—');
   const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
-  fetch('/api/economy').then((response) => response.json()).then((read) => {
+  return fetch('/api/economy').then((response) => response.json()).then((read) => {
     box.replaceChildren(el('h5', null, t('ECONOMY · THIS ROOM')));
     if (!read?.turns) {
       box.append(el('p', 'note', t('NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS')));
@@ -4358,20 +4807,6 @@ function ashReading(panel) {
       [t('SPENT OUT'), count(totals.output), t('output tokens, the dearer half')],
       [t('TURNS'), count(read.turns), t('weighed so far')],
     ]);
-    // Not a tokenizer: what MADRE wrote against what the CLIs were charged for reading. The
-    // gap between the two is the agents' own system prompts, their tools and the files they
-    // opened during a turn, which is the useful thing this number has to say.
-    box.append(el('p', 'note', t('{pct} OF EACH PROMPT IS THE UNCHANGING HEAD A CACHE CAN MATCH · MADRE WROTE {chars} CHARACTERS OF THE {input} INPUT TOKENS YOU WERE CHARGED FOR; THE REST IS WHAT THE CLIs READ ON THEIR OWN', { pct: pct(totals.prefixShare), chars: count(totals.chars), input: count(totals.input) })));
-    const widest = read.blocks[0]?.chars || 1;
-    const bars = el('div', 'ash-blocks');
-    for (const block of read.blocks.slice(0, 8)) {
-      const row = el('div', 'ash-block');
-      const bar = el('i');
-      bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
-      row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CH/TURN${block.always ? ' · ALWAYS' : ''}`));
-      bars.append(row);
-    }
-    box.append(bars);
   }).catch(() => { box.replaceChildren(el('h5', null, t('ECONOMY · THIS ROOM')), el('p', 'note', t('ECONOMY UNAVAILABLE'))); });
 }
 
@@ -4515,7 +4950,10 @@ function builtinCard(item) {
         toggle.disabled = false;
       }
     });
-    actions.append(toggle);
+    const open = el('button', null, t('SEE THE ECONOMY'));
+    open.type = 'button';
+    open.addEventListener('click', () => openEconomy());
+    actions.append(open, toggle);
     return card;
   }
 
@@ -4970,7 +5408,7 @@ async function loadCore() {
   core.panes?.classList.add('reading');
   let briefing;
   try {
-    const query = new URLSearchParams({ mode: String(core.mode), ...(core.agent ? { agent: core.agent } : {}), ...(core.text ? { text: core.text } : {}) });
+    const query = new URLSearchParams({ mode: String(core.mode), ash: String(state.ashInstalled && state.ash), ...(core.agent ? { agent: core.agent } : {}), ...(core.text ? { text: core.text } : {}) });
     briefing = await fetch(`/api/briefing?${query}`).then((response) => response.json());
     if (briefing.error) throw new Error(briefing.error);
   } catch (error) {

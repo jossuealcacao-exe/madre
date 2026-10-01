@@ -217,3 +217,110 @@ test('economy: the answer is counted as it is written, and a silent CLI reports 
   assert.equal(parseCodexOutput(`${partial}\n{"type":"item.comp`).text.length, 'El router monta /api primero.'.length);
   assert.equal(parseCodexOutput('').text, '');
 });
+
+test('economy: Ash is observed, never claimed as a saving', async () => {
+  const { economy, ashObservation, ASH_MIN_TURNS } = await import('../src/room/economy.mjs');
+  const turn = (agent, ash, output, extra = {}) => ({ type: 'turn.cost', payload: { agent, ash, output, input: 100, chars: 100, blocks: {}, ...extra } });
+
+  // Below the floor there is no reading at all: a difference of two turns against one is noise
+  // wearing a percentage sign, and printing it would be the fixed percentage the module refuses.
+  const thin = economy([turn('claude', true, 300), turn('claude', false, 700)]);
+  assert.equal(thin.ash.comparable, false);
+  assert.equal(thin.ash.agents[0].delta, undefined, 'a difference was published without turns behind it');
+
+  const events = [
+    ...Array.from({ length: ASH_MIN_TURNS + 1 }, (_, i) => turn('claude', true, 300 + i * 10)),
+    ...Array.from({ length: ASH_MIN_TURNS + 1 }, (_, i) => turn('claude', false, 700 + i * 10)),
+  ];
+  const read = economy(events).ash;
+  assert.equal(read.comparable, true);
+  const claude = read.agents.find((one) => one.agent === 'claude');
+  assert.equal(claude.on.medianOutput, 325);
+  assert.equal(claude.off.medianOutput, 725);
+  assert.equal(claude.delta, 400);
+
+  // The middle turn, not the average: one long answer must not speak for the rest.
+  const skewed = ashObservation([
+    ...Array.from({ length: ASH_MIN_TURNS }, () => ({ agent: 'codex', ash: true, output: 100 })),
+    { agent: 'codex', ash: true, output: 100000 },
+    ...Array.from({ length: ASH_MIN_TURNS }, () => ({ agent: 'codex', ash: false, output: 100 })),
+  ]);
+  assert.equal(skewed.agents[0].on.medianOutput, 100, 'one long turn was allowed to speak for the room');
+
+  // A turn weighed before the room recorded the switch belongs to no side, and a failed turn
+  // bought no answer: neither may lean the reading.
+  const dirty = ashObservation([
+    ...Array.from({ length: ASH_MIN_TURNS }, () => ({ agent: 'gemini', ash: true, output: 200 })),
+    ...Array.from({ length: ASH_MIN_TURNS }, () => ({ agent: 'gemini', ash: false, output: 800 })),
+    { agent: 'gemini', output: 9000 },
+    { agent: 'gemini', ash: true, output: 9000, failed: true },
+  ]);
+  const gemini = dirty.agents.find((one) => one.agent === 'gemini');
+  assert.equal(gemini.on.turns, ASH_MIN_TURNS);
+  assert.equal(gemini.off.turns, ASH_MIN_TURNS);
+  assert.equal(gemini.on.medianOutput, 200);
+});
+
+test('routing: the room offers itself only for questions its own archive answers', async () => {
+  const { archiveQuestion } = await import('../public/routing.js');
+
+  // Questions about what this room said, decided or left open: @madre reads the same archive and
+  // bills nothing, so offering costs the human a glance and saves a whole turn.
+  for (const asked of [
+    '¿qué decidimos sobre el checkpoint?',
+    '¿ya habíamos hablado de Windows?',
+    '¿dónde nos quedamos con el puerto?',
+    '¿por qué elegimos SQLite?',
+    'what did we decide about the ledger?',
+    'did we ever discuss caching?',
+    'what is still open on the port?',
+  ]) assert.ok(archiveQuestion(asked), `the room would have paid for "${asked}"`);
+
+  // And never for anything else. A wrong offer is a paid agent the human did not get.
+  for (const asked of [
+    '¿cómo funciona src/room/guard.mjs?',           // needs the project read, not the archive
+    'implementa el enrutador',                       // an instruction, however it is worded
+    'create the file and run the tests',
+    '@claude ¿qué decidimos?',                       // already addressed: the human chose
+    'hola',
+    '',
+  ]) assert.equal(archiveQuestion(asked), null, `the room would have offered itself for "${asked}"`);
+});
+
+test('economy: a turn the room answered itself is counted, never priced', async () => {
+  const { economy } = await import('../src/room/economy.mjs');
+  const turn = (agent, output) => ({ type: 'turn.cost', payload: { agent, output, input: 10, cached: 0, chars: 100, blocks: {} } });
+  const read = economy([turn('madre', 0), turn('madre', 0), turn('claude', 1800), turn('codex', 300), turn('gemini', 170)]);
+
+  assert.equal(read.free.turns, 2);
+  assert.equal(read.free.share, 0.4);
+  // The scale beside the count is what the OTHER turns cost. A counterfactual price for these
+  // ones would be a number nobody measured, which is the one thing this reading never prints.
+  assert.equal(read.free.paidOutputMedian, 300, 'the median took the free turns into account');
+  assert.ok(!('saved' in read.free) && !('wouldHaveCost' in read.free), 'the room put a price on a turn it never paid');
+});
+
+test('economy: a difference smaller than the room\'s own noise is not reported as an effect', async () => {
+  const { ashObservation } = await import('../src/room/economy.mjs');
+  const turns = (agent, ash, outputs) => outputs.map((output) => ({ agent, ash, output }));
+
+  // The real numbers from a paired run against Claude: five turns each side, on the same five
+  // questions. The medians differ, and the difference is smaller than how much the answers vary
+  // from question to question. A reading that called that an effect would be an advertisement.
+  const noisy = ashObservation([
+    ...turns('claude', true, [1215, 3009, 2207, 1658, 1957]),
+    ...turns('claude', false, [1725, 3907, 1403, 2258, 1467]),
+  ]);
+  const claude = noisy.agents[0];
+  assert.equal(claude.comparable, true, 'five turns a side is enough to look');
+  assert.equal(claude.readable, false, 'the room reported noise as an effect');
+  assert.ok(Math.abs(claude.delta) < claude.on.spread + claude.off.spread);
+
+  // And an effect that does clear the noise is reported, or the reading could only ever say no.
+  const real = ashObservation([
+    ...turns('codex', true, [400, 420, 390, 410, 405]),
+    ...turns('codex', false, [1600, 1650, 1580, 1620, 1610]),
+  ]);
+  assert.equal(real.agents[0].readable, true, 'a difference far outside the spread went unreported');
+  assert.ok(real.agents[0].share > 0.7);
+})

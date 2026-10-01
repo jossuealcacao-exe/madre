@@ -1116,7 +1116,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
   assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.1 setup . --platforms codex,claude');
   assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.1', 'setup', '.']);
-  assert.equal(EXTENSIONS.length, 7);
+  assert.equal(EXTENSIONS.length, 8);
   assert.ok(EXTENSIONS.some((extension) => extension.id === 'git-pulse' && extension.kind === 'builtin'));
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));
@@ -2179,15 +2179,57 @@ test('Ash is opt-in per message, asks for compact prose, and never rewrites a wo
     const events = (await store.readAll()).filter((event) => event.type === 'message.created');
     assert.equal(events[2].payload.text, request);
     assert.equal(events[2].payload.originalText, undefined);
-    assert.deepEqual(events[2].payload.ash, { active: true });
+    assert.deepEqual(events[0].payload.ash, { requested: true, active: false });
+    assert.deepEqual(events[2].payload.ash, { requested: true, active: true });
     assert.equal(events[3].payload.text, answer, 'the reply came back rewritten');
     assert.equal(events[3].payload.originalText, undefined);
+
+    const costs = (await store.readAll()).filter((event) => event.type === 'turn.cost');
+    assert.deepEqual(costs.map((event) => event.payload.ash), [false, true], 'the bill does not say whether Ash reached the prompt');
+    const validations = (await store.readAll()).filter((event) => event.type === 'ash.validated');
+    assert.equal(validations.length, 1, 'only the effective Ash turn should be checked');
+    assert.equal(validations[0].payload.ok, true);
 
     // And what enters the next turn's transcript is the same words again.
     await room.send({ text: 'Resume brevemente', target: 'claude', ash: false });
     assert.equal(prompts[2].split(request).length - 1, 2, 'both earlier turns should carry the request as written');
     assert.ok(!/Ash: answer in compact prose/.test(prompts[2]), 'Ash was not asked for and came anyway');
     assert.equal(events.at(-1).payload.text, answer);
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('Ash captures the send decision before the first await and records failed prompt evidence', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-ash-snapshot-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }];
+    const prompts = [];
+    let fail = false;
+    const room = new Room({
+      store, agents, projectRoot: root,
+      invokers: { 'claude-readonly': async ({ prompt }) => {
+        prompts.push(prompt);
+        if (fail) throw new Error('adapter stopped after receiving the prompt');
+        return { text: 'Hecho.', usage: { inputTokens: 20, outputTokens: 2 } };
+      } },
+    });
+    room.setAsh(true);
+    const sent = room.send({ text: 'Resume la ruta src/room.mjs', target: 'claude', ash: true });
+    room.setAsh(false);
+    await sent;
+    assert.match(prompts[0], /Ash: answer in compact prose/, 'a toggle after Send changed the turn in flight');
+
+    room.setAsh(true);
+    fail = true;
+    await room.send({ text: 'Resume el fallo 17', target: 'claude', ash: true });
+    const events = await store.readAll();
+    const failedCost = events.find((event) => event.type === 'turn.cost' && event.payload.failed);
+    assert.ok(failedCost, 'a prompt received by a failing adapter left no cost evidence');
+    assert.equal(failedCost.payload.ash, true);
+    assert.ok(failedCost.payload.blocks.ash > 0);
+    assert.ok(events.some((event) => event.type === 'message.failed'));
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
@@ -2205,7 +2247,11 @@ test('Ash reaches every step of a cross-agent plan, and the steps are still writ
     const room = new Room({
       store, agents, projectRoot: root,
       invokers: {
-        'claude-readonly': async ({ prompt }) => { prompts.push({ agent: 'claude', prompt }); return { text: '```pulse\n@gemini: revisa el router del proyecto y reporta\n```', usage: null }; },
+        'claude-readonly': async ({ prompt }) => {
+          prompts.push({ agent: 'claude', prompt });
+          if (/this is your closing turn/.test(prompt)) return { text: 'Cierre completo.', usage: null };
+          return { text: '```pulse\n@gemini: revisa el router del proyecto y reporta\n@claude: cierra con la conclusión\n```', usage: null };
+        },
         'gemini-readonly': async ({ prompt }) => { prompts.push({ agent: 'gemini', prompt }); return { text: 'Revisado: monta /api primero.', usage: null }; },
       },
     });
@@ -2215,6 +2261,14 @@ test('Ash reaches every step of a cross-agent plan, and the steps are still writ
     assert.ok(step, 'the delegated step never ran');
     assert.match(step.prompt, /Ash: answer in compact prose/, 'a delegated step was not asked for compact prose');
     assert.match(step.prompt, /revisa el router del proyecto y reporta/, 'the step was rewritten on its way to the delegate');
+    const closing = prompts.at(-1);
+    assert.equal(closing.agent, 'claude');
+    assert.match(closing.prompt, /Ash: answer in compact prose/, 'the closing turn lost Ash');
+    const delegated = (await store.readAll()).filter((event) => event.type === 'message.created' && event.payload.status === 'delegated');
+    assert.deepEqual(delegated.map((event) => ({ target: event.payload.target, ash: event.payload.ash, mode: event.payload.mode })), [
+      { target: 'gemini', ash: { active: true }, mode: 1 },
+      { target: 'claude', ash: { active: true }, mode: 1 },
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

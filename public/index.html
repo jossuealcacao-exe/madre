@@ -84,6 +84,20 @@
         </div>
       </dialog>
 
+      <dialog id="economy" class="mother economy" aria-label="Token economy">
+        <div class="mother-frame">
+          <header class="mother-head">
+            <span class="mother-title">ECONOMY</span>
+            <span class="mother-sub">MADRE · WHAT THIS ROOM SPENT AND WHAT IT NEVER SPENT</span>
+            <span class="mother-actions">
+              <button id="economy-close" class="mother-close" type="button">CLOSE ×</button>
+            </span>
+          </header>
+          <section id="economy-body" class="mother-section"></section>
+          <footer class="mother-foot">MEASURED FROM WHAT THE CLIs CHARGED · A SAVING NOBODY MEASURED IS NEVER SHOWN</footer>
+        </div>
+      </dialog>
+
       <dialog id="modules" class="mother modules" aria-label="Modules">
         <div class="mother-frame">
           <header class="mother-head">
@@ -134,6 +148,7 @@
 
       <main id="messages" class="thread" aria-live="polite">
         <div id="thread-inner" class="thread-inner">
+          <div id="settled" class="settled" hidden></div>
           <div class="empty">
             <svg class="empty-mark" viewBox="0 0 72 20" aria-hidden="true">
               <path class="beat" d="M1 10 H16 L20 10 L23.5 2 L28 18 L32 10 L35 10 L37 6 L39 10 H52" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" pathLength="100"/>
@@ -159,6 +174,8 @@
         <div id="picker" class="picker" role="radiogroup" aria-label="Agent"></div>
         <select id="target" aria-label="Agent" class="visually-hidden"></select>
         <div id="attachments" class="attachments" hidden></div>
+        <div id="free-offer" class="free-offer" hidden></div>
+        <div id="openq" class="openq" hidden></div>
         <div class="field">
           <div id="reply-quote" class="reply-quote" hidden></div>
           <span id="crew-label" class="crew-label" aria-hidden="true">HUMAN ›</span>

@@ -90,6 +90,74 @@ export function turnCost(parts = [], usage = null) {
 export const CH_PER_TOKEN = 3.5;
 export const tokensFor = (chars) => Math.round((Number(chars) || 0) / CH_PER_TOKEN);
 
+// Ash, measured instead of claimed.
+//
+// There is no honest way to say what a turn "would have cost" without Ash: the room never runs
+// the same turn twice, so a saving attributed to it would be a number nobody measured. What CAN
+// be measured is what this room has actually seen — the output tokens of the turns that ran
+// compact against the ones that did not, for the same agent.
+//
+// Median, not mean: one long answer drags a mean and says nothing about the usual turn. Per
+// agent, because agents differ far more from each other than Ash differs from itself. And only
+// once both sides have enough turns to be worth reading, because a difference of two turns
+// against one is noise wearing a percentage sign.
+//
+// What this is NOT: a controlled comparison. The human decides when to ask for compact prose,
+// so the two sides are different tasks, not the same task twice. It is an observation of this
+// room, and the reading says so.
+export const ASH_MIN_TURNS = 5;
+
+// How far the usual turn sits from the middle one. Median absolute deviation rather than a
+// standard deviation: one four-thousand-token answer among five short ones would carry a
+// standard deviation away with it, and that answer is exactly what this has to survive.
+function spread(values) {
+  const middle = median(values);
+  if (middle === null) return 0;
+  return median(values.map((value) => Math.abs(value - middle))) ?? 0;
+}
+
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+}
+
+// turn.cost events -> per agent, the output tokens seen with Ash on and with Ash off. Turns
+// weighed before the room recorded the switch carry no boolean and are left out entirely:
+// guessing which side they belong to would poison both.
+export function ashObservation(turns = [], { minTurns = ASH_MIN_TURNS } = {}) {
+  const sides = new Map();
+  for (const turn of turns) {
+    if (turn?.failed) continue;
+    if (typeof turn?.ash !== 'boolean') continue;
+    const output = Number(turn.output ?? 0) || 0;
+    if (output <= 0) continue;
+    const who = turn.agent ?? 'unknown';
+    const mine = sides.get(who) ?? { on: [], off: [] };
+    mine[turn.ash ? 'on' : 'off'].push(output);
+    sides.set(who, mine);
+  }
+  const agents = [...sides.entries()].map(([agent, mine]) => {
+    const on = { turns: mine.on.length, medianOutput: median(mine.on), spread: spread(mine.on) };
+    const off = { turns: mine.off.length, medianOutput: median(mine.off), spread: spread(mine.off) };
+    const comparable = on.turns >= minTurns && off.turns >= minTurns;
+    const entry = { agent, on, off, comparable };
+    if (comparable) {
+      entry.delta = off.medianOutput - on.medianOutput;
+      entry.share = off.medianOutput > 0 ? Number((entry.delta / off.medianOutput).toFixed(3)) : null;
+      // Two medians are not a finding. Turn length varies enormously from one question to the
+      // next — a paired run against the real CLIs put the spread at ninety-seven percentage
+      // points — so a gap smaller than that variation is the room's own noise wearing a number.
+      // Saying so is the whole point: a reading that can only ever agree with the switch is an
+      // advertisement, not a measurement.
+      entry.readable = Math.abs(entry.delta) > on.spread + off.spread;
+    }
+    return entry;
+  }).sort((a, b) => (b.on.turns + b.off.turns) - (a.on.turns + a.off.turns));
+  return { minTurns, agents, comparable: agents.some((agent) => agent.comparable) };
+}
+
 // Many turns, read together. This is the view that says where a room's tokens go.
 export function economy(events = []) {
   const turns = [];
@@ -98,7 +166,7 @@ export function economy(events = []) {
     const cost = event.payload;
     if (cost && typeof cost === 'object') turns.push(cost);
   }
-  if (!turns.length) return { turns: 0, blocks: [], agents: [], totals: null };
+  if (!turns.length) return { turns: 0, blocks: [], agents: [], totals: null, free: { turns: 0, share: 0, paidOutputMedian: null }, ash: ashObservation([]) };
 
   const blocks = new Map();
   const agents = new Map();
@@ -143,9 +211,23 @@ export function economy(events = []) {
     tokens: totals.cached + tokensFor(spared),
   };
 
+  // Turns the room answered itself. @madre runs on this computer and reports no usage at all, so
+  // these are not a saving measured against something — they are turns with no bill. The median
+  // of what a paid turn cost in THIS room is given beside them so the count has a scale, and it
+  // is named as what it is: what other turns cost, not what these would have.
+  const free = turns.filter((turn) => turn.agent === 'madre');
+  const paidOutputs = turns.filter((turn) => turn.agent !== 'madre' && (Number(turn.output) || 0) > 0).map((turn) => Number(turn.output));
+  const freeTurns = {
+    turns: free.length,
+    share: turns.length ? Number((free.length / turns.length).toFixed(3)) : 0,
+    paidOutputMedian: paidOutputs.length ? median(paidOutputs) : null,
+  };
+
   return {
     turns: turns.length,
     saved,
+    free: freeTurns,
+    ash: ashObservation(turns),
     blocks: ranked,
     agents: [...agents.values()]
       .map((agent) => ({ ...agent, charsPerInputToken: agent.input > 0 ? Number((agent.chars / agent.input).toFixed(2)) : null, cacheShare: agent.input + agent.cached > 0 ? Number((agent.cached / (agent.input + agent.cached)).toFixed(3)) : null }))

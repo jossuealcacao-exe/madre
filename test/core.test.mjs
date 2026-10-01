@@ -39,6 +39,20 @@ test('core: the briefing is the document a turn would carry, and asking for it i
   } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
 
+test('core: the briefing follows the composer Ash selection, not only the module switch', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-core-ash-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const room = new Room({ store, agents, projectRoot: root, invokers: {} });
+    room.setAsh(true);
+    assert.equal((await room.briefing({ agent: 'codex', ash: false })).parts.some((part) => part.id === 'ash'), false);
+    assert.equal((await room.briefing({ agent: 'codex', ash: true })).parts.some((part) => part.id === 'ash'), true);
+    room.setAsh(false);
+    assert.equal((await room.briefing({ agent: 'codex', ash: true })).parts.some((part) => part.id === 'ash'), false);
+    await room.shutdown();
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
+});
+
 test('core: raising the mode shows the permission that would be given, written out', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-core-mode-'));
   try {

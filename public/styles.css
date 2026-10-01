@@ -304,6 +304,59 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 .row.thinking .tokens { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--text-3); margin-left: 8px; opacity: .75; }
 /* What a reply cost, on the same line as everything else above the bubble: no pill, no wrap. */
 .who .spent { flex: none; margin-left: auto; padding: 0; border: 0; background: none; font-family: var(--mono); font-size: 10px; letter-spacing: .04em; color: var(--text-3); white-space: nowrap; }
+.who .spent.ash { color: var(--brew); }
+.stamp .uncharged { color: var(--brew); }
+.ash-observed { margin-top: 12px; }
+.economy-headline { font-family: var(--mono); font-size: clamp(38px, 5vw, 56px); line-height: 1.1; letter-spacing: -.01em; color: var(--ph); margin: 2px 0 12px; }
+/* The panel is a screen, not a column. Sections pair up once there is room for two, and the
+   ones that carry a table or a full-width strip keep the whole width to themselves. */
+#economy-body { display: grid; grid-template-columns: 1fr; gap: 0 56px; align-content: start; }
+@media (min-width: 1180px) { #economy-body { grid-template-columns: 1fr 1fr; } #economy-body > .wide, #economy-body > .economy-strip { grid-column: 1 / -1; } }
+.economy .card-block { display: grid; gap: 10px; align-content: start; }
+.economy .card-block { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--ph-faint); }
+.economy .card-block:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* The room in six figures, read across before anything is read down. */
+.economy-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px 32px; margin: 4px 0 8px; padding-bottom: 26px; border-bottom: 1px solid var(--ph-dim); }
+.economy-stat { display: grid; gap: 5px; align-content: start; min-width: 0; }
+.economy-stat b { font-family: var(--mono); font-size: 22px; font-weight: 600; line-height: 1.1; color: var(--ph); }
+.economy-stat span { font-family: var(--mono); font-size: 8.5px; letter-spacing: .18em; color: var(--ph-dim); }
+
+/* A table is read by looking one row up, so the grid stays recessive and the numbers line up. */
+.economy-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.economy-table th, .economy-table td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--ph-faint); white-space: nowrap; }
+.economy-table thead th { font-size: 8.5px; font-weight: 400; letter-spacing: .18em; color: var(--ph-dim); border-bottom-color: var(--ph-dim); }
+.economy-table tbody th { text-align: left; font-weight: 600; letter-spacing: .14em; color: var(--ph-dim); }
+.economy-table td { color: var(--ph); }
+.economy-table tbody tr:last-child th, .economy-table tbody tr:last-child td { border-bottom: 0; }
+.economy .card-block h5 { margin: 0; font-size: 10px; font-weight: 400; letter-spacing: .28em; color: var(--ph-dim); }
+.economy .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 230px)); justify-content: start; gap: 24px 40px; }
+.economy .metric { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.economy .metric b { font-family: var(--mono); font-size: 26px; font-weight: 600; line-height: 1.1; color: var(--ph); }
+.economy .metric span { font-family: var(--mono); font-size: 9px; line-height: 1.5; letter-spacing: .18em; color: var(--ph-dim); }
+/* Prose is read, so it gets a measure and a size: a 60-character column, sentence case, never the
+   full width of a panel at heading scale. */
+.economy .note { margin: 8px 0 0; max-width: 640px; font-size: 11px; line-height: 1.85; letter-spacing: .06em; color: var(--ph-dim); text-shadow: none; }
+.economy .ash-block { grid-template-columns: 120px minmax(80px, 560px) auto; gap: 16px; }
+.economy .ash-block b, .economy .ash-block span { font-size: 10px; }
+.economy .ash-block i { height: 7px; }
+
+/* One agent, two bars, one scale: the shorter bar is the shorter answer. */
+.ash-compare { display: grid; gap: 20px; }
+.ash-agent { display: grid; gap: 6px; }
+.ash-agent > b { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .2em; color: var(--ph-dim); text-shadow: none; }
+.ash-bar { display: grid; grid-template-columns: 76px minmax(80px, 560px) auto; gap: 14px; align-items: center; }
+.ash-bar .ash-side { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--ph-dim); text-shadow: none; }
+.ash-bar .ash-figure { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--ph-dim); white-space: nowrap; text-shadow: none; }
+.ash-bar i { height: 9px; background: var(--ph-faint); position: relative; }
+.ash-bar i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: color-mix(in srgb, var(--ph) 30%, transparent); }
+.ash-bar.on i::after { background: var(--ph); }
+.ash-bar.on .ash-figure, .ash-bar.on .ash-side { color: var(--ph); }
+.ash-verdict { margin: 4px 0 0; font-family: var(--mono); font-size: 10px; line-height: 1.5; letter-spacing: .06em; color: var(--ph); text-shadow: none; }
+.ash-verdict.noise { color: var(--ph-dim); }
+.ash-waiting { margin: 0; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--ph-dim); text-shadow: none; }
+@media (max-width: 720px) { .ash-bar { grid-template-columns: 1fr; } .ash-bar i { display: none; } }
+.ash-observed h5 { margin: 0 0 6px; }
 .row.thinking .elapsed.late { color: var(--warn); }
 .row.thinking i { width: 7px; height: 7px; border-radius: 50%; background: var(--agent, var(--text-2)); animation: bounce 1.2s infinite; opacity: .5; }
 .row.thinking i:nth-child(2) { animation-delay: .18s; } .row.thinking i:nth-child(3) { animation-delay: .36s; }
@@ -565,11 +618,29 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 .memory-hint .more { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
 /* Memory used is not memory saved: saving is an event, using happens on most turns. Same shape so
    there is one thing to learn, quieter so it never competes with the answer it helped write. */
-.memory-hint.used { margin-top: 4px; opacity: .78; animation: none; }
-.memory-hint.used:hover { opacity: 1; }
-.memory-hint.used .lead { color: var(--text-3); }
-.memory-hint.used .pill { animation: none; box-shadow: none; font-size: 10.5px; padding: 2px 9px; }
-.memory-hint.used .pill.carried b::after { content: ' ⇢'; }
+/* What the archive handed this turn: a row of indicators, not a stack of banners.
+   Legibility first — opacity on the whole row used to fade text that was already pale, and the
+   five kind colours belong to NOSTROMO's dark map, so here the colour is a dot and the text is
+   the room's own. Compact enough that three of them sit on one line. */
+.memory-hint.used { margin-top: 4px; gap: 5px; animation: none; }
+.memory-hint.used .lead { font-size: 9px; letter-spacing: .14em; color: var(--text-3); }
+.memory-hint.used .pill {
+  gap: 7px; max-width: min(340px, 100%); padding: 3px 10px 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--text-3) 26%, transparent);
+  background: color-mix(in srgb, var(--text-3) 7%, transparent);
+  color: var(--text-2); font-size: 11px; line-height: 1.45;
+  animation: none; box-shadow: none;
+}
+.memory-hint.used .pill .dot {
+  flex: none; width: 7px; height: 7px; border-radius: 999px; background: var(--kind);
+  /* The ring is what keeps a near-white kind visible on a near-white page. */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-3) 45%, transparent);
+}
+.memory-hint.used .pill .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memory-hint.used .pill:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); border-color: color-mix(in srgb, var(--text-3) 42%, transparent); }
+/* Carried along rather than matched: the dot is hollow, the way an indicator says "inherited". */
+.memory-hint.used .pill.carried .dot { background: transparent; box-shadow: inset 0 0 0 2px var(--kind), 0 0 0 1px color-mix(in srgb, var(--text-3) 45%, transparent); }
+.memory-hint.used .more { font-size: 9.5px; }
 @keyframes hint-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes hint-glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 55%, transparent); } 40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kind) 0%, transparent), 0 0 18px color-mix(in srgb, var(--kind) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .memory-hint, .memory-hint .pill { animation: none; } }
@@ -1355,10 +1426,41 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .reply-quote .said { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .reply-quote .drop { flex: none; margin-left: auto; width: 18px; height: 18px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); font-size: 14px; line-height: 1; cursor: pointer; }
 .reply-quote .drop:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); }
-.slash-menu { position: absolute; left: -12px; bottom: calc(100% + 14px); z-index: 30; min-width: 280px; max-width: min(460px, 90vw); border: 1px solid var(--line-2); background: var(--panel); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .35); padding: 6px; display: grid; gap: 2px; }
-.slash-menu .item { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 9px; cursor: pointer; border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; }
+/* What the project already settled, at the head of the conversation: the same indicator language
+   as the memory chips, so the room has one way of showing a note and not three. */
+.settled { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 12px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.settled-lead { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.settled-note { display: inline-flex; align-items: center; gap: 7px; max-width: min(380px, 100%); padding: 3px 10px 3px 8px; border: 1px solid color-mix(in srgb, var(--text-3) 26%, transparent); background: color-mix(in srgb, var(--text-3) 7%, transparent); color: var(--text-2); font: inherit; font-size: 11px; line-height: 1.45; border-radius: 999px; cursor: pointer; text-align: left; }
+.settled-note .dot { flex: none; width: 7px; height: 7px; border-radius: 999px; background: #ffdc3c; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-3) 45%, transparent); }
+.settled-note .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settled-note:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); }
+
+/* A decision handed back, in the agent's colour: read at a glance, answered with one press. */
+.choice { margin: 10px 12px 2px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 32%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--agent, var(--text-3)) 5%, transparent); }
+.choice-q { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--text); }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice-option { border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 45%, transparent); background: var(--panel); color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; text-align: left; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s; }
+.choice-option:hover { background: color-mix(in srgb, var(--agent, var(--text-3)) 14%, transparent); border-color: var(--agent, var(--text-3)); }
+
+/* What the room still has no answer to. Quieter than the free-turn offer above it: that one is
+   about to save money, this one is only wondering. */
+.openq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
+.openq-lead { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.openq-ask { max-width: min(340px, 100%); padding: 4px 11px; border: 1px solid color-mix(in srgb, var(--text-3) 24%, transparent); background: transparent; color: var(--text-2); font: inherit; font-size: 11px; line-height: 1.45; border-radius: 999px; cursor: pointer; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.openq-ask:hover { background: color-mix(in srgb, var(--text-3) 10%, transparent); color: var(--text); border-color: color-mix(in srgb, var(--text-3) 40%, transparent); }
+
+/* The free-turn offer: one line above the field, never in the way of typing. */
+.free-offer { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 8px 12px; border: 1px dashed var(--brew); border-radius: 10px; background: color-mix(in srgb, var(--brew) 7%, transparent); }
+.free-offer .free-what { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11px; line-height: 1.5; letter-spacing: .04em; color: var(--text-2); }
+.free-offer .free-go { flex: none; border: 1px solid var(--brew); background: transparent; color: var(--brew); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .12em; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.free-offer .free-go:hover { background: color-mix(in srgb, var(--brew) 16%, transparent); }
+@media (max-width: 720px) { .free-offer { flex-wrap: wrap; } }
+.slash-menu { position: absolute; left: -12px; bottom: calc(100% + 14px); z-index: 30; min-width: 320px; max-width: min(580px, 92vw); border: 1px solid var(--line-2); background: var(--panel); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .35); padding: 6px; display: grid; gap: 2px; }
+.slash-menu .item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; padding: 8px 10px; border-radius: 9px; cursor: pointer; border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; }
 .slash-menu .item .key { font-family: var(--mono); font-size: 12.5px; color: var(--agent, var(--phosphor)); font-weight: 600; white-space: nowrap; }
-.slash-menu .item .what { font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slash-menu .item .what { font-size: 12.5px; line-height: 1.45; color: var(--text-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+/* The argument syntax on its own line, under both, free to wrap. */
+.slash-menu .item .args { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-3); overflow-wrap: anywhere; }
 .slash-menu .item.off .key { color: var(--text-3); text-decoration: line-through; }
 .slash-menu .item[aria-selected="true"], .slash-menu .item:hover { background: color-mix(in srgb, var(--agent, var(--phosphor)) 14%, transparent); }
 .slash-menu .hint { padding: 4px 10px 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--text-3); }

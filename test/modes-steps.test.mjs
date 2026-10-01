@@ -64,9 +64,9 @@ test('plan steps carry the mode the orchestrator asked for, capped by the human 
     const plan = events.find((event) => event.type === 'plan.created');
     assert.equal(plan.payload.mode, 3, 'the plan ceiling is the human mode');
     assert.deepEqual(plan.payload.steps.map((step) => step.mode), [2, 3], 'each step at the mode it asked for');
-    assert.deepEqual(seen, [['codex', 'control'], ['claude', 'create'], ['gemini', 'control'], ['codex', 'read-only']], 'orchestrator in CONTROL, #2 step with a project lease, #3 step in CONTROL, closing turn read-only');
+    assert.deepEqual(seen, [['codex', 'control'], ['claude', 'create'], ['gemini', 'control'], ['codex', 'control']], 'orchestrator in CONTROL, #2 step with a project lease, #3 step in CONTROL, closing turn preserves CONTROL');
     assert.ok(events.some((event) => event.type === 'lease.granted' && event.payload.delegated && event.payload.agent === 'claude' && event.payload.grantedBy === 'codex'));
-    assert.equal(events.filter((event) => event.type === 'control.started').length, 2, 'codex and then gemini each held CONTROL');
+    assert.equal(events.filter((event) => event.type === 'control.started').length, 3, 'the orchestrator, the #3 step and the closing turn each held CONTROL');
     assert.equal(await readFile(join(root, 'plan.md'), 'utf8'), 'the plan\n', 'the #2 step added its file');
     assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'v2 by gemini\n', "the #2 step's edit of README was put back, the #3 step's edit stayed");
     assert.ok(events.some((event) => event.type === 'create.reverted' && event.payload.agent === 'claude' && event.payload.existing.includes('README.md')));

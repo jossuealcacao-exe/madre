@@ -1,0 +1,11 @@
+[
+  { "id": "simple", "request": "¿Cuál es el estado?", "policy": "simple", "response": "Listo.", "ok": true },
+  { "id": "length", "request": "Responde en máximo 4 palabras", "policy": "length", "response": "Uno dos tres cuatro.", "ok": true },
+  { "id": "length-over", "request": "Máximo 3 palabras", "policy": "length", "response": "Uno dos tres cuatro.", "ok": false },
+  { "id": "code", "request": "Implementa `parse()` en src/parser.mjs", "policy": "code", "response": "`parse()` queda en src/parser.mjs.", "ok": true },
+  { "id": "structured", "request": "Audita el cambio y entrega una tabla", "policy": "structured", "response": "| Hallazgo | Estado |\n|---|---|\n| Ninguno | OK |", "ok": true },
+  { "id": "exact", "request": "Mantén exactamente `false`, 17 y src/room.mjs; no los cambies", "policy": "code", "response": "`false`, 17 y src/room.mjs; no cambian.", "ok": true },
+  { "id": "exact-drift", "request": "Mantén exactamente `false`, 17 y src/room.mjs; no los cambies", "policy": "code", "response": "Usa true.", "ok": false },
+  { "id": "fence", "request": "Devuelve código", "policy": "code", "response": "```js\nconst x = 1;", "ok": false },
+  { "id": "plan", "request": "Coordina al equipo", "policy": "simple", "response": "```pulse\n@codex: revisa\n```\ny termina", "ok": false }
+]

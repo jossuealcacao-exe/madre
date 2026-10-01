@@ -129,11 +129,14 @@ test('the room UI boots against a real transcript without throwing', async () =>
       where: 'user', by: 'you', mode: 2, plans: 0, turns: 0, reason: 'x', n: 1, count: 1,
     } });
   }
+  // Deliberately contradict /api/state: replay is history and must not change the live switch.
+  events.find((event) => event.type === 'extension.toggled').payload.enabled = false;
 
   const errors = [];
   const originalError = console.error;
   console.error = (...args) => errors.push(args.map(String).join(' '));
   let streamUrl = null;
+  let streamInstance = null;
   globalThis.document = buildDocument(html);
   globalThis.window = globalThis;
   Object.defineProperty(globalThis, 'navigator', { value: { platform: 'MacIntel', userAgent: 'test', clipboard: { writeText: async () => {} } }, configurable: true });
@@ -145,7 +148,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   // panel simply never opened. It opens now.
   globalThis.localStorage = { store: { 'pulse.tree': 'open' }, getItem(key) { return this.store[key] ?? null; }, setItem(key, value) { this.store[key] = String(value); } };
   globalThis.Option = class { constructor(text, value) { this.text = text; this.value = value; } };
-  globalThis.EventSource = class { constructor(url) { streamUrl = url; } };
+  globalThis.EventSource = class { constructor(url) { streamUrl = url; streamInstance = this; } close() {} };
   globalThis.fetch = async (url) => {
     if (String(url).startsWith('/api/tree')) return { ok: true, json: async () => ({ entries: [
       { name: 'src', kind: 'dir' },
@@ -232,7 +235,12 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.match(registry.get('message').placeholder, /Respuestas compactas|Escribe aquí/, 'the composer prompts the human in English');
   const ashToggle = registry.get('ash-toggle');
   assert.equal(ashToggle.hidden, false, 'enabled beta module exposes ORDER 937 in the composer');
-  assert.equal(ashToggle.getAttribute('aria-pressed'), 'true', 'ORDER 937 starts illuminated');
+  assert.equal(ashToggle.getAttribute('aria-pressed'), 'true', 'historical module state overwrote /api/state');
+  streamInstance.onopen();
+  streamInstance.onmessage({ data: JSON.stringify({ id: 'live-ash-off', sequence: sequence + 1, type: 'extension.toggled', payload: { id: 'ash', enabled: false } }) });
+  assert.equal(ashToggle.hidden, true, 'a live module toggle did not turn Ash off');
+  streamInstance.onmessage({ data: JSON.stringify({ id: 'live-ash-on', sequence: sequence + 2, type: 'extension.toggled', payload: { id: 'ash', enabled: true } }) });
+  assert.equal(ashToggle.hidden, false, 'a live module toggle did not turn Ash on');
   ashToggle.listeners.click[0]();
   assert.equal(ashToggle.getAttribute('aria-pressed'), 'false', 'the human can turn it off per message');
   assert.equal(globalThis.__pulse.state.ash, false);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { defineModule, matchRoute } from '../src/modules/sdk.mjs';
 import { MODULES, moduleById, describeModules, findModuleRoute } from '../src/modules/index.mjs';
 import { EXTENSIONS, extensionById, listExtensions } from '../src/extensions.mjs';
+import { ashInstruction, validateAshReply } from '../src/modules/ash-policy.mjs';
 
 const fakeCtx = (config = {}, extra = {}) => {
   const writes = [];
@@ -48,13 +49,14 @@ test('sdk: a guarded switch refuses without confirm, an installer has no switch,
   assert.equal(matchRoute(routes, 'DELETE', '/api/r'), null);
 });
 
-test('registry: seven modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
-  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'ripley', 'ollama', 'playwright']);
+test('registry: eight modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
+  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'ripley', 'ollama', 'playwright']);
   assert.equal(EXTENSIONS, MODULES);
   assert.equal(extensionById('ahp'), moduleById('ahp'));
   assert.equal(typeof moduleById('ahp').installCommand, 'function');
   assert.equal(moduleById('ahp').kind, 'installer');
   assert.equal(moduleById('ash').configKey, 'ash');
+  assert.equal(moduleById('choices').configKey, 'choices');
   assert.equal(moduleById('image-studio').configKey, 'imageStudio');
   for (const path of ['/api/ollama', '/api/ollama/probe', '/api/ollama/settings', '/api/ollama/pull']) assert.equal(findModuleRoute(path === '/api/ollama' ? 'GET' : 'POST', path)?.module.id, 'ollama', path);
   assert.equal(findModuleRoute('GET', '/api/nothing'), null);
@@ -71,7 +73,7 @@ test('registry: seven modules in MODULES order, the compat layer answers with th
   assert.equal(byId.ahp.kind, 'installer');
   // describeModules with a fuller ctx is what the server uses.
   const { ctx } = fakeCtx({ modules: {} });
-  assert.equal((await describeModules(ctx)).length, 7);
+  assert.equal((await describeModules(ctx)).length, 8);
 });
 
 test('registry: the Ash switch needs no confirming, because nothing it does is lossy', async () => {
@@ -84,4 +86,24 @@ test('registry: the Ash switch needs no confirming, because nothing it does is l
   assert.equal(on.body.beta, undefined);
   assert.deepEqual(writes[0], { modules: { imageStudio: { enabled: false }, ash: { enabled: true } } });
   assert.equal(events[0].payload.beta, undefined);
+});
+
+test('Ash policy adapts prose without changing requested length, code or structure', () => {
+  assert.match(ashInstruction('responde en maximo 40 palabras'), /follow it exactly/);
+  assert.match(ashInstruction('implementa `parse()` en src/parser.mjs'), /Keep code and commands complete/);
+  assert.match(ashInstruction('audita y entrega una tabla'), /Keep the requested structure and every finding/);
+  const combined = ashInstruction('implementa `parse()` y entrega una tabla en máximo 40 palabras');
+  assert.match(combined, /follow it exactly/);
+  assert.match(combined, /Keep code and commands complete/);
+  assert.match(combined, /Keep the requested structure and every finding/);
+  assert.match(ashInstruction('cual es el estado?'), /lead with the answer/);
+});
+
+test('Ash validation is local, deterministic and marks exact or structural drift', () => {
+  assert.deepEqual(validateAshReply({ request: 'resume esto', response: 'Listo.' }).issues, []);
+  assert.match(validateAshReply({ request: 'máximo 3 palabras', response: 'una dos tres cuatro' }).issues[0], /maximum 3/);
+  assert.ok(validateAshReply({ request: 'mantén exactamente `false`, 17 y src/room.mjs; no los cambies', response: 'Usa true.' }).issues.includes('missing false'));
+  assert.ok(validateAshReply({ request: 'mantén exactamente `false`, 17 y src/room.mjs; no los cambies', response: '`false` 17 src/room.mjs; no cambia.' }).ok);
+  assert.ok(validateAshReply({ request: 'devuelve código', response: '```js\nconst x = 1;' }).issues.includes('unclosed code fence'));
+  assert.ok(validateAshReply({ request: 'coordina', response: '```pulse\n@codex: revisa\n```\ny luego termina' }).issues.includes('text after ```pulse block'));
 });

@@ -546,8 +546,8 @@ export async function createPulseServer({
   const startupConfig = await readConfig(root);
   room.setScopes(startupConfig.scopes ?? {});
   setImageModule(startupConfig.modules?.imageStudio ?? {});
-  // Rooms opened before Ash was renamed carry the old key; the human's switch is not lost.
-  room.setAsh(Boolean(startupConfig.modules?.ash?.enabled ?? startupConfig.modules?.ash?.enabled));
+  room.setAsh(Boolean(startupConfig.modules?.ash?.enabled));
+  room.setChoices(Boolean(startupConfig.modules?.choices?.enabled));
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`MADRE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -849,7 +849,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/routing.js'].includes(url.pathname)) {
         const js = await readFile(join(publicDirectory, url.pathname.slice(1)));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
         return response.end(js);
@@ -872,6 +872,7 @@ export async function createPulseServer({
           chats: await listChats(roomDir),
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
           ash: { enabled: room.ashEnabled() },
+          choices: { enabled: room.choicesEnabled() },
           ripley: { enabled: await ripleyOn() },
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
@@ -1017,6 +1018,20 @@ export async function createPulseServer({
       }
       // Where this room's tokens go: what each block of the briefing has cost, how much came back
       // from a CLI's own cache, and how many characters the room spends per token it is charged.
+      // What this project has settled, for the strip at the top of a conversation. Not gated
+      // behind the designation the archive is: these same sentences already appear in the room
+      // under any answer that recalled one.
+      // Open questions, for the strip under the composer. Read-only and ungated for the same
+      // reason the decisions are: these sentences already appear in the room whenever one is
+      // recalled. Dismissing one still happens in NOSTROMO, behind the designation.
+      if (request.method === 'GET' && url.pathname === '/api/questions') {
+        const limit = Math.min(5, Math.max(1, Number(url.searchParams.get('limit') ?? 3) || 3));
+        return sendJson(response, 200, { questions: room.questions({ limit }) });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/decisions') {
+        const limit = Math.min(5, Math.max(1, Number(url.searchParams.get('limit') ?? 3) || 3));
+        return sendJson(response, 200, { decisions: room.decisions({ limit }) });
+      }
       if (url.pathname === '/api/economy' && request.method === 'GET') {
         return sendJson(response, 200, economy(await store.readAll()));
       }
@@ -1212,7 +1227,8 @@ export async function createPulseServer({
         const asked = url.searchParams.get('agent') ?? agents.find((agent) => agent.ready && !agent.local)?.id ?? agents[0]?.id;
         const mode = Math.min(4, Math.max(0, Number(url.searchParams.get('mode') ?? 1) || 0));
         const text = String(url.searchParams.get('text') ?? '').slice(0, 2000);
-        const briefing = await room.briefing({ agent: asked, mode, text });
+        const ash = url.searchParams.get('ash') === 'true';
+        const briefing = await room.briefing({ agent: asked, mode, text, ash });
         if (!briefing) return sendJson(response, 404, { error: `No agent "${asked}" on this computer.` });
         return sendJson(response, 200, {
           ...briefing,

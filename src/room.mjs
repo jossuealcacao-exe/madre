@@ -33,6 +33,8 @@ import { stat as statFile } from 'node:fs/promises';
 import { basename as baseName, join as joinPath } from 'node:path';
 import { contentTypeFor } from './files.mjs';
 import { isModuleFile, sdkPaths } from './modules/index.mjs';
+import { validateAshReply } from './modules/ash-policy.mjs';
+import { parseChoice, withoutChoice } from './choices.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
@@ -63,6 +65,34 @@ export { budgetTokens };
 const CREATION_VERB = /\b(genera(r|d)?|crea(r|d)?|escrib(e|a|ir)|guarda(r)?|produce|producir|exporta(r)?|redacta(r)?|construye|create|generate|write|save|export|produce|build|render|draw|make)\b/i;
 const CREATION_OBJECT = /\b(archivo|fichero|file|pdf|md|markdown|imagen|image|png|jpe?g|svg|documento|document|docx?|csv|json|xlsx?|pptx?|html|script|carpeta|folder|reporte|report|informe|entregable|poster|logo|diagrama|diagram)\b/i;
 export const looksLikeCreation = (text) => CREATION_VERB.test(String(text ?? '')) && CREATION_OBJECT.test(String(text ?? ''));
+
+// Which decisions the project is standing on, out of what the archive holds. A refuted one is
+// kept by the archive — what was once decided is part of the record — and left out here, because
+// a strip that says "decided" cannot carry something the room has since established is false.
+export function settledDecisions(notes = [], { limit = 3 } = {}) {
+  return notes
+    .filter((note) => note && !note.refutedBy)
+    .slice(0, limit)
+    .map((note) => ({ id: note.id, text: note.text, created: note.created, agent: note.agent, fromSequence: note.fromSequence }));
+}
+
+// Open questions the room could put back on the table, newest and most-carried first.
+//
+// `questionsFor` has three wells; this reads only the first. The other two — memories nobody has
+// ever reached for, a kind of note the archive is short of — are about the health of the archive
+// and belong in NOSTROMO beside the map that shows them. What belongs under a composer is the
+// narrower thing: a question this room asked, recorded as open, and never answered.
+//
+// Refuted and dismissed are out. Carried into more turns ranks higher, because a question the
+// room keeps dragging along unanswered is the one most worth asking out loud.
+export function openQuestions(notes = [], { dismissed = [], limit = 3 } = {}) {
+  const skip = new Set(dismissed ?? []);
+  return notes
+    .filter((note) => note && note.kind === 'question' && !note.refutedBy && !skip.has(`open:${note.id}`))
+    .sort((a, b) => (Number(b.recalled ?? 0) - Number(a.recalled ?? 0)) || (b.id - a.id))
+    .slice(0, limit)
+    .map((note) => ({ id: note.id, text: note.text, carried: Number(note.recalled ?? 0) }));
+}
 
 export class Room {
   #store;
@@ -102,6 +132,7 @@ export class Room {
   #maxConcurrentTurns;
   #planMaxAgeMs;
   #ashEnabled = false;
+  #choicesEnabled = false;
 
   constructor({
     store,
@@ -377,6 +408,26 @@ export class Room {
   // opened: a turn in flight is a reason to wait, not something to race.
   working() { return this.#turns.size > 0; }
 
+  // The decisions this project is standing on, newest first.
+  //
+  // Continuity is the point: a conversation opened a week later, or by another agent, starts
+  // knowing what was already settled instead of relitigating it. Read-only, and it costs no
+  // prompt — these never enter a briefing from here, they are shown to the human.
+  //
+  // A refuted decision is left out. The archive keeps it, because what was once decided is part
+  // of the record, but showing it in a strip titled "what we decided" would be the room asserting
+  // something it has since established is false.
+  // The same shape as decisions(): read from the archive, shown to the human, never in a prompt.
+  questions({ limit = 3 } = {}) {
+    if (!this.#memory) return [];
+    return openQuestions(this.#memory.memories({ kind: 'question', limit: limit * 6 }), { dismissed: this.#dismissedAsks(), limit });
+  }
+
+  decisions({ limit = 3 } = {}) {
+    if (!this.#memory) return [];
+    return settledDecisions(this.#memory.memories({ kind: 'decision', limit: limit * 4 }), { limit });
+  }
+
   memoryResearch() {
     if (!this.#memory) return null;
     const memories = this.#memory.memories({ limit: 500 });
@@ -649,7 +700,7 @@ export class Room {
       // Each bill teaches the room what its own words cost, so the next turn can say what it is
       // about to spend before it spends it.
       if (cost.charsPerInputToken) this.#rate = this.#rate ? this.#rate * 0.7 + cost.charsPerInputToken * 0.3 : cost.charsPerInputToken;
-      await this.#emit('turn.cost', { agent, mode, responseMessageId, spared: shape.spared, ...cost });
+      await this.#emit('turn.cost', { agent, mode, responseMessageId, ash: Boolean(cost.blocks.ash), spared: shape.spared, ...cost });
     } catch (error) {
       console.error(`MADRE could not weigh a turn: ${error.message}`);
     }
@@ -691,6 +742,15 @@ export class Room {
   setAsh(enabled) {
     this.#ashEnabled = Boolean(enabled);
     return this.#ashEnabled;
+  }
+
+  setChoices(enabled) {
+    this.#choicesEnabled = Boolean(enabled);
+    return this.#choicesEnabled;
+  }
+
+  choicesEnabled() {
+    return this.#choicesEnabled;
   }
 
   ashEnabled() {
@@ -772,6 +832,10 @@ export class Room {
   async send({ text, target, model = null, attachments = [], create = false, ash = false, mode = undefined }) {
     const parsed = parseMessage(text, target);
     const requestedMode = normalizeMode(mode, create === true ? 2 : 1);
+    // This is the decision the human made when pressing Send. Capture it before modeCheck() —
+    // the first await — so a concurrent module toggle cannot change the turn after that click.
+    const ashRequested = ash === true;
+    const ashActive = ashRequested && this.#ashEnabled;
     const gate = await this.modeCheck({ target, text, mode: requestedMode });
     if (!gate.ok) throw new Error(gate.error);
     create = requestedMode === 2;
@@ -785,7 +849,6 @@ export class Room {
     // What the human wrote, sent as they wrote it. Ash used to rewrite this line before it left
     // the room; it does not any more, so there is no original to keep beside an abbreviation.
     const text2 = parsed.text || `(${files.length} attached file${files.length === 1 ? '' : 's'})`;
-    const ashActive = ash === true && this.#ashEnabled;
     // "!path" tokens point the agent at project files; only existing files count.
     const references = await resolveReferences(this.#projectRoot, text2);
 
@@ -800,7 +863,7 @@ export class Room {
       sender: 'you',
       target: parsed.target,
       text: text2,
-      ash: ashActive ? { active: true } : undefined,
+      ash: ashRequested ? { requested: true, active: ashActive } : undefined,
       status: 'sent',
       model: chosenModel,
       attachments: files.length ? files.map((file) => ({ id: file.id, name: file.name, fileName: file.fileName, size: file.size, contentType: file.contentType })) : undefined,
@@ -1012,7 +1075,7 @@ export class Room {
   // nowhere. Nothing here counts: a memory read for this was not recalled, the window does not
   // move, and no process is started. It is the document MADRE writes in the human's name, which
   // until now existed only for the instant a CLI was reading it.
-  async briefing({ agent: agentId, mode = 1, text = '' } = {}) {
+  async briefing({ agent: agentId, mode = 1, text = '', ash = false } = {}) {
     const agent = this.#agents.find((one) => one.id === agentId && one.detected);
     if (!agent) return null;
     const priorEvents = await this.#store.readAll();
@@ -1047,7 +1110,7 @@ export class Room {
       context: built.context, recall: built.recall, memories: built.memories,
       attachments: [], references: [], lease,
       scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired },
-      ash: this.ashEnabled(), mode, escalation: null, mcpServers,
+      ash: ash === true && this.ashEnabled(), mode, escalation: null, mcpServers,
     });
     // Each block with what put it here and what would take it away, so "read, never written" can
     // be checked one block at a time instead of believed.
@@ -1158,6 +1221,7 @@ export class Room {
     let lease = null;
     let controlRun = null;
     let createRun = null;
+    let responseMessageId = null;
     if (mode >= 3 && (requester === 'you' || planId) && depth <= 1 && agentScopes.maxMode >= mode && enabled.write) {
       // CONTROL: the project itself is the writable root, and a checkpoint
       // taken now makes every change of this turn reversible. A plan step gets
@@ -1228,7 +1292,7 @@ export class Room {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
       const before = lease && !lease.control && !lease.create ? await snapshot(lease.outDir) : null;
-      const responseMessageId = randomUUID();
+      responseMessageId = randomUUID();
       const notesBefore = this.#memory ? this.#memory.maxMemoryId() : 0;
       const others = this.delegatesFor(agent.id);
       const mayDelegate = allowDelegation && this.#delegation && depth === 0;
@@ -1238,7 +1302,7 @@ export class Room {
         : [];
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
-      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
+      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, choices: this.#choicesEnabled, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared });
       // What this turn is about to read, said while it is still reading it. The size is exact;
       // only the conversion to tokens is an estimate, and it is made at this room's own rate.
@@ -1294,13 +1358,15 @@ export class Room {
       if (depth > 0 && /```pulse/i.test(result.text)) {
         await this.#alert('nested-delegation', `@${agent.id} tried to open a plan from inside a plan. It was ignored; the sequence stays under @${requester}. STOPALL if the room drifts.`, `nested:${agent.id}`);
       }
+      // A question the agent put to the human: it leaves the text and comes back as buttons.
+      const asked = this.#choicesEnabled && turnMode !== 0 ? parseChoice(result.text) : null;
       await this.#emit('message.created', {
         messageId: responseMessageId,
         parentMessageId: messageId,
         role: 'assistant',
         sender: agent.id,
         target: requester,
-        text: result.text,
+        text: asked ? withoutChoice(result.text) : result.text,
         // What the archive handed this turn, so the room can see its own memory working. The
         // whole point of remembering is invisible until the moment it is used.
         recalled: memories?.length
@@ -1317,6 +1383,11 @@ export class Room {
         artifacts: artifacts.length ? artifacts : undefined,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
       });
+      if (ash && turnMode !== 0) {
+        const validation = validateAshReply({ request: text, response: result.text });
+        await this.#emit('ash.validated', { messageId, responseMessageId, agent: agent.id, ...validation });
+      }
+      if (asked) await this.#emit('choice.offered', { messageId, responseMessageId, agent: agent.id, question: asked.question, options: asked.options });
       if (guarded.hits) await this.#emit('privacy.redacted', { agent: agent.id, messageId, responseMessageId, hits: guarded.hits, marker: this.#privacy.marker });
       if (artifacts.length) {
         await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });
@@ -1342,6 +1413,14 @@ export class Room {
       await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId });
       return { responseMessageId, directives };
     } catch (error) {
+      if (responseMessageId && this.#promptShape.has(responseMessageId)) {
+        const shape = this.#promptShape.get(responseMessageId);
+        this.#promptShape.delete(responseMessageId);
+        if (turnMode !== 0) {
+          const cost = turnCost(shape.parts, null);
+          await this.#emit('turn.cost', { agent: agent.id, mode: turnMode, responseMessageId, ash: Boolean(cost.blocks.ash), failed: true, spared: shape.spared, ...cost });
+        }
+      }
       await this.#emit('message.failed', { messageId, target: agent.id, planId, error: this.#privacy ? this.#privacy.redact(failureMessage(error)).text : failureMessage(error) });
       return null;
     } finally {
@@ -1421,18 +1500,21 @@ export class Room {
       if (!plan.stopped && directives.closing) {
         plan.step = directives.steps.length + 1;
         const messageId = randomUUID();
+        const closingMode = ceiling >= 3 ? ceiling : lease ? 2 : 1;
         await this.#emit('message.created', {
           messageId,
           role: 'assistant',
           sender: orchestrator,
           target: orchestrator,
           text: directives.closing,
+          ash: ash ? { active: true } : undefined,
+          mode: closingMode,
           status: 'delegated',
           planId,
           step: plan.step,
           totalSteps: plan.step,
         });
-        await this.#dispatch({ messageId, targetId: orchestrator, text: `${directives.closing}\n(The delegated agents have answered above; this is your closing turn.)`, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ash });
+        await this.#dispatch({ messageId, targetId: orchestrator, text: `${directives.closing}\n(The delegated agents have answered above; this is your closing turn.)`, requester: orchestrator, depth: 1, planId, allowDelegation: false, lease, ash, mode: closingMode });
       }
     } finally {
       this.#plans.delete(planId);
