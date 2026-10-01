@@ -54,6 +54,14 @@ defineModule({
 
 Con eso RIPLEY, Git Pulse, Image Studio, Ash, el sentinel y el futuro Ollama se vuelven archivos en `src/modules/`, y la sala no cambia cuando llega uno nuevo.
 
+## 4 · Windows (1.0)
+
+MADRE nació en POSIX y su promesa central —«leen por defecto, escriben cuando tú lo dices»— descansa hoy en tres mecanismos que Windows no tiene iguales: el bit de escritura del sistema de archivos, los grupos de proceso y el sandbox que cada CLI monta sobre seatbelt o Landlock. El puerto no es una compatibilidad de rutas: es averiguar si ese techo de permisos se sostiene en Windows, y declarar con razones lo que se sostiene y lo que no.
+
+Cuatro fases —medir, que arranque, que confine, que se explique— con trazabilidad por id, en la rama `windows/1.0`. **Hasta que la fase 4 cierre, MADRE no declara soporte ni no-soporte de Windows.**
+
+El documento único es **`docs/WINDOWS.md`**: hallazgos con id permanente, decisiones abiertas, fases, versiones y bitácora. Nada sobre Windows se decide fuera de ahí.
+
 ## Fuera del alcance, a conciencia
 
 - Navegador general, pestañas, historial fuera del proyecto.
