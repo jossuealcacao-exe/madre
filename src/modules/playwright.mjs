@@ -32,7 +32,11 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
     // `--` or npm eats them: without the separator npm takes --headless, --isolated and the
     // rest as its own config, hands the server only their bare values, and the server exits with
     // "too many arguments" before it speaks a word of MCP. The agent sees CONNECTION_CLOSED.
-    args: ['--no', '@playwright/mcp', '--', ...(headless ? ['--headless'] : []), '--isolated', '--browser', browser, '--allowed-origins', `http://127.0.0.1:${port};http://localhost:${port}`, '--blocked-origins', '*', '--output-dir', outputDir, '--no-sandbox'],
+    // No --blocked-origins: the allowlist is already a closed door. The server routes `**` to
+    // abort and then routes each allowed origin to continue, and Playwright matches the most
+    // recently added route first — so a blocked `*`, registered after both, wins over the
+    // allowlist and aborts even this room with ERR_BLOCKED_BY_CLIENT.
+    args: ['--no', '@playwright/mcp', '--', ...(headless ? ['--headless'] : []), '--isolated', '--browser', browser, '--allowed-origins', `http://127.0.0.1:${port};http://localhost:${port}`, '--output-dir', outputDir, '--no-sandbox'],
     env: {},
     tools: PLAYWRIGHT_TOOLS,
     brief: `a headless browser that reaches only this MADRE at http://127.0.0.1:${port}. Open a project file rendered by RIPLEY at http://127.0.0.1:${port}/preview/project/<path>, click, read the console and network, take screenshots (they land in ${outputDir}). Nothing else on the network is reachable through it.`,

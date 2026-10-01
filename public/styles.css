@@ -618,11 +618,11 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 .memory-hint .more { font-family: var(--mono); font-size: 9.5px; color: var(--text-3); }
 /* Memory used is not memory saved: saving is an event, using happens on most turns. Same shape so
    there is one thing to learn, quieter so it never competes with the answer it helped write. */
-/* What the archive handed this turn: a row of indicators, not a stack of banners.
-   Legibility first — opacity on the whole row used to fade text that was already pale, and the
+/* What the archive handed this turn: one indicator per line under its heading.
+   Legibility first — opacity on the whole group used to fade text that was already pale, and the
    five kind colours belong to NOSTROMO's dark map, so here the colour is a dot and the text is
-   the room's own. Compact enough that three of them sit on one line. */
-.memory-hint.used { margin-top: 4px; gap: 5px; animation: none; }
+   the room's own. */
+.memory-hint.used { flex-direction: column; align-items: flex-start; margin-top: 4px; gap: 5px; animation: none; }
 .memory-hint.used .lead { font-size: 9px; letter-spacing: .14em; color: var(--text-3); }
 .memory-hint.used .pill {
   gap: 7px; max-width: min(340px, 100%); padding: 3px 10px 3px 8px;
@@ -640,6 +640,8 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 .memory-hint.used .pill:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); border-color: color-mix(in srgb, var(--text-3) 42%, transparent); }
 /* Carried along rather than matched: the dot is hollow, the way an indicator says "inherited". */
 .memory-hint.used .pill.carried .dot { background: transparent; box-shadow: inset 0 0 0 2px var(--kind), 0 0 0 1px color-mix(in srgb, var(--text-3) 45%, transparent); }
+.memory-hint.used .last { display: flex; align-items: center; gap: 6px; max-width: 100%; }
+.memory-hint.used .last .pill { min-width: 0; }
 .memory-hint.used .more { font-size: 9.5px; }
 @keyframes hint-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes hint-glow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kind) 55%, transparent); } 40% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--kind) 0%, transparent), 0 0 18px color-mix(in srgb, var(--kind) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
@@ -1434,6 +1436,12 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .settled-note .dot { flex: none; width: 7px; height: 7px; border-radius: 999px; background: #ffdc3c; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-3) 45%, transparent); }
 .settled-note .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settled-note:hover { background: color-mix(in srgb, var(--text-3) 14%, transparent); color: var(--text); }
+
+/* The way up, beside the agent asking to climb it. Quiet: it is a door, not an alarm. */
+.mode-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 12px 0; padding: 7px 12px; border: 1px dashed color-mix(in srgb, var(--warn, #e2a022) 46%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--warn, #e2a022) 6%, transparent); }
+.mode-what { flex: 1; min-width: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--text-2); }
+.mode-go { flex: none; border: 1px solid color-mix(in srgb, var(--warn, #e2a022) 60%, transparent); background: transparent; color: var(--warn, #e2a022); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .12em; padding: 5px 12px; border-radius: 7px; cursor: pointer; }
+.mode-go:hover { background: color-mix(in srgb, var(--warn, #e2a022) 16%, transparent); }
 
 /* A decision handed back, in the agent's colour: read at a glance, answered with one press. */
 .choice { margin: 10px 12px 2px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 32%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--agent, var(--text-3)) 5%, transparent); }

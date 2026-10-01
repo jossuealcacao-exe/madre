@@ -67,3 +67,22 @@ test('questions: only what the archive recorded as open, and never what was refu
   assert.equal(asked[0].carried, 3);
   assert.deepEqual(openQuestions([], {}), []);
 });
+
+test('modes: the ladder is offered only when an agent says it needs a rung it was not given', async () => {
+  const { modeAsked } = await import('../public/routing.js');
+
+  // The sentence from the session this came from: the human granted #2 twice while the reply
+  // kept saying the fix was editing a file that already exists.
+  assert.equal(modeAsked('Mode no alcanza: el arreglo es editar public/app.js, un archivo que ya existe, y eso es #3', { ran: 2 }), 3);
+  assert.equal(modeAsked('Necesito #3 para modificar ese archivo.', { ran: 1 }), 3);
+  assert.equal(modeAsked('Requiere #4 porque hay que hacer git push.', { ran: 1 }), 4);
+  assert.equal(modeAsked('This needs #3 to edit an existing file.', { ran: 1 }), 3);
+
+  // An agent explaining the ladder mentions every rung, and that is not a request. A bare number
+  // is never enough: a word of need has to sit beside it.
+  assert.equal(modeAsked('Los modos van de #0 a #4: #1 lee, #2 crea, #3 edita y #4 abre la esclusa.', { ran: 1 }), null);
+  assert.equal(modeAsked('Listo, lo dejé en #2 como pediste.', { ran: 1 }), null);
+  // And never a rung at or below the one the turn already had.
+  assert.equal(modeAsked('Necesito #3 para esto.', { ran: 3 }), null);
+  assert.equal(modeAsked('', { ran: 1 }), null);
+});

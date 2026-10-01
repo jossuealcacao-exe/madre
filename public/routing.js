@@ -40,3 +40,35 @@ export function archiveQuestion(text = '') {
   for (const pattern of PATTERNS) if (pattern.re.test(question)) return pattern.why;
   return null;
 }
+
+// An agent saying, in prose, that it cannot do this at the mode it was given.
+//
+// The room could only ever ask for one escalation: a plan step that wants #2 (room.mjs calls
+// askForMode with the number written in). An agent in a direct turn that needs #3 has no channel
+// at all — it can only say so in a sentence and hope the human reads it, leaves the message, and
+// finds the mode selector. That gap is what a real session turned into a loop: the human granted
+// #2 twice while the reply kept saying the fix was editing a file that already exists, which is
+// #3, and the turn went nowhere until they worked it out themselves.
+//
+// So this reads the reply. It is a heuristic and it is narrow on purpose: a bare "#3" is not
+// enough, because an agent explaining the ladder mentions every rung. There has to be a word of
+// need beside it, and the mode has to be above the one the turn actually ran at.
+//
+// It costs nothing in any prompt. And it never grants: #3 and #4 still open the ceremony where
+// the human types the project designation, exactly as if they had chosen it themselves.
+const NEEDS = /(necesit|requier|hace falta|no alcanza|insuficiente|permiso|conced|eleva|sub[ei]r|needs?|requires?|not enough|insufficient|permission|grant|raise|escalat)/i;
+
+export function modeAsked(text = '', { ran = 1 } = {}) {
+  const reply = String(text ?? '');
+  if (reply.length > 8000) return null;
+  let wanted = null;
+  for (const match of reply.matchAll(/#([2-4])\b/g)) {
+    const mode = Number(match[1]);
+    if (mode <= ran) continue;
+    // The word of need has to sit beside the number, not anywhere in a long answer.
+    const around = reply.slice(Math.max(0, match.index - 90), match.index + 90);
+    if (!NEEDS.test(around)) continue;
+    if (wanted === null || mode > wanted) wanted = mode;
+  }
+  return wanted;
+}

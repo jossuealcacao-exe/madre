@@ -77,6 +77,11 @@ export const ES = {
     'La sala ha arrastrado esto a {n} turno(s) y sigue sin respuesta.',
   'The archivist recorded this as open and nothing has answered it.':
     'El archivista lo registró como abierto y nada lo ha contestado.',
+  '@{agent} says this needs #{n} {label}': '@{agent} dice que esto necesita #{n} {label}',
+  'ARM #{n}': 'ARMAR #{n}',
+  'SET #{n}': 'PONER #{n}',
+  'Opens the override: you type the project designation, as always.': 'Abre la anulación: tú escribes la designación del proyecto, como siempre.',
+  'Arms the composer for your next message. Nothing is sent.': 'Arma el compositor para tu siguiente mensaje. No se manda nada.',
   'SEE THE ECONOMY': 'VER LA ECONOMÍA',
   'ECONOMY': 'ECONOMÍA',
   'MADRE · WHAT THIS ROOM SPENT AND WHAT IT NEVER SPENT': 'MADRE · LO QUE ESTA SALA GASTÓ Y LO QUE NUNCA GASTÓ',

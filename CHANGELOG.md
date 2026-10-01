@@ -33,11 +33,20 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - No toca el canal de delegación. Ese parser arranca turnos con permisos reales, y enseñarle una segunda gramática sería poner un parser que puede gastar dinero en el camino de uno que no.
 - Tiene interruptor porque no es gratis: la instrucción cuesta unos 135 tokens por turno mientras está encendido, y aparece como bloque propio en la economía. Una capacidad cuyo costo no se puede ver es una capacidad contra la que nadie puede decidir.
 
+### La escalera, al lado del agente que pide subir
+
+- Cuando una respuesta dice que el turno necesita más permiso del que tuvo, la sala lo ofrece ahí mismo: `#2` arma el compositor y `#3` o `#4` abren la misma anulación de siempre, donde la designación del proyecto se escribe a mano. Ofrece el camino; no concede nada ni acorta la ceremonia.
+- Hasta ahora la sala solo sabía pedir elevación en un caso, un paso de plan que quiere `#2`. Un agente en turno directo que necesitaba `#3` únicamente podía decirlo en una frase, y leerla, salir del mensaje y encontrar el selector era trabajo del humano.
+- El detector es estrecho a propósito: un `#3` suelto no basta, hace falta una palabra de necesidad a su lado, y el modo tiene que estar por encima del que el turno tuvo. Un agente que explica la escalera menciona todos los peldaños y eso no es una petición. No cuesta nada en ningún prompt.
+
 ### Arreglos
 
 - Los chips de memoria eran ilegibles en tema claro: el tipo se pintaba con colores elegidos para el mapa oscuro de NOSTROMO, y «HECHO» en un azul casi blanco desaparecía sobre el fondo. Ahora el tipo es un punto con anillo, el texto lleva los colores del texto y la fila perdió la opacidad que la apagaba.
 - La paleta de `/` dejaba sin descripción a cualquier comando con sintaxis larga: la columna del nombre crecía sin límite y la explicación se truncaba hasta desaparecer. La sintaxis bajó a su propio renglón.
 - Un renderizador que declina ya no mete un nulo en la columna de mensajes.
+- El primer replay pintaba chips de memoria antes de que se evaluaran las constantes que necesitan: la página podía morir en una zona muerta temporal antes de dibujar nada. Los colores, las palabras de cada tipo y el estimador de caracteres por token viven ahora con los demás formateadores, arriba.
+- PLAYWRIGHT abortaba hasta esta misma sala con `ERR_BLOCKED_BY_CLIENT`. Pasaba `--blocked-origins '*'` además de la lista blanca, y Playwright casa la ruta añadida más recientemente primero: el bloqueo general ganaba sobre la lista. La lista blanca ya era una puerta cerrada.
+- El `+N` de las memorias usadas podía quedarse solo en un renglón al envolverse la fila; ahora viaja junto al último chip.
 
 ## 0.5.2 · 2026-09-28
 

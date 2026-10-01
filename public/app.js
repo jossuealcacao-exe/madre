@@ -1,4 +1,4 @@
-import { archiveQuestion } from './routing.js';
+import { archiveQuestion, modeAsked } from './routing.js';
 import { brandOf } from './brands.js';
 import { CONDITIONS, allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
@@ -207,6 +207,31 @@ const formatTokens = (value) => {
   if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}k`;
   return String(value);
 };
+
+// Characters to tokens, next to the other formatters. The same estimate the room uses for text
+// nobody was charged for, kept here because the page cannot import from the server:
+// src/room/economy.mjs holds the other copy and a test keeps the two equal.
+//
+// It is an estimate and it is labelled as one. What this room MEASURES — what MADRE wrote
+// against what the CLI was charged for reading — is a different quantity: the CLIs bill their
+// own system prompt, their own tools and every file they open, so in this room that ratio was
+// 0.62 and called a 14,356-character briefing 23,155 tokens.
+const CH_PER_TOKEN = 3.5;
+const tokensFor = (chars) => Math.round((Number(chars) || 0) / CH_PER_TOKEN);
+
+// Memories burn as stars burn, and a star's colour is its class. A decision is a yellow dwarf,
+// the steady kind a system is built around. A fact is a white dwarf: cold, dense, settled. A
+// preference is a red dwarf, dim and personal and very long lived. A question is a blue dwarf,
+// the hottest thing in the sky and the least settled. Declared here and not down in NOSTROMO:
+// the first replay paints memory chips before that section of the file has been evaluated.
+const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#5cf07a', question: '#3dc6ff', aberration: '#b14cff' };
+
+// A memory's kind is an id in the ledger and a word on a screen. Only the word is said in the
+// room's language: what was written down never moves. Declared one by one, so the catalogue's
+// guard sees all five and an id nobody translated cannot slip past as itself. Up here with the
+// colours and for the same reason: the first replay prints the word before NOSTROMO is evaluated.
+const KIND_WORDS = { decision: t('DECISION'), fact: t('FACT'), preference: t('PREFERENCE'), question: t('QUESTION'), aberration: t('ABERRATION') };
+const kindWord = (kind) => KIND_WORDS[kind] ?? String(kind).toUpperCase();
 
 const formatTime = (iso) => {
   const date = iso ? new Date(iso) : new Date();
@@ -1389,7 +1414,7 @@ function row(kind, agentId, { compact = false } = {}) {
 
 function renderUserMessage(event) {
   const { messageId, target, text, ash, model, attachments = [], create, mode } = event.payload;
-  state.userMessages.set(messageId, { text, target, model });
+  state.userMessages.set(messageId, { text, target, model, mode: event.payload.mode ?? 1 });
   const reviewed = state.expendable;
   const node = row('user');
   if (event.ghost || mode === 0) node.classList.add('ghost');
@@ -1456,6 +1481,8 @@ function renderAssistantMessage(event) {
   col.append(bubble);
   const used = attachMemoryUsed(event.payload);
   if (used) col.append(used);
+  const needs = attachModeAsk(event.payload);
+  if (needs) col.append(needs);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
   stamp.append(el('span', null, formatTime(event.timestamp)));
@@ -1929,6 +1956,37 @@ function renderDistilled(event) {
 // briefing and nobody ever saw it. Same shape as a memory saved, because the human should have to
 // learn one thing, not two — and a note that came along by association says so, since something
 // that changes an answer must never be invisible.
+// An agent that could not do the thing at the mode it was given, with the way up beside it.
+//
+// Until now this only ever existed as a sentence in an answer. The human had to read it, leave
+// the message, open the mode menu and pick the right rung — and in a real session they picked
+// the wrong one twice while the turn went nowhere. The ladder belongs next to the agent asking
+// to climb it.
+//
+// It offers; it never grants. #2 arms the composer, and #3 and #4 open the same ceremony as
+// always, where the project designation is typed by hand. Nothing here shortens that.
+function attachModeAsk(payload) {
+  if (!payload || payload.role !== 'assistant' || payload.sender === 'you') return null;
+  const ran = state.userMessages.get(payload.messageId)?.mode ?? payload.mode ?? 1;
+  const wanted = modeAsked(payload.text, { ran });
+  if (!wanted || wanted <= state.mode) return null;
+  const agent = payload.sender;
+  if (!state.agents.get(agent)?.ready) return null;
+  const row = el('div', 'mode-ask');
+  row.append(el('span', 'mode-what', t('@{agent} says this needs #{n} {label}', { agent, n: wanted, label: MODES[wanted]?.label ?? '' })));
+  const go = el('button', 'mode-go', wanted >= 3 ? t('ARM #{n}', { n: wanted }) : t('SET #{n}', { n: wanted }));
+  go.type = 'button';
+  go.title = wanted >= 3
+    ? t('Opens the override: you type the project designation, as always.')
+    : t('Arms the composer for your next message. Nothing is sent.');
+  go.addEventListener('click', () => {
+    if (wanted >= 3) openOverride(agent, { mode: wanted });
+    else { setMode(wanted, { wink: true }); els.input.focus(); }
+  });
+  row.append(go);
+  return row;
+}
+
 function attachMemoryUsed(payload) {
   const used = payload.recalled ?? [];
   if (!used.length) return null;
@@ -1936,7 +1994,8 @@ function attachMemoryUsed(payload) {
   hint.style.setProperty('--agent', agentColor(payload.sender));
   const carried = used.filter((note) => note.via === 'cascade').length;
   hint.append(el('span', 'lead', t('◉ memory used · {n}', { n: used.length }) + (carried ? t(' · {n} by association', { n: carried }) : '')));
-  for (const note of used.slice(0, 3)) {
+  const visible = used.slice(0, 3);
+  for (const [index, note] of visible.entries()) {
     // The kind travels as a dot, not as a word. Those five colours were chosen for NOSTROMO's
     // dark star map — `fact` is #dfeeff, a near-white blue — so printing the word in them left
     // "FACT" invisible on a light background. A dot with a hairline ring reads on either, the
@@ -1949,9 +2008,14 @@ function attachMemoryUsed(payload) {
       ? t('Came along because this room keeps carrying it with one of the others.')
       : t('The archive matched this to what you asked.')} ${t('Click to see it in NOSTROMO.')}`;
     pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
-    hint.append(pill);
+    if (used.length > 3 && index === visible.length - 1) {
+      const last = el('span', 'last');
+      last.append(pill, el('span', 'more', `+${used.length - visible.length}`));
+      hint.append(last);
+    } else {
+      hint.append(pill);
+    }
   }
-  if (used.length > 3) hint.append(el('span', 'more', `+${used.length - 3}`));
   return hint;
 }
 
@@ -5330,17 +5394,6 @@ const core = {
   tabs: null,
 };
 
-// Characters to tokens, in the core. The same estimate the room uses for text nobody was
-// charged for, kept here because the page cannot import from the server: src/room/economy.mjs
-// holds the other copy and a test keeps the two equal.
-//
-// It is an estimate and it is labelled as one. What this room MEASURES — what MADRE wrote
-// against what the CLI was charged for reading — is a different quantity: the CLIs bill their
-// own system prompt, their own tools and every file they open, so in this room that ratio was
-// 0.62 and called a 14,356-character briefing 23,155 tokens.
-const CH_PER_TOKEN = 3.5;
-const tokensFor = (chars) => Math.round((Number(chars) || 0) / CH_PER_TOKEN);
-
 const CORE_BOOT = [
   t('INTERFACE 2037 · CORE ACCESS'),
   t('MU/TH/UR 6000 READY FOR INQUIRY.'),
@@ -6525,16 +6578,6 @@ function askMotherAbout(conditionId) {
 
 /* ---------- NOSTROMO: memory research. The archive as a solar system: the room is a red sun, every distilled memory a smoking planet, plasma between them. ---------- */
 
-// Memories burn as stars burn, and a star's colour is its class. A decision is a yellow dwarf,
-// the steady kind a system is built around. A fact is a white dwarf: cold, dense, settled. A
-// preference is a red dwarf, dim and personal and very long lived. A question is a blue dwarf,
-// the hottest thing in the sky and the least settled.
-const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#5cf07a', question: '#3dc6ff', aberration: '#b14cff' };
-// A memory's kind is an id in the ledger and a word on a screen. Only the word is said in the
-// room's language: what was written down never moves. Declared one by one, so the catalogue's
-// guard sees all five and an id nobody translated cannot slip past as itself.
-const KIND_WORDS = { decision: t('DECISION'), fact: t('FACT'), preference: t('PREFERENCE'), question: t('QUESTION'), aberration: t('ABERRATION') };
-const kindWord = (kind) => KIND_WORDS[kind] ?? String(kind).toUpperCase();
 // One kind is not a star. An aberration is a claim the room established is false, and it burns
 // nothing: it is a collapsed body with a ring of what fell into it, and it gives off no light
 // of its own. It is drawn dark on purpose, because it is the one thing in here nobody should
