@@ -20,6 +20,10 @@
           <span id="project" class="project" title="Project room"></span>
         </div>
         <div id="agents" class="agents" aria-label="Agents"></div>
+        <button id="agents-compact" class="bar-icon agents-compact" type="button" title="Crew" aria-label="Crew">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="6.5" width="13" height="9" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.6" cy="11" r="1.25" fill="currentColor"/><circle cx="12.4" cy="11" r="1.25" fill="currentColor"/><path d="M10 3.4v3.1M6.2 15.5v1.3M13.8 15.5v1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span id="agents-count" class="bar-count"></span>
+        </button>
         <div id="connection" class="connection" data-state="connecting" title="Live updates">
           <span class="connection-dot"></span><span class="connection-label">connecting</span>
         </div>
@@ -28,16 +32,19 @@
           <span class="stop-all-glyph" aria-hidden="true"></span>STOP ALL
         </button>
         <button id="modules-button" class="mother-button" type="button" title="Modules · optional integrations for this project" aria-haspopup="dialog">
-          <span class="mother-glyph modules-glyph" aria-hidden="true"></span>MODULES<span id="modules-count" class="modules-count" hidden></span>
+          <span class="mother-glyph modules-glyph" aria-hidden="true"></span><svg class="bar-glyph" viewBox="0 0 20 20" aria-hidden="true"><path d="M8.1 3.2h3.8v1.6a1.5 1.5 0 0 0 3 0V3.2h1.9v3.6h-1.4a1.5 1.5 0 0 0 0 3h1.4v3.6h-3.6v-1.5a1.5 1.5 0 0 0-3 0v1.5H6.8V9.8H5.4a1.5 1.5 0 0 1 0-3h1.4V3.2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>MODULES<span id="modules-count" class="modules-count" hidden></span>
         </button>
         <button id="mother-button" class="mother-button" type="button" title="Troubleshooting · MU/TH/UR" aria-haspopup="dialog">
-          <span class="mother-glyph" aria-hidden="true"></span>MU/TH/UR<span id="mother-count" class="mother-count" hidden></span>
+          <span class="mother-glyph" aria-hidden="true"></span><svg class="bar-glyph" viewBox="0 0 20 20" aria-hidden="true"><path d="M1.8 10h3.4l1.6-4.6 2.6 9.2 2-4.6h1.5l1.3-2.6 1.2 2.6h2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>MU/TH/UR<span id="mother-count" class="mother-count" hidden></span>
         </button>
         <button id="lang-button" class="tree-button lang-button" type="button" data-language="es" aria-label="Language">EN</button>
         <button id="theme-button" class="tree-button theme-button" type="button" title="Theme · auto (follows the system)" data-theme="auto" aria-label="Theme">
           <svg class="t-auto" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 3.8v12.4A6.2 6.2 0 0 0 10 3.8z" fill="currentColor"/></svg>
           <svg class="t-light" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           <svg class="t-dark" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 12.4A6.5 6.5 0 0 1 7.6 4.5a6.5 6.5 0 1 0 7.9 7.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="browser-button" class="tree-button" type="button" aria-pressed="false" aria-controls="browser" title="Browser · local servers and the web" aria-label="Browser">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 10h14.4M10 2.8c1.9 2 2.9 4.5 2.9 7.2s-1 5.2-2.9 7.2c-1.9-2-2.9-4.5-2.9-7.2s1-5.2 2.9-7.2z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
         <button id="tree-button" class="tree-button" type="button" title="Project files panel" aria-pressed="false" aria-controls="tree">
           <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.75v12.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M13.8 7h1.6M13.8 9.6h1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>
@@ -65,7 +72,10 @@
           <span class="tree-title">FILES <span id="tree-root" class="tree-root"></span></span>
           <button id="tree-close" class="tree-close" type="button" aria-label="Close files">×</button>
         </header>
+        <form id="tree-search" class="tree-search"><input id="tree-q" type="search" spellcheck="false" autocomplete="off" aria-label="Search files" placeholder="Search files…"></form>
+        <div id="tree-clip" class="tree-clip" hidden></div>
         <div id="tree-body" class="tree-body" role="tree"></div>
+        <div id="tree-menu" class="tree-menu" role="menu" hidden></div>
       </aside>
 
       <dialog id="core" class="mother core" aria-label="The core">
@@ -200,7 +210,8 @@
           </button>
         </div>
       </form>
-      <p class="safety">Consultation mode · Project writes stay under your control: agents create files only with CREATE or an opt-in standing lease, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.</p>
+      <p class="safety">Consultation mode · Agents write only with CREATE or a standing lease, only inside .pulse/out/ · What an agent reads may reach its configured model provider.</p>
+      <small id="colophon" class="colophon" aria-label="MADRE version"></small>
       <div id="toast" class="toast" role="status" hidden></div>
       <div id="agent-pop" class="agent-pop" role="dialog" aria-label="Agent usage" hidden></div>
       <dialog id="override" class="mother override" aria-label="Emergency command override">
@@ -315,6 +326,23 @@
           <p id="nostromo-empty" class="nostromo-empty" hidden>NO MEMORIES YET. THE ARCHIVIST WRITES THE FIRST ONES AFTER A FEW EXCHANGES.</p>
         </div>
       </dialog>
+      <aside id="browser" class="browser-dock" aria-label="Browser" hidden>
+        <div id="browser-grip" class="dock-grip" role="separator" aria-orientation="vertical" aria-label="Resize the browser"></div>
+        <header class="viewer-head browser-head">
+          <span class="viewer-nav" id="browser-nav">
+            <button id="browser-back" class="nav" type="button" title="Back" aria-label="Back" disabled>‹</button>
+            <button id="browser-reload" class="nav" type="button" title="Reload" aria-label="Reload">↻</button>
+            <button id="browser-servers" class="nav ports" type="button" aria-expanded="false" aria-haspopup="menu" title="Local servers answering on this computer"><i class="ports-dot" aria-hidden="true"></i><span>SERVERS</span><i class="ports-caret" aria-hidden="true"></i></button>
+          </span>
+          <div id="browser-ports-menu" class="ports-menu" role="menu" hidden></div>
+          <span id="browser-where" class="browser-where"></span>
+          <span id="browser-sizes" class="viewer-sizes"></span>
+          <button id="browser-close" class="mother-close" type="button">CLOSE ×</button>
+        </header>
+        <div id="browser-tabs" class="browser-tabs" role="tablist"></div>
+        <div id="browser-body" class="viewer-body browsing"></div>
+      </aside>
+
       <dialog id="viewer" class="viewer" aria-label="File viewer">
         <header class="viewer-head">
           <span class="viewer-nav" id="viewer-nav" hidden>

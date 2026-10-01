@@ -82,6 +82,57 @@ export const ES = {
   'SET #{n}': 'PONER #{n}',
   'Opens the override: you type the project designation, as always.': 'Abre la anulación: tú escribes la designación del proyecto, como siempre.',
   'Arms the composer for your next message. Nothing is sent.': 'Arma el compositor para tu siguiente mensaje. No se manda nada.',
+  'SERVERS': 'SERVIDORES',
+  'MADRE version': 'Versión de MADRE',
+  'Local servers answering on this computer': 'Servidores locales que contestan en esta computadora',
+  'COULD NOT READ THE PORTS': 'NO SE PUDIERON LEER LOS PUERTOS',
+  'NOTHING IS ANSWERING ON THIS COMPUTER · START YOUR SERVER AND OPEN THIS AGAIN':
+    'NADA CONTESTA EN ESTA COMPUTADORA · LEVANTA TU SERVIDOR Y ABRE ESTO DE NUEVO',
+  'ONLY WHAT LISTENS ON THIS COMPUTER AND ANSWERS HTTP · MADRE RUNS NOTHING TO FIND THEM':
+    'SOLO LO QUE ESCUCHA EN ESTA COMPUTADORA Y CONTESTA HTTP · MADRE NO EJECUTA NADA PARA ENCONTRARLOS',
+  '{what} · refuses to be framed': '{what} · se niega a ser enmarcado',
+  'Resize the browser': 'Cambiar el ancho del navegador',
+  'Crew': 'Tripulación',
+  'Crew · {ready} of {total} ready · {who}': 'Tripulación · {ready} de {total} lista · {who}',
+  'The destination is outside this project.': 'El destino está fuera de este proyecto.',
+  'There is already something at {path}.': 'Ya hay algo en {path}.',
+  'Search files': 'Buscar archivos',
+  'Search files…': 'Buscar archivos…',
+  'Copy': 'Copiar',
+  'Move': 'Mover',
+  'Paste here': 'Pegar aquí',
+  'Paste beside it': 'Pegar al lado',
+  'Rename': 'Renombrar',
+  'New file': 'Archivo nuevo',
+  'New folder': 'Carpeta nueva',
+  'NEW NAME': 'NOMBRE NUEVO',
+  'NEW FILE': 'ARCHIVO NUEVO',
+  'NEW FOLDER': 'CARPETA NUEVA',
+  'PROJECT DESIGNATION': 'DESIGNACIÓN DEL PROYECTO',
+  'OK': 'LISTO',
+  'MOVE': 'MOVER',
+  'That could not be done.': 'Eso no se pudo hacer.',
+  'NOTHING MATCHES {q}': 'NADA COINCIDE CON {q}',
+  'MADRE GUARDS THIS PATH · IT WILL ASK FOR THE DESIGNATION': 'MADRE PROTEGE ESTA RUTA · VA A PEDIR LA DESIGNACIÓN',
+  '{path} is a place MADRE guards.': '{path} es un lugar que MADRE protege.',
+  '{host} will not be framed': '{host} no se deja enmarcar',
+  'The site answers with a rule that forbids any page from putting it inside a frame. It is the standard defence against clickjacking, and RIPLEY neither can nor should override it.':
+    'El sitio responde con una regla que prohíbe a cualquier página meterlo dentro de un marco. Es la defensa estándar contra el clickjacking, y RIPLEY ni puede ni debe saltársela.',
+  'This server answers with a rule that forbids any page from putting it inside a frame — your own dev server may be setting it without you noticing. RIPLEY neither can nor should override it.':
+    'Este servidor responde con una regla que prohíbe a cualquier página meterlo dentro de un marco — tu propio servidor de desarrollo puede estar poniéndola sin que lo notes. RIPLEY ni puede ni debe saltársela.',
+  'OPEN IN A TAB': 'ABRIR EN UNA PESTAÑA',
+  'COPY THE ADDRESS': 'COPIAR LA DIRECCIÓN',
+  'Address copied.': 'Dirección copiada.',
+  'Browser · local servers and the web': 'Navegador · servidores locales y la web',
+  'Browser': 'Navegador',
+  'RIPLEY browser': 'Navegador de RIPLEY',
+  'new tab': 'pestaña nueva',
+  'New tab': 'Pestaña nueva',
+  'Address': 'Dirección',
+  'Only http and https.': 'Solo http y https.',
+  'That is not an address.': 'Eso no es una dirección.',
+  'RIPLEY reaches this computer only · turn the web on in MODULES to open an address outside it':
+    'RIPLEY solo alcanza esta computadora · enciende la web en MÓDULOS para abrir una dirección fuera de ella',
   'SEE THE ECONOMY': 'VER LA ECONOMÍA',
   'ECONOMY': 'ECONOMÍA',
   'MADRE · WHAT THIS ROOM SPENT AND WHAT IT NEVER SPENT': 'MADRE · LO QUE ESTA SALA GASTÓ Y LO QUE NUNCA GASTÓ',
@@ -198,8 +249,8 @@ export const ES = {
   'Attach an image or file (or drop it here)': 'Adjunta una imagen o un archivo (o arrástralo aquí)',
   'Send': 'Enviar',
   'Agent': 'Agente',
-  'Consultation mode · Project writes stay under your control: agents create files only with CREATE or an opt-in standing lease, only inside .pulse/out/ · Content an agent reads may be sent to its configured model provider.':
-    'Modo consulta · Tú decides qué se escribe en tu proyecto: los agentes crean archivos solo con CREATE o con un permiso permanente que tú hayas activado, y solo dentro de .pulse/out/ · Lo que un agente lee puede llegar al proveedor de su modelo.',
+  'Consultation mode · Agents write only with CREATE or a standing lease, only inside .pulse/out/ · What an agent reads may reach its configured model provider.':
+    'Modo consulta · Los agentes escriben solo con CREATE o con un permiso permanente, y solo dentro de .pulse/out/ · Lo que un agente lee puede llegar al proveedor de modelo que tenga configurado.',
 
   // Quién habla, delante del campo.
   'HUMAN ›': 'HUMANO ›',
@@ -431,8 +482,8 @@ export const ES = {
   'nothing in the project': 'nada en el proyecto',
   'a switch in ~/.pulse/config.json': 'un interruptor en ~/.pulse/config.json',
 
-  'Renders HTML, SVG and Markdown from the project and from .pulse/out in the file viewer, inside a sealed frame.':
-    'Dibuja el HTML, el SVG y el Markdown del proyecto y de .pulse/out en el visor de archivos, dentro de un marco sellado.',
+  'Renders HTML, SVG and Markdown from the project in the file viewer, inside a sealed frame, and opens a browser on the servers answering on this computer.':
+    'Renderiza HTML, SVG y Markdown del proyecto en el visor de archivos, dentro de un marco sellado, y abre un navegador sobre los servidores que contestan en esta computadora.',
   'scripts run in the frame · nothing leaves, nothing is stored, nothing reaches MADRE':
     'los scripts corren dentro del marco · no sale nada, no se guarda nada, nada llega a MADRE',
 
@@ -974,7 +1025,7 @@ export const ES = {
   ' · {n} existing files put back, CREATE only adds: {files}': ' · {n} archivos que ya existían se restauraron, CREATE solo agrega: {files}',
   ' · {n} writes into forbidden zones reverted': ' · {n} escrituras en zonas prohibidas revertidas',
   ' · need to change existing files? ask again in #3 CONTROL': ' · ¿necesitas cambiar archivos que ya existen? pídelo otra vez en #3 CONTROL',
-  'CONTROL · ': 'CONTROL · ',
+  'CONTROL': 'CONTROL',
   ' holds the project · checkpoint ': ' tiene el proyecto · checkpoint ',
   'MU/TH/UR › @{agent} holds CONTROL. Checkpoint taken; UNDO will be one click.':
     'MU/TH/UR › @{agent} tiene CONTROL. Checkpoint tomado; DESHACER va a ser un clic.',

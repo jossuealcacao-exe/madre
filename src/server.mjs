@@ -1,11 +1,15 @@
 import http from 'node:http';
-import { readFile, realpath, writeFile, mkdir, rm } from 'node:fs/promises';
+import { readFile, realpath, writeFile, mkdir, rm, cp, rename, access } from 'node:fs/promises';
 import { rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { parseListening, probePort, framable } from './ports.mjs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 import { detectAgents, toolsPrefix } from './runtime-detection.mjs';
 import { EventStore } from './event-store.mjs';
 import { RoomMemory } from './memory.mjs';
@@ -58,7 +62,8 @@ import { discoverModels } from './models.mjs';
 import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
-import { listDirectory, searchFiles, readServable, storeAttachment, MAX_ATTACHMENT_BYTES } from './files.mjs';
+import { listDirectory, searchFiles, readServable, storeAttachment, resolveInside, MAX_ATTACHMENT_BYTES } from './files.mjs';
+import { planFileOp, CREATIONS } from './file-ops.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
 import { economy } from './room/economy.mjs';
 import { maturity } from './maturity.mjs';
@@ -843,13 +848,17 @@ export async function createPulseServer({
 
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
+    // The project's own folder name, typed by the human. Declared at the top of the handler and
+    // not beside the first route that happened to need it: a const sits in its temporal dead zone
+    // until its own line runs, so any route above it threw instead of refusing.
+    const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
     try {
       if (request.method === 'GET' && url.pathname === '/') {
         const html = await readFile(join(publicDirectory, 'index.html'));
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/routing.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/routing.js', '/abduction.js'].includes(url.pathname)) {
         const js = await readFile(join(publicDirectory, url.pathname.slice(1)));
         response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
         return response.end(js);
@@ -863,6 +872,9 @@ export async function createPulseServer({
         return sendJson(response, 200, {
           projectRoot,
           platform: process.platform,
+          // Which MADRE this is. The page prints it in the corner: the one fact a bug report
+          // always needs and nobody ever remembers to ask for.
+          version: PACKAGE.version,
           // What language this machine set MADRE to, for a browser that has never chosen. It is
           // the language the room is SPEAKING, not the one written in the file: PULSE_LANGUAGE
           // wins over the config here as it does everywhere else, and reading the file again
@@ -873,6 +885,11 @@ export async function createPulseServer({
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
           ash: { enabled: room.ashEnabled() },
           choices: { enabled: room.choicesEnabled() },
+          // Read live, not from the config this process loaded at boot. A switch the human moves
+          // in MODULES while the room is open has to be the answer the room gives afterwards —
+          // otherwise the switch says on and the browser keeps refusing, which is how a setting
+          // stops being believed.
+          ripleyWeb: Boolean((await readConfig(root)).modules?.ripley?.web),
           ripley: { enabled: await ripleyOn() },
           softTokenBudget,
           timeouts: Object.fromEntries(agents.map((agent) => [agent.id, room.timeoutFor(agent.id)])),
@@ -912,6 +929,37 @@ export async function createPulseServer({
         request.on('close', () => clients.delete(response));
         void broadcastPending();
         return;
+      }
+      // Copying and moving, by the human's own hand. Both ends are resolved inside the project
+      // after following symlinks, so no path typed or pasted can reach outside it; the zones the
+      // room guards from agents ask for the project's designation first.
+      if (request.method === 'POST' && url.pathname === '/api/tree/op') {
+        const payload = await body(request).catch(() => ({}));
+        const plan = planFileOp(payload);
+        if (!plan.ok) return sendJson(response, 400, { error: plan.error });
+        if (plan.guarded && !designationOk(payload.designation)) {
+          return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.'), guarded: true });
+        }
+        const source = plan.from ? await resolveInside(canonicalProjectRoot, plan.from) : null;
+        if (plan.from && !source) return sendJson(response, 404, { error: t('Not found.') });
+        // The destination does not exist yet, so its PARENT is what has to be inside the project.
+        const targetDir = plan.to.includes('/') ? plan.to.slice(0, plan.to.lastIndexOf('/')) : '.';
+        const parent = await resolveInside(canonicalProjectRoot, targetDir);
+        if (!parent) return sendJson(response, 400, { error: t('The destination is outside this project.') });
+        const destination = join(parent, plan.to.slice(plan.to.lastIndexOf('/') + 1));
+        if (await access(destination).then(() => true, () => false)) {
+          return sendJson(response, 409, { error: t('There is already something at {path}.', { path: plan.to }) });
+        }
+        try {
+          if (plan.operation === 'new-folder') await mkdir(destination);
+          else if (plan.operation === 'new-file') await writeFile(destination, '', { flag: 'wx' });
+          else if (plan.operation === 'copy') await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
+          else await rename(source, destination);
+        } catch (error) {
+          return sendJson(response, 500, { error: error.message });
+        }
+        await room.record(CREATIONS.includes(plan.operation) ? 'project.file.created' : 'project.file.moved', { operation: plan.operation, from: plan.from, to: plan.to, guarded: plan.guarded });
+        return sendJson(response, 200, { ok: true, operation: plan.operation, from: plan.from, to: plan.to });
       }
       if (request.method === 'GET' && url.pathname === '/api/tree/search') {
         const matches = await searchFiles(canonicalProjectRoot, url.searchParams.get('q') ?? '', { limit: Math.min(Number(url.searchParams.get('limit')) || 20, 50) });
@@ -984,7 +1032,6 @@ export async function createPulseServer({
         return sendJson(response, 200, { settings: await applySettings(await body(request)) });
       }
       // NOSTROMO: the archive is behind the project designation, like CONTROL.
-      const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
       // Sentinel: reports, settings, the manual road (a prefilled issue) and the automatic one.
       if (request.method === 'GET' && url.pathname === '/api/sentinel') {
         return sendJson(response, 200, { reports: sentinel.reports(), settings: sentinel.settings(), environment: sentinel.environment(), feedbackUrl: sentinel.feedbackUrl(), formUrl: sentinel.formUrl() });
@@ -1024,6 +1071,48 @@ export async function createPulseServer({
       // Open questions, for the strip under the composer. Read-only and ungated for the same
       // reason the decisions are: these sentences already appear in the room whenever one is
       // recalled. Dismissing one still happens in NOSTROMO, behind the designation.
+      // What is listening on loopback that answers HTTP, for RIPLEY's address bar. Reading only:
+      // lsof reports and changes nothing, nothing in the project is run, and a port that does not
+      // speak HTTP never reaches the list. Starting a server is not here — that runs a command.
+      // Whether an address agrees to be put behind glass. A page is entitled to refuse, and most
+      // serious ones do; what RIPLEY can do is ask before framing it, so the human gets MADRE's
+      // sentence and a real tab instead of the browser's bare "refused to connect".
+      //
+      // This is the one place the room itself reaches the web, and only after the human turned
+      // the web on and typed the address. The request goes through the same watched fetch as
+      // everything else, so it lands in the outbound log like any other departure.
+      if (request.method === 'GET' && url.pathname === '/api/can-frame') {
+        let target = null;
+        try { target = new URL(url.searchParams.get('url') ?? ''); } catch { return sendJson(response, 400, { error: t('That is not an address.') }); }
+        if (!/^https?:$/.test(target.protocol)) return sendJson(response, 400, { error: t('Only http and https.') });
+        const local = ['127.0.0.1', 'localhost', '[::1]'].includes(target.hostname);
+        if (!local && !(await readConfig(root)).modules?.ripley?.web) {
+          return sendJson(response, 403, { error: t('RIPLEY reaches this computer only · turn the web on in MODULES to open an address outside it') });
+        }
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 6000);
+          const probe = await reportFetch(target.href, { signal: controller.signal, redirect: 'follow' });
+          clearTimeout(timer);
+          return sendJson(response, 200, { framable: framable(probe.headers), status: probe.status });
+        } catch (error) {
+          return sendJson(response, 200, { framable: true, status: null, unreachable: true });
+        }
+      }
+      if (request.method === 'GET' && url.pathname === '/api/ports') {
+        if (!(await ripleyOn())) return sendJson(response, 412, { error: t('RIPLEY is off. Enable it in MODULES to render files.') });
+        let listening = [];
+        try {
+          const { stdout } = await execFileAsync('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN'], { timeout: 4000, maxBuffer: 2 * 1024 * 1024 });
+          listening = parseListening(stdout, { self: request.socket.localPort });
+        } catch { return sendJson(response, 200, { ports: [], probed: false }); }
+        const ports = [];
+        for (const found of listening.slice(0, 24)) {
+          const probe = await probePort(found.port, { fetchImpl: reportFetch });
+          if (probe.ok) ports.push({ ...found, status: probe.status, html: probe.html, contentType: probe.contentType, framable: probe.framable });
+        }
+        return sendJson(response, 200, { ports, probed: true });
+      }
       if (request.method === 'GET' && url.pathname === '/api/questions') {
         const limit = Math.min(5, Math.max(1, Number(url.searchParams.get('limit') ?? 3) || 3));
         return sendJson(response, 200, { questions: room.questions({ limit }) });

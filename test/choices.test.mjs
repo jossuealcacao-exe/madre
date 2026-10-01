@@ -86,3 +86,75 @@ test('modes: the ladder is offered only when an agent says it needs a rung it wa
   assert.equal(modeAsked('Necesito #3 para esto.', { ran: 3 }), null);
   assert.equal(modeAsked('', { ran: 1 }), null);
 });
+
+test('ports: only loopback, only HTTP, and never the room itself', async () => {
+  const { parseListening } = await import('../src/ports.mjs');
+  const table = [
+    'COMMAND     PID       USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME',
+    'node      12066 eljochuaxd   21u  IPv4 0xaaaa                0t0  TCP 127.0.0.1:4317 (LISTEN)',
+    'node       3778 eljochuaxd   21u  IPv4 0xbbbb                0t0  TCP 127.0.0.1:3000 (LISTEN)',
+    'vite      4001 eljochuaxd   22u  IPv6 0xcccc                0t0  TCP [::1]:5173 (LISTEN)',
+    // Reachable from the network: the room does not help anyone frame that by accident.
+    'nginx      900 eljochuaxd   23u  IPv4 0xdddd                0t0  TCP *:8080 (LISTEN)',
+    'rapportd   669 eljochuaxd   11u  IPv4 0xeeee                0t0  TCP 127.0.0.1:57744 (LISTEN)',
+    'sshd       100 eljochuaxd   24u  IPv4 0xffff                0t0  TCP 127.0.0.1:22 (LISTEN)',
+    'Code\\x20Helper 94252 eljochuaxd 25u IPv4 0x1111             0t0  TCP 127.0.0.1:5592 (LISTEN)',
+  ].join('\n');
+
+  const found = parseListening(table, { self: 4317 });
+  assert.deepEqual(found.map((one) => one.port), [3000, 5173, 5592], 'the list is not loopback-only, or the room listed itself');
+  // lsof escapes anything unprintable; a name with a space is still a name.
+  assert.equal(found.find((one) => one.port === 5592).command, 'Code Helper');
+  assert.equal(parseListening('', {}).length, 0);
+});
+
+test('finder: the project is the world, and the zones the room guards ask for its name first', async () => {
+  const { planFileOp, needsDesignation } = await import('../src/file-ops.mjs');
+
+  // Ordinary files move without ceremony: this is the human in their own project.
+  const plain = planFileOp({ operation: 'copy', from: 'README.md', to: 'docs/README.md' });
+  assert.equal(plain.ok, true);
+  assert.equal(plain.guarded, false);
+
+  // Either end being guarded is enough. Moving something harmless ONTO a protected path is how a
+  // protected path gets overwritten, so the destination counts as much as the source.
+  assert.equal(planFileOp({ operation: 'move', from: '.env', to: 'docs/env.txt' }).guarded, true);
+  assert.equal(planFileOp({ operation: 'copy', from: 'docs/a.md', to: '.pulse/a.md' }).guarded, true);
+  assert.equal(planFileOp({ operation: 'copy', from: 'a.md', to: '.claude/settings.local.json' }).guarded, true);
+  assert.ok(needsDesignation('.git/config'));
+
+  // A folder moved inside itself leaves nothing behind and no way back.
+  assert.equal(planFileOp({ operation: 'move', from: 'src', to: 'src/inner' }).ok, false);
+  assert.equal(planFileOp({ operation: 'copy', from: 'a.md', to: 'a.md' }).ok, false);
+  assert.equal(planFileOp({ operation: 'delete', from: 'a', to: 'b' }).ok, false, 'an operation nobody defined was accepted');
+  assert.equal(planFileOp({ operation: 'copy', from: '', to: 'b' }).ok, false);
+
+  // Making something has a destination and no source, and the guard still applies to where it
+  // would land — a new file inside .pulse is as much a slip as a key moved out of one.
+  const made = planFileOp({ operation: 'new-folder', to: 'docs/drafts' });
+  assert.equal(made.ok, true);
+  assert.equal(made.from, null);
+  assert.equal(made.guarded, false);
+  assert.equal(planFileOp({ operation: 'new-file', to: '.pulse/notes.md' }).guarded, true);
+  assert.equal(planFileOp({ operation: 'new-file', to: '' }).ok, false);
+  assert.equal(planFileOp({ operation: 'new-file', to: 'docs/..' }).ok, false, 'a name that walks upwards was accepted');
+});
+
+test('abduction: the room answers to its name only when that is the whole of what was said', async () => {
+  const { calledByName } = await import('../public/abduction.js');
+
+  // Called by name: the word alone, any casing, space around it.
+  assert.equal(calledByName('MADRE'), true);
+  assert.equal(calledByName('  madre  '), true);
+  assert.equal(calledByName('Madre'), true);
+
+  // @madre is the local agent being addressed and has a turn to answer: it is not this.
+  assert.equal(calledByName('@madre'), false);
+  assert.equal(calledByName('madre, revisa esto'), false);
+  assert.equal(calledByName('la madre'), false);
+  assert.equal(calledByName('madres'), false);
+  assert.equal(calledByName(''), false);
+
+  // Something attached means there is a message, and a message goes to an agent.
+  assert.equal(calledByName('madre', { attachments: 1 }), false);
+});

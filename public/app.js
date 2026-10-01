@@ -1,4 +1,5 @@
 import { archiveQuestion, modeAsked } from './routing.js';
+import { calledByName, abduct } from './abduction.js';
 import { brandOf } from './brands.js';
 import { CONDITIONS, allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
@@ -280,6 +281,38 @@ function scrollToEnd() {
   els.thread.scrollTop = els.thread.scrollHeight;
 }
 
+// The thread is pinned to its own end, and anything that changes how tall it is has to put it
+// back there. Opening the browser beside it, dragging the divider, closing it again: each one
+// re-lays out the column and leaves the last message hanging below the fold, which reads as the
+// conversation having been lost. The observer is the honest fix — it does not matter what moved,
+// only that the height is no longer the one the scroll position was computed against.
+// Whether the human is reading the end or has gone back for something. Only THEIR scrolling
+// decides it: a programmatic scroll fires the same event, so reading the position back during a
+// relayout turned every adjustment into "they scrolled away" and the thread stopped following.
+let pinnedToEnd = true;
+const measurePin = () => {
+  pinnedToEnd = els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 120;
+};
+for (const how of ['wheel', 'touchmove', 'keydown']) els.thread?.addEventListener(how, () => setTimeout(measurePin, 90), { passive: true });
+
+// The thread is pinned to its own end, and anything that changes how tall it is has to put it
+// back there. Opening the browser beside it, dragging the divider, closing it again: each one
+// re-lays out the column and leaves the last message hanging below the fold, which reads as the
+// conversation having been lost.
+//
+// Instant, not smooth: the column is mid-relayout and an animated scroll is interrupted by the
+// next frame of it, which is how the thread ended up parked hundreds of pixels short of its end.
+function keepPinned() {
+  if (!pinnedToEnd || !els.thread) return;
+  els.thread.scrollTo({ top: els.thread.scrollHeight, behavior: 'instant' });
+}
+if (typeof ResizeObserver === 'function' && els.thread) {
+  const watch = new ResizeObserver(() => { keepPinned(); requestAnimationFrame(keepPinned); });
+  watch.observe(els.thread);
+  if (els.column) watch.observe(els.column);
+  if (els.composer) watch.observe(els.composer);
+}
+
 /* ---------- safe Markdown (DOM only, no HTML injection) ---------- */
 
 const SAFE_URL = /^https?:\/\//i;
@@ -524,6 +557,361 @@ const ripley = {
   current: null,    // project-relative path of the page on screen
   root: 'project',
 };
+// The servers answering on this computer, and the frame that shows one.
+//
+// A project file and a running server are different things to put behind glass, and RIPLEY
+// treats them differently on purpose:
+//
+//   · a file is served from MADRE's own origin, so a script inside it would be same-origin with
+//     the room. That frame keeps `allow-scripts` alone and no origin of its own, as it always has.
+//   · a server answers on another port, which is another origin. The same-origin policy already
+//     separates it from the room — and MADRE sets no cookies, so there is nothing of the room's
+//     for it to reach. Denying it its own origin would only break it: no storage, no session,
+//     a blank page where the human expected their app. So it keeps its origin and its forms,
+//     and still cannot navigate the room away or open the ship.
+//
+// What is lost cross-origin is the bridge: MADRE cannot inject its error reporter into somebody
+// else's page, so the error strip stays quiet here. The viewer says so rather than looking broken.
+function ripleyGripOn(grip, side, owner) {
+  grip.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    const stage = owner.stage;
+    const frame = owner.frame;
+    if (!stage || !frame) return;
+    const startX = event.clientX;
+    const startWidth = frame.getBoundingClientRect().width;
+    grip.setPointerCapture(event.pointerId);
+    stage.classList.add('dragging');
+    const move = (moving) => {
+      const delta = (moving.clientX - startX) * (side === 'right' ? 2 : -2);
+      const width = Math.max(280, Math.min(stage.clientWidth, Math.round(startWidth + delta)));
+      stage.style.setProperty('--stage', `${width}px`);
+      stage.dataset.sized = 'true';
+      for (const button of owner.sizes?.children ?? []) button.setAttribute('aria-pressed', 'false');
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', () => {
+      grip.removeEventListener('pointermove', move);
+      stage.classList.remove('dragging');
+    }, { once: true });
+  });
+}
+
+/* ---------- the browser: RIPLEY's other surface ---------- */
+//
+// A file and a running server are different enough to deserve different windows. The viewer reads
+// what is written down; this looks at what is answering. Both belong to RIPLEY, and each has its
+// own way in — a button on the rail beside the conversations, the way the files panel does.
+//
+// ONE FRAME, MANY TABS. This is the whole memory design and it is deliberate: a browser engine
+// gives every live iframe its own renderer process, so ten tabs would be ten of them sitting in
+// the human's RAM while they look at one. Here a tab is an address and a title, nothing more, and
+// exactly one of them is ever alive. Switching re-navigates the single frame. The cost is that a
+// background tab does not keep its page state; the gain is that twenty tabs weigh what one does,
+// which on a machine already running four coding agents is not a small thing.
+const browser = {
+  dialog: document.querySelector('#browser'),
+  button: document.querySelector('#browser-button'),
+  close: document.querySelector('#browser-close'),
+  body: document.querySelector('#browser-body'),
+  tabsBar: document.querySelector('#browser-tabs'),
+  back: document.querySelector('#browser-back'),
+  reload: document.querySelector('#browser-reload'),
+  servers: document.querySelector('#browser-servers'),
+  portsMenu: document.querySelector('#browser-ports-menu'),
+  where: document.querySelector('#browser-where'),
+  sizes: document.querySelector('#browser-sizes'),
+  tabs: [],
+  active: null,
+  frame: null,
+  stage: null,
+};
+
+const BROWSER_WIDTHS = [['AUTO', null], ['390', 390], ['768', 768], ['1280', 1280]];
+const browserTab = () => browser.tabs.find((tab) => tab.id === browser.active) ?? null;
+
+// Loopback is always allowed. Anywhere else is the web, and the web is only reachable when the
+// human turned it on for RIPLEY — the room says what a module may reach before it reaches it.
+// Asked again for every address that would leave this computer, never remembered. The switch
+// lives in MODULES and the human can move it with this panel open; a permission cached when the
+// panel opened would keep refusing after they turned it on, and a switch that is not believed is
+// worse than no switch. Loopback needs no question and gets none.
+async function browserAllows(url) {
+  let parsed = null;
+  try { parsed = new URL(url); } catch { return { ok: false, why: t('That is not an address.') }; }
+  if (!/^https?:$/.test(parsed.protocol)) return { ok: false, why: t('Only http and https.') };
+  if (['127.0.0.1', 'localhost', '[::1]', '::1'].includes(parsed.hostname)) return { ok: true, local: true };
+  try {
+    const live = await fetch('/api/state').then((response) => response.json());
+    state.ripleyWeb = Boolean(live?.ripleyWeb);
+  } catch { /* keep whatever the page already knew */ }
+  if (!state.ripleyWeb) return { ok: false, why: t('RIPLEY reaches this computer only · turn the web on in MODULES to open an address outside it') };
+  return { ok: true, local: false };
+}
+
+function browserTitleFor(url) {
+  try {
+    const parsed = new URL(url);
+    if (!/^https?:$/.test(parsed.protocol)) return t('new tab');
+    return ['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname) ? `:${parsed.port || 80}` : parsed.hostname.replace(/^www\./, '');
+  } catch { return t('new tab'); }
+}
+
+function browserRenderTabs() {
+  if (!browser.tabsBar) return;
+  browser.tabsBar.replaceChildren();
+  for (const tab of browser.tabs) {
+    const node = el('button', `browser-tab${tab.id === browser.active ? ' on' : ''}`);
+    node.type = 'button';
+    node.setAttribute('role', 'tab');
+    node.setAttribute('aria-selected', String(tab.id === browser.active));
+    node.title = tab.url === 'about:blank' ? t('new tab') : tab.url;
+    node.append(el('span', 'tab-title', tab.title));
+    const shut = el('span', 'tab-close', '×');
+    shut.addEventListener('click', (event) => { event.stopPropagation(); browserCloseTab(tab.id); });
+    node.append(shut);
+    node.addEventListener('click', () => browserSelect(tab.id));
+    browser.tabsBar.append(node);
+  }
+  const add = el('button', 'browser-newtab', '+');
+  add.type = 'button';
+  add.title = t('New tab');
+  add.addEventListener('click', () => { browserNewTab(); void browserServers(); });
+  browser.tabsBar.append(add);
+  browser.tabsBar.hidden = false;
+}
+
+async function browserOpen(url, { tab = null } = {}) {
+  const allowed = await browserAllows(url);
+  if (!allowed.ok) { toast(allowed.why); return; }
+  const target = tab ?? browserTab();
+  if (!target) { browserNewTab(url); return; }
+  // A page is entitled to refuse the glass, and most serious ones do. Asking first turns the
+  // browser's bare "refused to connect" into MADRE's own sentence and a real tab — the same
+  // answer the servers menu already gives for a local port that refuses.
+  if (!allowed.local) {
+    const verdict = await fetch(`/api/can-frame?url=${encodeURIComponent(url)}`).then((r) => r.json()).catch(() => null);
+    if (verdict && verdict.framable === false) {
+      target.url = url;
+      target.title = browserTitleFor(url);
+      if (browser.where) browser.where.textContent = url.replace(/^https?:\/\//, '');
+      browserRenderTabs();
+      browserRefused(url);
+      return;
+    }
+  }
+  target.url = url;
+  target.title = browserTitleFor(url);
+  if (target.history.at(-1) !== url) target.history.push(url);
+  if (browser.where) browser.where.textContent = url.replace(/^https?:\/\//, '');
+  if (browser.back) browser.back.disabled = target.history.length < 2;
+  if (browser.frame) browser.frame.src = url;
+  browserRenderTabs();
+}
+
+function browserNewTab(url = 'about:blank') {
+  const tab = { id: `t${Date.now()}${browser.tabs.length}`, title: browserTitleFor(url), url, history: [] };
+  browser.tabs.push(tab);
+  browser.active = tab.id;
+  browserMountFrame();
+  if (url !== 'about:blank') { void browserOpen(url, { tab }); return; }
+  if (browser.frame) browser.frame.src = 'about:blank';
+  if (browser.where) browser.where.textContent = '';
+  browserRenderTabs();
+}
+
+function browserSelect(id) {
+  if (browser.active === id) return;
+  browser.active = id;
+  const tab = browserTab();
+  browserMountFrame();
+  if (browser.where) browser.where.textContent = tab?.url && tab.url !== 'about:blank' ? tab.url.replace(/^https?:\/\//, '') : '';
+  if (browser.back) browser.back.disabled = (tab?.history.length ?? 0) < 2;
+  // The one frame is re-navigated rather than a second one being born: a tab that is not on
+  // screen costs an address and a title, and nothing else.
+  if (browser.frame) browser.frame.src = tab?.url ?? 'about:blank';
+  browserRenderTabs();
+}
+
+function browserCloseTab(id) {
+  const index = browser.tabs.findIndex((tab) => tab.id === id);
+  if (index < 0) return;
+  browser.tabs.splice(index, 1);
+  if (!browser.tabs.length) { browserHide(); return; }
+  if (browser.active === id) { browser.active = null; browserSelect(browser.tabs[Math.max(0, index - 1)].id); }
+  else browserRenderTabs();
+}
+
+// A page that refuses the glass, said inside the panel instead of by throwing a window at the
+// human. The room's habit everywhere else is to offer and let them choose; opening a window on
+// its own is the room choosing, and it drops them out of what they were doing.
+function browserRefused(url, { why } = {}) {
+  if (!browser.body) return;
+  const box = el('div', 'browser-refused');
+  box.append(el('h4', null, t('{host} will not be framed', { host: browserTitleFor(url) })));
+  box.append(el('p', null, why ?? t('The site answers with a rule that forbids any page from putting it inside a frame. It is the standard defence against clickjacking, and RIPLEY neither can nor should override it.')));
+  const open = el('button', 'browser-go', t('OPEN IN A TAB'));
+  open.type = 'button';
+  open.addEventListener('click', () => window.open(url, '_blank', 'noopener'));
+  const copy = el('button', 'browser-copy', t('COPY THE ADDRESS'));
+  copy.type = 'button';
+  copy.addEventListener('click', () => { void navigator.clipboard?.writeText(url); toast(t('Address copied.')); });
+  const row = el('div', 'browser-refused-row');
+  row.append(open, copy);
+  box.append(row);
+  browser.body.replaceChildren(box);
+  browser.frame = null;
+  browser.stage = null;
+}
+
+function browserSetStage(width) {
+  if (!browser.stage) return;
+  browser.stage.style.setProperty('--stage', width ? `${width}px` : '100%');
+  browser.stage.dataset.sized = String(Boolean(width));
+  for (const button of browser.sizes?.children ?? []) button.setAttribute('aria-pressed', String(Number(button.dataset.width || 0) === Number(width || 0)));
+}
+
+// The single frame, built when the window opens. A page keeps its own origin, which is what makes
+// an app work, and still cannot steer the room or reach anything of the room's — MADRE sets no
+// cookies, and every address here is a different origin from the room's own.
+function browserMountFrame() {
+  if (!browser.body || browser.frame) return;
+  const stage = el('div', 'viewer-stage');
+  const frame = el('iframe', 'ripley');
+  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
+  frame.setAttribute('referrerpolicy', 'no-referrer');
+  frame.title = t('RIPLEY browser');
+  const left = el('div', 'stage-grip');
+  const right = el('div', 'stage-grip');
+  left.style.left = '0'; right.style.right = '0';
+  stage.append(left, frame, right);
+  browser.frame = frame;
+  browser.stage = stage;
+  ripleyGripOn(left, 'left', browser);
+  ripleyGripOn(right, 'right', browser);
+  browser.body.replaceChildren(stage);
+  if (browser.sizes && !browser.sizes.children.length) {
+    for (const [label, width] of BROWSER_WIDTHS) {
+      const button = el('button', null, label);
+      button.type = 'button';
+      button.dataset.width = String(width ?? 0);
+      button.addEventListener('click', () => browserSetStage(width));
+      browser.sizes.append(button);
+    }
+  }
+  browserSetStage(null);
+}
+
+function browserShow() {
+  if (!browser.dialog) return;
+  browser.dialog.hidden = false;
+  document.querySelector('.shell')?.classList.add('with-browser');
+  browser.button?.setAttribute('aria-pressed', 'true');
+  if (!browser.tabs.length) browserNewTab();
+  else { browserMountFrame(); const tab = browserTab(); if (browser.frame && tab) browser.frame.src = tab.url; browserRenderTabs(); }
+}
+
+// Closing drops the frame, and with it the renderer the page was using. The tabs survive as
+// addresses — reopening puts the active one back without having kept a process alive meanwhile.
+function browserHide() {
+  if (browser.dialog) browser.dialog.hidden = true;
+  document.querySelector('.shell')?.classList.remove('with-browser');
+  browser.button?.setAttribute('aria-pressed', 'false');
+  browser.body?.replaceChildren();
+  browser.frame = null;
+  browser.stage = null;
+  portsMenuShown(false);
+}
+
+// Opening and closing the list in one place: the button carries the state, so it has to be told
+// every time, and it is told nowhere else.
+function portsMenuShown(open) {
+  if (browser.portsMenu) browser.portsMenu.hidden = !open;
+  browser.servers?.setAttribute('aria-expanded', String(open));
+}
+
+async function browserServers() {
+  const menu = browser.portsMenu;
+  if (!menu) return;
+  if (!menu.hidden) { portsMenuShown(false); return; }
+  menu.replaceChildren(el('div', 'ports-note', t('READING…')));
+  portsMenuShown(true);
+  let ports = [];
+  try { ports = (await fetch('/api/ports').then((response) => response.json()))?.ports ?? []; }
+  catch { menu.replaceChildren(el('div', 'ports-note', t('COULD NOT READ THE PORTS'))); return; }
+  menu.replaceChildren();
+  // The lamp on the button keeps what the reading found, so the state survives the menu closing.
+  browser.servers?.setAttribute('data-live', ports.length ? 'yes' : 'no');
+  if (!ports.length) { menu.append(el('div', 'ports-note', t('NOTHING IS ANSWERING ON THIS COMPUTER · START YOUR SERVER AND OPEN THIS AGAIN'))); return; }
+  for (const found of ports) {
+    const row = el('button', 'ports-row');
+    row.type = 'button';
+    const what = `${found.command} · ${found.status}${found.html ? '' : ` · ${found.contentType ?? ''}`}`;
+    row.append(el('b', null, `:${found.port}`), el('span', null, found.framable === false ? t('{what} · refuses to be framed', { what }) : what));
+    if (found.framable === false) row.classList.add('refuses');
+    row.addEventListener('click', () => {
+      portsMenuShown(false);
+      // A server that sets frame-ancestors is right to, and RIPLEY cannot and should not override
+      // it. The honest move is a real tab, not a grey rectangle with a broken-document icon.
+      if (found.framable === false) {
+        const url = `http://127.0.0.1:${found.port}/`;
+        const current = browserTab();
+        if (!current || current.url !== 'about:blank') browserNewTab('about:blank');
+        const tab = browserTab();
+        if (tab) { tab.url = url; tab.title = `:${found.port}`; }
+        if (browser.where) browser.where.textContent = url.replace(/^https?:\/\//, '');
+        browserRenderTabs();
+        browserRefused(url, { why: t('This server answers with a rule that forbids any page from putting it inside a frame — your own dev server may be setting it without you noticing. RIPLEY neither can nor should override it.') });
+        return;
+      }
+      const url = `http://127.0.0.1:${found.port}/`;
+      const current = browserTab();
+      if (current && current.url !== 'about:blank') browserNewTab(url); else void browserOpen(url);
+    });
+    menu.append(row);
+  }
+  menu.append(el('div', 'ports-note', t('ONLY WHAT LISTENS ON THIS COMPUTER AND ANSWERS HTTP · MADRE RUNS NOTHING TO FIND THEM')));
+}
+
+// The edge between the conversation and the browser. The dock is a grid column, so a drag just
+// writes a width; the frame stops taking pointer events while it lasts, or the iframe swallows
+// the drag the moment the cursor crosses into it.
+const browserGrip = document.querySelector('#browser-grip');
+browserGrip?.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  const shell = document.querySelector('.shell');
+  if (!shell) return;
+  browserGrip.setPointerCapture(event.pointerId);
+  shell.classList.add('dragging-dock');
+  const move = (moving) => {
+    const width = Math.max(320, Math.min(window.innerWidth - 360, window.innerWidth - moving.clientX));
+    shell.style.setProperty('--dock', `${Math.round(width)}px`);
+  };
+  browserGrip.addEventListener('pointermove', move);
+  browserGrip.addEventListener('pointerup', () => {
+    browserGrip.removeEventListener('pointermove', move);
+    shell.classList.remove('dragging-dock');
+  }, { once: true });
+});
+
+browser.button?.addEventListener('click', () => { if (browser.dialog && !browser.dialog.hidden) browserHide(); else browserShow(); });
+browser.close?.addEventListener('click', () => browserHide());
+browser.servers?.addEventListener('click', () => { void browserServers(); });
+// A list left hanging over the page is the kind of thing a human closes by clicking away from it.
+document.addEventListener('click', (event) => {
+  if (!browser.portsMenu || browser.portsMenu.hidden) return;
+  if (browser.portsMenu.contains(event.target) || browser.servers?.contains(event.target)) return;
+  portsMenuShown(false);
+});
+browser.reload?.addEventListener('click', () => { const tab = browserTab(); if (browser.frame && tab) browser.frame.src = tab.url; });
+browser.back?.addEventListener('click', () => {
+  const tab = browserTab();
+  if (!tab || tab.history.length < 2) return;
+  tab.history.pop();
+  const previous = tab.history.pop();
+  if (previous) void browserOpen(previous, { tab });
+});
+
 function ripleyPathFromPreview(pathname) {
   const match = String(pathname ?? '').match(/^\/preview\/(project|attachments)\/(.*)$/);
   return match ? { root: match[1], path: decodeURIComponent(match[2]) } : null;
@@ -534,6 +922,7 @@ function ripleyNavigate(url, { push = true } = {}) {
   ripley.frame.src = url;
   ripley.back.disabled = ripley.history.length < 2;
 }
+
 function ripleyClearErrors() { if (ripley.errors) { ripley.errors.hidden = true; ripley.errors.replaceChildren(); } }
 function ripleyShowError({ message, source, line }) {
   if (!ripley.errors || !viewerMode.preview) return;
@@ -640,6 +1029,7 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
   viewerMode.kind = null;
   syncViewerMode();
   if (!viewer.dialog.open) viewer.dialog.showModal();
+  
   try {
     const response = await fetch(src);
     if (!response.ok) { const err = await response.json().catch(() => ({})); viewer.body.replaceChildren(el('div', 'err', err.error ?? `HTTP ${response.status}`)); return; }
@@ -825,7 +1215,27 @@ function ringPercent(agent) {
   return official === null ? localPercent(agent) : official;
 }
 
+// The crew in one button, for when the bar has no room for five spheres. It says how many are
+// ready, names them all in its title, and opens CONNECTIONS — the place that already holds the
+// detail each sphere stands for.
+const agentsCompact = document.querySelector('#agents-compact');
+const agentsCount = document.querySelector('#agents-count');
+function renderAgentsCompact() {
+  if (!agentsCompact) return;
+  const all = [...state.agents.values()];
+  const ready = all.filter((agent) => agent.ready).length;
+  if (agentsCount) agentsCount.textContent = String(ready);
+  agentsCompact.title = all.length
+    ? t('Crew · {ready} of {total} ready · {who}', { ready, total: all.length, who: all.map((agent) => `@${agent.id}`).join(' ') })
+    : t('Crew');
+}
+agentsCompact?.addEventListener('click', () => {
+  document.querySelector('#mother-button')?.click();
+  setTimeout(() => document.querySelector('#mother-settings-button')?.click(), 60);
+});
+
 function renderAgents() {
+  renderAgentsCompact();
   els.agents.replaceChildren();
   for (const agent of state.agents.values()) {
     const percent = ringPercent(agent);
@@ -2157,7 +2567,7 @@ function renderControlStarted(event) {
   const { agent, commit, message } = event.payload;
   const node = el('div', 'system control');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, t('CONTROL · ')), el('b', 'who', `@${agent}`), t(' holds the project · checkpoint '), el('code', null, (commit ?? '').slice(0, 7)));
+  node.append(el('b', null, t('CONTROL')), el('b', 'who', `@${agent}`), t(' holds the project · checkpoint '), el('code', null, (commit ?? '').slice(0, 7)));
   node.title = message;
   if (!replaying) toast(t('MU/TH/UR › @{agent} holds CONTROL. Checkpoint taken; UNDO will be one click.', { agent }));
   state.lastSender = null;
@@ -2169,7 +2579,7 @@ function renderControlChanged(event) {
   node.id = `control-${checkpointId}`;
   node.style.setProperty('--agent', agentColor(agent));
   const head = el('div', 'head');
-  head.append(el('b', null, t('CONTROL · ')), el('b', 'who', `@${agent}`), files.length ? t(' changed {n} files', { n: files.length }) : t(' changed nothing'));
+  head.append(el('b', null, t('CONTROL')), el('b', 'who', `@${agent}`), files.length ? t(' changed {n} files', { n: files.length }) : t(' changed nothing'));
   node.append(head);
   if (files.length) {
     const list = el('ul', 'files');
@@ -2211,7 +2621,7 @@ function renderControlReverted(event) {
   const { agent, checkpointId, restored = [], removed = [], message } = event.payload;
   const node = el('div', 'system control reverted');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, t('CONTROL · ')), t("project restored to the checkpoint before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
+  node.append(el('b', null, t('CONTROL')), t("project restored to the checkpoint before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
   node.title = message;
   const card = document.getElementById(`control-${checkpointId}`);
   card?.querySelector('.undo')?.replaceWith(el('span', 'outcome', t('RESTORED')));
@@ -2406,6 +2816,9 @@ async function renderOpenQuestions() {
   if (!questions.length) { box.hidden = true; return; }
   box.replaceChildren();
   box.append(el('span', 'openq-lead', t('◉ still open here')));
+  // The pills live in a track of their own so the row can scroll sideways instead of stacking:
+  // these are an aside under the thread, and an aside that grows downwards pushes the composer.
+  const rail = el('div', 'openq-rail');
   for (const question of questions) {
     const pill = el('button', 'openq-ask');
     pill.type = 'button';
@@ -2418,8 +2831,9 @@ async function renderOpenQuestions() {
       els.input.dispatchEvent(new Event('input', { bubbles: true }));
       els.input.focus();
     });
-    box.append(pill);
+    rail.append(pill);
   }
+  box.append(rail);
   box.hidden = false;
 }
 
@@ -2910,12 +3324,173 @@ async function loadTreeLevel(path, list) {
   }
 }
 
+/* ---------- the finder: search, and moving things by hand ---------- */
+//
+// Copy and move are the human's own hands in their own project, so there is no permission mode
+// here — but the zones the room guards from agents are guarded from slips too. Anything touching
+// .git, .pulse, .madre, a .env or the local settings asks for the project's designation first,
+// the same word CONTROL asks for. Typing a folder name is a small ceremony; getting a key back
+// after it was moved somewhere is not.
+const finder = {
+  search: document.querySelector('#tree-search'),
+  q: document.querySelector('#tree-q'),
+  clip: document.querySelector('#tree-clip'),
+  menu: document.querySelector('#tree-menu'),
+  held: null,      // { path, name, operation }
+};
+
+const GUARDED = /^\.git(\/|$)|^\.pulse(\/|$)|(^|\/)\.env(\.|$)|(^|\/)\.madre(\/|$)|(^|\/)\.claude\/settings\.local\.json$/;
+const finderGuarded = (...paths) => paths.filter(Boolean).some((path) => GUARDED.test(String(path).replace(/^\.\//, '')));
+
+function finderShowClip() {
+  if (!finder.clip) return;
+  if (!finder.held) { finder.clip.hidden = true; finder.clip.replaceChildren(); return; }
+  finder.clip.replaceChildren();
+  // No t() around a template that is only two slots and a dot: there is nothing in it to say in
+  // another language, and the catalogue's own guard rejects an entry whose Spanish is the English.
+  finder.clip.append(el('span', 'what', `${finder.held.operation === 'copy' ? t('COPY') : t('MOVE')} · ${finder.held.name}`));
+  const cancel = el('button', null, t('CANCEL'));
+  cancel.type = 'button';
+  cancel.addEventListener('click', () => { finder.held = null; finderShowClip(); });
+  finder.clip.append(cancel);
+  finder.clip.hidden = false;
+}
+
+// Asking for a word without leaving the panel. A name, or the designation: both are typed in the
+// same strip under the search box, where the hand already is. A browser prompt would take the
+// whole window for one word and throw away where the human was looking.
+function finderAsk({ label, value = '', hint = '' }) {
+  return new Promise((resolve) => {
+    if (!finder.clip) { resolve(null); return; }
+    const form = el('form', 'tree-ask');
+    const input = el('input');
+    input.type = 'text';
+    input.value = value;
+    input.spellcheck = false;
+    input.autocomplete = 'off';
+    input.placeholder = label;
+    input.setAttribute('aria-label', label);
+    const ok = el('button', 'go', t('OK'));
+    ok.type = 'submit';
+    const no = el('button', null, t('CANCEL'));
+    no.type = 'button';
+    form.append(input, ok, no);
+    const done = (answer) => { finderShowClip(); resolve(answer); };
+    form.addEventListener('submit', (event) => { event.preventDefault(); done(input.value.trim() || null); });
+    no.addEventListener('click', () => done(null));
+    input.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.stopPropagation(); done(null); } });
+    finder.clip.replaceChildren();
+    if (hint) finder.clip.append(el('span', 'what', hint));
+    finder.clip.append(form);
+    finder.clip.hidden = false;
+    input.focus();
+    // The extension stays out of the selection: renaming is almost always about the name.
+    const dot = value.lastIndexOf('.');
+    input.setSelectionRange(0, dot > 0 ? dot : value.length);
+  });
+}
+
+// One door for everything that writes: it asks for the designation only when it already knows one
+// will be wanted, so the human is not surprised mid-operation.
+async function finderRun(body, { say }) {
+  const guarded = [body.from, body.to].filter(Boolean).find((path) => finderGuarded(path));
+  if (guarded) {
+    const typed = await finderAsk({ label: t('PROJECT DESIGNATION'), hint: t('{path} is a place MADRE guards.', { path: guarded }) });
+    if (!typed) return false;
+    body.designation = typed;
+  }
+  const response = await fetch('/api/tree/op', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? t('That could not be done.')}`); return false; }
+  toast(say);
+  els.treeBody.replaceChildren();
+  void setTree(true);
+  return true;
+}
+
+const finderDirOf = (path) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.');
+const finderJoin = (dir, name) => (dir === '.' ? name : `${dir}/${name}`);
+
+async function finderPaste(intoDir) {
+  if (!finder.held) return;
+  const held = finder.held;
+  const to = finderJoin(intoDir, held.name);
+  const did = await finderRun({ operation: held.operation, from: held.path, to }, { say: `${held.path} → ${to}` });
+  if (!did) return;
+  finder.held = null;
+  finderShowClip();
+}
+
+async function finderRename(path, entry) {
+  const name = await finderAsk({ label: t('NEW NAME'), value: entry.name });
+  if (!name || name === entry.name) return;
+  const to = finderJoin(finderDirOf(path), name);
+  await finderRun({ operation: 'move', from: path, to }, { say: `${path} → ${to}` });
+}
+
+async function finderCreate(dir, kind) {
+  const name = await finderAsk({ label: kind === 'new-folder' ? t('NEW FOLDER') : t('NEW FILE') });
+  if (!name) return;
+  const to = finderJoin(dir, name);
+  await finderRun({ operation: kind, to }, { say: to });
+}
+
+function finderMenu(event, path, entry) {
+  event.preventDefault();
+  const menu = finder.menu;
+  if (!menu) return;
+  menu.replaceChildren();
+  const add = (label, run, cls) => {
+    const button = el('button', cls || null, label);
+    button.type = 'button';
+    button.addEventListener('click', () => { menu.hidden = true; run(); });
+    menu.append(button);
+  };
+  // Where the new thing lands: inside the folder that was clicked, or beside the file.
+  const here = entry.kind === 'dir' ? path : finderDirOf(path);
+  add(t('Copy'), () => { finder.held = { path, name: entry.name, operation: 'copy' }; finderShowClip(); });
+  add(t('Move'), () => { finder.held = { path, name: entry.name, operation: 'move' }; finderShowClip(); });
+  add(t('Rename'), () => void finderRename(path, entry));
+  if (finder.held && entry.kind === 'dir') add(t('Paste here'), () => void finderPaste(path));
+  if (finder.held && entry.kind === 'file') add(t('Paste beside it'), () => void finderPaste(here));
+  add(t('New file'), () => void finderCreate(here, 'new-file'));
+  add(t('New folder'), () => void finderCreate(here, 'new-folder'));
+  if (finderGuarded(path)) menu.append(el('div', 'note', t('MADRE GUARDS THIS PATH · IT WILL ASK FOR THE DESIGNATION')));
+  menu.hidden = false;
+  // Opened where the hand is, and kept inside the panel: a menu that spills across the room is a
+  // menu the human has to go looking for.
+  const panel = els.tree.getBoundingClientRect();
+  const box = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(6, Math.min(event.clientX - panel.left, panel.width - box.width - 6))}px`;
+  menu.style.top = `${Math.max(6, Math.min(event.clientY - panel.top, panel.height - box.height - 6))}px`;
+}
+document.addEventListener('click', (event) => { if (finder.menu && !finder.menu.hidden && !finder.menu.contains(event.target)) finder.menu.hidden = true; });
+
+// Searching the project by name, with the same scoring the composer's "!" menu uses.
+let finderTimer = null;
+finder.q?.addEventListener('input', () => {
+  clearTimeout(finderTimer);
+  finderTimer = setTimeout(async () => {
+    const query = finder.q.value.trim();
+    if (!query) { els.treeBody.replaceChildren(); void setTree(true); return; }
+    let matches = [];
+    try { matches = (await fetch(`/api/tree/search?q=${encodeURIComponent(query)}&limit=40`).then((r) => r.json()))?.matches ?? []; }
+    catch { return; }
+    const list = el('ul');
+    for (const match of matches) list.append(treeNode(match.path, { kind: 'file', name: match.path, contentType: match.contentType }));
+    els.treeBody.replaceChildren(list);
+    if (!matches.length) els.treeBody.append(el('div', 'tree-empty', t('NOTHING MATCHES {q}', { q: query })));
+  }, 160);
+});
+finder.search?.addEventListener('submit', (event) => event.preventDefault());
+
 function treeNode(path, entry) {
   const item = el('li');
   item.setAttribute('role', 'treeitem');
   const button = el('button', `node ${entry.kind}${entry.shallow ? ' shallow' : ''}${entry.kind === 'file' && /^image\//.test(entry.contentType ?? '') ? ' image' : ''}${entry.kind === 'file' && CODE_EXT.test(entry.name) ? ' code' : ''}`);
   button.type = 'button';
   button.title = path;
+  button.addEventListener('contextmenu', (event) => finderMenu(event, path, entry));
   if (entry.kind === 'dir') {
     const caret = el('span', 'caret', '▸');
     button.append(caret, el('span', 'name', entry.name));
@@ -3145,6 +3720,13 @@ els.thread.addEventListener('keydown', (event) => trackHold(event.key === 'Arrow
 /* ---------- bootstrap ---------- */
 
 const initial = await fetch('/api/state').then((response) => response.json());
+// The corner of the room: which MADRE this is, and whose it is. Quiet enough to forget about,
+// there the moment a bug report needs it. The notice is NOTICE's, word for word — a copyright
+// line the page invents for itself is a copyright line that drifts from the one that counts.
+if (initial.version) {
+  const corner = document.querySelector('#colophon');
+  if (corner) corner.textContent = `MADRE ${initial.version} · © 2026 Jossue Alcalá`;
+}
 adoptLanguage(initial.language);
 els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;
 els.project.title = initial.projectRoot;
@@ -3165,6 +3747,7 @@ state.budget = Number.isFinite(initial.softTokenBudget) && initial.softTokenBudg
 state.timeouts = initial.timeouts ?? {};
 state.sessions = initial.sessions ?? {};
 state.capabilities = initial.capabilities ?? {};
+state.ripleyWeb = Boolean(initial.ripleyWeb);
 syncAshUI(Boolean(initial.ash?.enabled));
 void renderSettled();
 state.ripley = Boolean(initial.ripley?.enabled);
@@ -3750,6 +4333,16 @@ els.composer.addEventListener('submit', async (event) => {
   const ready = state.pending.filter((item) => item.id && !item.uploading);
   if (!text && !ready.length) return;
   if (state.pending.some((item) => item.uploading)) { toast(t('An attachment is still uploading.')); return; }
+  // Called by name. Not routed, not recorded, not billed — and whatever agent the chip is on, it
+  // never hears about it. See abduction.js.
+  if (calledByName(text, { attachments: state.pending.length })) {
+    els.input.value = '';
+    autosize();
+    syncModuleComposer();
+    await abduct({ composer: els.composer, reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    els.input.focus();
+    return;
+  }
   if (STOPALL.test(text)) {
     // Master command: never reaches an agent.
     els.input.value = '';

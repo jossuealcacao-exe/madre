@@ -39,6 +39,31 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Hasta ahora la sala solo sabía pedir elevación en un caso, un paso de plan que quiere `#2`. Un agente en turno directo que necesitaba `#3` únicamente podía decirlo en una frase, y leerla, salir del mensaje y encontrar el selector era trabajo del humano.
 - El detector es estrecho a propósito: un `#3` suelto no basta, hace falta una palabra de necesidad a su lado, y el modo tiene que estar por encima del que el turno tuvo. Un agente que explica la escalera menciona todos los peldaños y eso no es una petición. No cuesta nada en ningún prompt.
 
+### RIPLEY abre lo que ya está escuchando en esta computadora
+
+- Un navegador anclado al lado del chat, con pestañas, que abre los servidores que contestan HTTP aquí: los lee de `lsof`/`netstat` y solo acepta direcciones de loopback. La sala no ejecuta nada para encontrarlos.
+- Sin barra de direcciones. Un sitio que manda `X-Frame-Options` o `frame-ancestors` no se deja enmarcar, y ninguna página puede saltárselo: es la defensa estándar contra el clickjacking y RIPLEY ni puede ni debe anularla. Cuando uno se niega, el panel lo dice y ofrece abrirlo en pestaña o copiar la dirección; no abre ventanas por su cuenta.
+- La comprobación de marcado, el permiso y el ajuste siguen vivos debajo, porque el obstáculo es el medio y no el diseño: una MADRE de escritorio con su propio motor sí puede, y ese día la barra vuelve.
+- El visor de archivos volvió a ser solo eso. Su botón de servidores desapareció: esa lista vive en el navegador.
+
+### El finder opera sobre los archivos, con las mismas vallas
+
+- Clic derecho sobre cualquier fila: copiar, mover, renombrar, archivo nuevo, carpeta nueva. Lo que se toma se ve en una tira bajo el buscador; el nombre se escribe ahí mismo, en el panel, sin sacar al humano de donde estaba mirando.
+- Esto no es un agente bajo un modo: es el humano en su proyecto. Pero las vallas siguen. El proyecto es el mundo —los dos extremos se resuelven dentro o la operación no ocurre, comprobado después de seguir enlaces simbólicos— y las zonas que la sala protege de los agentes se protegen también de un resbalón: `.git`, `.pulse`, `.madre`, un `.env` o los ajustes locales piden la designación del proyecto, la misma palabra que pide CONTROL.
+- Cuentan los dos extremos. Mover algo inofensivo **encima** de una ruta protegida es exactamente como se pierde una ruta protegida.
+- Y un buscador por nombre, con el mismo puntaje que usa el menú `!` del compositor.
+
+### La barra, el pie y la firma
+
+- La barra superior se compacta por consultas de contenedor, no de ventana: con el navegador abierto la columna del chat mide mucho menos que la pantalla, y una media query nunca se enteraba. Los botones pierden la etiqueta y conservan el icono en el orden en que dejan de caber.
+- Las preguntas abiertas van en un riel horizontal con la etiqueta centrada encima. Antes envolvían a un segundo renglón y empujaban el compositor hacia abajo.
+- El aviso de modo pasó de cuatro renglones a dos, y en la esquina inferior derecha quedó la versión y el copyright. La versión viene de `/api/state`, no escrita a mano donde se olvide en el siguiente release.
+
+### Un gato
+
+- Escribe `madre` sola en la caja, sin arroba y sin nada más, y envía. Lo que contesta no es un agente.
+- No se enruta, no entra al ledger, no cuesta un token, y ningún agente se entera. El campo vuelve exactamente como estaba.
+
 ### Arreglos
 
 - Los chips de memoria eran ilegibles en tema claro: el tipo se pintaba con colores elegidos para el mapa oscuro de NOSTROMO, y «HECHO» en un azul casi blanco desaparecía sobre el fondo. Ahora el tipo es un punto con anillo, el texto lleva los colores del texto y la fila perdió la opacidad que la apagaba.

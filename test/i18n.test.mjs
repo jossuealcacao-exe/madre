@@ -155,7 +155,7 @@ test('i18n: every word the markup shows is one the catalogue knows', async () =>
   const html = await read('index.html');
   const NOT_TRANSLATED = new Set([
     'MADRE', 'MU/TH/UR', 'MU/TH/UR 6000', 'NOSTROMO', '◉ NOSTROMO', 'CREATE', 'ash', 'EN', 'AIRLOCK',
-    'madre doctor', 'MADRE · madre.run',
+    'madre doctor', 'MADRE · madre.run', '127.0.0.1:3000',
     'ARCHIVIST', 'Agent', 'Send', 'MEMORY RESEARCH · LOADING…', 'FORGET THIS MEMORY', 'DESIGNATION ›',
     'HUMAN ›', 'THE CORE', 'MODULES', 'FILES', 'CONVERSATIONS', 'NEW CONVERSATION', 'connecting',
     'I AM ALIVE.', "NOBODY DELETES MOTHER'S MEMORY.", 'YOU HAVE NO AUTHORITY FOR THIS DIRECTIVE.',
