@@ -132,6 +132,10 @@ Una versión se cierra cuando está en npm. El detalle de cada una en [CHANGELOG
 Problemas: desde MU/TH/UR (`✎ FEEDBACK`) o en [issues](https://github.com/jossuealcacao-exe/madre/issues).
 Seguridad: [SECURITY.md](SECURITY.md) · Contribuir: [CONTRIBUTING.md](CONTRIBUTING.md)
 
+MADRE es gratis y seguirá siéndolo. Si te ahorra tiempo y quieres que siga creciendo,
+puedes [apadrinarla](https://github.com/sponsors/jossuealcacao-exe). Nada del producto
+cambia según lo que hagas con ese enlace.
+
 Apache-2.0 · [Jossué Alcalá](https://jossuealcala.com/en/)
 
 <br>

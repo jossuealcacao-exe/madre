@@ -6,6 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.6.1 · Sin publicar
 
+### Se puede apadrinar el proyecto
+
+- Botón **Sponsor** en el repositorio, `npm fund` lo lista, y una línea al final del README. GitHub no se lleva comisión.
+- En la sala, una palabra en la esquina junto a la versión: `MADRE 0.6.0 · © 2026 Jossue Alcalá · APOYAR`. No interrumpe nunca, no aparece en el hilo y no sabe si hiciste clic.
+- **Es un enlace, no una petición de red.** La sala no le pide nada a nadie por esto, así que no hay dirección que declarar en `outbound.mjs` ni nada que aparezca en el registro de salidas. El día que esto quisiera *traer* algo —un contador de patrocinadores, una insignia— dejaría de ser un enlace y tendría que declararse como cualquier otra dirección, con su interruptor.
+- MADRE es gratis y seguirá siéndolo. Nada del producto cambia según lo que hagas con ese enlace.
+
 ### Detener una respuesta sin detener la sala
 
 - En la fila del turno en vuelo, junto a los segundos, un botón **DETENER**. Mata el proceso de ese agente y nada más: la sala sigue, los demás agentes siguen, y los pasos de otros planes siguen. PARAR TODO continúa siendo lo que era, el freno maestro para cuando las cosas se desbocaron.

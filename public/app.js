@@ -3771,7 +3771,21 @@ const initial = await fetch('/api/state').then((response) => response.json());
 // line the page invents for itself is a copyright line that drifts from the one that counts.
 if (initial.version) {
   const corner = document.querySelector('#colophon');
-  if (corner) corner.textContent = `MADRE ${initial.version} · © 2026 Jossue Alcalá`;
+  if (corner) {
+    corner.replaceChildren(document.createTextNode(`MADRE ${initial.version} · © 2026 Jossue Alcalá · `));
+    // A LINK, and nothing more. It opens a tab when a human clicks it; the room asks the network
+    // for nothing, so there is no destination to declare in outbound.mjs and nothing appears in
+    // the outbound log. The day this were to FETCH anything — a sponsor count, a tier, a badge —
+    // it would stop being a link and would have to be declared like every other address, with its
+    // own switch. It never nags, it never knows whether you clicked, and nothing in the product
+    // changes either way.
+    const back = el('a', 'colophon-back', t('SUPPORT'));
+    back.href = 'https://github.com/sponsors/jossuealcacao-exe';
+    back.target = '_blank';
+    back.rel = 'noopener noreferrer';
+    back.title = t('MADRE is free and stays free · this only opens GitHub Sponsors in a tab');
+    corner.append(back);
+  }
 }
 adoptLanguage(initial.language);
 els.project.textContent = initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot;

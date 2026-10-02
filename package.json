@@ -20,6 +20,10 @@
     "pulse"
   ],
   "homepage": "https://github.com/jossuealcacao-exe/madre#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/jossuealcacao-exe"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jossuealcacao-exe/madre.git"

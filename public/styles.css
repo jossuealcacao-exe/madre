@@ -746,6 +746,8 @@ textarea::placeholder { color: var(--text-3); }
    everything that is actually used. */
 .colophon { position: fixed; right: 14px; bottom: 10px; z-index: 2; font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--text-3); opacity: .5; pointer-events: none; user-select: none; transition: opacity .2s; }
 .colophon:hover { opacity: .9; }
+.colophon-back { pointer-events: auto; color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; }
+.colophon-back:hover { color: var(--phosphor); }
 @media (max-width: 720px) { .colophon { display: none; } }
 .shell.with-browser .colophon { display: none; }
 

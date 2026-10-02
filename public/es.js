@@ -114,6 +114,9 @@ export const ES = {
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
   'STOPPING': 'DETENIENDO',
+  'SUPPORT': 'APOYAR',
+  'MADRE is free and stays free · this only opens GitHub Sponsors in a tab':
+    'MADRE es gratis y seguirá siéndolo · esto solo abre GitHub Sponsors en una pestaña',
   'Enter sends · ⌥ Enter (Alt on Linux) breaks the line':
     'Enter manda · ⌥ Enter (Alt en Linux) salta de línea',
   'Stop this answer · the room and the other agents keep going':
