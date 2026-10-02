@@ -17,6 +17,12 @@ destilador, lee `docs/ZONAS.md`.**
   regla en dos idiomas. Si tocas una, toca la otra: hay una prueba que las ata.
 - **Tres caminos** sacan una nota de circulación y la devuelven (ZN-036): `flagAberration`,
   `addMemories` y `deleteMemory`/`clearAberration`. Lo que toque `refuted_by` toca la zona.
+- El vocabulario de veredictos es `VERDICTS` en `src/memory.mjs`, **ordenado de peor a
+  mejor**, y una nota toma el peor de los de las respuestas que la originaron. Si lo
+  amplías, `src/dataset.mjs` cambia en el mismo commit o los valores nuevos se borran
+  al exportar (ZN-031).
+- Una memoria por sala, **un ledger por conversación** (ZN-040). Nada que pliegue el
+  ledger puede vaciar su tabla antes de rellenarla.
 - Las reacciones **nunca entran en un prompt**. Ponderan el corpus; no se le cuentan al modelo.
 - Hay decisiones abiertas (`D-002`…`D-006`). **No las cierres por tu cuenta**: anótalas.
 

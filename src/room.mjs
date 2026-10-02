@@ -10,6 +10,7 @@ import { UsageSentinel } from './usage-sentinel.mjs';
 import { BLOCK_SOURCES, buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
 import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
+import { VERDICTS } from './memory.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
 import { questionsFor } from './asking.mjs';
 import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE, saysFor } from './exam.mjs';
@@ -621,7 +622,7 @@ export class Room {
   // rewritten. The text of a note is what the archivist heard; where it stands is what you said.
   async rateMessage(messageId, rating) {
     if (typeof messageId !== 'string' || !messageId.trim()) throw new Error('Which reply? Give its messageId.');
-    if (!['good', 'bad', 'none'].includes(rating)) throw new Error('A rating is good, bad or none.');
+    if (!VERDICTS.includes(rating)) throw new Error(`A verdict is one of ${VERDICTS.join(', ')}.`);
     const event = await this.#emit('message.rated', { messageId, rating, by: 'you' });
     this.#memory?.judge(messageId, rating);
     return event;

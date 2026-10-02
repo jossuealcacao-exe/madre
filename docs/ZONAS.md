@@ -6,7 +6,7 @@ otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 1 completa.** Siguiente: fase 2 (vocabulario) |
+| Estado | **Fases 1 y 2 completas.** Siguiente: fase 3 (zonas visibles ya hechas · falta el eje de coste) |
 | Versión objetivo | `0.7.x` para las fases 1–3; la fase 4 no tiene versión y puede no tenerla nunca |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `e2c1e0a` (0.6.0) |
 | Regla en vigor | Hasta que este documento diga otra cosa, **nada de lo que aquí se describe sale de la máquina** |
@@ -143,6 +143,11 @@ entera no sirve. Opciones en D-001.
   **No subir `MEMORY_SCHEMA_VERSION`**: eso reconstruye `entries` y las memorias
   destiladas están deliberadamente a salvo de esa reconstrucción
   (`src/memory.mjs:124-125`).
+- **ZN-040.** **Una memoria por sala, un ledger por conversación.** `catchUp` recibe
+  el de la conversación abierta, así que un pliegue que vacíe la tabla antes de
+  rellenarla **borra los veredictos dados en las demás**, y sus notas caen a BODEGA
+  en el siguiente arranque. El pliegue aplica evento a evento y nunca vacía; `none`
+  sigue borrando su fila, así que el orden de reproducción da el mismo resultado.
 - **ZN-039.** Las zonas **no estrenan paleta**. En el mapa el color de una estrella
   es su clase y la leyenda lo dice; dos paletas sobre un punto es como un mapa deja
   de leerse. Lo que una zona cambia es si la estrella está **encendida**, que es
@@ -187,9 +192,10 @@ pasa con la memoria ya escrita.
 reescribir su texto. Lo más barato y probablemente suficiente — la zona es el 90 %
 del valor; el texto ya está bien.
 
-**D-002 · ¿El veredicto se amplía o se añade un campo aparte?**
-Ampliar `rating` mantiene una sola señal, y arrastra ZN-031. Un campo nuevo deja
-`rating` intacto a costa de dos conceptos donde el humano ve uno.
+**D-002 · ¿El veredicto se amplía o se añade un campo aparte?** — **CERRADA 2026-10-02: ampliar.**
+El humano juzga una respuesta una vez; dos campos para un acto serían mentir sobre
+lo que hizo. Se pagó ZN-031 con prueba, y se comprobó que la prueba falla cuando
+se vuelve a poner la trampa.
 
 **D-003 · ¿La zona es columna derivada o estado propio?**
 Derivada del ledger en cada lectura es siempre correcta y más lenta. Columna
@@ -227,7 +233,7 @@ par del corpus — misma regla, dos lugares. Un `good` nace en PUENTE. Sin
 vocabulario nuevo, sin UI nueva.
 *Verificable:* una respuesta marcada mal no produce memoria en recall.
 
-**Fase 2 · El vocabulario** (`0.7.x`)
+**Fase 2 · El vocabulario** (`0.7.x`) — **completa**
 `preference` y `never`. Toca `src/room.mjs:622` y `src/dataset.mjs:31` en el mismo
 commit (ZN-031). Los cuatro botones en la burbuja.
 *Verificable:* un veredicto nuevo sobrevive una exportación de ida y vuelta.
@@ -317,6 +323,8 @@ fase 1. No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **Fase 2 completa.** Cuatro veredictos (`never · bad · preference · good` + `none`), peor-primero, leídos del orden en que el vocabulario se declara. ZN-031 pagada: `room.mjs` y `dataset.mjs` en el mismo commit, con prueba que se verificó reponiendo la trampa. Los dos escalones se revelan solo cuando se pulsa el que escalan. Salió ZN-040, un fallo propio: el pliegue vaciaba la tabla y habría borrado los veredictos de las otras conversaciones. |
+| 2026-10-02 | **D-002 cerrada: ampliar el veredicto.** |
 | 2026-10-02 | **Paso 4/4 · fase 1 completa.** La zona se lee en la tarjeta de NOSTROMO y se ve en el mapa: lo que no viaja va apagado, con su chip en la leyenda. Sin paleta nueva (ZN-039). Verificado en pantalla: tarjeta mostrando ZONA · ENFERMERÍA, leyenda con FUERA DE CIRCULACIÓN, y el apagado alcanzando las 2 notas expulsadas (las 14 aberraciones ya se dibujaban como agujeros negros). |
 | 2026-10-02 | **Paso 3/4 de la fase 1.** `message.rated` mueve la zona de lo que se destiló de esa respuesta, sin reescribir su texto. Pliegue de veredictos en tabla derivada, reconstruida del ledger en cada arranque: un pulgar anterior a esto cuenta. El archivo manda sobre el pulgar. Salieron ZN-037 (alcance medido: 36 %) y ZN-038 (la regla vive en dos idiomas). Primera versión del pliegue hacía una consulta por memoria al abrir y volvió inestables dos pruebas de timeout ajenas; ahora es una sola sentencia y la suite pasa dos veces seguidas. |
 | 2026-10-02 | **Paso 2/4 de la fase 1.** Las dos vedas (`kind != aberration AND refuted_by IS NULL`) estaban aplicadas a mano en **cinco** sitios, no en tres: dos consultas de recall, el fallback, la lista de lo que una aberración puede contradecir, y dos comprobaciones en JS. Todas citan ahora `ZONE_GATE` / `travels()`. Refactor puro: la suite entera pasa sin tocar un test existente. Al hacerlo salió ZN-036. |

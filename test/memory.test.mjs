@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { Room } from '../src/room.mjs';
-import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, HOLD, BRIDGE, MEDBAY, JETTISONED, RECALLED_ZONES } from '../src/memory.mjs';
+import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, HOLD, BRIDGE, MEDBAY, JETTISONED, RECALLED_ZONES, VERDICTS } from '../src/memory.mjs';
 
 const agents = [
   { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' },
@@ -1337,6 +1337,58 @@ test('zones: a reaction moves what the room distilled from that reply, and only 
       assert.equal(note.zone, zoneFor(note, verdict), `the SQL and the function disagree on #${note.id}`);
     }
     reopened.close();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('verdicts: four words, and a note takes the worst of the ones it came from', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-four-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (const [messageId, text] of [['r1', 'the worker listens on port 7331'], ['r2', 'and it retries three times before giving up']]) {
+      await store.append('message.created', { messageId, role: 'assistant', sender: 'codex', target: 'you', text });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    const a = memory.sequenceOf('r1');
+    const b = memory.sequenceOf('r2');
+
+    memory.addMemories([
+      { kind: 'fact', text: 'The worker listens on port 7331.', sources: [a] },
+      // One note distilled from BOTH replies: this is the case the worst-first order decides.
+      { kind: 'fact', text: 'The worker retries three times before giving up.', sources: [a, b] },
+    ], { agent: 'codex', fromSequence: 1, throughSequence: 2 });
+    const one = () => memory.memories({ limit: 20 }).find((note) => /port 7331/.test(note.text)).zone;
+    const both = () => memory.memories({ limit: 20 }).find((note) => /retries three/.test(note.text)).zone;
+
+    // Each word lands where the rule says, and clearing puts it back.
+    for (const [verdict, zone] of [['good', BRIDGE], ['preference', BRIDGE], ['bad', MEDBAY], ['never', JETTISONED], ['none', HOLD]]) {
+      memory.judge('r1', verdict);
+      assert.equal(one(), zone, `${verdict} did not put the note in ${zone}`);
+    }
+
+    // The tie. A note that came from a reply you liked and one you did not is suspect, and the
+    // archive takes the cheap mistake: quarantine, not confirmation.
+    memory.judge('r1', 'good');
+    memory.judge('r2', 'bad');
+    assert.equal(both(), MEDBAY, 'a note took the better of two verdicts instead of the worse');
+    memory.judge('r2', 'never');
+    assert.equal(both(), JETTISONED);
+    assert.equal(one(), BRIDGE, 'judging one reply moved a note that never cited it');
+
+    // One archive, one ledger PER CONVERSATION. Opening the room on a different conversation must
+    // not drop what was judged in the others: the fold applies, it does not wipe and refill.
+    memory.judge('r1', 'good');
+    const elsewhere = await new EventStore(join(root, 'otra.jsonl')).initialize();
+    await elsewhere.append('message.created', { messageId: 'r9', role: 'assistant', sender: 'codex', target: 'you', text: 'something said in another conversation entirely' });
+    await memory.catchUp(elsewhere);
+    assert.equal(one(), BRIDGE, 'opening another conversation dropped a verdict given in this one');
+
+    // The vocabulary is closed: a word nobody defined is not quietly filed as a verdict.
+    assert.equal(VERDICTS.includes('whatever'), false);
+    memory.judge('r1', 'whatever');
+    assert.equal(one(), HOLD, 'an undefined verdict was kept as if it meant something');
+    memory.close();
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

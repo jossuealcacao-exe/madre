@@ -8,7 +8,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { redact } from './sentinel-errors.mjs';
-import { ABERRATION } from './memory.mjs';
+import { ABERRATION, VERDICTS, NEGATIVE_VERDICTS, POSITIVE_VERDICTS } from './memory.mjs';
 
 const MIN_ANSWER_CHARS = 40;
 
@@ -19,16 +19,21 @@ function system(project, agent) {
 // Pairs a question with the reply that answered it (parentMessageId). The question is the
 // human's message, or an orchestrator's delegated step: both are real instructions with a
 // real answer. What never trains MADRE: @madre's own answers (the student is not the teacher),
-// MADRE's canned replies, replies the human rated bad, ghosts, one-liners.
+// MADRE's canned replies, replies the human judged bad or never, ghosts, one-liners.
 const guard = (privacy) => (text) => (privacy ? privacy.redact(text).text : text);
 export const STUDENT = 'madre';
 export const DATASET_TARGET = 300;
 
+// The ledger folded to the last word said about each reply. Read against the vocabulary and not
+// against a pair of literals: for a while this knew two verdicts and treated everything else as a
+// clearing, so a verdict the room had just learned to say would be deleted here on the way out,
+// in silence, with the export looking perfectly healthy.
 export function ratingsFrom(events) {
   const ratings = new Map();
   for (const event of events) {
     if (event.type !== 'message.rated' || !event.payload?.messageId) continue;
-    if (event.payload.rating === 'good' || event.payload.rating === 'bad') ratings.set(event.payload.messageId, event.payload.rating);
+    const verdict = event.payload.rating;
+    if (VERDICTS.includes(verdict) && verdict !== 'none') ratings.set(event.payload.messageId, verdict);
     else ratings.delete(event.payload.messageId);
   }
   return ratings;
@@ -51,7 +56,7 @@ export function pairsFromEvents(events, { project = 'project', home, user, priva
       continue;
     }
     if (p.sender === STUDENT || p.synthetic) continue;
-    if (ratings.get(p.messageId) === 'bad') continue;
+    if (NEGATIVE_VERDICTS.includes(ratings.get(p.messageId))) continue;
     const ask = asks.get(p.parentMessageId);
     if (!ask) continue;
     const answer = (p.originalText ?? p.text).trim();
@@ -82,7 +87,7 @@ export function readiness(events, notes = [], { target = DATASET_TARGET } = {}) 
   for (const rating of ratings.values()) if (rating === 'bad') bad += 1;
   const turns = pairs.filter((pair) => pair.kind === 'turn').length;
   const delegated = pairs.length - turns;
-  const good = pairs.filter((pair) => pair.rating === 'good').length;
+  const good = pairs.filter((pair) => POSITIVE_VERDICTS.includes(pair.rating)).length;
   // Aberrations are counted apart: they never become one of the pairs the model learns to
   // answer with, so counting them toward readiness would say the room is further along than it is.
   const standing = notes.filter((note) => note.kind !== ABERRATION && !note.refutedBy);
@@ -173,7 +178,7 @@ export async function exportDataset({ events, notes = [], dir, project = 'projec
   await writeFile(join(dir, 'preferences.jsonl'), preferences.map((pair) => JSON.stringify({ prompt: pair.prompt, chosen: pair.chosen, rejected: pair.rejected })).join('\n') + (preferences.length ? '\n' : ''));
   const byAgent = {};
   for (const pair of pairs) byAgent[pair.agent] = (byAgent[pair.agent] ?? 0) + 1;
-  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => p.rating === 'good').length, notes: pairs.filter((p) => p.kind === 'note').length, aberrations: preferences.length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
+  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => POSITIVE_VERDICTS.includes(p.rating)).length, notes: pairs.filter((p) => p.kind === 'note').length, aberrations: preferences.length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
   await writeFile(join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { dir, ...manifest };
 }

@@ -1931,11 +1931,23 @@ function iconButton(svg, title, className) {
 }
 const ICON_GOOD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 7.5v5.5H3.2a.7.7 0 0 1-.7-.7V8.2a.7.7 0 0 1 .7-.7h2.3Zm0 0 2.6-4.6a1.3 1.3 0 0 1 2.4.8L10 6.8h2.6a1.3 1.3 0 0 1 1.3 1.5l-.8 3.9a1.3 1.3 0 0 1-1.3 1H5.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 const ICON_BAD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 8.5V3H12.8a.7.7 0 0 1 .7.7v4.1a.7.7 0 0 1-.7.7h-2.3Zm0 0-2.6 4.6a1.3 1.3 0 0 1-2.4-.8L6 9.2H3.4a1.3 1.3 0 0 1-1.3-1.5l.8-3.9A1.3 1.3 0 0 1 4.2 3h6.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-// The human's verdict on a reply. Saved in the ledger; the dataset drops what is marked bad.
+const ICON_PREFER = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L8 10.8l-3.2 1.7.6-3.6L2.8 6.4l3.6-.5Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const ICON_NEVER = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.4 11.6 11.6 4.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+// The human's verdict on a reply, and the only place in the room where four of them are said.
+// Two of them are the everyday act; the other two are the same thing meant harder, so they are
+// not shown until the one they escalate has been pressed. At rest the bubble carries no more
+// chrome than it did, and the stronger word turns up exactly when it means something.
 function ratingButtons(messageId, sender) {
   const good = iconButton(ICON_GOOD, t('Good reply · keep it for MADRE AI'), 'rate good');
+  const prefer = iconButton(ICON_PREFER, t('This is how I want it done · the room keeps it as a preference'), 'rate prefer');
   const bad = iconButton(ICON_BAD, t('Bad reply · keep it out of the dataset'), 'rate bad');
-  const apply = (rating) => { good.classList.toggle('on', rating === 'good'); bad.classList.toggle('on', rating === 'bad'); };
+  const never = iconButton(ICON_NEVER, t('Never do this again · what the room remembers from it is put out'), 'rate never');
+  const apply = (rating) => {
+    for (const [button, verdict] of [[good, 'good'], [prefer, 'preference'], [bad, 'bad'], [never, 'never']]) button.classList.toggle('on', rating === verdict);
+    prefer.hidden = !(rating === 'good' || rating === 'preference');
+    never.hidden = !(rating === 'bad' || rating === 'never');
+  };
   apply(state.ratings.get(messageId) ?? null);
   const send = async (rating) => {
     const current = state.ratings.get(messageId) ?? null;
@@ -1945,9 +1957,10 @@ function ratingButtons(messageId, sender) {
       if (payload.error) throw new Error(payload.error);
     } catch (error) { toast(t('The rating was not saved: {error}', { error: error.message })); }
   };
-  good.addEventListener('click', (event) => { event.stopPropagation(); void send('good'); });
-  bad.addEventListener('click', (event) => { event.stopPropagation(); void send('bad'); });
-  return { good, bad, apply, sender };
+  for (const [button, verdict] of [[good, 'good'], [prefer, 'preference'], [bad, 'bad'], [never, 'never']]) {
+    button.addEventListener('click', (event) => { event.stopPropagation(); void send(verdict); });
+  }
+  return { good, prefer, bad, never, apply, sender };
 }
 function bubbleActions({ text, sender, sequence, messageId = null }) {
   const bar = el('div', 'bubble-actions');
@@ -1972,7 +1985,7 @@ function bubbleActions({ text, sender, sequence, messageId = null }) {
   if (messageId && sender !== 'madre') {
     const rating = ratingButtons(messageId, sender);
     state.ratingNodes.set(messageId, rating);
-    bar.append(rating.good, rating.bad);
+    bar.append(rating.good, rating.prefer, rating.bad, rating.never);
   }
   bar.append(copy, reply);
   return bar;

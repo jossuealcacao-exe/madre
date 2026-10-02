@@ -109,6 +109,10 @@ export const ES = {
   'JETTISONED': 'ESCLUSA',
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
+  'This is how I want it done · the room keeps it as a preference':
+    'Así lo quiero · la sala lo conserva como preferencia',
+  'Never do this again · what the room remembers from it is put out':
+    'Nunca más · lo que la sala recuerde de esto queda fuera de circulación',
   'A faded star is in MED BAY or JETTISONED: the archive keeps it and never hands it to a turn.':
     'Una estrella apagada está en ENFERMERÍA o en ESCLUSA: el archivo la conserva y nunca la entrega a un turno.',
   'Distilled and nobody has judged it. It travels into turns.':

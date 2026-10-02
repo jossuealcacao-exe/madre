@@ -59,6 +59,22 @@ export const MEMORY_ZONES = [HOLD, BRIDGE, MEDBAY, JETTISONED];
 // never hands over.
 export const RECALLED_ZONES = [HOLD, BRIDGE];
 
+// What the human can say about a reply. Four verdicts and the clearing — one act, one field: the
+// human judges a reply once, and two fields for one act would be a lie about what they did.
+//
+//   good        it worked                    · the note it left stands confirmed
+//   preference  this is how I want it done   · the same, and it is worth training toward
+//   bad         it failed                    · the note is quarantined and stops travelling
+//   never       do not do this again         · the note is put out, and the pair trains against it
+//   none        no judgement                 · back to where the rule alone would put it
+//
+// Ordered worst first, and read in that order: a note is distilled from several replies and takes
+// the WORST verdict among them. If one exchange it came from was wrong the note is suspect however
+// good the rest were, and quarantine is the cheap mistake.
+export const VERDICTS = ['never', 'bad', 'preference', 'good', 'none'];
+export const NEGATIVE_VERDICTS = ['never', 'bad'];
+export const POSITIVE_VERDICTS = ['preference', 'good'];
+
 // The gate, as one line of SQL instead of five copies of two rules. Everything the room may hand
 // a turn stands in one of these zones; everything else is archive it keeps and never serves.
 const ZONE_GATE = `zone IN (${RECALLED_ZONES.map((zone) => `'${zone}'`).join(', ')})`;
@@ -77,8 +93,9 @@ export function zoneFor(row, verdict = null) {
   if ((row.refutedBy ?? row.refuted_by ?? null) !== null) return JETTISONED;
   // A note distilled from several replies takes the worst verdict among them: if one of the
   // exchanges it came from was wrong, the note is suspect, and quarantine is the cheap mistake.
+  if (verdict === 'never') return JETTISONED;
   if (verdict === 'bad') return MEDBAY;
-  if (verdict === 'good') return BRIDGE;
+  if (verdict === 'preference' || verdict === 'good') return BRIDGE;
   return HOLD;
 }
 
@@ -897,8 +914,7 @@ export class RoomMemory {
       JOIN entries e ON e.sequence = src.value
       JOIN verdicts v ON v.message_id = e.message_id
       WHERE m.id = ?`).all(Number(id)).map((row) => row.verdict);
-    if (rows.includes('bad')) return 'bad';
-    return rows.includes('good') ? 'good' : null;
+    return VERDICTS.find((verdict) => verdict !== 'none' && rows.includes(verdict)) ?? null;
   }
 
   // Recomputes standing for a handful of notes. The zone is a function of the rule plus the fold,
@@ -928,8 +944,9 @@ export class RoomMemory {
       UPDATE memories SET zone = CASE
         WHEN kind = '${ABERRATION}' THEN '${MEDBAY}'
         WHEN refuted_by IS NOT NULL THEN '${JETTISONED}'
+        WHEN ${cited('never')} THEN '${JETTISONED}'
         WHEN ${cited('bad')} THEN '${MEDBAY}'
-        WHEN ${cited('good')} THEN '${BRIDGE}'
+        WHEN ${cited('preference')} OR ${cited('good')} THEN '${BRIDGE}'
         ELSE '${HOLD}' END`).run().changes ?? 0);
   }
 
@@ -941,7 +958,7 @@ export class RoomMemory {
     if (!this.#db) return 0;
     const id = String(messageId ?? '').trim();
     if (!id) return 0;
-    if (verdict === 'good' || verdict === 'bad') this.#db.prepare('INSERT INTO verdicts (message_id, verdict) VALUES (?, ?) ON CONFLICT(message_id) DO UPDATE SET verdict = excluded.verdict').run(id, verdict);
+    if (VERDICTS.includes(verdict) && verdict !== 'none') this.#db.prepare('INSERT INTO verdicts (message_id, verdict) VALUES (?, ?) ON CONFLICT(message_id) DO UPDATE SET verdict = excluded.verdict').run(id, verdict);
     else this.#db.prepare('DELETE FROM verdicts WHERE message_id = ?').run(id);
     const touched = this.#db.prepare(`
       SELECT DISTINCT m.id FROM memories m, json_each(m.sources) src
@@ -950,25 +967,29 @@ export class RoomMemory {
     return this.#restand(touched);
   }
 
-  // Indexes whatever the ledger holds beyond the last sequence seen, and folds every verdict the
-  // ledger carries. The fold is over the whole ledger on purpose: it is cheap, it is idempotent,
-  // and it is what lets a thumb pressed before any of this existed take effect on the next start.
+  // Indexes whatever the ledger holds beyond the last sequence seen, and folds every verdict that
+  // ledger carries. Over the whole ledger on purpose: it is cheap, it is idempotent, and it is
+  // what lets a thumb pressed before any of this existed take effect on the next start.
+  //
+  // Applied event by event and never as a wipe-and-refill. There is one archive per room but one
+  // LEDGER PER CONVERSATION, and this is handed whichever one is open: emptying the table first
+  // would quietly drop every verdict given in the other conversations, and their notes would fall
+  // back to the hold on the next restart. A clearing is still a clearing — `none` deletes its row —
+  // so applying in order leaves the same result whichever conversation is replayed.
   async catchUp(store) {
     const last = this.lastSequence();
     const events = await store.readAll();
     const added = this.index(events.filter((event) => event.sequence > last));
-    const verdicts = new Map();
+    const write = this.#db.prepare('INSERT INTO verdicts (message_id, verdict) VALUES (?, ?) ON CONFLICT(message_id) DO UPDATE SET verdict = excluded.verdict');
+    const clear = this.#db.prepare('DELETE FROM verdicts WHERE message_id = ?');
     for (const event of events) {
       if (event?.type !== 'message.rated') continue;
       const messageId = String(event.payload?.messageId ?? '');
       if (!messageId) continue;
-      const rating = event.payload?.rating;
-      if (rating === 'good' || rating === 'bad') verdicts.set(messageId, rating);
-      else verdicts.delete(messageId);
+      const verdict = event.payload?.rating;
+      if (VERDICTS.includes(verdict) && verdict !== 'none') write.run(messageId, verdict);
+      else clear.run(messageId);
     }
-    this.#db.exec('DELETE FROM verdicts');
-    const write = this.#db.prepare('INSERT INTO verdicts (message_id, verdict) VALUES (?, ?)');
-    for (const [messageId, verdict] of verdicts) write.run(messageId, verdict);
     this.#restandAll();
     return added;
   }

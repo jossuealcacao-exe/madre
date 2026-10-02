@@ -158,3 +158,36 @@ test('dataset: what the room got wrong trains against itself, and never as somet
     await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('verdicts: a word the room has just learned to say survives the export', () => {
+  // The trap this test exists for: the fold used to compare against two literals and treat
+  // everything else as a clearing, so the moment the room learned a third verdict the exporter
+  // would delete it on the way out — in silence, with the export looking perfectly healthy.
+  const events = [
+    ev(1, { messageId: 'q1', role: 'user', sender: 'you', target: 'codex', text: 'how should the webhook verify its signature' }),
+    ev(2, { messageId: 'a1', parentMessageId: 'q1', role: 'assistant', sender: 'codex', target: 'you', text: 'Verify the Stripe signature before parsing the body, never after: parsing first is what lets a forged payload through.' }),
+    ev(3, { messageId: 'q2', role: 'user', sender: 'you', target: 'codex', text: 'and how do we store the key' }),
+    ev(4, { messageId: 'a2', parentMessageId: 'q2', role: 'assistant', sender: 'codex', target: 'you', text: 'Put the key straight into the repository so every machine has it without any setup at all.' }),
+  ];
+  const rated = (messageId, rating, sequence) => ({ sequence, type: 'message.rated', timestamp: '2026-10-02T00:00:00Z', payload: { messageId, rating, by: 'you' } });
+
+  for (const verdict of ['good', 'preference', 'bad', 'never']) {
+    assert.equal(ratingsFrom([...events, rated('a1', verdict, 9)]).get('a1'), verdict, `${verdict} did not survive the fold`);
+  }
+  // Only the clearing clears, and an unknown word is treated as one rather than kept as data.
+  assert.equal(ratingsFrom([...events, rated('a1', 'good', 9), rated('a1', 'none', 10)]).has('a1'), false);
+  assert.equal(ratingsFrom([...events, rated('a1', 'whatever', 9)]).has('a1'), false);
+
+  // Both positives are the human saying yes, and both count toward how ready the corpus is.
+  const said = (pair) => pair.messages.at(-1).content;
+  const liked = pairsFromEvents([...events, rated('a1', 'preference', 9)], { project: 'pulse' });
+  assert.equal(liked.find((pair) => /Stripe/.test(said(pair))).rating, 'preference');
+  assert.ok(readiness([...events, rated('a1', 'preference', 9)]).good >= 1, 'a preference did not count as the human saying yes');
+
+  // Both negatives keep a pair out of the corpus, not just the older word.
+  for (const verdict of ['bad', 'never']) {
+    const pairs = pairsFromEvents([...events, rated('a2', verdict, 9)], { project: 'pulse' });
+    assert.equal(pairs.some((pair) => /straight into the repository/.test(said(pair))), false, `a pair judged ${verdict} was trained on`);
+    assert.equal(pairs.some((pair) => /Stripe/.test(said(pair))), true, `judging one reply ${verdict} removed another`);
+  }
+});

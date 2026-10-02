@@ -1830,6 +1830,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .bubble-actions .act:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
 .bubble-actions .act.good.on { color: var(--phosphor); }
 .bubble-actions .act.bad.on { color: var(--terror); }
+.bubble-actions .act.prefer.on { color: var(--phosphor); }
+.bubble-actions .act.never.on { color: var(--terror); }
+/* Shown only once the verdict they escalate is in: at rest the bubble carries no extra chrome. */
+.bubble-actions .act.prefer[hidden], .bubble-actions .act.never[hidden] { display: none; }
 .bubble-actions .act.done { color: var(--phosphor); }
 .reply-menu { width: min(280px, calc(100vw - 24px)); padding: 8px; }
 .reply-menu .model-menu-title { margin: 4px 8px 6px; }
