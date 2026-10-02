@@ -3004,3 +3004,75 @@ test('a turn the human stops ends alone, and the sentinel does not file the brak
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('lease: a project path through a symlink is allowed under both spellings, and forbidden under both too', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-symlink-'));
+  try {
+    // The reported case: on macOS /tmp is a link to /private/tmp, so a project opened as
+    // `--project /tmp/…` has a lease directory whose resolved name starts differently. An agent
+    // that resolves before writing asked for a path the permission rule did not match, the write
+    // died without a word, and the model reported the file as created.
+    const lease = await createLease({ projectRoot: root, leaseId: 'abcdef1234567890' });
+    assert.ok(lease.outDir.startsWith(root));
+    const real = await realpath(lease.outDir);
+    if (real === lease.outDir) { assert.equal(lease.realOutDir, undefined, 'a path with nothing to resolve must not carry a second spelling'); return; }
+    assert.equal(lease.realOutDir, real, 'the resolved spelling did not travel with the lease');
+
+    // Gemini: one rule with both, and the forbidden zones denied under both. Allowing the second
+    // spelling while forbidding the zones under only the first would leave .git reachable by the
+    // other name — which is why this is checked and not assumed.
+    const policy = geminiLeasePolicy(lease.outDir, { create: true, alsoAt: lease.realOutDir });
+    const allow = policy.split('\n').find((line) => line.includes('"file_path"'));
+    const deny = policy.split('\n').find((line) => line.includes('\\.git|'));
+    for (const spelling of [lease.outDir, lease.realOutDir]) {
+      const quoted = spelling.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      assert.ok(allow.includes(quoted), `gemini may not write under ${spelling}`);
+      assert.ok(deny.includes(quoted), `gemini's forbidden zones are not forbidden under ${spelling}`);
+    }
+
+    // Claude carries the same prefix rule and needed the same treatment.
+    const args = buildClaudeArgs({ prompt: 'x', lease: { ...lease, create: true } });
+    const allowed = args[args.indexOf('--allowedTools') + 1];
+    const disallowed = args[args.indexOf('--disallowedTools') + 1];
+    for (const spelling of [lease.outDir, lease.realOutDir]) {
+      assert.ok(allowed.includes(`Write(//${spelling}/**)`), `claude may not write under ${spelling}`);
+      assert.ok(disallowed.includes(`Write(//${spelling}/.git/**)`), `claude's forbidden zones are not forbidden under ${spelling}`);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('create: a reply that names files the disk does not have is said, and one that names files it has is not', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-claimed-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const crew = [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake', version: 'test' }];
+    await writeFile(join(root, 'existe.js'), 'ya estaba aquí');
+    let reply = '';
+    const room = new Room({
+      store, agents: crew, projectRoot: root,
+      scopes: { gemini: { write: true } },
+      invokers: { 'gemini-readonly': async () => ({ text: reply }) },
+    });
+
+    // The reported shape: the write was refused without a word, so nothing reached disk and the
+    // model answered as if it had written.
+    reply = `Archivos creados:\n• ${root}/grafica.js — Módulo gráfico independiente.`;
+    await room.send({ text: 'crea grafica.js', target: 'gemini', create: true });
+    let said = (await store.readAll()).filter((event) => event.type === 'create.missing');
+    assert.equal(said.length, 1, 'a reply naming a file that is not there said nothing');
+    assert.deepEqual(said[0].payload.files, [`${root}/grafica.js`]);
+
+    // A reply that only talks about files that exist is not worth a word: the check is the disk,
+    // not the prose, so an agent discussing the project does not trip it.
+    reply = `Revisé existe.js y /etc/hosts; todo en orden.`;
+    await room.send({ text: 'revisa', target: 'gemini', create: true });
+    said = (await store.readAll()).filter((event) => event.type === 'create.missing');
+    assert.equal(said.length, 1, 'a reply about files that exist was reported as missing');
+
+    await room.shutdown();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

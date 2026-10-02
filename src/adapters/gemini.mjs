@@ -28,13 +28,21 @@ export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json'
 // whose file_path argument starts with the lease directory. Plan mode would
 // block every write regardless of policy, so a lease uses approval "default":
 // headless Gemini cannot prompt, so anything the policy does not allow fails.
-export function geminiLeasePolicy(outDir, { control = false, create = false, airlock = false } = {}) {
-  const escaped = outDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function geminiLeasePolicy(outDir, { control = false, create = false, airlock = false, alsoAt = null } = {}) {
+  const quote = (path) => path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Every spelling of the same directory. When the path MADRE was given goes through a symlink,
+  // an agent that resolves before writing asks for a path that does not start with the one these
+  // rules were built from: the allow rule misses and the write dies in silence. Both go in the
+  // allow rule AND in the deny rule — allowing a second spelling while forbidding the zones under
+  // only the first would leave .git and .pulse reachable by the other name.
+  const roots = [...new Set([outDir, alsoAt].filter(Boolean))];
+  const escaped = roots.map(quote).join('|');
+  const anyRoot = roots.length > 1 ? `(?:${escaped})` : escaped;
   // The whole project is the lease in #2 and #3: MADRE's zones stay out of reach.
   const forbidden = control || create ? `
 [[rule]]
 toolName = ["write_file", "replace", "edit", "run_shell_command"]
-argsPattern = '${escaped}/(\\.git|\\.pulse|\\.madre|\\.env|\\.claude/settings\\.local\\.json)'
+argsPattern = '${anyRoot}/(\\.git|\\.pulse|\\.madre|\\.env|\\.claude/settings\\.local\\.json)'
 decision = "deny"
 priority = 1100
 interactive = false
@@ -52,7 +60,7 @@ interactive = false
   return `${geminiReadonlyPolicy}${commands}
 [[rule]]
 toolName = ${tools}
-argsPattern = '"file_path"\\s*:\\s*"${escaped}/'
+argsPattern = '"file_path"\\s*:\\s*"${anyRoot}/'
 decision = "allow"
 priority = 1000
 interactive = false
@@ -68,7 +76,7 @@ interactive = false
 `;
 
 export function geminiPolicy({ lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] } = {}) {
-  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock) }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}${mcpServers.map(geminiMemoryPolicy).join('')}`;
+  return `${lease ? geminiLeasePolicy(lease.outDir, { control: Boolean(lease.control), create: Boolean(lease.create), airlock: Boolean(lease.airlock), alsoAt: lease.realOutDir ?? null }) : geminiReadonlyPolicy}${scopes?.web ? geminiWebPolicy : ''}${imageStudio && lease ? geminiImagePolicy(imageStudio) : ''}${memoryServer ? geminiMemoryPolicy(memoryServer) : ''}${mcpServers.map(geminiMemoryPolicy).join('')}`;
 }
 
 // Allow rules for a server's tools, by bare name and by server-prefixed name; an open tool list allows the server's prefix.

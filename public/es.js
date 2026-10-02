@@ -114,6 +114,9 @@ export const ES = {
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
   'STOPPING': 'DETENIENDO',
+  ' · this reply names {n} file(s) that are not on disk: {files}':
+    ' · esta respuesta nombra {n} archivo(s) que no están en disco: {files}',
+  ' · nothing was written this turn': ' · en este turno no se escribió nada',
   'OPEN MODULES': 'ABRIR MÓDULOS',
   '{command} · listens on the whole network': '{command} · escucha en toda la red',
   'RIPLEY only opens what is bound to 127.0.0.1. Start it with --host 127.0.0.1 (or listen(port, "127.0.0.1")) and it will show up above.':

@@ -21,6 +21,10 @@ export function mcpServersFor({ imageStudio = null, memoryServer = null, mcpServ
 // Claude's permission names for a module's server: each tool, or the whole server when the list is open.
 export const claudeMcpTools = (server) => (server.tools?.length ? server.tools.map((tool) => `mcp__${server.name}__${tool}`) : [`mcp__${server.name}`]);
 
+// Every spelling of the lease directory. One unless the path given to MADRE goes through a
+// symlink, in which case the resolved one travels too — see the note in createLease.
+export const leaseRoots = (lease) => [...new Set([lease?.outDir, lease?.realOutDir].filter(Boolean))];
+
 export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] }) {
   const tools = claudeTools({ lease, scopes });
   const mcpTools = [
@@ -34,7 +38,7 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     // Claude Code grants Write only when Edit is allowed on the same paths (verified with the real
     // CLI: a lone Write rule is denied under dontAsk), so both come together; in CREATE the room
     // restores existing files after the turn.
-    ...(lease ? [`Write(//${lease.outDir}/**)`, `Edit(//${lease.outDir}/**)`] : []),
+    ...(lease ? leaseRoots(lease).flatMap((root) => [`Write(//${root}/**)`, `Edit(//${root}/**)`]) : []),
     ...(lease?.airlock ? ['Bash'] : []),
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
     ...mcpTools,
@@ -53,7 +57,7 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
     '--tools', tools.join(','),
     ...(lease || scopes?.web || anyMcp ? ['--allowedTools', allowed.join(',')] : []),
     // CONTROL: the whole project is writable except MADRE's forbidden zones.
-    ...(lease?.control || lease?.create ? ['--disallowedTools', ['.git/**', '.pulse/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'].flatMap((glob) => [`Write(//${lease.outDir}/${glob})`, `Edit(//${lease.outDir}/${glob})`]).join(',')] : []),
+    ...(lease?.control || lease?.create ? ['--disallowedTools', ['.git/**', '.pulse/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'].flatMap((glob) => leaseRoots(lease).flatMap((root) => [`Write(//${root}/${glob})`, `Edit(//${root}/${glob})`])).join(',')] : []),
     // --safe-mode disables every MCP server, ours included. With a MADRE server
     // attached we drop it and instead load no setting sources at all: no user
     // hooks, plugins or MCP servers, only the project's CLAUDE.md and ours.

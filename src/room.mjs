@@ -29,7 +29,7 @@ import { CODE000_STRIKES } from './mother.mjs';
 import { parseDirectives } from './directives.mjs';
 import { isValidModelName } from './models.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
-import { createLease, diffSnapshots, snapshot } from './lease.mjs';
+import { createLease, diffSnapshots, namedPaths, snapshot } from './lease.mjs';
 import { stat as statFile } from 'node:fs/promises';
 import { basename as baseName, join as joinPath } from 'node:path';
 import { contentTypeFor } from './files.mjs';
@@ -1370,6 +1370,21 @@ export class Room {
       // CREATE: what appeared stays and is shown; what existed before is put back and said.
       const createChanges = createRun ? await this.#controlDesk.settle(createRun) : null;
       const artifacts = createChanges ? await this.#artifactsFrom(createChanges.files) : lease && !lease.control ? diffSnapshots(before, await snapshot(lease.outDir), { relativeDir: lease.relativeDir }) : [];
+      // A turn that could write, wrote nothing, and answers naming files. That is the shape of a
+      // write refused without a word — a headless CLI cannot stop to ask, so what the policy does
+      // not allow simply fails and the model reports the file as created. The room does not read
+      // the prose for a claim; it takes the paths the reply names and asks the disk. Only what is
+      // named AND absent is said, so an agent talking about files that exist says nothing here.
+      if (lease && !lease.control && artifacts.length === 0) {
+        const roots = [this.#projectRoot, lease.outDir, lease.realOutDir].filter(Boolean);
+        const named = namedPaths(result.text, { roots });
+        const missing = [];
+        for (const path of named.slice(0, 12)) {
+          const full = path.startsWith('/') ? path : joinPath(this.#projectRoot, path);
+          if (!(await statFile(full).then(() => true, () => false))) missing.push(path);
+        }
+        if (missing.length) await this.#emit('create.missing', { messageId: responseMessageId, agent: agent.id, planId, files: missing });
+      }
       // CONTROL: what really changed in the project, forbidden zones reverted on the spot.
       const controlChanges = controlRun ? await this.#controlDesk.settle(controlRun) : null;
       const directives = mayDelegate

@@ -2624,6 +2624,19 @@ function renderLeaseRefused(event) {
 /* ---------- CONTROL: the project itself, between two checkpoints ---------- */
 
 // create · @codex · 2 existing files put back: CREATE only adds (README.md, src/index.astro)
+// The reply named files and the disk does not have them. Said as the fact it is, without
+// deciding what the agent meant: an answer that claims a file it never wrote and an answer that
+// suggests one both leave the human better off knowing it is not there.
+function renderCreateMissing(event) {
+  const { agent, files = [] } = event.payload;
+  const node = el('div', 'system memory warn');
+  node.style.setProperty('--agent', agentColor(agent));
+  node.append(t('create · '), el('b', 'who', `@${agent}`));
+  node.append(t(' · this reply names {n} file(s) that are not on disk: {files}', { n: files.length, files: files.slice(0, 4).join(', ') + (files.length > 4 ? '…' : '') }));
+  node.append(t(' · nothing was written this turn'));
+  return node;
+}
+
 function renderCreateReverted(event) {
   const { agent, existing = [], forbidden = [] } = event.payload;
   const node = el('div', 'system memory warn');
@@ -3253,6 +3266,7 @@ void renderOpenQuestions(); return;
     case 'mode.requested': node = renderModeRequest(event); break;
     case 'control.started': node = renderControlStarted(event); break;
     case 'create.reverted': node = renderCreateReverted(event); break;
+    case 'create.missing': node = renderCreateMissing(event); break;
     case 'control.changed': markTouched(event.payload.agent, event.payload.files); node = renderControlChanged(event); if (!replaying) ripleyMaybeReload((event.payload.files ?? []).map((file) => file.path)); break;
     case 'control.reverted': node = renderControlReverted(event); break;
     case 'mode.granted':

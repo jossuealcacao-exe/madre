@@ -1,4 +1,4 @@
-import { mkdir, readdir, stat } from 'node:fs/promises';
+import { mkdir, readdir, realpath, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { contentTypeFor } from './files.mjs';
 
@@ -24,7 +24,41 @@ export async function createLease({ projectRoot, leaseId }) {
   const relativeDir = join(LEASE_ROOT, name);
   const outDir = join(projectRoot, relativeDir);
   await mkdir(outDir, { recursive: true, mode: 0o755 });
-  return { leaseId, outDir, relativeDir };
+  // The same directory said the other way, when the path given to MADRE goes through a symlink.
+  // On macOS `/tmp` is a link to `/private/tmp`, so an agent that resolves a path before writing
+  // asks to write somewhere that does not begin with the string the permission rule was built
+  // from. The rule misses, a headless CLI cannot stop to ask, the write fails without a word, and
+  // the model reports the file as created. Both spellings travel so both can be allowed — and,
+  // just as importantly, so the forbidden zones can be denied under either one.
+  const realOutDir = await realpath(outDir).catch(() => outDir);
+  return { leaseId, outDir, relativeDir, ...(realOutDir === outDir ? {} : { realOutDir }) };
+}
+
+// The files a reply names, as paths and not as intentions.
+//
+// A CLI whose write was refused in silence answers as if it had written: the room shows no
+// artifacts, and the text says «Archivos creados: …». Rather than read the prose for a claim —
+// which means guessing in two languages and warning wrongly when an agent merely SUGGESTS a
+// path — this collects the paths it names under the project and lets the disk settle it. What
+// is on disk is never mentioned; only what is named and absent.
+export function namedPaths(text, { roots = [] } = {}) {
+  const said = String(text ?? '');
+  const bases = roots.filter(Boolean);
+  const found = new Set();
+  // A path, absolute or project-relative, ending in a short extension. Trailing punctuation and
+  // the closing of a quote, a bracket or a sentence are not part of a filename.
+  for (const match of said.matchAll(/(?:^|[\s(`"'«\[>])((?:\/|\.{0,2}\/)?[\w.@+-]+(?:\/[\w.@+-]+)+\.[A-Za-z][\w]{0,8})/g)) {
+    let path = match[1].replace(/[.,;:)\]»"'`]+$/, '');
+    if (!path.includes('/')) continue;
+    if (path.startsWith('/')) {
+      const under = bases.find((base) => path === base || path.startsWith(`${base}/`));
+      if (!under) continue;                       // somewhere else entirely: not ours to check
+      found.add(path);
+      continue;
+    }
+    found.add(path.replace(/^\.\//, ''));
+  }
+  return [...found];
 }
 
 // name → { size, mtimeMs } for every file under `dir`, recursively.
