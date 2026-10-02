@@ -35,6 +35,7 @@ Hoy la destilación produce notas. La idea: que produzca **una inteligencia prop
 - **Entrenamiento local periódico:** LoRA sobre un modelo pequeño (Qwen2.5-Coder 7B o similar) con `mlx-lm` en Apple Silicon, cuando la sala está en reposo y el dataset creció lo suficiente. El resultado se registra en Ollama como `madre-<proyecto>:<fecha>` y `@madre` pasa a usarlo.
 - **Evaluación antes de promover:** un conjunto fijo de preguntas del proyecto con respuestas conocidas; el modelo nuevo sustituye al anterior solo si contesta mejor. Todo queda en el ledger.
 - Riesgos honestos: datos escasos al inicio, tiempo de entrenamiento en la máquina del usuario, calidad difícil de medir. Por eso 2a y 2b van primero y ya valen solas.
+- **La calidad sí se puede medir**, y la señal ya existe sin leerse: los pulgares de cada respuesta solo llegan al dataset. Conectarlos al archivista, darle ciclo de vida a cada memoria y armar solo el set de evaluación está diseñado en [`docs/ZONAS.md`](ZONAS.md).
 
 ## 3 · SDK interno de módulos (0.3) · hecho en `src/modules/`
 
