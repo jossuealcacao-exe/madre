@@ -99,7 +99,39 @@ export const DESTINATIONS = [
 ];
 
 const byId = new Map(DESTINATIONS.map((one) => [one.id, one]));
-export const destination = (id) => byId.get(id) ?? null;
+export const destination = (id) => byId.get(id) ?? declaredById.get(id) ?? null;
+
+// What a module declares it reaches.
+//
+// The list above is the core's, written in code and not editable at runtime — that is the whole
+// point of it. A connector, though, is a module, and a module that reaches a service nobody
+// declared shows up in the log as «went to an address nothing here declares», which is true and
+// useless: the human cannot tell a connector they installed from something going wrong.
+//
+// So a module may declare its own, in the same shape and answering the same four questions. It is
+// held apart from the core's and MARKED, because who promised what is part of the promise: MADRE
+// vouches for the list above and only reports the ones below. A declaration is rebuilt from the
+// modules on every load, so uninstalling one takes its destination with it.
+const declaredById = new Map();
+export function declareDestinations(moduleId, reaches = []) {
+  for (const one of Array.isArray(reaches) ? reaches : []) {
+    if (!one?.host || typeof one.host !== 'string') continue;
+    const id = `${moduleId}:${one.id ?? one.host}`;
+    declaredById.set(id, {
+      id,
+      host: one.host.toLowerCase(),
+      match: typeof one.match === 'function' ? one.match : null,
+      to: String(one.to ?? one.host),
+      what: String(one.what ?? ''),
+      when: String(one.when ?? ''),
+      where: String(one.where ?? `MODULES → ${moduleId.toUpperCase()}`),
+      inside: true,
+      module: moduleId,
+    });
+  }
+}
+export function clearDeclaredDestinations() { declaredById.clear(); }
+export const declaredDestinations = () => [...declaredById.values()];
 
 // Which declaration a URL belongs to. An address nobody declared is said to be exactly that.
 export function classify(rawUrl, { reportHost = null } = {}) {
@@ -108,10 +140,12 @@ export function classify(rawUrl, { reportHost = null } = {}) {
   const host = url.hostname.replace(/^\[|\]$/g, '');
   if (LOCAL.has(host)) return { id: url.port === '11434' ? 'ollama' : 'room', to: `${host}:${url.port || '80'}`, local: true };
   if (reportHost && host === reportHost) return { id: 'reports', to: byId.get('reports').to, local: false };
-  for (const one of DESTINATIONS) {
+  for (const one of [...DESTINATIONS, ...declaredById.values()]) {
     if (!one.host || one.host !== host) continue;
     if (one.match && !one.match(url)) continue;
-    return { id: one.id, to: one.to, local: false };
+    // `module` travels so the log can say who vouched for this address. MADRE's own declarations
+    // and a module's are both honest; they are not the same promise.
+    return { id: one.id, to: one.to, local: false, ...(one.module ? { module: one.module } : {}) };
   }
   return { id: 'unknown', to: host, local: false };
 }

@@ -57,7 +57,7 @@ export function dependencies(runs) {
 // may carry fields this one has not learned yet — so it is said out loud instead of refused.
 export const MODULE_FIELDS = new Set([
   'id', 'kind', 'name', 'vendor', 'package', 'version', 'tracks', 'updates', 'summary', 'creates',
-  'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes',
+  'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
   'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
   'toggledBody', 'describe',

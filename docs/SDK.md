@@ -62,6 +62,32 @@ export default ({ defineModule }) => defineModule({
 | `onSettings(ctx, settings)` | Te avisa cuando la humana cambió uno de tus `controls`, por si algo vivo tiene que enterarse |
 | `conditions` | Entradas para el catálogo de MU/TH/UR, con remedio por plataforma |
 
+### Si tu módulo habla con un servicio de fuera
+
+Declara a dónde llega. `src/outbound.mjs` no es un registro de salidas: es un contrato, y
+parchea `fetch` global para que ningún módulo pueda evitarlo. Un conector que no declara su
+destino sale en el registro como «fue a una dirección que nada aquí declara» — verdad, e
+inútil para quien intenta distinguir tu módulo de una fuga.
+
+```js
+reaches: [{
+  id: 'gmail',
+  host: 'gmail.googleapis.com',
+  to: 'Google · Gmail, con tu cuenta',
+  what: 'El asunto y el cuerpo del correo que el agente redactó.',
+  when: 'cuando un agente usa la herramienta de envío',
+  where: 'MODULES → CORREO',
+}]
+```
+
+Las cuatro respuestas son las mismas que da MADRE de las suyas, y por la misma razón: quien
+lee el registro merece saber qué viaja, cuándo, a dónde y dónde se apaga. Tu declaración se
+guarda **aparte** de las del núcleo y marcada con tu `id`, porque quién prometió qué es parte
+de la promesa. Se reconstruye en cada carga: desinstalar tu módulo se lleva su destino.
+
+El diseño entero de los conectores, con lo que falta por decidir, está en
+[`docs/CONECTORES.md`](CONECTORES.md).
+
 ## Publicarlo
 
 La ficha de un módulo tuyo trae **GET A NEWER FILE**: MADRE va por el archivo —a la `url` que declaraste o al archivo desde el que lo instalaste—, lo verifica en una copia aparte y solo reemplaza al instalado si carga, respeta las reglas de la casa y dice una versión distinta. Verificar no instala nada.

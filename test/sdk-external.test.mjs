@@ -106,8 +106,11 @@ test('the SDK says what it did not understand, and the import that never works e
   assert.deepEqual(defineModule({ id: 'a', name: 'A', summary: 'ok' }).unknown, []);
   assert.deepEqual(defineModule({ id: 'b', name: 'B', sumary: 'x', comand: 'y' }).unknown, ['sumary', 'comand']);
   assert.deepEqual(defineModule({ id: 'c', name: 'C', install: { display: 'ignored before this fix' } }).unknown, ['install']);
-  assert.equal(MODULE_FIELDS.size, 34);
+  assert.equal(MODULE_FIELDS.size, 35);
   assert.ok(MODULE_FIELDS.has('summary') && MODULE_FIELDS.has('toolsForTurn'));
+  // A connector says where it reaches, or its traffic shows up in the log as an address nothing
+  // declares — true, and useless to a human trying to tell a module from a leak.
+  assert.ok(MODULE_FIELDS.has('reaches'));
   assert.equal(MODULE_FIELDS.has('install'), false, 'a field the SDK ignores must not be advertised as understood');
   // Said, never refused: a module written for a newer MADRE may carry fields this one lacks.
   const carried = await verifyModuleText({ text: "export default { id: 'futuro', name: 'FUTURO', vibes: true };", name: 'c.mjs' });

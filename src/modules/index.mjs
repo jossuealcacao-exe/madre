@@ -9,6 +9,7 @@ import { translate } from '../i18n.mjs';
 import { join, basename, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { clearDeclaredDestinations, declareDestinations } from '../outbound.mjs';
 import ahp from './ahp.mjs';
 import imageStudio from './image-studio.mjs';
 import gitPulse from './git-pulse.mjs';
@@ -54,6 +55,10 @@ async function importModuleFile(file) {
 export async function loadExternalModules({ stateRoot, projectRoot }) {
   for (let index = MODULES.length - 1; index >= 0; index -= 1) if (MODULES[index].external) MODULES.splice(index, 1);
   loadFailures.length = 0;
+  // Rebuilt from what is loaded, never added to: uninstalling a connector has to take its
+  // declared destination with it, or the log would keep vouching for an address nothing reaches.
+  clearDeclaredDestinations();
+  for (const module of MODULES) if (module.reaches) declareDestinations(module.id, module.reaches);
   const folders = moduleFolders({ stateRoot, projectRoot });
   for (const [origin, dir] of Object.entries(folders)) {
     let files = [];
@@ -63,6 +68,7 @@ export async function loadExternalModules({ stateRoot, projectRoot }) {
       try {
         const module = checkExternal(await importModuleFile(file));
         MODULES.push(Object.freeze({ ...module, external: true, origin, file }));
+        if (module.reaches) declareDestinations(module.id, module.reaches);
       } catch (error) {
         loadFailures.push({ file, origin, error: error.message });
       }

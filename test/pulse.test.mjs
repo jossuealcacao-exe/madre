@@ -2949,13 +2949,14 @@ test('CONTROL: one holder, checkpoint before, changes reported with forbidden wr
 
 test('a turn the human stops ends alone, and the sentinel does not file the brake as a fault', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-stop-turn-'));
+  let room = null;
   try {
     const store = await new EventStore(join(root, 'events.jsonl')).initialize();
     const crew = [
       { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' },
       { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' },
     ];
-    const room = new Room({
+    room = new Room({
       store,
       agents: crew,
       projectRoot: root,
@@ -2999,8 +3000,10 @@ test('a turn the human stops ends alone, and the sentinel does not file the brak
     // The other agent was never touched, and the room was never stopped: one answer, not the room.
     assert.ok(events.some((event) => event.type === 'agent.completed' && event.payload.agent === 'codex'), 'stopping one turn took another agent down with it');
     assert.equal(events.some((event) => event.type === 'room.stopped'), false, 'stopping one turn stopped the whole room');
-    await room.shutdown();
   } finally {
+    // Closed before the directory goes, always: an assertion that throws must not leave a turn
+    // writing into a ledger that is being deleted underneath it.
+    await room?.shutdown().catch(() => {});
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
@@ -3045,12 +3048,13 @@ test('lease: a project path through a symlink is allowed under both spellings, a
 
 test('create: a reply that names files the disk does not have is said, and one that names files it has is not', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-claimed-'));
+  let room = null;
   try {
     const store = await new EventStore(join(root, 'events.jsonl')).initialize();
     const crew = [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake', version: 'test' }];
     await writeFile(join(root, 'existe.js'), 'ya estaba aquí');
     let reply = '';
-    const room = new Room({
+    room = new Room({
       store, agents: crew, projectRoot: root,
       scopes: { gemini: { write: true } },
       invokers: { 'gemini-readonly': async () => ({ text: reply }) },
@@ -3070,9 +3074,8 @@ test('create: a reply that names files the disk does not have is said, and one t
     await room.send({ text: 'revisa', target: 'gemini', create: true });
     said = (await store.readAll()).filter((event) => event.type === 'create.missing');
     assert.equal(said.length, 1, 'a reply about files that exist was reported as missing');
-
-    await room.shutdown();
   } finally {
+    await room?.shutdown().catch(() => {});
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

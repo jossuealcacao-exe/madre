@@ -63,6 +63,16 @@ Cuatro fases —medir, que arranque, que confine, que se explique— con trazabi
 
 El documento único es **`docs/WINDOWS.md`**: hallazgos con id permanente, decisiones abiertas, fases, versiones y bitácora. Nada sobre Windows se decide fuera de ahí.
 
+## 5 · Conectores (0.7.x)
+
+Traer un servicio de fuera a la sala es un **módulo**, no una categoría nueva: ya lo hacen
+IMAGE STUDIO y el servidor de memoria. Lo que faltaba del núcleo —que un módulo pueda
+declarar a dónde llega— está hecho. Lo que falta por decidir, y el primer conector (correo),
+está en [`docs/CONECTORES.md`](CONECTORES.md).
+
+Sigue siendo cierto lo de abajo: un conector habla desde esta máquina con un servicio del
+usuario, con sus credenciales. No hay nube de MADRE en medio.
+
 ## Fuera del alcance, a conciencia
 
 - Navegador general, pestañas, historial fuera del proyecto.
