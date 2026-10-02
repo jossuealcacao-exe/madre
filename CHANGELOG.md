@@ -8,7 +8,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### MU/TH/UR se lee por bloques, no por renglones
 
-- Cada sección de la consola lleva ahora su propio icono en vez de la misma barra verde para todas. Una barra decía «aquí empieza un título» y nada más; un glifo dice **cuál** sección es antes de leer las palabras.
+- Cada sección de la consola lleva ahora su propio icono de 8 bits en vez de la misma barra verde para todas. Una barra decía «aquí empieza un título» y nada más; un dibujo dice **cuál** sección es antes de leer las palabras. Sin recuadro alrededor: un marco sería una segunda caja diciendo lo que el dibujo ya dice.
 - Y se va la línea que había encima de cada bloque: una raya y un icono son dos maneras de anunciar lo mismo, y con una basta. Los títulos suben de tamaño y de brillo, así que la jerarquía la marca el bloque y no el renglón.
 - Lo mismo en CONEXIONES, que es la misma consola por dentro.
 

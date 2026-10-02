@@ -329,12 +329,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 }
 .economy .card-block:first-of-type { margin: 0; }
 .economy .card-head { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
-.card-icon {
-  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
-  border: 1px solid var(--ph-faint); border-radius: 5px;
-  font-size: 11px; line-height: 1; color: var(--ph);
-  background: color-mix(in srgb, var(--ph) 8%, transparent);
-}
+.card-icon { width: 18px; height: 18px; opacity: .9; }
 /* The unit, said once per card instead of stamped on every row. */
 .economy .unit-note { margin: -2px 0 6px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--ph-dim); }
 
@@ -841,14 +836,12 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-section .fold > summary h3::before { content: none; }
 .mother-section .fold > summary h3 { font-size: 11px; letter-spacing: .22em; color: var(--ph); }
 .mother-section .fold[open] > summary h3 { color: var(--ph); }
-.fold-icon {
-  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
-  border: 1px solid var(--ph-faint); border-radius: 5px;
-  font-size: 11px; line-height: 1; color: var(--ph);
-  background: color-mix(in srgb, var(--ph) 7%, transparent);
-  transition: background .15s, border-color .15s;
-}
-.mother-section .fold > summary:hover .fold-icon { background: color-mix(in srgb, var(--ph) 16%, transparent); border-color: var(--ph-dim); }
+/* No frame around it: a badge was a second box saying what the drawing already says. Crisp edges
+   because a pixel that gets antialiased into a curve stops being a pixel. */
+.pixel-icon { flex: none; display: block; line-height: 0; color: var(--ph); }
+.pixel-icon svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
+.fold-icon { width: 20px; height: 20px; opacity: .85; transition: opacity .15s, transform .15s; }
+.mother-section .fold > summary:hover .fold-icon { opacity: 1; transform: translateY(-1px); }
 .mother-section .fold { padding-top: 26px; margin-top: 10px; border-top: 1px solid var(--ph-faint); }
 .mother-section .fold:first-of-type { border-top: 0; padding-top: 0; }
 
