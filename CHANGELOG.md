@@ -6,6 +6,23 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.6.1 · Sin publicar
 
+### MU/TH/UR se lee por bloques, no por renglones
+
+- Cada sección de la consola lleva ahora su propio icono en vez de la misma barra verde para todas. Una barra decía «aquí empieza un título» y nada más; un glifo dice **cuál** sección es antes de leer las palabras.
+- Y se va la línea que había encima de cada bloque: una raya y un icono son dos maneras de anunciar lo mismo, y con una basta. Los títulos suben de tamaño y de brillo, así que la jerarquía la marca el bloque y no el renglón.
+- Lo mismo en CONEXIONES, que es la misma consola por dentro.
+
+### La economía deja de estar escrita en clave
+
+- `CH` no se explicaba en ninguna parte de esa pantalla, y en español llegó a verse como «CAR POR TOKEN». Ahora se dice **caracteres**, con todas sus letras, y la unidad va una vez en la tarjeta en lugar de estampada en diez filas.
+- `TURNS WEIGHED` se había traducido como «TURNOS PESADOS», que en español significa otra cosa. Son **turnos con factura**.
+- El número grande ya dice de qué son: **tokens que esta sala nunca pagó**. Antes eran quince millones de nada.
+- Cada lectura es una tarjeta con su borde y su icono, y las seis cifras de arriba son seis tarjetas. Lo que estaba saturado era que todo pesaba igual y nada decía dónde terminaba una lectura.
+
+### Arreglos
+
+- La tarjeta **POR AGENTE** de la economía no se había visto nunca: `table.append(…).lastChild` sobre un `append` que devuelve `undefined` lanzaba en cada render y se llevaba por delante el resto del panel, sin decir nada. Está desde que se escribió el panel.
+
 ### Tu pulgar mueve lo que la sala recordó de esa respuesta
 
 - **El archivista ya sabe qué tiene standing y qué se echó.** Hasta ahora recibía las doce notas más recientes bajo un único encabezado que decía «ya recordado, no lo repitas» — fueran lo que fueran. En el archivo de esta sala, tres de esas doce estaban fuera de circulación, y dos eran **aberraciones**: afirmaciones que la sala ya había establecido como falsas, ofrecidas como si fueran conocimiento.

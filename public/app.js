@@ -4631,6 +4631,7 @@ function renderMotherRecorded() {
   try { collapsed = localStorage.getItem('pulse.mother.log') === 'collapsed'; } catch { /* no storage */ }
   const shown = state.failures.filter((failure) => !dismissed.has(failureKey(failure)));
   const body = folding(mother.recorded, t('RECORDED CONDITIONS · THIS ROOM · {n}', { n: shown.length }), {
+    icon: '✖',
     key: 'recorded', open: !collapsed,
   });
   // Everything dismissed is still in the ledger; this only stops it from being shown again.
@@ -4724,6 +4725,7 @@ function renderMotherKnown(list = allConditions(), hits = new Set(), agent = nul
   // An inquiry that narrowed the list, or a fix chosen from the log, always shows its answer, whatever the stored state.
   if (list.length !== CONDITIONS.length || hits.size) collapsed = false;
   const body = folding(mother.known, t('KNOWN CONDITIONS · {n} OF {total} · {os} / {shell}', { n: list.length, total: CONDITIONS.length, os: PLATFORMS[mother.platform].label.toUpperCase(), shell: PLATFORMS[mother.platform].shell.toUpperCase() }), {
+    icon: '☰',
     key: 'known', open: !collapsed,
   });
   const grid = el('div', 'mother-grid');
@@ -5292,6 +5294,13 @@ function openEconomy() {
 
 economyPanel.close?.addEventListener('click', () => economyPanel.dialog.close());
 
+// A card's heading, with the glyph that says which card it is before the words are read.
+function cardHead(icon, title) {
+  const head = el('h5', 'card-head');
+  head.append(el('span', 'card-icon', icon), el('span', null, title));
+  return head;
+}
+
 async function renderEconomy() {
   const box = economyPanel.body;
   if (!box) return;
@@ -5317,7 +5326,7 @@ async function renderEconomy() {
     [count(totals.output), t('OUTPUT CHARGED'), t('tokens written back · the dearer half')],
     [count(saved.tokens), t('NEVER CHARGED'), t('read back from a cache, plus what was never sent')],
     [pct(totals.cacheShare), t('CAME FROM CACHE'), t('of everything read, the share nobody charged twice')],
-    [totals.charsPerInputToken ? totals.charsPerInputToken.toFixed(2) : '—', t('CH PER TOKEN'), t('what MADRE wrote against what the CLIs were charged for reading · not a tokenizer')],
+    [totals.charsPerInputToken ? totals.charsPerInputToken.toFixed(2) : '—', t('CHARACTERS PER TOKEN'), t('what MADRE wrote against what the CLIs were charged for reading · not a tokenizer')],
   ]) {
     const cell = el('div', 'economy-stat');
     cell.title = hint;
@@ -5328,8 +5337,9 @@ async function renderEconomy() {
 
   // 1 · The only money on this screen.
   const first = el('div', 'card-block');
-  first.append(el('h5', null, t('NEVER CHARGED FOR')));
+  first.append(cardHead('⊘', t('NEVER CHARGED FOR')));
   first.append(el('div', 'economy-headline', count(saved.tokens)));
+  first.append(el('p', 'unit-note', t('tokens this room never paid for')));
   metrics(first, [
     [t('FROM THE CACHE'), count(saved.cachedTokens), t('the CLI said it read these back instead of charging them again · measured')],
     [t('NEVER SENT'), count(saved.unsentTokens), t('briefing a turn had no use for · estimated from characters, not measured')],
@@ -5342,7 +5352,7 @@ async function renderEconomy() {
   // scale of a paid turn beside it so the count means something.
   if (read.free?.turns) {
     const free = el('div', 'card-block');
-    free.append(el('h5', null, t('TURNS THE ROOM ANSWERED ITSELF')));
+    free.append(cardHead('◉', t('TURNS THE ROOM ANSWERED ITSELF')));
     metrics(free, [
       [t('FREE TURNS'), count(read.free.turns), t('answered by @madre on this computer · no provider, no bill')],
       [t('OF EVERY TURN'), pct(read.free.share), t('of the turns weighed in this room')],
@@ -5354,7 +5364,7 @@ async function renderEconomy() {
 
   // 2 · Ash, observed rather than claimed.
   const second = el('div', 'card-block');
-  second.append(el('h5', null, t('WHAT ASH DOES TO AN ANSWER')));
+  second.append(cardHead('✂', t('WHAT ASH DOES TO AN ANSWER')));
   // The price before the promise. Ash concatenates an instruction to every prompt it is on, so it
   // ALWAYS costs input — and the room measures that block exactly, because it is the block the
   // room itself wrote. Showing only the shorter answer below, which is observed and conditional,
@@ -5362,7 +5372,7 @@ async function renderEconomy() {
   const block = read.blocks.find((one) => one.id === 'ash');
   if (block) {
     metrics(second, [
-      [t('ASH ADDS'), `${block.perTurn} CH`, t('to every prompt it is on · measured, not estimated')],
+      [t('ASH ADDS'), t('{n} characters', { n: block.perTurn }), t('to every prompt it is on · measured, not estimated')],
       [t('IN TOKENS'), `≈${Math.round(block.perTurn / CH_PER_TOKEN)}`, t('at {rate} characters per token · an estimate', { rate: CH_PER_TOKEN })],
       [t('TURNS CARRYING IT'), count(block.turns), t('of the {n} weighed in this room', { n: count(read.turns) })],
     ]);
@@ -5374,7 +5384,7 @@ async function renderEconomy() {
 
   // 3 · Where what WAS paid for went.
   const third = el('div', 'card-block');
-  third.append(el('h5', null, t('WHERE EACH PROMPT GOES')));
+  third.append(cardHead('▤', t('WHERE EACH PROMPT GOES')));
   economyBlocks(third, read);
   third.append(el('p', 'note', t('{pct} of each prompt is the unchanging head a cache can match. MADRE wrote {chars} characters of the {input} input tokens you were charged for; the rest is what the CLIs read on their own.', { pct: pct(read.totals.prefixShare), chars: count(read.totals.chars), input: count(read.totals.input) })));
   box.append(third);
@@ -5384,11 +5394,13 @@ async function renderEconomy() {
   // which is a table and not a row of bars. A bar can only carry one measure honestly, and these
   // are read by looking one agent up, not by comparing lengths.
   const fourth = el('div', 'card-block wide');
-  fourth.append(el('h5', null, t('BY AGENT')));
+  fourth.append(cardHead('⇄', t('BY AGENT')));
   const table = el('table', 'economy-table');
   const head = el('tr');
-  for (const column of [t('AGENT'), t('TURNS'), t('INPUT'), t('OUTPUT'), t('CACHE'), t('CACHED %'), t('CH / TOKEN')]) head.append(el('th', null, column));
-  table.append(el('thead', null)).lastChild.append(head);
+  for (const column of [t('AGENT'), t('TURNS'), t('INPUT'), t('OUTPUT'), t('CACHE'), t('CACHED %'), t('CHARS / TOKEN')]) head.append(el('th', null, column));
+  const thead = el('thead');
+  thead.append(head);
+  table.append(thead);
   const body = el('tbody');
   for (const agent of read.agents) {
     const row = el('tr');
@@ -5406,13 +5418,17 @@ async function renderEconomy() {
 // The blocks a prompt is made of, widest first. Shared by the card and the panel so the two
 // cannot drift into saying different things about the same room.
 function economyBlocks(box, read) {
+  const count = (value) => (Number.isFinite(value) ? value.toLocaleString() : '—');
   const widest = read.blocks[0]?.chars || 1;
+  // The unit belongs on the card once, not stamped on ten rows: ten copies of «CH/TURN» is most
+  // of what made this screen unreadable, and none of them said what CH was.
+  box.append(el('p', 'unit-note', t('Characters each block adds to one prompt.')));
   const bars = el('div', 'ash-blocks');
   for (const block of read.blocks.slice(0, 10)) {
     const row = el('div', 'ash-block');
     const bar = el('i');
     bar.style.setProperty('--fill', `${Math.max(2, Math.round((block.chars / widest) * 100))}%`);
-    row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${block.perTurn} CH/TURN${block.always ? ' · ALWAYS' : ''}`));
+    row.append(el('b', null, block.id.toUpperCase()), bar, el('span', null, `${count(block.perTurn)}${block.always ? t(' · ALWAYS') : ''}`));
     bars.append(row);
   }
   box.append(bars);
@@ -6645,11 +6661,16 @@ document.querySelector('#fold-all')?.addEventListener('click', () => {
 
 // A section that folds. A badge belongs on the header only when it says something the header
 // does not: the same number twice is noise, and a mark that is always there stops being a mark.
-function folding(section, title, { key, open = false, badge = null } = {}) {
+// Every block of a MU/TH/UR screen. The mark in front of the title used to be the same green bar
+// on all of them, which told the eye there was a heading and nothing else; a glyph per section
+// says WHICH section without reading the words, and the rule above each block goes: a line and an
+// icon are two ways of saying «a new block starts here» and one of them is enough.
+function folding(section, title, { key, open = false, badge = null, icon = '▌' } = {}) {
   const box = el('details', 'fold');
   box.dataset.fold = key;
   box.open = foldState()[key] ?? open;
   const head = el('summary');
+  head.append(el('span', 'fold-icon', icon));
   head.append(el('h3', null, title));
   if (badge) {
     const mark = el('span', 'fold-badge', badge.text ?? '');
@@ -6858,6 +6879,7 @@ function renderSettings() {
   const signedIn = Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length;
   const out = data.agents.length - signedIn;
   const crew = folding(section, t('CONNECTIONS · {n} OF {total} SIGNED IN', { n: signedIn, total: data.agents.length }) + (data.sessionsAt ? t(' · CHECKED {time}', { time: formatTime(data.sessionsAt) }) : ''), {
+    icon: '⇄',
     key: 'connections',
     badge: out > 0 ? { text: String(out), urgent: true, title: t('{n} agents with no session', { n: out }) } : null,
   });
@@ -6867,7 +6889,7 @@ function renderSettings() {
   for (const agent of data.agents) grid.append(connectionCard(agent));
   crew.append(grid);
 
-  const settingsBody = folding(section, t('ROOM SETTINGS'), { key: 'room-settings' });
+  const settingsBody = folding(section, t('ROOM SETTINGS'), { key: 'room-settings', icon: '⚙' });
   const form = el('form', 'room-form');
   const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
   const num = (name, value, min, step) => { const input = el('input'); input.type = 'number'; input.name = name; input.value = String(value); input.min = String(min); input.step = String(step); return input; };
@@ -6946,7 +6968,7 @@ function renderSettings() {
   // MEMORY: who distils, with whom, how often, where it embeds, how much recall a turn gets. Saves as you change it.
   const mem = data.settings.memory;
   if (mem) {
-    const memoryBody = folding(section, `${t('MEMORY')} · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory' });
+    const memoryBody = folding(section, `${t('MEMORY')} · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory', icon: '◈' });
     memoryBody.append(el('p', 'note', t('THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.')));
     const mform = el('form', 'room-form memory-form');
     const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(t('Memory setting was not saved: {error}', { error: error.message })); } };
@@ -7068,7 +7090,7 @@ function renderSettings() {
   // the index, the notes, the dataset. PURGE does the same to what the room already holds.
   const priv = data.settings.privacy;
   if (priv) {
-    const privacyBody = folding(section, `PRIVACY · ${priv.terms.length ? t('{n} PRIVATE TERMS', { n: priv.terms.length }) : t('NO PRIVATE TERMS')}`, { key: 'privacy' });
+    const privacyBody = folding(section, `PRIVACY · ${priv.terms.length ? t('{n} PRIVATE TERMS', { n: priv.terms.length }) : t('NO PRIVATE TERMS')}`, { key: 'privacy', icon: '▒' });
     privacyBody.append(el('p', 'note', t('AN AGENT\'S OWN CONFIGURATION CAN LEAK INTO ITS REPLY: A COMPANY, A BRAND, A DOMAIN. NAME THEM HERE AND MADRE REPLACES THEM BEFORE THE LEDGER, THE ARCHIVIST, THE OTHER AGENTS OR THE DATASET SEE THEM. THE TERMS STAY IN CONFIG.JSON; THE ROOM ONLY EVER RECORDS HOW MANY.')));
     const pform = el('form', 'room-form privacy-form');
     const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
@@ -9010,6 +9032,7 @@ function renderUpdate() {
   // version the header carries a red mark and nothing else, and what it means is inside.
   const body = folding(section, `${t('RELEASE CHANNEL')} · MADRE ${info.current}${info.available ? '' : info.latest ? t(' · UP TO DATE') : info.enabled ? t(' · NPM NOT REACHED YET') : t(' · CHECK OFF')}`, {
     key: 'update',
+    icon: '⇡',
     open: false,
     badge: info.available ? { text: info.latest, urgent: true, title: t('MADRE {latest} is on npm · you run {current}', { latest: info.latest, current: info.current }) } : null,
   });
@@ -9089,7 +9112,7 @@ function renderMotherSentinel() {
   section.replaceChildren();
   const reports = [...state.reports.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
   const unsent = reports.filter((report) => !report.sent?.ok).length;
-  const sentinelBody = folding(section, `${t('SENTINEL')} · ${reports.length ? t('{n} REPORTS · {unsent} NOT SENT', { n: reports.length, unsent }) : t('NOTHING TO REPORT')}`, { key: 'sentinel' });
+  const sentinelBody = folding(section, `${t('SENTINEL')} · ${reports.length ? t('{n} REPORTS · {unsent} NOT SENT', { n: reports.length, unsent }) : t('NOTHING TO REPORT')}`, { key: 'sentinel', icon: '⚠' });
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
   const what = el('p', 'note', t('THE SENTINEL KEEPS FAILURES MU/TH/UR CANNOT EXPLAIN, AND CRASHES, WITH PATHS, NAMES AND KEYS REMOVED. NOTHING LEAVES THIS MACHINE UNLESS YOU SEND IT: BY HAND AS A GITHUB ISSUE YOU READ FIRST, OR AUTOMATICALLY TO THE AUTHOR\'S COLLECTOR IF YOU SWITCH THAT ON.'));
   sentinelBody.append(what);

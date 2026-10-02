@@ -205,9 +205,11 @@ El humano juzga una respuesta una vez; dos campos para un acto serían mentir so
 lo que hizo. Se pagó ZN-031 con prueba, y se comprobó que la prueba falla cuando
 se vuelve a poner la trampa.
 
-**D-003 · ¿La zona es columna derivada o estado propio?**
-Derivada del ledger en cada lectura es siempre correcta y más lenta. Columna
-materializada es rápida y puede desincronizarse (ZN-035).
+**D-003 · ¿La zona es columna derivada o estado propio?** — **CERRADA 2026-10-02: columna.**
+Materializada, y recalculada del ledger en cada arranque, que es lo que desarma el
+riesgo de desincronizarse: no se acumula nada: se vuelve a plegar. Derivarla en cada
+lectura obligaba a `json_each` sobre `sources` en el camino crítico del recall, y la
+columna ya está probada contra el archivo real sin una sola fila discrepante.
 
 **D-004 · ¿Qué hace el recall con BODEGA vs PUENTE?**
 Hoy la fusión es `lexicalWeight: 0.55` (`src/memory.mjs:367`). Un multiplicador
@@ -336,6 +338,7 @@ fase 1. No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **D-003 cerrada: columna materializada**, recalculada del ledger en cada arranque. |
 | 2026-10-02 | **Fase 3 completa, y sustituida.** La fase 3 escrita era «zonas y coste»; las zonas ya se veían desde el paso 1.4 y el eje de coste es la pieza más débil del diseño (no alimenta nada, D-005). Se hizo en su lugar lo que ZN-010 prometía y ninguna fase construía: el destilador recibe dos listas, vigentes encabezadas por PUENTE y descartadas como negativos explícitos. Salieron ZN-041 (lo que recibía antes, medido) y ZN-042 (lo que cuesta, medido). |
 | 2026-10-02 | **Fase 2 completa.** Cuatro veredictos (`never · bad · preference · good` + `none`), peor-primero, leídos del orden en que el vocabulario se declara. ZN-031 pagada: `room.mjs` y `dataset.mjs` en el mismo commit, con prueba que se verificó reponiendo la trampa. Los dos escalones se revelan solo cuando se pulsa el que escalan. Salió ZN-040, un fallo propio: el pliegue vaciaba la tabla y habría borrado los veredictos de las otras conversaciones. |
 | 2026-10-02 | **D-002 cerrada: ampliar el veredicto.** |

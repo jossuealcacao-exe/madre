@@ -320,14 +320,31 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
 /* The panel is a screen, not a column. Sections pair up once there is room for two, and the
    ones that carry a table or a full-width strip keep the whole width to themselves. */
 #economy-body { display: grid; grid-template-columns: 1fr; gap: 0 56px; align-content: start; }
-@media (min-width: 1180px) { #economy-body { grid-template-columns: 1fr 1fr; } #economy-body > .wide, #economy-body > .economy-strip { grid-column: 1 / -1; } }
+@media (min-width: 1180px) { #economy-body { grid-template-columns: 1fr 1fr; gap: 16px; } #economy-body > .wide, #economy-body > .economy-strip { grid-column: 1 / -1; } }
 .economy .card-block { display: grid; gap: 10px; align-content: start; }
-.economy .card-block { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--ph-faint); }
-.economy .card-block:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.economy .card-block {
+  margin: 0; padding: 20px 22px 22px;
+  border: 1px solid var(--ph-faint); border-radius: 12px;
+  background: color-mix(in srgb, var(--ph) 3%, transparent);
+}
+.economy .card-block:first-of-type { margin: 0; }
+.economy .card-head { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+.card-icon {
+  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
+  border: 1px solid var(--ph-faint); border-radius: 5px;
+  font-size: 11px; line-height: 1; color: var(--ph);
+  background: color-mix(in srgb, var(--ph) 8%, transparent);
+}
+/* The unit, said once per card instead of stamped on every row. */
+.economy .unit-note { margin: -2px 0 6px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--ph-dim); }
 
 /* The room in six figures, read across before anything is read down. */
-.economy-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px 32px; margin: 4px 0 8px; padding-bottom: 26px; border-bottom: 1px solid var(--ph-dim); }
-.economy-stat { display: grid; gap: 5px; align-content: start; min-width: 0; }
+.economy-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0 0 4px; padding: 0; border: 0; }
+.economy-stat {
+  display: grid; gap: 5px; align-content: start; min-width: 0;
+  padding: 14px 16px; border: 1px solid var(--ph-faint); border-radius: 10px;
+  background: color-mix(in srgb, var(--ph) 4%, transparent);
+}
 .economy-stat b { font-family: var(--mono); font-size: 22px; font-weight: 600; line-height: 1.1; color: var(--ph); }
 .economy-stat span { font-family: var(--mono); font-size: 8.5px; letter-spacing: .18em; color: var(--ph-dim); }
 
@@ -818,18 +835,35 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-section h3.toggle:not(:first-child) { margin-top: 40px; }
 .settings .room-form, .settings .conn-grid, .settings .mother-grid { margin-bottom: 8px; }
 .mother-section h3::before { content: "▌ "; color: var(--ph); }
+/* A folding block carries its own glyph, so the generic bar would be a second mark saying the
+   same thing. And the rule above it goes with it: a line and an icon are two ways of announcing
+   «a new block starts here», and one of them is enough. */
+.mother-section .fold > summary h3::before { content: none; }
+.mother-section .fold > summary h3 { font-size: 11px; letter-spacing: .22em; color: var(--ph); }
+.mother-section .fold[open] > summary h3 { color: var(--ph); }
+.fold-icon {
+  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
+  border: 1px solid var(--ph-faint); border-radius: 5px;
+  font-size: 11px; line-height: 1; color: var(--ph);
+  background: color-mix(in srgb, var(--ph) 7%, transparent);
+  transition: background .15s, border-color .15s;
+}
+.mother-section .fold > summary:hover .fold-icon { background: color-mix(in srgb, var(--ph) 16%, transparent); border-color: var(--ph-dim); }
+.mother-section .fold { padding-top: 26px; margin-top: 10px; border-top: 1px solid var(--ph-faint); }
+.mother-section .fold:first-of-type { border-top: 0; padding-top: 0; }
 
 /* A section that folds. The summary carries the same header it always had, plus a mark on the
    right when there is something behind it worth opening. */
 .mother-section .fold { margin: 0; }
 .mother-section .fold + .fold { margin-top: 26px; }
-.mother-section .fold > summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; }
+.mother-section .fold > summary { display: flex; align-items: center; gap: 11px; cursor: pointer; list-style: none; }
 .mother-section .fold > summary::-webkit-details-marker { display: none; }
 /* The button is a word, not a glyph: the panel already said EXPAND and COLLAPSE elsewhere. */
 .mother-section .fold > summary .caret { margin-left: auto; font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--ph); white-space: nowrap; }
 .mother-section .fold > summary:hover h3 { color: var(--ph); }
-.mother-section .fold > summary h3 { margin: 0 0 12px; }
+.mother-section .fold > summary h3 { margin: 0; }
 .mother-section .fold > summary h3:not(:first-child) { margin-top: 0; padding-top: 0; border-top: 0; }
+.mother-section .fold > .fold-body { padding-top: 14px; }
 .fold-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--ph-dim); color: var(--ph-dim); white-space: nowrap; }
 /* Red, and only red, when there is something new: that is the whole message. */
 .fold-badge.urgent { border-color: var(--danger); background: var(--danger); color: #fff; }
