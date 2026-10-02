@@ -119,6 +119,7 @@ export function leaseInstructions({ outDir, agentId, scopes = { write: true, ima
       : canImage ? `You can generate images; save them${create ? ' where images live in this project, or in the scratch folder,' : ' into the lease directory'} with a descriptive file name.`
       : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'
         : 'You cannot generate images from this CLI; if asked for one, say so plainly instead of attempting it.',
+    'Do this work yourself. Do not hand it to a subagent or spawn another agent: a subagent writes outside this lease, so nothing it did would be checked, shown to the human or undoable — and the tools for it are blocked, which can leave you waiting instead of answering.',
     'List the files you created (or "none") before any plan block; nothing may follow a plan block.',
   ].filter(Boolean).join('\n');
 }

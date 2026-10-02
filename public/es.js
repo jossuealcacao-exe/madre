@@ -114,6 +114,10 @@ export const ES = {
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
   'STOPPING': 'DETENIENDO',
+  'Gemini tried to hand this turn to one of its own subagents. MADRE does not allow that: a subagent answers outside the lease, so nothing it wrote would be checked, shown or undoable.':
+    'Gemini intentó pasarle este turno a uno de sus propios subagentes. MADRE no lo permite: un subagente contesta fuera del arriendo, así que nada de lo que escribiera quedaría comprobado, mostrado ni reversible.',
+  'Ask again saying it should do the work itself, without subagents.':
+    'Vuelve a pedirlo diciéndole que haga el trabajo él mismo, sin subagentes.',
   ' · this reply names {n} file(s) that are not on disk: {files}':
     ' · esta respuesta nombra {n} archivo(s) que no están en disco: {files}',
   ' · nothing was written this turn': ' · en este turno no se escribió nada',

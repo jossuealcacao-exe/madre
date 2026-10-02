@@ -1004,6 +1004,10 @@ export class Room {
     turn.stoppedByHuman = true;
     await this.#emit('turn.stopped', { messageId, agent: turn.agent, planId: turn.planId, reason, by: 'you' });
     turn.controller.abort(reason);
+    // Waited out, the way the master brake waits: aborting only asks, and the turn still has to
+    // kill its process and record how it ended. Returning before that leaves the caller — and
+    // anything tidying up after it — racing a write that has not happened yet.
+    await turn.promise?.catch(() => {});
     return true;
   }
 

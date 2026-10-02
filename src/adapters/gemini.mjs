@@ -259,6 +259,19 @@ export function diagnoseGeminiStderr(stderr) {
   if (/status:\s*40[13]|PERMISSION_DENIED|API key not valid|IneligibleTierError/i.test(text)) {
     return { code: 'AUTH', message: t('Google rejected the Gemini credentials.'), hint: t('Run `gemini` and use /auth, or check GEMINI_API_KEY.') };
   }
+  // A subagent, refused. The policy is right to refuse it — a subagent answers outside the lease
+  // and outside everything the room counts — but the CLI does not treat the refusal as an answer:
+  // it waits, and the turn dies on MADRE's clock three minutes later with nothing to show.
+  //
+  // Only this tool. A blocked `write_file` leaves the CLI working and it goes on to answer, so
+  // treating every refusal as fatal would cut turns that were going to finish.
+  if (/Unauthorized tool call:\s*'?invoke_agent'?|Blocked call:[^\n]*invoke_agent/i.test(text)) {
+    return {
+      code: 'SUBAGENT_BLOCKED',
+      message: t('Gemini tried to hand this turn to one of its own subagents. MADRE does not allow that: a subagent answers outside the lease, so nothing it wrote would be checked, shown or undoable.'),
+      hint: t('Ask again saying it should do the work itself, without subagents.'),
+    };
+  }
   return null;
 }
 
