@@ -14,6 +14,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Un pulgar mueve solo lo que cita **esa** respuesta, nunca su lote: en una sala real un lote abarca cientos de secuencias, y un pulgar no puede hablar por intercambios que no miraste. En el archivo de esta sala, un tercio de las respuestas de agente dejaron memoria y son las que un pulgar alcanza.
 - El archivo manda sobre el pulgar: una nota que la sala estableció falsa sigue fuera de circulación por mucho que te gustara la respuesta de la que salió. «Esto es falso» y «esto me sirvió» no son la misma afirmación.
 - Los pulgares que ya habías pulsado antes de que esto existiera cuentan: el pliegue es sobre el ledger entero y corre en cada arranque.
+- Y se ve: cada memoria dice su zona en NOSTROMO, y la que no viaja se dibuja apagada en el mapa. Una señal que gobierna el recall sin que puedas mirarla es justo lo que esta sala no hace. Las zonas no estrenan paleta: el color de una estrella es su clase, y lo que la zona cambia es si está encendida.
 
 ## 0.6.0 · 2026-10-01
 

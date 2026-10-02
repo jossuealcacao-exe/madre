@@ -103,6 +103,22 @@ export const ES = {
   'Paste here': 'Pegar aquí',
   'Paste beside it': 'Pegar al lado',
   'Rename': 'Renombrar',
+  'HOLD': 'BODEGA',
+  'BRIDGE': 'PUENTE',
+  'MED BAY': 'ENFERMERÍA',
+  'JETTISONED': 'ESCLUSA',
+  'ZONE': 'ZONA',
+  'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
+  'A faded star is in MED BAY or JETTISONED: the archive keeps it and never hands it to a turn.':
+    'Una estrella apagada está en ENFERMERÍA o en ESCLUSA: el archivo la conserva y nunca la entrega a un turno.',
+  'Distilled and nobody has judged it. It travels into turns.':
+    'Destilada y nadie la ha juzgado. Viaja a los turnos.',
+  'You marked the reply it came from as good. It travels, confirmed.':
+    'Marcaste como buena la respuesta de la que salió. Viaja, confirmada.',
+  'Quarantined: it is false, or it came from a reply you marked bad. It never travels.':
+    'En cuarentena: es falsa, o salió de una respuesta que marcaste mal. No viaja nunca.',
+  'Put out of circulation and kept so it is not learned again. It never travels.':
+    'Fuera de circulación, conservada para no volver a aprenderla. No viaja nunca.',
   'New file': 'Archivo nuevo',
   'New folder': 'Carpeta nueva',
   'NEW NAME': 'NOMBRE NUEVO',

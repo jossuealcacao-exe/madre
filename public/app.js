@@ -234,6 +234,21 @@ const MEMORY_COLORS = { decision: '#ffdc3c', fact: '#dfeeff', preference: '#5cf0
 const KIND_WORDS = { decision: t('DECISION'), fact: t('FACT'), preference: t('PREFERENCE'), question: t('QUESTION'), aberration: t('ABERRATION') };
 const kindWord = (kind) => KIND_WORDS[kind] ?? String(kind).toUpperCase();
 
+// Where a memory stands aboard, which is a different question from what it is — so it is said in
+// words and not in a second hue: the map already spends colour on the kind, and two palettes on
+// one dot is how a map stops being readable. What a zone changes on the map is whether the star
+// is lit at all, because that is what the zone means.
+const ZONE_WORDS = { hold: t('HOLD'), bridge: t('BRIDGE'), medbay: t('MED BAY'), jettisoned: t('JETTISONED') };
+const ZONE_NOTE = {
+  hold: t('Distilled and nobody has judged it. It travels into turns.'),
+  bridge: t('You marked the reply it came from as good. It travels, confirmed.'),
+  medbay: t('Quarantined: it is false, or it came from a reply you marked bad. It never travels.'),
+  jettisoned: t('Put out of circulation and kept so it is not learned again. It never travels.'),
+};
+const UNDERWAY = new Set(['hold', 'bridge']);
+const zoneWord = (zone) => ZONE_WORDS[zone] ?? String(zone ?? '').toUpperCase();
+const travels = (memory) => UNDERWAY.has(memory?.zone ?? 'hold');
+
 const formatTime = (iso) => {
   const date = iso ? new Date(iso) : new Date();
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -7341,6 +7356,13 @@ function paintLegend() {
     chip.title = `${DWARF_CLASS[kind]} · ${kindWord(kind)}`;
     chips.push(chip);
   }
+  // The zones do not get a palette of their own: the hue on a star is its kind and the chips above
+  // say so. What a zone changes is whether the star is lit, which is one more thing to name here
+  // rather than a second legend to read.
+  const dim = el('span', 'k dim');
+  dim.append(dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), el('i', null, t('OUT OF CIRCULATION')));
+  dim.title = t('A faded star is in MED BAY or JETTISONED: the archive keeps it and never hands it to a turn.');
+  chips.push(dim);
   host.replaceChildren(...chips);
   host.dataset.lit = 'yes';
 }
@@ -7487,7 +7509,7 @@ function buildNostromo(data) {
     const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
     const distance = 0.42 + Math.random() * 0.5;
     const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-    return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, placed: false };
+    return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + memory.sources.length * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: travels(memory) ? (MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact) : hexMix(MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, '#0b0f16', 0.52), placed: false };
   });
   const stats = data.stats ?? {};
   const alive = memories.filter((memory) => Number(memory.recalled ?? 0) > 0).length;
@@ -8732,6 +8754,10 @@ function showNostromoCard(node) {
   document.querySelector('#nostromo-card-span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
   document.querySelector('#nostromo-card-agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? t(" · on the human's request") : memory.origin === 'flagged' ? t(' · flagged by {who}', { who: memory.detector ?? t('the room') }) : t(' · distilled')}`;
   document.querySelector('#nostromo-card-when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
+  const zone = document.querySelector('#nostromo-card-zone');
+  zone.textContent = zoneWord(memory.zone ?? 'hold');
+  zone.className = travels(memory) ? 'zone underway' : 'zone archived';
+  zone.title = ZONE_NOTE[memory.zone ?? 'hold'] ?? '';
 
   // The wires it has on the map, strongest first.
   const neighbours = neighboursOf(memory.id);

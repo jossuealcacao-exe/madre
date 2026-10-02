@@ -1757,6 +1757,13 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .tree-menu button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px; text-align: left; padding: 7px 10px; border-radius: 7px; cursor: pointer; }
 .tree-menu button:hover { background: color-mix(in srgb, var(--phosphor) 12%, transparent); }
 .tree-menu .guarded { color: var(--warn); }
+/* A zone is a state, not a category: the one that still travels wears the room's own green, the
+   one that does not is dimmed to the colour of everything the archive keeps and never serves. */
+.nostromo-card .zone { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; }
+.nostromo-card .zone.underway { color: var(--phosphor); }
+.nostromo-card .zone.archived { color: var(--text-3); opacity: .75; }
+.nostromo-card .zone.archived::after { content: ' ·'; }
+
 .tree-menu .note { padding: 5px 10px 6px; font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--text-3); }
 
 @keyframes tree-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
