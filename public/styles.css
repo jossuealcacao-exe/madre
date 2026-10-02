@@ -328,8 +328,8 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
   background: color-mix(in srgb, var(--ph) 3%, transparent);
 }
 .economy .card-block:first-of-type { margin: 0; }
-.economy .card-head { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
-.card-icon { width: 18px; height: 18px; opacity: .9; }
+.economy .card-head { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.card-icon { width: 12px; height: 12px; opacity: .85; }
 /* The unit, said once per card instead of stamped on every row. */
 .economy .unit-note { margin: -2px 0 6px; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--ph-dim); }
 
@@ -840,8 +840,8 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
    because a pixel that gets antialiased into a curve stops being a pixel. */
 .pixel-icon { flex: none; display: block; line-height: 0; color: var(--ph); }
 .pixel-icon svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
-.fold-icon { width: 20px; height: 20px; opacity: .85; transition: opacity .15s, transform .15s; }
-.mother-section .fold > summary:hover .fold-icon { opacity: 1; transform: translateY(-1px); }
+.fold-icon { width: 13px; height: 13px; opacity: .8; transition: opacity .15s; }
+.mother-section .fold > summary:hover .fold-icon { opacity: 1; }
 .mother-section .fold { padding-top: 26px; margin-top: 10px; border-top: 1px solid var(--ph-faint); }
 .mother-section .fold:first-of-type { border-top: 0; padding-top: 0; }
 
@@ -849,7 +849,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
    right when there is something behind it worth opening. */
 .mother-section .fold { margin: 0; }
 .mother-section .fold + .fold { margin-top: 26px; }
-.mother-section .fold > summary { display: flex; align-items: center; gap: 11px; cursor: pointer; list-style: none; }
+.mother-section .fold > summary { display: flex; align-items: center; gap: 9px; cursor: pointer; list-style: none; }
 .mother-section .fold > summary::-webkit-details-marker { display: none; }
 /* The button is a word, not a glyph: the panel already said EXPAND and COLLAPSE elsewhere. */
 .mother-section .fold > summary .caret { margin-left: auto; font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--ph); white-space: nowrap; }
