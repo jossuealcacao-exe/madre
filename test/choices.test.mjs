@@ -164,3 +164,31 @@ test('abduction: the room answers to its name only when that is the whole of wha
   // Something attached means there is a message, and a message goes to an agent.
   assert.equal(calledByName('madre', { attachments: 1 }), false);
 });
+
+test('ports: what listens on every interface is counted, not discarded in silence', async () => {
+  const { classifyListening, parseListening } = await import('../src/ports.mjs');
+  // The two shapes `node` and `python -m http.server` produce by default, which is the common
+  // case in the world: bound to every interface, and until now dropped without a word — so a
+  // computer with three servers running reported as a computer with nothing on it.
+  const table = [
+    'COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME',
+    'node 111 me 20u IPv4 0x1 0t0 TCP 127.0.0.1:4317 (LISTEN)',
+    'node 222 me 21u IPv6 0x2 0t0 TCP *:5173 (LISTEN)',
+    'Python 333 me 3u IPv4 0x3 0t0 TCP 0.0.0.0:8000 (LISTEN)',
+    'vite 444 me 7u IPv4 0x4 0t0 TCP 127.0.0.1:5174 (LISTEN)',
+    'vite 444 me 8u IPv6 0x5 0t0 TCP [::]:5174 (LISTEN)',
+  ].join('\n');
+
+  const read = classifyListening(table, {});
+  assert.deepEqual(read.ports.map((one) => one.port), [4317, 5174], 'only loopback may be offered');
+  assert.deepEqual(read.wider.map((one) => one.port), [5173, 8000], 'what listens wide was not reported');
+  // 5174 answers on loopback as well, so it is already openable and saying it twice would be noise.
+  assert.equal(read.wider.some((one) => one.port === 5174), false);
+
+  // The old door still answers the old way, because almost every caller only wants what it may open.
+  assert.deepEqual(parseListening(table, {}), read.ports);
+  assert.deepEqual(classifyListening('', {}), { ports: [], wider: [] });
+
+  // A port of this room's own is never offered back to it.
+  assert.equal(classifyListening(table, { self: 4317 }).ports.some((one) => one.port === 4317), false);
+});

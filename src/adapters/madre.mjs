@@ -105,6 +105,11 @@ export function roundTable(text, { crew = [], maxSteps = 4 } = {}) {
     if (!step || !step[0]) break;
     rest = rest.slice(step[0].length);
   }
+  // Whatever punctuation the hinge left behind. The loop above eats the linking words, but the
+  // colon in «pregúntale al crew: …» only goes with them when another connective follows it —
+  // and what is left starts the question the room announces, sends to four agents and quotes
+  // again when it closes.
+  rest = rest.trim().replace(/^[\s,:;.\-–—]+/, '');
   rest = rest.trim().replace(/^[«"“'`]+|[»"”'`.!]+$/g, '').trim();
   const question = rest.length >= 6 ? rest : (es ? DEFAULT_ES : DEFAULT_EN);
   const agents = crew.slice(0, maxSteps);

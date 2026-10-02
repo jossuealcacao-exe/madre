@@ -851,17 +851,34 @@ async function browserServers() {
   if (!menu.hidden) { portsMenuShown(false); return; }
   menu.replaceChildren(el('div', 'ports-note', t('READING…')));
   portsMenuShown(true);
-  let ports = [];
-  try { ports = (await fetch('/api/ports').then((response) => response.json()))?.ports ?? []; }
-  catch { menu.replaceChildren(el('div', 'ports-note', t('COULD NOT READ THE PORTS'))); return; }
+  let read;
+  try { read = await fetch('/api/ports').then((response) => response.json()); }
+  catch { menu.replaceChildren(el('div', 'ports-note', t('COULD NOT READ THE PORTS'))); browser.servers?.setAttribute('data-live', 'no'); return; }
   menu.replaceChildren();
+  // The answer's own words when it refuses. Reading `?.ports ?? []` straight past an error turned
+  // «RIPLEY is off» into «nothing is answering on this computer», which is a different thing and
+  // sends the human to look at their server instead of at the switch.
+  if (read?.error) {
+    browser.servers?.setAttribute('data-live', 'no');
+    menu.append(el('div', 'ports-note', read.error));
+    const go = el('button', 'ports-row');
+    go.type = 'button';
+    go.append(el('b', null, '⚙'), el('span', null, t('OPEN MODULES')));
+    go.addEventListener('click', () => { portsMenuShown(false); document.querySelector('#modules-button, [aria-controls="modules"]')?.click(); });
+    menu.append(go);
+    return;
+  }
+  const ports = read?.ports ?? [];
+  const wider = read?.wider ?? [];
   // The lamp on the button keeps what the reading found, so the state survives the menu closing.
   browser.servers?.setAttribute('data-live', ports.length ? 'yes' : 'no');
-  if (!ports.length) { menu.append(el('div', 'ports-note', t('NOTHING IS ANSWERING ON THIS COMPUTER · START YOUR SERVER AND OPEN THIS AGAIN'))); return; }
+  if (!ports.length && !wider.length) { menu.append(el('div', 'ports-note', t('NOTHING IS ANSWERING ON THIS COMPUTER · START YOUR SERVER AND OPEN THIS AGAIN'))); return; }
   for (const found of ports) {
     const row = el('button', 'ports-row');
     row.type = 'button';
-    const what = `${found.command} · ${found.status}${found.html ? '' : ` · ${found.contentType ?? ''}`}`;
+    // A server that sends no Content-Type used to leave the separator hanging: «:5173 node · 200 · ».
+    const kind = found.html ? '' : (found.contentType ?? '').trim();
+    const what = `${found.command} · ${found.status}${kind ? ` · ${kind}` : ''}`;
     row.append(el('b', null, `:${found.port}`), el('span', null, found.framable === false ? t('{what} · refuses to be framed', { what }) : what));
     if (found.framable === false) row.classList.add('refuses');
     row.addEventListener('click', () => {
@@ -883,6 +900,15 @@ async function browserServers() {
       const current = browserTab();
       if (current && current.url !== 'about:blank') browserNewTab(url); else void browserOpen(url);
     });
+    menu.append(row);
+  }
+  // Found and not offered. Node and python bind every interface by default, so this is the common
+  // case — and before this it was discarded without a word, which is what made a busy computer
+  // report as an empty one.
+  for (const one of wider) {
+    const row = el('div', 'ports-row wider');
+    row.append(el('b', null, `:${one.port}`), el('span', null, t('{command} · listens on the whole network', { command: one.command })));
+    row.title = t('RIPLEY only opens what is bound to 127.0.0.1. Start it with --host 127.0.0.1 (or listen(port, "127.0.0.1")) and it will show up above.');
     menu.append(row);
   }
   menu.append(el('div', 'ports-note', t('ONLY WHAT LISTENS ON THIS COMPUTER AND ANSWERS HTTP · MADRE RUNS NOTHING TO FIND THEM')));
@@ -3011,13 +3037,20 @@ function renderPlanEvent(event) {
   node.append(el('b', null, t('plan · ')));
   if (event.type === 'plan.created') {
     node.id = `plan-${planId}`;
-    node.append(`@${orchestrator} puts `);
+    // One sentence for the catalogue, not three fragments: the agents are chips and cannot travel
+    // inside a string, so the sentence is translated whole around a marker and the chips go back
+    // where the marker was. Built from literals, the Spanish room read «@MADRE PUTS @CODEX#1 TO
+    // WORK, THEN CLOSES».
+    const [before, after] = (closing
+      ? t('@{who} puts {agents} to work, then closes', { who: orchestrator, agents: '\u0000' })
+      : t('@{who} puts {agents} to work', { who: orchestrator, agents: '\u0000' })).split('\u0000');
+    node.append(before);
     steps.forEach((step, index) => {
       if (index) node.append(', ');
       node.append(`@${step.agent}`);
       if (Number.isInteger(step.mode)) node.append(el('span', `step-mode m${step.mode}`, `#${step.mode}`));
     });
-    node.append(` to work${closing ? ', then closes' : ''}`);
+    node.append(after ?? '');
     const stop = el('button', 'stop', t('STOP'));
     stop.type = 'button';
     stop.title = t('Stop the remaining steps of this plan');
@@ -3029,9 +3062,10 @@ function renderPlanEvent(event) {
     node.append(stop);
   } else {
     document.getElementById(`plan-${planId}`)?.querySelector('.stop')?.remove();
+    const howMany = stepsRun === 1 ? t('{n} step', { n: stepsRun }) : t('{n} steps', { n: stepsRun });
     node.append(event.type === 'plan.completed'
-      ? `@${orchestrator} finished · ${stepsRun} step${stepsRun === 1 ? '' : 's'}`
-      : `@${orchestrator} stopped after ${stepsRun} step${stepsRun === 1 ? '' : 's'} · ${reason ?? ''}`);
+      ? t('@{who} finished · {steps}', { who: orchestrator, steps: howMany })
+      : t('@{who} stopped after {steps} · {why}', { who: orchestrator, steps: howMany, why: reason ?? '' }));
   }
   state.lastSender = null;
   return node;

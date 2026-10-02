@@ -1936,7 +1936,7 @@ test('scopes: what the human enabled, per agent; CREATE is refused with a reason
     const refused = events.find((event) => event.type === 'lease.refused');
     assert.equal(refused.payload.agent, 'gemini');
     assert.match(refused.payload.message, /switched off for it/);
-    assert.deepEqual(refused.payload.unavailable, ['generate images']);
+    assert.deepEqual(refused.payload.unavailable, ['imageGen'], 'the payload must carry the scope id, or the client has nothing to translate');
     assert.deepEqual(refused.payload.alternatives.sort(), ['@claude', '@codex']);
     assert.equal(events.some((event) => event.type === 'lease.granted'), false);
     assert.equal(seen.gemini.lease, null);
@@ -1951,7 +1951,7 @@ test('scopes: what the human enabled, per agent; CREATE is refused with a reason
     events = await store.readAll();
     const granted = events.find((event) => event.type === 'lease.granted');
     assert.deepEqual(granted.payload.scopes, ['write']);
-    assert.deepEqual(granted.payload.unavailable, ['generate images']);
+    assert.deepEqual(granted.payload.unavailable, ['imageGen']);
     assert.match(seen.claude.prompt, /@codex: can create files, generate images/, 'the orchestrator is told who can generate images');
     assert.match(seen.claude.prompt, /@gemini: can create files; cannot generate images/);
     assert.equal(seen.codex.lease.scopes.imageGen, true, 'the delegate gets its own scopes inside the shared lease');

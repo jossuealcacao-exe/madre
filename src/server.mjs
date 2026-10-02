@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile, realpath, writeFile, mkdir, rm, cp, rename, access } from 'node:fs/promises';
 import { rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { parseListening, probePort, framable } from './ports.mjs';
+import { classifyListening, probePort, framable } from './ports.mjs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
@@ -1116,17 +1116,20 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/ports') {
         if (!(await ripleyOn())) return sendJson(response, 412, { error: t('RIPLEY is off. Enable it in MODULES to render files.') });
-        let listening = [];
+        let listening = { ports: [], wider: [] };
         try {
           const { stdout } = await execFileAsync('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN'], { timeout: 4000, maxBuffer: 2 * 1024 * 1024 });
-          listening = parseListening(stdout, { self: request.socket.localPort });
-        } catch { return sendJson(response, 200, { ports: [], probed: false }); }
+          listening = classifyListening(stdout, { self: request.socket.localPort });
+        } catch { return sendJson(response, 200, { ports: [], wider: [], probed: false }); }
         const ports = [];
-        for (const found of listening.slice(0, 24)) {
+        for (const found of listening.ports.slice(0, 24)) {
           const probe = await probePort(found.port, { fetchImpl: reportFetch });
           if (probe.ok) ports.push({ ...found, status: probe.status, html: probe.html, contentType: probe.contentType, framable: probe.framable });
         }
-        return sendJson(response, 200, { ports, probed: true });
+        // What is listening on every interface travels too. It is not offered — this room does not
+        // help anyone frame something reachable from the network — but saying nothing about it is
+        // what made an empty list read as «there is nothing here» when there plainly was.
+        return sendJson(response, 200, { ports, wider: listening.wider.slice(0, 8).map(({ port, command }) => ({ port, command })), probed: true });
       }
       if (request.method === 'GET' && url.pathname === '/api/questions') {
         const limit = Math.min(5, Math.max(1, Number(url.searchParams.get('limit') ?? 3) || 3));

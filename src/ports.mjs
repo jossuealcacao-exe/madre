@@ -18,8 +18,13 @@ const NOISE = /^(rapportd|sharingd|identityservicesd|controlce|remoted|launchd|m
 // One `lsof -nP -iTCP -sTCP:LISTEN` table into the ports a human might want to look at.
 // Loopback only: a line bound to * or 0.0.0.0 is reachable from the network, and this room does
 // not help anyone frame that by accident.
-export function parseListening(output = '', { self = null } = {}) {
+// Everything listening, split by whether RIPLEY may open it. The wider half is NOT a list of
+// things to show as openable — it is the answer to «there is nothing here», which was a lie:
+// `node server.js` and `python -m http.server` bind every interface by default, so the most
+// common case in the world was being discarded in silence and reported as an empty computer.
+export function classifyListening(output = '', { self = null } = {}) {
   const found = new Map();
+  const wider = new Map();
   for (const line of String(output ?? '').split('\n').slice(1)) {
     const match = line.match(/^(\S+)\s+(\d+)\s+\S+\s+\S+\s+(IPv4|IPv6)\s+\S+\s+\S+\s+\S+\s+(\S+)\s+\(LISTEN\)/);
     if (!match) continue;
@@ -29,13 +34,28 @@ export function parseListening(output = '', { self = null } = {}) {
     const host = address.slice(0, address.lastIndexOf(':'));
     const port = Number(address.slice(address.lastIndexOf(':') + 1));
     if (!Number.isInteger(port) || port <= 0 || port > 65535) continue;
-    if (!['127.0.0.1', '[::1]', 'localhost'].includes(host)) continue;
     if (SYSTEM_PORTS.has(port) || NOISE.test(command)) continue;
     if (self && port === Number(self)) continue;
+    if (!['127.0.0.1', '[::1]', 'localhost'].includes(host)) {
+      // Bound to every interface, so reachable from the network. Not offered, but counted: the
+      // human deserves to know their server is there and why it is not on the list.
+      if (['*', '0.0.0.0', '[::]'].includes(host) && !wider.has(port)) wider.set(port, { port, pid: Number(pid), command, host });
+      continue;
+    }
     const seen = found.get(port);
     if (!seen) found.set(port, { port, pid: Number(pid), command });
   }
-  return [...found.values()].sort((a, b) => a.port - b.port);
+  const byPort = (a, b) => a.port - b.port;
+  return {
+    ports: [...found.values()].sort(byPort),
+    // A port answering on both loopback and every interface is already openable; it is not news.
+    wider: [...wider.values()].filter((one) => !found.has(one.port)).sort(byPort),
+  };
+}
+
+// What RIPLEY may open, which is what nearly every caller wants.
+export function parseListening(output = '', options = {}) {
+  return classifyListening(output, options).ports;
 }
 
 // Whether a server agrees to be put behind glass. A page can refuse, and refusing is the correct

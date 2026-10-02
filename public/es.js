@@ -114,6 +114,16 @@ export const ES = {
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
   'STOPPING': 'DETENIENDO',
+  'OPEN MODULES': 'ABRIR MÓDULOS',
+  '{command} · listens on the whole network': '{command} · escucha en toda la red',
+  'RIPLEY only opens what is bound to 127.0.0.1. Start it with --host 127.0.0.1 (or listen(port, "127.0.0.1")) and it will show up above.':
+    'RIPLEY solo abre lo atado a 127.0.0.1. Arráncalo con --host 127.0.0.1 (o listen(puerto, "127.0.0.1")) y aparecerá arriba.',
+  '@{who} puts {agents} to work': '@{who} pone a trabajar a {agents}',
+  '@{who} puts {agents} to work, then closes': '@{who} pone a trabajar a {agents} y luego cierra',
+  '{n} step': '{n} paso',
+  '{n} steps': '{n} pasos',
+  '@{who} finished · {steps}': '@{who} terminó · {steps}',
+  '@{who} stopped after {steps} · {why}': '@{who} se detuvo tras {steps} · {why}',
   'SUPPORT': 'APOYAR',
   'MADRE is free and stays free · this only opens GitHub Sponsors in a tab':
     'MADRE es gratis y seguirá siéndolo · esto solo abre GitHub Sponsors en una pestaña',

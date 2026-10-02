@@ -258,7 +258,7 @@ export class Room {
       outDir: lease.relativeDir,
       scratchDir: lease.scratchDir,
       scopes: SCOPES.filter((scope) => enabled[scope]),
-      unavailable: SCOPES.filter((scope) => !scopes[scope].capable).map((scope) => SCOPE_LABELS[scope]),
+      unavailable: SCOPES.filter((scope) => !scopes[scope].capable),
       planId,
     });
     await this.#emit('mode.granted', { requestId, planId, agent: step.agent, mode, step: index + 1, scope: decision.decision, leaseId: lease.leaseId, message: decision.decision === 'plan' ? `#${mode} granted for the rest of the plan; every writable agent creates inside one lease.` : `#${mode} granted to @${step.agent} for step ${index + 1} only.` });
@@ -886,7 +886,10 @@ export class Room {
     if (create === true || standing) {
       const scopes = this.scopesFor(parsed.target);
       const enabled = SCOPES.filter((scope) => scopes[scope].enabled && scopes[scope].wired);
-      const unavailable = SCOPES.filter((scope) => !scopes[scope].capable).map((scope) => SCOPE_LABELS[scope]);
+      // The ids travel; the labels only build the English sentence below. A label is already a
+      // word, so the client's translator had nothing to look up and left it as it found it.
+      const unavailable = SCOPES.filter((scope) => !scopes[scope].capable);
+      const unavailableSaid = unavailable.map((scope) => SCOPE_LABELS[scope]);
       const disabled = SCOPES.filter((scope) => scopes[scope].capable && !scopes[scope].enabled && scopes[scope].wired).map((scope) => SCOPE_LABELS[scope]);
       if (!enabled.includes('write') || scopes.maxMode < 2) {
         const alternatives = this.#agents.filter((agent) => agent.ready && agent.id !== parsed.target && this.scopesFor(agent.id).maxMode >= 2).map((agent) => `@${agent.id}`);
@@ -897,7 +900,7 @@ export class Room {
           unavailable,
           disabled,
           alternatives,
-          message: `@${parsed.target} will answer read-only: ${scopes.write.capable ? 'file creation is switched off for it (enable it in CONNECTIONS)' : 'its CLI cannot create files'}${unavailable.length ? `; it cannot ${unavailable.join(' or ')}` : ''}.${alternatives.length ? ` For creation ask ${alternatives.join(' or ')}.` : ''}`,
+          message: `@${parsed.target} will answer read-only: ${scopes.write.capable ? 'file creation is switched off for it (enable it in CONNECTIONS)' : 'its CLI cannot create files'}${unavailableSaid.length ? `; it cannot ${unavailableSaid.join(' or ')}` : ''}.${alternatives.length ? ` For creation ask ${alternatives.join(' or ')}.` : ''}`,
         });
       } else {
         lease = await this.#projectLease({ leaseId: randomUUID(), messageId });
@@ -1275,7 +1278,7 @@ export class Room {
         outDir: lease.relativeDir,
         scratchDir: lease.scratchDir,
         scopes: ['write'],
-        unavailable: SCOPES.filter((scope) => !agentScopes[scope].capable).map((scope) => SCOPE_LABELS[scope]),
+        unavailable: SCOPES.filter((scope) => !agentScopes[scope].capable),
         planId,
       });
     }

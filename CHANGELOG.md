@@ -40,6 +40,12 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### Arreglos
 
+- **#16 · RIPLEY decía «nada contesta en esta computadora» cuando sí había servidores.** Por dos causas distintas y ninguna era esa. Con RIPLEY apagado, `/api/ports` contestaba `412` con su explicación y el cliente leía `?.ports ?? []` por encima del error: ahora dice lo que la respuesta dice y ofrece abrir MÓDULOS. Y un servidor atado a todas las interfaces —lo que hacen `node` y `python -m http.server` por defecto— se descartaba sin decir nada: ahora aparece al final de la lista, apagado, con su razón al pasar el cursor. En esta misma máquina eran **tres** servidores invisibles.
+- **#16 · El separador colgando.** Un servidor sin `Content-Type` dejaba la fila como `:5173 node · 200 · `.
+- **#15 · La pregunta que `@madre` reenvía al crew empezaba con «:».** El bucle que quita «pregúntale al crew» solo se llevaba los dos puntos cuando detrás venía otra frase de enlace, así que el «:» viajaba al anuncio, a los cuatro agentes y al turno de cierre.
+- **#14 · «NO PUEDE GENERATE IMAGES» en la sala en español.** El servidor mandaba la etiqueta ya armada donde el cliente esperaba la clave, así que no había nada que traducir. Ahora viaja la clave; la etiqueta se queda solo donde se arma una frase en inglés.
+- **#14 · La línea del plan estaba escrita con literales en inglés.** «@MADRE PUTS @CODEX#1 TO WORK, THEN CLOSES» y «FINISHED · 5 STEPS». Los agentes son fichas y no caben dentro de una cadena, así que la frase se traduce entera alrededor de un marcador y las fichas vuelven a donde estaba el marcador.
+
 - En tema oscuro, la versión, el enlace de apoyo y el aviso bajo el campo eran ilegibles: el gris más tenue de la paleta con media opacidad encima, sobre un fondo casi negro, no era discreto sino invisible. La firma y el enlace llevan ahora el verde de la sala —que tiene un valor propio en cada fondo, así que un color sirve para los dos temas— y el aviso sube a un gris que se lee. El aviso se queda fuera del verde a propósito: es una advertencia sobre permisos, no parte de la voz de la sala.
 
 - La tarjeta **POR AGENTE** de la economía no se había visto nunca: `table.append(…).lastChild` sobre un `append` que devuelve `undefined` lanzaba en cada render y se llevaba por delante el resto del panel, sin decir nada. Está desde que se escribió el panel.
