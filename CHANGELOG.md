@@ -40,6 +40,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### Arreglos
 
+- En tema oscuro, la versión, el enlace de apoyo y el aviso bajo el campo eran ilegibles: el gris más tenue de la paleta con media opacidad encima, sobre un fondo casi negro, no era discreto sino invisible. La firma y el enlace llevan ahora el verde de la sala —que tiene un valor propio en cada fondo, así que un color sirve para los dos temas— y el aviso sube a un gris que se lee. El aviso se queda fuera del verde a propósito: es una advertencia sobre permisos, no parte de la voz de la sala.
+
 - La tarjeta **POR AGENTE** de la economía no se había visto nunca: `table.append(…).lastChild` sobre un `append` que devuelve `undefined` lanzaba en cada render y se llevaba por delante el resto del panel, sin decir nada. Está desde que se escribió el panel.
 
 ### Tu pulgar mueve lo que la sala recordó de esa respuesta

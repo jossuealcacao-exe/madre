@@ -741,13 +741,13 @@ textarea::placeholder { color: var(--text-3); }
 .field button[type="submit"]:hover { filter: brightness(1.06); }
 .field button[type="submit"]:disabled { opacity: .4; cursor: default; box-shadow: none; }
 .pick-label .pick-note { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
-.safety { max-width: min(100%, 150ch); margin: 8px auto 4px; color: var(--text-3); font-family: var(--mono); font-size: 8.5px; line-height: 1.5; letter-spacing: .06em; text-transform: uppercase; text-align: center; opacity: .85; }
+.safety { max-width: min(100%, 150ch); margin: 8px auto 4px; color: var(--text-2); font-family: var(--mono); font-size: 8.5px; line-height: 1.5; letter-spacing: .06em; text-transform: uppercase; text-align: center; opacity: .9; }
 /* The signature, in the corner it belongs in: last in the page's order, and out of the way of
    everything that is actually used. */
-.colophon { position: fixed; right: 14px; bottom: 10px; z-index: 2; font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--text-3); opacity: .5; pointer-events: none; user-select: none; transition: opacity .2s; }
-.colophon:hover { opacity: .9; }
+.colophon { position: fixed; right: 14px; bottom: 10px; z-index: 2; font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--brew); opacity: .68; pointer-events: none; user-select: none; transition: opacity .2s; }
+.colophon:hover { opacity: 1; }
 .colophon-back { pointer-events: auto; color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; }
-.colophon-back:hover { color: var(--phosphor); }
+.colophon-back:hover { color: var(--brew); opacity: 1; }
 @media (max-width: 720px) { .colophon { display: none; } }
 .shell.with-browser .colophon { display: none; }
 
