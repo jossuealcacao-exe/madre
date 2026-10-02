@@ -84,7 +84,7 @@ const PLACEHOLDERS = {
 };
 let winkTimer = null;
 const LINE_PX = 21;
-const MAX_ROWS = 3;
+const MAX_ROWS = 14;
 
 // Permission modes: chosen per message, capped per agent in CONNECTIONS.
 // The names are the ship's and are never translated; what each one lets an agent do is.
@@ -2223,7 +2223,25 @@ function renderThinking(event) {
   const status = el('span', 'status');
   const tokens = el('span', 'tokens');
   const elapsed = el('span', 'elapsed');
-  bubble.append(status, tokens, elapsed);
+  // One answer, not the room. PARAR TODO is the master brake and takes down every plan and every
+  // agent; this one is for the turn in front of you — the agent that hung, or started down the
+  // wrong road, or hit an error and is still being waited on.
+  const stop = el('button', 'stop-turn', t('STOP'));
+  stop.type = 'button';
+  stop.title = t('Stop this answer · the room and the other agents keep going');
+  stop.addEventListener('click', async () => {
+    stop.disabled = true;
+    stop.textContent = t('STOPPING');
+    try {
+      const reply = await fetch('/api/stop-turn', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messageId }) }).then((response) => response.json());
+      if (reply.error) throw new Error(reply.error);
+    } catch (error) {
+      stop.disabled = false;
+      stop.textContent = t('STOP');
+      toast(`MU/TH/UR › ${error.message}`);
+    }
+  });
+  bubble.append(status, tokens, elapsed, stop);
   node.append(bubble);
   const startedAt = event.timestamp ? new Date(event.timestamp).getTime() : Date.now();
   const phrases = workingPhrases(agent, state.userMessages.get(messageId)?.text ?? '');

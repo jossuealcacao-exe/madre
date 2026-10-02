@@ -6,6 +6,18 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.6.1 · Sin publicar
 
+### Detener una respuesta sin detener la sala
+
+- En la fila del turno en vuelo, junto a los segundos, un botón **DETENER**. Mata el proceso de ese agente y nada más: la sala sigue, los demás agentes siguen, y los pasos de otros planes siguen. PARAR TODO continúa siendo lo que era, el freno maestro para cuando las cosas se desbocaron.
+- Hasta ahora, un agente colgado o que arrancó por el camino equivocado costaba parar la sala entera o esperar al límite de tiempo.
+- La parada queda en el ledger como `turn.stopped`, y el turno termina igual que cualquier fallo porque el proceso de verdad se mató — pero **dice que se pidió**. Por eso el centinela ya no la archiva: un freno que tú accionaste no es una condición que nadie tenga que diagnosticar.
+
+### El typebox crece con lo que escribes
+
+- La caja crecía hasta tres renglones y ahí se quedaba, que es un límite de caja de chat y esto también es donde se escribe un brief largo. Ahora crece hasta catorce y a partir de ahí se desplaza sola.
+- No crece sin fin a propósito: el hilo de arriba es contra lo que se suele escribir, y no debe desaparecer.
+- `Mayús+Enter` ya hacía salto de línea y lo sigue haciendo.
+
 ### MU/TH/UR se lee por bloques, no por renglones
 
 - Cada sección de la consola lleva ahora su propio icono de 8 bits en vez de la misma barra verde para todas. Una barra decía «aquí empieza un título» y nada más; un dibujo dice **cuál** sección es antes de leer las palabras. Sin recuadro alrededor: un marco sería una segunda caja diciendo lo que el dibujo ya dice.

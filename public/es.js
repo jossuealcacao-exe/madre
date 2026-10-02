@@ -113,6 +113,11 @@ export const ES = {
   'JETTISONED': 'ESCLUSA',
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
+  'STOPPING': 'DETENIENDO',
+  'Stop this answer · the room and the other agents keep going':
+    'Detener esta respuesta · la sala y los demás agentes siguen',
+  'That turn is not running any more.': 'Ese turno ya no está corriendo.',
+  'stopped by the human': 'detenido por el humano',
   'This is how I want it done · the room keeps it as a preference':
     'Así lo quiero · la sala lo conserva como preferencia',
   'Never do this again · what the room remembers from it is put out':

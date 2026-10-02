@@ -1548,6 +1548,12 @@ export async function createPulseServer({
         await runInstaller({ command: opencode.path, args: ['models'], projectRoot: canonicalProjectRoot, timeoutMs: 20000, onLine: (line) => { if (/^[\w.-]+\/[\w.:-]+$/.test(line.trim())) models.push(line.trim()); } });
         return sendJson(response, 200, { models });
       }
+      // One answer, not the room. The master brake lives next door and means something else.
+      if (request.method === 'POST' && url.pathname === '/api/stop-turn') {
+        const payload = await body(request).catch(() => ({}));
+        const stopped = await room.stopTurn(String(payload.messageId ?? ''));
+        return sendJson(response, stopped ? 200 : 404, stopped ? { stopped: true } : { error: t('That turn is not running any more.') });
+      }
       if (request.method === 'POST' && url.pathname === '/api/stop-all') {
         const result = await room.stopAll();
         return sendJson(response, 202, { stopped: true, ...result });

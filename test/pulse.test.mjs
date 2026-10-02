@@ -2946,3 +2946,61 @@ test('CONTROL: one holder, checkpoint before, changes reported with forbidden wr
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('a turn the human stops ends alone, and the sentinel does not file the brake as a fault', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-stop-turn-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const crew = [
+      { id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' },
+      { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' },
+    ];
+    const room = new Room({
+      store,
+      agents: crew,
+      projectRoot: root,
+      invokers: {
+        // One that answers quickly and one that never would, so stopping the slow one proves it
+        // does not take the other down with it.
+        'codex-readonly': async () => ({ text: 'codex finished on its own, which is the point' }),
+        'claude-readonly': ({ signal }) => new Promise((resolve, reject) => {
+          const timer = setTimeout(() => resolve({ text: 'claude should never reach this' }), 60000);
+          signal?.addEventListener('abort', () => { clearTimeout(timer); reject(Object.assign(new Error('aborted'), { name: 'AbortError' })); }, { once: true });
+        }),
+      },
+    });
+
+    const slowSend = room.send({ text: 'take as long as you need', target: 'claude' });
+    const fastSend = room.send({ text: 'and you answer now', target: 'codex' });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    const slow = room.activeTurns().find((turn) => turn.agent === 'claude');
+    assert.ok(slow, 'the slow turn never started');
+
+    assert.equal(await room.stopTurn('a turn nobody is running'), false);
+    assert.equal(await room.stopTurn(slow.messageId), true);
+    await Promise.allSettled([slowSend, fastSend]);
+
+    const events = await store.readAll();
+    const stopped = events.find((event) => event.type === 'turn.stopped');
+    assert.ok(stopped, 'stopping a turn left no record');
+    assert.equal(stopped.payload.messageId, slow.messageId);
+    assert.equal(stopped.payload.by, 'you');
+
+    // It ends like a failure because the process really was killed — and it says it was asked
+    // for, which is what keeps the sentinel from filing the brake as a fault to diagnose.
+    const failed = events.find((event) => event.type === 'message.failed' && event.payload.messageId === slow.messageId);
+    assert.ok(failed, 'the stopped turn never recorded its end');
+    assert.equal(failed.payload.stopped, true);
+
+    const { ErrorSentinel } = await import('../src/sentinel-errors.mjs');
+    const sentinel = new ErrorSentinel({ stateRoot: root, settings: { autoReport: false }, agents: crew, platform: 'darwin' });
+    assert.equal(await sentinel.observe(failed), null, 'the sentinel filed a stop the human asked for');
+
+    // The other agent was never touched, and the room was never stopped: one answer, not the room.
+    assert.ok(events.some((event) => event.type === 'agent.completed' && event.payload.agent === 'codex'), 'stopping one turn took another agent down with it');
+    assert.equal(events.some((event) => event.type === 'room.stopped'), false, 'stopping one turn stopped the whole room');
+    await room.shutdown();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

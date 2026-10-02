@@ -1268,6 +1268,10 @@ dialog.viewer { border: 0; padding: 0; width: min(1100px, 96vw); max-width: 96vw
 /* The composer has the same disease: its parts have to be allowed to give. */
 .composer .field { min-width: 0; }
 .composer .editor { min-width: 0; }
+/* The field grows with the text to a workable page and then scrolls on its own, so a long brief
+   is written in one piece instead of through a three-line window — and the thread above it never
+   disappears, because what is being written is usually written against it. */
+.composer .editor textarea { scrollbar-width: thin; }
 .composer .crew-label { flex: none; }
 
 /* The browser docks beside the conversation; it does not take the screen from it. The point of
@@ -1790,6 +1794,18 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .nostromo-card .zone.underway { color: var(--phosphor); }
 .nostromo-card .zone.archived { color: var(--text-3); opacity: .75; }
 .nostromo-card .zone.archived::after { content: ' ·'; }
+
+/* The brake for one answer, in the row of the answer it stops. Quiet until the turn is worth
+   stopping — which is when the human is already looking at it. */
+.stop-turn {
+  margin-left: 10px; padding: 2px 9px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: transparent; color: var(--text-3);
+  font-family: var(--mono); font-size: 9px; letter-spacing: .14em; cursor: pointer;
+  opacity: .5; transition: opacity .15s, color .15s, border-color .15s;
+}
+.row.thinking:hover .stop-turn, .stop-turn:focus-visible { opacity: 1; }
+.stop-turn:hover { color: var(--terror); border-color: var(--terror); }
+.stop-turn:disabled { opacity: .7; cursor: default; color: var(--text-3); border-color: var(--line-2); }
 
 .tree-menu .note { padding: 5px 10px 6px; font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; color: var(--text-3); }
 

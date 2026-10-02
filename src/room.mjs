@@ -987,6 +987,23 @@ export class Room {
     await this.#emit('room.alert', { code, message, plans: this.activePlans().length, turns: this.#turns.size });
   }
 
+  // Human brake for ONE answer, which is a different thing from the master brake. STOPALL takes
+  // down every plan and every agent in the room and is meant for when things have run away;
+  // this takes down the one turn you are looking at, because an agent that has hung or started
+  // down the wrong road should not cost the whole room to stop. The agent's process dies with the
+  // abort and the turn records its own failure the way any other failure does.
+  async stopTurn(messageId, reason = t('stopped by the human')) {
+    const turn = this.#turns.get(messageId);
+    if (!turn) return false;
+    // Marked before the abort lands, so the failure it causes carries the mark: the turn ends
+    // like any other failure because the process really was killed, and only this says it was
+    // asked for.
+    turn.stoppedByHuman = true;
+    await this.#emit('turn.stopped', { messageId, agent: turn.agent, planId: turn.planId, reason, by: 'you' });
+    turn.controller.abort(reason);
+    return true;
+  }
+
   // Human brake: stops the remaining steps of a running plan and interrupts
   // the step in flight. Recorded in the log like everything else.
   async stopPlan(planId, reason = 'stopped by the human') {
@@ -1426,7 +1443,7 @@ export class Room {
           await this.#emit('turn.cost', { agent: agent.id, mode: turnMode, responseMessageId, ash: Boolean(cost.blocks.ash), failed: true, spared: shape.spared, ...cost });
         }
       }
-      await this.#emit('message.failed', { messageId, target: agent.id, planId, error: this.#privacy ? this.#privacy.redact(failureMessage(error)).text : failureMessage(error) });
+      await this.#emit('message.failed', { messageId, target: agent.id, planId, error: this.#privacy ? this.#privacy.redact(failureMessage(error)).text : failureMessage(error), ...(this.#turns.get(messageId)?.stoppedByHuman ? { stopped: true } : {}) });
       return null;
     } finally {
       // Release CONTROL whichever way the turn ended; the checkpoint stays for UNDO.
