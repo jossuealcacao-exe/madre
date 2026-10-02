@@ -59,6 +59,12 @@ export const MEMORY_ZONES = [HOLD, BRIDGE, MEDBAY, JETTISONED];
 // never hands over.
 export const RECALLED_ZONES = [HOLD, BRIDGE];
 
+// The gate, as one line of SQL instead of five copies of two rules. Everything the room may hand
+// a turn stands in one of these zones; everything else is archive it keeps and never serves.
+const ZONE_GATE = `zone IN (${RECALLED_ZONES.map((zone) => `'${zone}'`).join(', ')})`;
+// Same question asked of a row already in hand.
+export const travels = (row) => RECALLED_ZONES.includes(row?.zone ?? zoneFor(row));
+
 // Where today's rules put a note, with no reaction involved: this is the whole of what the two
 // scattered gates in the recall mean, written once. Keeping it as a function is what lets the
 // next step prove the column says exactly what those gates said, and not something close to it.
@@ -462,7 +468,7 @@ export class RoomMemory {
   // Stores distilled memories; a note already held (same text, ignoring case
   // and punctuation) is not stored twice. Returns how many were new.
   addMemories(list, { agent, fromSequence, throughSequence, origin = 'distilled', messageId = null }) {
-    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id, correction, detector, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insert = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, message_id, correction, detector, confidence, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const now = new Date().toISOString();
     let added = 0;
     this.#db.exec('BEGIN');
@@ -479,14 +485,14 @@ export class RoomMemory {
         // note that refutes it is wired up later, by whoever can name the id.
         const aberrant = kind === ABERRATION;
         const correction = aberrant ? this.#guard(String(memory.correction ?? '').trim()) || null : null;
-        const result = insert.run(now, kind, text, memoryKey(kind, text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent, origin, messageId, correction, aberrant ? (memory.detector ?? agent) : null, aberrant ? (Number.isFinite(memory.confidence) ? memory.confidence : null) : null);
+        const result = insert.run(now, kind, text, memoryKey(kind, text), fromSequence ?? sources[0] ?? 0, throughSequence ?? sources.at(-1) ?? 0, JSON.stringify(sources), agent, origin, messageId, correction, aberrant ? (memory.detector ?? agent) : null, aberrant ? (Number.isFinite(memory.confidence) ? memory.confidence : null) : null, aberrant ? MEDBAY : HOLD);
         added += Number(result.changes ?? 0);
         if (aberrant && Number(result.changes ?? 0)) {
           const id = Number(result.lastInsertRowid);
           const target = this.#refutedBy(text);
           if (target) {
             this.#db.prepare('UPDATE memories SET contradicts = ? WHERE id = ?').run(target, id);
-            this.#db.prepare('UPDATE memories SET refuted_by = ? WHERE id = ? AND refuted_by IS NULL').run(id, target);
+            this.#db.prepare(`UPDATE memories SET refuted_by = ?, zone = '${JETTISONED}' WHERE id = ? AND refuted_by IS NULL`).run(id, target);
           }
         }
       }
@@ -511,7 +517,7 @@ export class RoomMemory {
     const terms = new Set(normalizeMemory(text).split(' ').filter((word) => word.length > 2));
     if (terms.size < 3) return null;
     let best = null;
-    const standing = this.#db.prepare(`SELECT id, text FROM memories WHERE kind != '${ABERRATION}' AND refuted_by IS NULL ORDER BY id DESC LIMIT 200`).all();
+    const standing = this.#db.prepare(`SELECT id, text FROM memories WHERE ${ZONE_GATE} ORDER BY id DESC LIMIT 200`).all();
     for (const row of standing) {
       const other = new Set(normalizeMemory(row.text).split(' ').filter((word) => word.length > 2));
       if (other.size < 3) continue;
@@ -604,7 +610,7 @@ export class RoomMemory {
       this.#db.prepare('DELETE FROM recalls WHERE memory_id = ?').run(id);
       // A note quarantined by this one comes back: with the aberration gone there is nothing
       // holding it out of circulation, and a memory must never be lost to a pointer at nothing.
-      this.#db.prepare('UPDATE memories SET refuted_by = NULL WHERE refuted_by = ?').run(id);
+      this.#db.prepare(`UPDATE memories SET refuted_by = NULL, zone = '${HOLD}' WHERE refuted_by = ?`).run(id);
       this.#db.prepare('DELETE FROM memories WHERE id = ?').run(id);
       this.#db.exec('COMMIT');
     } catch (error) { this.#db.exec('ROLLBACK'); throw error; }
@@ -668,7 +674,7 @@ export class RoomMemory {
     const scores = new Map();
     // Nothing that is false and nothing that has been refuted travels into a turn. This is the
     // gate: an archive that hands its own hallucinations back to the room repeats them.
-    const lookup = this.#db.prepare(`SELECT m.id FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid WHERE memories_fts MATCH ? AND m.through_sequence < ? AND m.kind != '${ABERRATION}' AND m.refuted_by IS NULL LIMIT 500`);
+    const lookup = this.#db.prepare(`SELECT m.id FROM memories_fts JOIN memories m ON m.id = memories_fts.rowid WHERE memories_fts MATCH ? AND m.through_sequence < ? AND m.${ZONE_GATE} LIMIT 500`);
     for (const term of terms) {
       let rows;
       try { rows = lookup.all(`"${term.replaceAll('"', '""')}"`, beforeSequence); } catch { continue; }
@@ -678,7 +684,7 @@ export class RoomMemory {
     }
     const ids = RoomMemory.fuse(scores, semantic).map(([id]) => id);
     if (fallback && ids.length < 2) {
-      const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') AND refuted_by IS NULL ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
+      const recent = this.#db.prepare(`SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') AND ${ZONE_GATE} ORDER BY id DESC LIMIT ?`).all(beforeSequence, limit);
       for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
     }
     const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, contradicts, correction, detector, confidence, refuted_by AS refutedBy, zone FROM memories WHERE id = ?');
@@ -700,7 +706,7 @@ export class RoomMemory {
         cursor += 1;
         // The semantic side of the search does not go through the gate above, so it is checked
         // here as well: one path in means one path to keep clean, and there are two.
-        if (!row || row.kind === ABERRATION || row.refutedBy !== null) continue;
+        if (!row || !travels(row)) continue;
         take(row, 'search');
       }
     };
@@ -714,7 +720,7 @@ export class RoomMemory {
       for (const mate of this.associates(seeds, { limit: reserve })) {
         if (chosen.length >= limit) break;
         const row = fetch.get(mate.id);
-        if (!row || row.kind === ABERRATION || row.refutedBy !== null) continue;
+        if (!row || !travels(row)) continue;
         if (row.throughSequence >= beforeSequence) continue;   // it is already in the window
         take(row, 'cascade');
       }

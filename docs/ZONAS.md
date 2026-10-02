@@ -6,7 +6,7 @@ otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 1 · paso 1 de 4 hecho** |
+| Estado | **Fase 1 · paso 2 de 4 hecho** |
 | Versión objetivo | `0.7.x` para las fases 1–3; la fase 4 no tiene versión y puede no tenerla nunca |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `e2c1e0a` (0.6.0) |
 | Regla en vigor | Hasta que este documento diga otra cosa, **nada de lo que aquí se describe sale de la máquina** |
@@ -143,6 +143,11 @@ entera no sirve. Opciones en D-001.
   **No subir `MEMORY_SCHEMA_VERSION`**: eso reconstruye `entries` y las memorias
   destiladas están deliberadamente a salvo de esa reconstrucción
   (`src/memory.mjs:124-125`).
+- **ZN-036.** **Hay tres caminos por los que una nota sale y vuelve a circulación, no uno.**
+  `flagAberration` (eyecat), `addMemories` (el archivista archiva la suya), y
+  `deleteMemory`/`clearAberration` (se olvida la aberración y lo refutado vuelve a
+  valer). El paso 1 solo conocía el primero y la columna derivó; la suite lo
+  detectó en el paso 2. Cualquier cosa que toque `refuted_by` toca la zona.
 - **ZN-035.** Las reacciones son mutables y `ratingsFrom` es un pliegue del ledger
   con última-escritura-gana. Cualquier peso derivado que se escriba en SQLite
   deriva del ledger y se vuelve a plegar; no se acumula.
@@ -197,7 +202,7 @@ Cada fase vale sola y se puede soltar sin la siguiente.
 | paso | qué | estado |
 |---|---|---|
 | 1 | la zona existe y no cambia nada | **hecho** · `MEMORY_ZONES`, columna, migración, equivalencia probada |
-| 2 | el recall habla de zonas en vez de dos vedas sueltas | pendiente |
+| 2 | el recall habla de zonas en vez de dos vedas sueltas | **hecho** · cinco sitios, una sola regla |
 | 3 | la reacción mueve la zona | pendiente |
 | 4 | la zona se ve en NOSTROMO | pendiente |
 
@@ -297,6 +302,7 @@ fase 1. No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **Paso 2/4 de la fase 1.** Las dos vedas (`kind != aberration AND refuted_by IS NULL`) estaban aplicadas a mano en **cinco** sitios, no en tres: dos consultas de recall, el fallback, la lista de lo que una aberración puede contradecir, y dos comprobaciones en JS. Todas citan ahora `ZONE_GATE` / `travels()`. Refactor puro: la suite entera pasa sin tocar un test existente. Al hacerlo salió ZN-036. |
 | 2026-10-02 | **Paso 1/4 de la fase 1.** Cuatro zonas (`hold · bridge · medbay · jettisoned`), columna aditiva en `memories`, sembrada una sola vez desde las dos reglas que el recall ya aplicaba. `flagAberration` y `clearAberration` la mantienen al día. `zoneFor()` es la función de equivalencia que lo hace demostrable. Sin cambio de comportamiento. Verificado sobre una base real de 158 memorias: 142 · 14 · 2, cero filas discrepantes. |
 | 2026-10-02 | **D-001 cerrada: (c)**, la reacción mueve de zona sin reescribir el texto. |
 | 2026-10-02 | Documento abierto. Lectura de código sobre 0.6.0: la reacción ya existe (`message.rated`) y tiene un solo lector (`src/dataset.mjs`). Diseño de dos ejes, cuatro zonas y cuatro fases. D-001 a D-006 abiertas. Fase 4 sin versión, pendiente de revertir una decisión del ROADMAP. |

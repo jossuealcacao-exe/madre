@@ -1243,6 +1243,25 @@ test('zones: the column says exactly what the two recall gates said, and the wri
     // The other direction: what stands again comes back to the hold.
     memory.clearAberration(flagged.id);
     assert.equal(memory.memories({ limit: 20 }).find((note) => note.id === wrong.id).zone, HOLD);
+
+    // There are THREE ways a note leaves and comes back into circulation, not one, and the first
+    // pass only knew about flagAberration. The archivist files its own aberrations through
+    // addMemories, and deleting an aberration must give back whatever it had taken down. If any
+    // of them forgets to say so, the column drifts from the rule and the gate lies.
+    memory.addMemories([
+      { kind: 'aberration', text: 'The Stripe webhook endpoint answers on /hooks/stripe.', correction: 'It answers on /webhooks/stripe.', sources: [4] },
+    ], { agent: 'codex', fromSequence: 1, throughSequence: 10 });
+    const filed = memory.memories({ limit: 20 });
+    for (const note of filed) assert.equal(note.zone, zoneFor(note), `zone drifted on #${note.id} after the archivist filed one`);
+    const taken = filed.find((note) => /hooks\/stripe/.test(note.text) && note.kind !== 'aberration');
+    assert.equal(taken.zone, JETTISONED, 'the archivist refuted a note and left it travelling');
+
+    const aberration = filed.find((note) => note.kind === 'aberration');
+    assert.equal(aberration.zone, MEDBAY, 'an archivist aberration was not quarantined');
+    memory.deleteMemory(aberration.id);
+    const back = memory.memories({ limit: 20 });
+    for (const note of back) assert.equal(note.zone, zoneFor(note), `zone drifted on #${note.id} after forgetting an aberration`);
+    assert.equal(back.find((note) => note.id === taken.id).zone, HOLD, 'a note stayed out over an aberration that no longer exists');
     memory.close();
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
