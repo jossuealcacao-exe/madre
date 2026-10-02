@@ -16,7 +16,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 - La caja crecía hasta tres renglones y ahí se quedaba, que es un límite de caja de chat y esto también es donde se escribe un brief largo. Ahora crece hasta catorce y a partir de ahí se desplaza sola.
 - No crece sin fin a propósito: el hilo de arriba es contra lo que se suele escribir, y no debe desaparecer.
-- `Mayús+Enter` ya hacía salto de línea y lo sigue haciendo.
+- El salto de línea es **⌥ Enter** — Option en macOS, Alt en Linux y Windows: la misma tecla física y la misma señal en el evento, así que es una sola regla y no una por plataforma. Enter manda, con o sin Mayús. El campo lo dice al pasar el cursor, porque un atajo que cambia bajo los dedos tiene que decirlo en alguna parte.
 
 ### MU/TH/UR se lee por bloques, no por renglones
 

@@ -4186,11 +4186,24 @@ async function runSlashCommand(text) {
   return { handled: true };
 }
 
+// Enter sends. The line break is ⌥ Enter — Option on macOS, Alt on Linux and Windows, which is
+// the same physical key and the same flag on the event, so there is one rule and not one per
+// platform. The break is inserted by hand rather than left to the browser: with the modifier
+// held, what a textarea does with Enter is not the same everywhere, and a key that works on one
+// machine and does nothing on the next is worse than no shortcut.
+els.input.title = t('Enter sends · ⌥ Enter (Alt on Linux) breaks the line');
 els.input.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    els.composer.requestSubmit();
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  if (!event.altKey) { els.composer.requestSubmit(); return; }
+  const from = els.input.selectionStart ?? els.input.value.length;
+  const to = els.input.selectionEnd ?? from;
+  if (typeof els.input.setRangeText === 'function') els.input.setRangeText('\n', from, to, 'end');
+  else {
+    els.input.value = `${els.input.value.slice(0, from)}\n${els.input.value.slice(to)}`;
+    els.input.selectionStart = els.input.selectionEnd = from + 1;
   }
+  els.input.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
 const STOPALL = /^\/?stop\s*all!?$/i;

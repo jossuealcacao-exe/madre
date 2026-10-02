@@ -114,6 +114,8 @@ export const ES = {
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
   'STOPPING': 'DETENIENDO',
+  'Enter sends · ⌥ Enter (Alt on Linux) breaks the line':
+    'Enter manda · ⌥ Enter (Alt en Linux) salta de línea',
   'Stop this answer · the room and the other agents keep going':
     'Detener esta respuesta · la sala y los demás agentes siguen',
   'That turn is not running any more.': 'Ese turno ya no está corriendo.',
