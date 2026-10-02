@@ -6,7 +6,7 @@ otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 0 · diseño, sin código** |
+| Estado | **Fase 1 · paso 1 de 4 hecho** |
 | Versión objetivo | `0.7.x` para las fases 1–3; la fase 4 no tiene versión y puede no tenerla nunca |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `e2c1e0a` (0.6.0) |
 | Regla en vigor | Hasta que este documento diga otra cosa, **nada de lo que aquí se describe sale de la máquina** |
@@ -151,8 +151,12 @@ entera no sirve. Opciones en D-001.
 
 ## 4 · Decisiones abiertas
 
-**D-001 · ¿Cómo se resuelve la ventana de gracia?** (ZN-020)
-Tres caminos, ninguno elegido:
+**D-001 · ¿Cómo se resuelve la ventana de gracia?** (ZN-020) — **CERRADA 2026-10-02: (c).**
+La reacción mueve la memoria de zona sin reescribir su texto. Es lo que el propio
+código ya creía: «*what a refutation changes is its standing, not what it said*»
+(`src/memory.mjs:231`). No retrasa la destilación, no reabre un lote, y una
+reacción sirve aunque llegue días después.
+Los tres caminos que había:
 **(a)** Retrasar la destilación de un lote hasta que su entrada más nueva tenga
 cierta edad. Simple, pero retrasa toda la destilación por una reacción que quizá
 no llegue.
@@ -189,7 +193,14 @@ decisión escrita en `docs/ROADMAP.md`.
 
 Cada fase vale sola y se puede soltar sin la siguiente.
 
-**Fase 1 · El segundo lector** (`0.7.0`)
+**Fase 1 · El segundo lector** (`0.7.0`) — paso 1 de 4 hecho
+| paso | qué | estado |
+|---|---|---|
+| 1 | la zona existe y no cambia nada | **hecho** · `MEMORY_ZONES`, columna, migración, equivalencia probada |
+| 2 | el recall habla de zonas en vez de dos vedas sueltas | pendiente |
+| 3 | la reacción mueve la zona | pendiente |
+| 4 | la zona se ve en NOSTROMO | pendiente |
+
 La señal que ya existe llega al archivista. Resolver D-001. Columna de zona en
 `memories` (ZN-034). Un `bad` excluye su rango del lote, igual que ya excluye el
 par del corpus — misma regla, dos lugares. Un `good` nace en PUENTE. Sin
@@ -286,4 +297,6 @@ fase 1. No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **Paso 1/4 de la fase 1.** Cuatro zonas (`hold · bridge · medbay · jettisoned`), columna aditiva en `memories`, sembrada una sola vez desde las dos reglas que el recall ya aplicaba. `flagAberration` y `clearAberration` la mantienen al día. `zoneFor()` es la función de equivalencia que lo hace demostrable. Sin cambio de comportamiento. Verificado sobre una base real de 158 memorias: 142 · 14 · 2, cero filas discrepantes. |
+| 2026-10-02 | **D-001 cerrada: (c)**, la reacción mueve de zona sin reescribir el texto. |
 | 2026-10-02 | Documento abierto. Lectura de código sobre 0.6.0: la reacción ya existe (`message.rated`) y tiene un solo lector (`src/dataset.mjs`). Diseño de dos ejes, cuatro zonas y cuatro fases. D-001 a D-006 abiertas. Fase 4 sin versión, pendiente de revertir una decisión del ROADMAP. |

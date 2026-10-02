@@ -38,6 +38,37 @@ export const MEMORY_KINDS = ['decision', 'fact', 'preference', 'question', ABERR
 // What the room will hand an agent: knowledge that still stands. Everything else is archive.
 export const STANDING_KINDS = MEMORY_KINDS.filter((kind) => kind !== ABERRATION);
 
+// Where a memory stands aboard, which is a different question from what it is. The five kinds say
+// WHAT a note is; the four zones say what standing it has, and standing is what the recall obeys.
+// The two are orthogonal: a decision can be in any zone. Ids travel in the database and never
+// move; the ship's words for them are said on screen only.
+//
+//   HOLD        just distilled, nobody has confirmed it                   · recalled
+//   BRIDGE      the human said it worked                                  · recalled
+//   MEDBAY      quarantined: it is false, or it failed                    · never recalled
+//   JETTISONED  put out of circulation, kept so it is not relearned       · never recalled
+//
+// Not `airlock`: in this room that word already means permission mode #4, and one word means one
+// thing. The Spanish word on screen is still ESCLUSA.
+export const HOLD = 'hold';
+export const BRIDGE = 'bridge';
+export const MEDBAY = 'medbay';
+export const JETTISONED = 'jettisoned';
+export const MEMORY_ZONES = [HOLD, BRIDGE, MEDBAY, JETTISONED];
+// The zones a note can travel into a turn from. Everything else is archive the room keeps and
+// never hands over.
+export const RECALLED_ZONES = [HOLD, BRIDGE];
+
+// Where today's rules put a note, with no reaction involved: this is the whole of what the two
+// scattered gates in the recall mean, written once. Keeping it as a function is what lets the
+// next step prove the column says exactly what those gates said, and not something close to it.
+export function zoneFor(row) {
+  if (!row) return null;
+  if (row.kind === ABERRATION) return MEDBAY;
+  if ((row.refutedBy ?? row.refuted_by ?? null) !== null) return JETTISONED;
+  return HOLD;
+}
+
 // The dedup key. An aberration almost always quotes the claim it refutes word for word, so on a
 // shared key the archive would silently drop the refutation as a duplicate of the thing it is
 // refuting. Aberrations are keyed in their own space: one of each still dedupes, and a false
@@ -233,6 +264,15 @@ export class RoomMemory {
     //   refuted_by   on a note, the aberration that took it out of circulation
     for (const column of ['contradicts INTEGER', 'correction TEXT', 'detector TEXT', 'confidence REAL', 'refuted_by INTEGER']) {
       if (!columns.includes(column.split(' ')[0])) this.#db.exec(`ALTER TABLE memories ADD COLUMN ${column}`);
+    }
+    // Standing, as a column. Older files are seeded from the two rules the recall already applied,
+    // so nothing changes meaning on the way in — and the seeding runs only the once, inside the
+    // branch that creates the column: after this a reaction is what moves a note, and a backfill
+    // on every boot would quietly undo them.
+    if (!columns.includes('zone')) {
+      this.#db.exec(`ALTER TABLE memories ADD COLUMN zone TEXT NOT NULL DEFAULT '${HOLD}'`);
+      this.#db.exec(`UPDATE memories SET zone = '${MEDBAY}' WHERE kind = '${ABERRATION}'`);
+      this.#db.exec(`UPDATE memories SET zone = '${JETTISONED}' WHERE refuted_by IS NOT NULL`);
     }
   }
 
@@ -494,11 +534,11 @@ export class RoomMemory {
     const refuted = Number.isInteger(contradicts) ? this.#db.prepare(`SELECT id, kind FROM memories WHERE id = ? AND kind != '${ABERRATION}'`).get(contradicts) : null;
     this.#db.exec('BEGIN');
     try {
-      const result = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, contradicts, correction, detector, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(new Date().toISOString(), ABERRATION, claim, memoryKey(ABERRATION, claim), fromSequence ?? cites[0] ?? 0, throughSequence ?? cites.at(-1) ?? 0, JSON.stringify(cites), agent, 'flagged', refuted?.id ?? null, this.#guard(String(correction ?? '').trim()) || null, detector, Number.isFinite(confidence) ? confidence : null);
+      const result = this.#db.prepare('INSERT OR IGNORE INTO memories (created, kind, text, norm, from_sequence, through_sequence, sources, agent, origin, contradicts, correction, detector, confidence, zone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(new Date().toISOString(), ABERRATION, claim, memoryKey(ABERRATION, claim), fromSequence ?? cites[0] ?? 0, throughSequence ?? cites.at(-1) ?? 0, JSON.stringify(cites), agent, 'flagged', refuted?.id ?? null, this.#guard(String(correction ?? '').trim()) || null, detector, Number.isFinite(confidence) ? confidence : null, MEDBAY);
       if (!Number(result.changes ?? 0)) { this.#db.exec('ROLLBACK'); return null; }   // already known
       const id = Number(result.lastInsertRowid);
-      if (refuted) this.#db.prepare('UPDATE memories SET refuted_by = ? WHERE id = ? AND refuted_by IS NULL').run(id, refuted.id);
+      if (refuted) this.#db.prepare(`UPDATE memories SET refuted_by = ?, zone = '${JETTISONED}' WHERE id = ? AND refuted_by IS NULL`).run(id, refuted.id);
       this.#db.exec('COMMIT');
       return { id, refuted: refuted?.id ?? null };
     } catch (error) {
@@ -515,7 +555,7 @@ export class RoomMemory {
     if (!row) return null;
     this.#db.exec('BEGIN');
     try {
-      this.#db.prepare('UPDATE memories SET refuted_by = NULL WHERE refuted_by = ?').run(row.id);
+      this.#db.prepare(`UPDATE memories SET refuted_by = NULL, zone = '${HOLD}' WHERE refuted_by = ?`).run(row.id);
       this.#db.prepare('DELETE FROM memories WHERE id = ?').run(row.id);
       this.#db.prepare('DELETE FROM memory_vectors WHERE id = ?').run(row.id);
       this.#db.exec('COMMIT');
@@ -607,10 +647,10 @@ export class RoomMemory {
 
   memories({ limit = 50, kind = null } = {}) {
     if (kind) {
-      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
+      return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy, zone FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)
         .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
     }
-    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories ORDER BY id DESC LIMIT ?').all(limit)
+    return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy, zone FROM memories ORDER BY id DESC LIMIT ?').all(limit)
       .map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
 
@@ -641,7 +681,7 @@ export class RoomMemory {
       const recent = this.#db.prepare("SELECT id FROM memories WHERE through_sequence < ? AND kind IN ('decision', 'preference') AND refuted_by IS NULL ORDER BY id DESC LIMIT ?").all(beforeSequence, limit);
       for (const { id } of recent) if (!ids.includes(id)) ids.push(id);
     }
-    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, contradicts, correction, detector, confidence, refuted_by AS refutedBy FROM memories WHERE id = ?');
+    const fetch = this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, contradicts, correction, detector, confidence, refuted_by AS refutedBy, zone FROM memories WHERE id = ?');
     const chosen = [];
     let remaining = Math.max(0, maxChars);
     let cursor = 0;

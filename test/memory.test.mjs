@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { Room } from '../src/room.mjs';
-import { RoomMemory, formatRecall, queryTerms, excerpt } from '../src/memory.mjs';
+import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, HOLD, MEDBAY, JETTISONED, RECALLED_ZONES } from '../src/memory.mjs';
 
 const agents = [
   { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' },
@@ -1193,6 +1193,56 @@ test('recall: a memory brings along the one it keeps arriving with, and a cascad
     const after = memory.recallMemories('stripe signature', { limit: 6, fallback: false, track: false });
     assert.equal(after.some((note) => note.id === refunds.id), false, 'a refuted note came back through the cascade');
     assert.equal(after.some((note) => note.kind === 'aberration'), false);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('zones: the column says exactly what the two recall gates said, and the writes keep it so', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-zones-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (let i = 1; i <= 10; i += 1) {
+      await store.append('message.created', { messageId: `m${i}`, role: i % 2 ? 'user' : 'assistant', sender: i % 2 ? 'you' : 'codex', target: 'you', text: `the stripe webhook and its signature, note ${i}` });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([
+      { kind: 'fact', text: 'The webhook verifies the Stripe signature after parsing the body.', sources: [2] },
+      { kind: 'fact', text: 'The Stripe webhook endpoint answers on /hooks/stripe.', sources: [4] },
+    ], { agent: 'codex', fromSequence: 1, throughSequence: 10 });
+
+    // Nothing has been judged, so everything is in the hold and everything travels.
+    const fresh = memory.memories({ limit: 20 });
+    assert.ok(fresh.length >= 2);
+    for (const note of fresh) assert.equal(note.zone, HOLD, 'a note nobody judged did not start in the hold');
+
+    const wrong = fresh.find((note) => /after parsing/.test(note.text));
+    const flagged = memory.flagAberration({
+      text: 'The webhook verifies the Stripe signature after parsing the body.',
+      correction: 'It verifies the signature before parsing anything.',
+      contradicts: wrong.id, sources: [2], detector: 'eyecat', confidence: 0.82,
+    });
+    assert.ok(flagged?.id);
+
+    // The aberration is quarantined and what it refuted was put out, without anyone running a
+    // backfill: the writes themselves keep the column honest.
+    const after = memory.memories({ limit: 20 });
+    assert.equal(after.find((note) => note.id === flagged.id).zone, MEDBAY);
+    assert.equal(after.find((note) => note.id === wrong.id).zone, JETTISONED);
+
+    // The whole claim of this step: for every note, the zone the column holds is the zone today's
+    // rules would put it in. If these two ever disagree, the next step would change behaviour
+    // while pretending to be a refactor.
+    for (const note of after) assert.equal(note.zone, zoneFor(note), `zone drifted on #${note.id}`);
+
+    // And only the hold and the bridge travel into a turn — which is what the gates already did.
+    const recalled = memory.recallMemories('stripe webhook signature', { limit: 6, fallback: false });
+    for (const note of recalled) assert.ok(RECALLED_ZONES.includes(zoneFor(note)), 'an archived zone reached a turn');
+
+    // The other direction: what stands again comes back to the hold.
+    memory.clearAberration(flagged.id);
+    assert.equal(memory.memories({ limit: 20 }).find((note) => note.id === wrong.id).zone, HOLD);
     memory.close();
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
