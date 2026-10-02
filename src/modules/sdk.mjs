@@ -58,7 +58,7 @@ export function dependencies(runs) {
 export const MODULE_FIELDS = new Set([
   'id', 'kind', 'name', 'vendor', 'package', 'version', 'tracks', 'updates', 'summary', 'creates',
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
-  'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand',
+  'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand', 'secrets',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
   'toggledBody', 'describe',
 ]);

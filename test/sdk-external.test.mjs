@@ -106,11 +106,13 @@ test('the SDK says what it did not understand, and the import that never works e
   assert.deepEqual(defineModule({ id: 'a', name: 'A', summary: 'ok' }).unknown, []);
   assert.deepEqual(defineModule({ id: 'b', name: 'B', sumary: 'x', comand: 'y' }).unknown, ['sumary', 'comand']);
   assert.deepEqual(defineModule({ id: 'c', name: 'C', install: { display: 'ignored before this fix' } }).unknown, ['install']);
-  assert.equal(MODULE_FIELDS.size, 35);
+  assert.equal(MODULE_FIELDS.size, 36);
   assert.ok(MODULE_FIELDS.has('summary') && MODULE_FIELDS.has('toolsForTurn'));
   // A connector says where it reaches, or its traffic shows up in the log as an address nothing
   // declares — true, and useless to a human trying to tell a module from a leak.
   assert.ok(MODULE_FIELDS.has('reaches'));
+  // And which secrets it needs, so the card can ask for them without the module writing a form.
+  assert.ok(MODULE_FIELDS.has('secrets'));
   assert.equal(MODULE_FIELDS.has('install'), false, 'a field the SDK ignores must not be advertised as understood');
   // Said, never refused: a module written for a newer MADRE may carry fields this one lacks.
   const carried = await verifyModuleText({ text: "export default { id: 'futuro', name: 'FUTURO', vibes: true };", name: 'c.mjs' });
@@ -136,5 +138,67 @@ test('the SDK says what it did not understand, and the import that never works e
   ]) {
     const ok = await verifyModuleText({ text, name: 'c.mjs' });
     assert.ok(ok.id, `${shape} no longer loads`);
+  }
+});
+
+test('connectors: a sending tool only reaches a turn in #4, and a module cannot widen that by saying nothing', async () => {
+  const { toolsForTurn, MODULES } = await import('../src/modules/index.mjs');
+  const mail = {
+    id: 'correo-prueba', name: 'CORREO', summary: 'x', external: true,
+    toolsForTurn: async () => [{ name: 'correo', command: 'node', args: [], tools: ['read_inbox', 'send_email'], sends: ['send_email'], brief: 'Tu correo.' }],
+  };
+  const onlySends = {
+    id: 'solo-manda', name: 'SOLO', summary: 'x', external: true,
+    toolsForTurn: async () => [{ name: 'solo', command: 'node', args: [], tools: ['send_email'], sends: ['send_email'] }],
+  };
+  MODULES.push(mail, onlySends);
+  try {
+    // Reading is reading at every rung. Sending is not: what goes out carries the human's name
+    // and does not come back, which is what #4 already means.
+    for (const mode of [1, 2, 3]) {
+      const servers = await toolsForTurn({}, { mode });
+      const correo = servers.find((one) => one.name === 'correo');
+      assert.deepEqual(correo.tools, ['read_inbox'], `sending reached a #${mode} turn`);
+      assert.match(correo.brief, /AIRLOCK/, 'the agent was not told why the tool is short');
+      // A server with nothing left to read does not travel at all: the model is never told about
+      // a tool it may not use.
+      assert.equal(servers.some((one) => one.name === 'solo'), false, `a send-only server reached a #${mode} turn`);
+    }
+    const open = await toolsForTurn({}, { mode: 4 });
+    assert.deepEqual(open.find((one) => one.name === 'correo').tools, ['read_inbox', 'send_email']);
+    assert.ok(open.some((one) => one.name === 'solo'));
+  } finally {
+    for (const one of [mail, onlySends]) MODULES.splice(MODULES.indexOf(one), 1);
+  }
+});
+
+test('vault: a connector secret is held 0600, never shown, and never accepted over the network', async () => {
+  const { forgetSecret, readSecret, summary, vaultDir, writeSecret } = await import('../src/vault.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'pulse-vault-'));
+  try {
+    assert.equal((await writeSecret(root, 'correo', 'app_password', 'abcd efgh')).ok, false, 'a secret with spaces was kept');
+    assert.equal((await writeSecret(root, '../fuera', 'x', 'y')).ok, false, 'a module id that is a path was kept');
+    assert.equal((await writeSecret(root, 'correo', '../../etc/passwd', 'y')).ok, false, 'a secret name that is a path was kept');
+
+    assert.equal((await writeSecret(root, 'correo', 'app_password', 'abcdefghijklmnop')).ok, true);
+    assert.equal(await readSecret(root, 'correo', 'app_password'), 'abcdefghijklmnop');
+
+    // Readable by its owner and by nobody else on this machine.
+    const { stat } = await import('node:fs/promises');
+    assert.equal((await stat(vaultDir(root))).mode & 0o777, 0o700);
+    assert.equal((await stat(join(vaultDir(root), 'correo.json'))).mode & 0o777, 0o600);
+
+    // What the rest of MADRE is allowed to know: that it is there, its name, its length. The
+    // value leaves this file for the module that owns it and for nothing else — a card, a ledger
+    // entry or a prompt that could print it would undo the whole point of holding it.
+    const held = await summary(root);
+    assert.deepEqual(held, [{ module: 'correo', name: 'app_password', bytes: 16 }]);
+    assert.equal(JSON.stringify(held).includes('abcdefghijklmnop'), false, 'the summary carried the secret');
+
+    assert.equal((await forgetSecret(root, 'correo', 'app_password')).forgot, 'app_password');
+    assert.deepEqual(await summary(root), []);
+    assert.equal(await readSecret(root, 'correo', 'app_password'), null);
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

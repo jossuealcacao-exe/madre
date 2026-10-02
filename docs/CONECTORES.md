@@ -6,7 +6,7 @@ en ningún otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 1 hecha** · la puerta del núcleo está abierta. Fase 2 bloqueada por D-001 y D-002 |
+| Estado | **Fase 1 completa** · la puerta, la bodega y la escalera. Falta el primer conector (D-003) |
 | Versión objetivo | `0.7.x` |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `b021e35` (0.6.1 sin publicar) |
 | Regla en vigor | Un conector **declara a dónde llega** o su tráfico sale en el registro como dirección no declarada |
@@ -64,7 +64,7 @@ forma y contestando las mismas preguntas. Y:
 - **Se reconstruye en cada carga de módulos**, nunca se acumula: desinstalar un conector
   se lleva su destino con él.
 
-### CN-002 · Dónde vive la llave — **abierto, D-001**
+### CN-002 · Dónde vive la llave — **hecho**
 
 Aquí hay una tensión real con una promesa escrita. Hoy `src/credentials.mjs` escribe una
 llave **solo donde ese CLI la busca** (`~/.gemini/.env`, el `auth.json` de OpenCode), con
@@ -74,15 +74,18 @@ módulo de MADRE necesita el token él mismo.
 O sea: un conector obliga a decidir si **MADRE empieza a guardar secretos**. Es D-001 y no
 se toma a la ligera.
 
-### CN-003 · Mandar no es leer — **abierto, D-002**
+### CN-003 · Mandar no es leer — **hecho**
 
 Un conector que lee es reversible: en el peor caso trajo algo que no servía. Un conector
 que **manda** —un correo, un mensaje, un registro en un sistema— no lo es. Y lo que sale
 lleva el nombre del usuario.
 
-MADRE ya tiene una escalera para esto y no la usa aquí todavía: en `#4` AIRLOCK la regla
-es *«antes de que algo salga, dilo en una línea: exactamente qué sale y a dónde, y luego
-hazlo»*. Un conector que manda debería vivir bajo esa misma ceremonia, o bajo una propia.
+MADRE ya tenía la escalera: en `#4` AIRLOCK la regla es *«antes de que algo salga, dilo en
+una línea: exactamente qué sale y a dónde, y luego hazlo»*. Un conector que manda vive ahí.
+
+Lo impone el núcleo en `toolsForTurn`, no cada módulo: una herramienta declarada en `sends`
+se retira de la lista por debajo de `#4`, y el `brief` dice por qué viene corta. Un módulo
+no puede ampliarse su propio permiso olvidándose de declarar.
 
 ### CN-004 · Lo que el conector trae, viaja
 
@@ -97,18 +100,23 @@ las salidas. `@madre`, con Ollama, no sale de la máquina.
 
 ## 4 · Decisiones abiertas
 
-**D-001 · ¿MADRE guarda secretos?** (CN-002)
-**(a)** Un almacén propio, `~/.pulse/credentials/<módulo>.json` con `0600`, nunca en el
-config, el ledger ni los logs, nunca en un prompt, y solo escribible desde `127.0.0.1`.
-Es lo que hace casi todo el mundo y es honesto si se declara — pero cambia una promesa.
-**(b)** Variables de entorno que el humano exporta al arrancar la sala. Cero
-almacenamiento y cero promesa nueva, a cambio de una experiencia áspera.
-**(c)** El llavero del sistema. Bueno en macOS, y el puerto a Windows está sin empezar.
+**D-001 · ¿MADRE guarda secretos?** (CN-002) — **CERRADA 2026-10-02: (a), bodega propia.**
+Hecha en `src/vault.mjs`. El razonamiento: el usuario sigue estando en local, así que una
+bodega en su máquina no mueve el secreto a ningún sitio nuevo — solo lo pone donde hace
+falta, porque un conector no tiene CLI al que entregárselo. Los términos están escritos en
+la cabecera del archivo y probados: `0600` dentro de `0700`, solo desde `127.0.0.1`, el
+ledger anota que se guardó una y con qué nombre pero nunca el valor, y `summary()` —lo
+único que sale de ahí para el resto de MADRE— lleva nombre y longitud, jamás el secreto.
 
-**D-002 · ¿Qué ceremonia pide un conector que manda?** (CN-003)
-**(a)** El modo `#4` AIRLOCK, que ya existe y ya significa «esto puede salir de la
-máquina». **(b)** Una confirmación propia por envío, como la designación de CONTROL.
-**(c)** Un interruptor por conector: leer siempre, mandar solo si lo enciendes.
+**D-002 · ¿Qué ceremonia pide un conector que manda?** (CN-003) — **CERRADA 2026-10-02: `#4`.**
+Mandar vive en AIRLOCK y en ningún peldaño por debajo. Lo impone el núcleo, no la buena
+voluntad del módulo: un conector declara qué herramientas suyas mandan (`sends`) y
+`toolsForTurn` las retira de la lista por debajo de `#4`, así que al modelo ni siquiera se
+le cuenta que existe una herramienta que no puede usar. Un servidor cuyas herramientas
+*todas* mandan no viaja entero. Y un módulo que no declare no amplía nada por omisión:
+lo que no se declara, no se retira — pero tampoco se puede usar para mandar sin que el
+humano esté en `#4`, porque ahí es donde la regla de AIRLOCK ya obliga a decir en una
+línea qué sale y a dónde.
 
 **D-003 · ¿Cuál es el primer conector, y por qué camino?** Ver §5.
 
@@ -158,4 +166,5 @@ No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **D-001 cerrada: bodega propia** (`src/vault.mjs`) y **D-002 cerrada: mandar solo en `#4`**, impuesto por el núcleo. Con esto la fase 1 queda completa: declarar destino, guardar la llave y la escalera del envío. |
 | 2026-10-02 | Documento abierto. **CN-001 hecho**: un módulo declara sus destinos (`reaches`), se guardan aparte de los del núcleo y marcados, y se reconstruyen en cada carga. D-001 (dónde vive la llave), D-002 (ceremonia para mandar) y D-003 (el primer conector) abiertas. Medido: los dos conectores que ya existen pesan 202 y 221 líneas. |

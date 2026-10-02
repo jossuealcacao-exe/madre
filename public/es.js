@@ -114,6 +114,7 @@ export const ES = {
   'ZONE': 'ZONA',
   'OUT OF CIRCULATION': 'FUERA DE CIRCULACIÓN',
   'STOPPING': 'DETENIENDO',
+  'No module by that name is loaded.': 'No hay ningún módulo cargado con ese nombre.',
   'Gemini tried to hand this turn to one of its own subagents. MADRE does not allow that: a subagent answers outside the lease, so nothing it wrote would be checked, shown or undoable.':
     'Gemini intentó pasarle este turno a uno de sus propios subagentes. MADRE no lo permite: un subagente contesta fuera del arriendo, así que nada de lo que escribiera quedaría comprobado, mostrado ni reversible.',
   'Ask again saying it should do the work itself, without subagents.':

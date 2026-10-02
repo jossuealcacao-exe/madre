@@ -177,8 +177,30 @@ export function moduleCommands() {
   return MODULES.flatMap((module) => (module.slash ?? []).map((command) => ({ ...command, module })));
 }
 // Every tool server the modules hand to one turn, flattened; a module that fails hands nothing.
+// Tools a module hands to this turn — and the one thing the core takes back.
+//
+// A tool that SENDS is not a tool that reads. Reading something unhelpful is a wasted turn;
+// mailing it is not, and what goes out carries the human's name. MADRE already has a rung that
+// means exactly «this may leave the machine» — #4 AIRLOCK, where the rule is to say in one line
+// what goes out and where before doing it — so a sending tool lives there and nowhere below.
+//
+// Enforced here rather than left to each module. A connector declares which of its tools send
+// (`sends: ['send_email']`); under #4 they are handed over, and below it they are removed from
+// the list the agent is given, so the model is never told about a tool it may not use. A module
+// that forgets to declare, or declares wrongly, cannot widen its own permission by doing so: a
+// server whose every tool sends is dropped whole.
 export async function toolsForTurn(ctx, turn) {
   const lists = await Promise.all(MODULES.filter((module) => module.toolsForTurn).map((module) => module.toolsForTurn(ctx, turn)));
-  return lists.flat().filter((server) => server && server.name && server.command);
+  const airlock = Number(turn?.mode) === 4;
+  const servers = [];
+  for (const server of lists.flat()) {
+    if (!server || !server.name || !server.command) continue;
+    const sends = Array.isArray(server.sends) ? server.sends : [];
+    if (!sends.length || airlock) { servers.push(server); continue; }
+    const left = Array.isArray(server.tools) ? server.tools.filter((tool) => !sends.includes(tool)) : [];
+    if (!left.length) continue;                 // nothing of it is readable: it does not travel
+    servers.push({ ...server, tools: left, brief: `${server.brief ?? ''}${server.brief ? ' ' : ''}Sending is switched off for this turn: it needs #4 AIRLOCK.`.trim() });
+  }
+  return servers;
 }
 export { defineModule } from './sdk.mjs';

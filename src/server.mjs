@@ -48,6 +48,7 @@ import { applyConfigToEnv, loadConfig } from './config.mjs';
 import { extensionById, findOnPath, runInstaller } from './extensions.mjs';
 import { accountNoteFor, installPlanFor, looksLikeAdminProblem, loginPlanFor, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
 import { applyKey, keyPlanFor } from './credentials.mjs';
+import { forgetSecret, summary as vaultSummary, writeSecret } from './vault.mjs';
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
@@ -1500,6 +1501,34 @@ export async function createPulseServer({
       }
       // A provider key for a CLI that signs in from its own prompt. Local connections only: a key
       // pasted from another machine would travel the network. It is written where that CLI looks
+      // A connector's secret. Same rule as an agent's key and for the same reason: it is accepted
+      // only from this computer, never over the network. What differs is where it lands — a
+      // connector has no CLI to hand it to, so MADRE holds it, in its own vault, `0600`, and never
+      // in the config, the ledger or a log. The ledger records that one was set and under which
+      // name; the value never leaves src/vault.mjs except to the module that owns it.
+      const vaultMatch = url.pathname.match(/^\/api\/x\/([a-z0-9-]+)\/secret$/);
+      if (vaultMatch && (request.method === 'POST' || request.method === 'DELETE')) {
+        const id = vaultMatch[1];
+        const address = request.socket.remoteAddress ?? '';
+        if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address)) {
+          return sendJson(response, 403, { error: t('A key is only accepted from this computer, never over the network.') });
+        }
+        const module = moduleById(id);
+        if (!module) return sendJson(response, 404, { error: t('No module by that name is loaded.') });
+        const payload = await body(request).catch(() => ({}));
+        const name = String(payload.name ?? '');
+        if (request.method === 'DELETE') {
+          const gone = await forgetSecret(root, id, payload.name === undefined ? null : name);
+          if (!gone.ok) return sendJson(response, 400, { error: gone.error });
+          await room.record('module.secret.forgotten', { module: id, name: gone.forgot });
+          return sendJson(response, 200, { ok: true, held: await vaultSummary(root, id) });
+        }
+        const kept = await writeSecret(root, id, name, payload.secret);
+        if (!kept.ok) return sendJson(response, 400, { error: kept.error });
+        // The name and the length, never the secret — the same way privacy counts its terms.
+        await room.record('module.secret.kept', { module: id, name: kept.name, bytes: kept.bytes });
+        return sendJson(response, 200, { ok: true, held: await vaultSummary(root, id) });
+      }
       // for it and never reaches MADRE's config, its ledger or its logs.
       const keyMatch = request.method === 'POST' && url.pathname.match(/^\/api\/agents\/([a-z0-9-]+)\/key$/);
       if (keyMatch) {
