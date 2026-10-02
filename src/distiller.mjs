@@ -11,6 +11,9 @@ export const DISTILLER_ORDER = ['ollama', 'gemini', 'opencode', 'codex', 'claude
 export const OLLAMA_ARCHIVIST = { id: 'ollama', label: 'Ollama', detected: true, ready: true, adapter: 'ollama', path: null, version: null, local: true };
 export const MAX_MEMORIES_PER_RUN = 5;
 export const MAX_MEMORY_CHARS = 240;
+// A discard is matched against, not learned from, so it travels clipped: the room pays about
+// half for the same effect.
+export const DISCARDED_CHARS = 110;
 
 // The agent that pays for distillation: the human's pick if it is usable, else
 // the cheapest ready one that has an adapter and no turn in flight.
@@ -28,13 +31,20 @@ export function pickDistiller(agents, { preferred = null, busy = new Set(), invo
   return agents.find(usable) ?? null;
 }
 
-export function distillPrompt({ entries, projectName = 'the project', existing = [], json = false }) {
+const shorten = (value, max) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
+
+export function distillPrompt({ entries, projectName = 'the project', existing = [], discarded = [], json = false }) {
   const transcript = entries.map((entry) => {
     const who = entry.role === 'command' ? entry.sender : `@${entry.sender}`;
     const to = entry.target && entry.target !== 'room' ? ` → ${entry.target === 'you' ? 'human' : `@${entry.target}`}` : '';
     return `[#${entry.sequence} · ${who} (${entry.role})${to}] ${entry.text}`;
   }).join('\n\n');
+  // Two lists, because they say opposite things. What the room holds is not to be written twice;
+  // what the room threw out is not to be written at all — and before this the archivist was handed
+  // the newest notes whatever their standing, false ones included, under one heading that only
+  // said «do not repeat». A list with nothing in it is left out rather than printed empty.
   const known = existing.length ? `\nAlready remembered (do not repeat these):\n${existing.map((memory) => `- ${memory.text}`).join('\n')}\n` : '';
+  const thrownOut = discarded.length ? `\nAlready discarded — the room took these out of circulation. Do not write them again, in these words or others:\n${discarded.map((memory) => `- ${shorten(memory.text, DISCARDED_CHARS)}`).join('\n')}\n` : '';
   return [
     `You are the archivist of a MADRE project room for "${projectName}", shared by a human and several AI agents. Do not read or modify any file: everything you need is below.`,
     'Read these room exchanges (each stamped with its ledger sequence) and write only the memories worth keeping for future turns of any agent:',
@@ -50,6 +60,7 @@ export function distillPrompt({ entries, projectName = 'the project', existing =
     json ? null : `{"kind":"${MEMORY_KINDS.join('|')}","text":"one self-contained sentence in the language the room uses, at most ${MAX_MEMORY_CHARS} characters, naming files, agents and numbers exactly","correction":"only on an aberration: what is true instead","sources":[sequence numbers it comes from]}`,
     json ? null : 'If nothing durable was said, output exactly: NONE',
     known,
+    thrownOut,
     '<exchanges>',
     transcript,
     '</exchanges>',

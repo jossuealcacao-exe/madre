@@ -1393,3 +1393,50 @@ test('verdicts: four words, and a note takes the worst of the ones it came from'
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+test('briefing: the archivist is told what stands and what the room threw out, as two different things', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-brief-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    for (const [messageId, text] of [['r1', 'the worker listens on port 7331'], ['r2', 'it retries three times'], ['r3', 'the cache is warmed at boot']]) {
+      await store.append('message.created', { messageId, role: 'assistant', sender: 'codex', target: 'you', text });
+    }
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    const at = (id) => memory.sequenceOf(id);
+    memory.addMemories([
+      { kind: 'fact', text: 'The worker listens on port 7331.', sources: [at('r1')] },
+      { kind: 'fact', text: 'The worker retries three times.', sources: [at('r2')] },
+      { kind: 'fact', text: 'The cache is warmed at boot.', sources: [at('r3')] },
+    ], { agent: 'codex', fromSequence: 1, throughSequence: 3 });
+
+    // Nothing judged: everything stands and there is nothing to warn about. A heading with no
+    // rows under it is prompt the room pays for and the model learns nothing from.
+    let brief = memory.briefing();
+    assert.equal(brief.standing.length, 3);
+    assert.equal(brief.discarded.length, 0);
+    assert.equal(/Already discarded/.test(distillPrompt({ entries: [], existing: brief.standing, discarded: brief.discarded })), false);
+
+    // Confirmed leads. What the human stood behind is the part worth not contradicting, so it is
+    // what the archivist reads first, whatever order the notes were written in.
+    memory.judge('r3', 'good');
+    brief = memory.briefing();
+    assert.equal(brief.standing[0].text, 'The cache is warmed at boot.', 'what the human confirmed did not lead the briefing');
+    assert.equal(brief.standing[0].zone, 'bridge');
+
+    // And what the room threw out is handed over as its own list, saying the opposite thing.
+    memory.judge('r1', 'never');
+    brief = memory.briefing();
+    assert.deepEqual(brief.discarded.map((note) => note.text), ['The worker listens on port 7331.']);
+    assert.equal(brief.standing.some((note) => /port 7331/.test(note.text)), false, 'a note the room threw out was offered as standing');
+
+    const prompt = distillPrompt({ entries: [], existing: brief.standing, discarded: brief.discarded });
+    assert.match(prompt, /Already discarded/);
+    assert.match(prompt, /Do not write them again/);
+    // The two lists must not say the same note twice, or the archivist is told to keep and to
+    // drop the same thing in one breath.
+    for (const note of brief.discarded) assert.equal(brief.standing.some((other) => other.id === note.id), false);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

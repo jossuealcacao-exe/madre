@@ -8,6 +8,10 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### Tu pulgar mueve lo que la sala recordó de esa respuesta
 
+- **El archivista ya sabe qué tiene standing y qué se echó.** Hasta ahora recibía las doce notas más recientes bajo un único encabezado que decía «ya recordado, no lo repitas» — fueran lo que fueran. En el archivo de esta sala, tres de esas doce estaban fuera de circulación, y dos eran **aberraciones**: afirmaciones que la sala ya había establecido como falsas, ofrecidas como si fueran conocimiento.
+- Ahora recibe dos listas que dicen cosas opuestas: lo vigente, encabezado por lo que **tú confirmaste**, y lo descartado, con su propio encabezado — «la sala las sacó de circulación, no vuelvas a escribirlas». Deja de reaprender lo que ya echaste.
+- Cuesta unos 205 tokens más por destilación, medidos. Un descarte viaja recortado porque está ahí para reconocerlo, no para aprenderlo, y la lista desaparece entera cuando no hay nada que descartar: un encabezado sin filas debajo es prompt que se paga y del que nadie aprende.
+
 - Los pulgares de cada burbuja existían desde hace versiones y llegaban a un solo sitio: el exportador de dataset. Ahora también llegan al archivo. Lo que la sala destiló de una respuesta que marcaste mal deja de viajar a los turnos; lo que marcaste bien pasa a estar confirmado.
 - **No se reescribe una sola palabra de lo que se recordó.** Lo que cambia es dónde queda parado, no lo que dice: el texto es lo que el archivista oyó y la zona es lo que tú dijiste. Por eso una reacción sirve aunque llegue días después de que el lote se destiló.
 - Cada memoria vive ahora en una de cuatro zonas de la NOSTROMO. Dos viajan a los turnos y dos son archivo que la sala conserva y nunca sirve. Las dos reglas que ya hacían esto a medias —lo falso no viaja, lo refutado tampoco— eran cinco copias sueltas y ahora son una.

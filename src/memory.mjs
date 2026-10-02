@@ -685,6 +685,25 @@ export class RoomMemory {
     return rows.map((row) => ({ ...row, sources: JSON.parse(row.sources) }));
   }
 
+  // What the archivist is told before it reads a batch, now that a note has standing. Two lists
+  // and not one, because they say opposite things: what the room already holds (so it is not
+  // written twice) and what the room THREW OUT (so it is not learned again). Until this, the
+  // archivist got the newest dozen notes whatever their standing — including things the room had
+  // established were false — under a heading that only said «do not repeat».
+  //
+  // The standing list leads with the BRIDGE: what the human confirmed is the part worth not
+  // contradicting. The discarded list is everything out of circulation, newest first, and it is
+  // left out entirely when there is nothing to say — a heading with no rows under it would be
+  // prompt the room pays for and the model learns nothing from.
+  briefing({ standing = 12, discarded = 6 } = {}) {
+    if (!this.#db) return { standing: [], discarded: [] };
+    const pick = (where, order, limit) => this.#db.prepare(`SELECT id, kind, text, zone FROM memories WHERE ${where} ORDER BY ${order} LIMIT ?`).all(limit);
+    return {
+      standing: pick(ZONE_GATE, `zone = '${BRIDGE}' DESC, id DESC`, standing),
+      discarded: pick(`NOT (${ZONE_GATE})`, 'id DESC', discarded),
+    };
+  }
+
   memories({ limit = 50, kind = null } = {}) {
     if (kind) {
       return this.#db.prepare('SELECT id, created, kind, text, from_sequence AS fromSequence, through_sequence AS throughSequence, sources, agent, origin, message_id AS messageId, recalled, last_recalled AS lastRecalled, contradicts, correction, detector, confidence, refuted_by AS refutedBy, zone FROM memories WHERE kind = ? ORDER BY id DESC LIMIT ?').all(kind, limit)

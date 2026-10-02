@@ -95,7 +95,8 @@ export class Archivist {
       const started = Date.now();
       try {
         const local = agent.adapter === 'ollama';
-        const prompt = distillPrompt({ entries: batch.entries, projectName: this.#deps.projectName(), existing: this.#memory.memories({ limit: 12 }), json: local });
+        const brief = this.#memory.briefing();
+        const prompt = distillPrompt({ entries: batch.entries, projectName: this.#deps.projectName(), existing: brief.standing, discarded: brief.discarded, json: local });
         const result = await invokers[agent.adapter]({ executable: agent.path, projectRoot: this.#deps.projectRoot(), prompt, timeoutMs: local ? this.#deps.localTimeoutMs() : this.#deps.timeoutFor(agent.id), model: local ? null : this.#settings.model, json: local, attachments: [], lease: null, scopes: { web: false, imageGen: false }, imageStudio: null });
         const memories = parseDistillation(result?.text, { fromSequence: batch.fromSequence, throughSequence: batch.throughSequence });
         const added = this.#memory.addMemories(memories, { agent: agent.id, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence });

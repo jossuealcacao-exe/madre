@@ -6,7 +6,7 @@ otro lado.
 
 | | |
 |---|---|
-| Estado | **Fases 1 y 2 completas.** Siguiente: fase 3 (zonas visibles ya hechas · falta el eje de coste) |
+| Estado | **Fases 1, 2 y 3 completas.** Abierto: el eje de coste (D-005) y la donación (§6) |
 | Versión objetivo | `0.7.x` para las fases 1–3; la fase 4 no tiene versión y puede no tenerla nunca |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `e2c1e0a` (0.6.0) |
 | Regla en vigor | Hasta que este documento diga otra cosa, **nada de lo que aquí se describe sale de la máquina** |
@@ -143,6 +143,14 @@ entera no sirve. Opciones en D-001.
   **No subir `MEMORY_SCHEMA_VERSION`**: eso reconstruye `entries` y las memorias
   destiladas están deliberadamente a salvo de esa reconstrucción
   (`src/memory.mjs:124-125`).
+- **ZN-041.** Lo que el archivista recibía antes de esto: las 12 notas más recientes
+  bajo un solo encabezado, «ya recordado, no lo repitas». Medido en el archivo real,
+  **3 de esas 12 estaban fuera de circulación y 2 eran aberraciones** — afirmaciones
+  que la sala había establecido falsas, ofrecidas como conocimiento. Dos listas que
+  dicen cosas opuestas no pueden compartir encabezado.
+- **ZN-042.** El coste de las dos listas está medido: **+205 tokens por destilación**.
+  Un descarte viaja recortado a 110 caracteres porque está para reconocerlo, no para
+  aprenderlo, y la lista se omite entera cuando está vacía.
 - **ZN-040.** **Una memoria por sala, un ledger por conversación.** `catchUp` recibe
   el de la conversación abierta, así que un pliegue que vacíe la tabla antes de
   rellenarla **borra los veredictos dados en las demás**, y sus notas caen a BODEGA
@@ -238,7 +246,12 @@ vocabulario nuevo, sin UI nueva.
 commit (ZN-031). Los cuatro botones en la burbuja.
 *Verificable:* un veredicto nuevo sobrevive una exportación de ida y vuelta.
 
-**Fase 3 · Zonas y coste** (`0.7.x`)
+**Fase 3 · El destilador lee las zonas** (`0.7.x`) — **completa**
+Lo que ZN-010 prometía y ninguna fase construía, que es además lo que de verdad hace
+la destilación más certera. El eje de coste queda **aparcado**, y con razones: ver
+D-005 y la nota de abajo.
+
+**Fase 3 original · Zonas y coste** (sustituida)
 Las cuatro zonas visibles en NOSTROMO, que ya tiene colores por clase
 (`public/app.js:228`). `refuted_by` y la veda de aberraciones se expresan como
 zona. El eje de coste. **El set de evaluación del paso 4 de
@@ -323,6 +336,7 @@ fase 1. No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **Fase 3 completa, y sustituida.** La fase 3 escrita era «zonas y coste»; las zonas ya se veían desde el paso 1.4 y el eje de coste es la pieza más débil del diseño (no alimenta nada, D-005). Se hizo en su lugar lo que ZN-010 prometía y ninguna fase construía: el destilador recibe dos listas, vigentes encabezadas por PUENTE y descartadas como negativos explícitos. Salieron ZN-041 (lo que recibía antes, medido) y ZN-042 (lo que cuesta, medido). |
 | 2026-10-02 | **Fase 2 completa.** Cuatro veredictos (`never · bad · preference · good` + `none`), peor-primero, leídos del orden en que el vocabulario se declara. ZN-031 pagada: `room.mjs` y `dataset.mjs` en el mismo commit, con prueba que se verificó reponiendo la trampa. Los dos escalones se revelan solo cuando se pulsa el que escalan. Salió ZN-040, un fallo propio: el pliegue vaciaba la tabla y habría borrado los veredictos de las otras conversaciones. |
 | 2026-10-02 | **D-002 cerrada: ampliar el veredicto.** |
 | 2026-10-02 | **Paso 4/4 · fase 1 completa.** La zona se lee en la tarjeta de NOSTROMO y se ve en el mapa: lo que no viaja va apagado, con su chip en la leyenda. Sin paleta nueva (ZN-039). Verificado en pantalla: tarjeta mostrando ZONA · ENFERMERÍA, leyenda con FUERA DE CIRCULACIÓN, y el apagado alcanzando las 2 notas expulsadas (las 14 aberraciones ya se dibujaban como agujeros negros). |
