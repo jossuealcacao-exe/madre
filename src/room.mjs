@@ -616,11 +616,15 @@ export class Room {
     return result;
   }
 
-  // The human's verdict on a reply: good, bad, or cleared. The dataset listens.
+  // The human's verdict on a reply: good, bad, or cleared. The dataset listens, and so does the
+  // archive: what the room distilled from that reply changes standing, without a word of it being
+  // rewritten. The text of a note is what the archivist heard; where it stands is what you said.
   async rateMessage(messageId, rating) {
     if (typeof messageId !== 'string' || !messageId.trim()) throw new Error('Which reply? Give its messageId.');
     if (!['good', 'bad', 'none'].includes(rating)) throw new Error('A rating is good, bad or none.');
-    return this.#emit('message.rated', { messageId, rating, by: 'you' });
+    const event = await this.#emit('message.rated', { messageId, rating, by: 'you' });
+    this.#memory?.judge(messageId, rating);
+    return event;
   }
 
   // Forgetting is recorded in the ledger like anything else the human does to the room.

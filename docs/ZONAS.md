@@ -6,7 +6,7 @@ otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 1 · paso 2 de 4 hecho** |
+| Estado | **Fase 1 · paso 3 de 4 hecho** |
 | Versión objetivo | `0.7.x` para las fases 1–3; la fase 4 no tiene versión y puede no tenerla nunca |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `e2c1e0a` (0.6.0) |
 | Regla en vigor | Hasta que este documento diga otra cosa, **nada de lo que aquí se describe sale de la máquina** |
@@ -143,6 +143,16 @@ entera no sirve. Opciones en D-001.
   **No subir `MEMORY_SCHEMA_VERSION`**: eso reconstruye `entries` y las memorias
   destiladas están deliberadamente a salvo de esa reconstrucción
   (`src/memory.mjs:124-125`).
+- **ZN-037.** Un pulgar solo alcanza una memoria que **cite** esa respuesta en
+  `sources`. Por rango sería inservible: en el archivo real el lote medio abarca
+  **364 secuencias**, así que un pulgar hablaría por cientos de intercambios que
+  nadie miró. El precio medido: de 259 respuestas de agente, **94 (36 %) dejaron
+  memoria** y son las que un pulgar mueve. El 13 % de memorias sin `sources` queda
+  fuera de alcance. Es el límite honesto de esto.
+- **ZN-038.** `zoneFor()` (una nota, en JS) y el `CASE` de `#restandAll()` (el archivo
+  entero, en SQL) son la misma regla escrita dos veces, porque una consulta por nota
+  hacía más lento abrir una sala larga. Dos ortografías de una regla es exactamente
+  como derivan: hay una prueba que las ata.
 - **ZN-036.** **Hay tres caminos por los que una nota sale y vuelve a circulación, no uno.**
   `flagAberration` (eyecat), `addMemories` (el archivista archiva la suya), y
   `deleteMemory`/`clearAberration` (se olvida la aberración y lo refutado vuelve a
@@ -203,7 +213,7 @@ Cada fase vale sola y se puede soltar sin la siguiente.
 |---|---|---|
 | 1 | la zona existe y no cambia nada | **hecho** · `MEMORY_ZONES`, columna, migración, equivalencia probada |
 | 2 | el recall habla de zonas en vez de dos vedas sueltas | **hecho** · cinco sitios, una sola regla |
-| 3 | la reacción mueve la zona | pendiente |
+| 3 | la reacción mueve la zona | **hecho** · por `sources`, nunca por rango |
 | 4 | la zona se ve en NOSTROMO | pendiente |
 
 La señal que ya existe llega al archivista. Resolver D-001. Columna de zona en
@@ -302,6 +312,7 @@ fase 1. No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **Paso 3/4 de la fase 1.** `message.rated` mueve la zona de lo que se destiló de esa respuesta, sin reescribir su texto. Pliegue de veredictos en tabla derivada, reconstruida del ledger en cada arranque: un pulgar anterior a esto cuenta. El archivo manda sobre el pulgar. Salieron ZN-037 (alcance medido: 36 %) y ZN-038 (la regla vive en dos idiomas). Primera versión del pliegue hacía una consulta por memoria al abrir y volvió inestables dos pruebas de timeout ajenas; ahora es una sola sentencia y la suite pasa dos veces seguidas. |
 | 2026-10-02 | **Paso 2/4 de la fase 1.** Las dos vedas (`kind != aberration AND refuted_by IS NULL`) estaban aplicadas a mano en **cinco** sitios, no en tres: dos consultas de recall, el fallback, la lista de lo que una aberración puede contradecir, y dos comprobaciones en JS. Todas citan ahora `ZONE_GATE` / `travels()`. Refactor puro: la suite entera pasa sin tocar un test existente. Al hacerlo salió ZN-036. |
 | 2026-10-02 | **Paso 1/4 de la fase 1.** Cuatro zonas (`hold · bridge · medbay · jettisoned`), columna aditiva en `memories`, sembrada una sola vez desde las dos reglas que el recall ya aplicaba. `flagAberration` y `clearAberration` la mantienen al día. `zoneFor()` es la función de equivalencia que lo hace demostrable. Sin cambio de comportamiento. Verificado sobre una base real de 158 memorias: 142 · 14 · 2, cero filas discrepantes. |
 | 2026-10-02 | **D-001 cerrada: (c)**, la reacción mueve de zona sin reescribir el texto. |

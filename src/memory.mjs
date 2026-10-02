@@ -68,10 +68,17 @@ export const travels = (row) => RECALLED_ZONES.includes(row?.zone ?? zoneFor(row
 // Where today's rules put a note, with no reaction involved: this is the whole of what the two
 // scattered gates in the recall mean, written once. Keeping it as a function is what lets the
 // next step prove the column says exactly what those gates said, and not something close to it.
-export function zoneFor(row) {
+export function zoneFor(row, verdict = null) {
   if (!row) return null;
+  // The archive's own judgement outranks the human's thumb, and on purpose: «this is false» and
+  // «that reply helped me» are different claims, and a thumb up must never bring back a note the
+  // room already established was wrong.
   if (row.kind === ABERRATION) return MEDBAY;
   if ((row.refutedBy ?? row.refuted_by ?? null) !== null) return JETTISONED;
+  // A note distilled from several replies takes the worst verdict among them: if one of the
+  // exchanges it came from was wrong, the note is suspect, and quarantine is the cheap mistake.
+  if (verdict === 'bad') return MEDBAY;
+  if (verdict === 'good') return BRIDGE;
   return HOLD;
 }
 
@@ -240,6 +247,9 @@ export class RoomMemory {
       );
       CREATE INDEX IF NOT EXISTS recalls_memory ON recalls(memory_id, id DESC);
       CREATE INDEX IF NOT EXISTS recalls_batch ON recalls(batch);
+      -- The human's verdicts, folded out of the ledger. Nothing is accumulated here: the ledger is
+      -- the truth and this is a cache of its last word per reply, rebuilt on every catch-up.
+      CREATE TABLE IF NOT EXISTS verdicts (message_id TEXT PRIMARY KEY, verdict TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS entry_vectors (sequence INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_vectors (id INTEGER PRIMARY KEY, model TEXT NOT NULL, vec BLOB NOT NULL);
     `);
@@ -596,6 +606,13 @@ export class RoomMemory {
   }
 
   // The latest entries, newest first, one line each.
+  // Where a reply landed in the ledger. The join a verdict travels along — reply id to sequence to
+  // the notes that cite it — starts here, and having it named makes it addressable from outside.
+  sequenceOf(messageId) {
+    if (!this.#db) return null;
+    return this.#db.prepare('SELECT sequence FROM entries WHERE message_id = ? ORDER BY sequence DESC LIMIT 1').get(String(messageId ?? ''))?.sequence ?? null;
+  }
+
   timeline({ since = 0, limit = 30 } = {}) {
     return this.#db.prepare('SELECT sequence, timestamp, role, sender, target, substr(text, 1, 200) AS text FROM entries WHERE sequence > ? ORDER BY sequence DESC LIMIT ?').all(since, limit);
   }
@@ -870,11 +887,90 @@ export class RoomMemory {
     return added;
   }
 
-  // Indexes whatever the ledger holds beyond the last sequence seen.
+  /* ---------- verdicts: the human's reaction, and where it leaves a note standing ---------- */
+
+  // The worst verdict among the replies a note was distilled from. Worst, not newest: a note that
+  // came partly from an exchange the human marked wrong is suspect however good the other half was.
+  #verdictFor(id) {
+    const rows = this.#db.prepare(`
+      SELECT v.verdict FROM memories m, json_each(m.sources) src
+      JOIN entries e ON e.sequence = src.value
+      JOIN verdicts v ON v.message_id = e.message_id
+      WHERE m.id = ?`).all(Number(id)).map((row) => row.verdict);
+    if (rows.includes('bad')) return 'bad';
+    return rows.includes('good') ? 'good' : null;
+  }
+
+  // Recomputes standing for a handful of notes. The zone is a function of the rule plus the fold,
+  // so recomputing is always safe and never drifts — which is the whole reason a reaction can
+  // arrive days after the batch was distilled.
+  #restand(ids) {
+    const read = this.#db.prepare('SELECT id, kind, refuted_by AS refutedBy, zone FROM memories WHERE id = ?');
+    const write = this.#db.prepare('UPDATE memories SET zone = ? WHERE id = ?');
+    let moved = 0;
+    for (const id of ids) {
+      const row = read.get(Number(id));
+      if (!row) continue;
+      const zone = zoneFor(row, this.#verdictFor(row.id));
+      if (zone === row.zone) continue;
+      write.run(zone, row.id);
+      moved += 1;
+    }
+    return moved;
+  }
+
+  // The same rule over the whole archive, as one statement. A query per note was enough to make a
+  // room with a long ledger slower to open, and startup latency is not a place to spend.
+  // The CASE is `zoneFor` in SQL and the test holds the two to each other.
+  #restandAll() {
+    const cited = (verdict) => `EXISTS (SELECT 1 FROM json_each(memories.sources) src JOIN entries e ON e.sequence = src.value JOIN verdicts v ON v.message_id = e.message_id WHERE v.verdict = '${verdict}')`;
+    return Number(this.#db.prepare(`
+      UPDATE memories SET zone = CASE
+        WHEN kind = '${ABERRATION}' THEN '${MEDBAY}'
+        WHEN refuted_by IS NOT NULL THEN '${JETTISONED}'
+        WHEN ${cited('bad')} THEN '${MEDBAY}'
+        WHEN ${cited('good')} THEN '${BRIDGE}'
+        ELSE '${HOLD}' END`).run().changes ?? 0);
+  }
+
+  // A reply judged. Only the notes that CITE that reply move: a batch spans hundreds of sequences
+  // in a real room, so standing on the batch range would make one thumb speak for exchanges the
+  // human never looked at. A note whose sources are empty is out of a thumb's reach, and that is
+  // the honest limit of this.
+  judge(messageId, verdict) {
+    if (!this.#db) return 0;
+    const id = String(messageId ?? '').trim();
+    if (!id) return 0;
+    if (verdict === 'good' || verdict === 'bad') this.#db.prepare('INSERT INTO verdicts (message_id, verdict) VALUES (?, ?) ON CONFLICT(message_id) DO UPDATE SET verdict = excluded.verdict').run(id, verdict);
+    else this.#db.prepare('DELETE FROM verdicts WHERE message_id = ?').run(id);
+    const touched = this.#db.prepare(`
+      SELECT DISTINCT m.id FROM memories m, json_each(m.sources) src
+      JOIN entries e ON e.sequence = src.value
+      WHERE e.message_id = ?`).all(id).map((row) => row.id);
+    return this.#restand(touched);
+  }
+
+  // Indexes whatever the ledger holds beyond the last sequence seen, and folds every verdict the
+  // ledger carries. The fold is over the whole ledger on purpose: it is cheap, it is idempotent,
+  // and it is what lets a thumb pressed before any of this existed take effect on the next start.
   async catchUp(store) {
     const last = this.lastSequence();
     const events = await store.readAll();
-    return this.index(events.filter((event) => event.sequence > last));
+    const added = this.index(events.filter((event) => event.sequence > last));
+    const verdicts = new Map();
+    for (const event of events) {
+      if (event?.type !== 'message.rated') continue;
+      const messageId = String(event.payload?.messageId ?? '');
+      if (!messageId) continue;
+      const rating = event.payload?.rating;
+      if (rating === 'good' || rating === 'bad') verdicts.set(messageId, rating);
+      else verdicts.delete(messageId);
+    }
+    this.#db.exec('DELETE FROM verdicts');
+    const write = this.#db.prepare('INSERT INTO verdicts (message_id, verdict) VALUES (?, ?)');
+    for (const [messageId, verdict] of verdicts) write.run(messageId, verdict);
+    this.#restandAll();
+    return added;
   }
 
   // Older exchanges matched to a request. Each term is looked up on its own

@@ -6,6 +6,15 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.6.1 · Sin publicar
 
+### Tu pulgar mueve lo que la sala recordó de esa respuesta
+
+- Los pulgares de cada burbuja existían desde hace versiones y llegaban a un solo sitio: el exportador de dataset. Ahora también llegan al archivo. Lo que la sala destiló de una respuesta que marcaste mal deja de viajar a los turnos; lo que marcaste bien pasa a estar confirmado.
+- **No se reescribe una sola palabra de lo que se recordó.** Lo que cambia es dónde queda parado, no lo que dice: el texto es lo que el archivista oyó y la zona es lo que tú dijiste. Por eso una reacción sirve aunque llegue días después de que el lote se destiló.
+- Cada memoria vive ahora en una de cuatro zonas de la NOSTROMO. Dos viajan a los turnos y dos son archivo que la sala conserva y nunca sirve. Las dos reglas que ya hacían esto a medias —lo falso no viaja, lo refutado tampoco— eran cinco copias sueltas y ahora son una.
+- Un pulgar mueve solo lo que cita **esa** respuesta, nunca su lote: en una sala real un lote abarca cientos de secuencias, y un pulgar no puede hablar por intercambios que no miraste. En el archivo de esta sala, un tercio de las respuestas de agente dejaron memoria y son las que un pulgar alcanza.
+- El archivo manda sobre el pulgar: una nota que la sala estableció falsa sigue fuera de circulación por mucho que te gustara la respuesta de la que salió. «Esto es falso» y «esto me sirvió» no son la misma afirmación.
+- Los pulgares que ya habías pulsado antes de que esto existiera cuentan: el pliegue es sobre el ledger entero y corre en cada arranque.
+
 ## 0.6.0 · 2026-10-01
 
 ### Ash conserva una sola decisión de principio a fin

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { Room } from '../src/room.mjs';
-import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, HOLD, MEDBAY, JETTISONED, RECALLED_ZONES } from '../src/memory.mjs';
+import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, HOLD, BRIDGE, MEDBAY, JETTISONED, RECALLED_ZONES } from '../src/memory.mjs';
 
 const agents = [
   { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: 'test' },
@@ -1263,6 +1263,80 @@ test('zones: the column says exactly what the two recall gates said, and the wri
     for (const note of back) assert.equal(note.zone, zoneFor(note), `zone drifted on #${note.id} after forgetting an aberration`);
     assert.equal(back.find((note) => note.id === taken.id).zone, HOLD, 'a note stayed out over an aberration that no longer exists');
     memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('zones: a reaction moves what the room distilled from that reply, and only that', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-verdict-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    // Two replies the room will remember something from, far enough apart that a batch range
+    // would swallow both and only `sources` can tell them apart.
+    await store.append('message.created', { messageId: 'ask-a', role: 'user', sender: 'you', target: 'codex', text: 'where does the stripe webhook verify its signature' });
+    await store.append('message.created', { messageId: 'reply-a', role: 'assistant', sender: 'codex', target: 'you', text: 'it verifies the stripe signature before parsing the body' });
+    await store.append('message.created', { messageId: 'ask-b', role: 'user', sender: 'you', target: 'codex', text: 'and which port does the worker listen on' });
+    await store.append('message.created', { messageId: 'reply-b', role: 'assistant', sender: 'codex', target: 'you', text: 'the worker listens on port 7331' });
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+
+    const seq = (messageId) => memory.sequenceOf(messageId);
+    const a = seq('reply-a');
+    const b = seq('reply-b');
+    assert.ok(a && b && a !== b);
+
+    memory.addMemories([
+      { kind: 'fact', text: 'The Stripe signature is verified before the body is parsed.', sources: [a] },
+      { kind: 'fact', text: 'The worker listens on port 7331.', sources: [b] },
+    ], { agent: 'codex', fromSequence: 1, throughSequence: 4 });
+    const noteOf = (text) => memory.memories({ limit: 20 }).find((note) => note.text.includes(text));
+    assert.equal(noteOf('Stripe signature').zone, HOLD);
+    assert.equal(noteOf('port 7331').zone, HOLD);
+
+    // A thumb up on one reply promotes what came from THAT reply and leaves its neighbour alone,
+    // even though both notes were distilled in the same batch.
+    assert.equal(memory.judge('reply-a', 'good'), 1);
+    assert.equal(noteOf('Stripe signature').zone, BRIDGE);
+    assert.equal(noteOf('port 7331').zone, HOLD, 'a thumb spoke for an exchange nobody judged');
+
+    // A thumb down quarantines, and what is quarantined stops travelling into a turn.
+    memory.judge('reply-b', 'bad');
+    assert.equal(noteOf('port 7331').zone, MEDBAY);
+    const recalled = memory.recallMemories('worker port 7331 listens', { limit: 6, fallback: false, track: false });
+    assert.equal(recalled.some((note) => note.text.includes('7331')), false, 'a note the human marked wrong reached a turn');
+
+    // Clearing the thumb puts it back where it was. Round trip, no residue.
+    memory.judge('reply-b', 'none');
+    assert.equal(noteOf('port 7331').zone, HOLD);
+    assert.equal(memory.recallMemories('worker port 7331 listens', { limit: 6, fallback: false, track: false }).some((note) => note.text.includes('7331')), true);
+
+    // And the thumb does not outrank the archive: a note proven false stays out, however well the
+    // reply it came from was received.
+    memory.judge('reply-a', 'good');
+    // Held by id: an aberration quotes the claim it refutes word for word, so after this there are
+    // two notes with that text and only one of them is the one that was there first.
+    const signature = noteOf('Stripe signature').id;
+    const flagged = memory.flagAberration({ text: 'The Stripe signature is verified before the body is parsed.', contradicts: signature, sources: [a], detector: 'eyecat' });
+    assert.ok(flagged?.id);
+    const byId = (id) => memory.memories({ limit: 20 }).find((note) => note.id === id);
+    assert.equal(byId(signature).zone, JETTISONED, 'a thumb up resurrected a note the room established was false');
+    assert.equal(byId(flagged.id).zone, MEDBAY);
+    memory.close();
+
+    // A verdict pressed while nothing was listening still lands: the fold is over the whole ledger
+    // and runs on every start, so an older room catches up the moment it opens.
+    await store.append('message.rated', { messageId: 'reply-b', rating: 'good', by: 'you' });
+    const reopened = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    assert.equal(reopened.memories({ limit: 20 }).find((note) => note.text.includes('7331')).zone, BRIDGE);
+
+    // The rule is written twice — once as zoneFor in JS for a single note, once as a CASE in SQL
+    // for the whole archive at startup — because a query per note made opening a long room slower.
+    // Two spellings of one rule is exactly how they drift, so they are held to each other here.
+    for (const note of reopened.memories({ limit: 50 })) {
+      const verdict = note.zone === BRIDGE ? 'good' : note.zone === MEDBAY && note.kind !== 'aberration' ? 'bad' : null;
+      assert.equal(note.zone, zoneFor(note, verdict), `the SQL and the function disagree on #${note.id}`);
+    }
+    reopened.close();
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

@@ -5,6 +5,21 @@ el mismo proyecto con una memoria compartida. Cero dependencias, Node ≥ 22.5, 
 
 `npm test` · `npm run check` · `npm run pack:check`
 
+## Trabajo en curso · zonas y sentimiento (0.7.x)
+
+**La memoria tiene zonas. Antes de tocar `src/memory.mjs`, el archivista o el
+destilador, lee `docs/ZONAS.md`.**
+
+- Una memoria tiene **clase** (qué es) y **zona** (qué standing tiene). Son ortogonales.
+- La regla de qué viaja a un turno se escribe **una vez**: `ZONE_GATE` en SQL y
+  `travels()`/`zoneFor()` en JS. No la copies a mano en una consulta nueva.
+- `zoneFor()` (una nota) y el `CASE` de `#restandAll()` (todo el archivo) son la misma
+  regla en dos idiomas. Si tocas una, toca la otra: hay una prueba que las ata.
+- **Tres caminos** sacan una nota de circulación y la devuelven (ZN-036): `flagAberration`,
+  `addMemories` y `deleteMemory`/`clearAberration`. Lo que toque `refuted_by` toca la zona.
+- Las reacciones **nunca entran en un prompt**. Ponderan el corpus; no se le cuentan al modelo.
+- Hay decisiones abiertas (`D-002`…`D-006`). **No las cierres por tu cuenta**: anótalas.
+
 ## Trabajo en curso · puerto a Windows (1.0)
 
 **Se está preparando el puerto a Windows. Antes de tocar cualquier cosa que ejecute
