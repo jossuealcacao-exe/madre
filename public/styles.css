@@ -135,6 +135,10 @@ body {
   height: 100dvh;
   width: 100%;
   display: grid;
+  /* A track that can shrink. Without it the one implicit column is as wide as its widest child's
+     content, and on a phone the composer's chip row made the whole page 580px wide — the bar on
+     top, the thread and every bubble with it. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr auto auto auto;
 }
 .bar, .onboarding, .composer, .safety, .thread-inner { width: var(--column); margin-left: auto; margin-right: auto; }
@@ -736,7 +740,7 @@ pre.core-egress-log { margin: 0; max-height: 34vh; overflow: auto; padding: 10px
 .picker .pick { --size: 30px; cursor: pointer; border: 1px solid transparent; background: color-mix(in srgb, var(--agent) 10%, transparent); transition: transform .12s ease, box-shadow .12s ease; }
 .picker .pick:hover { transform: translateY(-1px); }
 .picker .pick[aria-checked="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--agent); background: color-mix(in srgb, var(--agent) 22%, transparent); }
-.picker .pick-label { display: flex; align-items: center; gap: 8px; min-width: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); margin-left: 2px; }
+.picker .pick-label { display: flex; align-items: center; gap: 10px; min-width: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); margin-left: 2px; }
 .picker .pick-label > .mode-chip, .picker .pick-label > .model-chip { flex: 0 0 auto; }
 .picker .pick-label b { color: var(--agent, var(--text)); font-weight: 600; }
 .field { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: end; padding: 6px 6px 6px 18px; border: 1px solid var(--line-2); background: var(--panel); border-radius: 24px; }
@@ -768,12 +772,17 @@ textarea::placeholder { color: var(--text-3); }
 .shell.with-browser .colophon { display: none; }
 
 /* toast */
-.toast { position: fixed; left: var(--composer-center, 50%); bottom: calc(100vh - var(--composer-top, 70vh) + 22px); transform: translateX(-50%); text-align: center; padding: 9px 14px; animation: toast-in .22s ease; z-index: 40; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: var(--panel); color: var(--danger); font-size: 13px; box-shadow: var(--shadow); max-width: min(560px, calc(100% - 32px)); }
+.toast { position: fixed; left: var(--composer-center, 50%); bottom: calc(100vh - var(--composer-top, 70vh) + 22px); transform: translateX(-50%); text-align: center; padding: 9px 14px; animation: toast-in .22s ease; z-index: 40; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: var(--panel); color: var(--danger); font-size: 13px; box-shadow: var(--shadow); max-width: min(560px, calc(100% - 32px)); overflow-wrap: anywhere; }
 
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 @media (max-width: 680px) {
   .bar { flex-wrap: wrap; gap: 10px; }
+  /* The spheres keep their row; who the message goes to and its chips take the one below, and
+     wrap among themselves. On one line they were what made the page wider than the phone. */
+  .picker { flex-wrap: wrap; row-gap: 10px; }
+  .picker .pick-label { flex: 1 0 100%; flex-wrap: wrap; row-gap: 8px; margin-left: 0; }
+  .picker .pick-label > .mode-chip, .picker .pick-label > .model-chip, .picker .pick-label > .effort-chip { margin-left: 0; }
   .project { display: none; }
   .row { max-width: 92%; }
   .who .reply { max-width: 150px; }
@@ -1093,10 +1102,43 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .agent-pop .foot { margin-top: 10px; font-size: 9.5px; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; }
 
 /* model chip & menu in the composer */
-.picker .model-chip { margin-left: 8px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: none; padding: 2px 8px; border-radius: 999px; cursor: pointer; }
+.picker .model-chip { margin-left: 4px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: none; padding: 2px 8px; border-radius: 999px; cursor: pointer; }
 .picker .model-chip:hover { color: var(--agent, var(--text)); border-color: var(--agent, var(--line-2)); }
+/* Effort chip: a signal meter in the agent's colour, beside the model. Unset, it is a ghost of
+   the CLI's own level; set, it fills. No glow at any level: the meter already says how high, and
+   light that bleeds says nothing the bars do not. */
+.picker .pick-label > .effort-chip { flex: 0 0 auto; }
+.picker .effort-chip { --tone: var(--agent, var(--phosphor)); display: inline-flex; align-items: center; gap: 8px; height: 22px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: none; padding: 0 10px 0 9px; border-radius: 999px; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+.picker .effort-chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--tone) 45%, var(--line-2)); }
+.picker .effort-chip.set { color: var(--text); border-color: color-mix(in srgb, var(--tone) 38%, var(--line-2)); background: color-mix(in srgb, var(--tone) 7%, transparent); }
+.picker .effort-chip .caret { color: var(--text-3); font-size: 9px; }
+.effort-meter { --tone: var(--agent, var(--phosphor)); display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+.effort-meter i { width: 3px; border-radius: 1px; background: color-mix(in srgb, var(--text-3) 45%, transparent); transition: background .2s; }
+.effort-meter i:nth-child(1) { height: 30%; } .effort-meter i:nth-child(2) { height: 47%; } .effort-meter i:nth-child(3) { height: 64%; } .effort-meter i:nth-child(4) { height: 82%; } .effort-meter i:nth-child(5) { height: 100%; }
+.effort-meter i.on { background: var(--tone); }
+.effort-meter.ghost i.on { background: color-mix(in srgb, var(--tone) 45%, var(--text-3)); }
+
+.effort-menu { width: min(368px, calc(100vw - 24px)); padding: 8px; border-radius: 16px; box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 24px 60px -18px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.25); }
+.effort-menu .model-menu-title { display: flex; align-items: baseline; gap: 6px; margin: 8px 12px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.effort-ladder { display: grid; gap: 4px; }
+.effort-option { --tone: var(--agent, var(--phosphor)); display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; align-items: center; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; color: var(--text); font: inherit; font-family: var(--mono); padding: 11px 12px; border-radius: 11px; cursor: pointer; transition: background .15s, border-color .15s; }
+.effort-option:hover, .effort-option:focus-visible { background: var(--panel-2, color-mix(in srgb, var(--text) 4%, transparent)); outline: 0; }
+.effort-option:focus-visible { border-color: var(--line-2); }
+.effort-option.auto { margin-bottom: 4px; }
+.effort-option .effort-meter { height: 14px; gap: 2.5px; justify-self: center; }
+.effort-option .effort-meter i { width: 3.5px; }
+.effort-option .body { display: grid; gap: 4px; min-width: 0; }
+.effort-option .name { font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text); }
+.effort-option .hint { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", sans-serif; font-size: 11.5px; line-height: 1.45; letter-spacing: 0; color: var(--text-2); }
+.effort-option.auto .name { color: var(--text-2); }
+.effort-option.current { background: color-mix(in srgb, var(--tone) 8%, var(--panel)); border-color: color-mix(in srgb, var(--tone) 28%, var(--line-2)); }
+.effort-option .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 8.5px; font-weight: 600; letter-spacing: .16em; color: var(--text-3); white-space: nowrap; }
+.effort-option.current .tag { color: var(--tone); }
+.effort-option .tag .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tone); }
+.effort-menu .model-note { margin: 10px 12px 6px; padding-top: 10px; border-top: 1px solid var(--line); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", sans-serif; font-size: 11px; letter-spacing: 0; line-height: 1.5; }
+.who .badge.effort { text-transform: none; }
 /* Permission mode chip: TO @agent  #1 EXCHANGE ▾  model ▾ */
-.picker .mode-chip { margin-left: 8px; border: 1px solid var(--mode); background: transparent; color: var(--mode); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; padding: 2px 9px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s, border-color .2s; }
+.picker .mode-chip { margin-left: 4px; border: 1px solid var(--mode); background: transparent; color: var(--mode); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; padding: 2px 9px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s, border-color .2s; }
 .picker .mode-chip b { font-weight: 700; color: inherit; }
 .picker .mode-chip:hover { background: color-mix(in srgb, var(--mode) 12%, transparent); }
 .picker .mode-chip.m0 { --mode: var(--mode-0); }
@@ -1326,7 +1368,7 @@ dialog.viewer { border: 0; padding: 0; width: min(1100px, 96vw); max-width: 96vw
 .dock-grip::after { content: ''; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); width: 2px; height: 48px; border-radius: 999px; background: var(--line-2); opacity: 0; transition: opacity .15s; }
 .dock-grip:hover::after, .shell.dragging-dock .dock-grip::after { opacity: 1; background: var(--phosphor); }
 .shell.dragging-dock .browser-dock iframe { pointer-events: none; }
-@media (max-width: 900px) { .shell.with-browser { grid-template-columns: 1fr; } .shell.with-browser > .browser-dock { grid-column: 1; grid-row: 3 / 4; height: auto; border-left: 0; border-top: 1px solid var(--line); } }
+@media (max-width: 900px) { .shell.with-browser { grid-template-columns: minmax(0, 1fr); } .shell.with-browser > .browser-dock { grid-column: 1; grid-row: 3 / 4; height: auto; border-left: 0; border-top: 1px solid var(--line); } }
 
 /* The browser is its own window on the rail, beside the conversations. */
 
@@ -1724,8 +1766,18 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
    and a tinted ground behind a sentence that is not clickable — so the eye read a panel and had
    to find the button inside it. The sentence is a sentence now; only the thing you can press
    looks pressable, and it looks it properly: filled, not outlined. */
-.mode-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 10px 12px 2px; padding: 0; border: 0; background: none; }
-.mode-what { flex: 1; min-width: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--text-2); }
+/* The way up is a card under the reply, shaped like a decision handed back (.choice): what is
+   asked, what pressing will do, and the answers together under it — not one button alone at the
+   far edge of a line, where it read as part of the reply's stamp. */
+.mode-ask { display: grid; gap: 6px; margin: 10px 12px 2px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--warn, #e2a022) 45%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--warn, #e2a022) 6%, transparent); }
+.mode-what { min-width: 0; font-size: 13px; line-height: 1.45; color: var(--text); }
+.mode-what .who { display: inline; margin: 0; padding: 0; font: inherit; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--agent, var(--text)); }
+.mode-why { font-size: 11.5px; line-height: 1.45; color: var(--text-2); }
+.mode-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.mode-alt { border: 1px solid var(--line-2); border-radius: 7px; background: transparent; color: var(--text-2); font-family: var(--mono); font-size: 10px; letter-spacing: .1em; padding: 6px 11px; cursor: pointer; }
+.mode-alt:hover { color: var(--text); border-color: var(--text-3); }
+.mode-ask.settled { padding: 8px 14px; border-style: dashed; background: none; }
+.mode-ask.settled .mode-what { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--text-3); }
 .mode-go {
   flex: none; border: 0; border-radius: 7px; cursor: pointer;
   background: var(--warn, #e2a022); color: var(--warn-ink, #1a1403);
@@ -1735,12 +1787,47 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .mode-go:hover { background: color-mix(in srgb, var(--warn, #e2a022) 86%, #fff); }
 .mode-go:active { transform: translateY(1px); box-shadow: none; }
 
-/* A decision handed back, in the agent's colour: read at a glance, answered with one press. */
-.choice { margin: 10px 12px 2px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 32%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--agent, var(--text-3)) 5%, transparent); }
-.choice-q { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--text); }
-.choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.choice-option { border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 45%, transparent); background: var(--panel); color: var(--text); font: inherit; font-size: 12.5px; line-height: 1.4; text-align: left; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s; }
-.choice-option:hover { background: color-mix(in srgb, var(--agent, var(--text-3)) 14%, transparent); border-color: var(--agent, var(--text-3)); }
+/* A decision handed back, in the agent's colour: read at a glance, answered with one press.
+   Options stack as rows, not pills: an option is a sentence, and a sentence wrapped inside a pill
+   reads as a broken button. The agent's pick leads, with its tag on the right. The colour is in
+   the edges and the numbers, never in a glow. */
+.choice { margin: 14px 12px 4px; padding: 18px 18px 14px; border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 22%, var(--line-2)); border-radius: 18px; background: color-mix(in srgb, var(--agent, var(--text-3)) 3%, var(--bg-2)); box-shadow: 0 1px 0 rgba(255,255,255,.03) inset; max-width: 760px; }
+.choice-head { display: flex; align-items: center; gap: 8px; margin: 0 2px 8px; }
+.choice-kicker { font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--agent, var(--text-3)); }
+.choice-q { margin: 0 2px 16px; font-size: 14px; line-height: 1.5; font-weight: 500; color: var(--text); text-wrap: pretty; }
+.choice-list { display: grid; gap: 8px; }
+.choice-option { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 14px; width: 100%; border: 1px solid var(--line-2); background: var(--panel); color: var(--text); font: inherit; font-size: 13px; line-height: 1.55; text-align: left; padding: 12px 14px; border-radius: 12px; cursor: pointer; transition: background .15s, border-color .15s, transform .08s; }
+.choice-option:hover { background: var(--panel-2, var(--panel)); border-color: color-mix(in srgb, var(--agent, var(--text-3)) 40%, var(--line-2)); }
+.choice-option:active { transform: translateY(1px); }
+.choice-option:focus-visible { outline: 2px solid color-mix(in srgb, var(--agent, var(--phosphor)) 70%, transparent); outline-offset: 2px; }
+.choice-key { display: grid; place-items: center; width: 24px; height: 24px; margin-top: -1px; border: 1px solid var(--line-2); border-radius: 7px; font-family: var(--mono); font-size: 10.5px; font-weight: 600; color: var(--text-3); transition: color .15s, border-color .15s, background .15s; }
+.choice-option:hover .choice-key { color: var(--text); }
+.choice-text { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+.choice-tag { align-self: center; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--agent, var(--phosphor)) 45%, transparent); border-radius: 999px; color: var(--agent, var(--phosphor)); font-family: var(--mono); font-size: 8.5px; font-weight: 600; letter-spacing: .16em; white-space: nowrap; }
+.choice-option.recommended { border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 40%, var(--line-2)); background: color-mix(in srgb, var(--agent, var(--phosphor)) 6%, var(--panel)); }
+.choice-option.recommended .choice-key { border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 50%, transparent); color: var(--agent, var(--phosphor)); }
+.choice-option.picked { border-color: color-mix(in srgb, var(--agent, var(--phosphor)) 70%, transparent); background: color-mix(in srgb, var(--agent, var(--phosphor)) 10%, var(--panel)); }
+.choice-option.picked .choice-key { background: var(--agent, var(--phosphor)); border-color: transparent; color: var(--bg); }
+.choice-foot { margin: 14px 2px 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; color: var(--text-3); }
+@media (max-width: 560px) {
+  .choice { margin: 12px 0 4px; padding: 14px 12px 12px; }
+  .choice-option { grid-template-columns: 24px minmax(0, 1fr); gap: 12px; }
+  .choice-tag { grid-column: 2; justify-self: start; }
+}
+
+/* A command an agent asks the human to run: a .choice whose options are command lines. The line
+   is code, read before it is pressed; the tag says what pressing does, then what happened. */
+.run-request .choice-text { font-family: var(--mono); font-size: 12px; }
+.run-request .choice-key { font-family: var(--mono); }
+.run-request .choice-tag { background: transparent; border: 1px solid var(--agent, var(--phosphor)); color: var(--agent, var(--phosphor)); }
+.run-request .run-line.running { cursor: progress; border-color: var(--agent, var(--phosphor)); }
+.run-request .run-line.running .choice-tag { animation: klaxon 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .run-request .run-line.running .choice-tag { animation: none; } }
+.run-request .run-line.ran .choice-tag { background: var(--agent, var(--phosphor)); color: var(--bg); }
+.run-request .run-line.failed .choice-tag { border-color: var(--crit); color: var(--crit); }
+.run-request .run-line.refused { cursor: not-allowed; opacity: .6; }
+.run-request .run-line.refused .choice-tag { border-color: var(--text-3); color: var(--text-3); }
+.run-request .run-why { margin: -2px 2px 4px 34px; font-size: 11.5px; line-height: 1.45; color: var(--text-3); }
 
 /* What the room still has no answer to. Quieter than the free-turn offer above it: that one is
    about to save money, this one is only wondering. */
@@ -1806,16 +1893,30 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .tree { position: relative; grid-row: 3; justify-self: end; align-self: stretch; z-index: 5; width: clamp(240px, calc((100% - var(--column)) / 2 - 36px), 420px); margin: 18px 20px 10px 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); border: 1px solid var(--line-2); border-radius: 18px; background: var(--panel); box-shadow: 0 10px 30px rgba(0, 0, 0, .06); overflow: hidden; animation: tree-in .22s ease; }
 /* The finder's own row of tools: a search, and what is waiting to be pasted. */
 .tree { grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); }
+/* The files panel reads paths and asks for names; at its old 240px floor neither fit. */
+#tree.tree { width: clamp(300px, calc((100% - var(--column)) / 2 - 36px), 460px); }
 .tree-search { padding: 8px 12px 6px; }
 .tree-search input { width: 100%; border: 1px solid var(--line-2); border-radius: 8px; background: color-mix(in srgb, var(--text-3) 6%, transparent); color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px; outline: 0; }
 .tree-search input:focus { border-color: var(--phosphor); }
-.tree-clip { display: flex; min-width: 0; align-items: center; gap: 8px; margin: 0 12px 6px; padding: 6px 10px; border: 1px dashed var(--phosphor); border-radius: 8px; font-family: var(--mono); font-size: 10px; color: var(--text-2); }
+.tree-clip { display: flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: 6px 8px; margin: 0 12px 6px; padding: 8px 10px; border: 1px dashed var(--phosphor); border-radius: 8px; font-family: var(--mono); font-size: 11px; color: var(--text-2); }
 .tree-clip .what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tree-clip button { border: 0; background: transparent; color: var(--phosphor); font: inherit; font-size: 10px; letter-spacing: .1em; cursor: pointer; }
-.tree-ask { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-.tree-ask input { flex: 1; min-width: 0; border: 0; border-bottom: 1px solid var(--line-2); background: transparent; color: var(--text); font: inherit; font-size: 11px; padding: 2px 1px; outline: none; }
-.tree-ask input:focus { border-bottom-color: var(--phosphor); }
-.tree-ask .go { color: var(--phosphor); }
+.tree-clip .how { flex: 1 1 100%; font-size: 10px; line-height: 1.45; color: var(--text-3); }
+.tree-clip button { border: 0; border-radius: 6px; background: transparent; color: var(--phosphor); font: inherit; font-size: 11px; letter-spacing: .08em; padding: 4px 8px; cursor: pointer; }
+.tree-clip button:hover { background: color-mix(in srgb, var(--phosphor) 12%, transparent); }
+/* What is being asked is its own line, and the box has the full width under it: a placeholder in
+   a strip three words wide was cut off before anyone could read it. */
+.tree-ask { display: grid; gap: 6px; flex: 1 1 100%; min-width: 0; }
+.tree-ask .ask-label { font-size: 11px; letter-spacing: .1em; color: var(--text); }
+.tree-ask .ask-label .where { margin-left: 6px; letter-spacing: 0; color: var(--text-3); overflow-wrap: anywhere; }
+.tree-ask .ask-hint { font-size: 10.5px; line-height: 1.45; color: var(--text-2); overflow-wrap: anywhere; }
+.tree-ask input { width: 100%; min-width: 0; border: 1px solid var(--line-2); border-radius: 6px; background: color-mix(in srgb, var(--text-3) 6%, transparent); color: var(--text); font: inherit; font-size: 13px; padding: 6px 8px; outline: none; }
+.tree-ask input:focus { border-color: var(--phosphor); }
+.tree-ask .ask-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.tree-ask .go { color: var(--bg); background: var(--phosphor); }
+.tree-ask .go:hover { background: var(--phosphor); filter: brightness(1.08); }
+.tree .node.fresh { animation: tree-fresh 2.4s ease-out; }
+@keyframes tree-fresh { 0%, 35% { background: color-mix(in srgb, var(--phosphor) 22%, transparent); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .tree .node.fresh { animation: none; background: color-mix(in srgb, var(--phosphor) 14%, transparent); } }
 .tree-menu { position: absolute; z-index: 20; min-width: 170px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgba(0,0,0,.35); padding: 5px; display: grid; gap: 1px; }
 .tree-menu button { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px; text-align: left; padding: 7px 10px; border-radius: 7px; cursor: pointer; }
 .tree-menu button:hover { background: color-mix(in srgb, var(--phosphor) 12%, transparent); }
@@ -1891,8 +1992,13 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .command-card .head { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; color: var(--text-2); border-bottom: 1px solid var(--line-2); }
 .command-card .head b { color: var(--phosphor); font-weight: 600; }
 .command-card .head .args { color: var(--text-3); letter-spacing: .04em; }
+.command-card .head > span { min-width: 0; overflow-wrap: anywhere; }
 .command-card pre { margin: 0; padding: 10px 12px; max-height: 320px; overflow: auto; font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 .command-card pre .h { color: var(--phosphor); font-weight: 600; }
+.command-card .undo { margin: 0 12px 10px; border: 1px solid var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .16em; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+.command-card .undo:hover { background: color-mix(in srgb, var(--terror) 22%, transparent); }
+.command-card .undo:disabled { opacity: .5; cursor: default; }
+.command-card .outcome { display: inline-block; margin: 0 12px 10px; font-family: var(--mono); font-size: 10px; letter-spacing: .16em; color: var(--phosphor); }
 
 .module-card select { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .06em; padding: 6px 8px; }
 
@@ -2449,3 +2555,4 @@ dialog.tour::backdrop { background: transparent; }
 :root[data-scheme="light"] .slash-menu .item.starter:has(.shape.sends) { --shape: #1f6f9e; }
 :root[data-scheme="light"] .slash-menu .item.starter:has(.shape.card) { --shape: #9a6400; }
 @media (max-width: 560px) { .slash-menu.with-starters { grid-template-columns: minmax(0, 1fr); } }
+.system.module-proposed .replaces { display: block; margin-top: 4px; color: var(--warn, var(--text-2)); }

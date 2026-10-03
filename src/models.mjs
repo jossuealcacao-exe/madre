@@ -26,6 +26,25 @@ export const KNOWN_MODELS = {
   },
 };
 
+// How hard the model thinks before it answers, for the CLIs that take it per run. Claude Code
+// reads --effort; Codex reads model_reasoning_effort as a config override. Gemini and OpenCode
+// have no per-run knob MADRE can name truthfully (OpenCode's --variant means something different
+// for each provider), so they get no chooser at all rather than one that guesses.
+//
+// Ordered lightest first: the composer draws them as a ladder, and the order is the meaning.
+export const EFFORTS = {
+  claude: ['low', 'medium', 'high', 'xhigh', 'max'],
+  codex: ['minimal', 'low', 'medium', 'high', 'xhigh'],
+};
+
+export function isValidEffort(agentId, effort) {
+  return typeof effort === 'string' && (EFFORTS[agentId] ?? []).includes(effort);
+}
+
+export function parseCodexDefaultEffort(toml) {
+  return String(toml ?? '').match(/^\s*model_reasoning_effort\s*=\s*"([^"]+)"/m)?.[1] ?? null;
+}
+
 export function parseCodexModelCache(json) {
   try {
     const data = JSON.parse(json);
@@ -58,9 +77,12 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
     const known = KNOWN_MODELS[agent.id] ?? { defaults: [], note: '' };
     let discovered = [];
     let cliDefault = null;
+    let effortDefault = null;
     if (agent.id === 'codex') {
       discovered = parseCodexModelCache(await readFile(join(home, '.codex', 'models_cache.json'), 'utf8').catch(() => ''));
-      cliDefault = parseCodexDefaultModel(await readFile(join(home, '.codex', 'config.toml'), 'utf8').catch(() => ''));
+      const toml = await readFile(join(home, '.codex', 'config.toml'), 'utf8').catch(() => '');
+      cliDefault = parseCodexDefaultModel(toml);
+      effortDefault = parseCodexDefaultEffort(toml);
     }
     if (agent.id === 'opencode' && agent.detected) {
       discovered = await listOpenCode(agent).catch(() => []);
@@ -71,6 +93,8 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
       models: unique([...custom, ...discovered, ...known.defaults]),
       default: cliDefault,
       note: known.note,
+      efforts: EFFORTS[agent.id] ?? [],
+      effortDefault: isValidEffort(agent.id, effortDefault) ? effortDefault : null,
       source: discovered.length ? 'discovered' : 'known',
     };
   }

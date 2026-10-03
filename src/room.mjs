@@ -17,6 +17,7 @@ import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE, says
 import { MADRE_ADAPTER, MADRE_AGENT_ID } from './adapters/madre.mjs';
 import { verdictFor } from './verdict.mjs';
 import { ControlDesk } from './room/control.mjs';
+import { RunDesk } from './room/runs.mjs';
 import { Attachments } from './room/attachments.mjs';
 import { GhostLedger } from './room/ghost.mjs';
 import { Escalation } from './room/escalation.mjs';
@@ -27,7 +28,7 @@ import { OLLAMA_ARCHIVIST } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
 import { CODE000_STRIKES } from './mother.mjs';
 import { parseDirectives } from './directives.mjs';
-import { isValidModelName } from './models.mjs';
+import { isValidModelName, isValidEffort } from './models.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
 import { createLease, diffSnapshots, namedPaths, snapshot } from './lease.mjs';
 import { stat as statFile } from 'node:fs/promises';
@@ -36,6 +37,7 @@ import { contentTypeFor } from './files.mjs';
 import { isModuleFile, sdkPaths } from './modules/index.mjs';
 import { validateAshReply } from './modules/ash-policy.mjs';
 import { parseChoice, withoutChoice } from './choices.mjs';
+import { parseRunRequest, withoutRunRequest, whyText } from './runs.mjs';
 import { imageStudioFor } from './image-studio.mjs';
 import { CAPABILITIES, imageModuleState } from './capabilities.mjs';
 import { resolveReferences } from './files.mjs';
@@ -134,6 +136,9 @@ export class Room {
   #planMaxAgeMs;
   #ashEnabled = false;
   #choicesEnabled = false;
+  #runsEnabled = false;
+  #runDesk = new RunDesk();
+  #runBusy = false;
 
   constructor({
     store,
@@ -228,7 +233,7 @@ export class Room {
     const result = await this.#controlDesk.undo(checkpointId);
     if (!result.ok) return result;
     const { checkpoint, message, ...rest } = result;
-    await this.#emit('control.reverted', { checkpointId, agent: checkpoint.agent, removed: rest.removed, restored: rest.restored, message });
+    await this.#emit('control.reverted', { checkpointId, agent: checkpoint.agent, command: checkpoint.command ?? undefined, removed: rest.removed, restored: rest.restored, message });
     return { ok: true, ...rest };
   }
 
@@ -764,6 +769,53 @@ export class Room {
     return this.#choicesEnabled;
   }
 
+  setRuns(enabled) {
+    this.#runsEnabled = Boolean(enabled);
+    return this.#runsEnabled;
+  }
+
+  runsEnabled() {
+    return this.#runsEnabled;
+  }
+
+  // The human pressed one line of a ```pulse-run an agent wrote. The client names the request and
+  // the line, never the command: what runs is read back from the room's own record of what the
+  // agent asked, so a page cannot run anything that was not shown to the human as a button.
+  async runRequested({ responseMessageId, index }) {
+    if (!this.#runsEnabled) return { ok: false, status: 412, error: 'Command requests are off. Enable them in MODULES.' };
+    const events = await this.#store.readAll();
+    const request = events.find((event) => event.type === 'run.requested' && event.payload.responseMessageId === responseMessageId)?.payload;
+    const command = request?.commands?.[index];
+    if (!command) return { ok: false, status: 404, error: 'That command request is not in this room.' };
+    if (!command.argv) return { ok: false, status: 422, error: `That line does not run: it ${whyText(command)}.` };
+    if (this.#runBusy) return { ok: false, status: 409, error: 'A command is already running; wait for it or STOPALL.' };
+    if (this.#controlDesk.holder) return { ok: false, status: 409, error: `@${this.#controlDesk.holder.agent} holds ${MODES[this.#controlDesk.holder.mode ?? 3].label} of this project; run it when the turn ends.` };
+    // Taken before the first await below: two presses in a row must not both get through.
+    this.#runBusy = true;
+    try { return await this.#runCommand({ request, command, responseMessageId, index }); } finally { this.#runBusy = false; }
+  }
+
+  async #runCommand({ request, command, responseMessageId, index }) {
+    const run = { responseMessageId, index, agent: request.agent, line: command.line };
+    await this.#emit('run.started', run);
+    let checkpoint = null;
+    try {
+      checkpoint = await this.#controlDesk.photograph({ id: `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-run-${responseMessageId.slice(0, 8)}-${index}`, label: `MADRE run @${request.agent}`, command: command.line });
+    } catch { /* no photograph, no UNDO: the command still runs, and the card says so */ }
+    const result = await this.#runDesk.run({ argv: command.argv, cwd: this.#projectRoot });
+    const changes = checkpoint ? await this.#controlDesk.changesSince(checkpoint).catch(() => null) : null;
+    const status = result.stoppedBy ? `stopped (${result.stoppedBy})` : result.exitCode === null ? 'did not start' : `exit ${result.exitCode}`;
+    const event = await this.#emit('command.output', {
+      name: 'run',
+      title: `$ ${command.line} · ${status} · ${(result.durationMs / 1000).toFixed(1)}s · asked by @${request.agent}`,
+      text: `${result.text || '(no output)'}${changes?.files.length ? `\n\nFiles changed: ${changes.files.map((file) => `${file.status} ${file.path}`).join(', ')}` : ''}`,
+      ok: result.ok,
+      args: [],
+      run: { ...run, exitCode: result.exitCode, durationMs: result.durationMs, stoppedBy: result.stoppedBy, checkpointId: checkpoint?.id, files: changes?.files.length ? changes.files.slice(0, 40) : undefined },
+    });
+    return { ok: true, status: 200, result: { ok: result.ok, exitCode: result.exitCode, sequence: event.sequence } };
+  }
+
   ashEnabled() {
     return this.#ashEnabled;
   }
@@ -840,7 +892,7 @@ export class Room {
     this.#vectors.stop();
   }
 
-  async send({ text, target, model = null, attachments = [], create = false, ash = false, mode = undefined }) {
+  async send({ text, target, model = null, effort = null, attachments = [], create = false, ash = false, mode = undefined }) {
     const parsed = parseMessage(text, target);
     const requestedMode = normalizeMode(mode, create === true ? 2 : 1);
     // This is the decision the human made when pressing Send. Capture it before modeCheck() —
@@ -857,6 +909,9 @@ export class Room {
     if (!parsed.target) throw new Error('Choose an agent or begin with @agent.');
     if (model !== null && model !== undefined && model !== '' && !isValidModelName(model)) throw new Error('Model name is not valid.');
     const chosenModel = model || null;
+    // An effort the target's CLI does not take is dropped, not refused: the composer remembers it
+    // per agent, so a stale one should cost the human nothing but the flag.
+    const chosenEffort = isValidEffort(parsed.target, effort) ? effort : null;
     // What the human wrote, sent as they wrote it. Ash used to rewrite this line before it left
     // the room; it does not any more, so there is no original to keep beside an abbreviation.
     const text2 = parsed.text || `(${files.length} attached file${files.length === 1 ? '' : 's'})`;
@@ -877,6 +932,7 @@ export class Room {
       ash: ashRequested ? { requested: true, active: ashActive } : undefined,
       status: 'sent',
       model: chosenModel,
+      effort: chosenEffort ?? undefined,
       attachments: files.length ? files.map((file) => ({ id: file.id, name: file.name, fileName: file.fileName, size: file.size, contentType: file.contentType })) : undefined,
       references: references.length ? references.map(({ excerpt, ...reference }) => reference) : undefined,
       create: create === true ? true : undefined,
@@ -941,7 +997,7 @@ export class Room {
       allowDelegation = false;
       await this.#alert('plan-active', `A plan by @${[...this.#plans.values()][0].orchestrator} is still running. Your message will be answered, but no second plan will start. Type STOPALL to halt every agent.`, `plan-active:${messageId}`);
     }
-    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, attachments: files, references, lease, ash: ashActive, mode: ghost ? 0 : control ? requestedMode : (lease ? 2 : 1) }));
+    await this.#track(this.#dispatch({ messageId, targetId: parsed.target, text: text2, requester: 'you', depth: 0, allowDelegation: allowDelegation && !ghost, model: chosenModel, effort: chosenEffort, attachments: files, references, lease, ash: ashActive, mode: ghost ? 0 : control ? requestedMode : (lease ? 2 : 1) }));
   }
 
   // A #2 lease: the project itself is where new files go, and MADRE keeps a scratch folder
@@ -983,6 +1039,7 @@ export class Room {
     for (const plan of this.#plans.values()) plan.stopped = reason;
     this.#escalation.settleAll(null, 'stopped');
     for (const turn of this.#turns.values()) turn.controller.abort(reason);
+    this.#runDesk.stop('STOPALL');
     await this.#emit('room.stopped', { reason, plans, turns, agents: [...new Set([...this.#turns.values()].map((turn) => turn.agent))] });
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
     return { plans, turns };
@@ -1032,7 +1089,7 @@ export class Room {
 
   // One room turn for one agent. `requester` is who asked ('you' or an
   // orchestrating agent); `depth` 0 turns may delegate, deeper ones may not.
-  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, attachments = [], references = [], lease = null, ash = false, mode = 1, escalation = null }) {
+  async #dispatch({ messageId, targetId, text, requester, depth, planId = null, allowDelegation = true, model = null, effort = null, attachments = [], references = [], lease = null, ash = false, mode = 1, escalation = null }) {
     if (this.#shuttingDown) return null;
     const agent = this.#agents.find((item) => item.id === targetId);
     if (!agent?.detected) {
@@ -1089,7 +1146,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, attachments, references, lease, ash, mode, escalation });
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, effort, attachments, references, lease, ash, mode, escalation });
     this.#turns.set(messageId, turn);
     let outcome = null;
     try {
@@ -1145,7 +1202,7 @@ export class Room {
       context: built.context, recall: built.recall, memories: built.memories,
       attachments: [], references: [], lease,
       scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired },
-      ash: ash === true && this.ashEnabled(), mode, escalation: null, mcpServers,
+      ash: ash === true && this.ashEnabled(), choices: this.#choicesEnabled && mode !== 0, runs: this.#runsEnabled && mode !== 0 && mode < 4, mode, escalation: null, mcpServers,
     });
     // Each block with what put it here and what would take it away, so "read, never written" can
     // be checked one block at a time instead of believed.
@@ -1244,7 +1301,7 @@ export class Room {
     });
   }
 
-  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall = null, memories = null, handoffId, signal, model = null, attachments = [], references = [], lease: sharedLease = null, ash = false, mode = 1, escalation = null }) {
+  async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall = null, memories = null, handoffId, signal, model = null, effort = null, attachments = [], references = [], lease: sharedLease = null, ash = false, mode = 1, escalation = null }) {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
     // read-only even while the plan holds a lease.
@@ -1337,7 +1394,7 @@ export class Room {
         : [];
       // The prompt and the shape it was built from: one is sent, the other is kept until the CLI
       // says what it cost, so the bill can be attributed to the blocks that caused it.
-      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, choices: this.#choicesEnabled, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
+      const shaped = this.#promptFor({ agent, text, requester, depth, allowDelegation, context, recall, memories, attachments, references, lease, scopes: turnScopes, imageStudio, ash, choices: this.#choicesEnabled && turnMode !== 0, runs: this.#runsEnabled && turnMode !== 0 && turnMode < 4, mode: turnMode, escalation, mcpServers, sharedLeaseHint: sharedLease && !lease ? 'A creation lease is active for this plan, but file creation is not enabled for you: answer without creating files and say so if asked to create one.' : null });
       this.#promptShape.set(responseMessageId, { parts: shaped.parts, spared: shaped.spared });
       // What this turn is about to read, said while it is still reading it. The size is exact;
       // only the conversion to tokens is an estimate, and it is made at this room's own rate.
@@ -1361,6 +1418,7 @@ export class Room {
         timeoutMs: this.timeoutFor(agent.id),
         signal,
         model,
+        effort,
         attachments,
         lease,
         scopes: turnScopes,
@@ -1410,13 +1468,15 @@ export class Room {
       }
       // A question the agent put to the human: it leaves the text and comes back as buttons.
       const asked = this.#choicesEnabled && turnMode !== 0 ? parseChoice(result.text) : null;
+      // Commands it wants the human to run: the same, as buttons. AIRLOCK runs its own.
+      const requested = !asked && this.#runsEnabled && turnMode !== 0 && turnMode < 4 ? parseRunRequest(result.text) : null;
       await this.#emit('message.created', {
         messageId: responseMessageId,
         parentMessageId: messageId,
         role: 'assistant',
         sender: agent.id,
         target: requester,
-        text: asked ? withoutChoice(result.text) : result.text,
+        text: asked ? withoutChoice(result.text) : requested ? withoutRunRequest(result.text) : result.text,
         // What the archive handed this turn, so the room can see its own memory working. The
         // whole point of remembering is invisible until the moment it is used.
         recalled: memories?.length
@@ -1426,6 +1486,7 @@ export class Room {
         status: 'completed',
         planId,
         model,
+        effort: effort ?? undefined,
         synthetic: result.synthetic || undefined,
         redacted: guarded.hits || undefined,
         mode: turnMode,
@@ -1437,7 +1498,8 @@ export class Room {
         const validation = validateAshReply({ request: text, response: result.text });
         await this.#emit('ash.validated', { messageId, responseMessageId, agent: agent.id, ...validation });
       }
-      if (asked) await this.#emit('choice.offered', { messageId, responseMessageId, agent: agent.id, question: asked.question, options: asked.options });
+      if (asked) await this.#emit('choice.offered', { messageId, responseMessageId, agent: agent.id, question: asked.question, options: asked.options, recommended: asked.recommended ?? undefined });
+      if (requested) await this.#emit('run.requested', { messageId, responseMessageId, agent: agent.id, reason: requested.reason, commands: requested.commands });
       if (guarded.hits) await this.#emit('privacy.redacted', { agent: agent.id, messageId, responseMessageId, hits: guarded.hits, marker: this.#privacy.marker });
       if (artifacts.length) {
         await this.#emit('artifacts.created', { leaseId: lease.leaseId, messageId, responseMessageId, agent: agent.id, outDir: lease.relativeDir, files: artifacts });

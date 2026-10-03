@@ -43,3 +43,22 @@ export function planFileOp({ operation, from, to }) {
   if (operation === 'move' && `${target}/`.startsWith(`${source}/`)) return { ok: false, error: 'A folder cannot be moved inside itself.' };
   return { ok: true, operation, from: source, to: target, guarded: needsDesignation(source, target) };
 }
+
+// The name a copy takes when its own is already used where it lands: "notes copy.md", then
+// "notes copy 2.md", the way a file manager does it. `word` is the room's word for "copy", and
+// `taken` answers whether a project-relative path already holds something.
+export async function freeCopyPath(to, { taken, word = 'copy', limit = 100 }) {
+  const path = String(to ?? '').replace(/^\/+/, '').trim();
+  if (!path || !(await taken(path))) return path;
+  const slash = path.lastIndexOf('/');
+  const dir = slash >= 0 ? path.slice(0, slash + 1) : '';
+  const name = path.slice(slash + 1);
+  // A leading dot is part of the name (".env"), not an extension.
+  const dot = name.lastIndexOf('.');
+  const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];
+  for (let n = 1; n <= limit; n += 1) {
+    const candidate = `${dir}${stem} ${word}${n > 1 ? ` ${n}` : ''}${ext}`;
+    if (!(await taken(candidate))) return candidate;
+  }
+  return path;
+}

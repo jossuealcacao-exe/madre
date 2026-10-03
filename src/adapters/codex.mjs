@@ -24,7 +24,7 @@ export function codexMcpOverrides(servers) {
   });
 }
 
-export function buildCodexArgs({ projectRoot, prompt, model = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [] }) {
+export function buildCodexArgs({ projectRoot, prompt, model = null, effort = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [] }) {
   const images = attachments.filter((file) => /^image\//.test(file.contentType ?? ''));
   return [
     // AIRLOCK (#4): commands with network, so pushes and deploys can leave; otherwise the sandbox.
@@ -35,6 +35,7 @@ export function buildCodexArgs({ projectRoot, prompt, model = null, attachments 
     '-C', lease ? lease.outDir : projectRoot,
     ...codexMcpOverrides([memoryServer, ...mcpServers]),
     // Image generation is a Codex feature; the human's scope decides per turn.
+    ...(effort ? ['-c', `model_reasoning_effort=${tomlValue(effort)}`] : []),
     ...(lease && (scopes?.imageGen === false || lease.scopes?.imageGen === false) ? ['-c', 'features.image_generation=false'] : []),
     'exec',
     // Codex refuses to run outside a git repository it has not been told to trust, and a new
@@ -78,11 +79,11 @@ export function parseCodexOutput(output) {
   return { text: text.trim(), usage, ...(error ? { error } : {}) };
 }
 
-export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [], onProgress = null }) {
+export function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
     onProgress: onProgress ? (out) => onProgress({ chars: parseCodexOutput(out).text.length }) : null,
     executable,
-    args: buildCodexArgs({ projectRoot, prompt, model, attachments, lease, scopes, memoryServer, mcpServers }),
+    args: buildCodexArgs({ projectRoot, prompt, model, effort, attachments, lease, scopes, memoryServer, mcpServers }),
     cwd: lease ? lease.outDir : projectRoot,
     env: process.env,
     timeoutMs,

@@ -1122,7 +1122,7 @@ test('modules: AHP+ is detected, planned for detected agents only, and installed
   assert.deepEqual(plan.platforms, ['codex', 'claude'], 'gemini has no AHP+ adapter; opencode is not detected');
   assert.equal(plan.display, 'npx --yes @jossuealcala/ahp-plus@1.4.2 setup . --platforms codex,claude');
   assert.deepEqual(ahp.installCommand({ agents: [] }).args, ['--yes', '@jossuealcala/ahp-plus@1.4.2', 'setup', '.']);
-  assert.equal(EXTENSIONS.length, 8);   // CORREO waits in the lab (PULSE_LABS)
+  assert.equal(EXTENSIONS.length, 9);   // CORREO waits in the lab (PULSE_LABS)
   assert.ok(EXTENSIONS.some((extension) => extension.id === 'git-pulse' && extension.kind === 'builtin'));
 
   const root = await mkdtemp(join(tmpdir(), 'pulse-modules-'));
@@ -1679,6 +1679,41 @@ test('the chosen model travels with the human turn and is recorded on both messa
     assert.equal(messages[1].payload.model, 'fable', 'the reply records the model that produced it');
     assert.equal(messages[2].payload.model, null);
     await assert.rejects(room.send({ text: 'x', target: 'claude', model: '--bad flag' }), /Model name is not valid/);
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('effort: offered only where the CLI takes it, and only a level it knows reaches the run', async () => {
+  const { EFFORTS, isValidEffort, parseCodexDefaultEffort } = await import('../src/models.mjs');
+  assert.deepEqual(EFFORTS.claude, ['low', 'medium', 'high', 'xhigh', 'max']);
+  assert.equal(EFFORTS.gemini, undefined, 'no chooser that would guess a flag');
+  assert.equal(isValidEffort('claude', 'max'), true);
+  assert.equal(isValidEffort('codex', 'max'), false, 'Codex has no max');
+  assert.equal(isValidEffort('claude', '--dangerously'), false);
+  assert.equal(parseCodexDefaultEffort('model = "x"\nmodel_reasoning_effort = "high"'), 'high');
+
+  const claude = buildClaudeArgs({ prompt: 'q', effort: 'xhigh' });
+  assert.equal(claude[claude.indexOf('--effort') + 1], 'xhigh');
+  assert.equal(buildClaudeArgs({ prompt: 'q' }).includes('--effort'), false);
+  const codex = buildCodexArgs({ projectRoot: '/p', prompt: 'q', effort: 'high' });
+  assert.equal(codex[codex.indexOf('model_reasoning_effort="high"') - 1], '-c');
+  assert.ok(codex.indexOf('model_reasoning_effort="high"') < codex.indexOf('exec'), 'a config override goes before exec');
+
+  const root = await mkdtemp(join(tmpdir(), 'pulse-effort-turn-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const agents = [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/x', version: '1' }];
+    const seen = [];
+    const room = new Room({ store, agents, projectRoot: root, invokers: { 'claude-readonly': async ({ effort }) => { seen.push(effort); return { text: 'ok', usage: null }; } } });
+    await room.send({ text: 'hi', target: 'claude', effort: 'max' });
+    // A level remembered for another CLI is dropped, not refused: it costs the human the flag only.
+    await room.send({ text: 'hi again', target: 'claude', effort: 'minimal' });
+    assert.deepEqual(seen, ['max', null]);
+    const messages = (await store.readAll()).filter((event) => event.type === 'message.created');
+    assert.equal(messages[0].payload.effort, 'max');
+    assert.equal(messages[1].payload.effort, 'max', 'the reply records the effort that produced it');
+    assert.equal(messages[2].payload.effort, undefined);
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

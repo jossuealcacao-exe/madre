@@ -187,7 +187,7 @@ test('core: no block reaches the briefing without saying what put it there', asy
     assert.equal(source.where === null || source.where.length > 0, true, `${id} points nowhere`);
   }
   // The ones a person can actually switch off point at a place in the panel, not at prose.
-  for (const id of ['ash', 'web', 'madre', 'delegation']) {
+  for (const id of ['ash', 'web', 'madre', 'delegation', 'choices', 'runs']) {
     assert.match(BLOCK_SOURCES[id].where, /MODULES|CONNECTIONS/, `${id} does not say where it is switched off`);
   }
   // And what nothing can remove says so by saying nothing, not by inventing a switch.
@@ -237,4 +237,18 @@ test('core: four panes, one at a time, and the prompt through all of them', asyn
   // in here was 1,280px wide and as tall as a toolbar, and it took the whole pane sideways with it.
   assert.ok(!/el\('i', 'bar'\)/.test(app), 'the core paints a weight bar with the top bar\'s class');
   assert.match(app, /const weigh = el\('i', 'weigh'\);/);
+});
+
+test('core: the briefing shows the choices block exactly where a turn carries it, and GHOST never does', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-core-choices-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const room = new Room({ store, agents, projectRoot: root, invokers: {} });
+    const shown = async (mode) => (await room.briefing({ agent: 'codex', mode })).parts.some((part) => part.id === 'choices');
+    assert.equal(await shown(1), false, 'shown while the module is off');
+    room.setChoices(true);
+    // The block costs tokens on every turn it rides; a preview that leaves it out under-reports.
+    assert.deepEqual([await shown(0), await shown(1), await shown(4)], [false, true, true]);
+    await room.shutdown();
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });

@@ -28,6 +28,25 @@ function pick(models, preferred, env) {
   return names[0] ?? null;
 }
 
+// Two versions, and they are not the same thing. `ollama --version` names the server that answers
+// on the port and, when it differs, adds a warning with the client's own: that second one is what
+// is installed. An upgrade replaces the binary and leaves the old server running — and that old
+// server then starts the NEW runner, which is how a model load ends in `invalid argument`.
+export function ollamaVersions(output) {
+  const text = String(output ?? '');
+  const server = text.match(/ollama version is\s+(\S+)/i)?.[1] ?? null;
+  const client = text.match(/client version is\s+(\S+)/i)?.[1] ?? server;
+  return { server, client };
+}
+
+// The `ollama serve` processes this user owns. Only those: an Ollama app, or a system service
+// running as another user, is not MADRE's to stop, and the room says so instead.
+export function ownOllamaServers(psOutput, uid) {
+  return String(psOutput ?? '').split('\n').map((line) => line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/)).filter(Boolean)
+    .filter(([, , owner, args]) => Number(owner) === uid && /(^|\/)ollama serve$/.test(args.trim()))
+    .map(([, pid]) => Number(pid));
+}
+
 // Is Ollama there, and what can it do? Quick, never throws.
 export async function probeOllama({ host = ollamaHost(), fetchImpl = globalThis.fetch, timeoutMs = 1500, env = process.env } = {}) {
   try {
