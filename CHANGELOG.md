@@ -6,6 +6,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.7.1 · Sin publicar
 
+### Codex responde en un proyecto que todavía no es un repositorio git
+
+- Si la carpeta del proyecto no tenía git, Codex fallaba en cada mensaje con `Codex exited with code 1.` aunque hubieras iniciado sesión. Ahora responde igual en cualquier carpeta, y sigue limitado al modo que eligió la sala.
+- Cuando un agente termina con error, el mensaje en la sala trae también la última línea que imprimió, así se ve la causa sin tener que abrir nada más.
+
 ## 0.7.0 · 2026-10-03
 
 Esta versión es sobre la memoria de la sala: ahora la ves, la recorres y te dice cómo está. NOSTROMO pasa a tres dimensiones y cada memoria es una estrella que cuenta su propia historia; MEMORIA se vuelve un tablero; y quien llega por primera vez encuentra un recorrido sobre la sala misma. También trae ideas listas para crear tus propios módulos, un botón para detener una sola respuesta y una protección nueva frente a páginas web ajenas. Gracias por usar MADRE y por cada reporte que la hace mejor.

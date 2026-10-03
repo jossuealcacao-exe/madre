@@ -179,9 +179,12 @@ export function runReadonlyProcess({
       // facts that actually diagnose the turn — the exit code, or a clean exit with nothing to
       // show — were discarded by the `||` and never reached the human. A warning is not a cause.
       const printed = stderr.trim();
-      const why = response.error ?? (code === 0
+      // The room keeps one line of a failure, so the last thing the CLI printed rides on it —
+      // labelled as output, the way a timeout carries it, and never as the cause.
+      const lastLine = printed.split('\n').map((line) => line.trim()).filter(Boolean).at(-1);
+      const why = response.error ?? ((code === 0
         ? `${label} exited cleanly without an answer.`
-        : `${label} ${endedBy(code, closedBy)}`);
+        : `${label} ${endedBy(code, closedBy)}`) + (lastLine ? t(' Last output: {output}', { output: lastLine.slice(0, 200) }) : ''));
       const error = new Error(printed ? `${why}\n\n${label} printed:\n${printed.slice(-600)}` : why);
       error.partialStderr = printed.slice(-2000);
       error.exitCode = code;

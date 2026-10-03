@@ -1654,7 +1654,9 @@ test('models: discovered locally, validated, and passed to every CLI as --model'
     await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 
-  assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q', model: 'gpt-5.6-luna' }).slice(7, 9), ['--model', 'gpt-5.6-luna']);
+  const withModel = buildCodexArgs({ projectRoot: '/p', prompt: 'q', model: 'gpt-5.6-luna' });
+  assert.equal(withModel[withModel.indexOf('--model') + 1], 'gpt-5.6-luna');
+  assert.ok(withModel.indexOf('--model') > withModel.indexOf('exec'), 'Codex --model is an exec flag');
   assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--model'), false);
   assert.deepEqual(buildClaudeArgs({ prompt: 'q', model: 'fable' }).slice(1, 3), ['--model', 'fable']);
   assert.deepEqual(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', model: 'gemini-3-pro-preview' }).slice(0, 2), ['--model', 'gemini-3-pro-preview']);
@@ -1777,7 +1779,8 @@ test('attachments: uploaded to the room folder, served back, handed to every CLI
 
     // each adapter passes the file its own way
     const file = { path: '/att/a.png', contentType: 'image/png', dir: '/att', name: 'a.png', size: 8 };
-    assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q', attachments: [file] }).slice(7, 9), ['--image', '/att/a.png']);
+    const withImage = buildCodexArgs({ projectRoot: '/p', prompt: 'q', attachments: [file] });
+    assert.equal(withImage[withImage.indexOf('--image') + 1], '/att/a.png');
     assert.deepEqual(buildClaudeArgs({ prompt: 'q', attachmentsDir: '/att' }).slice(1, 3), ['--add-dir', '/att']);
     assert.ok(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', attachmentsDir: '/att' }).includes('/p,/att'));
     assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: undefined, attachments: [file] }).slice(6, 8), ['--file', '/att/a.png']);
@@ -1815,6 +1818,8 @@ test('creation lease: a fresh directory under .pulse/out, artifacts detected by 
     assert.deepEqual(codex.slice(4, 6), ['-C', '/p/.pulse/out/x']);
     assert.ok(codex.includes('--skip-git-repo-check'));
     assert.deepEqual(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).slice(0, 2), ['--sandbox', 'read-only']);
+    // A project that is a bare folder, not a git repository: without the flag Codex exits 1 before the turn.
+    assert.ok(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--skip-git-repo-check'));
     const claude = buildClaudeArgs({ prompt: 'q', lease: scope });
     assert.equal(claude[claude.indexOf('--tools') + 1], 'Read,Glob,Grep,Write,Edit');
     // Double slash: Claude Code reads a single leading slash as project-relative and would deny every write.
