@@ -71,6 +71,7 @@ class FakeElement {
   querySelectorAll(selector) { const out = []; const walk = (node) => { for (const child of node.children) if (child instanceof FakeElement) { const cls = selector.replace(/^\./, '').split(/[\s.\[]/)[0]; if (child.classList.contains(cls)) out.push(child); walk(child); } }; walk(this); return out; }
   add(option) { this.options.length += 1; this.options[this.options.length - 1] = option; if (!this.value) this.value = option.value; }
   focus() {} scrollIntoView() {} requestSubmit() {} showModal() { this.open = true; } close() { this.open = false; }
+  setSelectionRange() {}
 }
 
 function buildDocument(html) {
@@ -536,4 +537,61 @@ test('a connector\'s card asks for its key and never shows it back', () => {
   const link = all.find((node) => node.tagName === 'A' && node.href?.includes('myaccount.google.com'));
   assert.ok(link, 'the link to make an app password is missing');
   assert.equal(link.rel, 'noreferrer');
+});
+
+// Typing the command slightly wrong is the normal case, not the edge one: the person who wrote
+// MADRE typed /modules for /module. An empty menu reads as "no such command" and the flow dies
+// there, so the match has to work from both ends — and once the command is settled, the menu
+// offers instructions to edit, because /module with nothing after it does nothing.
+test('/modules finds /module, and the menu offers something to say with it', () => {
+  const input = registry.get('message');
+  const menu = registry.get('slash-menu');
+  const fire = (text) => { input.value = text; for (const listener of input.listeners.input ?? []) listener({}); };
+  const rows = () => menu.children.filter((node) => node.classList.contains('item'));
+
+  fire('/mod');
+  assert.equal(menu.hidden, false, 'a half-typed command shows nothing');
+  assert.ok(rows().some((row) => row.textContent.includes('/module')), '/mod does not reach /module');
+
+  // The plural, which is what people actually type.
+  fire('/modules');
+  assert.equal(menu.hidden, false, '/modules closed the menu instead of finding /module');
+  const found = rows();
+  assert.ok(found.length >= 4, `only ${found.length} rows: the starters are missing`);
+  assert.equal(found[0].querySelector('.key')?.textContent, '/module');
+  // The rows under it are instructions, not commands, and they say what shape of module each is.
+  const starters = found.filter((row) => row.classList.contains('starter'));
+  assert.ok(starters.length >= 3, 'no starters under /module');
+  assert.match(starters.map((row) => row.textContent).join(' '), /conector/i, 'no starter shows that a connector is possible');
+
+  // And picking one leaves an instruction in the box, ready to edit — never sent by itself.
+  const pick = starters[0].listeners.mousedown?.[0];
+  assert.ok(pick, 'a starter cannot be clicked');
+  pick({ preventDefault() {} });
+  assert.match(input.value, /^\/module \S/, `picking a starter left "${input.value}"`);
+  assert.ok(input.value.length > '/module '.length + 10, 'the starter inserted nothing to edit');
+  assert.equal(menu.hidden, true, 'the menu stayed open after picking');
+});
+
+// The door into the SDK, inside the room. Somebody deciding whether to write a module reads this
+// card and nothing else, so it has to say what a module is, that they can simply ask for one, and
+// that reaching a service outside is possible — and the button has to land them in the composer.
+test('the develop card says what a module is and puts /module in the composer', () => {
+  const section = registry.get('modules-dev');
+  assert.ok(section, 'the develop card has no place in the page');
+  globalThis.__pulse.renderModulesDev();
+  const all = [];
+  const walk = (node) => { all.push(node); for (const child of node.children ?? []) walk(child); };
+  walk(section);
+  const text = all.map((node) => node.textContent ?? '').join(' ');
+  assert.match(text, /DESARROLLA PARA MADRE/, 'the card did not render');
+  assert.match(text, /\/module/, 'the card never mentions the one command that writes a module for you');
+  assert.match(text, /conector/i, 'the card never says a connector is possible');
+
+  const button = all.find((node) => node.tagName === 'BUTTON' && node.textContent === 'PÍDELE UNO');
+  assert.ok(button, 'there is no way from the card into the composer');
+  const input = registry.get('message');
+  input.value = 'algo que estaba escribiendo';
+  button.listeners.click[0]({});
+  assert.equal(input.value, '/module ', 'the button did not leave the composer ready to say what the module should do');
 });

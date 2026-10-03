@@ -7,8 +7,8 @@ en ningún otro lado.
 | | |
 |---|---|
 | Estado | **Fase 2 completa** · la puerta, la bodega, la escalera y el primer conector: CORREO manda. Sin decisiones abiertas |
-| Versión objetivo | `0.7.x` |
-| Origen | Lectura de código del 2026-10-02 sobre `main` @ `b021e35` (0.6.1 sin publicar) |
+| Versión objetivo | `0.7.0` |
+| Origen | Lectura de código del 2026-10-02 sobre `main` @ `b021e35` |
 | Medido | CORREO pesa 418 líneas de código (122 SMTP + 189 servidor + 107 módulo) y 278 de pruebas. Cero dependencias |
 | Antes de escribir uno | **§6**: qué alcanza un módulo y de quién es el muro. Contesta «¿se puede conectar con X?» sin escribir una línea |
 | Regla en vigor | Un conector **declara a dónde llega** o su tráfico sale en el registro como dirección no declarada |
@@ -311,6 +311,7 @@ No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **SDK cerrado y comunicado.** El contrato son 36 campos, todos documentados, con una prueba que compara la guía contra el código en las dos direcciones. Ejemplo de conector que funciona tal cual, y la pregunta «¿se puede con X?» contestada dentro de la guía. En la sala: la tarjeta de desarrollo dice qué es un módulo y deja un botón a la caja de texto; `/modules` encuentra `/module` y ofrece cuatro instrucciones para editar. En el README, la declaración en lenguaje llano — y corregida la promesa «no guarda tus credenciales», que dejó de ser exacta el día que existió la bodega. |
 | 2026-10-02 | **D-004 cerrada: leer no se hace todavía**, y el muro quedó mapeado en §6. Gmail en lectura es scope restringido con evaluación CASA anual y tope de ~100 usuarios sin verificar, así que no hay conector que funcione al instalarlo: habría que pedirle a cada usuario su propio proyecto en Google Cloud. De ahí salió lo que de verdad hacía falta: el límite de un módulo no es el SDK, es cómo cada servicio deja que un humano entregue su propia llave. Tres peldaños, con el catálogo de qué cae en cada uno. |
 | 2026-10-02 | **D-003 cerrada y fase 2 completa: CORREO manda.** SMTP+TLS sin dependencias (418 líneas, 278 de prueba). Con él, tres piezas nuevas de núcleo que cualquier conector futuro hereda: `ctx.vault` acotado al módulo por construcción, `secrets` declarados que MADRE dibuja sola, y `reaches` validado en `defineModule`. Encontrado y arreglado de paso: `reaches` nunca llegaba al objeto del módulo, así que CN-001 llevaba desde su commit sin declarar nada. 386/386 pruebas. |
 | 2026-10-02 | **D-001 cerrada: bodega propia** (`src/vault.mjs`) y **D-002 cerrada: mandar solo en `#4`**, impuesto por el núcleo. Con esto la fase 1 queda completa: declarar destino, guardar la llave y la escalera del envío. |

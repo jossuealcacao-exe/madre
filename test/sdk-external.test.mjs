@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { writeSecret } from '../src/vault.mjs';
-import { MODULES, loadExternalModules, moduleById, moduleCommands, describeModules, toolsForTurn, installModuleFile, removeExternalModule, isModuleFile } from '../src/modules/index.mjs';
+import { MODULE_FIELDS } from '../src/modules/sdk.mjs';
+import { MODULES, sdkPaths, loadExternalModules, moduleById, moduleCommands, describeModules, toolsForTurn, installModuleFile, removeExternalModule, isModuleFile } from '../src/modules/index.mjs';
 
 test('external modules: a plain object in ~/.pulse/modules or .madre/modules becomes a module with its switch, command and tools; a broken file is reported, not fatal', async () => {
   const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-state-'));
@@ -278,5 +279,31 @@ test('the connector example installs as documented, waits for #4, and is its own
   } finally {
     await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+// The SDK is a contract, and a contract whose documentation drifts is a contract nobody can keep.
+// MADRE tells a module author which fields it did not understand, so the list of fields IS the
+// public surface: every one of them has to be written down where somebody can read it before
+// installing, and nothing may be written down that the code does not answer to.
+test('the SDK contract and its guide say the same thing, in both directions', async () => {
+  const guide = await readFile(new URL('../docs/SDK.md', import.meta.url), 'utf8');
+  const undocumented = [...MODULE_FIELDS].filter((field) => !new RegExp(`\`${field}[\`(,]`).test(guide));
+  assert.deepEqual(undocumented, [], 'the SDK answers to fields the guide never mentions');
+
+  // And the other way: a field the guide promises but the code drops would be worse, because
+  // somebody would write it, install cleanly and watch it do nothing.
+  const promised = [...guide.matchAll(/^\| `([a-zA-Z]+)[`(,]/gm)].map((match) => match[1]);
+  assert.ok(promised.length > 20, 'the field table stopped being readable by this check');
+  for (const field of new Set(promised)) {
+    assert.ok(MODULE_FIELDS.has(field), `the guide documents \`${field}\`, which the SDK would report as a field it did not understand`);
+  }
+
+  // The number is quoted in the guide, so it has to be the real one.
+  assert.match(guide, new RegExp(`\\*\\*el contrato completo\\*\\*: ${MODULE_FIELDS.size} campos`), `the guide quotes a field count that is not ${MODULE_FIELDS.size}`);
+
+  // Both examples are what the prompt points an agent at; neither may quietly disappear.
+  for (const [key, file] of Object.entries(sdkPaths())) {
+    assert.ok(await readFile(file, 'utf8').catch(() => null), `sdkPaths().${key} points at a file that is not there`);
   }
 });

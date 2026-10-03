@@ -3799,7 +3799,7 @@ document.querySelector('#mother-button')?.addEventListener('mouseleave', endHove
 document.querySelector('#mother-button')?.addEventListener('click', endHover);
 
 // Debug surface for tests and for the curious: window.__pulse.trackHold(true, t)
-globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, runSlashCommand, syncModuleComposer, openCore: (...args) => openCore(...args), get core() { return core; } };
+globalThis.__pulse = { trackHold, armExpendable, disarmExpendable, beginHover, endHover, state, moduleCard, renderModulesDev, runSlashCommand, syncModuleComposer, openCore: (...args) => openCore(...args), get core() { return core; } };
 
 els.thread.addEventListener('wheel', (event) => trackHold(event.deltaY > 0), { passive: true });
 let touchY = null;
@@ -4144,15 +4144,31 @@ function renderMenu() {
   }
   const items = found.kind === '@'
     ? knownAgentIds().filter((id) => id.startsWith(found.query)).map((id) => ({ key: `@${id}`, insert: `@${id} `, what: state.agents.get(id)?.ready ? label(id) : t('{label} · not ready', { label: label(id) }), color: brandOf(id).color, off: !state.agents.get(id)?.ready }))
-    : allCommands().filter((item) => item.name.startsWith(found.query)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available }));
+    // A command matches while you are still typing it AND once you have typed past it: somebody
+    // reaching for /module types /modules about as often, and an empty menu reads as "no such
+    // thing" rather than "close, try again".
+    : allCommands().filter((item) => item.name.startsWith(found.query) || found.query.startsWith(item.name)).map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? item.summary : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available }));
+  if (found.kind === '/' && items.length === 1 && items[0].insert === '/module ') return showMenu([...items, ...moduleStarters()], { ...found, hint: t('MODULE · ↑↓ · TAB OR ENTER · pick one and edit it') });
   if (!items.length) return closeMenu();
   showMenu(items, found);
 }
+// /module on its own does nothing until you say what the module should DO, and a blank
+// instruction is the most common way the flow dies. These are four real ones, each a different
+// shape of module, written to be edited rather than sent: pick one and the text lands in the box.
+function moduleStarters() {
+  return [
+    [t('a command that tells me what changed in the repo this week'), t('a slash command · runs in the room, answers as a card')],
+    [t('connect me to my Notion so the agents can search my pages'), t('a connector · one key, pasted on its card')],
+    [t('ping me on Telegram when a turn fails'), t('a connector that sends · only offered in #4 AIRLOCK')],
+    [t('a card showing which of my services are up'), t('a card of your own · its own panel inside MODULES')],
+  ].map(([what, shape]) => ({ key: '/module', insert: `/module ${what}`, what: `${what} — ${shape}`, starter: true }));
+}
+
 function showMenu(items, found) {
   Object.assign(menu, { items, index: Math.min(menu.index, items.length - 1), kind: found.kind, start: found.start, end: found.end });
   els.slashMenu.replaceChildren();
   items.forEach((item, index) => {
-    const button = el('button', `item${item.off ? ' off' : ''}`);
+    const button = el('button', `item${item.off ? ' off' : ''}${item.starter ? ' starter' : ''}`);
     button.type = 'button';
     button.setAttribute('role', 'option');
     button.setAttribute('aria-selected', String(index === menu.index));
@@ -5913,13 +5929,31 @@ function renderModulesDev() {
   const glyph = el('div', 'dev-glyph', '</>');
   const body = el('div', 'dev-body');
   body.append(el('h4', null, t('Would you like to develop for MADRE?')));
-  body.append(el('p', null, t('Use our SDK to build your own modules: one file, no build, no dependencies. A switch, settings, slash commands, tools for the agents, routes. Write it by hand or with an AI, drop it in a folder, reload.')));
+  body.append(el('p', null, t('A module is one file: no build, no dependencies, nothing to register. A switch, settings, a slash command, a tool for the agents, a card of your own \u2014 or a connector to something you already use. Drop it in a folder, press RELOAD, and it is there with its own card.')));
+  // The easiest door is the one nobody finds on their own: ask for it here, in the room.
+  const ask = el('p', 'dev-ask');
+  ask.append(el('span', null, t('Or ask for one. In the composer: ')), el('code', null, '/module \u2026'), el('span', null, t(' \u2014 the agent reads the SDK and writes the file; you review it and decide whether it is installed.')));
+  body.append(ask);
+  body.append(el('p', 'note', t('Connecting to a service from outside is almost always possible: the limit is not MADRE, it is whether that service lets you get your own key in minutes and revoke it on its own. Your module declares the key it needs and MADRE draws the field; declares where it reaches and the outbound log answers for it; declares which of its tools SEND, and the room withholds those below #4 AIRLOCK.')));
   const where = el('div', 'dev-where');
   const folders = modules.folders ?? {};
   where.append(el('code', null, folders.user ? `${folders.user}/` : '~/.pulse/modules/'), el('span', 'note', t(' every project · ')), el('code', null, folders.project ? `${folders.project}/` : '<project>/.madre/modules/'), el('span', 'note', t(' this project')));
   body.append(where);
   const row = el('div', 'dev-row');
   const read = el('a', 'mother-close', t('READ THE SDK ↗')); read.href = modules.sdk ?? 'https://github.com/jossuealcacao-exe/madre/blob/main/docs/SDK.md'; read.target = '_blank'; read.rel = 'noopener noreferrer';
+  // Straight into the composer, with the panel out of the way: the gap between reading about
+  // the SDK and trying it should be one click, not a file path to go find.
+  const build = el('button', 'mother-close', t('ASK FOR ONE'));
+  build.type = 'button';
+  build.title = t('Puts /module in the composer, in the room');
+  build.addEventListener('click', () => {
+    document.querySelector('#modules-button, [aria-controls="modules"]')?.click();
+    els.input.value = '/module ';
+    autosize();
+    syncModuleComposer();
+    els.input.focus();
+    renderMenu();
+  });
   const reload = el('button', 'mother-close', t('RELOAD MODULES')); reload.type = 'button'; reload.title = t('Load your module files again without restarting the room');
   reload.addEventListener('click', async () => {
     reload.disabled = true;
@@ -5930,7 +5964,7 @@ function renderModulesDev() {
       renderModules();
     } catch (error) { toast(t('The reload failed: {error}', { error: error.message })); } finally { reload.disabled = false; }
   });
-  row.append(read, reload);
+  row.append(build, read, reload);
   body.append(row);
   const yours = modules.items.filter((item) => item.external);
   if (yours.length) {

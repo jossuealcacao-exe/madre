@@ -4,7 +4,37 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.6.1 · Sin publicar
+## 0.7.0 · Sin publicar
+
+### MADRE manda correo, y abre la puerta a conectores de verdad
+
+- **CORREO**, el primer conector: un agente manda un correo desde **tu** cuenta, por SMTP sobre TLS, con **tu** contraseña de aplicación. Cero dependencias — 122 líneas de cliente SMTP, 189 de servidor MCP, 107 de módulo. Gmail con contraseña de aplicación, puerto 465, cifrado desde el primer byte.
+- **Mandar vive en `#4` AIRLOCK y en ningún peldaño por debajo.** No es que «no funcione»: por debajo de `#4` al modelo ni siquiera se le cuenta que la herramienta existe. Lo impone el núcleo, no la buena voluntad del módulo.
+- **Una lista de permitidos**, opcional: direcciones o `@dominios` a los que un agente puede escribir. Se comprueba en el servidor y no en el prompt, porque un prompt es una sugerencia. Vacía significa cualquiera, a propósito.
+- Lo que se rechaza **antes** de abrir el socket: una dirección con salto de línea —así es como un mensaje adquiere destinatarios que nadie escribió—, un asunto vacío, un cuerpo vacío.
+- Lo que **no** hace, dicho aquí para que no se descubra usándolo: adjuntos, HTML, CC/BCC, colas, reintentos. Texto plano o nada.
+
+### Una bodega para las llaves de los conectores
+
+- Hasta ahora MADRE no guardaba ninguna credencial: la llave de un agente se escribe donde esa CLI la busca y MADRE no conserva copia. **Un conector no tiene CLI a la que dársela**, así que si MADRE no la guarda, nadie lo hace.
+- Ahora la guarda, y con términos escritos: un archivo por módulo en `~/.pulse/credentials/`, permisos de solo tu usuario dentro de un directorio de solo tu usuario, **aceptada únicamente desde esta computadora**. Nunca en la config, ni en el ledger, ni en un log, ni en lo que lee un agente. El ledger anota que se guardó una y con qué nombre y cuántos caracteres — jamás el valor.
+- En la ficha del módulo hay un piso nuevo, **LLAVES**: un campo por secreto, lo que hay guardado (nombre y largo) y `OLVIDARLA`. El campo nunca se rellena de vuelta.
+- Un módulo solo puede pedir **sus** secretos: su id va cerrado dentro del SDK, así que pedir el de otro no es algo que se pueda escribir.
+
+### El SDK, cerrado y con qué copiar
+
+- **El contrato completo son 36 campos**, todos documentados. Una prueba compara la guía contra el código en las dos direcciones: si alguna vez se separan, es un fallo. Antes había once campos que el SDK aceptaba y la guía no mencionaba.
+- **Un ejemplo de conector que funciona tal cual** (`docs/sdk/connector-module.mjs`): manda un Telegram por tu propio bot. Enseña la forma que no se adivina — **un solo archivo que es la ficha cuando MADRE lo importa y el servidor MCP cuando MADRE lo ejecuta**.
+- Tres campos declarados que cualquier conector hereda: `secrets` (MADRE dibuja el campo), `reaches` (el registro de salidas responde por ti) y `sends` (la sala retira esas herramientas por debajo de `#4`). Nada de eso se programa: se declara.
+- **«¿Se puede conectar con X?»** se contesta ahora dentro de la guía, en tres peldaños. El límite no es MADRE: es si ese servicio te deja conseguir tu propia llave en minutos y revocarla sola. Casi todo lo útil cae del lado fácil — GitHub, Linear, Notion, Jira, Slack, Telegram, Stripe, Shopify, Odoo, cualquier base de datos. Donde hay muro es donde el proveedor exige revisar tu app: Gmail en lectura, Meta, banca.
+- Y un arreglo que venía roto sin que se notara: `reaches` nunca llegaba al objeto del módulo, así que la declaración de destinos de un conector **no se registraba en ninguna parte**.
+
+### Pedir un módulo es más fácil que encontrarlo
+
+- `/modules`, `/modulo` o cualquier cosa que empiece por el nombre del comando **ahora encuentra `/module`**. Antes el menú se cerraba y no mostraba nada, que se lee como «no existe» en vez de «casi».
+- Y una vez ahí, el menú ofrece **cuatro instrucciones para editar**, cada una de una forma distinta de módulo: un comando, un conector, un conector que manda, una ficha propia. `/module` solo no hace nada hasta que dices qué debe hacer, y esa era la forma más común de que todo se quedara en nada.
+- La tarjeta **DESARROLLA PARA MADRE** dice ahora qué es un módulo, que puedes simplemente pedirlo, y que conectar con algo de fuera casi siempre se puede. Trae un botón **PÍDELE UNO** que te deja en la caja de texto con `/module` escrito.
+
 
 ### Se puede apadrinar el proyecto
 

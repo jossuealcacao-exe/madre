@@ -54,6 +54,11 @@ export default ({ defineModule }) => defineModule({
 
 ## Lo que un módulo puede declarar
 
+Esta tabla es **el contrato completo**: 36 campos, ni uno más. Cualquier otro que escribas MADRE
+te lo dice al instalar («no entendí estos campos») en vez de ignorarlo en silencio. Una prueba de
+la suite compara esta tabla contra el código, así que si alguna vez se separan, es un fallo.
+
+
 | Campo | Qué es |
 |---|---|
 | `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Su ficha en MODULES. `summary` es una frase: qué hace. `creates` y `requires` son líneas cortas, una idea cada una |
@@ -76,6 +81,15 @@ export default ({ defineModule }) => defineModule({
 | `controls` | Los ajustes de tu módulo, declarados en vez de dibujados: `[{ key, label, type: 'select' \| 'switch' \| 'text', options, note, invert }]`. MADRE los pinta en la ficha y los guarda en tu bloque de `config.json` |
 | `onSettings(ctx, settings)` | Te avisa cuando la humana cambió uno de tus `controls`, por si algo vivo tiene que enterarse |
 | `conditions` | Entradas para el catálogo de MU/TH/UR, con remedio por plataforma |
+| `kind` | `'builtin'` (por defecto) cambia cómo se comporta MADRE y vive en `config.json`; `'installer'` escribe en el proyecto con un comando que la humana confirma antes de que corra |
+| `configKey` | Tu bloque en `config.json`. Por defecto es tu `id` en camelCase; decláralo solo si quieres otro |
+| `card` | Qué tarjeta dibuja MADRE. Un módulo tuyo deja el valor por defecto: las tarjetas con nombre son las que MADRE trae pintadas para los suyos |
+| `models` | Los modelos entre los que elige tu módulo, si envuelve algo que los tiene. Salen en la ficha |
+| `package` | El paquete de npm que instala lo que tu módulo maneja, si lo hay |
+| `confirm` | Un texto. Si está, encender el interruptor pide confirmación y no se enciende hasta que la humana la da |
+| `toggledEvent`, `toggledBody` | Lo que se añade al evento `extension.toggled` y al aviso que ve la sala cuando tu módulo se enciende o se apaga |
+| `preflight(ctx)`, `detect(ctx)`, `installCommand(ctx)` | **Herencia**, de cuando un módulo solo podía ser un instalador. Siguen funcionando; para algo nuevo, devuelve `preflight` desde `status(ctx)` como arriba |
+| `describe(ctx)` | Lo arma MADRE con todo lo anterior. **No lo declares**: está en la lista porque el objeto lo lleva, no porque tengas que escribirlo |
 
 ### ¿Se puede conectar con *X*?
 

@@ -75,13 +75,39 @@ Subir a `#3` o `#4` es una ceremonia deliberada: MADRE te pide el nombre de la c
 
 <br>
 
+## Hazla tuya
+
+MADRE trae nueve módulos. El décimo lo escribes tú — o se lo pides a un agente.
+
+**Un módulo es un archivo.** Sin build, sin dependencias, sin registrarse en ningún lado. Lo copias a una carpeta, pulsas RELOAD y aparece con su interruptor, sus ajustes y su ficha. Con uno puedes añadir un comando `/loquesea` que la sala entiende, darle a los agentes una herramienta que antes no tenían, cambiar cómo se comporta la sala, o conectarla con algo que ya usas.
+
+**O no lo escribes tú.** En la caja de texto:
+
+```
+/module un comando que me diga qué cambió en el repo esta semana
+```
+
+El agente lee el SDK, escribe el archivo, y MADRE te enseña una tarjeta para revisarlo antes de instalarlo. Nunca se instala solo, y ningún agente puede escribir en la carpeta de módulos.
+
+**Conectarla con un servicio de fuera** es lo que más se pide, y la respuesta corta es *casi siempre sí*: el límite no es MADRE, es cómo ese servicio deja que entregues tu propia llave. Vale la pena cuando la consigues en menos de cinco minutos sin ser desarrollador y la puedes revocar sola — GitHub, Linear, Notion, Jira, Slack, Telegram, Stripe, Shopify, Odoo, cualquier base de datos. Donde hay muro es donde el proveedor exige revisar tu app antes de dejarte pasar: Gmail en lectura, Meta, banca.
+
+Tu módulo declara qué llave necesita y MADRE dibuja el campo; declara a dónde llega y el registro de salidas responde por él; declara qué herramientas suyas **mandan** algo, y la sala se las retira a los agentes salvo en el peldaño `#4`. Nada de eso lo programas: lo declaras.
+
+**[Escribir un módulo →](docs/SDK.md)** · con dos ejemplos completos que funcionan tal cual: [el mínimo](docs/sdk/hello-module.mjs) y [un conector](docs/sdk/connector-module.mjs).
+
+<br>
+
+---
+
+<br>
+
 ## Lo que MADRE no es
 
 Esto importa más que cualquier función.
 
 **No hay nube.** MADRE no tiene servidor, ni cuenta, ni backend. Corre en `127.0.0.1` y se muere cuando cierras la terminal.
 
-**No guarda tus credenciales.** Cuando das una llave, MADRE la escribe en el archivo donde ese CLI la busca, cerrada a tu usuario, y no conserva copia. Nunca en su config, ni en su registro, ni en sus logs.
+**Tus llaves, donde hacen falta y en ningún otro lado.** Cuando das la llave de un agente, MADRE la escribe en el archivo donde ese CLI la busca, cerrada a tu usuario, y no conserva copia. Un conector no tiene CLI al que dársela, así que esa —y solo esa— la guarda MADRE, en su propia bodega de tu máquina, con permisos de solo tu usuario, aceptada únicamente desde esta computadora. Nunca en su config, ni en su registro, ni en sus logs, ni en lo que lee un agente: la ficha solo muestra que hay una guardada y cuántos caracteres tiene.
 
 **Nada sale por su cuenta.** Lo que un agente lee viaja a *su* proveedor, con tu cuenta y tus límites — como si lo hubieras corrido en tu terminal, porque eso es exactamente lo que MADRE hace. Los dos únicos envíos propios están bajo tu interruptor: una consulta diaria a npm por si hay versión nueva, y los reportes de fallos, apagados por defecto.
 

@@ -941,8 +941,6 @@ export const ES = {
     'ESTO ESCRIBE DENTRO DEL PROYECTO. MADRE VA A CORRER, EN LA CARPETA DEL PROYECTO:',
   'DEVELOP FOR MADRE': 'DESARROLLA PARA MADRE',
   'Would you like to develop for MADRE?': '¿Te gustaría desarrollar para MADRE?',
-  'Use our SDK to build your own modules: one file, no build, no dependencies. A switch, settings, slash commands, tools for the agents, routes. Write it by hand or with an AI, drop it in a folder, reload.':
-    'Usa nuestro SDK para construir tus propios módulos: un archivo, sin build, sin dependencias. Un interruptor, ajustes, comandos, herramientas para los agentes, rutas. Escríbelo a mano o con una IA, déjalo caer en una carpeta y recarga.',
   ' every project · ': ' todos los proyectos · ',
   ' this project': ' este proyecto',
   'READ THE SDK ↗': 'LEER EL SDK ↗',
@@ -2464,6 +2462,28 @@ export const ES = {
   '{name} could not save {label}.': '{name} no pudo guardar {label}.',
 
   // CORREO y, en general, la llave de cualquier conector: lo que MADRE guarda en su bodega.
+
+  // Los arranques de /module: una instrucción para editar, no un comando para mandar.
+  'MODULE · ↑↓ · TAB OR ENTER · pick one and edit it': 'MÓDULO · ↑↓ · TAB O ENTER · elige uno y edítalo',
+  'a command that tells me what changed in the repo this week': 'un comando que me diga qué cambió en el repo esta semana',
+  'a slash command · runs in the room, answers as a card': 'un comando · corre en la sala y responde como tarjeta',
+  'connect me to my Notion so the agents can search my pages': 'conéctame con mi Notion para que los agentes busquen en mis páginas',
+  'a connector · one key, pasted on its card': 'un conector · una llave, pegada en su ficha',
+  'ping me on Telegram when a turn fails': 'avísame por Telegram cuando falle un turno',
+  'a connector that sends · only offered in #4 AIRLOCK': 'un conector que manda · solo se ofrece en #4 AIRLOCK',
+  'a card showing which of my services are up': 'una tarjeta que muestre cuáles de mis servicios están arriba',
+  'a card of your own · its own panel inside MODULES': 'una ficha propia · su propio panel dentro de MÓDULOS',
+
+  // La tarjeta de desarrollo en MÓDULOS.
+  'A module is one file: no build, no dependencies, nothing to register. A switch, settings, a slash command, a tool for the agents, a card of your own — or a connector to something you already use. Drop it in a folder, press RELOAD, and it is there with its own card.':
+    'Un módulo es un archivo: sin build, sin dependencias, sin registrarse en ningún lado. Un interruptor, ajustes, un comando, una herramienta para los agentes, una ficha propia — o un conector con algo que ya usas. Lo dejas en una carpeta, pulsas RECARGAR y ahí está con su tarjeta.',
+  'Or ask for one. In the composer: ': 'O pídelo. En la caja de texto: ',
+  ' — the agent reads the SDK and writes the file; you review it and decide whether it is installed.':
+    ' — el agente lee el SDK y escribe el archivo; tú lo revisas y decides si se instala.',
+  'Connecting to a service from outside is almost always possible: the limit is not MADRE, it is whether that service lets you get your own key in minutes and revoke it on its own. Your module declares the key it needs and MADRE draws the field; declares where it reaches and the outbound log answers for it; declares which of its tools SEND, and the room withholds those below #4 AIRLOCK.':
+    'Conectar con un servicio de fuera casi siempre se puede: el límite no es MADRE, es si ese servicio te deja conseguir tu propia llave en minutos y revocarla sola. Tu módulo declara la llave que necesita y MADRE dibuja el campo; declara a dónde llega y el registro de salidas responde por él; declara cuáles de sus herramientas MANDAN, y la sala se las retira por debajo de #4 AIRLOCK.',
+  'ASK FOR ONE': 'PÍDELE UNO',
+  'Puts /module in the composer, in the room': 'Pone /module en la caja de texto, en la sala',
   'KEYS': 'LLAVES',
   'paste it here': 'pégala aquí',
   'kept · {n} characters': 'guardada · {n} caracteres',

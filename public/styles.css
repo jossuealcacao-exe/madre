@@ -2177,3 +2177,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .module-card .card-block > .note { margin: 0; font-size: 10px; line-height: 1.7; letter-spacing: .08em; color: var(--ph-dim); }
 .module-card .card-block > a.note { justify-self: start; color: var(--brew); text-decoration: none; letter-spacing: .18em; font-size: 8.5px; }
 .module-card .card-block > a.note:hover { text-decoration: underline; }
+
+/* A starter under /module: an instruction to edit, not a command to run. Dimmer key, so the
+   command above it still reads as the command. */
+.slash-menu .item.starter .key { color: var(--text-3); font-size: 11px; }
+.slash-menu .item.starter .what { color: var(--text-2); }
+.dev-card .dev-ask { margin: 0; font-size: 12px; line-height: 1.7; color: var(--ph-dim); }
+.dev-card .dev-ask code { font-family: var(--mono); font-size: 11.5px; color: var(--brew); }
