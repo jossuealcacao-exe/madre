@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -211,7 +211,12 @@ test('vault: a connector secret is held 0600, never shown, and never accepted ov
 // example that rots is worse than none — the agent reads it and copies the rot — so it goes
 // through the real door here, and it answers over real stdio.
 test('the connector example installs as documented, waits for #4, and is its own MCP server', async () => {
-  const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-state-'));
+  // The state root is reached through a symlink of the test's own making. macOS gives one for
+  // free (/var is /private/var) and Linux does not, and the check below needs one to mean anything.
+  const realState = await mkdtemp(join(tmpdir(), 'pulse-sdk-state-'));
+  const linkHome = await mkdtemp(join(tmpdir(), 'pulse-sdk-link-'));
+  const stateRoot = join(linkHome, 'state');
+  await symlink(realState, stateRoot, 'dir');
   const projectRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-project-'));
   try {
     await mkdir(join(projectRoot, 'out'), { recursive: true });
@@ -254,9 +259,9 @@ test('the connector example installs as documented, waits for #4, and is its own
     // — the one a person types while trying their own connector — because that is where the
     // obvious self-detection breaks. `process.argv[1] === SELF` holds when MADRE spawns it (SELF
     // is already resolved by the loader) and is false the moment a path crosses a symlink, as
-    // the temp directory does here. Written that way, this answers nothing and exits a success.
+    // the state root does here. Written that way, this answers nothing and exits a success.
     const byHand = join(stateRoot, 'modules', 'telegram.mjs');
-    assert.notEqual(byHand, server.args[0], 'the temp path does not cross a symlink, so this guards nothing here');
+    assert.notEqual(byHand, server.args[0], 'the state path does not cross a symlink, so this guards nothing here');
     const asked = [
       { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
       { jsonrpc: '2.0', id: 2, method: 'tools/list' },
@@ -277,7 +282,8 @@ test('the connector example installs as documented, waits for #4, and is its own
 
     await removeExternalModule({ id: 'telegram', stateRoot, projectRoot });
   } finally {
-    await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(linkHome, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(realState, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
