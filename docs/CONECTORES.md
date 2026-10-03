@@ -6,10 +6,11 @@ en ningún otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 2 completa** · la puerta, la bodega, la escalera y el primer conector: CORREO manda |
+| Estado | **Fase 2 completa** · la puerta, la bodega, la escalera y el primer conector: CORREO manda. Sin decisiones abiertas |
 | Versión objetivo | `0.7.x` |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `b021e35` (0.6.1 sin publicar) |
 | Medido | CORREO pesa 418 líneas de código (122 SMTP + 189 servidor + 107 módulo) y 278 de pruebas. Cero dependencias |
+| Antes de escribir uno | **§6**: qué alcanza un módulo y de quién es el muro. Contesta «¿se puede conectar con X?» sin escribir una línea |
 | Regla en vigor | Un conector **declara a dónde llega** o su tráfico sale en el registro como dirección no declarada |
 
 ---
@@ -158,12 +159,18 @@ línea qué sale y a dónde.
 mandar primero.** Hecho en `src/smtp.mjs`, `src/mcp/smtp-server.mjs` y `src/modules/correo.mjs`.
 La mitad de *leer* sigue abierta y es ahora **D-004**.
 
-**D-004 · ¿Cómo lee CORREO el correo?** Abierta. IMAP propio (protocolo con estado, literales,
-MIME: el pantano) contra la API de Gmail con OAuth 2.0 (HTTPS y JSON, pero hay que implementar
-OAuth entero y dar de alta un proyecto en Google Cloud). D-001 ya está resuelta, así que el
-argumento de «primero la bodega» ya no inclina la balanza. Lo que sí pesa ahora: **todo lo que un
-lector de correo meta en el prompt viaja al modelo del agente** (CN-004), y eso no lo arregla
-ninguno de los dos caminos — lo arregla la ficha del conector diciéndolo, y `#0` GHOST.
+**D-004 · ¿Cómo lee CORREO el correo?** — **CERRADA 2026-10-02: no se hace, y la razón importa
+más que la decisión.** `gmail.readonly` es un scope **restringido**: evaluación de seguridad CASA
+anual (~540–1.000 USD por la vía autoservicio, ciclo de 6 a 12 semanas) y, sin verificar, la app
+queda en ~100 usuarios de prueba detrás de una pantalla que dice que Google no la ha revisado.
+Para algo que se instala desde npm y corre en la máquina de cada quien, eso significa que cada
+usuario tendría que dar de alta su propio proyecto en Google Cloud: la alta entera, repetida por
+persona. El otro camino —IMAP con la contraseña que ya está en la bodega— no tiene ese muro pero
+paga MIME, y sobre todo abre una superficie que no existía al mandar: **el cuerpo de un correo es
+texto que no escribió el humano y entraría al prompt de un agente.** Mandar ya resuelve el caso
+que se pidió. Leer espera a que haya una razón, no una posibilidad.
+
+Lo que sí dejó: el mapa de §6, que es lo que de verdad hacía falta saber.
 
 ---
 
@@ -202,17 +209,109 @@ significa lo mismo en los tres.
 
 ---
 
-## 6 · Quién está enterado
+## 6 · Qué alcanza un módulo, y de quién es el muro
+
+Chocar con Gmail sirvió para algo: enseñó dónde está el límite de verdad. **No es de MADRE.**
+
+### El SDK no es el límite
+
+CORREO entero son 418 líneas y no hizo falta inventar nada: el andamiaje ya estaba. Un módulo
+puede levantar un proceso, hablar cualquier protocolo sobre TCP o TLS, guardar su propia llave,
+declarar a dónde llega, servir sus propias rutas, traer comandos `/` y dibujar su piso de ficha.
+**Lo que un proceso de Node puede hacer en esta computadora, lo puede hacer un módulo.**
+
+### El límite es cómo cada servicio deja que un humano entregue su propia llave
+
+Esa es la única pregunta que decide si un conector es posible, y se contesta en tres peldaños.
+
+#### Peldaño A · Pegas una llave y funciona
+
+El servicio le da al humano una credencial estática en minutos —token personal, API key,
+contraseña de aplicación—, revocable sola, sin registrar ninguna app y sin que nadie revise
+nada. **Un conector aquí funciona el día que se escribe, para cualquiera que instale MADRE.**
+Es el peldaño de CORREO y es donde vive casi todo lo útil:
+
+| | con qué llave |
+|---|---|
+| GitHub, GitLab | token personal (GitHub lo tiene de alcance fino, por repositorio) |
+| Linear, Todoist, Airtable, Trello | API key o token personal de la cuenta |
+| Notion | *integración interna*: token estático, un solo espacio de trabajo, sin revisión de seguridad; las páginas se comparten con ella una por una |
+| Jira, Confluence | token de API de Atlassian, con el correo de la cuenta |
+| Slack, Discord, Telegram | una app o bot propio en el espacio propio (Telegram lo da BotFather en un minuto) |
+| Cloudflare, Stripe, Shopify | token de API acotado; Stripe permite uno de solo lectura, Shopify una *custom app* en la tienda propia |
+| Odoo | API key del usuario, en la API JSON-2. **XML-RPC se descontinúa en 19.1**: una integración nueva no debería nacer ahí |
+| Correo | contraseña de aplicación, SMTP e IMAP — ya hecho para mandar |
+| Cualquier base de datos | Postgres, MySQL, Redis, SQLite: la cadena de conexión *es* la credencial |
+| Cualquier API con `Authorization: Bearer` | si el humano puede copiar el token, el conector es posible |
+
+#### Peldaño B · El usuario registra su propia app
+
+OAuth 2.0 donde los permisos **no** son restringidos y el servicio no exige revisión para uso
+personal. Es posible, pero el alta deja de ser «pega esta llave» y pasa a ser «crea una
+aplicación, copia dos valores, autoriza en el navegador». Y hay un costo del lado de acá:
+**MADRE nunca ha escrito un flujo OAuth.** `auth-probe.mjs` y `quota-sources.mjs` *leen* tokens
+que otras CLIs ya consiguieron; levantar un redirect local, canjear un código y refrescarlo son
+piezas que habría que escribir desde cero y mantener.
+
+Aquí caen: Google Calendar, Drive y Sheets (permisos *sensibles*, con excepción de verificación
+para uso personal); Microsoft Graph (registro en Azure AD); Mercado Libre (app en su DevCenter,
+con validación de los datos del titular en México, Argentina, Brasil y Chile); Zoom; Spotify.
+
+#### Peldaño C · Muro
+
+Donde el servicio exige revisión, evaluación de seguridad o editor verificado para que su acceso
+funcione fuera de pruebas — o donde los términos no admiten un cliente local de terceros.
+
+Gmail en lectura (`gmail.readonly`, restringido, CASA anual, ~100 usuarios de prueba sin
+verificar). Meta: WhatsApp Business, Instagram, Facebook, todas detrás de revisión de app. Banca,
+que va por agregadores. Cualquier cosa que pida «editor verificado».
+
+**Qué significa el muro en la práctica, dicho sin dramatismo:** no es «imposible». Es «imposible
+como algo que funcione al instalarlo». Cada usuario tendría que ser su propio desarrollador, y un
+producto que pide eso no tiene conector: tiene tarea.
+
+### Qué no puede hacer un módulo, aunque el servicio se deje
+
+Estas vallas son de MADRE y no las mueve ningún proveedor:
+
+- Rutas solo bajo `/api/x/<id>/`. Jamás encima de una ruta de MADRE, jamás con el id de otro.
+- No escribe eventos `message.*` ni `agent.*`: el relato de lo que pasó en la sala no se edita
+  desde fuera.
+- No lee el secreto de otro módulo. El id va cerrado dentro del SDK: no es que esté prohibido, es
+  que no se puede escribir.
+- No se amplía su propio permiso. Lo que manda se retira por debajo de `#4` desde el núcleo.
+- Si se cae, se cae solo. Un fallo suyo no detiene un turno ni la sala.
+- Corre con los permisos de quien abrió MADRE. Eso no es una valla: es la razón de que instalar
+  el módulo de alguien más sea una decisión y no un clic.
+
+### La regla para decidir si vale la pena
+
+Un conector vale cuando las tres son ciertas:
+
+1. **El humano consigue la credencial en menos de cinco minutos y sin ser desarrollador.**
+2. **La credencial se revoca sola**, sin tocar la contraseña de la cuenta ni nada más.
+3. **Lo que trae o lo que saca cabe en una línea** en la ficha — porque si no cabe, tampoco cabe
+   en la cabeza de quien lo enciende.
+
+Y una advertencia que vale para todo el peldaño A igual que para el C: **lo que un conector trae,
+viaja** (CN-004). Un lector de lo que sea mete texto ajeno en el prompt, y ese prompt va al modelo
+del agente. Es consecuencia del diseño, no defecto, y se dice en la ficha del conector — no en la
+letra chica.
+
+---
+
+## 7 · Quién está enterado
 
 `AGENTS.md`, `CLAUDE.md` y `GEMINI.md` apuntarán a este documento cuando empiece la fase 2.
 No lo copian.
 
 ---
 
-## 7 · Bitácora
+## 8 · Bitácora
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **D-004 cerrada: leer no se hace todavía**, y el muro quedó mapeado en §6. Gmail en lectura es scope restringido con evaluación CASA anual y tope de ~100 usuarios sin verificar, así que no hay conector que funcione al instalarlo: habría que pedirle a cada usuario su propio proyecto en Google Cloud. De ahí salió lo que de verdad hacía falta: el límite de un módulo no es el SDK, es cómo cada servicio deja que un humano entregue su propia llave. Tres peldaños, con el catálogo de qué cae en cada uno. |
 | 2026-10-02 | **D-003 cerrada y fase 2 completa: CORREO manda.** SMTP+TLS sin dependencias (418 líneas, 278 de prueba). Con él, tres piezas nuevas de núcleo que cualquier conector futuro hereda: `ctx.vault` acotado al módulo por construcción, `secrets` declarados que MADRE dibuja sola, y `reaches` validado en `defineModule`. Encontrado y arreglado de paso: `reaches` nunca llegaba al objeto del módulo, así que CN-001 llevaba desde su commit sin declarar nada. 386/386 pruebas. |
 | 2026-10-02 | **D-001 cerrada: bodega propia** (`src/vault.mjs`) y **D-002 cerrada: mandar solo en `#4`**, impuesto por el núcleo. Con esto la fase 1 queda completa: declarar destino, guardar la llave y la escalera del envío. |
 | 2026-10-02 | Documento abierto. **CN-001 hecho**: un módulo declara sus destinos (`reaches`), se guardan aparte de los del núcleo y marcados, y se reconstruyen en cada carga. D-001 (dónde vive la llave), D-002 (ceremonia para mandar) y D-003 (el primer conector) abiertas. Medido: los dos conectores que ya existen pesan 202 y 221 líneas. |

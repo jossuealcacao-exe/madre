@@ -142,7 +142,13 @@ Si *todas* las herramientas de un servidor mandan, el servidor entero no viaja p
 viene corto. Y lo que decides comprobar, compruébalo **en tu servidor y no en el `brief`**: un
 prompt es una sugerencia.
 
-El diseño entero de los conectores, con lo que falta por decidir, está en
+**¿Se puede conectar con *X*?** La respuesta no depende de MADRE sino de cómo ese servicio deja
+que un humano entregue su propia llave, y está mapeada en tres peldaños —con catálogo— en
+[§6 de `docs/CONECTORES.md`](CONECTORES.md#6--qué-alcanza-un-módulo-y-de-quién-es-el-muro).
+Léela antes de escribir nada: ahorra descubrir a la mitad que el servicio exige una revisión
+anual de seguridad para dejarte pasar.
+
+El diseño entero de los conectores está en
 [`docs/CONECTORES.md`](CONECTORES.md). El primero que existe —CORREO, que manda correo por SMTP
 sin una sola dependencia— es `src/modules/correo.mjs` y se lee en diez minutos.
 
