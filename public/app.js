@@ -133,8 +133,11 @@ const state = {
   ashInstalled: false,
   ash: false,              // Ash asked for on this message: compact replies, nothing rewritten
   chosenModel: {},         // id -> model name picked in the composer
+  chosenEffort: {},        // id -> effort level picked in the composer (null: the CLI's own)
+  efforts: {},             // id -> { levels, default } from /api/models; no levels, no chip
 };
 try { state.chosenModel = JSON.parse(localStorage.getItem('pulse.chosenModel') ?? '{}') || {}; } catch { state.chosenModel = {}; }
+try { state.chosenEffort = JSON.parse(localStorage.getItem('pulse.chosenEffort') ?? '{}') || {}; } catch { state.chosenEffort = {}; }
 
 // What the human has already dealt with. The ledger is history and is never rewritten, so a
 // dismissal is a reading preference and lives where reading preferences live: this browser.
@@ -1355,6 +1358,8 @@ function renderPicker() {
       modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
       text.append(modelChip);
     }
+    const effortChip = renderEffortChip(current.id);
+    if (effortChip) text.append(effortChip);
     els.picker.append(text);
   }
   if (typeof renderCreateScopes === 'function') renderCreateScopes();
@@ -1373,6 +1378,7 @@ async function ensureModels(id) {
   try {
     const data = await fetch(`/api/models${id === 'opencode' ? '?opencode=1' : ''}`).then((response) => response.json());
     state.models = { ...state.models, ...(data.models ?? {}) };
+    takeEfforts(data.models);
   } catch { /* offline: fall back to whatever we know */ }
   return state.models[id] ?? { models: [], default: null, note: '' };
 }
@@ -1419,9 +1425,143 @@ function placeModelMenu(anchor) {
   modelMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   modelMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
 }
-function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; }
+function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; closeEffortMenu(); }
 document.addEventListener('click', (event) => { if (!modelMenu.hidden && !modelMenu.contains(event.target) && !event.target.closest('.picker')) closeModelMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModelMenu(); });
+
+/* ---------- effort menu: how hard the model thinks before it answers ---------- */
+
+// Beside the model, because it is the same kind of decision: what this request is worth. Only
+// the CLIs that take it per run get the chip (Claude Code's --effort, Codex's reasoning effort);
+// the levels come from the server so the chip never offers a flag the CLI would refuse.
+//
+// "Default" sends nothing, and the CLI does what its own config says. The chip shows that level
+// dimmed when MADRE can read it (Codex's config.toml), so the human sees what they will get
+// without having chosen it.
+const EFFORT_WORDS = {
+  minimal: { label: 'Minimal', hint: 'Answers almost at once. For lookups and one-line edits.' },
+  low: { label: 'Low', hint: 'Quick and light. For clear, contained requests.' },
+  medium: { label: 'Medium', hint: 'The everyday balance of speed and depth.' },
+  high: { label: 'High', hint: 'Thinks it through. For design calls and tricky bugs.' },
+  xhigh: { label: 'Extra high', hint: 'Longer reasoning for hard, multi-step problems.' },
+  max: { label: 'Max', hint: 'Everything it has. The slowest and the most expensive.' },
+};
+const effortMenu = el('div', 'model-menu effort-menu');
+effortMenu.hidden = true;
+document.body.append(effortMenu);
+let effortMenuFor = null;
+let effortsAsked = false;
+
+function takeEfforts(models) {
+  for (const [id, info] of Object.entries(models ?? {})) {
+    state.efforts[id] = { levels: Array.isArray(info.efforts) ? info.efforts : [], default: info.effortDefault ?? null };
+  }
+}
+
+// Asked once per page: the chip has to know whether to exist before anyone opens a menu. The
+// plain listing is enough — it never runs `opencode models`, which is the slow one.
+function ensureEfforts() {
+  if (effortsAsked) return;
+  effortsAsked = true;
+  fetch('/api/models').then((response) => response.json()).then((data) => { takeEfforts(data.models); renderPicker(); }).catch(() => {});
+}
+
+function effortMeter(levels, level, { ghost = false } = {}) {
+  const meter = el('span', `effort-meter${ghost ? ' ghost' : ''}`);
+  meter.setAttribute('aria-hidden', 'true');
+  const at = levels.indexOf(level);
+  levels.forEach((_, index) => meter.append(el('i', index <= at ? 'on' : null)));
+  meter.style.setProperty('--bars', String(levels.length));
+  return meter;
+}
+
+function effortLabel(level) { return t(EFFORT_WORDS[level]?.label ?? level); }
+
+function renderEffortChip(id) {
+  const info = state.efforts[id];
+  if (!info) { ensureEfforts(); return null; }
+  if (!info.levels.length) return null;
+  const chosen = info.levels.includes(state.chosenEffort[id]) ? state.chosenEffort[id] : null;
+  const shown = chosen ?? info.default;
+  const chip = el('button', `effort-chip${chosen ? ' set' : ''}${shown === info.levels.at(-1) ? ' peak' : ''}`);
+  chip.type = 'button';
+  chip.append(effortMeter(info.levels, shown, { ghost: !chosen }), el('span', 'word', chosen ? effortLabel(chosen) : t('effort')), el('span', 'caret', '▾'));
+  chip.title = chosen
+    ? `${t('Effort for this agent · {level}', { level: effortLabel(chosen) })}\n${t(EFFORT_WORDS[chosen]?.hint ?? '')}`
+    : info.default
+      ? t('Effort for this agent · the CLI default ({level})', { level: effortLabel(info.default) })
+      : t("Effort for this agent · the CLI's own default");
+  chip.setAttribute('aria-haspopup', 'menu');
+  chip.addEventListener('click', (event) => { event.stopPropagation(); toggleEffortMenu(id, chip); });
+  return chip;
+}
+
+function rememberEffort(id, level) {
+  if (level) state.chosenEffort[id] = level; else delete state.chosenEffort[id];
+  try { localStorage.setItem('pulse.chosenEffort', JSON.stringify(state.chosenEffort)); } catch { /* private mode */ }
+}
+
+function toggleEffortMenu(id, anchor) {
+  if (!effortMenu.hidden && effortMenuFor === id) { closeEffortMenu(); return; }
+  modelMenu.hidden = true; modelMenuFor = null;
+  closeModeMenu();
+  const info = state.efforts[id];
+  if (!info?.levels.length) return;
+  effortMenuFor = id;
+  paint(effortMenu, id);
+  effortMenu.replaceChildren();
+  const title = el('div', 'model-menu-title');
+  title.append(el('b', null, `@${id}`), t(' · effort for this request'));
+  effortMenu.append(title);
+  const chosen = info.levels.includes(state.chosenEffort[id]) ? state.chosenEffort[id] : null;
+  const ladder = el('div', 'effort-ladder');
+  ladder.setAttribute('role', 'menu');
+  const options = [null, ...info.levels];
+  for (const level of options) {
+    const current = level === chosen;
+    const option = el('button', `effort-option${current ? ' current' : ''}${level === null ? ' auto' : ''}${level === info.levels.at(-1) ? ' peak' : ''}`);
+    option.type = 'button';
+    option.setAttribute('role', 'menuitemradio');
+    option.setAttribute('aria-checked', String(current));
+    const body = el('span', 'body');
+    if (level === null) {
+      body.append(
+        el('span', 'name', t('Default')),
+        el('span', 'hint', info.default ? t('Sends nothing: the CLI uses its own setting, {level} right now.', { level: effortLabel(info.default) }) : t('Sends nothing: the CLI uses its own setting.')),
+      );
+      option.append(effortMeter(info.levels, info.default, { ghost: true }), body);
+    } else {
+      body.append(el('span', 'name', effortLabel(level)), el('span', 'hint', t(EFFORT_WORDS[level]?.hint ?? '')));
+      option.append(effortMeter(info.levels, level), body);
+    }
+    const tag = current ? t('NOW') : level !== null && level === info.default ? t('CLI') : '';
+    if (tag) {
+      const label = el('span', 'tag', tag);
+      if (current) label.append(el('span', 'dot'));
+      option.append(label);
+    }
+    option.addEventListener('click', () => { rememberEffort(id, level); closeEffortMenu(); renderPicker(); els.input.focus(); });
+    ladder.append(option);
+  }
+  effortMenu.append(ladder);
+  effortMenu.append(el('div', 'model-note', t('More effort is a slower, longer answer, and on a metered plan a more expensive one. It applies to every message to this agent until you change it.')));
+  effortMenu.hidden = false;
+  const rect = anchor.getBoundingClientRect();
+  const width = effortMenu.offsetWidth || 340;
+  const height = effortMenu.offsetHeight || 300;
+  effortMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
+  effortMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+  ladder.querySelector('.effort-option.current, .effort-option')?.focus({ preventScroll: true });
+}
+function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; }
+document.addEventListener('click', (event) => { if (!effortMenu.hidden && !effortMenu.contains(event.target) && !event.target.closest('.picker')) closeEffortMenu(); });
+effortMenu.addEventListener('keydown', (event) => {
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+  event.preventDefault();
+  const items = [...effortMenu.querySelectorAll('.effort-option')];
+  const at = items.indexOf(document.activeElement);
+  items[(at + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+});
 
 /* ---------- mode menu: how far this message may go ---------- */
 
@@ -1439,6 +1579,7 @@ function defaultModeFor(id) { return state.capabilities[id]?.scopes?.defaultMode
 function toggleModeMenu(id, anchor) {
   if (!modeMenu.hidden && modeMenuFor === id) { closeModeMenu(); return; }
   closeModelMenu();
+  closeEffortMenu();
   modeMenuFor = id;
   paint(modeMenu, id);
   modeMenu.replaceChildren();
@@ -1520,6 +1661,7 @@ const override = {
   cancel: document.querySelector('#override-cancel'),
   frame: document.querySelector('#override .override-frame'),
   agent: null,
+  then: null,     // called once armed, by whoever opened it for something more than arming
   raise: false,   // the agent is capped below the mode: arming also raises MAX MODE in CONNECTIONS
   mode: 3,        // #3 CONTROL or #4 AIRLOCK
   stage: 'designation',   // AIRLOCK asks twice: the designation, then the word AIRLOCK
@@ -1531,9 +1673,12 @@ const OVERRIDE_BRIEF = {
     + (raise ? t(' THIS ALSO RAISES @{id} MAX MODE TO #{n} IN CONNECTIONS.', { id, n: 4 }) : '') + t(' TYPE THE PROJECT DESIGNATION, THEN THE WORD AIRLOCK.'),
 };
 function projectDesignation() { return (state.projectRoot ?? '').split('/').filter(Boolean).pop() ?? ''; }
-function openOverride(id, { raise = false, mode = 3 } = {}) {
+function openOverride(id, { raise = false, mode = 3, then = null } = {}) {
   if (!override.dialog) return;
   override.agent = id;
+  // What to do once it is armed. The composer's own road arms and waits for the human to send;
+  // the way up on an agent's card sends its permission right away.
+  override.then = then;
   override.raise = raise;
   override.mode = mode;
   override.stage = 'designation';
@@ -1547,7 +1692,7 @@ function openOverride(id, { raise = false, mode = 3 } = {}) {
   override.dialog.showModal();
   override.input.focus();
 }
-override.cancel?.addEventListener('click', () => override.dialog.close());
+override.cancel?.addEventListener('click', () => { override.then = null; override.dialog.close(); });
 override.form?.addEventListener('submit', (event) => {
   event.preventDefault();
   const typed = override.input.value.trim();
@@ -1578,6 +1723,8 @@ override.form?.addEventListener('submit', (event) => {
   const agent = override.agent;
   const raise = override.raise;
   const mode = override.mode;
+  const then = override.then;
+  override.then = null;
   setTimeout(async () => {
     override.dialog.close();
     if (raise) {
@@ -1592,6 +1739,7 @@ override.form?.addEventListener('submit', (event) => {
     state.modeArmedFor = agent;
     els.target.value = agent;
     setMode(mode, { wink: true });
+    if (then) { await then(); return; }
     toast(mode === 4
       ? t('MU/TH/UR › AIRLOCK open for @{agent} for this message.{raised} Files are checkpointed; what leaves the machine is not undone.', { agent, raised: raise ? t(' MAX MODE is now #4 in CONNECTIONS.') : '' })
       : t('MU/TH/UR › CONTROL armed for @{agent} for this message.{raised} A checkpoint is taken before it runs; every change is listed and UNDO is one click.', { agent, raised: raise ? t(' MAX MODE is now #3 in CONNECTIONS.') : '' }));
@@ -1864,8 +2012,9 @@ function row(kind, agentId, { compact = false } = {}) {
 }
 
 function renderUserMessage(event) {
-  const { messageId, target, text, ash, model, attachments = [], create, mode } = event.payload;
+  const { messageId, target, text, ash, model, effort, attachments = [], create, mode } = event.payload;
   state.userMessages.set(messageId, { text, target, model, mode: event.payload.mode ?? 1 });
+  settleModeAsksFor(target, event.payload.mode ?? 1);
   const reviewed = state.expendable;
   const node = row('user');
   if (event.ghost || mode === 0) node.classList.add('ghost');
@@ -1882,7 +2031,7 @@ function renderUserMessage(event) {
   if (attachments.length) bubble.append(fileTiles(attachments));
   col.append(bubble);
   const stamp = paint(el('div', 'stamp'), target);
-  stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}`));
+  stamp.append(el('span', 'to', `→ @${target}${model ? ` · ${model}` : ''}${effort ? ` · ${effortLabel(effort).toLowerCase()}` : ''}`));
   stamp.append(el('span', null, formatTime(event.timestamp)));
   if (reviewed) stamp.append(el('span', null, t('acknowledged, human')));
   col.append(stamp);
@@ -1893,7 +2042,7 @@ function renderUserMessage(event) {
 }
 
 function renderAssistantMessage(event) {
-  const { messageId, parentMessageId, sender, target, text, ash, status, step, totalSteps, model, mode } = event.payload;
+  const { messageId, parentMessageId, sender, target, text, ash, status, step, totalSteps, model, effort, mode } = event.payload;
   const delegated = status === 'delegated';
   const compact = state.lastSender === sender && !delegated && !ash?.active && !event.ghost;
   const node = row('assistant', sender, { compact });
@@ -1914,6 +2063,7 @@ function renderAssistantMessage(event) {
     }
     if (status === 'handoff') who.append(el('span', 'badge', t('handoff note')));
     if (model) who.append(el('span', 'badge model', model));
+    if (effort) who.append(el('span', 'badge model effort', t('effort {level}', { level: effortLabel(effort).toLowerCase() })));
     if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
     if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
     if (ash?.active) who.append(el('span', 'badge ash', t('ASH')));
@@ -1932,7 +2082,7 @@ function renderAssistantMessage(event) {
   col.append(bubble);
   const used = attachMemoryUsed(event.payload);
   if (used) col.append(used);
-  const needs = attachModeAsk(event.payload);
+  const needs = attachModeAsk(event.payload, { sequence: event.sequence });
   if (needs) col.append(needs);
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
@@ -2331,8 +2481,26 @@ function renderModuleProposed(event) {
   const everyRoom = el('button', 'act-link', t('INSTALL FOR EVERY ROOM')); everyRoom.type = 'button'; everyRoom.addEventListener('click', () => install('user', everyRoom));
   const thisProject = el('button', 'act-link', t('INSTALL FOR THIS PROJECT')); thisProject.type = 'button'; thisProject.addEventListener('click', () => install('project', thisProject));
   node.append(everyRoom, ' · ', thisProject, t(' · a module runs inside MADRE with your permissions'));
+  // An agent asked to fix a module writes a new file beside the old one; the room keeps running
+  // the copy that was installed until this one is. The card says so, or a fixed module looks
+  // installed while the broken one keeps answering.
+  void installedModules().then((list) => {
+    const id = String(name ?? path ?? '').split('/').pop().replace(/\.module\.m?js$/, '');
+    const current = list.find((item) => item.id === id && item.external);
+    if (!current) return;
+    everyRoom.textContent = t('REPLACE FOR EVERY ROOM');
+    thisProject.textContent = t('REPLACE FOR THIS PROJECT');
+    node.append(el('span', 'replaces', t('{name} {version} is already installed for {where}; it keeps running until this file replaces it.', { name: current.name, version: current.version ? `v${current.version}` : '', where: current.origin === 'project' ? t('this project') : t('every room') }).replace(/\s+/g, ' ')));
+  });
   if (responseMessageId) node.dataset.for = responseMessageId;
   return node;
+}
+// The modules this room has, asked once per page load and shared by every card that wants to know.
+let installedModulesAsked = null;
+function installedModules() {
+  if (modules.items?.length) return Promise.resolve(modules.items);
+  installedModulesAsked ??= fetch('/api/extensions').then((response) => response.json()).then((data) => data.extensions ?? []).catch(() => []);
+  return installedModulesAsked;
 }
 function renderModuleInstalledOrRemoved(event) {
   const { name, origin, by } = event.payload;
@@ -2448,28 +2616,98 @@ function renderDistilled(event) {
 // the wrong one twice while the turn went nowhere. The ladder belongs next to the agent asking
 // to climb it.
 //
-// It offers; it never grants. #2 arms the composer, and #3 and #4 open the same ceremony as
-// always, where the project designation is typed by hand. Nothing here shortens that.
-function attachModeAsk(payload) {
+// The way up grants and goes on. Pressing it used to arm the composer and stop there: the human
+// then had to write "permission granted" by hand, in a separate message, to the agent that had just
+// asked — a second step nobody could guess from a button that said ARM. Now the press is the
+// answer: it opens the same ceremony as always for #3 and #4, where the project designation is
+// typed by hand (nothing here shortens that), and then sends the agent its permission, quoting
+// the reply that asked, at the mode it asked for. WRITE IT MYSELF keeps the old road for a human
+// who wants to add instructions; NOT NOW folds the card.
+const modeAsks = [];   // { agent, wanted, card } still waiting for an answer in this page
+function attachModeAsk(payload, { sequence = null } = {}) {
   if (!payload || payload.role !== 'assistant' || payload.sender === 'you') return null;
   const ran = state.userMessages.get(payload.messageId)?.mode ?? payload.mode ?? 1;
   const wanted = modeAsked(payload.text, { ran });
   if (!wanted || wanted <= state.mode) return null;
   const agent = payload.sender;
   if (!state.agents.get(agent)?.ready) return null;
-  const row = el('div', 'mode-ask');
-  row.append(el('span', 'mode-what', t('@{agent} says this needs #{n} {label}', { agent, n: wanted, label: MODES[wanted]?.label ?? '' })));
-  const go = el('button', 'mode-go', wanted >= 3 ? t('ARM #{n}', { n: wanted }) : t('SET #{n}', { n: wanted }));
+  const label = MODES[wanted]?.label ?? '';
+  const card = el('div', 'mode-ask');
+  card.style.setProperty('--agent', agentColor(agent));
+  const what = el('div', 'mode-what');
+  what.append(el('b', 'who', `@${agent}`), t(' asks for #{n} {label} to go on', { n: wanted, label }));
+  const why = el('div', 'mode-why', wanted >= 3
+    ? t('You will type the project designation, as always. Then @{agent} gets your permission and continues.', { agent })
+    : t('@{agent} gets your permission for one message and continues.', { agent }));
+  const actions = el('div', 'mode-actions');
+  const go = el('button', 'mode-go', t('GRANT #{n} AND CONTINUE', { n: wanted }));
   go.type = 'button';
-  go.title = wanted >= 3
-    ? t('Opens the override: you type the project designation, as always.')
-    : t('Arms the composer for your next message. Nothing is sent.');
-  go.addEventListener('click', () => {
-    if (wanted >= 3) openOverride(agent, { mode: wanted });
-    else { setMode(wanted, { wink: true }); els.input.focus(); }
-  });
-  row.append(go);
-  return row;
+  const myself = el('button', 'mode-alt', t('WRITE IT MYSELF'));
+  myself.type = 'button';
+  myself.title = t('Arms #{n} in the box below, so you can add instructions before sending.', { n: wanted });
+  const later = el('button', 'mode-alt', t('NOT NOW'));
+  later.type = 'button';
+  actions.append(go, myself, later);
+  card.append(what, why, actions);
+  const quoted = { sender: agent, sequence, text: (() => { const one = String(payload.text ?? '').replace(/\s+/g, ' ').trim(); return one.length > REPLY_CLIP ? `${one.slice(0, REPLY_CLIP - 1)}…` : one; })() };
+  const ask = { agent, wanted, card };
+  modeAsks.push(ask);
+  const arm = (then) => {
+    if (wanted >= 3) openOverride(agent, { mode: wanted, raise: wanted > ceilingFor(agent) && Boolean(state.capabilities[agent]?.scopes?.write?.capable), then });
+    else { els.target.value = agent; renderPicker(); setMode(wanted, { wink: true }); then?.(); }
+  };
+  go.addEventListener('click', () => arm(async () => {
+    go.disabled = true;
+    const sent = await sendPermission({ agent, mode: wanted, quoted });
+    if (!sent) { go.disabled = false; return; }
+    settleModeAsk(ask, t('#{n} {label} granted · @{agent} continues', { n: wanted, label, agent }));
+  }));
+  myself.addEventListener('click', () => arm(() => {
+    state.replyTo = quoted;
+    renderReplyQuote();
+    els.input.focus();
+  }));
+  later.addEventListener('click', () => settleModeAsk(ask, null));
+  return card;
+}
+// A card that has been answered says how, once, and offers nothing more; NOT NOW folds it away.
+function settleModeAsk(ask, said) {
+  const at = modeAsks.indexOf(ask);
+  if (at >= 0) modeAsks.splice(at, 1);
+  if (!said) { ask.card.remove(); return; }
+  ask.card.classList.add('settled');
+  ask.card.replaceChildren(el('div', 'mode-what', said));
+}
+// The human answered the ask their own way — a message to that agent at that mode or above —
+// and the card stops asking. This is also what quiets old cards when the page is rebuilt.
+function settleModeAsksFor(target, mode) {
+  for (const ask of [...modeAsks]) {
+    if (ask.agent === target && mode >= ask.wanted) settleModeAsk(ask, t('#{n} {label} granted', { n: ask.wanted, label: MODES[ask.wanted]?.label ?? '' }));
+  }
+}
+// The permission itself: a message from the human, quoting the reply that asked, at the mode it
+// asked for. It goes through the room like any other message, so the ceiling and the one-holder
+// rule still answer for it; a refusal comes back as a toast and the card stays.
+async function sendPermission({ agent, mode, quoted }) {
+  const text = `${quoteHead(quoted)}${t('Permission granted: #{n} {label}. Go ahead with what you proposed.', { n: mode, label: MODES[mode]?.label ?? '' })}`;
+  try {
+    const response = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, target: agent, model: state.chosenModel[agent] ?? null, effort: state.chosenEffort[agent] ?? null, attachments: [], create: mode === 2, mode, ash: state.ashInstalled && state.ash }),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      toast(`MU/TH/UR › ${result.error ?? t('The room rejected the message.')}`);
+      setMode(defaultModeFor(els.target.value));
+      return false;
+    }
+    resetModeAfterSend();
+    return true;
+  } catch (error) {
+    toast(t('Could not reach MADRE: {error}', { error: error.message }));
+    return false;
+  }
 }
 
 function attachMemoryUsed(payload) {
@@ -2709,7 +2947,10 @@ function renderControlReverted(event) {
   const { agent, checkpointId, restored = [], removed = [], message } = event.payload;
   const node = el('div', 'system control reverted');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('b', null, t('CONTROL')), t("project restored to the checkpoint before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
+  const { command } = event.payload;
+  node.append(el('b', null, command ? '/run' : t('CONTROL')), command
+    ? t('project restored to the checkpoint before the command · {restored} restored · {removed} removed', { restored: restored.length, removed: removed.length })
+    : t("project restored to the checkpoint before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
   node.title = message;
   const card = document.getElementById(`control-${checkpointId}`);
   card?.querySelector('.undo')?.replaceWith(el('span', 'outcome', t('RESTORED')));
@@ -2731,7 +2972,7 @@ function renderLeaseMissing(event) {
   resend.addEventListener('click', async () => {
     resend.disabled = true;
     try {
-      const response = await fetch('/api/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, target: agent, model: state.chosenModel[agent] ?? null, attachments: [], create: true }) });
+      const response = await fetch('/api/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, target: agent, model: state.chosenModel[agent] ?? null, effort: state.chosenEffort[agent] ?? null, attachments: [], create: true }) });
       if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error ?? `HTTP ${response.status}`); }
       resend.textContent = t('RESENT WITH CREATE');
     } catch (error) { toast(t('It could not be resent: {error}', { error: error.message })); resend.disabled = false; }
@@ -2945,27 +3186,100 @@ async function renderSettled() {
   box.hidden = false;
 }
 
+// A decision handed back. Each option is shown whole — it is the sentence the human is about to
+// send, and the half that got cut was the half that made it an option — and the agent's own pick
+// leads, marked, so the human can take it with one press or see at once what they are overruling.
 function renderChoice(event) {
-  const { question, options = [], agent } = event.payload;
+  const { question, options = [], agent, recommended = null } = event.payload;
   if (!options.length) return null;
   const node = el('div', 'choice');
   node.style.setProperty('--agent', agentColor(agent));
-  node.append(el('p', 'choice-q', question));
-  const row = el('div', 'choice-row');
-  for (const option of options) {
-    const button = el('button', 'choice-option', option);
+  const head = el('div', 'choice-head');
+  head.append(el('span', 'choice-kicker', t('@{agent} asks you to choose', { agent })));
+  node.append(head, el('p', 'choice-q', question));
+  const list = el('div', 'choice-list');
+  list.setAttribute('role', 'group');
+  list.setAttribute('aria-label', question);
+  const order = options.map((option, index) => ({ option, index }));
+  const pick = Number.isInteger(recommended) && order[recommended] ? recommended : null;
+  if (pick !== null) order.unshift(...order.splice(pick, 1));
+  order.forEach(({ option, index }, position) => {
+    const lead = index === pick;
+    const button = el('button', `choice-option${lead ? ' recommended' : ''}`);
     button.type = 'button';
-    button.title = t('Writes it into the composer · nothing is sent until you press send');
+    button.append(el('span', 'choice-key', String(position + 1)), el('span', 'choice-text', option));
+    if (lead) button.append(el('span', 'choice-tag', t('RECOMMENDED')));
     button.addEventListener('click', () => {
+      for (const other of list.querySelectorAll('.choice-option.picked')) other.classList.remove('picked');
+      button.classList.add('picked');
       els.input.value = option;
       els.input.dispatchEvent(new Event('input', { bubbles: true }));
       els.input.focus();
     });
-    row.append(button);
-  }
-  node.append(row);
+    list.append(button);
+  });
+  node.append(list, el('p', 'choice-foot', t('Writes it into the composer · nothing is sent until you press send')));
   state.lastSender = null;
   return node;
+}
+
+// An agent asked the human to run commands it cannot run in its mode. One button per line; the
+// press sends only which request and which line, and the server runs what it recorded the agent
+// asked for. A line the parser refused is shown with its reason and no button.
+function renderRunRequest(event) {
+  const { reason, commands = [], agent, responseMessageId } = event.payload;
+  if (!commands.length) return null;
+  const node = el('div', 'choice run-request');
+  node.dataset.run = responseMessageId;
+  node.style.setProperty('--agent', agentColor(agent));
+  const head = el('div', 'choice-head');
+  head.append(el('span', 'choice-kicker', t('@{agent} asks you to run', { agent })));
+  node.append(head, el('p', 'choice-q', reason));
+  const list = el('div', 'choice-list');
+  list.setAttribute('role', 'group');
+  list.setAttribute('aria-label', reason);
+  commands.forEach((command, index) => {
+    const button = el('button', `choice-option run-line${command.argv ? '' : ' refused'}`);
+    button.type = 'button';
+    button.dataset.index = String(index);
+    button.append(el('span', 'choice-key', '$'), el('code', 'choice-text', command.line));
+    if (!command.argv) {
+      button.disabled = true;
+      button.append(el('span', 'choice-tag', t('WILL NOT RUN')));
+      button.title = t('This line does not run: it {why}.', { why: t(command.why, command.whyArgs ?? {}) });
+      list.append(button, el('p', 'run-why', t('Does not run: it {why}.', { why: t(command.why, command.whyArgs ?? {}) })));
+      return;
+    }
+    button.append(el('span', 'choice-tag', t('RUN')));
+    button.title = t('Runs {command} from the project root, with no shell. A checkpoint is taken first.', { command: command.line });
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/runs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ responseMessageId, index }) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      } catch (error) {
+        toast(`MU/TH/UR › ${error.message}`);
+        markRun({ responseMessageId, index }, null);
+      }
+    });
+    list.append(button);
+  });
+  node.append(list, el('p', 'choice-foot', t('Each line runs only when you press it · from the project root, no shell · the output comes back to the room')));
+  state.lastSender = null;
+  return node;
+}
+
+// The state of one line of a run request, from the events that follow it: running, ran, failed.
+// A line that ran can be pressed again; tests are run more than once.
+function markRun({ responseMessageId, index }, status) {
+  const button = document.querySelector(`.run-request[data-run="${CSS.escape(String(responseMessageId))}"] .run-line[data-index="${Number(index)}"]`);
+  if (!button || button.classList.contains('refused')) return;
+  button.classList.remove('running', 'ran', 'failed');
+  if (status) button.classList.add(status);
+  button.disabled = status === 'running';
+  const tag = button.querySelector('.choice-tag');
+  if (tag) tag.textContent = { running: t('RUNNING'), ran: t('RUN AGAIN'), failed: t('RUN AGAIN') }[status] ?? t('RUN');
 }
 
 function renderAlert(event) {
@@ -3275,6 +3589,8 @@ void renderOpenQuestions(); return;
       node = renderPlanEvent(event);
       break;
     case 'choice.offered': node = renderChoice(event); break;
+    case 'run.requested': node = renderRunRequest(event); break;
+    case 'run.started': markRun(event.payload, 'running'); return;
     case 'room.alert': node = renderAlert(event); break;
     case 'ash.validated': if (event.payload.ok) return; node = renderAshValidation(event); break;
     case 'room.stopped': node = renderHalted(event); break;
@@ -3417,7 +3733,10 @@ translateMarkup(document.body ?? document);
 
 /* ---------- project files panel ---------- */
 
-const tree = { open: false, loaded: new Map() };
+// `openDirs` survives a reload of the tree: after a copy, a move or a new folder the panel is
+// rebuilt, and a tree that folds itself shut hides exactly the thing the human just made.
+// `reveal` is that thing, lit once when its row is drawn again.
+const tree = { open: false, loaded: new Map(), openDirs: new Set(), reveal: null };
 const formatSize = (bytes) => bytes == null ? '' : bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const CODE_EXT = /\.(m?[jt]sx?|py|rb|go|rs|java|kt|swift|c|h|cpp|hpp|cs|php|sh|zsh|css|scss|html?|json|ya?ml|toml|sql|md)$/i;
 
@@ -3460,46 +3779,71 @@ function finderShowClip() {
   finder.clip.replaceChildren();
   // No t() around a template that is only two slots and a dot: there is nothing in it to say in
   // another language, and the catalogue's own guard rejects an entry whose Spanish is the English.
-  finder.clip.append(el('span', 'what', `${finder.held.operation === 'copy' ? t('COPY') : t('MOVE')} · ${finder.held.name}`));
+  const what = el('span', 'what', `${finder.held.operation === 'copy' ? t('COPY') : t('MOVE')} · ${finder.held.name}`);
+  what.title = finder.held.path;
   const cancel = el('button', null, t('CANCEL'));
   cancel.type = 'button';
   cancel.addEventListener('click', () => { finder.held = null; finderShowClip(); });
-  finder.clip.append(cancel);
+  // Holding something is half an operation; the other half is a right click, and nothing on the
+  // screen said so.
+  finder.clip.append(what, cancel, el('span', 'how', t('Right-click a folder, or an empty spot for the project root, to paste it there.')));
   finder.clip.hidden = false;
 }
 
 // Asking for a word without leaving the panel. A name, or the designation: both are typed in the
 // same strip under the search box, where the hand already is. A browser prompt would take the
 // whole window for one word and throw away where the human was looking.
-function finderAsk({ label, value = '', hint = '' }) {
+//
+// What is being asked is a line of its own, above the box, and it says WHERE: a placeholder is
+// gone the moment the first letter is typed, and in a narrow panel it was cut off before that.
+function finderAsk({ label, value = '', hint = '', where = null }) {
   return new Promise((resolve) => {
     if (!finder.clip) { resolve(null); return; }
     const form = el('form', 'tree-ask');
+    const head = el('div', 'ask-label', label);
+    if (where != null) head.append(el('span', 'where', t('in {path}', { path: where === '.' ? t('the project root') : `${where}/` })));
     const input = el('input');
     input.type = 'text';
     input.value = value;
     input.spellcheck = false;
     input.autocomplete = 'off';
-    input.placeholder = label;
     input.setAttribute('aria-label', label);
     const ok = el('button', 'go', t('OK'));
     ok.type = 'submit';
     const no = el('button', null, t('CANCEL'));
     no.type = 'button';
-    form.append(input, ok, no);
+    const actions = el('div', 'ask-actions');
+    actions.append(no, ok);
+    form.append(head);
+    if (hint) form.append(el('div', 'ask-hint', hint));
+    form.append(input, actions);
     const done = (answer) => { finderShowClip(); resolve(answer); };
     form.addEventListener('submit', (event) => { event.preventDefault(); done(input.value.trim() || null); });
     no.addEventListener('click', () => done(null));
-    input.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.stopPropagation(); done(null); } });
-    finder.clip.replaceChildren();
-    if (hint) finder.clip.append(el('span', 'what', hint));
-    finder.clip.append(form);
+    input.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); done(null); } });
+    finder.clip.replaceChildren(form);
     finder.clip.hidden = false;
     input.focus();
     // The extension stays out of the selection: renaming is almost always about the name.
     const dot = value.lastIndexOf('.');
     input.setSelectionRange(0, dot > 0 ? dot : value.length);
   });
+}
+
+const finderDirOf = (path) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.');
+const finderJoin = (dir, name) => (dir === '.' ? name : `${dir}/${name}`);
+
+// The panel again, as it was: the folders that were open stay open, the one the result landed in
+// opens too, and the result itself is lit. A search in progress is asked again instead, so the
+// list the human was working from does not turn into the whole tree under their hand.
+function finderRefresh(landed) {
+  if (landed) {
+    for (let dir = finderDirOf(landed); dir !== '.'; dir = finderDirOf(dir)) tree.openDirs.add(dir);
+    tree.reveal = landed;
+  }
+  if (finder.q?.value.trim()) { finder.q.dispatchEvent(new Event('input')); return; }
+  els.treeBody.replaceChildren();
+  void setTree(true);
 }
 
 // One door for everything that writes: it asks for the designation only when it already knows one
@@ -3514,34 +3858,36 @@ async function finderRun(body, { say }) {
   const response = await fetch('/api/tree/op', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) { toast(`MU/TH/UR › ${result.error ?? t('That could not be done.')}`); return false; }
-  toast(say);
-  els.treeBody.replaceChildren();
-  void setTree(true);
+  // The server may have named a copy itself ("notes copy.md"); what it says is where it went.
+  const landed = result.to ?? body.to;
+  toast(typeof say === 'function' ? say(landed) : say);
+  finderRefresh(landed);
   return true;
 }
-
-const finderDirOf = (path) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.');
-const finderJoin = (dir, name) => (dir === '.' ? name : `${dir}/${name}`);
 
 async function finderPaste(intoDir) {
   if (!finder.held) return;
   const held = finder.held;
   const to = finderJoin(intoDir, held.name);
-  const did = await finderRun({ operation: held.operation, from: held.path, to }, { say: `${held.path} → ${to}` });
+  // Moving a thing to where it already is: nothing to do, and nothing to complain about.
+  if (held.operation === 'move' && to === held.path) { finder.held = null; finderShowClip(); return; }
+  // A copy that lands on a name already taken gets a name of its own, the way a file manager
+  // does it, instead of a refusal.
+  const did = await finderRun({ operation: held.operation, from: held.path, to, unique: held.operation === 'copy' }, { say: (landed) => `${held.path} → ${landed}` });
   if (!did) return;
   finder.held = null;
   finderShowClip();
 }
 
 async function finderRename(path, entry) {
-  const name = await finderAsk({ label: t('NEW NAME'), value: entry.name });
+  const name = await finderAsk({ label: t('NEW NAME'), value: entry.name, where: finderDirOf(path) });
   if (!name || name === entry.name) return;
   const to = finderJoin(finderDirOf(path), name);
   await finderRun({ operation: 'move', from: path, to }, { say: `${path} → ${to}` });
 }
 
 async function finderCreate(dir, kind) {
-  const name = await finderAsk({ label: kind === 'new-folder' ? t('NEW FOLDER') : t('NEW FILE') });
+  const name = await finderAsk({ label: kind === 'new-folder' ? t('NEW FOLDER') : t('NEW FILE'), where: dir });
   if (!name) return;
   const to = finderJoin(dir, name);
   await finderRun({ operation: kind, to }, { say: to });
@@ -3549,6 +3895,7 @@ async function finderCreate(dir, kind) {
 
 function finderMenu(event, path, entry) {
   event.preventDefault();
+  event.stopPropagation();
   const menu = finder.menu;
   if (!menu) return;
   menu.replaceChildren();
@@ -3560,14 +3907,17 @@ function finderMenu(event, path, entry) {
   };
   // Where the new thing lands: inside the folder that was clicked, or beside the file.
   const here = entry.kind === 'dir' ? path : finderDirOf(path);
-  add(t('Copy'), () => { finder.held = { path, name: entry.name, operation: 'copy' }; finderShowClip(); });
-  add(t('Move'), () => { finder.held = { path, name: entry.name, operation: 'move' }; finderShowClip(); });
-  add(t('Rename'), () => void finderRename(path, entry));
-  if (finder.held && entry.kind === 'dir') add(t('Paste here'), () => void finderPaste(path));
+  // The project root is a place to put things, not a thing: it is not copied, moved or renamed.
+  if (!entry.root) {
+    add(t('Copy'), () => { finder.held = { path, name: entry.name, operation: 'copy' }; finderShowClip(); });
+    add(t('Move'), () => { finder.held = { path, name: entry.name, operation: 'move' }; finderShowClip(); });
+    add(t('Rename'), () => void finderRename(path, entry));
+  }
+  if (finder.held && entry.kind === 'dir') add(entry.root ? t('Paste in the project root') : t('Paste here'), () => void finderPaste(path));
   if (finder.held && entry.kind === 'file') add(t('Paste beside it'), () => void finderPaste(here));
   add(t('New file'), () => void finderCreate(here, 'new-file'));
   add(t('New folder'), () => void finderCreate(here, 'new-folder'));
-  if (finderGuarded(path)) menu.append(el('div', 'note', t('MADRE GUARDS THIS PATH · IT WILL ASK FOR THE DESIGNATION')));
+  if (!entry.root && finderGuarded(path)) menu.append(el('div', 'note', t('MADRE GUARDS THIS PATH · IT WILL ASK FOR THE DESIGNATION')));
   menu.hidden = false;
   // Opened where the hand is, and kept inside the panel: a menu that spills across the room is a
   // menu the human has to go looking for.
@@ -3577,22 +3927,42 @@ function finderMenu(event, path, entry) {
   menu.style.top = `${Math.max(6, Math.min(event.clientY - panel.top, panel.height - box.height - 6))}px`;
 }
 document.addEventListener('click', (event) => { if (finder.menu && !finder.menu.hidden && !finder.menu.contains(event.target)) finder.menu.hidden = true; });
+// The space under the last row is the project root. Without it there was nowhere to paste
+// something back to the top level, or to make a folder there.
+els.treeBody?.addEventListener('contextmenu', (event) => {
+  if (event.target.closest?.('button.node')) return;
+  finderMenu(event, '.', { kind: 'dir', name: '.', root: true });
+});
 
 // Searching the project by name, with the same scoring the composer's "!" menu uses.
+// Each keystroke outdates the one before: an answer that arrives after the box was cleared, or
+// after another word was typed, is dropped instead of painted over what the human is now asking.
 let finderTimer = null;
+let finderAsked = 0;
 finder.q?.addEventListener('input', () => {
   clearTimeout(finderTimer);
+  const asked = ++finderAsked;
   finderTimer = setTimeout(async () => {
     const query = finder.q.value.trim();
     if (!query) { els.treeBody.replaceChildren(); void setTree(true); return; }
     let matches = [];
     try { matches = (await fetch(`/api/tree/search?q=${encodeURIComponent(query)}&limit=40`).then((r) => r.json()))?.matches ?? []; }
     catch { return; }
+    if (asked !== finderAsked) return;
     const list = el('ul');
-    for (const match of matches) list.append(treeNode(match.path, { kind: 'file', name: match.path, contentType: match.contentType }));
+    for (const match of matches) list.append(treeNode(match.path, { kind: 'file', name: match.path.slice(match.path.lastIndexOf('/') + 1), label: match.path, contentType: match.contentType }));
     els.treeBody.replaceChildren(list);
     if (!matches.length) els.treeBody.append(el('div', 'tree-empty', t('NOTHING MATCHES {q}', { q: query })));
   }, 160);
+});
+// Escape empties the search and puts the tree back; a second Escape leaves the box. Every browser
+// draws its own clear button, or none, so the key is the one way that is always there.
+finder.q?.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  if (!finder.q.value) { finder.q.blur(); return; }
+  finder.q.value = '';
+  finder.q.dispatchEvent(new Event('input'));
 });
 finder.search?.addEventListener('submit', (event) => event.preventDefault());
 
@@ -3609,16 +3979,21 @@ function treeNode(path, entry) {
     const children = el('ul');
     children.hidden = true;
     let opened = false;
-    button.addEventListener('click', () => {
-      opened = !opened;
+    const show = (open) => {
+      opened = open;
       caret.textContent = opened ? '▾' : '▸';
       children.hidden = !opened;
       item.setAttribute('aria-expanded', String(opened));
+      if (opened) tree.openDirs.add(path); else tree.openDirs.delete(path);
       if (opened && !children.childElementCount) void loadTreeLevel(path, children);
-    });
+    };
+    button.addEventListener('click', () => show(!opened));
     item.append(button, children);
+    if (tree.openDirs.has(path)) show(true);
   } else {
-    button.append(el('span', 'caret', ''), el('span', 'name', entry.name), el('span', 'size', formatSize(entry.size)));
+    // A search result shows where it lives; its NAME is still only the file's, because that is
+    // what a copy or a rename carries along.
+    button.append(el('span', 'caret', ''), el('span', 'name', entry.label ?? entry.name), el('span', 'size', formatSize(entry.size)));
     const by = touched.get(path);
     if (by) {
       // Its colour is the agent's own, so the tree reads the same way the thread does.
@@ -3628,6 +4003,11 @@ function treeNode(path, entry) {
     }
     button.addEventListener('click', () => { void openViewer({ root: 'project', path, label: path }); });
     item.append(button);
+  }
+  if (tree.reveal === path) {
+    tree.reveal = null;
+    button.classList.add('fresh');
+    requestAnimationFrame(() => button.scrollIntoView?.({ block: 'nearest' }));
   }
   return item;
 }
@@ -4568,7 +4948,7 @@ els.composer.addEventListener('submit', async (event) => {
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ash: state.ashInstalled && state.ash }),
+      body: JSON.stringify({ text: outgoing, target: target || null, model: state.chosenModel[target] ?? null, effort: state.chosenEffort[target] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ash: state.ashInstalled && state.ash }),
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({ error: t('Request failed ({status}).', { status: response.status }) }));
@@ -4972,7 +5352,7 @@ function renderModuleEvent(event) {
 }
 
 function renderCommandCard(event) {
-  const { name, title, text, ok, args = [] } = event.payload;
+  const { name, title, text, ok, args = [], run = null } = event.payload;
   const node = el('div', `command-card${ok === false ? ' failed' : ''}`);
   const head = el('div', 'head');
   head.append(el('b', null, `/${name}`), el('span', null, title ?? name), el('span', 'args', args.join(' ')));
@@ -4982,6 +5362,26 @@ function renderCommandCard(event) {
     else pre.append(`${line}\n`);
   }
   node.append(head, pre);
+  if (run) {
+    markRun(run, ok === false ? 'failed' : 'ran');
+    // A command the human ran by hand was photographed first: the same UNDO as a CONTROL turn.
+    if (run.checkpointId && run.files?.length) {
+      node.id = `control-${run.checkpointId}`;
+      const undo = el('button', 'undo', t('UNDO · RESTORE CHECKPOINT'));
+      undo.type = 'button';
+      undo.title = t('Put the project files back exactly as they were before this command. What it sent off this machine does not come back.');
+      undo.addEventListener('click', async () => {
+        undo.disabled = true;
+        try {
+          const response = await fetch(`/api/control/${run.checkpointId}/undo`, { method: 'POST' });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+          undo.textContent = t('RESTORED');
+        } catch (error) { toast(`MU/TH/UR › ${error.message}`); undo.disabled = false; }
+      });
+      node.append(undo);
+    }
+  }
   state.lastSender = null;
   return node;
 }
@@ -6193,7 +6593,9 @@ function appendLoginOutput(event) {
     box.append(loginLine({ line, url }));
     box.scrollTop = box.scrollHeight;
   }
-  if (url) toast(`@${agent}: open ${url} to finish signing in`);
+  // Only while it is happening: a sign-in from earlier in the room, replayed when the page loads,
+  // used to come back as a toast carrying a link that expired hours ago.
+  if (url && !replaying) toast(t('@{agent}: open {url} to finish signing in', { agent, url }));
 }
 function loginLine({ line, url }) {
   const div = el('div');

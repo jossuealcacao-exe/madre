@@ -83,6 +83,8 @@ Cada mensaje sale con un modo. Tu modo es el techo de cualquier plan que ese men
 
 **Dos controles por agente.** En `⚙ CONNECTIONS` cada agente tiene `MAX MODE`, hasta dónde puede llegar un mensaje dirigido a él, y `DEFAULT MODE`, dónde empieza: `#1` solo lectura hasta que armes CREATE, o `#2` para que cada turno pueda añadir archivos sin pedirlo. Aparte, dos habilidades: generar imágenes y web.
 
+**Comandos que pide un agente.** Con el módulo **Runs** encendido, un agente en `#1`, `#2` o `#3` que necesita un comando que no puede correr (las pruebas, un build, un linter) termina su respuesta con un bloque `pulse-run`: el motivo en la primera línea y un comando por línea, cada uno con `$`. MADRE muestra cada línea como un botón y no corre nada hasta que lo presionas. Cada línea corre sola, desde la raíz del proyecto y **sin shell**: lo que lees en el botón es exactamente lo que se ejecuta, así que las líneas con `|`, `&&`, `;`, redirecciones, `$VARIABLES`, comodines, `~` o `cd` se muestran con el motivo y no se pueden correr. Antes de correr, MADRE toma un checkpoint; la salida vuelve a la sala como tarjeta, la leen todos los agentes en su siguiente turno, y si el comando cambió archivos, `UNDO` los regresa. Lo que el comando haya mandado fuera de la máquina no regresa. Un comando a la vez, diez minutos como máximo, y `STOP ALL` lo detiene. En `#4` el agente corre sus propios comandos y no se le enseña el bloque.
+
 ---
 
 ## QUÉ PUEDE CADA AGENTE
@@ -187,6 +189,7 @@ El botón de la barra abre la pantalla de diagnóstico. Escribe un síntoma, un 
 | **RIPLEY** | El visor renderiza HTML, SVG y Markdown en un marco sellado, con recarga automática |
 | **OLLAMA** | Embeddings, archivista y `@madre` en local, gratis y sin cuenta. Se instala, se despierta y descarga su modelo desde el puente |
 | **PLAYWRIGHT** | Un navegador headless por turno que solo alcanza esta MADRE: abrir la vista previa de RIPLEY, hacer clic, leer consola, capturas al borrador del turno. Requiere `@playwright/mcp` |
+| **Runs** | Un agente te pide correr un comando que su modo no le deja correr; cada línea es un botón, corre sin shell desde la raíz del proyecto, con checkpoint antes y la salida de vuelta en la sala. Cuesta unos 190 tokens de instrucción por turno debajo de AIRLOCK mientras está encendido |
 | **Ash** | La economía de tokens de la sala. El interruptor pide a los agentes respuestas en prosa compacta; lo demás está siempre encendido y no se nota: el briefing lleva solo los bloques que el turno puede usar, lo que nunca cambia se lee primero para que el caché lo reconozca, y la transcripción se queda quieta en vez de deslizarse. Nada de lo que tú escribes se altera. En `⚙ CONNECTIONS` se ve a dónde se van los tokens |
 | **AHP+** | Integración externa opcional: estado verificado del proyecto, checkpoints y handoffs en `.ahp/`; `/ahp status`, `/ahp check`, `/ahp context` |
 
@@ -199,7 +202,7 @@ Cada módulo es un archivo. Los tuyos van en `~/.pulse/modules/` (todas las sala
 - **Nada por sí solo.** MADRE no tiene nube, cuenta ni backend. No guarda credenciales.
 - **Lo que un agente lee, viaja a su proveedor.** Codex a OpenAI, Claude Code a Anthropic, Gemini CLI a Google, OpenCode a quien tenga configurado. Si `OPENAI_BASE_URL` o `ANTHROPIC_BASE_URL` cambia ese destino, MADRE enseña solo el hostname y bloquea el turno antes de armar el briefing; un gateway verificado se autoriza por agente con `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS`. Aplican la cuenta, los límites y los términos del destino efectivo. `@madre` y el archivista con Ollama no salen de la máquina.
 - **Dos envíos propios, ambos bajo tu interruptor.** El sentinel, apagado por defecto, envía reportes redactados al colector del proyecto. El canal de liberación, encendido por defecto, pregunta a npm por la última versión: viaja el nombre del paquete, nada más, la misma petición que hace `npx`. `PULSE_UPDATE_CHECK=0` lo apaga.
-- **Escritura.** En `#1` nadie escribe. En `#2` solo se añade: lo que existía se restaura al terminar el turno. En `#3` todo el proyecto salvo las zonas prohibidas, con checkpoint y `UNDO`. En un proyecto sin git, MADRE guarda sus fotografías en un repositorio sombra fuera del proyecto.
+- **Escritura.** En `#1` nadie escribe. En `#2` solo se añade: lo que existía se restaura al terminar el turno. En `#3` todo el proyecto salvo las zonas prohibidas, con checkpoint y `UNDO`. En un proyecto sin git, MADRE guarda sus fotografías en un repositorio sombra fuera del proyecto. Un comando que pide un agente lo corres tú, con checkpoint antes y `UNDO` después.
 - **Memoria.** Todo lo dicho fuera de GHOST queda en `~/.pulse/rooms/<sala>/` y vuelve a los prompts de todos los agentes de esa sala. GHOST es la salida para lo que no debe recordarse; PRIVACY, para los nombres que nunca deben aparecer.
 
 ---

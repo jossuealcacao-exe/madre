@@ -100,6 +100,7 @@ real, no en CI) · `DESCARTADO`.
 | **WIN-024** | El lock se libera borrando un directorio; con un archivo abierto Windows devuelve `EPERM`/`EBUSY`. Riesgo de sala bloqueada de forma permanente. | `src/event-store.mjs:100-120` | 2 | ABIERTO |
 | **WIN-025** | `ollamaInstallPlan` / `ollamaUpdatePlan` sin rama `win32`: devuelven `undefined` y la tarjeta del módulo revienta. `@madre` local no se instala desde la sala. | `src/modules/ollama.mjs:11-33` | 3 | ABIERTO |
 | **WIN-026** | El catálogo de MU/TH/UR solo tiene `darwin` y `linux`; win32 cae a `linux`. **Cero entradas win32**: `doctor` le da al usuario de Windows comandos `export` y `~/.bashrc`. | `public/troubleshooting.js:10`, `bin/madre.mjs:108` | 3 | ABIERTO |
+| **WIN-027** | El módulo Runs corre el `argv[0]` que pide un agente con `spawn` sin shell. `npm`, `npx` y casi todo lo instalado por npm son shims `.cmd`: el spawn falla con `EINVAL` y la tarjeta dice que el comando no arrancó. No se arregla con `shell: true` (WIN-016): la línea que el humano aprobó dejaría de ser la que corre. Misma salida que WIN-001. | `src/room/runs.mjs` | 1 | ABIERTO |
 
 ### L · Limitaciones estructurales
 
@@ -200,3 +201,4 @@ Cómo se trabaja la rama:
 Una línea por cambio de estado. Se añade al final, nunca se reescribe.
 
 - `2026-09-29` · Auditoría de `main` @ `fca8894`. Se abren WIN-001..032 y D-001..004. Fase 0 sin empezar.
+- `2026-10-03` · Se abre WIN-027 (comandos que el humano corre por un agente, módulo Runs), sobre la misma restricción que WIN-016.

@@ -81,11 +81,17 @@ export const ES = {
     'La sala ha arrastrado esto a {n} turno(s) y sigue sin respuesta.',
   'The archivist recorded this as open and nothing has answered it.':
     'El archivista lo registró como abierto y nada lo ha contestado.',
-  '@{agent} says this needs #{n} {label}': '@{agent} dice que esto necesita #{n} {label}',
-  'ARM #{n}': 'ARMAR #{n}',
-  'SET #{n}': 'PONER #{n}',
-  'Opens the override: you type the project designation, as always.': 'Abre la anulación: tú escribes la designación del proyecto, como siempre.',
-  'Arms the composer for your next message. Nothing is sent.': 'Arma el compositor para tu siguiente mensaje. No se manda nada.',
+  ' asks for #{n} {label} to go on': ' pide #{n} {label} para seguir',
+  'You will type the project designation, as always. Then @{agent} gets your permission and continues.':
+    'Vas a escribir la designación del proyecto, como siempre. Después @{agent} recibe tu permiso y sigue.',
+  '@{agent} gets your permission for one message and continues.': '@{agent} recibe tu permiso para un mensaje y sigue.',
+  'GRANT #{n} AND CONTINUE': 'CONCEDER #{n} Y SEGUIR',
+  'WRITE IT MYSELF': 'ESCRIBIRLE YO',
+  'Arms #{n} in the box below, so you can add instructions before sending.':
+    'Arma #{n} en la caja de abajo, para que agregues instrucciones antes de mandar.',
+  '#{n} {label} granted · @{agent} continues': '#{n} {label} concedido · @{agent} sigue',
+  '#{n} {label} granted': '#{n} {label} concedido',
+  'Permission granted: #{n} {label}. Go ahead with what you proposed.': 'Permiso concedido: #{n} {label}. Sigue con lo que propusiste.',
   'SERVERS': 'SERVIDORES',
   'MADRE version': 'Versión de MADRE',
   'Local servers answering on this computer': 'Servidores locales que contestan en esta computadora',
@@ -106,6 +112,22 @@ export const ES = {
   'Move': 'Mover',
   'Paste here': 'Pegar aquí',
   'Paste beside it': 'Pegar al lado',
+  'Paste in the project root': 'Pegar en la raíz del proyecto',
+  'REPLACE FOR EVERY ROOM': 'REEMPLAZAR PARA TODAS LAS SALAS',
+  'REPLACE FOR THIS PROJECT': 'REEMPLAZAR PARA ESTE PROYECTO',
+  '{name} {version} is already installed for {where}; it keeps running until this file replaces it.':
+    '{name} {version} ya está instalado para {where}; sigue funcionando hasta que este archivo lo reemplace.',
+  'Right-click a folder, or an empty spot for the project root, to paste it there.':
+    'Clic derecho en una carpeta para pegarlo ahí, o en un espacio vacío para la raíz del proyecto.',
+  'in {path}': 'en {path}',
+  'the project root': 'la raíz del proyecto',
+  'copy': 'copia',
+  'That could not be done: {error}': 'Eso no se pudo hacer: {error}',
+  'A name is needed.': 'Hace falta un nombre.',
+  'That is not a name.': 'Eso no es un nombre.',
+  'Both a source and a destination are needed.': 'Hacen falta un origen y un destino.',
+  'The source and the destination are the same path.': 'El origen y el destino son la misma ruta.',
+  'A folder cannot be moved inside itself.': 'Una carpeta no se puede mover dentro de sí misma.',
   'Rename': 'Renombrar',
   'HOLD': 'BODEGA',
   'BRIDGE': 'PUENTE',
@@ -962,6 +984,7 @@ export const ES = {
   'MU/TH/UR › updating. The output is in the room, and the card refreshes when it finishes.':
     'MU/TH/UR › actualizando. La salida está en la sala, y la ficha se refresca al terminar.',
   'NOT NOW': 'AHORA NO',
+  'The room rejected the message.': 'La sala rechazó el mensaje.',
   'ECONOMY · THIS ROOM': 'ECONOMÍA · ESTA SALA',
   'NO TURNS WEIGHED YET · SEND A MESSAGE AND THIS FILLS': 'TODAVÍA NO HAY NINGÚN TURNO CON FACTURA · MANDA UN MENSAJE Y ESTO SE LLENA',
   'ECONOMY UNAVAILABLE': 'ECONOMÍA NO DISPONIBLE',
@@ -1396,6 +1419,10 @@ export const ES = {
   'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
   'Ollama did not answer. Open the Ollama app, then press RECHECK.':
     'Ollama no contestó. Abre la app de Ollama y dale REVISAR OTRA VEZ.',
+  'Ollama {client} is installed, but {running} is still the one answering. Quit Ollama (or restart its service) and open it again, then RECHECK.':
+    'Ollama {client} está instalado, pero el que sigue contestando es {running}. Cierra Ollama (o reinicia su servicio), ábrelo otra vez y dale REVISAR OTRA VEZ.',
+  'The old Ollama ({running}) did not stop. Quit it by hand, then press START OLLAMA.':
+    'El Ollama viejo ({running}) no se detuvo. Ciérralo a mano y dale ARRANCAR OLLAMA.',
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
   'RIPLEY is off. Enable it in MODULES to render files.': 'RIPLEY está apagado. Enciéndelo en MÓDULOS para dibujar archivos.',
@@ -2423,6 +2450,7 @@ export const ES = {
   '@{agent} sign-in did not complete': 'el inicio de sesión de @{agent} no se completó',
   ' · exit {code}': ' · salida {code}',
   'signing in @{agent} · {command}': 'iniciando sesión de @{agent} · {command}',
+  '@{agent}: open {url} to finish signing in': '@{agent}: abre {url} para terminar de iniciar sesión',
   'installing {label} · {command}': 'instalando {label} · {command}',
   'MU/TH/UR › {label} is on this computer. Sign in and the room opens.':
     'MU/TH/UR › {label} ya está en esta computadora. Inicia sesión y la sala se abre.',
@@ -2594,6 +2622,75 @@ export const ES = {
   ' MAX MODE is now #3 in CONNECTIONS.': ' MODO MÁXIMO ahora es #3 en CONEXIONES.',
   "Conversation · {n} messages. The project's memory is shared by all of them.":
     'Conversación · {n} mensajes. La memoria del proyecto es la misma para todos ellos.',
+
+  // Esfuerzo: cuánto piensa el modelo antes de contestar.
+  'effort': 'esfuerzo',
+  'effort {level}': 'esfuerzo {level}',
+  ' · effort for this request': ' · esfuerzo de esta petición',
+  'Effort for this agent · {level}': 'Esfuerzo de este agente · {level}',
+  'Effort for this agent · the CLI default ({level})': 'Esfuerzo de este agente · el del CLI ({level})',
+  "Effort for this agent · the CLI's own default": 'Esfuerzo de este agente · el que traiga el CLI',
+  'Default': 'Por defecto',
+  'Sends nothing: the CLI uses its own setting, {level} right now.': 'No manda nada: el CLI usa su propio ajuste, ahora {level}.',
+  'Sends nothing: the CLI uses its own setting.': 'No manda nada: el CLI usa su propio ajuste.',
+  'Minimal': 'Mínimo',
+  'Low': 'Bajo',
+  'Medium': 'Medio',
+  'High': 'Alto',
+  'Extra high': 'Muy alto',
+  'Max': 'Máximo',
+  'Answers almost at once. For lookups and one-line edits.': 'Contesta casi al instante. Para consultas y cambios de una línea.',
+  'Quick and light. For clear, contained requests.': 'Rápido y ligero. Para peticiones claras y acotadas.',
+  'The everyday balance of speed and depth.': 'El equilibrio de todos los días entre rapidez y profundidad.',
+  'Thinks it through. For design calls and tricky bugs.': 'Lo piensa a fondo. Para decisiones de diseño y bugs difíciles.',
+  'Longer reasoning for hard, multi-step problems.': 'Razonamiento más largo para problemas difíciles de varios pasos.',
+  'Everything it has. The slowest and the most expensive.': 'Todo lo que tiene. El más lento y el más caro.',
+  'More effort is a slower, longer answer, and on a metered plan a more expensive one. It applies to every message to this agent until you change it.':
+    'Más esfuerzo es una respuesta más lenta y más larga, y en un plan medido, más cara. Vale para cada mensaje a este agente hasta que lo cambies.',
+
+  // Una elección que devuelve un agente.
+  '@{agent} asks you to choose': '@{agent} te pide elegir',
+  'RECOMMENDED': 'RECOMENDADA',
+  'CLI': 'CLI',
+
+  // Un comando que un agente te pide correr.
+  'on · agents may ask you to run commands': 'encendido · los agentes pueden pedirte que corras comandos',
+  'off · agents describe the command in prose': 'apagado · los agentes describen el comando en prosa',
+  'Lets an agent ask you to run a command it cannot run in its mode (tests, a build, a linter). Each command is a button: nothing runs until you press it, it runs from the project root with no shell, a checkpoint is taken first, and the output comes back to the room. Costs about 190 tokens of instruction per turn below AIRLOCK while it is on.':
+    'Deja que un agente te pida correr un comando que en su modo no puede correr (las pruebas, un build, un linter). Cada comando es un botón: nada corre hasta que lo presionas, corre desde la raíz del proyecto sin shell, antes se toma un checkpoint y la salida vuelve a la sala. Cuesta unos 190 tokens de instrucción por turno debajo de AIRLOCK mientras está encendido.',
+  'Name the request and the line to run.': 'Di qué petición y qué línea correr.',
+  '@{agent} asks you to run': '@{agent} te pide correr',
+  'RUNNING': 'CORRIENDO',
+  'WILL NOT RUN': 'NO CORRE',
+  'This line does not run: it {why}.': 'Esta línea no corre: {why}.',
+  'Does not run: it {why}.': 'No corre: {why}.',
+  'Runs {command} from the project root, with no shell. A checkpoint is taken first.':
+    'Corre {command} desde la raíz del proyecto, sin shell. Antes se toma un checkpoint.',
+  'Each line runs only when you press it · from the project root, no shell · the output comes back to the room':
+    'Cada línea corre solo cuando la presionas · desde la raíz del proyecto, sin shell · la salida vuelve a la sala',
+  'Put the project files back exactly as they were before this command. What it sent off this machine does not come back.':
+    'Deja los archivos del proyecto exactamente como estaban antes de este comando. Lo que haya mandado fuera de esta máquina no regresa.',
+  'project restored to the checkpoint before the command · {restored} restored · {removed} removed':
+    'proyecto restaurado al checkpoint anterior al comando · {restored} restaurados · {removed} quitados',
+  'expands a variable or a command inside quotes; there is no shell to expand it':
+    'expande una variable o un comando dentro de comillas; no hay shell que lo expanda',
+  'ends in a lone backslash': 'termina en una diagonal invertida suelta',
+  'uses "{char}", which needs a shell; put each command on its own line':
+    'usa «{char}», que necesita un shell; pon cada comando en su propia línea',
+  'expands a variable or a command; there is no shell to expand it':
+    'expande una variable o un comando; no hay shell que lo expanda',
+  'uses "{char}" as a glob; there is no shell to expand it, name the files':
+    'usa «{char}» como comodín; no hay shell que lo expanda, nombra los archivos',
+  'starts a word with "~"; there is no shell to expand it, write the path':
+    'empieza una palabra con «~»; no hay shell que lo expanda, escribe la ruta',
+  'carries a "#" comment, which only a shell would drop; say it in the reason':
+    'lleva un comentario con «#», que solo un shell quitaría; dilo en el motivo',
+  'leaves a quote open': 'deja una comilla abierta',
+  'is empty': 'está vacía',
+  '"{name}" is a shell builtin; every line already runs from the project root':
+    '«{name}» es un comando interno del shell; cada línea ya corre desde la raíz del proyecto',
+  'sets an environment variable, which needs a shell': 'fija una variable de entorno, y eso necesita un shell',
+  'is too long to read before pressing it': 'es demasiado larga para leerla antes de presionarla',
 
   // El interruptor de idioma.
   'Interface in English': 'Interfaz en inglés',

@@ -75,11 +75,28 @@ export class ControlDesk {
     if (this.#holder === run) this.#holder = null;
   }
 
+  // A photograph with no seat and no locks, for a command the human runs by hand: the human may
+  // write anywhere, so nothing is guarded and nothing is reverted, but UNDO still has a place to
+  // go back to. The same map as CONTROL's, so the same UNDO restores it.
+  async photograph({ id, label, by = 'you', command = null }) {
+    const checkpoint = await createCheckpoint(this.#projectRoot, { id, label });
+    checkpoint.agent = by;
+    checkpoint.command = command;
+    this.#checkpoints.set(checkpoint.id, checkpoint);
+    return checkpoint;
+  }
+
+  async changesSince(checkpoint) {
+    const { files, stat } = await diffCheckpoint(this.#projectRoot, checkpoint);
+    return { files, stat };
+  }
+
   async undo(checkpointId) {
     const checkpoint = this.#checkpoints.get(checkpointId);
     if (!checkpoint) return { ok: false, status: 404, error: 'That checkpoint is not known to this room.' };
     if (this.#holder?.checkpoint.id === checkpointId) return { ok: false, status: 409, error: 'That CONTROL turn is still running; STOPALL first.' };
     const result = await restoreCheckpoint(this.#projectRoot, checkpoint);
-    return { ok: true, checkpoint, ...result, message: `Project restored to the checkpoint taken before @${checkpoint.agent}'s CONTROL turn: ${result.restored.length} file(s) restored, ${result.removed.length} removed.` };
+    const before = checkpoint.command ? `\`${checkpoint.command}\`` : `@${checkpoint.agent}'s CONTROL turn`;
+    return { ok: true, checkpoint, ...result, message: `Project restored to the checkpoint taken before ${before}: ${result.restored.length} file(s) restored, ${result.removed.length} removed.` };
   }
 }

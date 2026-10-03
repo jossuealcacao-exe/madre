@@ -17,7 +17,7 @@ import { createEmbedder } from './embeddings.mjs';
 import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
-import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel } from './ollama.mjs';
+import { probeOllama, ollamaEmbedder, ollamaInvoker, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
 import { moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
@@ -65,7 +65,7 @@ import { setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
 import { listDirectory, searchFiles, readServable, storeAttachment, resolveInside, MAX_ATTACHMENT_BYTES } from './files.mjs';
-import { planFileOp, CREATIONS } from './file-ops.mjs';
+import { planFileOp, freeCopyPath, CREATIONS } from './file-ops.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
 import { economy } from './room/economy.mjs';
 import { maturity } from './maturity.mjs';
@@ -560,6 +560,7 @@ export async function createPulseServer({
   setImageModule(startupConfig.modules?.imageStudio ?? {});
   room.setAsh(Boolean(startupConfig.modules?.ash?.enabled));
   room.setChoices(Boolean(startupConfig.modules?.choices?.enabled));
+  room.setRuns(Boolean(startupConfig.modules?.runs?.enabled));
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`MADRE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -771,6 +772,29 @@ export async function createPulseServer({
             await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: status.running, installed: true, detail: status.running ? `running · ${status.chatModel ? `@madre with ${status.chatModel}` : 'no chat model yet'}` : 'Ollama did not answer; open the Ollama app and press RECHECK.', ollama: status });
             return status.running ? { ok: true } : { ok: false, error: t('Ollama did not answer. Open the Ollama app, then press RECHECK.') };
           },
+          // After an upgrade the binary is new and the server answering on the port is still the old
+          // one, so the card kept reading the old version and the update looked like it did nothing.
+          // An `ollama serve` this user started is stopped and started again from the new binary;
+          // anything else (the app, a service of another user) is named, not touched.
+          async restart() {
+            const binary = await findOnPath('ollama');
+            if (!binary) return { ok: false, error: t('Ollama is not on this computer yet.') };
+            const run = (command, args) => new Promise((resolve) => execFile(command, args, { timeout: 5000 }, (error, stdout, stderr) => resolve(`${stdout ?? ''}${stderr ?? ''}`)));
+            const { client } = ollamaVersions(await run(binary, ['--version']));
+            const status = await wireOllama();
+            if (!status.running) return this.start();
+            if (!client || !status.version || status.version === client) return { ok: true, already: true };
+            const pids = process.platform === 'win32' || typeof process.getuid !== 'function' ? [] : ownOllamaServers(await run('ps', ['-axo', 'pid=,uid=,args=']), process.getuid());
+            if (!pids.length) return { ok: false, error: t('Ollama {client} is installed, but {running} is still the one answering. Quit Ollama (or restart its service) and open it again, then RECHECK.', { client, running: status.version }) };
+            for (const pid of pids) { try { process.kill(pid, 'SIGTERM'); } catch { /* already gone */ } }
+            let down = status;
+            for (let attempt = 0; attempt < 20 && down.running; attempt += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              down = await wireOllama();
+            }
+            if (down.running) return { ok: false, error: t('The old Ollama ({running}) did not stop. Quit it by hand, then press START OLLAMA.', { running: status.version }) };
+            return this.start();
+          },
           // Pulls stream into the room like a module install; one at a time.
           pull: async (model) => {
             if (installing) return { ok: false, error: `Another install is running (${installing}).` };
@@ -909,6 +933,7 @@ export async function createPulseServer({
           agents: agents.map((agent) => ({ ...agent, login: loginPlanFor(agent), install: installPlanFor(agent), key: keyPlanFor(agent.id), ...(accountNoteFor(agent.id) ?? {}) })),
           ash: { enabled: room.ashEnabled() },
           choices: { enabled: room.choicesEnabled() },
+          runs: { enabled: room.runsEnabled() },
           // Read live, not from the config this process loaded at boot. A switch the human moves
           // in MODULES while the room is open has to be the answer the room gives afterwards —
           // otherwise the switch says on and the browser keeps refusing, which is how a setting
@@ -959,8 +984,18 @@ export async function createPulseServer({
       // room guards from agents ask for the project's designation first.
       if (request.method === 'POST' && url.pathname === '/api/tree/op') {
         const payload = await body(request).catch(() => ({}));
+        // Pasting a copy where its name is taken — beside itself, most often — names the copy
+        // instead of refusing. Only a copy, and only when the page asked: a move or a rename onto
+        // a taken name is still a mistake the human should hear about.
+        if (payload.operation === 'copy' && payload.unique) {
+          payload.to = await freeCopyPath(payload.to, { word: t('copy'), taken: async (path) => {
+            const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '.';
+            const parent = await resolveInside(canonicalProjectRoot, dir);
+            return Boolean(parent) && access(join(parent, path.slice(path.lastIndexOf('/') + 1))).then(() => true, () => false);
+          } });
+        }
         const plan = planFileOp(payload);
-        if (!plan.ok) return sendJson(response, 400, { error: plan.error });
+        if (!plan.ok) return sendJson(response, 400, { error: t(plan.error) });
         if (plan.guarded && !designationOk(payload.designation)) {
           return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.'), guarded: true });
         }
@@ -980,7 +1015,7 @@ export async function createPulseServer({
           else if (plan.operation === 'copy') await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
           else await rename(source, destination);
         } catch (error) {
-          return sendJson(response, 500, { error: error.message });
+          return sendJson(response, 500, { error: t('That could not be done: {error}', { error: error.message }) });
         }
         await room.record(CREATIONS.includes(plan.operation) ? 'project.file.created' : 'project.file.moved', { operation: plan.operation, from: plan.from, to: plan.to, guarded: plan.guarded });
         return sendJson(response, 200, { ok: true, operation: plan.operation, from: plan.from, to: plan.to });
@@ -1481,11 +1516,15 @@ export async function createPulseServer({
         await room.record('extension.install.started', { id: module.id, name: item.name, command: plan.display, platforms: [], alreadyInstalled: true });
         void (async () => {
           const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { void room.record('extension.install.output', { id: module.id, lines: [String(line).slice(0, 500)] }); } });
-          await plan.after?.().catch(() => null);
+          // What the plan does once the command is done (Ollama: restart the old server). If it could
+          // not, that is the outcome: «now runs <the old version>» would read as an update that worked.
+          const settled = result.code === 0 ? await (async () => plan.after?.())().catch((error) => ({ ok: false, error: error.message })) : null;
           const after = await module.describe(await moduleContext()).catch(() => null);
           await room.record('extension.install.finished', {
-            id: module.id, name: item.name, ok: result.code === 0, installed: Boolean(after?.version),
-            detail: result.code === 0 ? `${item.name} now runs ${after?.version ?? 'what it found'}` : (result.error ?? `exit ${result.code}`),
+            id: module.id, name: item.name, ok: result.code === 0 && settled?.ok !== false, installed: Boolean(after?.version),
+            detail: result.code !== 0 ? (result.error ?? `exit ${result.code}`)
+              : settled?.ok === false ? settled.error
+                : `${item.name} now runs ${after?.version ?? 'what it found'}`,
           });
           installing = null;
         })();
@@ -1616,6 +1655,15 @@ export async function createPulseServer({
       if (stopMatch) {
         const stopped = await room.stopPlan(stopMatch[1]);
         return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: t('No running plan with that id.') });
+      }
+      // One line of a ```pulse-run, pressed by the human. The body names the request and the line;
+      // the command itself is read from the room's record, never from the page.
+      if (request.method === 'POST' && url.pathname === '/api/runs') {
+        const payload = await body(request).catch(() => ({}));
+        const index = Number(payload.index);
+        if (typeof payload.responseMessageId !== 'string' || !Number.isInteger(index) || index < 0) return sendJson(response, 400, { error: t('Name the request and the line to run.') });
+        const outcome = await room.runRequested({ responseMessageId: payload.responseMessageId, index });
+        return sendJson(response, outcome.status, outcome.ok ? outcome.result : { error: outcome.error });
       }
       if (request.method === 'GET' && url.pathname === '/api/commands') {
         const ctx = await moduleContext();

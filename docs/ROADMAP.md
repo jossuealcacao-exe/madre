@@ -76,5 +76,5 @@ usuario, con sus credenciales. No hay nube de MADRE en medio.
 ## Fuera del alcance, a conciencia
 
 - Navegador general, pestañas, historial fuera del proyecto.
-- Ejecutar builds o comandos del proyecto desde la sala.
+- Una terminal interactiva dentro de la sala. Los comandos que un agente necesita debajo de AIRLOCK los pide con `pulse-run` y los corre el humano, uno por línea y sin shell (módulo Runs, 0.7.2). Una consola con PTY pediría dependencias nativas y reinterpretaría lo que el humano aprueba.
 - Cualquier nube de MADRE. Si algún día hay sincronización entre máquinas, será por el ledger y con la llave del usuario.

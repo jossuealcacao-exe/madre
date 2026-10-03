@@ -75,7 +75,11 @@ export default defineModule({
   },
   async updatePlan(ctx) {
     const { findOnPath } = await import('./helpers.mjs');
-    return ollamaUpdatePlan({ brew: await findOnPath('brew') });
+    const plan = ollamaUpdatePlan({ brew: await findOnPath('brew') });
+    if (!plan.command) return plan;
+    // Upgrading replaces the binary, not the server already running: until it restarts, the old
+    // version keeps answering. Said before the button is pressed, done after the command.
+    return { ...plan, note: `${plan.note} If an older Ollama is still the one answering, MADRE restarts it so the new one does.`, after: () => ctx.services.ollama.restart?.() ?? null };
   },
   async toggle(ctx) {
     const enabled = !(ctx.settings.enabled ?? true);

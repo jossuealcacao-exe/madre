@@ -40,13 +40,15 @@ export const BLOCK_SOURCES = {
   recall: { when: 'older exchanges match the request and fit in the budget', where: '⚙ CONNECTIONS → MEMORY · RECALL · % OF CONTEXT' },
   context: { when: 'the room has a transcript', where: 'PULSE_CONTEXT_MAX_CHARS sets the budget; RECALL · % OF CONTEXT splits it' },
   delegation: { when: 'this turn may open a plan', where: '⚙ CONNECTIONS → ROOM SETTINGS → DELEGATION' },
+  choices: { when: 'Choices is on and the turn is not GHOST', where: 'MODULES → CHOICES' },
+  runs: { when: 'Runs is on and the turn is #1 to #3', where: 'MODULES → RUNS' },
   abilities: { when: 'this turn may open a plan', where: '⚙ CONNECTIONS → each agent\'s abilities and MAX MODE' },
   attachments: { when: 'the message carries attached files', where: null },
   references: { when: 'the message points at project files with !', where: null },
   ask: { when: 'the human is the one asking', where: null },
 };
 
-export const PROMPT_BLOCKS = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'ash', 'mother', 'mcp', 'sdk', 'lease', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'context', 'delegation', 'abilities', 'attachments', 'references', 'ask'];
+export const PROMPT_BLOCKS = ['room', 'who', 'style', 'privacy', 'madre', 'memory-server', 'mode', 'inspect', 'ash', 'mother', 'mcp', 'sdk', 'lease', 'control-held', 'escalation', 'web', 'shared-lease', 'memories', 'recall', 'context', 'delegation', 'choices', 'runs', 'abilities', 'attachments', 'references', 'ask'];
 
 // Whether this turn could plausibly produce a MADRE module. The SDK block is long and is only
 // ever of use when the human is asking for one, so it is not carried by every leased turn. The
@@ -69,7 +71,7 @@ export function sparedChars(options) {
 export function promptParts({
   agent, text, requester, depth, allowDelegation, context, recall = null, memories = null,
   attachments = [], references = [], lease = null, scopes = null, imageStudio = null,
-  sharedLeaseHint = null, ash = false, choices = false, mode = 1, escalation = null, mcpServers = [],
+  sharedLeaseHint = null, ash = false, choices = false, runs = false, mode = 1, escalation = null, mcpServers = [],
   // What the room adds:
   others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]', madreModel = null, sdk = null,
 }) {
@@ -128,11 +130,21 @@ export function promptParts({
         'If answering well means the human has to pick between three or more real options, end your reply with one fenced block:',
         '```pulse-ask',
         '<the question, one line>',
-        '- <option>',
+        '- <the option you would pick> (recommended)',
         '- <option>',
         '- <option>',
         '```',
-        'Three to six options, the question first, nothing after the block. MADRE shows them as buttons and pressing one writes it into the composer; nothing runs and no turn is spent until the human presses. Not for yes/no, and never instead of a recommendation you could simply give.',
+        'Three to six options, the question first, nothing after the block. Exactly one option ends with "(recommended)": the one you would pick, listed first. Write each option whole, as the sentence the human would send; they are shown in full. MADRE shows them as buttons and pressing one writes it into the composer; nothing runs and no turn is spent until the human presses. Not for yes/no, and never instead of a recommendation you could simply give.',
+      ].join('\n')
+      : null },
+    { id: 'runs', text: runs
+      ? [
+        'You cannot run commands in this mode. If your answer depends on one (tests, a build, a linter, a git query), end your reply with one fenced block and the human may run it for you:',
+        '```pulse-run',
+        '<why you need it, one line>',
+        '$ <command>',
+        '```',
+        `The reason first, then one command per line, each starting with "$", at most 5, nothing after the block. There is no shell: each line runs alone from the project root, so no pipes, &&, redirections, $VARIABLES, globs, ~ or cd. Quote arguments with spaces. MADRE shows each line as a button; nothing runs until the human presses it, and its output comes back to the room for your next turn. Ask only for what you cannot learn by reading the files, and never for something that changes what lives outside this machine.`,
       ].join('\n')
       : null },
     { id: 'abilities', text: mayDelegate ? `Abilities right now (route each step to an agent that can do it):\n${[agent.id, ...others].map((id) => abilityLine(id, scopesFor(id))).join('\n')}` : null },

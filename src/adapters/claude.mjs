@@ -25,7 +25,7 @@ export const claudeMcpTools = (server) => (server.tools?.length ? server.tools.m
 // symlink, in which case the resolved one travels too — see the note in createLease.
 export const leaseRoots = (lease) => [...new Set([lease?.outDir, lease?.realOutDir].filter(Boolean))];
 
-export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] }) {
+export function buildClaudeArgs({ prompt, model = null, effort = null, attachmentsDir = null, lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] }) {
   const tools = claudeTools({ lease, scopes });
   const mcpTools = [
     ...(memoryServer ? memoryServer.tools.map((tool) => `mcp__${memoryServer.name}__${tool}`) : []),
@@ -50,6 +50,7 @@ export function buildClaudeArgs({ prompt, model = null, attachmentsDir = null, l
   return [
     '-p',
     ...(model ? ['--model', model] : []),
+    ...(effort ? ['--effort', effort] : []),
     // Attachments live outside the project; Read needs the folder allowed.
     ...(attachmentsDir ? ['--add-dir', attachmentsDir] : []),
     '--output-format', 'json',
@@ -105,11 +106,11 @@ export function parseClaudeOutput(output) {
   }
 }
 
-export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
+export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
     onProgress: onProgress ? (out) => onProgress({ chars: (() => { try { return String(JSON.parse(out)?.result ?? '').length; } catch { return 0; } })() }) : null,
     executable,
-    args: buildClaudeArgs({ prompt, model, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer, mcpServers }),
+    args: buildClaudeArgs({ prompt, model, effort, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer, mcpServers }),
     cwd: projectRoot,
     env: process.env,
     timeoutMs,

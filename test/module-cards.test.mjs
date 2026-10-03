@@ -321,3 +321,27 @@ test('modules: one door for every module, and checking is not installing', async
     assert.equal(newer.replaced, true);
   } finally { await remove(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 });
+
+test('modules: an Ollama upgrade restarts the old server, because the binary changing does not', async () => {
+  const { ollamaVersions, ownOllamaServers } = await import('../src/ollama.mjs');
+  // The case in the field: brew upgraded to 0.35.1 and 0.30.11 kept answering for days.
+  assert.deepEqual(ollamaVersions('ollama version is 0.30.11\nWarning: client version is 0.35.1'), { server: '0.30.11', client: '0.35.1' });
+  assert.deepEqual(ollamaVersions('ollama version is 0.35.1'), { server: '0.35.1', client: '0.35.1' });
+  assert.deepEqual(ollamaVersions('Warning: could not connect to a running Ollama instance\nWarning: client version is 0.35.1'), { server: null, client: '0.35.1' });
+  // Only an `ollama serve` this user owns; a shell that merely mentions it, or another user's service, is not it.
+  assert.deepEqual(ownOllamaServers(' 3759   501 ollama serve\n 20 501 /bin/zsh -c ollama serve; echo\n 30 0 /usr/local/bin/ollama serve\n 40 501 /opt/homebrew/bin/ollama serve\n', 501), [3759, 40]);
+
+  // The plan says it before the button is pressed, and does it after the command.
+  const ollama = (await import('../src/modules/ollama.mjs')).default;
+  let restarted = 0;
+  const plan = await ollama.updatePlan({ services: { ollama: { restart: async () => { restarted += 1; return { ok: true }; } } } });
+  if (plan.command) {
+    assert.match(plan.note, /restarts it/);
+    assert.deepEqual(await plan.after(), { ok: true });
+    assert.equal(restarted, 1);
+  }
+
+  // A restart that could not happen is the outcome of the update, not «now runs <the old version>».
+  const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
+  assert.match(server, /settled\?\.ok === false \? settled\.error/);
+});

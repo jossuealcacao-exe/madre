@@ -49,8 +49,8 @@ test('sdk: a guarded switch refuses without confirm, an installer has no switch,
   assert.equal(matchRoute(routes, 'DELETE', '/api/r'), null);
 });
 
-test('registry: eight modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
-  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'ripley', 'ollama', 'playwright']);
+test('registry: nine modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
+  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'runs', 'ripley', 'ollama', 'playwright']);
   // CORREO is in the lab: built, not offered. Out of MODULES unless PULSE_LABS asks for it, and
   // its id still reserved so nobody's own module can take it.
   assert.deepEqual(LAB_MODULES.map((module) => module.id), ['correo']);
@@ -61,6 +61,7 @@ test('registry: eight modules in MODULES order, the compat layer answers with th
   assert.equal(moduleById('ahp').kind, 'installer');
   assert.equal(moduleById('ash').configKey, 'ash');
   assert.equal(moduleById('choices').configKey, 'choices');
+  assert.equal(moduleById('runs').configKey, 'runs');
   assert.equal(moduleById('image-studio').configKey, 'imageStudio');
   for (const path of ['/api/ollama', '/api/ollama/probe', '/api/ollama/settings', '/api/ollama/pull']) assert.equal(findModuleRoute(path === '/api/ollama' ? 'GET' : 'POST', path)?.module.id, 'ollama', path);
   assert.equal(findModuleRoute('GET', '/api/nothing'), null);
@@ -77,7 +78,7 @@ test('registry: eight modules in MODULES order, the compat layer answers with th
   assert.equal(byId.ahp.kind, 'installer');
   // describeModules with a fuller ctx is what the server uses.
   const { ctx } = fakeCtx({ modules: {} });
-  assert.equal((await describeModules(ctx)).length, 8);
+  assert.equal((await describeModules(ctx)).length, 9);
 });
 
 test('registry: the Ash switch needs no confirming, because nothing it does is lossy', async () => {

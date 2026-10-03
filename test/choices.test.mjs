@@ -30,6 +30,27 @@ test('choices: the same option twice is dropped, because a choice that repeats i
   assert.ok(asked.options.length >= MIN_OPTIONS);
 });
 
+test('choices: an option is kept whole, and the agent\'s own pick is read, not invented', () => {
+  // The reported option, cut at 120 in the middle of "verdadera": the missing half was the option.
+  const long = 'Registrar ambas violaciones (v1=r3, v2=r1) sobre el mismo fragmento f004 y acreditar Detección con al menos una verdadera';
+  const asked = parseChoice(block(`¿Cómo se resuelve?\n- ${long} (recomendada)\n- Reformular r1\n- Dejarlo abierto`));
+  assert.equal(asked.options[0], long);
+  assert.equal(asked.recommended, 0);
+
+  // Either language, either bracket, or a star in front; the mark never reaches the composer.
+  assert.equal(parseChoice(block('¿X?\n- a\n- b [Recommended]\n- c')).recommended, 1);
+  const starred = parseChoice(block('¿X?\n- a\n- b\n- ★ c'));
+  assert.equal(starred.recommended, 2);
+  assert.equal(starred.options[2], 'c');
+  // Two marks: the first one counts. None: the choice still reaches the human.
+  assert.equal(parseChoice(block('¿X?\n- a (recommended)\n- b (recommended)\n- c')).recommended, 0);
+  assert.equal(parseChoice(block('¿X?\n- a\n- b\n- c')).recommended, null);
+
+  // A paragraph is cut at a word, never mid-letter.
+  const essay = parseChoice(block(`¿X?\n- ${'palabra '.repeat(80)}\n- b\n- c`)).options[0];
+  assert.ok(essay.endsWith('palabra…'), essay.slice(-20));
+});
+
 test('choices: the room shows the question as bubbles, so the fence leaves the text', () => {
   const reply = block('¿Qué hacemos?\n- a\n- b\n- c');
   assert.equal(withoutChoice(reply), 'Lo veo así.');
@@ -139,6 +160,22 @@ test('finder: the project is the world, and the zones the room guards ask for it
   assert.equal(planFileOp({ operation: 'new-file', to: '.pulse/notes.md' }).guarded, true);
   assert.equal(planFileOp({ operation: 'new-file', to: '' }).ok, false);
   assert.equal(planFileOp({ operation: 'new-file', to: 'docs/..' }).ok, false, 'a name that walks upwards was accepted');
+});
+
+test('finder: a copy pasted onto a taken name gets a name of its own instead of a refusal', async () => {
+  const { freeCopyPath } = await import('../src/file-ops.mjs');
+  const disk = new Set(['README.md', 'docs/plan.md', 'docs/plan copia.md', '.env', 'src']);
+  const taken = async (path) => disk.has(path);
+
+  // Free names are left alone: most pastes land somewhere empty.
+  assert.equal(await freeCopyPath('docs/README.md', { taken, word: 'copia' }), 'docs/README.md');
+  // Beside itself, the reported case: it used to answer "the source and the destination are the same path".
+  assert.equal(await freeCopyPath('README.md', { taken, word: 'copia' }), 'README copia.md');
+  // The second copy counts up instead of overwriting the first.
+  assert.equal(await freeCopyPath('docs/plan.md', { taken, word: 'copia' }), 'docs/plan copia 2.md');
+  // A leading dot is the name, not an extension; a folder has no extension to keep.
+  assert.equal(await freeCopyPath('.env', { taken, word: 'copy' }), '.env copy');
+  assert.equal(await freeCopyPath('src', { taken, word: 'copy' }), 'src copy');
 });
 
 test('abduction: the room answers to its name only when that is the whole of what was said', async () => {
