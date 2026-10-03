@@ -6,6 +6,36 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.7.2 · Sin publicar
 
+Esta versión les da a los agentes botones para pedirte lo que antes te pedían en un párrafo: que corras un comando, que les subas el permiso, que elijas entre opciones. También trae el nivel de esfuerzo por agente, un panel de archivos que se comporta como esperas, y arreglos en la actualización de Ollama y al volver a abrir la sala.
+
+### Un agente puede pedirte que corras un comando
+
+- Módulo nuevo, **Runs**, apagado hasta que lo enciendas en MÓDULOS. Cuando un agente necesita un comando que su modo no le deja correr (las pruebas después de un arreglo, un build, un linter), en lugar de pedirte que lo copies a una terminal te deja un botón por comando, con el motivo arriba.
+- Nada corre hasta que presionas. Cada línea corre sola, desde la raíz del proyecto y sin shell: lo que dice el botón es lo que se ejecuta. Una línea con `&&`, `|`, redirecciones, variables o comodines aparece con el motivo por el que no se puede correr.
+- Antes de correr se toma un checkpoint. La salida aparece en la sala como tarjeta y la leen todos los agentes en su siguiente turno; si el comando cambió archivos, **DESHACER** los regresa.
+- Un comando a la vez, hasta diez minutos, y **PARAR TODO** lo detiene. En AIRLOCK el agente sigue corriendo sus propios comandos.
+
+### Cuando un agente pide más permiso, un clic se lo da
+
+- Si un agente responde que necesita un modo más alto, debajo de su respuesta aparece una tarjeta con **CONCEDER Y SEGUIR**: escribes la designación del proyecto como siempre (#3 y #4) y el agente recibe tu permiso y continúa. Ya no hace falta escribirle «permiso concedido» en otro mensaje.
+- **ESCRIBIRLE YO** arma el modo y cita su respuesta en la caja, para que agregues instrucciones antes de mandar; **AHORA NO** cierra la tarjeta.
+- Si el agente tenía un modo máximo más bajo, conceder también lo sube en CONEXIONES (y la ceremonia lo dice), en lugar de que el mensaje sea rechazado.
+- Una tarjeta ya contestada se queda cerrada al volver a abrir la sala.
+
+### Las elecciones se leen completas y traen la recomendada
+
+- Cuando un agente te pide elegir, cada opción se ve entera: antes se cortaba a 120 caracteres, a veces a media palabra.
+- La opción que el agente recomienda va primero, marcada **RECOMENDADA**. Los agentes ahora tienen que decir cuál elegirían.
+- Las opciones van en filas numeradas en lugar de píldoras, y la que presionaste queda marcada.
+- La vista previa del briefing y la economía ahora incluyen el bloque que enseña a los agentes a ofrecerte opciones, cuando **Choices** está encendido; antes viajaba en cada turno sin aparecer ahí.
+- En GHOST ese bloque ya no se manda, porque ahí la sala nunca lee una elección.
+
+### Nivel de esfuerzo junto al modelo
+
+- Un chip nuevo al lado del modelo elige cuánto piensa el agente antes de contestar: de **Bajo** a **Máximo** en Claude, de **Mínimo** a **Muy alto** en Codex.
+- **Por defecto** no manda nada y el CLI usa su propio ajuste; si MADRE puede leerlo (Codex), el chip lo muestra atenuado.
+- Se recuerda por agente, y cada mensaje y respuesta dice con qué esfuerzo se hizo.
+
 ### Los archivos del proyecto: copiar, mover y crear carpetas se comportan como esperas
 
 - Después de copiar, mover o crear algo, el árbol ya no se cierra: las carpetas que tenías abiertas siguen abiertas, la de destino se abre y lo nuevo se ilumina un momento.
@@ -16,50 +46,19 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - El panel es más ancho, y al crear o renombrar, lo que se pide (y dónde va a quedar) se lee completo arriba del campo.
 - Los avisos de estas operaciones salen en el idioma de la sala.
 
-### Cuando un agente pide más permiso, un clic se lo da
-
-- Si un agente responde que necesita un modo más alto, debajo de su respuesta aparece una tarjeta con **CONCEDER Y SEGUIR**: escribes la designación del proyecto como siempre (#3 y #4) y el agente recibe tu permiso y continúa. Ya no hace falta escribirle «permiso concedido» en otro mensaje.
-- **ESCRIBIRLE YO** arma el modo y cita su respuesta en la caja, para que agregues instrucciones antes de mandar; **AHORA NO** cierra la tarjeta.
-- Si el agente tenía un modo máximo más bajo, conceder también lo sube en CONEXIONES (y la ceremonia lo dice), en lugar de que el mensaje sea rechazado.
-- Una tarjeta ya contestada se queda cerrada al volver a abrir la sala.
-
 ### Un módulo corregido dice que reemplaza al instalado
 
 - Cuando un agente escribe una nueva versión de un módulo que ya tienes, la tarjeta lo dice, muestra la versión que sigue funcionando y ofrece **REEMPLAZAR** en lugar de instalar.
 
-### Las elecciones se leen completas y traen la recomendada
-
-- Cuando un agente te pide elegir, cada opción se ve entera: antes se cortaba a 120 caracteres, a veces a media palabra.
-- La opción que el agente recomienda va primero, marcada **RECOMENDADA**. Los agentes ahora tienen que decir cuál elegirían.
-- Las opciones van en filas numeradas en lugar de píldoras, y la que presionaste queda marcada.
-
-### Nivel de esfuerzo junto al modelo
-
-- Un chip nuevo al lado del modelo elige cuánto piensa el agente antes de contestar: de **Bajo** a **Máximo** en Claude, de **Mínimo** a **Muy alto** en Codex.
-- **Por defecto** no manda nada y el CLI usa su propio ajuste; si MADRE puede leerlo (Codex), el chip lo muestra atenuado.
-- Se recuerda por agente, y cada mensaje y respuesta dice con qué esfuerzo se hizo.
-
-### Un agente puede pedirte que corras un comando
-
-- Módulo nuevo, **Runs**, apagado hasta que lo enciendas en MÓDULOS. Cuando un agente necesita un comando que su modo no le deja correr (las pruebas después de un arreglo, un build, un linter), en lugar de pedirte que lo copies a una terminal te deja un botón por comando, con el motivo arriba.
-- Nada corre hasta que presionas. Cada línea corre sola, desde la raíz del proyecto y sin shell: lo que dice el botón es lo que se ejecuta. Una línea con `&&`, `|`, redirecciones, variables o comodines aparece con el motivo por el que no se puede correr.
-- Antes de correr se toma un checkpoint. La salida aparece en la sala como tarjeta y la leen todos los agentes en su siguiente turno; si el comando cambió archivos, **DESHACER** los regresa.
-- Un comando a la vez, hasta diez minutos, y **PARAR TODO** lo detiene. En AIRLOCK el agente sigue corriendo sus propios comandos.
-
 ### Actualizar Ollama ahora sí cambia la versión que contesta
 
-- Al actualizar, Homebrew reemplazaba el programa pero el Ollama que ya estaba corriendo seguía siendo el viejo: la tarjeta repetía la versión anterior y parecía que no había pasado nada. Ahora, si el que contesta es más viejo que el instalado, MADRE lo reinicia con el nuevo, y la tarjeta lo dice antes de que presiones.
+- Al actualizar se reemplazaba el programa, pero el Ollama que ya estaba corriendo seguía siendo el viejo: la tarjeta repetía la versión anterior y parecía que no había pasado nada. Ahora, si el que contesta es más viejo que el instalado, MADRE lo reinicia con el nuevo, y la tarjeta lo dice antes de que presiones.
 - Eso también corrige el error `invalid argument: --no-mmap` al cargar un modelo, que salía cuando el servidor viejo arrancaba piezas de la versión nueva.
 - Si el Ollama que contesta no es uno que MADRE pueda reiniciar (la app, o un servicio de otro usuario), la tarjeta dice qué versión está instalada, cuál contesta y qué hacer, en lugar de anunciar la versión vieja como si fuera nueva.
 
 ### Al volver a abrir la sala ya no aparece un inicio de sesión viejo
 
 - Si alguna vez iniciaste sesión de un agente desde la sala, cada vez que la página cargaba volvía a salir el aviso con el enlace de ese inicio de sesión, ya vencido, y el enlace se salía de la pantalla. Ahora el aviso sale solo mientras el inicio de sesión está pasando, y los avisos largos parten línea.
-
-### El briefing muestra las elecciones
-
-- La vista previa del briefing y la economía ahora incluyen el bloque que enseña a los agentes a ofrecerte opciones, cuando **Choices** está encendido. Antes ese bloque viajaba en cada turno sin aparecer en la vista previa.
-- En GHOST ya no se enseña, porque ahí la sala nunca lo lee.
 
 ### En el teléfono la página ya no se sale de la pantalla
 
