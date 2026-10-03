@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { spawn } from 'node:child_process';
 import { join } from 'node:path';
+import { writeSecret } from '../src/vault.mjs';
 import { MODULES, loadExternalModules, moduleById, moduleCommands, describeModules, toolsForTurn, installModuleFile, removeExternalModule, isModuleFile } from '../src/modules/index.mjs';
 
 test('external modules: a plain object in ~/.pulse/modules or .madre/modules becomes a module with its switch, command and tools; a broken file is reported, not fatal', async () => {
@@ -200,5 +202,81 @@ test('vault: a connector secret is held 0600, never shown, and never accepted ov
     assert.equal(await readSecret(root, 'correo', 'app_password'), null);
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+// The connector example is the only worked answer a user gets for the shape that is not
+// guessable: one file that is the module when imported and the MCP server when executed. An
+// example that rots is worse than none — the agent reads it and copies the rot — so it goes
+// through the real door here, and it answers over real stdio.
+test('the connector example installs as documented, waits for #4, and is its own MCP server', async () => {
+  const stateRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-state-'));
+  const projectRoot = await mkdtemp(join(tmpdir(), 'pulse-sdk-project-'));
+  try {
+    await mkdir(join(projectRoot, 'out'), { recursive: true });
+    const source = join(projectRoot, 'out', 'telegram.module.mjs');
+    await writeFile(source, await readFile(new URL('../docs/sdk/connector-module.mjs', import.meta.url), 'utf8'));
+    assert.equal(isModuleFile(source), true, 'the example is not named the way the room recognises');
+
+    // The same door a human uses: it is checked in a scratch folder with no node_modules, which
+    // is what forbids an npm import and what catches an example that drifted.
+    const installed = await installModuleFile({ source, scope: 'user', stateRoot, projectRoot });
+    assert.equal(installed.id, 'telegram');
+    assert.deepEqual(installed.unknown, [], 'the example declares a field this SDK does not answer to');
+    await loadExternalModules({ stateRoot, projectRoot });
+
+    const module = moduleById('telegram');
+    assert.equal(module.external, true);
+    // It declared its destination, in the four answers, and the log can name who vouched for it.
+    assert.equal(module.reaches[0].host, 'api.telegram.org');
+    for (const answer of ['to', 'what', 'when', 'where']) assert.ok(module.reaches[0][answer], `the example skips ${answer}`);
+    // And its secret, so MADRE draws the field without the example writing any interface.
+    assert.deepEqual(module.secrets.map((one) => one.name), ['bot-token']);
+
+    const ctx = { projectRoot, stateRoot, env: {}, config: { modules: { telegram: { enabled: true, chatId: '99' } } } };
+    assert.deepEqual(await toolsForTurn(ctx, { agent: 'codex', mode: 4 }), [], 'a tool was offered with no token kept');
+
+    await writeSecret(stateRoot, 'telegram', 'bot-token', '123:FAKE');
+    // Sending waits for #4, and below it the tool is not even named.
+    for (const mode of [1, 2, 3]) {
+      const below = await toolsForTurn(ctx, { agent: 'codex', mode });
+      assert.equal(below.find((one) => one.name === 'telegram'), undefined, `the example's sending tool travelled at #${mode}`);
+      assert.ok(!JSON.stringify(below).includes('send_telegram'), `send_telegram was named at #${mode}`);
+    }
+    const [server] = await toolsForTurn(ctx, { agent: 'codex', mode: 4 });
+    assert.deepEqual(server.sends, ['send_telegram']);
+    assert.equal(server.env.TELEGRAM_TOKEN, '123:FAKE', 'the token did not reach the process it is for');
+    assert.ok(!server.brief.includes('123:FAKE'), 'the token reached the brief the model reads');
+
+    // The half that cannot be checked by importing it: run the installed copy as a process and
+    // speak JSON-RPC at it. It is spawned through the UNRESOLVED spelling of its path on purpose
+    // — the one a person types while trying their own connector — because that is where the
+    // obvious self-detection breaks. `process.argv[1] === SELF` holds when MADRE spawns it (SELF
+    // is already resolved by the loader) and is false the moment a path crosses a symlink, as
+    // the temp directory does here. Written that way, this answers nothing and exits a success.
+    const byHand = join(stateRoot, 'modules', 'telegram.mjs');
+    assert.notEqual(byHand, server.args[0], 'the temp path does not cross a symlink, so this guards nothing here');
+    const asked = [
+      { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+      { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'send_telegram', arguments: { text: '   ' } } },
+    ];
+    const child = spawn(process.execPath, [byHand], { stdio: ['pipe', 'pipe', 'ignore'] });
+    child.stdin.end(`${asked.map((one) => JSON.stringify(one)).join('\n')}\n`);
+    let out = '';
+    for await (const chunk of child.stdout) out += chunk;
+    const answers = out.trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
+    assert.equal(answers.length, 3, `the example answered ${answers.length} of 3: as a server it is deaf`);
+    assert.equal(answers[0].result.serverInfo.name, 'telegram');
+    assert.deepEqual(answers[1].result.tools.map((one) => one.name), ['send_telegram']);
+    // An empty message is refused before anything leaves, and it comes back as an error RESULT —
+    // never as a sentence that reads like success.
+    assert.equal(answers[2].result.isError, true);
+    assert.match(answers[2].result.content[0].text, /^Nothing was sent/);
+
+    await removeExternalModule({ id: 'telegram', stateRoot, projectRoot });
+  } finally {
+    await rm(stateRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(projectRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });

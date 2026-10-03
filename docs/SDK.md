@@ -13,7 +13,17 @@ Ningún agente puede escribir ahí: `.madre/` es zona prohibida en CONTROL y AIR
 
 ## El archivo
 
-El `export default` es un objeto plano. MADRE lo envuelve con `defineModule`. Copia [`docs/sdk/hello-module.mjs`](sdk/hello-module.mjs) y cámbialo: es un módulo completo con interruptor, un ajuste y un comando `/hello`.
+El `export default` es un objeto plano. MADRE lo envuelve con `defineModule`. Hay dos ejemplos
+completos, y los dos funcionan tal cual:
+
+| | qué enseña |
+|---|---|
+| [`hello-module.mjs`](sdk/hello-module.mjs) | lo mínimo: interruptor, un ajuste, un comando `/hello` |
+| [`connector-module.mjs`](sdk/connector-module.mjs) | un conector de verdad: llave en la bodega, destino declarado, y **un solo archivo que es la ficha al importarse y el servidor MCP al ejecutarse** |
+
+Empieza por el primero. Si tu módulo habla con algo de fuera de esta computadora, copia el
+segundo: esa forma no se adivina, y el modo obvio de escribirla falla **en silencio** (ver
+«Un archivo que también es servidor», abajo).
 
 ```js
 export default {
@@ -26,7 +36,9 @@ export default {
 };
 ```
 
-**Tu módulo no importa nada.** Ni a MADRE, ni al SDK. Antes de instalarlo, MADRE copia tu archivo a una carpeta temporal aparte y lo carga ahí —así revisa qué es sin que corra donde vive— y en esa carpeta no hay `node_modules`: un `import` por nombre de paquete no resuelve y la instalación falla.
+**Tu módulo no importa paquetes.** Ni a MADRE, ni al SDK, ni nada de npm. Antes de instalarlo, MADRE copia tu archivo a una carpeta temporal aparte y lo carga ahí —así revisa qué es sin que corra donde vive— y en esa carpeta no hay `node_modules`: un `import` por nombre de paquete no resuelve y la instalación falla.
+
+Los **builtins de Node sí**, siempre: `node:fs`, `node:url`, `node:tls`, `node:child_process`. Con eso alcanza para hablar cualquier protocolo. Lo que no hay es nada que instalar.
 
 Si necesitas `defineModule` —para calcular algo antes de definir el módulo, por ejemplo— **MADRE te lo entrega**: exporta una función y lo recibes como argumento.
 
@@ -64,6 +76,53 @@ export default ({ defineModule }) => defineModule({
 | `controls` | Los ajustes de tu módulo, declarados en vez de dibujados: `[{ key, label, type: 'select' \| 'switch' \| 'text', options, note, invert }]`. MADRE los pinta en la ficha y los guarda en tu bloque de `config.json` |
 | `onSettings(ctx, settings)` | Te avisa cuando la humana cambió uno de tus `controls`, por si algo vivo tiene que enterarse |
 | `conditions` | Entradas para el catálogo de MU/TH/UR, con remedio por plataforma |
+
+### ¿Se puede conectar con *X*?
+
+No depende de MADRE. Un módulo puede hacer lo que pueda hacer un proceso de Node en tu
+computadora: hablar TLS, levantar un servidor, guardar una llave. **Depende de cómo ese servicio
+deja que un humano entregue su propia credencial**, y eso cae en tres peldaños:
+
+| | qué pide el servicio | ¿funciona al instalarlo? |
+|---|---|---|
+| **A** | una llave estática en minutos: token personal, API key, contraseña de aplicación. Sin registrar app, sin revisión | **sí** |
+| **B** | que cada usuario registre su propia app (OAuth sin permisos restringidos) | sí, pero el alta deja de ser «pega esto» — y tendrías que escribir OAuth |
+| **C** | revisión, evaluación de seguridad o editor verificado | **no**: cada usuario tendría que ser su propio desarrollador |
+
+En **A** está casi todo lo útil: GitHub, GitLab, Linear, Notion (integración interna), Jira,
+Slack, Discord, Telegram, Stripe, Shopify, Cloudflare, Odoo, cualquier base de datos, y cualquier
+API que acepte un `Authorization: Bearer`. En **B**: Google Calendar y Drive, Microsoft Graph,
+Mercado Libre. En **C**: Gmail en lectura, todo Meta, banca.
+
+**La regla**, si no quieres leer la tabla: vale la pena cuando la credencial se consigue en menos
+de cinco minutos sin ser desarrollador, se revoca sola, y lo que tu módulo trae o saca cabe en una
+línea de la ficha. El catálogo largo y por qué, en
+[§6 de `CONECTORES.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/CONECTORES.md#6--qu%C3%A9-alcanza-un-m%C3%B3dulo-y-de-qui%C3%A9n-es-el-muro), en el repositorio.
+
+### Un archivo que también es servidor
+
+`toolsForTurn` devuelve `args` que apuntan a un archivo, y tú solo tienes uno. No hacen falta dos:
+**el tuyo es la ficha cuando MADRE lo importa y el servidor MCP cuando MADRE lo ejecuta.** Sabe
+cuál de las dos cosas es al final del archivo.
+
+```js
+import { realpath } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+const SELF = fileURLToPath(import.meta.url);
+
+// …export default { …, toolsForTurn: () => [{ command: process.execPath, args: [SELF], … }] }
+
+const real = async (p) => (p ? realpath(p).catch(() => p) : null);
+if ((await real(process.argv[1])) === (await real(SELF))) serve();
+```
+
+**Resuelve las dos rutas antes de compararlas.** `process.argv[1] === SELF` parece lo mismo y casi
+siempre lo es: cuando MADRE lo lanza, le pasa el mismo `SELF` que ya resolvió el cargador de Node.
+Pero en cuanto **corres el archivo tú a mano para probarlo** —`node ~/.pulse/modules/tuyo.mjs`, o
+cualquier ruta que pase por `/tmp`, que en macOS es un enlace a `/private/tmp`— `argv[1]` conserva
+lo que tecleaste y `SELF` no. La comparación da falso, `serve()` nunca corre, el proceso arranca,
+no contesta nada y **sale con éxito**. No imprime un error porque, sobre el papel, no hubo ninguno.
+Dos líneas te ahorran esa tarde.
 
 ### Si tu módulo habla con un servicio de fuera
 
@@ -144,12 +203,12 @@ prompt es una sugerencia.
 
 **¿Se puede conectar con *X*?** La respuesta no depende de MADRE sino de cómo ese servicio deja
 que un humano entregue su propia llave, y está mapeada en tres peldaños —con catálogo— en
-[§6 de `docs/CONECTORES.md`](CONECTORES.md#6--qué-alcanza-un-módulo-y-de-quién-es-el-muro).
+[§6 de `CONECTORES.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/CONECTORES.md#6--qu%C3%A9-alcanza-un-m%C3%B3dulo-y-de-qui%C3%A9n-es-el-muro), en el repositorio.
 Léela antes de escribir nada: ahorra descubrir a la mitad que el servicio exige una revisión
 anual de seguridad para dejarte pasar.
 
 El diseño entero de los conectores está en
-[`docs/CONECTORES.md`](CONECTORES.md). El primero que existe —CORREO, que manda correo por SMTP
+[`CONECTORES.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/CONECTORES.md), en el repositorio. El primero que existe —CORREO, que manda correo por SMTP
 sin una sola dependencia— es `src/modules/correo.mjs` y se lee en diez minutos.
 
 ## Publicarlo

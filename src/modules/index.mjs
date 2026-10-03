@@ -26,7 +26,15 @@ export const BUILTIN_IDS = new Set(MODULES.map((module) => module.id));
 export const loadFailures = [];   // { file, error } for MODULES to show
 export const moduleFolders = ({ stateRoot, projectRoot }) => ({ user: join(stateRoot, 'modules'), project: join(projectRoot, '.madre', 'modules') });
 // Where the SDK guide and the example live in this installation, for agents who build modules.
-export const sdkPaths = () => ({ guide: fileURLToPath(new URL('../../docs/SDK.md', import.meta.url)), example: fileURLToPath(new URL('../../docs/sdk/hello-module.mjs', import.meta.url)) });
+// What an agent writing a module is pointed at. Two examples and not one, because the connector
+// shape — one file that is both the module and the MCP server it spawns — is not something a
+// model derives from the guide: it writes two files, or it writes the self-detection wrong and
+// the server answers nothing.
+export const sdkPaths = () => ({
+  guide: fileURLToPath(new URL('../../docs/SDK.md', import.meta.url)),
+  example: fileURLToPath(new URL('../../docs/sdk/hello-module.mjs', import.meta.url)),
+  connector: fileURLToPath(new URL('../../docs/sdk/connector-module.mjs', import.meta.url)),
+});
 // A file an agent wrote that means "install me as a module": <id>.module.mjs.
 export const isModuleFile = (path) => /\.module\.mjs$/.test(String(path ?? ''));
 
