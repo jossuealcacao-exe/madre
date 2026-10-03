@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.7.0 · Sin publicar
+## 0.7.1 · Sin publicar
+
+## 0.7.0 · 2026-10-03
 
 Esta versión es sobre la memoria de la sala: ahora la ves, la recorres y te dice cómo está. NOSTROMO pasa a tres dimensiones y cada memoria es una estrella que cuenta su propia historia; MEMORIA se vuelve un tablero; y quien llega por primera vez encuentra un recorrido sobre la sala misma. También trae ideas listas para crear tus propios módulos, un botón para detener una sola respuesta y una protección nueva frente a páginas web ajenas. Gracias por usar MADRE y por cada reporte que la hace mejor.
 
