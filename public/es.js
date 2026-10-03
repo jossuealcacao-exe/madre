@@ -1203,6 +1203,11 @@ export const ES = {
   '⚙ CONNECTIONS': '⚙ CONEXIONES',
   '✎ FEEDBACK': '✎ COMENTARIOS',
   'EXPAND ALL': 'ABRIR TODO',
+  // MEMORIA, emancipada de CONEXIONES: su propio botón en la barra de MU/TH/UR.
+  '\u25a4 MEMORY': '\u25a4 MEMORIA',
+  'What the archive holds, who distils it, and how well it is answering': 'Qué guarda el archivo, quién lo destila y qué tan bien está contestando',
+  'THIS ROOM HAS NO MEMORY INDEX.': 'ESTA SALA NO TIENE ÍNDICE DE MEMORIA.',
+  'READING THE ARCHIVE…': 'LEYENDO EL ARCHIVO…',
   'COLLAPSE ALL': 'CERRAR TODO',
   'END SESSION ×': 'TERMINAR SESIÓN ×',
   'NO SPECIAL ORDERS ON THIS SHIP · THE CREW IS NOT EXPENDABLE · ESC TO END SESSION':

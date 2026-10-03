@@ -66,7 +66,8 @@ test('mother: every long section folds, and one button moves all of them', async
     assert.ok(at > 0, `${header} does not fold`);
     // The key belongs to the call that folds that header, not to some other one nearby.
     const call = app.slice(Math.max(0, at - 400), at);
-    assert.ok(call.includes('folding(section'), `${header}'s key is not on a folding call`);
+    // MEMORY folds into its own panel now, so the target varies; the helper does not.
+    assert.ok(/folding\((?:section|\w+UI\.section)/.test(call), `${header}'s key is not on a folding call`);
     assert.ok(call.includes(header), `the ${key} fold does not carry the ${header} header`);
   }
 
@@ -78,8 +79,14 @@ test('mother: every long section folds, and one button moves all of them', async
   // One button for the panel, and it says what it will do rather than what the panel is.
   assert.match(page, /id="fold-all"/, 'there is no way to open everything at once');
   const all = app.slice(app.indexOf('function everyFold('), app.indexOf('function folding('));
-  assert.match(all, /some\(\(fold\) => !fold\.open\) \? t\('EXPAND ALL'\) : t\('COLLAPSE ALL'\)/, 'the button does not say what it will do');
+  // What it says is decided by whether anything is still shut — the two halves may be written on
+  // one line or two, but the label must follow the state and never name the panel.
+  assert.match(all, /some\(\(fold\) => !fold\.open\)/, 'the button does not look at whether anything is shut');
+  assert.match(all, /t\('EXPAND ALL'\) : t\('COLLAPSE ALL'\)/, 'the button does not say what it will do');
   assert.match(all, /button\.hidden = folds\.length < 2/, 'the button shows even when there is nothing to move');
+  // It is no longer one of the bar's destinations: it lives under the bar, on the canvas it moves.
+  assert.match(page, /class="fold-all-row"/, 'the button is back in the bar with the destinations');
+  assert.ok(!/mother-actions[\s\S]{0,400}id="fold-all"/.test(page), 'the button is still inside the actions bar');
   assert.match(all, /rememberFold\(fold\.dataset\.fold, open\)/, 'moving everything at once is not remembered');
 });
 

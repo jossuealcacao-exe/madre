@@ -6111,6 +6111,10 @@ const settingsUI = {
   loginLogs: new Map(),
 };
 
+// MEMORY is its own destination in the bar, and the two are mutually exclusive: both are full
+// screens of the same panel, so opening one closes the other instead of stacking them.
+const memoryUI = { button: document.querySelector('#memory-button'), section: document.querySelector('#mother-memory'), open: false };
+
 function renderLoginEvent(event) {
   const { agent, command, session, code, error } = event.payload;
   const finished = event.type === 'connection.login.finished';
@@ -6827,8 +6831,14 @@ function syncFoldAll() {
   const button = document.querySelector('#fold-all');
   if (!button) return;
   const folds = everyFold();
+  const row = button.parentElement;
+  if (row) row.hidden = folds.length < 2;
   button.hidden = folds.length < 2;
-  button.textContent = folds.some((fold) => !fold.open) ? t('EXPAND ALL') : t('COLLAPSE ALL');
+  // It acts on the whole canvas below it rather than going anywhere, so it is not one more
+  // destination in the bar: it sits under the bar, in the middle, with its own shape and an
+  // arrow that points the way it will move things.
+  const shut = folds.some((fold) => !fold.open);
+  button.replaceChildren(pixelIcon(shut ? 'unfold' : 'fold', 'pixel-icon'), el('span', null, shut ? t('EXPAND ALL') : t('COLLAPSE ALL')));
 }
 document.querySelector('#fold-all')?.addEventListener('click', () => {
   const folds = everyFold();
@@ -6849,6 +6859,8 @@ document.querySelector('#fold-all')?.addEventListener('click', () => {
 // into a curve. Written this way because a pixel drawing should be readable as a pixel drawing in
 // the source too: you can see the icon in the string.
 const PIXEL_ICONS = {
+  unfold: ['........', '#......#', '##....##', '.######.', '..####..', '...##...', '........', '........'],
+  fold:   ['........', '........', '...##...', '..####..', '.######.', '##....##', '#......#', '........'],
   release: ['...##...', '..####..', '.######.', '##.##.##', '...##...', '...##...', '...##...', '...##...'],
   alert:   ['...##...', '..#..#..', '..#..#..', '.#.##.#.', '.#.##.#.', '#......#', '#..##..#', '########'],
   fault:   ['##....##', '###..###', '.######.', '..####..', '..####..', '.######.', '###..###', '##....##'],
@@ -7094,104 +7106,16 @@ function connectionCard(agent) {
   return card;
 }
 
-function renderSettings() {
-  const { data } = settingsUI;
-  if (!data) return;
-  const section = settingsUI.section;
-  section.replaceChildren();
-  const signedIn = Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length;
-  const out = data.agents.length - signedIn;
-  const crew = folding(section, t('CONNECTIONS · {n} OF {total} SIGNED IN', { n: signedIn, total: data.agents.length }) + (data.sessionsAt ? t(' · CHECKED {time}', { time: formatTime(data.sessionsAt) }) : ''), {
-    icon: 'link',
-    key: 'connections',
-    badge: out > 0 ? { text: String(out), urgent: true, title: t('{n} agents with no session', { n: out }) } : null,
-  });
-  crew.append(el('p', 'note lead', t('ONE AGENT IS ENOUGH TO OPEN THE ROOM. MADRE USES THE SESSION EACH CLI ALREADY HAS: INSTALL ONE HERE OR SIGN IT IN, AND THE ROOM OPENS BY ITSELF.')));
-  crew.append(el('p', 'note', t('EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. MADRE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.')));
-  const grid = el('div', 'conn-grid');
-  for (const agent of data.agents) grid.append(connectionCard(agent));
-  crew.append(grid);
-
-  const settingsBody = folding(section, t('ROOM SETTINGS'), { key: 'room-settings', icon: 'gear' });
-  const form = el('form', 'room-form');
-  const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
-  const num = (name, value, min, step) => { const input = el('input'); input.type = 'number'; input.name = name; input.value = String(value); input.min = String(min); input.step = String(step); return input; };
-  const budget = num('softTokenBudget', data.settings.softTokenBudget, 10000, 10000);
-  const steps = num('maxPlanSteps', data.settings.maxPlanSteps, 1, 1);
-  const defaultTimeout = num('defaultTimeout', Math.round(data.settings.defaultTimeout / 1000), 10, 10);
-  wireInstantNumber(budget, { min: 10000, toPatch: (value) => ({ room: { softTokenBudget: value } }), describe: (value) => t('local budget saved: {n} tokens per agent per 5h window.', { n: formatTokens(value) }) });
-  wireInstantNumber(defaultTimeout, { min: 10, toPatch: (seconds) => ({ timeouts: { default: seconds * 1000 } }), describe: (seconds) => t('default timeout saved: {n}s.', { n: seconds }) });
-  const idle = num('geminiIdle', Math.round(data.settings.geminiIdleMs / 1000), 10, 10);
-  const retries = num('geminiRetries', data.settings.geminiRetries, 0, 1);
-  const model = el('input'); model.name = 'opencodeModel'; model.value = data.settings.opencodeModel ?? ''; model.placeholder = t('provider/model'); model.setAttribute('list', 'opencode-models');
-  const datalist = el('datalist'); datalist.id = 'opencode-models';
-  form.append(field(t('LOCAL TOKEN BUDGET PER AGENT'), budget));
-  form.append(field(t('DEFAULT TIMEOUT · SECONDS'), defaultTimeout));
-  form.append(field(t('MAX PLAN STEPS'), steps));
-  form.append(field(t('GEMINI SILENCE LIMIT · SECONDS'), idle));
-  form.append(field(t('GEMINI RETRIES'), retries));
-  const modelLabel = field(t('OPENCODE MODEL IN THIS ROOM'), model);
-  modelLabel.append(datalist);
-  form.append(modelLabel);
-  const full = el('div', 'full');
-  const toggle = el('label', 'toggle');
-  const delegation = el('input'); delegation.type = 'checkbox'; delegation.name = 'delegation'; delegation.checked = data.settings.delegation;
-  toggle.append(delegation, t('AGENTS MAY DELEGATE TURNS TO EACH OTHER'));
-  full.append(toggle);
-  const loadModels = el('button', null, t('LIST OPENCODE MODELS'));
-  loadModels.type = 'button';
-  loadModels.addEventListener('click', async () => {
-    loadModels.disabled = true;
-    const result = await fetch('/api/agents/opencode/models').then((response) => response.json()).catch(() => ({ models: [] }));
-    datalist.replaceChildren();
-    for (const name of result.models ?? []) { const option = el('option'); option.value = name; datalist.append(option); }
-    loadModels.textContent = t('{n} MODELS LISTED', { n: (result.models ?? []).length });
-  });
-  full.append(loadModels);
-  const save = el('button', 'primary', t('SAVE TO ~/.pulse/config.json'));
-  save.type = 'submit';
-  full.append(save);
-  full.append(el('span', 'note', t('ENVIRONMENT VARIABLES SET BEFORE START STILL WIN ON THE NEXT LAUNCH.')));
-  form.append(full);
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    save.disabled = true;
-    const timeouts = { default: Number(defaultTimeout.value) * 1000 };
-    for (const input of section.querySelectorAll('.timeout-input')) {
-      const seconds = Number(input.value);
-      if (seconds > 0 && seconds * 1000 !== timeouts.default) timeouts[input.dataset.agent] = seconds * 1000;
-      else timeouts[input.dataset.agent] = 0;
-    }
-    const scopePatch = {};
-    for (const input of section.querySelectorAll('.scope-input')) {
-      if (input.disabled) continue;
-      scopePatch[input.dataset.agent] ??= {};
-      scopePatch[input.dataset.agent][input.dataset.scope] = input.checked;
-    }
-    const payload = {
-      opencode: { model: model.value.trim() },
-      scopes: scopePatch,
-      timeouts,
-      room: { delegation: delegation.checked, maxPlanSteps: Number(steps.value), softTokenBudget: Number(budget.value) },
-      gemini: { idleMs: Number(idle.value) * 1000, retries: Number(retries.value) },
-    };
-    const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-    const result = await response.json().catch(() => ({}));
-    if (response.ok) {
-      state.timeouts = result.settings.timeouts;
-      state.budget = result.settings.softTokenBudget;
-      if (result.settings.capabilities) { state.capabilities = result.settings.capabilities; renderCreateScopes(); }
-      toast(t('MU/TH/UR › settings saved. new turns use them now.'));
-      await loadSettings();
-    } else toast(result.error ?? t('Settings were not saved.'));
-    save.disabled = false;
-  });
-  settingsBody.append(form);
-
-  // MEMORY: who distils, with whom, how often, where it embeds, how much recall a turn gets. Saves as you change it.
-  const mem = data.settings.memory;
-  if (mem) {
-    const memoryBody = folding(section, `${t('MEMORY')} · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory', icon: 'chip' });
+// MEMORY, emancipated. It used to be a fold inside CONNECTIONS, which is where you go to wire an
+// agent up — a different errand entirely. What the archive holds, who distils it and how well it
+// is answering is a subject of its own, so it gets its own button in the MU/TH/UR bar, beside
+// NOSTROMO, and the whole panel instead of a fold inside somebody else's.
+function renderMemoryPanel(data) {
+  if (!memoryUI.section) return;
+  memoryUI.section.replaceChildren();
+  const mem = data?.settings?.memory;
+  if (!mem) { memoryUI.section.append(el('p', 'mother-answer', t('THIS ROOM HAS NO MEMORY INDEX.'))); return; }
+    const memoryBody = folding(memoryUI.section, `${t('MEMORY')} · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory', icon: 'chip' });
     memoryBody.append(el('p', 'note', t('THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.')));
     const mform = el('form', 'room-form memory-form');
     const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(t('Memory setting was not saved: {error}', { error: error.message })); } };
@@ -7307,7 +7231,104 @@ function renderSettings() {
     if (mem.envWins) mform.append(el('span', 'note full', t('ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.')));
     mform.addEventListener('submit', (event) => event.preventDefault());
     memoryBody.append(mform);
-  }
+}
+
+function renderSettings() {
+  const { data } = settingsUI;
+  if (!data) return;
+  const section = settingsUI.section;
+  section.replaceChildren();
+  const signedIn = Object.values(data.sessions ?? {}).filter((s) => s.state === 'signed-in').length;
+  const out = data.agents.length - signedIn;
+  const crew = folding(section, t('CONNECTIONS · {n} OF {total} SIGNED IN', { n: signedIn, total: data.agents.length }) + (data.sessionsAt ? t(' · CHECKED {time}', { time: formatTime(data.sessionsAt) }) : ''), {
+    icon: 'link',
+    key: 'connections',
+    badge: out > 0 ? { text: String(out), urgent: true, title: t('{n} agents with no session', { n: out }) } : null,
+  });
+  crew.append(el('p', 'note lead', t('ONE AGENT IS ENOUGH TO OPEN THE ROOM. MADRE USES THE SESSION EACH CLI ALREADY HAS: INSTALL ONE HERE OR SIGN IT IN, AND THE ROOM OPENS BY ITSELF.')));
+  crew.append(el('p', 'note', t('EACH AGENT KEEPS ITS OWN CREDENTIALS IN ITS OWN CLI. MADRE ONLY ASKS THE CLI WHETHER IT IS SIGNED IN, AND CAN START THE CLI\'S OWN SIGN-IN FOR YOU.')));
+  const grid = el('div', 'conn-grid');
+  for (const agent of data.agents) grid.append(connectionCard(agent));
+  crew.append(grid);
+
+  const settingsBody = folding(section, t('ROOM SETTINGS'), { key: 'room-settings', icon: 'gear' });
+  const form = el('form', 'room-form');
+  const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
+  const num = (name, value, min, step) => { const input = el('input'); input.type = 'number'; input.name = name; input.value = String(value); input.min = String(min); input.step = String(step); return input; };
+  const budget = num('softTokenBudget', data.settings.softTokenBudget, 10000, 10000);
+  const steps = num('maxPlanSteps', data.settings.maxPlanSteps, 1, 1);
+  const defaultTimeout = num('defaultTimeout', Math.round(data.settings.defaultTimeout / 1000), 10, 10);
+  wireInstantNumber(budget, { min: 10000, toPatch: (value) => ({ room: { softTokenBudget: value } }), describe: (value) => t('local budget saved: {n} tokens per agent per 5h window.', { n: formatTokens(value) }) });
+  wireInstantNumber(defaultTimeout, { min: 10, toPatch: (seconds) => ({ timeouts: { default: seconds * 1000 } }), describe: (seconds) => t('default timeout saved: {n}s.', { n: seconds }) });
+  const idle = num('geminiIdle', Math.round(data.settings.geminiIdleMs / 1000), 10, 10);
+  const retries = num('geminiRetries', data.settings.geminiRetries, 0, 1);
+  const model = el('input'); model.name = 'opencodeModel'; model.value = data.settings.opencodeModel ?? ''; model.placeholder = t('provider/model'); model.setAttribute('list', 'opencode-models');
+  const datalist = el('datalist'); datalist.id = 'opencode-models';
+  form.append(field(t('LOCAL TOKEN BUDGET PER AGENT'), budget));
+  form.append(field(t('DEFAULT TIMEOUT · SECONDS'), defaultTimeout));
+  form.append(field(t('MAX PLAN STEPS'), steps));
+  form.append(field(t('GEMINI SILENCE LIMIT · SECONDS'), idle));
+  form.append(field(t('GEMINI RETRIES'), retries));
+  const modelLabel = field(t('OPENCODE MODEL IN THIS ROOM'), model);
+  modelLabel.append(datalist);
+  form.append(modelLabel);
+  const full = el('div', 'full');
+  const toggle = el('label', 'toggle');
+  const delegation = el('input'); delegation.type = 'checkbox'; delegation.name = 'delegation'; delegation.checked = data.settings.delegation;
+  toggle.append(delegation, t('AGENTS MAY DELEGATE TURNS TO EACH OTHER'));
+  full.append(toggle);
+  const loadModels = el('button', null, t('LIST OPENCODE MODELS'));
+  loadModels.type = 'button';
+  loadModels.addEventListener('click', async () => {
+    loadModels.disabled = true;
+    const result = await fetch('/api/agents/opencode/models').then((response) => response.json()).catch(() => ({ models: [] }));
+    datalist.replaceChildren();
+    for (const name of result.models ?? []) { const option = el('option'); option.value = name; datalist.append(option); }
+    loadModels.textContent = t('{n} MODELS LISTED', { n: (result.models ?? []).length });
+  });
+  full.append(loadModels);
+  const save = el('button', 'primary', t('SAVE TO ~/.pulse/config.json'));
+  save.type = 'submit';
+  full.append(save);
+  full.append(el('span', 'note', t('ENVIRONMENT VARIABLES SET BEFORE START STILL WIN ON THE NEXT LAUNCH.')));
+  form.append(full);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    save.disabled = true;
+    const timeouts = { default: Number(defaultTimeout.value) * 1000 };
+    for (const input of section.querySelectorAll('.timeout-input')) {
+      const seconds = Number(input.value);
+      if (seconds > 0 && seconds * 1000 !== timeouts.default) timeouts[input.dataset.agent] = seconds * 1000;
+      else timeouts[input.dataset.agent] = 0;
+    }
+    const scopePatch = {};
+    for (const input of section.querySelectorAll('.scope-input')) {
+      if (input.disabled) continue;
+      scopePatch[input.dataset.agent] ??= {};
+      scopePatch[input.dataset.agent][input.dataset.scope] = input.checked;
+    }
+    const payload = {
+      opencode: { model: model.value.trim() },
+      scopes: scopePatch,
+      timeouts,
+      room: { delegation: delegation.checked, maxPlanSteps: Number(steps.value), softTokenBudget: Number(budget.value) },
+      gemini: { idleMs: Number(idle.value) * 1000, retries: Number(retries.value) },
+    };
+    const response = await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok) {
+      state.timeouts = result.settings.timeouts;
+      state.budget = result.settings.softTokenBudget;
+      if (result.settings.capabilities) { state.capabilities = result.settings.capabilities; renderCreateScopes(); }
+      toast(t('MU/TH/UR › settings saved. new turns use them now.'));
+      await loadSettings();
+    } else toast(result.error ?? t('Settings were not saved.'));
+    save.disabled = false;
+  });
+  settingsBody.append(form);
+
+  // MEMORY has its own panel now, rendered from this same answer.
+  renderMemoryPanel(data);
 
   // PRIVACY: terms that never travel through the room. Replaced at every hop: agent replies,
   // the index, the notes, the dataset. PURGE does the same to what the room already holds.
@@ -7795,6 +7816,42 @@ function buildNostromo(data) {
 // camera maps the world to the canvas. The camera follows the whole system
 // until the human takes the wheel (drag, wheel), and RECENTER hands it back.
 const NOSTROMO_ORBIT = 300;
+
+// The archive is not a ball. It is the shape of the thing that holds it, seen from the side:
+// a brain, facing left. One function says how far the shell is at a given bearing, and BOTH the
+// first placement and the force that holds the system use it — which is the whole trick. The
+// ring force used to pull every memory onto a circle, so any shape given at placement was undone
+// within a second or two of physics. Shape the target and the shape is what the system settles
+// into instead of what it drifts away from.
+//
+// Bearings are canvas bearings: 0 points right (occipital, the back of the head), PI/2 points
+// DOWN (temporal lobe and cerebellum), PI points left (frontal pole), 3PI/2 points up (parietal,
+// the crown).
+function brainRadius(angle) {
+  const a = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  // Wider than tall, which is what stops it reading as a circle before anything else is added.
+  let r = 1 / Math.hypot(cos / 1.0, sin / 0.78);
+  // The frontal pole is blunt and sits a little forward of a pure ellipse.
+  r += 0.07 * Math.max(0, -cos) ** 2;
+  // The base is flat: a brain rests on something. Everything below the midline comes in, most
+  // of all straight down.
+  r -= 0.13 * Math.max(0, sin) ** 1.6;
+  // The temporal lobe hangs at the lower front, separated from the frontal lobe above it.
+  r += 0.09 * Math.exp(-(((a - 2.45) / 0.42) ** 2));
+  // And the cerebellum is its own smaller mass at the lower back.
+  r += 0.12 * Math.exp(-(((a - 0.95) / 0.34) ** 2));
+  return r;
+}
+
+// The longitudinal fissure, the groove that makes two hemispheres out of one mass. It is a
+// density gap rather than a wall: memories are nudged out of the band and never across it.
+const FISSURE = 0.085;
+function fissureBias(node) {
+  const across = Math.sin(node.angle);
+  return Math.abs(across) < FISSURE ? Math.sign(across || 1) * (FISSURE - Math.abs(across)) : 0;
+}
 const HEART_PERIOD = 1.15;   // seconds per beat: slow, deliberate, alive
 const WAVE_SPEED = 260;      // world units per second a beat travels outward
 
@@ -7808,9 +7865,9 @@ function sizeNostromo() {
   canvas.height = Math.round(rect.height * dpr);
   for (const node of nostromo.nodes) {
     if (node.placed) continue;
-    const radius = NOSTROMO_ORBIT * (0.92 + node.distance * 0.7);
+    const radius = NOSTROMO_ORBIT * brainRadius(node.angle) * (0.92 + node.distance * 0.7);
     node.x = Math.cos(node.angle) * radius;
-    node.y = Math.sin(node.angle) * radius;
+    node.y = Math.sin(node.angle) * radius + fissureBias(node) * NOSTROMO_ORBIT;
     node.placed = true;
   }
   return true;
@@ -8004,7 +8061,7 @@ function stepNostromo(dt, t) {
     let fy = 0;
     const dist = Math.hypot(node.x, node.y) || 1;
     // A soft ring around the core: too close is pushed out, too far pulled in.
-    const target = NOSTROMO_ORBIT * (0.98 + node.distance * 0.62);
+    const target = NOSTROMO_ORBIT * brainRadius(Math.atan2(node.y, node.x)) * (0.98 + node.distance * 0.62);
     const pull = (target - dist) * 0.004;
     fx += (node.x / dist) * pull;
     fy += (node.y / dist) * pull;
@@ -9416,25 +9473,53 @@ document.querySelector('#feedback-button')?.addEventListener('click', openFeedba
 mother.dialog?.addEventListener?.('close', () => { /* keep reports; nothing to reset */ });
 void loadSentinel();
 
+// The panel's own body, which both destinations cover while they are open.
+const MOTHER_BODY = ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel'];
+function showMotherBody(show) {
+  for (const id of MOTHER_BODY) { const node = document.getElementById(id); if (node) node.hidden = !show; }
+  const row = document.querySelector('.fold-all-row');
+  if (row) row.hidden = !show;
+}
 settingsUI.button.addEventListener('click', async () => {
-  settingsUI.open = !settingsUI.open;
-  state.settingsOpen = settingsUI.open;
-  settingsUI.button.setAttribute('aria-pressed', String(settingsUI.open));
-  settingsUI.section.hidden = !settingsUI.open;
-  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel']) {
-    const node = document.getElementById(id);
-    if (node) node.hidden = settingsUI.open;
+  const open = !settingsUI.open;
+  closeMemoryPanel();
+  settingsUI.open = open;
+  state.settingsOpen = open;
+  settingsUI.button.setAttribute('aria-pressed', String(open));
+  settingsUI.section.hidden = !open;
+  showMotherBody(!open);
+  if (open) { settingsUI.section.append(el('p', 'mother-answer', t('CHECKING CONNECTIONS…'))); await loadSettings(); }
+  else syncFoldAll();
+});
+
+function closeMemoryPanel() {
+  if (!memoryUI.open) return;
+  memoryUI.open = false;
+  memoryUI.section.hidden = true;
+  memoryUI.button?.setAttribute('aria-pressed', 'false');
+}
+memoryUI.button?.addEventListener('click', async () => {
+  const open = !memoryUI.open;
+  // Opening MEMORY closes CONNECTIONS the same way the other way round does: one screen at a time.
+  if (settingsUI.open) {
+    settingsUI.open = false;
+    state.settingsOpen = false;
+    settingsUI.button.setAttribute('aria-pressed', 'false');
+    settingsUI.section.hidden = true;
   }
-  if (settingsUI.open) { settingsUI.section.append(el('p', 'mother-answer', t('CHECKING CONNECTIONS…'))); await loadSettings(); }
+  memoryUI.open = open;
+  memoryUI.section.hidden = !open;
+  memoryUI.button.setAttribute('aria-pressed', String(open));
+  showMotherBody(!open);
+  if (open) { memoryUI.section.replaceChildren(el('p', 'mother-answer', t('READING THE ARCHIVE…'))); await loadSettings(); }
+  else syncFoldAll();
 });
 mother.dialog.addEventListener('close', () => {
-  if (!settingsUI.open) return;
+  if (!settingsUI.open && !memoryUI.open) return;
   settingsUI.open = false;
   state.settingsOpen = false;
   settingsUI.button.setAttribute('aria-pressed', 'false');
   settingsUI.section.hidden = true;
-  for (const id of ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel']) {
-    const node = document.getElementById(id);
-    if (node) node.hidden = false;
-  }
+  closeMemoryPanel();
+  showMotherBody(true);
 });

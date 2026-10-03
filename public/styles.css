@@ -29,7 +29,7 @@
   --user-ink: var(--phosphor-ink);
 
   --danger: #ff7b72;
-  --warn: #ffd166;
+  --warn: #ffd166; --warn-ink: #1a1403;
   --crit: #ff8a7a;
   --terror: #ff2a1f;             /* MOTHER, when she stops being polite */
   --shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 12px 40px rgba(0,0,0,.45);
@@ -70,15 +70,15 @@
     --line-2: rgba(0, 0, 0, .13);
     --text: #121512;
     --text-2: #5a615a;
-    --text-3: #8b928a;
+    --text-3: #767d75;
     --phosphor: #2f8a1c;
     --brew: #178f0c;
     --brew-ink: #ffffff;
     --phosphor-ink: #ffffff;
-    --bubble: #e9ebe6;
+    --bubble: #dde0d7;
     --bubble-ink: #121512;
     --danger: #b3261e;
-    --warn: #8a6a00;
+    --warn: #8a6a00; --warn-ink: #ffffff;
     --crit: #a1301f;
     --shadow: 0 12px 40px rgba(0,0,0,.08);
     --mode-0: #6f786e; --mode-0-ink: #ffffff;
@@ -103,15 +103,15 @@
     --line-2: rgba(0, 0, 0, .13);
     --text: #121512;
     --text-2: #5a615a;
-    --text-3: #8b928a;
+    --text-3: #767d75;
     --phosphor: #2f8a1c;
     --brew: #178f0c;
     --brew-ink: #ffffff;
     --phosphor-ink: #ffffff;
-    --bubble: #e9ebe6;
+    --bubble: #dde0d7;
     --bubble-ink: #121512;
     --danger: #b3261e;
-    --warn: #8a6a00;
+    --warn: #8a6a00; --warn-ink: #ffffff;
     --crit: #a1301f;
     --shadow: 0 12px 40px rgba(0,0,0,.08);
 }
@@ -227,6 +227,22 @@ body {
 .avatar.gradient svg { color: #fff; }
 .avatar.gradient { background: var(--agent-gradient, var(--agent)); color: #fff; }
 .agents .avatar { cursor: default; }
+
+/* The spheres, in light mode. A tint of the agent's colour works on a near-black page because the
+   colour is the only light in the circle; over a near-white page the same mix just walks back to
+   the page. Measured: at 17% over #f4f5f2 the brightest agents came out at 1.06:1 and 1.03:1 —
+   the disc was not faint, it was absent. Raising the percentage does not fix it either, because
+   mixing a bright yellow into white stays white (40% only reached 1.17:1).
+   
+   So on light the disc keeps its tint and gains an edge and a glyph in the agent's colour taken
+   DOWN instead of up. One colour, two directions, and every agent reads at its own hue. */
+:root:not([data-theme="dark"]) .avatar:not(.gradient):not(.offline):not(.detected),
+:root[data-theme="light"] .avatar:not(.gradient):not(.offline):not(.detected) {
+  --agent-ink: color-mix(in srgb, var(--agent) 58%, #11210f);
+  background: color-mix(in srgb, var(--agent) 22%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--agent-ink);
+  color: var(--agent-ink);
+}
 
 /* ================= thread ================= */
 .thread {
@@ -1704,10 +1720,20 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .ports-note { padding: 6px 10px 7px; font-family: var(--mono); font-size: 9px; line-height: 1.6; letter-spacing: .1em; color: var(--text-3); }
 
 /* The way up, beside the agent asking to climb it. Quiet: it is a door, not an alarm. */
-.mode-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 12px 0; padding: 7px 12px; border: 1px dashed color-mix(in srgb, var(--warn, #e2a022) 46%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--warn, #e2a022) 6%, transparent); }
+/* An agent asking for a rung. The box used to be drawn around the whole thing — a dashed frame
+   and a tinted ground behind a sentence that is not clickable — so the eye read a panel and had
+   to find the button inside it. The sentence is a sentence now; only the thing you can press
+   looks pressable, and it looks it properly: filled, not outlined. */
+.mode-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 10px 12px 2px; padding: 0; border: 0; background: none; }
 .mode-what { flex: 1; min-width: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--text-2); }
-.mode-go { flex: none; border: 1px solid color-mix(in srgb, var(--warn, #e2a022) 60%, transparent); background: transparent; color: var(--warn, #e2a022); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .12em; padding: 5px 12px; border-radius: 7px; cursor: pointer; }
-.mode-go:hover { background: color-mix(in srgb, var(--warn, #e2a022) 16%, transparent); }
+.mode-go {
+  flex: none; border: 0; border-radius: 7px; cursor: pointer;
+  background: var(--warn, #e2a022); color: var(--warn-ink, #1a1403);
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .12em; padding: 6px 13px;
+  box-shadow: 0 1px 0 color-mix(in srgb, #000 22%, transparent);
+}
+.mode-go:hover { background: color-mix(in srgb, var(--warn, #e2a022) 86%, #fff); }
+.mode-go:active { transform: translateY(1px); box-shadow: none; }
 
 /* A decision handed back, in the agent's colour: read at a glance, answered with one press. */
 .choice { margin: 10px 12px 2px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 32%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--agent, var(--text-3)) 5%, transparent); }
@@ -2184,3 +2210,18 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .slash-menu .item.starter .what { color: var(--text-2); }
 .dev-card .dev-ask { margin: 0; font-size: 12px; line-height: 1.7; color: var(--ph-dim); }
 .dev-card .dev-ask code { font-family: var(--mono); font-size: 11.5px; color: var(--brew); }
+
+/* EXPAND ALL, taken out of the bar. The bar is a row of destinations — CONNECTIONS, MEMORY,
+   NOSTROMO — and this is not one: it acts on the canvas underneath it. So it sits under the bar,
+   centred over what it moves, with its own shape and an 8-bit arrow pointing the way it will go.
+   The space above it is larger than the space below, so it reads as belonging to the canvas
+   rather than hanging off the header. */
+.fold-all-row { display: flex; justify-content: center; margin: 20px 0 10px; }
+.fold-all {
+  display: inline-flex; align-items: center; gap: 9px;
+  border: 1px solid var(--ph-dim); border-radius: 0; background: transparent; color: var(--ph);
+  font-family: var(--mono); font-size: 9px; letter-spacing: .24em; padding: 7px 18px; cursor: pointer;
+}
+.fold-all:hover { background: color-mix(in srgb, var(--ph) 12%, transparent); border-color: var(--ph); }
+.fold-all .pixel-icon { width: 11px; height: 11px; display: block; }
+.fold-all .pixel-icon svg { width: 100%; height: 100%; shape-rendering: crispEdges; display: block; }

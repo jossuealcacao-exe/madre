@@ -595,3 +595,32 @@ test('the develop card says what a module is and puts /module in the composer', 
   button.listeners.click[0]({});
   assert.equal(input.value, '/module ', 'the button did not leave the composer ready to say what the module should do');
 });
+
+// NOSTROMO is a brain seen from the side, not a ball. The shape has to live in the FORCE and not
+// only in the first placement: the ring force used to pull every memory onto a circle, so a shape
+// given at placement was undone a second or two later. This checks the outline is a brain's and
+// that both the placement and the target read from the same function.
+test('the archive settles into the shape of a brain, not a ball', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(app, /const target = NOSTROMO_ORBIT \* brainRadius\(/, 'the force still pulls everything onto a circle, so any shape is undone');
+  assert.match(app, /const radius = NOSTROMO_ORBIT \* brainRadius\(/, 'the first placement is not on the same outline');
+
+  // The outline itself, read out of the file so the test measures what ships.
+  const body = app.slice(app.indexOf('function brainRadius('), app.indexOf('const FISSURE'));
+  const brainRadius = new Function(`${body}; return brainRadius;`)();
+  const at = (deg) => brainRadius((deg * Math.PI) / 180);
+
+  // Canvas bearings: 0 is the back of the head, 90 points down, 180 is the frontal pole.
+  assert.ok(at(180) > at(0), 'the frontal pole is not the furthest point');
+  assert.ok(at(90) < at(270) * 0.9, 'the base is not flat: a brain rests on something');
+  assert.ok(at(270) < at(0) * 0.9, 'it is not wider than it is tall, so it still reads as a circle');
+  // The two lobes that stop it being an egg.
+  assert.ok(at(55) > at(80), 'there is no cerebellum at the lower back');
+  assert.ok(at(140) > at(105), 'there is no temporal lobe at the lower front');
+
+  // And nothing anywhere collapses to zero or runs away: every bearing stays a sane radius.
+  for (let deg = 0; deg < 360; deg += 5) {
+    const r = at(deg);
+    assert.ok(r > 0.5 && r < 1.3, `the outline is ${r.toFixed(2)} at ${deg}°`);
+  }
+});
