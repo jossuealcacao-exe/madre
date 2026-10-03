@@ -69,6 +69,7 @@ import { Eyecat } from './eyecat-watch.mjs';
 import { economy } from './room/economy.mjs';
 import { maturity } from './maturity.mjs';
 import { verdictFor } from './verdict.mjs';
+import { refuseForeign } from './request-guard.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -848,6 +849,8 @@ export async function createPulseServer({
   }
 
   const server = http.createServer(async (request, response) => {
+    const foreign = refuseForeign(request);
+    if (foreign) return sendJson(response, 403, { error: t(foreign), guarded: true });
     const url = new URL(request.url, 'http://127.0.0.1');
     // The project's own folder name, typed by the human. Declared at the top of the handler and
     // not beside the first route that happened to need it: a const sits in its temporal dead zone
