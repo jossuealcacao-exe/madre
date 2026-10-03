@@ -59,7 +59,10 @@ test('mother: every long section folds, and one button moves all of them', async
 
   // Everything in the panel that runs long folds, and all of it through the same helper.
   for (const [key, header] of [
-    ['connections', 'CONNECTIONS'], ['room-settings', 'ROOM SETTINGS'], ['memory', 'MEMORY'],
+    ['connections', 'CONNECTIONS'], ['room-settings', 'ROOM SETTINGS'],
+    // MEMORY: the dashboard, how the archive is kept, and how it is trained. All three fold, or
+    // COLLAPSE ALL there moves something the reader cannot see.
+    ['memory-dashboard', 'MEMORY · THE ARCHIVE AT A GLANCE'], ['memory-settings', 'ARCHIVIST AND RECALL'], ['memory-train', 'DATASET AND TRAINING'],
     ['privacy', 'PRIVACY'], ['sentinel', 'SENTINEL'], ['update', 'RELEASE CHANNEL'],
   ]) {
     const at = app.indexOf(`key: '${key}'`);
@@ -178,7 +181,8 @@ test('mother: the panel reads as a terminal, and nothing in it is drawn in the p
 
   // Every field in these forms is drawn in phosphor on black. A textarea was left out of that
   // rule, so what you typed into it was invisible; nothing may be left out again.
-  const fields = css.match(/\.conn-card input, \.conn-card select, \.settings \.room-form input([^{]*)\{([^}]*)\}/);
+  // MEMORY has its own panel, and its fields are drawn by the very same rule.
+  const fields = css.match(/\.conn-card input, \.conn-card select, :is\(\.settings, \.memory-panel\) \.room-form input([^{]*)\{([^}]*)\}/);
   assert.ok(fields, 'the fields no longer share one rule');
   assert.match(fields[1], /textarea/, 'a textarea is not drawn like the other fields');
   assert.match(fields[2], /color: var\(--ph\)/);
@@ -249,12 +253,14 @@ test('mother: a dialog head keeps its buttons on one line, in the order they are
 test('mother: the verdict is written the way the rest of the panel is written', async () => {
   const css = await read('styles.css');
   // It was the one paragraph in a terminal that was not in the terminal's own hand.
-  const next = css.match(/\.maturity \.maturity-next \{([^}]*)\}/);
+  // It lives on the MEMORY dashboard now, framed like every other block there: one hairline all
+  // round, no thicker edge competing with the words.
+  const next = css.match(/\.mem-verdict \.maturity-next \{([^}]*)\}/);
   assert.ok(next, 'the one thing to do has no styling of its own');
   assert.match(next[1], /var\(--mono\)/);
   assert.match(next[1], /text-transform: uppercase/);
-  assert.match(next[1], /border-left-width: 4px/, 'the instruction does not read as an instruction');
-  const says = css.match(/\.maturity-head span \{([^}]*)\}/);
+  assert.doesNotMatch(next[1], /border-left/, 'the instruction grew an edge again');
+  const says = css.match(/\.mem-verdict \.says \{([^}]*)\}/);
   assert.match(says[1], /text-transform: uppercase/);
 });
 

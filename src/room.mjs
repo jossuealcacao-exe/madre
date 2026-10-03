@@ -346,6 +346,12 @@ export class Room {
     } catch { return null; }
   }
 
+  // Counts only, for the MEMORY dashboard. See RoomMemory#activity.
+  memoryActivity({ days = 30 } = {}) {
+    if (!this.#memory) return null;
+    try { return this.#memory.activity({ days }); } catch { return null; }
+  }
+
   /* ---------- MU/TH/UR's channel ---------- */
 
   motherStatus() { return this.#mother ? this.#mother.status() : null; }

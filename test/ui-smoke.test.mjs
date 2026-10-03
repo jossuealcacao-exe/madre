@@ -466,7 +466,7 @@ test('/module answers in the room, and never arms the mode by itself', async () 
 
   // A refusal that only flashes is a refusal the room forgets. This one lands in the thread where
   // every other decision of the room lands, and carries the way out with it.
-  assert.match(block, /els\.column\.append\(node\)/, 'the refusal never reaches the thread');
+  assert.match(block, /els\.column\.append\((?:tidySystemLine\()?node\)?\)/, 'the refusal never reaches the thread');
   assert.match(block, /ARM #2 CREATE/);
   assert.match(block, /arm\.addEventListener\('click', \(\) => \{ setMode\(2/, 'the notice does not offer the way out');
   // The command asks; the click grants. Writing /module must never be what arms the mode.

@@ -54,6 +54,8 @@ Preguntas *«¿por qué elegimos Postgres?»* tres semanas después y la sala co
 
 Con [Ollama](https://ollama.com) corriendo, esa memoria además **habla**: `@madre` es un quinto agente, local, gratis, que responde desde todo el archivo con citas y no escribe nada.
 
+Y la puedes **ver**. En NOSTROMO el archivo es un cerebro en tres dimensiones que giras con el ratón: cada memoria es una estrella cuyo brillo dice cuánto la usa la sala y cuya superficie cuenta si la confirmaste, si nadie la ha revisado o si se está enfriando. En MEMORIA, un tablero te dice qué tan bien está contestando el archivo y qué conviene hacer después.
+
 ## Leen por defecto. Escriben cuando tú lo dices.
 
 Cada mensaje sale con un modo de permiso, y tu modo es el techo de todo lo que ese mensaje arranque.
@@ -77,7 +79,7 @@ Subir a `#3` o `#4` es una ceremonia deliberada: MADRE te pide el nombre de la c
 
 ## Hazla tuya
 
-MADRE trae nueve módulos. El décimo lo escribes tú — o se lo pides a un agente.
+MADRE trae ocho módulos. El noveno lo escribes tú — o se lo pides a un agente.
 
 **Un módulo es un archivo.** Sin build, sin dependencias, sin registrarse en ningún lado. Lo copias a una carpeta, pulsas RELOAD y aparece con su interruptor, sus ajustes y su ficha. Con uno puedes añadir un comando `/loquesea` que la sala entiende, darle a los agentes una herramienta que antes no tenían, cambiar cómo se comporta la sala, o conectarla con algo que ya usas.
 

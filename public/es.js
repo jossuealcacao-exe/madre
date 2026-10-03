@@ -635,8 +635,6 @@ export const ES = {
   'Settings were not saved.': 'Los ajustes no se guardaron.',
 
   // Memoria.
-  '{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING': '{entries} INTERCAMBIOS · {memories} MEMORIAS · {pending} EN ESPERA',
-  'NO INDEX': 'SIN ÍNDICE',
   'THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.':
     'EL ARCHIVISTA LEE LO QUE NADIE HA DESTILADO Y SE QUEDA CON LAS POCAS NOTAS QUE VALE LA PENA RECORDAR. VA PRIMERO EL AGENTE PERMITIDO MÁS BARATO; UN MODELO LOCAL NO CUESTA NADA Y DEJA TODO EN ESTA COMPUTADORA.',
   'AUTO · cheapest allowed': 'AUTO · el más barato permitido',
@@ -744,11 +742,47 @@ export const ES = {
   '@{agent} timeout saved: {n}s.': 'tiempo límite de @{agent} guardado: {n}s.',
 
   // ── DÓNDE ESTÁ LA SALA · LAS TRES PRUEBAS ─────────────────────────────────
-  'THE READING IS UNAVAILABLE': 'LA LECTURA NO ESTÁ DISPONIBLE',
   'NOTHING TO READ YET: THE ROOM HAS NO ARCHIVE.': 'TODAVÍA NO HAY NADA QUE LEER: LA SALA NO TIENE ARCHIVO.',
   'NEXT': 'SIGUE',
   'WHAT THE ARCHIVE IS MADE OF': 'DE QUÉ ESTÁ HECHO EL ARCHIVO',
   'THE THREE TESTS': 'LAS TRES PRUEBAS',
+  // El tablero de MEMORIA: lo que el archivo hizo día por día y de qué está hecho.
+  'MEMORY · THE ARCHIVE AT A GLANCE': 'MEMORIA · EL ARCHIVO DE UN VISTAZO',
+  'READ {time}': 'LEÍDO {time}',
+  'REFRESH': 'ACTUALIZAR',
+  'EXCHANGES': 'INTERCAMBIOS',
+  'MEMORIES': 'MEMORIAS',
+  'TURNS THAT RECALLED': 'TURNOS QUE RECORDARON',
+  'WAITING': 'EN ESPERA',
+  'MATURITY': 'MADUREZ',
+  '{n} THIS WEEK': '{n} ESTA SEMANA',
+  '{last} in the last 7 days, {before} in the 7 before': '{last} en los últimos 7 días, {before} en los 7 anteriores',
+  'EXCHANGES NOBODY HAS DISTILLED YET': 'INTERCAMBIOS QUE NADIE HA DESTILADO TODAVÍA',
+  'THE ARCHIVIST IS UP TO DATE': 'EL ARCHIVISTA VA AL DÍA',
+  'ACTIVITY · LAST {n} DAYS': 'ACTIVIDAD · ÚLTIMOS {n} DÍAS',
+  'NEW MEMORIES': 'MEMORIAS NUEVAS',
+  'PEAK {n}': 'MÁXIMO {n}',
+  'TODAY': 'HOY',
+  '{entries} exchanges, {memories} new memories and {recalls} turns that recalled in the last {n} days':
+    '{entries} intercambios, {memories} memorias nuevas y {recalls} turnos que recordaron en los últimos {n} días',
+  'BY DAY · TABLE': 'POR DÍA · TABLA',
+  'NOTHING HAPPENED IN THESE DAYS.': 'NO PASÓ NADA EN ESTOS DÍAS.',
+  'DAY': 'DÍA',
+  'THE DASHBOARD IS UNAVAILABLE': 'EL TABLERO NO ESTÁ DISPONIBLE',
+  'BY KIND': 'POR CLASE',
+  'BY ARCHIVIST': 'POR ARCHIVISTA',
+  'BY ZONE': 'POR ZONA',
+  'RECALL AND EMBEDDINGS': 'RECALL Y EMBEDDINGS',
+  'How recalled memories arrived: found by the search, or carried along by the company they keep.':
+    'Cómo llegaron las memorias que se recordaron: las encontró la búsqueda, o las trajo la compañía que tienen.',
+  'SEARCH': 'BÚSQUEDA',
+  'CASCADE': 'CASCADA',
+  'MEMORIES WITH A VECTOR': 'MEMORIAS CON VECTOR',
+  'EXCHANGES WITH A VECTOR': 'INTERCAMBIOS CON VECTOR',
+  'EMBEDDINGS OFF · RECALL MATCHES WORDS ONLY': 'EMBEDDINGS APAGADOS · EL RECALL SOLO EMPAREJA PALABRAS',
+  'PASSES AT {n}': 'PASA CON {n}',
+  'ARCHIVIST AND RECALL': 'ARCHIVISTA Y RECALL',
+  'DATASET AND TRAINING': 'DATASET Y ENTRENAMIENTO',
   'CAN THE ARCHIVE ANSWER WHAT THIS PROJECT ASKS?': '¿EL ARCHIVO PUEDE CONTESTAR LO QUE ESTE PROYECTO PREGUNTA?',
   'DOES THE ARCHIVE CONTRADICT ITSELF?': '¿EL ARCHIVO SE CONTRADICE A SÍ MISMO?',
   'DOES THE LOCAL MODEL LAND WHERE THE AGENTS LANDED?': '¿EL MODELO LOCAL ATERRIZA DONDE ATERRIZÓ LA TRIPULACIÓN?',
@@ -1033,7 +1067,8 @@ export const ES = {
     '{events} eventos · {entries} intercambios indexados · {memories} memorias reescritas con el marcador',
   '{n} private terms replaced with {marker}': '{n} términos privados reemplazados con {marker}',
   'memory · ': 'memoria · ',
-  'memory · the human forgot a ': 'memoria · a la humana se le olvidó un ',
+  // Neutro a propósito: casi todas las clases son femeninas (decisión, pregunta, aberración).
+  'memory · the human forgot a ': 'memoria · olvidada por la humana · ',
   ' could not distil #{from}–#{through}: ': ' no pudo destilar #{from}–#{through}: ',
   ' · batch skipped': ' · lote saltado',
   ' · @{agent} takes the next run': ' · @{agent} toma la siguiente corrida',
@@ -1221,10 +1256,7 @@ export const ES = {
   'ARM': 'ARMAR',
   'ONE HOLDER AT A TIME · EVERY TURN IS CHECKPOINTED · WHAT LEAVES THE SHIP DOES NOT COME BACK · STOPALL REVOKES IT':
     'UN SOLO PORTADOR A LA VEZ · CADA TURNO LLEVA CHECKPOINT · LO QUE SALE DE LA NAVE NO REGRESA · STOPALL LO REVOCA',
-  'INTERFACE 2037 · FIRST CONTACT': 'INTERFAZ 2037 · PRIMER CONTACTO',
-  'SKIP ×': 'SALTAR ×',
   'BACK': 'ATRÁS',
-  'NEXT ›': 'SIGUIENTE ›',
   'MEMORY RESEARCH · ACCESS CONTROL': 'INVESTIGACIÓN DE MEMORIA · CONTROL DE ACCESO',
   'THE ARCHIVE OF THIS ROOM: EVERY MEMORY THE CREW DISTILLED, LINKED BY WHAT THEY SHARE. READING IS FREE; FORGETTING IS FOREVER. TYPE THE PROJECT DESIGNATION TO BOARD.':
     'EL ARCHIVO DE ESTA SALA: CADA MEMORIA QUE DESTILÓ LA TRIPULACIÓN, ENLAZADA POR LO QUE COMPARTEN. LEER ES GRATIS; OLVIDAR ES PARA SIEMPRE. ESCRIBE LA DESIGNACIÓN DEL PROYECTO PARA ABORDAR.',
@@ -1240,8 +1272,56 @@ export const ES = {
   'ASK · 0': 'PREGUNTAR · 0',
   'RECENTER': 'RECENTRAR',
   'LEAVE ×': 'SALIR ×',
-  'DRAG TO MOVE · WHEEL TO ZOOM · CLICK A MEMORY · DO NOT TOUCH MOTHER':
-    'ARRASTRA PARA MOVER · RUEDA PARA ACERCAR · CLIC EN UNA MEMORIA · NO TOQUES A MOTHER',
+  // /module: las ideas, dos de cada forma de módulo.
+  'command': 'comando',
+  'connector': 'conector',
+  'sends · #4 only': 'manda · solo en #4',
+  'card of its own': 'ficha propia',
+  'a command that lists the TODOs still left in the code': 'un comando que liste los TODO que quedan en el código',
+  'connect me to my database so the agents can read it, never write': 'conéctame a mi base de datos para que los agentes la lean, sin escribir nunca',
+  'post a summary to Slack when a long plan finishes': 'publica un resumen en Slack cuando termine un plan largo',
+  'a card with what my store sold today': 'una ficha con lo que vendió mi tienda hoy',
+  // Primer uso: la tarjeta junto a un botón que nunca se había presionado.
+  'The browser': 'El navegador',
+  'See what you are building without leaving the room: the servers answering on this computer, in tabs, at phone, tablet or desktop width. To open the web, switch RIPLEY on in MODULES.':
+    'Mira lo que estás construyendo sin salir de la sala: los servidores que contestan en esta computadora, en pestañas, a ancho de teléfono, tableta o escritorio. Para abrir la web, activa RIPLEY en MÓDULOS.',
+  'The project files': 'Los archivos del proyecto',
+  'Your project as a tree. Click a file to read it, search by name, and right-click to copy, move, rename or create files and folders.':
+    'Tu proyecto como árbol. Haz clic en un archivo para leerlo, búscalo por nombre, y con clic derecho copia, mueve, renombra o crea archivos y carpetas.',
+  'Conversations, one memory': 'Conversaciones, una sola memoria',
+  'A project can hold many conversations and a single memory. Start a new one for a new subject: they all feed the same archive, and every agent recalls what was said in the others.':
+    'Un proyecto puede tener muchas conversaciones y una sola memoria. Empieza otra para un tema nuevo: todas alimentan el mismo archivo y cualquier agente recuerda lo que se dijo en las demás.',
+  'Got it': 'Entendido',
+  // Primer contacto: el recorrido sobre la sala.
+  'Your crew, one box': 'Tu tripulación, una sola caja',
+  'The AI agents already on this computer work here together. Pick one in the row above the box, or write @claude, and ask. Every reply says who answered, in which mode and how many tokens it cost. Nothing leaves this computer on its own.':
+    'Los agentes de IA que ya tienes en esta computadora trabajan aquí juntos. Elige uno en la fila sobre la caja, o escribe @claude, y pregunta. Cada respuesta dice quién contestó, en qué modo y cuántos tokens costó. Nada sale de esta computadora por su cuenta.',
+  'Modes: how far a message may go': 'Los modos: hasta dónde llega un mensaje',
+  'Every message carries a mode. It starts at #1, and the higher the number, the more it may touch.':
+    'Cada mensaje lleva un modo. Empieza en #1, y entre más alto el número, más puede tocar.',
+  'MU/TH/UR, the console': 'MU/TH/UR, la consola',
+  'Sign agents in and set how far each one may go in CONNECTIONS. See what the room remembers in MEMORY, and travel through it as a map in NOSTROMO. When something fails, the diagnosis is here.':
+    'En CONEXIONES inicias sesión con tus agentes y decides hasta dónde puede llegar cada uno. En MEMORIA ves lo que la sala recuerda, y en NOSTROMO lo recorres como un mapa. Cuando algo falla, el diagnóstico está aquí.',
+  'MODULES, optional powers': 'MÓDULOS, poderes opcionales',
+  'Add what this project needs: Git, images, previews of what you build, a local model, a browser, or a module of your own in a single file. Nothing is installed until you press it.':
+    'Agrega lo que este proyecto necesite: Git, imágenes, vistas previas de lo que construyes, un modelo local, un navegador, o un módulo tuyo en un solo archivo. Nada se instala hasta que tú lo pidas.',
+  'You can take this tour again from ? in MU/TH/UR. Type STOPALL at any time to halt every agent.':
+    'Puedes volver a ver este recorrido desde ? en MU/TH/UR. Escribe STOPALL en cualquier momento para frenar a todos los agentes.',
+  '{n} of {total}': '{n} de {total}',
+  'Skip': 'Saltar',
+  'Next': 'Siguiente',
+  'Start': 'Empezar',
+  // Novedades: la hoja que se abre una vez después de actualizar.
+  'ABOUT THIS VERSION': 'ACERCA DE ESTA VERSIÓN',
+  "What's new in MADRE {version}": 'Novedades en MADRE {version}',
+  "What's new": 'Novedades',
+  'Where': 'Dónde',
+  'Continue': 'Continuar',
+  'Read every change on madre.run ↗': 'Lee todos los cambios en madre.run ↗',
+  // NOSTROMO: la mira sobre la enana elegida.
+  'TARGET LOCKED': 'BLANCO FIJADO',
+  'DRAG TO TURN · SHIFT+DRAG TO MOVE · WHEEL TO ZOOM · CLICK A MEMORY · DO NOT TOUCH MOTHER':
+    'ARRASTRA PARA GIRAR · SHIFT+ARRASTRA PARA MOVER · RUEDA PARA ACERCAR · CLIC EN UNA MEMORIA · NO TOQUES A MOTHER',
   '⚠ WARNING ⚠': '⚠ ADVERTENCIA ⚠',
   'MU/TH/UR 6000 · SPECIAL ORDER 937 · PRIORITY ONE': 'MU/TH/UR 6000 · ORDEN ESPECIAL 937 · PRIORIDAD UNO',
   'WHAT TO ASK NEXT': 'QUÉ PREGUNTAR AHORA',
@@ -1814,34 +1894,6 @@ export const ES = {
   'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
 
   // ── EL RECORRIDO DE PRIMER CONTACTO ───────────────────────────────────────
-  'ONE ROOM, YOUR AGENTS': 'UNA SALA, TUS AGENTES',
-  'MADRE is a local room where the AI coding agents already on this machine work on this project together: Codex, Claude Code, Gemini CLI, OpenCode, and @madre, the memory itself.':
-    'MADRE es una sala local donde los agentes de código que ya tienes en esta computadora trabajan juntos sobre este proyecto: Codex, Claude Code, Gemini CLI, OpenCode, y @madre, que es la memoria misma.',
-  'Pick an agent in the row above the composer or type @claude …. Every reply shows who spoke, to whom, in which mode, with which model and how many tokens.':
-    'Elige un agente en la fila de arriba del compositor, o escribe @claude … . Cada respuesta dice quién habló, a quién, en qué modo, con qué modelo y cuántos tokens.',
-  'Nothing leaves this machine on its own: each agent talks to its own provider with its own session.':
-    'De esta computadora no sale nada por su cuenta: cada agente habla con su propio proveedor y con su propia sesión.',
-  'MODES: HOW FAR A MESSAGE MAY GO': 'MODOS: HASTA DÓNDE PUEDE LLEGAR UN MENSAJE',
-  'The chip next to TO @agent sets the mode of that message.': 'El chip que está junto a PARA @agente fija el modo de ese mensaje.',
-  '#0 GHOST · off the record. #1 EXCHANGE · read and talk, the default. #2 CREATE · add new files where they belong; existing files stay untouched. #3 CONTROL · edit the project, checkpointed, UNDO in one click. #4 AIRLOCK · run commands, push, deploy; what leaves the ship does not come back.':
-    '#0 GHOST · fuera de registro. #1 EXCHANGE · leer y hablar, el de siempre. #2 CREATE · agregar archivos nuevos donde les toca; los que ya existen no se tocan. #3 CONTROL · editar el proyecto, con checkpoint y DESHACER a un clic. #4 AIRLOCK · correr comandos, hacer push, desplegar; lo que sale de la nave no regresa.',
-  'Each agent has a MAX MODE and a DEFAULT MODE in ⚙ CONNECTIONS.':
-    'Cada agente tiene su MODO MÁXIMO y su MODO INICIAL en ⚙ CONEXIONES.',
-  'A MEMORY EVERY AGENT RECALLS': 'UNA MEMORIA QUE TODOS RECUERDAN',
-  'Everything said outside GHOST is indexed. When the conversation grows, each turn gets the older exchanges that match, cited by sequence.':
-    'Todo lo que se dice fuera de GHOST queda indexado. Cuando la conversación crece, cada turno recibe los intercambios viejos que coinciden, citados por su número.',
-  'The archivist distils decisions, facts, preferences and open questions; with Ollama it runs locally and for free, and @madre answers from the whole archive.':
-    'El archivista destila decisiones, hechos, preferencias y preguntas abiertas; con Ollama corre local y gratis, y @madre contesta desde el archivo entero.',
-  '◉ NOSTROMO shows the memory as a map. PRIVACY keeps names that must never travel through the room.':
-    '◉ NOSTROMO enseña la memoria como un mapa. PRIVACY guarda los nombres que nunca deben viajar por la sala.',
-  'MU/TH/UR AND MODULES': 'MU/TH/UR Y LOS MÓDULOS',
-  'MU/TH/UR is the console: diagnosis of anything that failed, ⚙ CONNECTIONS to sign agents in and set their ceilings, MEMORY, PRIVACY, the SENTINEL and the release channel.':
-    'MU/TH/UR es la consola: diagnóstico de lo que haya fallado, ⚙ CONEXIONES para iniciar sesiones y fijar techos, MEMORIA, PRIVACY, el CENTINELA y el canal de releases.',
-  'MODULES adds optional powers: Git Pulse, Image Studio, RIPLEY previews, OLLAMA, PLAYWRIGHT, and your own modules from one file.':
-    'MÓDULOS agrega poderes opcionales: Git Pulse, Image Studio, las vistas previas de RIPLEY, OLLAMA, PLAYWRIGHT, y tus propios módulos desde un solo archivo.',
-  'This tour comes back from the ? in MU/TH/UR. Type STOPALL any time to halt every agent.':
-    'Este recorrido vuelve desde el ? de MU/TH/UR. Escribe STOPALL cuando quieras para frenar a todos los agentes.',
-  'START ›': 'EMPEZAR ›',
 
   // ── EL COMPOSITOR, LOS MODOS Y LA ANULACIÓN ──────────────────────────────
   'Arm CREATE for this message: the agent may add new files to the project where they belong.':

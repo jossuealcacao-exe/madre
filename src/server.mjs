@@ -52,6 +52,7 @@ import { forgetSecret, summary as vaultSummary, writeSecret } from './vault.mjs'
 import { loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand } from './updates.mjs';
+import { bootWhatsNew, markSeen, notesFor, whatsNew } from './whats-new.mjs';
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
@@ -68,6 +69,7 @@ import { planFileOp, CREATIONS } from './file-ops.mjs';
 import { Eyecat } from './eyecat-watch.mjs';
 import { economy } from './room/economy.mjs';
 import { maturity } from './maturity.mjs';
+import { memoryDashboard } from './memory-dashboard.mjs';
 import { verdictFor } from './verdict.mjs';
 import { refuseForeign } from './request-guard.mjs';
 
@@ -147,6 +149,9 @@ export async function createPulseServer({
   ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
+  // Read before this run creates anything: whether this person used MADRE before decides whether
+  // an update has news to show them, or this is a first install with nothing to catch up on.
+  const novelty = await bootWhatsNew({ root, version: PACKAGE.version }).catch(() => ({ returning: false }));
   // ~/.pulse/config.json fills in whatever the environment did not set.
   applyConfigToEnv(await loadConfig(root));
   // What language the screens speak. The prompt the agents read is not one of them, and the
@@ -203,7 +208,7 @@ export async function createPulseServer({
   const install = detectInstall({ projectRoot: canonicalProjectRoot });
   async function versionView({ force = false } = {}) {
     const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
-    return { project: canonicalProjectRoot, ...check, name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest, roomLanguage()) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
+    return { project: canonicalProjectRoot, ...check, notes: Boolean(notesFor(PACKAGE.version)), name: PACKAGE.name, install, command: updateCommand(install, PACKAGE.name, check.latest ?? 'latest'), release: check.latest ? releaseUrl(PACKAGE.repository, check.latest, roomLanguage()) : null, envWins: process.env.PULSE_UPDATE_CHECK !== undefined };
   }
   // Keeping the day's cache warm. MODULES is served from what is already on disk, so the looking
   // happens after the screen is answered, never in front of it: at most once an hour per room,
@@ -1268,6 +1273,15 @@ export async function createPulseServer({
         } catch (error) { return sendJson(response, 400, { error: error.message }); }
       }
       // Release channel: current, latest on npm, and the command for how this copy runs.
+      // What this version brings, once, to someone who came from an older one.
+      if (request.method === 'GET' && url.pathname === '/api/whats-new') {
+        const news = await whatsNew({ root, version: PACKAGE.version, returning: novelty.returning, any: url.searchParams.get('any') === '1' });
+        return sendJson(response, 200, { ...news, changes: { es: releaseUrl(PACKAGE.repository, PACKAGE.version, 'es'), en: releaseUrl(PACKAGE.repository, PACKAGE.version, 'en') } });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/whats-new/seen') {
+        await markSeen(root, PACKAGE.version);
+        return sendJson(response, 200, { seen: PACKAGE.version });
+      }
       if (request.method === 'GET' && url.pathname === '/api/version') {
         return sendJson(response, 200, await versionView({ force: url.searchParams.get('force') === '1' }));
       }
@@ -1331,6 +1345,11 @@ export async function createPulseServer({
           maturity: grown, exams, cold: research?.cold ?? null, asks: research?.ask?.length ?? 0,
           verdict: verdictFor({ maturity: grown, exams: exams.last, cold: research?.cold, asks: research?.ask?.length ?? 0 }),
         });
+      }
+      // The MEMORY dashboard: what the archive did day by day and what it is made of. Counts
+      // only, no text of any memory, so it is read like /api/maturity, without the designation.
+      if (request.method === 'GET' && url.pathname === '/api/memory/dashboard') {
+        return sendJson(response, 200, { dashboard: memoryDashboard({ activity: room.memoryActivity(), stats: room.memoryStats() }) });
       }
       // Inside the core: the document MADRE writes in the human's name for the next turn, block
       // by block. Built on demand and stored nowhere; asking costs nothing and sends nothing.

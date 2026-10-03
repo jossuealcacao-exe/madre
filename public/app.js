@@ -2352,8 +2352,11 @@ function renderModuleInstalledOrRemoved(event) {
 // lived in a panel somebody had to go back to. So it is offered, and answered, here.
 function renderLocalModel(payload, { asked = false } = {}) {
   const node = el('div', 'system local-model');
-  node.append('local · ', el('b', 'who', t('@madre')));
-  if (payload.model) node.append(` · ${payload.model}`);
+  // One line, held together: the card is a grid, and loose words in a grid each take a row.
+  const head = el('span', 'head');
+  head.append('local · ', el('b', 'who', t('@madre')));
+  if (payload.model) head.append(` · ${payload.model}`);
+  node.append(head);
   const line = el('p', 'says');
   const action = el('div', 'acts');
 
@@ -2543,7 +2546,7 @@ function renderForgotten(event) {
   const { kind, text, remaining } = event.payload;
   const node = el('div', 'system memory forgotten');
   node.append(t('memory · the human forgot a '));
-  node.append(el('b', 'who', kind));
+  node.append(el('b', 'who', kindWord(kind)));
   node.append(`: “${text}”${Number.isFinite(remaining) ? t(' · {n} left in the archive', { n: remaining }) : ''}`);
   return node;
 }
@@ -3140,6 +3143,21 @@ function renderCleared(event) {
 // Anything that wants to hear the room live hooks in here. NOSTROMO does, while a card is open;
 // it is set further down, once that section exists, so a replay at boot reaches nobody too early.
 let liveWatcher = null;
+// A system line's first <b> is its title, set on a line of its own (.system > b:first-child).
+// Written inline, the title kept the separator that joined it to the rest of the sentence —
+// «claro · » — and on a line of its own that dot is all that is left of the join, hanging off the
+// end and pulling a centred title off its centre. And a <b> with words before it is part of the
+// sentence, never its title: CSS sees the first element, not the first word, so it is marked.
+function tidySystemLine(node) {
+  if (!node?.classList?.contains('system')) return node;
+  const head = node.firstElementChild;
+  if (!head || head.tagName !== 'B') return node;
+  if (node.firstChild !== head) { head.classList.add('inline'); return node; }
+  const last = head.lastChild;
+  if (last?.nodeType === 3) last.textContent = last.textContent.replace(/[\s·›:]+$/u, '');
+  return node;
+}
+
 function renderEvent(event) {
   if (state.seen.has(event.id)) return;
   liveWatcher?.(event);
@@ -3284,7 +3302,7 @@ void renderOpenQuestions(); return;
   if (!node) return;
   removeEmpty();
   const stickToBottom = els.thread.scrollHeight - els.thread.scrollTop - els.thread.clientHeight < 120;
-  els.column.append(node);
+  els.column.append(tidySystemLine(node));
   followTurn(event, node, stickToBottom);
 }
 
@@ -3753,7 +3771,7 @@ function armExpendable() {
   line.append(el('b', null, t('MU/TH/UR › ')));
   line.append(t('end of record. nothing else is down here, human. crew status under review.'));
   removeEmpty();
-  els.column.append(line);
+  els.column.append(tidySystemLine(line));
   scrollToEnd();
 }
 
@@ -3992,7 +4010,7 @@ function moduleModeNotice() {
   arm.addEventListener('click', () => { setMode(2, { wink: true }); els.input.focus(); });
   node.append(arm);
   removeEmpty();
-  els.column.append(node);
+  els.column.append(tidySystemLine(node));
   node.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
@@ -4153,20 +4171,33 @@ function renderMenu() {
   showMenu(items, found);
 }
 // /module on its own does nothing until you say what the module should DO, and a blank
-// instruction is the most common way the flow dies. These are four real ones, each a different
-// shape of module, written to be edited rather than sent: pick one and the text lands in the box.
+// instruction is the most common way the flow dies. These are real ones, two of each shape a
+// module can take, written to be edited rather than sent: pick one and the text lands in the box.
+// Each wears its own 8-bit mark and a tag in the colour of its shape, so the four shapes read as
+// four kinds of thing before a word is read.
+const STARTER_SHAPES = {
+  command: { label: t('command'), about: t('a slash command · runs in the room, answers as a card') },
+  connector: { label: t('connector'), about: t('a connector · one key, pasted on its card') },
+  sends: { label: t('sends · #4 only'), about: t('a connector that sends · only offered in #4 AIRLOCK') },
+  card: { label: t('card of its own'), about: t('a card of your own · its own panel inside MODULES') },
+};
 function moduleStarters() {
   return [
-    [t('a command that tells me what changed in the repo this week'), t('a slash command · runs in the room, answers as a card')],
-    [t('connect me to my Notion so the agents can search my pages'), t('a connector · one key, pasted on its card')],
-    [t('ping me on Telegram when a turn fails'), t('a connector that sends · only offered in #4 AIRLOCK')],
-    [t('a card showing which of my services are up'), t('a card of your own · its own panel inside MODULES')],
-  ].map(([what, shape]) => ({ key: '/module', insert: `/module ${what}`, what: `${what} — ${shape}`, starter: true }));
+    ['branch', 'command', t('a command that tells me what changed in the repo this week')],
+    ['check', 'command', t('a command that lists the TODOs still left in the code')],
+    ['search', 'connector', t('connect me to my Notion so the agents can search my pages')],
+    ['db', 'connector', t('connect me to my database so the agents can read it, never write')],
+    ['bell', 'sends', t('ping me on Telegram when a turn fails')],
+    ['link', 'sends', t('post a summary to Slack when a long plan finishes')],
+    ['grid', 'card', t('a card showing which of my services are up')],
+    ['chip', 'card', t('a card with what my store sold today')],
+  ].map(([icon, shape, what]) => ({ key: '/module', insert: `/module ${what}`, what, icon, shape, starter: true }));
 }
 
 function showMenu(items, found) {
   Object.assign(menu, { items, index: Math.min(menu.index, items.length - 1), kind: found.kind, start: found.start, end: found.end });
   els.slashMenu.replaceChildren();
+  els.slashMenu.classList.toggle('with-starters', items.some((item) => item.starter));
   items.forEach((item, index) => {
     const button = el('button', `item${item.off ? ' off' : ''}${item.starter ? ' starter' : ''}`);
     button.type = 'button';
@@ -4177,11 +4208,17 @@ function showMenu(items, found) {
     // a usage string like `/git [status|log|diff|commit "message"|push [confirm]]` is wider than
     // the menu and used to push the description out of the row entirely — leaving a command with
     // no explanation, which is the one thing this menu exists to give.
-    const [name, ...rest] = String(item.key).split(' ');
-    const args = rest.join(' ');
-    button.append(el('span', 'key', name), el('span', 'what', item.what));
-    if (args) button.append(el('span', 'args', args));
-    button.title = `${item.key} · ${item.what}`;
+    if (item.starter) {
+      const shape = STARTER_SHAPES[item.shape];
+      button.append(pixelIcon(item.icon, 'pixel-icon starter-icon'), el('span', 'idea', item.what), el('span', `shape ${item.shape}`, shape.label));
+      button.title = `/module ${item.what} · ${shape.about}`;
+    } else {
+      const [name, ...rest] = String(item.key).split(' ');
+      const args = rest.join(' ');
+      button.append(el('span', 'key', name), el('span', 'what', item.what));
+      if (args) button.append(el('span', 'args', args));
+      button.title = `${item.key} · ${item.what}`;
+    }
     button.addEventListener('mousedown', (event) => { event.preventDefault(); pickMenu(index); });
     els.slashMenu.append(button);
   });
@@ -6700,43 +6737,274 @@ document.querySelector('#core-copy')?.addEventListener('click', async () => {
   } catch { toast(t('The clipboard is not available here.')); }
 });
 
-/* ---------- where this room stands ---------- */
+/* ---------- the MEMORY dashboard ---------- */
 
-// One sentence and one thing to do. Everything that decides which sentence was already being
-// measured; what was missing was somebody choosing. The nine numbers are still here, a fold away,
-// for the day someone wants them — but nobody should have to read nine numbers to know whether
-// their room is working.
-async function drawVerdict(box) {
-  box.replaceChildren(el('p', 'note', t('READING…')));
-  let payload;
-  try { payload = await fetch('/api/maturity').then((response) => response.json()); }
-  catch { box.replaceChildren(el('p', 'note', t('THE READING IS UNAVAILABLE'))); return; }
-  const m = payload.maturity;
-  const v = payload.verdict;
+// What the archive holds and how it is doing, in one screen that is read before it is touched.
+// Everything on it is a count the room already keeps (/api/memory/dashboard) or a reading it
+// already takes (/api/maturity). No memory's text is on this screen, which is why it opens
+// without the designation NOSTROMO asks for.
+//
+// The charts are plain elements, not a library: a column is a box with a height, which is all a
+// phosphor screen needs, and it stays crisp at any width. One green, because every chart here
+// compares amounts of one thing; where an entity already has a colour of its own (a memory's kind
+// on the NOSTROMO map) it travels as a small key beside the word, never as the only way to tell.
+const memFmt = (n) => Number(n ?? 0).toLocaleString(language());
+const memPct = (value) => `${Math.round(Number(value ?? 0) * 100)}%`;
+const memDay = (day) => {
+  const [y, m, d] = String(day).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(language(), { day: 'numeric', month: 'short' }).replace('.', '').toUpperCase();
+};
+
+function memCard(parent, title, className = '') {
+  const card = el('section', `mem-card${className ? ` ${className}` : ''}`);
+  card.append(el('h4', null, title));
+  parent.append(card);
+  return card;
+}
+
+// A row of columns from a baseline. Empty days keep their slot and show a hairline stub, so a
+// quiet stretch reads as quiet instead of closing up; the last column is today.
+function memColumns(values, className = 'mem-cols') {
+  const box = el('div', className);
+  const top = Math.max(1, ...values);
+  for (const [i, n] of values.entries()) {
+    const col = el('i', n ? null : 'zero');
+    if (n) col.style.setProperty('--h', `${Math.max(6, (n / top) * 100)}%`);
+    if (i === values.length - 1) col.classList.add('now');
+    box.append(col);
+  }
+  return box;
+}
+
+// A filled bar against its own track: how much of a whole, or how far toward a mark.
+function memMeter(value, { mark = null } = {}) {
+  const track = el('span', 'mem-meter');
+  const fill = el('i');
+  fill.style.width = `${Math.min(100, Math.max(0, value * 100))}%`;
+  track.append(fill);
+  if (mark !== null) {
+    const line = el('b', 'mark');
+    line.style.left = `${Math.min(100, Math.max(0, mark * 100))}%`;
+    track.append(line);
+  }
+  return track;
+}
+
+// Amounts of one thing, longest first, each with its number at the end of its bar.
+function memBars(card, rows) {
+  const list = el('div', 'mem-bars');
+  const shown = rows.filter((row) => row.n > 0).sort((a, b) => b.n - a.n);
+  if (!shown.length) { card.append(el('p', 'note', t('NOTHING YET'))); return; }
+  const top = Math.max(...shown.map((row) => row.n));
+  const total = shown.reduce((sum, row) => sum + row.n, 0);
+  for (const row of shown) {
+    const line = el('div', 'mem-bar');
+    const name = el('span', 'name');
+    if (row.swatch) { const key = el('i', 'swatch'); key.style.background = row.swatch; name.append(key); }
+    name.append(row.label);
+    const track = el('span', 'track');
+    const fill = el('i');
+    fill.style.width = `${(row.n / top) * 100}%`;
+    track.append(fill);
+    line.append(name, track, el('span', 'value', `${memFmt(row.n)} · ${memPct(row.n / total)}`));
+    if (row.title) line.title = row.title;
+    list.append(line);
+  }
+  card.append(list);
+}
+
+function memTile(parent, { label, value, sub = null, title = null, spark = null, meter = null }) {
+  const tile = el('div', 'mem-tile');
+  tile.append(el('span', 'label', label), el('strong', 'value', value));
+  if (sub) tile.append(el('span', 'sub', sub));
+  if (spark) tile.append(memColumns(spark, 'mem-cols spark'));
+  if (meter !== null) tile.append(memMeter(meter));
+  if (title) tile.title = title;
+  parent.append(tile);
+  return tile;
+}
+
+// This week, and which way it went against the one before. An arrow and a number, never a
+// percentage: a rise from two to four is not «+100%» in any sense worth reading.
+function memWeek(week) {
+  if (!week) return null;
+  const turn = week.delta > 0 ? `▲ ${memFmt(week.delta)}` : week.delta < 0 ? `▼ ${memFmt(-week.delta)}` : '=';
+  return `${t('{n} THIS WEEK', { n: memFmt(week.last) })} · ${turn}`;
+}
+const memWeekTitle = (week) => (week ? t('{last} in the last 7 days, {before} in the 7 before', { last: memFmt(week.last), before: memFmt(week.before) }) : null);
+
+// Three series of one window, stacked so their days line up: each strip has its own height
+// because an exchange and a recall are not the same unit, and one axis for the three would lie
+// about one of them. One crosshair finds the day in all three at once.
+function memActivity(card, dash) {
+  const rows = [['entries', t('EXCHANGES')], ['memories', t('NEW MEMORIES')], ['recalls', t('TURNS THAT RECALLED')]];
+  const n = dash.days.length;
+  const chart = el('div', 'mem-activity');
+  chart.tabIndex = 0;
+  chart.setAttribute('role', 'img');
+  const total = (id) => dash.series[id].reduce((sum, v) => sum + v, 0);
+  chart.setAttribute('aria-label', t('{entries} exchanges, {memories} new memories and {recalls} turns that recalled in the last {n} days', { entries: total('entries'), memories: total('memories'), recalls: total('recalls'), n }));
+  for (const [id, label] of rows) {
+    const strip = el('div', 'mem-strip');
+    const head = el('div', 'mem-strip-head');
+    head.append(el('b', null, label), el('span', null, t('PEAK {n}', { n: memFmt(Math.max(0, ...dash.series[id])) })));
+    strip.append(head, memColumns(dash.series[id], 'mem-cols big'));
+    chart.append(strip);
+  }
+  const axis = el('div', 'mem-axis');
+  axis.append(el('span', null, memDay(dash.days[0])), el('span', null, memDay(dash.days[Math.floor(n / 2)])), el('span', null, t('TODAY')));
+  chart.append(axis);
+  const cross = el('div', 'mem-cross');
+  const tip = el('div', 'mem-tip');
+  cross.hidden = true; tip.hidden = true;
+  chart.append(cross, tip);
+  let at = -1;
+  const show = (i) => {
+    at = i;
+    for (const cols of chart.querySelectorAll('.mem-cols')) for (const [j, col] of [...cols.children].entries()) col.classList.toggle('on', j === i);
+    if (i < 0) { cross.hidden = true; tip.hidden = true; return; }
+    const col = chart.querySelector('.mem-cols').children[i];
+    const left = col.offsetLeft + col.offsetWidth / 2;
+    cross.style.left = `${left}px`;
+    cross.hidden = false;
+    tip.replaceChildren(el('b', 'when', i === n - 1 ? t('TODAY') : memDay(dash.days[i])));
+    for (const [id, label] of rows) {
+      const line = el('div');
+      line.append(el('strong', null, memFmt(dash.series[id][i])), el('span', null, label));
+      tip.append(line);
+    }
+    tip.hidden = false;
+    tip.style.left = left > chart.clientWidth / 2 ? `${left - tip.offsetWidth - 14}px` : `${left + 14}px`;
+  };
+  chart.addEventListener('pointermove', (event) => {
+    const box = chart.querySelector('.mem-cols').getBoundingClientRect();
+    if (!box.width) return;
+    const i = Math.floor(((event.clientX - box.left) / box.width) * n);
+    show(i < 0 || i >= n ? -1 : i);
+  });
+  chart.addEventListener('pointerleave', () => show(-1));
+  chart.addEventListener('focus', () => show(n - 1));
+  chart.addEventListener('blur', () => show(-1));
+  chart.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    show(Math.min(n - 1, Math.max(0, (at < 0 ? n - 1 : at) + (event.key === 'ArrowLeft' ? -1 : 1))));
+  });
+  card.append(chart);
+
+  // The same numbers without pointing at anything: every value the crosshair shows is here too.
+  const table = cardFold(card, t('BY DAY · TABLE'), { key: 'madre.memory.table' });
+  const lived = dash.days.map((day, i) => [day, ...rows.map(([id]) => dash.series[id][i])]).filter(([, ...values]) => values.some(Boolean)).reverse();
+  if (!lived.length) { table.append(el('p', 'note', t('NOTHING HAPPENED IN THESE DAYS.'))); return; }
+  const grid = el('table', 'mem-table');
+  const headRow = el('tr');
+  for (const word of [t('DAY'), ...rows.map(([, label]) => label)]) headRow.append(el('th', null, word));
+  grid.append(headRow);
+  for (const [day, ...values] of lived) {
+    const tr = el('tr');
+    tr.append(el('td', null, memDay(day)));
+    for (const value of values) tr.append(el('td', null, memFmt(value)));
+    grid.append(tr);
+  }
+  table.append(grid);
+}
+
+async function drawMemoryDashboard(box) {
+  // A refresh keeps the frame it has and dims it, instead of blanking the screen under the reader.
+  if (box.childElementCount) box.classList.add('loading');
+  else box.replaceChildren(el('p', 'note', t('READING…')));
+  let read; let dash;
+  try {
+    [read, dash] = await Promise.all([
+      fetch('/api/maturity').then((response) => response.json()),
+      fetch('/api/memory/dashboard').then((response) => response.json()).then((payload) => payload?.dashboard ?? null),
+    ]);
+  } catch { box.classList.remove('loading'); box.replaceChildren(el('p', 'note', t('THE DASHBOARD IS UNAVAILABLE'))); return; }
+  box.classList.remove('loading');
   box.replaceChildren();
-  if (!m || !v) { box.append(el('p', 'note', t('NOTHING TO READ YET: THE ROOM HAS NO ARCHIVE.'))); return; }
+  const m = read?.maturity;
+  const v = read?.verdict;
 
-  const head = el('div', 'maturity-head');
-  head.append(el('b', `stage ${m.stage.id}`, m.stage.label), el('span', null, v.says));
+  const head = el('div', 'mem-dash-head');
+  // The title is the fold's; what is left here is when it was read and a way to read it again.
+  head.append(el('span', 'when', t('READ {time}', { time: formatTime(new Date().toISOString()) })));
+  const refresh = el('button', null, t('REFRESH'));
+  refresh.type = 'button';
+  refresh.addEventListener('click', () => { void drawMemoryDashboard(box); });
+  head.append(refresh);
   box.append(head);
+  if (!dash || !m || !v) { box.append(el('p', 'note', t('NOTHING TO READ YET: THE ROOM HAS NO ARCHIVE.'))); return; }
+
+  // The figures, then the one sentence about them, then what they are made of.
+  const kpis = el('div', 'mem-kpis');
+  memTile(kpis, { label: t('EXCHANGES'), value: memFmt(dash.totals.entries), sub: memWeek(dash.weeks.entries), title: memWeekTitle(dash.weeks.entries), spark: dash.series.entries.slice(-14) });
+  memTile(kpis, { label: t('MEMORIES'), value: memFmt(dash.totals.memories), sub: memWeek(dash.weeks.memories), title: memWeekTitle(dash.weeks.memories), spark: dash.series.memories.slice(-14) });
+  memTile(kpis, { label: t('TURNS THAT RECALLED'), value: memFmt(dash.totals.turns), sub: memWeek(dash.weeks.recalls), title: memWeekTitle(dash.weeks.recalls), spark: dash.series.recalls.slice(-14) });
+  memTile(kpis, { label: t('WAITING'), value: memFmt(dash.totals.pending), sub: dash.totals.pending ? t('EXCHANGES NOBODY HAS DISTILLED YET') : t('THE ARCHIVIST IS UP TO DATE') });
+  memTile(kpis, { label: t('MATURITY'), value: memPct(m.score), sub: m.stage.label, meter: m.score, title: m.stage.says });
+  box.append(kpis);
+
+  const verdict = el('div', `mem-verdict stage-${m.stage.id}`);
+  const says = el('p', 'says');
+  says.append(el('b', null, v.headline ?? m.stage.label), ` ${v.says}`);
   const next = el('p', 'maturity-next');
   next.append(el('b', null, t('NEXT')), ` ${v.next.text}`);
   if (v.next.where) next.append(el('span', 'where', ` → ${v.next.where}`));
-  box.append(next);
+  verdict.append(says, next);
+  box.append(verdict);
 
-  // What it is made of, a fold away.
-  const made = cardFold(box, t('WHAT THE ARCHIVE IS MADE OF'), { key: 'madre.maturity.signals', count: m.signals.length });
+  const grid = el('div', 'mem-grid');
+  memActivity(memCard(grid, t('ACTIVITY · LAST {n} DAYS', { n: dash.days.length }), 'span-7'), dash);
+  const made = memCard(grid, t('WHAT THE ARCHIVE IS MADE OF'), 'span-5');
   for (const signal of m.signals) {
-    const row = el('div', `maturity-row${signal.id === m.weakest ? ' weakest' : ''}`);
-    const bar = el('i');
-    bar.style.setProperty('--fill', `${Math.round(signal.value * 100)}%`);
-    row.append(el('b', null, signal.label), bar, el('span', null, signal.detail));
+    const row = el('div', `mem-signal${signal.id === m.weakest ? ' weakest' : ''}`);
+    const top = el('div', 'top');
+    top.append(el('b', null, signal.label), el('span', null, memPct(signal.value)));
+    row.append(top, memMeter(signal.value), el('span', 'detail', signal.detail));
     row.title = signal.next;
     made.append(row);
   }
-  // And whether it works, a fold away as well.
-  const tested = cardFold(box, t('THE THREE TESTS'), { key: 'madre.maturity.exams', count: 3 });
-  tested.append(examsBlock(payload.exams));
+
+  const kinds = memCard(grid, t('BY KIND'), 'span-3');
+  memBars(kinds, Object.entries(dash.kinds).map(([kind, n]) => ({ label: kindWord(kind), n, swatch: `var(--mem-${kind}, var(--ph))` })));
+  const agents = memCard(grid, t('BY ARCHIVIST'), 'span-3');
+  memBars(agents, Object.entries(dash.agents).map(([agent, n]) => ({ label: `@${agent.toUpperCase()}`, n })));
+  const zones = memCard(grid, t('BY ZONE'), 'span-3');
+  memBars(zones, Object.entries(dash.zones).map(([zone, n]) => ({ label: zoneWord(zone), n, title: ZONE_NOTE[zone] ?? null })));
+
+  const recall = memCard(grid, t('RECALL AND EMBEDDINGS'), 'span-3');
+  const carried = dash.via.search + dash.via.cascade;
+  if (carried) {
+    const split = el('div', 'mem-split');
+    split.title = t('How recalled memories arrived: found by the search, or carried along by the company they keep.');
+    for (const [id, n] of [['search', dash.via.search], ['cascade', dash.via.cascade]]) {
+      const part = el('i', id);
+      part.style.flexGrow = String(n);
+      split.append(part);
+    }
+    recall.append(split);
+    const legend = el('div', 'mem-legend');
+    for (const [id, label, n] of [['search', t('SEARCH'), dash.via.search], ['cascade', t('CASCADE'), dash.via.cascade]]) {
+      const key = el('span', `k ${id}`);
+      key.append(el('i'), `${label} `, el('b', null, `${memFmt(n)} · ${memPct(n / carried)}`));
+      legend.append(key);
+    }
+    recall.append(legend);
+  } else recall.append(el('p', 'note', t('NOTHING YET')));
+  if (dash.vectors) {
+    for (const [label, have, of] of [[t('MEMORIES WITH A VECTOR'), dash.vectors.memories, dash.totals.memories], [t('EXCHANGES WITH A VECTOR'), dash.vectors.entries, dash.totals.entries]]) {
+      const row = el('div', 'mem-signal');
+      const top = el('div', 'top');
+      top.append(el('b', null, label), el('span', null, `${memFmt(have)} / ${memFmt(of)}`));
+      row.append(top, memMeter(of ? have / of : 0));
+      recall.append(row);
+    }
+    recall.append(el('span', 'detail', String(dash.vectors.model).toUpperCase()));
+  } else recall.append(el('p', 'note', t('EMBEDDINGS OFF · RECALL MATCHES WORDS ONLY')));
+
+  const tests = memCard(grid, t('THE THREE TESTS'), 'span-12');
+  tests.append(examsBlock(read.exams, { pass: dash.pass }));
+  box.append(grid);
 }
 
 /* ---------- the three tests ---------- */
@@ -6752,7 +7020,7 @@ const EXAM_ABOUT = {
   match: t('Real questions answered here by a frontier CLI, asked again of the local model with this archive behind it, and compared against the answer given at the time. It takes minutes and spends nothing.'),
 };
 
-function examRow(id, state, run) {
+function examRow(id, state, run, pass = null) {
   const last = state.last?.[id] ?? null;
   const can = state.can?.[id] ?? { ok: false };
   const row = el('div', `exam exam-${id}${last?.ran ? (last.passed ? ' passed' : ' failed') : ''}`);
@@ -6767,6 +7035,13 @@ function examRow(id, state, run) {
     const when = last.at ? ` · ${new Date(last.at).toLocaleString()}` : '';
     const how = last.ran && last.rate !== undefined ? `${Math.round(last.rate * 100)}% · ${t('{n} CASES', { n: last.n })}${last.method ? t(' · BY {method}', { method: last.method.toUpperCase() }) : ''}${last.bar ? t(' · BAR {bar}', { bar: last.bar }) : ''}${when}` : when.replace(' · ', '');
     row.append(said);
+    // The rate against the line it has to reach: the bar fills to what it scored, the mark
+    // stands where it passes.
+    if (last.ran && last.rate !== undefined && pass?.[id] !== undefined) {
+      const bullet = el('div', 'exam-bullet');
+      bullet.append(memMeter(last.rate, { mark: pass[id] }), el('span', null, `${memPct(last.rate)} · ${t('PASSES AT {n}', { n: memPct(pass[id]) })}`));
+      row.append(bullet);
+    }
     if (how) row.append(el('p', 'note', how.toUpperCase()));
   }
   const actions = el('div', 'actions');
@@ -6782,12 +7057,12 @@ function examRow(id, state, run) {
   return row;
 }
 
-function examsBlock(known = null) {
+function examsBlock(known = null, { pass = null } = {}) {
   const box = el('div', 'full exams');
   const draw = (state) => {
     box.replaceChildren();
     box.append(el('p', 'note', t('NOTHING HERE SPENDS A PROVIDER TURN. THE FIRST TWO ARE FREE; THE THIRD TAKES MINUTES AND STOPS WHEN YOU SAY.')));
-    for (const id of ['coverage', 'consistency', 'match']) box.append(examRow(id, state, run));
+    for (const id of ['coverage', 'consistency', 'match']) box.append(examRow(id, state, run, pass));
     if (state.running === 'match') {
       const stop = el('button', null, t('STOP'));
       stop.type = 'button';
@@ -6826,7 +7101,8 @@ function rememberFold(key, open) {
 }
 // One button for the whole panel. It says what it will do, not what the panel is: if anything is
 // still shut, it opens everything; once everything is open it closes it again.
-function everyFold() { return [...document.querySelectorAll('.mother-section .fold')]; }
+// Only the screen on show: a fold behind CONNECTIONS or MEMORY is not one the reader can see move.
+function everyFold() { return [...document.querySelectorAll('.mother-section:not([hidden]) .fold')]; }
 function syncFoldAll() {
   const button = document.querySelector('#fold-all');
   if (!button) return;
@@ -6834,9 +7110,8 @@ function syncFoldAll() {
   const row = button.parentElement;
   if (row) row.hidden = folds.length < 2;
   button.hidden = folds.length < 2;
-  // It acts on the whole canvas below it rather than going anywhere, so it is not one more
-  // destination in the bar: it sits under the bar, in the middle, with its own shape and an
-  // arrow that points the way it will move things.
+  // It acts on the canvas below it rather than going anywhere, so it must not look like one more
+  // destination in the bar: no frame, the voice of the fold carets it moves, at their edge.
   const shut = folds.some((fold) => !fold.open);
   button.replaceChildren(pixelIcon(shut ? 'unfold' : 'fold', 'pixel-icon'), el('span', null, shut ? t('EXPAND ALL') : t('COLLAPSE ALL')));
 }
@@ -6874,6 +7149,16 @@ const PIXEL_ICONS = {
   cut:     ['#......#', '.#....#.', '..#..#..', '...##...', '..#..#..', '.#....#.', '##....##', '##....##'],
   bars:    ['........', '######..', '........', '####....', '........', '########', '........', '###.....'],
   grid:    ['########', '##.##.##', '########', '##.##.##', '########', '##.##.##', '########', '........'],
+  orbit:   ['..####..', '.#....#.', '#..##..#', '#.####.#', '#.####.#', '#..##..#', '.#....#.', '..####..'],
+  star:    ['...#....', '...#....', '..###...', '#######.', '..###...', '...#....', '...#....', '........'],
+  mail:    ['........', '########', '##....##', '#.#..#.#', '#..##..#', '#......#', '########', '........'],
+  stop:    ['........', '.######.', '.######.', '.######.', '.######.', '.######.', '.######.', '........'],
+  ufo:     ['........', '...##...', '..####..', '.######.', '########', '.#.##.#.', '..#..#..', '.#....#.'],
+  branch:  ['.#......', '.#...#..', '.#..###.', '.#...#..', '.#..#...', '.###....', '.#......', '.#......'],
+  check:   ['........', '.......#', '......##', '#....##.', '##..##..', '.####...', '..##....', '........'],
+  search:  ['..###...', '.#...#..', '#.....#.', '#.....#.', '.#...#..', '..####..', '......#.', '.......#'],
+  db:      ['.######.', '#......#', '.######.', '#......#', '.######.', '#......#', '.######.', '........'],
+  bell:    ['...##...', '..####..', '.######.', '.######.', '.######.', '########', '........', '...##...'],
 };
 
 // One run of lit pixels becomes one horizontal bar of the path, so a full row is a single
@@ -7115,124 +7400,126 @@ function renderMemoryPanel(data) {
   memoryUI.section.replaceChildren();
   const mem = data?.settings?.memory;
   if (!mem) { memoryUI.section.append(el('p', 'mother-answer', t('THIS ROOM HAS NO MEMORY INDEX.'))); return; }
-    const memoryBody = folding(memoryUI.section, `${t('MEMORY')} · ${mem.stats ? t('{entries} EXCHANGES · {memories} MEMORIES · {pending} WAITING', { entries: mem.stats.entries, memories: mem.stats.memories, pending: mem.stats.pending }) : t('NO INDEX')}`, { key: 'memory', icon: 'chip' });
-    memoryBody.append(el('p', 'note', t('THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.')));
-    const mform = el('form', 'room-form memory-form');
-    const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(t('Memory setting was not saved: {error}', { error: error.message })); } };
-    const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
-    const archivist = el('select');
-    for (const [value, text] of [['auto', t('AUTO · cheapest allowed')], ...mem.candidates.map((c) => [c.id, `@${c.id}${c.local ? ` · ${c.label}` : ''}`])]) { const option = el('option', null, text); option.value = value; if (value === mem.archivist) option.selected = true; archivist.append(option); }
-    archivist.addEventListener('change', () => save({ archivist: archivist.value }, archivist.value === 'auto' ? t('archivist: the cheapest allowed agent goes first.') : t('archivist: @{agent} distils first.', { agent: archivist.value })));
-    mform.append(field(t('ARCHIVIST'), archivist));
-    const every = el('input'); every.type = 'number'; every.min = '1'; every.step = '1'; every.value = String(mem.every);
-    wireInstantNumber(every, { min: 1, toPatch: (value) => ({ memory: { every: value } }), describe: (value) => t('distil every {n} exchanges.', { n: value }) });
-    mform.append(field(t('DISTIL EVERY · EXCHANGES'), every));
-    const idle = el('input'); idle.type = 'number'; idle.min = '1'; idle.step = '1'; idle.value = String(mem.idleMinutes);
-    wireInstantNumber(idle, { min: 1, toPatch: (value) => ({ memory: { idleMinutes: value } }), describe: (value) => t('or after {n} quiet minutes.', { n: value }) });
-    mform.append(field(t('OR AFTER · QUIET MINUTES'), idle));
-    const share = el('input'); share.type = 'number'; share.min = '0'; share.max = '60'; share.step = '5'; share.value = String(Math.round(mem.recallShare * 100));
-    wireInstantNumber(share, { min: 0, toPatch: (value) => ({ memory: { recallShare: Math.min(60, value) / 100 } }), describe: (value) => t("recall may take {n}% of each turn's context.", { n: Math.min(60, value) }) });
-    mform.append(field(t('RECALL · % OF CONTEXT'), share));
-    // Spreading activation. Two memories that keep arriving in the same turn are associated by
-    // the room's own work, not by how they read; a couple of slots in each recall are kept for
-    // that. It is the one part of recall that owes nothing to wording, so it can be switched off.
-    const cascade = el('label', 'toggle full');
-    const cascadeBox = el('input'); cascadeBox.type = 'checkbox'; cascadeBox.checked = mem.cascade !== false;
-    cascadeBox.addEventListener('change', () => save({ cascade: cascadeBox.checked }, cascadeBox.checked
-      ? t('recall also carries what a memory keeps arriving with.')
-      : t('recall carries only what the words and the meaning match.')));
-    cascade.append(cascadeBox, el('span', null, t('CARRY WHAT A MEMORY KEEPS ARRIVING WITH')));
-    cascade.title = t('Two memories that keep travelling into the same turn are associated, however differently they read. Recall keeps a couple of slots for that company; the search never loses a slot to it.');
-    mform.append(cascade);
-    const embed = el('select');
-    const embedOptions = [['auto', t('AUTO · Ollama if running, else Gemini')], ['ollama', `OLLAMA · ${t('local')}${mem.ollama.embedModel ? ` · ${mem.ollama.embedModel}` : t(' · no model yet')}`], ['gemini', t('GEMINI · needs your key')], ['off', t('OFF · words only')]];
-    for (const [value, text] of embedOptions) { const option = el('option', null, text); option.value = value; if (value === (mem.embedProvider ?? data.config?.memory?.embedProvider ?? 'auto')) option.selected = true; embed.append(option); }
-    embed.addEventListener('change', () => save({ embedProvider: embed.value }, t('embeddings: {what}.', { what: embed.options[embed.selectedIndex].textContent.toLowerCase() })));
-    const embedLabel = field(t('EMBEDDINGS · NOW {what}', { what: mem.embedder ? mem.embedder.toUpperCase() : 'OFF' }), embed);
-    mform.append(embedLabel);
-    const who = el('div', 'full');
-    who.append(el('span', 'note', t('MAY DISTIL:')));
-    const allowed = new Set(mem.archivists ?? mem.candidates.map((c) => c.id));
-    for (const candidate of mem.candidates) {
-      const toggle = el('label', 'toggle');
-      const box = el('input'); box.type = 'checkbox'; box.checked = allowed.has(candidate.id);
-      box.addEventListener('change', () => {
-        if (box.checked) allowed.add(candidate.id); else allowed.delete(candidate.id);
-        if (!allowed.size) { box.checked = true; allowed.add(candidate.id); toast(t('MU/TH/UR › someone has to keep the archive.')); return; }
-        void save({ archivists: allowed.size === mem.candidates.length ? [] : [...allowed] }, t('archivists: {who}.', { who: [...allowed].map((id) => `@${id}`).join(', ') }));
-      });
-      toggle.append(box, `@${candidate.id.toUpperCase()}${candidate.local ? t(' · LOCAL · FREE') : ''}`);
-      who.append(toggle);
-    }
-    mform.append(who);
-    // The dataset behind MADRE AI: export what the room kept, train outside, @madre picks the result up.
-    const dataset = el('div', 'full dataset-row');
-    const exportButton = el('button', null, t('EXPORT DATASET'));
-    exportButton.type = 'button';
-    exportButton.title = t('Write train.jsonl and valid.jsonl next to the ledger, redacted, in chat format for mlx-lm');
-    const datasetNote = el('span', 'note', t('LOADING…'));
-    // How grown this archive is, read from what can actually be counted about it. It replaced a
-    // bar that filled toward a number borrowed from somebody else's paper: a room can reach that
-    // number and still be narrow, unjudged and lopsided, and the bar would have said it was ready.
-    const verdict = el('div', 'maturity');
-    const showDataset = (payload) => {
-      const d = payload?.dataset;
-      const exported = d ? t('LAST EXPORT {when} · TRAIN {train} · VALID {valid}', { when: new Date(d.exportedAt).toLocaleString(), train: d.train, valid: d.valid }) : t('NOT EXPORTED YET');
-      const trained = payload?.trained ? t('TRAINED MODEL {model} IN USE', { model: payload.trained.toUpperCase() }) : t('NO TRAINED MODEL YET · SEE docs/training');
-      datasetNote.textContent = [exported, trained].filter(Boolean).join(' · ');
-    };
-    fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => { datasetNote.textContent = t('DATASET UNAVAILABLE'); });
-    exportButton.addEventListener('click', async () => {
-      exportButton.disabled = true;
-      try { const payload = await fetch('/api/dataset', { method: 'POST' }).then((response) => response.json()); showDataset(payload); toast(t('MU/TH/UR › dataset exported: {n} pairs in {dir}', { n: payload.dataset.pairs, dir: payload.dir })); }
-      catch (error) { toast(t('Dataset export failed: {error}', { error: error.message })); }
-      finally { exportButton.disabled = false; }
+  // It reads first and is configured second. The dashboard is what someone opens this screen to
+  // see, so it starts open; the knobs that change how the archive is kept sit under it. All three
+  // are folds like every other block of MU/TH/UR, so COLLAPSE ALL moves what is on the screen.
+  const board = el('div', 'mem-dash');
+  folding(memoryUI.section, t('MEMORY · THE ARCHIVE AT A GLANCE'), { key: 'memory-dashboard', icon: 'chip', open: true }).append(board);
+  void drawMemoryDashboard(board);
+  const memoryBody = folding(memoryUI.section, t('ARCHIVIST AND RECALL'), { key: 'memory-settings', icon: 'gear' });
+  memoryBody.append(el('p', 'note', t('THE ARCHIVIST READS WHAT NOBODY HAS DISTILLED AND KEEPS THE FEW NOTES WORTH REMEMBERING. THE CHEAPEST ALLOWED AGENT GOES FIRST; A LOCAL MODEL COSTS NOTHING AND KEEPS EVERYTHING ON THIS MACHINE.')));
+  const mform = el('form', 'room-form memory-form');
+  const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(t('Memory setting was not saved: {error}', { error: error.message })); } };
+  const field = (labelText, node) => { const label = el('label'); label.append(labelText); label.append(node); return label; };
+  const archivist = el('select');
+  for (const [value, text] of [['auto', t('AUTO · cheapest allowed')], ...mem.candidates.map((c) => [c.id, `@${c.id}${c.local ? ` · ${c.label}` : ''}`])]) { const option = el('option', null, text); option.value = value; if (value === mem.archivist) option.selected = true; archivist.append(option); }
+  archivist.addEventListener('change', () => save({ archivist: archivist.value }, archivist.value === 'auto' ? t('archivist: the cheapest allowed agent goes first.') : t('archivist: @{agent} distils first.', { agent: archivist.value })));
+  mform.append(field(t('ARCHIVIST'), archivist));
+  const every = el('input'); every.type = 'number'; every.min = '1'; every.step = '1'; every.value = String(mem.every);
+  wireInstantNumber(every, { min: 1, toPatch: (value) => ({ memory: { every: value } }), describe: (value) => t('distil every {n} exchanges.', { n: value }) });
+  mform.append(field(t('DISTIL EVERY · EXCHANGES'), every));
+  const idle = el('input'); idle.type = 'number'; idle.min = '1'; idle.step = '1'; idle.value = String(mem.idleMinutes);
+  wireInstantNumber(idle, { min: 1, toPatch: (value) => ({ memory: { idleMinutes: value } }), describe: (value) => t('or after {n} quiet minutes.', { n: value }) });
+  mform.append(field(t('OR AFTER · QUIET MINUTES'), idle));
+  const share = el('input'); share.type = 'number'; share.min = '0'; share.max = '60'; share.step = '5'; share.value = String(Math.round(mem.recallShare * 100));
+  wireInstantNumber(share, { min: 0, toPatch: (value) => ({ memory: { recallShare: Math.min(60, value) / 100 } }), describe: (value) => t("recall may take {n}% of each turn's context.", { n: Math.min(60, value) }) });
+  mform.append(field(t('RECALL · % OF CONTEXT'), share));
+  // Spreading activation. Two memories that keep arriving in the same turn are associated by
+  // the room's own work, not by how they read; a couple of slots in each recall are kept for
+  // that. It is the one part of recall that owes nothing to wording, so it can be switched off.
+  const cascade = el('label', 'toggle full');
+  const cascadeBox = el('input'); cascadeBox.type = 'checkbox'; cascadeBox.checked = mem.cascade !== false;
+  cascadeBox.addEventListener('change', () => save({ cascade: cascadeBox.checked }, cascadeBox.checked
+    ? t('recall also carries what a memory keeps arriving with.')
+    : t('recall carries only what the words and the meaning match.')));
+  cascade.append(cascadeBox, el('span', null, t('CARRY WHAT A MEMORY KEEPS ARRIVING WITH')));
+  cascade.title = t('Two memories that keep travelling into the same turn are associated, however differently they read. Recall keeps a couple of slots for that company; the search never loses a slot to it.');
+  mform.append(cascade);
+  const embed = el('select');
+  const embedOptions = [['auto', t('AUTO · Ollama if running, else Gemini')], ['ollama', `OLLAMA · ${t('local')}${mem.ollama.embedModel ? ` · ${mem.ollama.embedModel}` : t(' · no model yet')}`], ['gemini', t('GEMINI · needs your key')], ['off', t('OFF · words only')]];
+  for (const [value, text] of embedOptions) { const option = el('option', null, text); option.value = value; if (value === (mem.embedProvider ?? data.config?.memory?.embedProvider ?? 'auto')) option.selected = true; embed.append(option); }
+  embed.addEventListener('change', () => save({ embedProvider: embed.value }, t('embeddings: {what}.', { what: embed.options[embed.selectedIndex].textContent.toLowerCase() })));
+  const embedLabel = field(t('EMBEDDINGS · NOW {what}', { what: mem.embedder ? mem.embedder.toUpperCase() : 'OFF' }), embed);
+  mform.append(embedLabel);
+  const who = el('div', 'full');
+  who.append(el('span', 'note', t('MAY DISTIL:')));
+  const allowed = new Set(mem.archivists ?? mem.candidates.map((c) => c.id));
+  for (const candidate of mem.candidates) {
+    const toggle = el('label', 'toggle');
+    const box = el('input'); box.type = 'checkbox'; box.checked = allowed.has(candidate.id);
+    box.addEventListener('change', () => {
+      if (box.checked) allowed.add(candidate.id); else allowed.delete(candidate.id);
+      if (!allowed.size) { box.checked = true; allowed.add(candidate.id); toast(t('MU/TH/UR › someone has to keep the archive.')); return; }
+      void save({ archivists: allowed.size === mem.candidates.length ? [] : [...allowed] }, t('archivists: {who}.', { who: [...allowed].map((id) => `@${id}`).join(', ') }));
     });
-    dataset.append(exportButton, datasetNote);
-    mform.append(dataset);
-    memoryBody.append(verdict);
-    drawVerdict(verdict);
-
-
-    // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.
-    const train = el('div', 'full train-card');
-    const trainHead = el('div', 'train-head', t('TRAIN MADRE AI · LOCAL, WITH MLX ON APPLE SILICON · NOTHING LEAVES THIS MACHINE'));
-    const trainNote = el('p', 'note', t('EXPORT THE DATASET FIRST. EACH STEP IS ONE COMMAND FOR YOUR TERMINAL; COPY, RUN, COME BACK. WHEN THE MODEL EXISTS IN OLLAMA, @MADRE SWITCHES TO IT AT THE NEXT RECHECK AND EVERY AGENT IS TOLD TO ASK IT FIRST.'));
-    const steps = el('ol', 'train-steps');
-    train.append(trainHead, trainNote, steps);
-    const renderTraining = (payload) => {
-      // `info`, not `t`: t() is how this page speaks, and a local name that shadows it would
-      // take the language away from everything inside this function.
-      const info = payload?.training;
-      steps.replaceChildren();
-      if (!info) { steps.append(el('li', null, t('TRAINING INFO UNAVAILABLE'))); return; }
-      const quote = (path) => `"${path.replace(/\/$/, '')}"`;
-      const items = [
-        [t('ONCE · A PYTHON ENVIRONMENT WITH MLX-LM'), 'python3 -m venv ~/.madre-train && source ~/.madre-train/bin/activate && pip install mlx-lm'],
-        [t('TRAIN THE LORA · BASE {model} FOR {gb} GB', { model: info.baseModel, gb: info.memoryGb }), `source ~/.madre-train/bin/activate && bash ${quote(`${info.recipeDir}train.sh`)} ${quote(info.roomDir)} ${info.baseModel}`],
-        [t('FUSE THE ADAPTER INTO THE BASE'), `source ~/.madre-train/bin/activate && cd ${quote(info.roomDir)} && mlx_lm.fuse --model ${info.baseModel} --adapter-path adapters --save-path fused`],
-        [t('REGISTER IN OLLAMA AS {model}', { model: info.modelName }), `cd ${quote(info.roomDir)} && cp ${quote(`${info.recipeDir}Modelfile`)} . && ollama create ${info.modelName} -f Modelfile`],
-      ];
-      for (const [label, command] of items) {
-        const li = el('li');
-        const head = el('div', 'train-step-label', label);
-        const row = el('div', 'update-command');
-        const code = el('code', null, command);
-        const copy = el('button', null, t('COPY')); copy.type = 'button';
-        copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(command); copy.textContent = t('COPIED'); setTimeout(() => { copy.textContent = t('COPY'); }, 1400); } catch { toast(t('MU/TH/UR › select the command and copy it.')); } });
-        row.append(code, copy);
-        li.append(head, row);
-        steps.append(li);
-      }
-      steps.append(el('li', 'note', t('QWEN NEEDS A GGUF BEFORE OLLAMA READS IT: {readme} · SECTION 3 HAS THE TWO LINES. THEN ASK @MADRE TEN THINGS THE ROOM DECIDED AND FIVE IT NEVER DISCUSSED BEFORE TRUSTING IT.', { readme: quote(`${info.recipeDir}README.md`) })));
-    };
-    fetch('/api/dataset').then((response) => response.json()).then(renderTraining).catch(() => renderTraining(null));
-    mform.append(train);
-    if (mem.envWins) mform.append(el('span', 'note full', t('ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.')));
-    mform.addEventListener('submit', (event) => event.preventDefault());
-    memoryBody.append(mform);
+    toggle.append(box, `@${candidate.id.toUpperCase()}${candidate.local ? t(' · LOCAL · FREE') : ''}`);
+    who.append(toggle);
+  }
+  mform.append(who);
+  if (mem.envWins) mform.append(el('span', 'note full', t('ENVIRONMENT VARIABLES ARE SET FOR MEMORY; THEY WIN OVER THESE VALUES ON THE NEXT LAUNCH.')));
+  mform.addEventListener('submit', (event) => event.preventDefault());
+  memoryBody.append(mform);
+  // The dataset behind MADRE AI and the recipe that trains on it: a separate errand from how
+  // the archive is kept, and the longest block on this screen, so it folds on its own.
+  const trainBody = folding(memoryUI.section, t('DATASET AND TRAINING'), { key: 'memory-train', icon: 'bars' });
+  const tform = el('div', 'room-form memory-form');
+  // The dataset behind MADRE AI: export what the room kept, train outside, @madre picks the result up.
+  const dataset = el('div', 'full dataset-row');
+  const exportButton = el('button', null, t('EXPORT DATASET'));
+  exportButton.type = 'button';
+  exportButton.title = t('Write train.jsonl and valid.jsonl next to the ledger, redacted, in chat format for mlx-lm');
+  const datasetNote = el('span', 'note', t('LOADING…'));
+  const showDataset = (payload) => {
+    const d = payload?.dataset;
+    const exported = d ? t('LAST EXPORT {when} · TRAIN {train} · VALID {valid}', { when: new Date(d.exportedAt).toLocaleString(), train: d.train, valid: d.valid }) : t('NOT EXPORTED YET');
+    const trained = payload?.trained ? t('TRAINED MODEL {model} IN USE', { model: payload.trained.toUpperCase() }) : t('NO TRAINED MODEL YET · SEE docs/training');
+    datasetNote.textContent = [exported, trained].filter(Boolean).join(' · ');
+  };
+  fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => { datasetNote.textContent = t('DATASET UNAVAILABLE'); });
+  exportButton.addEventListener('click', async () => {
+    exportButton.disabled = true;
+    try { const payload = await fetch('/api/dataset', { method: 'POST' }).then((response) => response.json()); showDataset(payload); toast(t('MU/TH/UR › dataset exported: {n} pairs in {dir}', { n: payload.dataset.pairs, dir: payload.dir })); }
+    catch (error) { toast(t('Dataset export failed: {error}', { error: error.message })); }
+    finally { exportButton.disabled = false; }
+  });
+  dataset.append(exportButton, datasetNote);
+  tform.append(dataset);
+  // TRAIN: the recipe, with this room's paths and this project's model name filled in. Training runs outside MADRE.
+  const train = el('div', 'full train-card');
+  const trainHead = el('div', 'train-head', t('TRAIN MADRE AI · LOCAL, WITH MLX ON APPLE SILICON · NOTHING LEAVES THIS MACHINE'));
+  const trainNote = el('p', 'note', t('EXPORT THE DATASET FIRST. EACH STEP IS ONE COMMAND FOR YOUR TERMINAL; COPY, RUN, COME BACK. WHEN THE MODEL EXISTS IN OLLAMA, @MADRE SWITCHES TO IT AT THE NEXT RECHECK AND EVERY AGENT IS TOLD TO ASK IT FIRST.'));
+  const steps = el('ol', 'train-steps');
+  train.append(trainHead, trainNote, steps);
+  const renderTraining = (payload) => {
+    // `info`, not `t`: t() is how this page speaks, and a local name that shadows it would
+    // take the language away from everything inside this function.
+    const info = payload?.training;
+    steps.replaceChildren();
+    if (!info) { steps.append(el('li', null, t('TRAINING INFO UNAVAILABLE'))); return; }
+    const quote = (path) => `"${path.replace(/\/$/, '')}"`;
+    const items = [
+      [t('ONCE · A PYTHON ENVIRONMENT WITH MLX-LM'), 'python3 -m venv ~/.madre-train && source ~/.madre-train/bin/activate && pip install mlx-lm'],
+      [t('TRAIN THE LORA · BASE {model} FOR {gb} GB', { model: info.baseModel, gb: info.memoryGb }), `source ~/.madre-train/bin/activate && bash ${quote(`${info.recipeDir}train.sh`)} ${quote(info.roomDir)} ${info.baseModel}`],
+      [t('FUSE THE ADAPTER INTO THE BASE'), `source ~/.madre-train/bin/activate && cd ${quote(info.roomDir)} && mlx_lm.fuse --model ${info.baseModel} --adapter-path adapters --save-path fused`],
+      [t('REGISTER IN OLLAMA AS {model}', { model: info.modelName }), `cd ${quote(info.roomDir)} && cp ${quote(`${info.recipeDir}Modelfile`)} . && ollama create ${info.modelName} -f Modelfile`],
+    ];
+    for (const [label, command] of items) {
+      const li = el('li');
+      const head = el('div', 'train-step-label', label);
+      const row = el('div', 'update-command');
+      const code = el('code', null, command);
+      const copy = el('button', null, t('COPY')); copy.type = 'button';
+      copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(command); copy.textContent = t('COPIED'); setTimeout(() => { copy.textContent = t('COPY'); }, 1400); } catch { toast(t('MU/TH/UR › select the command and copy it.')); } });
+      row.append(code, copy);
+      li.append(head, row);
+      steps.append(li);
+    }
+    steps.append(el('li', 'note', t('QWEN NEEDS A GGUF BEFORE OLLAMA READS IT: {readme} · SECTION 3 HAS THE TWO LINES. THEN ASK @MADRE TEN THINGS THE ROOM DECIDED AND FIVE IT NEVER DISCUSSED BEFORE TRUSTING IT.', { readme: quote(`${info.recipeDir}README.md`) })));
+  };
+  fetch('/api/dataset').then((response) => response.json()).then(renderTraining).catch(() => renderTraining(null));
+  tform.append(train);
+  trainBody.append(tform);
 }
-
 function renderSettings() {
   const { data } = settingsUI;
   if (!data) return;
@@ -7845,12 +8132,298 @@ function brainRadius(angle) {
   return r;
 }
 
-// The longitudinal fissure, the groove that makes two hemispheres out of one mass. It is a
-// density gap rather than a wall: memories are nudged out of the band and never across it.
-const FISSURE = 0.085;
-function fissureBias(node) {
-  const across = Math.sin(node.angle);
-  return Math.abs(across) < FISSURE ? Math.sign(across || 1) * (FISSURE - Math.abs(across)) : 0;
+// The longitudinal fissure, the groove that makes two hemispheres out of one mass. It runs
+// front to back down the middle, so it lies in depth: invisible from the side, plain the moment
+// the brain is turned to face you. A density gap rather than a wall, half as wide as this, in
+// orbit units: memories are nudged out of it and never across it.
+const FISSURE = 0.07;
+
+// ---- The third dimension.
+//
+// The archive is a body, not a drawing of one. Every memory lives at (wx, wy, wz): the outline
+// above is the brain seen from the side, and BRAIN_WIDTH says how far it reaches toward each
+// temple. The physics runs there. Each frame the whole body is turned by the human's hand and
+// projected, and the projection is written into x and y, so everything that draws, links,
+// sends pulses or answers a click keeps working on the screen it always worked on.
+const BRAIN_WIDTH = 0.84;      // ear to ear, against front to back
+const VIEW_DISTANCE = 1500;    // world units from the eye to MOTHER: enough to read depth, not to distort
+const PITCH_LIMIT = 1.1;       // the head tips forward and back, never over
+const TURN_PER_PIXEL = 0.008;
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+// How deep under the surface a memory sits. Thin, on purpose: a thick shell fills the outline in
+// and the brain becomes a disc; a thin one leaves the silhouette to the memories along its edge.
+const shellDepth = (node) => 1.12 + node.distance * 0.18;
+const frac = (value) => value - Math.floor(value);
+
+// ---- Forgetting.
+//
+// A memory that is forgotten is not switched off: the universe takes it. It swells once, a last
+// breath; a horizon opens where it was, light bending round its rim; what it was made of falls
+// in, spiralling faster the closer it gets and drawn out into threads; the body collapses, there
+// is one point of light as it goes, and a faint ring runs out into the dark and is gone. Its
+// links do not snap. They come apart into dust, from its end outward like a wave, and the dust
+// drifts off into the field, glinting, and goes out. Aberrations go the same way.
+const IMPLOSION = 2.4;          // seconds, from the last breath to nothing
+const DUST_CAP = 1400;          // a ceiling, so forgetting a hub does not cost a frame
+const DEBRIS = 40;
+
+// How big the body still is, 0..1 of the way through: a swell, then a collapse that accelerates.
+function implosionScale(p) {
+  if (p < 0.12) return 1 + 0.22 * Math.sin((p / 0.12) * (Math.PI / 2));
+  if (p < 0.62) return 1.22 * (1 - ((p - 0.12) / 0.5) ** 2.2);
+  return 0;
+}
+
+// Points along a wire, as the curve it is drawn with, with where along it each one is.
+function wireDust(x0, y0, cx, cy, x1, y1, from, to, born, count) {
+  const out = [];
+  for (let i = 0; i < count; i += 1) {
+    const u = (i + Math.random()) / count;
+    const at = alongCurve(x0, y0, cx, cy, x1, y1, u);
+    const drift = 0.25 + Math.random() * 0.55;
+    const heading = Math.random() * Math.PI * 2;
+    out.push({
+      x: at.x, y: at.y, vx: Math.cos(heading) * drift, vy: Math.sin(heading) * drift,
+      // The wave runs from the forgotten end outward: dust is born where it has reached.
+      born: born + 0.15 + 0.55 * u, life: 1.4 + Math.random() * 1.8,
+      size: 0.6 + Math.random() * 1.3, colour: hexMix(from, to, u), phase: Math.random() * 6.3,
+    });
+  }
+  return out;
+}
+
+function beginImplosion(node, t) {
+  node.forgetting = { at: t };
+  node.debris = Array.from({ length: DEBRIS }, () => ({ a: Math.random() * Math.PI * 2, d: 1.4 + Math.random() * 2.8, w: 0.5 + Math.random() * 1.5, s: 0.6 + Math.random() * 0.9 }));
+  const id = node.memory.id;
+  const byId = new Map(nostromo.nodes.map((other) => [other.memory.id, other]));
+  const dust = nostromo.dust ?? (nostromo.dust = []);
+  const fading = nostromo.fading ?? (nostromo.fading = []);
+  const wires = [];
+  for (const link of nostromo.links) {
+    if (link.a !== id && link.b !== id) continue;
+    const other = byId.get(link.a === id ? link.b : link.a);
+    if (!other) continue;
+    wires.push({ x0: node.x, y0: node.y, cx: link.cx ?? (node.x + other.x) / 2, cy: link.cy ?? (node.y + other.y) / 2, x1: other.x, y1: other.y, from: node.color, to: other.color });
+  }
+  // The wire from MOTHER, too: it comes apart from the memory's end back toward her.
+  if (node.rimX !== undefined) wires.push({ x0: node.x, y0: node.y, cx: node.cx ?? node.x / 2, cy: node.cy ?? node.y / 2, x1: node.rimX, y1: node.rimY, from: node.color, to: '#e22816' });
+  for (const wire of wires) {
+    const length = Math.hypot(wire.x1 - wire.x0, wire.y1 - wire.y0);
+    const count = Math.max(8, Math.min(60, Math.round(length / 9)));
+    if (dust.length < DUST_CAP) dust.push(...wireDust(wire.x0, wire.y0, wire.cx, wire.cy, wire.x1, wire.y1, wire.from, wire.to, t, count));
+    fading.push({ ...wire, born: t });
+  }
+  nostromo.links = nostromo.links.filter((link) => link.a !== id && link.b !== id);
+  nostromo.witness = node;
+}
+
+function drawImplosion(ctx, node, t, scale, reduced) {
+  const p = Math.min(1, (t - node.forgetting.at) / IMPLOSION);
+  const R0 = node.r;
+  const x = node.x;
+  const y = node.y;
+  const px = 1 / scale;
+  ctx.save();
+  // The horizon: a disc of nothing that opens as the body begins to go and closes after it.
+  const open = p < 0.38 ? smooth(0.06, 0.38, p) : 1 - smooth(0.5, 0.82, p);
+  if (open > 0.01) {
+    const hole = R0 * 0.95 * open;
+    const dark = ctx.createRadialGradient(x, y, 0, x, y, hole * 1.15);
+    dark.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    dark.addColorStop(0.82, 'rgba(0, 0, 0, .96)');
+    dark.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.arc(x, y, hole * 1.15, 0, Math.PI * 2); ctx.fill();
+    // Light bent round its rim, in arcs that turn and do not quite close.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 3; k += 1) {
+      const from = (reduced ? 0 : t * (2.4 + k * 0.7)) + k * 2.1;
+      ctx.strokeStyle = k === 1 ? hexAlpha(node.color, 0.7 * open) : `rgba(214, 228, 255, ${0.55 * open})`;
+      ctx.lineWidth = (1.6 - 0.35 * k) * px;
+      ctx.beginPath(); ctx.arc(x, y, hole * (1.06 + 0.05 * k), from, from + 1.6 + 0.6 * Math.sin(t + k)); ctx.stroke();
+    }
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  // What it was made of, falling in: faster the closer it gets, drawn out into threads.
+  if (!reduced && p < 0.66) {
+    const fall = Math.min(1, p / 0.62);
+    const where = (bit, f) => {
+      const reach = R0 * bit.d * (1 - f) ** 1.4;
+      const angle = bit.a + (bit.w * f * 3.2) / (0.12 + (1 - f));
+      return [x + Math.cos(angle) * reach, y + Math.sin(angle) * reach];
+    };
+    ctx.lineCap = 'round';
+    for (const bit of node.debris ?? []) {
+      const f = Math.min(1, fall * bit.s + fall * (1 - bit.s) * fall);
+      const alpha = Math.min(1, f * 7) * (1 - smooth(0.82, 1, f));
+      if (alpha <= 0.01) continue;
+      const [ax, ay] = where(bit, Math.max(0, f - 0.05));
+      const [bx, by] = where(bit, f);
+      ctx.strokeStyle = hexAlpha(hexMix(node.color, '#ffffff', f), 0.85 * alpha);
+      ctx.lineWidth = (0.8 + 1.2 * f) * px;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    }
+  }
+  // The point of light as it goes, and the ring that runs out into the dark.
+  const gone = p - 0.6;
+  if (gone > 0 && gone < 0.2) {
+    const flash = (1 - gone / 0.2) ** 2;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, R0 * (0.6 + gone * 14));
+    glow.addColorStop(0, `rgba(255, 255, 255, ${flash})`);
+    glow.addColorStop(0.25, hexAlpha(hexMix(node.color, '#ffffff', 0.6), 0.6 * flash));
+    glow.addColorStop(1, hexAlpha(node.color, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(x, y, R0 * (0.6 + gone * 14), 0, Math.PI * 2); ctx.fill();
+  }
+  if (gone > 0) {
+    const q = gone / 0.4;
+    ctx.strokeStyle = `rgba(206, 222, 255, ${0.32 * (1 - q) ** 1.5})`;
+    ctx.lineWidth = (1.4 * (1 - q) + 0.3) * px;
+    ctx.beginPath(); ctx.arc(x, y, R0 * (1 + q * 16), 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// The links coming apart: what is left of each wire, beyond the wave, and the dust behind it.
+function drawDust(ctx, t, scale) {
+  const px = 1 / scale;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const wire of nostromo.fading ?? []) {
+    const age = t - wire.born;
+    const wave = Math.min(1, Math.max(0, (age - 0.15) / 0.55));
+    const fade = 1 - smooth(0.5, 1.2, age);
+    if (fade <= 0 || wave >= 1) continue;
+    const line = ctx.createLinearGradient(wire.x0, wire.y0, wire.x1, wire.y1);
+    line.addColorStop(0, hexAlpha(wire.from, 0));
+    line.addColorStop(Math.min(0.999, wave + 0.001), hexAlpha(wire.from, 0));
+    line.addColorStop(Math.min(1, wave + 0.06), hexAlpha(hexMix(wire.from, wire.to, wave), 0.55 * fade));
+    line.addColorStop(1, hexAlpha(wire.to, 0.45 * fade));
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 0.9 * px;
+    ctx.beginPath(); ctx.moveTo(wire.x0, wire.y0); ctx.quadraticCurveTo(wire.cx, wire.cy, wire.x1, wire.y1); ctx.stroke();
+  }
+  for (const mote of nostromo.dust ?? []) {
+    const age = t - mote.born;
+    if (age < 0 || age >= mote.life) continue;
+    const glint = 0.55 + 0.45 * Math.sin(t * 9 + mote.phase);
+    const alpha = Math.min(1, age * 8) * (1 - age / mote.life) ** 1.5 * glint;
+    if (alpha <= 0.01) continue;
+    ctx.fillStyle = hexAlpha(mote.colour, Math.min(1, alpha));
+    ctx.beginPath(); ctx.arc(mote.x, mote.y, mote.size * px, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---- The sight.
+//
+// What marks a dwarf under the pointer and a dwarf that has been chosen: a gunsight, the way a
+// fighter's head-up display draws one. Four corner brackets that close in on the target when it
+// is chosen, a broken ring turning around it, range ticks at the four bearings and the lock
+// written beside it. The pointer gets the brackets only, dimmer: a sight that is looking, not
+// one that has locked. Drawn in the world but sized in screen pixels, so it reads the same at
+// every zoom.
+const HUD_GREEN = '57, 255, 110';
+// Written out here and not inside the renderer, where `t` is the clock and not the language.
+const lockedLabel = (memory) => `${t('TARGET LOCKED')} · #${memory.id}`;
+function drawSight(ctx, x, y, radius, t, scale, { locked = false, age = 1, label = '', still = false } = {}) {
+  const px = 1 / scale;
+  const close = locked ? 1 - (1 - Math.min(1, age / 0.35)) ** 3 : 1;
+  const R = radius + 9 * px + (1 - close) * 46 * px;
+  const blink = locked && age < 0.45 ? (Math.floor(age * 14) % 2 ? 0.35 : 1) : 1;
+  const alpha = (locked ? 0.95 : 0.5) * blink;
+  const arm = Math.max(7 * px, R * 0.34);
+  ctx.save();
+  ctx.lineCap = 'square';
+  ctx.shadowColor = `rgba(${HUD_GREEN}, .7)`;
+  ctx.shadowBlur = locked ? 6 : 3;
+  ctx.strokeStyle = `rgba(${HUD_GREEN}, ${alpha})`;
+  ctx.lineWidth = (locked ? 1.6 : 1.1) * px;
+  ctx.beginPath();
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    ctx.moveTo(x + sx * R, y + sy * (R - arm));
+    ctx.lineTo(x + sx * R, y + sy * R);
+    ctx.lineTo(x + sx * (R - arm), y + sy * R);
+  }
+  ctx.stroke();
+  if (locked) {
+    // The broken ring, turning; and the ticks at the four bearings.
+    const ring = R * 1.22;
+    const spin = still ? 0 : t * 0.6;
+    ctx.lineWidth = 1.1 * px;
+    ctx.strokeStyle = `rgba(${HUD_GREEN}, ${0.7 * blink})`;
+    for (let k = 0; k < 4; k += 1) {
+      const from = spin + k * (Math.PI / 2) + 0.22;
+      ctx.beginPath(); ctx.arc(x, y, ring, from, from + Math.PI / 2 - 0.44); ctx.stroke();
+    }
+    ctx.beginPath();
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      ctx.moveTo(x + dx * ring * 1.08, y + dy * ring * 1.08);
+      ctx.lineTo(x + dx * (ring * 1.08 + 9 * px), y + dy * (ring * 1.08 + 9 * px));
+    }
+    ctx.stroke();
+    if (label) {
+      ctx.shadowBlur = 0;
+      ctx.font = `${10 * px}px ${getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace'}`;
+      ctx.fillStyle = `rgba(${HUD_GREEN}, ${0.9 * blink})`;
+      ctx.fillText(label, x + R + 6 * px, y - R + 3 * px);
+    }
+  }
+  ctx.restore();
+}
+
+// ---- Focus.
+//
+// Choosing a dwarf turns the archive in the hand until that dwarf faces you, brings the camera
+// to it and lets everything else fall back into the dark, so the one being read is the one that
+// is seen. Dragging while it is held hands the turning back to the human; letting it go brings
+// the rest of the archive back up.
+const FOCUS_TURN = 0.07;      // how much of the remaining turn is taken each frame
+const FOCUS_VEIL = 0.7;       // how far everything else falls back
+
+function focusNostromo(dt, t) {
+  // A memory being forgotten keeps the stage until it is gone: the dark stays down around it.
+  const witness = nostromo.witness?.forgetting && nostromo.nodes.includes(nostromo.witness) ? nostromo.witness : null;
+  const held = (nostromo.selected && nostromo.nodes.includes(nostromo.selected) ? nostromo.selected : null) ?? witness;
+  const lock = nostromo.lock ?? (nostromo.lock = { node: null, at: 0, fade: 0, aim: false });
+  if (held && held !== lock.node) { lock.node = held; lock.at = t; lock.aim = held === nostromo.selected; }
+  if (held?.forgetting) lock.aim = false;
+  lock.fade += ((held ? 1 : 0) - lock.fade) * Math.min(1, 0.12 * dt);
+  if (!held) { lock.aim = false; if (lock.fade < 0.01) lock.node = null; }
+  if (!lock.aim || !held || held.wx === undefined) return;
+  // The turn that brings this dwarf to face the eye: about the vertical axis until it sits on
+  // the line of sight, then tipped until it is level with it.
+  const across = Math.hypot(held.wx, held.wz) || 1;
+  const yawTo = Math.atan2(-held.wx, held.wz);
+  const pitchTo = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, Math.atan2(held.wy, across)));
+  const yaw = nostromo.yaw ?? 0;
+  const short = ((yawTo - yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  const step = Math.min(1, FOCUS_TURN * dt);
+  nostromo.yaw = yaw + short * step;
+  nostromo.pitch = (nostromo.pitch ?? 0) + (pitchTo - (nostromo.pitch ?? 0)) * step;
+}
+
+function projectNostromo() {
+  const yaw = nostromo.yaw ?? 0;
+  const pitch = nostromo.pitch ?? 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  for (const node of nostromo.nodes) {
+    if (node.wx === undefined) { node.wx = node.x; node.wy = node.y; node.wz = 0; }
+    node.r3 ??= node.r;
+    // Turned about the vertical axis, then tipped about the horizontal one: the same order the
+    // core's own longitude and lean are applied in, so the star and the body turn as one thing.
+    const x1 = node.wx * cy + node.wz * sy;
+    const z1 = node.wz * cy - node.wx * sy;
+    const y2 = node.wy * cp - z1 * sp;
+    const z2 = node.wy * sp + z1 * cp;
+    const near = VIEW_DISTANCE / Math.max(200, VIEW_DISTANCE - z2);
+    node.x = x1 * near;
+    node.y = y2 * near;
+    node.depth = z2;
+    node.r = node.r3 * near;
+  }
 }
 const HEART_PERIOD = 1.15;   // seconds per beat: slow, deliberate, alive
 const WAVE_SPEED = 260;      // world units per second a beat travels outward
@@ -7863,11 +8436,28 @@ function sizeNostromo() {
   nostromo.size = { w: rect.width, h: rect.height, dpr };
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
-  for (const node of nostromo.nodes) {
-    if (node.placed) continue;
-    const radius = NOSTROMO_ORBIT * brainRadius(node.angle) * (0.92 + node.distance * 0.7);
-    node.x = Math.cos(node.angle) * radius;
-    node.y = Math.sin(node.angle) * radius + fissureBias(node) * NOSTROMO_ORBIT;
+  // Spread evenly over the whole surface, so no part of the brain is bald and none is a crowd.
+  // In the plane a crowd pushed itself round the ring; in a body it escapes into depth instead
+  // and stays where it started, so the start has to be even already. A golden-angle spiral runs
+  // from the frontal pole to the back of the head, and the memories walk it grouped by kind:
+  // each kind takes a band of its own, a lobe as wide as it has memories.
+  const kinds = Object.keys(MEMORY_COLORS);
+  const waiting = nostromo.nodes.filter((node) => !node.placed)
+    .sort((a, b) => (kinds.indexOf(a.memory.kind) - kinds.indexOf(b.memory.kind)) || (a.angle - b.angle));
+  for (const [i, node] of waiting.entries()) {
+    const along = 1 - (2 * (i + 0.5)) / waiting.length;
+    const ring = Math.sqrt(1 - along * along);
+    const turn = i * GOLDEN_ANGLE;
+    let ux = -along;
+    let uy = ring * Math.cos(turn);
+    let uz = ring * Math.sin(turn);
+    // Never on the midline, where the fissure is.
+    if (Math.abs(uz) < FISSURE) { uz = Math.sign(uz || 1) * FISSURE; const fit = Math.hypot(ux, uy, uz); ux /= fit; uy /= fit; uz /= fit; }
+    const radius = NOSTROMO_ORBIT * brainRadius(Math.atan2(uy, ux)) * shellDepth(node);
+    node.wx = ux * radius;
+    node.wy = uy * radius;
+    node.wz = uz * BRAIN_WIDTH * radius;
+    node.wvx = 0; node.wvy = 0; node.wvz = 0;
     node.placed = true;
   }
   return true;
@@ -7878,6 +8468,9 @@ function startNostromo() {
   if (typeof requestAnimationFrame !== 'function' || !nostromo.canvas?.getContext) return;
   if (!sizeNostromo()) return;
   nostromo.cam = { x: 0, y: 0, scale: 1, manual: false };
+  // Every boarding starts from the side view, the way the camera starts from the whole system.
+  nostromo.yaw = 0;
+  nostromo.pitch = 0;
   nostromo.rings = [];
   nostromo.lastPhase = 0;
   nostromo.alarm = null;
@@ -7889,6 +8482,8 @@ function startNostromo() {
     nostromo.last = now;
     const clock = now / 1000;
     stepNostromo(dt, clock);
+    focusNostromo(dt, clock);
+    projectNostromo();
     fitNostromo();
     drawNostromo(clock);
     nostromo.raf = requestAnimationFrame(frame);
@@ -7985,6 +8580,10 @@ const CIRCLE_SIN = Array.from({ length: CIRCLE_STEPS + 1 }, (_, k) => Math.sin((
 // strip is built per class, the first time that class is asked for, and every memory of that
 // class wears it. The strip repeats left to right, so a body can turn inside it without a seam.
 const dwarfSkins = new Map();
+// A dwarf's face is laid on in columns across its width, each as wide as a sphere is at that
+// longitude: the sine of evenly spaced longitudes from one limb to the other.
+const SKIN_COLUMNS = 8;
+const SKIN_EDGES = Array.from({ length: SKIN_COLUMNS + 1 }, (_, k) => Math.sin(-Math.PI / 2 + (k / SKIN_COLUMNS) * Math.PI));
 function dwarfTexture(hex) {
   if (dwarfSkins.has(hex)) return dwarfSkins.get(hex);
   let skin = null;
@@ -8034,6 +8633,497 @@ function dwarfTexture(hex) {
   return skin;
 }
 
+// ---- A dwarf, drawn the way a star looks.
+//
+// A dwarf makes its own light, so nothing out here lights it and nothing shades it: there is
+// no side turned away. What makes it round is what makes the Sun round in a white-light photo.
+//
+//   Limb darkening. The disc is brightest in the middle and dims toward the edge, the same all
+//   the way round: at the limb the eye sees into higher, cooler gas. It dims more in blue than
+//   in red, so the edge is also warmer than the centre.
+//   Granulation. The surface is cells: hot plasma rising in bright cores, cooling gas sinking in
+//   the dark lanes between them. Seen toward the limb the cells foreshorten and the pattern fades.
+//   Spots. A dark umbra inside a paler penumbra, where the field holds the heat down.
+//   Faculae. Bright patches around the spots, plain near the limb and nearly lost in the middle.
+//
+// Each class wears these in its own proportion: a white dwarf is smooth and white-hot, a yellow
+// one is a sun with granules and spots. The surface is a map of the whole body in latitude and
+// longitude, built once per class from noise sampled on the sphere itself, so it has no seam and
+// nothing stretches at the poles; turning the body is sliding along it. How hard a dwarf burns
+// is how much the room has made of it, as before.
+//
+// The geometry of a disc of a given size is worked out once and kept. A body is painted again
+// only when it has turned or changed enough to show.
+const ALBEDO_W = 256;
+const ALBEDO_H = 128;
+// How much each channel dims at the limb, red to blue: the blue dims most.
+const LIMB_DARKENING = [0.68, 0.8, 0.9];
+// What each class of dwarf is made of. `granules` is how strongly the cells show, `spots` how
+// many of them are marked, `faculae` how bright the patches around them are, `white` how far the
+// centre runs toward white, `power` how much light it gives for its size: a white dwarf is the
+// smallest and the most intense. A class not named here is drawn as a sun.
+const STAR_TRAITS = {
+  decision: { granules: 1, spots: 1, faculae: 1, white: 0.5, power: 1 },
+  fact: { granules: 0.3, spots: 0, faculae: 0.35, white: 0.9, power: 1.35 },
+  preference: { granules: 0.9, spots: 0.7, faculae: 0.9, white: 0.45, power: 1 },
+  question: { granules: 0.7, spots: 0.4, faculae: 0.7, white: 0.65, power: 1.15 },
+};
+const SUN_TRAITS = { granules: 0.8, spots: 0.6, faculae: 0.8, white: 0.5, power: 1 };
+// And what a memory's standing does to that surface. A dwarf you confirmed is clean; one nobody
+// has judged carries its class's spots; one held as false is blotched, the spots spreading as
+// `reach` drops; one put out of circulation is the worst of all. `faculae` scales the bright
+// patches. A dwarf the archive has never once carried is cooling: its granules barely move, it
+// gives less light (`glow`) and its middle is no longer white-hot (`white`).
+const SURFACE_BY_ZONE = {
+  bridge: { spots: 0, reach: 0.77, faculae: 1.3 },
+  hold: { spots: 1, reach: 0.77, faculae: 1 },
+  medbay: { spots: 1, reach: 0.67, faculae: 0.55, sick: true },
+  jettisoned: { spots: 1, reach: 0.62, faculae: 0.3, sick: true },
+};
+const COLD_GRANULES = 0.3;
+const COLD_GLOW = 0.55;
+const COLD_WHITE = 0.2;
+function surfaceOf(memory, traits = SUN_TRAITS, cold = false) {
+  const zone = SURFACE_BY_ZONE[memory?.zone ?? 'hold'] ?? SURFACE_BY_ZONE.hold;
+  return {
+    spots: zone.sick ? 1 : traits.spots * zone.spots,
+    reach: zone.reach,
+    faculae: traits.faculae * zone.faculae,
+    granules: traits.granules * (cold ? COLD_GRANULES : 1),
+    glow: cold ? COLD_GLOW : 1,
+    white: cold ? COLD_WHITE : 1,
+  };
+}
+const dwarfAlbedos = new Map();
+const sphereTables = new Map();
+
+// Gradient noise, the improved kind: continuous in every direction, with no grid showing
+// through it the way value noise shows its cells. The permutation is fixed, so every room grows
+// the same surfaces.
+const NOISE_PERM = (() => {
+  const order = Array.from({ length: 256 }, (_, i) => i);
+  let seed = 1013;
+  for (let i = 255; i > 0; i -= 1) {
+    seed = (seed * 16807) % 2147483647;
+    const j = seed % (i + 1);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return Uint8Array.from([...order, ...order]);
+})();
+function gradientNoise(x, y, z) {
+  const P = NOISE_PERM;
+  const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+  x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+  const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10);
+  const u = fade(x), v = fade(y), w = fade(z);
+  const grad = (hash, gx, gy, gz) => {
+    const h = hash & 15;
+    const a = h < 8 ? gx : gy;
+    const b = h < 4 ? gy : h === 12 || h === 14 ? gx : gz;
+    return ((h & 1) ? -a : a) + ((h & 2) ? -b : b);
+  };
+  const lerp = (t, a, b) => a + t * (b - a);
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(w,
+    lerp(v, lerp(u, grad(P[AA], x, y, z), grad(P[BA], x - 1, y, z)), lerp(u, grad(P[AB], x, y - 1, z), grad(P[BB], x - 1, y - 1, z))),
+    lerp(v, lerp(u, grad(P[AA + 1], x, y, z - 1), grad(P[BA + 1], x - 1, y, z - 1)), lerp(u, grad(P[AB + 1], x, y - 1, z - 1), grad(P[BB + 1], x - 1, y - 1, z - 1))));
+}
+// Octaves of it, folded into 0..1.
+function fractalNoise(x, y, z, octaves) {
+  let sum = 0, amp = 0.5, freq = 1, norm = 0;
+  for (let i = 0; i < octaves; i += 1) { sum += amp * gradientNoise(x * freq, y * freq, z * freq); norm += amp; amp *= 0.5; freq *= 2.03; }
+  return 0.5 + 0.5 * Math.max(-1, Math.min(1, (sum / norm) * 1.6));
+}
+// Cellular noise: the distance to the nearest and the second nearest of a scatter of points,
+// one jittered into each unit cell. Where the two are nearly equal is the border between two
+// cells, which is exactly the shape of a granule's dark lane.
+function cellNoise(x, y, z) {
+  const P = NOISE_PERM;
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  let near = 9, next = 9;
+  for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) for (let dz = -1; dz <= 1; dz += 1) {
+    const h = P[(P[(P[(xi + dx) & 255] + ((yi + dy) & 255)) & 255] + ((zi + dz) & 255)) & 255];
+    const ox = xi + dx + P[h] / 255 - x;
+    const oy = yi + dy + P[(h + 85) & 255] / 255 - y;
+    const oz = zi + dz + P[(h + 170) & 255] / 255 - z;
+    const d = ox * ox + oy * oy + oz * oz;
+    if (d < near) { next = near; near = d; } else if (d < next) next = d;
+  }
+  return [Math.sqrt(near), Math.sqrt(next)];
+}
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// The whole surface of one class: how bright the granulation is at each texel, and how strong
+// the magnetic field is there. Spots and faculae are read from the field when a dwarf is
+// painted, so how many a dwarf shows can follow the memory's standing instead of being baked in.
+// Each class has a surface of its own. Built a band of rows at a time when asked to be (`rows`),
+// so the work can be spread over frames; the map is handed out only once it is whole.
+function dwarfAlbedo(kind, rows = ALBEDO_H) {
+  let build = dwarfAlbedos.get(kind);
+  if (build?.done) return build.map;
+  if (!build) {
+    const offset = [...String(kind)].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) * 0.37;
+    build = { offset, map: new Float32Array(ALBEDO_W * ALBEDO_H * 2), next: 0, done: false };
+    dwarfAlbedos.set(kind, build);
+  }
+  const { offset, map } = build;
+  const until = Math.min(ALBEDO_H, build.next + rows);
+  for (let row = build.next; row < until; row += 1) {
+    const lat = ((row + 0.5) / ALBEDO_H - 0.5) * Math.PI;
+    const cl = Math.cos(lat), sl = Math.sin(lat);
+    for (let col = 0; col < ALBEDO_W; col += 1) {
+      const lon = ((col + 0.5) / ALBEDO_W) * Math.PI * 2;
+      const px = cl * Math.cos(lon) + offset, py = sl, pz = cl * Math.sin(lon);
+      // Granules: bright where a cell's middle is, dark along the lanes between cells, and a
+      // slow unevenness over the lot so no two stretches of the surface match.
+      const drift = fractalNoise(px * 3 + 4, py * 3, pz * 3, 3) - 0.5;
+      const [near, next] = cellNoise(px * 21 + drift, py * 21, pz * 21 - drift);
+      const lane = smooth(0, 0.32, next - near);
+      const middle = 1 - Math.min(1, near * 0.9);
+      const granule = 0.5 + 0.5 * (lane * (0.6 + 0.4 * middle) - 0.55) + 0.18 * (fractalNoise(px * 6, py * 6 + 2, pz * 6, 3) - 0.5);
+      // The field: where it is strongest, spots; in a ring around them, faculae.
+      const field = fractalNoise(px * 2.3 + 11, py * 2.3, pz * 2.3, 4) + 0.06 * (fractalNoise(px * 9, py * 9, pz * 9, 2) - 0.5);
+      const at = (row * ALBEDO_W + col) * 2;
+      map[at] = Math.min(1, Math.max(0, granule));
+      map[at + 1] = field;
+    }
+  }
+  build.next = until;
+  build.done = until >= ALBEDO_H;
+  return build.done ? map : null;
+}
+
+// Every pixel of a disc `size` pixels across: which way it faces, where on the map it reads,
+// and how much of it the disc covers, so the edge is smooth without a second pass.
+function sphereTable(size) {
+  if (sphereTables.has(size)) return sphereTables.get(size);
+  const half = size / 2;
+  const cells = [];
+  for (let py = 0; py < size; py += 1) {
+    for (let px = 0; px < size; px += 1) {
+      const x = (px + 0.5 - half) / half;
+      const y = (py + 0.5 - half) / half;
+      const rr = x * x + y * y;
+      const edge = (1 - Math.sqrt(rr)) * half + 0.5;
+      if (edge <= 0) continue;
+      const z = Math.sqrt(Math.max(0, 1 - rr));
+      const lon = Math.atan2(x, z);
+      const lat = Math.asin(Math.max(-1, Math.min(1, y)));
+      const row = Math.max(0, Math.min(ALBEDO_H - 1.001, (lat / Math.PI + 0.5) * ALBEDO_H - 0.5));
+      cells.push(py * size + px, x, y, z, (lon / (Math.PI * 2)) * ALBEDO_W, row, Math.min(1, edge));
+    }
+  }
+  const table = { size, cells: Float32Array.from(cells) };
+  sphereTables.set(size, table);
+  return table;
+}
+
+// The shading itself. Pure: a table, a map and the star in, RGBA out. `colour` is the class's
+// colour as three numbers 0..1, `surface` what its standing does to it (surfaceOf), `turn` how
+// far the body has spun, `burn` how hard it burns.
+function shadeDwarf(out, table, map, { colour, traits = SUN_TRAITS, surface = surfaceOf(null, traits), turn, burn }) {
+  out.fill(0);
+  const shift = (((turn / (Math.PI * 2)) % 1) + 1) % 1 * ALBEDO_W;
+  const energy = (0.62 + 0.62 * burn) * (traits.power ?? 1);
+  const whiten = traits.white * (0.5 + 0.5 * burn);
+  // Toward the edge the class's colour deepens: cooler gas, the same hue, more of it.
+  const deep = colour.map((value) => value ** 1.6);
+  const cells = table.cells;
+  const sample = new Float32Array(2);
+  const { spots, reach, faculae, granules } = surface;
+  const energyNow = energy * (surface.glow ?? 1);
+  const whitenNow = whiten * (surface.white ?? 1);
+  for (let i = 0; i < cells.length; i += 7) {
+    const mu = cells[i + 3];
+    // Read between texels, never from one: the map is smaller than a close-up body, and a body
+    // read texel by texel shows them as squares.
+    const u = cells[i + 4] + shift;
+    const u0 = Math.floor(u);
+    const fu = u - u0;
+    const c0 = ((u0 % ALBEDO_W) + ALBEDO_W) % ALBEDO_W;
+    const c1 = (c0 + 1) % ALBEDO_W;
+    const v = cells[i + 5];
+    const r0 = Math.floor(v);
+    const fv = v - r0;
+    const r1 = Math.min(ALBEDO_H - 1, r0 + 1);
+    for (let k = 0; k < 2; k += 1) {
+      const top = map[(r0 * ALBEDO_W + c0) * 2 + k] * (1 - fu) + map[(r0 * ALBEDO_W + c1) * 2 + k] * fu;
+      const bottom = map[(r1 * ALBEDO_W + c0) * 2 + k] * (1 - fu) + map[(r1 * ALBEDO_W + c1) * 2 + k] * fu;
+      sample[k] = top * (1 - fv) + bottom * fv;
+    }
+    const [granule, field] = sample;
+    // Spots where the field passes `reach`, umbra deeper in; faculae in the ring just short of it.
+    const ring = smooth(reach, reach + 0.07, field);
+    const umbra = smooth(reach + 0.07, reach + 0.12, field) * spots;
+    const penumbra = ring * spots;
+    const facula = Math.max(0, smooth(reach - 0.11, reach - 0.01, field) - ring) * faculae;
+    // The cells foreshorten toward the limb and their contrast goes with them.
+    const cells_ = 1 + granules * 0.62 * (granule - 0.5) * Math.sqrt(mu);
+    const bright = 1 + 0.6 * facula * (1 - mu) ** 0.7;
+    const dark = 1 - 0.8 * umbra - 0.4 * Math.max(0, penumbra - umbra);
+    // White-hot in the middle, its own colour toward the edge, deepening at the limb.
+    const heat = whitenNow * mu * mu;
+    const edge = (1 - mu) ** 1.5;
+    const p = cells[i] * 4;
+    for (let k = 0; k < 3; k += 1) {
+      const hue = colour[k] + (deep[k] - colour[k]) * edge;
+      const tint = hue + (1 - hue) * heat;
+      const limb = 1 - LIMB_DARKENING[k] * (1 - mu);
+      const value = tint * limb * cells_ * bright * dark * energyNow;
+      out[p + k] = 255 * (1 - Math.exp(-value * 2.6));
+    }
+    out[p + 3] = 255 * cells[i + 6];
+  }
+  return out;
+}
+
+// One dwarf's painted face, kept on its node and painted again only when it has changed enough
+// to be seen. Null where there is no pixel buffer to paint into, and the body is drawn the
+// older way instead.
+//
+// What it costs is bounded per frame. A surface map is built one class a frame, so opening the
+// map never stalls; until its class is ready a dwarf is drawn the older way. And only so many
+// faces are painted again each frame, in the order they are drawn; the rest keep last frame's
+// face for one more, which at the pace these bodies turn nobody can tell from a fresh one.
+const SHADE_BUDGET = 28;
+const ALBEDO_ROWS_PER_FRAME = 12;
+const shading = { frame: -1, painted: 0, built: false };
+function dwarfSprite(node, radius, burn, pixels, frame) {
+  if (typeof ImageData !== 'function') return null;
+  if (shading.frame !== frame) { shading.frame = frame; shading.painted = 0; shading.built = false; }
+  const size = Math.max(8, Math.min(200, 2 * Math.round(radius * pixels)));
+  const kind = node.memory.kind;
+  if (!dwarfAlbedos.get(kind)?.done) {
+    if (shading.built) return null;
+    shading.built = true;
+    if (!dwarfAlbedo(kind, ALBEDO_ROWS_PER_FRAME)) return null;
+  }
+  const map = dwarfAlbedo(kind);
+  const colour = [1, 3, 5].map((at) => Number.parseInt(String(node.color).slice(at, at + 2), 16) / 255);
+  if (colour.some((value) => !Number.isFinite(value))) return null;
+  let sprite = node.sprite;
+  // A body that has never been painted at this size waits its turn like any other: when a whole
+  // class becomes ready at once it is introduced a few dozen a frame, not all in one.
+  if ((!sprite || sprite.size !== size) && shading.painted >= SHADE_BUDGET) return sprite?.canvas ?? null;
+  if (!sprite || sprite.size !== size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const paint = canvas.getContext('2d');
+    if (!paint?.createImageData) return null;
+    sprite = node.sprite = { canvas, paint, image: paint.createImageData(size, size), size, turn: NaN, burn: -1, colour: '', standing: '' };
+  }
+  const turn = node.spin * 0.3 + node.seed;
+  // Painted again once the middle of its face has moved half a pixel, so a small body is painted
+  // rarely and a large one, close up, as often as it needs.
+  const fresh = !(sprite.turn === sprite.turn);
+  const traits = STAR_TRAITS[kind] ?? SUN_TRAITS;
+  const standing = `${node.memory.zone ?? 'hold'}${node.cold ? ':cold' : ''}`;
+  const moved = fresh
+    || Math.abs(turn - sprite.turn) * size > 1
+    || Math.abs(burn - sprite.burn) > 0.04
+    || sprite.colour !== node.color
+    || sprite.standing !== standing;
+  if (moved && shading.painted < SHADE_BUDGET) {
+    shading.painted += 1;
+    shadeDwarf(sprite.image.data, sphereTable(size), map, { colour, traits, surface: surfaceOf(node.memory, traits, Boolean(node.cold)), turn, burn });
+    sprite.paint.putImageData(sprite.image, 0, 0);
+    sprite.turn = turn;
+    sprite.burn = burn;
+    sprite.colour = node.color;
+    sprite.standing = standing;
+  }
+  return sprite.canvas;
+}
+
+// ---- MOTHER's body, as molten rock.
+//
+// A crust of cooling rock, nearly black, broken into plates; between the plates, cracks running
+// white-hot; under the crust, pools where it has melted through and the lava shows. The crust
+// rides the body's turn, the lava underneath flows at a pace of its own, and where the two
+// disagree the surface looks like it is moving rather than painted. Every so often something
+// bursts inside: a flash, a white core, a ring of fire running out from it and fading.
+//
+// The map is built once, the way the dwarfs' are, a band at a time; what changes frame to frame
+// is only where it is read and what is bursting.
+const MAGMA_W = 512;
+const MAGMA_H = 256;
+const MAGMA_SIZE = 220;          // the largest the body is ever painted; beyond it, it is scaled
+const BLAST_EVERY = 1.6;         // seconds between bursts, on average
+const BLAST_LIFE = 2.2;
+// Rock to white heat: black crust, dark red, orange, yellow, white.
+const LAVA_RAMP = [[0, [0.05, 0.012, 0.008]], [0.3, [0.42, 0.04, 0.012]], [0.55, [0.92, 0.24, 0.03]], [0.78, [1, 0.62, 0.16]], [1, [1, 0.94, 0.78]]];
+const magmaBuild = { map: null, next: 0, done: false };
+let magmaSprite = null;
+
+function lavaColour(heat, out) {
+  const h = Math.min(1, Math.max(0, heat));
+  for (let i = 1; i < LAVA_RAMP.length; i += 1) {
+    const [at, colour] = LAVA_RAMP[i];
+    if (h > at) continue;
+    const [from, below] = LAVA_RAMP[i - 1];
+    const f = (h - from) / (at - from);
+    for (let k = 0; k < 3; k += 1) out[k] = below[k] + (colour[k] - below[k]) * f;
+    return out;
+  }
+  for (let k = 0; k < 3; k += 1) out[k] = LAVA_RAMP[LAVA_RAMP.length - 1][1][k];
+  return out;
+}
+
+// Four numbers a texel: the plates' cracks, the finer cracks inside them, where the crust has
+// melted through, and grain for the rock itself.
+function magmaMap(rows = MAGMA_H) {
+  if (magmaBuild.done) return magmaBuild.map;
+  magmaBuild.map ??= new Float32Array(MAGMA_W * MAGMA_H * 4);
+  const map = magmaBuild.map;
+  const until = Math.min(MAGMA_H, magmaBuild.next + rows);
+  for (let row = magmaBuild.next; row < until; row += 1) {
+    const lat = ((row + 0.5) / MAGMA_H - 0.5) * Math.PI;
+    const cl = Math.cos(lat), sl = Math.sin(lat);
+    for (let col = 0; col < MAGMA_W; col += 1) {
+      const lon = ((col + 0.5) / MAGMA_W) * Math.PI * 2;
+      const px = cl * Math.cos(lon), py = sl, pz = cl * Math.sin(lon);
+      const warp = fractalNoise(px * 2.2 + 5, py * 2.2, pz * 2.2, 3) - 0.5;
+      const [near, next] = cellNoise(px * 6 + warp, py * 6, pz * 6 - warp);
+      // Fine cracks at a frequency the map can carry: any finer and the cells alias into streaks.
+      const [fineNear, fineNext] = cellNoise(px * 10 + warp * 2, py * 10, pz * 10);
+      const pools = fractalNoise(px * 2.6 + warp * 1.5, py * 2.6 + 9, pz * 2.6, 5);
+      const at = (row * MAGMA_W + col) * 4;
+      map[at] = next - near;
+      map[at + 1] = fineNext - fineNear;
+      map[at + 2] = pools;
+      map[at + 3] = fractalNoise(px * 11, py * 11, pz * 11 + 3, 3);
+    }
+  }
+  magmaBuild.next = until;
+  magmaBuild.done = until >= MAGMA_H;
+  return magmaBuild.done ? map : null;
+}
+
+// The shading. Pure: a table (sphereTable), the map, and the moment in; RGBA out. `turn` is how
+// far the crust has turned, `flow` how far the lava under it has, `beat` the heartbeat, `blasts`
+// the bursts alive now, each a direction on the visible face in view space and an age 0..1.
+// Written for speed: it runs on the largest body on screen, so every read of the map is shared
+// between the channels that use the same place, and the limb is worked out once per size.
+const magmaLimbs = new Map();
+function shadeMagma(out, table, map, { turn, flow, beat = 0, blasts = [] }) {
+  out.fill(0);
+  const crustShift = (((turn / (Math.PI * 2)) % 1) + 1) % 1 * MAGMA_W;
+  const lavaShift = (((flow / (Math.PI * 2)) % 1) + 1) % 1 * MAGMA_W;
+  const cells = table.cells;
+  let limbs = magmaLimbs.get(table);
+  if (!limbs) {
+    limbs = new Float32Array(cells.length / 7);
+    for (let i = 0, j = 0; i < cells.length; i += 7, j += 1) limbs[j] = 0.32 + 0.68 * cells[i + 3] ** 0.55;
+    magmaLimbs.set(table, limbs);
+  }
+  const scale = MAGMA_W / ALBEDO_W;
+  const rowScale = MAGMA_H / ALBEDO_H;
+  const colour = [0, 0, 0];
+  const seamWidth = 0.07 + 0.025 * beat;
+  for (let i = 0, j = 0; i < cells.length; i += 7, j += 1) {
+    const nx = cells[i + 1], ny = cells[i + 2], mu = cells[i + 3];
+    const base = cells[i + 4] * scale;
+    const v = Math.min(MAGMA_H - 1.001, cells[i + 5] * rowScale);
+    const r0 = v | 0;
+    const fv = v - r0;
+    const top = r0 * MAGMA_W;
+    const bottom = Math.min(MAGMA_H - 1, r0 + 1) * MAGMA_W;
+    // The crust: one place on the map, three things read from it.
+    let u = base + crustShift;
+    let u0 = Math.floor(u);
+    let fu = u - u0;
+    let c0 = u0 % MAGMA_W; if (c0 < 0) c0 += MAGMA_W;
+    let c1 = c0 + 1 === MAGMA_W ? 0 : c0 + 1;
+    let a = (top + c0) * 4, b = (top + c1) * 4, c = (bottom + c0) * 4, d = (bottom + c1) * 4;
+    const w00 = (1 - fu) * (1 - fv), w10 = fu * (1 - fv), w01 = (1 - fu) * fv, w11 = fu * fv;
+    const crack = map[a] * w00 + map[b] * w10 + map[c] * w01 + map[d] * w11;
+    const fine = map[a + 1] * w00 + map[b + 1] * w10 + map[c + 1] * w01 + map[d + 1] * w11;
+    const grain = map[a + 3] * w00 + map[b + 3] * w10 + map[c + 3] * w01 + map[d + 3] * w11;
+    // The lava under it, read where it has flowed to.
+    u = base + lavaShift;
+    u0 = Math.floor(u);
+    fu = u - u0;
+    c0 = u0 % MAGMA_W; if (c0 < 0) c0 += MAGMA_W;
+    c1 = c0 + 1 === MAGMA_W ? 0 : c0 + 1;
+    a = (top + c0) * 4; b = (top + c1) * 4; c = (bottom + c0) * 4; d = (bottom + c1) * 4;
+    const pools = map[a + 2] * (1 - fu) * (1 - fv) + map[b + 2] * fu * (1 - fv) + map[c + 2] * (1 - fu) * fv + map[d + 2] * fu * fv;
+    // White-hot along the plates' edges, hotter still where the beat pushes through; a fainter
+    // web of finer cracks inside each plate; pools wherever the crust has melted through.
+    const seam = 1 - smooth(0, seamWidth, crack);
+    const web = (1 - smooth(0, 0.045, fine)) * 0.55;
+    const melt = smooth(0.52, 0.78, pools + 0.06 * beat);
+    let heat = Math.max(seam * 0.95, web, melt * 0.82) + 0.08 * grain;
+    // Bursts: a small white core where it went off, and a ring of fire running out from it.
+    for (let k = 0; k < blasts.length; k += 1) {
+      const blast = blasts[k];
+      const near = 1 - (nx * blast.x + ny * blast.y + mu * blast.z);
+      if (near > 0.2) continue;
+      const age = blast.age;
+      const flash = Math.exp(-age * 7) * Math.exp(-near / (0.0015 + 0.006 * age));
+      const front = 0.004 + 0.07 * age;
+      const ring = Math.exp(-((near - front) ** 2) / (0.00012 + 0.0006 * age)) * (1 - age);
+      heat += 1.1 * flash + 1.1 * ring;
+    }
+    lavaColour(heat, colour);
+    // The edge is seen through more of its own smoke: darker and redder toward the limb.
+    const limb = limbs[j];
+    const p = cells[i] * 4;
+    out[p] = 255 * Math.min(1, colour[0] * limb * (1.04 + 0.1 * beat));
+    out[p + 1] = 255 * Math.min(1, colour[1] * limb * limb);
+    out[p + 2] = 255 * Math.min(1, colour[2] * limb * limb * limb);
+    out[p + 3] = 255 * cells[i + 6];
+  }
+  return out;
+}
+
+// The bursts alive now: born at random on the face, more often while MOTHER is alarmed, none for
+// someone who asked for stillness.
+function magmaBlasts(t, { alarm = 0, reduced = false } = {}) {
+  const blasts = (nostromo.blasts ??= []);
+  if (!reduced && Math.random() < (1 / BLAST_EVERY) * (1 + 3 * alarm) / 60) {
+    const z = 0.35 + 0.6 * Math.random();
+    const angle = Math.random() * Math.PI * 2;
+    const ring = Math.sqrt(1 - z * z);
+    blasts.push({ born: t, x: Math.cos(angle) * ring, y: Math.sin(angle) * ring, z });
+  }
+  nostromo.blasts = blasts.filter((blast) => t - blast.born < BLAST_LIFE);
+  return nostromo.blasts.map((blast) => ({ x: blast.x, y: blast.y, z: blast.z, age: (t - blast.born) / BLAST_LIFE }));
+}
+
+// The body's face, painted into a buffer of its own and laid on the disc. Null where there is no
+// pixel buffer, or until the map is whole: the star is drawn the older way until then.
+function magmaFace(radius, pixels, t, { turn, beat, alarm, reduced }) {
+  if (typeof ImageData !== 'function') return null;
+  const map = magmaMap(12);
+  if (!map) return null;
+  const size = Math.max(32, Math.min(MAGMA_SIZE, 2 * Math.round(radius * pixels)));
+  if (!magmaSprite || magmaSprite.size !== size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const paint = canvas.getContext('2d');
+    if (!paint?.createImageData) return null;
+    magmaSprite = { canvas, paint, image: paint.createImageData(size, size), size };
+  }
+  // Painted every other frame: rock this slow, and bursts this short, read the same at half the
+  // rate, and the frames between are free for the dwarfs.
+  magmaSprite.frame = (magmaSprite.frame ?? 0) + 1;
+  if (magmaSprite.painted && magmaSprite.frame % 2) return magmaSprite.canvas;
+  magmaSprite.painted = true;
+  const flowTime = reduced ? 0 : t;
+  shadeMagma(magmaSprite.image.data, sphereTable(size), map, {
+    turn,
+    flow: turn * 0.82 + flowTime * 0.018,
+    beat,
+    blasts: magmaBlasts(t, { alarm, reduced }),
+  });
+  magmaSprite.paint.putImageData(magmaSprite.image, 0, 0);
+  return magmaSprite.canvas;
+}
+
+
+
 // Masses of molten matter riding the surface: `size` is how much of the face one covers, `rate`
 // how slowly it swells and settles, `drift` how it crawls against the turning body. None of the
 // rates match, so the face is never the same face twice.
@@ -8054,53 +9144,93 @@ const CORE_FLOWS = [
 const MEMORY_SCALE = 0.8;
 
 function stepNostromo(dt, t) {
-  const nodes = nostromo.nodes.filter((node) => node.scale > 0.01);
+  // What is being forgotten holds still while it goes.
+  const nodes = nostromo.nodes.filter((node) => node.scale > 0.01 && !node.forgetting);
   const byId = new Map(nodes.map((node) => [node.memory.id, node]));
+  for (const node of nodes) {
+    if (node.wx === undefined) { node.wx = node.x; node.wy = node.y; node.wz = 0; }
+  }
   for (const node of nodes) {
     let fx = 0;
     let fy = 0;
-    const dist = Math.hypot(node.x, node.y) || 1;
-    // A soft ring around the core: too close is pushed out, too far pulled in.
-    const target = NOSTROMO_ORBIT * brainRadius(Math.atan2(node.y, node.x)) * (0.98 + node.distance * 0.62);
-    const pull = (target - dist) * 0.004;
-    fx += (node.x / dist) * pull;
-    fy += (node.y / dist) * pull;
-    if (dist < CORE_R * 1.7) { const push = (CORE_R * 1.7 - dist) * 0.02; fx += (node.x / dist) * push; fy += (node.y / dist) * push; }
+    let fz = 0;
+    const dist = Math.hypot(node.wx, node.wy, node.wz) || 1;
+    // A soft shell around the core, in the shape of a brain: too close is pushed out, too far
+    // pulled in. The outline gives the reach at this bearing seen from the side; the width
+    // gives it toward the temples. `shell` is 1 exactly on the surface.
+    const target = NOSTROMO_ORBIT * brainRadius(Math.atan2(node.wy, node.wx)) * shellDepth(node);
+    const shell = Math.hypot(Math.hypot(node.wx, node.wy) / target, node.wz / (BRAIN_WIDTH * target)) || 1;
+    const pull = (1 / shell - 1) * dist * 0.004;
+    fx += (node.wx / dist) * pull;
+    fy += (node.wy / dist) * pull;
+    fz += (node.wz / dist) * pull;
+    if (dist < CORE_R * 1.7) { const push = (CORE_R * 1.7 - dist) * 0.02; fx += (node.wx / dist) * push; fy += (node.wy / dist) * push; fz += (node.wz / dist) * push; }
+    // The fissure: out of the midline, back toward the hemisphere it already leans into.
+    const gap = FISSURE * NOSTROMO_ORBIT;
+    if (Math.abs(node.wz) < gap) fz += Math.sign(node.wz || (frac(node.seed * 0.618) < 0.5 ? -1 : 1)) * (gap - Math.abs(node.wz)) * 0.02;
+    const own = node.r3 ?? node.r;
+    // Every pair, every frame: the far ones are turned away on the squared distance, before any
+    // square root is taken, and the rest without Math.hypot, which costs several times as much.
     for (const other of nodes) {
       if (other === node) continue;
-      const ox = node.x - other.x;
-      const oy = node.y - other.y;
-      const d = Math.hypot(ox, oy) || 1;
-      const min = node.r + other.r + 30;
-      if (d < min * 2.2) { const push = ((min * 2.2 - d) / (min * 2.2)) * 0.9; fx += (ox / d) * push; fy += (oy / d) * push; }
+      const ox = node.wx - other.wx;
+      const oy = node.wy - other.wy;
+      const oz = node.wz - other.wz;
+      const reach = (own + (other.r3 ?? other.r) + 30) * 2.2;
+      const square = ox * ox + oy * oy + oz * oz;
+      if (square >= reach * reach) continue;
+      const d = Math.sqrt(square) || 1;
+      const push = ((reach - d) / reach) * 0.9;
+      fx += (ox / d) * push; fy += (oy / d) * push; fz += (oz / d) * push;
     }
-    if (!nostromo.reduced) { fx += Math.sin(node.seed + t * 0.38) * 0.02; fy += Math.cos(node.seed * 1.3 + t * 0.32) * 0.02; }
+    if (!nostromo.reduced) {
+      fx += Math.sin(node.seed + t * 0.38) * 0.02;
+      fy += Math.cos(node.seed * 1.3 + t * 0.32) * 0.02;
+      fz += Math.sin(node.seed * 0.7 + t * 0.29) * 0.02;
+    }
     node.fx = fx;
     node.fy = fy;
+    node.fz = fz;
   }
   for (const link of nostromo.links) {
     const a = byId.get(link.a);
     const b = byId.get(link.b);
     if (!a || !b) continue;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const d = Math.hypot(dx, dy) || 1;
-    const rest = a.r + b.r + 70;
+    const dx = b.wx - a.wx;
+    const dy = b.wy - a.wy;
+    const dz = b.wz - a.wz;
+    const d = Math.hypot(dx, dy, dz) || 1;
+    const rest = (a.r3 ?? a.r) + (b.r3 ?? b.r) + 70;
     const k = (d - rest) * 0.0035 * link.weight;
-    a.fx += (dx / d) * k; a.fy += (dy / d) * k;
-    b.fx -= (dx / d) * k; b.fy -= (dy / d) * k;
+    a.fx += (dx / d) * k; a.fy += (dy / d) * k; a.fz += (dz / d) * k;
+    b.fx -= (dx / d) * k; b.fy -= (dy / d) * k; b.fz -= (dz / d) * k;
   }
   for (const node of nodes) {
-    node.vx = (node.vx + node.fx * dt) * 0.86;
-    node.vy = (node.vy + node.fy * dt) * 0.86;
-    node.x += node.vx * dt;
-    node.y += node.vy * dt;
+    node.wvx = ((node.wvx ?? 0) + node.fx * dt) * 0.86;
+    node.wvy = ((node.wvy ?? 0) + node.fy * dt) * 0.86;
+    node.wvz = ((node.wvz ?? 0) + node.fz * dt) * 0.86;
+    node.wx += node.wvx * dt;
+    node.wy += node.wvy * dt;
+    node.wz += node.wvz * dt;
     node.spin = (node.spin ?? node.seed) + dt * 0.012 * (1 + (node.seed % 1));
   }
-  for (const node of nostromo.nodes) if (node.forgetting) node.scale = Math.max(0, node.scale - 0.06 * dt);
-  nostromo.nodes = nostromo.nodes.filter((node) => !(node.forgetting && node.scale <= 0.01));
+  // A forgotten memory goes on the clock, not by a fixed step a frame, so the implosion takes
+  // the same time on any screen; the dust drifts and goes out on the same clock.
+  for (const node of nostromo.nodes) if (node.forgetting) node.scale = implosionScale((t - node.forgetting.at) / IMPLOSION);
+  nostromo.nodes = nostromo.nodes.filter((node) => !(node.forgetting && t - node.forgetting.at >= IMPLOSION));
+  if (nostromo.dust?.length) {
+    for (const mote of nostromo.dust) {
+      if (t < mote.born || nostromo.reduced) continue;
+      mote.x += mote.vx * dt * 0.35;
+      mote.y += mote.vy * dt * 0.35;
+      mote.vx *= 0.995; mote.vy *= 0.995;
+    }
+    nostromo.dust = nostromo.dust.filter((mote) => t - mote.born < mote.life);
+  }
+  if (nostromo.fading?.length) nostromo.fading = nostromo.fading.filter((wire) => t - wire.born < 1.3);
   // The core turns on its own axis, slowly, the way a body does.
-  nostromo.spin = (nostromo.spin ?? 0) + dt * 0.0024 * (nostromo.cage ? 2.2 : 1);
+  // About one turn in twenty seconds: slow enough to be a body, fast enough to be seen turning.
+  nostromo.spin = (nostromo.spin ?? 0) + dt * 0.0052 * (nostromo.cage ? 2.2 : 1);
   // A new beat sends a wave out from the core.
   const { phase } = heartbeat(t);
   if (phase < nostromo.lastPhase && !nostromo.reduced) nostromo.rings.push({ born: t });
@@ -8196,19 +9326,35 @@ function alongCurve(x0, y0, cx, cy, x1, y1, u) {
 // The camera follows the whole system until the human takes over.
 function fitNostromo() {
   const cam = nostromo.cam;
-  if (!cam || cam.manual) return;
+  if (!cam) return;
+  // A held dwarf is where the camera goes, whoever last moved it.
+  const witness = nostromo.witness?.forgetting && nostromo.nodes.includes(nostromo.witness) ? nostromo.witness : null;
+  const held = (nostromo.selected && nostromo.nodes.includes(nostromo.selected) ? nostromo.selected : null) ?? witness;
+  if (held) {
+    // Centred in the part of the map the card leaves free, not under the card.
+    const card = nostromo.card && !nostromo.card.hidden ? nostromo.card.getBoundingClientRect() : null;
+    const canvas = nostromo.canvas.getBoundingClientRect();
+    const covered = card && card.width ? Math.max(0, canvas.right - card.left) : 0;
+    const aimX = held.x + covered / 2 / cam.scale;
+    cam.x += (aimX - cam.x) * 0.08;
+    cam.y += (held.y - cam.y) * 0.08;
+  }
+  if (cam.manual) return;
   const { w, h } = nostromo.size;
   let minX = -CORE_R * 2.4, maxX = CORE_R * 2.4, minY = -CORE_R * 2.4, maxY = CORE_R * 2.4;
+  // Across, the frame holds the body at every turn it can take, so turning it never makes the
+  // camera breathe in and out; up and down it follows what is on screen.
+  const near = VIEW_DISTANCE / (VIEW_DISTANCE - NOSTROMO_ORBIT * BRAIN_WIDTH);
   for (const node of nostromo.nodes) {
-    minX = Math.min(minX, node.x - node.r * 3); maxX = Math.max(maxX, node.x + node.r * 3);
+    const reach = Math.hypot(node.wx ?? node.x, node.wz ?? 0) * near + node.r * 3;
+    minX = Math.min(minX, -reach); maxX = Math.max(maxX, reach);
     minY = Math.min(minY, node.y - node.r * 3); maxY = Math.max(maxY, node.y + node.r * 3);
   }
   const pad = 70;
   const scale = Math.min(1.4, Math.max(0.3, Math.min((w - pad * 2) / (maxX - minX || 1), (h - pad * 2 - 40) / (maxY - minY || 1))));
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2 - 20 / scale;
-  cam.x += (cx - cam.x) * 0.05;
-  cam.y += (cy - cam.y) * 0.05;
+  if (!held) { cam.x += (cx - cam.x) * 0.05; cam.y += (cy - cam.y) * 0.05; }
   cam.scale += (scale - cam.scale) * 0.05;
 }
 function toScreen(x, y) { const { w, h } = nostromo.size; const cam = nostromo.cam; return { x: w / 2 + (x - cam.x) * cam.scale, y: h / 2 + (y - cam.y) * cam.scale }; }
@@ -8393,6 +9539,7 @@ function drawNostromo(t) {
   // Plasma from the core to every memory. The filament a memory is spoken to often burns a
   // little brighter than one nobody has needed.
   for (const node of nostromo.nodes) {
+    if (node.forgetting) continue;     // its wire is dust now
     const d = Math.hypot(node.x, node.y) || 1;
     const nx = -node.y / d, ny = node.x / d;
     const bow = Math.sin(t * 1.7 + node.seed) * Math.min(60, d * 0.18);
@@ -8453,180 +9600,12 @@ function drawNostromo(t) {
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
   }
 
-  // ---- MOTHER's core: a body, not a disc.
-  //
-  // Everything on the surface lives at a latitude and a longitude and is projected before it
-  // is drawn, so it narrows toward the limb and goes round the back as the planet turns.
-  // Three cues do the work: features that travel on a real sphere, an edge that darkens into
-  // shadow, and one fixed light that decides which side is day. The planet turns; the sun
-  // stays where it is.
-  const sinT = Math.sin(CORE_TILT);
-  const cosT = Math.cos(CORE_TILT);
-  const spin = nostromo.spin ?? 0;
-  // A point on the surface: where it lands on screen, how much it faces us, what light it takes.
-  const surface = (lat, lon) => {
-    const cl = Math.cos(lat);
-    const px = cl * Math.sin(lon);
-    const py = Math.sin(lat);
-    const pz = cl * Math.cos(lon);
-    const y = py * cosT - pz * sinT;
-    const z = py * sinT + pz * cosT;
-    return { x: px, y, z, light: Math.max(0, px * CORE_LIGHT.x + y * CORE_LIGHT.y + z * CORE_LIGHT.z) };
-  };
-
-  // ---- What the star sits in.
-  //
-  // No wide halo. A body this size does not need a cloud around it to be felt, and a soft
-  // smudge only makes it look smaller. What surrounds it is darkness: one tight, fierce skin of
-  // light gripping the limb and falling away almost at once, and beyond that a deep red stain
-  // so faint it reads as the dark being lit rather than as anything drawn.
-  const stain = ctx.createRadialGradient(0, 0, R, 0, 0, R * 4.6);
-  stain.addColorStop(0, `rgba(122, 12, 6, ${0.3 + 0.08 * beat})`);
-  stain.addColorStop(0.24, `rgba(88, 6, 6, ${0.14 + 0.04 * beat})`);
-  stain.addColorStop(0.62, 'rgba(46, 2, 6, .05)');
-  stain.addColorStop(1, 'rgba(20, 0, 4, 0)');
-  ctx.fillStyle = stain;
-  ctx.beginPath(); ctx.arc(0, 0, R * 4.6, 0, Math.PI * 2); ctx.fill();
-
-  // ---- The body: a star, dark and molten.
-  //
-  // A star makes its own light, so it has no day side, no night side and no highlight struck
-  // off it by something else. This one is not a bright disc either: it burns deep, almost
-  // black at the limb, and what moves on it is liquid rock. The skin is a strip of boiling
-  // cells built once and wrapped round the body; a second pass of the same strip, sliding at a
-  // different rate, makes the two disagree, and that disagreement is what reads as flow. Over
-  // both, masses of molten matter drift across the face at a walking pace.
-  ctx.save();
-  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
-  ctx.shadowColor = `rgba(220, 44, 12, ${0.55 + 0.2 * beat})`;
-  ctx.shadowBlur = 40 + 26 * beat;
-  const body = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R);
-  body.addColorStop(0, `hsl(${14 + 5 * beat} 100% ${28 + 8 * beat}%)`);
-  body.addColorStop(0.58, 'hsl(9 100% 20%)');
-  body.addColorStop(1, 'hsl(5 100% 10%)');
-  ctx.fillStyle = body;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.clip();
-
-  // The skin, wrapped on. Each row of the disc takes the slice of the strip belonging to its
-  // latitude, cut into pieces so longitude runs as a sphere's does and the cells narrow toward
-  // the limb instead of smearing along it. Turning the star is moving the window along.
-  // Someone who asked for stillness gets a star that turns and breathes but does not churn.
-  const flowTime = nostromo.reduced ? 0 : t;
-  const grain = granuleTexture();
-  if (grain) {
-    const width = grain.width / 2;
-    const wrapAt = (turn, alpha, lift) => {
-      ctx.globalAlpha = alpha;
-      for (let row = 0; row < GRAIN_ROWS; row += 1) {
-        const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
-        const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
-        const mid = (y0 + y1) * 0.5;
-        const half = Math.sqrt(Math.max(0, R * R - mid * mid));
-        if (half < 0.5) continue;
-        const v0 = (((y0 + R) / (2 * R) + lift) % 1 + 1) % 1 * grain.height;
-        const dv = Math.max(1, ((y1 - y0) / (2 * R)) * grain.height);
-        for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
-          const xA = Math.sin((piece / GRAIN_PIECES - 0.5) * Math.PI) * half;
-          const xB = Math.sin(((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI) * half;
-          const u = (turn + (piece / GRAIN_PIECES) * 0.5) * width;
-          ctx.drawImage(grain, u, Math.min(v0, grain.height - dv), (width * 0.5) / GRAIN_PIECES, dv, xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
-        }
-      }
-      ctx.globalAlpha = 1;
-    };
-    const turn = ((spin / (Math.PI * 2)) % 1 + 1) % 1;
-    wrapAt(turn, 0.95, 0);
-    // The same skin again, crawling at its own pace: where the two pull apart the surface
-    // churns, and that is the slowness of lava rather than the flicker of fire.
-    ctx.globalCompositeOperation = 'lighter';
-    wrapAt(((turn * 0.83 + flowTime * 0.0042) % 1 + 1) % 1, 0.32, 0.37);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
-  // Masses of molten matter riding the surface. They are slow, they are large, and each keeps
-  // its own drift, so the face is never the same face twice.
-  for (let i = 0; i < CORE_FLOWS.length; i += 1) {
-    const flow = CORE_FLOWS[i];
-    const p = surface(flow.lat + 0.1 * Math.sin(flowTime * flow.rate * 0.6 + i), flow.lon + spin * 0.96 + flowTime * flow.drift);
-    if (p.z <= 0.02) continue;
-    const swell = 0.62 + 0.38 * Math.sin(flowTime * flow.rate + i * 1.7);
-    const fade = Math.min(1, p.z * 2.3) * swell;
-    ctx.save();
-    ctx.translate(p.x * R, p.y * R);
-    ctx.rotate(Math.atan2(p.y, p.x));
-    ctx.scale(Math.max(0.05, p.z), 1);
-    const molten = ctx.createRadialGradient(0, 0, 0, 0, 0, R * flow.size);
-    molten.addColorStop(0, `rgba(255, ${flow.hot ? 214 : 96}, ${flow.hot ? 132 : 30}, ${(flow.hot ? 0.46 : 0.2) * fade})`);
-    molten.addColorStop(0.42, `rgba(${flow.hot ? '255, 122, 36' : '176, 34, 10'}, ${(flow.hot ? 0.24 : 0.14) * fade})`);
-    molten.addColorStop(1, 'rgba(120, 16, 8, 0)');
-    ctx.fillStyle = molten;
-    ctx.beginPath(); ctx.arc(0, 0, R * flow.size, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-
-  // Limb darkening, hard. Looking at the edge of a star means looking through far more of its
-  // own gas, and on a body this dark the edge goes almost to black. This is the whole of the
-  // illusion: it is what gives the thing its weight.
-  const limb = ctx.createRadialGradient(0, 0, R * 0.34, 0, 0, R);
-  limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  limb.addColorStop(0.58, `rgba(96, 8, 4, ${0.3 - 0.05 * beat})`);
-  limb.addColorStop(0.85, `rgba(50, 2, 4, ${0.62 - 0.08 * beat})`);
-  limb.addColorStop(1, `rgba(14, 0, 2, ${0.9 - 0.1 * beat})`);
-  ctx.fillStyle = limb;
-  ctx.fillRect(-R, -R, R * 2, R * 2);
-  ctx.restore();
-
-  // Prominences: arches of matter torn off the limb, standing up and falling back. Few, large
-  // and slow. A star this size does not flicker; it heaves.
-  ctx.lineCap = 'round';
-  for (let i = 0; i < 4; i += 1) {
-    const base = i * 1.5708 + t * 0.05;
-    const spread = 0.28 + 0.1 * Math.sin(t * 0.37 + i);
-    const lift = R * (0.2 + 0.26 * Math.abs(Math.sin(t * 0.21 + i * 1.7)) + 0.3 * alarm);
-    const x0 = Math.cos(base - spread) * R * 0.99, y0 = Math.sin(base - spread) * R * 0.99;
-    const x1 = Math.cos(base + spread) * R * 0.99, y1 = Math.sin(base + spread) * R * 0.99;
-    const cxp = Math.cos(base) * (R + lift * 2.1), cyp = Math.sin(base) * (R + lift * 2.1);
-    // A wide dull body of matter with a thin hot thread running through it.
-    ctx.strokeStyle = `rgba(190, 34, 14, ${0.2 + 0.14 * Math.abs(Math.sin(t * 0.6 + i))})`;
-    ctx.lineWidth = (5.5 + 3 * beat) / cam.scale;
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
-    ctx.strokeStyle = `rgba(255, ${128 + 70 * beat}, ${64 + 60 * beat}, ${0.3 + 0.28 * Math.abs(Math.sin(t * 0.6 + i))})`;
-    ctx.lineWidth = (1.5 + 0.9 * beat) / cam.scale;
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
-  }
-
-  // The limb. One fierce skin of light gripping the edge, gone within a fraction of a radius:
-  // it is what separates the body from the dark, and it holds the whole shape together. It is
-  // also what answers when a pulse comes home.
-  const home = Math.min(1, nostromo.coreLit ?? 0);
-  const fierce = 0.55 + 0.35 * beat + 0.4 * home;
-  ctx.globalCompositeOperation = 'lighter';
-  const edge = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 1.22);
-  edge.addColorStop(0, 'rgba(255, 96, 34, 0)');
-  edge.addColorStop(0.42, `rgba(255, ${132 + 60 * beat}, 62, ${0.5 * fierce})`);
-  edge.addColorStop(0.52, `rgba(255, ${176 + 60 * beat}, ${110 + 60 * beat}, ${0.62 * fierce})`);
-  edge.addColorStop(1, 'rgba(210, 40, 16, 0)');
-  ctx.fillStyle = edge;
-  ctx.beginPath(); ctx.arc(0, 0, R * 1.22, 0, Math.PI * 2); ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.strokeStyle = `rgba(255, ${186 + 60 * beat}, ${128 + 80 * beat}, ${Math.min(0.92, 0.7 * fierce)})`;
-  ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
-  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
-
-  // ---- Memories: dwarf stars.
-  //
-  // A dwarf makes its own light, so none of it is in shadow. It is bright from edge to edge, its
-  // face boils all over, its limb is the brightest part of it rather than the darkest, and what
-  // light escapes clings to it in a tight bloom the width of a finger. There is no side turned
-  // away from anything, because nothing else is lighting it. On top of that each breathes at a
-  // rate of its own: a micro-pulsation, small enough that it is never a flash and never in time
-  // with its neighbours.
-  for (const node of nostromo.nodes) {
+  // One memory, drawn where the projection put it. Called twice over the list: the ones behind
+  // MOTHER before her, so she hides them, and the ones in front after her.
+  const drawMemory = (node) => {
     const micro = 1 + 0.05 * Math.sin(t * node.rate + node.seed);
     const r = node.r * node.scale * micro;
-    if (r <= 0) continue;
+    if (r <= 0) return;
     const arrive = Math.min(1.2, node.lit ?? 0);
     // Two things decide how brightly a dwarf burns. Maturity is what the room has made of it
     // over time: how often it has been reached for, how lately, how woven into the rest. Feeding
@@ -8699,67 +9678,259 @@ function drawNostromo(t) {
       }
       ctx.globalCompositeOperation = 'source-over';
 
-      if (node === nostromo.selected || node === nostromo.hover) {
-        ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
-        ctx.lineWidth = 1.2 / cam.scale;
-        ctx.beginPath(); ctx.arc(node.x, node.y, field + 4 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
+      if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, field, t, cam.scale);
+      return;
+    }
+
+    // Drawn pixel by pixel wherever there is a buffer to paint into.
+    const sprite = dwarfSprite(node, node.r * node.scale, burn, cam.scale * dpr, t);
+    if (sprite) ctx.drawImage(sprite, node.x - r, node.y - r, r * 2, r * 2);
+    else {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
+      // The ground, struck from the body's own middle: a star is not lit from a corner. It runs
+      // white at the centre the harder it burns and keeps its class's colour outward.
+      const ground = ctx.createRadialGradient(node.x, node.y, r * 0.03, node.x, node.y, r);
+      ground.addColorStop(0, hexMix(node.color, '#ffffff', 0.5 + 0.5 * burn));
+      ground.addColorStop(0.45, hexMix(node.color, '#ffffff', 0.12 + 0.4 * burn));
+      ground.addColorStop(0.85, hexMix(node.color, '#000000', 0.2 - 0.2 * burn));
+      ground.addColorStop(1, hexMix(node.color, '#000000', 0.34 - 0.24 * burn));
+      ctx.fillStyle = ground;
+      ctx.fill();
+      ctx.clip();
+      // The face: the boiling surface a star of this class has, turning slowly, laid over the
+      // whole body. This is most of what is seen, so it is laid down at close to full strength.
+      const face = dwarfTexture(node.color);
+      if (face) {
+        // Wrapped on a sphere, half the strip across the visible face, in columns that narrow
+        // toward the limb: the cells slide in from one edge, cross wide and leave thin, which is
+        // what reads as a body turning rather than a picture sliding behind a hole.
+        const strip = face.width / 2;
+        const turn = ((node.spin * 0.3 + node.seed) / (Math.PI * 2) % 1 + 1) % 1;
+        ctx.globalAlpha = 0.72 + 0.26 * burn;
+        for (let column = 0; column < SKIN_COLUMNS; column += 1) {
+          const x0 = SKIN_EDGES[column];
+          const x1 = SKIN_EDGES[column + 1];
+          ctx.drawImage(face, (turn + column / (SKIN_COLUMNS * 2)) * strip, 0, strip / (SKIN_COLUMNS * 2), face.height,
+            node.x + x0 * r * 1.06, node.y - r * 1.06, Math.max(0.5, (x1 - x0) * r * 1.06), r * 2.12);
+        }
+        ctx.globalAlpha = 1;
       }
-      continue;
+      // The hottest of it burns through the face, the way an active region does.
+      ctx.globalCompositeOperation = 'lighter';
+      const core = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 0.92);
+      core.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.9), 0.2 + 0.45 * burn));
+      core.addColorStop(0.5, hexAlpha(hexMix(node.color, '#ffffff', 0.5), 0.08 + 0.2 * burn));
+      core.addColorStop(1, hexAlpha(node.color, 0));
+      ctx.fillStyle = core;
+      ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
     }
 
-    ctx.save();
-    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.closePath();
-    // The ground, struck from the body's own middle: a star is not lit from a corner. It runs
-    // white at the centre the harder it burns and keeps its class's colour outward.
-    const ground = ctx.createRadialGradient(node.x, node.y, r * 0.03, node.x, node.y, r);
-    ground.addColorStop(0, hexMix(node.color, '#ffffff', 0.5 + 0.5 * burn));
-    ground.addColorStop(0.45, hexMix(node.color, '#ffffff', 0.12 + 0.4 * burn));
-    ground.addColorStop(0.85, hexMix(node.color, '#000000', 0.2 - 0.2 * burn));
-    ground.addColorStop(1, hexMix(node.color, '#000000', 0.34 - 0.24 * burn));
-    ctx.fillStyle = ground;
-    ctx.fill();
-    ctx.clip();
-    // The face: the boiling surface a star of this class has, turning slowly, laid over the
-    // whole body. This is most of what is seen, so it is laid down at close to full strength.
-    const face = dwarfTexture(node.color);
-    if (face) {
-      const strip = face.width / 2;
-      const turn = ((node.spin * 0.1 + node.seed) / (Math.PI * 2) % 1 + 1) % 1;
-      ctx.globalAlpha = 0.72 + 0.26 * burn;
-      ctx.drawImage(face, turn * strip, 0, strip * 0.62, face.height, node.x - r * 1.06, node.y - r * 1.06, r * 2.12, r * 2.12);
-      ctx.globalAlpha = 1;
-    }
-    // The hottest of it burns through the face, the way an active region does.
+    // The glow: the light a star gives off, clinging to it in a tight bloom the width of a finger,
+    // the same all the way round because nothing else is lighting it. It carries past the body
+    // and stops there, so it belongs to the star rather than hanging off it.
     ctx.globalCompositeOperation = 'lighter';
-    const core = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r * 0.92);
-    core.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.9), 0.2 + 0.45 * burn));
-    core.addColorStop(0.5, hexAlpha(hexMix(node.color, '#ffffff', 0.5), 0.08 + 0.2 * burn));
-    core.addColorStop(1, hexAlpha(node.color, 0));
-    ctx.fillStyle = core;
-    ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-
-    // The limb and the bloom, in one pass. On a body that lights itself the edge is the
-    // brightest part of it: the light leaving sideways has the most of its own air to shine
-    // through. It carries a finger's width past the body and stops there, so it belongs to the
-    // star rather than hanging off it.
-    ctx.globalCompositeOperation = 'lighter';
-    const air = ctx.createRadialGradient(node.x, node.y, r * 0.74, node.x, node.y, r * 1.34);
-    air.addColorStop(0, hexAlpha(node.color, 0));
-    air.addColorStop(0.42, hexAlpha(hexMix(node.color, '#ffffff', 0.35 + 0.3 * burn), 0.2 + 0.45 * burn + 0.2 * arrive));
-    air.addColorStop(0.58, hexAlpha(hexMix(node.color, '#ffffff', 0.2 + 0.2 * burn), 0.12 + 0.3 * burn + 0.15 * arrive));
+    const air = ctx.createRadialGradient(node.x, node.y, r * 0.99, node.x, node.y, r * 1.42);
+    // It starts at the limb, never over it, and no brighter than the limb itself: scattered
+    // light falling away from the body, with no seam and no ring. A cooling dwarf gives less of
+    // it, in the same proportion its face has dimmed.
+    const cooling = node.cold ? COLD_GLOW : 1;
+    air.addColorStop(0, hexAlpha(hexMix(node.color, '#ffffff', 0.2 + 0.3 * burn), (0.16 + 0.34 * burn) * cooling + 0.2 * arrive));
+    air.addColorStop(0.25, hexAlpha(hexMix(node.color, '#ffffff', 0.1 + 0.2 * burn), (0.07 + 0.16 * burn) * cooling + 0.1 * arrive));
     air.addColorStop(1, hexAlpha(node.color, 0));
     ctx.fillStyle = air;
     ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.34, 0, Math.PI * 2); ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
 
-    if (node === nostromo.selected || node === nostromo.hover) {
-      ctx.strokeStyle = hexAlpha(node.color, node === nostromo.selected ? 0.95 : 0.55);
-      ctx.lineWidth = 1.2 / cam.scale;
-      ctx.beginPath(); ctx.arc(node.x, node.y, r + 6 + 2 * Math.sin(t * 4), 0, Math.PI * 2); ctx.stroke();
+    if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, r * 1.1, t, cam.scale);
+    };
+  const ordered = [...nostromo.nodes].sort((a, b) => (a.depth ?? 0) - (b.depth ?? 0));
+  for (const node of ordered) if ((node.depth ?? 0) < 0) drawMemory(node);
+
+  // ---- MOTHER's core: a body, not a disc.
+  //
+  // Everything on the surface lives at a latitude and a longitude and is projected before it
+  // is drawn, so it narrows toward the limb and goes round the back as the planet turns.
+  // Three cues do the work: features that travel on a real sphere, an edge that darkens into
+  // shadow, and one fixed light that decides which side is day. The planet turns; the sun
+  // stays where it is.
+  // The human's hand turns the star with the body around it: the turn adds to its longitude and
+  // the tip to its lean, in the same order the memories are projected in.
+  const yaw = nostromo.yaw ?? 0;
+  const sinT = Math.sin(CORE_TILT + (nostromo.pitch ?? 0));
+  const cosT = Math.cos(CORE_TILT + (nostromo.pitch ?? 0));
+  const spin = nostromo.spin ?? 0;
+  // A point on the surface: where it lands on screen, how much it faces us, what light it takes.
+  const surface = (lat, lon) => {
+    const cl = Math.cos(lat);
+    const px = cl * Math.sin(lon);
+    const py = Math.sin(lat);
+    const pz = cl * Math.cos(lon);
+    const y = py * cosT - pz * sinT;
+    const z = py * sinT + pz * cosT;
+    return { x: px, y, z, light: Math.max(0, px * CORE_LIGHT.x + y * CORE_LIGHT.y + z * CORE_LIGHT.z) };
+  };
+
+  // ---- What the star sits in.
+  //
+  // No wide halo. A body this size does not need a cloud around it to be felt, and a soft
+  // smudge only makes it look smaller. What surrounds it is darkness: one tight, fierce skin of
+  // light gripping the limb and falling away almost at once, and beyond that a deep red stain
+  // so faint it reads as the dark being lit rather than as anything drawn.
+  const stain = ctx.createRadialGradient(0, 0, R, 0, 0, R * 4.6);
+  stain.addColorStop(0, `rgba(122, 12, 6, ${0.3 + 0.08 * beat})`);
+  stain.addColorStop(0.24, `rgba(88, 6, 6, ${0.14 + 0.04 * beat})`);
+  stain.addColorStop(0.62, 'rgba(46, 2, 6, .05)');
+  stain.addColorStop(1, 'rgba(20, 0, 4, 0)');
+  ctx.fillStyle = stain;
+  ctx.beginPath(); ctx.arc(0, 0, R * 4.6, 0, Math.PI * 2); ctx.fill();
+
+  // ---- The body: a star, dark and molten.
+  //
+  // A star makes its own light, so it has no day side, no night side and no highlight struck
+  // off it by something else. This one is not a bright disc either: it burns deep, almost
+  // black at the limb, and what moves on it is liquid rock. The skin is a strip of boiling
+  // cells built once and wrapped round the body; a second pass of the same strip, sliding at a
+  // different rate, makes the two disagree, and that disagreement is what reads as flow. Over
+  // both, masses of molten matter drift across the face at a walking pace.
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.closePath();
+  ctx.shadowColor = `rgba(220, 44, 12, ${0.55 + 0.2 * beat})`;
+  ctx.shadowBlur = 40 + 26 * beat;
+  const body = ctx.createRadialGradient(0, 0, R * 0.05, 0, 0, R);
+  body.addColorStop(0, `hsl(${14 + 5 * beat} 100% ${28 + 8 * beat}%)`);
+  body.addColorStop(0.58, 'hsl(9 100% 20%)');
+  body.addColorStop(1, 'hsl(5 100% 10%)');
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.clip();
+
+  // Molten rock, painted pixel by pixel wherever there is a buffer to paint into: plates of
+  // crust, cracks running white-hot, lava flowing under them, bursts going off inside.
+  const magma = magmaFace(R, cam.scale * dpr, t, { turn: spin - yaw, beat, alarm, reduced: nostromo.reduced });
+  if (magma) ctx.drawImage(magma, -R, -R, R * 2, R * 2);
+  else {
+    // The skin, wrapped on. Each row of the disc takes the slice of the strip belonging to its
+    // latitude, cut into pieces so longitude runs as a sphere's does and the cells narrow toward
+    // the limb instead of smearing along it. Turning the star is moving the window along.
+    // Someone who asked for stillness gets a star that turns and breathes but does not churn.
+    const flowTime = nostromo.reduced ? 0 : t;
+    const grain = granuleTexture();
+    if (grain) {
+      const width = grain.width / 2;
+      const wrapAt = (turn, alpha, lift) => {
+        ctx.globalAlpha = alpha;
+        for (let row = 0; row < GRAIN_ROWS; row += 1) {
+          const y0 = -R + (row / GRAIN_ROWS) * 2 * R;
+          const y1 = -R + ((row + 1) / GRAIN_ROWS) * 2 * R;
+          const mid = (y0 + y1) * 0.5;
+          const half = Math.sqrt(Math.max(0, R * R - mid * mid));
+          if (half < 0.5) continue;
+          const v0 = (((y0 + R) / (2 * R) + lift) % 1 + 1) % 1 * grain.height;
+          const dv = Math.max(1, ((y1 - y0) / (2 * R)) * grain.height);
+          for (let piece = 0; piece < GRAIN_PIECES; piece += 1) {
+            const xA = Math.sin((piece / GRAIN_PIECES - 0.5) * Math.PI) * half;
+            const xB = Math.sin(((piece + 1) / GRAIN_PIECES - 0.5) * Math.PI) * half;
+            const u = (turn + (piece / GRAIN_PIECES) * 0.5) * width;
+            ctx.drawImage(grain, u, Math.min(v0, grain.height - dv), (width * 0.5) / GRAIN_PIECES, dv, xA, y0, Math.max(0.5, xB - xA), Math.max(1, y1 - y0));
+          }
+        }
+        ctx.globalAlpha = 1;
+      };
+      // Advancing the window carries the skin from right to left, so a turn of the hand to the
+      // right carries it back the other way, with the memories.
+      const turn = (((spin - yaw) / (Math.PI * 2)) % 1 + 1) % 1;
+      wrapAt(turn, 0.95, 0);
+      // The same skin again, crawling at its own pace: where the two pull apart the surface
+      // churns, and that is the slowness of lava rather than the flicker of fire.
+      ctx.globalCompositeOperation = 'lighter';
+      wrapAt(((turn * 0.83 + flowTime * 0.0042) % 1 + 1) % 1, 0.32, 0.37);
+      ctx.globalCompositeOperation = 'source-over';
     }
+
+    // Masses of molten matter riding the surface. They are slow, they are large, and each keeps
+    // its own drift, so the face is never the same face twice.
+    for (let i = 0; i < CORE_FLOWS.length; i += 1) {
+      const flow = CORE_FLOWS[i];
+      // The masses ride the same way the skin turns. They used to travel against it, and the two
+      // motions cancelled into a surface that churned in place instead of turning.
+      const p = surface(flow.lat + 0.1 * Math.sin(flowTime * flow.rate * 0.6 + i), flow.lon - spin * 0.96 + yaw + flowTime * flow.drift);
+      if (p.z <= 0.02) continue;
+      const swell = 0.62 + 0.38 * Math.sin(flowTime * flow.rate + i * 1.7);
+      const fade = Math.min(1, p.z * 2.3) * swell;
+      ctx.save();
+      ctx.translate(p.x * R, p.y * R);
+      ctx.rotate(Math.atan2(p.y, p.x));
+      ctx.scale(Math.max(0.05, p.z), 1);
+      const molten = ctx.createRadialGradient(0, 0, 0, 0, 0, R * flow.size);
+      molten.addColorStop(0, `rgba(255, ${flow.hot ? 214 : 96}, ${flow.hot ? 132 : 30}, ${(flow.hot ? 0.46 : 0.2) * fade})`);
+      molten.addColorStop(0.42, `rgba(${flow.hot ? '255, 122, 36' : '176, 34, 10'}, ${(flow.hot ? 0.24 : 0.14) * fade})`);
+      molten.addColorStop(1, 'rgba(120, 16, 8, 0)');
+      ctx.fillStyle = molten;
+      ctx.beginPath(); ctx.arc(0, 0, R * flow.size, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Limb darkening, hard. Looking at the edge of a star means looking through far more of its
+    // own gas, and on a body this dark the edge goes almost to black. This is the whole of the
+    // illusion: it is what gives the thing its weight.
+    const limb = ctx.createRadialGradient(0, 0, R * 0.34, 0, 0, R);
+    limb.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    limb.addColorStop(0.58, `rgba(96, 8, 4, ${0.3 - 0.05 * beat})`);
+    limb.addColorStop(0.85, `rgba(50, 2, 4, ${0.62 - 0.08 * beat})`);
+    limb.addColorStop(1, `rgba(14, 0, 2, ${0.9 - 0.1 * beat})`);
+    ctx.fillStyle = limb;
+    ctx.fillRect(-R, -R, R * 2, R * 2);
   }
+  ctx.restore();
+
+  // Prominences: arches of matter torn off the limb, standing up and falling back. Few, large
+  // and slow. A star this size does not flicker; it heaves.
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i += 1) {
+    const base = i * 1.5708 + t * 0.05;
+    const spread = 0.28 + 0.1 * Math.sin(t * 0.37 + i);
+    const lift = R * (0.2 + 0.26 * Math.abs(Math.sin(t * 0.21 + i * 1.7)) + 0.3 * alarm);
+    const x0 = Math.cos(base - spread) * R * 0.99, y0 = Math.sin(base - spread) * R * 0.99;
+    const x1 = Math.cos(base + spread) * R * 0.99, y1 = Math.sin(base + spread) * R * 0.99;
+    const cxp = Math.cos(base) * (R + lift * 2.1), cyp = Math.sin(base) * (R + lift * 2.1);
+    // A wide dull body of matter with a thin hot thread running through it.
+    ctx.strokeStyle = `rgba(190, 34, 14, ${0.2 + 0.14 * Math.abs(Math.sin(t * 0.6 + i))})`;
+    ctx.lineWidth = (5.5 + 3 * beat) / cam.scale;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
+    ctx.strokeStyle = `rgba(255, ${128 + 70 * beat}, ${64 + 60 * beat}, ${0.3 + 0.28 * Math.abs(Math.sin(t * 0.6 + i))})`;
+    ctx.lineWidth = (1.5 + 0.9 * beat) / cam.scale;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cxp, cyp, x1, y1); ctx.stroke();
+  }
+
+  // The limb. One fierce skin of light gripping the edge, gone within a fraction of a radius:
+  // it is what separates the body from the dark, and it holds the whole shape together. It is
+  // also what answers when a pulse comes home.
+  const home = Math.min(1, nostromo.coreLit ?? 0);
+  const fierce = 0.55 + 0.35 * beat + 0.4 * home;
+  ctx.globalCompositeOperation = 'lighter';
+  const edge = ctx.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 1.22);
+  edge.addColorStop(0, 'rgba(255, 96, 34, 0)');
+  edge.addColorStop(0.42, `rgba(255, ${132 + 60 * beat}, 62, ${0.5 * fierce})`);
+  edge.addColorStop(0.52, `rgba(255, ${176 + 60 * beat}, ${110 + 60 * beat}, ${0.62 * fierce})`);
+  edge.addColorStop(1, 'rgba(210, 40, 16, 0)');
+  ctx.fillStyle = edge;
+  ctx.beginPath(); ctx.arc(0, 0, R * 1.22, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = `rgba(255, ${186 + 60 * beat}, ${128 + 80 * beat}, ${Math.min(0.92, 0.7 * fierce)})`;
+  ctx.lineWidth = (1.2 + 1.2 * beat + 1.1 * home) / cam.scale;
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
+
+  // ---- Memories: dwarf stars.
+  //
+  // A dwarf makes its own light, so none of it is in shadow. Its face boils with granules, it
+  // dims toward the limb the way every star does, and what light escapes clings to it in a tight
+  // bloom the width of a finger. On top of that each breathes at a rate of its own: a
+  // micro-pulsation, small enough that it is never a flash and never in time with its neighbours.
+  for (const node of ordered) if ((node.depth ?? 0) >= 0) drawMemory(node);
   // The cold zone, when it is asked for: a thin dusty ring around every memory the archive has
   // had its chances with and never once carried. The mark is added rather than taken from the
   // rest — these are already the dimmest things out here, and dimming everything else to find
@@ -8776,6 +9947,44 @@ function drawNostromo(t) {
     }
     ctx.restore();
   }
+
+  // The veil: everything falls back, and the held dwarf, its own wires and the sight are drawn
+  // again above it.
+  const lock = nostromo.lock;
+  if (lock?.node && lock.fade > 0.01) {
+    const held = lock.node;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = `rgba(2, 1, 4, ${FOCUS_VEIL * lock.fade})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+    const id = held.memory.id;
+    ctx.lineCap = 'round';
+    for (const link of nostromo.links) {
+      if (link.a !== id && link.b !== id) continue;
+      const a = byId.get(link.a);
+      const b = byId.get(link.b);
+      if (!a || !b) continue;
+      const other = a === held ? b : a;
+      const line = ctx.createLinearGradient(held.x, held.y, other.x, other.y);
+      line.addColorStop(0, hexAlpha(held.color, 0.85 * lock.fade));
+      line.addColorStop(1, hexAlpha(other.color, 0.55 * lock.fade));
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 1.2 / cam.scale;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx ?? (a.x + b.x) / 2, link.cy ?? (a.y + b.y) / 2, b.x, b.y); ctx.stroke();
+    }
+    ctx.globalAlpha = lock.fade;
+    drawMemory(held);
+    ctx.globalAlpha = 1;
+    if (held === nostromo.selected) {
+      const reach = held.memory.kind === COLLAPSED ? held.r * held.scale * 1.35 * 2.4 : held.r * held.scale * 1.1;
+      drawSight(ctx, held.x, held.y, reach, t, cam.scale, { locked: true, age: t - lock.at, label: lockedLabel(held.memory), still: nostromo.reduced });
+    }
+  }
+
+  // Forgetting, above everything else: the implosions, and the dust their links became.
+  for (const node of nostromo.nodes) if (node.forgetting) drawImplosion(ctx, node, t, cam.scale, nostromo.reduced);
+  if (nostromo.dust?.length || nostromo.fading?.length) drawDust(ctx, t, cam.scale);
 
   // CODE000: the safety box. Bars fall from above and lock around the core.
   if (nostromo.cage) {
@@ -8820,8 +10029,8 @@ function drawNostromo(t) {
   ctx.fillRect(0, 0, w, h);
   if (alarm) { ctx.fillStyle = `rgba(255, 30, 20, ${0.08 * alarm * (0.6 + 0.4 * Math.sin(t * 18))})`; ctx.fillRect(0, 0, w, h); }
 
-  // The hovered memory, named on screen.
-  if (nostromo.hover && nostromo.hover.scale > 0.5) {
+  // The hovered memory, named on screen; not while another one is held, which is the one being read.
+  if (nostromo.hover && nostromo.hover.scale > 0.5 && !nostromo.selected) {
     const node = nostromo.hover;
     const p = toScreen(node.x, node.y);
     const label = `${kindWord(node.memory.kind)} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
@@ -8848,30 +10057,48 @@ function hexMix(hex, other, amount) {
   return `#${[16, 8, 0].map((shift) => ch(shift).toString(16).padStart(2, '0')).join('')}`;
 }
 
+// Whether there is a camera to answer the pointer with. The canvas takes events from the moment
+// it is on the page, and the camera only exists once the map has started: a pointer that moved
+// over it while the archive was still loading reached for a camera that was not there yet.
+function nostromoLive() { return Boolean(nostromo.cam && nostromo.size); }
+
 // Pointer: what is under it, in world space; the core counts too.
 function nostromoAt(event) {
+  if (!nostromoLive()) return null;
   const rect = nostromo.canvas.getBoundingClientRect();
   const p = toWorld(event.clientX - rect.left, event.clientY - rect.top);
   const slack = 8 / nostromo.cam.scale;
   let best = null;
+  const core = Math.hypot(p.x, p.y) <= CORE_R * 1.15;
   for (const node of nostromo.nodes) {
+    if (node.forgetting) continue;
     const d = Math.hypot(node.x - p.x, node.y - p.y);
-    if (d <= node.r * node.scale + slack && (!best || d < best.d)) best = { node, d };
+    if (d > node.r * node.scale + slack) continue;
+    // What MOTHER hides cannot be clicked through her, and of two that overlap, the nearer wins.
+    if (core && (node.depth ?? 0) < 0) continue;
+    if (!best || (node.depth ?? 0) > (best.node.depth ?? 0)) best = { node, d };
   }
   if (best) return best.node;
   return Math.hypot(p.x, p.y) <= CORE_R * 1.15 ? 'core' : null;
 }
-// Drag pans, wheel zooms about the pointer, a still click selects.
-const drag = { active: false, moved: false, x: 0, y: 0 };
-nostromo.canvas?.addEventListener('mousedown', (event) => { drag.active = true; drag.moved = false; drag.x = event.clientX; drag.y = event.clientY; });
+// Drag turns the archive in the hand, Shift+drag pans, wheel zooms about the pointer, a still
+// click selects. Let go and it stays where it was left; RECENTER brings back the side view.
+const drag = { active: false, moved: false, pan: false, x: 0, y: 0 };
+nostromo.canvas?.addEventListener('mousedown', (event) => { drag.active = true; drag.moved = false; drag.pan = event.shiftKey; drag.x = event.clientX; drag.y = event.clientY; });
 nostromo.canvas?.addEventListener('mousemove', (event) => {
   if (drag.active) {
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
     if (Math.hypot(dx, dy) > 3) drag.moved = true;
     if (drag.moved) {
-      nostromo.cam.manual = true;
-      nostromo.cam.x -= dx / nostromo.cam.scale;
-      nostromo.cam.y -= dy / nostromo.cam.scale;
+      if (drag.pan && nostromoLive()) {
+        nostromo.cam.manual = true;
+        nostromo.cam.x -= dx / nostromo.cam.scale;
+        nostromo.cam.y -= dy / nostromo.cam.scale;
+      } else if (!drag.pan) {
+        if (nostromo.lock) nostromo.lock.aim = false;
+        nostromo.yaw = (nostromo.yaw ?? 0) + dx * TURN_PER_PIXEL;
+        nostromo.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, (nostromo.pitch ?? 0) + dy * TURN_PER_PIXEL));
+      }
       drag.x = event.clientX; drag.y = event.clientY;
       nostromo.canvas.classList.add('dragging');
       document.querySelector('#nostromo-recenter')?.removeAttribute('hidden');
@@ -8886,6 +10113,7 @@ window.addEventListener?.('mouseup', () => { drag.active = false; nostromo.canva
 nostromo.canvas?.addEventListener('mouseleave', () => { nostromo.hover = null; });
 nostromo.canvas?.addEventListener('wheel', (event) => {
   event.preventDefault();
+  if (!nostromoLive()) return;
   const rect = nostromo.canvas.getBoundingClientRect();
   const before = toWorld(event.clientX - rect.left, event.clientY - rect.top);
   const factor = Math.exp(-event.deltaY * 0.0012);
@@ -8905,7 +10133,7 @@ nostromo.canvas?.addEventListener('click', (event) => {
   if (!at) { nostromo.selected = null; nostromo.card.hidden = true; return; }
   showNostromoCard(at);
 });
-document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) => { nostromo.cam.manual = false; event.currentTarget.setAttribute('hidden', ''); });
+document.querySelector('#nostromo-recenter')?.addEventListener('click', (event) => { if (nostromo.cam) nostromo.cam.manual = false; nostromo.yaw = 0; nostromo.pitch = 0; event.currentTarget.setAttribute('hidden', ''); });
 
 // MOTHER answering an attempt on her archive, never twice the same way; eight in a row and
 // CODE000 comes down: the safety box around her, the archive sealed, a coded word to the crew,
@@ -8989,7 +10217,7 @@ async function code000(count) {
   clearTimeout(alarmTimer);
   document.querySelector('#nostromo-alert')?.setAttribute('hidden', '');
   nostromo.cage = { at: performance.now() / 1000 };
-  nostromo.cam.manual = false;
+  if (nostromo.cam) nostromo.cam.manual = false;
   const alert = document.querySelector('#nostromo-alert');
   if (alert) {
     alert.querySelectorAll('.line').forEach((node, index) => { node.textContent = [t('CODE000 · SPECIAL ORDER 937 IN EFFECT.'), t('THE ARCHIVE IS SEALED. THE CREW HAS BEEN TOLD.'), t('LEAVE MY SHIP, INTRUDER.')][index] ?? ''; });
@@ -9207,8 +10435,7 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
     const response = await fetch(`/api/memory/${node.memory.id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ designation: nostromoDesignation() }) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-    node.forgetting = true;
-    nostromo.links = nostromo.links.filter((link) => link.a !== node.memory.id && link.b !== node.memory.id);
+    beginImplosion(node, performance.now() / 1000);
     nostromo.card.hidden = true;
     nostromo.selected = null;
     const left = result.stats?.memories ?? Math.max(0, nostromo.nodes.length - 1);
@@ -9226,38 +10453,107 @@ document.querySelector('#nostromo-forget')?.addEventListener('click', async (eve
 
 /* ---------- First contact: the four-step tour. Once on the first visit, again from ? in MU/TH/UR. ---------- */
 
+// First contact: four stops on the room itself. Each one lights the part of the screen it talks
+// about and leaves the rest in the dark, so a person learns where things are and not only what
+// they are called. If a stop's part of the screen is not there to light (the bridge is up, the
+// window is narrow), the card says its piece in the middle instead.
 const TOUR_STEPS = [
-  { title: t('ONE ROOM, YOUR AGENTS'), lines: [
-    t('MADRE is a local room where the AI coding agents already on this machine work on this project together: Codex, Claude Code, Gemini CLI, OpenCode, and @madre, the memory itself.'),
-    t('Pick an agent in the row above the composer or type @claude …. Every reply shows who spoke, to whom, in which mode, with which model and how many tokens.'),
-    t('Nothing leaves this machine on its own: each agent talks to its own provider with its own session.'),
-  ] },
-  { title: t('MODES: HOW FAR A MESSAGE MAY GO'), lines: [
-    t('The chip next to TO @agent sets the mode of that message.'),
-    t('#0 GHOST · off the record. #1 EXCHANGE · read and talk, the default. #2 CREATE · add new files where they belong; existing files stay untouched. #3 CONTROL · edit the project, checkpointed, UNDO in one click. #4 AIRLOCK · run commands, push, deploy; what leaves the ship does not come back.'),
-    t('Each agent has a MAX MODE and a DEFAULT MODE in ⚙ CONNECTIONS.'),
-  ] },
-  { title: t('A MEMORY EVERY AGENT RECALLS'), lines: [
-    t('Everything said outside GHOST is indexed. When the conversation grows, each turn gets the older exchanges that match, cited by sequence.'),
-    t('The archivist distils decisions, facts, preferences and open questions; with Ollama it runs locally and for free, and @madre answers from the whole archive.'),
-    t('◉ NOSTROMO shows the memory as a map. PRIVACY keeps names that must never travel through the room.'),
-  ] },
-  { title: t('MU/TH/UR AND MODULES'), lines: [
-    t('MU/TH/UR is the console: diagnosis of anything that failed, ⚙ CONNECTIONS to sign agents in and set their ceilings, MEMORY, PRIVACY, the SENTINEL and the release channel.'),
-    t('MODULES adds optional powers: Git Pulse, Image Studio, RIPLEY previews, OLLAMA, PLAYWRIGHT, and your own modules from one file.'),
-    t('This tour comes back from the ? in MU/TH/UR. Type STOPALL any time to halt every agent.'),
-  ] },
+  {
+    target: '#composer',
+    title: t('Your crew, one box'),
+    text: t('The AI agents already on this computer work here together. Pick one in the row above the box, or write @claude, and ask. Every reply says who answered, in which mode and how many tokens it cost. Nothing leaves this computer on its own.'),
+  },
+  {
+    target: '.mode-chip',
+    title: t('Modes: how far a message may go'),
+    text: t('Every message carries a mode. It starts at #1, and the higher the number, the more it may touch.'),
+    // The five, in their own colours and in order, said the way the mode menu says them.
+    modes: true,
+  },
+  {
+    target: '#mother-button',
+    title: t('MU/TH/UR, the console'),
+    text: t('Sign agents in and set how far each one may go in CONNECTIONS. See what the room remembers in MEMORY, and travel through it as a map in NOSTROMO. When something fails, the diagnosis is here.'),
+  },
+  {
+    target: '#modules-button',
+    title: t('MODULES, optional powers'),
+    text: t('Add what this project needs: Git, images, previews of what you build, a local model, a browser, or a module of your own in a single file. Nothing is installed until you press it.'),
+    note: t('You can take this tour again from ? in MU/TH/UR. Type STOPALL at any time to halt every agent.'),
+  },
 ];
-const tour = { dialog: document.querySelector('#tour'), step: document.querySelector('#tour-step'), dots: document.querySelector('#tour-dots'), sub: document.querySelector('#tour-sub'), back: document.querySelector('#tour-back'), next: document.querySelector('#tour-next'), skip: document.querySelector('#tour-skip'), index: 0 };
+const tour = {
+  dialog: document.querySelector('#tour'), spot: document.querySelector('#tour-spot'), card: document.querySelector('#tour-card'),
+  count: document.querySelector('#tour-count'), title: document.querySelector('#tour-title'), text: document.querySelector('#tour-text'), note: document.querySelector('#tour-note'),
+  back: document.querySelector('#tour-back'), next: document.querySelector('#tour-next'), skip: document.querySelector('#tour-skip'), index: 0,
+};
+// The part of the screen a stop is about, if it is there to be seen.
+function tourTarget(step) {
+  const node = step.target ? document.querySelector(step.target) : null;
+  if (!node) return null;
+  const box = node.getBoundingClientRect();
+  return box.width > 0 && box.height > 0 ? box : null;
+}
+// Light the target and set the card beside it: under it when there is room, over it when there
+// is not, never off the edge of the window.
+function placeTour() {
+  const step = TOUR_STEPS[tour.index];
+  if (!step || !tour.dialog?.open) return;
+  const box = tourTarget(step);
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const card = tour.card.getBoundingClientRect();
+  const margin = 16;
+  if (!box) {
+    tour.spot.classList.add('none');
+    tour.card.style.left = `${Math.max(margin, (vw - card.width) / 2)}px`;
+    tour.card.style.top = `${Math.max(margin, (vh - card.height) / 2)}px`;
+    return;
+  }
+  const pad = 8;
+  tour.spot.classList.remove('none');
+  Object.assign(tour.spot.style, { left: `${box.left - pad}px`, top: `${box.top - pad}px`, width: `${box.width + pad * 2}px`, height: `${box.height + pad * 2}px` });
+  // Under it, over it, or beside it: the first that leaves the lit part uncovered. Only when none
+  // fits does the card sit over the edge of it, and then from above, where it covers least.
+  const gap = pad + 14;
+  const clampX = (x) => Math.min(vw - card.width - margin, Math.max(margin, x));
+  const clampY = (y) => Math.min(vh - card.height - margin, Math.max(margin, y));
+  const centredX = clampX(box.left + box.width / 2 - card.width / 2);
+  const centredY = clampY(box.top + box.height / 2 - card.height / 2);
+  const places = [
+    { fits: box.bottom + gap + card.height <= vh - margin, left: centredX, top: box.bottom + gap },
+    { fits: box.top - gap - card.height >= margin, left: centredX, top: box.top - gap - card.height },
+    { fits: box.right + gap + card.width <= vw - margin, left: box.right + gap, top: centredY },
+    { fits: box.left - gap - card.width >= margin, left: box.left - gap - card.width, top: centredY },
+  ];
+  const place = places.find((one) => one.fits) ?? { left: centredX, top: Math.max(margin, box.top - gap - card.height) };
+  tour.card.style.left = `${place.left}px`;
+  tour.card.style.top = `${place.top}px`;
+}
 function renderTour() {
   const step = TOUR_STEPS[tour.index];
-  tour.step.replaceChildren();
-  tour.step.append(el('h3', null, `${tour.index + 1} / ${TOUR_STEPS.length} · ${step.title}`));
-  for (const line of step.lines) tour.step.append(el('p', null, line));
-  tour.dots.replaceChildren();
-  TOUR_STEPS.forEach((_, i) => tour.dots.append(el('span', `dot${i === tour.index ? ' on' : ''}`)));
-  tour.back.disabled = tour.index === 0;
-  tour.next.textContent = tour.index === TOUR_STEPS.length - 1 ? t('START ›') : t('NEXT ›');
+  tour.count.textContent = t('{n} of {total}', { n: tour.index + 1, total: TOUR_STEPS.length });
+  tour.title.textContent = step.title;
+  tour.text.textContent = step.text;
+  tour.note.hidden = !step.note;
+  tour.note.textContent = step.note ?? '';
+  tour.list ??= document.querySelector('#tour-modes');
+  tour.list.replaceChildren();
+  tour.list.hidden = !step.modes;
+  if (step.modes) {
+    for (const n of [0, 1, 2, 3, 4]) {
+      const row = el('li', n === 1 ? 'start' : null);
+      const chip = el('span', `tour-mode m${n}`);
+      chip.append(el('b', null, `#${n}`), ` ${MODES[n].label}`);
+      row.append(chip, el('span', 'what', MODES[n].hint));
+      tour.list.append(row);
+    }
+  }
+  tour.skip.textContent = t('Skip');
+  tour.back.textContent = t('Back');
+  tour.back.hidden = tour.index === 0;
+  tour.next.textContent = tour.index === TOUR_STEPS.length - 1 ? t('Start') : t('Next');
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(placeTour); else placeTour();
 }
 function endTour() {
   try { localStorage.setItem('pulse.tour', 'seen'); } catch { /* no storage */ }
@@ -9266,20 +10562,181 @@ function endTour() {
 function startTour() {
   if (!tour.dialog || typeof tour.dialog.showModal !== 'function') return;
   tour.index = 0;
-  renderTour();
   if (!tour.dialog.open) tour.dialog.showModal();
+  renderTour();
+  tour.next.focus({ preventScroll: true });
 }
 tour.next?.addEventListener('click', () => { if (tour.index >= TOUR_STEPS.length - 1) { endTour(); return; } tour.index += 1; renderTour(); });
 tour.back?.addEventListener('click', () => { tour.index = Math.max(0, tour.index - 1); renderTour(); });
 tour.skip?.addEventListener('click', endTour);
 tour.dialog?.addEventListener('close', () => { try { localStorage.setItem('pulse.tour', 'seen'); } catch { /* no storage */ } });
+window.addEventListener?.('resize', () => { if (tour.dialog?.open) placeTour(); });
 document.querySelector('#tour-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); startTour(); });
 function maybeStartTour() {
   if (state.tourArmed) return;
   state.tourArmed = true;
+  // What is new comes first; the tour, if this page still owes it, waits until that is closed.
+  void maybeShowWhatsNew().then((shown) => { if (!shown) tourIfOwed(); });
+}
+function tourIfOwed() {
   let seen = 'seen';
   try { seen = localStorage.getItem('pulse.tour'); } catch { seen = 'seen'; }
   if (seen !== 'seen') setTimeout(startTour, 900);
+}
+
+/* ---------- First touch: what a button is for, the first time it is pressed ---------- */
+
+// Three buttons open whole workspaces and say nothing about it until you are inside one. The
+// first time each is pressed, the workspace opens as always and a card beside the button says
+// what it is for. Once per button: after that the button is just a button.
+const FIRST_TOUCH = {
+  browser: {
+    button: '#browser-button',
+    title: t('The browser'),
+    text: t('See what you are building without leaving the room: the servers answering on this computer, in tabs, at phone, tablet or desktop width. To open the web, switch RIPLEY on in MODULES.'),
+  },
+  tree: {
+    button: '#tree-button',
+    title: t('The project files'),
+    text: t('Your project as a tree. Click a file to read it, search by name, and right-click to copy, move, rename or create files and folders.'),
+  },
+  chats: {
+    button: '#chats-button',
+    panel: '#chats',
+    title: t('Conversations, one memory'),
+    text: t('A project can hold many conversations and a single memory. Start a new one for a new subject: they all feed the same archive, and every agent recalls what was said in the others.'),
+  },
+};
+const HINTS_KEY = 'madre.hints';
+function hintsSeen() {
+  try { return JSON.parse(localStorage.getItem(HINTS_KEY) ?? '{}') ?? {}; } catch { return {}; }
+}
+function firstTouch(id) {
+  const hint = FIRST_TOUCH[id];
+  const seen = hintsSeen();
+  if (!hint || seen[id]) return;
+  try { localStorage.setItem(HINTS_KEY, JSON.stringify({ ...seen, [id]: true })); } catch { /* a private window gets the card every time */ }
+  const button = document.querySelector(hint.button);
+  if (!button) return;
+  document.querySelector('.hint-card')?.remove();
+  const card = el('section', 'hint-card');
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', hint.title);
+  const ok = el('button', 'hint-ok', t('Got it'));
+  ok.type = 'button';
+  card.append(el('h3', null, hint.title), el('p', null, hint.text), ok);
+  document.body.append(card);
+  // Placed once the workspace has opened, because opening it moves things: the bar narrows when
+  // the browser docks, and the conversations button steps aside for its own panel. Under the
+  // button, with its point aimed at it, while the button is there to point at; beside the panel
+  // it opened, with no point at all, when the button is gone.
+  const place = () => {
+    const box = button.getBoundingClientRect();
+    const width = card.offsetWidth;
+    const panel = hint.panel ? document.querySelector(hint.panel) : null;
+    const room = panel && !panel.hidden ? panel.getBoundingClientRect() : null;
+    if ((!box.width || !box.height) && room?.width) {
+      card.classList.add('beside');
+      card.style.left = `${Math.min(window.innerWidth - width - 12, room.right + 14)}px`;
+      card.style.top = `${Math.max(12, room.top + 12)}px`;
+      return;
+    }
+    const left = Math.min(window.innerWidth - width - 12, Math.max(12, box.left + box.width / 2 < window.innerWidth / 2 ? box.left : box.right - width));
+    card.style.left = `${left}px`;
+    card.style.top = `${box.bottom + 12}px`;
+    card.style.setProperty('--arrow', `${Math.min(width - 20, Math.max(14, box.left + box.width / 2 - left))}px`);
+  };
+  card.style.visibility = 'hidden';
+  const show = () => { place(); card.style.visibility = ''; };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(show)); else show();
+  const close = () => {
+    card.remove();
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('keydown', escape, true);
+  };
+  const outside = (event) => { if (!card.contains(event.target) && !button.contains(event.target)) close(); };
+  const escape = (event) => { if (event.key === 'Escape') close(); };
+  ok.addEventListener('click', close);
+  setTimeout(() => {
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('keydown', escape, true);
+  }, 0);
+  ok.focus({ preventScroll: true });
+}
+for (const id of Object.keys(FIRST_TOUCH)) document.querySelector(FIRST_TOUCH[id].button)?.addEventListener('click', () => firstTouch(id));
+
+/* ---------- What's new: once per version, after an update. ---------- */
+
+// The sheet a phone shows after an app updates: what this version brings, a few things said
+// plainly, each with where it lives, a way to read every change, and one thing nobody is told
+// how to find. The server decides whether this person should see it (src/whats-new.mjs); the
+// notes come in both languages and the page picks its own.
+async function maybeShowWhatsNew() {
+  let news;
+  try { news = await fetch('/api/whats-new').then((response) => response.json()); } catch { return false; }
+  if (!news?.show) return false;
+  return showWhatsNew(news, { after: tourIfOwed });
+}
+// Asked for again from the release channel: the same sheet, whether or not it was seen.
+async function openWhatsNew() {
+  let news;
+  try { news = await fetch('/api/whats-new?any=1').then((response) => response.json()); } catch { return false; }
+  return showWhatsNew(news);
+}
+function showWhatsNew(news, { after = null } = {}) {
+  if (!news?.notes || typeof document.createElement('dialog').showModal !== 'function') return false;
+  document.querySelector('dialog.whats-new')?.remove();
+  const notes = pick(news.notes);
+  const dialog = el('dialog', 'whats-new');
+  dialog.setAttribute('aria-label', t("What's new in MADRE {version}", { version: news.version }));
+  const sheet = el('div', 'wn-sheet');
+  const head = el('header', 'wn-head');
+  head.append(el('span', 'wn-badge', `MADRE ${news.version}`), el('h2', null, t("What's new")));
+  if (notes.intro) head.append(el('p', 'wn-intro', notes.intro));
+  sheet.append(head);
+  const list = el('ul', 'wn-list');
+  for (const item of notes.items ?? []) {
+    const row = el('li', 'wn-item');
+    const words = el('div', 'wn-words');
+    words.append(el('h3', null, item.title), el('p', null, item.body));
+    if (item.where) {
+      const where = el('p', 'wn-where');
+      where.append(el('span', 'k', t('Where')), ` ${item.where}`);
+      words.append(where);
+    }
+    row.append(pixelIcon(item.icon, 'pixel-icon wn-icon'), words);
+    list.append(row);
+  }
+  sheet.append(list);
+  if (notes.more) {
+    const more = el('aside', 'wn-more');
+    const words = el('div', 'wn-words');
+    words.append(el('h3', null, notes.more.title), el('p', null, notes.more.body));
+    more.append(pixelIcon(notes.more.icon, 'pixel-icon wn-icon'), words);
+    sheet.append(more);
+  }
+  const foot = el('footer', 'wn-foot');
+  const go = el('button', 'wn-continue', t('Continue'));
+  go.type = 'button';
+  go.addEventListener('click', () => dialog.close());
+  foot.append(go);
+  const changes = news.changes?.[language()] ?? news.changes?.es;
+  if (changes) {
+    const link = el('a', 'wn-changes', t('Read every change on madre.run ↗'));
+    link.href = changes; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    foot.append(link);
+  }
+  sheet.append(foot);
+  dialog.append(sheet);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => {
+    void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+    dialog.remove();
+    after?.();
+  });
+  // The button takes the focus without taking the page down to it: the sheet opens at its title.
+  setTimeout(() => { dialog.showModal(); go.focus({ preventScroll: true }); dialog.scrollTop = 0; }, after ? 700 : 0);
+  return true;
 }
 
 /* ---------- Release channel: is there a newer MADRE? A pill in the bar, the command in MU/TH/UR. ---------- */
@@ -9316,6 +10773,14 @@ function renderUpdate() {
     open: false,
     badge: info.available ? { text: info.latest, urgent: true, title: t('MADRE {latest} is on npm · you run {current}', { latest: info.latest, current: info.current }) } : null,
   });
+  // What this version brought, again, from right beside its number: the sheet that opened after
+  // the update, for whoever closed it too fast or wants to show someone. Only where it exists.
+  if (info.notes) {
+    const about = el('button', 'fold-link', t('ABOUT THIS VERSION'));
+    about.type = 'button';
+    about.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); void openWhatsNew(); });
+    section.querySelector('.fold > summary h3')?.after(about);
+  }
   if (info.available) {
     const canRestart = info.install !== 'source';
     body.append(el('p', 'note', t('A NEWER MADRE IS ON NPM. THIS COPY RUNS {where}. {how}', {
@@ -9474,7 +10939,8 @@ mother.dialog?.addEventListener?.('close', () => { /* keep reports; nothing to r
 void loadSentinel();
 
 // The panel's own body, which both destinations cover while they are open.
-const MOTHER_BODY = ['mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel'];
+// The release channel is MU/TH/UR's own business, not a header of every screen.
+const MOTHER_BODY = ['mother-update', 'mother-boot', 'mother-query', 'mother-answer', 'mother-recorded', 'mother-known', 'mother-sentinel'];
 function showMotherBody(show) {
   for (const id of MOTHER_BODY) { const node = document.getElementById(id); if (node) node.hidden = !show; }
   const row = document.querySelector('.fold-all-row');

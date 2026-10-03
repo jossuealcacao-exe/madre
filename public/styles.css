@@ -420,7 +420,7 @@ code { font-family: var(--mono); font-size: .9em; color: var(--phosphor); backgr
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-3); line-height: 1.7;
 }
-.system > b:first-child { display: block; margin-bottom: 3px; color: var(--text-3); letter-spacing: .2em; }
+.system > b:first-child:not(.inline) { display: block; margin-bottom: 3px; color: var(--text-3); letter-spacing: .2em; }
 /* Everything after the heading is one sentence and has to wrap as one: a code chip that becomes
    a block breaks the line in front of it and leaves the agent's name stranded. */
 .system code { display: inline-block; vertical-align: baseline; }
@@ -846,7 +846,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-section { margin-top: 34px; }
 .mother-section h3:not(:first-child) { margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--ph-faint); }
 .mother-section h3.toggle:not(:first-child) { margin-top: 40px; }
-.settings .room-form, .settings .conn-grid, .settings .mother-grid { margin-bottom: 8px; }
+:is(.settings, .memory-panel) .room-form, .settings .conn-grid, .settings .mother-grid { margin-bottom: 8px; }
 .mother-section h3::before { content: "▌ "; color: var(--ph); }
 /* A folding block carries its own glyph, so the generic bar would be a second mark saying the
    same thing. And the rule above it goes with it: a line and an icon are two ways of announcing
@@ -1055,22 +1055,22 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .conn-card .session.busy { color: #ffd166; border-color: #ffd166; animation: blink 1s infinite; }
 .conn-card .meta { font-size: 11px; line-height: 1.6; color: rgba(210, 255, 190, .8); text-shadow: none; }
 .conn-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.conn-card button, .settings .room-form button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
-.conn-card button.primary, .settings .room-form button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
-.conn-card button:disabled, .settings .room-form button:disabled { opacity: .4; cursor: default; }
-.conn-card label, .settings .room-form label { display: grid; gap: 4px; font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
+.conn-card button, :is(.settings, .memory-panel) .room-form button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.conn-card button.primary, :is(.settings, .memory-panel) .room-form button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
+.conn-card button:disabled, :is(.settings, .memory-panel) .room-form button:disabled { opacity: .4; cursor: default; }
+.conn-card label, :is(.settings, .memory-panel) .room-form label { display: grid; gap: 4px; font-size: 9.5px; letter-spacing: .16em; color: var(--ph-dim); }
 /* A textarea is a field like any other here. It was left out of this rule, so what you typed
    into it was drawn in the page's own colour: invisible on this ground. */
-.conn-card input, .conn-card select, .settings .room-form input, .settings .room-form select, .settings .room-form textarea { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
-.settings .room-form textarea::placeholder { color: var(--ph-dim); }
-.conn-card input:focus, .settings .room-form input:focus, .settings .room-form textarea:focus { outline: 1px solid var(--ph); }
+.conn-card input, .conn-card select, :is(.settings, .memory-panel) .room-form input, :is(.settings, .memory-panel) .room-form select, :is(.settings, .memory-panel) .room-form textarea { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 12px; padding: 6px 8px; letter-spacing: .04em; min-width: 0; }
+:is(.settings, .memory-panel) .room-form textarea::placeholder { color: var(--ph-dim); }
+.conn-card input:focus, :is(.settings, .memory-panel) .room-form input:focus, :is(.settings, .memory-panel) .room-form textarea:focus { outline: 1px solid var(--ph); }
 .conn-card .login-log { max-height: 140px; overflow-y: auto; border: 1px solid var(--ph-faint); background: #000; padding: 8px 10px; font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .conn-card .login-log a { color: var(--ph); }
-.settings .room-form { border: 1px solid var(--ph-dim); padding: 14px 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-items: end; }
-.settings .room-form .full { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.settings .room-form .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph); cursor: pointer; }
-.settings .room-form .toggle input { width: auto; accent-color: var(--brew); }
-.settings .note { font-size: 10px; letter-spacing: .1em; color: var(--ph-dim); }
+:is(.settings, .memory-panel) .room-form { border: 1px solid var(--ph-dim); padding: 14px 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-items: end; }
+:is(.settings, .memory-panel) .room-form .full { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+:is(.settings, .memory-panel) .room-form .toggle { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .16em; color: var(--ph); cursor: pointer; }
+:is(.settings, .memory-panel) .room-form .toggle input { width: auto; accent-color: var(--brew); }
+:is(.settings, .memory-panel) .note { font-size: 10px; letter-spacing: .1em; color: var(--ph-dim); }
 .system.login { color: var(--phosphor); }
 .system.login.failed { color: var(--danger); }
 
@@ -1948,10 +1948,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .mother-section.sentinel button, .mother-section.update button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
 .mother-section.sentinel button:hover, .mother-section.update button:hover { background: var(--ph-faint); }
 .mother-section.sentinel .sentinel-report.sent { opacity: .65; }
-.settings .memory-form .toggle { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; text-transform: uppercase; }
-.settings .memory-form .toggle input { accent-color: var(--brew); width: auto; }
-.settings .memory-form .full .note { margin-right: 12px; }
-.settings .memory-form .dataset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--ph-faint); }
+:is(.settings, .memory-panel) .memory-form .toggle { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; text-transform: uppercase; }
+:is(.settings, .memory-panel) .memory-form .toggle input { accent-color: var(--brew); width: auto; }
+:is(.settings, .memory-panel) .memory-form .full .note { margin-right: 12px; }
+:is(.settings, .memory-panel) .memory-form .dataset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--ph-faint); }
 .module-card .ollama-status { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 10px; letter-spacing: .1em; }
 .module-card .ollama-status dt { color: var(--ph-dim); } .module-card .ollama-status dd { margin: 0; color: rgba(210, 255, 190, .85); overflow-wrap: anywhere; }
 .module-card .actions .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); cursor: pointer; }
@@ -1974,16 +1974,6 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .dev-row a.mother-close { text-decoration: none; display: inline-flex; align-items: center; }
 .dev-fail { color: var(--warn); } .dev-fail code { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); padding: 1px 5px; }
 .tour-button { min-width: 30px; padding: 6px 0; text-align: center; font-weight: 700; }
-.tour-frame { width: min(620px, 92vw); padding: 26px 30px 22px; }
-.tour-body { min-height: 190px; padding: 12px 0 6px; }
-.tour-step h3 { margin: 6px 0 14px; font-size: 11px; letter-spacing: .28em; color: var(--ph); font-weight: 700; }
-.tour-step p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.7; letter-spacing: .03em; color: var(--ph); text-transform: none; }
-.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 14px; border-top: 1px solid var(--ph-dim); }
-.tour-dots { display: inline-flex; gap: 8px; }
-.tour-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ph-faint); border: 1px solid var(--ph-dim); transition: background-color .22s ease; }
-.tour-dots .dot.on { background: var(--ph); box-shadow: 0 0 8px rgba(155, 255, 102, .5); }
-.tour-nav { display: inline-flex; gap: 8px; }
-.tour .mother-close.primary { background: var(--ph-faint); }
 
 /* DEV modules and proposals */
 .module-card .dev-tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: .18em; color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); padding: 2px 7px; margin-left: 8px; align-self: center; }
@@ -2148,26 +2138,7 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .exams button.primary { background: var(--ph); color: #041004; text-shadow: none; }
 .exams button:disabled { opacity: .4; cursor: default; }
 
-.maturity { display: grid; gap: 10px; margin: 12px 0 4px; }
-.maturity > .card-fold { border-top: 1px solid var(--ph-faint); padding-top: 10px; }
-.maturity .maturity-next { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.8; letter-spacing: .1em; text-transform: uppercase; color: #eaffdf; text-shadow: 0 0 6px rgba(155, 255, 102, .18); padding: 11px 13px; border: 1px solid var(--ph); border-left-width: 4px; background: var(--ph-faint); }
-.maturity .maturity-next b { font-size: 9px; letter-spacing: .22em; color: var(--ph); margin-right: 10px; }
-.maturity .maturity-next .where { font-size: 9px; letter-spacing: .16em; color: var(--ph); white-space: nowrap; }
-.maturity-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.maturity-head b { font-family: var(--mono); font-size: 11px; letter-spacing: .24em; }
-.maturity-head span { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; line-height: 1.7; text-transform: uppercase; color: var(--ph-dim); }
-.maturity-head b.stage.empty, .maturity-head b.stage.sparse { color: var(--ph-dim); }
-.maturity-head b.stage.forming { color: var(--ph-dim); }
-.maturity-head b.stage.working, .maturity-head b.stage.mature { color: var(--ph); }
-.maturity-row { display: grid; grid-template-columns: 210px 90px 1fr; gap: 12px; align-items: center; }
-.maturity-row b { font-family: var(--mono); font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); font-weight: 400; }
-.maturity-row i { height: 5px; background: var(--ph-faint); position: relative; }
-.maturity-row i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); background: var(--ph-dim); }
-.maturity-row.weakest i::after { background: var(--ph); }
-.maturity-row.weakest b { color: var(--ph); }
-.maturity-row span { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); opacity: .8; }
 .maturity-next { color: var(--ph); }
-@media (max-width: 860px) { .maturity-row { grid-template-columns: 1fr; gap: 2px; } .maturity-row i { display: none; } }
 
 /* A record you have dealt with: the way out sits at the end of its own row. */
 .mother-record .drop { justify-self: end; background: none; border: 0; color: var(--ph-faint); cursor: pointer; font: inherit; font-size: 14px; padding: 0; line-height: 1; }
@@ -2212,16 +2183,269 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .dev-card .dev-ask code { font-family: var(--mono); font-size: 11.5px; color: var(--brew); }
 
 /* EXPAND ALL, taken out of the bar. The bar is a row of destinations — CONNECTIONS, MEMORY,
-   NOSTROMO — and this is not one: it acts on the canvas underneath it. So it sits under the bar,
-   centred over what it moves, with its own shape and an 8-bit arrow pointing the way it will go.
-   The space above it is larger than the space below, so it reads as belonging to the canvas
-   rather than hanging off the header. */
-.fold-all-row { display: flex; justify-content: center; margin: 20px 0 10px; }
+   NOSTROMO — and this is not one: it acts on the canvas underneath it. A frame made it a rival
+   of those buttons, so it has none: it speaks like the ▸ OPEN of each fold, dim, at the same right
+   edge, over the column of carets it moves all at once. */
+.fold-all-row { display: flex; justify-content: flex-end; margin: 14px 0 6px; }
 .fold-all {
-  display: inline-flex; align-items: center; gap: 9px;
-  border: 1px solid var(--ph-dim); border-radius: 0; background: transparent; color: var(--ph);
-  font-family: var(--mono); font-size: 9px; letter-spacing: .24em; padding: 7px 18px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 0; border-radius: 0; background: transparent; color: var(--ph-dim);
+  font-family: var(--mono); font-size: 9px; letter-spacing: .18em; padding: 4px 0; cursor: pointer;
 }
-.fold-all:hover { background: color-mix(in srgb, var(--ph) 12%, transparent); border-color: var(--ph); }
-.fold-all .pixel-icon { width: 11px; height: 11px; display: block; }
+.fold-all:hover, .fold-all:focus-visible { color: var(--ph); }
+.fold-all:focus-visible { outline: 1px solid var(--ph-dim); outline-offset: 3px; }
+.fold-all .pixel-icon { width: 9px; height: 9px; display: block; color: currentColor; }
 .fold-all .pixel-icon svg { width: 100%; height: 100%; shape-rendering: crispEdges; display: block; }
+
+/* ---------- MEMORY · the dashboard ----------
+   The same phosphor as the rest of MU/TH/UR: hairline frames, one green, the brighter ink only
+   for the figures. A chart here is boxes with heights, so it stays crisp at any width. */
+.mem-dash { display: grid; gap: 14px; margin-bottom: 8px; transition: opacity .2s; }
+.mem-dash.loading { opacity: .45; }
+.mem-dash-head { display: flex; align-items: baseline; justify-content: flex-end; gap: 14px; flex-wrap: wrap; margin-top: -4px; }
+.mem-dash-head .when { font-size: 9px; letter-spacing: .16em; color: var(--ph-dim); }
+.mem-dash button { border: 1px solid var(--ph-dim); background: transparent; color: var(--ph); font: inherit; font-size: 9.5px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.mem-dash button:hover { background: var(--ph-faint); }
+.mem-dash button.primary { background: var(--ph); color: #041004; text-shadow: none; border-color: var(--ph); }
+.mem-dash button:disabled { opacity: .4; cursor: default; }
+.mem-dash .note { margin: 0; font-size: 9.5px; letter-spacing: .12em; line-height: 1.7; color: var(--ph-dim); }
+
+.mem-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.mem-tile { display: grid; align-content: start; gap: 6px; padding: 14px 16px 12px; border: 1px solid var(--ph-faint); background: rgba(40, 254, 20, .025); min-width: 0; }
+.mem-tile .label { font-size: 9px; letter-spacing: .2em; color: var(--ph-dim); }
+.mem-tile .value { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: .04em; line-height: 1.05; color: #eaffdf; text-shadow: 0 0 10px rgba(155, 255, 102, .35); }
+.mem-tile .sub { font-size: 9px; letter-spacing: .14em; line-height: 1.6; color: var(--ph); text-transform: uppercase; }
+.mem-tile .mem-cols.spark { height: 22px; margin-top: 4px; }
+.mem-tile .mem-meter { margin-top: 8px; }
+
+.mem-verdict { display: grid; gap: 8px; }
+.mem-verdict .says { margin: 0; font-size: 10.5px; letter-spacing: .1em; line-height: 1.7; text-transform: uppercase; color: rgba(210, 255, 190, .9); }
+.mem-verdict .says b { font-size: 10px; letter-spacing: .24em; color: var(--ph); margin-right: 8px; }
+.mem-verdict .maturity-next { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.8; letter-spacing: .1em; text-transform: uppercase; color: #eaffdf; text-shadow: 0 0 6px rgba(155, 255, 102, .18); padding: 11px 13px; border: 1px solid var(--ph); background: var(--ph-faint); }
+.mem-verdict .maturity-next b { font-size: 9px; letter-spacing: .22em; color: var(--ph); margin-right: 10px; }
+.mem-verdict .maturity-next .where { font-size: 9px; letter-spacing: .16em; color: var(--ph); white-space: nowrap; }
+
+.mem-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+.mem-card { grid-column: span 6; display: grid; align-content: start; gap: 12px; padding: 14px 16px 16px; border: 1px solid var(--ph-faint); min-width: 0; }
+.mem-card.span-3 { grid-column: span 3; }
+.mem-card.span-5 { grid-column: span 5; }
+.mem-card.span-7 { grid-column: span 7; }
+.mem-card.span-12 { grid-column: 1 / -1; }
+.mem-card > h4 { margin: 0; font-size: 9.5px; font-weight: 400; letter-spacing: .24em; color: var(--ph); }
+.mem-card .detail { font-size: 8.5px; letter-spacing: .1em; line-height: 1.6; color: var(--ph-dim); text-transform: uppercase; }
+@media (max-width: 1180px) { .mem-card.span-3 { grid-column: span 6; } .mem-card.span-5, .mem-card.span-7 { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .mem-card.span-3 { grid-column: 1 / -1; } }
+
+/* Columns from one baseline: 4px rounded ends, square at the floor, 2px of black between them. */
+.mem-cols { display: flex; align-items: flex-end; gap: 2px; height: 46px; border-bottom: 1px solid var(--ph-faint); }
+.mem-cols i { flex: 1; min-width: 0; max-width: 24px; height: var(--h, 0); background: var(--ph-dim); border-radius: 2px 2px 0 0; }
+.mem-cols i.zero { height: 1px; background: var(--ph-faint); border-radius: 0; }
+.mem-cols i.now { background: var(--ph); }
+.mem-cols i.on { background: #eaffdf; box-shadow: 0 0 8px rgba(155, 255, 102, .5); }
+.mem-cols.big i { max-width: none; border-radius: 4px 4px 0 0; }
+.mem-cols.spark { border-bottom: 0; }
+.mem-cols.spark i { border-radius: 1px 1px 0 0; }
+
+.mem-activity { position: relative; display: grid; gap: 12px; outline: none; cursor: crosshair; }
+.mem-activity:focus-visible { outline: 1px solid var(--ph-dim); outline-offset: 6px; }
+.mem-strip { display: grid; gap: 6px; }
+.mem-strip-head { display: flex; align-items: baseline; gap: 10px; }
+.mem-strip-head b { font-size: 9px; font-weight: 400; letter-spacing: .18em; color: rgba(210, 255, 190, .9); }
+.mem-strip-head span { margin-left: auto; font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); }
+.mem-axis { display: flex; justify-content: space-between; font-size: 8.5px; letter-spacing: .14em; color: var(--ph-dim); margin-top: -4px; }
+.mem-cross { position: absolute; top: 0; bottom: 14px; width: 1px; background: var(--ph-dim); pointer-events: none; }
+.mem-tip { position: absolute; top: 18px; z-index: 2; display: grid; gap: 4px; min-width: 150px; padding: 9px 11px; background: #020402; border: 1px solid var(--ph); pointer-events: none; box-shadow: 0 6px 24px rgba(0, 0, 0, .6); }
+.mem-tip .when { font-size: 9px; font-weight: 400; letter-spacing: .2em; color: var(--ph-dim); }
+.mem-tip div { display: flex; align-items: baseline; gap: 8px; }
+.mem-tip strong { min-width: 28px; font-size: 13px; color: #eaffdf; font-variant-numeric: tabular-nums; }
+.mem-tip span { font-size: 8.5px; letter-spacing: .14em; color: var(--ph); }
+
+.mem-table { width: 100%; border-collapse: collapse; font-size: 9.5px; letter-spacing: .1em; }
+.mem-table th { text-align: right; font-weight: 400; font-size: 8.5px; letter-spacing: .16em; color: var(--ph-dim); padding: 4px 6px; border-bottom: 1px solid var(--ph-faint); }
+.mem-table td { text-align: right; padding: 4px 6px; color: var(--ph); font-variant-numeric: tabular-nums; border-bottom: 1px solid rgba(40, 254, 20, .06); }
+.mem-table th:first-child, .mem-table td:first-child { text-align: left; }
+
+/* A meter: the fill against its own track, with an optional mark where it has to reach. */
+.mem-meter { position: relative; display: block; height: 6px; background: var(--ph-faint); }
+.mem-meter > i { position: absolute; inset: 0 auto 0 0; background: var(--ph-dim); border-radius: 0 3px 3px 0; }
+.mem-meter > .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #eaffdf; }
+.mem-tile .mem-meter > i, .mem-signal.weakest .mem-meter > i { background: var(--ph); }
+.mem-signal { display: grid; gap: 5px; }
+.mem-signal .top { display: flex; align-items: baseline; gap: 10px; }
+.mem-signal .top b { font-size: 9px; font-weight: 400; letter-spacing: .14em; color: rgba(210, 255, 190, .9); }
+.mem-signal .top span { margin-left: auto; font-size: 10px; letter-spacing: .08em; color: #eaffdf; font-variant-numeric: tabular-nums; }
+.mem-signal.weakest .top b { color: var(--ph); }
+.mem-signal.weakest .top b::after { content: " ◂"; }
+
+.mem-bars { display: grid; gap: 9px; }
+.mem-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.mem-bar .name { display: flex; align-items: center; gap: 7px; font-size: 9px; letter-spacing: .14em; color: rgba(210, 255, 190, .9); min-width: 0; overflow-wrap: anywhere; }
+.mem-bar .swatch { flex: none; width: 8px; height: 8px; box-shadow: 0 0 6px currentColor; }
+.mem-bar .value { font-size: 9px; letter-spacing: .08em; color: var(--ph-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mem-bar .track { grid-column: 1 / -1; display: block; height: 8px; }
+.mem-bar .track i { display: block; height: 100%; min-width: 2px; background: var(--ph-dim); border-radius: 0 4px 4px 0; }
+.mem-bar:first-child .track i { background: var(--ph); }
+
+.mem-split { display: flex; gap: 2px; height: 12px; }
+.mem-split i { flex-basis: 0; min-width: 2px; }
+.mem-split i.search { background: var(--ph); border-radius: 0; }
+.mem-split i.cascade { background: var(--ph-dim); border-radius: 0 4px 4px 0; }
+.mem-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.mem-legend .k { display: inline-flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: .14em; color: rgba(210, 255, 190, .9); }
+.mem-legend .k i { width: 10px; height: 10px; }
+.mem-legend .k.search i { background: var(--ph); }
+.mem-legend .k.cascade i { background: var(--ph-dim); }
+.mem-legend .k b { font-weight: 400; color: var(--ph-dim); font-variant-numeric: tabular-nums; }
+
+/* The three tests, side by side on a wide screen, each with its rate against the line it has to reach. */
+.mem-dash .exams { margin: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+@media (max-width: 900px) { .mem-dash .exams { grid-template-columns: minmax(0, 1fr); } }
+.mem-dash .exams > .note, .mem-dash .exams > button { grid-column: 1 / -1; justify-self: start; }
+/* One hairline all round: the verdict and the bar already say passed or not, so no coloured edge. */
+.mem-dash .exams .exam, .mem-dash .exams .exam.passed, .mem-dash .exams .exam.failed { align-content: start; height: 100%; box-sizing: border-box; border: 1px solid var(--ph-faint); }
+.mem-dash .exams .said { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; line-height: 1.65; }
+.exam-bullet { display: grid; gap: 6px; margin: 2px 0; }
+.exam-bullet .mem-meter { height: 8px; }
+.exam-bullet .mem-meter > i { background: var(--ph); }
+.exams .exam.failed .exam-bullet .mem-meter > i { background: var(--warn); }
+.exam-bullet span { font-size: 9px; letter-spacing: .14em; color: var(--ph-dim); }
+.exams .exam .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* The two folds under the dashboard: same frame as everywhere else in MU/TH/UR. */
+.memory-panel > .fold { border-top: 1px solid var(--ph-faint); padding-top: 22px; }
+.memory-panel .memory-form .train-card { border-top: 1px solid var(--ph-faint); padding-top: 12px; }
+.memory-panel .train-head { color: var(--ph); }
+.memory-panel .train-step-label { color: var(--ph-dim); }
+.memory-panel .update-command { border: 1px solid var(--ph-faint); border-radius: 0; background: rgba(0, 0, 0, .4); }
+.memory-panel .update-command code { color: var(--ph); }
+.memory-panel .update-command button { border-color: var(--ph-dim); color: var(--ph); background: transparent; border-radius: 0; }
+/* A command is one long line that scrolls inside its own box; it must never widen the screen. */
+.memory-panel .memory-form .train-card { display: block; min-width: 0; }
+.memory-panel .train-steps, .memory-panel .train-steps li, .memory-panel .update-command { min-width: 0; }
+
+/* ---------- What's new ----------
+   The sheet an app shows after it updates: the room's own ground and type, not MU/TH/UR's
+   terminal, because this is the product talking to its person and not the console. One column,
+   a big plain title, each thing with its 8-bit mark in the room's green, and one button. */
+/* The window scrolls, not the sheet: a long sheet keeps its rounded edges whole and the scrollbar
+   sits at the edge of the screen, outside the card, where a scrollbar belongs. */
+dialog.whats-new { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 24px 16px; box-sizing: border-box; background: transparent; color: var(--text); overflow-y: auto; }
+dialog.whats-new[open] { display: flex; flex-direction: column; align-items: center; }
+dialog.whats-new::backdrop { background: rgba(0, 0, 0, .55); backdrop-filter: blur(10px); }
+.wn-sheet {
+  width: min(560px, 100%); margin: auto 0; flex: none; box-sizing: border-box;
+  padding: 40px 40px 28px; border-radius: 26px; background: var(--panel); border: 1px solid var(--line-2);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .45); animation: wn-in .45s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes wn-in { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wn-sheet { animation: none; } }
+.wn-head { text-align: center; margin-bottom: 26px; }
+.wn-badge { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--text-2); padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 999px; }
+.wn-head h2 { margin: 14px 0 10px; font-size: clamp(26px, 5vw, 34px); font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.wn-intro { margin: 0 auto; max-width: 42ch; font-size: 14.5px; line-height: 1.55; color: var(--text-2); }
+.wn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
+.wn-item, .wn-more { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; align-items: start; }
+.wn-icon { width: 30px; height: 30px; margin: 3px 5px 0; color: var(--brew); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brew) 45%, transparent)); }
+:root[data-scheme="light"] .wn-icon { color: #178f0c; filter: none; }
+.wn-words h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 650; line-height: 1.3; }
+.wn-words p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.wn-words .wn-where { margin-top: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text-2); }
+.wn-where .k { font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); margin-right: 4px; }
+.wn-more { margin-top: 26px; padding: 18px 18px 18px 14px; border-radius: 16px; border: 1px dashed var(--line-2); background: color-mix(in srgb, var(--bg) 40%, transparent); }
+.wn-more .wn-icon { color: var(--module-electric); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--module-electric) 50%, transparent)); }
+:root[data-scheme="light"] .wn-more .wn-icon { color: var(--module-electric); filter: none; }
+.wn-more h3 { font-style: italic; }
+.wn-foot { display: grid; justify-items: center; gap: 14px; margin-top: 30px; }
+.wn-continue { width: min(320px, 100%); padding: 13px 18px; border: 0; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; }
+.wn-continue:hover { filter: brightness(1.06); }
+.wn-continue:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.wn-changes { font-size: 13px; color: var(--text-2); text-decoration: none; }
+.wn-changes:hover { color: var(--text); text-decoration: underline; }
+@media (max-width: 520px) { .wn-sheet { padding: 30px 22px 22px; border-radius: 22px; } }
+
+/* ---------- First contact: the tour on the room itself ----------
+   The dialog covers the window and is transparent; the spot is a hole of light in a dark veil,
+   drawn as the spot's own shadow, and it glides from one stop to the next. The card is the same
+   sheet as What's new: the product speaking, in the room's own ground and type. */
+dialog.tour { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; color: var(--text); }
+dialog.tour::backdrop { background: transparent; }
+.tour-spot {
+  position: absolute; border-radius: 16px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .62), 0 0 0 2px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: left .45s cubic-bezier(.2, .8, .2, 1), top .45s cubic-bezier(.2, .8, .2, 1), width .45s cubic-bezier(.2, .8, .2, 1), height .45s cubic-bezier(.2, .8, .2, 1), opacity .25s;
+}
+.tour-spot.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .62); }
+.tour-card {
+  position: absolute; width: min(360px, calc(100vw - 32px)); box-sizing: border-box; padding: 22px 22px 16px;
+  border-radius: 20px; background: var(--panel); border: 1px solid var(--line-2); box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+  transition: left .45s cubic-bezier(.2, .8, .2, 1), top .45s cubic-bezier(.2, .8, .2, 1);
+}
+@media (prefers-reduced-motion: reduce) { .tour-spot, .tour-card { transition: none; } }
+.tour-count { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--text-3); text-transform: uppercase; }
+.tour-card h3 { margin: 8px 0 8px; font-size: 18px; font-weight: 700; line-height: 1.25; }
+.tour-card p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+.tour-card .tour-note { margin-top: 10px; font-size: 12.5px; color: var(--text-3); }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.tour-nav { display: inline-flex; gap: 8px; }
+.tour-card button { font: inherit; font-size: 13.5px; border-radius: 11px; cursor: pointer; padding: 8px 14px; }
+.tour-skip { border: 0; background: transparent; color: var(--text-3); padding-left: 0 !important; }
+.tour-skip:hover { color: var(--text); }
+.tour-back { border: 1px solid var(--line-2); background: transparent; color: var(--text); }
+.tour-next { border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 650 !important; }
+.tour-next:focus-visible, .tour-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The modes, in order and in their own colours: the same chip the composer wears. */
+.tour-modes { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.tour-modes li { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 10px; align-items: start; }
+.tour-mode { display: inline-flex; align-items: center; gap: 5px; justify-self: start; padding: 3px 8px; border-radius: 999px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; white-space: nowrap; }
+.tour-mode b { font-weight: 700; }
+.tour-mode.m0 { background: var(--mode-0); color: var(--mode-0-ink); }
+.tour-mode.m1 { background: var(--mode-1); color: var(--mode-1-ink); }
+.tour-mode.m2 { background: var(--mode-2); color: var(--mode-2-ink); }
+.tour-mode.m3 { background: var(--mode-3); color: var(--mode-3-ink); }
+.tour-mode.m4 { background: var(--mode-4); color: var(--mode-4-ink); }
+.tour-modes .what { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.tour-modes li.start .what { color: var(--text); }
+
+/* First touch: a card under a button that has never been pressed, saying what it opens. */
+.hint-card {
+  position: fixed; z-index: 2147483000; width: min(320px, calc(100vw - 24px)); box-sizing: border-box; padding: 16px 18px 14px;
+  border-radius: 16px; background: var(--panel); color: var(--text); border: 1px solid var(--line-2);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .4); animation: wn-in .3s cubic-bezier(.2, .8, .2, 1);
+}
+.hint-card.beside::before { content: none; }
+.hint-card::before {
+  content: ''; position: absolute; top: -7px; left: calc(var(--arrow, 24px) - 6px); width: 12px; height: 12px;
+  background: var(--panel); border-left: 1px solid var(--line-2); border-top: 1px solid var(--line-2); transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) { .hint-card { animation: none; } }
+.hint-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+.hint-card p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+.hint-ok { margin-top: 12px; border: 0; border-radius: 10px; padding: 7px 14px; background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.hint-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* A link inside a fold's header: text in the header's own voice, a step dimmer, that does
+   something without opening or closing the fold. */
+.mother-section .fold > summary .fold-link { border: 0; background: transparent; padding: 2px 0 2px 10px; margin-left: 2px; border-left: 1px solid var(--ph-faint); font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--ph-dim); cursor: pointer; }
+.mother-section .fold > summary .fold-link:hover, .mother-section .fold > summary .fold-link:focus-visible { color: var(--ph); }
+
+/* /module's ideas: a grid of small cards under the command, each with its mark and the shape of
+   module it would be, in that shape's colour. The command row and the hint keep the full width. */
+.slash-menu.with-starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: min(560px, 92vw); }
+.slash-menu.with-starters > .item:not(.starter), .slash-menu.with-starters > .hint { grid-column: 1 / -1; }
+.slash-menu .item.starter {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr); grid-template-rows: auto auto; gap: 6px 10px; align-items: start;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 35%, transparent);
+  --shape: var(--phosphor);
+}
+.slash-menu .item.starter[aria-selected="true"], .slash-menu .item.starter:hover { border-color: color-mix(in srgb, var(--shape) 55%, transparent); background: color-mix(in srgb, var(--shape) 10%, transparent); }
+.slash-menu .item.starter .starter-icon { grid-row: 1 / 3; width: 18px; height: 18px; margin-top: 2px; color: var(--shape); }
+.slash-menu .item.starter .idea { font-size: 12.5px; line-height: 1.4; color: var(--text); text-align: left; }
+.slash-menu .item.starter .shape { justify-self: start; font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; color: var(--shape); border: 1px solid color-mix(in srgb, var(--shape) 45%, transparent); }
+.slash-menu .item.starter:has(.shape.connector) { --shape: var(--module-electric); }
+.slash-menu .item.starter:has(.shape.sends) { --shape: var(--mode-4); }
+.slash-menu .item.starter:has(.shape.card) { --shape: var(--mode-2); }
+:root[data-scheme="light"] .slash-menu .item.starter:has(.shape.command) { --shape: #178f0c; }
+:root[data-scheme="light"] .slash-menu .item.starter:has(.shape.sends) { --shape: #1f6f9e; }
+:root[data-scheme="light"] .slash-menu .item.starter:has(.shape.card) { --shape: #9a6400; }
+@media (max-width: 560px) { .slash-menu.with-starters { grid-template-columns: minmax(0, 1fr); } }

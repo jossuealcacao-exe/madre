@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { defineModule, matchRoute } from '../src/modules/sdk.mjs';
-import { MODULES, moduleById, describeModules, findModuleRoute } from '../src/modules/index.mjs';
+import { MODULES, moduleById, describeModules, findModuleRoute, LAB_MODULES, BUILTIN_IDS } from '../src/modules/index.mjs';
 import { EXTENSIONS, extensionById, listExtensions } from '../src/extensions.mjs';
 import { ashInstruction, validateAshReply } from '../src/modules/ash-policy.mjs';
 
@@ -49,8 +49,12 @@ test('sdk: a guarded switch refuses without confirm, an installer has no switch,
   assert.equal(matchRoute(routes, 'DELETE', '/api/r'), null);
 });
 
-test('registry: nine modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
-  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'ripley', 'ollama', 'playwright', 'correo']);
+test('registry: eight modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
+  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'ripley', 'ollama', 'playwright']);
+  // CORREO is in the lab: built, not offered. Out of MODULES unless PULSE_LABS asks for it, and
+  // its id still reserved so nobody's own module can take it.
+  assert.deepEqual(LAB_MODULES.map((module) => module.id), ['correo']);
+  assert.ok(BUILTIN_IDS.has('correo'), 'a module in the lab gave up its id');
   assert.equal(EXTENSIONS, MODULES);
   assert.equal(extensionById('ahp'), moduleById('ahp'));
   assert.equal(typeof moduleById('ahp').installCommand, 'function');
@@ -73,7 +77,7 @@ test('registry: nine modules in MODULES order, the compat layer answers with the
   assert.equal(byId.ahp.kind, 'installer');
   // describeModules with a fuller ctx is what the server uses.
   const { ctx } = fakeCtx({ modules: {} });
-  assert.equal((await describeModules(ctx)).length, 9);
+  assert.equal((await describeModules(ctx)).length, 8);
 });
 
 test('registry: the Ash switch needs no confirming, because nothing it does is lossy', async () => {

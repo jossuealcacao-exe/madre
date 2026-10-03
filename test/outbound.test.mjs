@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OutboundLog, outboundView, classify, lineFor, DESTINATIONS, KEEP } from '../src/outbound.mjs';
 import { createPulseServer } from '../src/server.mjs';
-import { MODULES } from '../src/modules/index.mjs';
+import { MODULES, LAB_MODULES } from '../src/modules/index.mjs';
 
 const read = (file) => readFile(join(import.meta.dirname, '..', 'public', file), 'utf8');
 
@@ -57,7 +57,8 @@ test('outbound: every declaration answers for itself, and no address hides from 
   ]);
   // A module declares its own destinations rather than editing MADRE's list, and those count:
   // what the guard forbids is an address nobody answered for, not an address MADRE did not write.
-  const declared = new Set([...DESTINATIONS, ...MODULES.flatMap((module) => module.reaches ?? [])].map((one) => one.host).filter(Boolean));
+  // A module in the lab is still source in this package, so it answers for its hosts like any other.
+  const declared = new Set([...DESTINATIONS, ...[...MODULES, ...LAB_MODULES].flatMap((module) => module.reaches ?? [])].map((one) => one.host).filter(Boolean));
   const dir = join(import.meta.dirname, '..', 'src');
   const files = [];
   const walk = async (at) => {
@@ -79,7 +80,7 @@ test('outbound: every declaration answers for itself, and no address hides from 
   // A connector's host never appears as a URL literal — it arrives as a declaration — so the
   // textual scan above cannot vouch for it. What can: every module that reaches anywhere answers
   // the same four questions MADRE's own list does, in the same words.
-  const reaching = MODULES.filter((module) => module.reaches?.length);
+  const reaching = [...MODULES, ...LAB_MODULES].filter((module) => module.reaches?.length);
   assert.ok(reaching.length, 'no module declares a destination, so this guards nothing');
   for (const module of reaching) {
     for (const one of module.reaches) {

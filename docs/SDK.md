@@ -222,8 +222,10 @@ Léela antes de escribir nada: ahorra descubrir a la mitad que el servicio exige
 anual de seguridad para dejarte pasar.
 
 El diseño entero de los conectores está en
-[`CONECTORES.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/CONECTORES.md), en el repositorio. El primero que existe —CORREO, que manda correo por SMTP
-sin una sola dependencia— es `src/modules/correo.mjs` y se lee en diez minutos.
+[`CONECTORES.md`](https://github.com/jossuealcacao-exe/madre/blob/main/docs/CONECTORES.md), en el repositorio. Un conector completo para leer de principio
+a fin —CORREO, que manda correo por SMTP sin una sola dependencia— está en
+`src/modules/correo.mjs` y se lee en diez minutos. Todavía no aparece en MÓDULOS: lo estamos
+terminando, y mientras tanto solo se activa a propósito con `PULSE_LABS=correo`.
 
 ## Publicarlo
 

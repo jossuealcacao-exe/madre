@@ -12,7 +12,8 @@ async function nostromoRanking() {
     const start = source.indexOf(`function ${name}(`);
     assert.notEqual(start, -1, `${name} is gone from public/app.js`);
     let depth = 0;
-    for (let i = source.indexOf('{', start); i < source.length; i += 1) {
+    // The body starts after the signature: a parameter list may hold braces of its own.
+    for (let i = source.indexOf(') {', start) + 2; i < source.length; i += 1) {
       if (source[i] === '{') depth += 1;
       else if (source[i] === '}' && (depth -= 1) === 0) return source.slice(start, i + 1);
     }
@@ -82,7 +83,8 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     const start = source.indexOf(`function ${name}(`);
     assert.notEqual(start, -1, `${name} is gone from public/app.js`);
     let depth = 0;
-    for (let i = source.indexOf('{', start); i < source.length; i += 1) {
+    // The body starts after the signature: a parameter list may hold braces of its own.
+    for (let i = source.indexOf(') {', start) + 2; i < source.length; i += 1) {
       if (source[i] === '{') depth += 1;
       else if (source[i] === '}' && (depth -= 1) === 0) return source.slice(start, i + 1);
     }
@@ -147,7 +149,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('CORE_FLOWS')} ${block('COLLAPSED')} ${block('VOID_DUST')}
     ${block('NEBULA_CAP')} ${block('NEBULA_CLOUDS')} ${fn('drawNebula')} ${block('PULSE_SCALE')}
     ${block('GRAIN_ROWS')} ${block('GRAIN_PIECES')} let grainCanvas; ${fn('granuleTexture')}
-    ${block('dwarfSkins')} ${fn('dwarfTexture')}
+    ${block('dwarfSkins')} ${block('SKIN_COLUMNS')} ${block('SKIN_EDGES')} ${fn('dwarfTexture')} ${fn('dwarfSprite')} ${fn('magmaFace')} ${block('COLD_GLOW')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawNostromo')}
@@ -416,7 +418,7 @@ test('nostromo: every memory is a star struck from its own middle, and each brea
     checked += 1;
   }
   assert.equal(checked, room.nodes.length);
-  // And nothing is struck off-centre on a body at all.
+  // And nothing is struck off-centre on a body at all: a dwarf makes its own light.
   for (const node of room.nodes) {
     for (const call of calls) {
       if (call.name !== 'createRadialGradient') continue;
@@ -842,7 +844,9 @@ test('nostromo: an aberration is a void in a field of dust, and nothing about it
   }
 
   // It never wears the boiling surface a star does, and it leaves blending as it found it.
-  assert.equal(calls.some((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (hole.x - hole.r * 1.06)) < 4), false, 'an aberration was given a burning surface');
+  // A face is laid on in columns across a star now, so a neighbour's column can share the
+  // hole's left edge; what would be wrong is one laid on the hole itself, at its height too.
+  assert.equal(calls.some((c) => c.name === 'drawImage' && Math.abs(c.args[5] - (hole.x - hole.r * 1.06)) < 4 && Math.abs(c.args[6] - (hole.y - hole.r * 1.06)) < 4), false, 'an aberration was given a burning surface');
   const composites = calls.filter((c) => c.name === 'set:globalCompositeOperation').map((c) => c.args[0]);
   assert.ok(composites.includes('lighter'));
   assert.equal(composites.at(-1), 'source-over');
@@ -889,7 +893,8 @@ test('nostromo: the storm happens where it can be seen, and is seen as the cloud
   const take = (name) => {
     const start = source.indexOf(`function ${name}(`);
     let depth = 0;
-    for (let i = source.indexOf('{', start); i < source.length; i += 1) {
+    // The body starts after the signature: a parameter list may hold braces of its own.
+    for (let i = source.indexOf(') {', start) + 2; i < source.length; i += 1) {
       if (source[i] === '{') depth += 1;
       else if (source[i] === '}' && (depth -= 1) === 0) return source.slice(start, i + 1);
     }

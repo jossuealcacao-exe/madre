@@ -21,8 +21,14 @@ import playwright from './playwright.mjs';
 import correo from './correo.mjs';
 import { defineModule, matchRoute } from './sdk.mjs';
 
-export const MODULES = [ahp, imageStudio, gitPulse, ash, choices, ripley, ollama, playwright, correo];
-export const BUILTIN_IDS = new Set(MODULES.map((module) => module.id));
+// The lab: modules that are built and tested but not offered yet, because they are not finished
+// to the standard of the rest. They stay out of MODULES and out of every prompt unless someone
+// asks for them by name in PULSE_LABS (a comma-separated list of ids). Their ids stay reserved,
+// so a module of somebody's own cannot take one and collide with it the day it comes out.
+export const LAB_MODULES = [correo];
+const labsAsked = new Set(String(process.env.PULSE_LABS ?? '').split(',').map((id) => id.trim()).filter(Boolean));
+export const MODULES = [ahp, imageStudio, gitPulse, ash, choices, ripley, ollama, playwright, ...LAB_MODULES.filter((module) => labsAsked.has(module.id))];
+export const BUILTIN_IDS = new Set([...MODULES, ...LAB_MODULES].map((module) => module.id));
 export const loadFailures = [];   // { file, error } for MODULES to show
 export const moduleFolders = ({ stateRoot, projectRoot }) => ({ user: join(stateRoot, 'modules'), project: join(projectRoot, '.madre', 'modules') });
 // Where the SDK guide and the example live in this installation, for agents who build modules.

@@ -37,6 +37,10 @@ if (!openHeader) fail(`CHANGELOG.md has no "## ${version} · Sin publicar" secti
 // A version that says nothing is a version nobody can decide to take.
 const openBody = changelog.slice(changelog.indexOf(openHeader[0]) + openHeader[0].length).split(/^## /m)[0];
 if (!openBody.trim()) fail(`The ${version} section is empty. A release note is how someone decides whether to update.`);
+// A minor version opens on what it brings, once, for everyone who updates (src/whats-new.mjs).
+// A patch may go out without a sheet; a minor cannot, or the people it is for never hear of it.
+const { notesFor } = await import('../src/whats-new.mjs');
+if (/\.0$/.test(version) && !notesFor(version)) fail(`${version} has no "what's new" in src/whats-new.mjs. Write the few things this version brings, and where they are, before closing it.`);
 
 console.log(`\nMU/TH/UR › closing ${pkg.name}@${version} · ${today}${dryRun ? ' · DRY RUN' : ''}\n`);
 run('npm', ['test']);

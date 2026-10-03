@@ -6,24 +6,67 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.7.0 · Sin publicar
 
+Esta versión es sobre la memoria de la sala: ahora la ves, la recorres y te dice cómo está. NOSTROMO pasa a tres dimensiones y cada memoria es una estrella que cuenta su propia historia; MEMORIA se vuelve un tablero; y quien llega por primera vez encuentra un recorrido sobre la sala misma. También trae ideas listas para crear tus propios módulos, un botón para detener una sola respuesta y una protección nueva frente a páginas web ajenas. Gracias por usar MADRE y por cada reporte que la hace mejor.
+
+### Después de actualizar, MADRE te cuenta qué hay de nuevo
+
+- La primera vez que abres la sala tras una actualización aparece una hoja con lo principal de la versión: cada novedad dicha en una frase, **dónde está**, y un enlace a todos los cambios en madre.run. Se cierra con **Continuar** y no vuelve a salir para esa versión.
+- Se recuerda por persona y no por pestaña: si abres la sala en otro puerto, ya la viste. Una instalación nueva no la ve nunca; para eso está el recorrido de bienvenida, que espera a que cierres la hoja si los dos tocan el mismo día.
+- No sale nada a la red: el enlace es la misma página de cambios que ya usaba el canal de releases.
+- Cada versión menor trae la suya, escrita a mano en los dos idiomas de la sala. Una versión menor no se puede cerrar sin ella.
+- Para volver a verla: **ACERCA DE ESTA VERSIÓN**, junto al número en el canal de releases de MU/TH/UR.
+
+### El recorrido de bienvenida se hace sobre la sala
+
+- La primera vez que alguien entra, el recorrido ya no es texto en una ventana: recorre **la sala misma**. Cuatro paradas, cada una ilumina la parte de la pantalla de la que habla y deja el resto en penumbra, con una tarjeta al lado que la explica en dos o tres frases.
+- **Tu tripulación, una sola caja** (la fila de agentes y el campo de texto) · **Los modos** (el selector de modo del mensaje), los cinco en orden y cada uno en su color · **MU/TH/UR, la consola** (conexiones, memoria, NOSTROMO, diagnóstico) · **MÓDULOS** (poderes opcionales).
+- Y la primera vez que se presiona el **navegador**, los **archivos del proyecto** o las **conversaciones**, el panel se abre como siempre y una tarjeta junto al botón dice para qué sirve. Una vez cada uno.
+- Se vuelve a abrir desde **?** en MU/TH/UR. Si un área no está a la vista, la tarjeta la explica en el centro.
+
+### NOSTROMO en tres dimensiones
+
+- El archivo es un cerebro de verdad: el perfil de antes visto de lado, y de frente dos hemisferios separados por la cisura. **Arrastra para girarlo**; **Shift + arrastra** para mover la cámara; **RECENTRAR** vuelve a la vista de lado.
+- Lo cercano se ve más grande, lo que queda detrás de MOTHER se dibuja detrás de ella y no se puede tocar a través de ella, y de dos memorias encimadas gana la de enfrente.
+- Las memorias se reparten parejo por toda la superficie, cada clase en una franja propia de adelante hacia atrás, como lóbulos.
+
+### Cada memoria es una estrella enana, y su superficie dice cómo está
+
+- Una enana tiene luz propia, así que no hay lado oscuro: brilla más en el centro y se apaga hacia el borde —más en azul que en rojo, así que el borde es más cálido—, su superficie hierve en gránulos, y la rodea un resplandor que nace en el borde.
+- **El brillo** sigue diciendo cuánto la usa la sala y lo que está recibiendo ahora.
+- **La superficie** dice en qué estado está: limpia y con fáculas brillantes si la confirmaste; con las manchas propias de su clase si nadie la ha juzgado; muy manchada si resultó falsa; la peor de todas si salió de circulación. Una memoria que la sala nunca ha usado se está **enfriando**: su granulación casi no se mueve, da menos luz y su centro deja de ser blanco.
+- Cada clase tiene su carácter: la amarilla es un sol con gránulos y manchas, la blanca es lisa e intensísima.
+
+### MOTHER es magma
+
+- El centro es una costra de roca casi negra partida en placas, con grietas al rojo blanco entre ellas y pozas donde la lava se abrió paso. La costra gira y la lava fluye por debajo a otro ritmo, así que la superficie se mueve en lugar de estar pintada.
+- De vez en cuando algo estalla dentro: un destello, un núcleo blanco y una onda de fuego que corre por la costra. Más seguido cuando MOTHER está alarmada; nunca con «reducir movimiento».
+
+### Elegir una memoria la trae al frente
+
+- Al hacer clic en una memoria, el archivo gira hasta ponerla de frente, la cámara la centra en el espacio que deja libre la tarjeta y todo lo demás se oscurece. Quedan encendidos ella, sus enlaces y una **mira verde**: corchetes que se cierran sobre el blanco, un anillo que gira y la marca **BLANCO FIJADO**.
+- Al pasar el cursor, la mira solo apunta. Al cerrar la tarjeta, la escena vuelve y el archivo se queda girado donde lo dejaste.
+
+### Olvidar es una implosión
+
+- Una memoria o una aberración olvidada no se apaga: el universo se la traga. Se hincha una última vez, se abre un horizonte con la luz curvándose en su borde, lo que la formaba cae en espiral, desaparece con un destello y una onda que se pierde en la oscuridad.
+- Sus enlaces, y el cable que la unía a MOTHER, se deshacen en polvo desde su extremo hacia afuera, y el polvo se dispersa y se apaga.
+
+### MEMORIA es un tablero
+
+- Cifras del archivo arriba —intercambios, memorias, turnos que recordaron, en espera, madurez— con lo que pasó esta semana contra la anterior.
+- La actividad de los últimos 30 días día por día, lo que hace al archivo (las seis lecturas de madurez), de qué está hecho por clase, archivista y zona, cuánto llega por búsqueda o por asociación, y las tres pruebas con su barra hasta donde pasan.
+- Debajo, en pliegues propios, **ARCHIVISTA Y RECALL** y **DATASET Y ENTRENAMIENTO**. El tablero se lee sin la designación del proyecto: son conteos, y ningún texto de una memoria sale por ahí.
+
 ### Una página de otro sitio ya no puede meter un módulo en la sala
 
 - La sala escucha en `127.0.0.1`, y eso deja fuera a las otras computadoras pero no a las otras páginas: cualquier sitio abierto en tu navegador podía mandar una petición a `127.0.0.1:4317`, y un módulo subido es código que MADRE corre con tus permisos. Bastaba con visitar la página equivocada mientras la sala estaba abierta.
 - Ahora, antes de cualquier ruta, la sala revisa dos cosas. Que la llamen por el nombre de esta computadora (`127.0.0.1` o `localhost`): una página que apunta su propio dominio a `127.0.0.1` sigue mandando su dominio y se queda en la puerta, también para leer. Y que lo que cambia algo venga de la propia sala: el navegador dice quién pregunta, y una página ajena recibe un 403.
-- La terminal, el `curl` de un agente y el propio CLI de MADRE no mandan origen y siguen entrando igual. Una prueba levanta la sala y comprueba que la subida desde otro sitio no deja nada en la carpeta de módulos.
+- La terminal, el `curl` de un agente y el propio CLI de MADRE no mandan origen y siguen entrando igual.
 
 ### AHP+ se instala en 1.4.2
 
 - El módulo AHP+ instala ahora `@jossuealcala/ahp-plus@1.4.2`. La 1.4.1 confundía con una llave nombres de archivo como `work-detail-desktop-scrolled.png` y bloqueaba `ahp project verify` sin que hubiera ningún secreto.
 - Un proyecto que ya tiene la 1.4.1 ve el aviso en su tarjeta de MODULES; se actualiza con `npm install -D --save-exact @jossuealcala/ahp-plus@1.4.2` dentro del proyecto.
-
-### MADRE manda correo, y abre la puerta a conectores de verdad
-
-- **CORREO**, el primer conector: un agente manda un correo desde **tu** cuenta, por SMTP sobre TLS, con **tu** contraseña de aplicación. Cero dependencias — 122 líneas de cliente SMTP, 189 de servidor MCP, 107 de módulo. Gmail con contraseña de aplicación, puerto 465, cifrado desde el primer byte.
-- **Mandar vive en `#4` AIRLOCK y en ningún peldaño por debajo.** No es que «no funcione»: por debajo de `#4` al modelo ni siquiera se le cuenta que la herramienta existe. Lo impone el núcleo, no la buena voluntad del módulo.
-- **Una lista de permitidos**, opcional: direcciones o `@dominios` a los que un agente puede escribir. Se comprueba en el servidor y no en el prompt, porque un prompt es una sugerencia. Vacía significa cualquiera, a propósito.
-- Lo que se rechaza **antes** de abrir el socket: una dirección con salto de línea —así es como un mensaje adquiere destinatarios que nadie escribió—, un asunto vacío, un cuerpo vacío.
-- Lo que **no** hace, dicho aquí para que no se descubra usándolo: adjuntos, HTML, CC/BCC, colas, reintentos. Texto plano o nada.
 
 ### Una bodega para las llaves de los conectores
 
@@ -34,7 +77,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ### El SDK, cerrado y con qué copiar
 
-- **El contrato completo son 36 campos**, todos documentados. Una prueba compara la guía contra el código en las dos direcciones: si alguna vez se separan, es un fallo. Antes había once campos que el SDK aceptaba y la guía no mencionaba.
+- **El contrato completo son 36 campos**, todos documentados, y la guía no puede quedarse atrás del código: si alguna vez se separan, lo detectamos antes de publicar. Antes había once campos que el SDK aceptaba y la guía no mencionaba.
 - **Un ejemplo de conector que funciona tal cual** (`docs/sdk/connector-module.mjs`): manda un Telegram por tu propio bot. Enseña la forma que no se adivina — **un solo archivo que es la ficha cuando MADRE lo importa y el servidor MCP cuando MADRE lo ejecuta**.
 - Tres campos declarados que cualquier conector hereda: `secrets` (MADRE dibuja el campo), `reaches` (el registro de salidas responde por ti) y `sends` (la sala retira esas herramientas por debajo de `#4`). Nada de eso se programa: se declara.
 - **«¿Se puede conectar con X?»** se contesta ahora dentro de la guía, en tres peldaños. El límite no es MADRE: es si ese servicio te deja conseguir tu propia llave en minutos y revocarla sola. Casi todo lo útil cae del lado fácil — GitHub, Linear, Notion, Jira, Slack, Telegram, Stripe, Shopify, Odoo, cualquier base de datos. Donde hay muro es donde el proveedor exige revisar tu app: Gmail en lectura, Meta, banca.
@@ -43,7 +86,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ### Pedir un módulo es más fácil que encontrarlo
 
 - `/modules`, `/modulo` o cualquier cosa que empiece por el nombre del comando **ahora encuentra `/module`**. Antes el menú se cerraba y no mostraba nada, que se lee como «no existe» en vez de «casi».
-- Y una vez ahí, el menú ofrece **cuatro instrucciones para editar**, cada una de una forma distinta de módulo: un comando, un conector, un conector que manda, una ficha propia. `/module` solo no hace nada hasta que dices qué debe hacer, y esa era la forma más común de que todo se quedara en nada.
+- Y una vez ahí, el menú ofrece **ocho ideas para editar**, dos de cada forma que puede tomar un módulo: un comando, un conector, un conector que manda y una ficha propia. Cada idea lleva su ícono y una etiqueta del color de su forma. `/module` solo no hace nada hasta que dices qué debe hacer, y esa era la forma más común de que todo se quedara en nada.
 - La tarjeta **DESARROLLA PARA MADRE** dice ahora qué es un módulo, que puedes simplemente pedirlo, y que conectar con algo de fuera casi siempre se puede. Trae un botón **PÍDELE UNO** que te deja en la caja de texto con `/module` escrito.
 
 
@@ -61,22 +104,24 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 - Era un pliegue dentro de CONEXIONES, que es donde vas a conectar y firmar un agente — otro mandado completamente distinto. Qué guarda el archivo, quién lo destila y qué tan bien está contestando es un tema propio.
 - Ahora tiene su botón en la barra de MU/TH/UR, junto a NOSTROMO, y el panel entero en lugar de un pliegue dentro del panel de otro. Los dos destinos se excluyen: uno a la vez.
+- El **canal de releases** vive solo en la pantalla principal de MU/TH/UR, no encima de CONEXIONES ni de MEMORIA.
 
 ### ABRIR TODO deja de ser un destino
 
 - Vivía en la barra, entre CONEXIONES y NOSTROMO, que son sitios a los que se va. Eso no es un sitio: es una acción sobre el lienzo de abajo.
-- Baja a donde actúa, centrado sobre lo que mueve, con forma propia y una flecha de 8 bits que apunta hacia donde va a mover las cosas.
+- Baja a donde actúa: un texto tenue a la derecha, con la misma voz que el «▸ ABRIR» de cada pliegue, sobre la columna que mueve. Sin marco, para no competir con los botones de la barra.
+- Mueve solo los pliegues de la pantalla que estás viendo.
 
 ### NOSTROMO toma forma de cerebro
 
 - El archivo deja de ser una bola. Es un cerebro visto de lado: lóbulo frontal al frente, base plana, cerebelo abajo atrás, temporal abajo adelante.
-- Lo que lo hizo posible fue **dónde** poner la forma. La fuerza del anillo jalaba cada memoria a un círculo, así que cualquier forma dada al colocar se deshacía en un segundo de física. Ahora el objetivo de la fuerza **es** el contorno, y la forma es en lo que el sistema se asienta en vez de de lo que se aleja.
-- La rotación 3D del universo no entra todavía: el mundo se dibuja con una sola transformación 2D de lienzo, que no puede girar cada punto según su profundidad. Va aparte.
+- La forma se mantiene mientras el archivo se mueve: las memorias se acomodan sobre el contorno del cerebro en lugar de volver a formar una bola.
+- Y ahora además gira en tres dimensiones: ver «NOSTROMO en tres dimensiones», arriba.
 
 ### Se puede apadrinar el proyecto
 
 - Botón **Sponsor** en el repositorio, `npm fund` lo lista, y una línea al final del README. GitHub no se lleva comisión.
-- En la sala, una palabra en la esquina junto a la versión: `MADRE 0.6.0 · © 2026 Jossue Alcalá · APOYAR`. No interrumpe nunca, no aparece en el hilo y no sabe si hiciste clic.
+- En la sala, una palabra en la esquina junto a la versión: `MADRE 0.7.0 · © 2026 Jossue Alcalá · APOYAR`. No interrumpe nunca, no aparece en el hilo y no sabe si hiciste clic.
 - **Es un enlace, no una petición de red.** La sala no le pide nada a nadie por esto, así que no hay dirección que declarar en `outbound.mjs` ni nada que aparezca en el registro de salidas. El día que esto quisiera *traer* algo —un contador de patrocinadores, una insignia— dejaría de ser un enlace y tendría que declararse como cualquier otra dirección, con su interruptor.
 - MADRE es gratis y seguirá siéndolo. Nada del producto cambia según lo que hagas con ese enlace.
 
@@ -106,6 +151,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Cada lectura es una tarjeta con su borde y su icono, y las seis cifras de arriba son seis tarjetas. Lo que estaba saturado era que todo pesaba igual y nada decía dónde terminaba una lectura.
 
 ### Arreglos
+
+- **Los avisos entre mensajes se descentraban.** El título de cada aviso —«claro», «agotada»— conservaba el punto que lo unía al resto de la frase cuando iba en el mismo renglón, y sobre un renglón propio ese punto colgaba del final y lo sacaba del centro. Y cuando un aviso empezaba con palabras sueltas, la primera palabra en negritas se tomaba por título: «local · @madre · qwen» salía en tres renglones y la memoria olvidada partía su frase en tres.
+- **La clase de una memoria olvidada salía en inglés** —«ABERRATION»— en una sala en español, y la frase («se le olvidó un…») no concordaba con clases femeninas. Ahora dice «memoria · olvidada por la humana · ABERRACIÓN».
+
+- **Mover el ratón sobre NOSTROMO mientras abría lanzaba un error.** El mapa recibe el ratón desde que aparece y su cámara se crea un instante después; hasta entonces, apuntar, hacer zoom o RECENTRAR buscaban una cámara que aún no existía. Ahora esperan a que el mapa arranque.
 
 - **#12 · Gemini intentaba delegar en un subagente y el turno moría a los 180 s.** La política no le permite `invoke_agent`, y hace bien: un subagente contesta fuera del arriendo, así que nada de lo que escribiera quedaría comprobado, mostrado ni reversible. Pero el CLI no trata la negativa como una respuesta: espera, y el humano espera tres minutos para recibir un error. Ahora se le dice de antemano que haga el trabajo él mismo, y si aun así lo intenta, la sala corta el turno en cuanto lo ve y explica por qué. **Solo ante ese bloqueo**, no ante cualquiera: una escritura denegada deja al CLI trabajando y acaba contestando, y cortar ahí mataría turnos que iban a terminar.
 - **Detener una respuesta esperaba a que de verdad terminara.** Abortar solo pide; el turno todavía tiene que matar su proceso y registrar cómo acabó. Devolver antes dejaba al que llama compitiendo con una escritura que aún no había ocurrido — el freno maestro ya esperaba así.

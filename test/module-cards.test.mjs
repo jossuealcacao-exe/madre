@@ -147,7 +147,8 @@ test('a fold inside a card is not one of MU/TH/UR\'s sections, and carries its o
   // Fourteen folds in another dialog must not answer to the panel's EXPAND ALL.
   assert.ok(fold.includes("el('details', 'card-fold')"), 'a card fold is built as a panel section');
   assert.ok(!fold.includes("el('details', 'fold')"));
-  assert.match(app, /function everyFold\(\) \{ return \[\.\.\.document\.querySelectorAll\('\.mother-section \.fold'\)\]/);
+  // Only the sections on show count, and only their own folds.
+  assert.match(app, /function everyFold\(\) \{ return \[\.\.\.document\.querySelectorAll\('\.mother-section:not\(\[hidden\]\) \.fold'\)\]/);
 
   // It says what clicking it will do, and it remembers being left open, like every other fold.
   assert.match(fold, /caret\.textContent = box\.open \? t\('▾ COLLAPSE'\) : t\('▸ EXPAND'\)/);

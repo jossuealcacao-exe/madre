@@ -474,6 +474,28 @@ export class RoomMemory {
   }
   memoryCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM memories').get().n; }
 
+  // What the archive did, day by day, and what it is made of, as counts and nothing else: no
+  // text leaves through here, so the MEMORY dashboard can read it without the designation.
+  // Days are this machine's calendar days, which is what a person reading a chart means by one.
+  activity({ days = 30 } = {}) {
+    if (!this.#db) return null;
+    const since = `-${Math.max(1, Math.floor(days)) - 1} days`;
+    const perDay = (sql) => this.#db.prepare(sql).all(since).map((row) => [row.day, row.n]);
+    const grouped = (column) => Object.fromEntries(this.#db.prepare(`SELECT ${column} AS k, COUNT(*) AS n FROM memories GROUP BY ${column}`).all().map((row) => [row.k ?? HOLD, row.n]));
+    return {
+      entries: perDay("SELECT date(timestamp, 'localtime') AS day, COUNT(*) AS n FROM entries WHERE timestamp IS NOT NULL AND date(timestamp, 'localtime') >= date('now', 'localtime', ?) GROUP BY day"),
+      memories: perDay("SELECT date(created, 'localtime') AS day, COUNT(*) AS n FROM memories WHERE date(created, 'localtime') >= date('now', 'localtime', ?) GROUP BY day"),
+      // A turn that reached into the archive, once per turn however many notes it carried.
+      recalls: perDay("SELECT day, COUNT(*) AS n FROM (SELECT date(MIN(at), 'localtime') AS day FROM recalls GROUP BY batch) WHERE day >= date('now', 'localtime', ?) GROUP BY day"),
+      kinds: grouped('kind'),
+      agents: grouped('agent'),
+      zones: grouped('zone'),
+      via: Object.fromEntries(this.#db.prepare('SELECT via AS k, COUNT(*) AS n FROM recalls GROUP BY via').all().map((row) => [row.k, row.n])),
+      turns: this.#db.prepare('SELECT COUNT(DISTINCT batch) AS n FROM recalls').get().n,
+      reached: this.#db.prepare('SELECT COUNT(*) AS n FROM memories WHERE recalled > 0').get().n,
+    };
+  }
+
   // The next batch to distil: the NEWEST entries nobody has distilled, cut at a
   // character budget so one run stays cheap, returned in ledger order. What was
   // just said becomes memory first; an old backlog drains behind it, batch by

@@ -13,7 +13,10 @@ import { REACHES, TOOL, allowed, handleRequest, parseAllow, reachesFor, send } f
 import correo from '../src/modules/correo.mjs';
 import { clearDeclaredDestinations, classify, declareDestinations } from '../src/outbound.mjs';
 import { writeSecret } from '../src/vault.mjs';
-import { toolsForTurn } from '../src/modules/index.mjs';
+
+// CORREO lives in the lab until it is finished: the registry offers it only when asked by name.
+process.env.PULSE_LABS = 'correo';
+const { toolsForTurn } = await import('../src/modules/index.mjs');
 
 // A socket that speaks SMTP back. `script` is what the server says, in order; an entry may be an
 // ARRAY, which is the same reply arriving in several chunks — which is what a real socket does and
