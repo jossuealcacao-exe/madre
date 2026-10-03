@@ -6,6 +6,17 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 0.7.0 · Sin publicar
 
+### Una página de otro sitio ya no puede meter un módulo en la sala
+
+- La sala escucha en `127.0.0.1`, y eso deja fuera a las otras computadoras pero no a las otras páginas: cualquier sitio abierto en tu navegador podía mandar una petición a `127.0.0.1:4317`, y un módulo subido es código que MADRE corre con tus permisos. Bastaba con visitar la página equivocada mientras la sala estaba abierta.
+- Ahora, antes de cualquier ruta, la sala revisa dos cosas. Que la llamen por el nombre de esta computadora (`127.0.0.1` o `localhost`): una página que apunta su propio dominio a `127.0.0.1` sigue mandando su dominio y se queda en la puerta, también para leer. Y que lo que cambia algo venga de la propia sala: el navegador dice quién pregunta, y una página ajena recibe un 403.
+- La terminal, el `curl` de un agente y el propio CLI de MADRE no mandan origen y siguen entrando igual. Una prueba levanta la sala y comprueba que la subida desde otro sitio no deja nada en la carpeta de módulos.
+
+### AHP+ se instala en 1.4.2
+
+- El módulo AHP+ instala ahora `@jossuealcala/ahp-plus@1.4.2`. La 1.4.1 confundía con una llave nombres de archivo como `work-detail-desktop-scrolled.png` y bloqueaba `ahp project verify` sin que hubiera ningún secreto.
+- Un proyecto que ya tiene la 1.4.1 ve el aviso en su tarjeta de MODULES; se actualiza con `npm install -D --save-exact @jossuealcala/ahp-plus@1.4.2` dentro del proyecto.
+
 ### MADRE manda correo, y abre la puerta a conectores de verdad
 
 - **CORREO**, el primer conector: un agente manda un correo desde **tu** cuenta, por SMTP sobre TLS, con **tu** contraseña de aplicación. Cero dependencias — 122 líneas de cliente SMTP, 189 de servidor MCP, 107 de módulo. Gmail con contraseña de aplicación, puerto 465, cifrado desde el primer byte.
