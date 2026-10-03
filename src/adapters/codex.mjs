@@ -37,7 +37,9 @@ export function buildCodexArgs({ projectRoot, prompt, model = null, attachments 
     // Image generation is a Codex feature; the human's scope decides per turn.
     ...(lease && (scopes?.imageGen === false || lease.scopes?.imageGen === false) ? ['-c', 'features.image_generation=false'] : []),
     'exec',
-    ...(lease ? ['--skip-git-repo-check'] : []),
+    // Codex refuses to run outside a git repository it has not been told to trust, and a new
+    // project is often a bare folder. The sandbox above is MADRE's to decide, not this check's.
+    '--skip-git-repo-check',
     ...(model ? ['--model', model] : []),
     ...images.flatMap((file) => ['--image', file.path]),
     '--ephemeral',

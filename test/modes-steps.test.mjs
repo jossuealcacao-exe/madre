@@ -180,6 +180,12 @@ test('a failed turn says what happened, and what the CLI printed is context, not
   assert.match(broken.message, /warning: something unrelated/);
   assert.equal(broken.exitCode, 3);
 
+  // The room keeps one line of a failure. A bare `exited with code 1` hid a Codex that refused a
+  // project folder without git; its own last line is what says so, and it has to survive the cut.
+  const refused = await run("console.error('Reading additional input from stdin...'); console.error('Not inside a trusted directory and --skip-git-repo-check was not specified.'); process.exit(1)").then(() => null, (error) => error);
+  const { failureMessage } = await import('../src/room.mjs');
+  assert.equal(failureMessage(refused), 'Codex exited with code 1. Last output: Not inside a trusted directory and --skip-git-repo-check was not specified.');
+
   // And silence stays legible: no stderr means no empty "printed:" section.
   const silent = await run('process.exit(1)').then(() => null, (error) => error);
   assert.equal(silent.message, 'Codex exited with code 1.');
