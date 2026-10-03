@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OutboundLog, outboundView, classify, lineFor, DESTINATIONS, KEEP } from '../src/outbound.mjs';
 import { createPulseServer } from '../src/server.mjs';
+import { MODULES } from '../src/modules/index.mjs';
 
 const read = (file) => readFile(join(import.meta.dirname, '..', 'public', file), 'utf8');
 
@@ -52,8 +53,11 @@ test('outbound: every declaration answers for itself, and no address hides from 
     // room on 0.4.0 and earlier carries it compiled in, so it has to keep answering and it stays
     // written down here rather than quietly disappearing from the record.
     'madre-reports.jossue-alcala-o.workers.dev',
+    'myaccount.google.com',       // where a person makes the app password CORREO asks them for
   ]);
-  const declared = new Set(DESTINATIONS.map((one) => one.host).filter(Boolean));
+  // A module declares its own destinations rather than editing MADRE's list, and those count:
+  // what the guard forbids is an address nobody answered for, not an address MADRE did not write.
+  const declared = new Set([...DESTINATIONS, ...MODULES.flatMap((module) => module.reaches ?? [])].map((one) => one.host).filter(Boolean));
   const dir = join(import.meta.dirname, '..', 'src');
   const files = [];
   const walk = async (at) => {
@@ -65,13 +69,28 @@ test('outbound: every declaration answers for itself, and no address hides from 
   await walk(dir);
   const seen = new Map();
   for (const file of files) {
-    for (const [, host] of (await readFile(file, 'utf8')).matchAll(/https:\/\/([a-z0-9.-]+)/g)) if (!seen.has(host)) seen.set(host, file);
+    for (const [, host] of (await readFile(file, 'utf8')).matchAll(/(?:https|smtps?|imaps?):\/\/([a-z0-9.-]+)/g)) if (!seen.has(host)) seen.set(host, file);
   }
   assert.ok(seen.size >= 10, 'the scan found almost nothing, so it is guarding almost nothing');
   for (const [host, file] of seen) {
     assert.ok(declared.has(host) || SHOWN_AS_LINKS.has(host),
       `${file} names ${host}, which is neither declared in DESTINATIONS nor listed as an address MADRE only shows a person`);
   }
+  // A connector's host never appears as a URL literal — it arrives as a declaration — so the
+  // textual scan above cannot vouch for it. What can: every module that reaches anywhere answers
+  // the same four questions MADRE's own list does, in the same words.
+  const reaching = MODULES.filter((module) => module.reaches?.length);
+  assert.ok(reaching.length, 'no module declares a destination, so this guards nothing');
+  for (const module of reaching) {
+    for (const one of module.reaches) {
+      assert.ok(one.host, `${module.id} declares a destination with no host`);
+      assert.ok(one.what && one.what.length > 30, `${module.id} → ${one.host} does not say what it sends`);
+      assert.ok(one.when && one.when.length > 5, `${module.id} → ${one.host} does not say when`);
+      assert.ok(one.where && one.where.length > 5, `${module.id} → ${one.host} does not say where it is turned off`);
+    }
+  }
+  assert.ok(declared.has('smtp.gmail.com'), 'CORREO reaches a host nothing declares');
+
   // And the four MADRE actually calls are declared, not merely tolerated.
   for (const host of ['registry.npmjs.org', 'api.github.com', 'generativelanguage.googleapis.com', 'api.anthropic.com']) {
     assert.ok(declared.has(host), `${host} is reached by MADRE and not declared`);

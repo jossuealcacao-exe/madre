@@ -2462,6 +2462,17 @@ export const ES = {
   '{name} installed': '{name} instalado',
   '{name} install failed': 'falló la instalación de {name}',
   '{name} could not save {label}.': '{name} no pudo guardar {label}.',
+
+  // CORREO y, en general, la llave de cualquier conector: lo que MADRE guarda en su bodega.
+  'KEYS': 'LLAVES',
+  'paste it here': 'pégala aquí',
+  'kept · {n} characters': 'guardada · {n} caracteres',
+  'FORGET IT': 'OLVIDARLA',
+  'WHERE TO GET IT': 'DÓNDE SACARLA',
+  '{name} could not keep {label}.': '{name} no pudo guardar {label}.',
+  'off · ready': 'apagado · listo',
+  'on · not configured': 'encendido · sin configurar',
+  'only to': 'solo a',
   'It loads in every room on this computer.': 'Se carga en todas las salas de esta computadora.',
   'DISABLE': 'APAGAR',
   'ENABLE': 'ENCENDER',

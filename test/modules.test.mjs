@@ -49,8 +49,8 @@ test('sdk: a guarded switch refuses without confirm, an installer has no switch,
   assert.equal(matchRoute(routes, 'DELETE', '/api/r'), null);
 });
 
-test('registry: eight modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
-  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'ripley', 'ollama', 'playwright']);
+test('registry: nine modules in MODULES order, the compat layer answers with the same objects, and Ollama serves its routes', async () => {
+  assert.deepEqual(MODULES.map((module) => module.id), ['ahp', 'image-studio', 'git-pulse', 'ash', 'choices', 'ripley', 'ollama', 'playwright', 'correo']);
   assert.equal(EXTENSIONS, MODULES);
   assert.equal(extensionById('ahp'), moduleById('ahp'));
   assert.equal(typeof moduleById('ahp').installCommand, 'function');
@@ -73,7 +73,7 @@ test('registry: eight modules in MODULES order, the compat layer answers with th
   assert.equal(byId.ahp.kind, 'installer');
   // describeModules with a fuller ctx is what the server uses.
   const { ctx } = fakeCtx({ modules: {} });
-  assert.equal((await describeModules(ctx)).length, 8);
+  assert.equal((await describeModules(ctx)).length, 9);
 });
 
 test('registry: the Ash switch needs no confirming, because nothing it does is lossy', async () => {

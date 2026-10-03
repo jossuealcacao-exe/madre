@@ -6,9 +6,10 @@ en ningún otro lado.
 
 | | |
 |---|---|
-| Estado | **Fase 1 completa** · la puerta, la bodega y la escalera. Falta el primer conector (D-003) |
+| Estado | **Fase 2 completa** · la puerta, la bodega, la escalera y el primer conector: CORREO manda |
 | Versión objetivo | `0.7.x` |
 | Origen | Lectura de código del 2026-10-02 sobre `main` @ `b021e35` (0.6.1 sin publicar) |
+| Medido | CORREO pesa 418 líneas de código (122 SMTP + 189 servidor + 107 módulo) y 278 de pruebas. Cero dependencias |
 | Regla en vigor | Un conector **declara a dónde llega** o su tráfico sale en el registro como dirección no declarada |
 
 ---
@@ -87,6 +88,41 @@ Lo impone el núcleo en `toolsForTurn`, no cada módulo: una herramienta declara
 se retira de la lista por debajo de `#4`, y el `brief` dice por qué viene corta. Un módulo
 no puede ampliarse su propio permiso olvidándose de declarar.
 
+### CN-005 · El primer conector: CORREO manda correo — **hecho**
+
+Un módulo (`src/modules/correo.mjs`), un servidor MCP (`src/mcp/smtp-server.mjs`) y un cliente
+SMTP de 122 líneas sobre `node:tls` (`src/smtp.mjs`). Sin dependencias. Gmail con contraseña de
+aplicación, puerto 465, TLS desde el primer byte — nunca STARTTLS sobre un puerto en claro,
+porque entonces la sesión empieza destapada.
+
+Lo que hace que esto sea un conector y no un script que manda correos:
+
+- **La llave vive en la bodega.** `ctx.vault` es el rincón de este módulo en `src/vault.mjs`, con
+  el id cerrado por construcción en el SDK: pedir el secreto de otro módulo no es algo que un
+  módulo pueda *expresar*. La contraseña solo sale de ahí al entorno del proceso que se levanta
+  para un turno; nunca al prompt, al resultado, al ledger ni al registro de salidas.
+- **El destino está declarado.** `reaches` pone `smtp.gmail.com` en el registro como algo que
+  este módulo firmó. Y si el humano apunta CORREO a otro proveedor, se vuelve a declarar bajo el
+  mismo id, así que el registro deja de responder por un servidor que ya no se usa.
+- **Mandar es del peldaño `#4`.** `sends: ['send_email']` y el núcleo lo retira por debajo de
+  AIRLOCK. No «no funciona»: ni siquiera se le cuenta al modelo que existe.
+- **Una lista de permitidos**, opcional, en el servidor y no en el prompt — un prompt es una
+  sugerencia. Vacía significa cualquiera, a propósito: estrecharla es algo que el humano
+  enciende, no un silencio por omisión.
+
+Lo que se rechaza antes de abrir el socket: una dirección con salto de línea (así es como un
+mensaje adquiere destinatarios que nadie escribió), un asunto vacío, un cuerpo vacío. Y una línea
+del cuerpo que empiece con punto se duplica, que es el escape del propio protocolo: olvidarlo es
+cómo un mensaje se corta solo a la mitad.
+
+**Un agujero que apareció al hacerlo:** `defineModule` nunca llevaba `reaches` al objeto del
+módulo, así que `declareDestinations` en `modules/index.mjs` —escrito en CN-001— nunca recibía
+nada. CN-001 estaba a medias desde que se dio por hecho. Arreglado, y ahora la prueba de
+`outbound` exige a cada módulo las mismas cuatro respuestas que a MADRE.
+
+**Lo que NO hace, dicho aquí para que no se descubra usándolo:** adjuntos, HTML, CC/BCC, colas,
+reintentos. Un mensaje de texto plano, o nada.
+
 ### CN-004 · Lo que el conector trae, viaja
 
 Un conector de correo mete correos en el prompt, y ese prompt va a OpenAI, Anthropic o
@@ -118,7 +154,16 @@ lo que no se declara, no se retira — pero tampoco se puede usar para mandar si
 humano esté en `#4`, porque ahí es donde la regla de AIRLOCK ya obliga a decir en una
 línea qué sale y a dónde.
 
-**D-003 · ¿Cuál es el primer conector, y por qué camino?** Ver §5.
+**D-003 · ¿Cuál es el primer conector, y por qué camino?** — **CERRADA 2026-10-02: correo, SMTP,
+mandar primero.** Hecho en `src/smtp.mjs`, `src/mcp/smtp-server.mjs` y `src/modules/correo.mjs`.
+La mitad de *leer* sigue abierta y es ahora **D-004**.
+
+**D-004 · ¿Cómo lee CORREO el correo?** Abierta. IMAP propio (protocolo con estado, literales,
+MIME: el pantano) contra la API de Gmail con OAuth 2.0 (HTTPS y JSON, pero hay que implementar
+OAuth entero y dar de alta un proyecto en Google Cloud). D-001 ya está resuelta, así que el
+argumento de «primero la bodega» ya no inclina la balanza. Lo que sí pesa ahora: **todo lo que un
+lector de correo meta en el prompt viaja al modelo del agente** (CN-004), y eso no lo arregla
+ninguno de los dos caminos — lo arregla la ficha del conector diciéndolo, y `#0` GHOST.
 
 ---
 
@@ -145,13 +190,15 @@ significa lo mismo en los tres.
   a código que nadie de aquí leyó. Si se elige, se elige a conciencia y con el paquete
   fijado a una versión.
 
-**Mi recomendación, por fases:**
+**La recomendación fue, por fases, y así se hizo:**
 
-1. **Mandar primero, por SMTP con contraseña de aplicación.** Es el valor inmediato
-   («MADRE, mándale esto a X»), son ~150 líneas sin dependencias, y obliga a resolver
-   D-001 y D-002 sobre el caso que de verdad importa: lo que sale no vuelve.
-2. **Leer después**, decidiendo entonces entre IMAP propio y la API de Gmail con OAuth —
-   con la ventaja de que para esa fecha D-001 ya estará resuelta.
+1. ~~**Mandar primero, por SMTP con contraseña de aplicación.**~~ **Hecho** (CN-005). La
+   estimación era «~150 líneas sin dependencias»; salieron 122 de cliente SMTP más 189 de
+   servidor MCP más 107 de módulo, sin dependencias. El valor inmediato («MADRE, mándale esto
+   a X») y el caso que de verdad importa: lo que sale no vuelve.
+2. **Leer después.** Sigue pendiente y ahora es **D-004**. D-001 ya está resuelta, así que
+   aquello de «para esa fecha la bodega ya estará» se cumplió: lo que queda es elegir entre el
+   pantano de IMAP y el papeleo de OAuth, sobre mesa limpia.
 
 ---
 
@@ -166,5 +213,6 @@ No lo copian.
 
 | fecha | qué |
 |---|---|
+| 2026-10-02 | **D-003 cerrada y fase 2 completa: CORREO manda.** SMTP+TLS sin dependencias (418 líneas, 278 de prueba). Con él, tres piezas nuevas de núcleo que cualquier conector futuro hereda: `ctx.vault` acotado al módulo por construcción, `secrets` declarados que MADRE dibuja sola, y `reaches` validado en `defineModule`. Encontrado y arreglado de paso: `reaches` nunca llegaba al objeto del módulo, así que CN-001 llevaba desde su commit sin declarar nada. 386/386 pruebas. |
 | 2026-10-02 | **D-001 cerrada: bodega propia** (`src/vault.mjs`) y **D-002 cerrada: mandar solo en `#4`**, impuesto por el núcleo. Con esto la fase 1 queda completa: declarar destino, guardar la llave y la escalera del envío. |
 | 2026-10-02 | Documento abierto. **CN-001 hecho**: un módulo declara sus destinos (`reaches`), se guardan aparte de los del núcleo y marcados, y se reconstruyen en cada carga. D-001 (dónde vive la llave), D-002 (ceremonia para mandar) y D-003 (el primer conector) abiertas. Medido: los dos conectores que ya existen pesan 202 y 221 líneas. |

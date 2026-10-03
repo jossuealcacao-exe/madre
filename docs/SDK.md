@@ -55,7 +55,10 @@ export default ({ defineModule }) => defineModule({
 | `toggle(ctx, payload)` | Sustituye el interruptor por defecto; `confirm: 'texto'` pide confirmación antes de encender |
 | `onToggle(ctx, enabled)` | Reacciona al interruptor |
 | `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text }`. La sala los muestra como tarjeta y los agentes los leen |
-| `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente |
+| `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente |
+| `toolsForTurn` → `sends` | Cuáles de tus herramientas **mandan algo fuera**. El núcleo las retira por debajo de `#4` AIRLOCK: ni se le cuenta al modelo que existen. Ver abajo |
+| `reaches` | A dónde llega tu módulo, en las mismas cuatro respuestas que da MADRE de las suyas. Ver abajo |
+| `secrets` | Las llaves que necesitas, declaradas en vez de dibujadas: `[{ name, label, note, where }]`. MADRE pinta el campo, la guarda en su bodega bajo tu id y te la devuelve por `ctx.vault`. Ver abajo |
 | `routes` | Rutas HTTP propias: `{ method, path, handler(ctx, { payload, params, url }) }` → `{ status, body }` |
 | `onEvent(ctx, event)` | Cada evento del ledger |
 | `controls` | Los ajustes de tu módulo, declarados en vez de dibujados: `[{ key, label, type: 'select' \| 'switch' \| 'text', options, note, invert }]`. MADRE los pinta en la ficha y los guarda en tu bloque de `config.json` |
@@ -85,8 +88,63 @@ lee el registro merece saber qué viaja, cuándo, a dónde y dónde se apaga. Tu
 guarda **aparte** de las del núcleo y marcada con tu `id`, porque quién prometió qué es parte
 de la promesa. Se reconstruye en cada carga: desinstalar tu módulo se lleva su destino.
 
+Si apuntas tu módulo a otro servidor en tiempo de ejecución, vuelve a declarar con el **mismo
+`id`**: así se reemplaza la entrada en vez de dejar al registro respondiendo por una dirección
+que ya no usas.
+
+### Si tu módulo necesita una llave
+
+Decláralas y no las pidas tú. MADRE dibuja un campo de contraseña en el piso `LLAVES` de tu
+ficha, acepta el valor **solo desde esta computadora** (`127.0.0.1`), lo guarda en
+`~/.pulse/credentials/<tu-id>.json` con permisos `0600` dentro de un directorio `0700`, y anota
+en el ledger que se guardó una y **con qué nombre y qué longitud, jamás el valor**.
+
+```js
+secrets: [{
+  name: 'app-password',
+  label: 'APP PASSWORD',
+  note: 'No es la contraseña de tu cuenta. Una de aplicación, que puedes revocar sola.',
+  where: 'https://myaccount.google.com/apppasswords',   // enlace a dónde sacarla
+}]
+```
+
+Y la lees por `ctx.vault`, que viene acotado a tu módulo:
+
+```js
+await ctx.vault.get('app-password')    // el valor, solo para ti
+await ctx.vault.held()                 // [{ module, name, bytes }] — nombres y tamaños, nunca valores
+await ctx.vault.keep(name, value)      // guardar
+await ctx.vault.forget(name)           // olvidar; sin nombre, todas las tuyas
+```
+
+Tu id va cerrado dentro del SDK, así que pedir el secreto de otro módulo no es algo que puedas
+*escribir*. La ficha solo muestra que hay una guardada y cuántos caracteres tiene.
+
+**El valor va al entorno del proceso que tú levantas, y a ningún otro sitio.** No al prompt, no
+al `brief`, no a un resultado de herramienta, no al ledger.
+
+### Si tu módulo manda algo
+
+Leer se deshace: en el peor caso trajiste algo que no servía. **Mandar no.** Un correo, un
+mensaje, un registro en el sistema de alguien más: eso sale con el nombre de quien abrió la sala
+y no vuelve.
+
+Por eso el envío vive en `#4` AIRLOCK, donde la regla ya obliga al agente a decir en una línea
+qué sale y a dónde antes de que salga. **Lo impone el núcleo, no tu buena voluntad:**
+
+```js
+tools: ['buscar_correo', 'mandar_correo'],
+sends: ['mandar_correo'],       // por debajo de #4 esta se retira de la lista
+```
+
+Si *todas* las herramientas de un servidor mandan, el servidor entero no viaja por debajo de
+`#4`. Si alguna no manda, viaja el servidor con la lista recortada y un `brief` que dice por qué
+viene corto. Y lo que decides comprobar, compruébalo **en tu servidor y no en el `brief`**: un
+prompt es una sugerencia.
+
 El diseño entero de los conectores, con lo que falta por decidir, está en
-[`docs/CONECTORES.md`](CONECTORES.md).
+[`docs/CONECTORES.md`](CONECTORES.md). El primero que existe —CORREO, que manda correo por SMTP
+sin una sola dependencia— es `src/modules/correo.mjs` y se lee en diez minutos.
 
 ## Publicarlo
 
@@ -96,7 +154,7 @@ Y en la cabecera de MODULES hay **+ ADD A MODULE** para instalar el `.mjs` de al
 
 ## La ficha
 
-Todas las fichas de MODULES tienen los mismos pisos, en el mismo orden. No dibujas una tarjeta: declaras, y MADRE la arma. Es lo que hace que siete módulos —y el tuyo— se lean igual.
+Todas las fichas de MODULES tienen los mismos pisos, en el mismo orden. No dibujas una tarjeta: declaras, y MADRE la arma. Es lo que hace que nueve módulos —y el tuyo— se lean igual.
 
 | Piso | Qué muestra | De dónde sale |
 |---|---|---|
@@ -104,7 +162,8 @@ Todas las fichas de MODULES tienen los mismos pisos, en el mismo orden. No dibuj
 | 2 · Qué hace | una frase, no tres | `summary` |
 | 3 · Qué toca | lo que escribe y lo que necesita, plegado, con su número al lado | `creates`, `requires` (y `commands`, en su propio pliegue) |
 | 4 · Ajustes | lo tuyo: selectores, interruptores, campos | `controls`, y lo que tu módulo lea de sí mismo |
-| 5 · El interruptor | install, enable o disable. Solo, y siempre abajo | `toggle` / `installCommand` |
+| 5 · Llaves | un campo por secreto, lo que hay guardado (nombre y largo, nunca el valor) y `OLVIDARLA` | `secrets` |
+| 6 · El interruptor | install, enable o disable. Solo, y siempre abajo | `toggle` / `installCommand` |
 
 El estado es una palabra y un punto —`ON` u `OFF`—, nunca un botón: las acciones se presionan abajo. La principal queda al final; un módulo `DEV` también ofrece `DESINSTALAR`, mientras que uno integrado solo puede apagarse. Un módulo apagado se atenúa entero menos esa fila.
 
@@ -117,7 +176,8 @@ ctx = {
   env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
-  services: { imageKey, ollama, … } // lo que el servidor ofrece
+  services: { imageKey, ollama, … }, // lo que el servidor ofrece
+  vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
 ```
 

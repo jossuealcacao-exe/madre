@@ -4,7 +4,8 @@
 // context (ctx) per call and hands it in; the module never reaches for globals.
 //
 //   ctx = { projectRoot, stateRoot, config, settings, env, agents, room, readConfig(), updateConfig(patch),
-//           record(type, payload), services: { ... what the server offers } }
+//           record(type, payload), services: { ... what the server offers },
+//           vault: { get, held, keep, forget } — this module's own secrets, and only its own }
 //
 // A module may also hand tools to every turn: `toolsForTurn(ctx, turn)` returns MCP server
 // specs `{ name, command, args, env, tools: [names], brief }` that MADRE attaches to the CLI for
@@ -15,8 +16,21 @@
 // 'installer' writes into the project through a confirmed command.
 
 import { readFile, stat } from 'node:fs/promises';
+import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from '../vault.mjs';
 
 const camel = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+// The vault, narrowed to one module. A connector has no CLI to hand its secret to, so MADRE
+// holds it — and a module must not be able to read somebody else's. It never passes its own id:
+// the id is closed over here, so asking for another module's secret is not a thing a module can
+// express. `held()` is names and lengths; `get()` is the only door to a value, and what comes
+// back belongs in the environment of a process the module spawns, never in a prompt or a reply.
+const vaultFor = (id, stateRoot) => ({
+  get: (name) => readSecret(stateRoot, id, name),
+  held: () => vaultSummary(stateRoot, id),
+  keep: (name, value) => writeSecret(stateRoot, id, name, value),
+  forget: (name = null) => forgetSecret(stateRoot, id, name),
+});
 
 let release = null;
 // MADRE's own release, read once from the package that is running.
@@ -92,8 +106,27 @@ export function defineModule(spec) {
       if (type === 'select' && !control.options?.length) throw new Error(`Module ${spec.id}: control ${control.key} is a select with no options.`);
       return { key: control.key, label: control.label ?? control.key.toUpperCase(), type, options: control.options ?? [], note: control.note ?? '', invert: Boolean(control.invert) };
     }),
+    // Where this module's traffic goes, in the same four answers `src/outbound.mjs` demands of
+    // MADRE's own destinations. Without it a connector's traffic reads in the log as «an address
+    // nothing here declares», which is true and useless: the human cannot tell a connector they
+    // installed from something going wrong.
+    reaches: (spec.reaches ?? []).map((reach) => {
+      if (!reach?.host || typeof reach.host !== 'string') throw new Error(`Module ${spec.id}: a declared destination needs a host.`);
+      for (const answer of ['to', 'what', 'when']) {
+        if (!reach[answer]) throw new Error(`Module ${spec.id}: destination ${reach.host} does not say ${answer}.`);
+      }
+      return { id: reach.id ?? reach.host, host: reach.host, to: reach.to, what: reach.what, when: reach.when, where: reach.where ?? `MODULES → ${spec.name}`, ...(typeof reach.match === 'function' ? { match: reach.match } : {}) };
+    }),
+    // Secrets this module needs to do its job: declared, not drawn. MADRE renders a paste field
+    // per entry and keeps the value in its vault under this module's name. The card only ever
+    // shows that one is held and how long it is — the value goes nowhere but the module.
+    secrets: (spec.secrets ?? []).map((secret) => {
+      if (!secret?.name || !/^[a-z0-9][a-z0-9_-]*$/i.test(secret.name)) throw new Error(`Module ${spec.id}: a secret needs a plain name.`);
+      return { name: secret.name, label: secret.label ?? secret.name.toUpperCase(), note: secret.note ?? '', where: secret.where ?? '' };
+    }),
   };
   const settingsFrom = (config) => ({ ...defaults, ...(config?.modules?.[configKey] ?? {}) });
+  const mine = (ctx, settings) => ({ ...ctx, settings, vault: vaultFor(spec.id, ctx.stateRoot) });
   const module = {
     ...base,
     configKey,
@@ -113,12 +146,12 @@ export function defineModule(spec) {
     toolsForTurn: spec.toolsForTurn ? async (ctx, turn) => {
       const settings = settingsFrom(ctx.config);
       if (kind === 'builtin' && !settings.enabled) return [];
-      try { return (await spec.toolsForTurn({ ...ctx, settings }, turn)) ?? []; } catch (error) { console.error(`MADRE module ${spec.id}: toolsForTurn failed: ${error.message}`); return []; }
+      try { return (await spec.toolsForTurn(mine(ctx, settings), turn)) ?? []; } catch (error) { console.error(`MADRE module ${spec.id}: toolsForTurn failed: ${error.message}`); return []; }
     } : null,
     // How the outside thing this module drives gets a newer version onto this computer. MADRE
     // shows the command before it runs and never runs one the human has not read. A module that
     // cannot update what it drives returns the note that says where to get it instead.
-    updatePlan: spec.updatePlan ? async (ctx, what) => spec.updatePlan({ ...ctx, settings: settingsFrom(ctx.config) }, what) : null,
+    updatePlan: spec.updatePlan ? async (ctx, what) => spec.updatePlan(mine(ctx, settingsFrom(ctx.config)), what) : null,
     // Legacy installer hooks, kept on the object so the confirm-and-run path can use them.
     detect: spec.detect ?? null,
     preflight: spec.preflight ?? null,
@@ -127,7 +160,7 @@ export function defineModule(spec) {
     // What MODULES shows: base fields plus status, preflight, install line and whatever the module adds.
     async describe(ctx) {
       const settings = settingsFrom(ctx.config);
-      const own = spec.status ? await spec.status({ ...ctx, settings }) : {};
+      const own = spec.status ? await spec.status(mine(ctx, settings)) : {};
       const installed = own.installed ?? (kind === 'builtin' ? Boolean(settings.enabled) : false);
       const runs = dependencies(own.runs);
       const tracked = base.tracks ? (runs.find((dep) => dep.name === base.tracks.name)?.version ?? null) : undefined;
@@ -140,6 +173,8 @@ export function defineModule(spec) {
         versionSource: stamp.source,
         canUpdate: Boolean(spec.updatePlan),
         controls: base.controls.map((control) => ({ ...control, value: settings[control.key] ?? null })),
+        // What is in the vault for this module: names and lengths, never values.
+        ...(base.secrets.length ? { held: await vaultSummary(ctx.stateRoot, spec.id).catch(() => []) } : {}),
         ships: this.external ? null : await madreRelease(),
         runs,
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
@@ -163,7 +198,7 @@ export function defineModule(spec) {
       }
       const settings = { ...settingsFrom(ctx.config), [key]: next };
       await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), [configKey]: { ...(ctx.config.modules?.[configKey] ?? {}), [key]: next } } });
-      if (spec.onSettings) await spec.onSettings({ ...ctx, settings }, settings);
+      if (spec.onSettings) await spec.onSettings(mine(ctx, settings), settings);
       return { status: 200, body: { settings: Object.fromEntries(base.controls.map((known) => [known.key, settings[known.key] ?? null])) } };
     } : null,
 
@@ -171,11 +206,11 @@ export function defineModule(spec) {
     // A module may guard it (`confirm`) or replace it (`toggle`).
     toggle: kind === 'builtin' || spec.toggle ? async (ctx, payload = {}) => {
       const settings = settingsFrom(ctx.config);
-      if (spec.toggle) return spec.toggle({ ...ctx, settings }, payload);
+      if (spec.toggle) return spec.toggle(mine(ctx, settings), payload);
       const enabled = !settings.enabled;
       if (enabled && spec.confirm && payload.confirm !== true) return { status: 400, body: { error: spec.confirm } };
       await ctx.updateConfig({ modules: { ...(ctx.config.modules ?? {}), [configKey]: { ...(ctx.config.modules?.[configKey] ?? {}), enabled } } });
-      const after = spec.onToggle ? await spec.onToggle({ ...ctx, settings: { ...settings, enabled } }, enabled) : null;
+      const after = spec.onToggle ? await spec.onToggle(mine(ctx, { ...settings, enabled }), enabled) : null;
       await ctx.record('extension.toggled', { id: spec.id, name: base.name, enabled, ...(spec.toggledEvent ?? {}) });
       return { status: 200, body: { enabled, ...(after ?? {}), ...(spec.toggledBody?.(enabled) ?? {}) } };
     } : null,

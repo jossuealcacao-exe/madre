@@ -2166,3 +2166,14 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .viewer .code .t-literal { color: var(--syn-literal); }
 .viewer .code .t-regex   { color: var(--syn-regex); }
 .viewer-lang { color: var(--ph-dim); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }
+
+/* A connector's key: a password field that is never filled back in, what MADRE knows about it
+   (its length, never its value), and the way to take it out again. */
+.module-card .card-secret { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.module-card .card-secret .control { display: inline-flex; align-items: center; gap: 8px; font-size: 9.5px; letter-spacing: .14em; color: var(--ph-dim); }
+.module-card .card-secret .control input { border: 1px solid var(--ph-dim); background: #000; color: var(--ph); font: inherit; font-size: 10.5px; letter-spacing: .18em; padding: 5px 8px; min-width: 190px; }
+.module-card .card-secret button.ghost { background: none; border: 1px solid var(--ph-dim); color: var(--ph-dim); font: inherit; font-size: 8.5px; letter-spacing: .18em; padding: 5px 9px; cursor: pointer; }
+.module-card .card-secret button.ghost:hover { color: var(--ph); border-color: var(--ph); }
+.module-card .card-block > .note { margin: 0; font-size: 10px; line-height: 1.7; letter-spacing: .08em; color: var(--ph-dim); }
+.module-card .card-block > a.note { justify-self: start; color: var(--brew); text-decoration: none; letter-spacing: .18em; font-size: 8.5px; }
+.module-card .card-block > a.note:hover { text-decoration: underline; }

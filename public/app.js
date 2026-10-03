@@ -5222,6 +5222,55 @@ function cardShell(item, { on, state: stateText }) {
   return { card, panel, actions };
 }
 
+// FLOOR 5, for a connector: the secrets it declared. The field is a password field, it posts to
+// the module's own vault route, and it is never filled back in — what comes back from the server
+// is the name and the length, which is all MADRE itself is allowed to know. FORGET removes it.
+function cardSecrets(panel, item) {
+  if (!item.secrets?.length) return;
+  const box = cardBlock(panel, t('KEYS'));
+  for (const secret of item.secrets) {
+    const held = (item.held ?? []).find((one) => one.name === secret.name);
+    const row = el('div', 'card-secret');
+    const field = el('label', 'control');
+    field.append(el('span', null, secret.label));
+    const input = el('input');
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.placeholder = held ? t('kept · {n} characters', { n: held.bytes }) : t('paste it here');
+    input.title = secret.note;
+    const keep = async (value) => {
+      input.disabled = true;
+      const response = await fetch(`/api/x/${item.id}/secret`, {
+        method: value === null ? 'DELETE' : 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(value === null ? { name: secret.name } : { name: secret.name, secret: value }),
+      });
+      const result = await response.json().catch(() => ({}));
+      input.value = '';
+      if (!response.ok) toast(`MU/TH/UR › ${result.error ?? t('{name} could not keep {label}.', { name: item.name, label: secret.label })}`);
+      await refreshModules();
+    };
+    input.addEventListener('change', () => { if (input.value.trim()) void keep(input.value.trim()); });
+    field.append(input);
+    row.append(field);
+    if (held) {
+      const forget = el('button', 'ghost', t('FORGET IT'));
+      forget.type = 'button';
+      forget.addEventListener('click', () => void keep(null));
+      row.append(forget);
+    }
+    box.append(row);
+    if (secret.note) box.append(el('p', 'note', secret.note));
+    if (secret.where) {
+      const link = el('a', 'note', t('WHERE TO GET IT'));
+      link.href = secret.where;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      box.append(link);
+    }
+  }
+}
+
 // FLOOR 4, the part every module can have without writing a line of interface: the settings it
 // declared in the SDK. MADRE draws them and saves them into the module's own block of config.
 function cardControls(panel, item) {
@@ -5609,6 +5658,7 @@ function builtinCard(item) {
   const fixed = Boolean(item.fixed);
   const { card, panel, actions } = cardShell(item, { on, state: on ? t('ON') : t('OFF') });
   cardControls(panel, item);
+  cardSecrets(panel, item);
 
   if (item.id === 'ollama') {
     const info = item.ollama ?? { running: false, models: [], settings: {} };
@@ -5787,6 +5837,7 @@ function moduleCard(item) {
   const installed = Boolean(item.status?.installed);
   const { card, panel, actions } = cardShell(item, { on: installed, state: running ? t('INSTALLING') : installed ? t('ON') : t('OFF') });
   cardControls(panel, item);
+  cardSecrets(panel, item);
 
   const blocked = item.preflight && !item.preflight.ok;
   if (blocked) {

@@ -501,3 +501,39 @@ test('a regular expression is not a comment, and a division is not a regular exp
   // An unterminated slash was division all along, and stays plain rather than eating the line.
   assert.ok(!read(String.raw`const bad = /[/]\/g;`).some((piece) => piece.kind === 'regex'));
 });
+
+// The card floor a connector needs: a field for its key that is never filled back in, what MADRE
+// is allowed to know about what it holds (the length, never the value), and the way out again.
+// Rendered through the real `moduleCard`, in the same tiny DOM the boot test uses, because the
+// mistake this guards against — a floor that silently never draws — is invisible to a unit test.
+test('a connector\'s card asks for its key and never shows it back', () => {
+  const card = globalThis.__pulse.moduleCard({
+    id: 'correo', kind: 'builtin', name: 'CORREO', vendor: 'MADRE · SMTP', version: '1.0.0',
+    summary: 'Sends one plain-text email from your own account.',
+    creates: [], requires: [], runs: [], commands: [],
+    controls: [{ key: 'from', label: 'FROM', type: 'text', value: 'her@gmail.com', options: [], note: '' }],
+    secrets: [{ name: 'app-password', label: 'APP PASSWORD', note: 'Not your account password.', where: 'https://myaccount.google.com/apppasswords' }],
+    held: [{ module: 'correo', name: 'app-password', bytes: 16 }],
+    status: { installed: true, detail: 'on · her@gmail.com' },
+    preflight: { ok: true, problems: [] },
+    install: { display: 'disable CORREO', platforms: [] },
+  });
+
+  const all = [];
+  const walk = (node) => { all.push(node); for (const child of node.children ?? []) walk(child); };
+  walk(card);
+  const text = all.map((node) => node.textContent ?? '').join(' ');
+  assert.match(text, /LLAVES/, 'the keys floor did not draw at all');
+  assert.match(text, /OLVIDARLA/, 'a key that is held cannot be taken out again');
+  assert.match(text, /DÓNDE SACARLA/, 'the card does not say where to get the key');
+
+  const field = all.find((node) => node.tagName === 'INPUT' && node.type === 'password');
+  assert.ok(field, 'the key would be typed into a field that shows it');
+  assert.equal(field.value, '', 'a key was filled back into the field');
+  assert.match(field.placeholder, /16 caracteres/, 'the card does not say a key is already kept');
+  assert.ok(!text.includes('abcdefghijklmnop'), 'a secret value reached the card');
+
+  const link = all.find((node) => node.tagName === 'A' && node.href?.includes('myaccount.google.com'));
+  assert.ok(link, 'the link to make an app password is missing');
+  assert.equal(link.rel, 'noreferrer');
+});
