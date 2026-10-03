@@ -11,7 +11,7 @@ import { readJson, gitToplevel, findOnPath, packageVersion } from './helpers.mjs
 // adapter yet, so it is simply not requested.
 const AHP_PLATFORMS = { codex: 'codex', claude: 'claude', opencode: 'opencode' };
 const PACKAGE = '@jossuealcala/ahp-plus';
-const VERSION = '1.4.1';
+const VERSION = '1.4.2';
 
 async function detect(projectRoot) {
   const manifest = await readJson(join(projectRoot, '.ahp', 'manifest.json'));
