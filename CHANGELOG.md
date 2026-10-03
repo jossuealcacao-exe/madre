@@ -4,9 +4,7 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 0.7.1 · Sin publicar
-
-## 0.7.0 · 2026-10-03
+## 0.7.0 · Sin publicar
 
 ### Una página de otro sitio ya no puede meter un módulo en la sala
 
@@ -48,6 +46,32 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - Y una vez ahí, el menú ofrece **cuatro instrucciones para editar**, cada una de una forma distinta de módulo: un comando, un conector, un conector que manda, una ficha propia. `/module` solo no hace nada hasta que dices qué debe hacer, y esa era la forma más común de que todo se quedara en nada.
 - La tarjeta **DESARROLLA PARA MADRE** dice ahora qué es un módulo, que puedes simplemente pedirlo, y que conectar con algo de fuera casi siempre se puede. Trae un botón **PÍDELE UNO** que te deja en la caja de texto con `/module` escrito.
 
+
+### En modo claro volvían a verse los acentos
+
+- El texto entre mensajes —el relevo, lo que destiló el archivista— valía **2.92:1** contra la página, por debajo del suelo de 3.0 que pide una interfaz, cuando en oscuro ese mismo papel vale 3.62:1. Y la burbuja del agente valía **1.10:1**: no se leía tenue, se leía como página. Ahora 3.87:1 y 1.22:1, que es la proporción del modo oscuro y no un gris nuevo.
+- **Las esferas de los agentes pedían otra cosa.** Un tinte del color funciona sobre una página casi negra porque el color es la única luz del círculo; sobre una casi blanca el mismo tinte se camina de vuelta a la página. Los peores eran los agentes **más brillantes** —1.06:1 y 1.03:1—, y subir el porcentaje no los arregla: mezclar un amarillo brillante con blanco sigue siendo blanco. En claro el disco conserva su tinte y gana borde y glifo con el color llevado **hacia abajo**. Un color, dos direcciones.
+
+### El botón de permiso es un botón, y la frase es una frase
+
+- Cuando un agente pedía subir de peldaño, el recuadro punteado se dibujaba alrededor de **todo**: un marco y un fondo detrás de una frase que no se puede pulsar. El ojo leía un panel y tenía que buscar el botón dentro.
+- Ahora solo lo que se puede pulsar lo parece, y lo parece de verdad: relleno en vez de contorno.
+
+### MEMORIA sale de CONEXIONES
+
+- Era un pliegue dentro de CONEXIONES, que es donde vas a conectar y firmar un agente — otro mandado completamente distinto. Qué guarda el archivo, quién lo destila y qué tan bien está contestando es un tema propio.
+- Ahora tiene su botón en la barra de MU/TH/UR, junto a NOSTROMO, y el panel entero en lugar de un pliegue dentro del panel de otro. Los dos destinos se excluyen: uno a la vez.
+
+### ABRIR TODO deja de ser un destino
+
+- Vivía en la barra, entre CONEXIONES y NOSTROMO, que son sitios a los que se va. Eso no es un sitio: es una acción sobre el lienzo de abajo.
+- Baja a donde actúa, centrado sobre lo que mueve, con forma propia y una flecha de 8 bits que apunta hacia donde va a mover las cosas.
+
+### NOSTROMO toma forma de cerebro
+
+- El archivo deja de ser una bola. Es un cerebro visto de lado: lóbulo frontal al frente, base plana, cerebelo abajo atrás, temporal abajo adelante.
+- Lo que lo hizo posible fue **dónde** poner la forma. La fuerza del anillo jalaba cada memoria a un círculo, así que cualquier forma dada al colocar se deshacía en un segundo de física. Ahora el objetivo de la fuerza **es** el contorno, y la forma es en lo que el sistema se asienta en vez de de lo que se aleja.
+- La rotación 3D del universo no entra todavía: el mundo se dibuja con una sola transformación 2D de lienzo, que no puede girar cada punto según su profundidad. Va aparte.
 
 ### Se puede apadrinar el proyecto
 
