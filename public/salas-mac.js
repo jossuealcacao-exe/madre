@@ -17,6 +17,8 @@ import { drawAttribution, drawLegal } from './attribution.js';
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
 import { creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
+import { labelPowerKey, powerKey } from './power.js';
+import { drawHardware } from './hardware.js';
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -154,6 +156,7 @@ function saveLooks({ theme, accent, wallpaper, style, bubbles, text }) {
 function saveHome(name, value) {
   const spec = HOME_LOOKS[name];
   try { if (value === spec.values[0]) localStorage.removeItem(spec.key); else localStorage.setItem(spec.key, value); } catch { /* the choice lasts as long as the page */ }
+  pushHomeLayout();
   applyLooks();
   if (name === 'order' && typeof draw === 'function') draw();
   if (name === 'order' && typeof paintOrderKey === 'function') paintOrderKey();
@@ -186,6 +189,36 @@ function pushLooks() {
     try { for (const key of SHARED_LOOKS) patch[key] = localStorage.getItem(key); } catch { return; }
     void fetch('/api/looks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).catch(() => null);
   }, 250);
+}
+// How Home is arranged, the same from every port it is shown on and after MADRE comes back
+// (src/looks.mjs, home.json): written when the person changes it, read when Home opens or comes
+// back into view. The browser's copy stays, so Home paints as it was before it hears from there.
+const HOME_LAYOUT_KEYS = ['pulse.home.layout', 'pulse.home.projects', 'pulse.lobbyBar', 'pulse.home.cards', 'pulse.home.text', 'pulse.home.order'];
+let homePush = 0;
+function pushHomeLayout() {
+  clearTimeout(homePush);
+  homePush = setTimeout(() => {
+    const patch = {};
+    try { for (const key of HOME_LAYOUT_KEYS) patch[key] = localStorage.getItem(key); } catch { return; }
+    void fetch('/api/home-layout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).catch(() => null);
+  }, 250);
+}
+async function pullHomeLayout() {
+  let answer = null;
+  try { answer = await fetch('/api/home-layout', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)); } catch { return false; }
+  if (!answer?.home) return false;
+  try {
+    // Nothing kept yet: the arrangement this browser had becomes the one every page shows.
+    if (!answer.saved) { if (HOME_LAYOUT_KEYS.some((key) => localStorage.getItem(key) !== null)) pushHomeLayout(); return false; }
+    let changed = false;
+    for (const key of HOME_LAYOUT_KEYS) {
+      const value = answer.home[key] ?? null;
+      if (localStorage.getItem(key) === value) continue;
+      if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+      changed = true;
+    }
+    return changed;
+  } catch { return false; }
 }
 async function pullLooks() {
   let answer = null;
@@ -832,6 +865,9 @@ function linkRow(enlace) {
   if (enlace.orders?.allowed) what.push(t('orders up to #{n}', { n: enlace.orders.maxMode }));
   // D-S13: a link BISHOP signed on its own says so, so it is never mistaken for one you signed.
   if (enlace.signed?.by === 'bishop') what.push(t('signed by the Coordinator'));
+  if (enlace.train) what.push(t('the Coordinator learns from it'));
+  if (enlace.state) what.push(t('shares its state'));
+  if (enlace.deliver) what.push(t('receives delivered notes'));
   node.append(el('p', 'what', what.join(' · ')));
   const traffic = enlace.traffic ?? {};
   // S-021: the last reading says who read, as the room that asked said it.
@@ -850,6 +886,36 @@ function linkRow(enlace) {
   });
   recall.append(recallBox, document.createTextNode(t('Always include (up to 3 notes)')));
   node.append(recall);
+  // D-S15: on a link the Coordinator reads, whether it also learns from that project.
+  if (reader === data.salas) {
+    const learn = el('label', 'row sm-recall');
+    const learnBox = el('input'); learnBox.type = 'checkbox'; learnBox.checked = Boolean(enlace.train);
+    learnBox.addEventListener('change', async () => {
+      learnBox.disabled = true;
+      const answer = await fetch('/api/salas/enlaces/train', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: enlace.id, train: learnBox.checked }) })
+        .then((response) => response.ok).catch(() => false);
+      if (!answer) learnBox.checked = !learnBox.checked;
+      learnBox.disabled = false;
+      await refresh();
+    });
+    learn.append(learnBox, document.createTextNode(t('The Coordinator learns from it')));
+    node.append(learn);
+  }
+  // D-S16 and D-S17: what else the link allows, ticked or cleared here by you.
+  for (const [field, label] of [['state', t('It shares its state')], ['deliver', t('It receives delivered notes')]]) {
+    const allow = el('label', 'row sm-recall');
+    const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(enlace[field]);
+    box.addEventListener('change', async () => {
+      box.disabled = true;
+      const answer = await fetch('/api/salas/enlaces/allow', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: enlace.id, field, on: box.checked }) })
+        .then((response) => response.ok).catch(() => false);
+      if (!answer) box.checked = !box.checked;
+      box.disabled = false;
+      await refresh();
+    });
+    allow.append(box, document.createTextNode(label));
+    node.append(allow);
+  }
   const actions = el('div', 'sm-actions');
   if (revoking.has(enlace.id)) actions.append(el('span', 'sm-ask', t('Nothing crosses from then on.')), button('sm-btn danger', t('Revoke it'), () => revokeLink(enlace.id)), button('sm-btn ghost', t('Cancel'), () => { revoking.delete(enlace.id); draw(); }));
   else actions.append(button('sm-btn ghost', t('Revoke'), () => { revoking.add(enlace.id); draw(); }));
@@ -1330,6 +1396,7 @@ function saveLayout() {
     if (JSON.stringify(layout) === JSON.stringify(DEFAULT_LAYOUT)) localStorage.removeItem(LAYOUT_KEY);
     else localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
   } catch { /* the arrangement lasts as long as the page */ }
+  pushHomeLayout();
   applyLayout();
 }
 const placed = (id) => layout.order.includes(id);
@@ -1956,7 +2023,7 @@ function openLinkSheet({ reader = null, source = null } = {}) {
   const linkedPair = (x, y) => (x && y ? (data.enlaces ?? []).find((one) => [one.rooms.a, one.rooms.b].sort().join('\n') === [x, y].sort().join('\n')) ?? null : null);
   const pick = {
     reader: reader ?? (source !== data.salas && rooms.some((room) => room.id === data.salas) ? data.salas : rooms.find((room) => room.id !== source)?.id),
-    source: null, both: false, kinds: new Set(['decision', 'fact']), days: 7, recall: false,
+    source: null, both: false, kinds: new Set(['decision', 'fact']), days: 7, recall: false, train: false, state: false, deliver: false,
     orders: false, maxMode: 1, perHour: 6, designation: '',
   };
   const free = (room) => room.id !== pick.reader && room.id !== data.salas && !linkedPair(room.id, pick.reader);
@@ -2237,6 +2304,11 @@ function openLinkSheet({ reader = null, source = null } = {}) {
       ends.append(rail(LINK_DAYS.map(([value, words]) => [value, words()]), pick.days, (value) => { pick.days = value; }, t('It ends')));
       box.append(row(t('It ends'), t('A week is enough to try it; signing it again takes a moment.'), ends, { recommended: pick.days === 7 }));
       box.append(row(t('Always include'), t('With every question it gets up to 3 related notes without looking for them; each time counts toward the hourly limit. Off, its agents look them up only when they need to.'), toggle(pick.recall, (on) => { pick.recall = on; render(); }, t('Always include'))));
+      // D-S15: only with the Coordinator reading, and only by you.
+      if (coordinator(pick.reader)) box.append(row(t('The Coordinator learns from it'), t("Its notes also go into the training of the Coordinator's local AI, so it knows this project without opening it. Clearing it or revoking takes it out of the next export; a model already trained keeps what it learned until you train it again."), toggle(pick.train, (on) => { pick.train = on; render(); }, t('The Coordinator learns from it'))));
+      // D-S16 and D-S17: by you only, off unless you turn them on.
+      box.append(row(t('It shares its state'), t('Besides its notes, its canonical state as Continuity keeps it: objective, phase, next step, its last handoff, decisions and what is still open. Only if the project has Continuity installed; never its files or its code.'), toggle(pick.state, (on) => { pick.state = on; render(); }, t('It shares its state'))));
+      box.append(row(t('It receives delivered notes'), t('The project that reads can hand it notes. They wait there until you accept them (or an agent of that project in #3 EDIT or above): nothing enters its memory on its own.'), toggle(pick.deliver, (on) => { pick.deliver = on; render(); }, t('It receives delivered notes'))));
       page.append(box);
       actions.append(next());
     } else if (kind === 'orders') {
@@ -2268,8 +2340,12 @@ function openLinkSheet({ reader = null, source = null } = {}) {
       said(pick.both ? sayBold('{a} and {b} will look up each other\'s {kinds}.', { a: nameOf(pick.reader), b: nameOf(pick.source), kinds: kindsSaid() }, ['a', 'b']) : sayBold('{reader} will look up the {kinds} of {source}.', { reader: nameOf(pick.reader), source: nameOf(pick.source), kinds: kindsSaid() }, ['reader', 'source']));
       said(pick.days ? t('Until {date}.', { date: until() }) : t('With no expiry: it lasts until you revoke it.'));
       said(pick.recall ? t('With every question, up to 3 of these notes arrive without being looked for.') : t('Its agents look them up only when they need them.'));
+      if (coordinator(pick.reader)) said(pick.train ? sayBold('The Coordinator learns from {room}: its notes go into its training.', { room: nameOf(pick.source) }) : t('The Coordinator does not learn from it: it only looks it up.'));
       if (ordersInto()) said(pick.orders ? sayBold('The Coordinator may send orders into {room}, up to #{n}, {k} an hour.', { room: nameOf(ordersInto()), n: pick.maxMode, k: pick.perHour }, ['room']) : t('No orders: the Coordinator only looks up.'));
-      said(t('Nothing is written across, and you can revoke it at any moment from Connections.'));
+      if (pick.state) said(pick.both ? t('Both also read each other\'s state, as Continuity keeps it.') : sayBold('{reader} also reads the state of {source}, as Continuity keeps it.', { reader: nameOf(pick.reader), source: nameOf(pick.source) }, ['reader', 'source']));
+      said(pick.deliver
+        ? (pick.both ? t('Each can deliver notes to the other; they wait until that project accepts them. Nothing is written directly, and you can revoke it at any moment from Connections.') : sayBold('{reader} can deliver notes to {source}; they wait there until accepted. Nothing is written directly, and you can revoke it at any moment from Connections.', { reader: nameOf(pick.reader), source: nameOf(pick.source) }, ['reader', 'source']))
+        : t('Nothing is written across, and you can revoke it at any moment from Connections.'));
       page.append(list);
       const warn = cautions();
       if (warn.length) { const box = card(); for (const words of warn) box.append(caution(words)); page.append(box); }
@@ -2281,6 +2357,9 @@ function openLinkSheet({ reader = null, source = null } = {}) {
           orders: pick.orders && ordersInto() ? { allowed: true, maxMode: pick.maxMode, perHour: pick.perHour } : { allowed: false, maxMode: 0, perHour: pick.perHour },
           designation: pick.orders && ordersInto() ? pick.designation.trim() : undefined,
           recall: pick.recall,
+          train: pick.train && coordinator(pick.reader),
+          state: pick.state,
+          deliver: pick.deliver,
         };
         sign.disabled = true;
         sign.textContent = t('Signing…');
@@ -2636,6 +2715,7 @@ function pinsShown() {
 function pinsWrite(list) {
   pins.saved = [...list];
   try { localStorage.setItem(PIN_KEY, JSON.stringify(pins.saved)); } catch { /* this page only */ }
+  pushHomeLayout();
   drawTopbar();
   settingsSheet?.sync({ detail: true });
 }
@@ -2651,6 +2731,7 @@ function pinRemove(id) { pinsWrite(pinsShown().filter((one) => one !== id)); }
 function pinsReset() {
   pins.saved = null;
   try { localStorage.removeItem(PIN_KEY); } catch { /* this page only */ }
+  pushHomeLayout();
   drawTopbar();
   settingsSheet?.sync({ detail: true });
 }
@@ -3593,6 +3674,16 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       open.rel = 'noopener';
       box.append(open);
     }
+    // A device sign-in (GitHub Copilot through OpenCode) shows its code instead of asking for one.
+    if (live.deviceCode) {
+      const said = el('div', 'sm-agent-device');
+      said.append(el('span', null, t('Type this code on that page:')), el('code', null, live.deviceCode));
+      const copy = button('sm-btn small', t('Copy'), async () => {
+        try { await navigator.clipboard.writeText(live?.deviceCode ?? ''); copy.textContent = t('Copied'); } catch { copy.textContent = t('Select it'); }
+      });
+      said.append(copy);
+      box.append(said);
+    }
     if (live.asksForCode || live.awaitingCode) {
       const form = el('form', 'sm-agent-code');
       const input = el('input');
@@ -4251,8 +4342,11 @@ const LOCAL_MODE_SAYS = {
   manual: () => t('Each project decides in its own Modules › Local AI. New ones start with it.'),
 };
 let localFailed = false;        // the last read got no answer: the sheet says so instead of «Reading…» forever
+let localHardware = null;       // what this computer can run and train (src/modules/local-models.mjs)
 async function loadLocal() {
   const answer = await fetch('/api/salas/local-ai', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  const ollama = await fetch('/api/ollama', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (ollama?.recommended?.hardware) localHardware = ollama.recommended.hardware;
   if (answer) localSeen = answer;
   localFailed = !answer;
   settingsSheet?.sync({ detail: true });
@@ -4300,6 +4394,8 @@ function fillLocal(host) {
   sxRow(mode, t('Mode'), null, localModeSeg());
   if (!localSeen.master) sxRow(mode, t('Local AI is off for every project.'), t('Turn it on in a project, in Modules › Local AI.'));
   else if (!localSeen.ollama.running) sxRow(mode, t('Ollama is not running'), t('Projects keep working with their agents meanwhile. Start it from a project, in Modules › Local AI.'));
+  // What this computer can run and train, as a project shows it in Modules › Local AI.
+  if (localHardware) drawHardware(host, localHardware, { el, sxBlock, sxRow, sxChip: (text, tone = '') => el('span', `sx-chip${tone ? ` ${tone}` : ''}`, text) });
   const list = sxBlock(host, t('Projects'), localSeen.mode === 'auto' ? t('All of them use it. Choose «One by one» or «Manual» to turn some off.') : t('A switch here is the same one the project shows in its Settings.'));
   if (!localSeen.projects.length) { sxRow(list, t('No projects yet'), null); return; }
   const pages = Math.ceil(localSeen.projects.length / LOCAL_PER_PAGE);
@@ -4574,6 +4670,10 @@ function openSettings(section = null) {
   show(section);
 }
 ui.gear.addEventListener('click', () => openSettings());
+// Turning MADRE off (public/power.js), last in the bar, after the settings.
+const powerButton = powerKey('sm-icon-key bar');
+powerButton.id = 'sm-power';
+ui.gear.after(powerButton);
 
 function translateStatic() {
   document.title = `MADRE · ${t('Home')}`;
@@ -4592,6 +4692,7 @@ function translateStatic() {
   ui.macro.querySelector('span').textContent = t('Project map');
   ui.gear.title = t('Home settings');
   ui.gear.setAttribute('aria-label', t('Home settings'));
+  labelPowerKey(powerButton);
   ui.search.placeholder = t('Search a project…');
   ui.search.setAttribute('aria-label', t('Search a project…'));
   ui.filter.setAttribute('aria-label', t('Show'));
@@ -4622,6 +4723,20 @@ function translateStatic() {
 translateStatic();
 drawWork();
 drawDecisions();
+// The arrangement kept for every port, before the first full drawing, and again whenever Home
+// comes back into view (another page may have changed it).
+const homeArranged = async () => {
+  if (!(await pullHomeLayout())) return;
+  layout = readLayout();
+  pins.saved = null;
+  applyLooks();
+  applyLayout();
+  if (data) { draw(); drawTopbar(); }
+  paintOrderKey();
+  settingsSheet?.paintLooks();
+};
+await homeArranged();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void homeArranged(); });
 await refresh();
 // Arriving from RELOAD (salas-mac.html put the curtain back): Home has read its projects, so the
 // bar fills and the curtain clears.

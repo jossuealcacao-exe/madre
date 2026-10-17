@@ -159,6 +159,24 @@ export const AGENT_SETUP = {
     install: ['brew install opencode', 'or: npm install -g opencode-ai'],
     login: ['auth', 'login'],
     loginNote: 'Pick a provider and paste its key or complete its OAuth flow.',
+    // Its keys are pasted from the room (see openCodeProviders); these are the providers it signs
+    // in to with an account. `-p` skips its provider list, so the room never draws a menu. Only
+    // the ones whose owner says a third party may sign in this way: GitHub supports Copilot in
+    // OpenCode since 2026-01. Left out on purpose: a Claude subscription (Anthropic does not allow
+    // claude.ai sign-ins in other tools), and ChatGPT and GitLab, until OpenAI or GitLab say so in
+    // writing. They stay one `opencode auth login` away, in the terminal, for whoever chooses them.
+    browser: true,
+    methods: [
+      {
+        id: 'github-copilot',
+        label: 'GitHub Copilot',
+        args: ['auth', 'login', '-p', 'github-copilot'],
+        note: 'Gives you a code to type at github.com/login/device: the work goes against your Copilot subscription (Pro, Pro+, Business or Enterprise).',
+        // It asks which GitHub first; the room takes github.com. Enterprise is in the terminal.
+        room: { deviceCode: true, answers: [{ prompt: 'Select GitHub deployment type', send: '\r' }] },
+      },
+    ],
+    terminalNote: 'Pick a provider, then paste its key or sign in with its account. GitHub Enterprise and the other providers are in its list.',
     vendor: 'OpenCode',
     account: 'Brings no model of its own: you point it at a provider you already use, in the cloud or on this computer.',
     paid: null,
@@ -183,6 +201,10 @@ export const TAKES_KEY = new Set(['claude', 'gemini', 'opencode']);
 export const SIGN_IN_URL = /https?:\/\/\S+/;
 export const CODE_PROMPT = /paste\s+(?:the\s+)?code|enter\s+(?:the\s+)?code|c[oó]digo\s*[:>]/i;
 export const looksLikeCodePrompt = (line) => CODE_PROMPT.test(String(line ?? ''));
+// The other way round: a device sign-in shows a code to type on the provider's page
+// ("Enter code: 3475-C193"), and the room has to show it, not ask for one.
+export const DEVICE_CODE = /enter\s+(?:the\s+|this\s+)?code:?\s+([A-Z0-9]{4,}(?:-[A-Z0-9]{4,})+)/i;
+export const deviceCodeIn = (line) => String(line ?? '').match(DEVICE_CODE)?.[1] ?? null;
 
 export function accountNoteFor(id) {
   // Said in the room's language when it is asked for, not when this file is imported.
@@ -212,9 +234,9 @@ export function installPlanFor(agent, { prefix = null } = {}) {
 }
 
 // How the room can (re)connect an agent. Codex, Claude and Gemini sign in with a browser flow
-// their own CLI drives, so the server can run them and stream what they say; OpenCode needs its
-// interactive prompt for anything but a key. Every plan also carries `terminal`: the same sign-in
-// typed by hand, for whoever prefers it.
+// their own CLI drives, so the server can run them and stream what they say; OpenCode too, for
+// the providers in its `methods`, and its keys are pasted. Every plan also carries `terminal`:
+// the same sign-in typed by hand, for whoever prefers it.
 export function loginPlanFor(agent, { method = null } = {}) {
   const setup = AGENT_SETUP[agent.id];
   if (!setup) return null;
@@ -222,7 +244,7 @@ export function loginPlanFor(agent, { method = null } = {}) {
   // Which door: the one asked for, the first one the CLI offers, or the single flow it has.
   const chosen = setup.methods?.find((one) => one.id === method) ?? setup.methods?.[0] ?? null;
   const args = chosen?.args ?? setup.login;
-  const room = headless ? setup.room ?? {} : {};
+  const room = headless ? { ...(setup.room ?? {}), ...(chosen?.room ?? {}) } : {};
   return {
     headless,
     command: agent.path ?? agent.id,
@@ -241,6 +263,9 @@ export function loginPlanFor(agent, { method = null } = {}) {
     ...(room.ci === false ? { ci: false } : {}),
     ...(room.env ? { env: room.env } : {}),
     ...(room.dropEnv ? { dropEnv: room.dropEnv } : {}),
+    // A code to show rather than one to paste, and the menu questions the click already answered.
+    ...(room.deviceCode ? { deviceCode: true } : {}),
+    ...(room.answers ? { answers: room.answers } : {}),
   };
 }
 

@@ -4,6 +4,7 @@
 // command. Verified project state, checkpoints and handoffs in .ahp/.
 
 import { join, resolve } from 'node:path';
+import { readdir } from 'node:fs/promises';
 import { t } from '../i18n.mjs';
 import { realpath } from 'node:fs/promises';
 import { defineModule } from './sdk.mjs';
@@ -47,6 +48,74 @@ function installCommand({ agents = [] }) {
   const args = ['--yes', `${PACKAGE}@${VERSION}`, 'setup', '.'];
   if (platforms.length) args.push('--platforms', platforms.join(','));
   return { command: 'npx', args, platforms, display: ['npx', ...args].join(' ') };
+}
+
+// D-S16 · the project's canonical state, as Continuity keeps it in .ahp/ (AHP+ §4), in the short
+// shape a connection may carry: where the project stands, its last handoff, what it decided and what
+// is still open. Never the git details, the files, the evidence or the sessions: what a project
+// knows, not where its code lives. Every text goes through `redact` (the serving room's privacy
+// guard) and is clipped; a missing or unreadable .ahp/ is `null`, never an error.
+export const STATE_DECISIONS = 30;
+export const STATE_OPEN = 20;
+const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'BLOCKED', 'ACTIVE', 'PENDING']);
+async function records(dir) {
+  const names = (await readdir(dir).catch(() => [])).filter((name) => name.endsWith('.json')).sort();
+  return (await Promise.all(names.map((name) => readJson(join(dir, name))))).filter((record) => record && typeof record === 'object');
+}
+export async function readContinuity(projectRoot, { redact = (text) => text } = {}) {
+  const base = join(projectRoot, '.ahp');
+  const project = await readJson(join(base, 'state', 'project.json'));
+  if (!project || typeof project !== 'object') return null;
+  const say = (value, max = 400) => (typeof value === 'string' && value.trim() ? String(redact(value.replace(/\s+/g, ' ').trim())).slice(0, max) : null);
+  const list = (value, max = 12) => (Array.isArray(value) ? value.map((item) => say(typeof item === 'string' ? item : item?.title ?? item?.description ?? '')).filter(Boolean).slice(0, max) : []);
+  const byId = new Map();
+  const kinds = { decisions: [], tasks: [], risks: [], bugs: [] };
+  for (const kind of Object.keys(kinds)) {
+    kinds[kind] = await records(join(base, 'records', kind));
+    for (const record of kinds[kind]) if (typeof record.id === 'string') byId.set(record.id, record);
+  }
+  const titled = (ids) => (Array.isArray(ids) ? ids.map((id) => say(byId.get(id)?.title ?? (typeof id === 'string' && !/^[A-Z]+-\d{8}-[0-9A-F]+$/.test(id) ? id : ''), 200)).filter(Boolean) : []);
+  const handoffs = (await records(join(base, 'handoffs'))).filter((one) => Number.isFinite(Date.parse(one.created_at))).sort((x, y) => Date.parse(x.created_at) - Date.parse(y.created_at));
+  const last = handoffs.at(-1) ?? null;
+  const when = (record) => record.updated_at ?? record.created_at ?? null;
+  const open = (records_) => records_.filter((record) => OPEN_STATUSES.has(String(record.status ?? '').toUpperCase())).sort((x, y) => Date.parse(when(y) ?? 0) - Date.parse(when(x) ?? 0)).slice(0, STATE_OPEN).map((record) => ({ title: say(record.title, 200), status: String(record.status).toUpperCase() })).filter((record) => record.title);
+  return {
+    source: 'ahp',
+    project: {
+      objective: say(project.objective), phase: say(project.phase, 40), confidence: say(project.confidence, 40), nextAction: say(project.next_action),
+      blockers: list(project.blockers), updatedAt: project.updated_at ?? project.created_at ?? null,
+    },
+    handoff: last ? {
+      at: last.created_at, from: say(last.from, 60), to: say(last.to, 60), objective: say(last.objective),
+      completed: list(last.completed), inProgress: list(last.in_progress), pending: list(last.pending),
+      decisions: titled(last.decisions), risks: titled(last.risks), blockers: list(last.blockers),
+      nextAction: say(last.next_action), doneCriteria: list(last.done_criteria), notes: say(last.notes, 600),
+    } : null,
+    decisions: kinds.decisions.filter((record) => String(record.status ?? '').toUpperCase() === 'ACCEPTED')
+      .sort((x, y) => Date.parse(when(y) ?? 0) - Date.parse(when(x) ?? 0)).slice(0, STATE_DECISIONS)
+      .map((record) => ({ title: say(record.title, 200), description: say(record.description, 500), at: when(record) })).filter((record) => record.title),
+    open: { tasks: open(kinds.tasks), risks: open(kinds.risks), bugs: open(kinds.bugs) },
+  };
+}
+
+// The state as lines a model reads, oldest facts last. Said once, for the tool and for training.
+export function continuityText(name, state) {
+  if (!state) return null;
+  const { project, handoff, decisions, open } = state;
+  const lines = [`Project ${name} · canonical state (Continuity, AHP+) as of ${String(project.updatedAt ?? '').slice(0, 10) || 'an unknown date'}.`];
+  if (project.objective) lines.push(`Objective: ${project.objective}`);
+  if (project.phase || project.confidence) lines.push(`Phase: ${[...new Set([project.phase, project.confidence].filter(Boolean))].join(' · ')}`);
+  if (project.nextAction) lines.push(`Next action: ${project.nextAction}`);
+  if (project.blockers.length) lines.push(`Blockers: ${project.blockers.join('; ')}`);
+  if (handoff) {
+    lines.push(`Last handoff ${String(handoff.at).slice(0, 10)}${handoff.from ? ` from ${handoff.from}` : ''}${handoff.to ? ` to ${handoff.to}` : ''}:`);
+    for (const [label, items] of [['done', handoff.completed], ['in progress', handoff.inProgress], ['pending', handoff.pending], ['decisions', handoff.decisions], ['risks', handoff.risks], ['blockers', handoff.blockers], ['done when', handoff.doneCriteria]]) if (items.length) lines.push(`- ${label}: ${items.join('; ')}`);
+    if (handoff.nextAction) lines.push(`- next: ${handoff.nextAction}`);
+    if (handoff.notes) lines.push(`- notes: ${handoff.notes}`);
+  }
+  if (decisions.length) lines.push('Accepted decisions:', ...decisions.map((one) => `- ${one.title}${one.description ? `: ${one.description}` : ''}`));
+  for (const [label, items] of [['Open tasks', open.tasks], ['Open risks', open.risks], ['Open bugs', open.bugs]]) if (items.length) lines.push(`${label}: ${items.map((one) => `${one.title}${one.status !== 'OPEN' ? ` (${one.status.toLowerCase().replace('_', ' ')})` : ''}`).join('; ')}`);
+  return lines.join('\n');
 }
 
 export default defineModule({

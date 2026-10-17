@@ -7,6 +7,8 @@ import { allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchCon
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, setLanguage, t, fill } from './i18n.js';
 import { createEditor } from './editor.js';
+import { labelPowerKey, powerKey } from './power.js';
+import { drawHardware, hardwareLine } from './hardware.js';
 import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
@@ -205,7 +207,7 @@ const MODES = {
 // gives back: with nowhere to type it, the sign-in could only die of its own timeout, which is
 // exactly what it did. This holds what the room knows about the one running — which agent, the
 // address, whether it is waiting — and `.login-ask` is where it is answered.
-const loginNow = { agent: null, method: null, url: null, awaiting: false, asksForCode: false };
+const loginNow = { agent: null, method: null, url: null, deviceCode: null, awaiting: false, asksForCode: false };
 const looksLikeCodePrompt = (line) => /paste\s+(?:the\s+)?code|enter\s+(?:the\s+)?code|c[oó]digo\s*[:>]/i.test(String(line ?? ''));
 
 const state = {
@@ -221,6 +223,7 @@ const state = {
   ollamaAsked: false,
   ollamaRecommended: null,
   ratings: new Map(),        // messageId → good | bad, from the ledger
+  deliveries: new Map(),    // D-S17: id of a delivered note → its row
   ratingNodes: new Map(),    // messageId → the buttons of that bubble // messageId -> { text, target }
   lastSequence: 0,
   lastSender: null,        // for iMessage-style grouping of consecutive bubbles
@@ -481,9 +484,30 @@ function toast(message, { tone = null } = {}) {
   els.toast.replaceChildren(el('i', 'toast-dot'), ...(from ? [el('span', 'toast-from', from)] : []), el('span', 'toast-text', text.slice(from.length)));
   els.toast.dataset.tone = kind;
   els.toast.classList?.toggle('note', kind === 'note');
+  els.toast.classList?.remove('leaving');
   els.toast.hidden = false;
+  roomForToast(true);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { els.toast.hidden = true; }, 6000);
+  // It closes back into its dot before it goes (styles.css, toast-fold).
+  toastTimer = setTimeout(() => {
+    els.toast.classList?.add('leaving');
+    toastTimer = setTimeout(() => { els.toast.hidden = true; els.toast.classList?.remove('leaving'); roomForToast(false); }, 320);
+  }, 6000);
+}
+// While a notice floats over the end of the conversation, a reader at the end gets the room it
+// takes: the last line rises above it instead of going under it. The thread follows the column as
+// it grows and shrinks.
+function roomForToast(on) {
+  const root = document.documentElement;
+  if (!root?.classList || !root.style?.setProperty) return;
+  root.classList.toggle('toasting', on);
+  if (on) root.style.setProperty('--toast-h', `${Math.ceil(els.toast.offsetHeight || 38)}px`);
+  const room = on && pinnedToEnd && !pageScrolls();
+  if (root.classList.contains('toast-room') === room) return;
+  root.classList.toggle('toast-room', room);
+  const until = performance.now() + 340;
+  const follow = () => { keepPinned(); if (performance.now() < until) requestAnimationFrame(follow); };
+  requestAnimationFrame?.(follow);
 }
 
 // Nothing in the room speaks on hover: not a button, not a chip, not a cut-off title. Every
@@ -514,7 +538,7 @@ const scroller = {
   set top(value) { if (this.node) this.node.scrollTop = value; },
   get height() { return this.node?.scrollHeight ?? 0; },
   get view() { return pageScrolls() ? (window.innerHeight ?? 0) : (els.thread?.clientHeight ?? 0); },
-  to(options) { (pageScrolls() ? window : els.thread)?.scrollTo?.(options); },
+  to(options) { ourScroll(options?.behavior === 'smooth' ? 900 : 160); (pageScrolls() ? window : els.thread)?.scrollTo?.(options); },
 };
 
 // Back to the box after a choice that is not writing (an agent, a model, an effort). On a phone
@@ -523,8 +547,18 @@ function focusComposer() {
   if (!state.device) els.input?.focus();
 }
 
+// What a node says, changed in place: the text it already holds is rewritten rather than replaced.
+// A replaced child is a mutation the window watcher answers with a layout of every window
+// (paintDepth), and the working clock changes once a second.
+function setText(node, value) {
+  const first = node.firstChild;
+  if (first && first.nodeType === 3 && !first.nextSibling) { if (first.data !== value) first.data = value; return; }
+  node.textContent = value;
+}
+
 function scrollToEnd() {
-  scroller.top = scroller.height;
+  scroller.to({ top: scroller.height, behavior: 'instant' });
+  setPinned(true);
 }
 
 // The thread is pinned to its own end, and anything that changes how tall it is has to put it
@@ -533,13 +567,30 @@ function scrollToEnd() {
 // conversation having been lost. The observer is the honest fix — it does not matter what moved,
 // only that the height is no longer the one the scroll position was computed against.
 // Whether the human is reading the end or has gone back for something. Only THEIR scrolling
-// decides it: a programmatic scroll fires the same event, so reading the position back during a
-// relayout turned every adjustment into "they scrolled away" and the thread stopped following.
+// decides it. A programmatic scroll fires the same event, so the room marks its own scrolls for a
+// moment (ourScroll) and only a scroll outside that moment is measured: the wheel, a finger, the
+// scrollbar dragged, the keyboard, ⌘F. It used to be measured 90 ms after a wheel turn, and a
+// relayout inside those 90 ms pulled the thread back to its end before the measure could see the
+// human had gone up — while an agent worked, the thread would not let anyone scroll up.
 let pinnedToEnd = true;
-const measurePin = () => {
-  pinnedToEnd = scroller.height - scroller.top - scroller.view < 120;
-};
-for (const how of ['wheel', 'touchmove', 'keydown']) els.thread?.addEventListener(how, () => setTimeout(measurePin, 90), { passive: true });
+let ourScrollUntil = 0;
+function ourScroll(ms = 160) { ourScrollUntil = Math.max(ourScrollUntil, performance.now() + ms); }
+const distanceToEnd = () => scroller.height - scroller.top - scroller.view;
+function setPinned(value) {
+  if (pinnedToEnd === value) return;
+  pinnedToEnd = value;
+  if (value) clearFinishedBelow();
+}
+const measurePin = () => setPinned(distanceToEnd() < 64);
+// A turn of the wheel upward leaves the end at once: nothing may pull the thread back under it.
+els.thread?.addEventListener('wheel', (event) => {
+  ourScrollUntil = 0;
+  if (event.deltaY < 0 && scroller.top > 0) setPinned(false);
+}, { passive: true });
+for (const how of ['touchstart', 'pointerdown']) els.thread?.addEventListener(how, (event) => { if (how === 'touchstart' || event.target === els.thread) ourScrollUntil = 0; }, { passive: true });
+const onThreadScroll = () => { if (performance.now() >= ourScrollUntil) measurePin(); };
+els.thread?.addEventListener('scroll', onThreadScroll, { passive: true });
+window.addEventListener?.('scroll', () => { if (pageScrolls()) onThreadScroll(); }, { passive: true });
 
 // The thread is pinned to its own end, and anything that changes how tall it is has to put it
 // back there. Opening the browser beside it, dragging the divider, closing it again: each one
@@ -550,6 +601,7 @@ for (const how of ['wheel', 'touchmove', 'keydown']) els.thread?.addEventListene
 // next frame of it, which is how the thread ended up parked hundreds of pixels short of its end.
 function keepPinned() {
   if (!pinnedToEnd || !els.thread) return;
+  if (distanceToEnd() < 1) return;
   scroller.to({ top: scroller.height, behavior: 'instant' });
 }
 if (typeof ResizeObserver === 'function' && els.thread) {
@@ -557,6 +609,40 @@ if (typeof ResizeObserver === 'function' && els.thread) {
   watch.observe(els.thread);
   if (els.column) watch.observe(els.column);
   if (els.composer) watch.observe(els.composer);
+}
+
+// Gone up to read while an agent works, the human is not pulled down when it answers: a light
+// round button over the box says something finished below — in the colour of who answered — and
+// takes them there. It goes away at the end, however they get there.
+const finishedBelow = { button: null, who: null };
+function toEndButton() {
+  if (finishedBelow.button || !document.querySelector?.('.shell')) return finishedBelow.button;
+  const button = el('button', 'to-end');
+  button.type = 'button';
+  button.hidden = true;
+  button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v10.5M5.2 10.4 10 15.2l4.8-4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="to-end-dot"></i>'; // trusted: our own SVG string
+  button.addEventListener('click', () => {
+    setPinned(true);
+    scroller.to({ top: scroller.height, behavior: 'smooth' });
+  });
+  document.querySelector('.shell').append(button);
+  finishedBelow.button = button;
+  return button;
+}
+function markFinishedBelow(agent, plan = false) {
+  const button = toEndButton();
+  if (!button || pinnedToEnd) return;
+  if (agent) tint(button, agent);
+  finishedBelow.who = agent;
+  button.setAttribute('aria-label', plan ? t('The plan finished below · go to the end') : t('@{agent} answered below · go to the end', { agent: agent ?? 'madre' }));
+  placeToast();
+  if (button.hidden) { button.hidden = false; button.classList.remove('leaving'); }
+}
+function clearFinishedBelow() {
+  const button = finishedBelow.button;
+  if (!button || button.hidden || button.classList.contains('leaving')) return;
+  button.classList.add('leaving');
+  setTimeout(() => { if (button.classList.contains('leaving')) { button.hidden = true; button.classList.remove('leaving'); } }, 200);
 }
 
 /* ---------- safe Markdown (DOM only, no HTML injection) ---------- */
@@ -4110,10 +4196,11 @@ function showReading(event) {
   // The answer as it is written. A CLI that says nothing until it is done shows nothing here,
   // which is the truth rather than a number invented to keep something moving.
   const wrote = out ? ` · ${t('{n} out', { n: (outTokens ?? 0).toLocaleString() || t('{n} ch', { n: out.toLocaleString() }) })}` : '';
-  meter.textContent = `~${read}${wrote}`;
-  meter.title = tokens
+  // In place, and said without the grey box (see the clock in renderThinking).
+  setText(meter, `~${read}${wrote}`);
+  meter.setAttribute('aria-description', tokens
     ? t("{chars} characters of briefing and transcript, about {tokens} tokens at this project's measured rate{written}. The exact figure arrives when the agent answers.", { chars: chars.toLocaleString(), tokens: tokens.toLocaleString(), written: out ? t(', and {n} characters written back so far', { n: out.toLocaleString() }) : '' })
-    : t('{chars} characters. This project has not been billed yet, so there is no rate to convert them at.', { chars: chars.toLocaleString() });
+    : t('{chars} characters. This project has not been billed yet, so there is no rate to convert them at.', { chars: chars.toLocaleString() }));
 }
 
 // The bill arrived: the estimate is replaced by what was actually charged, and stays on the
@@ -4205,6 +4292,8 @@ function renderThinking(event) {
   const status = el('span', 'status');
   const tokens = el('span', 'tokens');
   const elapsed = el('span', 'elapsed');
+  // The clock is not read aloud every second: the region around it is live.
+  elapsed.setAttribute('aria-hidden', 'true');
   // One answer, not the room. PARAR TODO is the master brake and takes down every plan and every
   // agent; this one is for the turn in front of you — the agent that hung, or started down the
   // wrong road, or hit an error and is still being waited on.
@@ -4242,7 +4331,9 @@ function renderThinking(event) {
     phraseChangedAt = seconds;
     phraseIndex = (phraseIndex + 1) % pool.length;
     const next = pool[phraseIndex];
-    if (status.textContent !== next) { status.textContent = next; status.style.animation = 'none'; void status.offsetWidth; status.style.animation = ''; }
+    // The phrase changes in place and comes in with its own small animation, without asking the
+    // browser to lay the page out again first (the old restart read offsetWidth to replay it).
+    if (status.textContent !== next) { setText(status, next); status.animate?.([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 350, easing: 'ease' }); }
   };
   // The limit the room holds this turn to, said with its start; older records fall back to the setting.
   const limitMs = event.payload.timeoutMs ?? state.timeouts[agent] ?? 180000;
@@ -4258,9 +4349,11 @@ function renderThinking(event) {
     else if ((wasConnected || Date.now() - born > 5000) && timer) { clearInterval(timer); thinkingClocks.delete(timer); return; }
     const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
     speak(seconds);
-    elapsed.textContent = `${seconds}s / ${limit}s`;
-    elapsed.classList.toggle('late', seconds >= limit * 0.6);
-    bubble.title = t('{label} is reading the project… {seconds}s so far; MADRE gives up at {limit}s.', { label: label(agent), seconds, limit });
+    setText(elapsed, `${seconds}s / ${limit}s`);
+    if (elapsed.classList.contains('late') !== seconds >= limit * 0.6) elapsed.classList.toggle('late', seconds >= limit * 0.6);
+    // Said to a screen reader, never as the browser's grey box: a title written every second came
+    // back under a still pointer however many times it was taken off (adoptTitle).
+    bubble.setAttribute('aria-description', t('{label} is reading the project… {seconds}s so far; MADRE gives up at {limit}s.', { label: label(agent), seconds, limit }));
   };
   tick();
   timer = setInterval(tick, 1000);
@@ -4857,9 +4950,99 @@ function renderEnlace(event) {
       : t(" · with {room} · both read each other's {kinds}, read-only", { room: other, kinds: what })));
     if (expires) node.append(t(' · until {date}', { date: new Date(expires).toLocaleDateString(language(), { day: 'numeric', month: 'short' }) }));
     if (event.payload.contract?.signed?.by === 'bishop') node.append(t(' · signed by the Coordinator'));
+    if (event.payload.contract?.train) node.append(t(' · the Coordinator learns from it'));
+    if (event.payload.contract?.state) node.append(role === 'serves' ? t(' · it also reads the state of this project') : role === 'reads' ? t(' · this project also reads its state') : t(" · both read each other's state"));
+    if (event.payload.contract?.deliver) node.append(role === 'serves' ? t(' · it can deliver notes here, which you accept') : role === 'reads' ? t(' · this project can deliver notes to it') : t(' · both can deliver notes to each other'));
   }
   node.title = contract?.id ?? (typeof contract === 'string' ? contract : '');
   if (contract?.id) node.dataset.contract = contract.id;
+  return node;
+}
+
+// D-S15: what the Coordinator took to learn from, said in the project that handed it over, and in
+// Salas, where it was taken. One line each time; the notes themselves are never shown here.
+function renderLearned(event) {
+  const { count = 0 } = event.payload ?? {};
+  const node = el('div', 'system memory enlace');
+  node.append(el('b', null, t('CONNECTION')));
+  node.append(event.type === 'enlace.corpus'
+    ? t('The Coordinator learned what this project knows: {n} notes, cleaned of private data.', { n: count })
+    : t('Learned from {room}: {n} notes for the training.', { room: event.payload.from ?? '', n: count }));
+  return node;
+}
+
+// D-S17: notes another project delivered here. A card with one row per note, each accepted or
+// declined by you (or by an agent of this project in #3/#4, which the row then shows). Nothing of
+// them is in the memory until accepted.
+function renderDelivered(event) {
+  const { name, agent, coordinator, notes = [] } = event.payload ?? {};
+  if (!notes.length) return null;
+  const from = coordinator ? t('the Coordinator') : name;
+  const node = el('div', 'choice run-request bishop-plan delivered');
+  const head = el('div', 'choice-head');
+  head.append(el('span', 'choice-kicker', t('Delivered by {room}{agent}', { room: from, agent: agent ? ` · @${agent}` : '' })));
+  node.append(head, el('p', 'choice-q', notes.length === 1 ? t('One note for this project. It enters the memory only if it is accepted.') : t('{n} notes for this project. Each enters the memory only if it is accepted.', { n: notes.length })));
+  const list = el('div', 'choice-list');
+  for (const note of notes) {
+    const row = el('div', 'choice-option bishop-order');
+    row.dataset.delivery = note.id;
+    row.append(el('span', 'choice-key', kindWord(note.kind).slice(0, 1).toUpperCase()));
+    const what = el('div', 'choice-text');
+    const where = el('div', 'bishop-where');
+    where.append(el('b', null, kindWord(note.kind)));
+    what.append(where, el('div', 'bishop-task', note.text));
+    if (note.why) what.append(el('p', 'run-why', t('Why: {why}', { why: note.why })));
+    row.append(what, el('div', 'choice-tags'));
+    list.append(row);
+    state.deliveries.set(note.id, row);
+    markDelivery({ id: note.id }, row.dataset.status ?? 'pending', row);
+  }
+  node.append(list);
+  state.lastSender = null;
+  return node;
+}
+function markDelivery({ id, by = null }, status, row = null) {
+  const target = row ?? state.deliveries.get(id);
+  if (!target) return;
+  target.dataset.status = status;
+  const side = target.querySelector('.choice-tags');
+  side.replaceChildren();
+  if (status !== 'pending') {
+    const who = by && by !== 'you' ? ` · @${by}` : '';
+    side.append(el('span', 'choice-tag', `${status === 'accepted' ? t('ACCEPTED') : t('DECLINED')}${who}`));
+    return;
+  }
+  if (state.device) { side.append(el('span', 'choice-tag', t('FROM THE MAC'))); return; }
+  const accept = bishopButton(t('Accept'));
+  const decline = bishopButton(t('Decline'), true);
+  accept.addEventListener('click', () => bishopPress('/api/enlace/inbox/decide', { id, accept: true }, [accept, decline]));
+  decline.addEventListener('click', () => bishopPress('/api/enlace/inbox/decide', { id, accept: false }, [accept, decline]));
+  side.append(accept, decline);
+}
+// D-S16 and D-S17, the lines that say what crossed: the state read, notes delivered elsewhere.
+function renderCrossing(event) {
+  const payload = event.payload ?? {};
+  const node = el('div', 'system memory enlace');
+  node.append(el('b', null, t('CONNECTION')));
+  const room = payload.name ?? payload.to ?? payload.from ?? '';
+  if (event.type === 'enlace.state') node.append(payload.source ? t('{room} read the state of this project.', { room: payload.to ?? '' }) : t('{room} asked for the state of this project; it keeps none (Continuity is not installed).', { room: payload.to ?? '' }));
+  else if (event.type === 'enlace.state.received') node.append(t('@{agent} read the state of {room}.', { agent: payload.agent ?? '', room }));
+  else node.append(t('@{agent} delivered {n} notes to {room}. They wait there until it accepts them.', { agent: payload.agent ?? '', n: (payload.notes ?? []).length, room }));
+  return node;
+}
+// D-S18: the exam of the Coordinator's local model, said in Home as it starts and as it ends.
+function renderExam(event) {
+  const payload = event.payload ?? {};
+  const node = el('div', `system memory enlace${event.type === 'bishop.exam.failed' || (event.type === 'bishop.exam.finished' && !payload.passed) ? ' warn' : ''}`);
+  node.append(el('b', null, t('EXAM')));
+  if (event.type === 'bishop.exam.started') node.append(t('The Coordinator\'s local model {model} is being examined: {n} questions and orders.', { model: payload.model ?? '', n: (payload.known ?? 0) + (payload.unknown ?? 0) + (payload.orders ?? 0) }));
+  else if (event.type === 'bishop.exam.failed') node.append(t('The exam of {model} could not finish: {why}', { model: payload.model ?? '', why: payload.error ?? '' }));
+  else {
+    const part = (key) => `${payload.scores?.[key]?.passed ?? 0}/${payload.scores?.[key]?.total ?? 0}`;
+    node.append(payload.passed
+      ? t('{model} passed: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.', { model: payload.model ?? '', known: part('known'), unknown: part('unknown'), orders: part('orders') })
+      : t('{model} did not pass: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator keeps only answering with it.', { model: payload.model ?? '', known: part('known'), unknown: part('unknown'), orders: part('orders') }));
+  }
   return node;
 }
 
@@ -6218,6 +6401,17 @@ function renderEventNode(event) {
     case 'mode.requested': node = renderModeRequest(event); break;
     case 'control.started': node = renderControlStarted(event); break;
     case 'create.reverted': node = renderCreateReverted(event); break;
+    case 'enlace.corpus':
+    case 'enlace.learned': node = renderLearned(event); break;
+    case 'enlace.delivered': if (!replaying) void refreshDeliveries(); node = renderDelivered(event); break;
+    case 'enlace.accepted': markDelivery(event.payload, 'accepted'); if (!replaying) void refreshDeliveries(); return;
+    case 'enlace.declined': markDelivery(event.payload, 'declined'); if (!replaying) void refreshDeliveries(); return;
+    case 'enlace.state':
+    case 'enlace.state.received':
+    case 'enlace.sent': node = renderCrossing(event); break;
+    case 'bishop.exam.started':
+    case 'bishop.exam.finished':
+    case 'bishop.exam.failed': node = renderExam(event); break;
     case 'enlace.signed':
     case 'enlace.revoked': if (event.type === 'enlace.revoked' && markRevokedLinks(event.payload.contract?.id)) return; node = renderEnlace(event); break;
     case 'bishop.plan.proposed': node = renderBishopPlan(event); break;
@@ -6261,7 +6455,7 @@ function renderEventNode(event) {
   // says something about itself: in a new project @madre's arrival used to take it away before
   // anyone had written a word.
   if (event.type.startsWith('message.') || event.type === 'command.output' || event.type === 'run.requested') removeEmpty();
-  const stickToBottom = !drawingRecord && scroller.height - scroller.top - scroller.view < 120;
+  const stickToBottom = !drawingRecord && pinnedToEnd;
   els.column.append(tidySystemLine(node));
   scheduleFold(node);
   if (!drawingRecord) followTurn(event, node, stickToBottom);
@@ -6366,12 +6560,12 @@ function openStrip(strip, open = !strip.classList.contains('open')) {
   // Opening a row is reading it: the thread stops following the end, or the taller row would be
   // scrolled away from under the click.
   const last = !strip.nextElementSibling;
-  if (open && !last) pinnedToEnd = false;
+  if (open && !last) setPinned(false);
   strip.classList.toggle('open', open);
   for (const node of strip.querySelectorAll(':scope > .system.folded')) node.classList.remove('quiet');
   groupRepeats(strip);
   countStrip(strip);
-  if (open) requestAnimationFrame(() => strip.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }));
+  if (open) requestAnimationFrame(() => { ourScroll(900); strip.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); });
 }
 els.column.addEventListener('click', (event) => {
   const strip = event.target.closest?.('.sys-dots');
@@ -6400,18 +6594,51 @@ function drawRecord(events) {
   drawingRecord = true;
   try { for (const event of events) renderEvent(event); } finally { drawingRecord = false; }
 }
+// What is off screen is not drawn (content-visibility), and until a row has been drawn once its
+// height is a guess (contain-intrinsic-size: 140px). A notice folded to dots is 13 px, an answer
+// can be 2,000: a jump into history that had never been on screen — the scrollbar dragged up, Home,
+// a search — landed hundreds of pixels off and the conversation jumped under the reader as the rows
+// near it found their real heights. Once the record is drawn, every row is laid out one time, a
+// batch while the page is idle, so the browser remembers its real height (contain-intrinsic-size:
+// auto) and goes back to skipping it. One pass per conversation opened; nothing stays drawn.
+let measuring = 0;
+function measureRows() {
+  const run = ++measuring;
+  const rows = [...(els.column?.children ?? [])];
+  const idle = globalThis.requestIdleCallback ? (fn) => requestIdleCallback(fn, { timeout: 400 }) : (fn) => setTimeout(fn, 16);
+  const frame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+  let next = rows.length;
+  // From the end up: the rows nearest to where the reader is are measured first.
+  const step = () => {
+    if (run !== measuring || next <= 0) return;
+    const batch = rows.slice(Math.max(0, next - 30), next).filter((row) => row.isConnected !== false);
+    next -= 30;
+    for (const row of batch) row.classList?.add('cv-measure');
+    frame(() => frame(() => {
+      for (const row of batch) row.classList?.remove('cv-measure');
+      idle(step);
+    }));
+  };
+  idle(step);
+}
 function followTurn(event, node, stickToBottom) {
   if (replaying) { if (stickToBottom) scrollToEnd(); return; }
-  const isTurn = event.type === 'agent.started' || (event.type === 'message.created' && event.payload.role === 'user');
+  const mine = event.type === 'message.created' && event.payload.role === 'user';
   const isAnswer = event.type === 'message.created' && event.payload.role !== 'user';
-  if (isAnswer) {
-    const tall = node.getBoundingClientRect?.().height > scroller.view * 0.7;
-    if (tall) node.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-    else scroller.to({ top: scroller.height, behavior: 'smooth' });
+  // What the human just sent takes them to the end, wherever they were reading.
+  if (mine) { setPinned(true); scroller.to({ top: scroller.height, behavior: 'smooth' }); return; }
+  // Gone up to read: nothing below moves them. An answer or a finished plan says so on a button.
+  if (!pinnedToEnd) {
+    if (isAnswer) markFinishedBelow(event.payload.sender);
+    else if (event.type === 'plan.completed') markFinishedBelow(event.payload.orchestrator ?? null, true);
     return;
   }
-  if (isTurn) { scroller.to({ top: scroller.height, behavior: 'smooth' }); return; }
-  if (stickToBottom) scrollToEnd();
+  if (isAnswer) {
+    // A long answer is read from its top: the thread stops following and opens at its start.
+    const tall = node.getBoundingClientRect?.().height > scroller.view * 0.7;
+    if (tall) { setPinned(false); ourScroll(900); node.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); return; }
+  }
+  scrollToEnd();
 }
 
 /* ---------- theme: auto (system) → light → dark ---------- */
@@ -6907,7 +7134,7 @@ customWindow.node?.addEventListener('close', () => { customButton?.setAttribute(
 // from the same code and the same answers (state.settingsTargets), wearing the room's ink.
 const SETTINGS_SECTIONS = [
   ['You', 'How it looks, how it works and your files', ['look', 'room', 'files']],
-  ['The agents', 'Who works, what they remember and which outside tools they use', ['agents', 'memory', 'mcp']],
+  ['The agents', 'Who works, what they remember and which outside tools they use', ['agents', 'memory', 'local', 'mcp']],
   ['System', 'What agents may do, privacy and updates', ['permissions', 'privacy', 'release']],
 ];
 const SETTINGS_CATS = {
@@ -6915,13 +7142,16 @@ const SETTINGS_CATS = {
   room: { name: 'Work and limits', color: '#d97757', icon: '<rect x="3.5" y="3.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="3.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3.5" y="11" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
   agents: { name: 'Agents', color: '#10a37f', icon: '<circle cx="7" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.6" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 16c.6-2.3 2.2-3.6 4.2-3.6s3.6 1.3 4.2 3.6M9.6 13c.9-.4 2.4-.6 4-.6 2 0 3.6 1.3 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   memory: { name: 'What it remembers', color: '#3fb6d9', icon: '<rect x="5" y="5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.1" y="8.1" width="3.8" height="3.8" rx=".6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
+  // Local AI, also here and not only in Modules (2026-10-16): the same card, and what this
+  // computer can run and train with it.
+  local: { name: 'Local AI', color: '#7f77dd', icon: '<rect x="5" y="5" width="10" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 2.6v2.4M12 2.6v2.4M8 15v2.4M12 15v2.4M2.6 8h2.4M2.6 12h2.4M15 8h2.4M15 12h2.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="1.8" fill="currentColor"/>' },
   mcp: { name: 'Outside tools (MCP)', color: '#5b8def', icon: '<path d="M7.2 3.2v3.3M12.8 3.2v3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.2 6.5h9.6v2.4a4.8 4.8 0 0 1-9.6 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 13.7v3.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   files: { name: 'Files and local sites', color: '#c8955a', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   permissions: { name: 'Permissions', color: '#e5484d', icon: '<path d="M10 2.8 4.2 5v4.6c0 3.6 2.4 6.4 5.8 7.6 3.4-1.2 5.8-4 5.8-7.6V5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   privacy: { name: 'Privacy', color: '#d4a72c', icon: '<rect x="4.5" y="8.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6.6a3 3 0 0 1 6 0v1.9" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
   release: { name: 'Updates and errors', color: '#4caf3a', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
 };
-const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'mcp', 'permissions', 'privacy', 'release'];
+const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release'];
 // The words the search knows, each pointing to the category that holds it and to the words on the
 // screen that carry it there, so a result opens the category and lands on the setting.
 const SETTINGS_INDEX = [
@@ -6961,6 +7191,12 @@ function settingsStatus(id) {
     return { line: `${finder} · ${ripley ? (ripley.status?.installed ? t('preview on') : t('preview off')) : t('Reading…')}` };
   }
   if (id === 'mcp') return mcpStatus();
+  if (id === 'local') {
+    const item = modules.items.find((one) => one.id === 'ollama');
+    if (!item) return { line: t('Reading…') };
+    const daily = item.recommended?.hardware?.recommended?.run;
+    return { line: [item.status?.detail, daily ? t('your computer runs {model}', { model: daily.label }) : null].filter(Boolean).join(' · ') };
+  }
   if (!data) return { line: t('Reading…') };
   if (id === 'agents') {
     const here = data.agents.filter((agent) => agent.detected);
@@ -7318,6 +7554,7 @@ function settingsDetail(id) {
   if (id === 'release') { part('release'); part('sentinel'); }
   if (id === 'files') part('files');
   if (id === 'mcp') part('mcp');
+  if (id === 'local') part('local');
   return detail;
 }
 
@@ -7325,6 +7562,7 @@ function settingsDetail(id) {
 function fillSettingsCategory(id) {
   if (id === 'files') { drawFilesTarget(); void refreshModules(); }
   if (id === 'mcp') { drawMcpTarget(); void loadMcp(); }
+  if (id === 'local') { drawLocalTarget(); void refreshModules(); }
   if (['agents', 'room', 'memory', 'privacy', 'permissions'].includes(id)) { if (settingsUI.data) renderSettings(); void loadSettings(); }
   if (id === 'room' || id === 'release') { if (turnsUI.turns || sentinelUI.settings) renderMotherSentinel(); void loadTurns(); void loadSentinel(); }
   if (id === 'release') renderUpdate();
@@ -9983,10 +10221,10 @@ function measureDock() {
   const field = els.composer.querySelector?.('.field')?.getBoundingClientRect?.();
   if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - field.top))}px`);
   if (height === measureDock.last) return;
-  const stay = atBottom();
   measureDock.last = height;
   shell.style.setProperty('--dock-h', `${height}px`);
-  if (stay) scrollToEnd();
+  placeToast();
+  keepPinned();
 }
 if (document.querySelector('.shell') && els.composer?.getBoundingClientRect) {
   measureDock();
@@ -10351,6 +10589,7 @@ function boot() {
   syncAshUI(Boolean(initial.ash?.enabled));
   void renderSettled();
   void renderOpenQuestions();
+  void refreshDeliveries();
   updateStopAll();
   if (typeof setInterval === 'function') { const ticker = setInterval(refreshBudgetWindow, 60000); ticker.unref?.(); }
   renderAgents();
@@ -10368,6 +10607,7 @@ function boot() {
   try { performance.measure?.('madre:history', 'madre:history-start', 'madre:history-end'); } catch { /* no timeline */ }
   setLoader(arrival, 0.9);
   scrollToEnd();
+  measureRows();
   matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { applyTheme(themeMode); renderAgents(); renderPicker(); });
 
   // The live light sits on the conversation it is live for, at the end of the path in the bar.
@@ -10477,7 +10717,7 @@ function forgetConversation() {
   state.userMessages.clear();
   state.runsReturned.clear();
   state.ratings.clear();
-  state.ratingNodes.clear();
+  state.ratingNodes.clear(); state.deliveries.clear();
   state.running.clear();
   state.plansRunning.clear();
   state.agentStats.clear();
@@ -10518,6 +10758,7 @@ async function paintConversation(payload) {
   renderOnboarding();
   void renderOpenQuestions();
   scrollToEnd();
+  measureRows();
   connectStream();
 }
 
@@ -10536,7 +10777,12 @@ function autosize() {
   els.highlight.style.height = els.input.style.height;
   renderHighlight();
 }
-function syncHighlightScroll() { els.highlight.scrollTop = els.input.scrollTop; }
+function syncHighlightScroll() {
+  els.highlight.scrollTop = els.input.scrollTop;
+  // Scrolled inside, the first line it shows fades in under the box's edge instead of being cut
+  // in half against it (styles.css, .editor.scrolled).
+  els.input.parentElement?.classList?.toggle('scrolled', els.input.scrollTop > 1);
+}
 els.input.addEventListener('input', autosize);
 els.input.addEventListener('scroll', syncHighlightScroll);
 autosize();
@@ -11271,12 +11517,15 @@ function updateCrewLabel() {
   // The copilot reads as a link of the chain: HUMAN › COPILOT › TOKEN SAVER › @CODEX ›.
   const piloting = copilotSends(els.target?.value);
   const armed = state.mode >= 3 && !piloting;
-  els.crewLabel.textContent = piloting ? `${t('HUMAN ›')} ${t('COPILOT ›')}${order ? ` ${t('TOKEN SAVER ›')}` : ''}` : state.intruder && state.mode < 3 ? t('INTRUDER ›') : armed ? `${t('DIAGNOSTICS')} · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
+  const path = piloting ? `${t('HUMAN ›')} ${t('COPILOT ›')}${order ? ` ${t('TOKEN SAVER ›')}` : ''}` : state.intruder && state.mode < 3 ? t('INTRUDER ›') : armed ? `${t('DIAGNOSTICS')} · ${MODES[state.mode].label} @${(state.modeArmedFor ?? els.target.value ?? '').toUpperCase()} ›`
     : state.mode === 0 ? t('HUMAN · INCOGNITO ›')
       : state.moduleCommand ? (state.create ? t('DIAGNOSTICS · MODULE · CREATE ›') : t('DIAGNOSTICS · MODULE · NEEDS #2 ›'))
       : order ? `${t('HUMAN ›')} ${state.create ? t('TOKEN SAVER · CREATE ›') : t('TOKEN SAVER ›')}`
         : state.create ? t('HUMAN · CREATE ›')
           : state.expendable ? t('EXPENDABLE ›') : t('HUMAN ›');
+  // The address is two pieces so a narrow box cuts the path with «…» and never who it goes to.
+  if (typeof els.crewLabel.replaceChildren === 'function') els.crewLabel.replaceChildren(el('span', 'crew-path', path));
+  else els.crewLabel.textContent = path;
   // Who the message goes to closes the line, in that agent's colour: HUMAN › TOKEN SAVER › @CODEX ›.
   const to = els.target?.value;
   if (to && !armed && (piloting || !state.intruder) && typeof els.crewLabel.append === 'function') {
@@ -12105,6 +12354,7 @@ function renderTerminalCard(event) {
           undo.textContent = t('RESTORED');
         } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); undo.disabled = false; }
       });
+      node.classList.add('has-undo');
       node.append(undo);
     }
   }
@@ -12499,7 +12749,18 @@ async function refreshModules() {
   else renderModuleWindows();
   barModulesChanged();
   drawFilesTarget();
+  drawLocalTarget();
   syncSettingsCards();
+}
+// AJUSTES › Local AI: the module's own blocks (Modules › Local AI), drawn here too.
+function drawLocalTarget() {
+  const target = state.settingsTargets.local;
+  if (!target?.isConnected) return;
+  const item = modules.items.find((one) => one.id === 'ollama');
+  if (!item) return;
+  target.replaceChildren();
+  ollamaBlock(target, item);
+  hardwareBlock(target, item.recommended?.hardware);
 }
 
 // What the version on a card means. A module that ships with MADRE has its own version, written
@@ -14013,7 +14274,7 @@ function moduleSheet(host, item) {
     const block = sxBlock(host, t('What your use taught'), `${t('Per agent and per kind of request: the lowest effort that was enough in your own turns, learned for no tokens. Below, a test that learns faster, for a price.')} ${t('When a lower level might be enough, MADRE offers to try it on a single message and watches how it goes; if it falls short, the next one goes back up.')}`, { className: 'mods-reading mods-intents' });
     intentsReading(block.rows);
   }
-  if (item.id === 'ollama') ollamaBlock(host, item);
+  if (item.id === 'ollama') { ollamaBlock(host, item); hardwareBlock(host, item.recommended?.hardware); }
 
   moduleFacts(host, item);
   if (item.external) {
@@ -14023,6 +14284,9 @@ function moduleSheet(host, item) {
     sxRow(yours, t('Remove'), t('It stops loading. The file stays where it is.'), removeModuleButton(item, { className: 'sx-btn danger', text: t('Remove') }));
   }
 }
+
+// What this computer can do with a local AI (public/hardware.js), drawn with this page's rows.
+const hardwareBlock = (host, fit) => drawHardware(host, fit, { el, sxBlock, sxRow, sxChip });
 
 // Ollama's local brain as rows: the server, its models, the roles it takes in this room.
 function ollamaBlock(host, item) {
@@ -14621,6 +14885,19 @@ function fillLoginAsk(box) {
     open.rel = 'noopener noreferrer';
     box.append(open);
   }
+  // A device sign-in (GitHub Copilot through OpenCode): the code is MADRE's to show, the page's
+  // to be typed into. Nothing comes back here; the sign-in ends on its own once it is typed.
+  if (loginNow.deviceCode) {
+    const said = el('div', 'login-device');
+    said.append(el('span', null, t('Type this code on that page:')), el('code', null, loginNow.deviceCode));
+    const copy = el('button', 'sx-btn', t('Copy'));
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(loginNow.deviceCode ?? ''); copy.textContent = t('Copied'); } catch { copy.textContent = t('Select it'); }
+    });
+    said.append(copy);
+    box.append(said);
+  }
   if (loginNow.asksForCode || loginNow.awaiting) {
     const form = el('form', 'login-code');
     const input = el('input');
@@ -14677,6 +14954,7 @@ async function startLogin(agentId, method = null) {
   loginNow.agent = agentId;
   loginNow.method = method;
   loginNow.url = null;
+  loginNow.deviceCode = null;
   loginNow.awaiting = false;
   loginNow.asksForCode = Boolean(result.asksForCode);
   repaintLoginAsk();
@@ -14696,8 +14974,8 @@ function renderLoginEvent(event) {
     : t('signing in @{agent} · {command}', { agent, command }));
   if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
   if (!replaying) {
-    if (finished) { if (loginNow.agent === agent) { loginNow.agent = null; loginNow.url = null; loginNow.awaiting = false; } }
-    else { loginNow.agent = agent; loginNow.method = event.payload.method ?? null; loginNow.url = null; loginNow.awaiting = false; loginNow.asksForCode = Boolean(state.agents.get(agent)?.login?.asksForCode); }
+    if (finished) { if (loginNow.agent === agent) { loginNow.agent = null; loginNow.url = null; loginNow.deviceCode = null; loginNow.awaiting = false; } }
+    else { loginNow.agent = agent; loginNow.method = event.payload.method ?? null; loginNow.url = null; loginNow.deviceCode = null; loginNow.awaiting = false; loginNow.asksForCode = Boolean(state.agents.get(agent)?.login?.asksForCode); }
     repaintLoginAsk();
   }
   state.lastSender = null;
@@ -14719,13 +14997,15 @@ function renderAgentInstall(event) {
 }
 
 function appendLoginOutput(event) {
-  const { agent, line, url } = event.payload;
+  const { agent, line, url, deviceCode } = event.payload;
   if (!replaying && loginNow.agent === agent) {
     // The address stays on screen instead of scrolling past: the heartbeat used to be the only
     // line left, so the one thing the human had to open was the first thing MADRE lost.
     if (url) loginNow.url = url;
-    if (looksLikeCodePrompt(line)) loginNow.awaiting = true;
-    if (url || looksLikeCodePrompt(line)) repaintLoginAsk();
+    // "Enter code: 3475-C193" is a code to show, not a question: no box to paste into.
+    if (deviceCode) loginNow.deviceCode = deviceCode;
+    else if (looksLikeCodePrompt(line)) loginNow.awaiting = true;
+    if (url || deviceCode || looksLikeCodePrompt(line)) repaintLoginAsk();
   }
   // The heartbeat («… still running · 42s · …») says one thing, how long: it takes the place of
   // the one before instead of piling up thirty lines over the address the person needs.
@@ -14770,6 +15050,7 @@ function readLoginState(live) {
   loginNow.agent = live?.agent ?? null;
   loginNow.method = live?.method ?? null;
   loginNow.url = live?.url ?? null;
+  loginNow.deviceCode = live?.deviceCode ?? null;
   loginNow.awaiting = Boolean(live?.awaitingCode);
   loginNow.asksForCode = Boolean(live?.asksForCode);
   repaintLoginAsk();
@@ -16108,7 +16389,62 @@ function renderMemoryPanel(data) {
   const target = state.settingsTargets.memory;
   if (target?.isConnected) { target.replaceChildren(); drawMemory(target, data); }
 }
+// D-S17, also in AJUSTES › What it remembers: the notes other projects delivered here, waiting
+// for you, and what became of the last ones. The same rows as the card in the conversation.
+const deliveries = { pending: 0 };
+async function readDeliveries() {
+  try { return (await fetch('/api/enlace/inbox').then((response) => response.json())).notes ?? []; } catch { return null; }
+}
+function drawDelivered(host) {
+  const block = sxBlock(host, t('Delivered notes'), t('Notes other projects handed to this one. Each enters the memory only if it is accepted.'));
+  block.id = 'sx-delivered';
+  const fill = async () => {
+    const notes = await readDeliveries();
+    if (!block.isConnected) return;
+    block.rows.replaceChildren();
+    if (!notes) { sxRow(block, t('Could not read them.'), null); return; }
+    const waiting = notes.filter((note) => note.status === 'pending');
+    if (!waiting.length) sxRow(block, t('Nothing waiting'), notes.length ? t('{n} decided before.', { n: notes.length }) : t('No project has delivered notes here yet.'));
+    for (const note of waiting) {
+      const decide = (accept) => async () => {
+        try {
+          const response = await fetch('/api/enlace/inbox/decide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: note.id, accept }) });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); }
+        void fill();
+        void refreshDeliveries();
+      };
+      const actions = el('div', 'sx-chips');
+      actions.append(sxButton(t('Accept'), decide(true), { tone: 'primary' }), sxButton(t('Decline'), decide(false)));
+      sxRow(block, `${kindWord(note.kind)} · ${note.text}`, [t('Delivered by {room}{agent}', { room: note.name, agent: note.agent ? ` · @${note.agent}` : '' }), note.why ? t('Why: {why}', { why: note.why }) : null].filter(Boolean).join(' · '), actions, { stack: true });
+    }
+  };
+  void fill();
+}
+// The bar says how many wait, and goes to them.
+async function refreshDeliveries() {
+  const notes = await readDeliveries();
+  if (!notes) return;
+  deliveries.pending = notes.filter((note) => note.status === 'pending').length;
+  let pill = document.querySelector('#inbox-pill');
+  if (!pill) {
+    const anchor = document.querySelector('#stop-all');
+    if (!anchor) return;
+    // Shaped like the handoff pill beside it: an icon and its words, never squeezed to a dot.
+    pill = el('button', 'stop-all handoff-pill inbox-pill');
+    pill.id = 'inbox-pill';
+    pill.type = 'button';
+    pill.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 11.2 5.4 4.6c.2-.6.8-1 1.4-1h6.4c.6 0 1.2.4 1.4 1l2.2 6.6v3.6c0 .9-.7 1.6-1.6 1.6H4.8c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.4 11.2h3.8l1 2h3.6l1-2h3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="handoff-words"></span>'; // trusted: our own SVG string
+    pill.addEventListener('click', () => openSettingsOn('memory', { anchor: 'sx-delivered' }));
+    anchor.before(pill);
+  }
+  pill.hidden = state.device || !deliveries.pending;
+  pill.querySelector('.handoff-words').textContent = deliveries.pending === 1 ? t('1 note to accept') : t('{n} notes to accept', { n: deliveries.pending });
+  pill.title = t('Notes other projects delivered here, waiting for you');
+}
 function drawMemory(host, data) {
+  drawDelivered(host);
   const mem = data?.settings?.memory;
   if (!mem) { sxBlock(host, t('What it remembers'), t('This project has no memory yet.')); return; }
   const save = async (memoryPatch, describe) => { try { await saveSettingNow({ memory: memoryPatch }, describe); await loadSettings(); } catch (error) { toast(t('Memory setting was not saved: {error}', { error: error.message })); } };
@@ -16185,28 +16521,60 @@ function drawMemory(host, data) {
   const recipe = el('details', 'sx-more');
   recipe.append(el('summary', null, t('Step by step')));
   let platform = /Mac/i.test(navigator.platform ?? '') || !/Linux/i.test(navigator.userAgent ?? '') ? 'mac' : 'linux';
+  // The size to train: the largest this computer trains and then runs, unless the human picks
+  // another (to train it on a larger machine, say). Every size is offered; the note says what fits.
+  let size = null;
+  let measured = false;
   const steps = el('ol', 'sx-steps');
   const pickRow = el('div', 'sx-train-platform');
   const platformNote = el('p', 'sx-hint');
-  recipe.append(pickRow, platformNote, steps);
+  const sizeRow = el('div', 'sx-train-platform');
+  const sizeNote = el('p', 'sx-hint');
+  recipe.append(pickRow, platformNote, sizeRow, sizeNote, steps);
   train.append(recipe);
   let lastPayload = null;
   const drawPlatform = () => {
     pickRow.replaceChildren(sxSeg([{ value: 'mac', text: t('Mac with Apple chip') }, { value: 'linux', text: t('Linux with NVIDIA') }], platform, (value) => { platform = value; showDataset(lastPayload); }, { label: t('Your computer') }));
     platformNote.textContent = platform === 'mac'
-      ? t('Any Mac with an M chip. 16 GB of memory is enough for the small model.')
+      ? t('Any Mac with an M chip. Its memory decides the size you can train, below.')
       : t('Experimental: MLX runs on Linux with an NVIDIA card (CUDA 12, compute capability 7.5 or newer, glibc 2.35, Python 3.10), but mlx-lm only promises Apple chips. Step 2 checks the card first.');
+  };
+  const drawSize = (fit) => {
+    const models = fit?.models ?? [];
+    if (!models.length) { sizeRow.replaceChildren(); sizeNote.textContent = ''; return null; }
+    const chosen = models.find((model) => model.id === size) ?? models.find((model) => model.id === fit.recommended?.train?.id) ?? models[1] ?? models[0];
+    sizeRow.replaceChildren(sxSeg(models.map((model) => ({ value: model.id, text: model.label.replace(/^Qwen2\.5\s*/, ''), title: model.train === 'yes' ? t('Trains on this computer') : t('Needs {gb} GB to train', { gb: model.trainGb }) })), chosen.id, (value) => { size = value; showDataset(lastPayload); }, { label: t('Model size') }));
+    const here = hardwareLine(fit.hardware);
+    sizeNote.textContent = chosen.train === 'yes'
+      ? t('{model} trains on this computer ({here}). Needs about {disk} GB free on disk.', { model: chosen.label, here, disk: Math.ceil(chosen.params * 5.5) + 2 })
+      : fit.accelerated
+        ? t('{model} needs {gb} GB to train and this computer has {have} GB: train it on a larger one, or pick a smaller size.', { model: chosen.label, gb: chosen.trainGb, have: fit.usableGb })
+        : t('This computer has no Apple chip or NVIDIA card to train with ({here}). The recipe is the one for a computer that has one.', { here });
+    return chosen;
   };
   const showDataset = (payload) => {
     lastPayload = payload;
     const d = payload?.dataset;
     const exported = d ? t('Last export {when} · {train} to train · {valid} to check', { when: new Date(d.exportedAt).toLocaleString(), train: d.train, valid: d.valid }) : t('Not exported yet.');
     const trained = payload?.trained ? t('Trained model {model} in use.', { model: payload.trained }) : t('No trained model yet.');
-    datasetHint.textContent = `${exported} ${trained}`;
-    drawPlatform();
+    // D-S15: in Home, which projects the Coordinator learned from this time, and how.
+    const sources = (d?.linked ?? []).map((one) => (one.source === 'missing'
+      ? t('{room}: did not answer and nothing was kept', { room: one.name })
+      : one.source === 'kept'
+        ? t('{room}: {n} notes from the last time it answered', { room: one.name, n: one.notes })
+        : t('{room}: {n} notes', { room: one.name, n: one.notes })));
+    datasetHint.textContent = `${exported} ${trained}${sources.length ? ` ${t('Learned from your projects: {list}.', { list: sources.join(' · ') })}` : ''}`;
     const info = payload?.training;
+    // The first reading sets the recipe for this computer: an NVIDIA card goes the Linux way.
+    if (!measured && info?.fit?.hardware) { measured = true; if (info.fit.hardware.accelerator === 'nvidia') platform = 'linux'; else if (info.fit.hardware.accelerator === 'apple') platform = 'mac'; }
+    drawPlatform();
+    const chosen = drawSize(info?.fit);
     steps.replaceChildren();
     if (!info) { steps.append(el('li', 'sx-hint', t('The training recipe is unavailable.'))); return; }
+    // A base trained in 4 bits (3B and up) is joined back at full precision, so llama.cpp can read
+    // it, and Ollama shrinks it to 4 bits again; the small ones stay at 8.
+    const base = chosen?.base ?? info.baseModel;
+    const quantized = Boolean(chosen?.quantized);
     const quote = (path) => `"${path.replace(/\/$/, '')}"`;
     const venv = 'source ~/.madre-train/bin/activate';
     const setup = platform === 'mac'
@@ -16221,11 +16589,40 @@ function drawMemory(host, data) {
     };
     step(t('Export the training data'), t('Use «Export» above. Do it again whenever the project has grown.'));
     step(t('Prepare Python, once'), platform === 'mac' ? t('A separate environment with mlx-lm, so nothing else on your computer changes.') : t('A separate environment with MLX for CUDA and mlx-lm. It must print «CUDA: True»; if not, stop here.'), setup);
-    step(t('Train · base {model} for {gb} GB', { model: info.baseModel, gb: info.memoryGb }), t('From 10 to 40 minutes. It learns from the exported pairs and leaves an adjustment («adapters»).'), `${venv} && bash ${quote(`${info.recipeDir}train.sh`)} ${quote(info.roomDir)} ${info.baseModel}`);
-    step(t('Join the adjustment with the base model'), null, `${venv} && cd ${quote(info.roomDir)} && mlx_lm.fuse --model ${info.baseModel} --adapter-path adapters --save-path fused`);
-    step(t('Turn it into a file Ollama reads (GGUF)'), t('The first time, it downloads llama.cpp\'s converter.'), `${venv} && cd ${quote(info.roomDir)} && git clone --depth 1 https://github.com/ggml-org/llama.cpp && pip install -r llama.cpp/requirements.txt && python3 llama.cpp/convert_hf_to_gguf.py fused --outfile madre.gguf --outtype q8_0`);
-    step(t('Register it in Ollama as {model}', { model: info.modelName }), t('@madre switches to it at the next recheck of Local AI.'), `cd ${quote(info.roomDir)} && cp ${quote(`${info.recipeDir}Modelfile`)} . && ollama create ${info.modelName} -f Modelfile`);
+    step(t('Train · base {model}', { model: chosen?.label ?? base }), (chosen?.params ?? 0) > 3 ? t('An hour or more, depending on the size and on how many pairs there are. It learns from the exported pairs and leaves an adjustment («adapters»).') : t('From 10 to 40 minutes. It learns from the exported pairs and leaves an adjustment («adapters»).'), `${venv} && bash ${quote(`${info.recipeDir}train.sh`)} ${quote(info.roomDir)} ${base}`);
+    step(t('Join the adjustment with the base model'), null, `${venv} && cd ${quote(info.roomDir)} && mlx_lm.fuse --model ${base} --adapter-path adapters --save-path fused${quantized ? ' --de-quantize' : ''}`);
+    step(t('Turn it into a file Ollama reads (GGUF)'), t('The first time, it downloads llama.cpp\'s converter.'), `${venv} && cd ${quote(info.roomDir)} && git clone --depth 1 https://github.com/ggml-org/llama.cpp && pip install -r llama.cpp/requirements.txt && python3 llama.cpp/convert_hf_to_gguf.py fused --outfile madre.gguf --outtype ${quantized ? 'f16' : 'q8_0'}`);
+    step(t('Register it in Ollama as {model}', { model: info.modelName }), quantized ? t('Ollama keeps it in 4 bits, the size the table counts on. @madre switches to it at the next recheck of Local AI.') : t('@madre switches to it at the next recheck of Local AI.'), `cd ${quote(info.roomDir)} && cp ${quote(`${info.recipeDir}Modelfile`)} . && ollama create ${info.modelName} -f Modelfile${quantized ? ' --quantize q4_K_M' : ''}`);
     step(t('Try it before trusting it'), t('Ask @madre ten things the project decided and five it never discussed. It should get the first right and say it never discussed the others; if it makes things up, remove it with «ollama rm {model}» and train with more pairs.', { model: info.modelName }));
+    if (state.salas) drawExam();
+  };
+  // D-S18 · in Home, the exam the Coordinator's local model passes before it gives orders: the
+  // same test as the step above, run by MADRE, with a fixed bar and kept for that exact model.
+  const exam = el('div', 'sx-exam');
+  if (state.salas) train.append(exam);
+  let examTimer = null;
+  const drawExam = async () => {
+    const reading = await fetch('/api/x/bishop/exam').then((response) => (response.ok ? response.json() : null)).catch(() => null);
+    exam.replaceChildren();
+    if (!reading) return;
+    const last = reading.exam;
+    const part = (key) => `${last?.scores?.[key]?.passed ?? 0}/${last?.scores?.[key]?.total ?? 0}`;
+    const said = reading.running ? t('Examining {model}… a local model answers one question at a time; it takes a few minutes.', { model: reading.model?.name ?? '' })
+      : !last ? t('Not examined yet. Until it passes, the Coordinator only answers with @madre.')
+        : reading.holds ? t('{model} passed on {date}: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.', { model: last.model, date: new Date(last.at).toLocaleDateString(language()), known: part('known'), unknown: part('unknown'), orders: part('orders') })
+          : last.passed ? t('{model} passed, but the model in use is another one now ({now}). Examine it again.', { model: last.model, now: reading.model?.name ?? '—' })
+            : t('{model} did not pass on {date}: {known} about the projects, {unknown} said it never discussed, {orders} orders.{why}', { model: last.model, date: new Date(last.at).toLocaleDateString(language()), known: part('known'), unknown: part('unknown'), orders: part('orders'), why: last.why?.length ? ` ${last.why.map((one) => t(one)).join(' · ')}` : '' });
+    const run = sxButton(t('Examine'), async () => {
+      run.disabled = true;
+      const response = await fetch('/api/x/bishop/exam', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+      const result = await response?.json().catch(() => ({}));
+      if (!response?.ok) { toast(`${t('Diagnostics › ')}${result?.error ?? t('could not start')}`); run.disabled = false; return; }
+      void drawExam();
+    }, { title: t('Questions about the projects, questions about things nobody discussed, and orders: the bar is fixed and the result is kept for this model') });
+    run.disabled = Boolean(reading.running) || !reading.model;
+    sxRow(exam, t('Exam before giving orders'), said, run);
+    clearTimeout(examTimer);
+    if (reading.running) examTimer = setTimeout(() => { if (exam.isConnected) void drawExam(); }, 8000);
   };
   fetch('/api/dataset').then((response) => response.json()).then(showDataset).catch(() => showDataset(null));
 }
@@ -18669,6 +19066,7 @@ function barPlace() {
 // «‹ Salas» at its start. The three are not keys you place, so the bar's card never offers them.
 const HOME_ICON = '<path d="M3.4 9.2 10 3.6l6.6 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="ic-f" d="M5.2 7.9v7.5a1.2 1.2 0 0 0 1.2 1.2h2.3v-4a1.3 1.3 0 0 1 2.6 0v4h2.3a1.2 1.2 0 0 0 1.2-1.2V7.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
 const homeOn = () => !state.device && Boolean(document.querySelector('#bar-home'));
+let homePower = null;
 function homeBar() {
   const home = document.querySelector('#bar-home');
   const bar = document.querySelector('#bar');
@@ -18705,6 +19103,10 @@ function homeBar() {
     key.classList.remove('bar-off', 'bar-overflow');
     if (key.parentNode !== home) home.append(key);
   }
+  // Last, after the settings: turning MADRE off (public/power.js). On the Mac only.
+  if (!homePower) { homePower = powerKey('tree-button'); homePower.id = 'power-button'; }
+  labelPowerKey(homePower);
+  if (homePower.parentNode !== home || (home.lastElementChild && home.lastElementChild !== homePower)) home.append(homePower);
   home.hidden = false;
   bar.classList.add('with-home');
   // The bar beside it leaves exactly its width free, measured whenever it changes (fonts, language).

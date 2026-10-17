@@ -36,7 +36,27 @@ python3 -c "import mlx.core as mx; print('CUDA:', mx.cuda.is_available())"   # d
 
 Si dice `True`, los comandos de entrenamiento de arriba (desde `cd ~/.pulse/rooms/<proyecto>`) y los pasos 3 y 4 son los mismos. Si no, no hay ruta probada en Linux todavía.
 
-`train.sh` en esta carpeta hace lo mismo con comprobaciones. En 16 GB usa el 1.5B; con 32 GB o más, `Qwen/Qwen2.5-3B-Instruct` o `Qwen/Qwen2.5-Coder-7B-Instruct` con `--batch-size 1`. Una ronda de 600 iteraciones tarda de 10 a 40 minutos.
+`train.sh` en esta carpeta hace lo mismo con comprobaciones (`bash train.sh <carpeta del proyecto> <base>`).
+
+### Qué tamaño entrenar
+
+No depende de una máquina en particular, sino de la memoria de la tuya. MADRE la mide (Módulos › IA local › Tu equipo) y propone el tamaño más grande que tu computadora entrena y luego corre. Los mínimos son para la computadora completa, con el sistema y el navegador abiertos:
+
+| Modelo | Base para entrenar | Para correrlo | Para entrenarlo |
+|---|---|---|---|
+| Qwen2.5 0.5B | `Qwen/Qwen2.5-0.5B-Instruct` | 4 GB | 8 GB |
+| Qwen2.5 1.5B | `Qwen/Qwen2.5-1.5B-Instruct` | 6 GB | 12 GB |
+| Qwen2.5 3B | `mlx-community/Qwen2.5-3B-Instruct-4bit` | 8 GB | 16 GB |
+| Qwen2.5 7B | `mlx-community/Qwen2.5-7B-Instruct-4bit` | 12 GB | 24 GB |
+| Qwen2.5 14B | `mlx-community/Qwen2.5-14B-Instruct-4bit` | 20 GB | 36 GB |
+| Qwen2.5 32B | `mlx-community/Qwen2.5-32B-Instruct-4bit` | 36 GB | 64 GB |
+| Qwen2.5 72B | `mlx-community/Qwen2.5-72B-Instruct-4bit` | 64 GB | 128 GB |
+
+- En una Mac con chip Apple la memoria es compartida: cuenta toda.
+- Con una tarjeta NVIDIA cuenta la memoria de la tarjeta (VRAM), que rinde un tercio más porque el modelo la tiene para él solo.
+- Sin ninguna de las dos, un modelo corre en el procesador, más lento, y no se entrena: un LoRA en procesador tarda días.
+
+Desde 3B la base viene en 4 bits (QLoRA), y desde 7B `train.sh` agrega `--grad-checkpoint`. Una ronda de 600 iteraciones tarda de 10 a 40 minutos hasta 3B, y una hora o más por encima. El disco libre que hace falta ronda 5.5 GB por cada mil millones de parámetros, más 2 GB.
 
 ## 3 · Servir en Ollama
 
@@ -51,6 +71,13 @@ git clone --depth 1 https://github.com/ggml-org/llama.cpp && pip install -r llam
 python3 llama.cpp/convert_hf_to_gguf.py fused --outfile madre.gguf --outtype q8_0
 cp <carpeta de MADRE>/docs/training/Modelfile . && ollama create madre-<proyecto> -f Modelfile
 ```
+
+Con una base en 4 bits (3B en adelante) el paso cambia en tres puntos:
+1. `mlx_lm.fuse` lleva `--de-quantize`, para que llama.cpp pueda leer el resultado.
+2. La conversión usa `--outtype f16`.
+3. `ollama create` lleva `--quantize q4_K_M`, que lo deja en 4 bits, el tamaño que cuenta la tabla.
+
+La pantalla de entrenamiento de MADRE ya escribe así los comandos para el tamaño que elijas.
 
 El nombre importa: `madre-<proyecto>` en minúsculas, con guiones. Al siguiente **REVISAR OTRA VEZ** en Módulos › IA local, `@madre` cambia a ese modelo y Lo que recuerda lo dice. El `Modelfile` viene en `docs/training/` del repositorio de MADRE y del paquete de npm.
 

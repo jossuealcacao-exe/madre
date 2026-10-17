@@ -27,6 +27,8 @@ import { BISHOP_SIGN_DAYS, CHANNEL_HEADER, MAX_ORDER_MODE, NO_SUCH_LINK, activeC
 import { t } from '../i18n.mjs';
 import { askRoom, ensureSalasProject, isSalasRoom, knownRooms, projectRoomId, roomComesUp, salasRoomId, startRoom } from '../salas.mjs';
 import { defineModule } from './sdk.mjs';
+import { ollamaGenerate, ollamaHost } from '../ollama.mjs';
+import { LOCAL_ORDER_MODE, buildExam, examHolds, examPairs, keepExam, readExam, runExam } from './bishop-exam.mjs';
 import {
   BISHOP_MODES, CONSULT_HEADER, MAX_ORDERS, ORDER_CHARS, ORDER_HEADER, PLAN_FENCE, RESULT_CHARS, changePlans, clean, closing, consultHeader,
   newPlanId, orderHeader, parsePlan, planById, publicLink, publicOrder, resolveLinks, resolveOrder, resolveOrders,
@@ -57,6 +59,18 @@ const SIGNER_WORDS = { bishop: 'The Coordinator signs connections to read', you:
 const signerOf = (ctx) => (ctx.config?.modules?.bishop?.links === 'you' ? 'you' : 'bishop');
 // S-030: @madre as BISHOP only answers. It is still the human's choice of who BISHOP is.
 export const onlyAnswers = (agent) => agent === 'madre';
+// D-S18: unless the local model it answers with passed the exam (src/modules/bishop-exam.mjs), and
+// it is still that very model. Then it gives orders up to #1 and proposes no connections.
+const localModel = (ctx) => {
+  const probe = ctx.services?.ollama?.state?.() ?? null;
+  const name = probe?.madreModel ?? probe?.chatModel ?? null;
+  return name ? { name, digest: (probe.models ?? []).find((model) => model.name === name)?.digest ?? null } : null;
+};
+async function answersOnlyNow(ctx, agent) {
+  if (!onlyAnswers(agent)) return false;
+  return !examHolds(await readExam(ctx.stateRoot).catch(() => null), localModel(ctx));
+}
+let examining = null;
 const reply = (status, body) => ({ status, body });
 
 /* ---------- the channel ---------- */
@@ -120,6 +134,7 @@ async function sendOrder(ctx, planId, step, { auto = false } = {}) {
   if (!contract) return back(404, t('No signed connection lets the Coordinator give orders to that project.'));
   const ceiling = Math.min(contract.orders.maxMode, MAX_ORDER_MODE);
   if (order.mode > ceiling) return back(403, t('That connection allows orders up to #{n}.', { n: ceiling }));
+  if (onlyAnswers(plan.agent) && (order.mode > LOCAL_ORDER_MODE || await answersOnlyNow(ctx, plan.agent))) return back(403, t('The Coordinator\'s local model gives orders up to #1, and only after passing its exam.'));
   const target = (await knownRooms(ctx.stateRoot)).find((room) => room.id === order.room);
   if (!target?.open) return back(409, t('That project is asleep. Wake it from Home to send it orders.'));
   const key = await channelKey(ctx.stateRoot).catch(() => null);
@@ -159,7 +174,7 @@ async function deliverProposal(ctx, planId, step, { auto = false } = {}) {
 // proposal that cannot leave on its own is held: it says why and waits for the human's press.
 async function advance(ctx, planId) {
   const plan = await planById(ctx.stateRoot, planId);
-  if (!plan || plan.halted || onlyAnswers(plan.agent)) return;
+  if (!plan || plan.halted || await answersOnlyNow(ctx, plan.agent)) return;
   const hold = async (order, why) => {
     await changePlans(ctx.stateRoot, (data) => { const one = data.plans[plan.id]?.orders.find((item) => item.step === order.step); if (one) one.held = why; });
     await ctx.services.recordIn(plan.chat, 'bishop.order.held', { plan: plan.id, step: order.step, why });
@@ -170,7 +185,7 @@ async function advance(ctx, planId) {
     if (delivered.status !== 202) await hold(order, delivered.body.error);
   }
   if (plan.mode === 'manual') return;
-  const ceiling = plan.mode === 'auto' ? 2 : 1;
+  const ceiling = Math.min(plan.mode === 'auto' ? 2 : 1, onlyAnswers(plan.agent) ? LOCAL_ORDER_MODE : 2);
   const busy = new Set(plan.orders.filter((order) => ['sending', 'sent'].includes(order.status)).map((order) => order.room));
   for (const order of plan.orders) {
     if (order.status !== 'ready' || order.held || order.mode > ceiling || busy.has(order.room)) continue;
@@ -243,7 +258,8 @@ const base = defineModule({
     // which the card's translation (exact sentences only) could never match.
     const detail = !ctx.settings.enabled ? t('off')
       : !agent ? t('No ready agent. Choose one when it is available.')
-      : onlyAnswers(agent) ? t('on · @{agent} · only answers', { agent })
+      : await answersOnlyNow(ctx, agent) ? t('on · @{agent} · only answers', { agent })
+      : onlyAnswers(agent) ? t('on · @{agent} · passed its exam: orders up to #1', { agent })
       : t('on · @{agent} · {orders} · {links}', { agent, orders: t(ORDER_WORDS[modeOf(ctx)]), links: t(SIGNER_WORDS[signerOf(ctx)]) });
     return { status: { installed: Boolean(ctx.settings.enabled && agent), detail } };
   },
@@ -293,8 +309,13 @@ const base = defineModule({
     }
     if (event?.type !== 'message.created') return;
     if (said.role !== 'assistant' || said.status !== 'completed' || said.target !== 'you' || said.planId || said.synthetic || said.sender !== chosen(ctx)) return;
-    if (relayed.has(said.parentMessageId) || onlyAnswers(said.sender)) return;
+    if (relayed.has(said.parentMessageId) || await answersOnlyNow(ctx, said.sender)) return;
     const parsed = parsePlan(said.text);
+    // D-S18: a local model that passed its exam gives orders up to #1 and never proposes connections.
+    if (parsed && onlyAnswers(said.sender)) {
+      for (const link of parsed.links) parsed.ignored.push({ line: `${link.from} → ${link.to}`, why: 'the local model proposes no connections' });
+      parsed.links = [];
+    }
     if (!parsed) return;
     if (!parsed.orders.length && !parsed.links.length) {
       await ctx.record('bishop.plan.ignored', { responseMessageId: said.messageId, agent: said.sender, reasons: parsed.ignored.map((item) => item.why) });
@@ -303,7 +324,8 @@ const base = defineModule({
     const salas = salasRoomId(ctx.stateRoot);
     const rooms = await knownRooms(ctx.stateRoot);
     const contracts = activeContracts(ctx.config, { salas });
-    const orders = resolveOrders({ orders: parsed.orders, rooms, contracts, salas, agents: ctx.agents });
+    const orders = resolveOrders({ orders: parsed.orders, rooms, contracts, salas, agents: ctx.agents })
+      .map((order) => (onlyAnswers(said.sender) && order.mode > LOCAL_ORDER_MODE && ['ready', 'proposal'].includes(order.status) ? { ...order, status: 'blocked', why: 'The Coordinator\'s local model gives orders up to #1.' } : order));
     const links = resolveLinks({ links: parsed.links, rooms, contracts, salas });
     const plan = { id: newPlanId(), chat: ctx.chat ?? null, responseMessageId: said.messageId, agent: said.sender, reason: parsed.reason, mode: modeOf(ctx), createdAt: new Date().toISOString(), closed: false, halted: null, orders, links, asked: parsed.orders };
     await changePlans(ctx.stateRoot, (data) => { data.plans[plan.id] = plan; });
@@ -318,6 +340,31 @@ const base = defineModule({
     await advance(ctx, plan.id);
   },
   routes: [
+    // D-S18 · the exam of the local model, from the page of Home: started here, run in the
+    // background (a local model is slow), its result kept beside the room and recorded.
+    { method: 'GET', path: '/api/x/bishop/exam', handler: async (ctx, { viaPhone }) => pageDoor(ctx, viaPhone) ?? reply(200, { exam: await readExam(ctx.stateRoot), running: Boolean(examining), model: localModel(ctx), holds: examHolds(await readExam(ctx.stateRoot), localModel(ctx)) }) },
+    { method: 'POST', path: '/api/x/bishop/exam', handler: async (ctx, { viaPhone }) => {
+      const refused = pageDoor(ctx, viaPhone);
+      if (refused) return refused;
+      if (examining) return reply(409, { error: t('The exam is already running.') });
+      const model = localModel(ctx);
+      if (!model) return reply(412, { error: t('Local AI has no chat model to examine. Download one in Local AI, or train the Coordinator\'s.') });
+      const salas = salasRoomId(ctx.stateRoot);
+      const rooms = await knownRooms(ctx.stateRoot);
+      const contracts = activeContracts(ctx.config, { salas });
+      const ordering = contracts.map((contract) => receivesOrders(contract, salas)).filter(Boolean).map((id) => rooms.find((room) => room.id === id)).filter(Boolean);
+      const cases = buildExam({ ...(await examPairs(join(ctx.stateRoot, 'rooms', salas, 'dataset'))), rooms, ordering });
+      const where = { rooms, contracts, salas, agents: ctx.agents };
+      const crew = readyAgents(ctx).map((one) => one.id);
+      const system = (kind) => formatBishop({ rooms, contracts, links: readsFrom(contracts, salas), local: true, salas, crew, answersOnly: kind === 'answer', localOrders: kind === 'order', signer: 'you' });
+      const ask = async (prompt, question) => (await ollamaGenerate({ host: ollamaHost(), model: model.name, system: prompt, prompt: question, timeoutMs: 120000, temperature: 0.1 })).text;
+      await ctx.record('bishop.exam.started', { model: model.name, known: cases.known.length, unknown: cases.unknown.length, orders: cases.orders.length });
+      examining = runExam({ model, cases, ask, system, where })
+        .then(async (result) => { await keepExam(ctx.stateRoot, result); await ctx.record('bishop.exam.finished', { model: result.model, passed: result.passed, scores: result.scores, why: result.why }); })
+        .catch(async (error) => { await ctx.record('bishop.exam.failed', { model: model.name, error: String(error.message).slice(0, 300) }); })
+        .finally(() => { examining = null; });
+      return reply(202, { started: true, model: model.name, cases: { known: cases.known.length, unknown: cases.unknown.length, orders: cases.orders.length } });
+    } },
     // The human pressed «Send» on one order of a plan, in the page of Salas.
     { method: 'POST', path: '/api/x/bishop/send', handler: async (ctx, { payload, viaPhone }) => pageDoor(ctx, viaPhone) ?? sendOrder(ctx, payload?.plan, payload?.step) },
     // «Take it to its room»: a #3/#4 proposal, for the human to arm there.
@@ -524,13 +571,13 @@ const bishop = Object.freeze({
       choices: agents.map((one) => ({ value: one.id, label: onlyAnswers(one.id) ? '@madre · only answers' : `@${one.id}` })),
       note: 'The ready agent the Coordinator speaks through. With @madre, the Coordinator only answers: it proposes neither orders nor connections.',
     }] : [];
-    if (agent && !onlyAnswers(agent)) {
+    if (agent && !(await answersOnlyNow(ctx, agent))) {
       controls.push({
         key: 'mode', label: 'ORDERS', type: 'select', options: BISHOP_MODES, value: modeOf(ctx),
         choices: BISHOP_MODES.map((value) => ({ value, label: ORDER_CHOICES[value] })),
         note: 'Always within what the connection allows. #3 and #4 always wait for your confirmation in their project; an error or STOP ALL halts the orders that go out on their own.',
       });
-      controls.push({
+      if (!onlyAnswers(agent)) controls.push({
         key: 'links', label: 'CONNECTIONS TO READ', type: 'select', options: LINK_SIGNERS, value: signerOf(ctx),
         choices: LINK_SIGNERS.map((value) => ({ value, label: SIGNER_CHOICES[value] })),
         note: 'A connection with orders is always signed by you. A connection the Coordinator signed is revoked with one press, in Home.',
@@ -562,7 +609,7 @@ const bishop = Object.freeze({
 export default bishop;
 
 // Pure formatting makes the 1500-character ceiling inspectable. Names are data, never orders.
-export function formatBishop({ rooms, glances = new Map(), contracts = [], links = [], notes = [], unread = [], local = false, salas = null, crew = [], answersOnly = false, signer = 'bishop' }) {
+export function formatBishop({ rooms, glances = new Map(), contracts = [], links = [], notes = [], unread = [], local = false, salas = null, crew = [], answersOnly = false, signer = 'bishop', localOrders = false }) {
   const names = new Map(rooms.map((room) => [room.id, clean(room.name, 40)]));
   const lead = 'BISHOP: guardián de las salas. Responde sobre proyectos, decisiones y movimientos; cita siempre la sala de cada hecho. Si una sala no se pudo leer, dilo. Nunca muevas un proyecto por dentro.';
   const ordering = contracts.filter((contract) => receivesOrders(contract, salas));
@@ -571,8 +618,18 @@ export function formatBishop({ rooms, glances = new Map(), contracts = [], links
   const unlinked = rooms.filter((room) => room.id !== salas && !linked.has(room.id));
   const never = 'Nunca pidas llaves, propongas publicar ni nombres rutas privadas.';
   let end;
-  if (answersOnly) end = `Solo consulta: responde y cita la sala de cada dato; di qué no pudiste leer. Sin bloques de órdenes ni de enlaces. ${never}`;
-  else {
+  if (answersOnly) end = `Solo consulta: responde y cita la sala de cada dato; di qué no pudiste leer; si ninguna sala lo discutió, dilo. Sin bloques de órdenes ni de enlaces. ${never}`;
+  else if (localOrders) {
+    // D-S18: the local model that passed its exam — orders up to #1, the shape shown with a room and
+    // an agent that are really here, and no connections.
+    const sample = ordering.length ? (names.get(receivesOrders(ordering[0], salas)) ?? receivesOrders(ordering[0], salas)) : 'sala';
+    const helper = crew.find((id) => id !== 'madre') ?? crew[0] ?? 'codex';
+    end = [
+      'Si el humano pide una orden, cierra tu respuesta con este bloque, y nada después:',
+      `\`\`\`${PLAN_FENCE}`, 'Motivo del plan en una línea', `@${sample}/${helper} #1: la tarea, en una frase`, '```',
+      `Órdenes: hasta 4, «@sala/agente #0-#1: tarea», solo a salas con órdenes${crew.length ? `; agentes: ${crew.join(', ')}` : ''}. Nunca a una sala que no está en los contratos. Sin enlaces. ${never}`,
+    ].join('\n');
+  } else {
     // A small model copies a placeholder word for word («@sala/agente»), so the shape is shown with
     // rooms that are really there and an agent that is really here.
     const sample = ordering.length ? (names.get(receivesOrders(ordering[0], salas)) ?? receivesOrders(ordering[0], salas)) : null;
@@ -591,7 +648,7 @@ export function formatBishop({ rooms, glances = new Map(), contracts = [], links
     const a = names.get(contract.rooms.a) ?? clean(contract.rooms.a, 40);
     const b = names.get(contract.rooms.b) ?? clean(contract.rooms.b, 40);
     const receives = receivesOrders(contract, salas);
-    lines.push(`- ${a} ${contract.direction} ${b}; lee:${contract.kinds.map((kind) => clean(kind, 12)).join(',')}; órdenes:${receives ? `a ${names.get(receives) ?? clean(receives, 40)} hasta #${Math.min(contract.orders.maxMode, MAX_ORDER_MODE)}` : 'no'}`);
+    lines.push(`- ${a} ${contract.direction} ${b}; lee:${contract.kinds.map((kind) => clean(kind, 12)).join(',')}; órdenes:${receives ? `a ${names.get(receives) ?? clean(receives, 40)} hasta #${Math.min(contract.orders.maxMode, MAX_ORDER_MODE)}` : 'no'}${contract.state ? '; estado:sí' : ''}${contract.deliver ? '; entrega:sí' : ''}`);
   }
   if (!contracts.length) lines.push('- ninguno');
   lines.push(`Lectura para esta sala: ${links.map(({ from }) => names.get(from) ?? clean(from, 40)).join(', ') || 'ninguna'}. Solo notas con contrato firmado; ${local ? 'las notas disponibles para esta pregunta van abajo' : 'usa pulse-enlaces para buscar'} y cita la sala.`);
@@ -643,5 +700,7 @@ export async function bishopBlock(ctx, { agent, text = '', mode = 1, preview = f
       else unread.push({ room: source.name, why: answer.status === 429 ? 'tope de lecturas por hora' : answer.status === 423 ? 'archivo sellado' : 'no respondió' });
     }
   }
-  return formatBishop({ rooms, glances, contracts, links, notes: notes.slice(0, MAX_NOTES), unread, local: agent === 'madre', salas, crew: readyAgents(ctx).map((one) => one.id), answersOnly: onlyAnswers(agent) || CONSULT_HEADER.test(text), signer: signerOf(ctx) });
+  const consult = CONSULT_HEADER.test(text);
+  const answersOnly = consult || await answersOnlyNow(ctx, agent);
+  return formatBishop({ rooms, glances, contracts, links, notes: notes.slice(0, MAX_NOTES), unread, local: agent === 'madre', salas, crew: readyAgents(ctx).map((one) => one.id), answersOnly, localOrders: !answersOnly && onlyAnswers(agent), signer: signerOf(ctx) });
 }

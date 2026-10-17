@@ -10,10 +10,11 @@ import { t } from './i18n.mjs';
 export const DEFAULT_OLLAMA_HOST = 'http://127.0.0.1:11434';
 // Embedding models we know how to talk to, best first.
 export const EMBED_MODELS = ['nomic-embed-text', 'mxbai-embed-large', 'snowflake-arctic-embed', 'all-minilm', 'bge-m3'];
-// Chat models that follow instructions well enough to distil, best first for a 16 GB machine.
-// General chat models first: @madre speaks for the room in the human's language, and coder
-// models drift into other voices. A coder is taken only when nothing else is there.
-export const CHAT_MODELS = ['qwen2.5:7b', 'llama3.1:8b', 'gemma3:4b', 'qwen2.5:3b', 'llama3.2:3b', 'qwen2.5:1.5b', 'llama3.2:1b', 'qwen2.5-coder:7b', 'qwen2.5-coder:1.5b'];
+// Chat models that follow instructions well enough to distil, best first. The larger Qwen2.5
+// sizes lead: the room only offers one to a computer that runs it (src/modules/local-models.mjs),
+// so when it is there it was pulled for this machine. General chat models before coders: @madre
+// speaks for the room in the human's language, and coder models drift into other voices.
+export const CHAT_MODELS = ['qwen2.5:72b', 'qwen2.5:32b', 'qwen2.5:14b', 'qwen2.5:7b', 'llama3.1:8b', 'gemma3:4b', 'qwen2.5:3b', 'llama3.2:3b', 'qwen2.5:1.5b', 'llama3.2:1b', 'qwen2.5-coder:7b', 'qwen2.5-coder:1.5b'];
 // Ollama's default window is 4k tokens and it drops the OLDEST text when a prompt overflows:
 // the system prompt goes first. Every MADRE call asks for a wider window.
 export const DEFAULT_NUM_CTX = 8192;
@@ -60,7 +61,7 @@ export async function probeOllama({ host = ollamaHost(), fetchImpl = globalThis.
     // What Ollama itself is running. It answers or it does not; either way the probe goes on.
     const version = await fetchImpl(`${host}/api/version`, { signal: AbortSignal.timeout(timeoutMs) })
       .then((answer) => (answer.ok ? answer.json() : null)).then((body) => body?.version ?? null).catch(() => null);
-    const models = (payload.models ?? []).map((model) => ({ name: model.name, size: model.size ?? 0, family: model.details?.family ?? '', details: model.details ?? {} }));
+    const models = (payload.models ?? []).map((model) => ({ name: model.name, size: model.size ?? 0, digest: model.digest ?? null, family: model.details?.family ?? '', details: model.details ?? {} }));
     const embeds = models.filter(isEmbedModel);
     const chats = models.filter((model) => !isEmbedModel(model));
     return {

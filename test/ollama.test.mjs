@@ -11,6 +11,7 @@ import { EventStore } from '../src/event-store.mjs';
 import { RoomMemory } from '../src/memory.mjs';
 import { Room } from '../src/room.mjs';
 import { createPulseServer } from '../src/server.mjs';
+import { hardwareOnce } from '../src/modules/local-models.mjs';
 import { chatLedger } from '../src/chats.mjs';
 
 const tags = { models: [
@@ -152,7 +153,7 @@ test('ollama: the module lists its state, the server wires it live, and PULL str
     assert.equal(status.ollama.archivist, true);
     assert.equal(status.recommended.embed, 'nomic-embed-text');
     const ext = await fetch(`${base}/api/extensions`).then((response) => response.json());
-    assert.equal(ext.extensions.find((item) => item.id === 'ollama').recommended.chat, 'qwen2.5:3b');
+    assert.equal(ext.extensions.find((item) => item.id === 'ollama').recommended.chat, (await hardwareOnce()).recommended.run?.ollama ?? 'qwen2.5:3b');
     const settings = await fetch(`${base}/api/ollama/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ archivist: false }) }).then((response) => response.json());
     assert.equal(settings.ollama.archivist, false);
     assert.equal(settings.ollama.embeddings, true);

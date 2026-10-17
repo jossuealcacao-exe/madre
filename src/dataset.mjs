@@ -7,7 +7,7 @@
 // Export is the first step of roadmap 2c; training runs outside MADRE, on the
 // human's machine, from docs/training/.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { redact } from './sentinel-errors.mjs';
 import { ABERRATION, VERDICTS, NEGATIVE_VERDICTS, POSITIVE_VERDICTS } from './memory.mjs';
@@ -121,6 +121,78 @@ export function pairsFromNotes(notes, { project = 'project', home, user, privacy
   }));
 }
 
+// D-S15 · what the Coordinator learns from the projects that let it. Each note of a linked project
+// becomes a pair that names its project — in the question, in the answer and in the citation — so
+// the model learns which project knows what and never blends two projects into one. The notes
+// arrive already cleaned by the project that served them; they are cleaned again here, by Salas.
+export function pairsFromLinked(corpora, { home, user, privacy = null } = {}) {
+  const clean = guard(privacy);
+  const pairs = [];
+  for (const corpus of corpora ?? []) {
+    const name = String(corpus?.name ?? corpus?.from ?? 'project');
+    for (const note of corpus?.notes ?? []) {
+      if (!note || typeof note.text !== 'string' || !note.text.trim() || note.kind === ABERRATION) continue;
+      const text = clean(redact(note.text, { home, user }));
+      const cite = `${name} #${note.fromSequence}${note.throughSequence && note.throughSequence !== note.fromSequence ? `–#${note.throughSequence}` : ''}`;
+      pairs.push({
+        kind: 'linked',
+        agent: 'madre',
+        from: corpus.from ?? null,
+        mode: 1,
+        sequence: Number.isInteger(note.throughSequence) ? note.throughSequence : 0,
+        at: note.created ?? null,
+        messages: [
+          { role: 'system', content: LINKED_SYSTEM },
+          { role: 'user', content: `What does the project "${name}" remember about this? Kind: ${note.kind}. Topic: ${text.split(/[.;:]/)[0].slice(0, 80)}` },
+          { role: 'assistant', content: `In ${name}: ${text} [${cite}]` },
+        ],
+      });
+    }
+    // D-S16: the project's canonical state, as a photo with its date. The date is in the question
+    // and in the answer, so the model learns «as of», never «now»: for today it asks the project.
+    const state = corpus?.state;
+    if (state?.project) {
+      const date = String(state.project.updatedAt ?? corpus.at ?? '').slice(0, 10) || 'an unknown date';
+      const say = (value) => clean(redact(String(value ?? ''), { home, user }));
+      const base = Number.isInteger(corpus.notes?.at(-1)?.throughSequence) ? corpus.notes.at(-1).throughSequence : 0;
+      const pair = (offset, question, answer) => pairs.push({ kind: 'linked', agent: 'madre', from: corpus.from ?? null, mode: 1, sequence: base + offset, at: state.project.updatedAt ?? null, messages: [{ role: 'system', content: LINKED_SYSTEM }, { role: 'user', content: question }, { role: 'assistant', content: answer }] });
+      const where = [state.project.objective && `the objective is ${say(state.project.objective)}`, state.project.phase && `the phase is ${say(state.project.phase)}`, state.project.nextAction && `the next action is ${say(state.project.nextAction)}`, state.project.blockers?.length && `it is blocked by ${say(state.project.blockers.join('; '))}`].filter(Boolean);
+      if (where.length) pair(1, `Where did the project "${name}" stand on ${date}?`, `As of ${date}, in ${name}: ${where.join('; ')}. For today, ask ${name}. [${name} · state ${date}]`);
+      (state.decisions ?? []).forEach((decision, index) => {
+        if (!decision?.title) return;
+        pair(2 + index, `What did the project "${name}" decide about ${say(decision.title).slice(0, 80)}?`, `In ${name}, accepted decision as of ${String(decision.at ?? date).slice(0, 10)}: ${say(decision.title)}${decision.description ? `. ${say(decision.description)}` : ''} [${name} · Continuity]`);
+      });
+    }
+  }
+  return pairs;
+}
+const LINKED_SYSTEM = 'You are the Coordinator of MADRE. You know the projects connected to you and what each one decided and recorded. Say which project every fact comes from, and never mix two projects.';
+
+// Salas keeps the last corpus each project handed over (D-S15), so a project asleep when the
+// Coordinator exports is not lost from its training: what it shared last time is used, and said so.
+// One file per project, beside the dataset; forgotten as soon as the link stops allowing it.
+export const linkedCorpusDir = (datasetDir) => join(datasetDir, 'linked');
+const corpusFile = (datasetDir, room) => join(linkedCorpusDir(datasetDir), `${String(room).replace(/[^\w.-]/g, '_')}.json`);
+export async function keepCorpus(datasetDir, corpus, { now = new Date() } = {}) {
+  await mkdir(linkedCorpusDir(datasetDir), { recursive: true });
+  await writeFile(corpusFile(datasetDir, corpus.from), `${JSON.stringify({ contract: corpus.contract, from: corpus.from, name: corpus.name, at: new Date(now).toISOString(), notes: corpus.notes, ...(corpus.state ? { state: corpus.state } : {}) })}\n`, { mode: 0o600 });
+}
+export async function keptCorpus(datasetDir, room) {
+  try { return JSON.parse(await readFile(corpusFile(datasetDir, room), 'utf8')); } catch { return null; }
+}
+export async function forgetCorpus(datasetDir, room) {
+  await rm(corpusFile(datasetDir, room), { force: true });
+}
+// Every kept copy whose project no longer lets the Coordinator learn goes: `allowed` is the set of
+// rooms that still do.
+export async function pruneCorpora(datasetDir, allowed) {
+  const names = await readdir(linkedCorpusDir(datasetDir)).catch(() => []);
+  for (const name of names) {
+    const kept = await keptCorpus(datasetDir, name.replace(/\.json$/, ''));
+    if (!kept || !allowed.has(kept.from)) await rm(join(linkedCorpusDir(datasetDir), name), { force: true });
+  }
+}
+
 // What the room got wrong, in the shape that trains against it. Each aberration becomes one
 // preference pair: the same ask, the false claim as what to avoid, the correction as what to say
 // instead. A negative on its own teaches a model very little; a pair tells it which of two
@@ -169,8 +241,8 @@ export function split(pairs, { validEvery = 10 } = {}) {
   return { train, valid };
 }
 
-export async function exportDataset({ events, notes = [], dir, project = 'project', home, user, privacy = null }) {
-  const pairs = [...pairsFromEvents(events, { project, home, user, privacy }), ...pairsFromNotes(notes, { project, home, user, privacy })].sort((a, b) => a.sequence - b.sequence);
+export async function exportDataset({ events, notes = [], dir, project = 'project', home, user, privacy = null, linked = [] }) {
+  const pairs = [...pairsFromEvents(events, { project, home, user, privacy }), ...pairsFromNotes(notes, { project, home, user, privacy }), ...pairsFromLinked(linked, { home, user, privacy })].sort((a, b) => a.sequence - b.sequence);
   const preferences = preferencesFromAberrations(notes, { project, home, user, privacy });
   const { train, valid } = split(pairs);
   await mkdir(dir, { recursive: true });
@@ -182,7 +254,7 @@ export async function exportDataset({ events, notes = [], dir, project = 'projec
   await writeFile(join(dir, 'preferences.jsonl'), preferences.map((pair) => JSON.stringify({ prompt: pair.prompt, chosen: pair.chosen, rejected: pair.rejected })).join('\n') + (preferences.length ? '\n' : ''));
   const byAgent = {};
   for (const pair of pairs) byAgent[pair.agent] = (byAgent[pair.agent] ?? 0) + 1;
-  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => POSITIVE_VERDICTS.includes(p.rating)).length, notes: pairs.filter((p) => p.kind === 'note').length, aberrations: preferences.length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
+  const manifest = { project, exportedAt: new Date().toISOString(), pairs: pairs.length, turns: pairs.filter((p) => p.kind === 'turn').length, delegated: pairs.filter((p) => p.kind === 'delegated').length, good: pairs.filter((p) => POSITIVE_VERDICTS.includes(p.rating)).length, notes: pairs.filter((p) => p.kind === 'note').length, linked: (linked ?? []).map((one) => ({ room: one.from, name: one.name, notes: pairs.filter((p) => p.kind === 'linked' && p.from === one.from).length, source: one.source ?? 'live', at: one.at ?? null })), aberrations: preferences.length, train: train.length, valid: valid.length, byAgent, files: ['train.jsonl', 'valid.jsonl', 'preferences.jsonl'], format: 'chat · {"messages":[{role,content}]} · mlx-lm / llama-factory / axolotl', preferenceFormat: 'preference · {"prompt","chosen","rejected"} · DPO / ORPO' };
   await writeFile(join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { dir, ...manifest };
 }

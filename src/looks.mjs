@@ -8,7 +8,7 @@
 // so a page paints in the last known look before it hears from here.
 //
 // Only what the pages share: the theme, the accent, the wallpaper and its dials, the bubbles and
-// the text of the conversation. How Home lays out its own cards stays in Home's browser.
+// the text of the conversation. How Home is arranged lives beside it, in home.json (below).
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -86,5 +86,45 @@ export function changeLooks(stateRoot, patch, now = new Date()) {
     const rooms = roomsOf(await readFileLooks(stateRoot));
     await writeWhole(looksFile(stateRoot), `${JSON.stringify({ looks, ...(Object.keys(rooms).length ? { rooms } : {}), at: new Date(now).toISOString() }, null, 2)}\n`);
     return { looks, saved: true };
+  });
+}
+
+// HOME, ARRANGED ONCE (2026-10-16). Home is shown by whichever process answers /salas — the
+// Coordinator's, or any project's — and each is another port, so the arrangement Home kept in the
+// browser was lost on every other page and whenever MADRE came back on another port. What the
+// person arranged lives here, in ~/.pulse/home.json: the tiles and their sizes, the order of the
+// projects, the projects on the bar, and how the cards read. Kept as the page keeps them (the same
+// keys, the same text), each checked for its shape before it is written.
+const homeFile = (stateRoot) => join(stateRoot, 'home.json');
+const HOME_TEXT = 8000;
+const isIds = (value) => Array.isArray(value) && value.length <= 500 && value.every((id) => typeof id === 'string' && id.length <= 200);
+export const HOME_KEYS = {
+  'pulse.home.layout': (value) => { try { const raw = JSON.parse(value); return Boolean(raw) && typeof raw === 'object' && !Array.isArray(raw) && (raw.order === undefined || isIds(raw.order)); } catch { return false; } },
+  'pulse.home.projects': (value) => { try { return isIds(JSON.parse(value)); } catch { return false; } },
+  'pulse.lobbyBar': (value) => { try { return isIds(JSON.parse(value)); } catch { return false; } },
+  'pulse.home.cards': (value) => CHOICE.test(value),
+  'pulse.home.text': (value) => CHOICE.test(value),
+  'pulse.home.order': (value) => CHOICE.test(value),
+};
+export async function readHome(stateRoot) {
+  const raw = await readFile(homeFile(stateRoot), 'utf8').then((text) => JSON.parse(text)).catch(() => null);
+  const home = {};
+  for (const [key, valid] of Object.entries(HOME_KEYS)) {
+    const value = raw?.home?.[key];
+    home[key] = typeof value === 'string' && value.length <= HOME_TEXT && valid(value) ? value : null;
+  }
+  return { home, saved: Boolean(raw && typeof raw.home === 'object') };
+}
+export function changeHome(stateRoot, patch, now = new Date()) {
+  return oneAtATime(homeFile(stateRoot), async () => {
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return { error: 'home' };
+    for (const [key, value] of Object.entries(patch)) {
+      if (!Object.hasOwn(HOME_KEYS, key)) return { error: 'key' };
+      if (value !== null && (typeof value !== 'string' || value.length > HOME_TEXT || !HOME_KEYS[key](value))) return { error: 'value' };
+    }
+    const { home } = await readHome(stateRoot);
+    Object.assign(home, patch);
+    await writeWhole(homeFile(stateRoot), `${JSON.stringify({ home, at: new Date(now).toISOString() }, null, 2)}\n`);
+    return { home, saved: true };
   });
 }

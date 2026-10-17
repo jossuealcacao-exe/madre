@@ -129,7 +129,7 @@ test('enlaces · the module, the tool, the asking side, the notices, and signing
       assert.equal(twice.status, 409, `${again.direction} signed again over a pair in force`);
       assert.match((await twice.json()).error, /already connected/);
     }
-    assert.deepEqual(Object.keys(contract), ['id', 'rooms', 'direction', 'kinds', 'zones', 'expires', 'revoked', 'orders', 'signed', 'recall']);
+    assert.deepEqual(Object.keys(contract), ['id', 'rooms', 'direction', 'kinds', 'zones', 'expires', 'revoked', 'orders', 'signed', 'recall', 'train', 'state', 'deliver']);
     assert.equal(contract.recall, false, '3e: recall is off unless ticked');
     assert.deepEqual(contract.orders, { allowed: false, maxMode: 0, perHour: 50 });
     assert.deepEqual((await events(a, 'enlace.signed')).filter((event) => event.payload.contract.id === contract.id).map((event) => event.payload), [{ contract, other: nameB, otherId: idB, coordinator: false, role: 'serves', kinds: ['decision', 'fact'], expires: null, orders: contract.orders }]);
@@ -336,4 +336,126 @@ test('enlaces · the module file is the MCP server when it is run: it answers to
   assert.equal(replies[3].result.content[0].text, 'Nothing was read: this room did not answer.');
   assert.equal(replies[3].result.isError, false);
   assert.equal(contract.rooms.a, idA);
+});
+
+test('enlaces · D-S15: the Coordinator learns from a project only while you allow it, takes all it knows, keeps the last copy if it sleeps, and forgets it when you stop', async () => {
+  const state = await scratch('madre-enlaces-train-');
+  const projectA = await realpath(await scratch('madre-enlaces-train-a-'));
+  await mkdir(salasProjectRoot(state), { recursive: true });
+  const a = await createPulseServer({ projectRoot: projectA, stateRoot: state, agents: roster, invokers: {} });
+  const s = await createPulseServer({ projectRoot: salasProjectRoot(state), stateRoot: state, agents: roster, invokers: {} });
+  const portA = await listen(a.server);
+  await a.markOpen(portA);
+  const portS = await listen(s.server);
+  await s.markOpen(portS);
+  const [idA, salas] = [projectRoomId(projectA), salasRoomId(state)];
+  const post = (port, path, payload, headers = {}) => fetch(`http://127.0.0.1:${port}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(payload) });
+  const page = { origin: `http://127.0.0.1:${portS}` };
+  const channel = { [CHANNEL_HEADER]: await channelKey(state) };
+  try {
+    const memory = await new RoomMemory(join(state, 'rooms', idA, 'memory.sqlite')).initialize();
+    memory.addMemories(Array.from({ length: 30 }, (_, i) => ({ kind: i % 2 ? 'fact' : 'decision', text: `Decision number ${i} of the project, recorded with enough words to be learned.`, sources: [1] })), { agent: 'codex', fromSequence: 1, throughSequence: 1 });
+    memory.addMemories([{ kind: 'question', text: 'A question not signed into the link.', sources: [1] }], { agent: 'codex', fromSequence: 2, throughSequence: 2 });
+    memory.close();
+    // Signed by a process (BISHOP's road) the box is ignored; signed from the page it holds.
+    const link = (await (await post(portS, '/api/salas/enlaces', { a: idA, b: salas, direction: 'a→b', kinds: ['decision', 'fact'], train: true }, page)).json()).contract;
+    assert.equal(link.train, true);
+    // The serving side: never a page, never without the key, never on a link that does not allow it.
+    const corpus = (headers) => fetch(`http://127.0.0.1:${portA}/api/enlace/corpus?contract=${link.id}&asking=${salas}`, { headers });
+    assert.equal((await corpus({ ...channel, origin: page.origin })).status, 403, 'a page took the corpus');
+    assert.equal((await corpus({})).status, 403, 'taken without the key');
+    const whole = await (await corpus(channel)).json();
+    assert.equal(whole.notes.length, 30, 'not everything the project knows of the signed kinds, or more than that');
+    assert.ok(whole.notes.every((note) => note.kind !== 'question'), 'a kind not signed crossed');
+    // The export in Salas: every allowed project, named.
+    const exported = (await (await post(portS, '/api/dataset', {})).json()).dataset;
+    assert.deepEqual(exported.linked.map((one) => [one.room, one.notes, one.source]), [[idA, 30, 'live']]);
+    // Asleep: the copy kept the last time it answered is used, and said so.
+    await close(a.server);
+    const asleep = (await (await post(portS, '/api/dataset', {})).json()).dataset;
+    assert.deepEqual(asleep.linked.map((one) => [one.notes, one.source]), [[30, 'kept']]);
+    // Cleared by you: the copy goes, and the next export leaves the project out.
+    assert.equal((await post(portS, '/api/salas/enlaces/train', { id: link.id, train: false })).status, 403, 'changed by a process');
+    assert.equal((await post(portS, '/api/salas/enlaces/train', { id: link.id, train: false }, page)).status, 200);
+    const after = (await (await post(portS, '/api/dataset', {})).json()).dataset;
+    assert.deepEqual(after.linked, []);
+  } finally {
+    await close(s.server).catch(() => {});
+    await close(a.server).catch(() => {});
+  }
+});
+
+test('enlaces · D-S16 and D-S17: the state of a project and the notes delivered to it, only while you allow them, and nothing in its memory until accepted', async () => {
+  const state = await scratch('madre-enlaces-state-');
+  const projectA = await realpath(await scratch('madre-enlaces-state-a-'));
+  const projectB = await realpath(await scratch('madre-enlaces-state-b-'));
+  await mkdir(join(projectA, '.ahp', 'state'), { recursive: true });
+  await mkdir(join(projectA, '.ahp', 'records', 'decisions'), { recursive: true });
+  await mkdir(join(projectA, '.ahp', 'handoffs'), { recursive: true });
+  await writeFile(join(projectA, '.ahp', 'state', 'project.json'), JSON.stringify({ project_id: 'a', objective: 'Ship the billing rewrite', phase: 'ACTIVE', next_action: 'Review the invoices module', blockers: ['waiting for tax tables'], updated_at: '2026-10-15T10:00:00Z' }));
+  await writeFile(join(projectA, '.ahp', 'records', 'decisions', 'DEC-20261015-AAAA0001.json'), JSON.stringify({ id: 'DEC-20261015-AAAA0001', title: 'Invoices in UTC', description: 'Every invoice is stamped in UTC.', status: 'ACCEPTED', updated_at: '2026-10-15T09:00:00Z' }));
+  await writeFile(join(projectA, '.ahp', 'handoffs', 'HOF-20261015-AAAA0002.json'), JSON.stringify({ id: 'HOF-20261015-AAAA0002', from: 'codex', to: 'claude', objective: 'Ship the billing rewrite', git: { branch: 'main', commit: 'abc' }, relevant_files: ['src/secret.js'], pending: ['tests for refunds'], decisions: ['DEC-20261015-AAAA0001'], next_action: 'Write the refund tests', created_at: '2026-10-15T11:00:00Z' }));
+  await mkdir(salasProjectRoot(state), { recursive: true });
+  const a = await createPulseServer({ projectRoot: projectA, stateRoot: state, agents: roster, invokers: {} });
+  const b = await createPulseServer({ projectRoot: projectB, stateRoot: state, agents: roster, invokers: {} });
+  const s = await createPulseServer({ projectRoot: salasProjectRoot(state), stateRoot: state, agents: roster, invokers: {} });
+  const [portA, portB, portS] = [await listen(a.server), await listen(b.server), await listen(s.server)];
+  await a.markOpen(portA); await b.markOpen(portB); await s.markOpen(portS);
+  const [idA, idB] = [projectRoomId(projectA), projectRoomId(projectB)];
+  const post = (port, path, payload, headers = {}) => fetch(`http://127.0.0.1:${port}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(payload) });
+  const page = { origin: `http://127.0.0.1:${portS}` };
+  const pageA = { origin: `http://127.0.0.1:${portA}` };
+  const channel = { [CHANNEL_HEADER]: await channelKey(state) };
+  try {
+    // Signed by a process the two boxes are ignored; signed from the page they hold.
+    const link = (await (await post(portS, '/api/salas/enlaces', { a: idA, b: idB, direction: 'a→b', kinds: ['decision', 'fact'], state: true, deliver: true }, page)).json()).contract;
+    assert.deepEqual([link.state, link.deliver], [true, true]);
+
+    // D-S16 · the state: the doors of a reading, the canonical state and nothing of the code.
+    const read = (headers, asking = idB) => fetch(`http://127.0.0.1:${portA}/api/enlace/state?contract=${link.id}&asking=${asking}`, { headers });
+    assert.equal((await read({ ...channel, origin: page.origin })).status, 403, 'a page read the state');
+    assert.equal((await read({})).status, 403, 'read without the key');
+    assert.equal((await read(channel, salasRoomId(state))).status, 404, 'a room outside the link read it');
+    const shared = await (await read(channel)).json();
+    assert.equal(shared.state.project.objective, 'Ship the billing rewrite');
+    assert.deepEqual(shared.state.decisions.map((one) => one.title), ['Invoices in UTC']);
+    assert.deepEqual(shared.state.handoff.decisions, ['Invoices in UTC'], 'the handoff names decisions by title, not by id');
+    assert.ok(!JSON.stringify(shared).includes('secret.js') && !('git' in shared.state.handoff), 'files or git crossed');
+    assert.equal((await events(a, 'enlace.state')).length, 1);
+
+    // D-S17 · a delivery goes against the arrow: B reads A, so B may hand notes to A.
+    const deliver = (port, from, notes) => post(port, '/api/enlace/deliver', { contract: link.id, from, agent: 'codex', notes }, channel);
+    assert.equal((await deliver(portB, idA, [{ kind: 'fact', text: 'Wrong way round.' }])).status, 404, 'delivered along the arrow');
+    assert.equal((await deliver(portA, idB, [{ kind: 'aberration', text: 'Not knowledge.' }])).status, 422);
+    assert.equal((await post(portA, '/api/enlace/deliver', { contract: link.id, from: idB, notes: [{ kind: 'fact', text: 'x' }] }, { ...channel, origin: pageA.origin })).status, 403, 'a page delivered');
+    const sent = await (await deliver(portA, idB, [{ kind: 'decision', text: 'Refunds keep the original currency.', why: 'B decided it for both' }, { kind: 'fact', text: 'B ships on Fridays.' }])).json();
+    assert.equal(sent.accepted, 2);
+    const inbox = (await (await fetch(`http://127.0.0.1:${portA}/api/enlace/inbox`)).json()).notes;
+    assert.deepEqual(inbox.map((note) => note.status), ['pending', 'pending']);
+    // Nothing is in the memory yet.
+    const before = (await new RoomMemory(join(state, 'rooms', idA, 'memory.sqlite')).initialize());
+    assert.ok(!before.memories({ limit: 50 }).some((note) => /Refunds keep/.test(note.text)), 'a delivered note entered the memory on its own');
+    before.close();
+    // A process without a running turn decides nothing; you do, from the page.
+    const [first, second] = sent.ids;
+    assert.equal((await post(portA, '/api/enlace/inbox/decide', { id: first, accept: true }, channel)).status, 409);
+    assert.equal((await post(portA, '/api/enlace/inbox/decide', { id: first, accept: true }, pageA)).status, 200);
+    assert.equal((await post(portA, '/api/enlace/inbox/decide', { id: first, accept: true }, pageA)).status, 404, 'decided twice');
+    assert.equal((await post(portA, '/api/enlace/inbox/decide', { id: second, accept: false }, pageA)).status, 200);
+    const after = await new RoomMemory(join(state, 'rooms', idA, 'memory.sqlite')).initialize();
+    const notes = after.memories({ limit: 50 });
+    after.close();
+    assert.ok(notes.some((note) => /Refunds keep the original currency/.test(note.text) && note.origin === 'delivered'), 'the accepted note is not in the memory');
+    assert.ok(!notes.some((note) => /ships on Fridays/.test(note.text)), 'a declined note entered the memory');
+    assert.equal((await events(a, 'enlace.accepted')).length, 1);
+
+    // Cleared by you, from Home only: the state and the deliveries stop.
+    assert.equal((await post(portS, '/api/salas/enlaces/allow', { id: link.id, field: 'state', on: false })).status, 403, 'changed by a process');
+    assert.equal((await post(portS, '/api/salas/enlaces/allow', { id: link.id, field: 'state', on: false }, page)).status, 200);
+    assert.equal((await post(portS, '/api/salas/enlaces/allow', { id: link.id, field: 'deliver', on: false }, page)).status, 200);
+    assert.equal((await read(channel)).status, 404);
+    assert.equal((await deliver(portA, idB, [{ kind: 'fact', text: 'Too late.' }])).status, 404);
+  } finally {
+    for (const one of [a, b, s]) await close(one.server).catch(() => {});
+  }
 });

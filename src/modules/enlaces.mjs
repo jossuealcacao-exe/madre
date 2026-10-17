@@ -22,7 +22,8 @@ import { realpath } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../config.mjs';
-import { CHANNEL_HEADER, DAY_MS, LINK_KINDS, MAX_LIMIT, RECALL_NOTES, activeContracts, askEnlace, channelKey, countRecent, readsFrom } from '../enlaces.mjs';
+import { CHANNEL_HEADER, DAY_MS, DELIVER_CHARS, DELIVER_MAX, LINK_KINDS, MAX_LIMIT, RECALL_NOTES, activeContracts, askEnlace, channelKey, countRecent, deliversTo, readInbox, readsFrom } from '../enlaces.mjs';
+import { continuityText } from './ahp.mjs';
 import { t } from '../i18n.mjs';
 import { knownRooms, projectRoomId, salasRoomId } from '../salas.mjs';
 import { defineModule } from './sdk.mjs';
@@ -30,11 +31,11 @@ import { defineModule } from './sdk.mjs';
 const SELF = fileURLToPath(import.meta.url);
 export const SERVER_NAME = 'pulse-enlaces';
 export const SERVER_VERSION = '0.1.0';
-export const ENLACE_TOOLS = ['enlace_rooms', 'enlace_search'];
+export const ENLACE_TOOLS = ['enlace_rooms', 'enlace_search', 'enlace_state', 'enlace_deliver', 'enlace_inbox', 'enlace_accept'];
 
 // What the agent is told of the server, in the language every brief is written in. Read-only is
 // said twice on purpose: once as a fact, once as what to do with it.
-export const BRIEF = 'Distilled notes of other rooms on this Mac that a signed link lets this room read (MCP server pulse-enlaces). Read-only: nothing you write here reaches those rooms, and nothing of theirs enters this room unless you ask for it. enlace_rooms says which rooms you may read and which kinds of notes; enlace_search reads them. Say where each borrowed note comes from, as in «according to room <name>».';
+export const BRIEF = 'Distilled notes of other rooms on this Mac that a signed link lets this room read (MCP server pulse-enlaces). Read-only when you read: nothing you read writes in those rooms, and nothing of theirs enters this room unless you ask for it. enlace_rooms says which rooms you may read, which kinds of notes, and what else each link allows; enlace_search reads notes; enlace_state reads a room\'s canonical state (Continuity) when its link shares it. Where a link allows deliveries, enlace_deliver hands a few notes to that room, where they wait until that room accepts them. enlace_inbox lists the notes other rooms delivered here; enlace_accept accepts or declines one, only in #3 or #4. Say where each borrowed note comes from, as in «according to room <name>».';
 
 // The links that let a room read, from the config every room on this Mac shares.
 const linksFor = (config, stateRoot, here, now = new Date()) => readsFrom(activeContracts(config, { now, salas: salasRoomId(stateRoot) }), here, { now });
@@ -78,7 +79,9 @@ export default defineModule({
   async toolsForTurn(ctx, turn) {
     if (!(Number(turn?.mode) >= 1) || !turn?.roomDir || !turn?.port || !ctx.stateRoot) return [];
     const here = basename(turn.roomDir);
-    if (!linksFor(ctx.config, ctx.stateRoot, here).length) return [];
+    // A room with notes delivered to it gets the tools too, to read them and, in #3/#4, decide them.
+    const waiting = (await readInbox(turn.roomDir).catch(() => [])).some((note) => note.status === 'pending');
+    if (!linksFor(ctx.config, ctx.stateRoot, here).length && !waiting) return [];
     return [{
       name: SERVER_NAME,
       command: process.execPath,
@@ -140,6 +143,29 @@ export const TOOLS = [
       limit: { type: 'integer', description: 'Max notes (1-20, default 20).' },
     }, required: ['room'] },
   },
+  {
+    name: 'enlace_state',
+    description: 'Read the canonical state of another room — objective, phase, next action, blockers, its last handoff, accepted decisions and what is still open — as Continuity (AHP+) keeps it there, when the link shares it. Read-only, through that room\'s privacy guard. Cite it as that room\'s state on its date.',
+    inputSchema: { type: 'object', properties: { room: { type: 'string', description: 'The room, by its name as enlace_rooms lists it.' } }, required: ['room'] },
+  },
+  {
+    name: 'enlace_deliver',
+    description: `Hand up to ${DELIVER_MAX} notes to a room this room reads from, when the link allows deliveries. Each note waits in that room until it is accepted there; nothing enters its memory by itself. Only knowledge that stands (decision, fact, preference, question), up to ${DELIVER_CHARS} characters each, with the reason in one line.`,
+    inputSchema: { type: 'object', properties: {
+      room: { type: 'string', description: 'The room, by its name as enlace_rooms lists it.' },
+      notes: { type: 'array', maxItems: DELIVER_MAX, items: { type: 'object', properties: { kind: { type: 'string', enum: LINK_KINDS }, text: { type: 'string' }, why: { type: 'string' } }, required: ['kind', 'text'] } },
+    }, required: ['room', 'notes'] },
+  },
+  {
+    name: 'enlace_inbox',
+    description: 'The notes other rooms delivered to this room that are still waiting: id, sender, kind, text and why. Read-only.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'enlace_accept',
+    description: 'Accept (or decline, with accept: false) one delivered note by its id. Accepted, it enters this room\'s memory as a new note, held first like any other. Only in #3 or #4; below that, the human decides.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' }, accept: { type: 'boolean' } }, required: ['id'] },
+  },
 ];
 
 function clamp(n, min, max, fallback) { const value = Number(n); return Number.isFinite(value) ? Math.min(max, Math.max(min, Math.trunc(value))) : fallback; }
@@ -161,7 +187,8 @@ export async function callTool(name, args = {}, { env = process.env, fetchImpl =
       return links.map(({ contract, from }) => {
         const room = rooms.find((one) => one.id === from) ?? null;
         const state = room?.open ? 'open' : room ? 'asleep (ask the human to wake it from Salas)' : 'not on this Mac any more';
-        return `- ${room?.name ?? from} · ${contract.kinds.join(', ')} · ${contract.expires ? `until ${contract.expires.slice(0, 10)}` : 'no expiry'} · ${state}`;
+        const also = [contract.state ? 'shares its state (enlace_state)' : null, contract.deliver ? 'accepts deliveries (enlace_deliver)' : null].filter(Boolean);
+        return `- ${room?.name ?? from} · ${contract.kinds.join(', ')} · ${contract.expires ? `until ${contract.expires.slice(0, 10)}` : 'no expiry'} · ${state}${also.length ? ` · ${also.join(' · ')}` : ''}`;
       }).join('\n');
     }
     case 'enlace_search': {
@@ -193,6 +220,58 @@ export async function callTool(name, args = {}, { env = process.env, fetchImpl =
       const notes = Array.isArray(answer?.notes) ? answer.notes : [];
       if (!notes.length) return `Room ${from} has no note${kinds.length ? ` of kind ${kinds.join(', ')}` : ''}${query ? ` that matches "${query}"` : ' that travels'} right now.`;
       return notes.map((note) => `- [${from} · ${note.kind} · ${note.zone} · ${span(note)}] ${note.text}`).join('\n');
+    }
+    case 'enlace_state':
+    case 'enlace_deliver': {
+      const room = String(args.room ?? '').trim();
+      if (!room) return 'Say which room; enlace_rooms lists them.';
+      if (!stateRoot || !port) return 'This turn was started without a room: nothing can be read.';
+      const key = await channelKey(stateRoot).catch(() => null);
+      if (!key) return 'Nothing was done: this Mac has no key for its links.';
+      const sending = name === 'enlace_deliver';
+      const notes = sending ? (Array.isArray(args.notes) ? args.notes : []).slice(0, DELIVER_MAX).map((note) => ({ kind: String(note?.kind ?? ''), text: String(note?.text ?? ''), why: note?.why ? String(note.why) : null })) : null;
+      if (sending && !notes.length) return `Nothing was delivered: give between 1 and ${DELIVER_MAX} notes.`;
+      let response;
+      try {
+        response = await fetchImpl(`http://127.0.0.1:${port}${sending ? '/api/enlace/send' : '/api/enlace/ask-state'}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', [CHANNEL_HEADER]: key },
+          body: JSON.stringify({ room, notes, agent: env.PULSE_ENLACES_AGENT ?? null, turn: env.PULSE_ENLACES_TURN ?? null }),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch {
+        return `Nothing was ${sending ? 'delivered' : 'read'}: this room did not answer.`;
+      }
+      const answer = await response.json().catch(() => ({}));
+      if (!response.ok) return `Nothing was ${sending ? 'delivered' : 'read'}: ${typeof answer?.error === 'string' ? answer.error : `HTTP ${response.status}`}`;
+      const from = typeof answer?.from === 'string' && answer.from ? answer.from : typeof answer?.to === 'string' && answer.to ? answer.to : room;
+      if (sending) return `${answer.delivered} note${answer.delivered === 1 ? '' : 's'} delivered to room ${from}. They wait there until that room accepts them; nothing is in its memory yet.`;
+      return continuityText(from, answer.state) ?? `Room ${from} keeps no canonical state (Continuity is not installed there).`;
+    }
+    case 'enlace_inbox': {
+      if (!stateRoot || !here) return 'This turn was started without a room: nothing can be read.';
+      const pending = (await readInbox(join(stateRoot, 'rooms', here))).filter((note) => note.status === 'pending');
+      if (!pending.length) return 'No delivered note is waiting in this room.';
+      return pending.map((note) => `- ${note.id} · from ${note.name}${note.agent ? ` (@${note.agent})` : ''} · ${note.kind}: ${note.text}${note.why ? ` — why: ${note.why}` : ''}`).join('\n');
+    }
+    case 'enlace_accept': {
+      if (!port) return 'This turn was started without a room: nothing can be decided.';
+      const key = await channelKey(stateRoot).catch(() => null);
+      if (!key) return 'Nothing was decided: this Mac has no key for its links.';
+      let response;
+      try {
+        response = await fetchImpl(`http://127.0.0.1:${port}/api/enlace/inbox/decide`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', [CHANNEL_HEADER]: key },
+          body: JSON.stringify({ id: String(args.id ?? ''), accept: args.accept !== false, agent: env.PULSE_ENLACES_AGENT ?? null, turn: env.PULSE_ENLACES_TURN ?? null }),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch {
+        return 'Nothing was decided: this room did not answer.';
+      }
+      const answer = await response.json().catch(() => ({}));
+      if (!response.ok) return `Nothing was decided: ${typeof answer?.error === 'string' ? answer.error : `HTTP ${response.status}`}`;
+      return answer.note?.status === 'accepted' ? `Accepted: it enters this room's memory as a new note, held first like any other.` : 'Declined: it stays out of this room\'s memory.';
     }
     default:
       throw Object.assign(new Error(`Unknown tool: ${name}`), { code: -32602 });

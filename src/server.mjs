@@ -23,9 +23,10 @@ import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
 import { recallForTurn } from './modules/enlaces.mjs';
+import { hardwareOnce, MODEL_TIERS } from './modules/local-models.mjs';
 import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule } from './modules/index.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
-import { exportDataset, readiness as datasetReadiness } from './dataset.mjs';
+import { exportDataset, forgetCorpus, keepCorpus, keptCorpus, pruneCorpora, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
 import { language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
@@ -66,7 +67,7 @@ import { Room } from './room.mjs';
 import { COPILOT_WINDOWS } from './room/copilot.mjs';
 import { OVERRIDE_GRACE, changeNeedsPhrase, keyHolds, mergeOverride, overrideSettings, phraseHash, publicOverride } from './override.mjs';
 import { extensionById, findOnPath, runInstaller } from './extensions.mjs';
-import { accountNoteFor, geminiSignIn, installPlanFor, looksLikeAdminProblem, loginPlanFor, looksLikeCodePrompt, looksLikeConsentPrompt, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
+import { accountNoteFor, deviceCodeIn, geminiSignIn, installPlanFor, looksLikeAdminProblem, loginPlanFor, looksLikeCodePrompt, looksLikeConsentPrompt, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
 import { applyKey, keyPlanFor, openCodeKeyProviders, readOpenCodeProviders, removeOpenCodeKey } from './credentials.mjs';
 import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from './vault.mjs';
 import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './config.mjs';
@@ -104,12 +105,13 @@ import { currentNetwork, lanAddresses } from './bridge/network.mjs';
 import { PHONE_MAX_MODE, writtenMode } from './bridge/policy.mjs';
 import { qrSvg } from './bridge/qr.mjs';
 import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
-import { changeLooks, readLooks, changeRoomLook, roomLooks } from './looks.mjs';
+import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { heartbeat } from './heartbeat.mjs';
 import { askRoom, associateProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
-import { CHANNEL_HEADER, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, askEnlace, channelKey, countRecent, linkTraffic, mayServe, noteCrossing, noticeEnlace, readsFrom, recallContract, revokeContract, sameKey, servingRooms, signContract } from './enlaces.mjs';
+import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
+import { readContinuity } from './modules/ahp.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -566,10 +568,67 @@ export async function createPulseServer({
     return wireOllama({ probe: false });
   }
   // What the TRAIN card needs: where the recipe ships, the room, the model name @madre will pick up, a base that fits this machine.
-  function trainingInfo() {
+  // Every event of every conversation of this project, in order: the training export and its
+  // readiness read the whole project, not only the conversation on screen.
+  async function projectEvents() {
+    const { chats: list } = await listChats(roomDir).catch(() => ({ chats: [] }));
+    const ids = list.length ? list.map((chat) => chat.id) : ['main'];
+    const all = [];
+    for (const id of ids) {
+      const raw = await readFile(chatLedger(roomDir, id), 'utf8').catch(() => '');
+      for (const line of raw.split('\n')) {
+        if (!line) continue;
+        try { all.push(JSON.parse(line)); } catch { /* a torn line is skipped */ }
+      }
+    }
+    return all.sort((x, y) => (x.sequence ?? 0) - (y.sequence ?? 0));
+  }
+  // D-S15 · what every project that lets it has to teach the Coordinator, asked now. A project that
+  // is asleep or does not answer is not lost: the copy Salas kept the last time it answered is used
+  // and the manifest says so; one that never answered is listed as missing. Copies of projects that
+  // no longer allow it are forgotten first.
+  async function gatherLinked(datasetDir) {
+    const salas = salasRoomId(root);
+    const contracts = activeContracts(await readConfig(root), { salas });
+    const sources = readsFrom(contracts, salas).filter(({ contract }) => contract.train);
+    await pruneCorpora(datasetDir, new Set(sources.map(({ from }) => from)));
+    if (!sources.length) return [];
+    const rooms = await knownRooms(root);
+    const key = await channelKey(root).catch(() => null);
+    const out = [];
+    for (const { contract, from } of sources) {
+      const where = rooms.find((one) => one.id === from);
+      const answer = where?.open && key
+        ? await askCorpus({ port: where.open.port, contract, asking: salas, key, record: (type, event) => room.record(type, event), roomDir })
+        : { unreachable: true };
+      if (answer.notes) {
+        const at = new Date().toISOString();
+        // D-S16: with the state shared too, a dated photo of it goes with the notes.
+        const shared = contract.state ? await askState({ port: where.open.port, contract, asking: salas, key }) : null;
+        const corpus = { ...answer, ...(shared?.state ? { state: shared.state } : {}) };
+        await keepCorpus(datasetDir, corpus);
+        out.push({ ...corpus, source: 'live', at });
+        continue;
+      }
+      const kept = await keptCorpus(datasetDir, from);
+      out.push(kept && kept.contract === contract.id ? { ...kept, source: 'kept' } : { contract: contract.id, from, name: where?.name ?? from, notes: [], source: 'missing' });
+    }
+    return out;
+  }
+  // A link that stops allowing it (revoked, or the box cleared): the copy Salas kept goes now.
+  async function forgetLinkedCorpus(contract) {
+    const salas = salasRoomId(root);
+    if (contract.rooms.a !== salas && contract.rooms.b !== salas) return;
+    const other = contract.rooms.a === salas ? contract.rooms.b : contract.rooms.a;
+    await forgetCorpus(join(root, 'rooms', salas, 'dataset'), other).catch(() => null);
+  }
+  // The base to train on comes from this computer's hardware (src/modules/local-models.mjs), not
+  // from one rule for every machine: the page lists every size and what this one can do with it.
+  async function trainingInfo() {
     const slug = basename(canonicalProjectRoot).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const gb = Math.round(totalmem() / 1024 ** 3);
-    return { roomDir, recipeDir: fileURLToPath(new URL('../docs/training/', import.meta.url)), modelName: `madre-${slug}`, baseModel: gb >= 32 ? 'Qwen/Qwen2.5-3B-Instruct' : 'Qwen/Qwen2.5-1.5B-Instruct', memoryGb: gb };
+    const fit = await hardwareOnce();
+    const base = fit.recommended.train ?? MODEL_TIERS[1];
+    return { roomDir, recipeDir: fileURLToPath(new URL('../docs/training/', import.meta.url)), modelName: `madre-${slug}`, baseModel: base.base, memoryGb: fit.hardware?.memoryGb ?? Math.round(totalmem() / 1024 ** 3), fit };
   }
   async function wireOllama({ probe: doProbe = true } = {}) {
     if (doProbe) ollama = await ollamaProbe();
@@ -845,8 +904,9 @@ export async function createPulseServer({
   let loggingIn = null;
   // A sign-in in flight, as the room is allowed to see it: which door, the address to open, and
   // whether the CLI is waiting to be told the code that page gave back. Never the code itself.
+  // A device sign-in's code is the opposite case: it is shown to be typed on the provider's page.
   let loginRun = null;
-  const loginState = () => (loginRun ? { agent: loginRun.agent, method: loginRun.method, command: loginRun.command, url: loginRun.url, asksForCode: loginRun.asksForCode, awaitingCode: loginRun.awaitingCode, startedAt: loginRun.startedAt } : null);
+  const loginState = () => (loginRun ? { agent: loginRun.agent, method: loginRun.method, command: loginRun.command, url: loginRun.url, deviceCode: loginRun.deviceCode, asksForCode: loginRun.asksForCode, awaitingCode: loginRun.awaitingCode, startedAt: loginRun.startedAt } : null);
 
   async function loginAgent(id, { method = null } = {}) {
     const agent = agents.find((item) => item.id === id);
@@ -873,11 +933,12 @@ export async function createPulseServer({
     const env = { ...process.env, ...(plan.env ?? {}) };
     for (const name of [...(plan.dropEnv ?? []), ...(plan.ci === false ? ['CI'] : [])]) delete env[name];
     loggingIn = id;
-    loginRun = { agent: id, method: plan.method ?? null, command: plan.display, url: null, asksForCode: Boolean(plan.asksForCode), awaitingCode: false, startedAt: Date.now(), child: null };
+    loginRun = { agent: id, method: plan.method ?? null, command: plan.display, url: null, deviceCode: null, asksForCode: Boolean(plan.asksForCode), awaitingCode: false, startedAt: Date.now(), child: null };
     await room.record('connection.login.started', { agent: id, command: plan.display, note: plan.note, method: plan.method ?? null });
     void (async () => {
       const lines = [];
       let consented = false;
+      const answered = new Set();
       let finished = false;
       const watch = flow ? setInterval(async () => {
         if (finished || !(await flow.signedIn())) return;
@@ -896,20 +957,29 @@ export async function createPulseServer({
         timeoutMs: 900000,
         // A CLI that asks for a code needs a way to be answered, and its question never ends in a
         // newline, so the half-line is flushed rather than left sitting in the buffer.
-        stdin: plan.asksForCode || plan.consent ? 'pipe' : 'ignore',
+        stdin: plan.asksForCode || plan.consent || plan.answers?.length ? 'pipe' : 'ignore',
         flushIdleMs: plan.asksForCode || plan.consent ? 600 : 0,
         quietNote: 'the sign-in is waiting on you: finish it in the page that opened',
         onChild: (handle) => { if (loginRun?.agent === id) loginRun.child = handle; },
-        onLine: (line) => {
+        onLine: (raw) => {
+          // A terminal UI (OpenCode's) hides and moves its cursor even with NO_COLOR: the room
+          // shows what it says, not the escapes it draws with.
+          const line = raw.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '');
+          if (!line.trim()) return;
           lines.push(line);
           const url = line.match(/https?:\/\/\S+/)?.[0] ?? null;
+          const deviceCode = plan.deviceCode ? deviceCodeIn(line) : null;
           if (loginRun?.agent === id) {
             if (url) loginRun.url = url;
+            if (deviceCode) loginRun.deviceCode = deviceCode;
+            // A menu the CLI draws before its sign-in (OpenCode asks which GitHub): the button
+            // pressed already chose, so the room answers it once, the way the plan says.
+            for (const answer of plan.answers ?? []) if (!answered.has(answer) && line.includes(answer.prompt)) { answered.add(answer); loginRun.child?.write?.(answer.send); }
             if (plan.asksForCode && looksLikeCodePrompt(line)) loginRun.awaitingCode = true;
             // The person already said yes: that was the button they pressed.
             if (plan.consent && !consented && looksLikeConsentPrompt(line)) { consented = true; loginRun.child?.write?.('y\n'); }
           }
-          void room.record('connection.login.output', { agent: id, line: line.slice(0, 500), url });
+          void room.record('connection.login.output', { agent: id, line: line.slice(0, 500), url, ...(deviceCode ? { deviceCode } : {}) });
         },
       });
       if (watch) clearInterval(watch);
@@ -1702,7 +1772,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/hardware.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -2093,6 +2163,27 @@ export async function createPulseServer({
         const stopped = await Promise.all(rooms.map((one) => askRoom(one.open.port, '/api/stop-all', { method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer.unreachable && !answer.outdated)));
         return sendJson(response, 200, { rooms: rooms.length, stopped: stopped.filter(Boolean).length });
       }
+      // Turning MADRE off (2026-10-16), from a page of this Mac only, after the person confirmed it.
+      // Every other open project is asked to close the way Home closes one — its agents stop, their
+      // turns are recorded, its memory and its marker are put away — and waited for; then this room
+      // closes the same way. Ollama is its own program and keeps running. Nothing else is touched.
+      if (request.method === 'POST' && url.pathname === '/api/madre/shutdown') {
+        const host = String(request.headers.host ?? '');
+        const site = request.headers['sec-fetch-site'];
+        if (viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('MADRE is turned off from its own page, on this computer.') });
+        const here = basename(roomDir);
+        const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
+        await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/close', { method: 'POST', body: {}, timeoutMs: 3000 }).catch(() => null)));
+        let left = others;
+        for (let tries = 0; tries < 60 && left.length; tries += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          const now = await knownRooms(root);
+          left = left.filter((one) => now.find((room) => room.id === one.id)?.open);
+        }
+        sendJson(response, 202, { closing: true, closed: others.length - left.length, stuck: left.map((one) => one.name) });
+        setTimeout(() => server.emit('madre:close'), 150);
+        return undefined;
+      }
       // This room, asked to close by Salas: what is running stops and the room closes the way a
       // signal closes it (startPulse listens). Nothing here ends the process itself.
       if (request.method === 'POST' && url.pathname === '/api/room/close') {
@@ -2144,6 +2235,89 @@ export async function createPulseServer({
         await noteCrossing(roomDir, { kind: 'read', contract: contract.id, other: asking, count: notes.length, agent: reader });
         return sendJson(response, 200, { contract: contract.id, from: here, notes });
       }
+      // D-S15 · the whole of what this project lets the Coordinator learn, for its training export.
+      // The same doors as a reading, a contract that says `train`, and a ceiling of its own: every
+      // note that travels (`travels()`), of the kinds signed, through this room's privacy guard.
+      // Not a search and not the latest: all of it, up to CORPUS_MAX, so nothing the project knows
+      // is left out of what the Coordinator learns about it. Nothing of the ledger crosses.
+      if (request.method === 'GET' && url.pathname === '/api/enlace/corpus') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        if (request.headers.origin !== undefined) return sendJson(response, 403, { error: t('A page cannot read across a connection; only a project can.') });
+        const key = await channelKey(root).catch(() => null);
+        if (!key || !sameKey(request.headers[CHANNEL_HEADER], key)) return sendJson(response, 403, { error: t('That is not the key of this Mac.') });
+        const here = basename(roomDir);
+        const asking = String(url.searchParams.get('asking') ?? '');
+        const contract = activeContracts(await readConfig(root), { salas: salasRoomId(root) }).find((one) => one.id === url.searchParams.get('contract')) ?? null;
+        if (!contract?.train || !mayServe({ contract, serving: here, asking }).ok) return sendJson(response, 404, { error: NO_SUCH_LINK });
+        const sealed = room.motherStatus()?.lockedForMs ?? 0;
+        if (sealed > 0) return sendJson(response, 423, { error: `CODE000. THE ARCHIVE IS SEALED FOR ${Math.ceil(sealed / 60000)} MORE MINUTE${Math.ceil(sealed / 60000) === 1 ? '' : 'S'}.`, lockedForMs: sealed });
+        if (!memory) return sendJson(response, 503, { error: t('The project has no memory.') });
+        const taken = await countRecent(roomDir, contract.id, 'corpus');
+        if (taken >= CORPUS_PER_HOUR) return sendJson(response, 429, { error: t('The Coordinator took what this project knows {n} times in the last hour, its limit. Try again later.', { n: taken }) });
+        await refreshPrivacy();
+        const notes = memory.memories({ limit: CORPUS_MAX * 2 })
+          .filter((row) => memoryTravels(row) && contract.kinds.includes(row.kind))
+          .slice(0, CORPUS_MAX)
+          .map((row) => ({ id: row.id, kind: row.kind, zone: row.zone, text: privacy.redact(row.text, { always: true }).text, fromSequence: row.fromSequence, throughSequence: row.throughSequence, created: row.created }));
+        await room.record('enlace.corpus', { contract: contract.id, to: asking, count: notes.length, kinds: contract.kinds });
+        await noteCrossing(roomDir, { kind: 'corpus', contract: contract.id, other: asking, count: notes.length });
+        return sendJson(response, 200, { contract: contract.id, from: here, name: basename(canonicalProjectRoot), notes });
+      }
+      // D-S16 · this project's canonical state (Continuity, AHP+), for the room that reads under a
+      // link that says `state`. The same doors as a reading and the same ceiling, counted apart: the
+      // state is read from .ahp/ now, through this room's privacy guard, and nothing else of the
+      // project (no git, no files, no evidence) crosses. Without .ahp/ the answer says so: `null`.
+      if (request.method === 'GET' && url.pathname === '/api/enlace/state') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        if (request.headers.origin !== undefined) return sendJson(response, 403, { error: t('A page cannot read across a connection; only a project can.') });
+        const key = await channelKey(root).catch(() => null);
+        if (!key || !sameKey(request.headers[CHANNEL_HEADER], key)) return sendJson(response, 403, { error: t('That is not the key of this Mac.') });
+        const here = basename(roomDir);
+        const asking = String(url.searchParams.get('asking') ?? '');
+        const contract = activeContracts(await readConfig(root), { salas: salasRoomId(root) }).find((one) => one.id === url.searchParams.get('contract')) ?? null;
+        if (!contract?.state || !mayServe({ contract, serving: here, asking }).ok) return sendJson(response, 404, { error: NO_SUCH_LINK });
+        const sealed = room.motherStatus()?.lockedForMs ?? 0;
+        if (sealed > 0) return sendJson(response, 423, { error: `CODE000. THE ARCHIVE IS SEALED FOR ${Math.ceil(sealed / 60000)} MORE MINUTE${Math.ceil(sealed / 60000) === 1 ? '' : 'S'}.`, lockedForMs: sealed });
+        const reads = await countRecent(roomDir, contract.id, 'state');
+        if (reads >= contract.orders.perHour) return sendJson(response, 429, { error: t('The state of this project was read {n} times in the last hour, its limit. Try again later.', { n: reads }) });
+        await refreshPrivacy();
+        const state = await readContinuity(canonicalProjectRoot, { redact: (text) => privacy.redact(text, { always: true }).text });
+        const reader = /^[a-z][a-z0-9_-]{0,30}$/.test(String(url.searchParams.get('agent') ?? '')) ? url.searchParams.get('agent') : null;
+        await room.record('enlace.state', { contract: contract.id, to: asking, source: state?.source ?? null, ...(reader ? { agent: reader } : {}) });
+        await noteCrossing(roomDir, { kind: 'state', contract: contract.id, other: asking, count: state ? 1 : 0, agent: reader });
+        return sendJson(response, 200, { contract: contract.id, from: here, name: basename(canonicalProjectRoot), state });
+      }
+      // D-S17 · notes another project hands to this one, under a link that says `deliver` and lets
+      // that project read from this one. The same doors; the contract's ceiling, counted apart. They
+      // wait in this room's inbox (enlaces-inbox.json): nothing enters the memory until this project
+      // accepts it, by your press or by an agent of this project in #3 or above.
+      if (request.method === 'POST' && url.pathname === '/api/enlace/deliver') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        if (request.headers.origin !== undefined) return sendJson(response, 403, { error: t('A page cannot deliver across a connection; only a project can.') });
+        const key = await channelKey(root).catch(() => null);
+        if (!key || !sameKey(request.headers[CHANNEL_HEADER], key)) return sendJson(response, 403, { error: t('That is not the key of this Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const here = basename(roomDir);
+        const from = String(payload.from ?? '');
+        const contract = activeContracts(await readConfig(root), { salas: salasRoomId(root) }).find((one) => one.id === payload.contract) ?? null;
+        if (!contract?.deliver || !mayServe({ contract, serving: here, asking: from }).ok) return sendJson(response, 404, { error: NO_SUCH_LINK });
+        if (!Array.isArray(payload.notes) || !payload.notes.length || payload.notes.length > DELIVER_MAX) return sendJson(response, 422, { error: t('A delivery carries between 1 and {n} notes.', { n: DELIVER_MAX }) });
+        let notes;
+        try { notes = payload.notes.map(deliverable); } catch (error) { return sendJson(response, 422, { error: t(error.message) }); }
+        const received = await countRecent(roomDir, contract.id, 'delivered');
+        if (received >= contract.orders.perHour) return sendJson(response, 429, { error: t('This project received {n} deliveries in the last hour, its limit. Try again later.', { n: received }) });
+        // What arrives is cleaned here too, by this room's guard, before it is even shown.
+        await refreshPrivacy();
+        const clean = notes.map((note) => ({ ...note, text: privacy.redact(note.text, { always: true }).text, why: note.why ? privacy.redact(note.why, { always: true }).text : null }));
+        const sender = (await knownRooms(root)).find((one) => one.id === from);
+        const agent = /^[a-z][a-z0-9_-]{0,30}$/.test(String(payload.agent ?? '')) ? payload.agent : null;
+        let added;
+        try { added = await receiveDelivery(roomDir, { contract: contract.id, from, name: sender?.name ?? from, agent, notes: clean }); }
+        catch (error) { return sendJson(response, error.code === 'FULL' ? 429 : 500, { error: t(error.message) }); }
+        await room.record('enlace.delivered', { contract: contract.id, from, name: sender?.name ?? from, agent, coordinator: from === salasRoomId(root), notes: added.map(({ id, kind, text, why }) => ({ id, kind, text, why })) });
+        await noteCrossing(roomDir, { kind: 'delivered', contract: contract.id, other: from, count: added.length, agent });
+        return sendJson(response, 202, { accepted: added.length, ids: added.map((note) => note.id) });
+      }
       // The side that asks (fase 3c): a tool of this room's own turn asks this room, and this room
       // asks the room that serves, by the channel. The same three doors as above — never a phone,
       // never a page, only the key — because the tool is a process of this Mac and nothing else is.
@@ -2188,6 +2362,84 @@ export async function createPulseServer({
         if (answer.unreachable) return sendJson(response, 502, { error: t('That project did not answer.') });
         return sendJson(response, answer.status ?? 502, { error: answer.refused ?? t('That project did not answer.') });
       }
+      // D-S16 and D-S17, the side that asks: a tool of this room's own turn reads the state of a
+      // project it reads from, or delivers notes to it. The same doors and the same check that the
+      // turn is running here, for that agent, above GHOST, as /api/enlace/ask.
+      if (request.method === 'POST' && (url.pathname === '/api/enlace/ask-state' || url.pathname === '/api/enlace/send')) {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        if (request.headers.origin !== undefined) return sendJson(response, 403, { error: t('A page cannot read across a connection; only a project can.') });
+        const key = await channelKey(root).catch(() => null);
+        if (!key || !sameKey(request.headers[CHANNEL_HEADER], key)) return sendJson(response, 403, { error: t('That is not the key of this Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const here = basename(roomDir);
+        const turnId = String(payload.turn ?? '');
+        const host = turnId ? liveRooms().find((one) => one.runningTurn?.(turnId)) : null;
+        const running = host?.runningTurn(turnId) ?? null;
+        if (!running || running.agent !== payload.agent || !(running.mode >= 1)) return sendJson(response, 409, { error: t('That reading does not belong to a turn running in this project.') });
+        const wanted = String(payload.room ?? '').trim();
+        const rooms = await knownRooms(root);
+        const named = rooms.filter((one) => one.id === wanted || one.name.toLowerCase() === wanted.toLowerCase());
+        if (!wanted || !named.length) return sendJson(response, 404, { error: t('MADRE does not know that project on this Mac.') });
+        const contracts = activeContracts(await readConfig(root), { salas: salasRoomId(root) });
+        const sending = url.pathname === '/api/enlace/send';
+        const usable = sending ? deliversTo(contracts, here).map(({ contract, to }) => ({ contract, other: to })) : readsFrom(contracts, here).filter(({ contract }) => contract.state).map(({ contract, from }) => ({ contract, other: from }));
+        const link = named.map((source) => ({ source, contract: usable.find((one) => one.other === source.id)?.contract ?? null })).find((one) => one.contract) ?? null;
+        if (!link) return sendJson(response, 404, { error: sending ? t('No signed connection lets this project deliver notes to that one.') : t('No signed connection lets this project read the state of that one.') });
+        const { source, contract } = link;
+        if (!source.open) return sendJson(response, 409, { error: t('That project is asleep. Wake it from Home to read from it.') });
+        if (!sending) {
+          const answer = await askState({ port: source.open.port, contract, asking: here, key, agent: running.agent });
+          if (answer.outdated) return sendJson(response, 409, { error: t('That project runs an older MADRE. Update it, or close it from its terminal.') });
+          if (answer.unreachable) return sendJson(response, 502, { error: t('That project did not answer.') });
+          if (answer.refused) return sendJson(response, answer.status ?? 502, { error: answer.refused });
+          await host.record('enlace.state.received', { contract: contract.id, from: source.id, name: source.name, agent: running.agent, turn: turnId, found: Boolean(answer.state) });
+          return sendJson(response, 200, { from: source.name, contract: contract.id, state: answer.state });
+        }
+        if (!Array.isArray(payload.notes) || !payload.notes.length || payload.notes.length > DELIVER_MAX) return sendJson(response, 422, { error: t('A delivery carries between 1 and {n} notes.', { n: DELIVER_MAX }) });
+        let notes;
+        try { notes = payload.notes.map(deliverable); } catch (error) { return sendJson(response, 422, { error: t(error.message) }); }
+        // What leaves is cleaned by this room's guard first, as every note that crosses.
+        await refreshPrivacy();
+        notes = notes.map((note) => ({ ...note, text: privacy.redact(note.text, { always: true }).text, why: note.why ? privacy.redact(note.why, { always: true }).text : null }));
+        const sent = await deliverNotes({ port: source.open.port, contract, from: here, notes, key, agent: running.agent });
+        if (sent.outdated) return sendJson(response, 409, { error: t('That project runs an older MADRE. Update it, or close it from its terminal.') });
+        if (sent.unreachable) return sendJson(response, 502, { error: t('That project did not answer.') });
+        if (sent.refused) return sendJson(response, sent.status ?? 502, { error: sent.refused });
+        await host.record('enlace.sent', { contract: contract.id, to: source.id, name: source.name, agent: running.agent, turn: turnId, notes: notes.map(({ kind, text }) => ({ kind, text: text.slice(0, 200) })) });
+        await noteCrossing(roomDir, { kind: 'sent', contract: contract.id, other: source.id, count: sent.accepted, agent: running.agent, turn: turnId });
+        return sendJson(response, 202, { to: source.name, delivered: sent.accepted });
+      }
+      // D-S17 · the notes other projects delivered here. Read by the page or by a tool of a turn of
+      // this room; decided by you from the page, or by an agent of this project whose turn runs in
+      // #3 or #4 (it changes the project's memory, as CONTROL may). Accepted, the note enters the
+      // memory as a distilled note does — held first — citing the ledger line of its acceptance.
+      // Read like the room's other records (the guard keeps other computers and other sites out).
+      if (url.pathname === '/api/enlace/inbox' && request.method === 'GET') {
+        return sendJson(response, 200, { notes: (await readInbox(roomDir)).slice(-100).reverse() });
+      }
+      if (url.pathname === '/api/enlace/inbox/decide' && request.method === 'POST') {
+        const payload = await body(request).catch(() => ({}));
+        let by = 'you';
+        if (request.headers.origin === undefined) {
+          const key = await channelKey(root).catch(() => null);
+          if (viaPhone || !key || !sameKey(request.headers[CHANNEL_HEADER], key)) return sendJson(response, 403, { error: t('That is not the key of this Mac.') });
+          const turnId = String(payload.turn ?? '');
+          const running = turnId ? liveRooms().find((one) => one.runningTurn?.(turnId))?.runningTurn(turnId) : null;
+          if (!running || running.agent !== payload.agent) return sendJson(response, 409, { error: t('That reading does not belong to a turn running in this project.') });
+          if (!(running.mode >= 3)) return sendJson(response, 403, { error: t('Only an agent in #3 or #4 accepts a delivered note; below that, you decide it.') });
+          by = running.agent;
+        } else if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        if (typeof payload.accept !== 'boolean') return sendJson(response, 422, { error: t('A delivered note is accepted or declined.') });
+        if (payload.accept && !memory) return sendJson(response, 503, { error: t('The project has no memory.') });
+        const note = await decideDelivery(roomDir, String(payload.id ?? ''), { accept: payload.accept, by });
+        if (!note) return sendJson(response, 404, { error: t('That delivered note is not waiting here.') });
+        const event = await room.record(payload.accept ? 'enlace.accepted' : 'enlace.declined', { id: note.id, contract: note.contract, from: note.from, name: note.name, kind: note.kind, text: note.text, by });
+        if (payload.accept) {
+          const sequence = Number(event?.sequence) || 0;
+          memory.addMemories([{ kind: note.kind, text: `${note.text} (delivered by ${note.name})` }], { agent: by, fromSequence: sequence, throughSequence: sequence, origin: 'delivered' });
+        }
+        return sendJson(response, 200, { note });
+      }
       // What another room tells this one by the channel: a link of this room's was signed or
       // revoked. One line in the ledger, never a message; any other type is refused.
       if (request.method === 'POST' && url.pathname === '/api/enlace/notice') {
@@ -2231,7 +2483,12 @@ export async function createPulseServer({
           // «Include always» only from the page (INI-04 of the 1.0 review): its own route refuses a
           // process, and signing let one set it anyway, so a project got another's notes every turn.
           const recall = payload.recall === true && !signed && request.headers.origin !== undefined;
-          contract = await signContract(root, { rooms: { a: payload.a, b: payload.b }, direction: payload.direction, kinds: payload.kinds, expires: payload.expires ?? null, orders: payload.orders ?? { allowed: false, maxMode: 0, perHour: 6 }, signed, recall }, { rooms, salas: salasRoomId(root), designation: payload.designation ?? null });
+          // D-S15: «the Coordinator may learn from it» the same way: only you, only from the page.
+          const train = payload.train === true && !signed && request.headers.origin !== undefined;
+          // D-S16 and D-S17 the same way: the state and deliveries, only you, only from the page.
+          const state = payload.state === true && !signed && request.headers.origin !== undefined;
+          const deliver = payload.deliver === true && !signed && request.headers.origin !== undefined;
+          contract = await signContract(root, { rooms: { a: payload.a, b: payload.b }, direction: payload.direction, kinds: payload.kinds, expires: payload.expires ?? null, orders: payload.orders ?? { allowed: false, maxMode: 0, perHour: 6 }, signed, recall, train, state, deliver }, { rooms, salas: salasRoomId(root), designation: payload.designation ?? null });
         } catch (error) {
           if (error.code === 'DESIGNATION') return sendJson(response, 403, { error: t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
           if (error.code === 'ALREADY') return sendJson(response, 409, { error: t(error.message) });
@@ -2251,6 +2508,30 @@ export async function createPulseServer({
         if (!contract) return sendJson(response, 404, { error: NO_SUCH_LINK });
         return sendJson(response, 200, { contract });
       }
+      // D-S15: «the Coordinator may learn from this project», ticked or cleared by the human from
+      // Home (never a phone, never a process). Cleared, Salas forgets the copy it kept of that
+      // project at once, and the next export leaves it out.
+      if (request.method === 'POST' && url.pathname === '/api/salas/enlaces/train') {
+        const payload = await body(request).catch(() => ({}));
+        if (viaPhone || request.headers.origin === undefined) return sendJson(response, 403, { error: t('This is changed by you, from Home.') });
+        if (typeof payload.train !== 'boolean') return sendJson(response, 422, { error: t('learning can only be on or off.') });
+        let contract;
+        try { contract = await trainContract(root, String(payload.id ?? ''), payload.train, { salas: salasRoomId(root) }); } catch (error) { return sendJson(response, 422, { error: t(error.message) }); }
+        if (!contract) return sendJson(response, 404, { error: NO_SUCH_LINK });
+        if (!contract.train) await forgetLinkedCorpus(contract);
+        return sendJson(response, 200, { contract });
+      }
+      // D-S16 and D-S17: «it shares its state» and «notes can be delivered to it», ticked or cleared
+      // by you from Home (never a phone, never a process).
+      if (request.method === 'POST' && url.pathname === '/api/salas/enlaces/allow') {
+        const payload = await body(request).catch(() => ({}));
+        if (viaPhone || request.headers.origin === undefined) return sendJson(response, 403, { error: t('This is changed by you, from Home.') });
+        if (!['state', 'deliver'].includes(payload.field) || typeof payload.on !== 'boolean') return sendJson(response, 422, { error: t('That is not something a connection can allow.') });
+        let contract;
+        try { contract = await allowContract(root, String(payload.id ?? ''), payload.field, payload.on, { salas: salasRoomId(root) }); } catch (error) { return sendJson(response, 422, { error: t(error.message) }); }
+        if (!contract) return sendJson(response, 404, { error: NO_SUCH_LINK });
+        return sendJson(response, 200, { contract });
+      }
       if (request.method === 'POST' && url.pathname === '/api/salas/enlaces/revoke') {
         const payload = await body(request).catch(() => ({}));
         const id = String(payload.id ?? '');
@@ -2258,6 +2539,7 @@ export async function createPulseServer({
         const already = Boolean((await readConfig(root)).enlaces?.[id]?.revoked);
         const contract = await revokeContract(root, id);
         if (!contract) return sendJson(response, 404, { error: NO_SUCH_LINK });
+        await forgetLinkedCorpus(contract);
         if (!already) await tellRooms('enlace.revoked', contract, await knownRooms(root)).catch(() => null);
         return sendJson(response, 200, { contract });
       }
@@ -2802,16 +3084,20 @@ export async function createPulseServer({
         const notes = memory ? memory.memories({ limit: 5000 }) : [];
         if (request.method === 'GET') {
           const manifest = await readFile(join(dir, 'manifest.json'), 'utf8').then(JSON.parse).catch(() => null);
-          const ready = datasetReadiness(await store.readAll(), notes);
+          const ready = datasetReadiness(await projectEvents(), notes);
           const research = room.memoryResearch();
-          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null, readiness: ready, maturity: maturity({ readiness: ready, notes, links: research?.links ?? [], stats: research?.stats ?? null }), training: trainingInfo() });
+          return sendJson(response, 200, { dataset: manifest, dir, trained: ollama.madreModel ?? null, readiness: ready, maturity: maturity({ readiness: ready, notes, links: research?.links ?? [], stats: research?.stats ?? null }), training: await trainingInfo() });
         }
-        const events = await store.readAll();
-        const result = await exportDataset({ events, notes, dir, project: basename(canonicalProjectRoot), home: homedir(), privacy });
-        await room.record('dataset.exported', { pairs: result.pairs, turns: result.turns, notes: result.notes, train: result.train, valid: result.valid, dir });
+        // Every conversation of the project, not only the one open: a turn answered in another
+        // conversation is as much the project's as the one on screen.
+        const events = await projectEvents();
+        // D-S15: in the room of Salas, what each project that lets it has to teach the Coordinator.
+        const linked = salasRoom ? await gatherLinked(dir) : [];
+        const result = await exportDataset({ events, notes, dir, project: basename(canonicalProjectRoot), home: homedir(), privacy, linked });
+        await room.record('dataset.exported', { pairs: result.pairs, turns: result.turns, notes: result.notes, train: result.train, valid: result.valid, dir, ...(salasRoom ? { linked: result.linked.map((one) => ({ room: one.room, notes: one.notes, source: one.source })) } : {}) });
         const after = datasetReadiness(events, notes);
         const drawn = room.memoryResearch();
-        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null, readiness: after, maturity: maturity({ readiness: after, notes, links: drawn?.links ?? [], stats: drawn?.stats ?? null }), training: trainingInfo() });
+        return sendJson(response, 200, { dataset: result, dir, trained: ollama.madreModel ?? null, readiness: after, maturity: maturity({ readiness: after, notes, links: drawn?.links ?? [], stats: drawn?.stats ?? null }), training: await trainingInfo() });
       }
       // PRIVACY: the terms live in config.json only; the ledger records counts, never words.
       // Which language MADRE speaks. The page keeps its own copy so the first paint needs no
@@ -2823,6 +3109,12 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/looks/room') {
         const payload = await body(request).catch(() => ({}));
         const answer = await changeRoomLook(root, basename(roomDir), payload?.wallpaper ?? null);
+        return sendJson(response, answer.error ? 400 : 200, answer);
+      }
+      // How Home is arranged (src/looks.mjs, home.json): the same on every port Home is shown from.
+      if (request.method === 'GET' && url.pathname === '/api/home-layout') return sendJson(response, 200, await readHome(root));
+      if (request.method === 'POST' && url.pathname === '/api/home-layout') {
+        const answer = await changeHome(root, await body(request).catch(() => null));
         return sendJson(response, answer.error ? 400 : 200, answer);
       }
       if (request.method === 'POST' && url.pathname === '/api/looks') {

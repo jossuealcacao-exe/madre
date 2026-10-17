@@ -16,7 +16,7 @@ import { summary as vaultSummary } from '../src/vault.mjs';
 import { hostWords } from '../src/i18n.mjs';
 import {
   CHANNEL_HEADER, NO_SUCH_LINK, activeContracts, askEnlace, channelKey, channelKeyFile, channelKeySummary, contractId, countRecent,
-  linkTraffic, mayServe, normalizeContract, noteCrossing, readsFrom, receivesOrders, revokeContract, sameKey, servingRooms, signContract,
+  linkTraffic, mayServe, normalizeContract, noteCrossing, readsFrom, receivesOrders, revokeContract, sameKey, servingRooms, signContract, trainContract,
 } from '../src/enlaces.mjs';
 
 // ENLACES (docs/MACROVERSO.md, phase 3b): the contract two rooms sign, the key of the channel,
@@ -41,7 +41,8 @@ test('enlaces · a contract is whole or it is nothing: two rooms, a direction, s
   assert.deepEqual(contract.signed, { at: now.toISOString(), by: 'you' });
   assert.equal(contract.expires, '2026-11-30T00:00:00.000Z');
   assert.equal(contract.revoked, null);
-  assert.deepEqual(Object.keys(contract), ['id', 'rooms', 'direction', 'kinds', 'zones', 'expires', 'revoked', 'orders', 'signed', 'recall']);
+  assert.deepEqual(Object.keys(contract), ['id', 'rooms', 'direction', 'kinds', 'zones', 'expires', 'revoked', 'orders', 'signed', 'recall', 'train', 'state', 'deliver']);
+  assert.equal(contract.train, false, 'D-S15: the Coordinator learns from nobody unless ticked');
   assert.equal(contract.recall, false, '3e: off unless ticked');
   assert.equal(normalizeContract({ rooms, direction: 'both', kinds: ['fact'], recall: true }).recall, true);
   assert.throws(() => normalizeContract({ rooms, direction: 'both', kinds: ['fact'], recall: 'yes' }), /recall can only be on or off/);
@@ -469,4 +470,24 @@ test('enlaces · the room that serves holds every lock, and hands over only what
     await close(b.server);
     await close(a.server);
   }
+});
+
+test('enlaces · D-S15: the Coordinator may learn from a project only when you tick it, on a link it reads, and forgets it when you clear it', async () => {
+  const state = await scratch('madre-enlaces-train-');
+  const salas = salasRoomId(state);
+  const [a, b] = ['phobos-0123456789abcdef', 'gumball-0123456789abcdef'];
+  const now = new Date('2026-10-16T12:00:00Z');
+  const reads = { rooms: { a, b: salas }, direction: 'a→b', kinds: ['decision', 'fact'] };
+  assert.equal(normalizeContract({ ...reads, train: true }, { now, salas }).train, true);
+  assert.throws(() => normalizeContract({ ...reads, train: 'yes' }, { now, salas }), /learning can only be on or off/);
+  assert.throws(() => normalizeContract({ rooms: { a, b }, direction: 'both', kinds: ['fact'], train: true }, { now, salas }), /Only the Coordinator learns/);
+  assert.throws(() => normalizeContract({ ...reads, train: true, expires: '2026-10-18T00:00:00Z', signed: { by: 'bishop', at: now.toISOString() } }, { now, salas }), /never signs what it learns from/);
+  const rooms = [{ id: a, name: 'phobos' }, { id: salas, name: 'salas' }];
+  const signed = await signContract(state, reads, { now, rooms, salas });
+  assert.equal(signed.train, false);
+  const on = await trainContract(state, signed.id, true, { now, salas });
+  assert.equal(on.train, true);
+  const off = await trainContract(state, signed.id, false, { now, salas });
+  assert.equal(off.train, false);
+  assert.equal(await trainContract(state, 'not-an-id', true, { now, salas }), null);
 });

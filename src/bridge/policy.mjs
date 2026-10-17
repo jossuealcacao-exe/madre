@@ -17,7 +17,7 @@ import { t } from '../i18n.mjs';
 
 // Every file the room's page loads: one missing here and app.js cannot import it, so the whole page
 // stops on the phone (test/phone-bridge.test.mjs reads app.js's imports to keep this whole).
-const STATIC = new Set(['/', '/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/styles.css', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js']);
+const STATIC = new Set(['/', '/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/styles.css', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/hardware.js']);
 
 const READ = new Set([
   '/api/state', '/api/events', '/api/chats', '/api/version', '/api/whats-new', '/api/glance', '/api/handoff',

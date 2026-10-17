@@ -2541,6 +2541,8 @@ dialog.intents-window { width: 760px; height: 640px; }
    to be nowhere, so the only thing on screen was a heartbeat and the sign-in died of its clock. */
 .login-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .login-ask[hidden] { display: none; }
+.login-device { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.login-device code { font-family: var(--mono); font-size: 15px; letter-spacing: .12em; color: var(--text); user-select: all; }
 .login-code { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 260px; }
 .login-code input { flex: 1 1 180px; min-width: 150px; font: inherit; font-size: 12.5px; color: var(--text); background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; }
 .login-code input:focus { outline: none; border-color: var(--phosphor); }
@@ -9449,3 +9451,139 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
   contain-intrinsic-size: auto 140px;
   overflow-clip-margin: 28px;
 }
+/* ---------- Correcciones de UX de 1.0.2 (2026-10-16) ----------
+   1 · Un /run con punto de restauración se viste como los demás avisos del lienzo: esquinas de
+   14 px y su DESHACER debajo, a la izquierda. Era una cápsula de 999 px que se inflaba en círculo
+   al meter el botón en un segundo renglón. */
+:root[data-term="pill"] #messages#messages .command-card.terminal.has-undo:not(.open) { border-radius: 14px; }
+#messages#messages .command-card.terminal.has-undo > :is(.undo, .outcome) { display: block; margin: 0 12px 10px 10px; }
+#messages#messages .command-card.terminal.has-undo.open > :is(.undo, .outcome) { margin-top: 10px; }
+/* 3 · La píldora cerrada respeta el carril del agente: su máximo era el 100 % de la columna y,
+   corrida 42 px a la derecha, la columna (overflow-x: hidden) le cortaba el final. */
+:root[data-term="pill"] #messages#messages .command-card.terminal:not(.open) { max-width: min(760px, calc(100% - var(--agent-lane, 0px))); }
+/* 4 · El aviso del botón de conversaciones va montado en su esquina, por fuera del squircle, con
+   un anillo del color del fondo que lo separa del vidrio. */
+.chats-button.working::after, .chats-button.unread::after { top: -3px; right: -3px; width: 10px; height: 10px; box-shadow: 0 0 0 2px var(--bg), 0 0 8px color-mix(in srgb, var(--phosphor) 55%, transparent); }
+/* 8 · Una línea larga se lee entera antes de presionarla, sin volver la tarjeta una pared: pasada
+   cierta altura, la línea se recorre dentro de su botón. */
+#messages .run-request .run-line .choice-text { max-height: 15.5em; overflow-y: auto; overscroll-behavior: contain; }
+/* 2 · Pensando: el anillo que respira alrededor del avatar sale unos píxeles de su caja y la
+   columna lo cortaba en seco por la izquierda (overflow-x: hidden pegado al avatar) y la fila, por
+   su contención de pintado (content-visibility). La columna recorta con margen y la fila viva no se
+   contiene: siempre está en pantalla. */
+#messages .thread-inner { overflow-x: clip; overflow-clip-margin: 24px; }
+#messages .thread-inner > .row.thinking { content-visibility: visible; }
+/* 9 · Desplazarse es del humano. El hilo ya no anima cada asignación de su posición: con el scroll
+   suave, el «volver al final» instantáneo y el animado peleaban en el mismo cuadro y la vista
+   temblaba. Los desplazamientos que sí deben deslizarse lo piden ellos mismos. */
+#messages.thread { scroll-behavior: auto; }
+/* Nada dentro del hilo muestrea lo que hay detrás (la regla de arriba sobre backdrop-filter): la
+   fila de avisos plegados se había quedado fuera y, al desplazarse rápido, dejaba su vidrio atrás
+   como una ventana fantasma. Lleva una tinta plana un poco más espesa en su lugar. */
+#messages .sys-dots { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--bg) 80%, transparent); }
+#messages .sys-dots:hover, #messages .sys-dots:focus-visible { background: color-mix(in srgb, var(--bg) 90%, transparent); }
+/* 10 · Abajo terminó algo: un botón redondo y ligero sobre la caja, con un punto del color de quien
+   contestó. Lleva al final y se va solo al llegar. */
+.to-end {
+  position: fixed; z-index: 39; left: var(--composer-center, 50%); bottom: calc(100vh - var(--composer-top, 70vh) + 14px); translate: -50% 0;
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  color: var(--text); background: color-mix(in srgb, var(--surface, var(--panel)) 86%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
+  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 16%, transparent), 0 2px 4px rgba(0, 0, 0, .18), 0 10px 24px -8px rgba(0, 0, 0, .42);
+  transition: bottom calc(220ms * var(--motion-scale)) var(--ease-out, ease), color calc(160ms * var(--motion-scale)) ease;
+  animation: to-end-in calc(260ms * var(--motion-scale)) var(--ease-out, ease) both;
+}
+.to-end[hidden] { display: none; }
+.to-end svg { width: 17px; height: 17px; }
+.to-end:hover { color: var(--phosphor); }
+.to-end:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor) 60%, transparent); outline-offset: 2px; }
+.to-end .to-end-dot { position: absolute; top: 0; right: 0; width: 9px; height: 9px; border-radius: 50%; background: var(--agent, var(--phosphor)); box-shadow: 0 0 0 2px var(--bg); }
+.to-end.leaving { animation: to-end-out calc(200ms * var(--motion-scale)) ease both; }
+:root[data-scheme="light"] .to-end { background: color-mix(in srgb, #ffffff 88%, transparent); box-shadow: 0 0 0 .5px rgba(20, 30, 20, .12), 0 2px 4px rgba(20, 30, 20, .08), 0 10px 24px -8px rgba(20, 30, 20, .22); }
+:root.toasting .to-end { bottom: calc(100vh - var(--composer-top, 70vh) + 32px + var(--toast-h, 38px)); }
+@keyframes to-end-in { from { opacity: 0; transform: translateY(8px) scale(.85); } }
+@keyframes to-end-out { to { opacity: 0; transform: translateY(6px) scale(.9); } }
+/* 7 · Un aviso del sistema nace como el punto de su color y se abre en su píldora; al irse vuelve
+   a cerrarse en el punto. La forma no cambia, solo cómo llega y cómo se va. Lleva una sombra más,
+   amplia y muy suave, que lo despega del lienzo; y mientras está, la conversación que estaba en su
+   final sube lo que mide para que el aviso no tape la última línea. */
+.toast { --toast-tone: var(--text-3); }
+.toast[data-tone="done"] { --toast-tone: #34c759; }
+.toast[data-tone="look"] { --toast-tone: #e0a23c; }
+.toast[data-tone="wrong"] { --toast-tone: var(--danger); }
+.toast:not([hidden]) { animation: toast-bloom calc(480ms * var(--motion-scale)) cubic-bezier(.3, .7, .2, 1) both; }
+.toast:not([hidden])::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--toast-tone); pointer-events: none; animation: toast-bloom-tint calc(480ms * var(--motion-scale)) ease-out both; }
+.toast:not([hidden]) > * { animation: toast-words calc(240ms * var(--motion-scale)) ease calc(230ms * var(--motion-scale)) both; }
+.toast.leaving:not([hidden]) { animation: toast-fold calc(300ms * var(--motion-scale)) cubic-bezier(.5, 0, .6, 1) both; }
+.toast.leaving:not([hidden])::before { animation: toast-fold-tint calc(300ms * var(--motion-scale)) ease-in both; }
+.toast.leaving:not([hidden]) > * { animation: toast-words-out calc(120ms * var(--motion-scale)) ease both; }
+@keyframes toast-bloom {
+  from { clip-path: inset(calc(50% - 5px) calc(50% - 5px) round 999px); transform: translateX(-50%) scale(.92); }
+  32% { clip-path: inset(0 calc(50% - var(--toast-h, 38px) / 2) round 999px); }
+  78%, to { clip-path: inset(0 round 20px); transform: translateX(-50%); }
+}
+@keyframes toast-bloom-tint { from, 30% { opacity: 1; } 70%, to { opacity: 0; } }
+@keyframes toast-words { from { opacity: 0; } }
+@keyframes toast-fold {
+  from { clip-path: inset(0 round 20px); transform: translateX(-50%); }
+  55% { clip-path: inset(0 calc(50% - var(--toast-h, 38px) / 2) round 999px); opacity: 1; }
+  85% { clip-path: inset(calc(50% - 5px) calc(50% - 5px) round 999px); opacity: 1; }
+  to { clip-path: inset(calc(50% - 5px) calc(50% - 5px) round 999px); transform: translateX(-50%) scale(.92); opacity: 0; }
+}
+@keyframes toast-fold-tint { from, 25% { opacity: 0; } 60%, to { opacity: 1; } }
+@keyframes toast-words-out { to { opacity: 0; } }
+.toast:not([hidden]) {
+  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), inset 0 1px 0 rgb(255 255 255 / .06), 0 2px 4px rgba(0, 0, 0, .24), 0 12px 28px -6px rgba(0, 0, 0, .5), 0 28px 60px -18px rgba(0, 0, 0, .45), 0 0 0 10px color-mix(in srgb, var(--bg) 16%, transparent), 0 24px 70px 6px rgba(0, 0, 0, .16);
+}
+:root[data-scheme="light"] .toast:not([hidden]) { box-shadow: 0 0 0 .5px rgba(20, 30, 20, .08), 0 2px 4px rgba(20, 30, 20, .1), 0 12px 28px -6px rgba(20, 30, 20, .22), 0 28px 60px -18px rgba(20, 30, 20, .2), 0 0 0 10px rgb(255 255 255 / .22), 0 24px 70px 6px rgba(20, 30, 20, .08); }
+#messages .thread-inner { transition: padding-bottom calc(280ms * var(--motion-scale)) var(--ease-out, ease); }
+:root.toast-room #messages .thread-inner { padding-bottom: calc(var(--dock-h, 0px) + 28px + var(--toast-h, 38px) + 18px); }
+@media (prefers-reduced-motion: reduce) {
+  .toast:not([hidden]), .toast:not([hidden])::before, .toast:not([hidden]) > *, .toast.leaving:not([hidden]), .toast.leaving:not([hidden])::before { animation-duration: 1ms; }
+  .to-end, .to-end.leaving { animation: none; }
+}
+/* 6 · La caja de escribir no se aplasta: el texto conserva un ancho para escribir y la dirección
+   (HUMANO › COPILOTO › AHORRO DE TOKENS ›) se corta con «…» antes que el destinatario, que siempre
+   se ve. La ficha del ahorro de tokens no se parte en renglones. */
+.field { grid-template-columns: auto minmax(0, max-content) minmax(min(220px, 42%), 1fr) auto auto auto auto; }
+.field > .crew-label { display: flex; min-width: 0; overflow: hidden; }
+.crew-label > .crew-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crew-label > .crew-to { flex: none; white-space: pre; }
+.ash-toggle { white-space: nowrap; flex: none; }
+@container composer (max-width: 560px) {
+  .field { grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto; }
+}
+/* 5 · La receta para entrenar tu IA (Mac y Linux) cabe en su hoja: cada paso es una columna que
+   puede angostarse y cada comando se lee completo, partido en renglones, con Copiar siempre a la
+   vista arriba a la derecha. Antes la línea más larga ensanchaba el paso y la hoja la cortaba. */
+.sx-steps, .sx-steps > li { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.sx-steps .sx-command { min-width: 0; align-items: flex-start; }
+.sx-steps .sx-command code { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; padding: 5px 0; line-height: 1.55; }
+.sx-steps .sx-command > :not(code) { flex: none; }
+/* La caja con muchos renglones se recorre por dentro: la primera línea visible se desvanece bajo
+   su borde en lugar de verse partida a la mitad. */
+.editor.scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px); mask-image: linear-gradient(to bottom, transparent 0, #000 12px); }
+.sx-steps .sx-command code { background: none; border: 0; border-radius: 0; }
+/* Un paso de medición al abrir una conversación (app.js, measureRows): cada fila se dibuja una vez
+   para que el navegador recuerde su alto real y el historial no salte al llegar a lo nunca visto. */
+#messages .thread-inner > .cv-measure { content-visibility: visible; }
+
+/* 1.0.3 · Your computer: every model size, to run and to train, against this machine. */
+.sx-more > .sx-table { overflow-x: auto; }
+.sx-models { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.sx-models th { text-align: left; font-weight: 550; color: var(--text-2); padding: 6px 10px 6px 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 9%, transparent); white-space: nowrap; }
+.sx-models td { padding: 7px 10px 7px 0; color: var(--text); border-bottom: 1px solid color-mix(in srgb, var(--text) 5%, transparent); white-space: nowrap; }
+.sx-models tr:last-child td { border-bottom: 0; }
+.sx-models td.no { color: var(--text-2); }
+.sx-models tr.pick td:first-child { color: var(--phosphor); font-weight: 600; }
+
+/* 1.0.3 · Turning MADRE off: the key warms to the danger tone under the pointer, and what stays on
+   screen once it is off says so plainly (public/power.js). */
+.power-key:hover, .power-key:focus-visible { color: var(--danger); }
+.madre-off { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 24px; text-align: center; background: var(--bg, #050605); color: var(--text); }
+.madre-off h1 { margin: 6px 0 0; font-size: 22px; font-weight: 600; }
+.madre-off p { margin: 0; max-width: 420px; color: var(--text-2); font-size: 14px; line-height: 1.5; }
+.madre-off .madre-off-stuck { color: var(--danger); }
+.madre-off-mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.madre-off-mark svg { width: 24px; height: 24px; }
+html.madre-is-off body > :not(.madre-off) { visibility: hidden; }

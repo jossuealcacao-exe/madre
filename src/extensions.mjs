@@ -34,6 +34,12 @@ export async function listExtensions({ projectRoot, agents = [], config = {}, im
 // newline — a prompt like `Paste code here > ` — once the output has been still for that long.
 // Without it the prompt sits in the buffer and the room shows a sign-in that says nothing.
 // `ci: false` leaves CI out: Gemini reads it as "no browser here" and will not open one.
+// A spinner redraws its line in place (back to the first column, then the next frame) and never
+// ends it: only the last frame is the line, or a sign-in that waits fifteen minutes piles up
+// thousands of them in one.
+const REDRAW = '\u001b[999D';
+const redrawn = (text) => { const at = text.lastIndexOf(REDRAW); return at < 0 ? text : text.slice(at + REDRAW.length).replace(/^\u001b\[J/, ''); };
+
 export function runInstaller({ command, args, projectRoot, onLine, timeoutMs = 600000, heartbeatMs = 8000, env = process.env, stdin = 'ignore', onChild = null, flushIdleMs = 0, ci = true, quietNote = 'installer is quiet (npm install or git status can take a while)' }) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', ...(ci ? { CI: '1' } : {}) }, stdio: [stdin, 'pipe', 'pipe'], shell: process.platform === 'win32', windowsHide: true });
@@ -56,10 +62,11 @@ export function runInstaller({ command, args, projectRoot, onLine, timeoutMs = 6
       buffer += chunk;
       let index;
       while ((index = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, index).replace(/\r$/, '');
+        const line = redrawn(buffer.slice(0, index)).replace(/\r$/, '');
         buffer = buffer.slice(index + 1);
         if (line.trim()) emit(line, stream);
       }
+      buffer = redrawn(buffer);
     };
     child.stdout.on('data', (chunk) => feed(String(chunk), 'stdout'));
     child.stderr.on('data', (chunk) => feed(String(chunk), 'stderr'));

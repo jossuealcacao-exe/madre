@@ -623,6 +623,8 @@ body.sm-in-macro { overflow: hidden; }
 /* Everything a connection needs that does not fit on the row: the page a sign-in opened, the
    code it is waiting for, the key form. Home used to send you to a project for all of it. */
 .sm-agent-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sm-agent-device { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.sm-agent-device code { font-family: var(--mono); font-size: 15px; letter-spacing: .12em; color: var(--text); user-select: all; }
 .sm-agent-code { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 240px; }
 .sm-agent-code input, .sm-agent-key-form input, .sm-agent-key-form select { height: 32px; min-width: 0; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); font: inherit; font-size: 13px; box-shadow: var(--key-track); outline: 0; }
 .sm-agent-code input { flex: 1 1 160px; }

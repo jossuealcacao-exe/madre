@@ -191,3 +191,24 @@ test('verdicts: a word the room has just learned to say survives the export', ()
     assert.equal(pairs.some((pair) => /Stripe/.test(said(pair))), true, `judging one reply ${verdict} removed another`);
   }
 });
+
+test('dataset · D-S15: the Coordinator learns each linked project under its own name, keeps the last copy of a sleeping one, and forgets what is no longer allowed', async () => {
+  const { pairsFromLinked, keepCorpus, keptCorpus, pruneCorpora, exportDataset } = await import('../src/dataset.mjs');
+  const corpus = { contract: 'c1', from: 'tienda-0123456789abcdef', name: 'tienda', notes: [
+    { kind: 'decision', text: 'El envío es gratis desde 600 pesos; se cobra aparte por debajo.', fromSequence: 12, throughSequence: 14 },
+    { kind: 'aberration', text: 'Esto no se aprende', fromSequence: 3, throughSequence: 3 },
+  ] };
+  const pairs = pairsFromLinked([corpus]);
+  assert.equal(pairs.length, 1, 'a doubtful memory never becomes something the Coordinator learns');
+  assert.match(pairs[0].messages[1].content, /"tienda"/, 'the question names its project');
+  assert.match(pairs[0].messages[2].content, /^In tienda: .*\[tienda #12–#14\]$/, 'the answer says where it comes from');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-linked-'));
+  await keepCorpus(dir, corpus);
+  assert.equal((await keptCorpus(dir, corpus.from)).notes.length, 2);
+  const result = await exportDataset({ events: [], notes: [], dir, project: 'salas', linked: [{ ...corpus, source: 'kept' }] });
+  assert.deepEqual(result.linked, [{ room: corpus.from, name: 'tienda', notes: 1, source: 'kept', at: null }]);
+  assert.match(await readFile(join(dir, 'train.jsonl'), 'utf8').catch(() => '') + await readFile(join(dir, 'valid.jsonl'), 'utf8'), /tienda #12/);
+  await pruneCorpora(dir, new Set());
+  assert.equal(await keptCorpus(dir, corpus.from), null, 'a project that no longer allows it is forgotten');
+  await rm(dir, { recursive: true, force: true });
+});

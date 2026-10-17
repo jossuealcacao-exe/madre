@@ -7,6 +7,15 @@ import { defineModule } from './sdk.mjs';
 import { t } from '../i18n.mjs';
 import { findOnPath } from './helpers.mjs';
 import { RECOMMENDED } from '../ollama.mjs';
+import { hardwareOnce } from './local-models.mjs';
+
+// The chat model to pull is the one this computer runs well (local-models.mjs), not one size for
+// every machine; the embedding model is small enough for all of them. With the hardware, the page
+// says which sizes run here and which features of the local AI are worth turning on.
+export async function recommendedHere() {
+  const fit = await hardwareOnce();
+  return { ...RECOMMENDED, chat: fit.recommended.run?.ollama ?? RECOMMENDED.chat, hardware: fit };
+}
 
 // Ollama is not an npm package, so each system has its own way in. Where MADRE can run it, the
 // command is shown on the button before it runs; where it cannot, it hands over the download.
@@ -73,7 +82,7 @@ export default defineModule({
       models: probe.models.map((model) => model.name),
       status: { installed: settings.enabled && project.on && probe.running && roles.length > 0, detail },
       ollama: { ...view, project },
-      recommended: RECOMMENDED,
+      recommended: await recommendedHere(),
       preflight: probe.running ? { ok: true, problems: [] } : { ok: false, problems: ['Ollama is not running: open the Ollama app or run `ollama serve`, then RECHECK.'] },
       install: { display: settings.enabled ? 'disable Ollama' : 'enable Ollama (config.json)', platforms: [] },
     };
@@ -103,8 +112,8 @@ export default defineModule({
     return { status: 200, body: { enabled, ollama: status } };
   },
   routes: [
-    { method: 'GET', path: '/api/ollama', handler: async (ctx) => ({ status: 200, body: { ollama: await ollamaView(await ctx.services.ollama.wire({ probe: false }), ctx.settings), recommended: RECOMMENDED } }) },
-    { method: 'POST', path: '/api/ollama/probe', handler: async (ctx) => ({ status: 200, body: { ollama: await ollamaView(await ctx.services.ollama.wire(), ctx.settings), recommended: RECOMMENDED } }) },
+    { method: 'GET', path: '/api/ollama', handler: async (ctx) => ({ status: 200, body: { ollama: await ollamaView(await ctx.services.ollama.wire({ probe: false }), ctx.settings), recommended: await recommendedHere() } }) },
+    { method: 'POST', path: '/api/ollama/probe', handler: async (ctx) => ({ status: 200, body: { ollama: await ollamaView(await ctx.services.ollama.wire(), ctx.settings), recommended: await recommendedHere() } }) },
     { method: 'POST', path: '/api/ollama/settings', handler: async (ctx, { payload }) => {
       const next = { ...(ctx.config.modules?.ollama ?? {}) };
       for (const key of ['embeddings', 'archivist', 'agent', 'enabled']) if (typeof payload[key] === 'boolean') next[key] = payload[key];

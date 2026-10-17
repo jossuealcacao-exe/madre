@@ -29,7 +29,10 @@ import { join } from 'node:path';
 
 export const MAX_COMMANDS = 5;
 const MAX_REASON = 300;
-const MAX_LINE = 500;
+// A line has to be read before it is pressed, and the card shows it whole however long it is
+// (public/app.js, renderRunRequest). The cap is only a guard against a runaway reply: a one-liner a
+// few hundred characters long (`npx tsx -e "…"`, a long `node -p`) is still a command to run.
+const MAX_LINE = 4000;
 
 // Shell builtins: without a shell they are not programs, or they are programs that change nothing.
 const BUILTINS = new Set(['cd', 'export', 'source', '.', 'alias', 'unset', 'set', 'eval', 'exec', 'pushd', 'popd']);

@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPulseServer } from '../src/server.mjs';
-import { geminiSignIn, installPlanFor, loginPlanFor, looksLikeConsentPrompt } from '../src/auth-probe.mjs';
+import { hardwareOnce } from '../src/modules/local-models.mjs';
+import { AGENT_SETUP, deviceCodeIn, geminiSignIn, installPlanFor, loginPlanFor, looksLikeConsentPrompt } from '../src/auth-probe.mjs';
 
 test('the bridge: one runnable install command per agent, and the room knows which sign-ins it can drive', () => {
   assert.deepEqual(installPlanFor({ id: 'codex' }), { package: '@openai/codex', command: 'npm', args: ['install', '-g', '@openai/codex', '--no-fund', '--no-audit'], display: 'npm install -g @openai/codex', fallback: null, alternatives: ['or install the ChatGPT desktop app, which bundles codex'] });
@@ -12,8 +13,25 @@ test('the bridge: one runnable install command per agent, and the room knows whi
   assert.equal(installPlanFor({ id: 'gemini' }).display, 'npm install -g @google/gemini-cli');
   assert.equal(installPlanFor({ id: 'opencode' }).display, 'npm install -g opencode-ai');
   assert.equal(installPlanFor({ id: 'madre' }), null, 'the local agent is not an npm package');
-  assert.deepEqual(['codex', 'claude', 'gemini'].map((id) => loginPlanFor({ id }).headless), [true, true, true], 'browser flows the room can run');
-  assert.equal(loginPlanFor({ id: 'opencode' }).headless, false, 'its own prompt, for anything but a key');
+  assert.deepEqual(['codex', 'claude', 'gemini', 'opencode'].map((id) => loginPlanFor({ id }).headless), [true, true, true, true], 'browser flows the room can run');
+});
+
+test('the bridge: OpenCode signs in to GitHub Copilot from the room, and never to a Claude subscription', () => {
+  const plan = loginPlanFor({ id: 'opencode', path: '/x/opencode' });
+  assert.deepEqual(plan.methods.map((method) => method.id), ['github-copilot'], 'only providers that let a third party sign in this way');
+  assert.deepEqual([plan.method, plan.args, plan.display], ['github-copilot', ['auth', 'login', '-p', 'github-copilot'], 'opencode auth login -p github-copilot'], 'its provider list is skipped: the button chose');
+  assert.deepEqual([plan.deviceCode, plan.asksForCode], [true, false], 'a code to show, none to paste');
+  assert.deepEqual(plan.answers, [{ prompt: 'Select GitHub deployment type', send: '\r' }], 'github.com, the first in its menu; Enterprise stays in the terminal');
+  assert.ok(!('room' in plan.methods[0]), 'how the room runs it stays on the server');
+  // Anthropic does not allow claude.ai sign-ins in other tools; ChatGPT and GitLab wait for their owners.
+  const doors = AGENT_SETUP.opencode.methods.flatMap((method) => [method.id, ...method.args]).join(' ');
+  assert.doesNotMatch(doors, /anthropic|claude|openai|chatgpt|gitlab/i);
+  assert.equal(plan.terminal.command, 'opencode auth login', 'the whole list, in a terminal');
+
+  assert.equal(deviceCodeIn('●  Enter code: 3475-C193'), '3475-C193');
+  assert.equal(deviceCodeIn('●  Enter code: 0YDY-QJULP'), '0YDY-QJULP');
+  assert.equal(deviceCodeIn('Paste code here if prompted >'), null, 'a code to paste is not a code to show');
+  assert.equal(deviceCodeIn('│  Enter code:'), null);
 });
 
 test('the bridge: every sign-in also says how to do it from a terminal, for whoever prefers it', () => {
@@ -198,6 +216,80 @@ test('a sign-in with a code: the address is kept, the code is typed in, and it n
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+test('the room runs OpenCode\'s Copilot sign-in: answers its menu, shows the device code, and never asks for one', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-opencode-signin-'));
+  const project = await mkdtemp(join(tmpdir(), 'pulse-opencode-signin-project-'));
+  const data = await mkdtemp(join(tmpdir(), 'pulse-opencode-signin-data-'));
+  // What opencode 1.18.4 prints without a terminal (measured in an empty XDG_DATA_HOME): its menu
+  // of GitHubs, then the page and the code, then a spinner that redraws one line until GitHub
+  // says yes. Here the yes comes a moment later and the credentials land in a folder of the test.
+  const script = [
+    "const fs = require('fs'); const path = require('path'); const ESC = String.fromCharCode(27);",
+    "process.stdout.write('┌  Add credential\\n│\\n◆  Select GitHub deployment type\\n│  ● GitHub.com (Public)\\n│  ○ GitHub Enterprise\\n└\\n');",
+    "process.stdin.once('data', (answer) => {",
+    "  fs.writeFileSync(path.join(process.env.OC_DATA, 'menu.json'), JSON.stringify({ answer: String(answer) }));",
+    "  process.stdout.write('│\\n●  Go to: https://github.com/login/device\\n│\\n●  Enter code: 3475-C193\\n│\\n');",
+    "  let frames = 0;",
+    "  const spin = setInterval(() => { process.stdout.write(ESC + '[999D' + ESC + '[J◐  Waiting for authorization' + '.'.repeat(frames % 4)); frames += 1; }, 5);",
+    "  setTimeout(() => { clearInterval(spin); fs.writeFileSync(path.join(process.env.OC_DATA, 'auth.json'), '{}'); process.stdout.write(ESC + '[999D' + ESC + '[J◇  Login successful\\n└  Done\\n'); process.exit(0); }, 600);",
+    "});",
+  ].join('\n');
+  const signedIn = () => readFile(join(data, 'auth.json')).then(() => true, () => false);
+  try {
+    const { server, store } = await createPulseServer({
+      projectRoot: project,
+      stateRoot: root,
+      agents: [{ id: 'opencode', label: 'OpenCode', detected: true, ready: true, adapter: 'opencode-readonly', path: '/x/opencode', version: '1.18.4' }],
+      probe: async () => ({ opencode: (await signedIn()) ? { state: 'signed-in', detail: 'GitHub Copilot (oauth)' } : { state: 'signed-out', detail: 'no providers configured' } }),
+      loginRunners: { opencode: (agent, { method } = {}) => ({ ...loginPlanFor(agent, { method }), command: process.execPath, args: ['-e', script], env: { OC_DATA: data } }) },
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const settings = () => fetch(`${base}/api/settings`).then((response) => response.json());
+    const until = async (ready) => {
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        const answer = await settings();
+        if (ready(answer)) return answer;
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      }
+      return null;
+    };
+    try {
+      const first = await settings();
+      const card = first.agents.find((agent) => agent.id === 'opencode');
+      assert.deepEqual([card.login.headless, card.login.methods.map((method) => method.label)], [true, ['GitHub Copilot']], 'the card has a button for it');
+
+      const started = await fetch(`${base}/api/agents/opencode/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ method: 'github-copilot' }) });
+      assert.equal(started.status, 202);
+      assert.deepEqual(await started.json(), { accepted: true, command: 'opencode auth login -p github-copilot', method: 'github-copilot', asksForCode: false });
+
+      const shown = await until((answer) => answer.login?.deviceCode);
+      assert.ok(shown, 'the room never showed the code');
+      assert.deepEqual([shown.login.url, shown.login.deviceCode, shown.login.awaitingCode], ['https://github.com/login/device', '3475-C193', false], 'the page and its code, and no box to paste into');
+
+      const done = await until((answer) => !answer.loggingIn && answer.sessions.opencode.state === 'signed-in');
+      assert.ok(done, 'the sign-in never finished');
+      assert.equal(done.login, null);
+      assert.deepEqual(JSON.parse(await readFile(join(data, 'menu.json'), 'utf8')), { answer: '\r' }, 'github.com chosen for it, once');
+
+      const events = await store.readAll();
+      const finished = events.find((event) => event.type === 'connection.login.finished');
+      assert.deepEqual([finished.payload.code, finished.payload.session.state], [0, 'signed-in']);
+      const lines = events.filter((event) => event.type === 'connection.login.output');
+      assert.ok(lines.some((event) => event.payload.deviceCode === '3475-C193'), 'the code travels with its line');
+      assert.ok(lines.some((event) => /Login successful/.test(event.payload.line)), 'the last word is said, not buried under the spinner');
+      assert.ok(lines.every((event) => !event.payload.line.includes('Waiting for authorization.')), 'the spinner frames are not piled up into one line');
+      assert.ok(lines.every((event) => !event.payload.line.includes('\u001b')), 'what the room shows has no terminal escapes left in it');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(data, { recursive: true, force: true });
   }
 });
 
@@ -402,7 +494,9 @@ test('the local brain refuses to start when it is not here, and says so instead 
       const seen = await fetch(`${base}/api/ollama`).then((response) => response.json());
       assert.equal(seen.ollama.running, false);
       assert.ok('binary' in seen.ollama && 'install' in seen.ollama && 'start' in seen.ollama, 'the bridge is told what it can offer');
-      assert.equal(seen.recommended.chat, 'qwen2.5:3b');
+      // The chat model offered is the one this computer runs well (src/modules/local-models.mjs).
+      assert.equal(seen.recommended.chat, (await hardwareOnce()).recommended.run?.ollama ?? 'qwen2.5:3b');
+      assert.ok(seen.recommended.hardware?.models?.length, 'with the sizes it can run and train');
       const pulled = await fetch(`${base}/api/ollama/pull`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'qwen2.5:3b' }) });
       assert.equal(pulled.status, 412, 'nothing is pulled into an Ollama that is not running');
     } finally {

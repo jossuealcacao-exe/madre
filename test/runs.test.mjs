@@ -69,6 +69,17 @@ test('runs: a request needs a reason and closes the reply; refused lines travel 
   assert.equal(many.commands.length, MAX_COMMANDS);
 });
 
+test('runs: a long one-liner still runs; only a runaway line is refused', () => {
+  const body = `const sessions = ${'x'.repeat(700)}; console.log(sessions.length)`;
+  const line = `npx tsx -e "(async () => { ${body} })()"`;
+  const asked = parseRunRequest(`x\n\n\`\`\`pulse-run\nList the active sessions\n$ ${line}\n$ node -e "${'y'.repeat(5000)}"\n\`\`\``);
+  assert.ok(line.length > 500);
+  assert.equal(asked.commands[0].line, line);
+  assert.deepEqual(asked.commands[0].argv, ['npx', 'tsx', '-e', `(async () => { ${body} })()`]);
+  assert.equal(asked.commands[1].argv, undefined);
+  assert.equal(asked.commands[1].why, 'is too long to read before pressing it');
+});
+
 test('runs: the room shows the commands as buttons, so the fence leaves the text', () => {
   assert.equal(withoutRunRequest(block('Motivo\n$ npm test')), 'Lo cambié; falta ver que pase.');
   assert.equal(withoutRunRequest('Una respuesta normal.'), 'Una respuesta normal.');

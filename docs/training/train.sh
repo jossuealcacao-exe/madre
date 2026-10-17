@@ -11,8 +11,12 @@ PAIRS=$(wc -l < "$ROOM/dataset/train.jsonl")
 [ "$PAIRS" -ge 50 ] || { echo "only $PAIRS training pairs; let the room grow (aim for a few hundred)"; exit 3; }
 python3 -c "import mlx_lm" 2>/dev/null || { echo "pip install mlx-lm (inside a venv) first"; exit 4; }
 cd "$ROOM"
+# From 7B up, recompute instead of keeping every activation: slower, and it fits the memory the
+# room's table promises for that size (src/modules/local-models.mjs).
+EXTRA=()
+if [[ "$BASE" =~ -([0-9]+)B- ]] && [ "${BASH_REMATCH[1]}" -ge 7 ]; then EXTRA+=(--grad-checkpoint); fi
 echo "training LoRA on $PAIRS pairs · base $BASE · $ITERS iterations"
-mlx_lm.lora --model "$BASE" --train --data dataset --iters "$ITERS" --batch-size 2 --learning-rate 1e-5 --adapter-path adapters
+mlx_lm.lora --model "$BASE" --train --data dataset --iters "$ITERS" --batch-size 2 --learning-rate 1e-5 --adapter-path adapters ${EXTRA[@]+"${EXTRA[@]}"}
 mlx_lm.lora --model "$BASE" --adapter-path adapters --data dataset --test
 echo
 echo "adapters in $ROOM/adapters · next: mlx_lm.fuse, convert to GGUF, ollama create madre-<project> (see README.md)"

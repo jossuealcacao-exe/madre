@@ -17,7 +17,7 @@
 // which room: that limit is written down, not papered over.
 
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { appendFile, chmod, link, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { appendFile, chmod, link, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { withConfig } from './config.mjs';
 import { RECALLED_ZONES, STANDING_KINDS } from './memory.mjs';
@@ -40,7 +40,23 @@ export const NO_SUCH_LINK = 'No such link.';
 // `order` is one of BISHOP's orders that reached this room (fase 4b). It is counted apart from the
 // readings, each kind against the contract's own `perHour`: asking BISHOP a question, which reads,
 // never uses up the orders, and an order never uses up a reading.
-export const CROSSINGS = ['read', 'received', 'order'];
+// `corpus` is a whole reading for the Coordinator's training (D-S15), counted apart from the
+// readings of a turn and against its own ceiling; `learned` is the same crossing seen from Salas.
+// `state` is the project's canonical state read across a link (D-S16), counted against `perHour`
+// apart from the readings of notes. `delivered` is a note another project handed to this one, kept
+// pending until this project accepts it (D-S17); `sent` is the same crossing seen from the sender.
+export const CROSSINGS = ['read', 'received', 'order', 'corpus', 'learned', 'state', 'delivered', 'sent'];
+// D-S15: what one training export may take from one project, and how many such exports an hour.
+export const CORPUS_MAX = 5000;
+export const CORPUS_PER_HOUR = 6;
+// D-S17: what one delivery may carry, how long each note may be, and how many may wait at once in
+// the project that receives them before it accepts or declines some.
+export const DELIVER_MAX = 5;
+export const DELIVER_CHARS = 600;
+export const INBOX_MAX = 50;
+// The permissions a link carries besides reading, each ticked only by the human from Home: D-S14
+// (recall), D-S15 (train), D-S16 (state) and D-S17 (deliver). BISHOP never signs any of them.
+export const LINK_FLAGS = ['recall', 'train', 'state', 'deliver'];
 // What one room may tell another about a link, by the channel: that it was signed or revoked.
 // Each lands in the other room's ledger as a line, never as a message (phase 3c).
 export const NOTICES = ['enlace.signed', 'enlace.revoked'];
@@ -128,6 +144,18 @@ export function normalizeContract(raw, { now = new Date(), salas = null } = {}) 
   // asking. Off unless the human ticks it; a reading like any other, counted against `perHour`.
   if (raw.recall !== undefined && raw.recall !== null && typeof raw.recall !== 'boolean') fail('automatic recall can only be on or off.');
   const recall = raw.recall === true;
+  // D-S15: the Coordinator may learn from this project — its notes enter the Coordinator's training
+  // export (src/dataset.mjs) and, once trained, its local model. Off unless the human ticks it, and
+  // only on a link the Coordinator reads; checked against the Coordinator below.
+  if (raw.train !== undefined && raw.train !== null && typeof raw.train !== 'boolean') fail('learning can only be on or off.');
+  const train = raw.train === true;
+  // D-S16: the room that reads may also read the project's canonical state (Continuity, AHP+).
+  if (raw.state !== undefined && raw.state !== null && typeof raw.state !== 'boolean') fail('sharing the project state can only be on or off.');
+  const state = raw.state === true;
+  // D-S17: the room that reads may hand notes back to the room that serves, where they wait until
+  // that project accepts them. A delivery never writes in the other project's memory by itself.
+  if (raw.deliver !== undefined && raw.deliver !== null && typeof raw.deliver !== 'boolean') fail('delivering notes can only be on or off.');
+  const deliver = raw.deliver === true;
 
   const orders = raw.orders && typeof raw.orders === 'object' ? raw.orders : {};
   const maxMode = orders.maxMode === undefined ? 1 : Number(orders.maxMode);
@@ -140,6 +168,7 @@ export function normalizeContract(raw, { now = new Date(), salas = null } = {}) 
     const serves = direction === 'both' ? [a, b] : direction === 'a→b' ? [a] : [b];
     if (serves.includes(salas)) fail('The Coordinator never shares through a connection: it gathers every project and is nobody\'s source.');
     if (allowed && a !== salas && b !== salas) fail('Orders need the Coordinator at one end of the connection.');
+    if (train && a !== salas && b !== salas) fail('Only the Coordinator learns from a connection.');
   }
 
   // Who signed it (D-S13): the human always may; BISHOP only a link to read, with no orders, that
@@ -151,6 +180,9 @@ export function normalizeContract(raw, { now = new Date(), salas = null } = {}) 
   const at = signed.at === undefined || signed.at === null ? new Date(now).toISOString() : isoOrNull(signed.at, 'signed.at');
   if (by === 'bishop') {
     if (allowed) fail('The Coordinator signs only connections to read; a connection with orders is signed by you.');
+    if (train) fail('The Coordinator never signs what it learns from: you do.');
+    if (state) fail('The Coordinator never signs a connection that shares the project state: you do.');
+    if (deliver) fail('The Coordinator never signs a connection that delivers notes: you do.');
     if (expires === null || Date.parse(expires) - Date.parse(at) > BISHOP_SIGN_DAYS * DAY_MS + 60000) fail('The Coordinator signs only connections that expire within 7 days.'); // BISHOP_SIGN_DAYS, said literally for the catalogue
   }
 
@@ -165,6 +197,9 @@ export function normalizeContract(raw, { now = new Date(), salas = null } = {}) 
     orders: { allowed, maxMode, perHour },
     signed: { at, by },
     recall,
+    train,
+    state,
+    deliver,
   };
 }
 
@@ -274,6 +309,46 @@ export async function recallContract(stateRoot, id, recall, { now = new Date(), 
   return changed;
 }
 
+// «The Coordinator may learn from this project» (D-S15), ticked or cleared by the human: the same
+// one-step read and write as recall, on a link still in force. Cleared, nothing more of that
+// project enters the Coordinator's next export, and Salas forgets the copy it kept for it.
+export async function trainContract(stateRoot, id, train, { now = new Date(), salas = null } = {}) {
+  if (typeof id !== 'string' || !ID.test(id)) return null;
+  let changed = null;
+  await withConfig(stateRoot, (config) => {
+    if (!activeContracts(config, { now, salas }).some((one) => one.id === id)) return null;
+    const next = { ...config.enlaces[id], train: train === true };
+    normalizeContract({ ...next, id }, { now, salas });
+    config.enlaces[id] = next;
+    changed = activeContracts(config, { now, salas }).find((one) => one.id === id) ?? null;
+    return config;
+  });
+  return changed;
+}
+
+// D-S16 and D-S17: «it shares its state» or «notes can be delivered to it», ticked or cleared by
+// the human from Home. The same one-step read and write as recall and train, on a link in force.
+export async function allowContract(stateRoot, id, field, on, { now = new Date(), salas = null } = {}) {
+  if (!['state', 'deliver'].includes(field)) fail('That is not something a connection can allow.');
+  if (typeof id !== 'string' || !ID.test(id)) return null;
+  let changed = null;
+  await withConfig(stateRoot, (config) => {
+    if (!activeContracts(config, { now, salas }).some((one) => one.id === id)) return null;
+    const next = { ...config.enlaces[id], [field]: on === true };
+    normalizeContract({ ...next, id }, { now, salas });
+    config.enlaces[id] = next;
+    changed = activeContracts(config, { now, salas }).find((one) => one.id === id) ?? null;
+    return config;
+  });
+  return changed;
+}
+
+// The rooms `sender` may deliver notes to (D-S17): the rooms it reads from under a link that says
+// `deliver`. A delivery goes against the arrow — to the project whose notes this one reads.
+export function deliversTo(contracts, sender, { now = new Date() } = {}) {
+  return readsFrom(contracts, sender, { now }).filter(({ contract }) => contract.deliver).map(({ contract, from }) => ({ contract, to: from }));
+}
+
 /* ---------- the key of the channel ---------- */
 
 export const channelKeyFile = (stateRoot) => join(stateRoot, 'credentials', 'enlaces.json');
@@ -371,6 +446,137 @@ export async function askEnlace({ port, contract, asking, q = '', kinds = null, 
   if (record) await record('enlace.received', { contract: id, from, count: notes.length, turn, agent, ...(auto ? { auto: true } : {}) });
   if (roomDir) await noteCrossing(roomDir, { kind: 'received', contract: id, other: from, count: notes.length, agent, turn, now });
   return { contract: id, from, notes };
+}
+
+// D-S15: the whole of what a project lets the Coordinator learn — every note that travels, of the
+// kinds signed, cleaned by that project's privacy guard — asked by Salas when it exports its
+// training data. The same doors as a reading (no Origin, no device, the key), its own route and its
+// own ceiling. Returns `{ contract, from, name, notes }`, or `refused`, `outdated`, `unreachable`.
+export async function askCorpus({ port, contract, asking, key, fetchImpl = globalThis.fetch, timeoutMs = 15000, record = null, roomDir = null, now = new Date() }) {
+  const id = typeof contract === 'string' ? contract : contract?.id;
+  if (!id || !asking) return { refused: NO_SUCH_LINK, status: 404 };
+  const params = new URLSearchParams({ contract: id, asking });
+  let response;
+  try {
+    response = await fetchImpl(`http://127.0.0.1:${port}/api/enlace/corpus?${params}`, {
+      method: 'GET',
+      headers: { [CHANNEL_HEADER]: typeof key === 'string' ? key : '' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    return { unreachable: true };
+  }
+  const answer = await response.json().catch(() => ({}));
+  if (response.status === 404) return answer?.error === NO_SUCH_LINK ? { refused: NO_SUCH_LINK, status: 404 } : { outdated: true };
+  if (!response.ok) return { refused: typeof answer?.error === 'string' ? answer.error : `HTTP ${response.status}`, status: response.status };
+  const notes = Array.isArray(answer?.notes) ? answer.notes.slice(0, CORPUS_MAX) : [];
+  const from = typeof answer?.from === 'string' ? answer.from : null;
+  const name = typeof answer?.name === 'string' ? answer.name : from;
+  if (record) await record('enlace.learned', { contract: id, from, count: notes.length });
+  if (roomDir) await noteCrossing(roomDir, { kind: 'learned', contract: id, other: from, count: notes.length, now });
+  return { contract: id, from, name, notes };
+}
+
+// D-S16: the project's canonical state, asked by the room that reads under a link that says
+// `state`. The same doors as a reading. Returns `{ contract, from, name, state }` — `state` is null
+// when that project keeps no Continuity state — or `refused`, `outdated`, `unreachable`.
+export async function askState({ port, contract, asking, key, fetchImpl = globalThis.fetch, timeoutMs = 6000, agent = null }) {
+  const id = typeof contract === 'string' ? contract : contract?.id;
+  if (!id || !asking) return { refused: NO_SUCH_LINK, status: 404 };
+  const params = new URLSearchParams({ contract: id, asking });
+  if (agent) params.set('agent', String(agent));
+  let response;
+  try {
+    response = await fetchImpl(`http://127.0.0.1:${port}/api/enlace/state?${params}`, { method: 'GET', headers: { [CHANNEL_HEADER]: typeof key === 'string' ? key : '' }, signal: AbortSignal.timeout(timeoutMs) });
+  } catch {
+    return { unreachable: true };
+  }
+  const answer = await response.json().catch(() => ({}));
+  if (response.status === 404) return answer?.error === NO_SUCH_LINK ? { refused: NO_SUCH_LINK, status: 404 } : { outdated: true };
+  if (!response.ok) return { refused: typeof answer?.error === 'string' ? answer.error : `HTTP ${response.status}`, status: response.status };
+  return { contract: id, from: typeof answer?.from === 'string' ? answer.from : null, name: typeof answer?.name === 'string' ? answer.name : null, state: answer?.state && typeof answer.state === 'object' ? answer.state : null };
+}
+
+// D-S17: notes handed to the project this room reads from, under a link that says `deliver`. They
+// land there as pending; nothing enters that project's memory until it accepts them. Returns
+// `{ accepted: n, ids }`, or `refused`, `outdated`, `unreachable`.
+export async function deliverNotes({ port, contract, from, notes, key, agent = null, fetchImpl = globalThis.fetch, timeoutMs = 5000 }) {
+  const id = typeof contract === 'string' ? contract : contract?.id;
+  if (!id || !from) return { refused: NO_SUCH_LINK, status: 404 };
+  let response;
+  try {
+    response = await fetchImpl(`http://127.0.0.1:${port}/api/enlace/deliver`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [CHANNEL_HEADER]: typeof key === 'string' ? key : '' },
+      body: JSON.stringify({ contract: id, from, agent, notes }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    return { unreachable: true };
+  }
+  const answer = await response.json().catch(() => ({}));
+  if (response.status === 404) return answer?.error === NO_SUCH_LINK ? { refused: NO_SUCH_LINK, status: 404 } : { outdated: true };
+  if (!response.ok) return { refused: typeof answer?.error === 'string' ? answer.error : `HTTP ${response.status}`, status: response.status };
+  return { accepted: Number(answer?.accepted) || 0, ids: Array.isArray(answer?.ids) ? answer.ids : [] };
+}
+
+// A note as a delivery may carry it: a kind that stands, a text of DELIVER_CHARS at most, and the
+// reason in one line. Anything else is refused whole, so a sender never believes a note went.
+export function deliverable(raw) {
+  const kind = String(raw?.kind ?? '');
+  if (!LINK_KINDS.includes(kind)) fail('A delivered note is a decision, a fact, a preference or a question.');
+  const text = String(raw?.text ?? '').replace(/\s+/g, ' ').trim();
+  if (!text || text.length > DELIVER_CHARS) fail('A delivered note has between 1 and 600 characters.'); // DELIVER_CHARS, said literally for the catalogue
+  const why = String(raw?.why ?? '').replace(/\s+/g, ' ').trim().slice(0, 200) || null;
+  return { kind, text, why };
+}
+
+/* ---------- the inbox of delivered notes (D-S17) ---------- */
+
+// Beside the room's record, one file: every note another project delivered here, with what became
+// of it. Pending until this project accepts or declines it; accepted, it enters the memory the way
+// a distilled note does (held first, like any new note); declined, it is kept as a fact of the record.
+export const inboxFile = (roomDir) => join(roomDir, 'enlaces-inbox.json');
+const inboxLocks = new Map();
+async function changeInbox(roomDir, change) {
+  const file = inboxFile(roomDir);
+  const before = inboxLocks.get(file) ?? Promise.resolve();
+  let result;
+  const run = before.then(async () => {
+    let data = { notes: [] };
+    try { const parsed = JSON.parse(await readFile(file, 'utf8')); if (Array.isArray(parsed?.notes)) data = parsed; } catch { /* a missing or torn inbox is empty */ }
+    result = await change(data);
+    await mkdir(roomDir, { recursive: true });
+    const draft = `${file}.${process.pid}.tmp`;
+    await writeFile(draft, `${JSON.stringify(data, null, 2)}\n`, { mode: OWNER_ONLY });
+    await rename(draft, file);
+  });
+  inboxLocks.set(file, run.catch(() => null));
+  await run;
+  return result;
+}
+export async function readInbox(roomDir) {
+  try { const parsed = JSON.parse(await readFile(inboxFile(roomDir), 'utf8')); return Array.isArray(parsed?.notes) ? parsed.notes : []; } catch { return []; }
+}
+export async function receiveDelivery(roomDir, { contract, from, name = null, agent = null, notes, now = new Date() }) {
+  return changeInbox(roomDir, (data) => {
+    const pending = data.notes.filter((note) => note.status === 'pending').length;
+    if (pending + notes.length > INBOX_MAX) fail('This project has too many delivered notes waiting. Accept or decline some first.', 'FULL');
+    const at = new Date(now).toISOString();
+    const added = notes.map((note) => ({ id: `d-${randomBytes(4).toString('hex')}`, contract, from, name: name ?? from, agent, kind: note.kind, text: note.text, why: note.why ?? null, at, status: 'pending', decidedBy: null, decidedAt: null }));
+    data.notes.push(...added);
+    // The record keeps what was decided; only the last 500 lines stay in the file.
+    if (data.notes.length > 500) data.notes = [...data.notes.filter((note) => note.status === 'pending'), ...data.notes.filter((note) => note.status !== 'pending').slice(-(500 - INBOX_MAX))];
+    return added;
+  });
+}
+export async function decideDelivery(roomDir, id, { accept, by = 'you', now = new Date() }) {
+  return changeInbox(roomDir, (data) => {
+    const note = data.notes.find((one) => one.id === id);
+    if (!note || note.status !== 'pending') return null;
+    Object.assign(note, { status: accept ? 'accepted' : 'declined', decidedBy: by, decidedAt: new Date(now).toISOString() });
+    return { ...note };
+  });
 }
 
 // Tells another room, by the channel, that a link of its was signed or revoked. The same call as
