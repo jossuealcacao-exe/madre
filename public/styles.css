@@ -9957,3 +9957,14 @@ dialog#core .core-panes { margin-inline: calc(-1 * var(--core-pad)); padding-inl
 .neural-invite .neural-invite-go { color: var(--neural-ink); background: var(--neural); }
 .neural-invite .neural-invite-go:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--neural) 84%, #ffffff); outline: 0; }
 @media (prefers-reduced-motion: reduce) { .nostromo-head .neural-key.invite, .neural-invite { animation: none; } }
+
+/* The maps' close (1.0.3): the same sunk track and turning cross as every window, in the dark the
+   maps always stand on, whatever the room's theme. */
+:is(#nostromo, .mv) .nostromo-actions .surface-modes {
+  --neu-hi: rgba(255, 255, 255, .07); --neu-lo: rgba(0, 0, 0, .72); --surface: #1b1e1b;
+  --key-track: inset 1.5px 1.5px 4px var(--neu-lo), inset -1.5px -1.5px 4px var(--neu-hi);
+  --key-rest: -2px -2px 5px var(--neu-hi), 3px 3px 7px var(--neu-lo);
+  box-shadow: var(--key-track); background: rgb(255 255 255 / .04) !important;
+}
+:is(#nostromo, .mv) .nostromo-actions .surface-modes .surface-mode.close { color: rgb(242 241 238 / .78); }
+:is(#nostromo, .mv) .nostromo-actions .surface-modes .surface-mode.close:is(:hover, :focus-visible) { color: #ffffff; background: var(--surface); box-shadow: var(--key-rest); }

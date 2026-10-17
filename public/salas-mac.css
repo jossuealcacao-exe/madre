@@ -417,8 +417,7 @@ body.sm-in-macro { overflow: hidden; }
    kinds of memory under them and the keys at the end. */
 .mv-head { position: absolute; left: 0; right: 0; top: 0; z-index: 2; margin: 0; }
 .mv-head .mother-title { margin: 0; text-transform: uppercase; }
-.mv-back { display: inline-flex; align-items: center; gap: 6px; }
-.mv-back svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+
 .mv-hint { position: absolute; left: 20px; bottom: 14px; margin: 0; font-size: 11.5px; color: rgba(242, 241, 238, .42); pointer-events: none; }
 
 .mv-card { position: absolute; right: 40px; top: 50%; translate: 0 -50%; width: min(360px, 34vw); display: grid; gap: 10px; padding: 22px 22px 18px; border-radius: 22px; background: rgba(18, 18, 22, .78); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 30px 60px -30px rgba(0, 0, 0, .9); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); animation: mv-card-in 420ms var(--ease-out, ease-out); }
@@ -1319,3 +1318,8 @@ dialog.sm-sheet:focus, dialog.sm-sheet:focus-visible { outline: none; }
 #sm-add-widgets:active svg rect, #sm-add-widgets.filled svg rect { fill-opacity: 1; }
 @keyframes icon-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.16); } 70% { transform: scale(.95); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { #sm-add-widgets:is(:hover, :focus-visible) svg { animation: none; } }
+
+/* While the Project map is open, a first-time hint that points at Home steps aside, with its ring:
+   what it speaks of is under the map. It is not read yet, so it comes back when the map closes.
+   The map's own hint stays (tour.js, data-under). */
+body.sm-in-macro > :is(.tour-hint, .hint-spot)[data-under="page"] { display: none !important; }

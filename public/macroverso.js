@@ -457,17 +457,23 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   recenter.className = 'mother-close mv-recenter';
   recenter.textContent = words.recenter ?? 'RECENTER';
   recenter.hidden = true;
+  // Leaving: the room's close, a sunk track and the cross that turns (styles.css, .x-close), as
+  // every window closes; what it does is in its name.
+  const backTrack = document.createElement('span');
+  backTrack.className = 'surface-modes';
   const back = document.createElement('button');
   back.type = 'button';
-  back.className = 'mother-close mv-back';
-  back.append(words.back);
-  back.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'); // trusted: our own SVG
+  back.className = 'surface-mode close x-close x-only mv-back';
+  back.setAttribute('aria-label', words.back);
+  back.title = words.back;
+  back.insertAdjacentHTML('beforeend', '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'); // trusted: our own SVG
+  backTrack.append(back);
   // Neural mode (public/neural.js): the same space drawn as neurons, chosen here or in a project.
   const neuralButton = document.createElement('button');
   neuralButton.type = 'button';
   neuralButton.className = 'mother-close neural-key';
   neuralKey(neuralButton);
-  keys.append(neuralButton, recenter, back);
+  keys.append(neuralButton, recenter, backTrack);
   head.append(title, sub, legend, keys);
   const card = document.createElement('aside');
   card.className = 'mv-card';

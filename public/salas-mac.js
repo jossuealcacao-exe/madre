@@ -1938,6 +1938,8 @@ homeTour.firstOpen('home-links', ui.bar.links, {
   text: () => t('Which projects can look up what another learned, and the contract each one signed. Nothing is shared without your signature, and you can cancel any connection here.'),
 });
 homeTour.firstOpen('home-map', ui.macro, {
+  // Under the map's own head, never beside Home's key, which the map covers.
+  opened: () => document.querySelector('.mv .mv-head .mother-title'),
   title: () => t('Project map'),
   text: () => t('Your projects as a map. Drag one onto another to connect them, click one to go to it, and press Esc to come back.'),
   after: 900,

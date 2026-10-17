@@ -1528,7 +1528,7 @@ export const ES = {
   'UNUSED · 0': 'SIN USAR · 0',
   'ASK · 0': 'PREGUNTAR · 0',
   'RECENTER': 'CENTRAR',
-  'LEAVE ×': 'SALIR ×',
+  'Leave the Memory map': 'Salir del Mapa de memoria',
   // /module: las ideas, dos de cada forma de módulo.
   'command': 'comando',
   'integration': 'integración',

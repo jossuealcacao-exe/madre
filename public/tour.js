@@ -104,7 +104,7 @@ export function spotlight(node) {
   window.addEventListener('resize', place);
   window.addEventListener('scroll', place, true);
   place();
-  return { place, remove };
+  return { place, remove, node: spot };
 }
 
 // `onChange` hears the kept state each time it is known or changes (null if it could not be read).
@@ -525,7 +525,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
       hintNode = null;
       document.removeEventListener('keydown', onKey, true);
     };
-    const onKey = (event) => { if (event.key === 'Escape' && hintNode && !inside) { event.stopPropagation(); done(); } };
+    // Esc puts away the hint in sight; one hidden under a layer (the Project map) is not the one meant.
+    const onKey = (event) => { if (event.key === 'Escape' && hintNode && !inside && getComputedStyle(card).display !== 'none') { event.stopPropagation(); done(); } };
     card.append(key('tour-btn small primary', t('Got it'), done));
     hintNode = card;
     if (inside) {
@@ -546,6 +547,11 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const below = box.bottom + 10 + height < window.innerHeight;
     Object.assign(card.style, { left: `${left}px`, top: `${below ? box.bottom + 10 : Math.max(12, box.top - height - 10)}px` });
     spot = spotlight(anchor);
+    // Where it points: on the page, or on a layer over it (Home's Project map). A layer opened over
+    // the page hides the hints that point under it, and they come back when it closes (salas-mac.css).
+    const layer = anchor.closest?.('.mv') ? 'map' : 'page';
+    card.dataset.under = layer;
+    if (spot.node) spot.node.dataset.under = layer;
     document.addEventListener('keydown', onKey, true);
     return true;
   }
