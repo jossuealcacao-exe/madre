@@ -10,6 +10,7 @@ import { createEditor } from './editor.js';
 import { labelPowerKey, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
+import { createStrain, inviteNeural, neuralChosen, neuralKey, paintNeuralKey, rememberNeural } from './neural.js';
 import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
@@ -7495,7 +7496,7 @@ window.addEventListener?.('storage', (event) => {
 // phone's bridge.
 // The wallpaper is each page's own (2026-10-13): this project keeps the one chosen here, Home the
 // one chosen in Home (src/looks.mjs, `rooms`). The rest of the looks are shared.
-const SHARED_LOOKS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text'];
+const SHARED_LOOKS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural'];
 let booted = false;
 let looksPush = 0;
 // Saved for this project alone, on the server, so it outlives the port the page is served on.
@@ -7541,6 +7542,8 @@ function reapplyLooks() {
   applyTheme(themeMode);
   for (const name of Object.keys(LOOKS)) applyLook(name, readLook(name));
   for (const name of Object.keys(TUNES)) applyTune(name, readTune(name));
+  // The maps' neural mode, chosen on another page (public/neural.js).
+  if (booted) syncNostromoNeural();
   if (booted) { renderAgents(); renderPicker(); syncSettingsCards(); }
 }
 void pullLooks();
@@ -17897,7 +17900,33 @@ nostromo.covered = () => {
 };
 nostromo.onClang = () => { const frame = document.querySelector('#nostromo .nostromo-frame'); frame?.classList.remove('shake'); void frame?.offsetWidth; frame?.classList.add('shake'); };
 // The physics and the painters, closed over this scene (nostromo-engine.js).
-const { buildNodes, sizeNostromo, stepNostromo, focusNostromo, projectNostromo, fitNostromo, drawNostromo, toScreen, toWorld, nostromoLive, nostromoAt, beginImplosion } = createNostromo(nostromo);
+const { buildNodes, sizeNostromo, stepNostromo, focusNostromo, projectNostromo, fitNostromo, drawNostromo, toScreen, toWorld, nostromoLive, nostromoAt, beginImplosion, setNeural } = createNostromo(nostromo);
+// Neural mode (public/neural.js): the same map drawn as the neurons of a brain, chosen from its head.
+// The choice is the person's, shared with Home's Projects map (looks.json, `pulse.neural`); when this
+// machine does not give the map its frames, the key invites to try it, once a session.
+nostromo.neuralKey = document.querySelector('#nostromo-neural');
+nostromo.neural = neuralChosen();
+if (nostromo.neuralKey) {
+  neuralKey(nostromo.neuralKey);
+  paintNeuralKey(nostromo.neuralKey, nostromo.neural);
+  nostromo.neuralKey.addEventListener('click', () => setNostromoNeural(!nostromo.neural));
+}
+function setNostromoNeural(on) {
+  setNeural(on, performance.now() / 1000);
+  rememberNeural(on);
+  paintNeuralKey(nostromo.neuralKey, on);
+  nostromo.dialog?.querySelector('.neural-invite')?.remove();
+  pushLooks();
+}
+function syncNostromoNeural() {
+  const want = neuralChosen();
+  if (Boolean(nostromo.neural) === want) return;
+  setNeural(want, performance.now() / 1000);
+  paintNeuralKey(nostromo.neuralKey, want);
+}
+nostromo.strain = createStrain({
+  onStrain: () => { if (!nostromo.neural && !state.device) inviteNeural({ key: nostromo.neuralKey, host: nostromo.dialog, map: 'memory', onTry: () => setNostromoNeural(true) }); },
+});
 // One frame of the map on demand, what startNostromo's loop does sixty times a second: for whoever
 // measures it (`__pulse.nostromoTick`), without waiting for the screen.
 function nostromoTick(now) {
@@ -18497,15 +18526,18 @@ function startNostromo() {
   if (!nostromo.cage?.closed) nostromo.cage = null;
   window.addEventListener('resize', sizeNostromo);
   nostromo.last = performance.now();
+  nostromo.strain?.reset();
   const frame = (now) => {
     const dt = Math.min(48, now - nostromo.last) / 16;
     nostromo.last = now;
     const clock = now / 1000;
+    const started = performance.now();
     stepNostromo(dt, clock);
     focusNostromo(dt, clock);
     projectNostromo();
     fitNostromo();
     drawNostromo(clock);
+    nostromo.strain?.frame(performance.now() - started, now);
     nostromo.raf = requestAnimationFrame(frame);
   };
   nostromo.raf = requestAnimationFrame(frame);

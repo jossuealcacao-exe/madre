@@ -24,7 +24,8 @@
 // for less motion gets one still frame redrawn when something changes. No line joins two universes
 // until a link exists (phase 3c).
 
-import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, dwarfChip, hexAlpha, hexMix, magmaMap, texturesReady } from './nostromo-engine.js';
+import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronGlow, texturesReady } from './nostromo-engine.js';
+import { createStrain, inviteNeural, neuralKey, paintNeuralKey } from './neural.js';
 
 const KINDS = Object.keys(MEMORY_COLORS);
 const TILT = 0.42;                 // how flat the orbits read: the plane seen a little from above
@@ -329,7 +330,7 @@ function farMemories(data) {
 
 // One universe painted once: its scene placed, settled and drawn into a sprite by the engine. A
 // room that is asleep, sealed, outdated or unreachable is MOTHER alone: cold, or caged.
-function paintUniverse(one, dpr, shown = null) {
+function paintUniverse(one, dpr, shown = null, neural = false) {
   const side = Math.min(SPRITE_MAX, Math.round(Math.max(SIDE_MIN, shown ?? one.reach * 2) * dpr));
   const css = side / dpr;
   const canvas = canvasOf(side, side);
@@ -345,6 +346,8 @@ function paintUniverse(one, dpr, shown = null) {
   }
   scene.cam = { x: 0, y: 0, scale: (css / 2 - 4) / BODY_REACH, manual: true };
   if (data?.sealed) scene.cage = { at: 0, closed: true };
+  // Neural mode (public/neural.js): the universe drawn as a cluster of neurons round its bulb.
+  scene.neural = neural;
   engine.projectNostromo();
   engine.drawNostromo(0.7);
   if (!one.room.open) {
@@ -408,7 +411,7 @@ function paintStars(seed, count, biggest, dpr) {
   return { canvas, side };
 }
 
-export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bff66', accentInk = '#0a1405', bishop = null, words, actions }) {
+export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bff66', accentInk = '#0a1405', bishop = null, words, actions, neural: neuralStart = false }) {
   const reduced = reducedMotion();
   const layer = document.createElement('section');
   layer.className = 'mv';
@@ -459,7 +462,12 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   back.className = 'mother-close mv-back';
   back.append(words.back);
   back.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'); // trusted: our own SVG
-  keys.append(recenter, back);
+  // Neural mode (public/neural.js): the same space drawn as neurons, chosen here or in a project.
+  const neuralButton = document.createElement('button');
+  neuralButton.type = 'button';
+  neuralButton.className = 'mother-close neural-key';
+  neuralKey(neuralButton);
+  keys.append(neuralButton, recenter, back);
   head.append(title, sub, legend, keys);
   const card = document.createElement('aside');
   card.className = 'mv-card';
@@ -488,6 +496,9 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   let raf = 0;
   let last = performance.now();
   let clock = 0;
+  let neural = Boolean(neuralStart);   // drawn as neurons (setNeuralMode)
+  let neuralSince = null;               // when it came on, for the light running out from the centre
+  let fade = null;                      // the space as it was, fading over the new drawing
   let queued = false;
   let resizeTimer = 0;
   const drag = { active: false, moved: false, turning: false, link: null, x: 0, y: 0, x0: 0, y0: 0 };
@@ -497,6 +508,36 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   let orb = null;
   const gaze = { x: 0, y: 0, open: 0, at: 0, jumpAt: 0, jx: 0, jy: 0, blinkAt: -1, nextBlink: 3 + Math.random() * 4, twice: false };
   let pointer = null;
+  // Neural mode, switched from its key or because a project switched it: the space as it was fades
+  // over the new drawing, the light runs out from the centre, every universe is drawn again its new
+  // way (a sleeping one, painted once, is painted again), and the choice is kept (actions.neural).
+  paintNeuralKey(neuralButton, neural);
+  function setNeuralMode(on) {
+    if (neural === on) return;
+    if (!reduced && canvas.width && canvas.height) {
+      const held = document.createElement('canvas');
+      held.width = canvas.width;
+      held.height = canvas.height;
+      held.getContext('2d').drawImage(canvas, 0, 0);
+      fade = { canvas: held, at: clock };
+    }
+    neural = on;
+    neuralSince = on && !reduced ? clock : null;
+    paintNeuralKey(neuralButton, on);
+    layer.querySelector('.neural-invite')?.remove();
+    const now = performance.now() / 1000;
+    for (const one of universes) {
+      if (!one.sprite?.scene) continue;
+      if (one.room.open && !reducedMotion()) one.sprite.engine.setNeural(on, now);
+      else one.dirty = true;
+    }
+    live?.engine.setNeural(on, now);
+    actions.neural?.(on);
+    redraw();
+  }
+  neuralButton.addEventListener('click', () => setNeuralMode(!neural));
+  // When this machine does not give the space its frames, the key invites to try the mode.
+  const strain = createStrain({ onStrain: () => { if (!neural) inviteNeural({ key: neuralButton, host: layer, map: 'projects', onTry: () => setNeuralMode(true) }); } });
   const motes = Array.from({ length: ORB_MOTES }, (_, i) => { const rnd = random(hash(`mote${i}`)); return { phase: rnd() * Math.PI * 2, reach: 1.3 + rnd() * 0.65, speed: 0.12 + rnd() * 0.2, tilt: (rnd() - 0.5) * 0.5, size: 0.35 + rnd() * 0.6 }; });
 
   function layout(all) {
@@ -595,7 +636,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     const next = [focus, ...universes].find((one) => one && one.dirty);
     if (!next) return false;
     if (!next.data) { if (!next.loading?.data) void load(next); return false; }
-    next.sprite = paintUniverse(next, view.dpr, next.shown ?? null);
+    next.sprite = paintUniverse(next, view.dpr, next.shown ?? null, neural);
     next.dirty = false;
     return true;
   }
@@ -650,6 +691,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       }
       engine.placeNostromo();
       scene.words = words;
+      scene.neural = neural;
       if (data.sealed) scene.cage = { at: 0, closed: true };
       // The pointer reaches it through its own canvas, which is nowhere on the page: it answers
       // from the origin, and the pointer is moved into its frame before it is asked.
@@ -713,7 +755,9 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   }
 
   function frame(now) {
+    const started = performance.now();
     advance(now);
+    strain.frame(performance.now() - started, now);
     raf = reduced && !camera.to ? 0 : requestAnimationFrame(frame);
   }
   // One frame's worth of everything, without asking for the next: what frame() does, and what
@@ -766,10 +810,13 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    if (nebula) ctx.drawImage(nebula, 0, 0, view.w, view.h);
+    const beat = reduced ? 0.4 : 0.5 + 0.5 * Math.sin(clock * 5.46);
+    // Neural mode: no nebula and no stars, the dark the neurons stand on.
+    if (neural) neuralGround(ctx, view.w, view.h, beat);
+    else if (nebula) ctx.drawImage(nebula, 0, 0, view.w, view.h);
     // Stars: the near ones move with the camera, the far ones barely. The tiles repeat under any
     // movement, so the space has no edge.
-    stars.forEach((tile, depth) => {
+    if (!neural) stars.forEach((tile, depth) => {
       const speed = [0.04, 0.1, 0.22][depth] * camera.zoom;
       const ox = (((-camera.x * speed - clock * (reduced ? 0 : 1.5 * (depth + 1))) % tile.side) + tile.side) % tile.side;
       const oy = (((-camera.y * speed) % tile.side) + tile.side) % tile.side;
@@ -783,14 +830,13 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     const span = Math.min(view.w, view.h * 1.7);
     ctx.lineWidth = 1;
     for (const orbit of [INNER, OUTER]) {
-      ctx.strokeStyle = 'rgba(242, 241, 238, .11)';
+      ctx.strokeStyle = neural ? `rgba(${NEURAL_AXON}, .1)` : 'rgba(242, 241, 238, .11)';
       ctx.setLineDash(orbit === OUTER ? [3, 7] : []);
       ctx.beginPath();
       ctx.ellipse(centre.x, centre.y, span * orbit * camera.zoom, span * orbit * TILT * camera.zoom, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.setLineDash([]);
-    const beat = reduced ? 0.4 : 0.5 + 0.5 * Math.sin(clock * 5.46);
     drawVeins(ctx);
     drawCentre(ctx, beat);
 
@@ -807,6 +853,12 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     if (veil > 0.004) { ctx.fillStyle = `rgba(2, 1, 4, ${veil})`; ctx.fillRect(0, 0, view.w, view.h); }
     const top = order.find((entry) => entry.one === lifted);
     if (top) drawUniverse(ctx, top.one, top.at, beat);
+    // Changing the drawing: the space as it was fades over the new one.
+    if (fade) {
+      const k = (clock - fade.at) / NEURAL_CROSSFADE;
+      if (k >= 1 || k < 0) fade = null;
+      else { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1 - k * (2 - k); ctx.drawImage(fade.canvas, 0, 0); ctx.restore(); }
+    }
   }
 
   // One universe on screen: MOTHER's warmth, the live scene or its own living canvas, its rings
@@ -830,7 +882,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     const away = at.light * at.light * (0.55 + 0.45 * Math.min(1, camera.zoom));
     const reach = r * (2.3 + 0.2 * beat);
     const halo = ctx.createRadialGradient(p.x, p.y, r * 0.6, p.x, p.y, reach);
-    halo.addColorStop(0, awake ? `rgba(226, 40, 22, ${(0.16 + 0.05 * beat) * away})` : `rgba(120, 150, 200, ${0.08 * away})`);
+    halo.addColorStop(0, neural ? (awake ? `rgba(${NEURAL_AXON}, ${(0.12 + 0.04 * beat) * away})` : `rgba(120, 150, 200, ${0.05 * away})`) : awake ? `rgba(226, 40, 22, ${(0.16 + 0.05 * beat) * away})` : `rgba(120, 150, 200, ${0.08 * away})`);
     halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = halo;
     ctx.beginPath(); ctx.arc(p.x, p.y, reach, 0, Math.PI * 2); ctx.fill();
@@ -844,8 +896,8 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     } else {
       // Not read yet: an ember where it will be.
       const ember = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-      ember.addColorStop(0, awake ? '#ff7a3a' : '#56637a');
-      ember.addColorStop(1, awake ? 'rgba(168, 23, 12, 0)' : 'rgba(27, 33, 48, 0)');
+      ember.addColorStop(0, neural ? (awake ? '#9fdcff' : '#56637a') : awake ? '#ff7a3a' : '#56637a');
+      ember.addColorStop(1, neural ? 'rgba(20, 60, 110, 0)' : awake ? 'rgba(168, 23, 12, 0)' : 'rgba(27, 33, 48, 0)');
       ctx.fillStyle = ember;
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
     }
@@ -899,85 +951,91 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     const centre = toScreen(0, 0);
     const p = { x: centre.x, y: centre.y + float * Math.max(0.6, camera.zoom) };
     const r = 30 * clamp(camera.zoom, 0.75, 1.8);
-    core.screen = { x: p.x, y: p.y, r: r * 1.3 };
-    // Where it looks: at the person (the pointer) first; at the universe being carried, or the
-    // chosen one, when the pointer is away; wandering slowly when nothing is there. A living eye
-    // never holds still: small jumps every second or so.
-    const seen = linking?.from ?? (focus && !focus.centre ? focus : null);
-    let target = pointer ?? seen?.screen ?? null;
-    if (!target && !reduced) target = { x: p.x + Math.cos(clock * 0.21) * 160, y: p.y + Math.sin(clock * 0.34) * 90 };
-    if (!reduced && clock > gaze.jumpAt) { gaze.jumpAt = clock + 0.6 + Math.random() * 1.2; gaze.jx = (Math.random() - 0.5) * 0.07; gaze.jy = (Math.random() - 0.5) * 0.05; }
-    const toward = target ? { x: target.x - p.x, y: target.y - p.y } : { x: 0, y: 0 };
-    const far = Math.hypot(toward.x, toward.y) + 180;
-    const step = reduced ? 1 : clamp((clock - gaze.at) * 6, 0, 1);
-    gaze.at = clock;
-    gaze.x += (clamp(toward.x / far + gaze.jx, -1, 1) - gaze.x) * step;
-    gaze.y += (clamp(toward.y / far + gaze.jy, -1, 1) - gaze.y) * step;
-    gaze.open += ((linking?.over === core ? 1 : hover === core ? 0.45 : 0) - gaze.open) * step;
-    // A blink now and then, sometimes two; the lids close fast and open a little slower.
-    if (!reduced && awake && clock > gaze.nextBlink) {
-      gaze.blinkAt = clock;
-      gaze.twice = !gaze.twice && Math.random() < 0.25;
-      gaze.nextBlink = clock + (gaze.twice ? 0.32 : 4 + Math.random() * 6);
-    }
-    const since = clock - gaze.blinkAt;
-    const lid = gaze.blinkAt < 0 || since > 0.26 ? 0 : since < 0.09 ? since / 0.09 : 1 - (since - 0.09) / 0.17;
-    if (clock - orb.paintedAt >= 1 / ORB_FPS || orb.paintedAt < 0 || lid > 0) {
-      orb.paint(reduced ? 0 : clock, { x: gaze.x, y: gaze.y, open: gaze.open, lid: clamp(lid, 0, 1) * 0.94, asleep: !awake });
-      orb.paintedAt = clock;
-    }
-    const life = awake ? 1 : 0.5;
-    // The atmosphere: violet into blue, breathing slowly.
-    ctx.globalCompositeOperation = 'lighter';
-    const air = ctx.createRadialGradient(p.x, p.y, r * 0.8, p.x, p.y, r * (2.7 + 0.12 * beat));
-    air.addColorStop(0, `rgba(122, 58, 238, ${0.3 * life})`);
-    air.addColorStop(0.45, `rgba(72, 112, 255, ${0.12 * life})`);
-    air.addColorStop(1, 'rgba(40, 20, 120, 0)');
-    ctx.fillStyle = air;
-    ctx.beginPath(); ctx.arc(p.x, p.y, r * (2.7 + 0.12 * beat), 0, Math.PI * 2); ctx.fill();
-    // The wisps, turning two ways at once, as gas does.
-    const span = r * orb.reach * 2;
-    for (const [speed, alpha] of [[0.05, 0.8], [-0.033, 0.5]]) {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(reduced ? 0 : clock * speed);
-      ctx.globalAlpha = alpha * life;
-      ctx.drawImage(orb.wisps, -span / 2, -span / 2, span, span);
-      ctx.restore();
-    }
-    // The motes behind it, then the sphere, then the motes in front.
-    const drawMotes = (front) => {
-      for (const mote of motes) {
-        const a = mote.phase + (reduced ? 0 : clock * mote.speed);
-        const ahead = Math.sin(a) > 0;
-        if (ahead !== front) continue;
-        const mx = p.x + Math.cos(a) * r * mote.reach;
-        const my = p.y + Math.sin(a) * r * mote.reach * 0.3 + mote.tilt * r * Math.cos(a);
-        const size = mote.size * (ahead ? 1 : 0.7) * clamp(camera.zoom, 0.7, 1.4);
-        const glow = ctx.createRadialGradient(mx, my, 0, mx, my, size * 3);
-        glow.addColorStop(0, `rgba(214, 206, 255, ${(ahead ? 0.6 : 0.25) * life})`);
-        glow.addColorStop(1, 'rgba(120, 140, 255, 0)');
-        ctx.fillStyle = glow;
-        ctx.beginPath(); ctx.arc(mx, my, size * 3, 0, Math.PI * 2); ctx.fill();
+    core.screen = { x: p.x, y: p.y, r: r * (neural ? 1.8 : 1.3) };
+    // Neural mode: the centre of the brain, its bulb, in the Coordinator's violet; no eye, no gas.
+    if (neural) {
+      const ignite = neuralSince === null ? 1 : clamp((clock - neuralSince) / NEURAL_IGNITION, 0, 1);
+      drawNeuralBulb(ctx, p.x, p.y, r * 1.6, clock, { beat, light: awake ? 1 : 0.6, ignite, tone: 'bishop', still: reduced });
+    } else {
+      // Where it looks: at the person (the pointer) first; at the universe being carried, or the
+      // chosen one, when the pointer is away; wandering slowly when nothing is there. A living eye
+      // never holds still: small jumps every second or so.
+      const seen = linking?.from ?? (focus && !focus.centre ? focus : null);
+      let target = pointer ?? seen?.screen ?? null;
+      if (!target && !reduced) target = { x: p.x + Math.cos(clock * 0.21) * 160, y: p.y + Math.sin(clock * 0.34) * 90 };
+      if (!reduced && clock > gaze.jumpAt) { gaze.jumpAt = clock + 0.6 + Math.random() * 1.2; gaze.jx = (Math.random() - 0.5) * 0.07; gaze.jy = (Math.random() - 0.5) * 0.05; }
+      const toward = target ? { x: target.x - p.x, y: target.y - p.y } : { x: 0, y: 0 };
+      const far = Math.hypot(toward.x, toward.y) + 180;
+      const step = reduced ? 1 : clamp((clock - gaze.at) * 6, 0, 1);
+      gaze.at = clock;
+      gaze.x += (clamp(toward.x / far + gaze.jx, -1, 1) - gaze.x) * step;
+      gaze.y += (clamp(toward.y / far + gaze.jy, -1, 1) - gaze.y) * step;
+      gaze.open += ((linking?.over === core ? 1 : hover === core ? 0.45 : 0) - gaze.open) * step;
+      // A blink now and then, sometimes two; the lids close fast and open a little slower.
+      if (!reduced && awake && clock > gaze.nextBlink) {
+        gaze.blinkAt = clock;
+        gaze.twice = !gaze.twice && Math.random() < 0.25;
+        gaze.nextBlink = clock + (gaze.twice ? 0.32 : 4 + Math.random() * 6);
       }
-    };
-    drawMotes(false);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = awake ? 1 : 0.8;
-    ctx.drawImage(orb.canvas, p.x - r, p.y - r, r * 2, r * 2);
-    ctx.globalAlpha = 1;
-    // Its own thin atmosphere, brighter on the side the light comes from.
-    ctx.globalCompositeOperation = 'lighter';
-    const limb = ctx.createRadialGradient(p.x - r * 0.1, p.y - r * 0.12, r * 0.9, p.x, p.y, r * 1.14);
-    limb.addColorStop(0, 'rgba(120, 150, 255, 0)');
-    limb.addColorStop(0.55, `rgba(130, 160, 255, ${0.28 * life})`);
-    limb.addColorStop(1, 'rgba(90, 60, 220, 0)');
-    ctx.fillStyle = limb;
-    ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.14, 0, Math.PI * 2); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalCompositeOperation = 'lighter';
-    drawMotes(true);
-    ctx.globalCompositeOperation = 'source-over';
+      const since = clock - gaze.blinkAt;
+      const lid = gaze.blinkAt < 0 || since > 0.26 ? 0 : since < 0.09 ? since / 0.09 : 1 - (since - 0.09) / 0.17;
+      if (clock - orb.paintedAt >= 1 / ORB_FPS || orb.paintedAt < 0 || lid > 0) {
+        orb.paint(reduced ? 0 : clock, { x: gaze.x, y: gaze.y, open: gaze.open, lid: clamp(lid, 0, 1) * 0.94, asleep: !awake });
+        orb.paintedAt = clock;
+      }
+      const life = awake ? 1 : 0.5;
+      // The atmosphere: violet into blue, breathing slowly.
+      ctx.globalCompositeOperation = 'lighter';
+      const air = ctx.createRadialGradient(p.x, p.y, r * 0.8, p.x, p.y, r * (2.7 + 0.12 * beat));
+      air.addColorStop(0, `rgba(122, 58, 238, ${0.3 * life})`);
+      air.addColorStop(0.45, `rgba(72, 112, 255, ${0.12 * life})`);
+      air.addColorStop(1, 'rgba(40, 20, 120, 0)');
+      ctx.fillStyle = air;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * (2.7 + 0.12 * beat), 0, Math.PI * 2); ctx.fill();
+      // The wisps, turning two ways at once, as gas does.
+      const span = r * orb.reach * 2;
+      for (const [speed, alpha] of [[0.05, 0.8], [-0.033, 0.5]]) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(reduced ? 0 : clock * speed);
+        ctx.globalAlpha = alpha * life;
+        ctx.drawImage(orb.wisps, -span / 2, -span / 2, span, span);
+        ctx.restore();
+      }
+      // The motes behind it, then the sphere, then the motes in front.
+      const drawMotes = (front) => {
+        for (const mote of motes) {
+          const a = mote.phase + (reduced ? 0 : clock * mote.speed);
+          const ahead = Math.sin(a) > 0;
+          if (ahead !== front) continue;
+          const mx = p.x + Math.cos(a) * r * mote.reach;
+          const my = p.y + Math.sin(a) * r * mote.reach * 0.3 + mote.tilt * r * Math.cos(a);
+          const size = mote.size * (ahead ? 1 : 0.7) * clamp(camera.zoom, 0.7, 1.4);
+          const glow = ctx.createRadialGradient(mx, my, 0, mx, my, size * 3);
+          glow.addColorStop(0, `rgba(214, 206, 255, ${(ahead ? 0.6 : 0.25) * life})`);
+          glow.addColorStop(1, 'rgba(120, 140, 255, 0)');
+          ctx.fillStyle = glow;
+          ctx.beginPath(); ctx.arc(mx, my, size * 3, 0, Math.PI * 2); ctx.fill();
+        }
+      };
+      drawMotes(false);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = awake ? 1 : 0.8;
+      ctx.drawImage(orb.canvas, p.x - r, p.y - r, r * 2, r * 2);
+      ctx.globalAlpha = 1;
+      // Its own thin atmosphere, brighter on the side the light comes from.
+      ctx.globalCompositeOperation = 'lighter';
+      const limb = ctx.createRadialGradient(p.x - r * 0.1, p.y - r * 0.12, r * 0.9, p.x, p.y, r * 1.14);
+      limb.addColorStop(0, 'rgba(120, 150, 255, 0)');
+      limb.addColorStop(0.55, `rgba(130, 160, 255, ${0.28 * life})`);
+      limb.addColorStop(1, 'rgba(90, 60, 220, 0)');
+      ctx.fillStyle = limb;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.14, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = 'lighter';
+      drawMotes(true);
+      ctx.globalCompositeOperation = 'source-over';
+    }
     // A ring in the accent while a universe is carried onto it, and while it waits for the person;
     // a white one while it is pointed at or chosen.
     const target2 = linking?.over === core;
@@ -985,14 +1043,15 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       ctx.strokeStyle = accent;
       ctx.globalAlpha = target2 ? 0.95 : reduced ? 0.6 : 0.45 + 0.35 * Math.sin(clock * 2.4);
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * (neural ? 2.2 : 1.5), 0, Math.PI * 2); ctx.stroke();
       ctx.globalAlpha = 1;
     } else if (core === hover || core === focus) {
       ctx.strokeStyle = core === focus ? 'rgba(255, 255, 255, .85)' : 'rgba(255, 255, 255, .4)';
       ctx.lineWidth = core === focus ? 1.4 : 1;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * (neural ? 2.2 : 1.5), 0, Math.PI * 2); ctx.stroke();
     }
-    const below = p.y + r * 1.62 + 8;
+    // The bulb's stem reaches lower than the orb did: its name stands under the stem.
+    const below = p.y + r * (neural ? 3.25 : 1.62) + 8;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.lineJoin = 'round';
@@ -1033,6 +1092,32 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       const from = back ? pb : pa, to = back ? pa : pb;
       // MOTHER's red leaves the room that serves and the accent arrives where it is read; both
       // ways, red at both ends with the accent between them.
+      // Neural mode: an axon between two clusters, in one cold line, and what crosses it a light
+      // with the stretch it has just run lit behind it.
+      if (neural) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(${NEURAL_AXON}, ${0.18 + 0.22 * lately})`;
+        ctx.lineWidth = 0.9 + 0.6 * lately;
+        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.quadraticCurveTo(cx, cy, pb.x, pb.y); ctx.stroke();
+        vein.pulses = vein.pulses.filter((pulse) => clock - pulse.born < VEIN_LIFE);
+        for (const pulse of vein.pulses) {
+          const u = Math.min(1, (clock - pulse.born) / VEIN_LIFE);
+          const along = (k) => alongCurve(pa.x, pa.y, cx, cy, pb.x, pb.y, pulse.back ? 1 - k : k);
+          let behind = along(u);
+          const head = behind;
+          for (let step = 1; step <= 6; step += 1) {
+            const back = along(Math.max(0, u - step * 0.03));
+            ctx.strokeStyle = hexAlpha(accent, 0.5 - step * 0.07);
+            ctx.lineWidth = 2 - step * 0.22;
+            ctx.beginPath(); ctx.moveTo(behind.x, behind.y); ctx.lineTo(back.x, back.y); ctx.stroke();
+            behind = back;
+          }
+          const size = (6 + 4 * Math.sin(u * Math.PI)) * Math.max(0.7, Math.min(1.4, camera.zoom));
+          ctx.drawImage(neuronGlow(accent), head.x - size, head.y - size, size * 2, size * 2);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        continue;
+      }
       const red = '#e22816';
       const arriving = enlace.direction === 'both' ? red : accent;
       const head = reduced ? 0.5 : ((clock * (0.06 + 0.2 * recent) + vein.seed) % 1 + 1) % 1;

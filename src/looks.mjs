@@ -26,6 +26,8 @@ export const LOOK_KEYS = {
   'pulse.wallpaper.blur': NUMBER,
   'pulse.bubbles': CHOICE,
   'pulse.text': CHOICE,
+  // The maps drawn as neurons (public/neural.js): 'on', or nothing.
+  'pulse.neural': CHOICE,
 };
 const looksFile = (stateRoot) => join(stateRoot, 'looks.json');
 

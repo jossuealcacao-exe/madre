@@ -152,8 +152,12 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${block('dwarfSkins')} ${block('SKIN_COLUMNS')} ${block('SKIN_EDGES')} ${fn('dwarfTexture')} ${fn('dwarfSprite')} ${fn('magmaFace')} ${block('COLD_GLOW')}
     ${block('WAVE_SPEED')} ${block('HEART_PERIOD')} ${block('NOSTROMO_ORBIT')} ${block('MEMORY_COLORS')}
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
+    ${fn('drawCage')} ${fn('drawHoverLabel')} ${fn('fadeOver')}
+    ${block('NEURAL_AXON')} ${block('NEURAL_IGNITION')} ${block('NEURAL_CROSSFADE')} ${block('NEURON_GLOWS')} ${fn('neuronGlow')}
+    ${block('BULB_TONES')} ${block('BULB')} ${fn('drawNeuralBulb')} ${fn('neuralGround')} ${block('UNDERWAY')} ${block('travels')} ${block('FOCUS_VEIL')}
+    ${fn('drawNeural')} ${fn('setNeural')}
     ${fn('drawNostromo')}
-    nostromo.canvas = { getContext: () => ctx };
+    nostromo.canvas = { getContext: () => ctx, width: 1800, height: 1200 };
     return (t) => drawNostromo(t);
   `)(ctx, room, makeCanvas, noCanvas);
   return { run, calls, offscreen };
@@ -193,6 +197,30 @@ test('nostromo: the renderer draws a whole frame without a single bad number', a
       if (typeof arg === 'string') assert.ok(!/NaN|undefined|Infinity/.test(arg), `${call.name} was handed "${arg}"`);
     }
   }
+});
+
+// Neural mode (1.0.3): the same scene as neurons. It draws whole frames with every number sound,
+// lights a neuron by what reaches it, and shades nothing pixel by pixel: no magma, no granules.
+test('nostromo: neural mode draws the same scene as neurons, whole, and shades no surface', async () => {
+  const room = fakeRoom();
+  room.neural = true;
+  room.neuralSince = 0;
+  const { run, calls, offscreen } = await nostromoRenderer(room);
+  for (let frame = 0; frame < 90; frame += 1) run(frame * 0.05);
+  assert.ok(calls.length > 1000, `a neural frame should draw, got ${calls.length} calls`);
+  for (const call of calls) {
+    for (const arg of call.args) {
+      if (typeof arg === 'number') assert.ok(Number.isFinite(arg), `${call.name} was handed ${arg}`);
+      if (typeof arg === 'string') assert.ok(!/NaN|undefined|Infinity/.test(arg), `${call.name} was handed "${arg}"`);
+    }
+  }
+  // Every neuron and every cell of the bulb is one stamped light: the glows are made once per colour.
+  assert.ok(calls.filter((call) => call.name === 'drawImage').length > 90 * 12, 'a neuron was not stamped');
+  assert.ok(offscreen.length <= 12, `a glow was made again instead of being kept: ${offscreen.length} canvases`);
+  assert.ok(!calls.some((call) => ['putImageData', 'createImageData', 'getImageData'].includes(call.name)), 'something was shaded pixel by pixel');
+  // Per frame, gradients are a handful (the ground, the vignette, the bulb's air), never one per memory.
+  const gradients = calls.filter((call) => call.name === 'createRadialGradient').length / 90;
+  assert.ok(gradients <= 4, `${gradients} gradients a frame`);
 });
 
 test('nostromo: the skin is wrapped on a sphere, so it narrows toward the limb', async () => {

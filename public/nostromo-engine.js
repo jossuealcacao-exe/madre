@@ -899,6 +899,130 @@ export function hexMix(hex, other, amount) {
 // Everything below closes over `nostromo`, the scene: the room's page hands its own object, with
 // its canvas and its DOM beside the state; the Macroverso hands one scene per NOSTROMO it draws
 // live. Nothing here reads the page.
+
+// ---- NEURAL MODE (1.0.3) ---------------------------------------------------------------------
+// The same scene drawn as the neurons of a brain: every memory a point of light in its kind's
+// colour, the wires between them thin axons in one cold stroke, and light only where something
+// travels — a pulse lights the path it runs and the neuron it reaches. The core is the central
+// bulb of that brain: cells packed into a body with a short stem, tied to their nearest, beating.
+// It shows everything the full drawing shows and costs a fraction of it: no surface is shaded
+// pixel by pixel, no nebula, no stars; every glow is one small texture made once and stamped.
+export const NEURAL_AXON = '86, 200, 255';
+export const NEURAL_IGNITION = 1.9;   // seconds the light takes to run out from the core when the mode comes on
+export const NEURAL_CROSSFADE = 0.55; // seconds the drawing it replaces takes to fade out
+const NEURON_GLOWS = new Map();
+// A point of light of one colour: white at its heart, its colour round that, gone at its edge.
+export function neuronGlow(hex) {
+  let canvas = NEURON_GLOWS.get(hex);
+  if (canvas) return canvas;
+  canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const paint = canvas.getContext('2d');
+  const glow = paint.createRadialGradient(32, 32, 0, 32, 32, 32);
+  glow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  glow.addColorStop(0.1, hexAlpha(hexMix(hex, '#ffffff', 0.5), 0.95));
+  glow.addColorStop(0.24, hexAlpha(hex, 0.55));
+  glow.addColorStop(0.5, hexAlpha(hex, 0.14));
+  glow.addColorStop(1, hexAlpha(hex, 0));
+  paint.fillStyle = glow;
+  paint.fillRect(0, 0, 64, 64);
+  NEURON_GLOWS.set(hex, canvas);
+  return canvas;
+}
+// The bulb's cells, laid out once: a golden-angle spiral through a body a little wider above,
+// most of them near its skin so its shape reads, a warm few deep inside, and a stem below.
+const BULB_TONES = {
+  mother: { heart: '#ffe3b8', skin: '#7fd3ff', deep: '#ffc98a', stem: '#5fc2ff', air: '255, 214, 160', haze: '90, 190, 255', alarm: '#ff4a3a' },
+  bishop: { heart: '#efe6ff', skin: '#8fa6ff', deep: '#c9b4ff', stem: '#7f8cff', air: '214, 196, 255', haze: '110, 120, 255', alarm: '#ff4a3a' },
+};
+export const BULB = (() => {
+  const cells = [];
+  const noise = (i, k) => (((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1) + 1) % 1;
+  const body = 190;
+  for (let i = 0; i < body; i += 1) {
+    const along = 1 - (2 * (i + 0.5)) / body;
+    const ring = Math.sqrt(Math.max(0, 1 - along * along));
+    const turn = i * 2.39996;
+    const deep = noise(i, 1) < 0.16;
+    const out = deep ? 0.18 + 0.42 * noise(i, 2) : 0.72 + 0.28 * Math.sqrt(noise(i, 3));
+    const wide = 1 + 0.14 * Math.max(0, along);
+    cells.push({ x: ring * Math.cos(turn) * out * wide, y: -along * out * 0.92, z: ring * Math.sin(turn) * out * 0.88 * wide, out, tone: deep ? 'deep' : out < 0.82 ? 'heart' : 'skin' });
+  }
+  for (let i = 0; i < 26; i += 1) {
+    const down = i / 25;
+    const turn = i * 2.39996;
+    const girth = 0.26 - 0.15 * down;
+    cells.push({ x: 0.16 * down * down + Math.cos(turn) * girth * 0.6, y: 0.82 + 0.95 * down, z: Math.sin(turn) * girth * 0.6, out: 1, tone: 'stem' });
+  }
+  const links = [];
+  const seen = new Set();
+  cells.forEach((cell, i) => {
+    const near = cells.map((other, j) => ({ j, d: (other.x - cell.x) ** 2 + (other.y - cell.y) ** 2 + (other.z - cell.z) ** 2 }))
+      .filter((one) => one.j !== i).sort((a, b) => a.d - b.d).slice(0, 2);
+    for (const { j } of near) { const key = i < j ? `${i}-${j}` : `${j}-${i}`; if (!seen.has(key)) { seen.add(key); links.push([i, j]); } }
+  });
+  return { cells, links };
+})();
+// The bulb, drawn at (x, y) with radius R in whatever space the context is in; `px` is one css
+// pixel in that space. It turns slowly on its own besides the scene's turn, beats with the heart,
+// answers when pulses come home (`lit`), flushes red in an alarm, and flashes as the mode comes on.
+export function drawNeuralBulb(ctx, x, y, R, t, { yaw = 0, pitch = 0, beat = 0, lit = 0, alarm = 0, px = 1, light = 1, ignite = 1, tone = 'mother', still = false } = {}) {
+  const colours = BULB_TONES[tone] ?? BULB_TONES.mother;
+  const turn = yaw + (still ? 0 : t * 0.07);
+  const cy = Math.cos(turn), sy = Math.sin(turn), cp = Math.cos(pitch * 0.6), sp = Math.sin(pitch * 0.6);
+  const flash = ignite < 0.3 ? 1 - ignite / 0.3 : 0;
+  const energy = Math.min(1.6, (0.62 + 0.38 * beat + 0.45 * Math.min(1, lit) + 1.2 * flash) * light);
+  const reach = R * 1.12;
+  const at = BULB.cells.map((cell) => {
+    const x1 = cell.x * cy + cell.z * sy;
+    const z1 = cell.z * cy - cell.x * sy;
+    const y2 = cell.y * cp - z1 * sp;
+    const z2 = cell.y * sp + z1 * cp;
+    return { x: x + x1 * reach, y: y + y2 * reach, front: (z2 + 1) / 2, cell };
+  });
+  const before = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'lighter';
+  // Its air: warm at the heart, cold at the edge, breathing with the beat.
+  const air = ctx.createRadialGradient(x, y, 0, x, y, R * 2.5);
+  air.addColorStop(0, `rgba(${alarm ? '255, 90, 70' : colours.air}, ${0.3 * energy})`);
+  air.addColorStop(0.32, `rgba(${colours.haze}, ${0.1 * energy})`);
+  air.addColorStop(1, `rgba(${colours.haze}, 0)`);
+  ctx.fillStyle = air;
+  ctx.beginPath(); ctx.arc(x, y, R * 2.5, 0, Math.PI * 2); ctx.fill();
+  // The fibres between neighbouring cells, in one stroke.
+  ctx.strokeStyle = `rgba(${colours.haze}, ${Math.min(0.5, 0.2 * energy)})`;
+  ctx.lineWidth = 0.6 * px;
+  ctx.beginPath();
+  for (const [i, j] of BULB.links) { ctx.moveTo(at[i].x, at[i].y); ctx.lineTo(at[j].x, at[j].y); }
+  ctx.stroke();
+  // The cells, the near side brighter, the heart swelling on the beat.
+  for (const point of at) {
+    const inner = 1 - point.cell.out;
+    const size = (3 + 2.6 * point.front + 2.4 * inner * beat) * px * (1 + 0.6 * flash);
+    const hex = alarm ? colours.alarm : colours[point.cell.tone];
+    ctx.globalAlpha = Math.min(1, (0.3 + 0.55 * point.front) * energy);
+    ctx.drawImage(neuronGlow(hex), point.x - size, point.y - size, size * 2, size * 2);
+  }
+  // The nucleus: one wide soft light at the centre.
+  const heart = R * (0.62 + 0.08 * beat + 0.4 * flash);
+  ctx.globalAlpha = Math.min(1, (0.55 + 0.35 * beat) * energy);
+  ctx.drawImage(neuronGlow(alarm ? colours.alarm : colours.heart), x - heart, y - heart, heart * 2, heart * 2);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = before;
+}
+// The ground the neurons stand on: almost black, a cold depth at the middle.
+export function neuralGround(ctx, w, h, beat = 0) {
+  ctx.fillStyle = '#010309';
+  ctx.fillRect(0, 0, w, h);
+  const depth = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.72);
+  depth.addColorStop(0, `rgba(16, 52, 96, ${0.42 + 0.04 * beat})`);
+  depth.addColorStop(0.55, 'rgba(6, 18, 38, .3)');
+  depth.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = depth;
+  ctx.fillRect(0, 0, w, h);
+}
+
 export function createNostromo(nostromo) {
   // What belongs to this scene and no other: the budget of faces painted this frame, and MOTHER's
   // painted face at its current size.
@@ -1558,6 +1682,8 @@ export function createNostromo(nostromo) {
   }
 
   function drawNostromo(t) {
+    // The neural drawing of the same scene, when it is asked for (setNeural).
+    if (nostromo.neural) { drawNeural(t); return; }
     const ctx = nostromo.canvas.getContext('2d');
     const { w, h, dpr } = nostromo.size;
     const cam = nostromo.cam;
@@ -2101,38 +2227,7 @@ export function createNostromo(nostromo) {
     if (nostromo.dust?.length || nostromo.fading?.length) drawDust(ctx, t, cam.scale);
 
     // CODE000: the safety box. Bars fall from above and lock around the core.
-    if (nostromo.cage) {
-      const age = t - nostromo.cage.at;
-      const p = nostromo.cage.closed ? 1 : Math.min(1, age / 1.1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      const B = CORE_R * 2.05;
-      const drop = (1 - ease) * 900;
-      ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * ease})`;
-      ctx.fillRect(-B - 8, -B - 8 - drop, B * 2 + 16, B * 2 + 16);
-      const steel = ctx.createLinearGradient(-B, 0, B, 0);
-      steel.addColorStop(0, '#2a2c30'); steel.addColorStop(0.45, '#9aa0a8'); steel.addColorStop(0.55, '#d8dde3'); steel.addColorStop(1, '#3a3d42');
-      ctx.strokeStyle = steel;
-      ctx.lineCap = 'butt';
-      ctx.shadowColor = 'rgba(0, 0, 0, .9)'; ctx.shadowBlur = 14;
-      ctx.lineWidth = 7;
-      for (let i = 0; i <= 6; i += 1) {
-        const x = -B + (i * 2 * B) / 6;
-        ctx.beginPath(); ctx.moveTo(x, -B - drop); ctx.lineTo(x, B - drop); ctx.stroke();
-      }
-      ctx.lineWidth = 9;
-      for (const y of [-B, 0, B]) { ctx.beginPath(); ctx.moveTo(-B - 4, y - drop); ctx.lineTo(B + 4, y - drop); ctx.stroke(); }
-      ctx.shadowBlur = 0;
-      // Rivets at the joints.
-      ctx.fillStyle = '#e8ecf0';
-      for (let i = 0; i <= 6; i += 1) for (const y of [-B, 0, B]) { ctx.beginPath(); ctx.arc(-B + (i * 2 * B) / 6, y - drop, 2.6, 0, Math.PI * 2); ctx.fill(); }
-      // The lock plate.
-      if (ease > 0.98) {
-        ctx.fillStyle = '#1b1d20'; ctx.fillRect(-B * 0.32, B - 14, B * 0.64, 28);
-        ctx.strokeStyle = '#c4c9cf'; ctx.lineWidth = 2; ctx.strokeRect(-B * 0.32, B - 14, B * 0.64, 28);
-        ctx.fillStyle = '#ff2a1f'; ctx.font = `700 ${Math.round(B * 0.1)}px ${getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace'}`; ctx.textAlign = 'center'; ctx.fillText('CODE000', 0, B + 6); ctx.textAlign = 'start';
-      }
-      if (!nostromo.cage.closed && p >= 1 && !nostromo.cage.clanged) { nostromo.cage.clanged = true; nostromo.onClang?.(); }
-    }
+    drawCage(ctx, t);
     ctx.restore();
 
     // Vignette that tightens on the beat; red wash while MOTHER is angry.
@@ -2146,21 +2241,291 @@ export function createNostromo(nostromo) {
     }
 
     // The hovered memory, named on screen; not while another one is held, which is the one being read.
-    if (nostromo.hover && nostromo.hover.scale > 0.5 && !nostromo.selected) {
-      const node = nostromo.hover;
-      const p = toScreen(node.x, node.y);
-      const label = `${nostromo.words?.kind?.(node.memory.kind) ?? node.memory.kind} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
-      ctx.font = '11px ' + (getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace');
-      const width = ctx.measureText(label).width + 16;
-      const lx = Math.min(w - width - 8, Math.max(8, p.x - width / 2));
-      const ly = p.y + node.r * cam.scale + 14;
-      ctx.fillStyle = 'rgba(3, 2, 3, .85)';
-      ctx.fillRect(lx, ly, width, 22);
-      ctx.strokeStyle = hexAlpha(node.color, 0.6);
-      ctx.strokeRect(lx + 0.5, ly + 0.5, width - 1, 21);
-      ctx.fillStyle = '#eef1ea';
-      ctx.fillText(label, lx + 8, ly + 15);
+    drawHoverLabel(ctx, w);
+    fadeOver(ctx, t);
+  }
+
+  // ---- NEURAL MODE: the same scene, drawn as neurons (see NEURAL_AXON above). -----------------
+  // Changing the drawing: what was on the canvas is kept a moment and fades over the new one, and
+  // coming on, the light runs out from the core and reaches every neuron in turn.
+  function setNeural(on, t) {
+    const want = Boolean(on);
+    if (Boolean(nostromo.neural) === want) return;
+    const canvas = nostromo.canvas;
+    let held = null;
+    if (canvas?.width && canvas.height && typeof document !== 'undefined') {
+      held = document.createElement('canvas');
+      held.width = canvas.width;
+      held.height = canvas.height;
+      held.getContext('2d').drawImage(canvas, 0, 0);
     }
+    nostromo.neural = want;
+    nostromo.neuralSince = want && !nostromo.reduced ? t : null;
+    nostromo.fadeFrom = held && !nostromo.reduced ? { canvas: held, at: t } : null;
+  }
+  function fadeOver(ctx, t) {
+    const from = nostromo.fadeFrom;
+    if (!from) return;
+    const k = (t - from.at) / NEURAL_CROSSFADE;
+    if (k >= 1 || k < 0) { nostromo.fadeFrom = null; return; }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1 - k * (2 - k);
+    ctx.drawImage(from.canvas, 0, 0);
+    ctx.restore();
+  }
+  function drawNeural(t) {
+    const ctx = nostromo.canvas.getContext('2d');
+    const { w, h, dpr } = nostromo.size;
+    const cam = nostromo.cam;
+    const { beat } = heartbeat(t);
+    const alarm = nostromo.alarm ? Math.max(0, 1 - (t - nostromo.alarm) / 3.6) : 0;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    if (!nostromo.bare) neuralGround(ctx, w, h, beat);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(cam.scale, cam.scale);
+    ctx.translate(-cam.x, -cam.y);
+    const px = 1 / cam.scale;
+    const nearness = Math.min(1, Math.max(0, (cam.scale - 0.1) / 0.3));
+    const farLight = nostromo.bare ? 0.45 + 0.55 * nearness : 1;
+    const farSize = nostromo.bare ? 0.5 + 0.5 * nearness : 1;
+    const R = CORE_R * (1 + 0.05 * beat + 0.1 * alarm);
+    const nodes = nostromo.nodes;
+    const byId = new Map(nodes.map((node) => [node.memory.id, node]));
+    // Coming on: a front of light leaves the core and every neuron appears as it is reached,
+    // brightest at the moment it is crossed.
+    const since = nostromo.neuralSince;
+    const ignite = since === null || since === undefined ? 1 : Math.min(1, Math.max(0, (t - since) / NEURAL_IGNITION));
+    let span = 1;
+    if (ignite < 1) for (const node of nodes) span = Math.max(span, Math.hypot(node.x, node.y));
+    const front = ignite < 1 ? (ignite * (2 - ignite)) * (span + 160) : Infinity;
+    const shown = (node) => (front === Infinity ? 1 : Math.min(1, Math.max(0, (front - Math.hypot(node.x, node.y)) / 90)));
+    const crossed = (node) => (front === Infinity ? 0 : Math.max(0, 1 - Math.abs(front - Math.hypot(node.x, node.y)) / 110));
+    const lightOf = (node) => Math.min(1.6, (node.lit ?? 0) + 0.5 * (node.charge ?? 0) + 1.3 * crossed(node));
+    // Where the wires run: the full drawing's own curves, bent less, so the pulses still ride them.
+    for (const link of nostromo.links) {
+      const a = byId.get(link.a);
+      const b = byId.get(link.b);
+      if (!a || !b) continue;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const bow = Math.sin(t * 0.7 + a.seed + b.seed) * Math.min(22, d * 0.07);
+      link.cx = (a.x + b.x) / 2 - (dy / d) * bow;
+      link.cy = (a.y + b.y) / 2 + (dx / d) * bow;
+    }
+    for (const node of nodes) {
+      const d = Math.hypot(node.x, node.y) || 1;
+      const bow = Math.sin(t * 0.9 + node.seed) * Math.min(26, d * 0.08);
+      node.cx = node.x / 2 + (-node.y / d) * bow; node.cy = node.y / 2 + (node.x / d) * bow;
+      node.rimX = (node.x / d) * R * 0.92; node.rimY = (node.y / d) * R * 0.92;
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    // The axons from the core, then the synapses between memories: each set in one stroke.
+    const reveal = front === Infinity ? 1 : ignite;
+    ctx.strokeStyle = `rgba(${NEURAL_AXON}, ${0.13 * farLight * reveal})`;
+    ctx.lineWidth = 0.8 * px;
+    ctx.beginPath();
+    for (const node of nodes) if (!node.forgetting && shown(node) > 0) { ctx.moveTo(node.rimX, node.rimY); ctx.quadraticCurveTo(node.cx, node.cy, node.x, node.y); }
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(${NEURAL_AXON}, ${0.24 * farLight * reveal})`;
+    ctx.lineWidth = 0.9 * px;
+    ctx.beginPath();
+    for (const link of nostromo.links) {
+      const a = byId.get(link.a);
+      const b = byId.get(link.b);
+      if (!a || !b || shown(a) <= 0 || shown(b) <= 0) continue;
+      ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y);
+    }
+    ctx.stroke();
+    // A synapse whose neurons are lit answers in their colours.
+    for (const link of nostromo.links) {
+      const a = byId.get(link.a);
+      const b = byId.get(link.b);
+      if (!a || !b) continue;
+      const glow = Math.max(lightOf(a), lightOf(b)) * Math.min(shown(a), shown(b));
+      if (glow < 0.12) continue;
+      ctx.strokeStyle = hexAlpha(hexMix(a.color, b.color, 0.5), Math.min(0.7, 0.32 * glow) * farLight);
+      ctx.lineWidth = (0.8 + 0.6 * Math.min(1, glow)) * px;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y); ctx.stroke();
+    }
+    // The pulses: a head of light and the stretch of path it has just lit, fading behind it.
+    for (const pulse of nostromo.pulses ?? []) {
+      const u = Math.min(1, (t - pulse.born) / pulse.life);
+      let path;
+      let color;
+      if (pulse.kind === 'link') {
+        const { from, to, link } = pulse;
+        path = (k) => alongCurve(from.x, from.y, link.cx ?? (from.x + to.x) / 2, link.cy ?? (from.y + to.y) / 2, to.x, to.y, k);
+        color = to.color;
+      } else {
+        const node = pulse.node;
+        const outward = pulse.to === node;
+        const rim = { x: node.rimX ?? 0, y: node.rimY ?? 0 };
+        const from = outward ? rim : node;
+        const to = outward ? node : rim;
+        path = (k) => alongCurve(from.x, from.y, node.cx ?? node.x / 2, node.cy ?? node.y / 2, to.x, to.y, k);
+        color = outward ? '#bfe6ff' : node.color;
+      }
+      const head = path(u);
+      let behind = head;
+      for (let step = 1; step <= 6; step += 1) {
+        const back = path(Math.max(0, u - step * 0.035));
+        ctx.strokeStyle = hexAlpha(color, (0.55 - step * 0.08) * farLight);
+        ctx.lineWidth = (1.6 - step * 0.18) * px * farSize;
+        ctx.beginPath(); ctx.moveTo(behind.x, behind.y); ctx.lineTo(back.x, back.y); ctx.stroke();
+        behind = back;
+      }
+      const size = (7 + 4 * Math.sin(u * Math.PI)) * px * farSize;
+      ctx.globalAlpha = 0.95 * farLight;
+      ctx.drawImage(neuronGlow(color), head.x - size, head.y - size, size * 2, size * 2);
+      ctx.globalAlpha = 1;
+    }
+    // The beat leaves the bulb as a cold ring.
+    for (const ring of nostromo.rings ?? []) {
+      const age = t - ring.born;
+      if (age < 0) continue;
+      ctx.strokeStyle = `rgba(${NEURAL_AXON}, ${Math.max(0, 0.14 - age * 0.06) * farLight})`;
+      ctx.lineWidth = Math.max(0.4, 1.6 - age * 0.7) * px * farSize;
+      ctx.beginPath(); ctx.arc(0, 0, R + age * WAVE_SPEED * farSize, 0, Math.PI * 2); ctx.stroke();
+    }
+    // The front of light while the mode comes on.
+    if (front !== Infinity) {
+      ctx.strokeStyle = `rgba(200, 236, 255, ${0.5 * (1 - ignite)})`;
+      ctx.lineWidth = 1.4 * px;
+      ctx.beginPath(); ctx.arc(0, 0, front, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // The central bulb.
+    drawNeuralBulb(ctx, 0, 0, R, t, { yaw: (nostromo.spin ?? 0) * 0.2 - (nostromo.yaw ?? 0), pitch: nostromo.pitch ?? 0, beat, lit: nostromo.coreLit ?? 0, alarm, px, light: farLight, ignite, still: nostromo.reduced });
+    // The neurons, each a point of light: brighter the more the room leans on it and the more is
+    // reaching it now; one out of circulation stays a cold ember; a false claim is a dark ring.
+    ctx.globalCompositeOperation = 'lighter';
+    for (const node of nodes) {
+      if (node.forgetting || node.scale <= 0.01) continue;
+      const seen = shown(node);
+      if (seen <= 0) continue;
+      const near = 0.55 + 0.45 * Math.min(1, Math.max(0, ((node.depth ?? 0) + 700) / 1400));
+      if (node.memory.kind === COLLAPSED) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = hexAlpha(hexMix(node.color, '#a8ccff', 0.4), 0.7 * seen * near * farLight);
+        ctx.lineWidth = 1.1 * px;
+        ctx.beginPath(); ctx.arc(node.x, node.y, 4.2 * px * farSize, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalCompositeOperation = 'lighter';
+        continue;
+      }
+      const light = lightOf(node);
+      const cold = !travels(node.memory);
+      const colour = cold ? hexMix(node.color, '#2a3346', 0.6) : node.color;
+      const size = (10 + 6 * (node.activity ?? 0) + 12 * Math.min(1, light)) * px * farSize * (0.6 + 0.4 * node.scale);
+      ctx.globalAlpha = Math.min(1, (cold ? 0.4 : 0.66 + 0.26 * (node.activity ?? 0)) + 0.5 * Math.min(1, light)) * seen * near * farLight;
+      ctx.drawImage(neuronGlow(colour), node.x - size, node.y - size, size * 2, size * 2);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    for (const node of nodes) if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, 9 * px, t, cam.scale);
+    // A held memory: everything else falls back; it, its synapses and its sight come forward.
+    const lock = nostromo.lock;
+    if (lock?.node && lock.fade > 0.01) {
+      const held = lock.node;
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (nostromo.bare) ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = `rgba(1, 3, 9, ${FOCUS_VEIL * lock.fade})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+      const id = held.memory.id;
+      ctx.globalCompositeOperation = 'lighter';
+      for (const link of nostromo.links) {
+        if (link.a !== id && link.b !== id) continue;
+        const a = byId.get(link.a);
+        const b = byId.get(link.b);
+        if (!a || !b) continue;
+        ctx.strokeStyle = hexAlpha(hexMix(a.color, b.color, 0.5), 0.7 * lock.fade);
+        ctx.lineWidth = 1.2 * px;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx ?? (a.x + b.x) / 2, link.cy ?? (a.y + b.y) / 2, b.x, b.y); ctx.stroke();
+        const other = a === held ? b : a;
+        const size = 9 * px;
+        ctx.globalAlpha = 0.8 * lock.fade;
+        ctx.drawImage(neuronGlow(other.color), other.x - size, other.y - size, size * 2, size * 2);
+        ctx.globalAlpha = 1;
+      }
+      const size = 16 * px;
+      ctx.globalAlpha = lock.fade;
+      ctx.drawImage(neuronGlow(held.color), held.x - size, held.y - size, size * 2, size * 2);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      if (held === nostromo.selected) drawSight(ctx, held.x, held.y, 12 * px, t, cam.scale, { locked: true, age: t - lock.at, label: nostromo.words?.locked?.(held.memory) ?? '', still: nostromo.reduced });
+    }
+    for (const node of nodes) if (node.forgetting) drawImplosion(ctx, node, t, cam.scale, nostromo.reduced);
+    if (nostromo.dust?.length || nostromo.fading?.length) drawDust(ctx, t, cam.scale);
+    drawCage(ctx, t);
+    ctx.restore();
+    // The dark closes round the edges, a little on the beat; red while the core is angry.
+    if (!nostromo.bare) {
+      const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * (0.38 - 0.02 * beat), w / 2, h / 2, Math.max(w, h) * 0.75);
+      vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vig.addColorStop(1, `rgba(${alarm ? 60 : 0}, 0, ${alarm ? 0 : 6}, ${0.6 + 0.08 * beat})`);
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, w, h);
+      if (alarm) { ctx.fillStyle = `rgba(255, 30, 20, ${0.08 * alarm * (0.6 + 0.4 * Math.sin(t * 18))})`; ctx.fillRect(0, 0, w, h); }
+    }
+    drawHoverLabel(ctx, w);
+    fadeOver(ctx, t);
+  }
+  // CODE000: the safety box, in the scene's world. Shared by both drawings.
+  function drawCage(ctx, t) {
+    if (!nostromo.cage) return;
+    const age = t - nostromo.cage.at;
+    const p = nostromo.cage.closed ? 1 : Math.min(1, age / 1.1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const B = CORE_R * 2.05;
+    const drop = (1 - ease) * 900;
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * ease})`;
+    ctx.fillRect(-B - 8, -B - 8 - drop, B * 2 + 16, B * 2 + 16);
+    const steel = ctx.createLinearGradient(-B, 0, B, 0);
+    steel.addColorStop(0, '#2a2c30'); steel.addColorStop(0.45, '#9aa0a8'); steel.addColorStop(0.55, '#d8dde3'); steel.addColorStop(1, '#3a3d42');
+    ctx.strokeStyle = steel;
+    ctx.lineCap = 'butt';
+    ctx.shadowColor = 'rgba(0, 0, 0, .9)'; ctx.shadowBlur = 14;
+    ctx.lineWidth = 7;
+    for (let i = 0; i <= 6; i += 1) {
+      const x = -B + (i * 2 * B) / 6;
+      ctx.beginPath(); ctx.moveTo(x, -B - drop); ctx.lineTo(x, B - drop); ctx.stroke();
+    }
+    ctx.lineWidth = 9;
+    for (const y of [-B, 0, B]) { ctx.beginPath(); ctx.moveTo(-B - 4, y - drop); ctx.lineTo(B + 4, y - drop); ctx.stroke(); }
+    ctx.shadowBlur = 0;
+    // Rivets at the joints.
+    ctx.fillStyle = '#e8ecf0';
+    for (let i = 0; i <= 6; i += 1) for (const y of [-B, 0, B]) { ctx.beginPath(); ctx.arc(-B + (i * 2 * B) / 6, y - drop, 2.6, 0, Math.PI * 2); ctx.fill(); }
+    // The lock plate.
+    if (ease > 0.98) {
+      ctx.fillStyle = '#1b1d20'; ctx.fillRect(-B * 0.32, B - 14, B * 0.64, 28);
+      ctx.strokeStyle = '#c4c9cf'; ctx.lineWidth = 2; ctx.strokeRect(-B * 0.32, B - 14, B * 0.64, 28);
+      ctx.fillStyle = '#ff2a1f'; ctx.font = `700 ${Math.round(B * 0.1)}px ${getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace'}`; ctx.textAlign = 'center'; ctx.fillText('CODE000', 0, B + 6); ctx.textAlign = 'start';
+    }
+    if (!nostromo.cage.closed && p >= 1 && !nostromo.cage.clanged) { nostromo.cage.clanged = true; nostromo.onClang?.(); }
+  }
+  // The hovered memory, named on screen. Shared by both drawings.
+  function drawHoverLabel(ctx, w) {
+    if (!nostromo.hover || nostromo.hover.scale <= 0.5 || nostromo.selected) return;
+    const cam = nostromo.cam;
+    const node = nostromo.hover;
+    const p = toScreen(node.x, node.y);
+    const label = `${nostromo.words?.kind?.(node.memory.kind) ?? node.memory.kind} · ${node.memory.text.length > 72 ? `${node.memory.text.slice(0, 71)}…` : node.memory.text}`;
+    ctx.font = '11px ' + (getComputedStyle(nostromo.canvas).getPropertyValue('--mono') || 'monospace');
+    const width = ctx.measureText(label).width + 16;
+    const lx = Math.min(w - width - 8, Math.max(8, p.x - width / 2));
+    const ly = p.y + node.r * cam.scale + 14;
+    ctx.fillStyle = 'rgba(3, 2, 3, .85)';
+    ctx.fillRect(lx, ly, width, 22);
+    ctx.strokeStyle = hexAlpha(node.color, 0.6);
+    ctx.strokeRect(lx + 0.5, ly + 0.5, width - 1, 21);
+    ctx.fillStyle = '#eef1ea';
+    ctx.fillText(label, lx + 8, ly + 15);
   }
 
   // Whether there is a camera to answer the pointer with. The canvas takes events from the moment
@@ -2218,7 +2583,7 @@ export function createNostromo(nostromo) {
   }
 
   return {
-    buildNodes, sizeNostromo, placeNostromo, stepNostromo, focusNostromo, projectNostromo, fitNostromo, drawNostromo, drawNebula, heartbeat,
+    buildNodes, sizeNostromo, placeNostromo, stepNostromo, focusNostromo, projectNostromo, fitNostromo, drawNostromo, drawNebula, heartbeat, setNeural,
     toScreen, toWorld, nostromoLive, nostromoAt, beginImplosion, drawImplosion, drawDust, drawSight, dwarfSprite, magmaFace,
   };
 }

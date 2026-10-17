@@ -1726,8 +1726,10 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.control.changed.quiet { border-style: dashed; color: var(--text-2); background: transparent; }
 /* The status and the path in two columns: the status never breaks inside a word (MODIFICADO used
    to split as MODIFICAD / O), and a long path breaks inside itself, left-aligned, not centred. */
-.system.control .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; justify-self: stretch; text-align: left; }
-.system.control .files li { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px; align-items: baseline; }
+/* Centred like the head and the tally around them: the list is one block in the middle of the card,
+   its kinds and its files still each in their own column. */
+.system.control .files { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content minmax(0, max-content); justify-content: center; gap: 6px 10px; align-items: baseline; justify-self: stretch; text-align: left; }
+.system.control .files li { display: contents; }
 .system.control .files .st { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); min-width: 64px; white-space: nowrap; }
 .system.control .files .st.A { color: var(--phosphor); } .system.control .files .st.M { color: var(--warn); } .system.control .files .st.D { color: var(--danger); }
 .system.control .files .file-ref { font-family: var(--mono); font-size: 12px; color: var(--text); background: transparent; border: 0; border-bottom: 1px dashed var(--line-2); padding: 0; cursor: pointer; text-align: left; overflow-wrap: anywhere; justify-self: start; }
@@ -4008,7 +4010,7 @@ dialog.room-ask.console .room-ask-choice.danger:hover { background: color-mix(in
 .system.fail .partial { display: grid; gap: 8px; justify-items: center; margin-top: 10px; padding: 10px 14px; border: 1px dashed color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 12px; color: var(--text-2); }
 .system.fail .partial > .label { color: var(--text-2); opacity: 1; }
 .system.fail .partial .artifacts { justify-items: center; }
-.system.fail .partial .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--mono); font-size: 11px; text-align: left; }
+.system.fail .partial .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--mono); font-size: 11px; text-align: center; }
 .system.fail .partial .note { font-family: var(--mono); font-size: 10.5px; color: var(--warn); }
 .system.fail .partial .undo { border: 1px solid var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); font: inherit; font-family: var(--mono); font-size: 10px; letter-spacing: .16em; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
 .system.fail .partial .undo:hover { background: color-mix(in srgb, var(--terror) 22%, transparent); }
@@ -9913,3 +9915,45 @@ dialog#core .core-panes { margin-inline: calc(-1 * var(--core-pad)); padding-inl
 .wall-frame.moving .wall-frame-fit { cursor: grabbing; }
 .wall-frame-view:focus-visible { box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px color-mix(in srgb, var(--phosphor) 70%, transparent), 0 0 0 4000px rgb(0 0 0 / .42); }
 .wall-tools-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ==========================================================================================
+   NEURAL MODE (1.0.3) · its key in the maps' heads, and its invitation
+   ------------------------------------------------------------------------------------------
+   The Memory map and the Projects map can be drawn as the neurons of a brain (public/neural.js,
+   nostromo-engine.js drawNeural). The key sits with the maps' other keys and takes their shape;
+   on, its neuron fills and takes the cold light of the mode. When the machine does not give the
+   map its frames, the key breathes and a card under it offers the mode: what it is, try it or not.
+   ========================================================================================== */
+:root { --neural: #56c8ff; --neural-ink: #021018; }
+.nostromo-head .neural-key { display: inline-flex; align-items: center; gap: 6px; }
+.nostromo-head .neural-key svg { flex: none; width: var(--ico-sm); height: var(--ico-sm); }
+/* Its word is written as it reads (the head lowercases its keys and lifts the first letter, which here is the drawing). */
+:is(#nostromo, .mv) .nostromo-actions .neural-key { text-transform: none; }
+:is(#nostromo, .mv) .nostromo-actions .neural-key[aria-pressed="true"] { color: var(--neural-ink); background: var(--neural); }
+:is(#nostromo, .mv) .nostromo-actions .neural-key[aria-pressed="true"]:hover { background: color-mix(in srgb, var(--neural) 86%, #ffffff); }
+.nostromo-head .neural-key[aria-pressed="true"] .ic-f { fill: currentColor; }
+.nostromo-head .neural-key.invite { animation: neural-breathe calc(2400ms * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes neural-breathe { 0%, 100% { box-shadow: 0 0 0 0 rgb(86 200 255 / 0); } 50% { box-shadow: 0 0 0 4px rgb(86 200 255 / .35), 0 0 22px rgb(86 200 255 / .3); } }
+.via-phone #nostromo-neural { display: none; }
+.neural-invite {
+  position: absolute; z-index: 6; width: min(340px, calc(100% - 24px));
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 12px; padding: 14px 14px 12px;
+  border-radius: 14px; color: #eef3ff; font-family: var(--read); text-transform: none; letter-spacing: 0;
+  background: rgb(8 14 26 / .92); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 0 0 .5px rgb(86 200 255 / .28), 0 18px 44px -18px rgb(0 0 0 / .7), 0 0 40px -12px rgb(86 200 255 / .28);
+  animation: neural-invite-in calc(240ms * var(--motion-scale, 1)) var(--ease-glide, ease-out);
+}
+@keyframes neural-invite-in { from { opacity: 0; translate: 0 -6px; } to { opacity: 1; translate: 0 0; } }
+.neural-invite-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: var(--neural); background: radial-gradient(circle at 50% 45%, rgb(86 200 255 / .3), rgb(86 200 255 / .06) 70%); box-shadow: inset 0 0 0 .5px rgb(86 200 255 / .4); }
+.neural-invite-mark svg { width: var(--ico-md); height: var(--ico-md); }
+.neural-invite-words { display: grid; gap: 3px; align-content: center; min-width: 0; }
+.neural-invite-words b { font-size: 13.5px; font-weight: 600; color: #ffffff; }
+.neural-invite-words span { font-size: 12.5px; line-height: 1.45; color: rgb(220 232 255 / .72); }
+.neural-invite-acts { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+/* Its two keys are its own: the map is dark in either theme, so they never take the page's. */
+.neural-invite :is(.neural-invite-go, .neural-invite-later) { height: 30px; padding: 0 14px; border: 0; border-radius: 9px; font-family: var(--read); font-size: 12.5px; font-weight: 600; letter-spacing: 0; cursor: pointer; transition: background-color var(--motion-fast) var(--ease-out); }
+.neural-invite .neural-invite-later { color: #eef3ff; background: rgb(255 255 255 / .08); }
+.neural-invite .neural-invite-later:is(:hover, :focus-visible) { background: rgb(255 255 255 / .15); outline: 0; }
+.neural-invite .neural-invite-go { color: var(--neural-ink); background: var(--neural); }
+.neural-invite .neural-invite-go:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--neural) 84%, #ffffff); outline: 0; }
+@media (prefers-reduced-motion: reduce) { .nostromo-head .neural-key.invite, .neural-invite { animation: none; } }

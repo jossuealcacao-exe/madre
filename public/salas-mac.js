@@ -20,6 +20,7 @@ import { creep, finishLoader, makeLoader, setLoader, showCurtain } from './loade
 import { labelPowerKey, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
+import { neuralChosen, rememberNeural } from './neural.js';
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -88,7 +89,7 @@ const HOME_LOOKS = {
   text: { key: 'pulse.home.text', values: ['comfortable', 'larger', 'smaller'], words: { comfortable: () => t('Comfortable'), larger: () => t('Larger'), smaller: () => t('Smaller') } },
   order: { key: 'pulse.home.order', values: ['attention', 'name', 'recent', 'mine'], words: { attention: () => t('Attention'), name: () => t('Name'), recent: () => t('Recent'), mine: () => t('Your order') } },
 };
-const LOOK_KEYS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', ...Object.values(HOME_LOOKS).map((one) => one.key)];
+const LOOK_KEYS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural', ...Object.values(HOME_LOOKS).map((one) => one.key)];
 function readLooks() {
   let theme = 'auto';
   let accent = null;
@@ -179,7 +180,7 @@ window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change'
 // app.js's pullLooks; Home's own card choices (HOME_LOOKS) stay here.
 // The wallpaper is each page's own (2026-10-13): Home keeps the one chosen in Home, each project
 // the one chosen in it (src/looks.mjs, `rooms`). The rest of the looks are shared.
-const SHARED_LOOKS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text'];
+const SHARED_LOOKS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural'];
 // Before a page had its own, every page wore the shared one: that is where a page starts.
 const wallpaperOf = (answer) => answer.own?.wallpaper ?? answer.looks?.['pulse.wallpaper'] ?? null;
 function saveOwnWallpaper(value) {
@@ -2604,7 +2605,10 @@ ui.macro.addEventListener('click', async () => {
     // BISHOP at the centre (D-S12): the macroverse draws its body itself (macroverso.js, bishopOrb).
     bishop: data.salas ? { id: data.salas } : null,
     words: macroWords(),
+    // Drawn as neurons when the person chose it (public/neural.js), here or in a project.
+    neural: neuralChosen(),
     actions: {
+      neural: (on) => { rememberNeural(on); pushLooks(); },
       wake: async (room) => { await startRoom(room); },
       // Dragged from one universe onto another: the notes of the first would travel to the second.
       link: (source, reader) => openLinkSheet({ source: source?.id ?? null, reader: reader?.id ?? null }),

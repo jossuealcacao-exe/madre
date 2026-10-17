@@ -3607,7 +3607,6 @@ export const ES = {
   'Update {name} to {version}': 'Actualizar {name} a {version}',
   'Update {name}': 'Actualizar {name}',
   'This runs on this computer, outside the project.': 'Esto corre en esta computadora, fuera del proyecto.',
-  'Not now': 'Ahora no',
   'Update': 'Actualizar',
   'Its path from the project root. Missing folders are made; an existing file is never touched.': 'Su ruta desde la raíz del proyecto. Las carpetas que falten se crean; un archivo que ya existe nunca se toca.',
   'Path': 'Ruta',
@@ -5095,6 +5094,13 @@ export const ES = {
   'You can close this tab. To use it again, open MADRE the way you always do.': 'Puedes cerrar esta pestaña. Para volver a usarlo, abre MADRE como siempre.',
   'These projects did not answer and may still be open: {list}. Open MADRE again and close them from Home.': 'Estos proyectos no respondieron y quizá sigan abiertos: {list}. Abre MADRE otra vez y ciérralos desde Inicio.',
   'MADRE is turned off from its own page, on this computer.': 'MADRE se apaga desde su propia página, en esta computadora.',
+  // Modo neural de los mapas (1.0.3).
+  'Neural': 'Neural',
+  'Neural mode · your memories as the neurons of a brain: only what travels lights up': 'Modo neural · tus memorias como las neuronas de un cerebro: solo se enciende lo que viaja',
+  'Try neural mode': 'Prueba el modo neural',
+  'The same network, as neurons: only the paths something travels light up.': 'La misma red, como neuronas: solo se encienden los caminos por donde algo viaja.',
+  'Try it': 'Probar',
+  'Not now': 'Ahora no',
   // Tu propia imagen de fondo (1.0.3).
   'Your picture': 'Tu imagen',
   'Choose a picture of yours as the wallpaper': 'Elige una imagen tuya como fondo',

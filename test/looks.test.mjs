@@ -16,7 +16,7 @@ const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adap
 test('looks · kept once for every page, read key by key, and a bad change is refused whole', async () => {
   const state = await realpath(await scratch('madre-looks-'));
   try {
-    assert.deepEqual(await readLooks(state), { looks: { 'pulse.theme': null, 'pulse.accent': null, 'pulse.wallpaper': null, 'pulse.wallpaper.style': null, 'pulse.wallpaper.veil': null, 'pulse.wallpaper.blur': null, 'pulse.bubbles': null, 'pulse.text': null }, saved: false });
+    assert.deepEqual(await readLooks(state), { looks: { 'pulse.theme': null, 'pulse.accent': null, 'pulse.wallpaper': null, 'pulse.wallpaper.style': null, 'pulse.wallpaper.veil': null, 'pulse.wallpaper.blur': null, 'pulse.bubbles': null, 'pulse.text': null, 'pulse.neural': null }, saved: false });
     const changed = await changeLooks(state, { 'pulse.theme': 'dark', 'pulse.wallpaper': 'oceano', 'pulse.wallpaper.veil': '80' });
     assert.equal(changed.looks['pulse.theme'], 'dark');
     assert.equal((await readLooks(state)).saved, true);
