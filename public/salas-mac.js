@@ -3822,7 +3822,7 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
             : [{ id: methods.length === 1 ? methods[0].id : null, label: null, note: methods.length === 1 ? methods[0].note : agent.login?.note, choose: methods.length > 1 }];
         return doors.map((door) => {
           const name = door.label ? t(door.label) : state.ok ? t('Sign in again') : t('Sign in');
-          const key = button(`sm-btn ${state.ok && !choosing ? '' : 'primary'} small`, name, async (event) => {
+          const key = button(`sm-btn ${(state.ok && !choosing) || agent.key?.first ? '' : 'primary'} small`, name, async (event) => {
             if (door.choose) { choosingAccount.add(agent.id); void paint(); return; }
             choosingAccount.delete(agent.id);
             event.currentTarget.disabled = true;
@@ -3833,6 +3833,9 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
           return key;
         });
       };
+      // Gemini's key is its way in (agent.key.first): the field before the Google door.
+      const keyFirst = Boolean(agent.detected && agent.key?.first);
+      if (keyFirst) body.append(keyForm(agent));
       const acts = el('div', 'sm-agent-acts');
       if (!state.busyNow) {
         if (!agent.detected && agent.install) acts.append(button('sm-btn primary small', t('Install'), async (event) => { event.currentTarget.disabled = true; await post(`/api/agents/${agent.id}/install`); void paint(); }));
@@ -3842,7 +3845,7 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       const ask = askBlock(agent);
       if (ask) body.append(ask);
       // A key, pasted here; OpenCode's are its providers', in the block below.
-      if (agent.detected && agent.key && agent.id !== 'opencode') body.append(keyForm(agent));
+      if (agent.detected && agent.key && agent.id !== 'opencode' && !keyFirst) body.append(keyForm(agent));
       // The same install or sign-in typed in a terminal, folded for whoever prefers it. Signed in,
       // OpenCode's providers are added in the block below; its terminal is for a first sign-in.
       const way = !agent.detected ? agent.install && [agent.install.display, ...(agent.install.alternatives ?? []).map((line) => `# ${t(line)}`)]

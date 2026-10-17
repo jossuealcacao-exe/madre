@@ -2117,6 +2117,12 @@ test('Gemini stderr is diagnosed: 429 names the rate limit instead of a silent h
   assert.match(limited.hint, /gemini-3-flash-preview/);
   assert.equal(diagnoseGeminiStderr('Attempt 2 failed with status 503').code, 'UNAVAILABLE');
   assert.equal(diagnoseGeminiStderr('API key not valid').code, 'AUTH');
+  // Google closed Gemini Code Assist for individuals to this CLI (2026-10-17): its own words become
+  // a diagnosis of their own, and the message the room shows still leads Diagnóstico to its entry.
+  const refused = diagnoseGeminiStderr('Error authenticating: IneligibleTierError: This client is no longer supported for Gemini Code Assist for individuals. To continue using Gemini, please migrate to the Antigravity suite of products');
+  assert.equal(refused.code, 'INELIGIBLE');
+  assert.match(refused.hint, /Google AI Studio/);
+  assert.ok(diagnose(`${refused.message} ${refused.hint}`, 'gemini').some((condition) => condition.id === 'gemini-ineligible-tier'));
   assert.equal(diagnoseGeminiStderr('[STARTUP] Cannot measure phase'), null);
 
   // Through the adapter: an idle stop with a 429 in stderr is reported as a rate limit and not retried.

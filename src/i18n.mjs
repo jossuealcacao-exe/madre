@@ -38,6 +38,22 @@ export function hostWords(text) {
     .replace(/(^|[^\p{L}])(esta|tu|la|Esta|Tu|La) Mac\b/gu, '$1$2 computadora');
 }
 
+// A sentence MADRE wrote in one language, quoted in the other. A failure is recorded in the
+// language the room spoke when it happened, and @madre's round summary quoted it as it was: a
+// Spanish summary said «(Google rejected the Gemini credentials…)» (manual tests, 2026-10-17).
+// Only whole sentences of the catalogue are swapped, never a word inside one, so ids, commands and
+// whatever an agent wrote stay as they are.
+let sentencePairs = null;
+export function inLanguage(text, lang) {
+  let out = String(text ?? '');
+  sentencePairs ??= Object.entries(ES).filter(([en, es]) => typeof es === 'string' && en !== es && en.length >= 24 && /[.!?»)]$/.test(en));
+  for (const [en, es] of sentencePairs) {
+    const [from, to] = lang === 'es' ? [en, hostWords(es)] : [hostWords(es), en];
+    if (out.includes(from)) out = out.split(from).join(to);
+  }
+  return out;
+}
+
 export function t(text, vars = null) {
   if (typeof text !== 'string' || !text) return text;
   const said = hostWords(CATALOGUES[current]?.[text] ?? text);

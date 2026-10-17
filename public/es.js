@@ -173,9 +173,6 @@ export const ES = {
     'Gemini intentó pasarle esta tarea a uno de sus propios subagentes. MADRE no lo permite: un subagente responde fuera del permiso que MADRE controla, así que nada de lo que escribiera se podría comprobar, mostrar ni deshacer.',
   'Ask again saying it should do the work itself, without subagents.':
     'Vuelve a pedirlo diciéndole que haga el trabajo él mismo, sin subagentes.',
-  ' · this reply names {n} file(s) that are not on disk: {files}':
-    ' · esta respuesta menciona {n} archivo(s) que no existen: {files}',
-  ' · nothing was written this turn': ' · esta respuesta no escribió nada',
   'OPEN MODULES': 'ABRIR MÓDULOS',
   '@{who} puts {agents} to work': '@{who} pone a trabajar a {agents}',
   '@{who} puts {agents} to work, then closes': '@{who} pone a trabajar a {agents} y luego cierra',
@@ -2075,8 +2072,8 @@ export const ES = {
   'Signs in with a ChatGPT account. An OpenAI API key works too.': 'Inicia sesión con una cuenta de ChatGPT. También sirve una llave de API de OpenAI.',
   'Signs in with a Claude account or with the Anthropic Console. An Anthropic API key works too.':
     'Inicia sesión con una cuenta de Claude o con la Consola de Anthropic. También sirve una llave de API de Anthropic.',
-  'Signs in with a Google account and has a free tier. A Gemini API key from AI Studio works too.':
-    'Inicia sesión con una cuenta de Google y tiene capa gratuita. También sirve una llave de API de Gemini de AI Studio.',
+  'Connects with a Gemini API key from Google AI Studio. A Google account works only where Google still accepts it: free personal accounts are refused.':
+    'Se conecta con una llave de API de Gemini de Google AI Studio. Una cuenta de Google solo sirve donde Google todavía la acepta: rechaza las cuentas personales gratuitas.',
   'Brings no model of its own: you point it at a provider you already use, in the cloud or on this computer.':
     'No trae modelo propio: lo apuntas a un proveedor que ya uses, en la nube o en esta computadora.',
   'MATURE': 'MADURO',
@@ -2162,8 +2159,14 @@ export const ES = {
   'Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.':
     'Google reportó el modelo como no disponible (HTTP 503) y la app de Gemini siguió reintentando.',
   'Try again shortly or choose another model.': 'Vuelve a intentar en un momento o elige otro modelo.',
+  ' · said it created {files}, but it is not in your project': ' · dijo que creó {files}, pero no está en tu proyecto',
+  ' · nothing was written in this reply': ' · en esta respuesta no se escribió nada',
+  'ASK AGAIN': 'PEDIRLO OTRA VEZ',
+  'Last time you said you created {files}, but nothing was written to disk. Create them now and check that they exist before you answer.': 'La vez pasada dijiste que creaste {files}, pero no se escribió nada. Créalos ahora y revisa que existan antes de contestar.',
   'Google rejected the Gemini credentials.': 'Google rechazó las credenciales de Gemini.',
   'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
+  'Google no longer accepts this Gemini sign-in (IneligibleTierError): the free personal Google account is refused before it reaches a model.': 'Google ya no acepta este inicio de sesión de Gemini (IneligibleTierError): rechaza la cuenta personal gratuita de Google antes de llegar al modelo.',
+  'Paste a Gemini API key from Google AI Studio in Settings › Agents › Gemini, or run `gemini`, type /auth and pick "Use Gemini API key".': 'Pega una llave de API de Gemini de Google AI Studio en Ajustes › Agentes › Gemini, o corre `gemini`, escribe /auth y elige «Use Gemini API key».',
 
   // ── EL RECORRIDO DE PRIMER CONTACTO ───────────────────────────────────────
 
@@ -3358,9 +3361,9 @@ export const ES = {
   'Opens your browser to sign in with ChatGPT.': 'Abre tu navegador para iniciar sesión con ChatGPT.',
   'Opens your browser to sign in with your Claude account.': 'Abre tu navegador para iniciar sesión con tu cuenta de Claude.',
   'Opens your browser to sign in with your Google account.': 'Abre tu navegador para iniciar sesión con tu cuenta de Google.',
-  'Opens your browser to sign in with your Google account: the free tier is enough to start.': 'Abre tu navegador para iniciar sesión con tu cuenta de Google: el plan gratuito basta para empezar.',
+  'Opens your browser to sign in with your Google account. Google refuses free personal accounts on this CLI; if it refuses yours, paste a Gemini API key from Google AI Studio instead.': 'Abre tu navegador para iniciar sesión con tu cuenta de Google. Google rechaza las cuentas personales gratuitas en este CLI; si rechaza la tuya, mejor pega una llave de API de Gemini de Google AI Studio.',
   'Google account': 'Cuenta de Google',
-  'Then type /auth and pick "Login with Google", or "Use Gemini API key" with a key from aistudio.google.com/app/apikey.': 'Luego escribe /auth y elige "Login with Google", o "Use Gemini API key" con una llave de aistudio.google.com/app/apikey.',
+  'Then type /auth and pick "Use Gemini API key" with a key from aistudio.google.com/app/apikey. "Login with Google" is refused for free personal accounts.': 'Luego escribe /auth y elige "Use Gemini API key" con una llave de aistudio.google.com/app/apikey. "Login with Google" no funciona con cuentas personales gratuitas.',
   'Add --console to bill the work to the Anthropic Console instead of your subscription.': 'Agrega --console para cobrar el trabajo a tu crédito de la Anthropic Console en lugar de tu suscripción.',
   // La otra forma de entrar, plegada bajo los botones: lo mismo escrito en una terminal.
   'Prefer your terminal?': '¿Prefieres tu terminal?',

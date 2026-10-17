@@ -74,6 +74,14 @@ export function sparedChars(options) {
   return full.find((part) => part.id === 'sdk')?.text.length ?? 0;
 }
 
+// Codex has no tool of its own to read a file: it reads with the shell (cat, sed, rg). «You cannot
+// run commands» read to it as «you cannot read», and in #3 it answered «I need #4 for 5 min» to
+// open the file it had been asked to edit (manual tests on 1.0.2, 2026-10-17). Claude and OpenCode
+// read with their own tools and get no shell below #4, so the line is drawn for the shell readers
+// only: reading is part of reading; running programs is what stays out.
+const READS_WITH_SHELL = new Set(['codex']);
+const SHELL_READING = 'Reading includes looking at files with read-only shell commands (cat, sed, head, rg, ls, find, git status, git diff, git log); what you cannot run yourself are programs: tests, builds, installs, scripts, servers, or anything that changes files or reaches the network.';
+
 export function promptParts({
   agent, text, requester, depth, allowDelegation, context, recall = null, memories = null,
   attachments = [], references = [], lease = null, scopes = null, imageStudio = null,
@@ -82,6 +90,7 @@ export function promptParts({
   others = [], delegation = true, maxPlanSteps = 4, scopesFor = () => ({}), motherLines = [], memoryServer = null, controlHolder = null, privacyMarker = '[ENTIDAD-ORG]', madreModel = null, sdk = null,
 }) {
   const mayDelegate = allowDelegation && delegation && depth === 0 && others.length > 0;
+  const shellReader = READS_WITH_SHELL.has(agent.id);
   const attached = attachments.length
     ? `The human attached ${attachments.length} file(s); read them if relevant, they are part of this request:\n${attachments.map((file) => `- ${file.path} (${file.contentType}, ${file.size} bytes)`).join('\n')}`
     : null;
@@ -103,7 +112,7 @@ export function promptParts({
         : null },
     // #3 and #4 used to fall into the last branch and read «Read-only» right above the lease that
     // gave them the project: with #4 open, Codex answered that it would only inspect (2026-10-14).
-    { id: 'mode', text: `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : mode === 3 ? ' You may read, create and modify the project\'s files as described below; you cannot run commands yourself.' : mode === 4 ? ' You may modify the project and run commands as described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}${mode >= 1 && mode <= 3 && requester === 'you' ? ` If going on needs a higher mode, ask for it in one line with the mode and how long you need it, like "I need ${mode === 3 ? '#4 for 5 min' : '#3 for 15 min'}: <why>" (#3 holds 5, 15 or 30 min; #4 holds 5): the human gets a button for it.` : ''}` },
+    { id: 'mode', text: `Permission mode for this turn: #${mode} ${MODES[mode]?.label ?? ''}.${mode === 0 ? ' This exchange is off the record: it is not written to the room transcript, no other agent will see it, and nothing you say here can be referred to later. Do not coordinate with other agents.' : mode === 2 ? ' You may create files, only inside the lease directory described below.' : mode === 3 ? (shellReader ? ` You may read, create and modify the project's files as described below. ${SHELL_READING}` : ' You may read, create and modify the project\'s files as described below; you cannot run commands yourself.') : mode === 4 ? ' You may modify the project and run commands as described below.' : ' Read-only: you may read the project and coordinate, not create or modify files.'}${mode >= 1 && mode <= 3 && requester === 'you' ? ` If going on needs a higher mode, ask for it in one line with the mode and how long you need it, like "I need ${mode === 3 ? '#4 for 5 min' : '#3 for 15 min'}: <why>" (#3 holds 5, 15 or 30 min; #4 holds 5): the human gets a button for it.` : ''}` },
     { id: 'inspect', text: lease ? (lease.airlock ? 'Inspect the project as needed; the airlock is open for you this turn, as described below.' : lease.control ? 'Inspect the project as needed; you hold it for this turn, as described below.' : lease.create ? 'Inspect the project as needed; you may add new files to it as described below, never change existing ones.' : 'Inspect the project as needed; the only writable place is the creation lease directory below.') : `Inspect the project only as needed. Operate read-only and do not modify files.${scopes?.web ? '' : ' Do not access the web.'}` },
     { id: 'ash', text: ash ? 'Ash: answer in compact prose. Say it once, drop the preamble and the summary of what you are about to say, and keep names, negation, numbers, paths, safety details and any ```pulse block exactly as they are. Brevity is in how you write, never in what you leave out.' : null },
     { id: 'mother', text:
@@ -153,7 +162,9 @@ export function promptParts({
       : null },
     { id: 'runs', text: runs
       ? [
-        'You cannot run commands in this mode. If your answer depends on one (tests, a build, a linter, a git query), or you hand the human a command to run, end your reply with one fenced block and the human may run it for you; a command in a plain code block gives them no button:',
+        shellReader
+          ? 'You cannot run programs in this mode; reading files with read-only shell commands (cat, sed, rg, ls, git diff) is fine. If your answer depends on a program (tests, a build, a linter), or you hand the human a command to run, end your reply with one fenced block and the human may run it for you; a command in a plain code block gives them no button:'
+          : 'You cannot run commands in this mode. If your answer depends on one (tests, a build, a linter, a git query), or you hand the human a command to run, end your reply with one fenced block and the human may run it for you; a command in a plain code block gives them no button:',
         '```pulse-run',
         '<why you need it, one line>',
         '$ <command>',

@@ -133,7 +133,9 @@ export const AGENT_SETUP = {
     loginNote: 'Opens your browser to sign in with your Google account.',
     browser: true,
     methods: [
-      { id: 'google', label: 'Google account', args: ['--prompt', 'ok'], note: 'Opens your browser to sign in with your Google account: the free tier is enough to start.' },
+      // The free personal account is refused by Google on this CLI (IneligibleTierError, 2026-10-17);
+      // the door stays for the accounts Google still serves, and says so.
+      { id: 'google', label: 'Google account', args: ['--prompt', 'ok'], note: 'Opens your browser to sign in with your Google account. Google refuses free personal accounts on this CLI; if it refuses yours, paste a Gemini API key from Google AI Studio instead.' },
     ],
     room: {
       display: 'gemini · Login with Google',
@@ -150,10 +152,11 @@ export const AGENT_SETUP = {
     // In a terminal it is its own prompt that signs in (the setup wizard hands it over whole).
     interactive: true,
     terminal: 'gemini',
-    terminalNote: 'Then type /auth and pick "Login with Google", or "Use Gemini API key" with a key from aistudio.google.com/app/apikey.',
+    terminalNote: 'Then type /auth and pick "Use Gemini API key" with a key from aistudio.google.com/app/apikey. "Login with Google" is refused for free personal accounts.',
     vendor: 'Google',
-    account: 'Signs in with a Google account and has a free tier. A Gemini API key from AI Studio works too.',
-    paid: false,
+    account: 'Connects with a Gemini API key from Google AI Studio. A Google account works only where Google still accepts it: free personal accounts are refused.',
+    // Whether it costs depends on the key's project, not on the CLI: no «free option» promised.
+    paid: null,
   },
   opencode: {
     install: ['brew install opencode', 'or: npm install -g opencode-ai'],

@@ -6,6 +6,7 @@
 // leaves the machine. It grows as the memory grows.
 
 import { ollamaGenerate } from '../ollama.mjs';
+import { inLanguage } from '../i18n.mjs';
 
 export const MADRE_AGENT_ID = 'madre';
 export const MADRE_ADAPTER = 'madre-local';
@@ -232,7 +233,7 @@ export function gist(text, max = 240) {
 export function roundBullets(round, { es = true } = {}) {
   return round.answers.map((answer) => (answer.sequence
     ? `- @${answer.agent} [#${answer.sequence}]: ${gist(answer.text)}`
-    : `- @${answer.agent}: ${es ? 'no respondió' : 'did not answer'}${answer.error ? ` (${String(answer.error).replace(/[.\s]+$/, '')})` : ''}.`)).join('\n');
+    : `- @${answer.agent}: ${es ? 'no respondió' : 'did not answer'}${answer.error ? ` (${gist(inLanguage(answer.error, es ? 'es' : 'en'), 200).replace(/[.\s]+$/, '')})` : ''}.`)).join('\n');
 }
 export function comparisonHolds(line, round) {
   const spoke = new Set(round.answers.filter((answer) => answer.sequence).map((answer) => answer.agent));

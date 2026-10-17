@@ -278,7 +278,14 @@ export function diagnoseGeminiStderr(stderr) {
   if (/status:?\s*503|UNAVAILABLE|high demand/i.test(text)) {
     return { code: 'UNAVAILABLE', message: t('Google reported the model as unavailable (HTTP 503) and the CLI kept retrying.'), hint: t('Try again shortly or choose another model.') };
   }
-  if (/status:\s*40[13]|PERMISSION_DENIED|API key not valid|IneligibleTierError/i.test(text)) {
+  // Google closed Gemini Code Assist for individuals to this CLI (seen 2026-10-17): the personal
+  // login still holds a valid token and every request is refused before it reaches a model. Named
+  // apart from a bad key so the room says what to do, and with Google's own word in the message so
+  // Diagnóstico finds its entry (gemini-ineligible-tier) in whatever language the room speaks.
+  if (/IneligibleTierError|no longer supported for Gemini Code Assist|migrate to the Antigravity/i.test(text)) {
+    return { code: 'INELIGIBLE', message: t('Google no longer accepts this Gemini sign-in (IneligibleTierError): the free personal Google account is refused before it reaches a model.'), hint: t('Paste a Gemini API key from Google AI Studio in Settings › Agents › Gemini, or run `gemini`, type /auth and pick "Use Gemini API key".') };
+  }
+  if (/status:\s*40[13]|PERMISSION_DENIED|API key not valid/i.test(text)) {
     return { code: 'AUTH', message: t('Google rejected the Gemini credentials.'), hint: t('Run `gemini` and use /auth, or check GEMINI_API_KEY.') };
   }
   // A subagent, refused. The policy is right to refuse it — a subagent answers outside the lease
@@ -337,7 +344,7 @@ export async function invokeGemini({
         const diagnosis = diagnoseGeminiStderr(stderr);
         if (!diagnosis) return null;
         firstSeenAt ??= Date.now();
-        const terminal = diagnosis.code === 'CREDITS_DEPLETED' || diagnosis.code === 'AUTH';
+        const terminal = diagnosis.code === 'CREDITS_DEPLETED' || diagnosis.code === 'AUTH' || diagnosis.code === 'INELIGIBLE';
         if (!terminal && Date.now() - firstSeenAt < failFastMs) return null;
         return Object.assign(new Error(`${diagnosis.message} ${diagnosis.hint}`), { code: diagnosis.code, diagnosis });
       };
@@ -357,7 +364,7 @@ export async function invokeGemini({
       } catch (error) {
         const produced = parseGeminiOutput(error.partialOutput ?? '').text;
         const diagnosis = error.diagnosis ?? diagnoseGeminiStderr(error.partialStderr ?? error.stderr ?? '');
-        if (diagnosis?.code === 'AUTH' || diagnosis?.code === 'CREDITS_DEPLETED') {
+        if (diagnosis?.code === 'AUTH' || diagnosis?.code === 'INELIGIBLE' || diagnosis?.code === 'CREDITS_DEPLETED') {
           error.message = `${diagnosis.message} ${diagnosis.hint}`;
           error.code = diagnosis.code;
           throw error;

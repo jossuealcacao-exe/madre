@@ -86,6 +86,9 @@ export function keyPlanFor(id) {
       writesTo: '~/.gemini/.env',
       note: 'The key is written where the Gemini CLI looks for it, readable only by you. MADRE keeps no copy.',
       providers: null,
+      // The way in, ahead of the Google account: Google refuses free personal accounts on this
+      // CLI (IneligibleTierError, 2026-10-17), and a key from AI Studio is what works for anyone.
+      first: true,
     };
   }
   if (id === 'opencode') {

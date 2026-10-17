@@ -4341,13 +4341,21 @@ function bridgeCard(agent) {
   if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
     // Every door the CLI has, not just the first one. Claude sells two accounts and MADRE used
     // to open only the subscription, which left whoever pays for the API with no way in.
-    if (agent.login?.headless) for (const door of loginDoors(agent, stage === 'ready')) actions.append(bridgeSignInButton(agent, door, stage === 'ready'));
-    else if (!agent.key && agent.login) actions.append(el('span', 'note', t('signs in from your terminal:')));
+    const keyFirst = Boolean(agent.key?.first);
     if (agent.key) {
-      reveal = el('button', agent.login?.headless ? null : 'primary', t('PASTE API KEY'));
+      reveal = el('button', agent.login?.headless && !keyFirst ? null : 'primary', t('PASTE API KEY'));
       reveal.type = 'button';
-      actions.append(reveal);
     }
+    if (keyFirst) actions.append(reveal);
+    if (agent.login?.headless) {
+      for (const door of loginDoors(agent, stage === 'ready')) {
+        const signIn = bridgeSignInButton(agent, door, stage === 'ready');
+        if (keyFirst) signIn.classList.remove('primary');
+        actions.append(signIn);
+      }
+    }
+    else if (!agent.key && agent.login) actions.append(el('span', 'note', t('signs in from your terminal:')));
+    if (reveal && !keyFirst) actions.append(reveal);
   }
   if (actions.childNodes.length) card.append(actions);
   if (reveal) {
@@ -5635,13 +5643,35 @@ function renderLeaseRefused(event) {
 // The reply named files and the disk does not have them. Said as the fact it is, without
 // deciding what the agent meant: an answer that claims a file it never wrote and an answer that
 // suggests one both leave the human better off knowing it is not there.
+// A reply that says it created files the disk does not have (manual tests on 1.0.2, 2026-10-17:
+// «Creé gastos.html» and no gastos.html). It used to be a small line that folded into a dot ten
+// seconds later, under a bubble that said the opposite. Now it says it plainly and offers the way
+// on: the same request back in the box, with a line telling the agent what happened. Sending it is
+// the human's; the live button keeps the notice open until then.
 function renderCreateMissing(event) {
-  const { agent, files = [] } = event.payload;
-  const node = el('div', 'system memory warn');
+  const { agent, files = [], requestId = null } = event.payload;
+  const list = files.slice(0, 4).join(', ') + (files.length > 4 ? '…' : '');
+  const node = el('div', 'system memory warn create-missing');
   tint(node, agent);
   node.append(t('create · '), el('b', 'who', `@${agent}`));
-  node.append(t(' · this reply names {n} file(s) that are not on disk: {files}', { n: files.length, files: files.slice(0, 4).join(', ') + (files.length > 4 ? '…' : '') }));
-  node.append(t(' · nothing was written this turn'));
+  node.append(t(' · said it created {files}, but it is not in your project', { files: list }));
+  node.append(t(' · nothing was written in this reply'));
+  const asked = requestId ? state.userMessages.get(requestId) : null;
+  if (asked && state.agents.has(agent)) {
+    const again = el('button', 'retry-longer', t('ASK AGAIN'));
+    again.type = 'button';
+    again.addEventListener('click', () => {
+      again.disabled = true;
+      if (els.target.value !== agent) { els.target.value = agent; renderPicker(); }
+      const note = t('Last time you said you created {files}, but nothing was written to disk. Create them now and check that they exist before you answer.', { files: list });
+      els.input.value = [asked.text ?? '', note].filter(Boolean).join('\n\n');
+      if ((asked.mode ?? 1) === 2) setMode(2);
+      else if ((asked.mode ?? 1) >= 3) toast(t('Diagnostics › #{n} needs you to confirm again: choose it in the mode selector before sending.', { n: asked.mode }));
+      autosize();
+      focusComposer();
+    });
+    node.append(again);
+  }
   return node;
 }
 
@@ -17117,16 +17147,18 @@ function connectionCard(agent) {
         login.disabled = true;
         try { await startLogin(agent.id, door.id); settingsUI.data.loggingIn = agent.id; renderSettings(); }
         catch (error) { toast(error.message || t('The sign-in could not start.')); login.disabled = false; }
-      }, { tone: signedIn && !choosingAccount.has(agent.id) ? null : 'primary', title: t(door.note || agent.login.note) });
+      }, { tone: (signedIn && !choosingAccount.has(agent.id)) || agent.key?.first ? null : 'primary', title: t(door.note || agent.login.note) });
       login.disabled = Boolean(settingsUI.data.loggingIn);
       acts.append(login);
     }
   }
   acts.append(recheck);
-  body.append(acts);
   const slot = el('div', 'sx-slot');
   // OpenCode's keys are its providers', added in the block under its settings, one row for all.
   if (agent.detected && agent.key && agent.id !== 'opencode') slot.append(keyForm(agent, { onDone: () => { void loadSettings(); renderOnboarding(); } }));
+  // Gemini's key is its way in (agent.key.first): the field before the Google door.
+  if (agent.key?.first && slot.firstChild) { const first = el('div', 'sx-slot'); first.append(slot.firstChild); body.append(first); }
+  body.append(acts);
   if (agent.detected && agent.login?.headless) slot.append(loginAskSlot(agent.id));
   // The same, typed in a terminal, folded for whoever prefers it. Signed in, OpenCode's providers
   // are added in its block below; its terminal is for a first sign-in.

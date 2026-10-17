@@ -189,3 +189,18 @@ test('prompt: the crew writes in the language the human writes in', () => {
   // It is in the stable head, so it is the same bytes on every turn and costs the cache nothing.
   assert.ok(STABLE_HEAD.includes('style'), 'the language rule varies between turns');
 });
+
+// Codex reads files with the shell. Told only «you cannot run commands» in #3, it asked for #4 to
+// open the file it had to edit (manual tests on 1.0.2, 2026-10-17). Agents with their own read
+// tools keep the plain rule: below #4 they have no shell at all.
+test('in #3 a shell reader is told reading is fine and programs are not; the others keep the plain rule', () => {
+  const base = { text: 'arregla gastos.html', requester: 'you', depth: 0, allowDelegation: false, context: { messages: [], omittedMessages: 0 }, others: [], mode: 3, lease: { outDir: '.', scopes: {}, control: true }, runs: true };
+  const codex = buildPrompt({ ...base, agent: { id: 'codex' } });
+  const claude = buildPrompt({ ...base, agent: { id: 'claude' } });
+  assert.match(codex, /read-only shell commands \(cat, sed, head, rg/);
+  assert.match(codex, /what you cannot run yourself are programs: tests, builds, installs/);
+  assert.match(codex, /You cannot run programs in this mode; reading files with read-only shell commands/);
+  assert.doesNotMatch(codex, /you cannot run commands yourself/);
+  assert.match(claude, /you cannot run commands yourself/);
+  assert.doesNotMatch(claude, /read-only shell commands/);
+});

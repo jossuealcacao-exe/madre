@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { madreAgent, madreInvoker, gather, gist, actionRequest, briefingFor, localReply, roundTable, whoAmI, memoryRequest, echoRequest, MADRE_ADAPTER } from '../src/adapters/madre.mjs';
+import { madreAgent, madreInvoker, gather, gist, actionRequest, briefingFor, localReply, roundTable, whoAmI, memoryRequest, echoRequest, MADRE_ADAPTER, roundBullets } from '../src/adapters/madre.mjs';
 import { parseDirectives } from '../src/directives.mjs';
 import { buildConversationContext } from '../src/conversation-context.mjs';
 import { EventStore } from '../src/event-store.mjs';
@@ -252,4 +252,18 @@ test('the closing line of a round quotes whole sentences, even when they name a 
   assert.match(line, /src\/links\.js:11 acepta cualquier cadena como URL, sin validar esquema\.$/);
   assert.ok(line.length <= 240);
   assert.equal(gist('Uno. Dos! Tres? ' + 'x'.repeat(300)), 'Uno. Dos! Tres?');
+});
+
+// A failure is recorded in the language the room spoke then; the round's summary says it in the
+// round's language (manual tests, 2026-10-17: a Spanish summary quoted Gemini's error in English).
+test('the round summary says why an agent did not answer in the language of the round', () => {
+  const round = { answers: [
+    { agent: 'codex', sequence: 13, text: 'Un solo archivo HTML con localStorage.' },
+    { agent: 'gemini', failed: true, error: 'Google rejected the Gemini credentials. Run `gemini` and use /auth, or check GEMINI_API_KEY.' },
+  ] };
+  const es = roundBullets(round, { es: true });
+  assert.match(es, /@gemini: no respondió \(Google rechazó las credenciales de Gemini\./);
+  assert.doesNotMatch(es, /rejected/);
+  const en = roundBullets({ answers: [{ agent: 'gemini', failed: true, error: 'Google rechazó las credenciales de Gemini. Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.' }] }, { es: false });
+  assert.match(en, /@gemini: did not answer \(Google rejected the Gemini credentials\./);
 });

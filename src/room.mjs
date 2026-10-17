@@ -1349,7 +1349,8 @@ export class Room {
       const said = events.find((event) => event.type === 'message.created' && event.payload.role === 'assistant' && event.payload.sender === agent && event.payload.status !== 'delegated');
       if (said) return { agent, sequence: said.sequence, text: said.payload.text ?? '' };
       const failed = events.find((event) => event.type === 'message.failed' && event.payload.target === agent);
-      return { agent, failed: true, error: failed ? String(failed.payload.error ?? '').slice(0, 160) : null };
+      // Whole, so the closing turn can say it in the round's language and cut it at a sentence.
+      return { agent, failed: true, error: failed ? String(failed.payload.error ?? '').slice(0, 600) : null };
     });
     return { asked, answers };
   }
@@ -1875,7 +1876,9 @@ export class Room {
       // not allow simply fails and the model reports the file as created. The room does not read
       // the prose for a claim; it takes the paths the reply names and asks the disk. Only what is
       // named AND absent is said, so an agent talking about files that exist says nothing here.
-      if (lease && !lease.control && artifacts.length === 0) {
+      // A reply that opens a plan names the files its steps will make (manual tests, 2026-10-17:
+      // «Claude arma el plan, Codex escribe memoria.html» read as a file Claude failed to write).
+      if (lease && !lease.control && artifacts.length === 0 && !/```pulse\s*\n/.test(result.text ?? '')) {
         const roots = [this.#projectRoot, lease.outDir, lease.realOutDir].filter(Boolean);
         const named = namedPaths(result.text, { roots });
         const missing = [];
@@ -1883,7 +1886,8 @@ export class Room {
           const full = path.startsWith('/') ? path : joinPath(this.#projectRoot, path);
           if (!(await statFile(full).then(() => true, () => false))) missing.push(path);
         }
-        if (missing.length) await this.#emit('create.missing', { messageId: responseMessageId, agent: agent.id, planId, files: missing });
+        // `requestId` lets the page put the same request back in the box for another try.
+        if (missing.length) await this.#emit('create.missing', { messageId: responseMessageId, requestId: messageId, agent: agent.id, planId, files: missing });
       }
       // CONTROL: what really changed in the project, forbidden zones reverted on the spot.
       const controlChanges = controlRun ? await this.#controlDesk.settleOrSay(controlRun) : null;
