@@ -24,6 +24,8 @@ import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
 const say = (pair) => (typeof pair === 'string' ? pair : pair?.[language()] ?? pair?.es ?? '');
 const fill = (template, vars) => template.replace(/\{(\w+)\}/g, (whole, name) => (Object.hasOwn(vars, name) ? String(vars[name]) : whole));
 const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Up, turned for down: the way to a hint whose place is out of view.
+const ARROW_UP = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15.5V4.5M5.5 9 10 4.5 14.5 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const CLOSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const FOLDER = '<svg viewBox="0 0 32 26" aria-hidden="true"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h7.2l3 3.2h12.8A2.5 2.5 0 0 1 30 8.7v12.8a2.5 2.5 0 0 1-2.5 2.5h-23A2.5 2.5 0 0 1 2 21.5z" fill="currentColor"/></svg>';
 const ROBOT = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 4.5V8M3 13v2M21 13v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9.5" cy="13.5" r="1.3" fill="currentColor"/><circle cx="14.5" cy="13.5" r="1.3" fill="currentColor"/></svg>';
@@ -517,16 +519,22 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     card.setAttribute('role', 'note');
     card.append(el('span', 'tour-hint-eyebrow', t('The first time')), el('b', null, title), el('p', null, text));
     let spot = null;
+    let away = null;
+    let follow = null;
     const done = () => {
       if (!hintNode) return;
       void keep({ hint: id });
       spot?.remove();
       card.remove();
+      away?.remove();
       hintNode = null;
       document.removeEventListener('keydown', onKey, true);
+      if (follow) { window.removeEventListener('scroll', follow, true); window.removeEventListener('resize', follow); }
     };
-    // Esc puts away the hint in sight; one hidden under a layer (the Project map) is not the one meant.
-    const onKey = (event) => { if (event.key === 'Escape' && hintNode && !inside && getComputedStyle(card).display !== 'none') { event.stopPropagation(); done(); } };
+    // Esc puts away the hint in sight, or the one its way-there key speaks of; one hidden under a
+    // layer (the Project map) is not the one meant.
+    const shown = (node) => Boolean(node?.isConnected) && getComputedStyle(node).display !== 'none';
+    const onKey = (event) => { if (event.key === 'Escape' && hintNode && !inside && (shown(card) || shown(away))) { event.stopPropagation(); done(); } };
     card.append(key('tour-btn small primary', t('Got it'), done));
     hintNode = card;
     if (inside) {
@@ -542,15 +550,43 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const width = Math.min(300, window.innerWidth - 24);
     card.style.width = `${width}px`;
     const height = card.getBoundingClientRect().height;
-    const onTheRight = box.left + box.width / 2 > window.innerWidth / 2;
-    const left = Math.max(12, Math.min(window.innerWidth - width - 12, onTheRight ? box.right - width : box.left));
-    const below = box.bottom + 10 + height < window.innerHeight;
-    Object.assign(card.style, { left: `${left}px`, top: `${below ? box.bottom + 10 : Math.max(12, box.top - height - 10)}px` });
+    // When the place is scrolled out of view (or was never in it: a widget below the fold), the
+    // bubble does not stay behind on its own, out of reach (2026-10-17): it steps aside, and a key at
+    // the edge the place went past says where it is and takes the page there.
+    away = key('tour-hint-away', '', () => anchor.scrollIntoView?.({ block: 'center', behavior: still() ? 'auto' : 'smooth' }));
+    away.hidden = true;
+    if (typeof away.showPopover === 'function') away.popover = 'manual';
+    document.body.append(away);
+    const sayAway = (up) => {
+      away.dataset.side = up ? 'up' : 'down';
+      away.innerHTML = ARROW_UP; // trusted: our own SVG string
+      away.append(el('b', null, title), el('span', null, up ? t('Scroll up to see it') : t('Scroll down to see it')));
+      away.setAttribute('aria-label', `${title} · ${up ? t('Scroll up to see it') : t('Scroll down to see it')}`);
+    };
+    const place = () => {
+      if (!anchor.isConnected) { done(); return; }
+      const at = anchor.getBoundingClientRect();
+      const out = at.bottom < 8 ? 'up' : at.top > window.innerHeight - 8 ? 'down' : null;
+      card.hidden = Boolean(out);
+      if (out && away.dataset.side !== out) sayAway(out === 'up');
+      if (out && away.hidden) { away.hidden = false; try { away.showPopover?.(); } catch { /* on the page */ } }
+      if (!out && !away.hidden) { away.hidden = true; delete away.dataset.side; try { away.hidePopover?.(); } catch { /* on the page */ } }
+      if (out) return;
+      const onTheRight = at.left + at.width / 2 > window.innerWidth / 2;
+      const left = Math.max(12, Math.min(window.innerWidth - width - 12, onTheRight ? at.right - width : at.left));
+      const below = at.bottom + 10 + height < window.innerHeight;
+      Object.assign(card.style, { left: `${left}px`, top: `${below ? at.bottom + 10 : Math.max(12, at.top - height - 10)}px` });
+    };
     spot = spotlight(anchor);
+    follow = () => place();
+    window.addEventListener('scroll', follow, true);
+    window.addEventListener('resize', follow);
+    place();
     // Where it points: on the page, or on a layer over it (Home's Project map). A layer opened over
     // the page hides the hints that point under it, and they come back when it closes (salas-mac.css).
     const layer = anchor.closest?.('.mv') ? 'map' : 'page';
     card.dataset.under = layer;
+    away.dataset.under = layer;
     if (spot.node) spot.node.dataset.under = layer;
     document.addEventListener('keydown', onKey, true);
     return true;

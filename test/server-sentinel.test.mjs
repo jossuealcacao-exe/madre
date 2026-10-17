@@ -94,4 +94,5 @@ test('servers: a MADRE room started in the project is the room, not the project\
   assert.deepEqual((await sentinel.scan()).ports.map((one) => one.port), [5173]);
   const { classifyListening } = await import('../src/ports.mjs');
   assert.deepEqual(classifyListening([header, line('ollama', 1, '127.0.0.1:11434')].join('\n')).ports, [], 'the local model MADRE uses is not a project server');
+  assert.deepEqual(classifyListening([header, line('llama-ser', 2, '127.0.0.1:53328')].join('\n')).ports, [], 'nor the runner Ollama opens for each model it loads');
 });

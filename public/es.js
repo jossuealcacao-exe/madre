@@ -4883,6 +4883,8 @@ export const ES = {
   'New: notices shrink into dots': 'Nuevo: los avisos se hacen puntos',
   'To keep the chat clean, notices shrink into a small dot after 10 seconds. Click the dot to read them again. The ones that need something from you stay open.': 'Para que el chat se vea limpio, los avisos se hacen un puntito después de 10 segundos. Haz clic en el punto para volver a leerlos. Los que necesitan algo de ti se quedan abiertos.',
   'You\'ll find it under «More», on the top bar.': 'Lo encuentras en «Más», en la barra de arriba.',
+  'Scroll up to see it': 'Sube para verlo',
+  'Scroll down to see it': 'Baja para verlo',
   'New: add widgets': 'Nuevo: agrega widgets',
   'This button opens «Add to Home»: choose the widgets you want to see here, or bring back the ones you removed.': 'Este botón abre «Agregar a Inicio»: elige los widgets que quieres ver aquí o regresa los que quitaste.',
   'collapse': 'contraer',

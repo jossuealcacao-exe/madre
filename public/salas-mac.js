@@ -1895,6 +1895,10 @@ function makeWidget(id) {
   };
   node.start = () => { if (timer) return; void read(); timer = setInterval(() => void read(), 20000); };
   node.stop = () => { clearInterval(timer); timer = 0; };
+  // Said again in the language Home settled on: a widget is made once, before the first answer
+  // tells Home which language MADRE speaks (a new MADRE starts in Spanish and may adopt English),
+  // and its title stayed in the first one (2026-10-17).
+  node.say = () => { head.firstChild.textContent = spec.name(); if (timer) void read(); };
   return node;
 }
 applyLayout();
@@ -2417,7 +2421,7 @@ async function refresh() {
     const mine = chosenHere === 'es' || chosenHere === 'en' ? chosenHere : browserLanguage();
     if (await post('/api/language', { language: mine }).then((response) => response?.ok !== false).catch(() => false)) answer.language = mine;
   }
-  if (answer.language && answer.language !== language) { language = setLanguage(answer.language); root.lang = language; translateStatic(); drawAttention(); drawDecisions(); drawWork(); homeTour.repaint(); }
+  if (answer.language && answer.language !== language) { language = setLanguage(answer.language); root.lang = language; translateStatic(); drawAttention(); drawDecisions(); drawWork(); for (const widget of document.querySelectorAll('.sm-widget')) widget.say?.(); homeTour.repaint(); }
   data = answer;
   // A project that came up after Home stopped waiting is open: its card no longer says it did not.
   for (const room of answer.rooms ?? []) if (room.open) failed.delete(room.id);

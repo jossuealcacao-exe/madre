@@ -1322,4 +1322,4 @@ dialog.sm-sheet:focus, dialog.sm-sheet:focus-visible { outline: none; }
 /* While the Project map is open, a first-time hint that points at Home steps aside, with its ring:
    what it speaks of is under the map. It is not read yet, so it comes back when the map closes.
    The map's own hint stays (tour.js, data-under). */
-body.sm-in-macro > :is(.tour-hint, .hint-spot)[data-under="page"] { display: none !important; }
+body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page"] { display: none !important; }

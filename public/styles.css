@@ -8721,6 +8721,17 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-hint p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .tour-hint .tour-btn { justify-self: end; margin-top: 4px; }
 .tour-hint.inline { position: relative; inset: auto; z-index: auto; margin: 0 0 12px; text-align: left; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tour-acc) 40%, transparent); background: color-mix(in srgb, var(--tour-acc) 10%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* The way to a first-time hint whose place is out of view: a pill at the edge the place went past,
+   with the hint's own title and which way to go. A click takes the page there (tour.js). */
+.tour-hint-away { --tour-acc: var(--s-acc, var(--acc, var(--phosphor))); position: fixed; inset: auto; left: 50%; translate: -50% 0; margin: 0; z-index: 2147483000; display: inline-flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 8px 14px 8px 10px; border: 0; border-radius: 999px; font: inherit; font-family: var(--read); color: var(--text); background: color-mix(in srgb, var(--bg-2, var(--bg)) 94%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tour-acc) 70%, transparent), 0 14px 32px -14px rgba(0, 0, 0, .45); cursor: pointer; animation: tour-rise calc(360ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .2, 1) both; }
+.tour-hint-away[data-side="up"] { top: calc(env(safe-area-inset-top, 0px) + 84px); bottom: auto; }
+.tour-hint-away[data-side="down"] { bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); top: auto; }
+.tour-hint-away svg { flex: none; width: var(--ico-sm, 15px); height: var(--ico-sm, 15px); color: var(--tour-acc); }
+.tour-hint-away[data-side="down"] svg { rotate: 180deg; }
+.tour-hint-away b { font-size: 13px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tour-hint-away span { font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.tour-hint-away:is(:hover, :focus-visible) { box-shadow: 0 0 0 2px var(--tour-acc), 0 14px 32px -14px rgba(0, 0, 0, .45); outline: none; }
+.tour-hint-away[hidden], .tour-hint[hidden] { display: none !important; }
 
 @media (max-width: 720px) {
   .tour-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
@@ -8729,7 +8740,7 @@ dialog.tour-bonjour::backdrop { background: transparent; }
   .tour-nav-name { overflow: visible; }
 }
 @media (prefers-reduced-motion: reduce) {
-  dialog.tour-bonjour[open], .tour-bonjour-stage > *, .tour-bonjour-done > *, .tour-chapter, .ts-moved-row, .tour-hint, .tour-notice { animation: none; }
+  dialog.tour-bonjour[open], .tour-bonjour-stage > *, .tour-bonjour-done > *, .tour-chapter, .ts-moved-row, .tour-hint, .tour-hint-away, .tour-notice { animation: none; }
   .tour-scene *, .tour-scene *::after { animation: none !important; }
   .ts-type b:first-child, .ts-arrive { opacity: 1; }
   .ts-search em { width: 54%; }
