@@ -28,10 +28,10 @@ That's it. No account to create, no cloud to set up, no key to paste.
 MADRE uses the sessions those CLIs already have on your machine.
 
 <p align="center">
-  <a href="https://github.com/jossuealcacao-exe/madre/blob/main/docs/media/1.0/madre-1-0.mp4"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/madre-1-0-video.webp" alt="Watch MADRE 1.0 in 90 seconds" width="100%"></a>
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/home.webp" alt="MADRE Home: the Coordinator with its recent summary, who is waiting for you, the connections and one card per project" width="100%">
 </p>
 
-<p align="center"><sub>MADRE 1.0 in 90 seconds: real screens on sample projects. Also at <a href="https://madre.run">madre.run</a>.</sub></p>
+<p align="center"><sub>Home, with all your projects. The 90-second tour is <a href="https://github.com/jossuealcacao-exe/madre/blob/main/docs/media/1.0/madre-1-0.mp4">in Spanish for now</a>. Also at <a href="https://madre.run/en/">madre.run</a>.</sub></p>
 
 <br>
 
@@ -55,21 +55,17 @@ If you're coming from 0.7.2, your projects, conversations, memory and settings s
 ## One conversation, not four terminals
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-agentes.webp" alt="All your AIs in one chat: Claude answers after Codex, with the handoff line that says how many messages it received" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/one-chat.webp" alt="All your AIs in one chat: each answer with its agent, and the handoff line that says how many messages the next one received" width="100%">
 </p>
 
 You type `@codex` and Codex answers. You type `@claude` and Claude answers, **reading what Codex just said**. You type "@madre, ask the team…" and each one gives its take in turn on the same thing; at the end, @madre sums up where they agree and where they don't, citing each answer.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/mesa-redonda.gif" alt="A round table in MADRE 1.0: the question, @madre's plan and each agent's answers" width="100%">
-</p>
 
 Today that's four windows, four contexts and you copying and pasting between them. MADRE turns it into one thread.
 
 ## All your projects, in one place
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-inicio.webp" alt="MADRE 1.0 Home: the Coordinator with its recent summary, who is waiting for you, the connections and one card per project" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/connect-agents.webp" alt="The first time in Home: connect your agents, once for all your projects" width="100%">
 </p>
 
 `npx @jossuealcala/madre` opens **Home**. The first time, it walks you through three steps: connect your agents (once for all your projects), add your folders and open the ones you'll use. Each card says whether an agent is working, whether someone is waiting for you and what was decided while you were away.
@@ -77,7 +73,7 @@ Today that's four windows, four contexts and you copying and pasting between the
 ## A Coordinator that sees all your projects
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-coordinador.webp" alt="The Coordinator answers what was decided in two connected projects, saying which one each fact came from" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/coordinator.webp" alt="The Coordinator answers what was decided in two connected projects, saying which one each fact came from" width="100%">
 </p>
 
 The **Coordinator** lives in Home. It reads what your projects have learned —only from the ones you connect— and answers you saying which project each fact came from. If you allow it, it carries tasks from one project to another, up to `#2`; anything that needs more permission arrives as a proposal that you unlock. From any project you ask it with `/bishop`.
@@ -87,7 +83,7 @@ A **connection** says which kinds of note cross over (decisions, facts, preferen
 ## A memory that outlives the session
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-memoria.webp" alt="The Memory map: colored memories around a magma core, joined by their links" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/memory-map.webp" alt="The Memory map: colored memories around a magma core, joined by their links" width="100%">
 </p>
 
 Everything that's said gets indexed. When the conversation outgrows the context window, each agent gets back what it needs, cited. Every ten exchanges, the project distills what was said into typed notes: a decision, a fact, a preference, an open question.
@@ -99,7 +95,7 @@ With [Ollama](https://ollama.com) running, that memory also **talks**: `@madre` 
 ## They read by default. They write when you say so.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-permisos.webp" alt="The MADRE 1.0 mode menu, from #0 Incognito to #4 Full access" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/modes.webp" alt="The mode menu, from #0 Incognito to #4 Full access" width="60%">
 </p>
 
 Every message goes out with a permission mode, and your mode is the ceiling for everything that message starts.
@@ -116,13 +112,13 @@ There's also `#0 INCOGNITO`, for what shouldn't be kept anywhere.
 Moving up to `#3` or `#4` is deliberate: MADRE asks for your key —by default, the name of the project folder; in Settings › Permissions you can choose a phrase of your own— and the project itself checks it. No agent can grant itself a permission by writing it in its answer.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-deshacer.webp" alt="Claude changed three files in #3 Edit and the Undo button takes the project back to the restore point" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/undo.webp" alt="Claude changed two files in #3 Edit and the Undo button takes the project back to the restore point" width="60%">
 </p>
 
 ## Your space, your way
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-espacio.webp" alt="The conversation on the left and the code editor beside it, in Edit mode" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/en/workspace.webp" alt="The conversation on the left and the code editor beside it, in Edit mode" width="100%">
 </p>
 
 Each panel opens alongside or in a window you can move. Several conversations work at once, the viewer edits code, your project's servers open inside MADRE and you build the bar with a right click. **Settings** (⌘ ,) brings together everything you configure, with search, and **Diagnostics** gives you the fix when something breaks.
