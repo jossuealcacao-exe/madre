@@ -3513,7 +3513,7 @@ function bridgeCard(agent) {
   card.append(head);
   const detail = el('div', 'detail');
   if (agent.id === 'madre') detail.append(ollamaDetail(agent));
-  else if (stage === 'missing') detail.append(agent.install ? t('Not on this computer · {command}', { command: agent.install.display }) : t('Not on this computer.'));
+  else if (stage === 'missing') detail.append(t('Not on this computer.'));
   else detail.append(`${agent.version ?? t('version unknown')}${session?.detail ? ` · ${session.detail}` : ''}${agent.route?.destination ? ` · ${t('route: {destination}', { destination: agent.route.destination })}` : ''}`);
   card.append(detail);
   // What is behind this door: the account it needs, and whether there is a way in without paying.
@@ -3543,11 +3543,14 @@ function bridgeCard(agent) {
     const slot = el('div', 'key-slot');
     slot.hidden = true;
     slot.append(keyForm(agent, { onDone: () => renderOnboarding() }));
-    slot.append(el('p', 'key-note', t('Or do it from a terminal: {command}', { command: agent.login.display })));
     reveal.addEventListener('click', () => { slot.hidden = !slot.hidden; if (!slot.hidden) slot.querySelector('input')?.focus(); });
     card.append(slot);
-  } else if (stage !== 'missing' && agent.login && !agent.login.headless) card.append(commandBlock([agent.login.display, `# ${t(agent.login.note)}`]));
+  }
   if (stage !== 'missing') card.append(loginAskSlot(agent.id));
+  if (agent.id !== 'madre') {
+    const way = stage === 'missing' ? installTerminalWay(agent) : stage === 'signed-out' || stage === 'ready' ? signInTerminalWay(agent) : null;
+    if (way) card.append(way);
+  }
   const log = el('pre', 'bridge-log');
   log.id = `bridge-log-${agent.id}`;
   for (const entry of state.loginLogs.get(agent.id) ?? []) log.append(loginLine(entry));
@@ -3682,16 +3685,41 @@ function bridgeInstallButton(agent) {
   return button;
 }
 function bridgeSignInButton(agent, door, again = false) {
-  const named = Boolean(agent.login?.methods?.length);
+  const named = Boolean(agent.login?.methods?.length) && !door.again;
   const button = el('button', again && !named ? null : 'primary', named ? door.label : again ? t('SIGN IN AGAIN') : t('SIGN IN'));
   button.type = 'button';
   button.title = t(door.note || agent.login.note);
   button.addEventListener('click', async () => {
+    if (door.choose) { choosingAccount.add(agent.id); renderOnboarding(); return; }
+    choosingAccount.delete(agent.id);
     button.disabled = true;
     try { await startLogin(agent.id, door.id); }
     catch (error) { toast(t('Diagnostics › sign-in did not start: {error}', { error: error.message })); renderOnboarding(); }
   });
   return button;
+}
+// The other way in: the same install or sign-in typed in a terminal, for whoever prefers it.
+// Folded, so a person who has never opened a terminal is never asked to.
+// Cards are drawn again on every sign-in event: which folds are open is kept here, so one never
+// closes on the person reading it.
+const openTerminalWays = new Set();
+function terminalWay(lines) {
+  const fold = el('details', 'terminal-way');
+  const key = lines[0];
+  fold.open = openTerminalWays.has(key);
+  fold.addEventListener('toggle', () => { if (fold.open) openTerminalWays.add(key); else openTerminalWays.delete(key); });
+  fold.append(el('summary', null, t('Prefer your terminal?')));
+  fold.append(commandBlock(lines));
+  return fold;
+}
+function installTerminalWay(agent) {
+  if (!agent.install) return null;
+  return terminalWay([agent.install.display, ...(agent.install.alternatives ?? []).map((line) => `# ${t(line)}`)]);
+}
+function signInTerminalWay(agent) {
+  const way = agent.login?.terminal;
+  if (!way) return null;
+  return terminalWay([way.command, ...(way.note ? [`# ${t(way.note)}`] : [])]);
 }
 
 /* ---------- thread rendering ---------- */
@@ -14630,9 +14658,15 @@ function fillLoginAsk(box) {
 }
 // One door or two: Claude's CLI knows the subscription and the Console, and only the human can
 // say which account is paying. `null` is the single flow every other CLI has.
+// With a session, every agent offers the same «sign in again» as Codex. A single door (Gemini's
+// Google account) is that door; two doors (Claude's subscription and Console) are chosen after the
+// click, and which agent is choosing is kept here so a repaint does not fold the choice away.
+const choosingAccount = new Set();
 function loginDoors(agent, signedIn) {
   const methods = agent.login?.methods;
   if (!methods?.length) return [{ id: null, label: signedIn ? t('Sign in again') : t('Sign in'), note: agent.login?.note ?? '' }];
+  if (signedIn && methods.length === 1) return [{ id: methods[0].id, label: t('Sign in again'), note: methods[0].note ?? '', again: true }];
+  if (signedIn && !choosingAccount.has(agent.id)) return [{ id: null, label: t('Sign in again'), note: agent.login?.note ?? '', again: true, choose: true }];
   return methods.map((method) => ({ id: method.id, label: t(method.label), note: method.note ?? '' }));
 }
 async function startLogin(agentId, method = null) {
@@ -16032,10 +16066,12 @@ function connectionCard(agent) {
     // One button per account the CLI can sign in with. Which one is paying is the human's to say.
     for (const door of loginDoors(agent, signedIn)) {
       const login = sxButton(door.label, async () => {
+        if (door.choose) { choosingAccount.add(agent.id); renderSettings(); return; }
+        choosingAccount.delete(agent.id);
         login.disabled = true;
         try { await startLogin(agent.id, door.id); settingsUI.data.loggingIn = agent.id; renderSettings(); }
         catch (error) { toast(error.message || t('The sign-in could not start.')); login.disabled = false; }
-      }, { tone: signedIn ? null : 'primary', title: t(door.note || agent.login.note) });
+      }, { tone: signedIn && !choosingAccount.has(agent.id) ? null : 'primary', title: t(door.note || agent.login.note) });
       login.disabled = Boolean(settingsUI.data.loggingIn);
       acts.append(login);
     }
@@ -16045,12 +16081,11 @@ function connectionCard(agent) {
   const slot = el('div', 'sx-slot');
   // OpenCode's keys are its providers', added in the block under its settings, one row for all.
   if (agent.detected && agent.key && agent.id !== 'opencode') slot.append(keyForm(agent, { onDone: () => { void loadSettings(); renderOnboarding(); } }));
-  // Signed in, OpenCode's providers are added in its block below; the terminal is for a first sign-in.
-  if (agent.detected && agent.login && !agent.login.headless && !(agent.id === 'opencode' && session?.state === 'signed-in')) {
-    slot.append(el('p', 'sx-hint', t('To sign in, copy this into your Terminal app:')));
-    slot.append(commandBlock([agent.login.display, `# ${t(agent.login.note)}`]));
-  }
   if (agent.detected && agent.login?.headless) slot.append(loginAskSlot(agent.id));
+  // The same, typed in a terminal, folded for whoever prefers it. Signed in, OpenCode's providers
+  // are added in its block below; its terminal is for a first sign-in.
+  const way = !agent.detected ? installTerminalWay(agent) : agent.id === 'opencode' && session?.state === 'signed-in' ? null : signInTerminalWay(agent);
+  if (way) slot.append(way);
   const log = state.loginLogs.get(agent.id) ?? [];
   if (log.length || busy) {
     const box = el('div', 'login-log');

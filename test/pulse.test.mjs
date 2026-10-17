@@ -1605,8 +1605,8 @@ test('connections: settings are read, saved to config, applied live; sign-in str
   ];
   assert.equal(loginPlanFor(agents[0]).headless, true);
   assert.equal(loginPlanFor(agents[1]).headless, true);
-  assert.equal(loginPlanFor(agents[2]).headless, false);
-  assert.match(loginPlanFor(agents[2]).display, /gemini.*\/auth/);
+  assert.equal(loginPlanFor(agents[2]).headless, true, 'Gemini signs in with Google from the room too');
+  assert.match(loginPlanFor(agents[2]).terminal.note, /\/auth/, 'and its terminal way is still offered');
   let probes = 0;
   const probe = async () => { probes += 1; return { codex: { state: probes > 1 ? 'signed-in' : 'signed-out', detail: probes > 1 ? 'via ChatGPT' : 'not logged in' }, claude: { state: 'signed-in', detail: 'via claude.ai' }, gemini: { state: 'unknown', detail: '' }, opencode: { state: 'not-installed', detail: '' } }; };
   const loginRunners = {
@@ -1622,7 +1622,7 @@ test('connections: settings are read, saved to config, applied live; sign-in str
     assert.equal(initial.body.settings.delegation, true);
     assert.equal(initial.body.settings.softTokenBudget, 500000);
     assert.equal(initial.body.settings.timeouts.codex, 180000);
-    assert.equal(initial.body.agents.find((a) => a.id === 'gemini').login.headless, false);
+    assert.equal(initial.body.agents.find((a) => a.id === 'gemini').login.headless, true);
 
     const saved = await api('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
       opencode: { model: 'openai/gpt-5.6-sol' },
@@ -1650,10 +1650,8 @@ test('connections: settings are read, saved to config, applied live; sign-in str
     assert.equal(stateNow.body.timeouts.gemini, 90000);
     assert.ok((await store.readAll()).some((event) => event.type === 'room.settings'));
 
-    // Interactive CLIs get a command, not a process.
-    const gemini = await api('/api/agents/gemini/login', { method: 'POST' });
-    assert.equal(gemini.status, 409);
-    assert.match(gemini.body.command, /gemini/);
+    // Gemini's sign-in from the room writes its real settings: it is tested in bridge.test.mjs,
+    // against a home of its own. Here, what cannot start at all.
     assert.equal((await api('/api/agents/opencode/login', { method: 'POST' })).status, 412);
     assert.equal((await api('/api/agents/nope/login', { method: 'POST' })).status, 404);
 

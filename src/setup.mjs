@@ -197,7 +197,7 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
         log(`  ${p.agent(agent.id)(agent.id)} ${p.dim(`already has a session (${probe.detail}). Sign in again? [y/N]`)}`);
         if ((await ask('')).trim().toLowerCase() !== 'y') continue;
       }
-      log(`  ${p.dim(setup.loginNote)}`);
+      log(`  ${p.dim(setup.interactive ? setup.terminalNote ?? setup.loginNote : setup.loginNote)}`);
       if (setup.interactive || !setup.login.length) {
         log(`  ${p.dim(`Handing the terminal to ${agent.id}. Exit it when you are done and MADRE will rescan.`)}`);
         await runInTerminal(agent.path, []);

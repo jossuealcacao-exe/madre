@@ -2,7 +2,7 @@
 // MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
 import { execFile } from 'node:child_process';
 import { t } from './i18n.mjs';
-import { access, readFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -87,8 +87,9 @@ export async function probeGemini({ env = process.env } = {}) {
   return geminiAuthState({ settings, hasOauth, hasApiKey });
 }
 
-// What each CLI needs from the user. Commands are run in the user's terminal
-// by the setup wizard; install hints are only printed.
+// What each CLI needs from the user. The room runs the sign-in itself; the same command typed in a
+// terminal stays as the other way in (`terminal`, `terminalNote`), offered and never required.
+// The setup wizard runs them in the user's terminal; install hints are only printed.
 export const AGENT_SETUP = {
   codex: {
     install: ['npm install -g @openai/codex', 'or install the ChatGPT desktop app, which bundles codex'],
@@ -116,15 +117,40 @@ export const AGENT_SETUP = {
     // Its browser flow has no local server to come back to: the page gives a code and the CLI
     // waits for it on its own input. The room asks for it and types it in.
     asksForCode: true,
+    terminalNote: 'Add --console to bill the work to the Anthropic Console instead of your subscription.',
     vendor: 'Anthropic',
     account: 'Signs in with a Claude account or with the Anthropic Console. An Anthropic API key works too.',
     paid: true,
   },
   gemini: {
     install: ['npm install -g @google/gemini-cli'],
-    login: [],
-    loginNote: 'Gemini signs in from your terminal: run `gemini`, type /auth, pick "Use Gemini API key" (get one at aistudio.google.com/app/apikey) or Google login.',
+    // Gemini has no sign-in command: it signs in the first time it is asked something with
+    // "Login with Google" selected. Without a terminal it asks one yes/no, opens the browser by
+    // itself and waits on 127.0.0.1 for Google to come back, so the room needs no code and no
+    // address. The question it is launched with never reaches the model: the room stops the run
+    // the moment the credentials are written (see geminiSignIn).
+    login: ['--prompt', 'ok'],
+    loginNote: 'Opens your browser to sign in with your Google account.',
+    browser: true,
+    methods: [
+      { id: 'google', label: 'Google account', args: ['--prompt', 'ok'], note: 'Opens your browser to sign in with your Google account: the free tier is enough to start.' },
+    ],
+    room: {
+      display: 'gemini · Login with Google',
+      flow: 'gemini-google',
+      // It asks "Do you want to continue? [Y/n]" first; the click on the button was the yes.
+      consent: true,
+      // With CI set the CLI refuses to open a browser and gives up without a terminal.
+      ci: false,
+      // A key in the environment would sign it in with the key instead of the account chosen.
+      dropEnv: ['GEMINI_API_KEY', 'GOOGLE_API_KEY'],
+      // One process, so cancelling stops the one that holds the browser's way back.
+      env: { GEMINI_CLI_NO_RELAUNCH: 'true' },
+    },
+    // In a terminal it is its own prompt that signs in (the setup wizard hands it over whole).
     interactive: true,
+    terminal: 'gemini',
+    terminalNote: 'Then type /auth and pick "Login with Google", or "Use Gemini API key" with a key from aistudio.google.com/app/apikey.',
     vendor: 'Google',
     account: 'Signs in with a Google account and has a free tier. A Gemini API key from AI Studio works too.',
     paid: false,
@@ -185,10 +211,10 @@ export function installPlanFor(agent, { prefix = null } = {}) {
   };
 }
 
-// How the room can (re)connect an agent. Codex and Claude sign in with a
-// browser flow their own CLI drives, so the server can run them and stream the
-// URL; Gemini and OpenCode need their interactive prompt, so the user gets the
-// exact command instead.
+// How the room can (re)connect an agent. Codex, Claude and Gemini sign in with a browser flow
+// their own CLI drives, so the server can run them and stream what they say; OpenCode needs its
+// interactive prompt for anything but a key. Every plan also carries `terminal`: the same sign-in
+// typed by hand, for whoever prefers it.
 export function loginPlanFor(agent, { method = null } = {}) {
   const setup = AGENT_SETUP[agent.id];
   if (!setup) return null;
@@ -196,17 +222,61 @@ export function loginPlanFor(agent, { method = null } = {}) {
   // Which door: the one asked for, the first one the CLI offers, or the single flow it has.
   const chosen = setup.methods?.find((one) => one.id === method) ?? setup.methods?.[0] ?? null;
   const args = chosen?.args ?? setup.login;
+  const room = headless ? setup.room ?? {} : {};
   return {
     headless,
     command: agent.path ?? agent.id,
     args: headless ? args : [],
-    display: headless ? `${agent.id} ${args.join(' ')}` : agent.id === 'gemini' ? 'gemini   # then type /auth' : `${agent.id} ${setup.login.join(' ')}`,
+    display: room.display ?? `${agent.id} ${(headless ? args : setup.login).join(' ')}`,
     note: chosen?.note ?? setup.loginNote,
+    terminal: { command: setup.terminal ?? `${agent.id} ${setup.login.join(' ')}`, note: setup.terminalNote ?? setup.loginNote },
     install: setup.install,
     // What the room offers as a choice, and what it must be ready to be asked for.
     methods: setup.methods ? setup.methods.map(({ id, label, note }) => ({ id, label, note })) : null,
     method: chosen?.id ?? null,
     asksForCode: Boolean(headless && setup.asksForCode),
+    // How the room runs it, when the CLI needs more than its arguments (see AGENT_SETUP.gemini.room).
+    ...(room.flow ? { flow: room.flow } : {}),
+    ...(room.consent ? { consent: true } : {}),
+    ...(room.ci === false ? { ci: false } : {}),
+    ...(room.env ? { env: room.env } : {}),
+    ...(room.dropEnv ? { dropEnv: room.dropEnv } : {}),
+  };
+}
+
+// The yes/no Gemini asks before opening the browser, when it has no terminal to draw a dialog in.
+export const CONSENT_PROMPT = /do you want to continue\?\s*\[y\/n\]/i;
+export const looksLikeConsentPrompt = (line) => CONSENT_PROMPT.test(String(line ?? ''));
+
+// Gemini's Google sign-in, run from the room. Before: "Login with Google" selected in its own
+// settings, and the account it had put aside, so the run signs in anew instead of answering with
+// the old one. During: `signedIn` says when the credentials are written, which is when the room
+// stops the run. After a sign-in that did not finish: `undo` puts both files back as they were.
+// MADRE never reads the token: it moves the file it is in and checks that it exists.
+export function geminiSignIn({ env = process.env } = {}) {
+  const dir = join(env.GEMINI_CLI_HOME ?? homedir(), '.gemini');
+  const settingsFile = join(dir, 'settings.json');
+  const credsFile = join(dir, 'oauth_creds.json');
+  let before = null;
+  const readIfThere = (path) => readFile(path, 'utf8').catch(() => null);
+  const putBack = (path, previous) => (previous === null ? rm(path, { force: true }) : writeFile(path, previous, { mode: 0o600 }));
+  return {
+    async prepare() {
+      await mkdir(dir, { recursive: true });
+      before = { settings: await readIfThere(settingsFile), creds: await readIfThere(credsFile) };
+      let settings = {};
+      try { settings = JSON.parse(before.settings ?? '{}') ?? {}; } catch { settings = {}; }
+      settings.security = { ...(settings.security ?? {}), auth: { ...(settings.security?.auth ?? {}), selectedType: 'oauth-personal' } };
+      await writeFile(settingsFile, `${JSON.stringify(settings, null, 2)}\n`);
+      if (before.creds !== null) await rm(credsFile, { force: true });
+    },
+    signedIn: () => exists(credsFile),
+    async undo() {
+      if (!before) return;
+      await putBack(settingsFile, before.settings);
+      await putBack(credsFile, before.creds);
+      before = null;
+    },
   };
 }
 

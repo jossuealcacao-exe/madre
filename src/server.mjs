@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
 import http from 'node:http';
-import { readFile, realpath, writeFile, mkdir, cp, rename, access, stat } from 'node:fs/promises';
+import { readFile, realpath, writeFile, mkdir, mkdtemp, cp, rename, access, rm, stat } from 'node:fs/promises';
 import { existsSync, openSync, rmSync } from 'node:fs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { probePort, framable } from './ports.mjs';
@@ -9,7 +9,7 @@ import { ControlDesk } from './room/control.mjs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { homedir, hostname } from 'node:os';
+import { homedir, hostname, tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -66,7 +66,7 @@ import { Room } from './room.mjs';
 import { COPILOT_WINDOWS } from './room/copilot.mjs';
 import { OVERRIDE_GRACE, changeNeedsPhrase, keyHolds, mergeOverride, overrideSettings, phraseHash, publicOverride } from './override.mjs';
 import { extensionById, findOnPath, runInstaller } from './extensions.mjs';
-import { accountNoteFor, installPlanFor, looksLikeAdminProblem, loginPlanFor, looksLikeCodePrompt, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
+import { accountNoteFor, geminiSignIn, installPlanFor, looksLikeAdminProblem, loginPlanFor, looksLikeCodePrompt, looksLikeConsentPrompt, probeAgentAuth, probeAll, TAKES_KEY } from './auth-probe.mjs';
 import { applyKey, keyPlanFor, openCodeKeyProviders, readOpenCodeProviders, removeOpenCodeKey } from './credentials.mjs';
 import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from './vault.mjs';
 import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './config.mjs';
@@ -856,22 +856,48 @@ export async function createPulseServer({
     if (!plan) return { status: 404, body: { error: `No sign-in flow known for ${id}.` } };
     if (!plan.headless) return { status: 409, body: { error: `${agent.label} signs in from its own prompt. Run this in a terminal, then press RECHECK.`, command: plan.display, note: plan.note } };
     if (loggingIn) return { status: 409, body: { error: `A sign-in is already running (${loggingIn}).` } };
+    // A CLI with no sign-in command of its own (Gemini) signs in on its first question: its settings
+    // are set before, and the run is stopped as soon as the credentials are written. It runs in an
+    // empty folder, so that question never sees the project.
+    const flow = typeof plan.flow === 'object' ? plan.flow : plan.flow === 'gemini-google' ? geminiSignIn() : null;
+    let cwd = canonicalProjectRoot;
+    if (flow) {
+      try {
+        await flow.prepare();
+        cwd = await mkdtemp(join(tmpdir(), 'madre-signin-'));
+      } catch (error) {
+        await flow.undo().catch(() => {});
+        return { status: 500, body: { error: `The sign-in could not be prepared: ${error.message}` } };
+      }
+    }
+    const env = { ...process.env, ...(plan.env ?? {}) };
+    for (const name of [...(plan.dropEnv ?? []), ...(plan.ci === false ? ['CI'] : [])]) delete env[name];
     loggingIn = id;
     loginRun = { agent: id, method: plan.method ?? null, command: plan.display, url: null, asksForCode: Boolean(plan.asksForCode), awaitingCode: false, startedAt: Date.now(), child: null };
     await room.record('connection.login.started', { agent: id, command: plan.display, note: plan.note, method: plan.method ?? null });
     void (async () => {
       const lines = [];
+      let consented = false;
+      let finished = false;
+      const watch = flow ? setInterval(async () => {
+        if (finished || !(await flow.signedIn())) return;
+        finished = true;
+        // A moment for the CLI to note which account it was, then the run ends before its question.
+        setTimeout(() => { if (loginRun?.agent === id) loginRun.child?.cancel?.(); }, 1500).unref?.();
+      }, 700) : null;
       const result = await runInstaller({
         command: plan.command,
         args: plan.args,
-        projectRoot: canonicalProjectRoot,
+        projectRoot: cwd,
+        env,
+        ci: plan.ci !== false,
         // A person is in the middle of this: the browser, the account, the code. Five minutes was
         // the installer's clock, and it killed sign-ins that were only waiting on a human.
         timeoutMs: 900000,
         // A CLI that asks for a code needs a way to be answered, and its question never ends in a
         // newline, so the half-line is flushed rather than left sitting in the buffer.
-        stdin: plan.asksForCode ? 'pipe' : 'ignore',
-        flushIdleMs: plan.asksForCode ? 600 : 0,
+        stdin: plan.asksForCode || plan.consent ? 'pipe' : 'ignore',
+        flushIdleMs: plan.asksForCode || plan.consent ? 600 : 0,
         quietNote: 'the sign-in is waiting on you: finish it in the page that opened',
         onChild: (handle) => { if (loginRun?.agent === id) loginRun.child = handle; },
         onLine: (line) => {
@@ -880,12 +906,19 @@ export async function createPulseServer({
           if (loginRun?.agent === id) {
             if (url) loginRun.url = url;
             if (plan.asksForCode && looksLikeCodePrompt(line)) loginRun.awaitingCode = true;
+            // The person already said yes: that was the button they pressed.
+            if (plan.consent && !consented && looksLikeConsentPrompt(line)) { consented = true; loginRun.child?.write?.('y\n'); }
           }
           void room.record('connection.login.output', { agent: id, line: line.slice(0, 500), url });
         },
       });
+      if (watch) clearInterval(watch);
+      if (flow) {
+        if (!finished) await flow.undo().catch(() => {});
+        await rm(cwd, { recursive: true, force: true }).catch(() => {});
+      }
       await refreshSessions();
-      await room.record('connection.login.finished', { agent: id, code: result.code, error: result.error ?? null, session: sessions[id] ?? null, tail: lines.slice(-6) });
+      await room.record('connection.login.finished', { agent: id, code: finished ? 0 : result.code, error: finished ? null : result.error ?? null, session: sessions[id] ?? null, tail: lines.slice(-6) });
       loggingIn = null;
       loginRun = null;
     })();

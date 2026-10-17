@@ -33,9 +33,10 @@ export async function listExtensions({ projectRoot, agents = [], config = {}, im
 // `onChild` hands the caller that way in, and `flushIdleMs` emits a line that never ends in a
 // newline — a prompt like `Paste code here > ` — once the output has been still for that long.
 // Without it the prompt sits in the buffer and the room shows a sign-in that says nothing.
-export function runInstaller({ command, args, projectRoot, onLine, timeoutMs = 600000, heartbeatMs = 8000, env = process.env, stdin = 'ignore', onChild = null, flushIdleMs = 0, quietNote = 'installer is quiet (npm install or git status can take a while)' }) {
+// `ci: false` leaves CI out: Gemini reads it as "no browser here" and will not open one.
+export function runInstaller({ command, args, projectRoot, onLine, timeoutMs = 600000, heartbeatMs = 8000, env = process.env, stdin = 'ignore', onChild = null, flushIdleMs = 0, ci = true, quietNote = 'installer is quiet (npm install or git status can take a while)' }) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', CI: '1' }, stdio: [stdin, 'pipe', 'pipe'], shell: process.platform === 'win32', windowsHide: true });
+    const child = spawn(command, args, { cwd: projectRoot, env: { ...env, NO_COLOR: '1', ...(ci ? { CI: '1' } : {}) }, stdio: [stdin, 'pipe', 'pipe'], shell: process.platform === 'win32', windowsHide: true });
     const started = Date.now();
     let lastOutput = started;
     let buffer = '';

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPulseServer } from '../src/server.mjs';
-import { installPlanFor, loginPlanFor } from '../src/auth-probe.mjs';
+import { geminiSignIn, installPlanFor, loginPlanFor, looksLikeConsentPrompt } from '../src/auth-probe.mjs';
 
 test('the bridge: one runnable install command per agent, and the room knows which sign-ins it can drive', () => {
   assert.deepEqual(installPlanFor({ id: 'codex' }), { package: '@openai/codex', command: 'npm', args: ['install', '-g', '@openai/codex', '--no-fund', '--no-audit'], display: 'npm install -g @openai/codex', fallback: null, alternatives: ['or install the ChatGPT desktop app, which bundles codex'] });
@@ -12,8 +12,100 @@ test('the bridge: one runnable install command per agent, and the room knows whi
   assert.equal(installPlanFor({ id: 'gemini' }).display, 'npm install -g @google/gemini-cli');
   assert.equal(installPlanFor({ id: 'opencode' }).display, 'npm install -g opencode-ai');
   assert.equal(installPlanFor({ id: 'madre' }), null, 'the local agent is not an npm package');
-  assert.deepEqual([loginPlanFor({ id: 'codex' }).headless, loginPlanFor({ id: 'claude' }).headless], [true, true], 'browser flows the room can run');
-  assert.deepEqual([loginPlanFor({ id: 'gemini' }).headless, loginPlanFor({ id: 'opencode' }).headless], [false, false], 'these hand the human their command');
+  assert.deepEqual(['codex', 'claude', 'gemini'].map((id) => loginPlanFor({ id }).headless), [true, true, true], 'browser flows the room can run');
+  assert.equal(loginPlanFor({ id: 'opencode' }).headless, false, 'its own prompt, for anything but a key');
+});
+
+test('the bridge: every sign-in also says how to do it from a terminal, for whoever prefers it', () => {
+  const ways = Object.fromEntries(['codex', 'claude', 'gemini', 'opencode'].map((id) => [id, loginPlanFor({ id, path: `/x/${id}` }).terminal]));
+  assert.deepEqual(Object.fromEntries(Object.entries(ways).map(([id, way]) => [id, way.command])), { codex: 'codex login', claude: 'claude auth login', gemini: 'gemini', opencode: 'opencode auth login' }, 'the command a person would type, never the path MADRE found');
+  assert.match(ways.claude.note, /--console/, 'the second door is said too');
+  assert.match(ways.gemini.note, /\/auth/, 'Gemini signs in from its own prompt in a terminal');
+});
+
+test('the bridge: Gemini signs in with Google from the room, through its own CLI', () => {
+  const plan = loginPlanFor({ id: 'gemini', path: '/x/gemini' });
+  assert.deepEqual([plan.method, plan.args, plan.display], ['google', ['--prompt', 'ok'], 'gemini · Login with Google']);
+  assert.deepEqual([plan.flow, plan.consent, plan.ci, plan.asksForCode], ['gemini-google', true, false, false], 'settings first, its yes/no answered, no CI to stop the browser, no code to paste');
+  assert.deepEqual(plan.dropEnv, ['GEMINI_API_KEY', 'GOOGLE_API_KEY'], 'a key in the environment would win over the account');
+  assert.equal(plan.env.GEMINI_CLI_NO_RELAUNCH, 'true', 'one process, so a cancel stops all of it');
+  assert.ok(looksLikeConsentPrompt('Opening authentication page in your browser. Do you want to continue? [Y/n]: '));
+  assert.ok(!looksLikeConsentPrompt('Paste code here if prompted >'));
+});
+
+test('Gemini\'s Google sign-in sets its settings, signs in anew, and puts everything back if it does not finish', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'pulse-gemini-home-'));
+  try {
+    const dir = join(home, '.gemini');
+    await mkdir(dir, { recursive: true });
+    const before = `${JSON.stringify({ security: { auth: { selectedType: 'gemini-api-key' } }, ui: { theme: 'x' } }, null, 2)}\n`;
+    await writeFile(join(dir, 'settings.json'), before);
+    await writeFile(join(dir, 'oauth_creds.json'), '{"old":true}');
+    const flow = geminiSignIn({ env: { GEMINI_CLI_HOME: home } });
+    await flow.prepare();
+    const during = JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8'));
+    assert.deepEqual([during.security.auth.selectedType, during.ui.theme], ['oauth-personal', 'x'], 'Login with Google selected, nothing else touched');
+    assert.equal(await flow.signedIn(), false, 'the old account is put aside, so the run signs in anew');
+    await flow.undo();
+    assert.equal(await readFile(join(dir, 'settings.json'), 'utf8'), before);
+    assert.equal(await readFile(join(dir, 'oauth_creds.json'), 'utf8'), '{"old":true}', 'the old account is back');
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('the room runs Gemini\'s sign-in end to end: answers its yes, stops it once signed in, outside the project', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-gemini-signin-'));
+  const project = await mkdtemp(join(tmpdir(), 'pulse-gemini-signin-project-'));
+  const home = await mkdtemp(join(tmpdir(), 'pulse-gemini-signin-home-'));
+  const savedKey = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = 'a-key-that-must-not-reach-the-sign-in';
+  // What Gemini does without a terminal: asks yes/no on a line that never ends, then (the browser
+  // and Google, here skipped) writes its credentials and goes on to its question, which never ends.
+  const script = [
+    "const fs = require('fs'); const path = require('path'); const dir = path.join(process.env.GEMINI_CLI_HOME, '.gemini');",
+    "process.stdout.write('\\nOpening authentication page in your browser. Do you want to continue? [Y/n]: ');",
+    "process.stdin.once('data', (answer) => {",
+    "  fs.writeFileSync(path.join(dir, 'seen.json'), JSON.stringify({ answer: String(answer).trim(), ci: process.env.CI ?? null, key: process.env.GEMINI_API_KEY ?? null, cwd: process.cwd() }));",
+    "  fs.writeFileSync(path.join(dir, 'oauth_creds.json'), '{}');",
+    "  setInterval(() => {}, 1000);",
+    "});",
+  ].join('\n');
+  try {
+    const flow = geminiSignIn({ env: { GEMINI_CLI_HOME: home } });
+    const { server, store } = await createPulseServer({
+      projectRoot: project,
+      stateRoot: root,
+      agents: [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x/gemini', version: '1' }],
+      probe: async () => ({ gemini: (await flow.signedIn()) ? { state: 'signed-in', detail: 'via Google account' } : { state: 'signed-out', detail: 'never signed in' } }),
+      loginRunners: { gemini: (agent) => ({ ...loginPlanFor(agent), command: process.execPath, args: ['-e', script], flow, env: { ...loginPlanFor(agent).env, GEMINI_CLI_HOME: home } }) },
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      const started = await fetch(`${base}/api/agents/gemini/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      assert.equal(started.status, 202);
+      let finished = null;
+      for (let attempt = 0; attempt < 240 && !finished; attempt += 1) {
+        finished = (await store.readAll()).find((event) => event.type === 'connection.login.finished');
+        if (!finished) await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.ok(finished, 'the run was not stopped once signed in');
+      assert.deepEqual([finished.payload.code, finished.payload.session.state], [0, 'signed-in'], 'stopped by the room because it finished, not because it failed');
+      const seen = JSON.parse(await readFile(join(home, '.gemini', 'seen.json'), 'utf8'));
+      assert.deepEqual([seen.answer, seen.ci, seen.key], ['y', null, null], 'its yes answered, no CI, no key from the environment');
+      assert.ok(!seen.cwd.startsWith(project) && !seen.cwd.startsWith(await realpath(project)), 'its question never runs in the project');
+      const settings = JSON.parse(await readFile(join(home, '.gemini', 'settings.json'), 'utf8'));
+      assert.equal(settings.security.auth.selectedType, 'oauth-personal', 'it stays signed in with Google');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
+    if (savedKey === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = savedKey;
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(home, { recursive: true, force: true });
+  }
 });
 
 test('the bridge: every door a CLI has, not only the first — Claude sells two accounts', () => {

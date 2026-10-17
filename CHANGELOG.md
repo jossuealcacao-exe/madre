@@ -6,6 +6,9 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.3 · Sin publicar
 
+- **Gemini se conecta con tu cuenta de Google, sin terminal.** En Ajustes › Agentes y en Inicio, Gemini tiene ahora el botón «Cuenta de Google», igual que Codex y Claude: abre tu navegador, eliges tu cuenta y queda conectado con su plan gratuito. Antes había que abrir una terminal, correr `gemini` y escribir /auth. Todo pasa por el CLI oficial de Google y MADRE no lee ni guarda tu sesión. Si cancelas, Gemini queda como estaba. Con la sesión ya iniciada, cada agente muestra un solo «Iniciar sesión otra vez», como Codex; en Claude eliges la cuenta (suscripción o Anthropic Console) después del clic.
+- **La terminal, como segunda opción y nunca obligatoria.** Debajo de cada agente, «¿Prefieres tu terminal?» despliega el mismo paso (instalar o iniciar sesión) escrito como comando, con su botón para copiarlo. Los botones de MADRE siguen siendo el camino principal, y la tarjeta de un agente sin instalar ya no muestra el comando de npm en su primera línea.
+
 ## 1.0.2 · 2026-10-16
 
 **Licencia nueva.** Desde 1.0.2, MADRE es software libre bajo la **GNU AGPL v3** con [términos adicionales](ADDITIONAL-TERMS.md) según su sección 7: cualquiera puede usarlo, estudiarlo, modificarlo y hacer forks, también con fines comerciales, siempre que su versión siga abierta con la misma licencia y mantenga visible la autoría —«MADRE ‹versión› · © 2026 Jossue Alcalá» en la esquina de cada proyecto y de Inicio, con enlace a jossuealcala.com, o «Desarrollado con MADRE de Jossue Alcalá» si lleva otro nombre—. Ajustes › Actualizaciones y errores › **Licencia y autoría** dice todo esto en la app. Hasta la 1.0.1, MADRE se publicó con licencia Apache 2.0, y esas versiones la conservan.

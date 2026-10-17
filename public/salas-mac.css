@@ -633,6 +633,14 @@ body.sm-in-macro { overflow: hidden; }
 .sm-agent-key-link { font-size: 12.5px; color: var(--s-acc); text-decoration: none; }
 .sm-agent-key-link:hover { text-decoration: underline; }
 .sm-agent-command { grid-column: 1 / -1; font-family: var(--mono); font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+/* The other way in, folded: the same install or sign-in typed in a terminal, for whoever prefers it. */
+.sm-terminal-way > summary { width: max-content; font-size: 12.5px; color: var(--text-3); cursor: pointer; list-style: none; }
+.sm-terminal-way > summary::-webkit-details-marker { display: none; }
+.sm-terminal-way > summary::after { content: ' ›'; }
+.sm-terminal-way[open] > summary::after { content: ' ⌄'; }
+.sm-terminal-way > summary:hover { color: var(--text-2); }
+.sm-terminal-way[open] { display: grid; gap: 8px; justify-items: start; }
+.sm-terminal-lines { display: grid; gap: 4px; justify-self: stretch; padding: 10px 12px; border-radius: 10px; box-shadow: var(--key-track); }
 
 /* LINKING TWO ROOMS, step by step (salas-mac.js, openLinkSheet), in the room's settings language:
    the step and its question, what it decides; the choices on a card, a row each, the safe one

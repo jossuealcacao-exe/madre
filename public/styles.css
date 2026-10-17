@@ -2488,6 +2488,14 @@ dialog.intents-window { width: 760px; height: 640px; }
 .bridge-card .actions .note { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
 .bridge-log { margin: 0; max-height: 140px; overflow-y: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.55; color: var(--text-2); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
 .bridge-log a { color: var(--phosphor); }
+/* The other way in, folded under the buttons: the same install or sign-in typed in a terminal.
+   A quiet line until someone asks for it; the room's own buttons stay the way forward. */
+.terminal-way > summary { width: max-content; font-size: 11.5px; color: var(--text-3); cursor: pointer; list-style: none; }
+.terminal-way > summary::-webkit-details-marker { display: none; }
+.terminal-way > summary::after { content: ' ›'; }
+.terminal-way[open] > summary::after { content: ' ⌄'; }
+.terminal-way > summary:hover { color: var(--text-2); }
+.terminal-way .mother-cmd { margin: 8px 0 0; }
 
 .bridge-card .account { font-size: 11px; line-height: 1.5; color: var(--text-3); }
 .bridge-card .account .free { font-family: var(--mono); font-size: 8.5px; letter-spacing: .16em; color: var(--phosphor); border: 1px solid color-mix(in srgb, var(--phosphor) 45%, transparent); border-radius: 999px; padding: 2px 7px; margin-right: 8px; }

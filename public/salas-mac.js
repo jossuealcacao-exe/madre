@@ -286,6 +286,28 @@ function button(className, words, onClick) {
   return node;
 }
 
+// The other way in for a connection: what the room does, typed in a terminal. Folded, so whoever
+// has never opened one is never asked to; a comment line is said, the rest is what gets copied.
+// The panel repaints every few seconds: which folds are open is kept here, so one never closes on
+// the person reading it. So is which agent is choosing the account to sign in again with.
+const openWays = new Set();
+const choosingAccount = new Set();
+function terminalWay(lines, key) {
+  const fold = el('details', 'sm-terminal-way');
+  fold.open = openWays.has(key);
+  fold.addEventListener('toggle', () => { if (fold.open) openWays.add(key); else openWays.delete(key); });
+  fold.append(el('summary', null, t('Prefer your terminal?')));
+  const block = el('div', 'sm-terminal-lines');
+  for (const line of lines) block.append(line.startsWith('#') ? el('small', 'sm-agent-note', line.slice(1).trim()) : el('code', 'sm-agent-command', line));
+  const runnable = lines.filter((line) => !line.startsWith('#'));
+  const copy = button('sm-btn small', t('Copy'), async () => {
+    try { await navigator.clipboard.writeText(runnable.join('\n')); copy.textContent = t('Copied'); setTimeout(() => { copy.textContent = t('Copy'); }, 1500); }
+    catch { copy.textContent = t('Select it'); }
+  });
+  fold.append(block, copy);
+  return fold;
+}
+
 function card(room) {
   const glance = room.glance ?? {};
   const state = stateOf(room);
@@ -3682,10 +3704,19 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       // One button per account the CLI can sign in with: Claude has two, and only the human can
       // say which one is paying.
       const doorKeys = () => {
-        const doors = agent.login?.methods?.length ? agent.login.methods : [{ id: null, label: null, note: agent.login?.note }];
+        // With a session, every agent offers the same «sign in again» as Codex. A single door
+        // (Gemini's Google account) is that door; two doors (Claude's subscription and Console)
+        // are chosen after the click.
+        const methods = agent.login?.methods ?? [];
+        const choosing = choosingAccount.has(agent.id);
+        const doors = !state.ok ? (methods.length ? methods : [{ id: null, label: null, note: agent.login?.note }])
+          : methods.length > 1 && choosing ? methods
+            : [{ id: methods.length === 1 ? methods[0].id : null, label: null, note: methods.length === 1 ? methods[0].note : agent.login?.note, choose: methods.length > 1 }];
         return doors.map((door) => {
           const name = door.label ? t(door.label) : state.ok ? t('Sign in again') : t('Sign in');
-          const key = button(`sm-btn ${state.ok ? '' : 'primary'} small`, name, async (event) => {
+          const key = button(`sm-btn ${state.ok && !choosing ? '' : 'primary'} small`, name, async (event) => {
+            if (door.choose) { choosingAccount.add(agent.id); void paint(); return; }
+            choosingAccount.delete(agent.id);
             event.currentTarget.disabled = true;
             await post(`/api/agents/${agent.id}/login`, { method: door.id });
             void paint();
@@ -3704,8 +3735,11 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       if (ask) body.append(ask);
       // A key, pasted here; OpenCode's are its providers', in the block below.
       if (agent.detected && agent.key && agent.id !== 'opencode') body.append(keyForm(agent));
-      // A CLI that signs in from its own prompt gets the command, until it has a session.
-      if (agent.detected && agent.login && !agent.login.headless && !state.ok) body.append(el('code', 'sm-agent-command', agent.login.display));
+      // The same install or sign-in typed in a terminal, folded for whoever prefers it. Signed in,
+      // OpenCode's providers are added in the block below; its terminal is for a first sign-in.
+      const way = !agent.detected ? agent.install && [agent.install.display, ...(agent.install.alternatives ?? []).map((line) => `# ${t(line)}`)]
+        : agent.login?.terminal && !(agent.id === 'opencode' && state.ok) ? [agent.login.terminal.command, ...(agent.login.terminal.note ? [`# ${t(agent.login.terminal.note)}`] : [])] : null;
+      if (way && !state.busyNow) body.append(terminalWay(way, agent.id));
       if (agent.id === 'opencode' && agent.detected) body.append(openCodeProviders.node());
       item.append(body);
       list.append(item);
