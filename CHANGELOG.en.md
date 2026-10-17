@@ -4,7 +4,9 @@ Every published version of `@jossuealcala/madre`. Dates in ISO format.
 
 A version closes when it is on npm: until then its section is called **Unreleased** and it can keep growing. Each published version has exactly one `vX.Y.Z` tag, one GitHub release and one section here; the patch number can reach two digits (`0.2.10`) before the minor goes up. See `docs/ROADMAP.md` for the criteria on what bumps each number. This is the English translation of [CHANGELOG.md](CHANGELOG.md); the Spanish file is the original.
 
-## 1.0.3 · Unreleased
+## 1.0.4 · Unreleased
+
+## 1.0.3 · 2026-10-17
 
 - **A code workspace beside the conversation.** The new `CODE` key in the bar opens your files next to the conversation, without leaving it: the project's list with its search, tabs for what you have open and, above the code, the path and the function you are in. ⌘P (Ctrl+P outside macOS) opens any file by its name. Switching tabs never loses what you wrote: the draft stays in its tab, with a dot, until you save or discard it, and the tabs are still there when you come back to the project. In bars you had already arranged, `CODE` shows up next to Agents.
   - **What an agent changed, in its colour.** After a #3 EDIT turn, the lines the agent changed are marked in its colour, and each change comes with three buttons: **Keep**, **Undo** (those lines only; the rest of the turn stays) and **Ask why**, which asks it in the conversation. Above the code, "@claude · 2 changes to review" takes you from one to the next. If you take the whole turn back with UNDO, or rewrite those lines yourself, they stop being marked.

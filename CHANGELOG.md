@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.0.3 · Sin publicar
+## 1.0.4 · Sin publicar
+
+## 1.0.3 · 2026-10-17
 
 - **Un espacio de código junto a la conversación.** La tecla nueva `CÓDIGO` de la barra abre tus archivos a un lado de la conversación, sin dejarla: la lista del proyecto con su buscador, pestañas para lo que tienes abierto y, sobre el código, la ruta y la función donde estás. ⌘P (Ctrl+P fuera de macOS) abre cualquier archivo por su nombre. Cambiar de pestaña no pierde lo que escribiste: el borrador se queda en su pestaña, con un punto, hasta que guardas o descartas, y las pestañas siguen ahí cuando vuelves al proyecto. En las barras que ya tenías acomodadas, `CÓDIGO` aparece junto a Agentes.
   - **Lo que cambió un agente, en su color.** Después de un turno en #3 EDITAR, las líneas que cambió el agente quedan marcadas con su color, y cada cambio trae tres botones: **Conservar**, **Deshacer** (solo esas líneas; lo demás del turno se queda) y **Preguntar por qué**, que se lo pregunta en la conversación. Arriba del código, «@claude · 2 cambios por revisar» te lleva de uno a otro. Si deshaces el turno completo con DESHACER, o reescribes tú esas líneas, dejan de marcarse.
