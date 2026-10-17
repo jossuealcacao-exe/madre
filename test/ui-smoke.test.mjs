@@ -404,7 +404,7 @@ test('the bar is yours: a right-click opens it, − takes a key off, a tile puts
   // ordinary room does not offer it, so it never reaches its bar.
   // On the Mac, Salas (a house), reload and AJUSTES live in the second bar (2026-10-09): they are not
   // keys of this one, and the card never offers them.
-  const shipped = ['crew', 'modules', 'mother', 'nostromo', 'servers', 'finder', 'phone'];
+  const shipped = ['crew', 'code', 'modules', 'mother', 'nostromo', 'servers', 'finder', 'phone'];
   const onBar = () => bar.children.filter((node) => node instanceof FakeElement && node.dataset.barItem && !node.classList.contains('bar-off')).map((node) => node.dataset.barItem);
   assert.deepEqual(kit.order, shipped, 'the bar does not ship as it was');
   assert.ok(!kit.catalogue().includes('macroverso'), 'an ordinary room offers the MACROVERSO key');

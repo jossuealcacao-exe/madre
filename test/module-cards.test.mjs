@@ -149,7 +149,9 @@ test('a fold inside a card is not one of MU/TH/UR\'s sections, and carries its o
   assert.ok(!fold.includes("el('details', 'fold')"));
 
   // It says what clicking it will do, and it remembers being left open, like every other fold.
-  assert.match(fold, /caret\.textContent = box\.open \? t\('▾ COLLAPSE'\) : t\('▸ EXPAND'\)/);
+  // Its words say it; the sign before them is drawn (the chooser's chevron, turned by the fold's state).
+  assert.match(fold, /said\.textContent = \(box\.open \? t\('▾ COLLAPSE'\) : t\('▸ EXPAND'\)\)\.replace\(/);
+  assert.match(fold, /turn\.innerHTML = ICON_CHEVRON;/);
   assert.match(fold, /rememberFold\(key, box\.open\)/);
   assert.match(css, /\.card-fold > summary \.caret \{/);
 });

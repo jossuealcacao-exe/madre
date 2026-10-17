@@ -33,6 +33,7 @@ body.salas-mac {
 :root[data-wallpaper="tropical"] .sm-sky { background: var(--wp-tropical); }
 :root[data-wallpaper="tradicion"] .sm-sky { background: var(--wp-tradicion); }
 :root[data-wallpaper="urbania"] .sm-sky { background: var(--wp-urbania); }
+:root[data-wallpaper="custom"] .sm-sky { background: var(--wp-custom); }
 :root[data-wallpaper] .sm-sky { inset: calc(-2 * var(--wp-blur-on, 0px)); filter: blur(var(--wp-blur-on, 0px)); }
 :root[data-wallpaper] .sm-sky::after { display: none; }
 :root:not([data-scheme="light"]) .sm-sky::after {
@@ -56,7 +57,7 @@ body.salas-mac {
 .sm-brand { display: inline-flex; align-items: center; flex: none; color: var(--text); border-radius: 8px; padding: 4px 2px; }
 .sm-brand .brand-logo { height: 15px; }
 .sm-back-room { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 26px; padding: 0 9px 0 5px; border-radius: 6px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); color: var(--text-2); font-weight: 600; text-decoration: none; }
-.sm-back-room svg { width: 14px; height: 14px; }
+.sm-back-room svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-back-room:hover { color: var(--text); box-shadow: var(--key-over, var(--key-rest)); }
 .sm-crumb { flex: none; font-weight: 600; color: var(--text); }
 .sm-crumb::before { content: '/ '; color: var(--text-3); font-weight: 400; }
@@ -118,7 +119,7 @@ body.salas-mac {
 .sm-spacer { flex: 1; }
 /* The bar's keys are the room's bar keys (styles.css, .mother-button, .tree-button, .stop-all). */
 .sm-barkey, .sm-stop { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
-.sm-barkey svg, .sm-stop svg { width: 14px; height: 14px; }
+.sm-barkey svg, .sm-stop svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-stop { box-shadow: inset 0 0 0 1px var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); }
 .sm-stop:hover, .sm-stop.armed { background: var(--terror); color: #fff; }
 /* Whatever the page hides stays hidden, whatever its class lays out. */
@@ -131,7 +132,7 @@ body.salas-mac {
 .sm-icon-key:hover { color: var(--text); box-shadow: var(--key-over, var(--key-rest)); }
 .sm-icon-key:active { box-shadow: var(--key-down); }
 .sm-icon-key:focus-visible { outline: 2px solid color-mix(in srgb, var(--s-acc) 70%, transparent); outline-offset: 2px; }
-.sm-icon-key svg { width: 16px; height: 16px; }
+.sm-icon-key svg { width: var(--ico-sm); height: var(--ico-sm); }
 /* A link that cannot be followed yet (BISHOP waking) looks and acts like a disabled key. */
 .sm-btn[aria-disabled="true"], .sm-icon-key[aria-disabled="true"] { opacity: .45; box-shadow: none; pointer-events: none; }
 
@@ -417,7 +418,7 @@ body.sm-in-macro { overflow: hidden; }
 .mv-head { position: absolute; left: 0; right: 0; top: 0; z-index: 2; margin: 0; }
 .mv-head .mother-title { margin: 0; text-transform: uppercase; }
 .mv-back { display: inline-flex; align-items: center; gap: 6px; }
-.mv-back svg { width: 13px; height: 13px; flex: none; }
+.mv-back svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 .mv-hint { position: absolute; left: 20px; bottom: 14px; margin: 0; font-size: 11.5px; color: rgba(242, 241, 238, .42); pointer-events: none; }
 
 .mv-card { position: absolute; right: 40px; top: 50%; translate: 0 -50%; width: min(360px, 34vw); display: grid; gap: 10px; padding: 22px 22px 18px; border-radius: 22px; background: rgba(18, 18, 22, .78); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 30px 60px -30px rgba(0, 0, 0, .9); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); animation: mv-card-in 420ms var(--ease-out, ease-out); }
@@ -551,7 +552,7 @@ body.sm-in-macro { overflow: hidden; }
 .sm-picker-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-where { min-width: 0; font-family: var(--mono); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-up { flex: none; gap: 4px; padding: 0 10px 0 6px; }
-.sm-up svg { width: 14px; height: 14px; }
+.sm-up svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-fold-grid { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 4), 54px); gap: 8px; }
 .sm-fold-grid > .sm-fold { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; min-width: 0; padding: 0 8px 0 12px; border-radius: 12px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); font-size: inherit; font-weight: inherit; letter-spacing: 0; text-transform: none; color: var(--text); cursor: pointer; transition: box-shadow calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease-out), background-color calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
 .sm-fold-grid > .sm-fold:hover { box-shadow: var(--key-over, var(--key-rest)); }
@@ -571,7 +572,7 @@ body.sm-in-macro { overflow: hidden; }
 .sm-fold-words b { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-fold-words small { font-family: var(--mono); font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-into { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); cursor: pointer; }
-.sm-into svg { width: 14px; height: 14px; }
+.sm-into svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-into:hover, .sm-into:focus-visible { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); outline: 0; }
 .sm-fold-none { grid-column: 1 / -1; grid-row: 1 / -1; align-self: center; justify-self: center; max-width: 46ch; margin: 0; text-align: center; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 .sm-picker-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-height: 30px; }
@@ -681,7 +682,7 @@ body.sm-in-macro { overflow: hidden; }
 .lw-allows li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; color: var(--text); }
 .lw-allows li.no { color: var(--text-2); }
 .lw-allows li i { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: 0; border-radius: 50%; }
-.lw-allows li i svg { width: 12px; height: 12px; }
+.lw-allows li i svg { width: var(--ico-xs); height: var(--ico-xs); }
 .lw-allows li.yes i { color: color-mix(in srgb, var(--s-acc) 78%, var(--text)); background: color-mix(in srgb, var(--s-acc) 16%, transparent); }
 .lw-allows li.no i { color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); }
 /* Two projects already connected: how, and where to change it, in place of a new connection. */
@@ -799,14 +800,14 @@ dialog.sm-sheet.sm-settings[open] { --sm-sheet-pad: 20px; }
 /* A project's right-click: the bar card's material, a row per thing it can do. */
 .bar-card.sm-menu { width: auto; min-width: 214px; padding: 6px; display: grid; gap: 2px; }
 .sm-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); font-family: var(--read); font-size: 13px; text-align: left; cursor: pointer; }
-.sm-menu-item svg { flex: none; width: 16px; height: 16px; color: var(--phosphor); }
+.sm-menu-item svg { flex: none; width: var(--ico-sm); height: var(--ico-sm); color: var(--phosphor); }
 .sm-menu-item:hover, .sm-menu-item:focus-visible { background: color-mix(in srgb, var(--text) 7%, transparent); outline: none; }
 .sm-menu-item.danger, .sm-menu-item.danger svg { color: var(--danger, var(--terror)); }
 .sm-menu-sep { display: block; height: 1px; margin: 4px 8px; background: var(--line); }
 /* The card's own key for that menu, for whoever does not right-click: quiet until the card is
    under the pointer. */
 .sm-card-more { flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin: -4px -6px -4px 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); opacity: .7; cursor: pointer; transition: opacity calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease-out), background-color calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.sm-card-more svg { width: 16px; height: 16px; }
+.sm-card-more svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-card:hover .sm-card-more, .sm-card-more:focus-visible { opacity: 1; }
 .sm-card-more:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
 .sm-card-more:focus-visible { outline: 2px solid color-mix(in srgb, var(--s-acc) 70%, transparent); outline-offset: 2px; }
@@ -850,7 +851,7 @@ dialog.sm-sheet.sm-settings[open] { --sm-sheet-pad: 20px; }
 :root[data-home-text="smaller"] .sm-main { zoom: .93; }
 /* A newer MADRE in the bar: a key now, that opens Home's Version. */
 button.sm-pill { border: 0; cursor: pointer; }
-.sm-pill.is-update svg { width: 14px; height: 14px; flex: none; }
+.sm-pill.is-update svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
 .sm-pill.is-update:hover { background: color-mix(in srgb, var(--session-wait) 28%, transparent); }
 .sm-pill.is-update:focus-visible { outline: 2px solid color-mix(in srgb, var(--s-acc) 70%, transparent); outline-offset: 2px; }
 /* A project's name inside the wizard's sentences stands out (salas-mac.js, sayBold). */
@@ -905,13 +906,13 @@ dialog.sm-sheet.sm-add-sheet { --sm-sheet-w: 560px; }
 .sm-w-foot.mono { font-family: var(--mono); font-size: 11px !important; overflow-wrap: anywhere; }
 /* What a tile is, in the accent: on its row of «Add to Home» and at the head of its menu. */
 .sm-tile-icon { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--s-acc) 14%, transparent); color: color-mix(in srgb, var(--s-acc) 82%, var(--text)); }
-.sm-tile-icon svg { width: 20px; height: 20px; }
+.sm-tile-icon svg { width: var(--ico-md); height: var(--ico-md); }
 .sm-add-row { justify-content: flex-start; }
 .sm-add-row .sm-add-words { flex: 1; }
 .sm-add-sheet .sm-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sm-menu-head { display: flex; align-items: center; gap: 8px; }
 .sm-menu-head .sm-tile-icon { width: 22px; height: 22px; border-radius: 6px; }
-.sm-menu-head .sm-tile-icon svg { width: 14px; height: 14px; }
+.sm-menu-head .sm-tile-icon svg { width: var(--ico-xs); height: var(--ico-xs); }
 .salas-mac .sm-menu-item svg { color: var(--s-acc); }
 
 /* THE MAP, INTERACTIVE (2026-10-13): a project under the pointer, or chosen, lights its own lines
@@ -953,7 +954,7 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 .sm-graph-quiet { font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
 /* The order of the projects, beside the filter that chooses which of them show. */
 .sm-order { flex: none; gap: 6px; height: 36px; padding: 0 12px; }
-.sm-order svg { width: 16px; height: 16px; color: var(--s-acc); }
+.sm-order svg { width: var(--ico-sm); height: var(--ico-sm); color: var(--s-acc); }
 .sm-menu-head + .sm-menu-item { margin-top: 2px; }
 .sm-menu .sm-menu-head:last-child { max-width: 240px; padding-bottom: 8px; font-size: 11.5px; font-weight: 450; letter-spacing: 0; text-transform: none; line-height: 1.4; }
 
@@ -1084,6 +1085,7 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 :root[data-wallpaper="urbania"] { --wp-now: var(--wp-urbania); }
 :root[data-wallpaper="ventura"] { --wp-now: var(--wp-ventura); }
 :root[data-wallpaper="xico"] { --wp-now: var(--wp-xico); }
+:root[data-wallpaper="custom"] { --wp-now: var(--wp-custom); }
 .sm-drawer .sm-projects > .sm-card { isolation: isolate; overflow: hidden; }
 .sm-drawer .sm-projects > .sm-card:is([data-wp], :root[data-wallpaper] .sm-card)::before {
   content: ''; position: absolute; inset: -24px; z-index: -2; pointer-events: none;
@@ -1139,6 +1141,7 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 .sm-card[data-wp="jarrito"] { --wp-card: var(--wp-jarrito); --wp-size: cover; }
 .sm-card[data-wp="magna"] { --wp-card: var(--wp-magna); --wp-size: cover; }
 .sm-card[data-wp="oceano"] { --wp-card: var(--wp-oceano); --wp-size: cover; }
+.sm-card[data-wp="custom"] { --wp-card: var(--wp-custom); --wp-size: cover; }
 .sm-card[data-wp="paradise"] { --wp-card: var(--wp-paradise); --wp-size: cover; }
 .sm-card[data-wp="quila"] { --wp-card: var(--wp-quila); --wp-size: cover; }
 .sm-card[data-wp="tradicion"] { --wp-card: var(--wp-tradicion); --wp-size: cover; }
@@ -1306,3 +1309,13 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
    modal is when it opens), the browser drew its ring around the whole page. Focus moves to what is
    inside it; the dialog itself draws no ring. */
 dialog.sm-sheet:focus, dialog.sm-sheet:focus-visible { outline: none; }
+
+/* 1.0.3 (2026-10-17) · Connections and the Project map lift less under the pointer, as Modules and
+   Diagnostics do in a project. The widgets key pulses once under the pointer, and its squares fill
+   while the sheet it opens is there. */
+.salas-mac :is(#sm-tb-links, #sm-macro):is(:hover, :focus-visible) { box-shadow: var(--key-rest), 0 3px 8px -5px var(--key-lift, rgba(22, 30, 22, .16)); }
+#sm-add-widgets:is(:hover, :focus-visible) svg { animation: icon-pulse calc(520ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-add-widgets svg rect { fill: currentColor; fill-opacity: 0; transition: fill-opacity calc(200ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-add-widgets:active svg rect, #sm-add-widgets.filled svg rect { fill-opacity: 1; }
+@keyframes icon-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.16); } 70% { transform: scale(.95); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { #sm-add-widgets:is(:hover, :focus-visible) svg { animation: none; } }

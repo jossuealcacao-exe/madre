@@ -399,7 +399,7 @@ test('bar: right-click opens it for editing, AJUSTES stays last, and the choice 
   // The ids are stable: they are what the browser keeps.
   assert.match(app, /const BAR_KEY = 'pulse\.barItems';/);
   assert.match(app, /const BAR_FIXED = 'settings';/);
-  assert.match(app, /const BAR_DEFAULT = \['salas', 'macroverso', 'crew', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'\];/);
+  assert.match(app, /const BAR_DEFAULT = \['salas', 'macroverso', 'crew', 'code', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'\];/);
   assert.match(app, /crew: \{ nodes: \['#agents', '#agents-compact'\]/, 'the crew is not one key with two forms');
   // Read with a guard, written with a guard: a private window still gets a bar.
   assert.match(app, /function barStored\(\) \{[\s\S]*?try \{\n    const raw = JSON\.parse\(localStorage\.getItem\(BAR_KEY\) \?\? 'null'\);[\s\S]*?\} catch \{[^}]*\}\n  return \[\.\.\.BAR_DEFAULT\];/);

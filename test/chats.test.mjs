@@ -394,7 +394,7 @@ test('room: no question is left to the browser\'s grey box, and every one is ask
   // The safe answer is the one a stray Enter lands on.
   assert.match(app, /\{ value: 'stay', label: t\('KEEP EDITING'\), focus: true \}/);
   // Leaving unsaved work waits for the answer instead of reading a synchronous yes or no.
-  assert.match(app, /async function leaveEditor\(\{ ask = true \} = \{\}\)/);
+  assert.match(app, /async function leaveEditor\(\{ ask = true, stash = false \} = \{\}\)/);
   assert.match(app, /if \(!await leaveEditor\(\)\) return;/);
 });
 

@@ -9,6 +9,7 @@ import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pic
 import { createEditor } from './editor.js';
 import { labelPowerKey, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
+import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
@@ -24,6 +25,7 @@ let welcomeKept;
 const welcomeDone = () => welcomeKept !== undefined && (welcomeKept === null || Boolean(welcomeKept.finished));
 import { LOADER_MARK, creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
+import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, PITCH_LIMIT, TURN_PER_PIXEL, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, rawActivity, travels } from './nostromo-engine.js';
 
 // The window split in two. The right half is this same page loaded with `?pane=split&chat=<id>`:
@@ -87,6 +89,13 @@ if (SPLIT_CHAT) {
 let motionScale = null;
 // The chooser's chevron: one drawing for every menu that opens downward, in the same round line.
 const ICON_CHEVRON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// The panels' drawings: a panel at the left, a panel at the right, and the code workspace's side
+// by side. Declared this early because the code workspace is built while the page loads.
+const SPLIT_LEFT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect class="ic-h" x="5" y="6" width="3.6" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10.6 6.4v7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const SPLIT_RIGHT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect class="ic-h" x="11.4" y="6" width="3.6" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9.4 6.4v7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// Side by side in the code workspace: the text on the left in lines, what it makes on the right.
+// Not the window's split (two empty halves), which stands two keys further along the same header.
+const BESIDE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 3.75v12.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.2 7.6h2.4M5.2 10h1.6M5.2 12.4h2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="11.9" y="8.1" width="3.4" height="3.8" rx="1" fill="currentColor"/></svg>';
 function chevron(className = 'chev') {
   const mark = el('span', `${className} chev-icon`);
   mark.innerHTML = ICON_CHEVRON;
@@ -342,12 +351,45 @@ function touchedUnder(dir) {
 
 /* ---------- helpers ---------- */
 
+// The signs a key's words may end in, drawn by tailMark (below).
+const TAIL_MARK = /\s*[↗▾]\s*$/;
+const OUT_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.2 10.8 10.6 5.4M6.4 5.2h4.4v4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
+  if ((tag === 'a' || tag === 'button') && typeof text === 'string' && TAIL_MARK.test(text)) tailMark(node);
   return node;
 };
+
+// A key or a link whose words end in ↗ goes somewhere outside the room, and one that ends in ▾
+// opens a menu (1.0.3): the sign is drawn, at the size of a mark, and the words stay as they are
+// (the catalogue keeps the sign, so a translation never loses it). The page's own markup goes
+// through the same after it is translated, the way its × does.
+function tailMark(node) {
+  const last = [...(node?.childNodes ?? [])].reverse().find((one) => one.nodeType === 3 && one.nodeValue.trim());
+  const sign = last?.nodeValue.match(TAIL_MARK)?.[0]?.trim();
+  if (!sign) return node;
+  last.nodeValue = last.nodeValue.replace(TAIL_MARK, ' ');
+  const mark = document.createElement('span');
+  mark.className = sign === '↗' ? 'tail-mark out' : 'tail-mark menu';
+  mark.innerHTML = sign === '↗' ? OUT_ICON : ICON_CHEVRON; // trusted: our own SVG strings
+  node.append(mark);
+  return node;
+}
+
+// A label that opens with ◉ (still open here, decided here, memory saved): the ring and its dot are
+// drawn at the size of a mark, the words after them as written.
+const LEAD_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.1" fill="currentColor"/></svg>';
+function leadWords(tag, className, said) {
+  const node = el(tag, className);
+  const words = String(said ?? '').replace(/^◉\s*/u, '');
+  if (words === said) { node.textContent = said; return node; }
+  const mark = el('span', 'lead-mark');
+  mark.innerHTML = LEAD_ICON; // trusted: our own SVG string
+  node.append(mark, words);
+  return node;
+}
 
 // Every way to close something closes the same way: one × drawn as a line, not a letter, that
 // turns a quarter and thickens under the pointer — the one the conversations panel already had.
@@ -817,6 +859,7 @@ function paintSelection() {
   // Nobody guesses that a line number is clickable: while nothing is picked, the status line says how.
   if (viewerUI.hintSelect) viewerUI.hintSelect.hidden = has || !viewerUI.lineNodes.length;
   if (has) viewerUI.selection.textContent = runs.map(([lo, hi]) => (lo === hi ? `L${lo}` : `L${lo}–${hi}`)).join(', ');
+  if (has) paintCodeCrumbs(runs[0][0]);
 }
 function setSelection(from, to) {
   viewerUI.picked = new Set();
@@ -904,6 +947,14 @@ function showViewerMenu(x, y) {
 function hideViewerMenu() { try { viewerUI.menu.hidePopover?.(); } catch { /* not open */ } viewerUI.menu.hidden = true; }
 viewerUI.review?.addEventListener('click', (event) => {
   const rect = event.currentTarget.getBoundingClientRect();
+  // One run of lines picked in a file of the project: the same card the editor opens, with its
+  // verbs. Several runs, or a file from elsewhere, keep the list of agents.
+  const runs = pickedRuns();
+  if (runs.length === 1 && viewerUI.path && viewerMode.editable) {
+    const [from, to] = runs[0];
+    askAboutCode({ from, to, text: String(viewerMode.text).split('\n').slice(from - 1, to).join('\n'), anchor: rect, dirty: false });
+    return;
+  }
   if (viewerUI.menu.hidden) showViewerMenu(rect.left, rect.bottom + 6); else hideViewerMenu();
 });
 document.addEventListener('click', (event) => { if (viewerUI.menu && !viewerUI.menu.hidden && !viewerUI.menu.contains(event.target) && !viewerUI.review?.contains(event.target)) hideViewerMenu(); });
@@ -1110,7 +1161,7 @@ function closeAskCard() {
   done?.();
 }
 const ASK_OWN_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.7 4.5a1.95 1.95 0 0 1 2.8 2.8l-8.3 8.3-3.6.9.9-3.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 5.7l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = null }) {
+function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = null, actions = [] }) {
   closeAskCard();
   askCardClose = onClose;
   const ready = [...state.agents.values()].filter((agent) => agent.ready);
@@ -1134,6 +1185,18 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
     crew.append(pick);
   }
   askCard.append(crew);
+  // What is done most with code, one press each: the verb on the chip, the whole request behind it.
+  if (actions.length) {
+    const row = el('div', 'ask-actions');
+    for (const [label, prompt] of actions) {
+      const chip = el('button', 'ask-action', t(label));
+      chip.type = 'button';
+      chip.title = t(prompt);
+      chip.addEventListener('click', () => ask(t(prompt)));
+      row.append(chip);
+    }
+    askCard.append(row);
+  }
   const group = (title, items) => {
     const box = el('div', 'ask-group');
     box.append(el('div', 'ask-group-title', title));
@@ -1145,7 +1208,9 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
     }
     return box;
   };
-  askCard.append(group(t('SUGGESTED FOR THIS'), suggestions));
+  const taken = new Set(actions.map(([, prompt]) => t(prompt)));
+  const rest = suggestions.filter((words) => !taken.has(words));
+  if (rest.length) askCard.append(group(t('SUGGESTED FOR THIS'), rest));
   // What the archive holds about it, when the archive is open: asked once, added when it answers.
   const remembered = el('div', 'ask-remembered');
   askCard.append(remembered);
@@ -1244,9 +1309,13 @@ const askLeaveEdits = () => roomAsk({
   body: t('There are unsaved changes in this file. Discard them?'),
   choices: [{ value: 'stay', label: t('KEEP EDITING'), focus: true }, { value: 'leave', label: t('DISCARD THEM'), tone: 'danger' }],
 });
-async function leaveEditor({ ask = true } = {}) {
+// `stash`: in the code workspace a file left with unsaved changes keeps them in its tab, the way
+// every editor's tabs do, instead of asking; its tab wears the dot until it is saved or discarded.
+async function leaveEditor({ ask = true, stash = false } = {}) {
   if (!editing.editor) return true;
-  if (ask && editorDirty() && await askLeaveEdits() !== 'leave') return false;
+  const tab = stash && viewerUI.path ? codeTab(viewerUI.path) : null;
+  if (tab) { tab.draft = editorDirty() ? editing.editor.value() : null; tab.mtime = viewerMode.mtime; }
+  else if (ask && editorDirty() && await askLeaveEdits() !== 'leave') return false;
   editing.editor.destroy();
   editing.editor = null;
   viewer.dialog.classList.remove('editing');
@@ -1282,11 +1351,11 @@ function syncEditButton() {
   if (!viewer.dialog || !viewer.body) return;
   const bar = el('div', 'viewer-status');
   const mod = /Mac|iPhone|iPad/.test(navigator.platform ?? '') ? '⌘' : 'Ctrl';
-  if (viewerUI.hintSelect) viewerUI.hintSelect.textContent = t('Click a number to pick a line · drag to pick several · Shift for a range · {mod} to add one more', { mod });
+  if (viewerUI.hintSelect) viewerUI.hintSelect.textContent = viewerUI.hintSelect.title = t('Click a number to pick a line · drag to pick several · Shift for a range · {mod} to add one more', { mod });
   for (const part of [viewerUI.selection, viewerUI.review, viewerUI.hintSelect]) if (part) bar.append(part);
   viewer.body.after?.(bar);
 })();
-async function saveEdited(content) {
+async function saveEdited(content, { said = null } = {}) {
   const send = (extra = {}) => fetch('/api/files', {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
@@ -1324,7 +1393,13 @@ async function saveEdited(content) {
   if (!response.ok) { toast(`${t('Diagnostics › ')}${result.error ?? t('That could not be saved.')}`); return false; }
   viewerMode.mtime = String(result.mtimeMs ?? '');
   viewerMode.text = content;
-  toast(t('Saved · {path}', { path: viewerUI.path }), { tone: 'note' });
+  toast(said ?? t('Saved · {path}', { path: viewerUI.path }), { tone: 'note' });
+  // What is beside the text shows the saved file, and the agent's marks are placed again on it.
+  code.preview?.reload?.();
+  code.preview?.render?.();
+  const tab = codeTab(viewerUI.path);
+  if (tab) tab.draft = null;
+  if (viewerUI.path) void loadCodeChanges(viewerUI.path);
   return true;
 }
 function askAboutLines({ from, to, prompt, dirty, agentId = null }) {
@@ -1353,21 +1428,31 @@ function askAboutCode({ from, to, text, anchor, dirty }) {
     head: from === to ? t('Line {n}', { n: from }) : t('Lines {from}–{to}', { from, to }),
     suggestions: codeSuggestions(text, familyOf(viewerUI.path ?? '')?.id ?? null, viewerUI.path ?? ''),
     about: `${viewerUI.path ?? ''} ${text}`,
+    actions: CODE_ACTIONS,
     onAsk: (agentId, prompt) => askAboutLines({ from, to, prompt, dirty, agentId }),
   });
 }
 function openEditor(line = null) {
   if (editing.editor || !viewerMode.editable) return;
   const name = viewerUI.path ?? '';
+  const tab = codeTab(name);
   editing.editor = createEditor({
-    text: viewerMode.text, name, family: familyOf(name), tokenize, t, fill,
+    text: viewerMode.text, draft: tab?.draft ?? null, name, family: familyOf(name), tokenize, t, fill,
     onSave: saveEdited, onAsk: askAboutCode,
+    onDirty: () => drawCodeTabs(),
+    onCaret: (at) => paintCodeCrumbs(at),
   });
+  if (tab) tab.draft = null;
   viewer.body.replaceChildren(editing.editor.node);
   viewer.dialog.classList.add('editing');
   setSelection(null, null);
   if (viewerUI.hintSelect) viewerUI.hintSelect.hidden = true;
   syncEditButton();
+  decorateCode();
+  attachBeside();
+  // A document beside its text follows the typing; a page waits for the save.
+  let typing = 0;
+  editing.editor.node.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => code.preview?.render?.(), 220); });
   requestAnimationFrame(() => editing.editor?.focus(line ?? viewerUI.from ?? null));
 }
 editing.button?.addEventListener('click', async () => {
@@ -1377,11 +1462,15 @@ editing.button?.addEventListener('click', async () => {
 // Closing the viewer, or opening another file in it, never drops unsaved work without asking.
 viewer.dialog?.addEventListener('cancel', (event) => {
   if (!editorDirty()) return;
+  // Docked, the unsaved changes stay in their tab and the viewer closes as asked.
+  let docked = false;
+  try { docked = codeOn(); } catch { /* not yet */ }
+  if (docked && viewerUI.path && codeTab(viewerUI.path)) { void leaveEditor({ stash: true }); return; }
   event.preventDefault();
   void askLeaveEdits().then((answer) => { if (answer === 'leave') { void leaveEditor({ ask: false }); viewer.dialog.close(); } });
 });
 viewer.dialog?.addEventListener('close', () => leaveEditor({ ask: false }));
-window.addEventListener?.('beforeunload', (event) => { if (editorDirty()) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener?.('beforeunload', (event) => { if (editorDirty() || code.tabs.some((tab) => tab.draft !== null)) { event.preventDefault(); event.returnValue = ''; } });
 
 function showViewerSource() {
   if (ripley.nav) ripley.nav.hidden = true;
@@ -1396,8 +1485,619 @@ function showViewerSource() {
   }
   if (viewerMode.lines) setSelection(viewerMode.lines.from, viewerMode.lines.to);
   else if (viewerMode.line) setSelection(viewerMode.line, viewerMode.line);
+  decorateCode();
+  attachBeside();
+  paintCodeCrumbs();
   pre.querySelector('.hl')?.scrollIntoView?.({ block: 'center' });
 }
+/* ---------- the code workspace (1.0.3) ---------- */
+//
+// The viewer docked beside the conversation is a place to work on code, not a sheet over it: the
+// project's files at its side, the files open as tabs, the path down to the function the caret is
+// in, what an agent changed marked in the agent's colour — with a way to keep it, take it back or
+// ask why — and, for a page or a document, the result beside the text. CODE in the bar opens it
+// docked; the viewer's own split and window buttons lead to the same place. Over the room (its base)
+// the viewer stays what it always was: one file, read or edited.
+const CODE_KEY = 'pulse.code';
+const CODE_TABS = 12;
+const code = (() => {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(CODE_KEY) ?? '{}') ?? {}; } catch { /* no storage */ }
+  const tabs = (Array.isArray(saved.tabs) ? saved.tabs : []).filter((path) => typeof path === 'string' && path).slice(-CODE_TABS).map((path) => ({ path, draft: null, mtime: null }));
+  return {
+    tabs,
+    active: tabs.some((tab) => tab.path === saved.active) ? saved.active : tabs.at(-1)?.path ?? null,
+    files: saved.files !== false,
+    beside: saved.beside !== false,
+    changes: new Map(),   // path → { agent, checkpointId, at, messageId, hunks } — what an agent left here
+    button: document.querySelector('#code-button'),
+    besideButton: null,
+    bar: null, crumbs: null, shell: null, explorer: null, list: null, search: null,
+    dirs: new Set(),
+    preview: null,
+    line: null,
+  };
+})();
+function rememberCode() {
+  try { localStorage.setItem(CODE_KEY, JSON.stringify({ tabs: code.tabs.map((tab) => tab.path), active: code.active, files: code.files, beside: code.beside })); } catch { /* this page only */ }
+}
+const viewerSurface = () => surfaces.find((one) => one.key === 'viewer');
+const codeOn = () => Boolean(viewer.dialog?.open) && modeOf(viewerSurface()) !== 'base';
+const codeTab = (path) => code.tabs.find((tab) => tab.path === path) ?? null;
+const codeDrafts = () => code.tabs.filter((tab) => tab.draft !== null);
+const CODE_ACTIONS = [
+  ['Explain', 'Explain what this does'],
+  ['Improve', 'Improve this without changing what it does'],
+  ['Write tests', 'Write tests for this'],
+  ['Fix', 'Find and fix the bugs here'],
+];
+
+// Where it lives in the viewer: the tabs and the path under its header, the files beside its body.
+(() => {
+  if (!viewer.dialog || !viewer.body || typeof viewer.body.before !== 'function') return;
+  const head = viewer.dialog.querySelector('.viewer-head');
+  code.bar = el('div', 'code-tabs');
+  code.bar.setAttribute('role', 'tablist');
+  code.bar.setAttribute('aria-label', t('Open files'));
+  code.bar.hidden = true;
+  code.crumbs = el('div', 'code-crumbs');
+  code.crumbs.hidden = true;
+  head?.after?.(code.bar, code.crumbs);
+  code.shell = el('div', 'code-shell');
+  code.explorer = el('aside', 'code-files');
+  code.explorer.hidden = true;
+  const top = el('div', 'code-files-head');
+  top.append(el('span', null, t('Files')));
+  const fold = el('button', 'code-files-fold');
+  fold.type = 'button';
+  fold.setAttribute('aria-label', t('Hide the files'));
+  fold.title = t('Hide the files');
+  fold.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
+  fold.addEventListener('click', () => { code.files = false; rememberCode(); syncCode(); });
+  top.append(fold);
+  code.search = el('input', 'code-files-search');
+  code.search.type = 'search';
+  code.search.placeholder = t('Find a file…');
+  code.search.setAttribute('aria-label', t('Find a file…'));
+  code.search.autocomplete = 'off';
+  code.search.spellcheck = false;
+  code.list = el('ul', 'code-files-list');
+  code.explorer.append(top, code.search, code.list);
+  let typing = 0;
+  code.search.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => void drawCodeFiles(), 140); });
+  code.search.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && code.search.value) { event.preventDefault(); event.stopPropagation(); code.search.value = ''; void drawCodeFiles(); }
+    if (event.key === 'Enter') { const first = code.list.querySelector('.code-file'); if (first) { event.preventDefault(); first.click(); } }
+  });
+  viewer.body.before(code.shell);
+  code.shell.append(code.explorer, viewer.body);
+  // Side by side: the text and what it makes, for a page or a document.
+  const modeButton = document.querySelector('#viewer-mode');
+  code.besideButton = el('button', 'viewer-review viewer-beside');
+  code.besideButton.type = 'button';
+  code.besideButton.hidden = true;
+  // Its words, and its drawing for when the header is too narrow for them.
+  code.besideButton.innerHTML = `${BESIDE_ICON}<span></span>`; // trusted: our own SVG string
+  code.besideButton.addEventListener('click', () => { code.beside = !code.beside; rememberCode(); attachBeside(); });
+  modeButton?.before?.(code.besideButton);
+  if (typeof MutationObserver === 'function') new MutationObserver(() => syncCode()).observe(viewer.dialog, { attributes: true, attributeFilter: ['class', 'open'] });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => syncCode()).observe(viewer.dialog);
+  code.button?.addEventListener('click', () => void toggleCode());
+})();
+
+function syncCode() {
+  if (!code.bar) return;
+  let on = false;
+  try { on = codeOn(); } catch { return; }
+  viewer.dialog.classList.toggle('code', on);
+  code.bar.hidden = !on || !code.tabs.length;
+  code.crumbs.hidden = !on || !viewerUI.path;
+  // The code comes first: the files beside it only when there is room for them and for the code,
+  // and less room is left when what the code makes is beside it too.
+  const width = viewer.dialog.getBoundingClientRect?.().width ?? 0;
+  const wide = width >= (code.preview ? 1040 : 600);
+  // Too narrow for two columns, what the code makes goes under it instead of squeezing it.
+  viewer.body.classList.toggle('stacked', Boolean(code.preview) && width < 720);
+  const showFiles = on && code.files && wide;
+  if (code.explorer.hidden === showFiles) {
+    code.explorer.hidden = !showFiles;
+    if (showFiles) void drawCodeFiles();
+  }
+  code.button?.setAttribute('aria-pressed', String(on));
+  const kind = viewerMode.kind;
+  code.besideButton.hidden = !on || !kind || viewerMode.preview;
+  const besideWords = code.besideButton.querySelector?.('span');
+  if (besideWords) besideWords.textContent = t('Side by side');
+  else code.besideButton.textContent = t('Side by side');
+  code.besideButton.setAttribute('aria-label', t('Side by side'));
+  code.besideButton.setAttribute('aria-pressed', String(Boolean(code.preview)));
+  code.besideButton.title = kind === 'markdown' ? t('The document beside its text, as you write') : t('The page beside its code, reloaded when you save');
+  drawCodeTabs();
+  paintCodeCrumbs();
+}
+
+// CODE in the bar: the viewer docked, on the file last worked on, or on where to start.
+async function toggleCode() {
+  if (codeOn()) {
+    if (await leaveEditor({ stash: true })) viewer.dialog.close();
+    return;
+  }
+  const surface = viewerSurface();
+  if (surface && modeOf(surface) === 'base') setSurfaceMode(surface, 'split', { animate: false });
+  if (viewer.dialog.open && viewerUI.path) { syncCode(); return; }
+  if (code.active) await openViewer({ root: 'project', path: code.active });
+  else showCodeHome();
+}
+async function openCodeFile(path, { line = null } = {}) {
+  const surface = viewerSurface();
+  if (surface && modeOf(surface) === 'base') setSurfaceMode(surface, 'split', { animate: false });
+  await openViewer({ root: 'project', path, line });
+}
+// Nothing open yet: where to start, in a sentence and two ways.
+function showCodeHome() {
+  void leaveEditor({ stash: true });
+  paintViewerPath(t('Code'));
+  viewerUI.path = null;
+  Object.assign(viewerMode, { kind: null, text: '', src: '', preview: false, editable: false });
+  viewer.open.removeAttribute('href');
+  syncViewerMode();
+  syncEditButton();
+  // No file, nothing to open raw: the chip that holds OPEN RAW goes with READ and EDIT.
+  if (editingSeg) editingSeg.seg.hidden = true;
+  const home = el('div', 'code-home');
+  home.append(el('h3', null, t('Open a file')));
+  const mod = /Mac|iPhone|iPad/.test(navigator.platform ?? '') ? '⌘P' : 'Ctrl+P';
+  home.append(el('p', null, t('Choose one in the files, or press {keys} to find it by its name. What an agent changes is marked in its colour.', { keys: mod })));
+  const find = sxButton(t('Find a file'), () => openQuickOpen(), { tone: 'primary' });
+  home.append(find);
+  const recent = [...touched.entries()].sort((a, b) => b[1].at - a[1].at).slice(0, 6);
+  if (recent.length) {
+    home.append(el('h4', null, t('Changed by the agents')));
+    const list = el('ul', 'code-home-list');
+    for (const [path, touch] of recent) {
+      const item = el('li');
+      const go = el('button', 'code-file');
+      go.type = 'button';
+      tint(go, touch.agent);
+      go.append(el('i', 'code-file-agent'), el('span', 'code-file-name', path.split('/').pop()), el('span', 'code-file-dir', path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''), el('small', null, `@${touch.agent} · ${agoWords(new Date(touch.at).toISOString())}`));
+      go.addEventListener('click', () => void openCodeFile(path));
+      item.append(go);
+      list.append(item);
+    }
+    home.append(list);
+  }
+  viewer.body.replaceChildren(home);
+  if (!viewer.dialog.open) viewer.dialog.showModal();
+  syncCode();
+}
+
+/* the tabs */
+function noteCodeTab(path) {
+  let tab = codeTab(path);
+  if (!tab) {
+    tab = { path, draft: null, mtime: null };
+    code.tabs.push(tab);
+    // Past the limit the oldest tab that holds nothing unsaved gives way.
+    while (code.tabs.length > CODE_TABS) {
+      const old = code.tabs.findIndex((one) => one.draft === null && one.path !== path);
+      if (old < 0) break;
+      code.tabs.splice(old, 1);
+    }
+  }
+  code.active = path;
+  rememberCode();
+  return tab;
+}
+async function closeCodeTab(path) {
+  const tab = codeTab(path);
+  if (!tab) return;
+  const showing = viewerUI.path === path;
+  const dirty = tab.draft !== null || (showing && editorDirty());
+  if (dirty && await askLeaveEdits() !== 'leave') return;
+  if (showing) await leaveEditor({ ask: false });
+  tab.draft = null;
+  code.tabs = code.tabs.filter((one) => one !== tab);
+  code.changes.delete(path);
+  if (code.active === path) code.active = code.tabs.at(-1)?.path ?? null;
+  rememberCode();
+  if (!showing) { drawCodeTabs(); return; }
+  if (code.active) await openViewer({ root: 'project', path: code.active }); else showCodeHome();
+}
+function drawCodeTabs() {
+  if (!code.bar || code.bar.hidden) return;
+  code.bar.replaceChildren();
+  for (const tab of code.tabs) {
+    const on = tab.path === viewerUI.path;
+    const node = el('div', `code-tab${on ? ' on' : ''}`);
+    node.setAttribute('role', 'tab');
+    node.setAttribute('aria-selected', String(on));
+    node.title = tab.path;
+    const name = el('button', 'code-tab-name', tab.path.split('/').pop());
+    name.type = 'button';
+    name.addEventListener('click', () => { if (!on) void openViewer({ root: 'project', path: tab.path }); });
+    node.addEventListener('auxclick', (event) => { if (event.button === 1) { event.preventDefault(); void closeCodeTab(tab.path); } });
+    node.append(name);
+    const change = code.changes.get(tab.path);
+    if (change?.hunks?.length) {
+      const dot = el('i', 'code-tab-agent');
+      tint(dot, change.agent);
+      dot.title = t('@{agent} changed it: {n} to review', { agent: change.agent, n: change.hunks.length });
+      node.append(dot);
+    }
+    if (tab.draft !== null || (on && editorDirty())) {
+      const dot = el('i', 'code-tab-dirty');
+      dot.title = t('Unsaved');
+      node.append(dot);
+    }
+    const shut = closeMark('button', 'code-tab-close', t('Close {file}', { file: tab.path.split('/').pop() }));
+    shut.addEventListener('click', (event) => { event.stopPropagation(); void closeCodeTab(tab.path); });
+    node.append(shut);
+    code.bar.append(node);
+  }
+  code.bar.querySelector('.code-tab.on')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+}
+
+/* the path above the code: folders quiet, the file, and the function the line is in */
+function paintCodeCrumbs(line = code.line) {
+  if (!code.crumbs || code.crumbs.hidden || !viewerUI.path) return;
+  code.line = line;
+  code.crumbs.replaceChildren();
+  // The files, put away by hand, come back from here.
+  if (!code.files) {
+    const show = el('button', 'code-files-fold code-files-show');
+    show.type = 'button';
+    show.setAttribute('aria-label', t('Show the files'));
+    show.title = t('Show the files');
+    show.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
+    show.addEventListener('click', () => { code.files = true; rememberCode(); syncCode(); });
+    code.crumbs.append(show);
+  }
+  const where = el('span', 'code-crumbs-path');
+  const parts = viewerUI.path.split('/');
+  parts.forEach((part, index) => {
+    if (index) where.append(el('i', null, '›'));
+    where.append(el(index === parts.length - 1 ? 'b' : 'span', null, part));
+  });
+  const text = editing.editor ? editing.editor.value() : viewerMode.text;
+  const symbol = line ? symbolAt(String(text ?? '').split('\n'), line - 1, familyOf(viewerUI.path)?.id ?? null) : null;
+  if (symbol) where.append(el('i', null, '›'), el('b', 'code-crumbs-symbol', symbol));
+  code.crumbs.append(where);
+  const change = code.changes.get(viewerUI.path);
+  if (change?.hunks?.length) {
+    const nav = el('span', 'code-crumbs-changes');
+    tint(nav, change.agent);
+    nav.append(el('i', 'code-file-agent'), el('span', null, change.hunks.length === 1 ? t('@{agent} · 1 change to review', { agent: change.agent }) : t('@{agent} · {n} changes to review', { agent: change.agent, n: change.hunks.length })));
+    const step = (direction) => {
+      const marks = change.hunks.map((hunk) => hunk.at + 1);
+      const here = code.line ?? 0;
+      const next = direction > 0 ? marks.find((n) => n > here) ?? marks[0] : [...marks].reverse().find((n) => n < here) ?? marks.at(-1);
+      goToCodeLine(next);
+    };
+    // The chooser's chevron, turned to point the way it goes.
+    const stepKey = (label, direction) => {
+      const key = el('button', `code-crumbs-step ${direction < 0 ? 'back' : 'on'}`);
+      key.type = 'button';
+      key.title = label;
+      key.setAttribute('aria-label', label);
+      key.innerHTML = ICON_CHEVRON; // trusted: our own SVG string
+      key.addEventListener('click', () => step(direction));
+      return key;
+    };
+    nav.append(stepKey(t('Previous change'), -1), stepKey(t('Next change'), 1));
+    code.crumbs.append(nav);
+  }
+}
+function goToCodeLine(n) {
+  if (!n) return;
+  code.line = n;
+  if (editing.editor) { editing.editor.focus(n); return; }
+  const card = viewer.body.querySelector(`.code-change[data-at="${n}"]`);
+  const row = viewerUI.lineNodes[n - 1]?.tx;
+  (card ?? row)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  paintCodeCrumbs(n);
+}
+
+/* the files beside: the project's folders, or what matches what is typed */
+async function drawCodeFiles() {
+  if (!code.list || code.explorer.hidden) return;
+  const query = code.search.value.trim();
+  if (query) {
+    let matches = [];
+    try { matches = (await fetch(`/api/tree/search?q=${encodeURIComponent(query)}&limit=40`).then((response) => response.json()))?.matches ?? []; } catch { /* said below */ }
+    if (code.search.value.trim() !== query) return;
+    code.list.replaceChildren();
+    if (!matches.length) { code.list.append(el('li', 'code-files-empty', t('No file by that name.'))); return; }
+    for (const match of matches) code.list.append(codeFileRow(match.path, 0, true));
+    return;
+  }
+  code.list.replaceChildren();
+  await drawCodeLevel('.', code.list, 0);
+}
+async function drawCodeLevel(path, list, depth) {
+  let entries = [];
+  try {
+    const response = await fetch(`/api/tree?path=${encodeURIComponent(path)}`);
+    if (response.ok) entries = (await response.json()).entries ?? [];
+  } catch { /* an empty folder is said below */ }
+  if (!entries.length && depth === 0) { list.append(el('li', 'code-files-empty', t('This project has no files yet.'))); return; }
+  for (const entry of entries) {
+    const full = path === '.' ? entry.name : `${path}/${entry.name}`;
+    if (entry.type === 'dir' || entry.dir || entry.kind === 'dir') {
+      const item = el('li', 'code-dir');
+      const open = code.dirs.has(full);
+      const row = el('button', 'code-file code-folder');
+      row.type = 'button';
+      row.style.setProperty('--depth', String(depth));
+      row.setAttribute('aria-expanded', String(open));
+      // The chooser's chevron: pointing right while closed, down when open (styles.css turns it).
+      const caret = el('i', 'code-folder-caret');
+      caret.innerHTML = ICON_CHEVRON; // trusted: our own SVG string
+      row.append(caret, el('span', 'code-file-name', entry.name));
+      const touch = touchedUnder(full);
+      if (touch) { const dot = el('i', 'code-file-agent'); tint(dot, touch.agent); row.append(dot); }
+      const inner = el('ul', 'code-files-list');
+      row.addEventListener('click', async () => {
+        if (code.dirs.has(full)) { code.dirs.delete(full); inner.replaceChildren(); row.setAttribute('aria-expanded', 'false'); return; }
+        code.dirs.add(full);
+        row.setAttribute('aria-expanded', 'true');
+        await drawCodeLevel(full, inner, depth + 1);
+      });
+      item.append(row, inner);
+      list.append(item);
+      if (open) void drawCodeLevel(full, inner, depth + 1);
+    } else list.append(codeFileRow(full, depth, false));
+  }
+}
+function codeFileRow(path, depth, withDir) {
+  const item = el('li');
+  const row = el('button', `code-file${path === viewerUI.path ? ' on' : ''}`);
+  row.type = 'button';
+  row.style.setProperty('--depth', String(depth));
+  row.title = path;
+  row.append(el('span', 'code-file-name', path.split('/').pop()));
+  if (withDir && path.includes('/')) row.append(el('span', 'code-file-dir', path.slice(0, path.lastIndexOf('/'))));
+  const touch = touched.get(path);
+  if (touch) { const dot = el('i', 'code-file-agent'); tint(dot, touch.agent); dot.title = t('Changed by @{agent} {when}', { agent: touch.agent, when: agoWords(new Date(touch.at).toISOString()) }); row.append(dot); }
+  row.addEventListener('click', () => void openCodeFile(path));
+  item.append(row);
+  return item;
+}
+
+/* what an agent changed, marked in the code */
+async function loadCodeChanges(path) {
+  let answer = null;
+  try { answer = await fetch(`/api/files/changes?path=${encodeURIComponent(path)}`).then((response) => (response.ok ? response.json() : null)); } catch { return; }
+  if (viewerUI.path !== path) return;
+  const change = answer?.change;
+  if (!change) { if (code.changes.delete(path)) { decorateCode(); syncCode(); } return; }
+  const current = viewerMode.text;
+  const after = change.after ?? current;
+  const reviewed = new Set(answer.reviewed ?? []);
+  const hunks = placeHunks(current, change.after, lineDiff(change.before, after)).filter((hunk) => !reviewed.has(hunkKey(hunk)));
+  if (hunks.length) code.changes.set(path, { agent: change.agent, checkpointId: change.checkpointId, at: change.at, messageId: change.messageId, hunks });
+  else code.changes.delete(path);
+  decorateCode();
+  syncCode();
+}
+// Into what is on screen: the read view gets the marks and a card under each change; the editor
+// gets the marks in its margin, and the cards wait in the read view.
+function decorateCode() {
+  const found = code.changes.get(viewerUI.path);
+  if (editing.editor) {
+    editing.editor.setMarks?.((found?.hunks ?? []).filter((hunk) => hunk.after.length).map((hunk) => ({ from: hunk.at + 1, to: hunk.at + hunk.after.length, color: agentColor(found.agent), title: t('Changed by @{agent}', { agent: found.agent }) })));
+    return;
+  }
+  const pre = viewer.body.querySelector('pre.code');
+  if (!pre) return;
+  for (const node of pre.querySelectorAll('.code-change')) node.remove();
+  for (const row of viewerUI.lineNodes) { row.ln.classList.remove('ag'); row.tx.classList.remove('ag'); }
+  if (!found?.hunks?.length) return;
+  const color = agentColor(found.agent);
+  for (const hunk of found.hunks) {
+    const last = hunk.at + hunk.after.length;
+    for (let n = hunk.at + 1; n <= last; n += 1) {
+      const row = viewerUI.lineNodes[n - 1];
+      if (!row) continue;
+      row.ln.classList.add('ag');
+      row.tx.classList.add('ag');
+      row.ln.style.setProperty('--ag', color);
+      row.tx.style.setProperty('--ag', color);
+    }
+    const card = codeChangeCard(found, hunk);
+    const anchor = viewerUI.lineNodes[Math.max(hunk.at, last) - 1]?.tx;
+    if (anchor && hunk.after.length) anchor.after(card);
+    else if (viewerUI.lineNodes[hunk.at - 1]) viewerUI.lineNodes[hunk.at - 1].tx.after(card);
+    else pre.prepend(card);
+  }
+}
+function codeChangeCard(found, hunk) {
+  const card = el('div', 'code-change');
+  card.dataset.at = String(hunk.at + 1);
+  tint(card, found.agent);
+  const head = el('div', 'code-change-head');
+  const what = hunk.before.length && hunk.after.length ? t('changed these lines') : hunk.after.length ? t('added these lines') : hunk.before.length === 1 ? t('removed 1 line') : t('removed {n} lines', { n: hunk.before.length });
+  head.append(el('b', 'code-change-who', `@${found.agent}`), el('span', null, `${what} · ${agoWords(found.at)}`));
+  card.append(head);
+  // What was there before, line by line, each with its «−»: read, not crossed out.
+  if (hunk.before.length) {
+    const was = el('pre', 'code-change-was');
+    was.setAttribute('aria-label', t('What was there before'));
+    for (const line of hunk.before) was.append(el('span', null, line || ' '));
+    card.append(was);
+  }
+  const acts = el('div', 'code-change-acts');
+  // Tags of a flat tone, each with its drawing: the accent keeps, the ground undoes, the agent answers.
+  const act = (words, icon, tone, title, click) => {
+    const key = el('button', `code-change-act ${tone}`);
+    key.type = 'button';
+    key.title = title;
+    const mark = el('i', 'code-change-ico');
+    mark.innerHTML = icon; // trusted: our own SVG strings
+    key.append(mark, el('span', null, words));
+    key.addEventListener('click', click);
+    return key;
+  };
+  const keep = act(t('Keep'), ICON_DONE, 'keep', t('It stays as the agent left it, and stops being marked'), () => void keepCodeChange(found, hunk, card));
+  const undo = act(t('Undo'), ICON_REPLY, 'undo', t('Puts back what was there before, in these lines only'), () => void undoCodeChange(found, hunk, undo));
+  const why = act(t('Ask why'), ICON_ASK, 'why', t('Asks @{agent} in the conversation', { agent: found.agent }), () => askAboutLines({ from: hunk.at + 1, to: Math.max(hunk.at + 1, hunk.at + hunk.after.length), prompt: t('Why did you change these lines?'), dirty: false, agentId: found.agent }));
+  acts.append(keep, undo, why);
+  card.append(acts);
+  return card;
+}
+async function keepCodeChange(found, hunk, card) {
+  const path = viewerUI.path;
+  try {
+    await fetch('/api/files/changes/review', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, checkpointId: found.checkpointId, hunk: hunkKey(hunk) }) });
+  } catch { /* kept on this page at least */ }
+  found.hunks = found.hunks.filter((one) => one !== hunk);
+  if (!found.hunks.length) code.changes.delete(path);
+  card.remove();
+  decorateCode();
+  syncCode();
+}
+async function undoCodeChange(found, hunk, button) {
+  const path = viewerUI.path;
+  if (editing.editor || codeTab(path)?.draft !== null && codeTab(path)?.draft !== undefined) { toast(t('Save or discard your own changes in this file first.'), { tone: 'note' }); return; }
+  button.disabled = true;
+  const next = revertHunk(viewerMode.text, hunk);
+  const ok = await saveEdited(next, { said: t('Taken back · {path}', { path }) });
+  if (!ok) { button.disabled = false; return; }
+  try { await fetch('/api/files/changes/review', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, checkpointId: found.checkpointId, hunk: hunkKey(hunk) }) }); } catch { /* the change is gone from the file anyway */ }
+  showViewerSource();
+  void loadCodeChanges(path);
+}
+
+/* side by side: the text and what it makes */
+function attachBeside() {
+  code.preview?.remove();
+  code.preview = null;
+  viewer.body.classList.remove('with-beside');
+  let on = false;
+  try { on = codeOn(); } catch { /* not yet */ }
+  if (on && code.beside && viewerMode.kind && !viewerMode.preview && viewerUI.path) {
+    const pane = el('div', 'code-beside');
+    const head = el('div', 'code-beside-head');
+    head.append(el('b', null, t('Preview')));
+    const text = () => (editing.editor ? editing.editor.value() : viewerMode.text);
+    if (viewerMode.kind === 'markdown') {
+      head.append(el('span', 'code-beside-live', t('as you write')));
+      const doc = el('article', 'viewer-markdown');
+      doc.append(renderMarkdown(text()));
+      pane.append(head, doc);
+      pane.render = () => doc.replaceChildren(renderMarkdown(text()));
+    } else if (!state.ripley) {
+      const off = el('div', 'code-beside-off');
+      off.append(el('p', null, t('Preview shows the page your code makes, in a sealed frame. It is off in this project.')));
+      off.append(sxButton(t('Turn on Preview'), async (event) => {
+        event.currentTarget.disabled = true;
+        try { await switchModule(modules.items.find((one) => one.id === 'ripley') ?? { id: 'ripley', name: 'Preview' }); } catch (error) { toast(`${t('Diagnostics › ')}${error.message}`); }
+        attachBeside();
+      }, { tone: 'primary' }));
+      pane.append(head, off);
+    } else {
+      head.append(el('span', 'code-beside-live', t('reloads when you save')));
+      const frame = el('iframe', 'ripley');
+      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.setAttribute('referrerpolicy', 'no-referrer');
+      frame.title = t('Preview of {path}', { path: viewerUI.path });
+      frame.src = previewUrl(viewerMode.src);
+      pane.append(head, frame);
+      pane.reload = () => { frame.src = `${previewUrl(viewerMode.src)}?v=${Date.now()}`; };
+    }
+    // The pane beside says what Preview is; the old line over the code would say it twice.
+    viewer.body.querySelector(':scope > .viewer-hint')?.remove();
+    viewer.body.append(pane);
+    viewer.body.classList.add('with-beside');
+    code.preview = pane;
+  }
+  code.besideButton?.setAttribute('aria-pressed', String(Boolean(code.preview)));
+  syncCode();
+}
+
+/* ⌘P: a file by its name, from anywhere in the room */
+const quickOpen = (() => {
+  const box = el('div', 'quick-open');
+  box.hidden = true;
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', t('Open a file'));
+  box.setAttribute('popover', 'manual');
+  const input = el('input', 'quick-open-input');
+  input.type = 'search';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  const list = el('ul', 'quick-open-list');
+  list.setAttribute('role', 'listbox');
+  box.append(input, list);
+  document.body?.append(box);
+  return { box, input, list, at: 0, items: [], typing: 0 };
+})();
+function closeQuickOpen() {
+  if (quickOpen.box.hidden) return;
+  quickOpen.box.hidden = true;
+  try { quickOpen.box.hidePopover?.(); } catch { /* not shown */ }
+}
+async function fillQuickOpen() {
+  const query = quickOpen.input.value.trim();
+  let paths;
+  if (!query) {
+    const recent = [...code.tabs].reverse().map((tab) => tab.path);
+    const changed = [...touched.entries()].sort((a, b) => b[1].at - a[1].at).map(([path]) => path);
+    paths = [...new Set([...recent, ...changed])].slice(0, 12);
+  } else {
+    try { paths = ((await fetch(`/api/tree/search?q=${encodeURIComponent(query)}&limit=20`).then((response) => response.json()))?.matches ?? []).map((match) => match.path); } catch { paths = []; }
+    if (quickOpen.input.value.trim() !== query) return;
+  }
+  quickOpen.items = paths;
+  quickOpen.at = 0;
+  quickOpen.list.replaceChildren();
+  if (!paths.length) { quickOpen.list.append(el('li', 'quick-open-empty', query ? t('No file by that name.') : t('Type part of a file\'s name.'))); return; }
+  paths.forEach((path, index) => {
+    const item = el('li', `quick-open-item${index === 0 ? ' on' : ''}`);
+    item.setAttribute('role', 'option');
+    item.append(el('b', null, path.split('/').pop()), el('span', null, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''));
+    const touch = touched.get(path);
+    if (touch) { const dot = el('i', 'code-file-agent'); tint(dot, touch.agent); item.append(dot); }
+    item.addEventListener('pointerdown', (event) => { event.preventDefault(); closeQuickOpen(); void openCodeFile(path); });
+    quickOpen.list.append(item);
+  });
+}
+function openQuickOpen() {
+  quickOpen.input.placeholder = t('Open a file by its name…');
+  quickOpen.input.value = '';
+  quickOpen.box.hidden = false;
+  try { quickOpen.box.showPopover?.(); } catch { /* fixed in the page */ }
+  quickOpen.input.focus();
+  void fillQuickOpen();
+}
+quickOpen.input.addEventListener('input', () => { clearTimeout(quickOpen.typing); quickOpen.typing = setTimeout(() => void fillQuickOpen(), 110); });
+quickOpen.input.addEventListener('keydown', (event) => {
+  const rows = [...quickOpen.list.querySelectorAll('.quick-open-item')];
+  if (event.key === 'Escape') { event.preventDefault(); closeQuickOpen(); return; }
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (!rows.length) return;
+    rows[quickOpen.at]?.classList.remove('on');
+    quickOpen.at = (quickOpen.at + (event.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+    rows[quickOpen.at].classList.add('on');
+    rows[quickOpen.at].scrollIntoView?.({ block: 'nearest' });
+    return;
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const path = quickOpen.items[quickOpen.at];
+    if (!path) return;
+    closeQuickOpen();
+    void openCodeFile(path);
+  }
+});
+document.addEventListener?.('pointerdown', (event) => { if (!quickOpen.box.hidden && !quickOpen.box.contains(event.target)) closeQuickOpen(); }, true);
+document.addEventListener?.('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key?.toLowerCase() === 'p' && !state.device) {
+    event.preventDefault();
+    if (quickOpen.box.hidden) openQuickOpen(); else closeQuickOpen();
+  }
+});
+
 // RIPLEY's frame, its small bar (back, reload), its history inside the project,
 // what the page reports up (which page, which errors), and reloads when an
 // agent changes the file on screen.
@@ -1774,7 +2474,9 @@ function paintPorts(read) {
     menu.replaceChildren(el('div', 'ports-note', read.error));
     const go = el('button', 'ports-row');
     go.type = 'button';
-    go.append(el('b', null, '⚙'), el('span', null, t('OPEN MODULES')));
+    const gear = el('b', 'ports-gear');
+    gear.innerHTML = GEAR_ICON; // trusted: our own SVG string
+    go.append(gear, el('span', null, t('OPEN MODULES')));
     go.addEventListener('click', () => { portsMenuShown(false); document.querySelector('#modules-button, [aria-controls="modules"]')?.click(); });
     menu.append(go);
     return;
@@ -2208,6 +2910,10 @@ function ripleyMaybeReload(paths) {
 }
 
 function showViewerPreview() {
+  // The whole frame for the result: nothing beside it.
+  code.preview = null;
+  viewer.body.classList.remove('with-beside');
+  code.besideButton?.setAttribute('aria-pressed', 'false');
   if (viewerMode.kind === 'markdown') {
     ripley.nav.hidden = true;
     const doc = el('article', 'viewer-markdown bubble');
@@ -2242,7 +2948,7 @@ function syncViewerMode() {
   if (!viewerMode.button) return;
   const can = Boolean(viewerMode.kind) && state.ripley;
   viewerMode.button.hidden = !can;
-  viewerMode.button.textContent = viewerMode.preview ? 'SOURCE' : 'PREVIEW';
+  viewerMode.button.textContent = viewerMode.preview ? t('SOURCE') : t('PREVIEW');
   viewerMode.button.title = viewerMode.preview ? t('Show the file as text') : t('Render with Preview in a sealed frame');
 }
 viewerMode.button?.addEventListener('click', async () => { if (!await leaveEditor()) return; viewerMode.preview = !viewerMode.preview; syncViewerMode(); syncEditButton(); if (viewerMode.preview) showViewerPreview(); else showViewerSource(); });
@@ -2259,7 +2965,13 @@ function paintViewerPath(text) {
   viewer.path.setAttribute?.('aria-label', said);
 }
 async function openViewer({ root = 'project', path = null, url = null, label = null, line = null, lines = null }) {
-  if (!await leaveEditor()) return;
+  let docked = false;
+  try { docked = codeOn(); } catch { /* the layout is not up yet */ }
+  if (!await leaveEditor({ stash: docked })) return;
+  code.preview?.remove();
+  code.preview = null;
+  viewer.body.classList.remove('with-beside');
+  code.line = line ?? lines?.from ?? null;
   const src = url ?? `/api/files?root=${root}&path=${encodeURIComponent(path)}`;
   paintViewerPath(label ?? path);
   viewer.open.href = src;
@@ -2287,15 +2999,27 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
     // Text of this project, small enough to edit: the editor is offered. Attachments and frames
     // are read, never written.
     const editable = root === 'project' && Boolean(path) && !url && response.headers.has('x-mtime') && text.length < 2 * 1024 * 1024 && !text.includes('\u0000');
-    Object.assign(viewerMode, { kind, text, src, line, lines, preview: Boolean(kind) && state.ripley && !line && !lines, mtime: response.headers.get('x-mtime'), editable });
+    // In the code workspace a page or a document opens as its text, with what it makes beside it.
+    let docked = false;
+    try { docked = codeOn(); } catch { /* the layout is not up yet */ }
+    Object.assign(viewerMode, { kind, text, src, line, lines, preview: Boolean(kind) && state.ripley && !line && !lines && !(docked && code.beside), mtime: response.headers.get('x-mtime'), editable });
+    const tab = editable ? noteCodeTab(path) : null;
     syncViewerMode();
     syncEditButton();
     if (viewerMode.preview) showViewerPreview(); else showViewerSource();
+    // A tab left with unsaved changes opens where it was left: in the editor, with them.
+    if (tab && tab.draft !== null) { if (tab.mtime) viewerMode.mtime = tab.mtime; openEditor(line); }
+    if (editable) void loadCodeChanges(path);
+    syncCode();
   } catch (error) {
     viewer.body.replaceChildren(el('div', 'err', error.message));
   }
 }
-viewer.close.addEventListener('click', async () => { if (await leaveEditor()) viewer.dialog.close(); });
+viewer.close.addEventListener('click', async () => {
+  let docked = false;
+  try { docked = codeOn(); } catch { /* not yet */ }
+  if (await leaveEditor({ stash: docked })) viewer.dialog.close();
+});
 
 function codeBlock(lines, lang) {
   const wrapper = el('div', `codeblock${lang ? ' has-lang' : ''}`);
@@ -3983,6 +4707,8 @@ function iconButton(svg, title, className) {
 const ICON_GOOD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 7.5v5.5H3.2a.7.7 0 0 1-.7-.7V8.2a.7.7 0 0 1 .7-.7h2.3Zm0 0 2.6-4.6a1.3 1.3 0 0 1 2.4.8L10 6.8h2.6a1.3 1.3 0 0 1 1.3 1.5l-.8 3.9a1.3 1.3 0 0 1-1.3 1H5.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 const ICON_BAD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 8.5V3H12.8a.7.7 0 0 1 .7.7v4.1a.7.7 0 0 1-.7.7h-2.3Zm0 0-2.6 4.6a1.3 1.3 0 0 1-2.4-.8L6 9.2H3.4a1.3 1.3 0 0 1-1.3-1.5l.8-3.9A1.3 1.3 0 0 1 4.2 3h6.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 const ICON_PREFER = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7.45 2.7c.22-.45.88-.45 1.1 0l1.3 2.65 2.92.43c.5.07.7.69.34 1.04l-2.12 2.06.5 2.9c.09.5-.44.88-.89.65L8 11.06l-2.6 1.37c-.45.23-.98-.15-.89-.65l.5-2.9-2.12-2.06c-.36-.35-.16-.97.34-1.04l2.92-.43z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// The settings' gear: the drawing AJUSTES wears in the bar, for any way into Settings.
+const GEAR_ICON = '<svg class="gear-glyph" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M8.65 3.85L8.92 1.97L11.08 1.97L11.35 3.85L13.40 4.69L14.91 3.56L16.44 5.09L15.31 6.60L16.15 8.65L18.03 8.92L18.03 11.08L16.15 11.35L15.31 13.40L16.44 14.91L14.91 16.44L13.40 15.31L11.35 16.15L11.08 18.03L8.92 18.03L8.65 16.15L6.60 15.31L5.09 16.44L3.56 14.91L4.69 13.40L3.85 11.35L1.97 11.08L1.97 8.92L3.85 8.65L4.69 6.60L3.56 5.09L5.09 3.56L6.60 4.69ZM12.6 10a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 // A small ×, in the same round line, for an aside that can be put away.
 const ICON_STOP = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="6" height="6" rx="1.3" fill="currentColor"/></svg>';
 const ICON_CLOSE_SMALL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
@@ -4742,7 +5468,7 @@ function attachMemoryHint(event) {
   for (const child of [...(col.children ?? [])]) if (child.classList?.contains('memory-hint')) child.remove();
   const hint = el('div', 'memory-hint');
   tint(hint, agent);
-  hint.append(el('span', 'lead', t('◉ memory saved')));
+  hint.append(leadWords('span', 'lead', t('◉ memory saved')));
   for (const note of notes.slice(0, 3)) {
     const pill = el('button', `pill ${note.kind}`);
     pill.type = 'button';
@@ -5333,7 +6059,7 @@ async function renderOpenQuestions() {
     try { localStorage.setItem('pulse.openqDismissed', signature); } catch { /* closed for this page only */ }
     box.hidden = true;
   });
-  head.append(el('span', 'openq-lead', t('◉ still open here')), close);
+  head.append(leadWords('span', 'openq-lead', t('◉ still open here')), close);
   box.append(head);
   // The pills live in a track of their own so the row can scroll sideways instead of stacking:
   // these are an aside under the thread, and an aside that grows downwards pushes the composer.
@@ -5391,7 +6117,7 @@ async function renderSettled() {
   catch { return; }
   if (!decisions.length) { box.hidden = true; return; }
   box.replaceChildren();
-  box.append(el('span', 'settled-lead', t('◉ decided here · {n}', { n: decisions.length })));
+  box.append(leadWords('span', 'settled-lead', t('◉ decided here · {n}', { n: decisions.length })));
   for (const note of decisions) {
     const pill = el('button', 'settled-note');
     pill.type = 'button';
@@ -6697,7 +7423,8 @@ const LOOKS = {
   accent: { key: 'pulse.accent', values: ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce'] },
   bubbles: { key: 'pulse.bubbles', values: ['comfortable', 'large', 'compact', 'fitted'] },
   text: { key: 'pulse.text', values: ['comfortable', 'larger', 'smaller', 'visual'] },
-  wallpaper: { key: 'pulse.wallpaper', values: ['default', 'jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania'] },
+  // Last, the person's own picture (public/wallpaper.js): a choice only once there is one.
+  wallpaper: { key: 'pulse.wallpaper', values: ['default', 'jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania', CUSTOM_WALL] },
   // How a photograph wears the room's ground: a flat layer, or a mesh of its own colours.
   wpStyle: { key: 'pulse.wallpaper.style', values: ['veil', 'mesh'] },
 };
@@ -6707,7 +7434,7 @@ const TUNES = {
   veil: { key: 'pulse.wallpaper.veil', min: 0, max: 140, step: 5, value: 100, apply: (node, v) => node.style.setProperty('--veil-k', String(v / 100)) },
   blur: { key: 'pulse.wallpaper.blur', min: 0, max: 24, step: 1, value: 0, apply: (node, v) => node.style.setProperty('--wp-blur', `${v}px`) },
 };
-const PHOTO_WALLPAPERS = new Set(['jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania']);
+const PHOTO_WALLPAPERS = new Set(['jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania', CUSTOM_WALL]);
 function readTune(name) {
   const tune = TUNES[name];
   let raw = null;
@@ -6730,7 +7457,7 @@ const LOOK_WORDS = {
   accent: { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow') },
   bubbles: { comfortable: () => t('Comfortable'), large: () => t('Large'), compact: () => t('Compact'), fitted: () => t('Fitted') },
   text: { comfortable: () => t('Comfortable'), larger: () => t('Larger'), smaller: () => t('Smaller'), visual: () => t('Visual') },
-  wallpaper: { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania' },
+  wallpaper: { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania', custom: () => t('Your picture') },
   wpStyle: { veil: () => t('Layer'), mesh: () => t('Mesh') },
 };
 // Jarrito took MADRE's place among the wallpapers and Canela took Autumn's: a choice saved under
@@ -6740,6 +7467,8 @@ function readLook(name) {
   let value = null;
   try { value = localStorage.getItem(LOOKS[name].key); } catch { /* no storage */ }
   if (name === 'wallpaper' && RENAMED_LOOKS[value]) value = RENAMED_LOOKS[value];
+  // Chosen, and then taken away (here or on another page): the room as it always was.
+  if (name === 'wallpaper' && value === CUSTOM_WALL && !customWall()) value = null;
   return LOOKS[name].values.includes(value) ? value : LOOKS[name].values[0];
 }
 function applyLook(name, value) {
@@ -6747,6 +7476,8 @@ function applyLook(name, value) {
   if (!rootElement) return;
   if (value === LOOKS[name].values[0]) delete rootElement.dataset[name]; else rootElement.dataset[name] = value;
 }
+// The person's picture as this browser last knew it, before the first look is painted.
+paintCustomWall(rememberedWall());
 for (const name of Object.keys(LOOKS)) applyLook(name, readLook(name));
 for (const name of Object.keys(TUNES)) applyTune(name, readTune(name));
 // The half on the right and the conversations in windows read the same choices, the moment they
@@ -6784,8 +7515,12 @@ async function pullLooks() {
   let answer = null;
   try { answer = await fetch('/api/looks', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)); } catch { return; }
   if (!answer?.looks) return;
+  // The person's own picture, kept once for every page (public/wallpaper.js): painted as it is now.
+  const before = customWall()?.v ?? null;
+  paintCustomWall(answer.custom ?? null);
   // Before a project had its own, it wore the shared one: that is where it starts.
-  const wall = answer.own?.wallpaper ?? answer.looks['pulse.wallpaper'] ?? null;
+  let wall = answer.own?.wallpaper ?? answer.looks['pulse.wallpaper'] ?? null;
+  if (wall === CUSTOM_WALL && !answer.custom) wall = null;
   try {
     // Nothing kept yet: the first page that has a choice of its own hands it to the others.
     if (!answer.saved) { if (SHARED_LOOKS.some((key) => localStorage.getItem(key) !== null)) pushLooks(); return; }
@@ -6796,7 +7531,7 @@ async function pullLooks() {
       if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
       changed = true;
     }
-    if (changed) reapplyLooks();
+    if (changed || before !== (answer.custom?.v ?? null)) reapplyLooks();
   } catch { /* no storage: this page keeps the look it has */ }
 }
 function reapplyLooks() {
@@ -6942,6 +7677,16 @@ function drawCustom() {
   const papers = el('div', 'custom-papers');
   papers.setAttribute('role', 'radiogroup');
   for (const value of LOOKS.wallpaper.values) {
+    // The person's own picture: chosen like any other once it is here; until then, the way to add it.
+    if (value === CUSTOM_WALL) {
+      const mine = customWall();
+      const paper = mine ? radio(el('button', 'paper'), draft.wallpaper === CUSTOM_WALL, () => setDraft('wallpaper', CUSTOM_WALL)) : el('button', 'paper');
+      paper.type = 'button';
+      customTile(paper, mine);
+      if (!mine) paper.addEventListener('click', () => void addPicture({ busy: paper, chosen: () => setDraft('wallpaper', CUSTOM_WALL), failed: (message) => toast(message, { tone: 'note' }) }));
+      papers.append(paper);
+      continue;
+    }
     const paper = radio(el('button', 'paper'), value === draft.wallpaper, () => setDraft('wallpaper', value));
     paper.dataset.wp = value;
     paper.append(el('span', 'paper-swatch'), el('span', 'paper-name', LOOK_WORDS.wallpaper[value]()));
@@ -6976,6 +7721,15 @@ function drawCustom() {
       return row;
     };
     paperTune.append(dial('veil', t('Intensity'), (v) => `${v}%`), dial('blur', t('Blur'), (v) => `${v}px`));
+    // Your picture: where the screen falls on it, and changing it or taking it away.
+    if (draft.wallpaper === CUSTOM_WALL && customWall()) {
+      paperTune.append(customTools(customWall(), {
+        button: (words, click) => sxButton(words, click),
+        changed: (kept, { reframed }) => { if (!reframed) drawCustom(); },
+        removed: () => setDraft('wallpaper', LOOKS.wallpaper.values[0]),
+        failed: (message) => toast(message, { tone: 'note' }),
+      }));
+    }
   }
   const themes = el('div', 'custom-seg three');
   themes.setAttribute('role', 'radiogroup');
@@ -7904,6 +8658,8 @@ for (const button of document.querySelectorAll?.('button') ?? []) {
   if (!words.trim()) button.classList.add('x-only');
   button.append(xIcon());
 }
+// And its ↗ and ▾, drawn (tailMark).
+for (const node of document.querySelectorAll?.('a, button') ?? []) tailMark(node);
 
 /* ---------- project files panel ---------- */
 
@@ -8168,7 +8924,8 @@ function treeNode(path, entry) {
   button.title = path;
   button.addEventListener('contextmenu', (event) => finderMenu(event, path, entry));
   if (entry.kind === 'dir') {
-    const caret = el('span', 'caret', '▸');
+    const caret = el('span', 'caret');
+    caret.innerHTML = ICON_CHEVRON; // trusted: our own SVG string · turned by styles.css
     button.append(caret, el('span', 'name', entry.name));
     // Something under this folder changed: the dot of whoever touched it last, the way down.
     const under = touchedUnder(path);
@@ -8182,7 +8939,6 @@ function treeNode(path, entry) {
     let opened = false;
     const show = (open) => {
       opened = open;
-      caret.textContent = opened ? '▾' : '▸';
       children.hidden = !opened;
       item.setAttribute('aria-expanded', String(opened));
       if (opened) tree.openDirs.add(path); else tree.openDirs.delete(path);
@@ -8218,8 +8974,6 @@ function treeNode(path, entry) {
 // The two buttons every surface carries in its header, beside its ×: split, and window. Declared
 // before the surfaces are built, which happens while this file is still being read.
 const FLOAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.25 12.25v-6.5a2.5 2.5 0 0 1 2.5-2.5h6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect class="ic-f" x="6.25" y="6.25" width="10.5" height="10.5" rx="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-const SPLIT_LEFT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect class="ic-h" x="5" y="6" width="3.6" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10.6 6.4v7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const SPLIT_RIGHT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect class="ic-h" x="11.4" y="6" width="3.6" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9.4 6.4v7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 /* ---------- surfaces: everything that can stand beside the conversation ---------- */
 
@@ -8298,7 +9052,8 @@ function sideWidthFor(surface) {
   const vw = window.innerWidth;
   if (surface.key === 'chats') return Math.max(SIDE_MIN, Math.min(420, vw * .24));
   if (surface.key === 'tree') return Math.max(SIDE_MIN, Math.min(460, vw * .26));
-  return Math.max(420, Math.min(880, vw * .42));
+  // The viewer docked is the code workspace: the files, the code and what it makes need room.
+  return Math.max(420, Math.min(980, vw * .5));
 }
 const splitOn = (side) => surfaces.find((one) => one.side === side && isSplit(one) && (one.kind === 'dialog' ? one.node()?.open : !one.node()?.hidden) && !one.node()?.classList.contains('leaving'));
 
@@ -12370,7 +13125,7 @@ function renderEyecat(event) {
   const node = el('div', 'command-card eyecat');
   node.dataset.eyecat = finding.key;
   const head = el('div', 'head');
-  head.append(el('b', null, t('◉ MEMORY REVIEWER')), el('span', null, finding.kind === 'unsupported' ? t('a note its own sources do not support') : t('two memories that cannot both be true')));
+  head.append(leadWords('b', null, t('◉ MEMORY REVIEWER')), el('span', null, finding.kind === 'unsupported' ? t('a note its own sources do not support') : t('two memories that cannot both be true')));
   if (finding.confidence !== null && finding.confidence !== undefined) head.append(el('span', 'args', t('{pct}% · judged by @{judge}', { pct: Math.round(finding.confidence * 100), judge: finding.judge })));
   else head.append(el('span', 'args', t('judged by @{judge}', { judge: finding.judge })));
   node.append(head);
@@ -12810,7 +13565,11 @@ function cardFold(card, label, { key, count = null, open = false } = {}) {
   head.append(el('b', null, label));
   if (count !== null) head.append(el('span', 'count', String(count)));
   const caret = el('span', 'caret');
-  const mark = () => { caret.textContent = box.open ? t('▾ COLLAPSE') : t('▸ EXPAND'); };
+  const turn = el('span', 'caret-mark');
+  turn.innerHTML = ICON_CHEVRON; // trusted: our own SVG string · turned by styles.css
+  const said = el('span', 'caret-words');
+  caret.append(said, turn);
+  const mark = () => { said.textContent = (box.open ? t('▾ COLLAPSE') : t('▸ EXPAND')).replace(/^[▸▾]\s*/u, ''); };
   mark();
   head.append(caret);
   const body = el('div', 'card-fold-body');
@@ -14735,8 +15494,11 @@ function openCrewPop(anchor) {
     list.append(row);
   }
   pop.append(list);
-  const go = el('button', 'crew-go', t('⚙ AGENTS IN SETTINGS'));
+  const go = el('button', 'crew-go');
   go.type = 'button';
+  const gear = el('span', 'crew-go-icon');
+  gear.innerHTML = GEAR_ICON; // trusted: our own SVG string
+  go.append(gear, el('span', null, t('Agents in Settings')));
   go.addEventListener('click', () => {
     closeAgentPop();
     openSettings(true, { category: 'agents' });
@@ -16435,12 +17197,16 @@ async function refreshDeliveries() {
     pill = el('button', 'stop-all handoff-pill inbox-pill');
     pill.id = 'inbox-pill';
     pill.type = 'button';
-    pill.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 11.2 5.4 4.6c.2-.6.8-1 1.4-1h6.4c.6 0 1.2.4 1.4 1l2.2 6.6v3.6c0 .9-.7 1.6-1.6 1.6H4.8c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.4 11.2h3.8l1 2h3.6l1-2h3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="handoff-words"></span>'; // trusted: our own SVG string
+    pill.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 11.2 5.4 4.6c.2-.6.8-1 1.4-1h6.4c.6 0 1.2.4 1.4 1l2.2 6.6v3.6c0 .9-.7 1.6-1.6 1.6H4.8c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.4 11.2h3.8l1 2h3.6l1-2h3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="handoff-words"></span><span class="inbox-count"></span>'; // trusted: our own SVG string
     pill.addEventListener('click', () => openSettingsOn('memory', { anchor: 'sx-delivered' }));
     anchor.before(pill);
   }
   pill.hidden = state.device || !deliveries.pending;
-  pill.querySelector('.handoff-words').textContent = deliveries.pending === 1 ? t('1 note to accept') : t('{n} notes to accept', { n: deliveries.pending });
+  const said = deliveries.pending === 1 ? t('1 note to accept') : t('{n} notes to accept', { n: deliveries.pending });
+  pill.querySelector('.handoff-words').textContent = said;
+  // Its short form, for a bar too narrow for the words (barFit, bar-tight): the tray and the number.
+  pill.querySelector('.inbox-count').textContent = String(deliveries.pending);
+  pill.setAttribute('aria-label', said);
   pill.title = t('Notes other projects delivered here, waiting for you');
 }
 function drawMemory(host, data) {
@@ -18885,11 +19651,12 @@ settingsUI.button?.addEventListener('click', () => openSettingsOn('release', { p
    bar, and in which order, is this browser's own: a convenience, kept in localStorage. */
 const BAR_KEY = 'pulse.barItems';
 const BAR_FIXED = 'settings';
-const BAR_DEFAULT = ['salas', 'macroverso', 'crew', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'];
+const BAR_DEFAULT = ['salas', 'macroverso', 'crew', 'code', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'];
 // The keys that are in the markup. The crew is two elements — five spheres when there is room, one
 // button when there is not — and one key: taking it off takes both.
 const BAR_BUILT = {
   crew: { nodes: ['#agents', '#agents-compact'], name: () => t('Agents') },
+  code: { nodes: ['#code-button'], name: () => t('Code') },
   modules: { nodes: ['#modules-button'], name: () => t('Modules') },
   mother: { nodes: ['#mother-button'], name: () => t('Diagnostics') },
   nostromo: { nodes: ['#nostromo-bar'], name: () => t('Memory map') },
@@ -18904,6 +19671,8 @@ const BAR_CONTEXTUAL = ['#steps-pill', '#tour-pill-slot', '#handoff-pill', '#upd
 // A module's name before the board has answered; once it has, the module says its own.
 const BAR_MODULE_NAMES = { ash: 'Token saver', ollama: 'Local AI', intents: 'Suggested effort' };
 const BAR_MINUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+// Its mirror on a key that can still go on the bar, in the card under it.
+const BAR_PLUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v7M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const barKit = {
   node: document.querySelector('#bar'),
   order: [],
@@ -18923,7 +19692,7 @@ const barKit = {
 
 // Keys that joined the bar after a person arranged theirs. Each is put at the end once, so it can
 // be found; taken off after that, it stays off.
-const BAR_JOINED = ['phone', 'salas', 'macroverso'];
+const BAR_JOINED = ['phone', 'salas', 'macroverso', 'code'];
 // The MACROVERSO: an orbit, a sun and two worlds. Only the room of SALAS carries the key.
 const MACROVERSO_ICON = '<ellipse cx="10" cy="10" rx="8.2" ry="3.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/><circle cx="16.4" cy="8.6" r="1.5" fill="currentColor"/><circle cx="4.2" cy="11.6" r="1.1" fill="currentColor" opacity=".7"/>';
 // SALAS: three rooms of one Mac, and what joins them.
@@ -18937,7 +19706,8 @@ function barStored() {
       const met = JSON.parse(localStorage.getItem('pulse.barMet') ?? '[]');
       const fresh = BAR_JOINED.filter((id) => !met.includes(id));
       if (fresh.length) {
-        for (const id of fresh) if (!list.includes(id)) list.push(id);
+        // CODE stands beside the agents, where it is seen first; the others join at the end.
+        for (const id of fresh) if (!list.includes(id)) { if (id === 'code' && list.includes('crew')) list.splice(list.indexOf('crew') + 1, 0, id); else list.push(id); }
         localStorage.setItem(BAR_KEY, JSON.stringify(list));
         localStorage.setItem('pulse.barMet', JSON.stringify([...met, ...fresh]));
       }
@@ -18954,6 +19724,8 @@ function barCatalogue() {
   for (const [id, spec] of Object.entries(BAR_BUILT)) {
     // Reload lives in the second bar on the Mac; it is not a key of this one there.
     if (id === 'reload' && homeOn()) continue;
+    // The code workspace docks beside the conversation: a phone has no room beside it.
+    if (id === 'code' && state.device) continue;
     const nodes = spec.nodes.map((query) => document.querySelector(query)).filter(Boolean);
     if (nodes.length) out.set(id, { id, name: spec.name(), nodes });
   }
@@ -19342,6 +20114,8 @@ function barLayout() {
     else if (on) { const key = barKit.extras.get(id); key.title = entry.name; key.setAttribute('aria-label', entry.name); }
   }
   for (const [id, node] of barKit.extras) if (!barKit.order.includes(id)) { node.remove(); barKit.extras.delete(id); }
+  // A key the catalogue leaves out on this device (CODE on a phone) is not drawn at all.
+  for (const [id, spec] of Object.entries(BAR_BUILT)) if (!catalogue.has(id) && id !== 'reload') for (const query of spec.nodes) document.querySelector(query)?.classList.add('bar-off');
   barPlace();
   if (barKit.editing) { barBadges(); barDrawCard(); }
   barFit();
@@ -19378,6 +20152,7 @@ function barSpills(bar) {
 function barFit() {
   const bar = barKit.node;
   if (!bar || !barKit.more || typeof bar.getBoundingClientRect !== 'function') return;
+  bar.classList?.remove('bar-tight');
   for (const node of bar.querySelectorAll?.('.bar-overflow') ?? []) node.classList.remove('bar-overflow');
   barKit.hidden = [];
   barKit.more.hidden = true;
@@ -19393,6 +20168,9 @@ function barFit() {
   }
   if (!barKit.hidden.length) { barKit.more.hidden = true; barCloseMore(); }
   else if (barKit.moreCard && !barKit.moreCard.hidden) barDrawMore();
+  // Everything that can go is behind «More» and the project's name is still cut: the pills that
+  // stay (notes to accept) take their short form, so the name reads whole.
+  if (barSpills(bar)) bar.classList?.add('bar-tight');
 }
 function barDrawMore() {
   const catalogue = barCatalogue();
@@ -19426,6 +20204,20 @@ function barDrawMore() {
   card.style.top = `${Math.round(key.bottom + 8)}px`;
   card.style.left = `${Math.round(Math.max(16, Math.min(window.innerWidth - width - 16, key.right - width)))}px`;
   barKit.more.setAttribute('aria-expanded', 'true');
+}
+// The bar folds its keys into 34 px squares at 980 px of its own width (styles.css, @container
+// bar); the house's keys sit in a bar of their own and fold with it, so one row never holds two
+// sizes. The conversation's width goes to the root for what the window's width cannot tell.
+function roomWidth() {
+  const bar = barKit.node;
+  if (!bar || typeof getComputedStyle !== 'function') return;
+  const style = getComputedStyle(bar);
+  const inner = bar.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+  document.querySelector('#bar-home')?.classList.toggle('keys-square', inner > 0 && inner <= 980);
+  const room = threadBox?.getBoundingClientRect?.().width ?? 0;
+  const root = document.documentElement;
+  root?.classList?.toggle('room-720', room > 0 && room <= 720);
+  root?.classList?.toggle('room-680', room > 0 && room <= 680);
 }
 function barCloseMore() {
   if (barKit.moreCard) barKit.moreCard.hidden = true;
@@ -19552,10 +20344,14 @@ function barDrawCard() {
     document.body.append(card);
   }
   const card = barKit.card;
+  card.classList.add('bar-add');
+  // The title and, under it, how the bar is arranged; Done at their right. The keys below.
   const head = el('header', 'bar-card-head');
   const done = sxButton(t('Done'), () => barEdit(false), { tone: 'primary' });
   done.classList.add('bar-done');
-  head.append(el('h3', null, t('Add to the bar')), done);
+  const titles = el('div', 'bar-card-titles');
+  titles.append(el('h3', null, t('Add to the bar')), el('p', 'bar-card-sub', t('Drag a key to move it. Right-click the bar to come back here.')));
+  head.append(titles, done);
   const grid = el('div', 'bar-grid');
   for (const [id, entry] of barCatalogue()) {
     if (id === BAR_FIXED || barKit.order.includes(id)) continue;
@@ -19568,12 +20364,16 @@ function barDrawCard() {
     // The crew's own drawing is on its one-button form, not on the spheres.
     const drawn = [...(entry.nodes ?? [])].reverse().map((node) => node.querySelector('svg')).find(Boolean)?.cloneNode?.(true);
     if (drawn) { drawn.removeAttribute?.('class'); glyph.append(drawn); } else if (entry.icon) glyph.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${entry.icon}</svg>`; // trusted: our own SVG strings
+    // The «+» on its corner, the mirror of the «−» on the keys of the bar.
+    const plus = el('i', 'bar-tile-plus');
+    plus.innerHTML = BAR_PLUS; // trusted: our own SVG string
+    glyph.append(plus);
     tile.append(glyph, el('span', 'bar-tile-name', entry.name));
     tile.addEventListener('click', () => barAdd(id));
     grid.append(tile);
   }
   const focused = card.contains?.(document.activeElement) ? document.activeElement?.dataset?.barItem ?? 'done' : null;
-  card.replaceChildren(head, grid.children.length ? grid : el('p', 'bar-card-empty', t('Everything is already on the bar.')), el('p', 'bar-card-hint', t('Drag a key to move it. Right-click the bar to come back here.')));
+  card.replaceChildren(head, grid.children.length ? grid : el('p', 'bar-card-empty', t('Everything is already on the bar.')));
   card.hidden = false;
   barPlaceCard();
   // Focus stays in the card: on the tile that took the place of the one just used, or on Done.
@@ -19636,7 +20436,7 @@ function barDragStart(event, id) {
   if (event.button !== 0 || barKit.drag) return;
   const node = barShown(id);
   if (!node || event.target?.closest?.('.bar-badge')) return;
-  const drag = { id, node, x0: event.clientX, base: 0, moved: false };
+  const drag = { id, node, x0: event.clientX, scroll0: barKit.node.scrollLeft || 0, base: 0, moved: false };
   barKit.drag = drag;
   drag.move = (moved) => barDragMove(moved);
   drag.up = () => barDragEnd({ save: true });
@@ -19647,13 +20447,27 @@ function barDragStart(event, id) {
 function barDragMove(event) {
   const drag = barKit.drag;
   if (!drag) return;
-  const dx = event.clientX - drag.x0;
+  const bar = barKit.node;
   if (!drag.moved) {
-    if (Math.abs(dx) < 5) return;
+    if (Math.abs(event.clientX - drag.x0) < 5) return;
     drag.moved = true;
     drag.base = drag.node.offsetLeft;
     drag.node.classList.add('bar-lifted');
   }
+  // Near an edge of a bar wider than its box, the bar runs under the key (styles.css: while it is
+  // being arranged it scrolls sideways instead of spilling out of its box).
+  const box = bar.getBoundingClientRect?.();
+  if (box && bar.scrollWidth > bar.clientWidth + 1) {
+    const edge = 36;
+    if (event.clientX < box.left + edge) bar.scrollLeft -= 10;
+    else if (event.clientX > box.right - edge) bar.scrollLeft += 10;
+  }
+  // The key is held between the first and the last key of the bar: it never leaves it.
+  const placed = barKit.order.map((one) => barShown(one)).filter(Boolean);
+  const lo = Math.min(...placed.map((node) => node === drag.node ? drag.base : node.offsetLeft));
+  const hi = Math.max(...placed.map((node) => (node === drag.node ? drag.base : node.offsetLeft) + node.offsetWidth)) - drag.node.offsetWidth;
+  const wanted = drag.base + (event.clientX - drag.x0) + ((bar.scrollLeft || 0) - drag.scroll0);
+  const dx = Math.min(Math.max(wanted, lo), Math.max(lo, hi)) - drag.base;
   const centre = drag.base + dx + drag.node.offsetWidth / 2;
   const others = barKit.order.filter((one) => one !== drag.id).map((one) => [one, barShown(one)]).filter(([, node]) => node);
   const past = others.find(([, node]) => centre < node.offsetLeft + node.offsetWidth / 2)?.[0] ?? null;
@@ -19701,6 +20515,11 @@ if (barKit.node) {
   let fitting = 0;
   const refit = () => { cancelAnimationFrame?.(fitting); fitting = requestAnimationFrame?.(() => barFit()) ?? 0; };
   window.addEventListener?.('resize', refit);
+  // The bar is as wide as the room, not the window (2026-10-17): the code workspace docked beside
+  // the conversation narrows it with the window unmoved, and MODULES ended up under the house's
+  // keys. Measured whenever the bar's own width changes: what fits, the house's keys at the size of
+  // the bar's, and the room's width for the rules that read it (styles.css, room-720 · room-680).
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { roomWidth(); refit(); }).observe(barKit.node);
   // A key that comes or goes on its own (STOP ALL while agents work, a pill) changes what fits, and
   // so does the bar's own font arriving. «More» is left out: it is the fitting's own doing.
   if (typeof MutationObserver === 'function') {
@@ -19713,6 +20532,14 @@ if (barKit.node) {
   // Right-click on the bar between keys, while it is open, closes it, as a second right-click on a
   // key does. While it is open a key does not do what it does: it is being placed, not pressed.
   barKit.node.addEventListener('contextmenu', (event) => { if (barKit.editing && !event.barHandled) { event.preventDefault(); barEdit(false); } });
+  // Being arranged, a bar wider than its box scrolls sideways; a mouse's wheel only turns up and
+  // down, so it is turned into sideways there.
+  barKit.node.addEventListener('wheel', (event) => {
+    const bar = barKit.node;
+    if (!barKit.editing || bar.scrollWidth <= bar.clientWidth + 1 || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    bar.scrollLeft += event.deltaY;
+    event.preventDefault();
+  }, { passive: false });
   barKit.node.addEventListener('click', (event) => {
     if (!barKit.editing && !barKit.swallow) return;
     if (barKit.swallow) { barKit.swallow = false; event.preventDefault(); event.stopPropagation(); return; }

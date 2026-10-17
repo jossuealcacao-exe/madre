@@ -10,7 +10,8 @@
 // Only what the pages share: the theme, the accent, the wallpaper and its dials, the bubbles and
 // the text of the conversation. How Home is arranged lives beside it, in home.json (below).
 
-import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { oneAtATime, writeWhole } from './json-file.mjs';
 
@@ -126,5 +127,85 @@ export function changeHome(stateRoot, patch, now = new Date()) {
     Object.assign(home, patch);
     await writeWhole(homeFile(stateRoot), `${JSON.stringify({ home, at: new Date(now).toISOString() }, null, 2)}\n`);
     return { home, saved: true };
+  });
+}
+
+// YOUR OWN WALLPAPER (1.0.3). One picture of the person's, for every page that chooses it (the
+// choice is still each page's own: `pulse.wallpaper` = 'custom'). The page reads the picture,
+// fits it (no longer side than WALLPAPER_SIDE), encodes it and takes its colours for the veil, the
+// mesh and the tint, the way the wallpapers that ship were made by hand; here it is kept as it
+// came: the picture, and beside it what it is (`custom.json`). Only a picture is kept: its first
+// bytes say WebP, JPEG or PNG, or nothing is written. Never an SVG: it can carry a script.
+export const WALLPAPER_BYTES = 8 * 1024 * 1024;
+const wallDir = (stateRoot) => join(stateRoot, 'wallpaper');
+const wallMeta = (stateRoot) => join(wallDir(stateRoot), 'custom.json');
+const PICTURES = [
+  { type: 'image/webp', ext: 'webp', is: (b) => b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP' },
+  { type: 'image/jpeg', ext: 'jpg', is: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  { type: 'image/png', ext: 'png', is: (b) => b.length > 8 && b.toString('latin1', 1, 4) === 'PNG' && b[0] === 0x89 },
+];
+const RGB = (value) => Array.isArray(value) && value.length === 3 && value.every((n) => Number.isInteger(n) && n >= 0 && n <= 255);
+const SCHEME = (value) => Boolean(value) && RGB(value.veil) && RGB(value.tint) && Array.isArray(value.mesh) && value.mesh.length === 3 && value.mesh.every(RGB);
+const PERCENT = (value) => Number.isFinite(value) && value >= 0 && value <= 100;
+// What a page sends about the picture, checked one field at a time.
+function wallShape(meta) {
+  if (!meta || typeof meta !== 'object') return null;
+  const w = Number(meta.w);
+  const h = Number(meta.h);
+  if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1 || w > 20000 || h > 20000) return null;
+  if (!SCHEME(meta.palette?.dark) || !SCHEME(meta.palette?.light)) return null;
+  const x = Number(meta.focus?.x ?? 50);
+  const y = Number(meta.focus?.y ?? 50);
+  if (!PERCENT(x) || !PERCENT(y)) return null;
+  const pick = (one) => ({ veil: one.veil, tint: one.tint, mesh: one.mesh });
+  return { w, h, focus: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }, palette: { dark: pick(meta.palette.dark), light: pick(meta.palette.light) } };
+}
+// The picture kept, as a page reads it: its version (a hash of its bytes), its type, its size, where
+// it is framed and its colours. `null` when there is none, or what is there cannot be trusted.
+export async function readWallpaper(stateRoot) {
+  const raw = await readFile(wallMeta(stateRoot), 'utf8').then((text) => JSON.parse(text)).catch(() => null);
+  const shape = wallShape(raw);
+  const kind = PICTURES.find((one) => one.type === raw?.type);
+  if (!shape || !kind || typeof raw.v !== 'string' || !/^[0-9a-f]{8,64}$/.test(raw.v)) return null;
+  return { v: raw.v, type: kind.type, ...shape };
+}
+export async function wallpaperBytes(stateRoot) {
+  const meta = await readWallpaper(stateRoot);
+  if (!meta) return null;
+  const kind = PICTURES.find((one) => one.type === meta.type);
+  const bytes = await readFile(join(wallDir(stateRoot), `custom.${kind.ext}`)).catch(() => null);
+  return bytes ? { bytes, type: meta.type, v: meta.v } : null;
+}
+export function saveWallpaper(stateRoot, bytes, meta) {
+  return oneAtATime(wallMeta(stateRoot), async () => {
+    if (!Buffer.isBuffer(bytes) || !bytes.length) return { error: 'empty' };
+    if (bytes.length > WALLPAPER_BYTES) return { error: 'size' };
+    const kind = PICTURES.find((one) => one.is(bytes));
+    if (!kind) return { error: 'type' };
+    const shape = wallShape(meta);
+    if (!shape) return { error: 'meta' };
+    const v = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+    await writeWhole(join(wallDir(stateRoot), `custom.${kind.ext}`), bytes);
+    for (const other of PICTURES) if (other !== kind) await rm(join(wallDir(stateRoot), `custom.${other.ext}`), { force: true });
+    await writeWhole(wallMeta(stateRoot), `${JSON.stringify({ v, type: kind.type, ...shape, at: new Date().toISOString() }, null, 2)}\n`);
+    return { custom: { v, type: kind.type, ...shape } };
+  });
+}
+// Where the picture is framed: the point of it that stays in view when the screen crops it.
+export function frameWallpaper(stateRoot, focus) {
+  return oneAtATime(wallMeta(stateRoot), async () => {
+    const raw = await readFile(wallMeta(stateRoot), 'utf8').then((text) => JSON.parse(text)).catch(() => null);
+    if (!raw) return { error: 'none' };
+    const shape = wallShape({ ...raw, focus });
+    if (!shape) return { error: 'value' };
+    await writeWhole(wallMeta(stateRoot), `${JSON.stringify({ ...raw, focus: shape.focus, at: new Date().toISOString() }, null, 2)}\n`);
+    return { custom: await readWallpaper(stateRoot) };
+  });
+}
+export function dropWallpaper(stateRoot) {
+  return oneAtATime(wallMeta(stateRoot), async () => {
+    for (const kind of PICTURES) await rm(join(wallDir(stateRoot), `custom.${kind.ext}`), { force: true });
+    await rm(wallMeta(stateRoot), { force: true });
+    return { custom: null };
   });
 }

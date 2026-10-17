@@ -105,13 +105,14 @@ import { currentNetwork, lanAddresses } from './bridge/network.mjs';
 import { PHONE_MAX_MODE, writtenMode } from './bridge/policy.mjs';
 import { qrSvg } from './bridge/qr.mjs';
 import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
-import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks } from './looks.mjs';
+import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { heartbeat } from './heartbeat.mjs';
 import { askRoom, associateProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
+import { readAt } from './checkpoint.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -582,6 +583,49 @@ export async function createPulseServer({
       }
     }
     return all.sort((x, y) => (x.sequence ?? 0) - (y.sequence ?? 0));
+  }
+  // The code workspace (1.0.3): an agent's last EDIT turn on a file, read from every conversation
+  // of the project (only the lines about control turns are parsed), and the parts the human kept.
+  async function lastAgentChange(path) {
+    const { chats: list } = await listChats(roomDir).catch(() => ({ chats: [] }));
+    const ids = list.length ? list.map((chat) => chat.id) : ['main'];
+    let found = null;
+    const undone = new Set();
+    for (const id of ids) {
+      const raw = await readFile(chatLedger(roomDir, id), 'utf8').catch(() => '');
+      for (const line of raw.split('\n')) {
+        if (!line.includes('"control.')) continue;
+        let event;
+        try { event = JSON.parse(line); } catch { continue; }
+        if (event.type === 'control.reverted') { undone.add(event.payload?.checkpointId); continue; }
+        if (event.type !== 'control.changed') continue;
+        const file = (event.payload?.files ?? []).find((one) => one.path === path);
+        if (!file || file.status === 'D' || !event.payload.agent || event.payload.agent === 'you') continue;
+        const at = Date.parse(event.timestamp) || 0;
+        if (!found || at >= found.at) found = { at, agent: event.payload.agent, checkpointId: event.payload.checkpointId, afterTree: event.payload.afterTree ?? null, status: file.status, messageId: event.payload.responseMessageId ?? event.payload.messageId ?? null };
+      }
+    }
+    return found && !undone.has(found.checkpointId) ? { ...found, at: new Date(found.at).toISOString() } : null;
+  }
+  const reviewedFile = join(roomDir, 'code-reviewed.json');
+  let reviewedWrites = Promise.resolve();
+  async function readReviewed() {
+    try { const raw = JSON.parse(await readFile(reviewedFile, 'utf8')); return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}; } catch { return {}; }
+  }
+  function keepReviewed(key, hunk) {
+    const run = reviewedWrites.then(async () => {
+      const all = await readReviewed();
+      const list = [...new Set([...(Array.isArray(all[key]) ? all[key] : []), hunk])].slice(-200);
+      delete all[key];
+      all[key] = list;
+      // The newest 300 files are enough: an older change was long since kept or taken back.
+      const keys = Object.keys(all);
+      for (const old of keys.slice(0, Math.max(0, keys.length - 300))) delete all[old];
+      await writeFile(reviewedFile, `${JSON.stringify(all)}\n`);
+      return list;
+    });
+    reviewedWrites = run.catch(() => null);
+    return run;
   }
   // D-S15 · what every project that lets it has to teach the Coordinator, asked now. A project that
   // is asleep or does not answer is not lost: the copy Salas kept the last time it answered is used
@@ -1772,7 +1816,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/hardware.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/hardware.js', '/code-tools.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -2786,6 +2830,29 @@ export async function createPulseServer({
         await room.record('project.file.saved', { path: relative, bytes: result.bytes });
         return sendJson(response, 200, { ok: true, bytes: result.bytes, mtimeMs: result.mtimeMs });
       }
+      // The code workspace (1.0.3): the last time an agent changed a file in an EDIT turn, as git
+      // kept it — the file before the turn and the file the turn left — and which parts of it the
+      // human already kept. A turn taken back with UNDO is no longer a change.
+      if (request.method === 'GET' && url.pathname === '/api/files/changes') {
+        const path = String(url.searchParams.get('path') ?? '').replace(/^\.?\/+/, '');
+        if (!path || path.split('/').includes('..')) return sendJson(response, 400, { error: t('That is not a file of this project.') });
+        const change = await lastAgentChange(path);
+        if (!change) return sendJson(response, 200, { change: null, reviewed: [] });
+        const before = change.status === 'A' ? '' : await readAt(canonicalProjectRoot, { checkpointId: change.checkpointId, path });
+        if (before === null) return sendJson(response, 200, { change: null, reviewed: [] });
+        const after = change.afterTree ? await readAt(canonicalProjectRoot, { tree: change.afterTree, path }) : null;
+        const reviewed = (await readReviewed())[`${change.checkpointId}|${path}`] ?? [];
+        return sendJson(response, 200, { change: { agent: change.agent, checkpointId: change.checkpointId, at: change.at, status: change.status, before, after, messageId: change.messageId }, reviewed });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/files/changes/review') {
+        const payload = await body(request).catch(() => ({}));
+        const path = String(payload.path ?? '').replace(/^\.?\/+/, '');
+        const checkpointId = String(payload.checkpointId ?? '');
+        const hunk = String(payload.hunk ?? '');
+        if (!path || path.split('/').includes('..') || !/^[0-9A-Za-z][\w-]{0,79}$/.test(checkpointId) || !/^[0-9a-f]{6,16}$/.test(hunk)) return sendJson(response, 400, { error: t('That is not a change of this project.') });
+        const reviewed = await keepReviewed(`${checkpointId}|${path}`, hunk);
+        return sendJson(response, 200, { reviewed });
+      }
       // RIPLEY: the project rendered as a site, inside a frame that runs scripts but
       // reaches nothing: an opaque origin (sandbox without same-origin), no network
       // (connect-src none), no forms, no top navigation, assets only from MADRE's
@@ -3104,7 +3171,29 @@ export async function createPulseServer({
       // round trip; this is the durable one, shared by every browser on this machine.
       // The looks every page shares (src/looks.mjs): Home and each project are different origins,
       // so the browser alone kept a choice for one page only.
-      if (request.method === 'GET' && url.pathname === '/api/looks') return sendJson(response, 200, await readLooks(root, { room: basename(roomDir) }));
+      if (request.method === 'GET' && url.pathname === '/api/looks') return sendJson(response, 200, { ...await readLooks(root, { room: basename(roomDir) }), custom: await readWallpaper(root) });
+      // Your own wallpaper (src/looks.mjs, 1.0.3): one picture, kept once for every page. Served as
+      // the picture it is, never sniffed into anything else; written only from this page.
+      if (request.method === 'GET' && url.pathname === '/api/looks/wallpaper') {
+        const picture = await wallpaperBytes(root);
+        if (!picture) return sendJson(response, 404, { error: t('There is no picture of yours here.') });
+        response.writeHead(200, { 'content-type': picture.type, 'content-length': picture.bytes.length, 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'" });
+        return response.end(picture.bytes);
+      }
+      if (request.method === 'PUT' && url.pathname === '/api/looks/wallpaper') {
+        let bytes;
+        try { bytes = await rawBody(request, WALLPAPER_BYTES); } catch { return sendJson(response, 413, { error: t('The picture is larger than 8 MB.') }); }
+        let meta = null;
+        try { meta = JSON.parse(decodeURIComponent(String(request.headers['x-madre-wallpaper'] ?? ''))); } catch { /* checked with the picture */ }
+        const answer = await saveWallpaper(root, bytes, meta);
+        if (answer.error) return sendJson(response, 400, { error: answer.error === 'type' ? t('Only a WebP, JPEG or PNG picture can be a wallpaper.') : t('That picture could not be kept.') });
+        return sendJson(response, 200, answer);
+      }
+      if (request.method === 'POST' && url.pathname === '/api/looks/wallpaper/frame') {
+        const answer = await frameWallpaper(root, await body(request).catch(() => null));
+        return sendJson(response, answer.error ? 400 : 200, answer);
+      }
+      if (request.method === 'DELETE' && url.pathname === '/api/looks/wallpaper') return sendJson(response, 200, await dropWallpaper(root));
       // This project's own wallpaper («only in this project»), or back to the shared one with null.
       if (request.method === 'POST' && url.pathname === '/api/looks/room') {
         const payload = await body(request).catch(() => ({}));

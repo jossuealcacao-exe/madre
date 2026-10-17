@@ -226,7 +226,9 @@ async function diffOne(root, before, prefix = '', exclude = []) {
   if (!files.length) return { files: [], stat: '' };
   const only = files.length < listed.length ? ['--', ...files.flatMap((file) => [file.path.slice(prefix.length), ...(file.from ? [file.from.slice(prefix.length)] : [])])] : [];
   const stat = (await git(root, ['diff', '--no-ext-diff', '--no-textconv', '--stat=100', before.tree, after, ...only], { via })).trim();
-  return { files, stat: prefix && stat ? stat.split('\n').map((line) => (line.startsWith(' ') ? ` ${prefix}${line.trimStart()}` : line)).join('\n') : stat };
+  // The tree the turn left is kept with what it changed (the code workspace reads it back): the
+  // agent's own lines stay its own even after the human edits the file again.
+  return { files, afterTree: after, stat: prefix && stat ? stat.split('\n').map((line) => (line.startsWith(' ') ? ` ${prefix}${line.trimStart()}` : line)).join('\n') : stat };
 }
 
 // What changed since the checkpoint, in the project and in every nested repository, paths
@@ -241,6 +243,19 @@ export async function diffCheckpoint(root, checkpoint) {
   const stat = parts.map((part) => part.stat).filter(Boolean).join('\n');
   const forbiddenIn = (path) => isForbidden(path) || (checkpoint.nested ?? []).some((part) => path.startsWith(`${part.dir}/`) && isForbidden(path.slice(part.dir.length + 1)));
   return { afterTree: outer.afterTree ?? null, files, stat, forbidden: files.filter((file) => forbiddenIn(file.path)).map((file) => file.path) };
+}
+
+// What a file said at a photograph, or in the tree a turn left behind, read from git and never from
+// the disk. `null` when git no longer has it (a shadow repository gone with a restart, a tree git
+// pruned), when the file was not there, or when the path is not a path inside the project.
+const CHECKPOINT_ID = /^[0-9A-Za-z][\w-]{0,79}$/;
+const TREE_ID = /^[0-9a-f]{40,64}$/;
+export async function readAt(root, { checkpointId = null, tree = null, path = '' } = {}) {
+  const inner = String(path ?? '');
+  if (!inner || inner.startsWith('/') || inner.startsWith('-') || inner.split('/').includes('..')) return null;
+  const rev = checkpointId ? (CHECKPOINT_ID.test(String(checkpointId)) ? `${CHECKPOINT_REF}/${checkpointId}` : null) : (TREE_ID.test(String(tree ?? '')) ? tree : null);
+  if (!rev) return null;
+  try { return await git(root, ['show', `${rev}:${inner}`]); } catch { return null; }
 }
 
 // Which repository a project-relative path belongs to, and the path inside it.

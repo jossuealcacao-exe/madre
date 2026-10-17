@@ -19,6 +19,7 @@ dropStickyHover();
 import { creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
 import { labelPowerKey, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
+import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -68,8 +69,8 @@ const ACCENTS = ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon',
 const ACCENT_WORDS = { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow') };
 // The wallpapers are the room's (app.js, LOOKS.wallpaper; styles.css, --wp-*): the same images, the
 // same veil, the same «mesh» and blur the room's PERSONALIZE sets, read from the same keys.
-const WALLPAPERS = ['default', 'jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania'];
-const WALLPAPER_WORDS = { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania' };
+const WALLPAPERS = ['default', 'jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania', CUSTOM_WALL];
+const WALLPAPER_WORDS = { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania', custom: () => t('Your picture') };
 // The conversation's own looks (app.js, LOOKS.bubbles and LOOKS.text): the lobby has no
 // conversation, so here they are only chosen, for the room served at this address.
 const BUBBLES = ['comfortable', 'large', 'compact', 'fitted'];
@@ -106,7 +107,8 @@ function readLooks() {
   return {
     theme: ['auto', 'light', 'dark'].includes(theme) ? theme : 'auto',
     accent: ACCENTS.includes(accent) ? accent : 'madre',
-    wallpaper: WALLPAPERS.includes(wallpaper) ? wallpaper : 'default',
+    // The person's own picture only while it is here (public/wallpaper.js); taken away, the sky.
+    wallpaper: WALLPAPERS.includes(wallpaper) && (wallpaper !== CUSTOM_WALL || customWall()) ? wallpaper : 'default',
     style: style === 'mesh' ? 'mesh' : 'veil',
     veil: number(veil, 0, 140, 100),
     blur: number(blur, 0, 24, 0),
@@ -137,6 +139,8 @@ function applyLooks() {
   if (looks.home.cards !== 'full') root.dataset.homeCards = looks.home.cards; else delete root.dataset.homeCards;
   if (looks.home.text !== 'comfortable') root.dataset.homeText = looks.home.text; else delete root.dataset.homeText;
 }
+// The person's picture as this browser last knew it, before the first look is painted.
+paintCustomWall(rememberedWall());
 applyLooks();
 function saveLooks({ theme, accent, wallpaper, style, bubbles, text }) {
   // The first value of each look is the room as it always was, kept as no choice at all (app.js, saveLook).
@@ -224,11 +228,15 @@ async function pullLooks() {
   let answer = null;
   try { answer = await fetch('/api/looks', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)); } catch { return; }
   if (!answer?.looks) return;
+  // The person's own picture, kept once for every page (public/wallpaper.js): painted as it is now.
+  const before = customWall()?.v ?? null;
+  paintCustomWall(answer.custom ?? null);
   try {
     // Nothing kept yet: the first page that has a choice of its own hands it to the others.
     if (!answer.saved) { if (SHARED_LOOKS.some((key) => localStorage.getItem(key) !== null)) pushLooks(); return; }
-    let changed = false;
-    const wall = wallpaperOf(answer);
+    let changed = before !== (answer.custom?.v ?? null);
+    let wall = wallpaperOf(answer);
+    if (wall === CUSTOM_WALL && !answer.custom) wall = null;
     for (const [key, value] of [...SHARED_LOOKS.map((one) => [one, answer.looks[one] ?? null]), ['pulse.wallpaper', wall === 'default' ? null : wall]]) {
       if (localStorage.getItem(key) === value) continue;
       if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
@@ -1697,7 +1705,10 @@ async function openHomeAdd() {
   const list = el('div', 'sm-add-list');
   body.append(list);
   homeAddSheet.append(body);
-  homeAddSheet.addEventListener('close', () => { homeAddSheet?.remove(); homeAddSheet = null; });
+  // The key's squares stay filled while the sheet it opened is there.
+  const key = document.getElementById('sm-add-widgets');
+  key?.classList.add('filled');
+  homeAddSheet.addEventListener('close', () => { homeAddSheet?.remove(); homeAddSheet = null; key?.classList.remove('filled'); });
   document.body.append(homeAddSheet);
   homeAddSheet.showModal();
   void homeTour.hint('home-add', list, { inside: true, title: t('Add to Home'), text: t('The tiles you took off, and the widgets. A widget is offered only when something on this Mac feeds it; right-click any tile to move it, resize it or take it off.') });
@@ -4235,6 +4246,15 @@ function fillLook(host) {
   const papers = el('div', 'custom-papers');
   papers.setAttribute('role', 'radiogroup');
   for (const value of WALLPAPERS) {
+    // The person's own picture: chosen like any other once it is here; until then, the way to add it.
+    if (value === CUSTOM_WALL) {
+      const mine = customWall();
+      const paper = mine ? button('paper', null, () => saveLooks({ wallpaper: CUSTOM_WALL })) : button('paper', null, () => void addPicture({ busy: paper, chosen: () => saveLooks({ wallpaper: CUSTOM_WALL }), failed: (message) => toast(message, 'look') }));
+      if (mine) { paper.setAttribute('role', 'radio'); paper.setAttribute('aria-checked', String(looks.wallpaper === CUSTOM_WALL)); }
+      customTile(paper, mine);
+      papers.append(paper);
+      continue;
+    }
     const paper = button('paper', null, () => saveLooks({ wallpaper: value }));
     paper.dataset.wp = value;
     paper.setAttribute('role', 'radio');
@@ -4271,6 +4291,15 @@ function fillLook(host) {
       return line;
     };
     tune.append(dial('veil', t('Intensity')), dial('blur', t('Blur')));
+    // Your picture: where the screen falls on it, and changing it or taking it away.
+    if (looks.wallpaper === CUSTOM_WALL && customWall()) {
+      tune.append(customTools(customWall(), {
+        button: (words, click) => sxButton(words, click),
+        changed: (kept, { reframed }) => { if (!reframed) settingsSheet?.paintLooks(); },
+        removed: () => saveLooks({ wallpaper: 'default' }),
+        failed: (message) => toast(message, 'look'),
+      }));
+    }
     paperBox.append(tune);
   }
   sxBlock(page, t('Wallpaper'), photo

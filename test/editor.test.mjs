@@ -90,7 +90,7 @@ test('editor: the textarea covers its whole page, starts at the top, and a Shift
   // editor's drawing showed code that could not be clicked into.
   assert.match(css, /\.ed-input \{\n  position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; max-height: none;/);
   // Given its text, a textarea holds the caret after the last character; focusing jumped to the end.
-  assert.match(editor, /input\.value = saved;\n[\s\S]{0,200}input\.setSelectionRange\?\.\(0, 0\);/);
+  assert.match(editor, /input\.value = draft === null \|\| draft === undefined \? saved : [^\n]+;\n[\s\S]{0,200}input\.setSelectionRange\?\.\(0, 0\);/);
   // Finder's rule: Shift moves the run from the anchor, and what was added before it stays.
   assert.match(app, /for \(const one of kept\) viewerUI\.picked\.add\(one\);/);
 });

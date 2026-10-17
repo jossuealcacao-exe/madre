@@ -35,6 +35,8 @@ const ICONS = {
   wrap: svg('M3.5 5.5h13M3.5 10h10a2.6 2.6 0 0 1 0 5.2H10M11.8 13.3 10 15.2l1.8 1.8M3.5 15h3.5'),
   ask: svg('M4 5.6A2.6 2.6 0 0 1 6.6 3h6.8A2.6 2.6 0 0 1 16 5.6v4.8A2.6 2.6 0 0 1 13.4 13H9.2L5.6 16v-3A2.6 2.6 0 0 1 4 10.4z'),
   link: svg('M8.3 11.7l3.4-3.4M7.2 13.2 6 14.4a2.6 2.6 0 0 1-3.7-3.7l2.6-2.6a2.6 2.6 0 0 1 3.7 0M12.8 6.8 14 5.6a2.6 2.6 0 0 1 3.7 3.7l-2.6 2.6a2.6 2.6 0 0 1-3.7 0'),
+  // The room's chooser chevron (app.js, ICON_CHEVRON), drawn on this grid: a menu opens under it.
+  chevron: svg('M5.25 7.75 10 12.5l4.75-4.75'),
 };
 
 // Spaces or tabs, and how many: what the file already does, not what the editor prefers.
@@ -104,7 +106,11 @@ export function findAll(text, query, { caseSensitive = false, regex = false, wor
   return found;
 }
 
-export function createEditor({ text = '', name = '', family = null, tokenize = null, t = (s) => s, fill = null, onSave = null, onAsk = null, onDirty = null }) {
+// `draft`: what the human had written and not saved, kept by the room while another file was on
+// screen (the code workspace's tabs); the file on disk stays `text`, so the editor knows it is unsaved.
+// `onCaret(line)`: the line the caret is on, whenever it moves. `setMarks` paints lines in the margin
+// (an agent's changes, in its colour) without touching the text.
+export function createEditor({ text = '', draft = null, name = '', family = null, tokenize = null, t = (s) => s, fill = null, onSave = null, onAsk = null, onDirty = null, onCaret = null }) {
   const say = (key, vars) => (vars && fill ? fill(t(key), vars) : t(key));
   const crlf = /\r\n/.test(text);
   const indent = detectIndent(text);
@@ -155,7 +161,7 @@ export function createEditor({ text = '', name = '', family = null, tokenize = n
       <div class="ed-code">
         <div class="ed-active" aria-hidden="true"></div>
         <div class="ed-float" hidden>
-          <button type="button" class="ed-chip ask" data-float="ask"><i class="ed-ico">${ICONS.ask}</i><span></span><b>▾</b></button>
+          <button type="button" class="ed-chip ask" data-float="ask"><i class="ed-ico">${ICONS.ask}</i><span></span><i class="ed-chev">${ICONS.chevron}</i></button>
           <button type="button" class="ed-chip" data-float="comment"><i class="ed-ico">${ICONS.comment}</i><span></span></button>
           <button type="button" class="ed-chip" data-float="copy"><i class="ed-ico">${ICONS.link}</i><span></span></button>
         </div>
@@ -202,7 +208,7 @@ export function createEditor({ text = '', name = '', family = null, tokenize = n
   $('.ed-indent').textContent = indent.tabs ? t('Tabs') : say('Spaces: {n}', { n: indent.size });
   $('.ed-eol').textContent = crlf ? 'CRLF' : 'LF';
   $('.ed-lang').textContent = family?.label ?? t('Plain text');
-  input.value = saved;
+  input.value = draft === null || draft === undefined ? saved : String(draft).replace(/\r\n/g, '\n');
   // A textarea given its text holds the caret after the last character; the first focus would jump
   // there. Editing starts where reading did: at the top, or at the line asked for.
   input.setSelectionRange?.(0, 0);
@@ -242,6 +248,8 @@ export function createEditor({ text = '', name = '', family = null, tokenize = n
     return html;
   }
   let lineCount = 1;
+  let lastCaret = 0;
+  let marks = new Map();
   function countLines() { return lineCount; }
   let frame = 0;
   function draw() {
@@ -264,7 +272,8 @@ export function createEditor({ text = '', name = '', family = null, tokenize = n
       const here = [];
       for (let j = markAt; j < matches.length && matches[j].start < end; j += 1) here.push({ ...matches[j], cur: j === current });
       html.push(`<div class="l">${drawLine(line, carry, offset, here) || ' '}</div>`);
-      numbers.push(`<div>${i + 1}</div>`);
+      const mark = marks.get(i + 1);
+      numbers.push(mark ? `<div class="mk" style="--mk:${mark.color}" title="${escape(mark.title ?? '')}">${i + 1}</div>` : `<div>${i + 1}</div>`);
       offset = end + 1;
     }
     hl.innerHTML = html.join('');
@@ -324,6 +333,7 @@ export function createEditor({ text = '', name = '', family = null, tokenize = n
     const line = caretLine(at);
     const col = at - (value.lastIndexOf('\n', at - 1) + 1) + 1;
     $('.ed-pos').textContent = say('Ln {line}, Col {col}', { line, col });
+    if (line !== lastCaret) { lastCaret = line; onCaret?.(line); }
     const chosen = input.selectionEnd - input.selectionStart;
     $('.ed-sel').textContent = chosen ? say('{n} selected', { n: chosen }) : '';
     const dirty = isDirty();
@@ -740,6 +750,12 @@ export function createEditor({ text = '', name = '', family = null, tokenize = n
     save,
     // The file on disk changed under the editor and the human chose the disk's version.
     reset(next) { saved = String(next).replace(/\r\n/g, '\n'); input.value = saved; changed(); },
+    // Lines to mark in the margin: [{ from, to, color, title }], one-based. An empty list clears them.
+    setMarks(list = []) {
+      marks = new Map();
+      for (const one of list) for (let n = one.from; n <= one.to; n += 1) marks.set(n, { color: /^[#\w(),.%\s-]{1,40}$/.test(one.color ?? '') ? one.color : 'currentColor', title: one.title ?? '' });
+      draw();
+    },
     // Taken off the page: what it listened to outside itself goes with it.
     destroy() { document.removeEventListener('selectionchange', followSelection); resized?.disconnect(); cancelAnimationFrame(frame); },
   };
