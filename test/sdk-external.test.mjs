@@ -109,7 +109,7 @@ test('the SDK says what it did not understand, and the import that never works e
   assert.deepEqual(defineModule({ id: 'a', name: 'A', summary: 'ok' }).unknown, []);
   assert.deepEqual(defineModule({ id: 'b', name: 'B', sumary: 'x', comand: 'y' }).unknown, ['sumary', 'comand']);
   assert.deepEqual(defineModule({ id: 'c', name: 'C', install: { display: 'ignored before this fix' } }).unknown, ['install']);
-  assert.equal(MODULE_FIELDS.size, 37);
+  assert.equal(MODULE_FIELDS.size, 38);
   assert.ok(MODULE_FIELDS.has('summary') && MODULE_FIELDS.has('toolsForTurn'));
   // A connector says where it reaches, or its traffic shows up in the log as an address nothing
   // declares — true, and useless to a human trying to tell a module from a leak.
@@ -312,4 +312,13 @@ test('the SDK contract and its guide say the same thing, in both directions', as
   for (const [key, file] of Object.entries(sdkPaths())) {
     assert.ok(await readFile(file, 'utf8').catch(() => null), `sdkPaths().${key} points at a file that is not there`);
   }
+});
+
+test('SDK · a key beside the version is drawn by MADRE: its icons, the module\'s words, an https address', async () => {
+  const { defineModule: define } = await import('../src/modules/sdk.mjs');
+  const donate = define({ id: 'donar', name: 'Donate', footer: [{ icon: 'heart', label: { es: 'Apoya', en: 'Support' }, url: 'https://github.com/sponsors/someone' }, { icon: 'rocket', label: 'Two', url: 'https://example.com/' }, { label: 'Three', url: 'https://example.com/3' }] });
+  assert.deepEqual(donate.footer.map((key) => key.icon), ['heart', 'link'], 'two at most, and an icon MADRE does not draw becomes a link');
+  assert.equal(donate.unknown.length, 0);
+  assert.throws(() => define({ id: 'plain', name: 'P', footer: [{ label: 'x', url: 'http://example.com' }] }), /https/);
+  assert.throws(() => define({ id: 'nolabel', name: 'P', footer: [{ url: 'https://example.com' }] }), /label/);
 });

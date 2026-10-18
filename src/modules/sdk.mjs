@@ -68,7 +68,7 @@ export function dependencies(runs) {
   return list.filter((dep) => dep && dep.name).map((dep) => ({ name: String(dep.name), version: dep.version ?? null, target: dep.target ?? null }));
 }
 
-// Every field this contract answers to. Thirty-seven of them and all but two optional, which is
+// Every field this contract answers to. Thirty-eight of them and all but two optional, which is
 // generous until you misspell one: `sumary` used to install without a word and leave a card with
 // an empty summary. A key MADRE does not know is not fatal — a module written for a newer MADRE
 // may carry fields this one has not learned yet — so it is said out loud instead of refused.
@@ -77,9 +77,30 @@ export const MODULE_FIELDS = new Set([
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
   'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand', 'secrets',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
-  'toggledBody', 'describe', 'ready',
+  'toggledBody', 'describe', 'ready', 'footer',
 ]);
 export const unknownFields = (spec) => Object.keys(spec ?? {}).filter((key) => !MODULE_FIELDS.has(key));
+
+// A key beside MADRE's version (2026-10-18): what a module may put on the page, and nothing more.
+// MADRE draws it — one of its own icons, the module's words, an https address that opens in a new
+// tab — so a module never reaches into the page itself.
+export const FOOTER_ICONS = ['heart', 'star', 'link'];
+const footerWords = (value) => {
+  if (typeof value === 'string') return value.slice(0, 160);
+  if (!value || typeof value !== 'object') return null;
+  const out = {};
+  for (const lang of ['en', 'es']) if (typeof value[lang] === 'string') out[lang] = value[lang].slice(0, 160);
+  return Object.keys(out).length ? out : null;
+};
+function footerKeys(spec) {
+  return (Array.isArray(spec.footer) ? spec.footer : []).slice(0, 2).map((key) => {
+    let url = null;
+    try { url = new URL(String(key?.url ?? '')); } catch { /* said below */ }
+    if (url?.protocol !== 'https:') throw new Error(`Module ${spec.id}: a key beside the version needs an https address.`);
+    if (!footerWords(key.label)) throw new Error(`Module ${spec.id}: a key beside the version needs a label.`);
+    return { icon: FOOTER_ICONS.includes(key.icon) ? key.icon : 'link', label: footerWords(key.label), text: footerWords(key.text), action: footerWords(key.action), url: url.href };
+  });
+}
 
 export function defineModule(spec) {
   if (!spec?.id || !/^[a-z][a-z0-9-]*$/.test(spec.id)) throw new Error(`Module id must be kebab-case: ${spec?.id}`);
@@ -98,6 +119,8 @@ export function defineModule(spec) {
     // lives and MADRE can go and get it: the file is fetched, checked the same way an upload is,
     // and only replaces the one installed if it passes and says it is newer.
     updates: spec.updates?.url && /^https:\/\//.test(String(spec.updates.url)) ? { url: String(spec.updates.url) } : null,
+    // Keys beside MADRE's version, drawn by MADRE while the module is on (footerKeys).
+    footer: footerKeys(spec),
     summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
     // The settings floor of the card, declared instead of drawn: MADRE renders these and saves

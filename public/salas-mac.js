@@ -12,7 +12,7 @@ import { brandOf, monogram } from './brands.js';
 import { startReviewAsk } from './review-ask.js';
 import { startTour } from './tour.js';
 import { dropStickyHover } from './touch.js';
-import { drawAttribution, drawLegal } from './attribution.js';
+import { drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
 
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
@@ -2429,7 +2429,7 @@ async function refresh() {
   for (const room of answer.rooms ?? []) if (room.open) failed.delete(room.id);
   ui.foot.textContent = t('Every project runs on this Mac, on its own, with its own memory.');
   // The room's corner (app.js, #colophon): the version this Home runs, and NOTICE's own line.
-  if (answer.version) drawAttribution(ui.colophon, answer.version);
+  if (answer.version) { drawAttribution(ui.colophon, answer.version); void drawColophonKeys(ui.colophon); }
   draw();
 }
 
@@ -3627,6 +3627,7 @@ const openHomeMarket = (tab = 'shop', focus = null) => openMarket({
   host: {
     localAi: () => openSettings('local'),
     toast: (words) => toast(words),
+    changed: () => drawColophonKeys(ui.colophon),
     openProject: async (projectId, item) => {
       const answer = await post('/api/salas/start', { room: projectId });
       if (!answer.ok || !answer.body.port) return false;

@@ -10196,3 +10196,25 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
   .mk-chips { padding-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .mk, .mk-dot, .mk-knob { transition: none; } }
+
+/* KEYS BESIDE THE VERSION (attribution.js, drawColophonKeys, 2026-10-18): what a module puts in the
+   corner, drawn by MADRE. A mark in the same pill as the version; hovered or focused, a card above
+   it with the module's words and the key that opens its address. */
+.colophon-keys { display: inline-flex; align-items: center; gap: 2px; margin-left: 8px; padding-left: 8px; border-left: 1px solid color-mix(in srgb, var(--text) 18%, transparent); }
+.colophon-key { position: relative; display: inline-flex; }
+.colophon-key-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--text-2); text-decoration: none; transition: color calc(160ms * var(--motion-scale, 1)) ease, transform calc(200ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .2, 1); }
+.colophon-key-mark svg { width: 14px; height: 14px; }
+.colophon-key.heart .colophon-key-mark { color: #e5484d; }
+.colophon-key:is(:hover, :focus-within) .colophon-key-mark { transform: scale(1.18); }
+.colophon-key.heart:is(:hover, :focus-within) .colophon-key-mark svg { animation: colophon-beat calc(900ms * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes colophon-beat { 0%, 100% { transform: scale(1); } 20% { transform: scale(1.18); } 40% { transform: scale(.96); } 60% { transform: scale(1.1); } }
+.colophon-key-mark:focus-visible { outline: 2px solid var(--madre-green); outline-offset: 2px; }
+.colophon-card { position: absolute; right: -10px; bottom: calc(100% + 12px); z-index: 20; display: grid; gap: 6px; width: max-content; max-width: 260px; padding: 12px 14px; border-radius: 14px; background: var(--surface, var(--panel)); color: var(--text); font-family: var(--read); font-size: 12.5px; font-weight: 450; letter-spacing: 0; line-height: 1.45; text-align: left; text-transform: none; white-space: normal; user-select: text; box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 12px 28px -8px rgba(0, 0, 0, .45); opacity: 0; visibility: hidden; transform: translateY(4px); transition: opacity calc(160ms * var(--motion-scale, 1)) ease, transform calc(200ms * var(--motion-scale, 1)) ease, visibility 0s linear calc(200ms * var(--motion-scale, 1)); }
+/* A bridge over the gap, so the pointer can travel from the mark to the card without losing it. */
+.colophon-card::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 14px; }
+.colophon-key:is(:hover, :focus-within) .colophon-card { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+.colophon-card b { font-size: 13px; font-weight: 650; }
+.colophon-card span { color: var(--text-2); }
+.colophon-card-go { justify-self: start; margin-top: 2px; padding: 6px 12px; border-radius: 99px; background: var(--madre-green); color: var(--madre-green-ink); font-weight: 650; text-decoration: none; }
+.colophon-card-go:hover { filter: brightness(1.06); }
+@media (prefers-reduced-motion: reduce) { .colophon-key.heart:is(:hover, :focus-within) .colophon-key-mark svg { animation: none; } }

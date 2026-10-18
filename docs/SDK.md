@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## Lo que un módulo puede declarar
 
-Esta tabla es **el contrato completo**: 37 campos, ni uno más. Cualquier otro que escribas MADRE
+Esta tabla es **el contrato completo**: 38 campos, ni uno más. Cualquier otro que escribas MADRE
 te lo dice al instalar («no entendí estos campos») en vez de ignorarlo en silencio. Una prueba de
 la suite compara esta tabla contra el código, así que si alguna vez se separan, es un fallo.
 
@@ -72,6 +72,7 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 | `toggle(ctx, payload)` | Sustituye el interruptor por defecto; `confirm: 'texto'` pide confirmación antes de encender |
 | `onToggle(ctx, enabled)` | Reacciona al interruptor |
 | `ready(ctx)` | Lo que pides antes de encender, en un proyecto o en todos (desde el Mercado también): `null` si está listo, `{ status, body: { error } }` si no. Apagar nunca lo pregunta |
+| `footer` | Hasta dos teclas junto a la versión de MADRE, abajo a la derecha, mientras tu módulo está encendido: `[{ icon: 'heart' \| 'star' \| 'link', label, text, action, url }]`. Los textos pueden ser una frase o `{ es, en }`; `url` tiene que ser https y se abre en otra pestaña. MADRE la dibuja: al pasar el ratón muestra `text` y un botón con `action` |
 | `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text }`. La sala los muestra como tarjeta y los agentes los leen |
 | `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente. `turn` trae el agente, el modo, el arriendo, la carpeta, el puerto y `turn.turn`: el id de la respuesta que ese turno escribirá. Si tu servidor llama de vuelta a la sala en nombre del turno, manda ese id; `ctx.room.runningTurn(id)` dice si sigue corriendo y para qué agente |
 | `toolsForTurn` → `sends` | Cuáles de tus herramientas **mandan algo fuera**. El núcleo las retira por debajo de `#4` AIRLOCK: ni se le cuenta al modelo que existen. Ver abajo |

@@ -3980,6 +3980,12 @@ export async function createPulseServer({
         }
         return sendJson(response, 200, { projects, modules });
       }
+      // The keys modules put beside MADRE's version (sdk.mjs, `footer`): only those on here.
+      if (request.method === 'GET' && url.pathname === '/api/modules/footer') {
+        const context = await moduleContext();
+        const keys = MODULES.filter((module) => module.footer?.length && module.settingsFrom?.(context.config, context.roomId)?.enabled).map((module) => ({ id: module.id, name: module.name, footer: module.footer }));
+        return sendJson(response, 200, { keys });
+      }
       // Home's word: every project (`all`), or some (`rooms`). A project's own MODULES moves only its word.
       const scopeMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/scope$/);
       if (scopeMatch) {

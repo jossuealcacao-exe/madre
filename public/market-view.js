@@ -46,7 +46,9 @@ const GLYPH = {
 };
 const glyph = (node, name) => { node.insertAdjacentHTML('afterbegin', GLYPH[name]); return node; }; // trusted: our own SVG strings
 
-const nameOf = (item) => t(item.name ?? item.id);
+// A module from the catalog says its name and what it does in the room's language (market.js).
+const nameOf = (item) => moduleFace(item).name ?? t(item.name ?? item.id);
+const summaryOf = (item) => moduleFace(item).summary ?? t(item.summary ?? '');
 const lineOf = (item) => (moduleFace(item).line ? t(moduleFace(item).line) : t(item.summary ?? ''));
 const priceOf = (item) => (marketEntry(item.id).price ? `$${marketEntry(item.id).price}` : t('Free'));
 const shelfOf = (item) => marketShelves().find((shelf) => shelf.id === marketEntry(item.id).shelf) ?? null;
@@ -326,9 +328,9 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     shot.innerHTML = marketArt(item); // trusted: our own drawings (market-art.js)
     gallery.append(shot);
     page.append(gallery);
-    if (item.summary) {
+    if (summaryOf(item)) {
       const about = el('section', 'mk-section');
-      about.append(el('h2', null, t('What it does')), el('p', 'mk-about', t(item.summary)));
+      about.append(el('h2', null, t('What it does')), el('p', 'mk-about', summaryOf(item)));
       page.append(about);
     }
     const touches = [...(item.creates ?? []).map((text) => [t('Writes'), t(text)]), ...(item.requires ?? []).map((text) => [t('Needs'), t(text)])];

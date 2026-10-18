@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## What a module can declare
 
-This table is **the complete contract**: 37 fields, not one more. Any other field you write, MADRE
+This table is **the complete contract**: 38 fields, not one more. Any other field you write, MADRE
 tells you about at install time ("I didn't understand these fields") instead of silently ignoring it. A test in
 the suite compares this table against the code, so if they ever drift apart, it's a failure.
 
@@ -72,6 +72,7 @@ the suite compares this table against the code, so if they ever drift apart, it'
 | `toggle(ctx, payload)` | Replaces the default switch; `confirm: 'texto'` asks for confirmation before turning on |
 | `onToggle(ctx, enabled)` | Reacts to the switch |
 | `ready(ctx)` | What you ask before turning on, in one project or in all (from the Market too): `null` when ready, `{ status, body: { error } }` when not. Turning off never asks it |
+| `footer` | Up to two keys beside MADRE's version, bottom right, while your module is on: `[{ icon: 'heart' \| 'star' \| 'link', label, text, action, url }]`. Words can be one sentence or `{ en, es }`; `url` must be https and opens in a new tab. MADRE draws it: on hover it shows `text` and a button with `action` |
 | `slash` | `/name` commands that run on the server with your `ctx` and return `{ ok, title, text }`. The room shows them as a card and the agents read them |
 | `toolsForTurn(ctx, turn)` | MCP servers for an agent's turn: `[{ name, command, args, env, tools, sends, brief }]`. MADRE attaches them to the CLI in its isolated run and describes `brief` to the agent. `turn` carries the agent, the mode, the lease, the folder, the port, and `turn.turn`: the id of the reply that turn will write. If your server calls back to the room on behalf of the turn, send that id; `ctx.room.runningTurn(id)` tells you whether it is still running and for which agent |
 | `toolsForTurn` → `sends` | Which of your tools **send something outside**. The core withdraws them below `#4` AIRLOCK: the model isn't even told they exist. See below |

@@ -38,7 +38,7 @@ export const moduleFace = (item) => {
   if (MODULE_FACES[item?.id]) return MODULE_FACES[item.id];
   // A module that came after this MADRE wears the face its catalog entry gives it.
   const entry = remoteEntry(item?.id);
-  if (entry) return { line: pick(entry.line), icon: cleanSvg(entry.icon, { inner: true }) ?? MODULE_ANY, hue: entry.hue ?? HUE_ANY };
+  if (entry) return { line: pick(entry.line), icon: cleanSvg(entry.icon, { inner: true }) ?? MODULE_ANY, hue: entry.hue ?? HUE_ANY, name: pick(entry.name), summary: pick(entry.summary) };
   return { line: null, icon: MODULE_ANY, hue: HUE_ANY };
 };
 // A module's app icon: its drawing in white on its own two colors (the Market, Home's MODULES).

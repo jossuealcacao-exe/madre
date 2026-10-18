@@ -15,7 +15,7 @@ import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
-import { drawAttribution, drawLegal } from './attribution.js';
+import { drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
 import { MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
 import { openMarket } from './market-view.js';
 // Where nothing can hover (a phone), a tapped key does not stay lit (public/touch.js).
@@ -11297,7 +11297,7 @@ if (SPLIT_CHAT && !Array.isArray(initial.events)) {
 }
 // The corner of the room: which MADRE this is, and whose it is, readable on any wallpaper, and a
 // link to its author (public/attribution.js: NOTICE's attribution, the same on Home).
-if (initial.version) drawAttribution(document.querySelector('#colophon'), initial.version);
+if (initial.version) { drawAttribution(document.querySelector('#colophon'), initial.version); void drawColophonKeys(document.querySelector('#colophon')); }
 void adoptLanguage(initial.language, initial.languageChosen);
 // Whether the copilot is on for this project, so the robot and the mode say so from the start.
 void loadCopilot().then(() => showNewHints());
@@ -14952,7 +14952,7 @@ function moduleTile(item) {
     top.append(sxChip(item.fixed ? t('Always') : item.kind === 'builtin' ? (on ? t('Turned on') : t('Turned off')) : on ? t('Installed') : t('Not installed'), on ? 'on' : ''));
   }
   tile.append(top);
-  const name = el('b', 'mods-name', t(item.name));
+  const name = el('b', 'mods-name', face.name ?? t(item.name));
   if (item.external) name.append(el('span', 'mods-dev', t('Your module')));
   tile.append(name, el('span', 'mods-line', face.line ? t(face.line) : t(item.summary ?? '')));
   // The ones with a reading of their own say so: their card can float as a small app.
@@ -15042,7 +15042,7 @@ function moduleSheet(host, item) {
     return;
   }
   const on = moduleOn(item);
-  const about = sxBlock(host, t('What it does'), t(item.summary ?? ''));
+  const about = sxBlock(host, t('What it does'), moduleFace(item).summary ?? t(item.summary ?? ''));
   if (item.fixed) sxRow(about, t('Always on'), item.status?.detail ? sentenceCase(t(item.status.detail)) : null);
   else {
     const blocked = !on && item.preflight && !item.preflight.ok;
@@ -15206,7 +15206,7 @@ function moduleDetail(item) {
   back.append(chevron('settings-back-icon'));
   back.addEventListener('click', () => openModuleSheet(null));
   title.append(back);
-  title.append(moduleIcon(item), el('b', null, t(item.name)));
+  title.append(moduleIcon(item), el('b', null, moduleFace(item).name ?? t(item.name)));
   if (item.external) title.append(el('span', 'mods-dev', t('Your module')));
   if (moduleFace(item).window) {
     const float = sxButton(t('Open as a window'), () => floatModule(item.id));
@@ -15299,7 +15299,7 @@ function openModuleWindow(id) {
     node.setAttribute('aria-label', t(item.name));
     const head = el('header', 'module-window-head custom-head');
     const title = el('div', 'module-window-title');
-    title.append(moduleIcon(item), el('b', null, t(item.name)));
+    title.append(moduleIcon(item), el('b', null, moduleFace(item).name ?? t(item.name)));
     const group = el('span', 'surface-modes');
     // The same keys as every window: arrange, then close.
     const arrange = el('button', 'surface-mode window');
@@ -20446,6 +20446,8 @@ function barSave(order) {
 }
 // The board answered: modules of yours can take their places, and their names are their own.
 function barModulesChanged() {
+  // A module's key beside the version comes and goes with the module (attribution.js).
+  void drawColophonKeys(document.querySelector('#colophon'));
   if (modules.items?.length) barKit.modulesSeen = true;
   barLayout();
 }
