@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## What a module can declare
 
-This table is **the complete contract**: 36 fields, not one more. Any other field you write, MADRE
+This table is **the complete contract**: 37 fields, not one more. Any other field you write, MADRE
 tells you about at install time ("I didn't understand these fields") instead of silently ignoring it. A test in
 the suite compares this table against the code, so if they ever drift apart, it's a failure.
 
@@ -66,11 +66,12 @@ the suite compares this table against the code, so if they ever drift apart, it'
 | `tracks` | If your module wraps something from outside, its version isn't yours: it's that thing's. Declare `{ name, npm }` or `{ name, github }` and return the version found in `status(ctx)` as `runs: [{ name, version }]`. MADRE shows that version and looks for a newer one on its own, once a day, with the page's ↻ button to check now |
 | `updatePlan(ctx, { latest })` | How that new version is brought to this computer: `{ command, args, display, note, after }`. MADRE shows `display` and runs nothing until the human has read it; the output lands in the room line by line. With no command, return `{ command: null, note, download }` and the page sends you to download it |
 | `updates` | An https `{ url }` where you publish **your own module**. With that, its page gets a button that fetches the file, verifies it the same way as an installation, and replaces it if it passes. If you installed it from a file, MADRE remembers which one and you don't need to declare anything: edit it and ask for a new copy |
-| `settings` | Default values. They live in `~/.pulse/config.json` under `modules.<idEnCamelCase>`; `enabled` is the switch |
+| `settings` | Default values. They live in `~/.pulse/config.json` under `modules.<idEnCamelCase>`; `enabled` is the switch for every project, and `rooms` keeps what each project said, which wins. MADRE works it out for you: `ctx.settings.enabled` is already this project's |
 | `status(ctx)` | What the card shows: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }`. `install` is returned from here; it is not a top-level field of the module |
 | `status(ctx)` → `runs` | What your module manages that isn't MADRE: `[{ name, version, target }]`. `version` is what you found on this computer (`null` if it isn't there), `target` is what you would install. If it matches `tracks.name`, that is the page's version |
 | `toggle(ctx, payload)` | Replaces the default switch; `confirm: 'texto'` asks for confirmation before turning on |
 | `onToggle(ctx, enabled)` | Reacts to the switch |
+| `ready(ctx)` | What you ask before turning on, in one project or in all (from the Market too): `null` when ready, `{ status, body: { error } }` when not. Turning off never asks it |
 | `slash` | `/name` commands that run on the server with your `ctx` and return `{ ok, title, text }`. The room shows them as a card and the agents read them |
 | `toolsForTurn(ctx, turn)` | MCP servers for an agent's turn: `[{ name, command, args, env, tools, sends, brief }]`. MADRE attaches them to the CLI in its isolated run and describes `brief` to the agent. `turn` carries the agent, the mode, the lease, the folder, the port, and `turn.turn`: the id of the reply that turn will write. If your server calls back to the room on behalf of the turn, send that id; `ctx.room.runningTurn(id)` tells you whether it is still running and for which agent |
 | `toolsForTurn` → `sends` | Which of your tools **send something outside**. The core withdraws them below `#4` AIRLOCK: the model isn't even told they exist. See below |

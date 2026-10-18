@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { defineModule } from './sdk.mjs';
 import { t } from '../i18n.mjs';
 import { IntentsDesk } from './intents-desk.mjs';
+import { moduleOnIn } from '../module-scope.mjs';
 
 const desks = new Map();
 // One desk per project room, made the first time anything asks for it.
@@ -40,7 +41,8 @@ export function deskFor(ctx) {
   return desks.get(where.roomDir);
 }
 
-const enabled = (ctx) => ctx.config?.modules?.intents?.enabled !== false;
+// On unless turned off, for every project or for this one (module-scope.mjs).
+const enabled = (ctx) => moduleOnIn(ctx.config?.modules?.intents ?? {}, ctx.roomId ?? null, true);
 const count = (value) => Math.max(0, Math.min(50, Number.parseInt(value, 10) || 0));
 const modeOf = (value) => (Number.isInteger(value) && value >= 0 && value <= 4 ? value : null);
 const nameOrNull = (value) => (typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,120}$/.test(value) ? value : null);

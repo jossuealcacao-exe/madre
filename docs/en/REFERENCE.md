@@ -25,6 +25,17 @@ npx @jossuealcala/madre setup       # the same setup, from the terminal, if you 
 npx @jossuealcala/madre start --no-open --project RUTA
 ```
 
+**On a server, with no screen.** MADRE listens only on `127.0.0.1` of the machine it runs on, and on purpose: it has no password, and whoever reached it could set the agents to work there. Do not open its ports to the network. To use it on a server, open it through an SSH tunnel from your computer. Home uses 4317 and every project you open takes the next free port (4318, 4319…), so the tunnel carries several; if you open more projects, add more `-L`.
+
+```bash
+# on your computer: reach the server with the tunnel
+ssh -L 4317:127.0.0.1:4317 -L 4318:127.0.0.1:4318 -L 4319:127.0.0.1:4319 -L 4320:127.0.0.1:4320 user@server
+# now on the server
+npx @jossuealcala/madre --no-open
+```
+
+Then open `http://127.0.0.1:4317/salas` in your computer's browser. The agents are installed on the server and connected from Settings › Agents: Claude gives you a link and a code you paste right there, and Gemini and OpenCode take their key. Use your own user, not root: the agents work with the permissions of whoever runs MADRE.
+
 **Three names.** **MADRE** is the product. **Diagnostics** is its operational voice: failures, connections, settings. **Log** is the channel the project runs on: the event record, the plan block, the `.pulse/` folder where artifacts land; those identifiers keep their old name, PULSE.
 
 ---

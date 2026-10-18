@@ -107,6 +107,11 @@ import { qrSvg } from './bridge/qr.mjs';
 import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
+import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
+import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
+// Not moved project by project: the Coordinator is Home's, Git has no switch, and Local AI keeps
+// its own list of projects (local-ai.mjs).
+const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat } from './heartbeat.mjs';
 import { askRoom, associateProject, createProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
@@ -237,6 +242,10 @@ export async function createPulseServer({
   imageKey = resolveGeminiKey,
   // The sentinel's outbound channel; tests hand in a fake.
   reportFetch = globalThis.fetch,
+  // The Market's catalog and module files from madre.run (src/market-remote.mjs); tests hand in a
+  // fake, and the key their catalog is signed with.
+  marketFetch = globalThis.fetch,
+  marketKey = null,
   // Ollama detection; tests hand in a fake probe. PULSE_OLLAMA=0 leaves Ollama alone entirely.
   ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
 }) {
@@ -253,7 +262,7 @@ export async function createPulseServer({
   // opens it (public/i18n.js, browserLanguage), once, and keeps it as if it had been chosen.
   let languageChosen = Boolean(process.env.PULSE_LANGUAGE || (await readConfig(root)).language);
   // RIPLEY renders HTML in the viewer only while the human has it switched on; read live, the switch is the module's.
-  const ripleyOn = async () => Boolean((await readConfig(root)).modules?.ripley?.enabled);
+  const ripleyOn = async () => moduleOnHere(await readConfig(root), 'ripley');
   agentTimeouts ??= agentTimeoutsFromEnv();
   const detector = detect ?? (providedAgents ? null : detectAgents);
   const agents = providedAgents ?? await detector();
@@ -270,6 +279,7 @@ export async function createPulseServer({
   const unwatchOutbound = outbound.install();
   process.env.PULSE_OUTBOUND_LOG = join(roomDir, 'outbound.jsonl');
   reportFetch = outbound.watch(reportFetch);
+  marketFetch = outbound.watch(marketFetch);
 
   // Attachments live beside the room log, never inside the project, and belong to the project
   // rather than to one conversation.
@@ -361,6 +371,23 @@ export async function createPulseServer({
   // default; PULSE_UPDATE_CHECK=0 or the switch in MU/TH/UR turns it off. Never self-updates.
   const updatesEnabled = () => (process.env.PULSE_UPDATE_CHECK !== undefined ? process.env.PULSE_UPDATE_CHECK !== '0' : updatesConfig.check !== false);
   let updatesConfig = { ...((await readConfig(root)).updates ?? {}) };
+  // THE MARKET from madre.run (src/market-remote.mjs): read when MADRE opens, while Look for new
+  // versions is on (PULSE_MARKET=0 says no to it alone). A module got from it updates itself and
+  // says so once, the next time a page asks (market/updates.json).
+  const marketOn = () => process.env.PULSE_MARKET !== '0' && updatesEnabled();
+  const marketKeyed = marketKey ? { publicKey: marketKey } : {};
+  const marketTools = () => ({ stateRoot: root, projectRoot: canonicalProjectRoot, madre: PACKAGE.version, fetchImpl: marketFetch, verifyText: verifyModuleText, installText: installModuleText });
+  let marketSync = null;
+  const syncMarket = ({ force = false } = {}) => {
+    if (!marketOn()) return Promise.resolve({ catalog: null, off: true });
+    marketSync ??= (async () => {
+      const read = await refreshCatalog({ stateRoot: root, fetchImpl: marketFetch, force, ...marketKeyed });
+      if (read.catalog) await updateFromMarket({ ...marketTools(), catalog: read.catalog, names: Object.fromEntries(MODULES.map((one) => [one.id, one.name])) }).catch(() => []);
+      return read;
+    })().finally(() => { marketSync = null; });
+    return marketSync;
+  };
+  void syncMarket().catch(() => null);
   const install = detectInstall({ projectRoot: canonicalProjectRoot });
   async function versionView({ force = false } = {}) {
     const check = await checkForUpdate({ name: PACKAGE.name, current: PACKAGE.version, cacheFile: join(root, 'updates.json'), fetchImpl: reportFetch, enabled: updatesEnabled(), force });
@@ -561,6 +588,10 @@ export async function createPulseServer({
   const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, agent: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
   // Whether this project uses the local AI at all, as Home decides it (src/local-ai.mjs).
   const thisRoomId = projectRoomId(canonicalProjectRoot);
+  // This project's word on a module's switch (module-scope.mjs). Home's room is not a project: it
+  // reads, and writes, the switch for every project.
+  const scopeRoom = salasRoom ? null : thisRoomId;
+  const moduleOnHere = (config, key, fallback = false) => moduleOnIn(config?.modules?.[key] ?? {}, scopeRoom, fallback);
   const localAiHere = async () => localAiFor(await readConfig(root), thisRoomId, { home: salasRoom });
   // This project's own switch, outside «auto»; null when Home decides.
   async function setLocalAiHere(on) {
@@ -1159,10 +1190,7 @@ export async function createPulseServer({
 
   const startupConfig = await readConfig(root);
   room.setScopes(startupConfig.scopes ?? {});
-  setImageModule(startupConfig.modules?.imageStudio ?? {});
-  room.setAsh(Boolean(startupConfig.modules?.ash?.enabled));
-  room.setChoices(Boolean(startupConfig.modules?.choices?.enabled));
-  room.setRuns(Boolean(startupConfig.modules?.runs?.enabled));
+  applyModuleSwitches(room, startupConfig);
   const recoveredTurns = await room.reconcile();
   if (recoveredTurns) console.error(`MADRE recovered ${recoveredTurns} unfinished turn(s) from a previous run.`);
   const quotaMonitor = new QuotaMonitor({
@@ -1515,10 +1543,16 @@ export async function createPulseServer({
   async function applyRoomSettings(next, previous) {
     const config = await readConfig(root);
     next.setScopes(config.scopes ?? {});
-    next.setAsh(Boolean(config.modules?.ash?.enabled));
-    next.setChoices(Boolean(config.modules?.choices?.enabled));
-    next.setRuns(Boolean(config.modules?.runs?.enabled));
+    applyModuleSwitches(next, config);
     if (previous) next.configure(previous.settings());
+  }
+  // The switches a room holds itself, as this project says them (module-scope.mjs). Read again
+  // before every message, so a switch moved in Home reaches a project that is already open.
+  function applyModuleSwitches(target, config) {
+    setImageModule(settingsIn(config.modules?.imageStudio ?? {}, scopeRoom));
+    target.setAsh(moduleOnHere(config, 'ash'));
+    target.setChoices(moduleOnHere(config, 'choices'));
+    target.setRuns(moduleOnHere(config, 'runs'));
   }
 
   // Opening another conversation. The project keeps its memory, its crew, its modules, its
@@ -1590,6 +1624,8 @@ export async function createPulseServer({
     const config = await readConfig(root);
     return {
       projectRoot: canonicalProjectRoot, stateRoot: root, config, env: process.env, agents, room,
+      // Which project's word a module's switch reads and writes; none in Home (module-scope.mjs).
+      roomId: scopeRoom,
       readConfig: () => readConfig(root),
       updateConfig: (patch) => updateConfig(root, patch),
       record: (type, payload) => room.record(type, payload),
@@ -1769,6 +1805,9 @@ export async function createPulseServer({
     }
     const before = await extension.detect(canonicalProjectRoot);
     const plan = installers[id]?.({ projectRoot: canonicalProjectRoot, agents }) ?? extension.installCommand({ agents });
+    // What the module asked MADRE to do first (Continuity: `git init` in a project with no git),
+    // shown in the same confirmation and run before the install, each step stopping the next.
+    const prepare = Array.isArray(preflight.prepare) ? preflight.prepare : [];
     installing = id;
     await room.record('extension.install.started', { id, name: extension.name, command: plan.display, platforms: plan.platforms ?? [], alreadyInstalled: before.installed });
     void (async () => {
@@ -1782,17 +1821,19 @@ export async function createPulseServer({
         pending = [];
         await room.record('extension.install.output', { id, lines: batch });
       };
-      const result = await runInstaller({
-        command: plan.command,
-        args: plan.args,
-        projectRoot: canonicalProjectRoot,
-        onLine: (line) => {
-          lines.push(line);
-          pending.push(line.slice(0, 500));
-          if (pending.length >= 20) void flush();
-          else if (!flushTimer) flushTimer = setTimeout(() => { void flush(); }, 400);
-        },
-      });
+      const onLine = (line) => {
+        lines.push(line);
+        pending.push(line.slice(0, 500));
+        if (pending.length >= 20) void flush();
+        else if (!flushTimer) flushTimer = setTimeout(() => { void flush(); }, 400);
+      };
+      let result = { code: 0 };
+      for (const step of prepare) {
+        onLine(`$ ${step.display}`);
+        result = await runInstaller({ command: step.command, args: step.args, projectRoot: canonicalProjectRoot, onLine });
+        if (result.code !== 0) break;
+      }
+      if (result.code === 0) result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, onLine });
       clearTimeout(flushTimer);
       await flush();
       const after = await extension.detect(canonicalProjectRoot);
@@ -1828,7 +1869,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -3127,6 +3168,7 @@ export async function createPulseServer({
             image: Boolean(modules['image-studio']?.enabled),
             npm: updatesEnabled(),
             github: updatesEnabled(),
+            market: marketOn(),
             reports: Boolean(sentinel.settings().autoReport),
             anthropic: agents.some((agent) => agent.id === 'claude' && agent.ready),
             ollama: Boolean(ollama.running),
@@ -3885,6 +3927,70 @@ export async function createPulseServer({
         void warmModuleUpdates(extensions);
         return sendJson(response, 200, { installing, extensions, failures: loadFailures, folders: moduleFolders({ stateRoot: root, projectRoot: canonicalProjectRoot }), sdk: SDK_PAGE[roomLanguage()] ?? SDK_PAGE.es });
       }
+      // THE MARKET's catalog for the page: the one kept here at once (and a fresh one asked for
+      // behind it), what was got from it, and what it updated on its own that nobody was told yet.
+      if (request.method === 'GET' && url.pathname === '/api/market') {
+        const kept = await keptCatalog({ stateRoot: root, ...marketKeyed });
+        const read = kept ? (void syncMarket().catch(() => null), { catalog: kept }) : await syncMarket().catch(() => ({ catalog: null }));
+        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/market/seen') {
+        await marketNewsSeen(root);
+        return sendJson(response, 200, { ok: true });
+      }
+      // The Market's news a page has just told: not again, on this computer.
+      if (request.method === 'POST' && url.pathname === '/api/market/announced') {
+        const payload = await body(request).catch(() => ({}));
+        await marketAnnounced(root, Array.isArray(payload.keys) ? payload.keys.slice(0, 50) : []);
+        return sendJson(response, 200, { ok: true });
+      }
+      // A module from the Market onto this computer: its signed file, checked like any module, for
+      // every project; then every project open right now loads it, and each one turns it on.
+      if (request.method === 'POST' && url.pathname === '/api/market/install') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const catalog = (await keptCatalog({ stateRoot: root, ...marketKeyed })) ?? (await syncMarket({ force: true }).catch(() => ({}))).catalog;
+        if (!catalog) return sendJson(response, 503, { error: t('MADRE could not reach the Market. Check your internet connection and try again.') });
+        try {
+          const done = await installFromMarket({ ...marketTools(), id: String(payload.id ?? ''), catalog });
+          await room.record('extension.installed', { id: done.id, name: done.name, origin: 'market', version: done.version, by: 'you' });
+          for (const one of await knownRooms(root)) {
+            if (!one.open?.port || one.id === thisRoomId) continue;
+            await fetch(`http://127.0.0.1:${one.open.port}/api/extensions/reload`, { method: 'POST' }).catch(() => null);
+          }
+          return sendJson(response, 200, { installed: done, extensions: await describeModules(await moduleContext()) });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+      }
+      // Home's view of which projects each module is on in (module-scope.mjs), and where the
+      // modules that install into a project's folder are installed.
+      if (request.method === 'GET' && url.pathname === '/api/modules/scope') {
+        const config = await readConfig(root);
+        const home = salasRoomId(root);
+        const projects = (await knownRooms(root)).filter((one) => one.id !== home && one.root).map((one) => ({ id: one.id, name: one.name, open: Boolean(one.open) }));
+        const roots = new Map((await knownRooms(root)).map((one) => [one.id, one.root]));
+        const ids = projects.map((one) => one.id);
+        const modules = [];
+        for (const module of MODULES) {
+          if (module.scope && !NOT_BY_PROJECT.has(module.id)) modules.push({ id: module.id, switch: true, ...scopeView(config.modules?.[module.configKey] ?? {}, Boolean(module.defaults?.enabled), ids) });
+          else if (module.kind === 'installer' && module.detect) {
+            const on = [];
+            for (const id of ids) if ((await module.detect(roots.get(id)).catch(() => null))?.installed) on.push(id);
+            modules.push({ id: module.id, switch: false, on, everywhere: false });
+          }
+        }
+        return sendJson(response, 200, { projects, modules });
+      }
+      // Home's word: every project (`all`), or some (`rooms`). A project's own MODULES moves only its word.
+      const scopeMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/scope$/);
+      if (scopeMatch) {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const module = moduleById(scopeMatch[1]);
+        if (!module?.scope || NOT_BY_PROJECT.has(module.id)) return sendJson(response, 404, { error: t('That module is not turned on by project.') });
+        const payload = await body(request).catch(() => ({}));
+        const result = await module.scope(await moduleContext(), { all: payload.all, rooms: payload.rooms, confirm: payload.confirm });
+        for (const held of parked.values()) await applyRoomSettings(held.room, null);
+        return sendJson(response, result.status, result.body);
+      }
       // The human installs a module file an agent wrote (or they did): checked first, then copied into the chosen folder.
       if (request.method === 'POST' && url.pathname === '/api/extensions/install-file') {
         const payload = await body(request).catch(() => ({}));
@@ -3900,6 +4006,7 @@ export async function createPulseServer({
       if (removeMatch) {
         try {
           const removed = await removeExternalModule({ id: removeMatch[1], stateRoot: root, projectRoot: canonicalProjectRoot });
+          await forgetFromMarket(root, removed.id).catch(() => false);
           await room.record('extension.removed', { id: removed.id, name: removed.name, by: 'you' });
           return sendJson(response, 200, { removed, extensions: await describeModules(await moduleContext()) });
         } catch (error) { return sendJson(response, moduleById(removeMatch[1]) ? 403 : 404, { error: error.message }); }
@@ -3928,6 +4035,19 @@ export async function createPulseServer({
         if (!module?.setControl) return sendJson(response, 404, { error: `No settings on "${settingMatch[1]}".` });
         const result = await module.setControl(await moduleContext(), await body(request));
         return sendJson(response, result.status, result.body);
+      }
+      // What a module offers to put right before it can install (Continuity on a Mac with no git:
+      // Apple's installer for its command line tools). Asked from this Mac only; the command is the
+      // module's own, never one sent by the page.
+      const fixMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/fix$/);
+      if (fixMatch) {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const extension = extensionById(fixMatch[1]);
+        const checked = extension?.preflight ? await extension.preflight(canonicalProjectRoot) : null;
+        if (!checked?.fix) return sendJson(response, 409, { error: t('There is nothing to set up for this module.') });
+        const ran = await runInstaller({ command: checked.fix.command, args: checked.fix.args, projectRoot: canonicalProjectRoot, timeoutMs: 60000 });
+        await room.record('extension.fix.started', { id: fixMatch[1], command: checked.fix.display, code: ran.code });
+        return sendJson(response, ran.code === 0 ? 202 : 500, ran.code === 0 ? { started: true, command: checked.fix.display } : { error: ran.error ?? t('It could not be started.') });
       }
       const installMatch = request.method === 'POST' && url.pathname.match(/^\/api\/extensions\/([a-z0-9-]+)\/install$/);
       if (installMatch) {
@@ -3971,6 +4091,8 @@ export async function createPulseServer({
         // like any other: the conversation on screen is one of the "others" when it is working.
         const here = await scopeOf(url);
         if (here.error) return sendJson(response, 404, here);
+        // A switch moved in Home since this project opened reaches it here (module-scope.mjs).
+        applyModuleSwitches(here.room, await readConfig(root));
         const room = here.room;
         // A copilot message at #3 goes with the copilot's window instead of a pass; from this
         // computer only. With the window closed it is said, and the page asks for the key again.

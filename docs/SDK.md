@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## Lo que un módulo puede declarar
 
-Esta tabla es **el contrato completo**: 36 campos, ni uno más. Cualquier otro que escribas MADRE
+Esta tabla es **el contrato completo**: 37 campos, ni uno más. Cualquier otro que escribas MADRE
 te lo dice al instalar («no entendí estos campos») en vez de ignorarlo en silencio. Una prueba de
 la suite compara esta tabla contra el código, así que si alguna vez se separan, es un fallo.
 
@@ -66,11 +66,12 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 | `tracks` | Si tu módulo envuelve algo de fuera, su versión no es la tuya: es la de esa cosa. Declara `{ name, npm }` o `{ name, github }` y devuelve la versión encontrada en `status(ctx)` como `runs: [{ name, version }]`. MADRE muestra esa versión y busca una más nueva sola, una vez al día, con el botón ↻ de la ficha para mirar ahora |
 | `updatePlan(ctx, { latest })` | Cómo se trae esa versión nueva a esta computadora: `{ command, args, display, note, after }`. MADRE enseña `display` y no corre nada hasta que la humana lo leyó; la salida cae en la sala línea por línea. Sin comando, devuelve `{ command: null, note, download }` y la ficha manda a descargarlo |
 | `updates` | `{ url }` https donde publicas **tu propio módulo**. Con eso su ficha trae un botón que va por el archivo, lo verifica igual que una instalación y lo reemplaza si pasa. Si lo instalaste desde un archivo, MADRE recuerda cuál y no necesitas declarar nada: edítalo y pide una copia nueva |
-| `settings` | Valores por defecto. Viven en `~/.pulse/config.json` bajo `modules.<idEnCamelCase>`; `enabled` es el interruptor |
+| `settings` | Valores por defecto. Viven en `~/.pulse/config.json` bajo `modules.<idEnCamelCase>`; `enabled` es el interruptor para todos los proyectos, y `rooms` guarda lo que dijo cada proyecto, que gana. MADRE lo resuelve por ti: `ctx.settings.enabled` ya es el de este proyecto |
 | `status(ctx)` | Qué muestra la tarjeta: `{ status: { installed, detail }, preflight: { ok, problems }, install: { display } }`. `install` se devuelve desde aquí; no es un campo superior del módulo |
 | `status(ctx)` → `runs` | Lo que tu módulo maneja y no es MADRE: `[{ name, version, target }]`. `version` es lo que encontraste en esta computadora (`null` si no está), `target` lo que instalarías. Si coincide con `tracks.name`, esa es la versión de la ficha |
 | `toggle(ctx, payload)` | Sustituye el interruptor por defecto; `confirm: 'texto'` pide confirmación antes de encender |
 | `onToggle(ctx, enabled)` | Reacciona al interruptor |
+| `ready(ctx)` | Lo que pides antes de encender, en un proyecto o en todos (desde el Mercado también): `null` si está listo, `{ status, body: { error } }` si no. Apagar nunca lo pregunta |
 | `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text }`. La sala los muestra como tarjeta y los agentes los leen |
 | `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente. `turn` trae el agente, el modo, el arriendo, la carpeta, el puerto y `turn.turn`: el id de la respuesta que ese turno escribirá. Si tu servidor llama de vuelta a la sala en nombre del turno, manda ese id; `ctx.room.runningTurn(id)` dice si sigue corriendo y para qué agente |
 | `toolsForTurn` → `sends` | Cuáles de tus herramientas **mandan algo fuera**. El núcleo las retira por debajo de `#4` AIRLOCK: ni se le cuenta al modelo que existen. Ver abajo |

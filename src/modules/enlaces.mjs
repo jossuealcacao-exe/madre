@@ -27,6 +27,7 @@ import { continuityText } from './ahp.mjs';
 import { t } from '../i18n.mjs';
 import { knownRooms, projectRoomId, salasRoomId } from '../salas.mjs';
 import { defineModule } from './sdk.mjs';
+import { moduleOnIn } from '../module-scope.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 export const SERVER_NAME = 'pulse-enlaces';
@@ -102,8 +103,9 @@ export default defineModule({
 // hourly limit, a sealed archive or a room asleep simply brings nothing this turn.
 export async function recallForTurn(ctx, { agent = null, mode = 1, text = '', turn = null, preview = false, roomDir = null, record = null } = {}) {
   if (!(Number(mode) >= 1) || !ctx?.stateRoot || !roomDir) return null;
-  if (ctx.config?.modules?.enlaces?.enabled === false) return null;
   const here = basename(roomDir);
+  // Off in this project, or for every project and not turned on here (module-scope.mjs).
+  if (!moduleOnIn(ctx.config?.modules?.enlaces ?? {}, here, true)) return null;
   const links = linksFor(ctx.config, ctx.stateRoot, here).filter(({ contract }) => contract.recall);
   if (!links.length) return null;
   if (preview) return { text: null, dynamic: true };

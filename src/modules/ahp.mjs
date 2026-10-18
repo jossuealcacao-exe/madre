@@ -3,8 +3,10 @@
 // AHP+: the one module that writes into the project, through a confirmed npx
 // command. Verified project state, checkpoints and handoffs in .ahp/.
 
+import { execFile } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { readdir } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { t } from '../i18n.mjs';
 import { realpath } from 'node:fs/promises';
 import { defineModule } from './sdk.mjs';
@@ -29,18 +31,41 @@ async function detect(projectRoot) {
   };
 }
 
-// Refuses before anything is written when the outcome would be wrong.
-async function preflight(projectRoot, { toplevel = gitToplevel, npx = findOnPath } = {}) {
+// Whether git can run here. On a Mac, /usr/bin/git is there even without Apple's command line
+// tools, and running it only opens their installer: git is ready when the tools are, or when a git
+// of its own (Homebrew's) comes first on the PATH.
+const execFileAsync = promisify(execFile);
+export async function gitReady({ platform = process.platform, find = findOnPath, run = execFileAsync } = {}) {
+  const git = await find('git');
+  if (!git) return false;
+  if (platform !== 'darwin' || git !== '/usr/bin/git') return true;
+  return run('xcode-select', ['-p'], { timeout: 4000 }).then(() => true, () => false);
+}
+
+// Refuses before anything is written when the outcome would be wrong, and says what MADRE does
+// first when it can do it for the person (2026-10-17): a project that does not use git yet gets
+// `git init` from MADRE, in the same confirmed install, instead of a trip to the terminal. A Mac
+// with no git gets the key that opens Apple's own installer.
+async function preflight(projectRoot, { toplevel = gitToplevel, npx = findOnPath, git = gitReady, platform = process.platform } = {}) {
   const root = await realpath(projectRoot).catch(() => resolve(projectRoot));
   const problems = [];
+  const prepare = [];
+  let fix = null;
   if (!(await npx('npx'))) problems.push(t('npx is not on PATH for the MADRE server; start MADRE from a terminal where `npx --version` works.'));
   const top = await toplevel(root);
   if (!top) {
-    problems.push(t('The project is not a git repository. AHP+ pins itself to the git root: run `git init` in the project first.'));
+    if (await git()) {
+      prepare.push({ command: 'git', args: ['init'], display: 'git init', note: t('The project does not use git yet. MADRE runs `git init` in it first: it adds a .git folder and leaves your files as they are.') });
+    } else if (platform === 'darwin') {
+      problems.push(t('Continuity keeps its history with git, and this Mac does not have it yet. Install it with Apple\'s command line tools: it takes a few minutes, then come back here.'));
+      fix = { command: 'xcode-select', args: ['--install'], display: 'xcode-select --install', label: t('Install git') };
+    } else {
+      problems.push(t('Continuity keeps its history with git, and this computer does not have it yet. Install git with your system\'s package manager, then come back here.'));
+    }
   } else if (top !== root) {
     problems.push(t('The project\'s git root is {top}, not the project itself. AHP+ would install there. Run `git init` inside the project, or remove the stray repository at {top}.', { top }));
   }
-  return { ok: problems.length === 0, problems, gitRoot: top };
+  return { ok: problems.length === 0, problems, gitRoot: top, prepare, fix };
 }
 
 function installCommand({ agents = [] }) {
@@ -126,12 +151,13 @@ export default defineModule({
   package: PACKAGE,
   tracks: { name: PACKAGE, npm: PACKAGE },
   summary: 'Verified project state, checkpoints and handoffs between AI sessions, stored in .ahp/ next to your code.',
-  requires: ['the project is a git repository', 'npx on the PATH of the terminal MADRE was started from'],
-  creates: ['.ahp/ with manifest, sessions, handoffs and evidence', 'a project-local pin of @jossuealcala/ahp-plus', 'IDE adapter files for the detected agents'],
+  requires: ['git on this computer (MADRE runs `git init` in the project when it does not use git yet)', 'npx on the PATH of the terminal MADRE was started from'],
+  creates: ['.git/ when the project does not use git yet', '.ahp/ with manifest, sessions, handoffs and evidence', 'a project-local pin of @jossuealcala/ahp-plus', 'IDE adapter files for the detected agents'],
   detect, preflight, installCommand,
   async status(ctx) {
     const status = await detect(ctx.projectRoot);
     const plan = installCommand({ agents: ctx.agents });
-    return { status, runs: [{ name: PACKAGE, version: await packageVersion(PACKAGE, { projectRoot: ctx.projectRoot }), target: VERSION }], preflight: await preflight(ctx.projectRoot), install: { display: plan.display, platforms: plan.platforms } };
+    const checked = await preflight(ctx.projectRoot);
+    return { status, runs: [{ name: PACKAGE, version: await packageVersion(PACKAGE, { projectRoot: ctx.projectRoot }), target: VERSION }], preflight: checked, install: { display: plan.display, platforms: plan.platforms, prepare: checked.prepare.map(({ display, note }) => ({ display, note })) } };
   },
 });

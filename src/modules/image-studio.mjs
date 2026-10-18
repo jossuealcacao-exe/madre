@@ -4,6 +4,7 @@
 // the CLIs that cannot draw natively. A switch and a model in config.json.
 
 import { defineModule } from './sdk.mjs';
+import { switchIn } from '../module-scope.mjs';
 import { t } from '../i18n.mjs';
 
 const MODELS = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image', 'gemini-3-pro-image'];
@@ -34,12 +35,20 @@ export default defineModule({
       install: { display: ctx.settings.enabled ? 'disable Image Studio' : 'enable Image Studio (config.json)', platforms: ['gemini', 'claude', 'opencode'] },
     };
   },
+  // Before it turns on, in one project or in all: a key to bill the images against.
+  async ready(ctx) {
+    if (await ctx.services.imageKey()) return null;
+    return { status: 412, body: { error: 'No Gemini API key found. Sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY, then enable Image Studio.' } };
+  },
+  // The room's own image tools follow its switch, wherever the switch was moved from.
+  async onToggle(ctx, enabled) { ctx.services.setImageModule({ enabled, model: ctx.settings.model ?? MODELS[0] }); return null; },
   async toggle(ctx, payload) {
     const enabled = !ctx.settings.enabled;
     const key = await ctx.services.imageKey();
     if (enabled && !key) return { status: 412, body: { error: 'No Gemini API key found. Sign in with the Gemini CLI (/auth → API key) or set GEMINI_API_KEY, then enable Image Studio.' } };
     const model = typeof payload?.model === 'string' && payload.model ? payload.model : (ctx.settings.model ?? MODELS[0]);
-    await ctx.updateConfig({ modules: { imageStudio: { enabled, model } } });
+    // A project's switch is that project's (module-scope.mjs); the model is every project's.
+    await ctx.updateConfig({ modules: { imageStudio: { ...switchIn(ctx.config.modules?.imageStudio ?? {}, ctx.roomId ?? null, enabled), model } } });
     ctx.services.setImageModule({ enabled, model });
     await ctx.record('extension.toggled', { id: 'image-studio', name: 'Image Studio', enabled, model });
     return { status: 200, body: { enabled, model, capabilities: ctx.room.capabilities() } };

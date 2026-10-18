@@ -16,6 +16,8 @@ import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { drawAttribution, drawLegal } from './attribution.js';
+import { MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
+import { openMarket } from './market-view.js';
 // Where nothing can hover (a phone), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
 // Made the first time the room asks for it (roomTour, below), which can be while this file is
@@ -516,15 +518,22 @@ function toastTone(message, tone) {
   if (TOAST_LOOK.test(message)) return 'look';
   return 'done';
 }
-function toast(message, { tone = null } = {}) {
+// `action` ({ label, run }) puts one key at its end: the Market's news says «See it» (2026-10-18).
+function toast(message, { tone = null, action = null } = {}) {
   placeToast();
   const text = String(message);
-  const kind = toastTone(text, tone);
+  const kind = action && !tone ? 'news' : toastTone(text, tone);
   // Who speaks stays in the words a screen reader hears; on screen the dot says enough.
   // The prefix the room's own notices carry, in the room's language (WEB-14): after MU/TH/UR became
   // Diagnóstico the old one was looked for, and «Diagnóstico ›» showed in every notice.
   const from = [t('Diagnostics › '), 'MU/TH/UR › '].find((prefix) => text.startsWith(prefix)) ?? '';
   els.toast.replaceChildren(el('i', 'toast-dot'), ...(from ? [el('span', 'toast-from', from)] : []), el('span', 'toast-text', text.slice(from.length)));
+  if (action) {
+    const key = el('button', 'toast-act', action.label);
+    key.type = 'button';
+    key.addEventListener('click', () => { clearTimeout(toastTimer); els.toast.hidden = true; roomForToast(false); action.run(); });
+    els.toast.append(key);
+  }
   els.toast.dataset.tone = kind;
   els.toast.classList?.toggle('note', kind === 'note');
   els.toast.classList?.remove('leaving');
@@ -535,7 +544,7 @@ function toast(message, { tone = null } = {}) {
   toastTimer = setTimeout(() => {
     els.toast.classList?.add('leaving');
     toastTimer = setTimeout(() => { els.toast.hidden = true; els.toast.classList?.remove('leaving'); roomForToast(false); }, 320);
-  }, 6000);
+  }, action ? 10000 : 6000);
 }
 // While a notice floats over the end of the conversation, a reader at the end gets the room it
 // takes: the last line rises above it instead of going under it. The thread follows the column as
@@ -9870,7 +9879,12 @@ function windowBoxFor(surface) {
   const vw = window.innerWidth;
   const width = Number.isFinite(set) ? set : surface.key === 'chats' ? Math.max(320, Math.min(460, vw / 2 - 468)) : Math.max(300, Math.min(460, vw / 2 - 476));
   const left = surface.side === 'left' ? room.left + RAIL : room.right - RAIL - width;
-  return { x: left + (surface.side === 'left' ? 36 : -36), y: room.top + 42, w: width, h: Math.min(room.height - 28, 620) };
+  // A room not laid out yet (a page still loading its conversation) is measured short and low; the
+  // window then opens under the bar, as tall as the screen allows, instead of at the room's foot.
+  const settled = room.height >= 360 && room.top < window.innerHeight / 3;
+  const y = settled ? room.top + 42 : 96;
+  const h = settled ? Math.min(room.height - 28, 620) : Math.max(WINDOW_MIN_H, Math.min(620, window.innerHeight - y - 120));
+  return { x: left + (surface.side === 'left' ? 36 : -36), y, w: width, h };
 }
 
 // First, last, invert, play: the surface is moved to where it now belongs at once, then drawn from
@@ -9977,7 +9991,9 @@ function setSurfaceMode(surface, next, { animate = true } = {}) {
     if (next !== 'window') dropWindow(node);
     for (const property of ['left', 'top', 'width', 'height']) node.style.removeProperty(property);
     if (surface.kind === 'dialog') reseatDialog(node, next === 'base');
-    if (next === 'window') { placeWindow(surface, windowBoxFor(surface)); bringWindowForward(node); }
+    // Its box is kept the moment it becomes a window, not only when it is first carried: the mode
+    // was remembered and the place was not, so a reload brought it back with nowhere to be.
+    if (next === 'window') { placeWindow(surface, windowBoxFor(surface)); bringWindowForward(node); rememberSurfaces(); }
     layoutPanels();
   };
   if (animate && panelShown(surface)) flipPanel(node, change); else change();
@@ -10069,7 +10085,14 @@ if (shellBox && !SPLIT_CHAT) {
       node.classList.toggle('window', isWindow(surface));
       node.classList.toggle('split', isSplit(surface));
     }
-    if (isWindow(surface) && windowBoxes[surface.key]?.w) placeWindow(surface, windowBoxes[surface.key]);
+    // A window remembered without its box (the mode was kept, the place was not) comes back where a
+    // new window opens. It used to come back at the corner, with nothing to carry it by: «New
+    // conversation» reloads the page, and the conversations window was stuck there (2026-10-18).
+    if (isWindow(surface)) {
+      if (windowBoxes[surface.key]?.w) placeWindow(surface, windowBoxes[surface.key]);
+      // Measured once the room has its shape: on the first frames the thread is not laid out yet.
+      else requestAnimationFrame(() => requestAnimationFrame(() => { placeWindow(surface, windowBoxFor(surface)); rememberSurfaces(); }));
+    }
     carrySurface(surface);
     surfaceButtons(surface);
     sideGrip(surface);
@@ -10828,7 +10851,11 @@ function carryWindowBy(head, node, { active = () => true, box, place, done }) {
     event.preventDefault();
     const startX = event.clientX;
     const startY = event.clientY;
-    const from = { ...box() };
+    // Where it is on screen, whenever what was kept of it is not a whole box: a window is always
+    // carried from where the person sees it.
+    const kept = box() ?? {};
+    const seen = node.getBoundingClientRect();
+    const from = [kept.x, kept.y, kept.w, kept.h].every(Number.isFinite) ? { ...kept } : { ...kept, x: seen.left, y: seen.top, w: seen.width, h: seen.height };
     let carrying = false;
     let frame = 0;
     let to = null;
@@ -12575,6 +12602,7 @@ els.composer.addEventListener('submit', async (event) => {
       els.input.value = '';
       state.replyTo = null;
       renderReplyQuote();
+      offerModule(outgoing);
       state.pending = [];
       renderPendingAttachments();
       // The try went with the message; the next one goes at the rung chosen before it.
@@ -13251,6 +13279,9 @@ function appendModuleOutput(event) {
 // One way to turn a module on or off, whoever asks: its card, its tile on the board, AJUSTES. The
 // server's switch flips what is there; what each module changes in the page follows it here.
 async function switchModule(item) {
+  // Turning the test browser on may download its browser first (src/modules/playwright.mjs): said
+  // before the wait, so a switch that takes a minute is not mistaken for one that hung.
+  if (item.id === 'playwright' && !item.status?.installed) toast(t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.'), { tone: 'note' });
   const response = await fetch(`/api/extensions/${item.id}/install`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.error ?? t('{name} could not be turned on or off.', { name: item.name }));
@@ -13707,7 +13738,7 @@ function cardShell(item, { on, state: stateText }) {
   head.append(top);
   // What it does comes right under its name, in the reading face: it is what decides whether you
   // want it, and it used to sit three floors down under the version and the vendor.
-  if (item.summary) head.append(el('p', 'summary', item.summary));
+  if (item.summary) head.append(el('p', 'summary', t(item.summary)));
   // Who makes it, which version and whether it is current: one quiet line, not three.
   const line = el('div', 'version');
   if (item.vendor) line.append(el('span', 'vendor', item.vendor));
@@ -13754,7 +13785,7 @@ function cardShell(item, { on, state: stateText }) {
     line.append(get);
   }
   head.append(line);
-  if (item.status?.detail) head.append(el('div', 'detail', item.status.detail));
+  if (item.status?.detail) head.append(el('div', 'detail', t(item.status.detail)));
   if (item.external) head.append(el('div', 'detail', `${item.origin === 'project' ? t('THIS PROJECT') : t('EVERY PROJECT')} · ${item.file}`));
   card.append(head);
 
@@ -13762,8 +13793,8 @@ function cardShell(item, { on, state: stateText }) {
 
   // FLOOR 3 · what it touches, folded, with the count and nothing else.
   const bullets = [
-    ...(item.creates ?? []).map((text) => [t('WRITES'), text]),
-    ...(item.requires ?? []).map((text) => [t('NEEDS'), text]),
+    ...(item.creates ?? []).map((text) => [t('WRITES'), t(text)]),
+    ...(item.requires ?? []).map((text) => [t('NEEDS'), t(text)]),
   ];
   if (bullets.length) {
     const body = cardFold(card, t('WHAT IT TOUCHES'), { key: `mod.${item.id}.touches`, count: bullets.length });
@@ -14814,13 +14845,29 @@ function moduleCard(item) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', t('CANNOT INSTALL HERE YET')));
     for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
+    // What MADRE can put right itself (Continuity on a Mac with no git): one key, never a terminal.
+    if (item.preflight.fix) {
+      const fix = el('button', 'primary', item.preflight.fix.label ?? t('Set it up'));
+      fix.type = 'button';
+      fix.addEventListener('click', async () => {
+        fix.disabled = true;
+        const response = await reach(`/api/extensions/${item.id}/fix`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+        const result = await response.json().catch(() => ({}));
+        toast(response.ok ? t('Apple\'s installer opened. When it finishes, come back here and install.') : (result.error ?? t('It could not be started.')));
+        fix.disabled = false;
+      });
+      warn.append(fix);
+    }
     panel.append(warn);
   }
   if (modules.confirming === item.id && !blocked) {
     const confirm = el('div', 'confirm');
-    confirm.append(el('span', 'warn', t('THIS WRITES INTO THE PROJECT. MADRE WILL RUN, IN THE PROJECT FOLDER:')));
-    confirm.append(commandBlock([item.install.display]));
-    confirm.append(el('span', 'note', item.install.platforms?.length
+    // Written as it is said, names and all: the card's lowercase used to read «madre» and «(ide)».
+    confirm.append(el('span', 'warn as-written', t('This writes into the project. MADRE will run, in the project folder:')));
+    const first = item.install.prepare ?? [];
+    confirm.append(commandBlock([...first.map((step) => step.display), item.install.display]));
+    for (const step of first) if (step.note) confirm.append(el('span', 'note as-written', step.note));
+    confirm.append(el('span', 'note as-written', item.install.platforms?.length
       ? t('IDE adapters for the agents detected here: {agents}.', { agents: item.install.platforms.join(', ') })
       : t('No detected agent has an adapter for this module; it installs without IDE adapters.')));
     const row = el('div', 'actions');
@@ -14870,22 +14917,6 @@ function moduleCard(item) {
 // opens the module's card in a sheet, the way a category of AJUSTES opens; the ones with a reading
 // can also float as windows of their own. MADRE decides which, for its own modules: nothing in the
 // SDK asks for it.
-const MODULE_FACES = {
-  ash: { line: 'Compact replies from every agent', wide: true, window: true, icon: '<path class="ic-f" d="M4 5.5h12M4 9.5h9M4 13.5h5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13.2 13.5l2.3 2.3 2.3-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 9.8v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
-  intents: { line: 'How hard each agent should think', wide: true, window: true, icon: '<path d="M3.5 14.5a6.5 6.5 0 0 1 13 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path class="ic-f" d="M3.5 14.5a6.5 6.5 0 0 1 4.2-6.1l2.3 6.1z" fill="currentColor" fill-opacity=".22" stroke="none"/><path d="M10 14.5l3.2-4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1.3" fill="currentColor"/>' },
-  ollama: { line: 'Memory by meaning, on this machine', wide: true, window: true, icon: '<rect x="3.5" y="4" width="13" height="9.5" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 16.5h5M10 13.5v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path class="ic-f" d="M10 6.4c-1.6 0-2.6 1-2.6 2.3 0 .9.5 1.5 1.1 1.8v.8h3v-.8c.6-.3 1.1-.9 1.1-1.8 0-1.3-1-2.3-2.6-2.3z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' },
-  'image-studio': { line: 'Images for the agents, with your key', icon: '<rect x="3.25" y="4.25" width="13.5" height="11.5" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="ic-f" d="M3.8 14.2l3.7-3.6 2.6 2.4 1.9-1.6 4 3.3H5.9z" fill="currentColor" fill-opacity=".22" stroke="none"/><path d="M3.8 14.2l3.7-3.6 2.6 2.4 1.9-1.6 4 3.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M13.6 6.1v2.4M12.4 7.3h2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
-  playwright: { line: 'A browser the agents can look through', icon: '<rect x="3" y="4" width="14" height="12" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 7.6h14" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="ic-f" d="M9 9.6v5.2l1.4-1.4 1 2.1 1-.5-1-2.1h2z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' },
-  ripley: { line: 'Preview of HTML, SVG and Markdown', icon: '<path d="M6 3.5h5.5l3.5 3.5v9.5H6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M11.5 3.5V7H15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path class="ic-f" d="M7.6 12s1.1-2.1 2.9-2.1 2.9 2.1 2.9 2.1-1.1 2.1-2.9 2.1-2.9-2.1-2.9-2.1z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' },
-  'git-pulse': { line: 'The repository, posted to the project', icon: '<circle cx="5.5" cy="5" r="1.7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="15" r="1.7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 6.7v6.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path class="ic-f" d="M8.8 11h2l1.2-3.4 1.6 6 1.2-2.6h1.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
-  runs: { line: 'Commands an agent asks you to run', icon: '<rect x="3" y="4" width="14" height="12" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="ic-f" d="M7.6 8.1v4.6l3.8-2.3z" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>' },
-  choices: { line: 'Decisions as buttons, not paragraphs', icon: '<rect x="3.5" y="3.8" width="13" height="3.6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect class="ic-f" x="3.5" y="8.2" width="13" height="3.6" rx="1.8" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="1.5"/><rect x="3.5" y="12.6" width="13" height="3.6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/>' },
-  ahp: { line: 'Project state and handoffs in .ahp/', icon: '<path d="M4 8.5h9.5M10.5 5.5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="ic-f" d="M16 11.5H6.5M9.5 8.5l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
-  correo: { line: 'Send one email from your account', icon: '<rect x="3" y="5" width="14" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="ic-f" d="M3.6 6.2l6.4 4.6 6.4-4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' },
-  github: { line: 'Pull requests, issues and CI, in the project', icon: '<circle cx="5.5" cy="4.8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="5.5" cy="15.2" r="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 6.6v6.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M14.5 13.4V8.2a2.6 2.6 0 0 0-2.6-2.6H9.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 3.6l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle class="ic-f" cx="14.5" cy="15.2" r="1.8" fill="currentColor" fill-opacity=".22" stroke="currentColor" stroke-width="1.6"/>' },
-};
-const MODULE_ANY = '<path d="M7.5 4.5h2.2a1.6 1.6 0 1 1 3.1 0H15v3.2a1.6 1.6 0 1 1 0 3.1V15h-3.2a1.6 1.6 0 1 0-3.1 0H5.5v-3.6a1.6 1.6 0 1 0 0-3.1V4.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>';
-const moduleFace = (item) => MODULE_FACES[item.id] ?? { line: null, icon: MODULE_ANY };
 function moduleIcon(item) {
   const face = moduleFace(item);
   const span = el('span', 'settings-icon');
@@ -14923,7 +14954,7 @@ function moduleTile(item) {
   tile.append(top);
   const name = el('b', 'mods-name', t(item.name));
   if (item.external) name.append(el('span', 'mods-dev', t('Your module')));
-  tile.append(name, el('span', 'mods-line', face.line ? t(face.line) : item.summary));
+  tile.append(name, el('span', 'mods-line', face.line ? t(face.line) : t(item.summary ?? '')));
   // The ones with a reading of their own say so: their card can float as a small app.
   if (face.window) tile.append(el('span', 'mods-app', t('Opens as a window')));
   const open = () => openModuleSheet(item.id);
@@ -14980,7 +15011,7 @@ function moduleGlance(item) {
 }
 // What it touches and what it adds to the composer, as blocks of the room instead of the card's folds.
 function moduleFacts(host, item) {
-  const touches = [...(item.creates ?? []).map((text) => [t('Writes'), text]), ...(item.requires ?? []).map((text) => [t('Needs'), text])];
+  const touches = [...(item.creates ?? []).map((text) => [t('Writes'), t(text)]), ...(item.requires ?? []).map((text) => [t('Needs'), t(text)])];
   if (touches.length) {
     const block = sxBlock(host, t('What it touches'), t('Everything this module writes or needs, said before it runs.'));
     for (const [tag, text] of touches) {
@@ -15005,17 +15036,19 @@ const sentenceCase = (text) => { const words = String(text ?? ''); return words 
 function moduleSheet(host, item) {
   host.append(moduleGlance(item));
   if (item.kind !== 'builtin') {
-    const install = sxBlock(host, t('What it does'), item.summary, { className: 'mods-legacy' });
+    const install = sxBlock(host, t('What it does'), t(item.summary ?? ''), { className: 'mods-legacy' });
     install.rows.append(moduleCard(item));
     moduleFacts(host, item);
     return;
   }
   const on = moduleOn(item);
-  const about = sxBlock(host, t('What it does'), item.summary);
-  if (item.fixed) sxRow(about, t('Always on'), item.status?.detail ? sentenceCase(item.status.detail) : null);
+  const about = sxBlock(host, t('What it does'), t(item.summary ?? ''));
+  if (item.fixed) sxRow(about, t('Always on'), item.status?.detail ? sentenceCase(t(item.status.detail)) : null);
   else {
     const blocked = !on && item.preflight && !item.preflight.ok;
-    sxRow(about, t('Active'), blocked ? item.preflight.problems.join(' ') : item.status?.detail ? sentenceCase(item.status.detail) : null, sxSwitch(on, async (next, box) => {
+    // A project's switch is that project's (src/module-scope.mjs); every project's is moved from Home.
+    const ownSwitch = item.scope && item.id !== 'ollama' && item.id !== 'bishop';
+    sxRow(about, ownSwitch ? t('On in this project') : t('Active'), blocked ? item.preflight.problems.join(' ') : item.status?.detail ? sentenceCase(t(item.status.detail)) : null, sxSwitch(on, async (next, box) => {
       box.disabled = true;
       try { await switchModule(item); } catch (error) { box.checked = !next; box.disabled = false; toast(error.message); }
     }, { disabled: blocked, label: item.name }), { off: blocked });
@@ -15438,6 +15471,52 @@ function readyModules() {
     modulesWindow.observer.observe(node);
   }
 }
+// THE MARKET'S OFFER (2026-10-18, market.js). A message that asks for what a module does, while it
+// is off, gets one card under it: what would help, the key that turns it on here, the module's page
+// in the Market, and «No, thanks», which is kept. Read from the person's own words; once a page.
+const MARKET_DECLINED = 'pulse.market.declined';
+const marketShown = [];
+const marketDeclined = () => { try { return JSON.parse(localStorage.getItem(MARKET_DECLINED) ?? '[]') ?? []; } catch { return []; } };
+function offerModule(text) {
+  if (state.device) return;
+  const offer = marketOffer(text, modules.items ?? [], { declined: marketDeclined(), shown: marketShown });
+  if (!offer) return;
+  marketShown.push(offer.item.id);
+  setTimeout(() => {
+    const { item, says } = offer;
+    const card = el('div', 'system market-offer');
+    const mark = appIcon(item, 40);
+    const words = el('div', 'market-offer-words');
+    words.append(el('b', null, t(item.name)), el('span', null, t(says)));
+    const acts = el('div', 'market-offer-acts');
+    const switchable = moduleSwitches(item) && marketEntry(item.id).scope !== 'project';
+    const on = el('button', 'primary', switchable ? t('Turn on') : t('Install'));
+    on.type = 'button';
+    on.addEventListener('click', async () => {
+      if (!switchable) { openModules(); await refreshModules(); renderModules(); openModuleSheet(item.id); return; }
+      on.disabled = true;
+      try {
+        await switchModule(item);
+        card.replaceChildren(mark, el('div', 'market-offer-words', null));
+        card.lastChild.append(el('b', null, t(item.name)), el('span', null, t('Turned on. Ask again and the agents can use it.')));
+      } catch (error) { on.disabled = false; toast(error.message); }
+    });
+    const more = el('button', null, t('See it in the Market'));
+    more.type = 'button';
+    more.addEventListener('click', () => openRoomMarket(item.id));
+    const no = el('button', 'quiet', t('No, thanks'));
+    no.type = 'button';
+    no.addEventListener('click', () => {
+      try { localStorage.setItem(MARKET_DECLINED, JSON.stringify([...new Set([...marketDeclined(), item.id])])); } catch { /* asked again next page */ }
+      card.remove();
+    });
+    acts.append(on, more, no);
+    card.append(mark, words, acts);
+    document.querySelector('#thread-inner')?.append(card);
+    card.scrollIntoView?.({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }, motion(700));
+}
+
 function openModules() {
   const node = modules.dialog;
   readyModules();
@@ -15465,6 +15544,47 @@ modules.button.addEventListener('click', async () => {
   renderModules();
 });
 modules.close.addEventListener('click', () => closeModules());
+// THE MARKET in a project (2026-10-18): the same store as Home's, full screen, where what you get
+// is for this project. A module that writes into the folder comes back here, to its card, so its
+// commands are read before they run.
+function openRoomMarket(focus = null) {
+  return openMarket({
+    where: 'room',
+    focus,
+    project: { name: projectDesignation() || t('this project') },
+    host: {
+      localAi: () => openSettingsOn('local'),
+      toast: (words) => toast(words),
+      installHere: async (item) => { openModules(); await refreshModules(); renderModules(); openModuleSheet(item.id); },
+      changed: async () => { await refreshModules(); if (modules.dialog.open) renderModules(); barModulesChanged(); },
+    },
+  });
+}
+{
+  const head = modules.dialog?.querySelector('.mods-head');
+  const add = head?.querySelector('#modules-add');
+  if (head && add) {
+    const market = el('button', 'sx-btn mods-market', t('Market'));
+    market.type = 'button';
+    market.title = t('Every module MADRE can add to this project');
+    market.addEventListener('click', () => openRoomMarket());
+    add.before(market);
+  }
+}
+// The Market's catalog from madre.run: the faces of the modules that came after this MADRE, and what
+// it updated on its own since, said once. Not on a phone: it has no Market.
+if (!state.device) void loadMarket({ toast: (words, action) => toast(words, { action }), open: (id) => openRoomMarket(id) }).then(() => { if (modules.dialog.open) renderModules(); });
+// The Market's address in a project: #mercado, or #mercado=<module> on its page.
+if (/^#mercado(=|$)/.test(globalThis.location?.hash ?? '')) {
+  const id = decodeURIComponent(location.hash.split('=')[1] ?? '') || null;
+  setTimeout(() => openRoomMarket(id), motion(400));
+}
+// Sent here from the Market with a module to install in this project: its card, open.
+if (/^#modulo=/.test(globalThis.location?.hash ?? '')) {
+  const id = decodeURIComponent(location.hash.split('=')[1] ?? '');
+  history.replaceState(null, '', location.pathname + location.search);
+  setTimeout(async () => { openModules(); await refreshModules(); renderModules(); openModuleSheet(id); }, motion(600));
+}
 // Escape closes the open module before the board, and the search before either.
 modules.dialog.addEventListener('cancel', (event) => {
   event.preventDefault();

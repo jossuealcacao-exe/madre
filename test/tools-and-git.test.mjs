@@ -197,3 +197,33 @@ test('PLAYWRIGHT: the answer belongs to the browser it was asked about, and the 
   assert.equal(installBrowserLine('nope'), 'npx @playwright/mcp install-browser chromium');
   forgetPlaywrightHealth();
 });
+
+// The test browser fetches what it is missing when it is turned on (2026-10-18): the server when it
+// is not there, then the browser the server downloads, and it is asked again — no terminal.
+test('test browser · turned on, MADRE installs the missing server and browser, then asks again', async () => {
+  const { preparePlaywright } = await import('../src/modules/playwright.mjs');
+  const ran = [];
+  let server = null;
+  const run = async (command, args) => { ran.push([command, ...args].join(' ')); if (command === 'npm') server = '0.0.70'; return { code: 0, said: null }; };
+  const ready = await preparePlaywright({ browser: 'chromium', run, version: async () => server, starts: async () => ({ ok: true, checked: true }) });
+  assert.equal(ready.ok, true);
+  assert.deepEqual(ran, ['npm install -g @playwright/mcp', 'npx --no @playwright/mcp install-browser chromium']);
+  // With the server there, only the browser; an unknown engine falls back to chromium.
+  ran.length = 0;
+  await preparePlaywright({ browser: 'webkit', run, version: async () => '0.0.70', starts: async () => ({ ok: true }) });
+  assert.deepEqual(ran, ['npx --no @playwright/mcp install-browser webkit']);
+  // Still not starting: it says so, with the reason, and turns nothing on.
+  const still = await preparePlaywright({ run, version: async () => '0.0.70', starts: async () => ({ ok: false, problem: 'no network' }) });
+  assert.deepEqual([still.ok, still.problem], [false, 'no network']);
+  // The server could not be installed: the browser is not even tried.
+  ran.length = 0;
+  const noServer = await preparePlaywright({ run: async (command, args) => { ran.push(command); return { code: 1, said: 'EACCES' }; }, version: async () => null, starts: async () => ({ ok: true }) });
+  assert.deepEqual([noServer.ok, noServer.problem, ran], [false, 'EACCES', ['npm']]);
+});
+
+test('test browser · npm\'s reason is the line that says why, never the one pointing at its log', async () => {
+  const { npmReason } = await import('../src/modules/playwright.mjs');
+  const said = ['npm error code ENOENT', 'npm error syscall open', 'npm error path /Users/a/tester/madre.tgz', 'npm error enoent ENOENT: no such file or directory, open \'/Users/a/tester/madre.tgz\'', 'npm error A complete log of this run can be found in: /Users/a/.npm/_logs/x.log'].join('\n');
+  assert.equal(npmReason(said), "enoent ENOENT: no such file or directory, open '/Users/a/tester/madre.tgz'");
+  assert.equal(npmReason('Error: Browser "chromium" is not installed'), 'Error: Browser "chromium" is not installed');
+});

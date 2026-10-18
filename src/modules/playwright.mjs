@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { t } from '../i18n.mjs';
 import { defineModule } from './sdk.mjs';
+import { switchIn } from '../module-scope.mjs';
 import { packageVersion } from './helpers.mjs';
 import { terminateProcessTree, lastWords } from '../adapters/process.mjs';
 
@@ -33,6 +34,51 @@ export async function playwrightVersion({ env = process.env, projectRoot = proce
   const version = await packageVersion(PLAYWRIGHT_PACKAGE, { env, projectRoot });
   probe = { at: now, version };
   return version;
+}
+
+// Why npm stopped, in its own words: the line that says it, not the last one, which only points at
+// a log file («npm error A complete log of this run can be found in …», 2026-10-18).
+export function npmReason(output) {
+  const lines = String(output ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const said = lines.filter((line) => /^npm (error|ERR!)/i.test(line)).map((line) => line.replace(/^npm (error|ERR!)\s*/i, '')).filter((line) => line && !/complete log of this run|^(code|errno|syscall)\b/i.test(line));
+  return said.find((line) => !/^path\b/i.test(line)) ?? said[0] ?? lastWords(output);
+}
+
+// One command of the module's own, run to its end with no terminal: getting the server or its
+// browser onto this computer. What it printed last is kept for the case it fails.
+function runToEnd(command, args, { cwd, env, timeoutMs = 900000 } = {}) {
+  return new Promise((resolve) => {
+    let err = '';
+    let child;
+    try { child = spawn(command, args, { cwd, env: { ...env, CI: '1', NO_COLOR: '1' }, stdio: ['ignore', 'ignore', 'pipe'], shell: false, detached: true, windowsHide: true }); }
+    catch (error) { resolve({ code: 1, said: error.message }); return; }
+    const timer = setTimeout(() => terminateProcessTree(child, { graceMs: 1000 }), timeoutMs);
+    timer.unref?.();
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk) => { err = (err + chunk).slice(-4000); });
+    child.on('error', (error) => { clearTimeout(timer); resolve({ code: 1, said: error.message }); });
+    child.on('close', (code) => { clearTimeout(timer); resolve({ code, said: npmReason(err) }); });
+  });
+}
+
+// What the switch puts in place by itself before it gives up (2026-10-18): the person turned it
+// on, and a browser to download is MADRE's to fetch, not a line to copy into a terminal. The
+// server, globally (where `npx --no` finds it at turn time), when it is missing; then the browser
+// the server itself downloads for the engine chosen. Asked again after.
+export async function preparePlaywright({ browser = 'chromium', env = process.env, cwd = process.cwd(), run = runToEnd, starts = playwrightStarts, version = playwrightVersion } = {}) {
+  const engine = PLAYWRIGHT_BROWSERS.includes(browser) ? browser : 'chromium';
+  let installed = await version({ env, projectRoot: cwd, fresh: true });
+  const steps = [];
+  if (!installed) {
+    const server = await run('npm', ['install', '-g', PLAYWRIGHT_PACKAGE], { cwd, env });
+    steps.push({ display: `npm install -g ${PLAYWRIGHT_PACKAGE}`, code: server.code });
+    installed = await version({ env, projectRoot: cwd, fresh: true });
+    if (!installed) return { ok: false, steps, problem: server.said ?? t('the browser server could not be installed') };
+  }
+  const fetched = await run('npx', ['--no', PLAYWRIGHT_PACKAGE, 'install-browser', engine], { cwd, env });
+  steps.push({ display: installBrowserLine(engine), code: fetched.code });
+  const check = await starts({ browser, env, cwd });
+  return { ...check, steps, ...(check.ok ? {} : { problem: check.problem ?? fetched.said }) };
 }
 
 // Does the browser server start, with its browser? Asked when the switch is turned on, with the
@@ -93,7 +139,7 @@ export async function playwrightStarts({ browser = 'chromium', env = process.env
     });
     child.stderr.on('data', (chunk) => { err += chunk; });
     child.on('error', (error) => finish({ ok: false, problem: error.message }));
-    child.on('close', (code) => finish({ ok: false, problem: lastWords(err) ?? t('it exited with code {code} before it spoke', { code }) }));
+    child.on('close', (code) => finish({ ok: false, problem: npmReason(err) ?? t('it exited with code {code} before it spoke', { code }) }));
     send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'madre', version: '1' } } });
   });
 }
@@ -143,6 +189,24 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
   };
 }
 
+async function playwrightReady(ctx) {
+  const browser = ctx.settings.browser ?? 'chromium';
+  let check = await playwrightStarts({ browser, env: ctx.env, cwd: ctx.projectRoot });
+  // Something missing: MADRE fetches it, then asks again, before saying anything to the person.
+  if (!check.ok && process.platform !== 'win32') {
+    await ctx.record('extension.preparing', { id: 'playwright', name: 'PLAYWRIGHT', browser });
+    check = await preparePlaywright({ browser, env: ctx.env, cwd: ctx.projectRoot });
+  }
+  forgetPlaywrightHealth(check, browser);
+  if (check.ok) return null;
+  // The server is there and only the browser is missing: say which one, and the one line that
+  // installs it. Without the server, both lines.
+  const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });
+  return { status: 412, body: { error: version
+    ? t('TEST BROWSER stays off: MADRE downloaded the {browser} browser and it still does not start ({problem}). Check your internet connection and turn it on again, or choose another browser in its settings.', { problem: String(check.problem).replace(/[.\s]+$/, ''), browser })
+    : t('TEST BROWSER stays off: MADRE could not install its browser server ({problem}). Check your internet connection and turn it on again.', { problem: String(check.problem).replace(/[.\s]+$/, '') }), code: 'MU-054' } };
+}
+
 export default defineModule({
   id: 'playwright',
   name: 'Test browser',
@@ -163,7 +227,7 @@ export default defineModule({
     return {
       runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (!version ? t('on · the browser server is not installed') : health?.ok === false ? t('on · the browser does not start: {problem}. Install it with {command}.', { problem: String(health.problem).replace(/[.\s]+$/, '').slice(0, 160), command: installBrowserLine(ctx.settings.browser) }) : `${t('on')} · ${ctx.settings.browser}`) : version ? t('off') : t('off · the browser server is not installed') },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (!version ? t('on · the browser server is not installed') : health?.ok === false ? t('on · the browser does not start: {problem}. Turn it off and on again: MADRE downloads what is missing.', { problem: String(health.problem).replace(/[.\s]+$/, '').slice(0, 160) }) : `${t('on')} · ${ctx.settings.browser}`) : version ? t('off') : t('off · the browser server is not installed') },
       preflight: version ? { ok: true, problems: [] } : { ok: false, problems: [`Install the browser server first: npm install -g @playwright/mcp, then its browser: ${installBrowserLine(ctx.settings.browser)}`] },
       install: { display: ctx.settings.enabled ? 'disable PLAYWRIGHT' : 'enable PLAYWRIGHT (config.json)', platforms: ['codex', 'claude', 'gemini', 'opencode'] },
     };
@@ -192,21 +256,15 @@ export default defineModule({
     const outputDir = turn.scratchDir ?? join(turn.roomDir ?? ctx.stateRoot, 'playwright');
     return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false, servers: turn.servers ?? [] })];
   },
-  // The switch, guarded: on only if the server starts and has its browser. Off is always allowed.
+  // Before it turns on, in one project or in all: the server starts and has its browser, or MADRE
+  // fetches what is missing and asks again. `null` is ready; anything else is the refusal.
+  ready: playwrightReady,
+  // The switch, guarded: on only if it is ready. Off is always allowed. A project's switch is that
+  // project's (module-scope.mjs).
   async toggle(ctx) {
     const enabled = !ctx.settings.enabled;
-    if (enabled) {
-      const browser = ctx.settings.browser ?? 'chromium';
-      const check = await playwrightStarts({ browser, env: ctx.env, cwd: ctx.projectRoot });
-      forgetPlaywrightHealth(check, browser);
-      // The server is there and only the browser is missing: say which one, and the one line that
-      // installs it. Without the server, both lines.
-      const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });
-      if (!check.ok) return { status: 412, body: { error: version
-        ? t('TEST BROWSER did not start, so it stays off: {problem}. The browser server is installed; what is missing is the {browser} browser. Install it with {command} and turn it on again, or choose another browser in its settings.', { problem: String(check.problem).replace(/[.\s]+$/, ''), browser, command: installBrowserLine(browser) })
-        : t('TEST BROWSER did not start, so it stays off: {problem}. Install the server and its browser ({server}, then {command}) and turn it on again.', { problem: String(check.problem).replace(/[.\s]+$/, ''), server: `npm install -g ${PLAYWRIGHT_PACKAGE}`, command: installBrowserLine(browser) }), code: 'MU-054' } };
-    }
-    await ctx.updateConfig({ modules: { playwright: { ...(ctx.config.modules?.playwright ?? {}), enabled } } });
+    if (enabled) { const refused = await playwrightReady(ctx); if (refused) return refused; }
+    await ctx.updateConfig({ modules: { playwright: switchIn(ctx.config.modules?.playwright ?? {}, ctx.roomId ?? null, enabled) } });
     await ctx.record('extension.toggled', { id: 'playwright', name: 'PLAYWRIGHT', enabled });
     return { status: 200, body: { enabled } };
   },

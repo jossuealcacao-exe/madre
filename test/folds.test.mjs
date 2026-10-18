@@ -233,7 +233,7 @@ test('settings: every sheet is built from the same blocks, and the sheet is as w
 
 test('modules: a board of tiles, a sheet for each, windows only for MADRE\'s own readings, and the SDK untouched', async () => {
   const [app, page, sdk] = await Promise.all([read('app.js'), read('index.html'), readFile(join(import.meta.dirname, '..', 'src', 'modules', 'sdk.mjs'), 'utf8')]);
-  const board = app.slice(app.indexOf('const MODULE_FACES = {'), app.indexOf('function renderModulesDev()'));
+  const board = app.slice(app.indexOf('function moduleIcon(item) {'), app.indexOf('function renderModulesDev()'));
   assert.match(board, /function moduleTile\(item\)/);
   assert.match(board, /function moduleDetail\(item\)/);
   // The card in the sheet is the module's own card: one renderer, wherever it shows.
@@ -249,7 +249,9 @@ test('modules: a board of tiles, a sheet for each, windows only for MADRE\'s own
   assert.match(board, /function moduleGlance\(item\)/);
   assert.match(board, /function moduleFacts\(host, item\)/);
   // Which modules float is MADRE's decision for its own: three with a reading, nothing asked of the SDK.
-  const floating = [...board.matchAll(/^ {2}([\w'-]+): \{[^\n]*window: true/gm)].map((match) => match[1].replace(/'/g, ''));
+  // The faces live in market.js since the Market (2026-10-18): the room and Home draw the same marks.
+  const faces = await read('market.js');
+  const floating = [...faces.matchAll(/^ {2}([\w'-]+): \{[^\n]*window: true/gm)].map((match) => match[1].replace(/'/g, ''));
   assert.deepEqual(floating.sort(), ['ash', 'intents', 'ollama']);
   for (const field of ['window', 'widget', 'glance']) assert.ok(!new RegExp(`'${field}'`).test(sdk.slice(sdk.indexOf('MODULE_FIELDS'), sdk.indexOf('unknownFields'))), `the SDK grew a ${field} field`);
   // The last tile invites, and opens the guide instead of the SDK.

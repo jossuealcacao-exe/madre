@@ -19,6 +19,7 @@
 
 import { readFile, stat } from 'node:fs/promises';
 import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from '../vault.mjs';
+import { moduleOnIn, roomsOf, scopeIn, settingsIn, switchIn } from '../module-scope.mjs';
 
 const camel = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
@@ -67,7 +68,7 @@ export function dependencies(runs) {
   return list.filter((dep) => dep && dep.name).map((dep) => ({ name: String(dep.name), version: dep.version ?? null, target: dep.target ?? null }));
 }
 
-// Every field this contract answers to. Thirty-four of them and all but two optional, which is
+// Every field this contract answers to. Thirty-seven of them and all but two optional, which is
 // generous until you misspell one: `sumary` used to install without a word and leave a card with
 // an empty summary. A key MADRE does not know is not fatal — a module written for a newer MADRE
 // may carry fields this one has not learned yet — so it is said out loud instead of refused.
@@ -76,7 +77,7 @@ export const MODULE_FIELDS = new Set([
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
   'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand', 'secrets',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
-  'toggledBody', 'describe',
+  'toggledBody', 'describe', 'ready',
 ]);
 export const unknownFields = (spec) => Object.keys(spec ?? {}).filter((key) => !MODULE_FIELDS.has(key));
 
@@ -133,8 +134,14 @@ export function defineModule(spec) {
       return { name: secret.name, label: secret.label ?? secret.name.toUpperCase(), note: secret.note ?? '', where: secret.where ?? '' };
     }),
   };
-  const settingsFrom = (config) => ({ ...defaults, ...(config?.modules?.[configKey] ?? {}) });
+  // A project reads its own word on `enabled` when it said one (module-scope.mjs).
+  const settingsFrom = (config, roomId = null) => ({ ...defaults, ...settingsIn(config?.modules?.[configKey] ?? {}, roomId) });
   const mine = (ctx, settings) => ({ ...ctx, settings, vault: vaultFor(spec.id, ctx.stateRoot) });
+  const scopeHere = (ctx) => {
+    const block = ctx.config?.modules?.[configKey] ?? {};
+    const own = ctx.roomId ? roomsOf(block)[ctx.roomId] : undefined;
+    return { all: typeof block.enabled === 'boolean' ? block.enabled : Boolean(defaults.enabled), here: typeof own === 'boolean' ? own : null };
+  };
   const module = {
     ...base,
     configKey,
@@ -152,14 +159,14 @@ export function defineModule(spec) {
     }),
     // Tools for a turn, only while the module is on. Failures never break a turn.
     toolsForTurn: spec.toolsForTurn ? async (ctx, turn) => {
-      const settings = settingsFrom(ctx.config);
+      const settings = settingsFrom(ctx.config, ctx.roomId);
       if (kind === 'builtin' && !settings.enabled) return [];
       try { return (await spec.toolsForTurn(mine(ctx, settings), turn)) ?? []; } catch (error) { console.error(`MADRE module ${spec.id}: toolsForTurn failed: ${error.message}`); return []; }
     } : null,
     // How the outside thing this module drives gets a newer version onto this computer. MADRE
     // shows the command before it runs and never runs one the human has not read. A module that
     // cannot update what it drives returns the note that says where to get it instead.
-    updatePlan: spec.updatePlan ? async (ctx, what) => spec.updatePlan(mine(ctx, settingsFrom(ctx.config)), what) : null,
+    updatePlan: spec.updatePlan ? async (ctx, what) => spec.updatePlan(mine(ctx, settingsFrom(ctx.config, ctx.roomId)), what) : null,
     // Legacy installer hooks, kept on the object so the confirm-and-run path can use them.
     detect: spec.detect ?? null,
     preflight: spec.preflight ?? null,
@@ -167,7 +174,7 @@ export function defineModule(spec) {
 
     // What MODULES shows: base fields plus status, preflight, install line and whatever the module adds.
     async describe(ctx) {
-      const settings = settingsFrom(ctx.config);
+      const settings = settingsFrom(ctx.config, ctx.roomId);
       const own = spec.status ? await spec.status(mine(ctx, settings)) : {};
       const installed = own.installed ?? (kind === 'builtin' ? Boolean(settings.enabled) : false);
       const runs = dependencies(own.runs);
@@ -188,6 +195,8 @@ export function defineModule(spec) {
         status: own.status ?? { installed, detail: own.detail ?? (installed ? 'on' : 'off') },
         preflight: own.preflight ?? { ok: true, problems: [] },
         install: own.install ?? (kind === 'builtin' ? { display: installed ? `disable ${base.name}` : `enable ${base.name} (config.json)`, platforms: [] } : { display: '', platforms: [] }),
+        // Whether it is on for every project, and this project's own word when it said one.
+        ...(kind === 'builtin' ? { scope: scopeHere(ctx) } : {}),
       };
     },
 
@@ -204,7 +213,7 @@ export function defineModule(spec) {
       } else {
         next = String(value ?? '').slice(0, 500);
       }
-      const settings = { ...settingsFrom(ctx.config), [key]: next };
+      const settings = { ...settingsFrom(ctx.config, ctx.roomId), [key]: next };
       await ctx.updateConfig({ modules: { [configKey]: { ...(ctx.config.modules?.[configKey] ?? {}), [key]: next } } });
       if (spec.onSettings) await spec.onSettings(mine(ctx, settings), settings);
       return { status: 200, body: { settings: Object.fromEntries(base.controls.map((known) => [known.key, settings[known.key] ?? null])) } };
@@ -213,14 +222,34 @@ export function defineModule(spec) {
     // The switch. Default for builtins: flip `enabled`, persist, tell the room.
     // A module may guard it (`confirm`) or replace it (`toggle`).
     toggle: kind === 'builtin' || spec.toggle ? async (ctx, payload = {}) => {
-      const settings = settingsFrom(ctx.config);
+      const settings = settingsFrom(ctx.config, ctx.roomId);
       if (spec.toggle) return spec.toggle(mine(ctx, settings), payload);
       const enabled = !settings.enabled;
       if (enabled && spec.confirm && payload.confirm !== true) return { status: 400, body: { error: spec.confirm } };
-      await ctx.updateConfig({ modules: { [configKey]: { ...(ctx.config.modules?.[configKey] ?? {}), enabled } } });
+      if (enabled && spec.ready) { const refused = await spec.ready(mine(ctx, settings)); if (refused) return refused; }
+      // A project's switch is that project's (module-scope.mjs); Home's is every project's.
+      await ctx.updateConfig({ modules: { [configKey]: switchIn(ctx.config.modules?.[configKey] ?? {}, ctx.roomId ?? null, enabled) } });
       const after = spec.onToggle ? await spec.onToggle(mine(ctx, { ...settings, enabled }), enabled) : null;
       await ctx.record('extension.toggled', { id: spec.id, name: base.name, enabled, ...(spec.toggledEvent ?? {}) });
       return { status: 200, body: { enabled, ...(after ?? {}), ...(spec.toggledBody?.(enabled) ?? {}) } };
+    } : null,
+
+    // Home's word on which projects (2026-10-18): `{ all }` for every project, `{ rooms: { id: on } }`
+    // for some. Turning it on anywhere asks what turning it on asks (`confirm`, `ready`); the
+    // project rooms read the new word on their next turn.
+    scope: kind === 'builtin' || spec.toggle ? async (ctx, change = {}) => {
+      const block = ctx.config.modules?.[configKey] ?? {};
+      const next = scopeIn(block, change);
+      const fallback = Boolean(defaults.enabled);
+      const turningOn = change.all === true || Object.values(change.rooms ?? {}).some((on) => on === true);
+      const settings = settingsFrom(ctx.config, ctx.roomId);
+      if (turningOn && spec.confirm && change.confirm !== true) return { status: 400, body: { error: spec.confirm } };
+      if (turningOn && spec.ready) { const refused = await spec.ready(mine(ctx, settings)); if (refused) return refused; }
+      await ctx.updateConfig({ modules: { [configKey]: next } });
+      const here = moduleOnIn(next, ctx.roomId ?? null, fallback);
+      if (spec.onToggle && here !== Boolean(settings.enabled)) await spec.onToggle(mine(ctx, { ...settings, enabled: here }), here);
+      await ctx.record('extension.toggled', { id: spec.id, name: base.name, enabled: here, scope: { all: typeof next.enabled === 'boolean' ? next.enabled : fallback, rooms: roomsOf(next) } });
+      return { status: 200, body: { all: typeof next.enabled === 'boolean' ? next.enabled : fallback, rooms: roomsOf(next) } };
     } : null,
   };
   return Object.freeze(module);

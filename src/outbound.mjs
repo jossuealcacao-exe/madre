@@ -88,6 +88,14 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // The Market (src/market-remote.mjs): a signed catalog, and the file of a module you get from it.
+    id: 'market', host: 'madre.run', match: (url) => url.pathname.startsWith('/mercado/'), to: "madre.run · the Market",
+    what: 'Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author\'s signature before it is used.',
+    when: 'when MADRE opens, at most every ten minutes, and when you get a module',
+    where: 'Settings › Version and reports › Look for new versions · or PULSE_MARKET=0',
+    inside: true,
+  },
+  {
     id: 'usage', host: 'madre.run', match: (url) => url.pathname === '/api/usage', to: "madre.run · the author's usage figures",
     what: "The author's token, to read how many copies are on. Only in the author's own copy, run from source.",
     when: 'while the «MADRE usage» widget is on Home',

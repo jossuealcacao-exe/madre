@@ -25,6 +25,17 @@ npx @jossuealcala/madre setup       # el mismo alta, desde la terminal, si la pr
 npx @jossuealcala/madre start --no-open --project RUTA
 ```
 
+**En un servidor, sin pantalla.** MADRE escucha solo en `127.0.0.1` de la máquina donde corre, y es a propósito: no tiene contraseña, y quien llegara a ella podría poner a trabajar a los agentes ahí. No abras sus puertos a la red. Para usarla en un servidor, ábrela por un túnel SSH desde tu computadora. Inicio usa el 4317 y cada proyecto que abras toma el siguiente puerto libre (4318, 4319…), así que el túnel lleva varios; si abres más proyectos, agrega más `-L`.
+
+```bash
+# en tu computadora: entra al servidor con el túnel
+ssh -L 4317:127.0.0.1:4317 -L 4318:127.0.0.1:4318 -L 4319:127.0.0.1:4319 -L 4320:127.0.0.1:4320 usuario@servidor
+# ya dentro del servidor
+npx @jossuealcala/madre --no-open
+```
+
+Luego abre `http://127.0.0.1:4317/salas` en el navegador de tu computadora. Los agentes se instalan en el servidor y se conectan desde Ajustes › Agentes: Claude te da un enlace y un código que pegas ahí mismo, y Gemini y OpenCode aceptan su llave. Usa tu usuario y no root: los agentes trabajan con los permisos de quien corre MADRE.
+
 **Tres nombres.** **MADRE** es el producto. **Diagnóstico** es su voz operativa: fallas, conexiones, ajustes. **Historial** es el canal sobre el que corre el proyecto: el registro de eventos, el bloque del plan, la carpeta `.pulse/` donde caen los artefactos; esos identificadores conservan su nombre de antes, PULSE.
 
 ---

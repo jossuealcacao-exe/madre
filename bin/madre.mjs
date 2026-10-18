@@ -14,7 +14,12 @@ import { applyConfigToEnv, loadConfig } from '../src/config.mjs';
 import { isOnline, runSetup } from '../src/setup.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { ensureSalasProject, isSalasRoom, projectRootFor } from '../src/salas.mjs';
+import { forgetNpxLaunch } from '../src/npm-launch.mjs';
 import { createServer } from 'node:net';
+
+// Before anything is run: what npx left about the call that started MADRE is not passed on to the
+// installers, agents and commands MADRE starts (src/npm-launch.mjs).
+forgetNpxLaunch(process.env);
 
 const cli = parseArgs(process.argv.slice(2));
 const { command } = cli;

@@ -8,6 +8,8 @@ process.env.PULSE_GH ??= '0';
 // Nor does any MADRE the suite starts tell madre.run it is in use (src/heartbeat.mjs): its daily
 // «still in use» goes to a port nothing listens on, and fails as it would offline.
 process.env.PULSE_HEARTBEAT_URL ??= 'http://127.0.0.1:9/ping';
+// Nor does it ask madre.run for the Market's catalog (src/market-remote.mjs): the same dead port.
+process.env.PULSE_MARKET_URL ??= 'http://127.0.0.1:9/mercado/catalogo.json';
 
 // And the suite reads MADRE in the language it is WRITTEN in. The product speaks Spanish by
 // default; its tests assert what a module is, what a room does and what a reading means — not

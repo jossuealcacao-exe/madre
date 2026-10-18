@@ -1318,17 +1318,26 @@ test('modules: AHP+ preflight refuses when the git root is not the project or np
   await mkdir(project);
   const real = await realpath(project);
   try {
-    // Not a git repository at all.
-    const noGit = await ahp.preflight(project, { toplevel: async () => null, npx: async () => '/usr/bin/npx' });
-    assert.equal(noGit.ok, false);
-    assert.match(noGit.problems[0], /not a git repository/);
+    // Not a git repository, with git on the computer: MADRE runs `git init` first, in the same
+    // confirmed install, instead of sending the person to a terminal (2026-10-17).
+    const noGit = await ahp.preflight(project, { toplevel: async () => null, npx: async () => '/usr/bin/npx', git: async () => true });
+    assert.equal(noGit.ok, true);
+    assert.deepEqual(noGit.prepare.map((step) => [step.command, step.args]), [['git', ['init']]]);
+    assert.match(noGit.prepare[0].note, /leaves your files as they are/);
+    // No git at all: on a Mac, the key that opens Apple's installer; elsewhere, the words.
+    const macNoGit = await ahp.preflight(project, { toplevel: async () => null, npx: async () => '/usr/bin/npx', git: async () => false, platform: 'darwin' });
+    assert.equal(macNoGit.ok, false);
+    assert.deepEqual([macNoGit.fix.command, macNoGit.fix.args], ['xcode-select', ['--install']]);
+    const linuxNoGit = await ahp.preflight(project, { toplevel: async () => null, npx: async () => '/usr/bin/npx', git: async () => false, platform: 'linux' });
+    assert.equal(linuxNoGit.ok, false);
+    assert.equal(linuxNoGit.fix, null);
     // Git root is a parent (the home-directory-was-git-inited case).
     const parent = await ahp.preflight(project, { toplevel: async () => await realpath(root), npx: async () => '/usr/bin/npx' });
     assert.equal(parent.ok, false);
     assert.match(parent.problems[0], /git root is .* not the project itself/);
     // Own git root, npx present.
     const fine = await ahp.preflight(project, { toplevel: async () => real, npx: async () => '/usr/bin/npx' });
-    assert.deepEqual(fine, { ok: true, problems: [], gitRoot: real });
+    assert.deepEqual(fine, { ok: true, problems: [], gitRoot: real, prepare: [], fix: null });
     // npx missing.
     const noNpx = await ahp.preflight(project, { toplevel: async () => real, npx: async () => null });
     assert.match(noNpx.problems[0], /npx is not on PATH/);
@@ -1336,7 +1345,9 @@ test('modules: AHP+ preflight refuses when the git root is not the project or np
     const top = await gitToplevel(project);
     assert.ok(top === null || top !== real);
 
-    // The server refuses before writing and records why.
+    // The server refuses before writing and records why: a repository one folder up is never put
+    // right by MADRE (it would nest one inside the other).
+    await execFileAsync('git', ['init', '-q', root]);
     const agents = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
     const { server, store } = await createPulseServer({ projectRoot: project, stateRoot: root, agents, broadcastIntervalMs: 50 });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -2456,7 +2467,10 @@ test('Image Studio module: toggled from the modules API, gated on a Gemini key, 
     assert.equal(on.body.enabled, true);
     assert.equal(on.body.capabilities.gemini.imageGen, true);
     const config = JSON.parse(await readFile(join(root, 'config.json'), 'utf8'));
-    assert.deepEqual(config.modules.imageStudio, { enabled: true, model: 'gemini-3-pro-image' });
+    // A project's switch is that project's (2026-10-18, src/module-scope.mjs): its own word, and the model.
+    assert.deepEqual(Object.values(config.modules.imageStudio.rooms), [true]);
+    assert.equal(config.modules.imageStudio.model, 'gemini-3-pro-image');
+    assert.equal(config.modules.imageStudio.enabled, undefined, 'the switch for every project is Home\'s');
     listed = await api('/api/extensions');
     assert.match(listed.body.extensions.find((item) => item.id === 'image-studio').status.detail, /on · gemini-3-pro-image/);
     assert.ok((await store.readAll()).some((event) => event.type === 'extension.toggled' && event.payload.enabled === true));

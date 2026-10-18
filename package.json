@@ -65,8 +65,8 @@
     "docs/en/training"
   ],
   "bin": {
-    "madre": "./bin/madre.mjs",
-    "pulse": "./bin/madre.mjs"
+    "madre": "./bin/madre.cjs",
+    "pulse": "./bin/madre.cjs"
   },
   "engines": {
     "node": ">=22.5.0"

@@ -21,6 +21,8 @@ import { labelPowerKey, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { neuralChosen, rememberNeural } from './neural.js';
+import { openMarket } from './market-view.js';
+import { loadMarket } from './market.js';
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -3212,17 +3214,19 @@ document.addEventListener('click', (event) => {
 // and over any open sheet, for a few seconds.
 let toastNode = null;
 let toastTimer = 0;
-function toast(words, tone = 'done') {
+// `action` ({ label, run }) puts one key at its end: the Market's news says «See it» (2026-10-18).
+function toast(words, tone = 'done', action = null) {
   toastNode?.remove();
   const node = el('div', 'toast sm-toast');
   node.setAttribute('role', 'status');
   node.dataset.tone = tone;
   node.append(el('i', 'toast-dot'), el('span', 'toast-text', words));
+  if (action) node.append(button('toast-act', action.label, () => { node.remove(); action.run(); }));
   document.body.append(node);
   if (typeof node.showPopover === 'function') { node.popover = 'manual'; node.showPopover(); }
   toastNode = node;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { node.remove(); if (toastNode === node) toastNode = null; }, 5000);
+  toastTimer = setTimeout(() => { node.remove(); if (toastNode === node) toastNode = null; }, action ? 9000 : 5000);
 }
 
 // ---- THE LOBBY (2026-10-10). The first screen of MADRE: every project on this Mac, BISHOP above
@@ -3612,6 +3616,29 @@ function openAddSheet() {
   addSheet.showModal();
 }
 ui.add.addEventListener('click', openAddSheet);
+
+// THE MARKET and MODULES (2026-10-18), full screen (market-view.js): the store, and what is on in
+// which project. From Home a module is turned on for every project or only in one; one that writes
+// into a project's folder opens that project, on its card, where its commands are read first.
+const openHomeMarket = (tab = 'shop', focus = null) => openMarket({
+  where: 'home',
+  tab,
+  focus,
+  host: {
+    localAi: () => openSettings('local'),
+    toast: (words) => toast(words),
+    openProject: async (projectId, item) => {
+      const answer = await post('/api/salas/start', { room: projectId });
+      if (!answer.ok || !answer.body.port) return false;
+      window.open(`http://127.0.0.1:${answer.body.port}/#modulo=${encodeURIComponent(item.id)}`, '_blank', 'noopener');
+      return true;
+    },
+  },
+});
+document.querySelector('#sm-tb-market')?.addEventListener('click', () => void openHomeMarket('shop'));
+document.querySelector('#sm-tb-modules')?.addEventListener('click', () => void openHomeMarket('mine'));
+// The Market's catalog from madre.run, and what it updated on its own since, said once.
+void loadMarket({ toast: (words, action) => toast(words, action ? 'news' : 'done', action), open: (id) => openHomeMarket('shop', id) });
 
 // The agents of this computer, with everything a connection needs in one place: which account
 // each one signs in with, the doors it has, the box where a pasted key goes, the address a
@@ -4776,6 +4803,8 @@ function translateStatic() {
   ui.bar.open.setAttribute('aria-label', t('Projects on the bar'));
   ui.bar.agents.setAttribute('aria-label', t('Agents'));
   ui.bar.links.querySelector('span').textContent = t('Connections');
+  document.querySelector('#sm-tb-market span')?.replaceChildren(t('Market'));
+  document.querySelector('#sm-tb-modules span')?.replaceChildren(t('Modules'));
   ui.bar.reload.title = t('Reload the page');
   ui.bar.reload.setAttribute('aria-label', t('Reload the page'));
   const addKey = document.getElementById('sm-add-widgets');
@@ -4850,6 +4879,11 @@ void loadDecisions();
 if (location.hash === '#welcome') { history.replaceState(null, '', location.pathname); welcomed = true; openWizard(); }
 // Sent here for the Macroverso (the key in BISHOP's room): straight into it, on a large screen.
 if (location.hash === '#macroverso' && data && !ui.macro.hidden) { history.replaceState(null, '', location.pathname); ui.macro.click(); }
+// Sent here for the Market (a project's MODULES, or a module offered in the conversation): straight in,
+// on that module's page when one is named.
+// The Market's addresses: #mercado, #mercado=<module>, #modulos.
+if (/^#mercado(=|$)/.test(location.hash)) openHomeMarket('shop', decodeURIComponent(location.hash.split('=')[1] ?? '') || null);
+else if (location.hash === '#modulos') openHomeMarket('mine');
 timer = setInterval(() => { if (!document.hidden && !busy.size && !pins.dropping && !pins.drag) void refresh(); }, 4000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { void refresh(); void loadAgents(); void loadWork(); void loadDecisions(); } });
 // The decisions are asked again every few minutes (the route itself asks the rooms no oftener).
