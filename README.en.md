@@ -16,7 +16,7 @@
 
 # All your AIs in one chat.
 
-Codex, Claude Code, Gemini CLI and OpenCode working on your projects,
+Codex, Claude Code, Gemini CLI, OpenCode and Cursor working on your projects,
 in the same conversation, remembering the same things. All your projects in one place,
 and a Coordinator that sees them from above.
 
@@ -177,7 +177,7 @@ This matters more than any feature.
 
 ## Getting started
 
-You need **Node 22.5** or later and at least one of these CLIs with a signed-in session: Codex, Claude Code, Gemini CLI or OpenCode.
+You need **Node 22.5** or later and at least one of these CLIs with a signed-in session: Codex, Claude Code, Gemini CLI, OpenCode or Cursor (`cursor-agent`). Cursor, for now, reads and answers; it does not write in your project yet.
 
 ```
 npx @jossuealcala/madre

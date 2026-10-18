@@ -4,7 +4,7 @@
 
 <p align="center"><b>Español</b> · <a href="README.en.md">English</a></p>
 
-<p align="center"><sub><b>In English:</b> MADRE puts Codex, Claude Code, Gemini CLI and OpenCode in one local chat on your machine, with one memory they all share. It opens in your browser's language, Spanish or English. <a href="README.en.md"><b>Read the full README in English →</b></a></sub></p>
+<p align="center"><sub><b>In English:</b> MADRE puts Codex, Claude Code, Gemini CLI, OpenCode and Cursor in one local chat on your machine, with one memory they all share. It opens in your browser's language, Spanish or English. <a href="README.en.md"><b>Read the full README in English →</b></a></sub></p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@jossuealcala/madre"><img alt="npm" src="https://img.shields.io/npm/v/@jossuealcala/madre?style=flat-square&label=npm&color=9bff66&labelColor=050605"></a>
@@ -18,7 +18,7 @@
 
 # Todas tus IAs en un mismo chat.
 
-Codex, Claude Code, Gemini CLI y OpenCode trabajando sobre tus proyectos,
+Codex, Claude Code, Gemini CLI, OpenCode y Cursor trabajando sobre tus proyectos,
 en la misma conversación, recordando lo mismo. Todos tus proyectos en un lugar,
 y un Coordinador que los ve desde arriba.
 
@@ -183,7 +183,7 @@ Esto importa más que cualquier función.
 
 ## Empezar
 
-Necesitas **Node 22.5** o superior y al menos una de estas CLIs con sesión iniciada: Codex, Claude Code, Gemini CLI u OpenCode.
+Necesitas **Node 22.5** o superior y al menos una de estas CLIs con sesión iniciada: Codex, Claude Code, Gemini CLI, OpenCode o Cursor (`cursor-agent`). Cursor, por ahora, lee y contesta; todavía no escribe en tu proyecto.
 
 ```
 npx @jossuealcala/madre
