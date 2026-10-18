@@ -26,6 +26,6 @@ jobs:
       - name: doctor answers in JSON without any agent installed
         run: |
           node ./bin/madre.mjs doctor --json > doctor.json || true
-          node -e "const r = JSON.parse(require('fs').readFileSync('doctor.json', 'utf8')); if (!Array.isArray(r.agents) || r.agents.length !== 4) process.exit(1); console.log('doctor ok ·', r.node)"
+          node -e "const r = JSON.parse(require('fs').readFileSync('doctor.json', 'utf8')); if (!Array.isArray(r.agents) || r.agents.length !== 5) process.exit(1); console.log('doctor ok ·', r.node)"
       - name: Known conditions print for this platform
         run: node ./bin/madre.mjs doctor --catalog node-version
