@@ -35,6 +35,15 @@ export const CAPABILITIES = {
     imageGen: false,
     web: { how: 'policy: allow google_web_search, web_fetch', note: 'Off until turned on in Settings › Agents › Web access.' },
   },
+  // Cursor (2026-10-17) reads only, in its own ask mode: writing waits until its confinement has
+  // been tried against the real CLI, as OpenCode's was. Attachments are named in the briefing.
+  cursor: {
+    read: true,
+    imageIn: false,
+    write: false,
+    imageGen: false,
+    web: false,
+  },
   opencode: {
     read: true,
     imageIn: { how: '-f <file>', note: 'Files attach to the message.' },

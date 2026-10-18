@@ -3203,6 +3203,11 @@ function ringPercent(agent) {
 // it, and a row is that agent's own card — the same one a sphere opens, with a way back.
 const agentsCompact = document.querySelector('#agents-compact');
 const agentsCount = document.querySelector('#agents-count');
+// Whether an agent can answer now: an adapter MADRE can use, and a session. One that cannot is
+// switched off everywhere: grey in the bar, out of the picker, and a message to it is not sent.
+function canAnswer(agent) {
+  return Boolean(agent?.ready) && state.sessions?.[agent.id]?.state !== 'signed-out';
+}
 function renderAgentsCompact() {
   if (!agentsCompact) return;
   const all = [...state.agents.values()];
@@ -3222,15 +3227,19 @@ function renderAgents() {
   for (const agent of state.agents.values()) {
     const percent = ringPercent(agent);
     const official = liveOfficial(agent);
+    // An agent that cannot answer looks switched off, whatever the reason: not installed, no adapter
+    // yet, or installed with no session (2026-10-17). Its colour comes back with its session.
+    const signedOut = agent.ready && !canAnswer(agent);
     const node = avatar(agent.id, {
       size: 26,
-      ring: agent.ready,
+      ring: agent.ready && !signedOut,
       pct: percent,
       status: agent.ready ? 'ready' : agent.detected ? 'detected' : 'offline',
     });
+    if (!agent.ready || signedOut) node.classList.add('off');
     node.title = [
       `${agent.label}${vendorWord(agent.id) ? ` · ${vendorWord(agent.id)}` : ''}`,
-      agent.ready ? t('Ready') : agent.detected ? t('Detected, but MADRE cannot use it yet') : t('Not installed'),
+      signedOut ? t('Not signed in') : agent.ready ? t('Ready') : agent.detected ? t('Detected, but MADRE cannot use it yet') : t('Not installed'),
       agent.version ? agent.version : null,
       official === null
         ? (agent.tokens ? t('Usage: local 5h window · {pct}% of {total} budget tokens', { pct: Math.round(percent), total: formatTokens(state.budget ?? 0) }) : t('Usage: local window · nothing used yet'))
@@ -3268,7 +3277,7 @@ if (safetyLine && !safetySeen) {
 function renderPicker() {
   els.picker.replaceChildren();
   els.pickOptions?.replaceChildren?.();
-  const ready = [...state.agents.values()].filter((agent) => agent.ready);
+  const ready = [...state.agents.values()].filter(canAnswer);
   if (!ready.length) { updateCrewLabel(); return; }
   if (!els.target.value || !ready.some((agent) => agent.id === els.target.value)) els.target.value = ready[0].id;
   const stack = el('div', 'crew-stack');
@@ -4904,6 +4913,12 @@ const WORKING_VOICE = {
     middle: [t('Thinking…'), t('Analyzing…'), t('Following the references…'), t('Building the picture…')],
     late: [t('Reasoning through it…'), t('Verifying the findings…'), t('Sorting the evidence…')],
     long: [t('Formulating the answer…'), t('Writing it up…'), t('Wrapping up…')],
+  },
+  cursor: {
+    early: [t('Reading the repo…'), t('Searching the project…'), t('Grabbing context…')],
+    middle: [t('Thinking…'), t('Digging through the code…'), t('Following the references…'), t('Looking closer…')],
+    late: [t('Working through it…'), t('Double-checking…'), t('Piecing it together…')],
+    long: [t('Writing the response…'), t('Tidying the answer…'), t('Nearly done…')],
   },
   opencode: {
     early: [t('Reading the repo…'), t('Listing files…'), t('Grabbing context…')],
@@ -12513,6 +12528,14 @@ els.composer.addEventListener('submit', async (event) => {
   // and the effort are the ones chosen for THAT agent; the chip's would be another agent's.
   const mention = outgoing.match(/^@([a-z0-9_-]+)\b/i)?.[1]?.toLowerCase();
   const addressed = mention && state.agents.has(mention) ? mention : target;
+  // An agent that is switched off (no session, or nothing MADRE can run) is not written to: the
+  // message stays in the box and Settings opens on that agent, where it is connected.
+  if (addressed && state.agents.has(addressed) && !canAnswer(state.agents.get(addressed))) {
+    const off = state.agents.get(addressed);
+    toast(off.ready ? t('@{agent} is not signed in. Connect it in Settings › Agents and send again.', { agent: addressed }) : t('@{agent} is not available on this computer. Set it up in Settings › Agents.', { agent: addressed }), { tone: 'note' });
+    openSettingsOn('agents', { agent: addressed });
+    return;
+  }
   // CONTROL and AIRLOCK are armed for one agent. A message that ends up addressed to another one
   // is asked for again, for that one; the keys typed for @gemini never open the project to @claude.
   const piloted = copilotSends(addressed);
@@ -12714,7 +12737,7 @@ function roomRecords() {
 // word, the ones sharing the most of them come first: «codex no responde timeout» still finds the
 // timeout. An agent's name keeps to that agent and the general ones; little words do not count.
 const LOOSE_SKIP = new Set(['the', 'and', 'not', 'for', 'with', 'que', 'los', 'las', 'del', 'por', 'una', 'uno', 'con', 'sin', 'esta', 'este', 'muy', 'mas', 'pero']);
-const LOOSE_AGENTS = new Set(['codex', 'claude', 'gemini', 'opencode', 'madre', 'ollama']);
+const LOOSE_AGENTS = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'madre', 'ollama']);
 function looseConditions(text) {
   const words = settingsFold(text).split(/[^a-z0-9#.@_-]+/).map((word) => word.replace(/^@/, '')).filter((word) => word.length >= 3 && !LOOSE_SKIP.has(word));
   const agent = words.find((word) => LOOSE_AGENTS.has(word)) ?? null;
@@ -15767,7 +15790,7 @@ function renderLoginEvent(event) {
   node.append(finished
     ? (ok ? t('@{agent} signed in', { agent }) + (session?.detail ? ` · ${session.detail}` : '') : t('@{agent} sign-in did not complete', { agent }) + (error ? ` · ${error}` : code ? t(' · exit {code}', { code }) : ''))
     : t('signing in @{agent} · {command}', { agent, command }));
-  if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
+  if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; renderAgents(); renderPicker(); renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
   if (!replaying) {
     if (finished) { if (loginNow.agent === agent) { loginNow.agent = null; loginNow.url = null; loginNow.deviceCode = null; loginNow.awaiting = false; } }
     else { loginNow.agent = agent; loginNow.method = event.payload.method ?? null; loginNow.url = null; loginNow.deviceCode = null; loginNow.awaiting = false; loginNow.asksForCode = Boolean(state.agents.get(agent)?.login?.asksForCode); }
@@ -15835,6 +15858,8 @@ async function loadSettings() {
   settingsUI.data = await fetch('/api/settings').then((response) => response.json());
   if (settingsUI.data?.settings?.override) state.override = settingsUI.data.settings.override;
   state.sessions = settingsUI.data.sessions ?? state.sessions;
+  renderAgents();
+  renderPicker();
   // The server is the one that knows whether a sign-in is still waiting: a page reloaded in the
   // middle of one has to find the same address and the same box, not an empty card.
   readLoginState(settingsUI.data.login ?? null);

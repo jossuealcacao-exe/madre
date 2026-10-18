@@ -45,6 +45,18 @@ export function parseOpenCodeAuthList({ stdout = '' }) {
   return { state: 'signed-out', detail: 'no providers configured', providers: [] };
 }
 
+// `cursor-agent status` says «Not logged in», or who is signed in («Logged in as …»). A key in the
+// environment (CURSOR_API_KEY) signs every run in on its own, so it counts too.
+export function parseCursorStatus({ stdout = '', stderr = '' }, env = process.env) {
+  const said = stripAnsi(`${stdout}\n${stderr}`);
+  if (/not\s+logged\s+in|not\s+authenticated|log\s*in\s+first/i.test(said)) {
+    return env.CURSOR_API_KEY ? { state: 'signed-in', detail: 'via CURSOR_API_KEY' } : { state: 'signed-out', detail: 'not logged in' };
+  }
+  const who = said.match(/logged\s+in\s+(?:as\s+)?([^\s]+@[^\s]+|\S+)/i)?.[1];
+  if (who) return { state: 'signed-in', detail: `as ${who}` };
+  return env.CURSOR_API_KEY ? { state: 'signed-in', detail: 'via CURSOR_API_KEY' } : { state: 'unknown', detail: said.trim().split('\n')[0]?.slice(0, 120) || 'no answer from cursor-agent status' };
+}
+
 export function geminiAuthState({ settings, hasOauth, hasApiKey }) {
   const type = settings?.security?.auth?.selectedType;
   if (type === 'gemini-api-key') return hasApiKey ? { state: 'signed-in', detail: 'via API key' } : { state: 'signed-out', detail: 'API key selected but not found' };
@@ -127,8 +139,9 @@ export const AGENT_SETUP = {
     // Gemini has no sign-in command: it signs in the first time it is asked something with
     // "Login with Google" selected. Without a terminal it asks one yes/no, opens the browser by
     // itself and waits on 127.0.0.1 for Google to come back, so the room needs no code and no
-    // address. The question it is launched with never reaches the model: the room stops the run
-    // the moment the credentials are written (see geminiSignIn).
+    // address. The one-word question it is launched with is let through once the credentials are
+    // written: Google refuses free personal accounts only there, and a refused sign-in is undone
+    // (see geminiSignIn and loginAgent in server.mjs).
     login: ['--prompt', 'ok'],
     loginNote: 'Opens your browser to sign in with your Google account.',
     browser: true,
@@ -183,6 +196,18 @@ export const AGENT_SETUP = {
     vendor: 'OpenCode',
     account: 'Brings no model of its own: you point it at a provider you already use, in the cloud or on this computer.',
     paid: null,
+  },
+  // Cursor's agent CLI (2026-10-17): `login` opens the browser and waits for Cursor to come back.
+  // It has no npm package; its own installer is the way in, typed in a terminal.
+  cursor: {
+    install: ['curl https://cursor.com/install -fsS | bash'],
+    login: ['login'],
+    loginNote: 'Opens your browser to sign in with your Cursor account.',
+    browser: true,
+    terminal: 'cursor-agent login',
+    vendor: 'Cursor',
+    account: 'Signs in with your Cursor account and uses its plan. For now it reads and answers; it does not write in your project.',
+    paid: true,
   },
 };
 
@@ -276,12 +301,14 @@ export function loginPlanFor(agent, { method = null } = {}) {
 export const CONSENT_PROMPT = /do you want to continue\?\s*\[y\/n\]/i;
 export const looksLikeConsentPrompt = (line) => CONSENT_PROMPT.test(String(line ?? ''));
 
+const GEMINI_REFUSED = /IneligibleTierError|no longer supported for Gemini Code Assist|migrate to the Antigravity/i;
+
 // Gemini's Google sign-in, run from the room. Before: "Login with Google" selected in its own
 // settings, and the account it had put aside, so the run signs in anew instead of answering with
 // the old one. During: `signedIn` says when the credentials are written, which is when the room
 // stops the run. After a sign-in that did not finish: `undo` puts both files back as they were.
 // MADRE never reads the token: it moves the file it is in and checks that it exists.
-export function geminiSignIn({ env = process.env } = {}) {
+export function geminiSignIn({ env = process.env, verifyMs = 30000 } = {}) {
   const dir = join(env.GEMINI_CLI_HOME ?? homedir(), '.gemini');
   const settingsFile = join(dir, 'settings.json');
   const credsFile = join(dir, 'oauth_creds.json');
@@ -299,6 +326,11 @@ export function geminiSignIn({ env = process.env } = {}) {
       if (before.creds !== null) await rm(credsFile, { force: true });
     },
     signedIn: () => exists(credsFile),
+    // Google lets a free personal account sign in and refuses it at the first question
+    // (IneligibleTierError, 2026-10-17): a sign-in is only good once that question was not refused.
+    refused: (line) => GEMINI_REFUSED.test(String(line ?? '')),
+    // How long that first question is waited for before the run is stopped and the sign-in kept.
+    verifyMs,
     async undo() {
       if (!before) return;
       await putBack(settingsFile, before.settings);
@@ -315,6 +347,7 @@ export async function probeAgentAuth(agent) {
     case 'codex': return parseCodexLoginStatus(await run(agent.path, ['login', 'status']));
     case 'claude': return parseClaudeAuthStatus(await run(agent.path, ['auth', 'status', '--json']));
     case 'opencode': return parseOpenCodeAuthList(await run(agent.path, ['auth', 'list']));
+    case 'cursor': return parseCursorStatus(await run(agent.path, ['status']));
     case 'gemini': return probeGemini();
     default: return { state: 'unknown', detail: 'no probe for this agent' };
   }

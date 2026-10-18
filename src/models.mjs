@@ -27,6 +27,10 @@ export const KNOWN_MODELS = {
     defaults: [],
     note: 'provider/model, from `opencode models`. The room default is PULSE_OPENCODE_MODEL.',
   },
+  cursor: {
+    defaults: ['auto', 'sonnet-4', 'sonnet-4-thinking', 'gpt-5'],
+    note: '"auto" lets Cursor choose. `cursor-agent --list-models` names the ones your account has; the room default is PULSE_CURSOR_MODEL.',
+  },
 };
 
 // How hard the model thinks before it answers, for the CLIs that take it per run. Claude Code

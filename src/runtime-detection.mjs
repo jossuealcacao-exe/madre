@@ -38,6 +38,15 @@ const definitions = [
     versionArgs: ['--version'],
     adapter: 'opencode-readonly',
   },
+  {
+    // Cursor's agent CLI (2026-10-17). Its installer puts it in ~/.local/bin, which is not always
+    // on the PATH a room is started with.
+    id: 'cursor',
+    label: 'Cursor',
+    candidates: ['cursor-agent', join(homedir(), '.local', 'bin', 'cursor-agent')],
+    versionArgs: ['--version'],
+    adapter: 'cursor-readonly',
+  },
 ];
 
 const OFFICIAL_DESTINATIONS = {

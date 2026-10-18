@@ -189,6 +189,32 @@ export async function associateProject({ root, home, stateRoot, now = new Date()
   return { id, name: basename(folder), root: folder, already: Boolean(before) };
 }
 
+// A new project, from nothing (2026-10-17): a folder made where the person chose, inside the home
+// folder, and added to Home like any other. The name is held to what any system refuses in a folder
+// name, the strictest set (separators, reserved characters, a trailing dot or space, device names),
+// so a name is only ever one folder, never a path, a device or a hidden folder.
+const DEVICE_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+export function projectNameProblem(name) {
+  const text = String(name ?? '');
+  if (!text.trim()) return 'empty';
+  if (text.length > 120) return 'long';
+  if (/[<>:"/\\|?*\u0000-\u001f]/.test(text) || text !== text.trim() || /[. ]$/.test(text) || text.startsWith('.') || DEVICE_NAMES.test(text)) return 'name';
+  return null;
+}
+export async function createProject({ name, parent = null, home, stateRoot, now = new Date() }) {
+  const problem = projectNameProblem(name);
+  if (problem) return { error: problem };
+  const top = realFolder(home);
+  const place = realFolder(parent || home);
+  if (!inside(place, top)) return { error: 'outside' };
+  if (inside(place, realFolder(stateRoot))) return { error: 'madre' };
+  if (!(await stat(place).catch(() => null))?.isDirectory()) return { error: 'missing' };
+  const folder = join(place, String(name));
+  if (dirname(folder) !== place) return { error: 'name' };
+  try { await mkdir(folder); } catch (error) { return { error: error?.code === 'EEXIST' ? 'exists' : 'missing' }; }
+  return { ...(await associateProject({ root: folder, home, stateRoot, now })), created: true };
+}
+
 // Takes a project out of MADRE (2026-10-10): its record of where it is goes aside, so Home no
 // longer lists it. Nothing in the project's folder is touched, and its conversations and its
 // memory stay beside the record: added again, the folder gets the same id and finds them there.

@@ -36,6 +36,10 @@ const installAgent = {
     darwin: ['brew install opencode', '# or: npm install -g opencode-ai'],
     linux: ['curl -fsSL https://opencode.ai/install | bash', '# or: npm install -g opencode-ai']
   },
+  cursor: {
+    darwin: ['curl https://cursor.com/install -fsS | bash'],
+    linux: ['curl https://cursor.com/install -fsS | bash']
+  },
 };
 
 const loginAgent = {
@@ -43,6 +47,7 @@ const loginAgent = {
   claude: { darwin: ['claude auth login', 'claude auth status --text'], linux: ['claude auth login', 'claude auth status --text']},
   gemini: { darwin: ['gemini', '# inside gemini: /auth  → "Use Gemini API key" or Google login'], linux: ['gemini', '# inside gemini: /auth']},
   opencode: { darwin: ['opencode auth login', 'opencode auth list'], linux: ['opencode auth login', 'opencode auth list']},
+  cursor: { darwin: ['cursor-agent login', 'cursor-agent status'], linux: ['cursor-agent login', 'cursor-agent status']},
 };
 
 const same = (commands) => ({ darwin: commands, linux: commands });
@@ -706,7 +711,7 @@ export const allConditions = () => CONDITIONS.map(said);
 
 // Lowercase and without accents: «limite» finds «límite», and a person types what they type.
 const fold = (text) => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const AGENT_WORDS = new Set(['codex', 'claude', 'gemini', 'opencode', 'madre', 'ollama']);
+const AGENT_WORDS = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'madre', 'ollama']);
 
 export function searchConditions(query) {
   const words = fold(query).split(/[^a-z0-9#.@_-]+/).filter(Boolean);

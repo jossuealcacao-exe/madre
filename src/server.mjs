@@ -108,7 +108,7 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { heartbeat } from './heartbeat.mjs';
-import { askRoom, associateProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
+import { askRoom, associateProject, createProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -179,7 +179,7 @@ export function openUrl(url) {
 
 // PULSE_AGENT_TIMEOUT_MS applies to every agent; PULSE_<AGENT>_TIMEOUT_MS
 // (e.g. PULSE_CLAUDE_TIMEOUT_MS) overrides it for one.
-export function agentTimeoutsFromEnv(env = process.env, agentIds = ['codex', 'claude', 'gemini', 'opencode']) {
+export function agentTimeoutsFromEnv(env = process.env, agentIds = ['codex', 'claude', 'gemini', 'opencode', 'cursor']) {
   const timeouts = {};
   const shared = Number(env.PULSE_AGENT_TIMEOUT_MS);
   if (Number.isFinite(shared) && shared > 0) timeouts.default = shared;
@@ -984,11 +984,15 @@ export async function createPulseServer({
       let consented = false;
       const answered = new Set();
       let finished = false;
+      let refused = false;
+      // Signed in is not yet working: Google lets a free personal account sign in to Gemini CLI and
+      // refuses it at the first question (2026-10-17). So the run is let ask its one-word question,
+      // in an empty folder, and the sign-in counts only if that answer is not a refusal. A run that
+      // goes quiet is stopped after half a minute, and counts.
       const watch = flow ? setInterval(async () => {
         if (finished || !(await flow.signedIn())) return;
         finished = true;
-        // A moment for the CLI to note which account it was, then the run ends before its question.
-        setTimeout(() => { if (loginRun?.agent === id) loginRun.child?.cancel?.(); }, 1500).unref?.();
+        setTimeout(() => { if (loginRun?.agent === id) loginRun.child?.cancel?.(); }, flow.verifyMs ?? 30000).unref?.();
       }, 700) : null;
       const result = await runInstaller({
         command: plan.command,
@@ -1011,6 +1015,7 @@ export async function createPulseServer({
           const line = raw.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '');
           if (!line.trim()) return;
           lines.push(line);
+          if (flow?.refused?.(line) && !refused) { refused = true; loginRun?.child?.cancel?.(); }
           const url = line.match(/https?:\/\/\S+/)?.[0] ?? null;
           const deviceCode = plan.deviceCode ? deviceCodeIn(line) : null;
           if (loginRun?.agent === id) {
@@ -1027,12 +1032,19 @@ export async function createPulseServer({
         },
       });
       if (watch) clearInterval(watch);
+      const good = finished && !refused;
       if (flow) {
-        if (!finished) await flow.undo().catch(() => {});
+        // Not finished, or refused at its first question: everything goes back as it was.
+        if (!good) await flow.undo().catch(() => {});
         await rm(cwd, { recursive: true, force: true }).catch(() => {});
       }
       await refreshSessions();
-      await room.record('connection.login.finished', { agent: id, code: finished ? 0 : result.code, error: finished ? null : result.error ?? null, session: sessions[id] ?? null, tail: lines.slice(-6) });
+      // A run with no flow (Codex, Claude, OpenCode) ends on its own, and its exit says how it went.
+      const code = flow ? (good ? 0 : (result.code || 1)) : result.code;
+      const error = refused
+        ? t('Google signed you in, but it refuses this account on Gemini CLI (free personal accounts are refused). Gemini was left as it was: paste a Gemini API key from Google AI Studio instead.')
+        : finished ? null : result.error ?? null;
+      await room.record('connection.login.finished', { agent: id, code, error, session: sessions[id] ?? null, tail: lines.slice(-6) });
       loggingIn = null;
       loginRun = null;
     })();
@@ -2097,7 +2109,7 @@ export async function createPulseServer({
       // folders (Sec-Fetch-Site) or to add one (Origin), and so is any host name but this Mac's
       // own, so a name pointed at it from outside reaches nothing. Folders are listed inside the
       // home folder only; what is listed is names, never what a file says.
-      if (url.pathname === '/api/salas/folders' || url.pathname === '/api/salas/suggestions' || url.pathname === '/api/salas/projects' || url.pathname === '/api/salas/work' || url.pathname === '/api/salas/decisions') {
+      if (url.pathname === '/api/salas/folders' || url.pathname === '/api/salas/suggestions' || url.pathname === '/api/salas/projects' || url.pathname === '/api/salas/new' || url.pathname === '/api/salas/work' || url.pathname === '/api/salas/decisions') {
         const host = String(request.headers.host ?? '');
         const localHost = /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host);
         const site = request.headers['sec-fetch-site'];
@@ -2172,6 +2184,21 @@ export async function createPulseServer({
           }
           if (!lobbyDecisions.list) await lobbyDecisions.running;
           return sendJson(response, 200, { decisions: lobbyDecisions.list ?? [], at: lobbyDecisions.at || null });
+        }
+        // A project from nothing: a new folder, named by the person, in the folder they were in.
+        if (request.method === 'POST' && url.pathname === '/api/salas/new') {
+          const payload = await body(request).catch(() => ({}));
+          const made = await createProject({ name: typeof payload.name === 'string' ? payload.name : '', parent: typeof payload.parent === 'string' ? payload.parent : null, home, stateRoot: root });
+          if (!made.error) return sendJson(response, 200, { added: [made] });
+          const said = {
+            empty: t('Write a name for the project.'),
+            long: t('That name is too long.'),
+            name: t('A folder cannot be called that: leave out slashes and : * ? " < > |, and do not start with a dot or end with a dot or a space.'),
+            exists: t('There is already a folder with that name there.'),
+            outside: t('Only folders inside your home folder.'),
+            madre: t('That folder is MADRE\'s own.'),
+          }[made.error] ?? t('That folder is not there.');
+          return sendJson(response, made.error === 'exists' ? 409 : 422, { error: said, code: made.error });
         }
         if (request.method === 'POST' && url.pathname === '/api/salas/projects') {
           const payload = await body(request).catch(() => ({}));

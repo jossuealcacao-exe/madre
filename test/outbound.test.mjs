@@ -54,6 +54,7 @@ test('outbound: every declaration answers for itself, and no address hides from 
     // written down here rather than quietly disappearing from the record.
     'madre-reports.jossue-alcala-o.workers.dev',
     'myaccount.google.com',       // where a person makes the app password CORREO asks them for
+    'cursor.com',                 // Cursor's own installer, a line the person copies into a terminal
   ]);
   // A module declares its own destinations rather than editing MADRE's list, and those count:
   // what the guard forbids is an address nobody answered for, not an address MADRE did not write.

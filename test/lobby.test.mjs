@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { associateProject, knownRooms, listFolders, projectRoomId, salasRoomId, suggestProjects } from '../src/salas.mjs';
+import { associateProject, createProject, knownRooms, listFolders, projectNameProblem, projectRoomId, salasRoomId, suggestProjects } from '../src/salas.mjs';
 import { loadConfig } from '../src/config.mjs';
 import { signContract } from '../src/enlaces.mjs';
 import { createPulseServer } from '../src/server.mjs';
@@ -288,4 +288,24 @@ test('narrow screens: Home and a project keep their bars whole on a tablet and a
   // Home: «+n» always fits whole, and on a phone the logo keeps its pulse and reload steps out.
   assert.match(home, /\.sm-tb-open:not\(\[hidden\]\) \{ min-width: 40px; \}/);
   assert.match(home, /@media \(max-width: 560px\) \{ #sm-reload \{ display: none; \} \}/);
+});
+
+test('a new project from nothing: one folder, named by the person, inside the home folder, then added', async () => {
+  const home = await realpath(await scratch('madre-new-home-'));
+  const state = join(home, '.pulse');
+  await mkdir(join(home, 'Proyectos'), { recursive: true });
+  const made = await createProject({ name: 'mi tienda', parent: join(home, 'Proyectos'), home, stateRoot: state });
+  assert.equal(made.created, true);
+  assert.equal(made.root, join(home, 'Proyectos', 'mi tienda'));
+  assert.ok((await stat(made.root)).isDirectory());
+  assert.equal(made.id, projectRoomId(made.root));
+  // Without a place, the home folder itself.
+  assert.equal((await createProject({ name: 'notas', home, stateRoot: state })).root, join(home, 'notas'));
+  // Never twice, never a path, a device, a hidden folder or somewhere outside the home folder.
+  assert.equal((await createProject({ name: 'mi tienda', parent: join(home, 'Proyectos'), home, stateRoot: state })).error, 'exists');
+  for (const bad of ['a/b', '../fuera', '..', '.secreto', 'CON', 'lpt1.txt', 'termina.', 'espacio ', 'dos:puntos']) assert.equal(projectNameProblem(bad), 'name', bad);
+  assert.equal(projectNameProblem('   '), 'empty');
+  assert.equal((await createProject({ name: 'x', parent: tmpdir(), home, stateRoot: state })).error, 'outside');
+  assert.equal((await createProject({ name: 'x', parent: state, home, stateRoot: state })).error, 'madre');
+  assert.equal((await createProject({ name: 'x', parent: join(home, 'no-existe'), home, stateRoot: state })).error, 'missing');
 });

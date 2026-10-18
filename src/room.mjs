@@ -5,6 +5,7 @@ import { t } from './i18n.mjs';
 import { invokeClaude, buildClaudeArgs } from './adapters/claude.mjs';
 import { invokeGemini, buildGeminiArgs } from './adapters/gemini.mjs';
 import { invokeOpenCode, buildOpenCodeArgs } from './adapters/opencode.mjs';
+import { invokeCursor, buildCursorArgs } from './adapters/cursor.mjs';
 import { parseMessage } from './router.mjs';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
@@ -64,6 +65,7 @@ const defaultInvokers = {
   'claude-readonly': invokeClaude,
   'gemini-readonly': invokeGemini,
   'opencode-readonly': invokeOpenCode,
+  'cursor-readonly': invokeCursor,
 };
 
 // What a turn costs against MADRE's local budget. Cache reads are close to
@@ -831,6 +833,7 @@ export class Room {
     if (model) return model;
     if (agentId === 'codex') return (await readCodexEfforts({ home: this.#codexHome }).catch(() => null))?.model ?? null;
     if (agentId === 'opencode') return process.env.PULSE_OPENCODE_MODEL || null;
+    if (agentId === 'cursor') return process.env.PULSE_CURSOR_MODEL || null;
     return null;
   }
 
@@ -1644,16 +1647,19 @@ export class Room {
       : agent.id === 'claude' ? buildClaudeArgs({ ...shared, attachmentsDir: null, imageStudio: null })
         : agent.id === 'gemini' ? buildGeminiArgs({ ...shared, policyPath: '<written for this turn, deleted after it>', attachmentsDir: null })
           : agent.id === 'opencode' ? buildOpenCodeArgs(shared)
-            : null;
+            : agent.id === 'cursor' ? buildCursorArgs(shared)
+              : null;
     if (!args) return { agent: agent.id, label: agent.label, local: false, says: `MADRE has no adapter for @${agent.id}.`, mcpServers: [], env: [], isolation: [] };
     const isolation = {
       codex: ['--ephemeral: the run keeps no session of its own, so nothing said here reaches another project.'],
       claude: ['--no-session-persistence: the run keeps no session of its own.', 'Only the project\'s own CLAUDE.md and MADRE\'s briefing are read; hooks, plugins and outside MCP servers are not.'],
       gemini: ['GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.', 'GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.'],
       opencode: ['The run is given the model you chose and nothing else of your session.'],
+      cursor: ['--mode ask: Cursor\'s read-only mode, whatever its own settings say; no edits and no commands.', 'CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it: every command and every write denied. The sign-in stays in the system keychain.'],
     }[agent.id] ?? [];
     const env = {
       gemini: [{ name: 'GEMINI_CLI_HOME', note: 'the temporary home for this turn' }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: 'so the launcher stays killable' }],
+      cursor: [{ name: 'CURSOR_CONFIG_DIR', note: 'the configuration for this turn: read only' }, { name: 'NO_OPEN_BROWSER', note: 'a turn never opens a page' }],
     }[agent.id] ?? [];
     return {
       agent: agent.id, label: agent.label, local: false,

@@ -92,6 +92,7 @@ body.salas-mac {
 .sm-agent-key::after { content: ''; position: absolute; right: -2px; bottom: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--session-ok); box-shadow: 0 0 0 2px var(--surface, var(--panel)); }
 .sm-agent-key.wait::after { background: var(--session-wait); }
 .sm-agent-key.bad::after { background: var(--session-bad); }
+.sm-agent-key.off > :first-child { filter: grayscale(1); opacity: .45; }
 .sm-agent-key:focus-visible { outline: 2px solid color-mix(in srgb, var(--s-acc) 70%, transparent); outline-offset: 2px; }
 /* What asks for the person: who waits, a newer MADRE. */
 .sm-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 26px; padding: 0 11px; border-radius: 999px; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .02em; text-decoration: none; white-space: nowrap; }
@@ -547,6 +548,15 @@ body.sm-in-macro { overflow: hidden; }
 /* The room's search (styles.css, .settings-search), not the sheet's uppercase field label. */
 .sm-picker-head > .sm-picker-search { flex: 1 1 auto; max-width: none; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; font-size: 13.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-2); }
 .sm-picker-search input::-webkit-search-cancel-button { cursor: pointer; }
+/* A project from nothing (2026-10-17): the name, where it goes, one key. */
+.sm-new-project { display: grid; gap: 12px; justify-items: start; padding: 18px 2px 6px; }
+.sm-new-name { display: grid; gap: 6px; width: min(100%, 420px); font-size: 13px; color: var(--text-2); }
+.sm-new-name input { height: 38px; min-width: 0; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 15px; box-shadow: var(--key-track); outline: 0; }
+.sm-new-name input:focus { box-shadow: var(--key-down), 0 0 0 2px color-mix(in srgb, var(--s-acc) 45%, transparent); }
+.sm-new-where { margin: 0; font-size: 13px; color: var(--text-2); }
+.sm-new-where code { font-family: var(--mono); font-size: 12px; color: var(--text); }
+.sm-new-other { margin-left: 4px; padding: 0; border: 0; background: none; color: var(--s-acc); font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.sm-new-project .error:empty { display: none; }
 .sm-picker-line { display: flex; align-items: center; gap: 10px; min-width: 0; height: 28px; font-size: 13px; color: var(--text-2); }
 .sm-picker-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-where { min-width: 0; font-family: var(--mono); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1323,3 +1333,50 @@ dialog.sm-sheet:focus, dialog.sm-sheet:focus-visible { outline: none; }
    what it speaks of is under the map. It is not read yet, so it comes back when the map closes.
    The map's own hint stays (tour.js, data-under). */
 body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page"] { display: none !important; }
+
+/* ==========================================================================================
+   MADRE, IN THE AIR (2026-10-17)
+   ------------------------------------------------------------------------------------------
+   Home only, on a sky with no wallpaper: MADRE is there as a gas, two slow clouds in her palette,
+   a breath under everything and never a shape you can point at. Light: her green over the pale
+   ground. Dark: her phosphor with a trace of the Coordinator's plum and of the sky's cyan, kept
+   lower, since on black a colour carries further. Gradients only (no blur filter) that fall off
+   on an eased curve so no ring shows, moved by transform; still for whoever asks for less motion.
+   ========================================================================================== */
+.sm-gas { display: none; }
+:root:not([data-wallpaper]) .sm-gas {
+  display: block; position: absolute; inset: -18vmax; pointer-events: none; will-change: transform, opacity;
+}
+:root:not([data-wallpaper]) .sm-gas.a { animation: madre-gas-a calc(52s * var(--motion-scale, 1)) ease-in-out infinite alternate; }
+:root:not([data-wallpaper]) .sm-gas.b { animation: madre-gas-b calc(68s * var(--motion-scale, 1)) ease-in-out infinite alternate; }
+:root[data-scheme="light"]:not([data-wallpaper]) .sm-gas.a {
+  background:
+    radial-gradient(40vmax 30vmax at 34% 64%, rgb(47 138 28 / .15), rgb(47 138 28 / .12) 18%, rgb(47 138 28 / .075) 38%, rgb(47 138 28 / .035) 58%, rgb(47 138 28 / .01) 78%, transparent),
+    radial-gradient(32vmax 24vmax at 70% 34%, rgb(94 196 120 / .14), rgb(94 196 120 / .1) 20%, rgb(94 196 120 / .055) 42%, rgb(94 196 120 / .02) 66%, transparent);
+}
+:root[data-scheme="light"]:not([data-wallpaper]) .sm-gas.b {
+  background:
+    radial-gradient(34vmax 22vmax at 58% 82%, rgb(140 214 86 / .12), rgb(140 214 86 / .085) 22%, rgb(140 214 86 / .045) 46%, rgb(140 214 86 / .015) 70%, transparent),
+    radial-gradient(26vmax 20vmax at 20% 22%, rgb(47 138 28 / .09), rgb(47 138 28 / .06) 24%, rgb(47 138 28 / .025) 52%, transparent 80%);
+}
+:root[data-scheme="dark"]:not([data-wallpaper]) .sm-gas.a {
+  background:
+    radial-gradient(40vmax 30vmax at 32% 66%, rgb(155 255 102 / .075), rgb(155 255 102 / .055) 18%, rgb(155 255 102 / .032) 38%, rgb(155 255 102 / .014) 60%, transparent 82%),
+    radial-gradient(30vmax 22vmax at 74% 30%, rgb(61 198 255 / .05), rgb(61 198 255 / .034) 22%, rgb(61 198 255 / .016) 48%, transparent 76%);
+}
+:root[data-scheme="dark"]:not([data-wallpaper]) .sm-gas.b {
+  background:
+    radial-gradient(34vmax 22vmax at 60% 84%, rgb(140 70 150 / .07), rgb(140 70 150 / .05) 22%, rgb(140 70 150 / .025) 48%, transparent 76%),
+    radial-gradient(26vmax 20vmax at 18% 20%, rgb(155 255 102 / .05), rgb(155 255 102 / .03) 26%, rgb(155 255 102 / .012) 54%, transparent 80%);
+}
+@keyframes madre-gas-a {
+  0% { transform: translate3d(-3vmax, 2vmax, 0) rotate(0deg) scale(1); opacity: .85; }
+  50% { transform: translate3d(2vmax, -1vmax, 0) rotate(6deg) scale(1.08); opacity: 1; }
+  100% { transform: translate3d(5vmax, -3vmax, 0) rotate(11deg) scale(1.02); opacity: .9; }
+}
+@keyframes madre-gas-b {
+  0% { transform: translate3d(3vmax, -2vmax, 0) rotate(0deg) scale(1.06); opacity: 1; }
+  50% { transform: translate3d(-2vmax, 1vmax, 0) rotate(-7deg) scale(1); opacity: .8; }
+  100% { transform: translate3d(-5vmax, 3vmax, 0) rotate(-12deg) scale(1.1); opacity: .95; }
+}
+@media (prefers-reduced-motion: reduce) { .sm-gas { animation: none !important; } }

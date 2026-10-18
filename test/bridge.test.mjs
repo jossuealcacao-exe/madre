@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPulseServer } from '../src/server.mjs';
@@ -90,7 +90,7 @@ test('the room runs Gemini\'s sign-in end to end: answers its yes, stops it once
     "});",
   ].join('\n');
   try {
-    const flow = geminiSignIn({ env: { GEMINI_CLI_HOME: home } });
+    const flow = geminiSignIn({ env: { GEMINI_CLI_HOME: home }, verifyMs: 300 });
     const { server, store } = await createPulseServer({
       projectRoot: project,
       stateRoot: root,
@@ -120,6 +120,55 @@ test('the room runs Gemini\'s sign-in end to end: answers its yes, stops it once
     }
   } finally {
     if (savedKey === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = savedKey;
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test('a Google sign-in refused at its first question is undone, and says why (2026-10-17)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-gemini-refused-'));
+  const project = await mkdtemp(join(tmpdir(), 'pulse-gemini-refused-project-'));
+  const home = await mkdtemp(join(tmpdir(), 'pulse-gemini-refused-home-'));
+  await mkdir(join(home, '.gemini'), { recursive: true });
+  await writeFile(join(home, '.gemini', 'settings.json'), `${JSON.stringify({ security: { auth: { selectedType: 'gemini-api-key' } } })}\n`);
+  // Google signs the free personal account in, then refuses it when it is first asked something.
+  const script = [
+    "const fs = require('fs'); const path = require('path'); const dir = path.join(process.env.GEMINI_CLI_HOME, '.gemini');",
+    "process.stdout.write('\\nOpening authentication page in your browser. Do you want to continue? [Y/n]: ');",
+    "process.stdin.once('data', () => {",
+    "  fs.writeFileSync(path.join(dir, 'oauth_creds.json'), '{}');",
+    "  setTimeout(() => { console.error('Error authenticating: IneligibleTierError: This client is no longer supported for Gemini Code Assist for individuals.'); setInterval(() => {}, 1000); }, 100);",
+    "});",
+  ].join('\n');
+  try {
+    const flow = geminiSignIn({ env: { GEMINI_CLI_HOME: home }, verifyMs: 5000 });
+    const { server, store } = await createPulseServer({
+      projectRoot: project,
+      stateRoot: root,
+      agents: [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x/gemini', version: '1' }],
+      probe: async () => ({ gemini: { state: 'signed-in', detail: 'via API key' } }),
+      loginRunners: { gemini: (agent) => ({ ...loginPlanFor(agent), command: process.execPath, args: ['-e', script], flow, env: { ...loginPlanFor(agent).env, GEMINI_CLI_HOME: home } }) },
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    try {
+      assert.equal((await fetch(`${base}/api/agents/gemini/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 202);
+      let finished = null;
+      for (let attempt = 0; attempt < 200 && !finished; attempt += 1) {
+        finished = (await store.readAll()).find((event) => event.type === 'connection.login.finished');
+        if (!finished) await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      assert.ok(finished, 'the refused run was not stopped');
+      assert.notEqual(finished.payload.code, 0);
+      assert.match(finished.payload.error, /refuses this account/);
+      const settings = JSON.parse(await readFile(join(home, '.gemini', 'settings.json'), 'utf8'));
+      assert.equal(settings.security.auth.selectedType, 'gemini-api-key', 'the key it had is what it keeps');
+      assert.equal(await stat(join(home, '.gemini', 'oauth_creds.json')).then(() => true, () => false), false, 'the refused credentials are taken away');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(project, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(home, { recursive: true, force: true });

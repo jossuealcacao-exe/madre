@@ -2660,7 +2660,8 @@ function drawTopbar() {
   b.agents.replaceChildren();
   for (const agent of (agentsSeen?.agents ?? []).filter((one) => one.id !== 'madre')) {
     const state = agentState(agent, agentsSeen);
-    const key = button(`sm-agent-key ${state.key}`, null, () => openSettings('agents'));
+    // An agent that cannot answer (no session, not installed) looks switched off, as in the room.
+    const key = button(`sm-agent-key ${state.key}${!state.ok && !state.busyNow ? ' off' : ''}`, null, () => openSettings('agents'));
     key.append(mark(agent.id, 24));
     key.title = `${agent.label ?? agent.id} · ${state.words}`;
     key.setAttribute('aria-label', key.title);
@@ -3418,7 +3419,7 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
   const chosen = new Map();     // path → name
   const node = el('div', 'sm-picker');
   const pages = foldPages();
-  let source = 'found';         // found · browse
+  let source = 'found';         // found · browse · new
   let found = null;             // the suggestions, once read
   let here = null;              // the folder being walked, as /api/salas/folders answered
   let query = '';
@@ -3443,7 +3444,46 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
   const error = el('p', 'error');
   footer.append(pages.pager, count);
   if (addButton) footer.append(addButton);
-  node.append(head, line, pages.grid, footer, error);
+  // A project from nothing (2026-10-17): its name, where the folder goes (the one being walked in
+  // Your folders, else the home folder) and one key. Made, it is added like any chosen folder.
+  const fresh = el('form', 'sm-new-project');
+  fresh.hidden = true;
+  const nameField = el('label', 'sm-new-name');
+  const nameInput = el('input');
+  nameInput.type = 'text';
+  nameInput.autocomplete = 'off';
+  nameInput.spellcheck = false;
+  nameInput.maxLength = 120;
+  nameInput.placeholder = t('my-new-project');
+  nameField.append(el('span', null, t('Project name')), nameInput);
+  const whereLine = el('p', 'sm-new-where');
+  const makeKey = button('sm-btn primary', t('Create project'), () => {});
+  makeKey.type = 'submit';
+  const freshError = el('p', 'error');
+  fresh.append(nameField, whereLine, makeKey, freshError);
+  const parentNow = () => (here?.path && here.path !== here.home ? here.path : here?.home ?? null);
+  const sayWhere = () => {
+    whereLine.replaceChildren(el('span', null, t('The folder is made in')), ' ', el('code', null, parentNow() ? homeWord(parentNow()) : '~'), ' ');
+    const other = button('sm-new-other', t('Choose another place'), () => { touched = true; source = 'browse'; draw(); if (!here) void walk(); });
+    other.type = 'button';
+    whereLine.append(other);
+  };
+  fresh.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    freshError.textContent = '';
+    makeKey.disabled = true;
+    const answer = await post('/api/salas/new', { name: nameInput.value, parent: parentNow() });
+    makeKey.disabled = false;
+    if (!answer.ok) { freshError.textContent = answer.body.error ?? t('It could not be created.'); nameInput.focus(); return; }
+    const added = answer.body.added ?? [];
+    nameInput.value = '';
+    await refresh();
+    if (added[0]) toast(t('{name} was created and added to Home.', { name: added[0].name }));
+    onAdded?.(added);
+    void loadFound();
+    if (here) void walk(here.path === here.home ? null : here.path);
+  });
+  node.append(head, line, pages.grid, fresh, footer, error);
   const sync = () => {
     count.textContent = chosen.size ? (chosen.size === 1 ? t('1 folder chosen') : t('{n} folders chosen', { n: chosen.size })) : t('Choose one or more folders');
     if (addButton) {
@@ -3460,14 +3500,25 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
     onToggle: (on) => { if (on) chosen.set(one.path, one.name); else chosen.delete(one.path); sync(); },
   });
   function draw({ keepPage = false } = {}) {
-    const fresh = customSeg([['found', t('Found on this Mac')], ['browse', t('Your folders')]], source, (value) => {
+    const options = customSeg([['found', t('Found on this Mac')], ['browse', t('Your folders')], ['new', t('New project')]], source, (value) => {
       touched = true;
       source = value;
       draw();
-      if (value === 'browse' && !here) void walk();
-    }, 'two');
-    seg.replaceWith(fresh);
-    seg = fresh;
+      if (value !== 'found' && !here) void walk();
+      if (value === 'new') nameInput.focus();
+    });
+    seg.replaceWith(options);
+    seg = options;
+    const making = source === 'new';
+    fresh.hidden = !making;
+    pages.grid.hidden = making;
+    footer.hidden = making;
+    search.hidden = making;
+    if (making) {
+      line.replaceChildren(el('span', 'sm-picker-note', t('An empty folder, made for you, that becomes a project.')));
+      sayWhere();
+      return;
+    }
     const noMatch = () => t('No folder matches «{query}».', { query: input.value.trim() });
     if (source === 'found') {
       line.replaceChildren(el('span', 'sm-picker-note', found ? t('Folders that look like projects, in the places people keep them.') : t('Looking…')));
@@ -3506,7 +3557,7 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
     const answer = await fetch(`/api/salas/folders${path ? `?path=${encodeURIComponent(path)}` : ''}`, { cache: 'no-store' }).then((response) => response.json()).catch(() => null);
     here = answer ?? { error: t('That folder is not there.') };
     if (path !== null) { query = ''; input.value = ''; }
-    if (source === 'browse') draw();
+    if (source !== 'found') draw();
   }
   async function add() {
     error.textContent = '';
@@ -3570,7 +3621,7 @@ ui.add.addEventListener('click', openAddSheet);
 // `compact` is the welcome's first step: there, a connected agent is done, and a button to change
 // the account it signs in with is a question nobody asked on their first minute.
 // Who makes each agent, said under its name as the project's AJUSTES says it.
-const VENDOR_WORDS = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: 'OpenCode' };
+const VENDOR_WORDS = { codex: 'OpenAI', claude: 'Anthropic', gemini: 'Google', opencode: 'OpenCode', cursor: 'Cursor' };
 
 // OpenCode's providers in Home, the same block as the project's AJUSTES › Agents › OpenCode: a line
 // per provider with a key or an account and its switch for the chat, one row to add another, and

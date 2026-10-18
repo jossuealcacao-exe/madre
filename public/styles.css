@@ -7779,6 +7779,15 @@ html.via-phone[data-wallpaper]:not([data-wallpaper="default"]) { --phone-ground:
   background: var(--agent-gradient, var(--agent-solid, var(--agent))) !important;
   color: #ffffff !important;
 }
+/* Switched off: an agent in the bar that cannot answer (not installed, no adapter, or no session)
+   is a quiet grey disc with its mark, no colour and no ring, until it can (2026-10-17). */
+#agents.agents .avatar.off {
+  background: color-mix(in srgb, var(--text) 9%, transparent) !important;
+  color: color-mix(in srgb, var(--text) 38%, transparent) !important;
+  border: 0 !important; box-shadow: none !important; filter: grayscale(1);
+}
+#agents.agents .avatar.off::before { display: none; }
+#agents.agents .avatar.off.open { box-shadow: 0 0 0 2px var(--lay-4), 0 0 0 3.5px color-mix(in srgb, var(--text) 30%, transparent) !important; }
 /* What was said by a ring keeps its ring: the open agent in the bar, the chosen one in the picker. */
 .agents .avatar.open:not(.offline):not(.detected),
 .picker .avatar.pick[aria-checked="true"]:not(.offline):not(.detected) { box-shadow: 0 0 0 2px var(--lay-4), 0 0 0 3.5px var(--agent-solid, var(--agent)) !important; }
@@ -8720,7 +8729,21 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-hint b { font-size: 14px; font-weight: 650; }
 .tour-hint p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .tour-hint .tour-btn { justify-self: end; margin-top: 4px; }
-.tour-hint.inline { position: relative; inset: auto; z-index: auto; margin: 0 0 12px; text-align: left; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tour-acc) 40%, transparent); background: color-mix(in srgb, var(--tour-acc) 10%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* Inside a window (a modal sheet, where a floating card could not be pressed): the same card as the
+   floating hint, set into the window with its margins — not a tinted band glued to its edges
+   (2026-10-17). Eyebrow, title and line on the left; its one key on the right, the hint's small key. */
+.tour-hint.inline {
+  position: relative; inset: auto; z-index: auto; max-height: none; overflow: visible;
+  margin: 12px 12px 4px; padding: 12px 14px 12px 16px; border-radius: 16px; text-align: left;
+  grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 3px; align-items: center;
+  background: color-mix(in srgb, var(--bg-2, var(--bg)) 94%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tour-acc) 32%, transparent), 0 8px 22px -14px rgba(0, 0, 0, .4);
+  -webkit-backdrop-filter: none; backdrop-filter: none; animation: none;
+}
+.tour-hint.inline > :not(.tour-btn) { grid-column: 1; }
+.tour-hint.inline > .tour-btn { grid-column: 2; grid-row: 1 / span 3; align-self: center; justify-self: end; margin: 0; }
+:root[data-scheme="light"] .tour-hint.inline { background: #ffffff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--tour-acc) 30%, transparent), 0 8px 22px -16px rgba(20, 30, 20, .3); }
+@media (max-width: 560px) { .tour-hint.inline { grid-template-columns: minmax(0, 1fr); } .tour-hint.inline > .tour-btn { grid-column: 1; grid-row: auto; margin-top: 6px; } }
 /* The way to a first-time hint whose place is out of view: a pill at the edge the place went past,
    with the hint's own title and which way to go. A click takes the page there (tour.js). */
 .tour-hint-away { --tour-acc: var(--s-acc, var(--acc, var(--phosphor))); position: fixed; inset: auto; left: 50%; translate: -50% 0; margin: 0; z-index: 2147483000; display: inline-flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 8px 14px 8px 10px; border: 0; border-radius: 999px; font: inherit; font-family: var(--read); color: var(--text); background: color-mix(in srgb, var(--bg-2, var(--bg)) 94%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tour-acc) 70%, transparent), 0 14px 32px -14px rgba(0, 0, 0, .45); cursor: pointer; animation: tour-rise calc(360ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .2, 1) both; }
@@ -9553,7 +9576,10 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
    columna lo cortaba en seco por la izquierda (overflow-x: hidden pegado al avatar) y la fila, por
    su contención de pintado (content-visibility). La columna recorta con margen y la fila viva no se
    contiene: siempre está en pantalla. */
-#messages .thread-inner { overflow-x: clip; overflow-clip-margin: 24px; }
+/* Chrome keeps overflow-clip-margin only when both axes clip; with overflow-x alone the ring was
+   still cut flush with the avatar (2026-10-17). Clipping the height too costs nothing: the column
+   pads 36px above and the dock's height below, and nothing in it hangs past that. */
+#messages .thread-inner { overflow: clip; overflow-clip-margin: 24px; }
 #messages .thread-inner > .row.thinking { content-visibility: visible; }
 /* 9 · Desplazarse es del humano. El hilo ya no anima cada asignación de su posición: con el scroll
    suave, el «volver al final» instantáneo y el animado peleaban en el mismo cuadro y la vista
@@ -9979,3 +10005,4 @@ dialog#core .core-panes { margin-inline: calc(-1 * var(--core-pad)); padding-inl
 }
 :is(#nostromo, .mv) .nostromo-actions .surface-modes .surface-mode.close { color: rgb(242 241 238 / .78); }
 :is(#nostromo, .mv) .nostromo-actions .surface-modes .surface-mode.close:is(:hover, :focus-visible) { color: #ffffff; background: var(--surface); box-shadow: var(--key-rest); }
+
