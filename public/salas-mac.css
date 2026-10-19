@@ -118,6 +118,13 @@ body.salas-mac {
 @media (max-width: 560px) { #sm-reload { display: none; } }
 .sm-brand:focus-visible { outline: 2px solid var(--s-acc); outline-offset: 3px; }
 .sm-spacer { flex: 1; }
+/* A bar that does not fit (salas-mac.js, fitBar): the computer's name steps out, then the keys keep
+   their icons, then the agents step out. */
+.sm-topbar.is-tight { gap: 10px; }
+.sm-topbar.is-tight .sm-live > span { display: none; }
+.sm-topbar.is-tighter .sm-barkey > span { display: none; }
+.sm-topbar.is-tighter .sm-barkey { padding: 0 8px; }
+.sm-topbar.is-tightest .sm-tb-agents { display: none; }
 /* The bar's keys are the room's bar keys (styles.css, .mother-button, .tree-button, .stop-all). */
 .sm-barkey, .sm-stop { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
 .sm-barkey svg, .sm-stop svg { width: var(--ico-sm); height: var(--ico-sm); }

@@ -22,14 +22,17 @@ function machine() {
   return { world, sentinel };
 }
 
-test('servers: only what this project started is shown, and the rest is only counted', async () => {
-  const { sentinel } = machine();
+test('servers: only what this project started is shown, open to the network or not, and the rest is only counted', async () => {
+  const { world, sentinel } = machine();
+  world.http.add(3000);
   const read = await sentinel.scan();
   // Another folder's server answers HTTP on loopback and is still not this project's.
-  assert.deepEqual(read.ports.map((one) => one.port), [5173]);
-  assert.equal(read.ports[0].here, true);
-  // The project's own server bound to every interface is named, never offered.
-  assert.deepEqual(read.wider, [{ port: 3000, command: 'node' }]);
+  // The project's own server bound to every interface is offered too (2026-10-18), opened on
+  // 127.0.0.1 and marked as reachable from the network.
+  assert.deepEqual(read.ports.map((one) => one.port), [3000, 5173]);
+  assert.ok(read.ports.every((one) => one.here));
+  assert.deepEqual(read.ports.map((one) => Boolean(one.network)), [true, false]);
+  assert.deepEqual(read.wider, []);
   assert.equal(read.others, 1);
 });
 

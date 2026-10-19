@@ -10218,3 +10218,9 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
 .colophon-card-go { justify-self: start; margin-top: 2px; padding: 6px 12px; border-radius: 99px; background: var(--madre-green); color: var(--madre-green-ink); font-weight: 650; text-decoration: none; }
 .colophon-card-go:hover { filter: brightness(1.06); }
 @media (prefers-reduced-motion: reduce) { .colophon-key.heart:is(:hover, :focus-within) .colophon-key-mark svg { animation: none; } }
+
+/* THE STATE DOT ALWAYS SHOWS (2026-10-18). The bar's left group shrinks with its overflow hidden, and
+   the project's name kept its whole width, so what got cut was the last thing in the group: the dot
+   that says whether the project is live. Now the name gives way, with its «…», and the dot never does. */
+.bar > .bar-left > #project:not(.chat-here) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bar > .bar-left > .connection { flex: none; }

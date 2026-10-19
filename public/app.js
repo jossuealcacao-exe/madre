@@ -2513,7 +2513,8 @@ function paintPorts(read) {
     row.type = 'button';
     // A server that sends no Content-Type used to leave the separator hanging: «:5173 node · 200 · ».
     const kind = found.html ? '' : (found.contentType ?? '').trim();
-    const what = `${found.command} · ${found.status}${kind ? ` · ${kind}` : ''}`;
+    // Open to the whole network too: it opens here on 127.0.0.1, and the row says the rest.
+    const what = `${found.command} · ${found.status}${kind ? ` · ${kind}` : ''}${found.network ? ` · ${t('your network can reach it too')}` : ''}`;
     row.append(el('i', 'ports-lamp'), el('b', null, `:${found.port}`), el('span', null, found.framable === false ? t('{what} · cannot be shown in here', { what }) : what));
     row.addEventListener('click', () => openPort(found));
     menu.append(row);
@@ -6383,15 +6384,15 @@ function markRun({ responseMessageId, index }, status, where = null, startedAt =
     updateRunClock(button);
   }
   if (status === 'serving' && where?.port) {
+    // A server open to the whole network opens here too, on 127.0.0.1 (2026-10-18); the line says
+    // that the network can reach it as well.
     live.append(el('span', 'where', where.network
-      ? t('serving on :{port} · open to your whole network, so the project will not open it', { port: where.port })
+      ? t('serving on :{port} · your network can reach it too', { port: where.port })
       : t('serving on :{port}', { port: where.port })));
-    if (!where.network) {
-      const open = el('button', 'run-open', t('OPEN IN YOUR SERVERS'));
-      open.type = 'button';
-      open.addEventListener('click', () => { browserShow(); void browserOpen(`http://127.0.0.1:${where.port}/`); });
-      live.append(open);
-    }
+    const open = el('button', 'run-open', t('OPEN IN YOUR SERVERS'));
+    open.type = 'button';
+    open.addEventListener('click', () => { browserShow(); void browserOpen(`http://127.0.0.1:${where.port}/`); });
+    live.append(open);
   }
   const stop = el('button', 'run-stop', t('STOP'));
   stop.type = 'button';

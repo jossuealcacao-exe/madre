@@ -3167,6 +3167,47 @@ function pinsIndexAt(x) {
   window.addEventListener('storage', (event) => { if (event.key === PIN_KEY) { pins.saved = null; if (data) drawPins(); } });
 }
 
+// THE BAR FITS ITS ROW (2026-10-18). Everything on it keeps its width but the projects, so with the
+// Market and Modules keys it ran under the right group and left the projects a sliver («+5»), with
+// no room to drop or move one. Now, when it does not fit, the computer's name steps out first; then
+// the keys keep only their icons (their name stays in the tooltip); then the agents, as on a narrow
+// screen. The
+// projects keep at least BAR_ROOMS of the row, and all of it while the bar is being arranged.
+const BAR_ROOMS = 220;
+let barWatch = null;
+function fitBar() {
+  const bar = document.querySelector('.sm-top > .sm-topbar:first-child');
+  const rooms = ui.bar.open;
+  if (!bar) return;
+  for (const key of bar.querySelectorAll('.sm-barkey')) { const words = key.querySelector('span')?.textContent?.trim(); if (words) { key.title = words; key.setAttribute('aria-label', words); } }
+  bar.classList.remove('is-tight', 'is-tighter', 'is-tightest');
+  // The projects fold the ones that do not fit behind «+n» on their own (pinsFit): asked again at
+  // each step, they are short while some are folded and they have less than BAR_ROOMS.
+  const roomsShort = () => {
+    if (!data || !rooms || rooms.hidden) return false;
+    if (pins.editing) return rooms.scrollWidth > rooms.clientWidth + 1;
+    pinsFit();
+    return pins.spilled.length > 0 && rooms.clientWidth < BAR_ROOMS;
+  };
+  const short = () => bar.scrollWidth > bar.clientWidth + 1 || roomsShort();
+  for (const step of ['is-tight', 'is-tighter', 'is-tightest']) { if (!short()) break; bar.classList.add(step); }
+  if (data && !pins.editing) pinsFit();
+  // What fitting changed on the bar is its own doing, not a change to fit again.
+  barWatch?.takeRecords();
+}
+{
+  const bar = document.querySelector('.sm-top > .sm-topbar:first-child');
+  let queued = false;
+  const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; fitBar(); }); };
+  if (bar) {
+    new ResizeObserver(later).observe(bar);
+    // What sits on the bar changes it: rooms pinned or opened, agents, who waits, a newer MADRE.
+    barWatch = new MutationObserver((changes) => { if (changes.some((change) => change.target !== bar)) later(); });
+    barWatch.observe(bar, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] });
+  }
+  later();
+}
+
 ui.bar.links.addEventListener('click', () => { if ((data?.enlaces ?? []).length) { if (!ui.linksSheet.open) ui.linksSheet.showModal(); } else openLinkSheet(); });
 ui.bar.update.addEventListener('click', () => openSettings('release'));
 // RELOAD, as a room reloads (app.js, reloadWithGrace): the curtain of Home's own ground with MADRE's
@@ -3963,7 +4004,8 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
 // scene of what it is about, moving: the agents come to MADRE and light up as they are connected;
 // the folders drop into the lobby; the rooms light up one after another as the beat runs through
 // them. Drawn here, from MADRE's own marks; still for whoever asked for less motion.
-const SCENE_AGENTS = [['codex', 17, 30], ['claude', 27, 78], ['gemini', 83, 30], ['opencode', 73, 78]];
+// Five since Cursor joined (1.0.3): the four around MADRE, and Cursor above her.
+const SCENE_AGENTS = [['codex', 17, 30], ['claude', 27, 78], ['cursor', 50, 17], ['gemini', 83, 30], ['opencode', 73, 78]];
 const FOLDER_GLYPH = '<svg viewBox="0 0 32 26" aria-hidden="true"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h7.2l3 3.2h12.8A2.5 2.5 0 0 1 30 8.7v12.8a2.5 2.5 0 0 1-2.5 2.5h-23A2.5 2.5 0 0 1 2 21.5z" fill="currentColor"/><path d="M2 10h28" stroke="rgba(255,255,255,.35)" stroke-width="1.4"/></svg>';
 const BEAT_PATH = 'M0 22H70L78 22L86 6L96 38L104 22H190L198 22L206 6L216 38L224 22H320L328 22L336 6L346 38L354 22H420';
 function wizardScene(kind) {

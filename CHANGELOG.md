@@ -6,6 +6,11 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.4 · Sin publicar
 
+- **Cursor en la bienvenida.** La animación de «Conecta tus agentes» mostraba cuatro agentes alrededor de MADRE; ahora Cursor está arriba, y se enciende al conectarse como los demás.
+- **Los servidores de tu proyecto se abren aunque escuchen en toda la red.** Node, Express y Vite con `--host` escuchan en todas las interfaces de tu computadora, y la vista previa los nombraba («está abierto a toda la red · inícialo en 127.0.0.1») sin dejar abrirlos. Ahora se abren igual, dentro de tu computadora, y la lista avisa «tu red también lo alcanza». Los servidores de otras carpetas siguen sin mostrarse.
+- **El punto de estado del proyecto siempre se ve.** Junto al nombre del proyecto, en la barra, el punto que dice si está en vivo se cortaba cuando la barra iba justa. Ahora el que cede es el nombre, con «…», y el punto queda siempre entero.
+- **La barra de Inicio vuelve a caber.** Con las teclas Mercado y Módulos, la barra de Inicio se metía debajo de los botones de la derecha y los proyectos fijados quedaban reducidos a «+5», sin espacio para moverlos ni soltar uno nuevo. Ahora, cuando no cabe, primero se oculta el nombre de la computadora, luego las teclas se quedan con su ícono (su nombre aparece al pasar el ratón) y al final se ocultan los agentes. Los proyectos conservan siempre su lugar, también mientras acomodas la barra.
+
 ## 1.0.3 · 2026-10-17
 
 - **Un espacio de código junto a la conversación.** La tecla nueva `CÓDIGO` de la barra abre tus archivos a un lado de la conversación, sin dejarla: la lista del proyecto con su buscador, pestañas para lo que tienes abierto y, sobre el código, la ruta y la función donde estás. ⌘P (Ctrl+P fuera de macOS) abre cualquier archivo por su nombre. Cambiar de pestaña no pierde lo que escribiste: el borrador se queda en su pestaña, con un punto, hasta que guardas o descartas, y las pestañas siguen ahí cuando vuelves al proyecto. En las barras que ya tenías acomodadas, `CÓDIGO` aparece junto a Agentes.

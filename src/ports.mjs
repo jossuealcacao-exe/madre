@@ -22,12 +22,10 @@ const SYSTEM_PORTS = new Set([22, 25, 53, 88, 139, 445, 548, 631, 5353, 7000]);
 const NOISE = /^(rapportd|sharingd|identityservicesd|controlce|remoted|launchd|mDNSResponder|cupsd|Spotify|Dropbox|Docker|com\.docker|ollama|llama-ser)/i;
 
 // One `lsof -nP -iTCP -sTCP:LISTEN` table into the ports a human might want to look at.
-// Loopback only: a line bound to * or 0.0.0.0 is reachable from the network, and this room does
-// not help anyone frame that by accident.
-// Everything listening, split by whether RIPLEY may open it. The wider half is NOT a list of
-// things to show as openable — it is the answer to «there is nothing here», which was a lie:
-// `node server.js` and `python -m http.server` bind every interface by default, so the most
-// common case in the world was being discarded in silence and reported as an empty computer.
+// Everything listening, split by where it listens: loopback, or every interface (* or 0.0.0.0),
+// which is reachable from the network too. `node server.js` and `python -m http.server` bind every
+// interface by default. Since 2026-10-18 the servers sentinel offers a project's own server from
+// either half, opened on 127.0.0.1, and says which ones the network can also reach.
 export function classifyListening(output = '', { self = null } = {}) {
   const found = new Map();
   const wider = new Map();

@@ -6,6 +6,11 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.4 · Unreleased
 
+- **Cursor in the welcome.** The «Connect your agents» animation showed four agents around MADRE; now Cursor sits above her, and lights up when connected like the rest.
+- **Your project's servers open even when they listen on the whole network.** Node, Express and Vite with `--host` listen on every interface of your computer, and the preview named them («open to your whole network · start it on 127.0.0.1») without letting you open them. Now they open the same way, inside your computer, and the list says «your network can reach it too». Servers from other folders are still not shown.
+- **The project's state dot always shows.** Beside the project's name on the bar, the dot that says whether it is live got cut when the bar was tight. Now the name gives way, with «…», and the dot always stays whole.
+- **Home's bar fits again.** With the Market and Modules keys, Home's bar ran under the buttons on the right and the pinned projects shrank to «+5», with no room to move them or drop a new one. Now, when it does not fit, the computer's name steps out first, then the keys keep only their icon (their name shows on hover), and last the agents step out. The projects always keep their room, also while you arrange the bar.
+
 ## 1.0.3 · 2026-10-17
 
 - **A code workspace beside the conversation.** The new `CODE` key in the bar opens your files next to the conversation, without leaving it: the project's list with its search, tabs for what you have open and, above the code, the path and the function you are in. ⌘P (Ctrl+P outside macOS) opens any file by its name. Switching tabs never loses what you wrote: the draft stays in its tab, with a dot, until you save or discard it, and the tabs are still there when you come back to the project. In bars you had already arranged, `CODE` shows up next to Agents.

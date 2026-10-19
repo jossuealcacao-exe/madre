@@ -76,8 +76,12 @@ export class ServerSentinel {
     const pids = [...new Set(everyone.map((one) => one.pid))];
     const cwds = pids.length ? parseCwds(await this.#cwdsOf(pids).catch(() => '')) : new Map();
     const mine = (one) => inProject(cwds.get(one.pid), this.#projectRoot);
-    const own = listening.ports.filter(mine).slice(0, MAX_PROBED);
-    const wider = listening.wider.filter(mine).map(({ port, command }) => ({ port, command }));
+    // A server bound to every interface answers on 127.0.0.1 too (2026-10-18): Node, Express and
+    // Vite with --host do it by default, and leaving them out left a project's own servers off its
+    // list. Opening one here reaches it on this computer; that it can also be reached from the
+    // network is the human's choice, and the list says so.
+    const own = [...listening.ports.filter(mine), ...listening.wider.filter(mine).map((one) => ({ ...one, network: true }))].sort(byPort).slice(0, MAX_PROBED);
+    const wider = [];
 
     const next = new Map();
     for (const found of own) {
@@ -88,7 +92,7 @@ export class ServerSentinel {
       if (this.#notHttp.has(key)) continue;
       const probe = await this.#probe(found.port).catch(() => ({ ok: false }));
       if (!probe.ok || await this.#isRoom(found.port).catch(() => false)) { this.#notHttp.add(key); continue; }
-      next.set(found.port, { ...found, status: probe.status, html: probe.html, contentType: probe.contentType, framable: probe.framable, here: true });
+      next.set(found.port, { ...found, status: probe.status, html: probe.html, contentType: probe.contentType, framable: probe.framable, here: true, ...(found.network ? { network: true } : {}) });
     }
 
     const started = [...next.values()].filter((one) => this.#servers.get(one.port)?.pid !== one.pid);
