@@ -128,6 +128,12 @@ export function setMarketCatalog(catalog) {
   remote = catalog && Array.isArray(catalog.modules) ? { ...catalog, byId: new Map(catalog.modules.map((entry) => [entry.id, entry])) } : null;
 }
 export const remoteEntry = (id) => remote?.byId.get(id) ?? null;
+// THE PAID MODULES (src/market-license.mjs): which ones this computer bought, as /api/market says
+// (never the keys), and whether one still has to be bought before it can be got.
+let bought = {};
+export const setMarketLicensed = (licensed) => { bought = licensed && typeof licensed === 'object' ? licensed : {}; };
+export const isBought = (id) => Boolean(bought[id]);
+export const forSale = (id) => { const entry = remoteEntry(id); return entry?.price > 0 && entry.checkout && entry.license ? entry : null; };
 // The catalog's modules this MADRE does not have yet, as the Market lists them: to get.
 export function marketExtras(items = []) {
   if (!remote) return [];
@@ -165,6 +171,7 @@ export async function loadMarket({ toast = null, open = null } = {}) {
   const answer = await fetch('/api/market', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
   if (!answer) return null;
   setMarketCatalog(answer.catalog);
+  setMarketLicensed(answer.licensed);
   if (!toast) return answer;
   const updated = answer.news ?? [];
   if (updated.length) {

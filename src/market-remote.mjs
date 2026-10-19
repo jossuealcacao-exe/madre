@@ -25,6 +25,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { t } from './i18n.mjs';
 import { MARKET_PUBLIC_KEY } from './market-key.mjs';
+import { mayInstall } from './market-license.mjs';
 
 export const MARKET_URL = 'https://madre.run/mercado/catalogo.json';
 const MAX_CATALOG = 1024 * 1024;
@@ -106,7 +107,14 @@ export function readCatalog(text, { url = MARKET_URL } = {}) {
       minMadre: typeof raw.minMadre === 'string' && /^\d+\.\d+\.\d+$/.test(raw.minMadre) ? raw.minMadre : null,
       changes: words(raw.changes, 400),
       file: null,
+      // Where a paid module is bought (an https page) and whose license opens it (market-license.mjs).
+      checkout: null,
+      license: null,
     };
+    if (entry.price > 0) {
+      try { const page = new URL(raw.checkout); if (page.protocol === 'https:') entry.checkout = page.href; } catch { /* no page to buy it */ }
+      if (raw.license?.provider === 'lemonsqueezy' && Number.isInteger(raw.license.store) && Number.isInteger(raw.license.product)) entry.license = { provider: 'lemonsqueezy', store: raw.license.store, product: raw.license.product };
+    }
     if (raw.file) {
       const href = fileUrl(raw.file.url, url);
       if (!href || !SHA.test(raw.file.sha256 ?? '') || !entry.version) continue;
@@ -173,6 +181,7 @@ export async function installFromMarket({ stateRoot, projectRoot, id, catalog, m
   const entry = catalog?.modules.find((one) => one.id === id && one.file);
   if (!entry) throw new Error(t('The Market has no module «{id}» to install.', { id }));
   if (!fitsVersion(madre, entry.minMadre)) throw new Error(t('This module needs MADRE {version} or newer.', { version: entry.minMadre }));
+  if (!(await mayInstall(stateRoot, entry))) throw new Error(t('«{name}» is a paid module: buy it, or activate the license you already have.', { name: entry.id }));
   const bytes = await bytesFrom(entry.file.url, { fetchImpl, max: MAX_MODULE });
   if (sha256(bytes) !== entry.file.sha256) throw new Error(t('The module file is not the one the Market signed, so MADRE did not install it.'));
   const text = bytes.toString('utf8');

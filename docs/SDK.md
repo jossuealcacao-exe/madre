@@ -73,7 +73,7 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 | `onToggle(ctx, enabled)` | Reacciona al interruptor |
 | `ready(ctx)` | Lo que pides antes de encender, en un proyecto o en todos (desde el Mercado también): `null` si está listo, `{ status, body: { error } }` si no. Apagar nunca lo pregunta |
 | `footer` | Hasta dos teclas junto a la versión de MADRE, abajo a la derecha, mientras tu módulo está encendido: `[{ icon: 'heart' \| 'star' \| 'link', label, text, action, url }]`. Los textos pueden ser una frase o `{ es, en }`; `url` tiene que ser https y se abre en otra pestaña. MADRE la dibuja: al pasar el ratón muestra `text` y un botón con `action` |
-| `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text }`. La sala los muestra como tarjeta y los agentes los leen |
+| `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text, link }`. La sala los muestra como tarjeta y los agentes los leen. `link` es opcional: `{ href, label }` con una ruta tuya (`/api/x/<id>/…`), y la tarjeta la ofrece como botón que abre otra pestaña; una dirección fuera de tus rutas se ignora |
 | `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente. `turn` trae el agente, el modo, el arriendo, la carpeta, el puerto y `turn.turn`: el id de la respuesta que ese turno escribirá. Si tu servidor llama de vuelta a la sala en nombre del turno, manda ese id; `ctx.room.runningTurn(id)` dice si sigue corriendo y para qué agente |
 | `toolsForTurn` → `sends` | Cuáles de tus herramientas **mandan algo fuera**. El núcleo las retira por debajo de `#4` AIRLOCK: ni se le cuenta al modelo que existen. Ver abajo |
 | `reaches` | A dónde llega tu módulo, en las mismas cuatro respuestas que da MADRE de las suyas. Ver abajo |
@@ -263,10 +263,30 @@ ctx = {
   env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
-  services: { imageKey, ollama, … }, // lo que el servidor ofrece
+  services: { history, imageKey, ollama, … }, // lo que el servidor ofrece
   vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
 ```
+
+### El historial del proyecto
+
+`await ctx.services.history({ since, until })` devuelve lo que pasó en el proyecto en ese periodo (fechas ISO; sin ellas, todo). Solo lee, nunca escribe, y lo dicho en `#0` GHOST no aparece:
+
+```
+{
+  project, since, until,
+  requests:  [{ at, chat, to, mode, text }],         // lo que pidió la humana y a quién
+  answers:   [{ at, chat, agent, text }],            // las respuestas de cada agente
+  changes:   [{ at, chat, agent, mode, files: [{ status, path }], undone }],
+  files:     [{ path, status }],                     // lo que cambió y se quedó (sin lo deshecho)
+  decisions: [{ at, text, agent }],                  // las decisiones que guardó la memoria
+  agents:    { codex: { turns, failed, tokens, costUsd, local } },
+  conversations: [{ id, title, requests }],
+  totals:    { requests, answers, tokens, costUsd }
+}
+```
+
+Los textos llegan recortados a 600 caracteres. Es la base de un módulo que informa sobre el trabajo, como el Informe de trabajo del Mercado.
 
 `turn`, en `toolsForTurn`: `{ agent, mode, lease, scratchDir, port, roomDir }`. `mode` va de 0 a 4; en 0 (GHOST) nada se guarda, decide si quieres entregar herramientas ahí.
 

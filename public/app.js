@@ -13159,6 +13159,11 @@ function renderTerminalCard(event) {
     if (args.length) head.append(el('span', 'term-who', args.join(' ')));
   }
   head.append(el('span', 'term-count', t('{n} lines', { n: lines.length })), chevron());
+  // A module's own page for this result (a report to print), offered as a key beside the line. The
+  // server keeps it to the module's own routes (/api/x/<id>/); the page checks the same before drawing.
+  const link = event.payload.link;
+  const page = typeof link?.href === 'string' && /^\/api\/x\/[a-z][a-z0-9-]*\//.test(link.href) ? el('a', 'term-link', link.label || title || name) : null;
+  if (page) { page.href = link.href; page.target = '_blank'; page.rel = 'noopener'; }
   // The line a person looks for first: the last thing it printed.
   const last = [...lines].reverse().find((line) => line.trim() && !/^Files changed:|^Archivos cambiados:/.test(line));
   const peek = last ? el('div', 'term-peek', last.trim().slice(0, 240)) : null;
@@ -13181,7 +13186,7 @@ function renderTerminalCard(event) {
   };
   open(termOpen.has(id));
   head.addEventListener('click', () => open(!node.classList.contains('open')));
-  node.append(head, ...(peek ? [peek] : []), out);
+  node.append(head, ...(page ? [page] : []), ...(peek ? [peek] : []), out);
   if (run) {
     markRun(run, ok === false ? 'failed' : 'ran');
     // A command the human ran by hand was photographed first: the same UNDO as a CONTROL turn.

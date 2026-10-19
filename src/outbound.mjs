@@ -96,6 +96,14 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // A paid module's license (src/market-license.mjs): asked when the person activates or releases it.
+    id: 'license', host: 'api.lemonsqueezy.com', match: (url) => url.pathname.startsWith('/v1/licenses/'), to: 'Lemon Squeezy · licenses of paid modules',
+    what: 'The license key you pasted and a name for this computer made from MADRE\'s random install id. Not your name, not your email, nothing from your projects.',
+    when: 'only when you press Activate or Release on a paid module of the Market',
+    where: 'Market › the paid module\'s page',
+    inside: true,
+  },
+  {
     id: 'usage', host: 'madre.run', match: (url) => url.pathname === '/api/usage', to: "madre.run · the author's usage figures",
     what: "The author's token, to read how many copies are on. Only in the author's own copy, run from source.",
     when: 'while the «MADRE usage» widget is on Home',

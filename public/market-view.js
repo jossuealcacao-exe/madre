@@ -15,7 +15,7 @@
 // `openProject(projectId, item)` (Home), `toast(text)` and `changed()`.
 
 import { t, language } from './i18n.js';
-import { appIcon, inMarket, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
+import { appIcon, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
 import { marketArt } from './market-art.js';
 
 const el = (tag, className = null, text = null) => {
@@ -194,6 +194,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (!onPage) {
       // On a shelf the key is short: what is on says so and opens its page; what is off gets it.
       if (on) return button('mk-get on', kind === 'install' ? t('Installed') : t('Turned on'), () => go({ tab: 'shop', focus: item.id }));
+      // A paid module not bought yet is bought on its page, where it says what it costs and how.
+      if (unpaid(item)) return button('mk-get', t('Buy'), () => go({ tab: 'shop', focus: item.id }));
       if (!home && kind === 'switch') {
         const key = button('mk-get', t('Get'), async (event) => { event.stopPropagation(); const line = el('span'); await turnHere(item, true, line, key); if (line.dataset.tone === 'bad') { notice(line.textContent); key.disabled = false; } });
         return key;
@@ -234,7 +236,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       const get = el('div', 'mk-slide-get');
       const who = el('span', 'mk-slide-who');
       who.append(el('b', null, nameOf(item)), el('span', null, isOn(item) ? reach(item) : priceOf(item)));
-      get.append(appIcon(item, 48), who, button('mk-get light', isOn(item) ? t('See it') : kindOf(item) === 'install' ? t('Install') : kindOf(item) === 'local' ? t('Open') : t('Get'), (event) => { event.stopPropagation(); go({ tab: 'shop', focus: item.id, choose: !isOn(item) }); }));
+      get.append(appIcon(item, 48), who, button('mk-get light', isOn(item) ? t('See it') : unpaid(item) ? t('Buy') : kindOf(item) === 'install' ? t('Install') : kindOf(item) === 'local' ? t('Open') : t('Get'), (event) => { event.stopPropagation(); go({ tab: 'shop', focus: item.id, choose: !isOn(item) }); }));
       words.append(el('small', null, t('Featured')), el('h2', null, nameOf(item)), el('p', null, t(marketEntry(item.id).pitch ?? lineOf(item))), get);
       const art = el('div', 'mk-slide-art');
       art.innerHTML = marketArt(item); // trusted: our own drawings (market-art.js)
@@ -280,8 +282,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     }
     const head = el('section', 'mk-head');
     head.append(el('h1', null, t('Market')), el('p', null, home
-      ? t('Modules add what MADRE does: more for your agents, less for the terminal. Free for now. From Home you choose: every project, or only one.')
-      : t('Modules add what MADRE does: more for your agents, less for the terminal. Free for now. What you get here is for this project.')));
+      ? t('Modules add what MADRE does: more for your agents, less for the terminal. From Home you choose: every project, or only one.')
+      : t('Modules add what MADRE does: more for your agents, less for the terminal. What you get here is for this project.')));
     page.append(head);
     const featured = carousel();
     if (featured) page.append(featured);
@@ -317,6 +319,23 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const facts = el('dl', 'mk-facts');
     const fact = (label, value) => { const one = el('div'); one.append(el('dt', null, label), el('dd', null, value)); facts.append(one); };
     fact(t('Price'), priceOf(item));
+    if (forSale(item.id) && isBought(item.id)) {
+      const held = el('span', 'mk-license-held', t('Active on this computer'));
+      const release = button('mk-link', t('Release'), async () => {
+        release.disabled = true;
+        const answer = await post('/api/market/license/release', { id: item.id });
+        if (!answer.ok) { release.disabled = false; notice(answer.body.error ?? t('The license could not be released.')); return; }
+        notice(t('License released: you can activate it on another computer. {name} stays installed here, without the Market\'s updates.', { name: nameOf(item) }));
+        await refresh();
+      });
+      release.title = t('Gives this computer\'s activation back, to use the key on another one.');
+      const value = el('span');
+      value.append(held, ' ', release);
+      const one = el('div');
+      one.append(el('dt', null, t('License')), el('dd', null, ''));
+      one.lastChild.append(value);
+      facts.append(one);
+    }
     fact(home ? t('Where') : t('Here'), reach(item));
     if (shelfOf(item)) fact(t('Shelf'), t(shelfOf(item).title));
     fact(t('Version'), item.version ? `v${String(item.version).replace(/^v/, '')}` : '—');
@@ -351,6 +370,40 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     for (const id of ids) { const option = el('option', null, projectName(id)); option.value = id; select.append(option); }
     return select;
   };
+  // A PAID MODULE (src/market-license.mjs): bought once at its checkout, then its key pasted here.
+  // Until then it cannot be got; after, it is got like any other.
+  const unpaid = (item) => item.kind === 'remote' && Boolean(forSale(item.id)) && !isBought(item.id);
+  const drawPurchase = (item, keys, line) => {
+    const sale = forSale(item.id);
+    const buy = button('mk-get big', t('Buy · {price}', { price: priceOf(item) }), () => { globalThis.open?.(sale.checkout, '_blank', 'noopener'); said(line, t('The purchase opened in your browser. The license key arrives by email: paste it here with «I have a license».'), 'note'); });
+    const have = button('mk-get big quiet', t('I have a license'), () => {
+      have.remove();
+      const form = el('form', 'mk-license');
+      const field = el('input');
+      field.type = 'text';
+      field.autocomplete = 'off';
+      field.spellcheck = false;
+      field.placeholder = t('License key');
+      field.setAttribute('aria-label', t('License key'));
+      const activate = button('mk-get big', t('Activate'));
+      activate.type = 'submit';
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        activate.disabled = true;
+        said(line, t('Checking the license with Lemon Squeezy…'));
+        const answer = await post('/api/market/license', { id: item.id, key: field.value });
+        activate.disabled = false;
+        if (!answer.ok) { said(line, answer.body.error ?? t('The license could not be activated.'), 'bad'); return; }
+        notice(t('License activated: {name} is yours.', { name: nameOf(item) }));
+        await refresh();
+      });
+      form.append(field, activate);
+      keys.append(form);
+      field.focus();
+    });
+    keys.append(buy, have);
+    said(line, t('Paid once, through Lemon Squeezy. Its code is open like MADRE\'s: what you pay for is getting it from the Market, its updates and its support.'), 'note');
+  };
   const drawKeys = (item, keys, line, { choose = false } = {}) => {
     keys.replaceChildren();
     const kind = kindOf(item);
@@ -359,6 +412,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     // A module from the catalog that asks for a newer MADRE says so, and waits for it.
     const needs = item.kind === 'remote' ? item.remote?.minMadre : null;
     if (needs && madre && !fits(madre, needs)) { keys.append(button('mk-get big', t('Needs MADRE {version}', { version: needs }))); keys.lastChild.disabled = true; said(line, t('Update MADRE to get this module.'), 'note'); return; }
+    if (unpaid(item)) { drawPurchase(item, keys, line); return; }
     if (kind === 'local') { keys.append(button('mk-get big', t('Open Local AI'), () => { close(); host.localAi?.(); })); return; }
     if (!home) {
       if (kind === 'install') {

@@ -1079,8 +1079,8 @@ export class Room {
 
   // A slash command's result, shared with everyone (and with agents through
   // the transcript) as a fact card.
-  async recordCommand({ name, title, text, ok, args = [] }) {
-    return this.#emit('command.output', { name, title, text: String(text ?? '').slice(0, 20000), ok: ok !== false, args });
+  async recordCommand({ name, title, text, ok, args = [], link = null }) {
+    return this.#emit('command.output', { name, title, text: String(text ?? '').slice(0, 20000), ok: ok !== false, args, ...(link ? { link } : {}) });
   }
 
   // Live settings changes from the room UI. Only the fields present change.

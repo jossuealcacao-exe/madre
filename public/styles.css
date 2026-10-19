@@ -2304,6 +2304,9 @@ dialog.intents-window { width: 760px; height: 640px; }
 .command-card.terminal.open .term-head .chev-icon { transform: rotate(180deg); }
 .command-card.terminal .term-peek { margin-top: -4px; padding: 0 12px 9px; font-family: var(--mono); font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .command-card.terminal.open .term-peek { display: none; }
+/* A module's own page for this result (a report to print): a key under the card's line. */
+.command-card.terminal .term-link { display: inline-flex; align-items: center; margin: -2px 12px 10px; padding: 6px 12px; border-radius: 999px; background: var(--madre-green); color: #fff; font-size: 12.5px; font-weight: 650; text-decoration: none; }
+.command-card.terminal .term-link:hover { filter: brightness(1.08); }
 .command-card.terminal .term-out { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .24s ease; }
 .command-card.terminal.open .term-out { grid-template-rows: 1fr; }
 .command-card.terminal .term-clip { min-height: 0; overflow: hidden; }
@@ -10133,11 +10136,17 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-only { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-2); font-size: 13.5px; }
 .mk-select { height: 32px; max-width: 240px; padding: 0 10px; border: 0; border-radius: 9px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font: inherit; font-size: 13.5px; }
 .mk-keys > .mk-select { height: 40px; }
+/* A paid module's key, pasted where its keys are (market-view.js, drawPurchase). */
+.mk-license { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mk-license input { height: 40px; width: min(320px, 100%); padding: 0 12px; border: 0; border-radius: 10px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font: inherit; font-family: var(--mono, ui-monospace, monospace); font-size: 13.5px; }
+.mk-license-held { display: block; color: var(--madre-green); font-weight: 600; }
 .mk-said { margin: 0; color: var(--text-2); font-size: 13.5px; line-height: 1.45; }
 .mk-said:empty { display: none; }
 .mk-said[data-tone="bad"] { color: var(--crit, #d93025); }
 .mk-said[data-tone="good"] { color: var(--madre-green); }
 .mk-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-block: 1px solid var(--line); }
+/* A paid module's page has one fact more, its license: five in the row, not one left alone below. */
+.mk-facts:has(> :nth-child(5)) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .mk-facts > div { display: grid; justify-items: center; gap: 4px; padding: 14px 16px; text-align: center; }
 .mk-facts > div + div { border-left: 1px solid var(--line); }
 .mk-facts dt { color: var(--text-3); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -10189,8 +10198,8 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
   .mk-arrow { display: none; }
   .mk-product-top { flex-direction: column; align-items: flex-start; gap: 16px; }
   .mk-product-top > .mk-icon { --mk-size: 96px !important; }
-  .mk-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mk-facts > div:nth-child(3) { border-left: 0; }
+  .mk-facts, .mk-facts:has(> :nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk-facts > div:nth-child(odd) { border-left: 0; }
   .mk-facts > div:nth-child(n + 3) { border-top: 1px solid var(--line); }
   .mk-touch { grid-template-columns: 1fr; gap: 2px; }
   .mk-chips { padding-left: 0; }

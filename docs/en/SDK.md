@@ -73,7 +73,7 @@ the suite compares this table against the code, so if they ever drift apart, it'
 | `onToggle(ctx, enabled)` | Reacts to the switch |
 | `ready(ctx)` | What you ask before turning on, in one project or in all (from the Market too): `null` when ready, `{ status, body: { error } }` when not. Turning off never asks it |
 | `footer` | Up to two keys beside MADRE's version, bottom right, while your module is on: `[{ icon: 'heart' \| 'star' \| 'link', label, text, action, url }]`. Words can be one sentence or `{ en, es }`; `url` must be https and opens in a new tab. MADRE draws it: on hover it shows `text` and a button with `action` |
-| `slash` | `/name` commands that run on the server with your `ctx` and return `{ ok, title, text }`. The room shows them as a card and the agents read them |
+| `slash` | `/name` commands that run on the server with your `ctx` and return `{ ok, title, text, link }`. The room shows them as a card and the agents read them. `link` is optional: `{ href, label }` with a route of yours (`/api/x/<id>/…`), and the card offers it as a key that opens another tab; an address outside your routes is ignored |
 | `toolsForTurn(ctx, turn)` | MCP servers for an agent's turn: `[{ name, command, args, env, tools, sends, brief }]`. MADRE attaches them to the CLI in its isolated run and describes `brief` to the agent. `turn` carries the agent, the mode, the lease, the folder, the port, and `turn.turn`: the id of the reply that turn will write. If your server calls back to the room on behalf of the turn, send that id; `ctx.room.runningTurn(id)` tells you whether it is still running and for which agent |
 | `toolsForTurn` → `sends` | Which of your tools **send something outside**. The core withdraws them below `#4` AIRLOCK: the model isn't even told they exist. See below |
 | `reaches` | Where your module reaches, in the same four answers MADRE gives about its own. See below |
@@ -263,10 +263,30 @@ ctx = {
   env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
-  services: { imageKey, ollama, … }, // lo que el servidor ofrece
+  services: { history, imageKey, ollama, … }, // lo que el servidor ofrece
   vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
 ```
+
+### The project's history
+
+`await ctx.services.history({ since, until })` returns what happened in the project in that period (ISO dates; without them, all of it). It only reads, never writes, and what was said in `#0` GHOST is not there:
+
+```
+{
+  project, since, until,
+  requests:  [{ at, chat, to, mode, text }],         // what the human asked, and of whom
+  answers:   [{ at, chat, agent, text }],            // each agent's answers
+  changes:   [{ at, chat, agent, mode, files: [{ status, path }], undone }],
+  files:     [{ path, status }],                     // what changed and stayed (without what was undone)
+  decisions: [{ at, text, agent }],                  // the decisions the memory kept
+  agents:    { codex: { turns, failed, tokens, costUsd, local } },
+  conversations: [{ id, title, requests }],
+  totals:    { requests, answers, tokens, costUsd }
+}
+```
+
+Texts come cut at 600 characters. It is the ground for a module that reports on the work, like the Market's Work report.
 
 `turn`, in `toolsForTurn`: `{ agent, mode, lease, scratchDir, port, roomDir }`. `mode` goes from 0 to 4; in 0 (GHOST) nothing is saved, so decide whether you want to hand over tools there.
 

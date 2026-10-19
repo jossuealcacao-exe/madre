@@ -85,6 +85,7 @@ import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
 import { observable } from './modules/intents-observe.mjs';
+import { summarizeHistory } from './history.mjs';
 import { normalizeMode, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
@@ -112,7 +113,8 @@ import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, 
 // Not moved project by project: the Coordinator is Home's, Git has no switch, and Local AI keeps
 // its own list of projects (local-ai.mjs).
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
-import { heartbeat } from './heartbeat.mjs';
+import { heartbeat, installId } from './heartbeat.mjs';
+import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
@@ -246,6 +248,8 @@ export async function createPulseServer({
   // fake, and the key their catalog is signed with.
   marketFetch = globalThis.fetch,
   marketKey = null,
+  // Where a paid module's license is checked (src/market-license.mjs); tests hand in their own.
+  licenseApi = null,
   // Ollama detection; tests hand in a fake probe. PULSE_OLLAMA=0 leaves Ollama alone entirely.
   ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
 }) {
@@ -376,6 +380,7 @@ export async function createPulseServer({
   // says so once, the next time a page asks (market/updates.json).
   const marketOn = () => process.env.PULSE_MARKET !== '0' && updatesEnabled();
   const marketKeyed = marketKey ? { publicKey: marketKey } : {};
+  const licenseKeyed = licenseApi ? { api: licenseApi } : {};
   const marketTools = () => ({ stateRoot: root, projectRoot: canonicalProjectRoot, madre: PACKAGE.version, fetchImpl: marketFetch, verifyText: verifyModuleText, installText: installModuleText });
   let marketSync = null;
   const syncMarket = ({ force = false } = {}) => {
@@ -1346,7 +1351,8 @@ export async function createPulseServer({
       void (async () => {
         const ctx = await moduleContext();
         for (const module of listening) {
-          const settings = module.settingsFrom(ctx.config);
+          // This project's word on the module, not only the one for every project (module-scope.mjs).
+          const settings = module.settingsFrom(ctx.config, ctx.roomId);
           if (module.kind === 'builtin' && !settings.enabled) continue;
           await Promise.resolve(module.onEvent({ ...ctx, settings, room: target, chat: id, record: (type, payload) => target.record(type, payload) }, event))
             .catch((error) => console.error(`MADRE module ${module.id}: onEvent failed: ${error.message}`));
@@ -1694,6 +1700,22 @@ export async function createPulseServer({
         },
         // What a card knows about being up to date. Reading is free: it answers from the day's
         // cache. The button on a card is what forces a look outside.
+        // The project's history over a period, in the shape docs/SDK.md promises (src/history.mjs):
+        // every conversation's ledger and the memory's decisions, read on demand and never written.
+        history: async ({ since = null, until = null } = {}) => {
+          const chats = [];
+          for (const chat of (await listChats(roomDir)).chats) {
+            const text = await readFile(chatLedger(roomDir, chat.id), 'utf8').catch(() => '');
+            const events = [];
+            for (const line of text.split('\n')) {
+              if (!line) continue;
+              try { events.push(JSON.parse(line)); } catch { /* a torn last line */ }
+            }
+            chats.push({ id: chat.id, title: chat.title ?? null, events });
+          }
+          const memories = memory?.memories?.({ kind: 'decision', limit: 1000 }) ?? [];
+          return { project: basename(canonicalProjectRoot), ...summarizeHistory({ chats, memories, since, until }) };
+        },
         moduleUpdate: (item, { force = false, cacheOnly = !force } = {}) => moduleUpdate(item, {
           stateRoot: root, madre: { name: PACKAGE.name, version: PACKAGE.version },
           fetchImpl: reportFetch, enabled: updatesEnabled(), force, cacheOnly,
@@ -3886,7 +3908,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/commands') {
         const ctx = await moduleContext();
         const fromModules = await Promise.all(moduleCommands().map(async (command) => {
-          const settings = command.module.settingsFrom(ctx.config);
+          const settings = command.module.settingsFrom(ctx.config, ctx.roomId);
           const on = command.module.kind !== 'builtin' || Boolean(settings.enabled);
           let available = on;
           if (on && command.available) { try { available = Boolean(await command.available({ ...ctx, settings })); } catch { available = false; } }
@@ -3908,12 +3930,18 @@ export async function createPulseServer({
           const own = moduleCommands().find((item) => item.name === parsed.name);
           if (!own) return sendJson(response, 404, { error: `Unknown command /${parsed.name}.` });
           const ctx = await moduleContext();
-          const settings = own.module.settingsFrom(ctx.config);
+          // Turned on only in this project is on here (2026-10-19): read without the project, a
+          // module switched on from its project's Market never had its command.
+          const settings = own.module.settingsFrom(ctx.config, ctx.roomId);
           if (own.module.kind === 'builtin' && !settings.enabled) return sendJson(response, 412, { error: `/${parsed.name} belongs to ${own.module.name}, which is off. Enable it in MODULES.` });
           if (own.available && !(await own.available({ ...ctx, settings }).catch(() => false))) return sendJson(response, 412, { error: `/${parsed.name} is not available here (${own.title}).` });
           try {
             const answer = await own.execute({ ...ctx, settings }, parsed.args);
             result = { ok: answer?.ok !== false, title: answer?.title ?? own.title, text: String(answer?.text ?? '') };
+            // A page of the module's own (a report to print, say): the card offers it as a key. Only
+            // its own routes, /api/x/<id>/, on this room; never an address elsewhere.
+            const href = typeof answer?.link?.href === 'string' ? answer.link.href : '';
+            if (href.startsWith(`/api/x/${own.module.id}/`) && !/[\s"'<>\\]/.test(href) && href.length <= 400) result.link = { href, label: String(answer.link.label ?? '').slice(0, 80) || own.title };
           } catch (error) { result = { ok: false, title: own.title, text: `/${parsed.name} failed: ${error.message}` }; }
           command = own;
         }
@@ -3932,7 +3960,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/market') {
         const kept = await keptCatalog({ stateRoot: root, ...marketKeyed });
         const read = kept ? (void syncMarket().catch(() => null), { catalog: kept }) : await syncMarket().catch(() => ({ catalog: null }));
-        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
+        return sendJson(response, 200, { catalog: read.catalog ?? null, off: !marketOn(), installed: await installedFromMarket(root), licensed: await licensedIds(root), news: await marketNews(root), announce: await marketAnnouncements(root, read.catalog, MODULES.map((one) => one.id)), madre: PACKAGE.version });
       }
       if (request.method === 'POST' && url.pathname === '/api/market/seen') {
         await marketNewsSeen(root);
@@ -3959,6 +3987,26 @@ export async function createPulseServer({
             await fetch(`http://127.0.0.1:${one.open.port}/api/extensions/reload`, { method: 'POST' }).catch(() => null);
           }
           return sendJson(response, 200, { installed: done, extensions: await describeModules(await moduleContext()) });
+        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+      }
+      // A paid module's license (src/market-license.mjs): checked once with Lemon Squeezy when the
+      // person activates it, kept here, and given back when they release it. Only from this Mac.
+      if (request.method === 'POST' && (url.pathname === '/api/market/license' || url.pathname === '/api/market/license/release')) {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const id = String(payload.id ?? '');
+        try {
+          if (url.pathname === '/api/market/license/release') {
+            await releaseLicense({ stateRoot: root, id, fetchImpl: marketFetch, ...licenseKeyed });
+            await room.record('market.license.released', { id });
+            return sendJson(response, 200, { released: id, licensed: await licensedIds(root) });
+          }
+          const catalog = (await keptCatalog({ stateRoot: root, ...marketKeyed })) ?? (await syncMarket({ force: true }).catch(() => ({}))).catalog;
+          const entry = catalog?.modules.find((one) => one.id === id);
+          if (!entry) return sendJson(response, 404, { error: t('The Market has no module «{id}» to install.', { id }) });
+          const done = await activateLicense({ stateRoot: root, entry, key: payload.key, installId: await installId(root), fetchImpl: marketFetch, ...licenseKeyed });
+          await room.record('market.license.activated', { id });
+          return sendJson(response, 200, { activated: done.id, licensed: await licensedIds(root) });
         } catch (error) { return sendJson(response, 422, { error: error.message }); }
       }
       // Home's view of which projects each module is on in (module-scope.mjs), and where the
