@@ -86,6 +86,7 @@ import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
 import { observable } from './modules/intents-observe.mjs';
 import { summarizeHistory } from './history.mjs';
+import { noteOpenCodeTurn, openCodeHealth, suggestOpenCodeModel } from './opencode-health.mjs';
 import { normalizeMode, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
@@ -381,6 +382,8 @@ export async function createPulseServer({
   const marketOn = () => process.env.PULSE_MARKET !== '0' && updatesEnabled();
   const marketKeyed = marketKey ? { publicKey: marketKey } : {};
   const licenseKeyed = licenseApi ? { api: licenseApi } : {};
+  // OpenCode's own free models, as its CLI lists them, read again at most every ten minutes.
+  const openCodeOwn = { names: null, at: 0 };
   const marketTools = () => ({ stateRoot: root, projectRoot: canonicalProjectRoot, madre: PACKAGE.version, fetchImpl: marketFetch, verifyText: verifyModuleText, installText: installModuleText });
   let marketSync = null;
   const syncMarket = ({ force = false } = {}) => {
@@ -1346,6 +1349,10 @@ export async function createPulseServer({
   // event is its own business and never holds up the room: a failure is logged and dropped.
   function wireModules(target, id) {
     return target.subscribe((event) => {
+      // What OpenCode answered with, and what failed for which provider (src/opencode-health.mjs):
+      // the next failure offers a model that works instead of a sentence in English.
+      if (event.type === 'agent.completed' && event.payload?.agent === 'opencode') void noteOpenCodeTurn(root, { ok: true, model: event.payload.ranOn ?? null }).catch(() => null);
+      if (event.type === 'message.failed' && event.payload?.target === 'opencode') void noteOpenCodeTurn(root, { ok: false, model: event.payload.ranOn ?? null, error: event.payload.error }).catch(() => null);
       const listening = MODULES.filter((module) => typeof module.onEvent === 'function');
       if (!listening.length) return;
       void (async () => {
@@ -3813,7 +3820,26 @@ export async function createPulseServer({
           const via = own ? 'own' : signed.get(id) ?? null;
           return { id, label: known?.label ?? providerLabel(id), keyUrl: known?.keyUrl ?? null, takesKey: Boolean(known), featured: Boolean(known?.featured), via, models: groups.get(id)?.models ?? [], hidden: hidden.has(id) };
         }).sort((a, b) => Number(Boolean(b.via)) - Number(Boolean(a.via)) || Number(a.via === 'own') - Number(b.via === 'own') || a.label.localeCompare(b.label));
+        // A provider whose last turn was refused (no credit, a dead key) says so beside its name.
+        const { problems } = await openCodeHealth(root);
+        for (const provider of providers) provider.problem = problems[provider.id]?.kind ?? null;
         return sendJson(response, 200, { providers, default: process.env.PULSE_OPENCODE_MODEL ?? null });
+      }
+      // What to offer when an OpenCode turn failed on its provider: the model that answered last, or
+      // one of OpenCode's own free models (src/opencode-health.mjs). Its own models are asked of the
+      // CLI at most every ten minutes.
+      if (request.method === 'GET' && url.pathname === '/api/agents/opencode/suggest') {
+        const opencode = agents.find((agent) => agent.id === 'opencode');
+        if (!opencode?.detected) return sendJson(response, 404, { error: t('OpenCode is not installed.') });
+        if (!openCodeOwn.names || Date.now() - openCodeOwn.at > 600000) {
+          const names = [];
+          await runInstaller({ command: opencode.path, args: ['models', OPENCODE_OWN], projectRoot: canonicalProjectRoot, timeoutMs: 20000, onLine: (line) => { if (/^opencode\/[\w.:-]+$/.test(line.trim())) names.push(line.trim()); } }).catch(() => null);
+          openCodeOwn.names = names;
+          openCodeOwn.at = Date.now();
+        }
+        const health = await openCodeHealth(root);
+        const failed = url.searchParams.get('failed') || process.env.PULSE_OPENCODE_MODEL || null;
+        return sendJson(response, 200, { suggestion: suggestOpenCodeModel(health, { failed, own: openCodeOwn.names }), default: process.env.PULSE_OPENCODE_MODEL ?? null, problems: health.problems });
       }
       // A provider's key out of OpenCode, from this computer only, the same rule as putting one in.
       if (request.method === 'POST' && url.pathname === '/api/agents/opencode/providers/remove') {

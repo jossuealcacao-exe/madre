@@ -164,6 +164,29 @@ export const CONDITIONS = [
     },
   },
   {
+    // Seen in a real project (2026-10-19): OpenCode's default model was Anthropic's, through an API
+    // key with no balance, and every turn of a plan failed with the provider's words in English.
+    id: 'provider-credit-exhausted',
+    code: 'MU-059',
+    severity: 'blocking',
+    title: 'The API account behind this agent has no credit left',
+    match: /credit balance is too low|purchase credits|insufficient_quota|exceeded your current quota|billing_hard_limit_reached/i,
+    diagnosis: 'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.',
+    remedy: 'Top up that API account, or give OpenCode a model whose provider has a session that works: your ChatGPT account (openai/…), GitHub Copilot, or OpenCode\'s own free models (opencode/…). Change the default in Settings › Agents › OpenCode, or pick another model in the Write box for one turn.',
+    fixes: same(['# Anthropic API: https://console.anthropic.com/settings/billing', '# OpenAI API: https://platform.openai.com/settings/organization/billing', '# OpenCode, one turn on its own free model:', 'PULSE_OPENCODE_MODEL=opencode/big-pickle madre start', '# or take the key with no balance out of OpenCode:', 'opencode auth logout anthropic']),
+  },
+  {
+    id: 'cursor-usage-limit',
+    code: 'MU-060',
+    agent: 'cursor',
+    severity: 'blocking',
+    title: 'Cursor\'s plan has reached its usage limit',
+    match: /hit your usage limit|ActionRequiredError/i,
+    diagnosis: 'Your Cursor account has used up the agent usage its plan gives for this period, and Cursor refuses every turn until it renews or the plan changes. It is Cursor\'s limit, not MADRE\'s: nothing in the project is wrong.',
+    remedy: 'Wait for the usage to renew, change the Cursor plan, or ask another agent in the meantime.',
+    fixes: same(['# plan and usage: https://cursor.com/dashboard', 'cursor-agent status']),
+  },
+  {
     id: 'not-signed-in',
     code: 'MU-008',
     solvedIn: 'connections',

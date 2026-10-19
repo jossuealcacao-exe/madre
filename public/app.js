@@ -5587,7 +5587,7 @@ function renderHandoff(event) {
   node.append(' → ');
   node.append(el('b', 'to', `@${toAgent}`));
   node.append(messageCount > 0
-    ? t(' · {n} messages carried', { n: messageCount }) + (omittedMessages ? t(' · {n} older stay in the record', { n: omittedMessages }) : '')
+    ? (messageCount === 1 ? t(' · {n} message carried', { n: messageCount }) : t(' · {n} messages carried', { n: messageCount })) + (omittedMessages ? (omittedMessages === 1 ? t(' · {n} older stays in the record', { n: omittedMessages }) : t(' · {n} older stay in the record', { n: omittedMessages })) : '')
     : t(' · no prior context'));
   // A step of a plan says so; the kind is a word of the record, never shown as it is written.
   if (kind === 'delegated') node.append(t(' · delegated'));
@@ -6206,6 +6206,7 @@ function renderChoice(event) {
     const lead = index === pick;
     const button = el('button', `choice-option${lead ? ' recommended' : ''}`);
     button.type = 'button';
+    button.dataset.option = option;
     button.append(el('span', 'choice-key', String(position + 1)), el('span', 'choice-text', option));
     // The permission this option needs, said before it is pressed. Pressing it arms that mode the
     // way the mode chip does: #1 and #2 at once, #3 and #4 through their own ceremony.
@@ -6248,6 +6249,23 @@ function renderChoice(event) {
   node.append(list, el('p', 'choice-foot', t('Pressing one sends it to @{agent} · #3 and #4 ask you to confirm first', { agent })));
   state.lastSender = null;
   return node;
+}
+
+// What the human answered a decision with, kept in the history (2026-10-19): the next thing they
+// say after the card answers it. An option sent as it was is marked as theirs; anything else
+// they wrote still closes the card, with no option marked. Read from the ledger as it is
+// replayed, so the mark is there again after a reload or in another tab.
+function markChoiceAnswered(text) {
+  const card = [...els.column.querySelectorAll('.choice:not(.run-request):not(.answered)')].at(-1);
+  if (!card) return;
+  card.classList.add('answered');
+  const said = String(text ?? '').trim();
+  const chosen = [...card.querySelectorAll('.choice-option')].find((button) => button.dataset.option?.trim() === said);
+  if (!chosen) return;
+  for (const other of card.querySelectorAll('.choice-option.picked')) other.classList.remove('picked');
+  chosen.classList.add('chosen');
+  const tags = chosen.querySelector('.choice-tags') ?? chosen.appendChild(el('span', 'choice-tags'));
+  tags.prepend(el('span', 'choice-tag chosen-tag', t('YOUR CHOICE')));
 }
 
 // An agent asked the human to run commands it cannot run in its mode. One button per line; the
@@ -6723,8 +6741,18 @@ function renderBishopAsk(event) {
   return node;
 }
 
+// What the room says to inform, not to alarm (2026-10-19): a plan still running, or EDIT held by
+// another agent, is how the room works, not a runaway. Said as a plain notice of Diagnostics: no
+// red, no capitals, and the brake is not armed for it (a plan has its own stop on its card).
+const CALM_ALERTS = new Set(['plan-active', 'control-busy']);
 function renderAlert(event) {
-  const { message } = event.payload;
+  const { message, code } = event.payload;
+  if (CALM_ALERTS.has(code)) {
+    const node = el('div', 'system');
+    node.append(el('b', null, t('Diagnostics › ')), resay(message.replace(/\s*Type STOPALL[^.]*\.?$/i, '').replace(/\s*STOPALL (halts|if)[^.]*\.?$/i, '')));
+    state.lastSender = null;
+    return node;
+  }
   if (!replaying) { state.brakeArmed = true; updateStopAll(); }
   const node = el('div', 'system alert');
   node.append(el('b', null, t('Diagnostics › ')));
@@ -6865,6 +6893,13 @@ function renderFailure(event) {
   const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
   node.append(el('span', 'label', recovered ? t('{label} · turn recovered after restart', { label: label(target) }) : t('{label} could not answer', { label: label(target) })));
   node.append(resay(error));
+  // What the CLI printed stays as it printed it (resay.js), and when MADRE knows that failure the
+  // card says, in the room's language, what it is and what to do (troubleshooting.js): a provider's
+  // English sentence alone left the person guessing whether MADRE was broken (2026-10-19).
+  const known = recovered ? null : diagnose(error, target).find((condition) => condition.severity === 'blocking');
+  if (known) node.append(el('div', 'fail-known', `${known.title}. ${known.remedy}`));
+  // OpenCode's provider refused (no credit, a dead key): the way out in one press, not in Settings.
+  if (known && target === 'opencode' && OPENCODE_WAY_OUT.has(known.id) && state.agents.has('opencode')) node.append(openCodeWayOut({ messageId, failed: event.payload.ranOn ?? null }));
   // What the turn left before it was cut short, listed like any turn's and with its way back.
   if (partial) node.append(partialWork(partial));
   // Cut by the clock: one press raises this agent's limit and puts the request back in the box,
@@ -6901,6 +6936,58 @@ function partialWork(partial) {
   });
   wrap.append(undo);
   return wrap;
+}
+
+// THE WAY OUT OF A PROVIDER THAT REFUSED (2026-10-19). OpenCode sends a turn to the provider of
+// its model; when that provider has no credit left or the key is dead, the card offers a model
+// that works on this computer (src/opencode-health.mjs: the one that answered last, or one of
+// OpenCode's own free models) with two keys: send the same request again on it, or keep it as
+// OpenCode's default. Nothing changes on its own: the person sees which model and presses.
+const OPENCODE_WAY_OUT = new Set(['provider-credit-exhausted', 'opencode-default-provider']);
+let openCodeSuggest = null;
+function openCodeWayOut({ messageId, failed }) {
+  const box = el('div', 'fail-actions');
+  openCodeSuggest ??= fetch(`/api/agents/opencode/suggest${failed ? `?failed=${encodeURIComponent(failed)}` : ''}`).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  void openCodeSuggest.then((answer) => {
+    openCodeSuggest = null;
+    const offer = answer?.suggestion;
+    if (!offer?.model) return;
+    const retry = el('button', 'retry-longer', t('RETRY ON {model}', { model: offer.model }));
+    retry.type = 'button';
+    retry.addEventListener('click', () => {
+      retry.disabled = true;
+      const asked = state.userMessages.get(messageId);
+      rememberModel('opencode', offer.model);
+      if (els.target.value !== 'opencode') els.target.value = 'opencode';
+      renderPicker();
+      els.input.value = asked?.text ?? '';
+      autosize();
+      // CHAT and CREATE go at once; EDIT and FULL ACCESS ask for their keys again, from the chip.
+      if ((asked?.mode ?? 1) >= 3) {
+        toast(t('Diagnostics › #{n} needs you to confirm again: choose it in the mode selector before sending.', { n: asked.mode }));
+        els.input.focus();
+        retry.textContent = t('IN THE BOX · SEND IT WHEN READY');
+        return;
+      }
+      if ((asked?.mode ?? 1) === 2) setMode(2);
+      if (els.input.value.trim()) els.composer.requestSubmit(); else els.input.focus();
+      retry.textContent = t('SENT ON {model}', { model: offer.model });
+    });
+    const always = el('button', 'retry-longer quiet', t('USE IT ALWAYS'));
+    always.type = 'button';
+    always.title = t('OpenCode\'s default model becomes {model}, in every project.', { model: offer.model });
+    always.addEventListener('click', async () => {
+      always.disabled = true;
+      try { await saveSettingNow({ opencode: { model: offer.model } }, t('OpenCode answers on {model} from now on.', { model: offer.model })); }
+      catch (error) { toast(t('The setting was not saved: {error}', { error: error.message })); always.disabled = false; return; }
+      // A model picked on the chip would still win over the default: the chip follows it.
+      rememberModel('opencode', null);
+      renderPicker();
+      always.textContent = t('DEFAULT · {model}', { model: offer.model });
+    });
+    box.append(retry, always, el('span', 'fail-why', offer.why === 'worked' ? t('It answered on this computer last time.') : t('One of OpenCode\'s own free models: no account needed.')));
+  });
+  return box;
 }
 
 function retryLonger({ messageId, target, timeout, partial }) {
@@ -7064,6 +7151,7 @@ function renderEventNode(event) {
       return;
     case 'message.created':
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
+      if (event.payload.role === 'user' && event.payload.sender === 'you') markChoiceAnswered(event.payload.text);
       if (event.payload.role !== 'user') attachCrossReads(event.payload.messageId, node);
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
       // The first thing said names a conversation; the tab and the list learn the name from the room.
@@ -17753,6 +17841,8 @@ function drawOpenCodeSettings(host, s) {
 }
 // One line per provider OpenCode can answer through: its name and how it is connected, its
 // switch for the chat, and the way its key comes out (an account is signed out in OpenCode).
+// What went wrong with a provider the last time a turn used it (src/opencode-health.mjs).
+const openCodeTrouble = (provider) => (provider.problem === 'no-credit' ? t('No credit left: its turns are refused') : provider.problem === 'bad-key' ? t('Its key is no longer valid') : null);
 function openCodeProviderRow(provider, reload, hidden) {
   const row = el('div', 'oc-provider');
   const words = el('div', 'sx-words');
@@ -17761,7 +17851,8 @@ function openCodeProviderRow(provider, reload, hidden) {
       : provider.via === 'oauth' ? t('Connected with its account · {n} models', { n: provider.models.length })
         : t('Connected · {n} models', { n: provider.models.length });
   words.append(el('b', null, provider.label), el('span', 'sx-hint', status));
-  if (provider.via === 'oauth') words.lastChild.title = t('Signed in with its account from OpenCode. To sign it out, run `opencode auth logout` in a terminal.');
+  if (openCodeTrouble(provider)) words.append(el('span', 'oc-problem', openCodeTrouble(provider)));
+  if (provider.via === 'oauth') words.querySelector('.sx-hint').title = t('Signed in with its account from OpenCode. To sign it out, run `opencode auth logout` in a terminal.');
   row.append(words);
   const controls = el('div', 'oc-controls');
   if (provider.via === 'api') {

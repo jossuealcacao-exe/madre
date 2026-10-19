@@ -3740,6 +3740,9 @@ const openCodeProviders = (() => {
           : provider.via === 'oauth' ? t('Connected with its account · {n} models', { n: provider.models.length })
             : t('Connected · {n} models', { n: provider.models.length });
       words.append(el('b', null, provider.label), el('small', 'sm-agent-note', status));
+      // What went wrong with it the last time a turn used it (src/opencode-health.mjs).
+      const trouble = provider.problem === 'no-credit' ? t('No credit left: its turns are refused') : provider.problem === 'bad-key' ? t('Its key is no longer valid') : null;
+      if (trouble) words.append(el('small', 'oc-problem', trouble));
       const controls = el('span', 'sm-oc-controls');
       if (provider.via === 'api') {
         const remove = button('sm-btn ghost small', t('Remove the key'), async () => {

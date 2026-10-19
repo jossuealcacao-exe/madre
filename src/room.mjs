@@ -1981,7 +1981,10 @@ export class Room {
       await this.#recordUsage(agent.id, result.usage, { messageId, responseMessageId });
       await this.#recordCost(agent.id, responseMessageId, result.usage, turnMode);
       this.#liveTurns.delete(responseMessageId);
-      await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId });
+      // Which model the turn ran on, when the room knows it (the one asked for, or the agent's
+      // default): what answered is what MADRE can offer again when another model fails.
+      const ranOn = await this.#pricedModel(agent.id, model).catch(() => null);
+      await this.#emit('agent.completed', { messageId, agent: agent.id, handoffId, planId, ...(ranOn ? { ranOn } : {}) });
       return { responseMessageId, directives };
     } catch (error) {
       if (responseMessageId) this.#liveTurns.delete(responseMessageId);
@@ -2014,8 +2017,10 @@ export class Room {
         }
       }
       const cutByClock = ['TIMEOUT', 'IDLE'].includes(error?.code);
+      const failedOn = await this.#pricedModel(agent.id, model).catch(() => null);
       await this.#emit('message.failed', {
         messageId, target: agent.id, planId,
+        ...(failedOn ? { ranOn: failedOn } : {}),
         error: this.#privacy ? this.#privacy.redact(plain).text : plain,
         ...(this.#turns.get(messageId)?.stoppedByHuman ? { stopped: true } : {}),
         ...(cutByClock ? { timeout: { ms: this.timeoutFor(agent.id, { writing: Boolean(lease) }), writing: Boolean(lease), idle: error.code === 'IDLE' } } : {}),

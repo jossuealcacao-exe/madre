@@ -8296,6 +8296,14 @@ dialog#core .mother-cmd .copy { position: absolute; top: 8px; right: 8px; displa
   box-shadow: 0 0 0 .5px color-mix(in srgb, var(--danger) 30%, transparent) !important;
 }
 #messages#messages .thread-inner > .system.fail .label { font-family: var(--mono); letter-spacing: .14em; }
+/* What MADRE knows about that failure, in the room's language, under what the CLI printed. */
+.system.fail .fail-known { margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--danger) 22%, transparent); color: var(--text); font-family: var(--sans, inherit); font-size: 12.5px; line-height: 1.45; text-transform: none; letter-spacing: 0; }
+/* The way out of a provider that refused: a model that works, sent again or kept (app.js, openCodeWayOut). */
+.system.fail .fail-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; margin-top: 10px; }
+.system.fail .fail-actions:empty { display: none; }
+.system.fail .fail-actions .retry-longer { display: inline-block; margin: 0; }
+.system.fail .fail-actions .retry-longer.quiet { border-color: var(--line-2); background: transparent; color: var(--text-2); }
+.system.fail .fail-actions .fail-why { flex-basis: 100%; color: var(--text-3); font-family: var(--sans, inherit); font-size: 11.5px; letter-spacing: 0; text-transform: none; }
 
 /* ==========================================================================================
    NOTICES THAT FOLD INTO DOTS (2026-10-14)
@@ -9334,6 +9342,13 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 :root:not([data-lab10]) #messages#messages .choice:not(.run-request) .choice-tag { padding: 3px 9px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--agent, var(--phosphor)) 13%, transparent); color: color-mix(in srgb, var(--agent, var(--phosphor)) 85%, var(--text)); font: 500 11.5px var(--read); letter-spacing: 0; text-transform: lowercase; }
 :root:not([data-lab10]) #messages#messages .choice:not(.run-request) .choice-tag::first-letter { text-transform: uppercase; }
 :root:not([data-lab10]) #messages#messages .choice:not(.run-request) .choice-foot { margin-top: 12px; font: 400 12px/1.5 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+:root:not([data-lab10]) #messages#messages .choice:not(.run-request) .choice-tag.chosen-tag { background: var(--agent, var(--phosphor)); color: var(--agent-on, var(--bg)); font-weight: 600; }
+/* Answered (2026-10-19): the option the human sent stays marked in the history, and the rest step
+   back; still pressable, to change one's mind. */
+:root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request) .choice-option.chosen { background: color-mix(in srgb, var(--agent, var(--phosphor)) 12%, transparent); box-shadow: inset 3px 0 0 var(--agent, var(--phosphor)); }
+:root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request) .choice-option.chosen .choice-key { background: var(--agent, var(--phosphor)); color: var(--agent-on, var(--bg)); }
+:root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request):has(.chosen) .choice-option:not(.chosen) { opacity: .55; }
+:root:not([data-lab10]) #messages#messages .choice.answered:not(.run-request):has(.chosen) .choice-option:not(.chosen):is(:hover, :focus-visible) { opacity: 1; }
 
 /* 11 · Permiso: en una línea, como Claude Code: qué pide y por cuánto, los botones a la derecha, y
    debajo, en letra secundaria, cómo se confirma. */
@@ -10233,3 +10248,15 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
    that says whether the project is live. Now the name gives way, with its «…», and the dot never does. */
 .bar > .bar-left > #project:not(.chat-here) { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .bar > .bar-left > .connection { flex: none; }
+
+/* STOP ALL wears the bar's own key (2026-10-19): the same shape, glass and size as CODE or MODULES,
+   instead of a red outlined pill of its own. At rest it is a quiet key that cannot be pressed;
+   armed, its square turns red on a red tint, steady, and fills red under the pointer. */
+:root .shell .bar > #stop-all:disabled:not(.armed) { opacity: .5; cursor: default; }
+:root .shell .bar > #stop-all:disabled:not(.armed):hover { color: inherit; box-shadow: inherit; }
+:root .shell .bar > #stop-all.armed { opacity: 1; color: var(--terror); background-color: color-mix(in srgb, var(--terror) 14%, var(--surface)) !important; animation: none; text-shadow: none; }
+:root .shell .bar > #stop-all.armed:hover, :root .shell .bar > #stop-all.armed:focus-visible { color: #fff; background-color: var(--terror) !important; }
+:root[data-scheme="light"] .shell .bar > #stop-all.armed { color: #c01a12; }
+:root[data-scheme="light"] .shell .bar > #stop-all.armed:hover { color: #fff; }
+/* A provider OpenCode could not answer through last time (Settings › Agents › OpenCode). */
+.oc-problem { display: block; color: var(--danger, #d93025); font-size: 12px; font-weight: 600; }

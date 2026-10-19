@@ -32,6 +32,7 @@ const SAID = [
   '{label} was interrupted before it started: {why}.',
   '{label} was interrupted: {why}.',
   '{label} did not respond before the timeout ({seconds}s).',
+  '{label} exited with code {code}.',
   ' Last output: {output}',
   'MADRE is shutting down',
   'STOPALL by the human',
