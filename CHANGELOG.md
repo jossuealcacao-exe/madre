@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.0.4 · Sin publicar
+## 1.0.5 · Sin publicar
+
+## 1.0.4 · 2026-10-19
 
 - **Cursor en la bienvenida.** La animación de «Conecta tus agentes» mostraba cuatro agentes alrededor de MADRE; ahora Cursor está arriba, y se enciende al conectarse como los demás.
 - **Los servidores de tu proyecto se abren aunque escuchen en toda la red.** Node, Express y Vite con `--host` escuchan en todas las interfaces de tu computadora, y la vista previa los nombraba («está abierto a toda la red · inícialo en 127.0.0.1») sin dejar abrirlos. Ahora se abren igual, dentro de tu computadora, y la lista avisa «tu red también lo alcanza». Los servidores de otras carpetas siguen sin mostrarse.

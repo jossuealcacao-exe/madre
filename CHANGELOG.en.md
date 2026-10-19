@@ -4,7 +4,9 @@ Every published version of `@jossuealcala/madre`. Dates in ISO format.
 
 A version closes when it is on npm: until then its section is called **Unreleased** and it can keep growing. Each published version has exactly one `vX.Y.Z` tag, one GitHub release and one section here; the patch number can reach two digits (`0.2.10`) before the minor goes up. See `docs/ROADMAP.md` for the criteria on what bumps each number. This is the English translation of [CHANGELOG.md](CHANGELOG.md); the Spanish file is the original.
 
-## 1.0.4 · Unreleased
+## 1.0.5 · Unreleased
+
+## 1.0.4 · 2026-10-19
 
 - **Cursor in the welcome.** The «Connect your agents» animation showed four agents around MADRE; now Cursor sits above her, and lights up when connected like the rest.
 - **Your project's servers open even when they listen on the whole network.** Node, Express and Vite with `--host` listen on every interface of your computer, and the preview named them («open to your whole network · start it on 127.0.0.1») without letting you open them. Now they open the same way, inside your computer, and the list says «your network can reach it too». Servers from other folders are still not shown.
