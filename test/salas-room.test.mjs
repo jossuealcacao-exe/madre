@@ -170,9 +170,10 @@ test('sala de salas · the room says it is the room of Salas, is listed with the
     assert.equal((await fetch(`http://127.0.0.1:${plainPort}/api/salas/open`, { headers: { 'sec-fetch-site': 'cross-site' } })).status, 403, 'another site read the open rooms');
     assert.equal((await fetch(`http://127.0.0.1:${plainPort}/api/salas/open`, { headers: { 'x-madre-device': 'd1', 'x-madre-device-kind': 'iphone' } })).status, 403, 'a phone read the open rooms');
     // Opening the room left in the notebook only what a room leaves in any project, MU/TH/UR's
-    // seal (S-023); the record and the memory live beside the record, as for any room.
+    // seal (S-023) and the line that keeps it out of git; the record and the memory live beside the
+    // record, as for any room.
     assert.deepEqual(await readdir(notebook), ['.pulse']);
-    assert.deepEqual(await readdir(join(notebook, '.pulse')), ['mother.env']);
+    assert.deepEqual((await readdir(join(notebook, '.pulse'))).sort(), ['.gitignore', 'mother.env']);
   } finally {
     await close(salas.server);
     await close(plain.server);

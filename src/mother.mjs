@@ -10,7 +10,7 @@
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 
 export const CODE000_LOCK_MS = 10 * 60 * 1000;
 export const CODE000_STRIKES = 8;
@@ -96,6 +96,8 @@ export class MotherChannel {
         return { n: Number(key.slice('MOTHER_ALERT_'.length)), at, kind, code: code.join('|') };
       }).sort((a, b) => a.n - b.n);
       if (!known) this.#meta?.set('mother_seal', fingerprint(this.#seal));
+      // A seal born on an older MADRE had no line keeping it out of git: it gets one on opening.
+      await this.#ignoredByGit();
     } else if (known) {
       // She existed and now her seal is gone or wrong.
       outcome = env ? 'altered' : 'deleted';
@@ -119,8 +121,16 @@ export class MotherChannel {
     this.#meta?.set('mother_seal', fingerprint(this.#seal));
   }
 
+  // The seal lives in the person's repository: `.pulse/` ignores itself, so a `git add .` never
+  // carries it (nor the turns' drafts beside it) to a commit or a public remote (2026-10-19).
+  // Written once and never over one the person changed.
+  async #ignoredByGit() {
+    await writeFile(join(dirname(this.#file), '.gitignore'), '*\n', { flag: 'wx' }).catch(() => {});
+  }
+
   async save() {
     await mkdir(dirname(this.#file), { recursive: true });
+    await this.#ignoredByGit();
     const lines = [
       '# MU/TH/UR 6000 · PRIVATE CHANNEL TO THE CREW · DO NOT EDIT, DO NOT DELETE',
       '# Deleting this file silences MOTHER\'s past messages and she will know.',

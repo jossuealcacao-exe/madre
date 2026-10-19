@@ -494,4 +494,26 @@ test('1.0.2: what is new is said with first-time cards, one at a time, with no w
   assert.match(app, /\{ id: 'new-dots', button: '#messages \.sys-dots:not\(\.open\)', onScreen: true,/);
   assert.match(app, /if \(!next\) \{ if \(pending\.length && \(newHintTries \+= 1\) <= 10\) showNewHints\(30000\); return; \}/);
   assert.match(home, /homeTour\.hint\('new-add-widgets', key, /);
+  // News only to whoever had the version before (2026-10-19): someone new got five «New:» cards.
+  assert.match(app, /if \(roomTour\(\)\.path\(\) !== 'new'\) showNewHints\(\);/);
+  assert.match(home, /if \(homeTour\.path\(\) === 'new'\) return;/);
+});
+
+test('every hint the pages ask for is one the server keeps: a refused id came back on every visit', async () => {
+  const { HINTS } = await import('../src/tour.mjs');
+  const pages = await Promise.all(['app.js', 'salas-mac.js', 'tour.js'].map(read));
+  const asked = new Set(pages.flatMap((page) => [...page.matchAll(/\.hint\('([\w-]+)'/g)].map((match) => match[1])));
+  assert.ok(asked.has('new-add-widgets'));
+  for (const id of asked) assert.ok(HINTS.includes(id), `${id} is shown but never kept as seen`);
+  // A project's own cards, its news and its first touches, are the person's too, not the port's: a
+  // project opens on the first free port, and they came back with every new one (2026-10-19).
+  const [app] = pages;
+  const news = [...app.slice(app.indexOf('const NEW_HINTS = ['), app.indexOf('let newHintTries')).matchAll(/\{ id: '([\w-]+)'/g)].map((match) => match[1]);
+  const touches = [...app.slice(app.indexOf('const FIRST_TOUCH = {'), app.indexOf('const HINTS_KEY')).matchAll(/^ {2}([a-z]+): \{$/gm)].map((match) => `touch-${match[1]}`);
+  assert.equal(news.length, 5);
+  assert.ok(touches.length >= 9);
+  for (const id of [...news, ...touches]) assert.ok(HINTS.includes(id), `${id} is kept only by the page, on one port`);
+  assert.match(app, /if \(!state\.device\) void roomTour\(\)\.seen\(keptId\(id\)\)/);
+  // The board of a version is seen when it shows: left open at a shutdown, it came back.
+  assert.match(app, /dialog\.showModal\(\);\n {4}if \(!news\.preview\) void fetch\('\/api\/whats-new\/seen'/);
 });

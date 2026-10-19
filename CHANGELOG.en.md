@@ -6,6 +6,14 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.5 · Unreleased
 
+- **@madre no longer makes things up in a new project.** In a project with no memory, @madre described files and features that did not exist and cited your own question as its source. Now, when there is nothing to cite, it says the room has not discussed it yet and suggests which agent to ask to read the code. This answer does not use the model and costs no tokens.
+- **OpenCode works without an account.** OpenCode comes with free models of its own, but MADRE marked it «Signed out» and would not let you write to it. Now it shows as ready from the start, with the note «OpenCode's own free models, no account».
+- **Your repository no longer takes MADRE's seal.** The `.pulse/` folder MADRE creates in your project holds MU/TH/UR's seal, and a `git add .` could push it to your repository. Now that folder comes with its own `.gitignore`, and the projects you already had get it the next time you open them.
+- **The agents in Settings unfold where you click.** In Home › Settings › Agents, opening an agent moved the whole window and the card slid out from under the pointer. The list was also rebuilt every 2.5 seconds, and a click was sometimes lost. Now the window stays put, the agent you open shows in full, and the list only redraws when something changes. Home's project cards too: the «Open» button no longer changes while you press it.
+- **No old news for first-time users.** Someone installing MADRE for the first time no longer gets five «New:» cards in a row about 1.0.2 features, or notices stacked on top of each other. Also, «New: add widgets» came back every time you opened Home; now it closes for good.
+- **Each news card shows only once.** The «New:» cards and each project's «first time» cards (Settings, Modules, Memory…) only remembered that you had seen them on that port. Since a project opens on the first free port, they came back whenever it got another one. Now MADRE remembers them per person, like Home's, and keeps the ones you had already closed. A version's «what's new» board also counts as seen as soon as it appears: before, it came back if you turned MADRE off while it was open.
+- **The terminal no longer says «Ready» before you sign in.** On start, MADRE writes which agents are installed and points you to Settings › Agents to see which ones are signed in.
+
 ## 1.0.4 · 2026-10-19
 
 - **Cursor in the welcome.** The «Connect your agents» animation showed four agents around MADRE; now Cursor sits above her, and lights up when connected like the rest.

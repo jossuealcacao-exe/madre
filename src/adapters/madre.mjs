@@ -249,18 +249,32 @@ const COMPARE = `You compare the answers a round of agents gave to one question.
 
 const NO_USAGE = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, reasoningTokens: 0, totalTokens: 0, costUsd: 0, source: 'madre', local: true };
 
-// What the whole archive says about this request: notes first, then exact quotes.
+// What the whole archive says about this request: notes first, then exact quotes. The question
+// itself is already in the ledger when @madre is asked, and it is not a memory: found as the only
+// «quote», a 7B model took it for a source and cited it under a made-up answer (2026-10-19).
+const sameWords = (a, b) => String(a ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).toLowerCase() === String(b ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).toLowerCase();
 export async function gather(memory, text, { maxChars = 7000 } = {}) {
   if (!memory) return { notes: [], quotes: [], text: '' };
   const queryVector = await memory.embedQuery(text);
   const notes = memory.recallMemories(text, { limit: 12, maxChars: Math.floor(maxChars * 0.35), queryVector, fallback: false });
   const spent = notes.reduce((sum, note) => sum + note.text.length + 24, 0);
   const recall = memory.recall(text, { limit: 12, maxChars: maxChars - spent, excerptChars: 420, queryVector });
+  const quotes = recall.entries.filter((entry) => !sameWords(entry.excerpt, text));
   const lines = [
     ...notes.map((note) => `- [note · ${note.kind} · #${note.fromSequence}–#${note.throughSequence}] ${note.text}`),
-    ...recall.entries.map((entry) => `[#${entry.sequence} · ${(entry.timestamp ?? '').slice(0, 16).replace('T', ' ')} · ${entry.role === 'command' ? entry.sender : `@${entry.sender}`}] ${entry.excerpt}`),
+    ...quotes.map((entry) => `[#${entry.sequence} · ${(entry.timestamp ?? '').slice(0, 16).replace('T', ' ')} · ${entry.role === 'command' ? entry.sender : `@${entry.sender}`}] ${entry.excerpt}`),
   ];
-  return { notes, quotes: recall.entries, text: lines.join('\n') };
+  return { notes, quotes, text: lines.join('\n') };
+}
+
+// Nothing remembered and nothing said before: there is nothing to cite, so the model is not asked.
+// Rule 3 told it to say so and stop; qwen2.5:7b described a store with a cart, payments, src/app.js
+// and index.html in a project of two files (2026-10-19). The agents that can read the code are named.
+export function nothingYet(text, { crew = [] } = {}) {
+  const others = crew.filter((id) => id !== MADRE_AGENT_ID).map((id) => `@${id}`);
+  return lang(text) === 'es'
+    ? `Todavía no hay nada sobre esto en la memoria de este proyecto: la sala nunca lo discutió. Yo respondo solo con lo que la sala recuerda y no leo el código${others.length ? `; para eso pregúntale a ${others.join(', ')}` : ''}.`
+    : `There is nothing about this in this project's memory yet: the room never discussed it. I answer only from what the room remembers and I do not read the code${others.length ? `; for that, ask ${others.join(', ')}` : ''}.`;
 }
 
 // The invoker the room calls like any adapter. `text` is the human's request; `prompt` the room's full briefing.
@@ -288,6 +302,10 @@ export function madreInvoker({ memory, ollama, fetchImpl = globalThis.fetch }) {
       return { text: [head, bullets, comparison].filter(Boolean).join('\n\n'), usage, grounded: { notes: 0, quotes: round.answers.filter((answer) => answer.sequence).length } };
     }
     const archive = await gather(memory, question);
+    // A dictated form (yes or no, one word) is still the model's: a paragraph would break it.
+    if (!archive.notes.length && !archive.quotes.length && !bishop && !FORM.test(question) && !/<context>\n[\s\S]*?\S[\s\S]*?\n<\/context>/.test(prompt)) {
+      return { text: nothingYet(question, { crew }), usage: { ...NO_USAGE }, grounded: { notes: 0, quotes: 0 }, synthetic: 'nothing-yet' };
+    }
     const briefing = briefingFor({ prompt, text: question, archive: archive.text, bishop });
     const answer = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: bishop ? BISHOP_SYSTEM : SYSTEM, prompt: briefing, fetchImpl, timeoutMs, temperature: 0.1 });
     return { text: answer.text, usage: { ...answer.usage, local: true }, grounded: { notes: archive.notes.length, quotes: archive.quotes.length } };

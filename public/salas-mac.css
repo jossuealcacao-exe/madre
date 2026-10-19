@@ -760,6 +760,9 @@ body.sm-in-macro { overflow: hidden; }
    scrim and the sheet over it share one place, so the window is as tall as the taller of the two
    and nothing inside it scrolls. */
 .sm-sheet.sm-settings { --sm-sheet-w: 980px; }
+/* From the top, not centred: a centred window moved up by half of whatever opened in it, and the
+   card just clicked slid out from under the pointer (2026-10-19). */
+dialog.sm-sheet.sm-settings > .sm-sheet-body { margin-block: 0 auto; }
 .sm-sheet-body.sm-settings-window { display: flex; flex-direction: column; gap: 0; padding: 0; min-height: min(640px, calc(100dvh - 56px)); }
 /* Sticky against the screen's edge, not the layer's padding: the head meets the top of the screen. */
 .sm-settings-window > .settings-head { position: sticky; top: calc(-1 * var(--sm-sheet-pad, 0px)); z-index: 4; cursor: default; touch-action: auto; background: color-mix(in srgb, var(--bg-2) 96%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); }

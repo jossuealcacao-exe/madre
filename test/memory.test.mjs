@@ -674,6 +674,15 @@ test("MOTHER's channel: sealed words round-trip, the file is born once, deleting
     const env = parseEnv(await readFileP(file, 'utf8'));
     assert.equal(env.MOTHER_SEAL, first.seal);
     assert.equal(meta.get('mother_seal'), fingerprint(first.seal));
+    // The seal sits in the person's repository: `.pulse/` ignores itself, and one they edited stays.
+    assert.equal(await readFileP(join(root, '.pulse', '.gitignore'), 'utf8'), '*\n');
+    await writeFileP(join(root, '.pulse', '.gitignore'), 'mine\n');
+    await first.save();
+    assert.equal(await readFileP(join(root, '.pulse', '.gitignore'), 'utf8'), 'mine\n');
+    // A seal from an older MADRE, with no such line: opening the room adds it.
+    await rmP(join(root, '.pulse', '.gitignore'));
+    assert.equal(await new MotherChannel(file, { meta: store }).load(), 'ok');
+    assert.equal(await readFileP(join(root, '.pulse', '.gitignore'), 'utf8'), '*\n');
     const sent = await first.alert('intrusion', { strikes: 8, project: 'pulse', lockMs: 5000 });
     assert.match(sent.text, /8 STRIKES/);
     assert.ok(first.lockedFor() > 4000 && first.lockedFor() <= 5000);

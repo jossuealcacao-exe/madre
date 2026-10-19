@@ -511,7 +511,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
   // floating over the page could not be pressed); it counts as seen when the box closes.
   async function hint(id, anchor, { title, text, inside = false }) {
     const answer = await loaded;
-    if (phone || !answer || !state?.bonjourAt || state.hints?.[id] || hintNode || busyWith()) return false;
+    // Nor over a card of the room's news (app.js, .hint-card): two at once covered each other.
+    if (phone || !answer || !state?.bonjourAt || state.hints?.[id] || hintNode || busyWith() || document.querySelector('.hint-card')) return false;
     if (!anchor?.isConnected) return false;
     const box = anchor.getBoundingClientRect();
     if (!inside && !box.width && !box.height) return false;
@@ -619,6 +620,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     openChapters,
     openGestures,
     hint,
+    // A card the page shows itself (app.js: first touches and news) is kept as seen here, per person.
+    seen: (id) => keep({ hint: id }),
     state: () => state,
     path,
   };

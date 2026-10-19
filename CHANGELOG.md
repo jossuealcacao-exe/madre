@@ -6,6 +6,14 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.5 · Sin publicar
 
+- **@madre ya no inventa en un proyecto nuevo.** En un proyecto sin memoria, @madre describía archivos y funciones que no existían y citaba como fuente tu propia pregunta. Ahora, cuando no hay nada que citar, dice que la sala todavía no lo ha discutido y te propone a qué agente preguntarle para leer el código. Esta respuesta no usa el modelo ni gasta tokens.
+- **OpenCode funciona sin cuenta.** OpenCode trae modelos gratuitos propios, pero MADRE lo marcaba «Sin sesión» y no dejaba escribirle. Ahora aparece listo desde el primer momento, con la nota «modelos gratuitos de OpenCode, sin cuenta».
+- **Tu repositorio no se lleva el sello de MADRE.** La carpeta `.pulse/` que MADRE crea en tu proyecto guarda el sello de MU/TH/UR, y un `git add .` lo podía subir a tu repositorio. Ahora esa carpeta trae su propio `.gitignore`, y los proyectos que ya tenías lo reciben la próxima vez que los abres.
+- **Los agentes de Ajustes se despliegan donde haces clic.** En Inicio › Ajustes › Agentes, al abrir un agente toda la ventana se movía y la tarjeta se escapaba del cursor. Además, la lista se rehacía cada 2,5 segundos y a veces se perdía el clic. Ahora la ventana se queda fija, el agente que abres se ve completo y la lista solo se redibuja cuando algo cambia. Lo mismo con las tarjetas de proyectos en Inicio: el botón «Abrir» ya no cambia mientras lo pulsas.
+- **Sin novedades viejas para quien llega por primera vez.** Quien instala MADRE por primera vez ya no recibe cinco tarjetas seguidas de «Nuevo:» sobre cosas de 1.0.2, ni avisos encimados. Además, «Nuevo: agregar widgets» volvía cada vez que abrías Inicio; ahora se cierra para siempre.
+- **Cada aviso de novedades sale una sola vez.** Las tarjetas «Nuevo:» y las de «la primera vez» de cada proyecto (Ajustes, Módulos, Memoria…) recordaban que ya las viste solo en ese puerto. Como un proyecto abre en el primer puerto libre, volvían a salir cuando le tocaba otro. Ahora MADRE las recuerda por persona, igual que las de Inicio, y conserva las que ya habías cerrado. El tablero de novedades de una versión también cuenta como visto en cuanto aparece: antes volvía si apagabas MADRE con él abierto.
+- **La terminal ya no dice «Listos» antes de iniciar sesión.** Al arrancar, MADRE escribe qué agentes están instalados y te remite a Ajustes › Agentes para ver cuáles tienen sesión.
+
 ## 1.0.4 · 2026-10-19
 
 - **Cursor en la bienvenida.** La animación de «Conecta tus agentes» mostraba cuatro agentes alrededor de MADRE; ahora Cursor está arriba, y se enciende al conectarse como los demás.

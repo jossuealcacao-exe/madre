@@ -32,10 +32,15 @@ export const TOUR_VERSION = '1.1';
 export const CHAPTERS = ['moved', 'home', 'renamed', 'board', 'widgets', 'project', 'talk', 'modes', 'coordinator', 'links', 'maps', 'settings', 'modules', 'local', 'phone', 'gestures'];
 // The places that confuse most, each told once in one line (from option C); then, from 1.1, what
 // each key of Home's bar opens, the first time it opens, and what each widget of Home shows. (A
-// project's bar says it with its own first-touch cards, public/app.js, FIRST_TOUCH.)
+// project's bar says it with its own first-touch cards, public/app.js, FIRST_TOUCH, and its news
+// with NEW_HINTS: both kept here too, `touch-<id>` and `new-<id>`. Kept in the page they lived in
+// one port, and a project takes the first free port when it opens: the cards came back whenever it
+// got another one, and the project that got the old port inherited them (2026-10-19).)
 export const HINTS = ['switch', 'links', 'key4',
-  'home-links', 'home-map', 'home-settings', 'home-add',
-  'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage'];
+  'home-links', 'home-map', 'home-settings', 'home-add', 'new-add-widgets',
+  'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage',
+  'touch-settings', 'touch-modules', 'touch-mother', 'touch-memory', 'touch-crew', 'touch-steps', 'touch-browser', 'touch-tree', 'touch-chats',
+  'new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots'];
 const PATHS = ['new', 'back', 'since'];
 const BEFORE = ['1.0'];
 

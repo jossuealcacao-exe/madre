@@ -1992,6 +1992,8 @@ function welcomeHome() {
     // 1.0.2 brings one key to Home's bar: said once, after any other card, never over a sheet.
     let tries = 0;
     const sayAdd = async () => {
+      // News is for whoever had the version before; to someone new every key is new (2026-10-19).
+      if (homeTour.path() === 'new') return;
       const key = document.getElementById('sm-add-widgets');
       if (!key || document.querySelector('dialog[open]') || !(await homeTour.hint('new-add-widgets', key, { title: t('New: add widgets'), text: t('This button opens «Add to Home»: choose the widgets you want to see here, or bring back the ones you removed.') }))) {
         if ((tries += 1) < 6) setTimeout(sayAdd, 6000)?.unref?.();
@@ -2408,7 +2410,12 @@ function openLinkSheet({ reader = null, source = null } = {}) {
 ui.link.addEventListener('click', () => openLinkSheet());
 
 let refreshPending = null;
-async function refresh() {
+// What the cards show now, without the clocks (`at`), and when they were drawn: the 4-second clock
+// redraws only when a project changed, or once a minute for the «… min. ago». A board rebuilt every
+// 4 s replaced the button under the pointer and the click went nowhere (2026-10-19).
+let drawnRooms = '';
+let drawnRoomsAt = 0;
+async function refresh({ polled = false } = {}) {
   if (refreshPending) return refreshPending;
   refreshPending = fetch('/api/salas', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
   const answer = await refreshPending;
@@ -2430,6 +2437,10 @@ async function refresh() {
   ui.foot.textContent = t('Every project runs on this Mac, on its own, with its own memory.');
   // The room's corner (app.js, #colophon): the version this Home runs, and NOTICE's own line.
   if (answer.version) { drawAttribution(ui.colophon, answer.version); void drawColophonKeys(ui.colophon); }
+  const said = JSON.stringify(answer, (key, value) => (key === 'at' ? undefined : value));
+  if (polled && said === drawnRooms && Date.now() - drawnRoomsAt < 60000) return;
+  drawnRooms = said;
+  drawnRoomsAt = Date.now();
   draw();
 }
 
@@ -3802,6 +3813,7 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
   let live = null;              // the sign-in running right now, as the server tells it
   let poll = 0;
   let stream = null;
+  let drawn = '';               // what the list shows now: the poll redraws only when it changed
 
   // The second half of a browser sign-in: the address stays put, and the code that page hands
   // back is typed here. Without it the sign-in could only wait until its clock killed it.
@@ -3893,7 +3905,9 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
     return form;
   };
 
-  const paint = async () => {
+  // `polled`: asked by the clock, not by the person. The clock redraws only when what the server
+  // says changed: a list rebuilt every 2.5 s ate the click that landed on the old one (2026-10-19).
+  const paint = async ({ polled = false } = {}) => {
     const answer = await fetch('/api/settings', { cache: 'no-store' }).then((response) => response.json()).catch(() => null);
     if (!answer?.agents) return;
     agentsSeen = answer;
@@ -3904,6 +3918,9 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
     // A field being typed into is never yanked away by the poll: the panel redraws every few
     // seconds, and a half-pasted key or code would go with it.
     if (list.contains(document.activeElement) && ['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { onPaint?.(ready, answer); return; }
+    const said = JSON.stringify(answer);
+    if (polled && said === drawn && list.childNodes.length) { onPaint?.(ready, answer); return; }
+    drawn = said;
     list.replaceChildren();
     for (const agent of answer.agents.filter((one) => one.id !== 'madre')) {
       const state = agentState(agent, answer);
@@ -3912,7 +3929,14 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       const unfolded = openMore.has(agent.id) || !state.ok || state.busyNow || (live && live.agent === agent.id);
       const item = el('section', `sm-agent${state.ok ? ' ok' : ''}${unfolded ? ' open' : ''}`);
       item.dataset.agent = agent.id;
-      const head = button('sm-agent-head', null, () => { toggleMore(agent.id); if (!openMore.has(agent.id) && !state.ok) openMore.add(agent.id); void paint(); });
+      // What opens is brought into view: the window grows downwards and an agent low in the list
+      // opened below the edge of the screen, as if the arrow had done nothing.
+      const head = button('sm-agent-head', null, async () => {
+        toggleMore(agent.id);
+        if (!openMore.has(agent.id) && !state.ok) openMore.add(agent.id);
+        await paint();
+        if (openMore.has(agent.id)) list.querySelector(`.sm-agent[data-agent="${agent.id}"]`)?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+      });
       head.setAttribute('aria-expanded', String(unfolded));
       const words = el('span', 'sm-agent-words');
       words.append(el('b', null, agent.label ?? agent.id), el('small', null, VENDOR_WORDS[agent.id] ?? ''));
@@ -3983,7 +4007,7 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
   };
   const liveOn = () => {
     if (!list.isConnected || poll) return;
-    poll = setInterval(() => { if (!document.hidden) void paint(); }, 2500);
+    poll = setInterval(() => { if (!document.hidden) void paint({ polled: true }); }, 2500);
     try {
       stream = new EventSource('/api/events');
       stream.onmessage = (message) => {
@@ -4927,7 +4951,7 @@ if (location.hash === '#macroverso' && data && !ui.macro.hidden) { history.repla
 // The Market's addresses: #mercado, #mercado=<module>, #modulos.
 if (/^#mercado(=|$)/.test(location.hash)) openHomeMarket('shop', decodeURIComponent(location.hash.split('=')[1] ?? '') || null);
 else if (location.hash === '#modulos') openHomeMarket('mine');
-timer = setInterval(() => { if (!document.hidden && !busy.size && !pins.dropping && !pins.drag) void refresh(); }, 4000);
+timer = setInterval(() => { if (!document.hidden && !busy.size && !pins.dropping && !pins.drag) void refresh({ polled: true }); }, 4000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { void refresh(); void loadAgents(); void loadWork(); void loadDecisions(); } });
 // The decisions are asked again every few minutes (the route itself asks the rooms no oftener).
 setInterval(() => { if (!document.hidden) void loadDecisions(); }, 5 * 60 * 1000);

@@ -30,7 +30,7 @@ import {
   prepareGeminiHome,
 } from '../src/adapters/gemini.mjs';
 import { runReadonlyProcess } from '../src/adapters/process.mjs';
-import { geminiAuthState, loginPlanFor, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
+import { geminiAuthState, loginPlanFor, openCodeOwnModels, parseClaudeAuthStatus, parseCodexLoginStatus, parseOpenCodeAuthList } from '../src/auth-probe.mjs';
 import { applyConfigToEnv, loadConfig, updateConfig } from '../src/config.mjs';
 import { isOnline, makePalette, renderReport } from '../src/setup.mjs';
 import { CONDITIONS, PLATFORMS, detectPlatform, diagnose, fixesFor, searchConditions } from '../public/troubleshooting.js';
@@ -1071,6 +1071,10 @@ test('reads each agent session state from its CLI output', () => {
   assert.equal(list.state, 'signed-in');
   assert.deepEqual(list.providers, [{ name: 'OpenAI', type: 'oauth' }, { name: 'Anthropic', type: 'api' }]);
   assert.equal(parseOpenCodeAuthList({ stdout: '┌  Credentials\n└  none\n' }).state, 'signed-out');
+  // No provider, and still its own free models answer: ready with no account (2026-10-19).
+  assert.deepEqual(openCodeOwnModels({ stdout: '\u001b[0mopencode/big-pickle\nopencode/beam-free\n' }), { state: 'signed-in', detail: 'OpenCode\'s own free models, no account (2)', providers: [], own: 2 });
+  assert.equal(openCodeOwnModels({ stdout: 'anthropic/claude-x\n' }), null);
+  assert.equal(openCodeOwnModels({ stdout: 'opencode/big-pickle\n', code: 1 }), null);
   assert.equal(geminiAuthState({ settings: { security: { auth: { selectedType: 'gemini-api-key' } } }, hasOauth: false, hasApiKey: true }).state, 'signed-in');
   assert.equal(geminiAuthState({ settings: { security: { auth: { selectedType: 'gemini-api-key' } } }, hasOauth: false, hasApiKey: false }).state, 'signed-out');
   assert.equal(geminiAuthState({ settings: { security: { auth: { selectedType: 'oauth-personal' } } }, hasOauth: true, hasApiKey: false }).state, 'signed-in');

@@ -215,6 +215,27 @@ test('@madre: a reply dictated word for word is echoed without the archive; a di
   assert.match(briefingFor({ prompt: 'p', text: '¿Qué se decidió sobre RIPLEY?', archive: '' }), /Responde en español\.$/, 'no form dictated: citations stay');
 });
 
+test('@madre with nothing to cite says so without the model, and the question itself is never its source', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ message: { content: 'A store with a cart [#2].' }, prompt_eval_count: 1, eval_count: 1 }) }; };
+  const asked = 'Explain tienda-demo to me: what it does, how it runs, and where the important code lives.';
+  // The ledger already holds the question (#2) when @madre is asked: found by the recall, it is no quote.
+  const memory = { embedQuery: async () => null, recallMemories: () => [], recall: () => ({ entries: [{ sequence: 2, role: 'user', sender: 'you', timestamp: '', excerpt: asked }] }) };
+  const archive = await gather(memory, asked);
+  assert.deepEqual([archive.quotes.length, archive.text], [0, '']);
+  const invoke = madreInvoker({ memory, ollama: () => running, fetchImpl });
+  const empty = await invoke({ prompt: 'p', text: asked, crew: ['codex', 'claude', 'madre'] });
+  assert.equal(calls.length, 0, 'the model was asked with nothing to cite');
+  assert.equal(empty.synthetic, 'nothing-yet');
+  assert.match(empty.text, /never discussed it.*do not read the code; for that, ask @codex, @claude\.$/);
+  const blank = madreInvoker({ memory: { embedQuery: async () => null, recallMemories: () => [], recall: () => ({ entries: [] }) }, ollama: () => running, fetchImpl });
+  assert.match((await blank({ prompt: 'p', text: '¿Qué hace este proyecto?' })).text, /^Todavía no hay nada sobre esto en la memoria de este proyecto.*no leo el código\.$/);
+  assert.equal(calls.length, 0);
+  // Something said before in the conversation, or a real quote: the model answers from it.
+  await invoke({ prompt: 'x\n<context>\nyou (user): we chose SQLite\n</context>', text: asked });
+  assert.equal(calls.length, 1);
+});
+
 test('@madre closes a round with one line per agent, from its own answer, and keeps a comparison only if it holds', async () => {
   const round = {
     asked: ['claude', 'codex', 'opencode'],

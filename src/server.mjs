@@ -4197,9 +4197,11 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   // From here this room offers to host the phone's bridge, when there is a phone to reach it.
   phone.start();
   const url = `http://127.0.0.1:${address.port}`;
+  // Installed is all this line knows: whether each one is signed in is asked in the room, and
+  // «Ready: Codex, Claude…» before any sign-in told a newcomer the opposite (2026-10-19).
   const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || 'none';
-  const detected = agents.filter((agent) => agent.detected).map((agent) => agent.label).join(', ') || 'none';
-  console.log(`\nMADRE is ready\n\n  ${url}${openPath}\n  Project: ${projectRoot}\n  Ready: ${ready}\n  Detected: ${detected}\n`);
+  const broken = agents.filter((agent) => agent.detected && !agent.ready).map((agent) => agent.label).join(', ');
+  console.log(`\nMADRE is ready\n\n  ${url}${openPath}\n  Project: ${projectRoot}\n  Agents installed: ${ready} (who is signed in: Settings › Agents)\n${broken ? `  Found but not answering: ${broken}\n` : ''}`);
   if (openBrowser) openUrl(`${url}${openPath}`);
   // SIGHUP too: closing the Terminal the room was started in is a way of closing it.
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {

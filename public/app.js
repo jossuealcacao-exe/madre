@@ -11301,7 +11301,12 @@ if (SPLIT_CHAT && !Array.isArray(initial.events)) {
 if (initial.version) { drawAttribution(document.querySelector('#colophon'), initial.version); void drawColophonKeys(document.querySelector('#colophon')); }
 void adoptLanguage(initial.language, initial.languageChosen);
 // Whether the copilot is on for this project, so the robot and the mode say so from the start.
-void loadCopilot().then(() => showNewHints());
+// The cards of what 1.0.2 brought are news only to whoever used MADRE before it: someone new met all
+// of it at once in the welcome, and five «New:» cards in a row were noise to them (2026-10-19).
+void Promise.all([loadCopilot(), roomTour().loaded]).then(async () => {
+  if (!state.device) await keptHints();
+  if (roomTour().path() !== 'new') showNewHints();
+});
 // Behind the bridge this page is on a phone (docs/MOBILE.md): it says so, offers the way back to
 // the list of rooms, and leaves the Mac's keys to the Mac.
 state.device = initial.device ?? null;
@@ -19309,9 +19314,29 @@ const FIRST_TOUCH = {
     text: t('A project can hold many conversations and a single memory. Start a new one for a new subject: they all feed the same archive, and every agent recalls what was said in the others.'),
   },
 };
+// What was seen is the person's, in ~/.pulse/tour.json (src/tour.mjs, HINTS), not this page's: a
+// page lives on one port, and a project opens on the first free one, so the cards came back with
+// every new port (2026-10-19). The page's own copy stays as the fallback, and what it already held
+// is carried to the person once (keptHints).
 const HINTS_KEY = 'madre.hints';
-function hintsSeen() {
+const keptId = (id) => (id.startsWith('new-') ? id : `touch-${id}`);
+const ownHint = (id) => id in FIRST_TOUCH || NEW_HINTS.some((hint) => hint.id === id);
+function pageHints() {
   try { return JSON.parse(localStorage.getItem(HINTS_KEY) ?? '{}') ?? {}; } catch { return {}; }
+}
+function hintsSeen() {
+  const seen = pageHints();
+  for (const id of Object.keys(roomTour().state()?.hints ?? {})) seen[id.startsWith('touch-') ? id.slice('touch-'.length) : id] = true;
+  return seen;
+}
+function hintSeen(id) {
+  try { localStorage.setItem(HINTS_KEY, JSON.stringify({ ...pageHints(), [id]: true })); } catch { /* the person's copy is enough */ }
+  if (!state.device) void roomTour().seen(keptId(id)).catch(() => {});
+}
+async function keptHints() {
+  await roomTour().loaded;
+  const kept = roomTour().state()?.hints ?? {};
+  for (const id of Object.keys(pageHints()).filter(ownHint)) if (!kept[keptId(id)]) await roomTour().seen(keptId(id)).catch(() => {});
 }
 function firstTouch(id) {
   // Its cards speak of the Mac's own gestures (a right-click, a panel beside the room).
@@ -19319,7 +19344,7 @@ function firstTouch(id) {
   const hint = FIRST_TOUCH[id];
   const seen = hintsSeen();
   if (!hint || seen[id]) return;
-  try { localStorage.setItem(HINTS_KEY, JSON.stringify({ ...seen, [id]: true })); } catch { /* a private window gets the card every time */ }
+  hintSeen(id);
   const button = document.querySelector(hint.button);
   if (!button) return;
   // Said once what was pressed has opened: some open after a moment, and a modal window (the
@@ -19415,8 +19440,8 @@ function showNewHints(delay = 2500) {
     // Nothing to point at yet (no folded notice, a key not on screen): asked again later.
     if (!next) { if (pending.length && (newHintTries += 1) <= 10) showNewHints(30000); return; }
     // Not over something the person is already reading: tried again later, never stacked.
-    if (document.querySelector('dialog[open], .hint-card') || !els.onboarding.hidden) { showNewHints(8000); return; }
-    try { localStorage.setItem(HINTS_KEY, JSON.stringify({ ...hintsSeen(), [next.id]: true })); } catch { return; }
+    if (document.querySelector('dialog[open], .hint-card, .tour-hint') || !els.onboarding.hidden) { showNewHints(8000); return; }
+    hintSeen(next.id);
     const behind = !next.onScreen && !shown(next.button);
     showFirstTouch(behind ? { ...next, text: `${next.text} ${t('You\'ll find it under «More», on the top bar.')}` } : next, anchorOf(next));
     const card = document.querySelector('.hint-card');
@@ -19624,11 +19649,17 @@ function showWhatsNew(news, { after = null } = {}) {
   document.body.append(dialog);
   drawBoard();
   dialog.addEventListener('close', () => {
-    if (!news.preview) void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
     dialog.remove();
     if (!board.went) after?.();
   });
-  setTimeout(() => { dialog.showModal(); cards[0]?.focus?.({ preventScroll: true }); body.scrollTop = 0; }, after ? 700 : 0);
+  // Seen once it is shown, not once it is closed: a board left open when MADRE was turned off, the
+  // page reloaded or the tab closed came back at the next start (2026-10-19).
+  setTimeout(() => {
+    dialog.showModal();
+    if (!news.preview) void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+    cards[0]?.focus?.({ preventScroll: true });
+    body.scrollTop = 0;
+  }, after ? 700 : 0);
   return dialog;
 }
 

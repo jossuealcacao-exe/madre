@@ -45,6 +45,13 @@ export function parseOpenCodeAuthList({ stdout = '' }) {
   return { state: 'signed-out', detail: 'no providers configured', providers: [] };
 }
 
+// `opencode models opencode`: the models OpenCode serves itself, one `opencode/<model>` per line.
+export function openCodeOwnModels({ stdout = '', code = 0 }) {
+  const models = stripAnsi(stdout).split('\n').map((line) => line.trim()).filter((line) => /^opencode\/[\w.:-]+$/.test(line));
+  if (code !== 0 || !models.length) return null;
+  return { state: 'signed-in', detail: `OpenCode's own free models, no account (${models.length})`, providers: [], own: models.length };
+}
+
 // `cursor-agent status` says «Not logged in», or who is signed in («Logged in as …»). A key in the
 // environment (CURSOR_API_KEY) signs every run in on its own, so it counts too.
 export function parseCursorStatus({ stdout = '', stderr = '' }, env = process.env) {
@@ -346,7 +353,14 @@ export async function probeAgentAuth(agent) {
   switch (agent.id) {
     case 'codex': return parseCodexLoginStatus(await run(agent.path, ['login', 'status']));
     case 'claude': return parseClaudeAuthStatus(await run(agent.path, ['auth', 'status', '--json']));
-    case 'opencode': return parseOpenCodeAuthList(await run(agent.path, ['auth', 'list']));
+    case 'opencode': {
+      const listed = parseOpenCodeAuthList(await run(agent.path, ['auth', 'list']));
+      if (listed.state === 'signed-in') return listed;
+      // No provider of its own, and still it answers: OpenCode brings free models that need no account
+      // (opencode/big-pickle by default). Called signed out, the one agent a newcomer could use
+      // without signing in anywhere was the one MADRE would not let them write to (2026-10-19).
+      return openCodeOwnModels(await run(agent.path, ['models', 'opencode'], 15000)) ?? listed;
+    }
     case 'cursor': return parseCursorStatus(await run(agent.path, ['status']));
     case 'gemini': return probeGemini();
     default: return { state: 'unknown', detail: 'no probe for this agent' };
