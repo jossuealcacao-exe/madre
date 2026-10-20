@@ -159,6 +159,36 @@ test('mcp: a remote server over Streamable HTTP, with its token from the vault; 
   }
 });
 
+test('mcp: a server that keeps its event stream open after answering is still checked (DeepWiki, 2026-10-20)', async () => {
+  const { root, state, proj } = await project();
+  const open = new Set();
+  const http = createServer(async (request, response) => {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const message = JSON.parse(body);
+    if (message.id === undefined) { response.writeHead(202); response.end(); return; }
+    const result = message.method === 'initialize'
+      ? { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'open-stream', version: '1' } }
+      : { tools: [{ name: 'ask_wiki_question', annotations: { readOnlyHint: true } }] };
+    // The answer, and then the stream is left open: never ended by the server.
+    response.writeHead(200, { 'content-type': 'text/event-stream', 'mcp-session-id': 'kept' });
+    response.write(`event: message\r\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: message.id, result })}\r\n\r\n`);
+    open.add(response);
+  });
+  await new Promise((resolve) => http.listen(0, '127.0.0.1', resolve));
+  try {
+    const made = cleanServer({ id: 'wiki', transport: 'http', url: `http://127.0.0.1:${http.address().port}/mcp` });
+    await writeMcp(state, proj, { servers: [made.server] });
+    const checked = await checkServer({ stateRoot: state, projectRoot: proj, id: 'wiki', timeoutMs: 8000 });
+    assert.equal(checked.ok, true, checked.problem);
+    assert.deepEqual(checked.tools.map((tool) => tool.name), ['ask_wiki_question']);
+  } finally {
+    for (const response of open) response.destroy();
+    http.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('mcp: servers already set up in other apps are found by name, values unread until imported', async () => {
   const { root, proj } = await project();
   const home = join(root, 'home');

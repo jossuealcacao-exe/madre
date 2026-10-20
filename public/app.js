@@ -18,6 +18,7 @@ import { dropStickyHover } from './touch.js';
 import { drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
 import { MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
 import { openMarket } from './market-view.js';
+import { CATALOG_CHECKED, MCP_CATALOG, MCP_GROUPS, initials as mcpInitials } from './mcp-catalog.js';
 // Where nothing can hover (a phone), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
 // Made the first time the room asks for it (roomTour, below), which can be while this file is
@@ -13428,7 +13429,7 @@ function drawFilesTarget() {
 // already uses, each one started and checked by MADRE before an agent gets it (src/modules/
 // mcp-connect.mjs). A row says what it is, whether it answered and with how many tools, from which
 // mode its tools that act are handed, and the one thing to do when it needs something.
-const mcpUI = { servers: null, adding: null, found: null, picked: new Set(), open: new Set(), said: null, asked: false };
+const mcpUI = { servers: null, adding: null, found: null, picked: new Set(), open: new Set(), said: null, asked: false, tokenFor: null };
 function mcpStatus() {
   const servers = mcpUI.servers;
   // The board shows this card before anyone opens it: it reads its list once, by itself.
@@ -13470,6 +13471,91 @@ function drawMcpSettings(host) {
   sxFoot(list, t('Tools that only look things up work from #1 CHAT ONLY. Tools that do things — send, write, publish — only from the mode you choose: #4 FULL ACCESS unless you lower it. Keys stay locked in MADRE, never in your files.'));
   if (mcpUI.adding) drawMcpForm(host);
   if (mcpUI.found) drawMcpImport(host);
+  drawMcpCatalog(host);
+}
+// CONNECTORS (public/mcp-catalog.js, 2026-10-20): the best known servers, checked against MADRE,
+// one press each. Connecting one is what «Add a tool» does by hand, with the address filled in:
+// MADRE saves it, signs in when it asks, and reads its tools before any agent gets them.
+function drawMcpCatalog(host) {
+  const norm = (address) => { try { return new URL(address).toString(); } catch { return address; } };
+  const have = new Map((mcpUI.servers ?? []).filter((one) => one.url).map((one) => [norm(one.url), one]));
+  const block = sxBlock(host, t('Connectors'), t('The best known services, checked against MADRE on {date}. One press connects one to this project; any other MCP server goes in with «Add a tool».', { date: new Date(`${CATALOG_CHECKED}T12:00:00`).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) }), { className: 'mcp-block mcp-catalog-block' });
+  for (const group of MCP_GROUPS) {
+    const items = MCP_CATALOG.filter((one) => one.group === group.id);
+    if (!items.length) continue;
+    const head = el('div', 'mcp-cat-head');
+    head.append(el('b', null, t(group.title)), el('span', null, t(group.about)));
+    const grid = el('div', 'mcp-catalog');
+    for (const item of items) grid.append(mcpConnectorCard(item, have.get(norm(item.url)) ?? null));
+    block.rows.append(head, grid);
+  }
+  // A server that is not on the list: by hand, as it always was.
+  const other = el('div', 'mcp-cat-other');
+  other.append(el('span', null, t('Another MCP server, yours or a third party\'s?')), sxButton(t('Add a tool'), () => { mcpUI.adding = { transport: 'http', auth: 'none', env: [] }; drawMcpTarget(); state.settingsTargets.mcp?.querySelector('.mcp-form')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' }); }));
+  block.rows.append(other);
+}
+const MCP_CHECKED_WORDS = { tools: () => t('Checked'), signin: () => t('With your account'), token: () => t('With a token') };
+function mcpConnectorCard(item, connected) {
+  const card = el('div', `mcp-card${connected ? ' is-connected' : ''}`);
+  const mark = el('span', 'mcp-mark', mcpInitials(item.label));
+  mark.style.setProperty('--mcp-hue', item.hue);
+  const words = el('div', 'mcp-card-words');
+  const name = el('b', null, item.label);
+  const chip = el('span', `sx-chip${item.checked === 'tools' ? ' on' : ''}`, MCP_CHECKED_WORDS[item.checked]());
+  chip.title = item.checked === 'tools' ? t('MADRE connected to it and read its tools.') : item.checked === 'signin' ? t('MADRE found its sign-in. Its tools are read the moment you sign in.') : t('MADRE checks it as soon as you paste the token.');
+  const top = el('div', 'mcp-card-top');
+  top.append(name, chip);
+  words.append(top, el('span', 'mcp-card-about', t(item.about)), el('small', null, item.maker));
+  card.append(mark, words);
+  const keys = el('div', 'mcp-card-keys');
+  if (connected) {
+    const ready = connected.enabled && !connected.problem && connected.tools?.length;
+    keys.append(el('span', `mcp-card-state${ready ? ' ok' : ''}`, ready ? t('Connected · {n} tools', { n: connected.tools.length }) : connected.auth === 'oauth' && (!connected.signedIn || connected.needsAuth) ? t('Sign-in needed') : t('Connected')));
+    keys.append(sxButton(t('Check the connection'), (event) => void mcpCheck(connected, event.currentTarget)));
+  } else if (item.auth === 'token' && mcpUI.tokenFor === item.id) {
+    const field = el('input', 'sx-input mono');
+    field.type = 'password'; field.placeholder = t('paste it here'); field.autocomplete = 'off'; field.spellcheck = false;
+    const make = el('a', 'sx-link', t('Make a token ↗'));
+    make.href = item.tokenAt; make.target = '_blank'; make.rel = 'noopener noreferrer';
+    const go = sxButton(t('Connect'), () => void mcpConnect(item, go, field.value), { tone: 'primary' });
+    keys.append(field, go, make);
+    setTimeout(() => field.focus(), 0);
+  } else {
+    const go = sxButton(t('Connect'), () => { if (item.auth === 'token') { mcpUI.tokenFor = item.id; drawMcpTarget(); } else void mcpConnect(item, go); }, { tone: 'primary' });
+    keys.append(go);
+  }
+  card.append(keys);
+  return card;
+}
+async function mcpConnect(item, button, token = null) {
+  if (item.auth === 'token' && !String(token ?? '').trim()) { toast(t('Paste the token first.')); return; }
+  button.disabled = true; button.textContent = item.auth === 'oauth' ? t('Opening the sign-in…') : t('Checking…');
+  // A short word the agents see; one already taken in this project gets a number.
+  const taken = new Set((mcpUI.servers ?? []).map((one) => one.id));
+  let id = item.id;
+  for (let n = 2; taken.has(id); n += 1) id = `${item.id}-${n}`;
+  try {
+    const result = await mcpCall('/api/x/mcp/servers', { id, label: item.label, transport: 'http', url: item.url, auth: item.auth, token: token ?? undefined });
+    mcpUI.tokenFor = null;
+    const added = (mcpUI.servers ?? []).find((one) => one.id === id);
+    drawMcpTarget(); syncSettingsCards();
+    if (added?.auth === 'oauth' && result.check?.needsAuth) void mcpSignIn(added);
+    else if (result.check?.ok) toast(t('{name} is connected · {n} tools', { name: item.label, n: result.check.tools.length }), { tone: 'done' });
+    else if (result.check) toast(t('{name} did not answer: {problem}', { name: item.label, problem: result.check.problem ?? '' }));
+  } catch (error) {
+    toast(`${t('Diagnostics › ')}${resay(error.message)}`);
+    button.disabled = false; button.textContent = t('Connect');
+  }
+}
+async function mcpCheck(server, button) {
+  if (button) { button.disabled = true; button.textContent = t('Checking…'); }
+  try {
+    const result = await mcpCall(`/api/x/mcp/servers/${server.id}/check`, {});
+    if (result.check?.ok) toast(t('{name} answers · {n} tools', { name: server.label, n: result.check.tools.length }), { tone: 'done' });
+    else if (result.check?.needsAuth) toast(t('{name} needs you to sign in again.', { name: server.label }));
+    else toast(t('{name} did not answer: {problem}', { name: server.label, problem: result.check?.problem ?? '' }));
+  } catch (error) { toast(`${t('Diagnostics › ')}${resay(error.message)}`); }
+  drawMcpTarget(); syncSettingsCards();
 }
 function mcpServerRow(server) {
   const row = el('div', `sx-row stack mcp-row${server.enabled ? '' : ' off'}`);
@@ -13496,12 +13582,7 @@ function mcpServerRow(server) {
   const acting = (server.tools ?? []).filter((tool) => !tool.readOnly).length;
   const tools = el('div', 'mcp-actions');
   if (needsSignIn) tools.append(sxButton(t('Sign in'), () => void mcpSignIn(server), { tone: 'primary' }));
-  tools.append(sxButton(t('Check again'), async (event) => {
-    const button = event.currentTarget;
-    button.disabled = true; button.textContent = t('Checking…');
-    try { const result = await mcpCall(`/api/x/mcp/servers/${server.id}/check`, {}); if (!result.check?.ok && !result.check?.needsAuth) toast(t('{name} did not answer: {problem}', { name: server.label, problem: result.check?.problem ?? '' })); } catch (error) { toast(`${t('Diagnostics › ')}${resay(error.message)}`); }
-    drawMcpTarget(); syncSettingsCards();
-  }));
+  tools.append(sxButton(t('Check the connection'), (event) => void mcpCheck(server, event.currentTarget)));
   if (server.tools?.length) {
     const open = mcpUI.open.has(server.id);
     const look = sxButton(open ? t('Hide tools') : t('See tools'), () => { if (open) mcpUI.open.delete(server.id); else mcpUI.open.add(server.id); drawMcpTarget(); });
@@ -13548,7 +13629,7 @@ async function mcpSignIn(server) {
 }
 function drawMcpForm(host) {
   const draft = mcpUI.adding;
-  const block = sxBlock(host, t('Add a tool'), t('A name for it, and how MADRE reaches it. MADRE checks it as soon as you save.'), { className: 'mcp-block' });
+  const block = sxBlock(host, t('Add a tool'), t('A name for it, and how MADRE reaches it. MADRE checks it as soon as you save.'), { className: 'mcp-block mcp-form' });
   const input = (value, placeholder, { mono = false, type = 'text', change } = {}) => {
     const field = el('input', `sx-input${mono ? ' mono' : ''}`);
     field.type = type; field.value = value ?? ''; field.placeholder = placeholder; field.spellcheck = false; field.autocomplete = 'off';

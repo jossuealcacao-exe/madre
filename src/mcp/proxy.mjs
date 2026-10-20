@@ -114,18 +114,29 @@ async function viaHttp(server) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      for (;;) {
+      // A server may keep the stream open after it answered (DeepWiki does, 2026-10-20): read until
+      // the answer to this request arrives, then let the stream go, or every message after it waits.
+      const asked = message.id !== undefined && message.id !== null;
+      let answered = false;
+      while (!answered) {
         const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
         for (let end = buffer.indexOf('\n\n'); end >= 0; end = buffer.indexOf('\n\n')) {
           const event = buffer.slice(0, end);
           buffer = buffer.slice(end + 2);
           const data = event.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n');
           if (!data) continue;
-          try { const out = JSON.parse(data); for (const one of Array.isArray(out) ? out : [out]) deliver(one); } catch { /* not a message */ }
+          try {
+            const out = JSON.parse(data);
+            for (const one of Array.isArray(out) ? out : [out]) {
+              deliver(one);
+              if (asked && one?.id === message.id && ('result' in one || 'error' in one)) answered = true;
+            }
+          } catch { /* not a message */ }
         }
       }
+      if (answered) await reader.cancel().catch(() => {});
       return;
     }
     const out = await response.json().catch(() => null);
