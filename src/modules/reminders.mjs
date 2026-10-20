@@ -176,7 +176,7 @@ export async function readWithLocal({ host, model, text, fetchImpl = globalThis.
     const answer = await ollamaGenerate({ host, model, system: LOCAL_SYSTEM, prompt: String(text).slice(0, 2000), json: true, fetchImpl, timeoutMs, temperature: 0 });
     const parsed = JSON.parse(answer.text);
     if (typeof parsed?.remind !== 'boolean') return null;
-    return { remind: parsed.remind, what: typeof parsed.what === 'string' ? parsed.what.trim().slice(0, REMINDER_TEXT_MAX) : '', when: typeof parsed.when === 'string' ? parsed.when.slice(0, 120) : '' };
+    return { remind: parsed.remind, what: typeof parsed.what === 'string' ? parsed.what.trim().replace(/[.!¡]+$/, '').slice(0, REMINDER_TEXT_MAX) : '', when: typeof parsed.when === 'string' ? parsed.when.slice(0, 120) : '' };
   } catch { return null; }
 }
 
@@ -278,7 +278,7 @@ const reminders = defineModule({
       const when = parseWhen(words, new Date(), { hour: dayHour }) ?? { due: tomorrowMorning(new Date(), dayHour), repeat: null };
       const made = await addReminder(ctx.stateRoot, { text: taskFromWords(words), due: when.due.toISOString(), repeat: when.repeat, room: ctx.roomId ?? null, project: projectOf(ctx), why: 'asked' });
       if (made.error) return { ok: false, title: 'Reminders', text: t('The reminder was not set.') };
-      return { ok: true, title: 'Reminders', text: t('Reminder set: «{what}», {when}.', { what: made.reminder.text, when: whenWords(made.reminder.due) }) };
+      return { ok: true, title: 'Reminders', text: t('Reminder set: «{what}», {when}', { what: made.reminder.text, when: whenWords(made.reminder.due) }) };
     },
   }],
   routes: [

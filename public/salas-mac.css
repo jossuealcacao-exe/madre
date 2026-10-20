@@ -49,14 +49,15 @@ body.salas-mac {
 /* THE BAR, as a room's (styles.css, .shell > .bar and .bar-home): the surface as glass, the sheen,
    the bevel and the layered shadow, mono at 11 px; a group of its own on the right for reload and
    settings. It stays at the top while the lobby scrolls under it. */
-.sm-top { position: sticky; top: 0; z-index: 12; display: flex; align-items: stretch; gap: 10px; max-width: 1440px; margin: 0 auto; padding: 10px 20px 0; }
+.sm-top { position: sticky; top: 0; z-index: 12; display: flex; align-items: stretch; justify-content: center; gap: 10px; max-width: 1440px; margin: 0 auto; padding: 10px 20px 0; }
 .sm-topbar { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; height: 48px; padding: 9px 12px 9px 16px; border-radius: 20px; background-color: color-mix(in srgb, var(--bg) 93%, transparent); background-image: var(--sheen); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); box-shadow: var(--bevel), 0 1px 2px rgba(0, 0, 0, .45), 0 10px 24px -10px rgba(0, 0, 0, .6), 16px 24px 50px -24px rgba(0, 0, 0, .55); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text-2); }
 :root[data-scheme="light"] .sm-topbar { background-color: color-mix(in srgb, #ffffff 94%, transparent); box-shadow: var(--bevel), 0 1px 2px rgba(20, 40, 60, .12), 0 10px 24px -12px rgba(20, 40, 60, .24), 16px 24px 50px -26px rgba(20, 40, 60, .28); }
 /* As wide as what it holds (1.0.5): it grows with each project, agent or notice and, once it meets
    the keys on the right, shrinks and folds what does not fit (fitBar, pinsFit) instead of leaving a
-   gap in the middle or pushing anything out. */
+   gap in the middle or pushing anything out. The two bars sit together in the middle of the page,
+   one gap apart (2026-10-20): never the bar at the left and its keys stranded at the right. */
 .sm-topbar:first-child { flex: 0 1 auto; }
-.sm-tb-home { margin-left: auto; }
+.sm-tb-home { margin-left: 0; }
 .sm-tb-home { flex: none; gap: 6px; padding: 9px 10px; }
 .sm-brand { display: inline-flex; align-items: center; flex: none; color: var(--text); border-radius: 8px; padding: 4px 2px; }
 .sm-brand .brand-logo { height: 15px; }
@@ -104,10 +105,12 @@ body.salas-mac {
 .sm-pill.is-wait i { width: 7px; height: 7px; border-radius: 50%; background: var(--s-acc); animation: sm-beat 1.4s ease-in-out infinite; }
 .sm-pill.is-update { background: color-mix(in srgb, var(--session-wait) 18%, transparent); color: var(--text); }
 .sm-badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 2px; padding: 0 4px; border-radius: 999px; background: var(--s-acc); color: var(--s-acc-ink); font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0; }
-@media (max-width: 1180px) { .sm-tb-agents, .sm-live span { display: none; } }
+/* What steps out when the bar is short is fitBar's call, measured, not the window's width: a split or a
+   small window with room to spare kept nothing (2026-10-20). Only a phone drops the projects for good. */
 /* However tight the bar, «+n» fits whole: the rooms go behind it, never under the next key. */
 .sm-tb-open:not([hidden]) { min-width: 40px; }
-@media (max-width: 980px) { .sm-tb-open, .sm-pill.is-update { display: none; } }
+@media (max-width: 980px) { .sm-pill.is-update { display: none; } }
+@media (max-width: 560px) { .sm-tb-open { display: none; } }
 @media (max-width: 720px) { .sm-crumb, .sm-barkey span { display: none; } .sm-top { padding: 8px 10px 0; } }
 /* A phone (2026-10-14): the bar never runs under its right group. The logo keeps only its pulse, the
    keys sit closer, and reload — which the page's own pull does — steps out, as in a project's bar. */
@@ -1485,7 +1488,7 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
    press wakes it and lights it. When something there needs the person it beats softly until they
    go in; while an agent works it breathes. One that does not answer keeps a dashed edge. */
 .sm-tb-open > .sm-tb-room:not(.is-more):not(.sm-tb-slot) > i { display: none; }
-.sm-tb-open > .sm-tb-room:not(.is-asleep):not(.is-more):not(.sm-tb-slot) {
+.sm-tb-open > .sm-tb-room:not(.is-asleep):not(.is-waking):not(.is-more):not(.sm-tb-slot) {
   background: linear-gradient(160deg, color-mix(in oklab, var(--acc, var(--s-acc)) 82%, #ffffff) 0%, var(--acc, var(--s-acc)) 60%, color-mix(in oklab, var(--acc, var(--s-acc)) 84%, #000000) 100%);
   color: var(--acc-ink, #0a1405);
   font-weight: 650;
@@ -1502,4 +1505,15 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc, var(--s-acc)) 0%, transparent); }
 }
 @keyframes sm-key-breathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
-@media (prefers-reduced-motion: reduce) { .sm-tb-open > .sm-tb-room:is(.is-waiting, .is-working) { animation: none; } }
+/* Waking (1.0.5): not lit yet, it is not open yet. Its color fills it from the left while the
+   project starts, and it lights whole only when it answers. */
+.sm-tb-open > .sm-tb-room.is-waking {
+  background-color: var(--surface, var(--panel));
+  background-image: linear-gradient(160deg, color-mix(in oklab, var(--acc, var(--s-acc)) 82%, #ffffff) 0%, var(--acc, var(--s-acc)) 60%, color-mix(in oklab, var(--acc, var(--s-acc)) 84%, #000000) 100%);
+  background-repeat: no-repeat; background-size: 0% 100%;
+  color: var(--text-2); font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc, var(--s-acc)) 45%, transparent);
+  animation: sm-key-wake calc(2400ms * var(--motion-scale, 1)) cubic-bezier(.4, 0, .2, 1) infinite;
+}
+@keyframes sm-key-wake { 0% { background-size: 0% 100%; } 85%, 100% { background-size: 100% 100%; } }
+@media (prefers-reduced-motion: reduce) { .sm-tb-open > .sm-tb-room:is(.is-waiting, .is-working, .is-waking) { animation: none; } .sm-tb-open > .sm-tb-room.is-waking { background-size: 50% 100%; } }

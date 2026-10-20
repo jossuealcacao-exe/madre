@@ -320,7 +320,7 @@ function stateOf(room) {
   if (glance.delayed) return { key: 'quiet', words: t('Responding slowly · last known state') };
   if (glance.waitingCount) return { key: 'waiting', words: t('Waiting for you · {n}', { n: glance.waitingCount }) };
   if (glance.working?.length) return { key: 'working', words: glance.working.length === 1 ? t('@{agent} is working', { agent: glance.working[0] }) : t('{n} agents working', { n: glance.working.length }) };
-  return { key: 'calm', words: t('Calm') };
+  return { key: 'calm', words: t('Active') };
 }
 
 function button(className, words, onClick) {
@@ -2899,7 +2899,7 @@ function drawPins() {
     const state = stateOf(room);
     const chip = pinChip(id);
     const lifted = pins.drag?.moved && pins.drag.id === id;
-    chip.className = `sm-tb-room is-${busy.get(id) === 'starting' ? 'working' : state.key}${lifted ? ' bar-lifted' : ''}${pins.dropping === id ? ' is-moving' : ''}`;
+    chip.className = `sm-tb-room is-${busy.get(id) === 'starting' ? 'waking' : state.key}${lifted ? ' bar-lifted' : ''}${pins.dropping === id ? ' is-moving' : ''}`;
     chip.querySelector('span').textContent = room.name;
     chip.lastChild.textContent = monogram(room.name);
     // Its accent (src/looks.mjs): the key lit in its colour while the project is open.
@@ -4432,12 +4432,12 @@ function lookPreview(looks) {
   const coord = el('div', 'hp-tile hp-coord');
   const head = el('div', 'hp-head');
   head.append(el('span', 'hp-mark'), el('b', null, t('Coordinator')));
-  coord.append(head, el('small', null, t('Calm')), el('span', 'hp-key', t('Talk to the Coordinator')));
+  coord.append(head, el('small', null, t('Active')), el('span', 'hp-key', t('Talk to the Coordinator')));
   grid.append(coord);
   names.forEach((name, index) => {
     const card = el('div', 'hp-tile hp-card');
     const state = el('small', 'hp-state');
-    state.append(el('i'), index ? t('Asleep') : t('Calm'));
+    state.append(el('i'), index ? t('Asleep') : t('Active'));
     card.append(el('b', null, name), state, el('span', 'hp-chat'), el('span', 'hp-strip'), el('span', `hp-key${index ? '' : ' on'}`, t('Open')));
     grid.append(card);
   });

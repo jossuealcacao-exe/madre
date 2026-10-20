@@ -13243,7 +13243,14 @@ function renderTerminalCard(event) {
   const id = String(event.id ?? event.sequence ?? Math.random());
   const outId = `term-${id.replace(/[^\w-]/g, '')}`;
   head.setAttribute('aria-controls', outId);
-  head.append(el('b', 'term-tag', `/${name}`));
+  // A module's answer (/informe, /remind…) is not a terminal: it reads as the module's own card —
+  // its icon, its title in words, the key it offers in the room's accent (1.0.5).
+  const owner = run?.line ? null : (modules.items ?? []).find((item) => (item.commands ?? []).some((line) => String(line).split(/\s/)[0] === `/${name}`)) ?? null;
+  const fromModule = !run?.line && name !== 'run';
+  if (fromModule) {
+    node.classList.add('module-result');
+    head.append(appIcon(owner ?? { id: name }, 22));
+  } else head.append(el('b', 'term-tag', `/${name}`));
   if (run?.line) {
     head.title = runTitle(run);
     head.append(el('code', 'term-line', `$ ${run.line}`));
@@ -13253,15 +13260,19 @@ function renderTerminalCard(event) {
     head.append(el('span', `term-status ${status}`, `${status === 'ok' ? '✓' : status === 'failed' ? '✕' : '■'} ${word} · ${((Number(run.durationMs) || 0) / 1000).toFixed(1)}s`));
     if (run.agent) head.append(paint(el('span', 'term-who', run.auto ? `@${run.agent} · ${t('copilot')}` : `@${run.agent}`), run.agent));
   } else {
-    head.title = title ?? name;
-    head.append(el('span', 'term-line', title ?? name));
+    // «WORK REPORT · TIENDA-DEMO» reads «Informe de trabajo · tienda-demo»: the module's part in the
+    // room's language and in sentence case, the rest (a project's name) as it is.
+    const [lead, ...rest] = String(title ?? owner?.name ?? name).split(' · ');
+    const said = fromModule ? [t(sentenceCase(lead)), ...rest.map((part) => (part === part.toUpperCase() ? part.toLowerCase() : part))].join(' · ') : title ?? name;
+    head.title = said;
+    head.append(el('span', 'term-line', said));
     if (args.length) head.append(el('span', 'term-who', args.join(' ')));
   }
   head.append(el('span', 'term-count', t('{n} lines', { n: lines.length })), chevron());
   // A module's own page for this result (a report to print), offered as a key beside the line. The
   // server keeps it to the module's own routes (/api/x/<id>/); the page checks the same before drawing.
   const link = event.payload.link;
-  const page = typeof link?.href === 'string' && /^\/api\/x\/[a-z][a-z0-9-]*\//.test(link.href) ? el('a', 'term-link', link.label || title || name) : null;
+  const page = typeof link?.href === 'string' && /^\/api\/x\/[a-z][a-z0-9-]*\//.test(link.href) ? el('a', 'term-link', t(link.label || title || name)) : null;
   if (page) { page.href = link.href; page.target = '_blank'; page.rel = 'noopener'; }
   // The line a person looks for first: the last thing it printed.
   const last = [...lines].reverse().find((line) => line.trim() && !/^Files changed:|^Archivos cambiados:/.test(line));
@@ -15610,7 +15621,10 @@ function openNoteWindow(id) {
     const open = [...notesKit.windows.values()].filter((one) => one.node.open).length;
     const w = Math.min(280, window.innerWidth - 32);
     const h = Math.min(260, window.innerHeight - 96);
-    entry.place(note.box ?? { x: Math.max(16, window.innerWidth - w - 40 - 28 * open), y: 96 + 28 * open, w, h });
+    // A note left larger than this screen, or partly off it, comes back whole and inside it.
+    const kept = note.box ? { ...note.box, w: Math.min(note.box.w, window.innerWidth - 32), h: Math.min(note.box.h, window.innerHeight - 96) } : null;
+    if (kept) kept.x = Math.min(Math.max(16, kept.x), Math.max(16, window.innerWidth - kept.w - 16));
+    entry.place(kept ?? { x: Math.max(16, window.innerWidth - w - 40 - 28 * open), y: 96 + 28 * open, w, h });
     if (!note.open) void saveNote({ id, open: true });
   }
   bringWindowForward(node);
@@ -20628,7 +20642,7 @@ function switchState(room) {
   if (glance.waitingCount) return { key: 'waiting', count: glance.waitingCount, words: t('Waiting for you · {n}', { n: glance.waitingCount }) };
   if (glance.working?.length) return { key: 'working', words: glance.working.length === 1 ? t('@{agent} is working', { agent: glance.working[0] }) : t('{n} agents working', { n: glance.working.length }) };
   if (switcher.done.has(room.id)) return { key: 'done', words: t('Finished') };
-  return { key: 'calm', words: t('Calm') };
+  return { key: 'calm', words: t('Active') };
 }
 // The Coordinator first, then the projects by name: each keeps its place, whatever it is doing.
 const switchOrder = () => [...switcher.rooms].sort((a, b) => (a.id === switcher.salas ? -1 : b.id === switcher.salas ? 1 : a.name.localeCompare(b.name)));

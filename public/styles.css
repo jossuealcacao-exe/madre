@@ -10329,14 +10329,19 @@ dialog.surface.window.module-window.note-window.lifted { background-color: var(-
 .note-window .surface-modes .surface-mode svg :is(path, rect, circle) { fill: none; }
 .note-window .surface-sep { background: rgb(0 0 0 / .14); }
 .note-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 2px 14px 10px; }
-.note-text { flex: 1; min-height: 0; resize: none; border: 0; outline: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 15px; line-height: 1.45; }
+.note-text { flex: 1 1 auto; min-height: 0; height: auto; max-height: none; resize: none; border: 0; outline: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 15px; line-height: 1.45; }
 .note-text::placeholder { color: rgb(28 25 23 / .42); }
-.note-colors { display: flex; gap: 7px; opacity: 0; transition: opacity calc(180ms * var(--motion-scale)) var(--ease-out, ease); }
+/* The colors sit at the foot of the note at any size: a note made large keeps them at its bottom edge. */
+.note-colors { flex: none; margin-top: auto; display: flex; flex-wrap: wrap; gap: 7px; opacity: 0; transition: opacity calc(180ms * var(--motion-scale)) var(--ease-out, ease); }
 .note-window:is(:hover, :focus-within) .note-colors { opacity: 1; }
 .note-dot { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1px solid rgb(0 0 0 / .22); background: var(--note); cursor: pointer; transition: transform calc(160ms * var(--motion-scale)) var(--ease-out, ease); }
 .note-dot:is(:hover, :focus-visible) { transform: scale(1.18); }
 .note-dot[aria-checked="true"] { box-shadow: 0 0 0 2px rgb(28 25 23 / .55); }
 .note-dot.static { flex: none; align-self: center; margin-right: 10px; cursor: default; transform: none; }
+/* Larger notes read larger: the text grows a little with the note (container query on its body). */
+.note-body { container: note / size; }
+@container note (min-width: 420px) { .note-text { font-size: 17px; } .note-dot { width: 16px; height: 16px; } }
+@container note (min-width: 680px) { .note-text { font-size: 19px; line-height: 1.5; } }
 /* The bin's lid lifts under the pointer, as the × turns. */
 .note-delete .ic-lid { transform-box: view-box; transform-origin: 16px 5.6px; transition: transform calc(220ms * var(--motion-scale)) var(--ease-out, ease); }
 .note-delete:is(:hover, :focus-visible) .ic-lid { transform: rotate(-18deg) translateY(-.6px); }
@@ -10366,3 +10371,18 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 @keyframes icon-ring { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(12deg); } 40% { transform: rotate(-10deg); } 60% { transform: rotate(6deg); } 80% { transform: rotate(-3deg); } }
 @media (prefers-reduced-motion: reduce) { .reminder-due { animation: none; } }
 .reminders-keys .reminders-move { width: auto; max-width: 150px; height: 30px; padding: 0 8px; font-size: 12.5px; }
+
+/* A MODULE'S ANSWER (1.0.5): /informe, /remind and the rest read as the module's own card, not as a
+   terminal — its icon, its title in words in the reading font, and the key it offers in the room's
+   accent. A command run in a terminal keeps the terminal's look. */
+.command-card.terminal.module-result .term-head { font-family: var(--read); font-size: 13px; gap: 10px; padding: 10px 14px; }
+.command-card.terminal.module-result .term-head .mk-icon { flex: none; --mk-size: 22px; border-radius: 7px; }
+.command-card.terminal.module-result .term-line { font-family: var(--read); font-size: 13.5px; font-weight: 620; letter-spacing: 0; text-transform: none; }
+.command-card.terminal.module-result .term-who { font-size: 12.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+.command-card.terminal.module-result .term-count { font-family: var(--read); font-size: 11.5px; }
+.command-card.terminal.module-result .term-peek { font-family: var(--read); font-size: 12.5px; padding: 0 14px 10px 46px; }
+.command-card.terminal.module-result .term-link { margin: -2px 14px 12px 46px; padding: 7px 14px; border-radius: 10px; background: var(--acc, var(--phosphor)); color: var(--acc-ink, var(--phosphor-ink, #0b0b0b)); font-family: var(--read); font-size: 12.5px; font-weight: 650; }
+.command-card.terminal.module-result pre { font-family: var(--read); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+/* A notice's key wears the room's accent, as every other key does. */
+.toast .toast-act { background: color-mix(in srgb, var(--acc, var(--madre-green)) 18%, transparent); color: var(--acc, var(--madre-green)); }
+.toast .toast-act:hover { background: color-mix(in srgb, var(--acc, var(--madre-green)) 28%, transparent); }
