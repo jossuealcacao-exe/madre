@@ -6,11 +6,13 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.5 · Unreleased
 
+- **Connections, in neural mode.** Home's Connections map and its window use the neural mode's language: each project is a neuron with dendrites, each connection a slightly curved axon, and what crosses it travels as a signal of light, over a deep ground.
+- **The Connections icon is a connector**, male and female, that plugs in on hover. The fill of Modules and Add widgets is now a soft tint that leaves air between the pieces.
+- **Keys in one row.** In the Connections window, «Open the project» and «See the connections» sit together, and the side panel is a little wider so they fit.
+- **Cursor not installed now has a way forward.** Its card in Settings shows the command of its official installer, to copy into a terminal, and a «Check again» key. The card of an agent without a session or not installed can now be folded too.
 - **Home, cleaner:**
-  - **The Connections map is quieter.** Each project is a dot of its colour inside a fine ring, each connection a thin line, and the notes travel as one short spark, without glow.
   - **Home's bar is as wide as what it holds.** No gap in the middle anymore: it grows with each project and notice and, when it no longer fits, folds what is left over without pushing anything out.
   - **New icons on the bar:**
-    - Connections is two joined links that give off sparks on hover.
     - The Market is a basket of modules that shakes and settles them.
     - The pieces of Modules fill one after another.
     - Add widgets has its own drawing (a wide piece, a square and a circle) and fills too.

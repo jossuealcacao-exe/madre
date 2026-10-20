@@ -53,7 +53,11 @@ test('cursor · its session is read from `status`, it signs in from the room, an
   assert.equal(login.headless, true);
   assert.deepEqual(login.args, ['login']);
   assert.equal(login.terminal.command, 'cursor-agent login');
-  assert.equal(installPlanFor({ id: 'cursor' }), null, 'no npm package: its own installer, in a terminal');
+  // No npm package: its own installer, said as a command for a terminal; MADRE runs none of it.
+  const plan = installPlanFor({ id: 'cursor' });
+  assert.equal(plan.command, null, 'MADRE does not fetch and run an installer script');
+  assert.equal(plan.terminal, true);
+  assert.match(plan.display, /^curl https:\/\/cursor\.com\/install/);
   assert.equal(parseMessage('@cursor revisa esto').target, 'cursor');
 });
 

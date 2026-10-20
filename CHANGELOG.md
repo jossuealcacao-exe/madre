@@ -6,11 +6,13 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.5 · Sin publicar
 
+- **Las conexiones, en modo neural.** El mapa de Conexiones de Inicio y su ventana usan el lenguaje del modo neural: cada proyecto es una neurona con dendritas, cada conexión un axón ligeramente curvo, y lo que cruza viaja como una señal de luz, sobre un fondo profundo.
+- **El ícono de Conexiones es un conector** macho y hembra que se enchufa al pasar el ratón. El relleno de Módulos y Agregar widgets es ahora un tinte suave que deja aire entre las piezas.
+- **Botones en una sola fila.** En la ventana de Conexiones, «Abrir el proyecto» y «Ver las conexiones» quedan juntos, y el panel lateral es un poco más ancho para que quepan.
+- **Cursor sin instalar ya tiene salida.** Su tarjeta en Ajustes muestra el comando de su instalador oficial para copiarlo en una terminal y un botón «Revisar otra vez». La tarjeta de un agente sin sesión o sin instalar ahora también se puede cerrar.
 - **Inicio, más limpio:**
-  - **El mapa de Conexiones es más sobrio.** Cada proyecto es un punto de su color con un anillo fino, cada conexión una línea delgada, y las notas viajan como una sola chispa corta, sin resplandor.
   - **La barra de Inicio mide lo que contiene.** Ya no deja un hueco en medio: crece con cada proyecto y aviso y, cuando ya no cabe, pliega lo que sobra sin empujar nada fuera.
   - **Íconos nuevos en la barra:**
-    - Conexiones son dos eslabones unidos que sueltan chispas al pasar el ratón.
     - El Mercado es una cesta de módulos que se sacude y los acomoda.
     - Los módulos de Módulos se llenan uno tras otro.
     - Agregar widgets tiene su propio dibujo (una pieza ancha, un cuadro y un círculo) y también se llena.

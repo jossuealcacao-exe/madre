@@ -5359,4 +5359,5 @@ export const ES = {
   'One of OpenCode\'s own free models: no account needed.': 'Uno de los modelos gratuitos de OpenCode: no necesita cuenta.',
   'No credit left: its turns are refused': 'Sin saldo: rechaza los turnos',
   'Its key is no longer valid': 'Su llave ya no es válida',
+  '{label} installs with its own installer: copy the command into a terminal, then check again.': '{label} se instala con su propio instalador: copia el comando en una terminal y luego revisa otra vez.',
 };

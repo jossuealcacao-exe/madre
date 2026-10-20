@@ -1130,8 +1130,11 @@ function paintSide(side, picked, toList) {
     };
     list(t('Looks up'), readsFrom);
     list(t('Looked up by'), readBy);
-    if (room?.open && id !== data.salas) side.append(button('sm-btn primary small', t('Open the project'), () => leaveTo(addressOf(room))));
-    side.append(listKey);
+    // The keys go side by side, as everywhere else in MADRE (1.0.5): one under the other read as a list.
+    const keys = el('div', 'sm-keys-row');
+    if (room?.open && id !== data.salas) keys.append(button('sm-btn primary small', t('Open the project'), () => leaveTo(addressOf(room))));
+    keys.append(listKey);
+    side.append(keys);
     return;
   }
   const enlace = enlaces.find((one) => one.id === picked.link);
@@ -1195,6 +1198,19 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
   merge.append(svgNode('feMergeNode', { in: 'soft' }), svgNode('feMergeNode', { in: 'SourceGraphic' }));
   glow.append(merge);
   defs.append(glow);
+  // NEURAL, 1.0.5: the connections drawn as the neural mode draws memory (public/neural.js), in a
+  // light SVG of their own: a deep glow behind, each project a neuron (a soma that glows, short
+  // dendrites with a bead at the end), each connection an axon that bends a little, and what
+  // crosses it a signal of light that travels the axon. Only what travels lights up.
+  const depthId = `sm-depth-${wide ? 'w' : 't'}`;
+  const depthGradient = svgNode('radialGradient', { id: depthId });
+  for (const [offset, opacity] of [['0%', 1], ['60%', 0.35], ['100%', 0]]) {
+    const stop = svgNode('stop', { offset, 'stop-opacity': opacity, class: 'depth-stop' });
+    depthGradient.append(stop);
+  }
+  defs.append(depthGradient);
+  svg.append(svgNode('ellipse', { class: 'depth', cx, cy, rx: W * 0.55, ry: H * 0.62, fill: `url(#${depthId})` }));
+  const seedOf = (id) => [...String(id)].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 9973, 7);
   const halos = new Map();
   const haloFor = (id, colour) => {
     if (halos.has(id)) return halos.get(id);
@@ -1231,7 +1247,10 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
     const { start, end } = edges(from, to);
     // To or from the Coordinator the wire is straight; between two projects it bows away from the
     // middle, so it never runs through the Coordinator.
-    let d = `M${start.x.toFixed(1)} ${start.y.toFixed(1)} L${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+    // An axon to or from the Coordinator bends a little, to one side or the other by its index.
+    const sideways = (index % 2 ? 1 : -1) * Math.min(14, Math.hypot(end.x - start.x, end.y - start.y) * 0.12);
+    const lx = end.x - start.x, ly = end.y - start.y, ll = Math.hypot(lx, ly) || 1;
+    let d = `M${start.x.toFixed(1)} ${start.y.toFixed(1)} Q ${((start.x + end.x) / 2 - (ly / ll) * sideways).toFixed(1)} ${((start.y + end.y) / 2 + (lx / ll) * sideways).toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
     if (source !== data.salas && reader !== data.salas) {
       const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
       const ox = mx - cx, oy = my - cy, out = Math.hypot(ox, oy) || 1;
@@ -1254,16 +1273,25 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
     // travel, from the project read to the one reading, and both ways when they read each other.
     // A still line under it says the connection is there even when nothing moves.
     const ways = enlace.direction === 'both' ? [['out', tone], ['back', reader === data.salas ? 'var(--text-3)' : toneOf(reader)]] : [['out', tone]];
-    for (const [way, colour] of ways) {
-      // One clean spark per way (1.0.5): no blur, a short bright dash that travels the line.
-      const flow = svgNode('path', { class: `flow ${way}`, d });
-      flow.style.stroke = colour;
-      flow.style.setProperty('--flow-delay', `${(index * 0.37) % 1.4}s`);
-      flow.dataset.a = source;
-      flow.dataset.b = reader;
-      if (still) flow.classList.add('still');
-      svg.append(flow);
-    }
+    ways.forEach(([way, colour], wayIndex) => {
+      // A signal of light that travels the axon, the way the notes go; both ways when they read
+      // each other. With reduced motion the axon stays lit instead.
+      if (still) {
+        const lit = svgNode('path', { class: `flow ${way} still`, d });
+        lit.style.stroke = colour;
+        lit.dataset.a = source;
+        lit.dataset.b = reader;
+        svg.append(lit);
+        return;
+      }
+      const signal = svgNode('circle', { class: `flow signal ${way}`, r: wide ? 2.6 : 2.2, filter: `url(#${glowId})` });
+      signal.style.fill = colour;
+      signal.dataset.a = source;
+      signal.dataset.b = reader;
+      const travel = svgNode('animateMotion', { dur: `${(2.8 + ((index + wayIndex) % 4) * 0.45).toFixed(2)}s`, begin: `-${((index * 0.61 + wayIndex * 1.3) % 2.4).toFixed(2)}s`, repeatCount: 'indefinite', path: d, ...(way === 'back' ? { keyPoints: '1;0', keyTimes: '0;1', calcMode: 'linear' } : {}) });
+      signal.append(travel);
+      svg.append(signal);
+    });
   });
   for (const room of ring) {
     const spot = at.get(room.id);
@@ -1284,7 +1312,21 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
       svgNode('circle', { class: 'body', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: (spot.r * (on ? 0.62 : 0.55)).toFixed(1) }),
       svgNode('circle', { class: 'heart', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: Math.max(0.8, spot.r * 0.18).toFixed(1) }),
     );
-    group.append(star);
+    // Its dendrites: three or four short fibres, each with a bead at the end, at angles of its own
+    // (from its id, so a project always looks the same), never towards where its name is written.
+    const seed = seedOf(room.id);
+    const fibres = svgNode('g', { class: 'dendrites' });
+    const count = on ? 4 : 3;
+    for (let at = 0; at < count; at += 1) {
+      const angle = Math.atan2(spot.sin, spot.cos) + Math.PI * (0.55 + (at / count) * 0.9) + ((seed % 17) - 8) * 0.03;
+      const length = spot.r * (1.7 + ((seed >> at) % 5) * 0.18);
+      const ax = spot.x + Math.cos(angle) * spot.r * 0.7, ay = spot.y + Math.sin(angle) * spot.r * 0.7;
+      const bx = spot.x + Math.cos(angle) * (spot.r + length), by = spot.y + Math.sin(angle) * (spot.r + length);
+      const bend = ((seed >> (at + 2)) % 2 ? 1 : -1) * length * 0.22;
+      fibres.append(svgNode('path', { d: `M${ax.toFixed(1)} ${ay.toFixed(1)} Q ${((ax + bx) / 2 - Math.sin(angle) * bend).toFixed(1)} ${((ay + by) / 2 + Math.cos(angle) * bend).toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}` }));
+      fibres.append(svgNode('circle', { class: 'bead', cx: bx.toFixed(1), cy: by.toFixed(1), r: 1.05 }));
+    }
+    group.append(fibres, star);
     const title = svgNode('title');
     title.textContent = `${room.name} · ${stateOf(room).words}`;
     group.append(title);
@@ -3815,7 +3857,7 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
   const list = el('div', 'sm-agents');
   const lastLine = new Map();   // agent → what its install or sign-in said last
   const openMore = new Set();   // agents whose connection detail is unfolded
-  const toggleMore = (id) => { if (openMore.has(id)) openMore.delete(id); else openMore.add(id); };
+  const foldedMore = new Set(); // agents the person folded, even one that would open by itself
   let live = null;              // the sign-in running right now, as the server tells it
   let poll = 0;
   let stream = null;
@@ -3932,14 +3974,14 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       const state = agentState(agent, answer);
       // The project's AJUSTES design (2026-10-13): one card per agent, folded to a line that says
       // who it is and whether it has a session. One that needs the person opens by itself.
-      const unfolded = openMore.has(agent.id) || !state.ok || state.busyNow || (live && live.agent === agent.id);
+      // One that needs the person opens by itself, and still closes when the person folds it (1.0.5).
+      const unfolded = !foldedMore.has(agent.id) && (openMore.has(agent.id) || !state.ok || state.busyNow || (live && live.agent === agent.id));
       const item = el('section', `sm-agent${state.ok ? ' ok' : ''}${unfolded ? ' open' : ''}`);
       item.dataset.agent = agent.id;
       // What opens is brought into view: the window grows downwards and an agent low in the list
       // opened below the edge of the screen, as if the arrow had done nothing.
       const head = button('sm-agent-head', null, async () => {
-        toggleMore(agent.id);
-        if (!openMore.has(agent.id) && !state.ok) openMore.add(agent.id);
+        if (unfolded) { openMore.delete(agent.id); foldedMore.add(agent.id); } else { foldedMore.delete(agent.id); openMore.add(agent.id); }
         await paint();
         if (openMore.has(agent.id)) list.querySelector(`.sm-agent[data-agent="${agent.id}"]`)?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
       });
@@ -3992,9 +4034,11 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       if (keyFirst) body.append(keyForm(agent));
       const acts = el('div', 'sm-agent-acts');
       if (!state.busyNow) {
-        if (!agent.detected && agent.install) acts.append(button('sm-btn primary small', t('Install'), async (event) => { event.currentTarget.disabled = true; await post(`/api/agents/${agent.id}/install`); void paint(); }));
+        if (!agent.detected && agent.install?.command) acts.append(button('sm-btn primary small', t('Install'), async (event) => { event.currentTarget.disabled = true; await post(`/api/agents/${agent.id}/install`); void paint(); }));
         else if (agent.detected && agent.login?.headless) for (const key of doorKeys()) acts.append(key);
       }
+      // Installed by hand in a terminal (its own installer): one press looks for it again.
+      if (!agent.detected && agent.install && !agent.install.command) acts.append(button('sm-btn small', t('Check again'), async (event) => { event.currentTarget.disabled = true; await post('/api/agents/probe'); void paint(); }));
       if (acts.childNodes.length) body.append(acts);
       const ask = askBlock(agent);
       if (ask) body.append(ask);

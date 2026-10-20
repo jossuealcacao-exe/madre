@@ -256,7 +256,12 @@ export const looksLikeAdminProblem = (output) => NEEDS_ADMIN.test(String(output 
 
 export function installPlanFor(agent, { prefix = null } = {}) {
   const name = AGENT_PACKAGE[agent?.id];
-  if (!name) return null;
+  // An agent with no npm package (Cursor) installs with its own installer, a script from its site:
+  // MADRE does not fetch and run that on its own; it says the command, to copy into a terminal.
+  if (!name) {
+    const own = AGENT_SETUP[agent?.id]?.install ?? [];
+    return own.length ? { package: null, command: null, args: [], display: own[0], fallback: null, alternatives: own.slice(1), terminal: true } : null;
+  }
   return {
     package: name,
     command: 'npm',

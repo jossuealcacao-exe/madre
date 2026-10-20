@@ -4355,7 +4355,7 @@ function bridgeCard(agent) {
   }
   const actions = el('div', 'actions');
   if (agent.id === 'madre') for (const button of ollamaActions()) actions.append(button);
-  else if (stage === 'missing' && agent.install) actions.append(bridgeInstallButton(agent));
+  else if (stage === 'missing' && agent.install?.command) actions.append(bridgeInstallButton(agent));
   let reveal = null;
   if (stage === 'signed-out' || (stage === 'ready' && agent.login?.headless)) {
     // Every door the CLI has, not just the first one. Claude sells two accounts and MADRE used
@@ -17370,7 +17370,7 @@ function connectionCard(agent) {
     if (result?.sessions) renderSettings();
     recheck.disabled = false;
   });
-  if (!agent.detected && agent.install) {
+  if (!agent.detected && agent.install?.command) {
     const install = sxButton(t('Install'), async () => {
       install.disabled = true;
       state.loginLogs.set(agent.id, []);

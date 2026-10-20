@@ -1145,6 +1145,7 @@ export async function createPulseServer({
     if (agent.detected) return { status: 409, body: { error: `${agent.label} is already installed.` } };
     const plan = installPlanFor(agent, { prefix: toolsPrefix() });
     if (!plan) return { status: 404, body: { error: `MADRE does not know how to install ${id}.` } };
+    if (!plan.command) return { status: 409, body: { error: t('{label} installs with its own installer: copy the command into a terminal, then check again.', { label: agent.label }) } };
     if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
     installing = `agent:${id}`;
     await room.record('connection.install.started', { agent: id, label: agent.label, command: plan.display });

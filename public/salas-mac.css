@@ -955,7 +955,7 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 .sm-graph-title { display: grid; gap: 2px; }
 .sm-graph-title h3 { margin: 0; }
 .sm-graph-title small { font-size: 12.5px; color: var(--text-3); }
-.sm-graph-stage { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; min-height: min(620px, 72vh); }
+.sm-graph-stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; min-height: min(620px, 72vh); }
 .sm-graph-canvas { height: auto !important; min-height: min(620px, 72vh); margin: 0 !important; }
 .sm-graph-side { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 18px; border-radius: 16px; background: var(--surface, var(--panel)); box-shadow: var(--key-track); overflow: auto; }
 .sm-graph-big { font-size: 30px; font-weight: 650; letter-spacing: -.02em; line-height: 1.05; color: var(--text); font-variant-numeric: tabular-nums; }
@@ -1417,13 +1417,12 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
    basket of modules that shakes once and settles them; Modules fills its four pieces one after
    another; Add widgets (a wide piece, a square and a circle, like Home itself) fills the same way. */
 .salas-mac :is(#sm-tb-links, #sm-tb-market, #sm-tb-modules, #sm-add-widgets) svg { overflow: visible; }
-#sm-tb-links svg .ic-sparks path { opacity: 0; transform-box: fill-box; transform-origin: center; }
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-sparks path { animation: sm-spark calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out) both; }
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-sparks path:nth-child(2) { animation-delay: 70ms; }
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-sparks path:nth-child(3) { animation-delay: 140ms; }
-#sm-tb-links svg .ic-mid { transition: stroke calc(200ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-mid { stroke: var(--s-acc, currentColor); }
-@keyframes sm-spark { 0% { opacity: 0; transform: translate(0, 0) scale(.4); } 35% { opacity: .9; } 100% { opacity: 0; transform: translate(.6px, -.6px) scale(1.15); } }
+#sm-tb-links svg :is(.ic-male, .ic-female) { transition: transform calc(240ms * var(--motion-scale, 1)) var(--ease-out, ease-out), color calc(240ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-tb-links svg .ic-male { transform: translateX(-.6px); }
+#sm-tb-links svg .ic-female { transform: translateX(.6px); }
+/* Plugged in: the prongs go into the socket and the pair takes the accent. */
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-male { transform: translateX(2.4px); color: var(--s-acc, currentColor); }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-female { transform: translateX(-.4px); color: var(--s-acc, currentColor); }
 
 #sm-tb-market svg .ic-basket { transform-box: fill-box; transform-origin: 50% 100%; }
 #sm-tb-market svg .ic-mods > * { transform-box: fill-box; transform-origin: center; }
@@ -1435,12 +1434,14 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 @keyframes sm-settle { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-1.6px); } 70% { transform: translateY(.5px); } }
 
 #sm-tb-modules svg rect, #sm-add-widgets svg :is(rect, circle) { fill: currentColor; fill-opacity: 0; transition: fill-opacity calc(180ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-#sm-tb-modules:is(:hover, :focus-visible) svg rect, #sm-add-widgets:is(:hover, :focus-visible) svg :is(rect, circle), #sm-add-widgets.filled svg :is(rect, circle) { fill-opacity: .9; }
+/* A tint, not a block (1.0.5): the pieces keep their outline and the air between them. */
+#sm-tb-modules:is(:hover, :focus-visible) svg rect, #sm-add-widgets:is(:hover, :focus-visible) svg :is(rect, circle), #sm-add-widgets.filled svg :is(rect, circle) { fill-opacity: .22; }
 #sm-tb-modules svg .ic-q2, #sm-add-widgets svg .ic-w2 { transition-delay: 60ms; }
 #sm-tb-modules svg .ic-q3, #sm-add-widgets svg .ic-w3 { transition-delay: 120ms; }
 #sm-tb-modules svg .ic-q4 { transition-delay: 180ms; }
 @media (prefers-reduced-motion: reduce) {
-  #sm-tb-links svg .ic-sparks path, #sm-tb-market svg :is(.ic-basket, .ic-mods > *) { animation: none !important; }
+  #sm-tb-market svg :is(.ic-basket, .ic-mods > *) { animation: none !important; }
+  #sm-tb-links svg :is(.ic-male, .ic-female) { transition: none; }
   #sm-tb-modules svg rect, #sm-add-widgets svg :is(rect, circle) { transition: none; }
 }
 
@@ -1454,3 +1455,25 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-acc) 0%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .sm-tb-room.is-waiting > i, .is-waiting .sm-state .dot, .sm-pin-glyph.is-waiting i { animation: none; } }
+
+/* Keys of one place in one row (1.0.5): a narrow side wraps them, never stacks them by default. */
+.sm-keys-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.sm-graph-side .sm-keys-row .sm-btn { margin-top: 0; }
+
+/* NEURAL CONNECTIONS, 1.0.5 (salas-mac.js, paintMap): the deep glow behind, the dendrites and their
+   beads in each project's tone, the axons faint until something travels them, the signals bright.
+   Over the quieter rules above. */
+.sm-map .depth-stop { stop-color: rgb(16, 52, 96); }
+:root[data-scheme="light"] .sm-map .depth-stop { stop-color: rgb(110, 150, 200); }
+.sm-map .depth { opacity: .55; pointer-events: none; }
+:root[data-scheme="light"] .sm-map .depth { opacity: .22; }
+.sm-map .dendrites path { fill: none; stroke: var(--pc, var(--s-acc)); stroke-width: 1; stroke-linecap: round; stroke-opacity: .42; }
+.sm-map .dendrites .bead { fill: var(--pc, var(--s-acc)); opacity: .7; }
+.sm-map .node:not(.linked) .dendrites { opacity: .45; }
+.sm-map .node:is(:hover, .lit) .dendrites path { stroke-opacity: .8; }
+.sm-map .node .star .halo { opacity: calc(var(--star-halo) * .75); }
+.sm-map .node .star .ring { stroke-opacity: .28; }
+.sm-map .wire { stroke-opacity: .22; }
+:root[data-scheme="dark"] .sm-map .wire { stroke-opacity: .26; }
+.sm-map .flow.signal { stroke: none; animation: none; opacity: 1; }
+.sm-map svg.focusing .flow.signal:not(.lit) { opacity: .08; }
