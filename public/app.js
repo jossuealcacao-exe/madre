@@ -8055,7 +8055,7 @@ const SETTINGS_CATS = {
   memory: { name: 'What it remembers', color: '#3fb6d9', icon: '<rect x="5" y="5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.1" y="8.1" width="3.8" height="3.8" rx=".6" fill="none" stroke="currentColor" stroke-width="1.4"/><path class="ic-pins" d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   // Local AI, also here and not only in Modules (2026-10-16): the same card, and what this
   // computer can run and train with it.
-  local: { name: 'Local AI', color: '#7f77dd', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.51 5.57L9.09 4.33M6.38 7.46L9.06 9.26M5.73 8.06L9.57 14.94M9.86 5.15L5.64 12.55M11.95 5.01L14.95 8.99M11.80 10.20L14.20 10.37M10.35 11.60L10.44 14.70M6.46 14.93L8.74 15.87M14.82 11.90L11.78 15.20"/><circle cx="4.8" cy="6.4" r="1.9"/><circle cx="10.8" cy="3.5" r="1.9"/><circle cx="10.3" cy="10.1" r="1.5"/><circle cx="16.1" cy="10.5" r="1.9"/><circle cx="4.7" cy="14.2" r="1.9"/><circle cx="10.5" cy="16.6" r="1.9"/></g>' },
+  local: { name: 'Local AI', color: '#7f77dd', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path stroke-width=".8" d="M6.47 5.59L9.13 4.31M6.33 7.43L8.97 9.21M5.70 8.01L9.60 14.99M9.88 5.11L5.62 12.59M11.92 4.97L14.98 9.03M11.90 10.21L14.25 10.37M10.35 11.70L10.44 14.75M6.41 14.91L8.79 15.89M14.85 11.86L11.75 15.24"/><circle cx="4.8" cy="6.4" r="1.25"/><circle cx="10.8" cy="3.5" r="1.25"/><circle cx="10.3" cy="10.1" r="1.0"/><circle cx="16.1" cy="10.5" r="1.25"/><circle cx="4.7" cy="14.2" r="1.25"/><circle cx="10.5" cy="16.6" r="1.25"/></g>' },
   mcp: { name: 'Outside tools (MCP)', color: '#5b8def', icon: '<path d="M7.2 3.2v3.3M12.8 3.2v3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.2 6.5h9.6v2.4a4.8 4.8 0 0 1-9.6 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 13.7v3.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   files: { name: 'Files and local sites', color: '#c8955a', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   permissions: { name: 'Permissions', color: '#e5484d', icon: '<path d="M10 2.8 4.2 5v4.6c0 3.6 2.4 6.4 5.8 7.6 3.4-1.2 5.8-4 5.8-7.6V5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
@@ -13917,7 +13917,7 @@ function cardShell(item, { on, state: stateText }) {
   if (item.commands?.length) {
     const body = cardFold(card, t('COMMANDS'), { key: `mod.${item.id}.commands`, count: item.commands.length });
     const list = el('ul', 'card-commands');
-    for (const line of item.commands) list.append(el('li', null, line));
+    for (const line of item.commands) list.append(el('li', null, t(line)));
     body.append(list);
   }
 
@@ -15135,7 +15135,7 @@ function moduleFacts(host, item) {
   if (item.commands?.length) {
     const block = sxBlock(host, t('Commands'), t('What it adds to the Write box. Type it in the project.'));
     const list = el('div', 'mods-commands');
-    for (const line of item.commands) list.append(el('code', null, line));
+    for (const line of item.commands) list.append(el('code', null, t(line)));
     block.rows.append(list);
   }
 }
@@ -15154,7 +15154,7 @@ function moduleSheet(host, item) {
     return;
   }
   const on = moduleOn(item);
-  const about = sxBlock(host, t('What it does'), moduleFace(item).summary ?? t(item.summary ?? ''));
+  const about = sxBlock(host, t('What it does'), t(moduleFace(item).summary ?? item.summary ?? ''));
   // Whose idea it was, when a module says (Reminders, 2026-10-20): credited where it is used.
   if (item.credit) sxRow(about, t('Idea by {name}', { name: item.credit }), t('Thank you for building MADRE with us.'));
   if (item.fixed) sxRow(about, t('Always on'), item.status?.detail ? sentenceCase(t(item.status.detail)) : null);
@@ -15206,18 +15206,19 @@ function moduleSheet(host, item) {
       if (control.type === 'select') {
         node = el('select', 'sx-input');
         const words = new Map((control.choices ?? []).map((choice) => [choice.value, choice.label]));
-        for (const option of control.options) { const choice = el('option', null, words.get(option) ?? option); choice.value = option; if (option === control.value) choice.selected = true; node.append(choice); }
+        for (const option of control.options) { const choice = el('option', null, t(words.get(option) ?? option)); choice.value = option; if (option === control.value) choice.selected = true; node.append(choice); }
         node.addEventListener('change', () => save(control, node.value, node));
       } else if (control.type === 'switch') {
-        node = sxSwitch(control.invert ? control.value === false : control.value === true, (next, box) => save(control, control.invert ? !next : next, box), { label: control.label });
+        node = sxSwitch(control.invert ? control.value === false : control.value === true, (next, box) => save(control, control.invert ? !next : next, box), { label: t(control.label) });
       } else {
         node = el('input', 'sx-input');
         node.type = 'text';
         node.value = control.value ?? '';
         node.addEventListener('change', () => save(control, node.value, node));
       }
-      node.setAttribute?.('aria-label', control.label);
-      sxRow(block, sentenceCase(control.label), control.note || null, node);
+      // A module's words go through the catalogue too: MADRE's own are translated there.
+      node.setAttribute?.('aria-label', t(control.label));
+      sxRow(block, sentenceCase(t(control.label)), control.note ? t(control.note) : null, node);
     }
   }
   if (item.secrets?.length) {
@@ -15659,13 +15660,16 @@ const reminderWhen = (due) => new Intl.DateTimeFormat(reminderLocale(), { weekda
 const reminderHour = (due) => new Intl.DateTimeFormat(reminderLocale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(due));
 const REPEAT_WORDS = { daily: () => t('every day'), weekdays: () => t('every weekday'), weekly: () => t('every week') };
 const whenLine = (due, repeat) => (repeat ? `${REPEAT_WORDS[repeat]?.() ?? ''} · ${reminderHour(due)}` : reminderWhen(due));
+// «Later», as long as Reminders' settings say, and tomorrow at the hour a day starts there.
+const laterWords = (minutes) => (minutes === 60 ? t('In an hour') : minutes > 60 ? t('In {n} hours', { n: Math.round(minutes / 60) }) : t('In {n} minutes', { n: minutes }));
+const tomorrowAt = (hour = 9) => { const next = new Date(); next.setDate(next.getDate() + 1); next.setHours(hour, 0, 0, 0); return next; };
 // The other times a card offers beside its own: in an hour, this evening, tomorrow, Monday.
 function quickReminderTimes(now = new Date()) {
   const at = (days, hour) => { const next = new Date(now); next.setDate(next.getDate() + days); next.setHours(hour, 0, 0, 0); return next; };
   const out = [{ label: t('In an hour'), due: new Date(now.getTime() + 3600000) }];
   if (at(0, 18) > new Date(now.getTime() + 30 * 60000)) out.push({ label: t('This evening'), due: at(0, 18) });
-  out.push({ label: t('Tomorrow morning'), due: at(1, 9) });
-  out.push({ label: t('On Monday'), due: at(((8 - now.getDay()) % 7) || 7, 9) });
+  out.push({ label: t('Tomorrow morning'), due: at(1, remindersKit.prefs.hour) });
+  out.push({ label: t('On Monday'), due: at(((8 - now.getDay()) % 7) || 7, remindersKit.prefs.hour) });
   return out;
 }
 function renderReminderOffer(payload) {
@@ -15717,12 +15721,14 @@ function settleReminderOffer(payload) {
 
 // The due ones of this project, read when it opens and every minute after: one card at a time,
 // bottom right, until each is done or moved.
-const remindersKit = { list: [], at: 0, card: null };
+const remindersKit = { list: [], done: [], prefs: { hour: 9, snooze: 60 }, at: 0, card: null };
 async function loadReminders() {
   if (state.device) return;
-  const answer = await fetch('/api/reminders', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  const answer = await fetch('/api/reminders?done=1', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
   if (!answer) return;
   remindersKit.list = answer.reminders ?? [];
+  remindersKit.done = answer.done ?? [];
+  if (answer.prefs) remindersKit.prefs = answer.prefs;
   drawDueReminder();
   if (modules.open === 'reminders' && modules.dialog.open) renderModules();
   if (moduleWindows.get('reminders')?.node.open) drawModuleWindow('reminders');
@@ -15751,8 +15757,8 @@ function drawDueReminder() {
   const acts = el('div', 'reminder-due-acts');
   const key = (words, tone, run) => { const button = el('button', tone, words); button.type = 'button'; button.addEventListener('click', () => { button.disabled = true; void run(); }); acts.append(button); };
   key(one.repeat ? t('Done for today') : t('Done'), 'primary', () => actOnReminder('/api/reminders/done', { id: one.id }));
-  key(t('In an hour'), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, minutes: 60 }));
-  key(t('Tomorrow'), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, until: quickReminderTimes().find((time) => time.label === t('Tomorrow morning')).due.toISOString() }));
+  key(laterWords(remindersKit.prefs.snooze), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, minutes: remindersKit.prefs.snooze }));
+  key(t('Tomorrow'), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, until: tomorrowAt(remindersKit.prefs.hour).toISOString() }));
   card.append(head, el('p', 'reminder-due-text', one.text), el('small', null, whenLine(one.due, one.repeat)), acts);
   if (!remindersKit.card) { document.body.append(card); remindersKit.card = card; }
 }
@@ -15784,10 +15790,26 @@ function remindersBlock(host, item) {
   block.rows.append(form);
   for (const one of remindersKit.list) {
     const keys = el('span', 'reminders-keys');
+    // Moved to another time in one choice, as a card offers it.
+    const move = el('select', 'sx-input reminders-move');
+    move.setAttribute('aria-label', t('Move it'));
+    move.append(el('option', null, t('Move…')));
+    for (const time of quickReminderTimes()) { const option = el('option', null, time.label); option.value = time.due.toISOString(); move.append(option); }
+    move.addEventListener('change', () => { if (move.value) { move.disabled = true; void actOnReminder('/api/reminders/snooze', { id: one.id, until: move.value }); } });
     const done = sxButton(one.repeat ? t('Done for today') : t('Done'), () => void actOnReminder('/api/reminders/done', { id: one.id }));
     const drop = sxButton(t('Delete'), () => void actOnReminder('/api/reminders/delete', { id: one.id }));
-    keys.append(done, drop);
-    sxRow(block, one.text, whenLine(one.due, one.repeat), keys);
+    keys.append(move, done, drop);
+    const late = Date.parse(one.due) <= Date.now();
+    sxRow(block, one.text, `${late ? `${t('Due')} · ` : ''}${whenLine(one.due, one.repeat)}`, keys);
+  }
+  // What was done, newest first: brought back with one press, or cleared.
+  if (remindersKit.done.length) {
+    const clear = sxButton(t('Clear'), () => void actOnReminder('/api/reminders/clear-done', {}));
+    const history = sxBlock(host, t('Already done'), t('The last ones you marked done in this project.'), { aside: clear, className: 'reminders-sheet' });
+    for (const one of remindersKit.done.slice(0, 10)) {
+      const again = sxButton(t('Again tomorrow'), () => void actOnReminder('/api/reminders/snooze', { id: one.id, until: tomorrowAt(remindersKit.prefs.hour).toISOString() }));
+      sxRow(history, one.text, t('Done {when}', { when: reminderWhen(one.done) }), again);
+    }
   }
 }
 function drawNotesSheets() {

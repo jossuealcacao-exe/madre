@@ -98,6 +98,13 @@ export function snoozeReminder(stateRoot, id, until) {
     return { reminder: one };
   });
 }
+export function clearDone(stateRoot, room = null) {
+  return change(stateRoot, (reminders) => {
+    let cleared = 0;
+    for (const one of reminders) if (one.done && (!room || one.room === room)) { one.drop = true; cleared += 1; }
+    return { cleared };
+  });
+}
 export function deleteReminder(stateRoot, id) {
   return change(stateRoot, (reminders) => {
     const one = reminders.find((item) => item.id === id);
@@ -181,8 +188,10 @@ export async function offerFor(ctx, event, { now = new Date(), fetchImpl = globa
   if (event?.type !== 'message.created' || said.role !== 'user' || said.via || said.synthetic) return null;
   const text = String(said.text ?? '');
   if (!text.trim() || text.trim().startsWith('/')) return null;
-  let found = pendingIn(text);
-  const habit = ctx.roomDir ? await noteHabit(ctx.roomDir, text, now).catch(() => null) : null;
+  const prefs = ctx.settings ?? {};
+  const dayHour = hourOf(prefs);
+  let found = prefs.offer === false ? null : pendingIn(text);
+  const habit = ctx.roomDir && prefs.habits !== false ? await noteHabit(ctx.roomDir, text, now).catch(() => null) : null;
   if (!found && habit) found = habit;
   if (!found) return null;
   const chatKey = `${ctx.roomId ?? 'home'}|${ctx.chat ?? ''}`;
@@ -194,7 +203,7 @@ export async function offerFor(ctx, event, { now = new Date(), fetchImpl = globa
   const local = ctx.services?.ollama?.state?.() ?? null;
   const project = await Promise.resolve(ctx.services?.ollama?.project?.()).catch(() => null);
   const model = local?.madreModel ?? local?.chatModel ?? null;
-  if (local?.running && model && project?.on !== false && found.why !== 'frequent') {
+  if (prefs.local !== false && local?.running && model && project?.on !== false && found.why !== 'frequent') {
     const read = await readWithLocal({ host: local.host, model, text, fetchImpl });
     if (read && !read.remind && found.why !== 'asked') return null;
     if (read?.what) { what = read.what; by = 'local'; }
@@ -203,12 +212,18 @@ export async function offerFor(ctx, event, { now = new Date(), fetchImpl = globa
   if (!what) return null;
   const when = found.why === 'frequent'
     ? { due: nextOccurrence(new Date(new Date(now).setHours(found.hour ?? 9, 0, 0, 0)), 'daily', now), repeat: 'daily' }
-    : parseWhen(whenWords, now) ?? { due: tomorrowMorning(now), repeat: null };
+    : parseWhen(whenWords, now, { hour: dayHour }) ?? { due: tomorrowMorning(now, dayHour), repeat: null };
   lastOffer.set(chatKey, Date.now());
   return { offer: randomUUID(), what, due: when.due.toISOString(), repeat: when.repeat ?? null, why: found.why, by, messageId: said.messageId ?? null };
 }
 
 const reply = (status, body) => ({ status, body });
+// What the person set in Reminders' settings: the hour a day starts at, and how long «later» is.
+export const HOURS = ['7', '8', '9', '10', '11', '12'];
+export const SNOOZES = ['15', '30', '60', '180'];
+const hourOf = (prefs) => (HOURS.includes(String(prefs?.hour)) ? Number(prefs.hour) : 9);
+const snoozeOf = (prefs) => (SNOOZES.includes(String(prefs?.snooze)) ? Number(prefs.snooze) : 60);
+const prefsOf = (ctx) => reminders.settingsFrom(ctx.config, ctx.roomId);
 // A due time said as a person reads it, in the room's language.
 export const whenWords = (due) => new Intl.DateTimeFormat(language() === 'en' ? 'en-US' : 'es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(due));
 const projectOf = (ctx) => (ctx.roomId ? basename(ctx.projectRoot ?? '') || null : null);
@@ -232,8 +247,15 @@ const reminders = defineModule({
   version: '0.1.0',
   credit: 'Daniel Castillo',
   summary: 'Notices what you say you still have to do, or what you ask for every day, and offers to remind you with one press. Reminders show in Home and in the project they came from. Read on your computer, with the local AI when you have it; no agent is asked.',
-  creates: ['nothing in the project', 'reminders.json in ~/.pulse, one for the whole computer'],
-  settings: { enabled: false },
+  creates: ['nothing in the project', 'a reminders.json file in ~/.pulse, one for the whole computer'],
+  settings: { enabled: false, offer: true, habits: true, local: true, hour: '9', snooze: '60' },
+  controls: [
+    { key: 'offer', type: 'switch', label: 'Offer a reminder when you write something pending', note: 'A card under your message, with the time already chosen. Nothing is set without your click.' },
+    { key: 'habits', type: 'switch', label: 'Notice what you ask for often', note: 'The same request on three different days is offered as a daily reminder.' },
+    { key: 'local', type: 'switch', label: 'Let the local AI read it first', note: 'When the project has it, it drops what is not a task and says it shorter. Without it, your own words are offered.' },
+    { key: 'hour', type: 'select', label: 'Hour when you do not say one', options: HOURS, choices: HOURS.map((hour) => ({ value: hour, label: `${hour}:00` })), note: '«Tomorrow» with no hour is tomorrow at this hour.' },
+    { key: 'snooze', type: 'select', label: 'Put off by', options: SNOOZES, choices: [{ value: '15', label: '15 minutes' }, { value: '30', label: '30 minutes' }, { value: '60', label: '1 hour' }, { value: '180', label: '3 hours' }], note: 'What the «later» key on a reminder that is due waits.' },
+  ],
   async status(ctx) {
     const enabled = Boolean(ctx.settings.enabled);
     const list = (await readReminders(ctx.stateRoot)).filter((one) => !one.done && (!ctx.roomId || one.room === ctx.roomId));
@@ -252,7 +274,8 @@ const reminders = defineModule({
     async execute(ctx, args) {
       const words = (Array.isArray(args) ? args.join(' ') : String(args ?? '')).trim();
       if (!words) return { ok: false, title: 'Reminders', text: t('Write what and when after /remind.') };
-      const when = parseWhen(words) ?? { due: tomorrowMorning(), repeat: null };
+      const dayHour = hourOf(ctx.settings);
+      const when = parseWhen(words, new Date(), { hour: dayHour }) ?? { due: tomorrowMorning(new Date(), dayHour), repeat: null };
       const made = await addReminder(ctx.stateRoot, { text: taskFromWords(words), due: when.due.toISOString(), repeat: when.repeat, room: ctx.roomId ?? null, project: projectOf(ctx), why: 'asked' });
       if (made.error) return { ok: false, title: 'Reminders', text: t('The reminder was not set.') };
       return { ok: true, title: 'Reminders', text: t('Reminder set: «{what}», {when}.', { what: made.reminder.text, when: whenWords(made.reminder.due) }) };
@@ -262,13 +285,18 @@ const reminders = defineModule({
     // This project's reminders, or every one in Home; the due ones first.
     { method: 'GET', path: '/api/reminders', handler: async (ctx, { url }) => {
       const all = !ctx.roomId || url?.searchParams?.get('all') === '1';
-      const list = (await readReminders(ctx.stateRoot)).filter((one) => !one.done && (all || one.room === ctx.roomId)).sort((a, b) => a.due.localeCompare(b.due));
-      return reply(200, { reminders: list, room: ctx.roomId ?? null, now: new Date().toISOString(), times: quickTimes() });
+      const mine = (await readReminders(ctx.stateRoot)).filter((one) => all || one.room === ctx.roomId);
+      const list = mine.filter((one) => !one.done).sort((a, b) => a.due.localeCompare(b.due));
+      // The done ones, newest first, only when asked: the sheet's history.
+      const done = url?.searchParams?.get('done') === '1' ? mine.filter((one) => one.done).sort((a, b) => b.done.localeCompare(a.done)).slice(0, 20) : undefined;
+      const prefs = prefsOf(ctx);
+      return reply(200, { reminders: list, done, room: ctx.roomId ?? null, now: new Date().toISOString(), times: quickTimes(), prefs: { hour: hourOf(prefs), snooze: snoozeOf(prefs) } });
     } },
     { method: 'POST', path: '/api/reminders', handler: async (ctx, { payload }) => {
       const text = String(payload?.text ?? '').trim();
       if (!text) return reply(400, { error: t('Write what to remember.') });
-      const when = iso(payload?.due) ? { due: new Date(payload.due), repeat: REPEATS.includes(payload?.repeat) ? payload.repeat : null } : parseWhen(`${payload?.when ?? ''} ${text}`) ?? { due: tomorrowMorning(), repeat: null };
+      const dayHour = hourOf(prefsOf(ctx));
+      const when = iso(payload?.due) ? { due: new Date(payload.due), repeat: REPEATS.includes(payload?.repeat) ? payload.repeat : null } : parseWhen(`${payload?.when ?? ''} ${text}`, new Date(), { hour: dayHour }) ?? { due: tomorrowMorning(new Date(), dayHour), repeat: null };
       const made = await addReminder(ctx.stateRoot, { text: taskFromWords(text), due: when.due.toISOString(), repeat: when.repeat, room: ctx.roomId ?? null, project: projectOf(ctx), why: 'manual' });
       return made.error ? reply(409, { error: t('The reminder was not set.') }) : reply(200, made);
     } },
@@ -298,6 +326,11 @@ const reminders = defineModule({
       if (!until) return reply(400, { error: t('Say when.') });
       const moved = await snoozeReminder(ctx.stateRoot, String(payload?.id ?? ''), until);
       return moved.error ? reply(404, { error: t('That reminder is no longer here.') }) : reply(200, moved);
+    } },
+    // The history emptied: the done ones of this project, or of every project in Home.
+    { method: 'POST', path: '/api/reminders/clear-done', handler: async (ctx) => {
+      const cleared = await clearDone(ctx.stateRoot, ctx.roomId ?? null);
+      return reply(200, cleared);
     } },
     { method: 'POST', path: '/api/reminders/delete', handler: async (ctx, { payload }) => {
       const gone = await deleteReminder(ctx.stateRoot, String(payload?.id ?? ''));

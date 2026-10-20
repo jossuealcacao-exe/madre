@@ -309,6 +309,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const top = el('section', 'mk-product-top');
     const words = el('div', 'mk-product-words');
     words.append(el('h1', null, nameOf(item)), el('p', null, lineOf(item)));
+    // Who made it, under its name, when it is someone from the community (Reminders: Daniel Castillo).
+    if (item.credit) words.append(el('small', 'mk-maker', t('Developed by {name}', { name: item.credit })));
     const keys = el('div', 'mk-keys');
     const line = el('p', 'mk-said');
     words.append(keys, line);
@@ -340,8 +342,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (shelfOf(item)) fact(t('Shelf'), t(shelfOf(item).title));
     // MADRE's own modules have no version of their own: they are the version of MADRE they come with.
     fact(t('Version'), item.version ? `v${String(item.version).replace(/^v/, '')}` : madre ? t('Comes with MADRE {version}', { version: madre }) : t('Comes with MADRE'));
-    // Whose idea it was, when a module says (Reminders, 2026-10-20).
-    if (item.credit) fact(t('Idea'), item.credit);
+    // Who developed it, when a module says (Reminders, 2026-10-20).
+    if (item.credit) fact(t('Developer'), item.credit);
     page.append(facts);
 
     // Three pictures (1.0.5), side by side and swiped like a store's: what it does, the module at

@@ -387,7 +387,7 @@ a.sm-tag-room:hover { background: color-mix(in srgb, var(--s-acc) 16%, transpare
    blur behind. */
 dialog.sm-sheet { --sm-sheet-w: 520px; position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; color: var(--text); overflow: hidden auto; overscroll-behavior: contain; }
 dialog.sm-sheet[open] { --sm-sheet-pad: 28px; display: flex; flex-direction: column; align-items: center; padding: var(--sm-sheet-pad) 16px; }
-dialog.sm-sheet > .sm-sheet-body { flex: none; width: min(var(--sm-sheet-w), 100%); margin-block: auto; overflow: clip; border-radius: 18px; background-color: color-mix(in srgb, var(--bg-2) 94%, transparent); background-image: linear-gradient(180deg, color-mix(in srgb, var(--text) 5%, transparent), transparent 120px); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); box-shadow: 0 34px 90px -30px rgba(0, 0, 0, .55), 0 8px 24px -8px rgba(0, 0, 0, .25); }
+dialog.sm-sheet > .sm-sheet-body { flex: none; width: min(var(--sm-sheet-w), 100%); margin-block: auto; max-height: calc(100dvh - 2 * var(--sm-sheet-pad, 28px)); overflow: hidden auto; overscroll-behavior: contain; border-radius: 18px; background-color: color-mix(in srgb, var(--bg-2) 94%, transparent); background-image: linear-gradient(180deg, color-mix(in srgb, var(--text) 5%, transparent), transparent 120px); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); box-shadow: 0 34px 90px -30px rgba(0, 0, 0, .55), 0 8px 24px -8px rgba(0, 0, 0, .25); }
 :root[data-scheme="light"] dialog.sm-sheet > .sm-sheet-body { background-image: linear-gradient(180deg, rgba(255, 255, 255, .55), transparent 120px); }
 .sm-sheet::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .sm-sheet:where(:not(.sm-settings)) form { display: grid; gap: 16px; padding: 24px 24px 20px; }
@@ -762,23 +762,23 @@ body.sm-in-macro { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .lw-end, .lw-end.is-bishop::before { animation: none; } .lw-wires .sm-wire { animation: none; } }
 
 /* AJUSTES, the room's window (styles.css: #settings, .settings-*, .sx-*), as wide as the room's.
-   Its head stays at the top of the screen while the screen carries the window. The board, the
-   scrim and the sheet over it share one place, so the window is as tall as the taller of the two
-   and nothing inside it scrolls. */
+   Since 2026-10-20 it is as tall as the screen allows and never taller: its head stays put, and
+   the board and the open section each scroll inside it, as the room's Settings do. (Before, the
+   window grew with what it held and the screen scrolled it: a long section, Local AI, ran off the
+   bottom of the window.) */
 .sm-sheet.sm-settings { --sm-sheet-w: 980px; }
 /* From the top, not centred: a centred window moved up by half of whatever opened in it, and the
    card just clicked slid out from under the pointer (2026-10-19). */
 dialog.sm-sheet.sm-settings > .sm-sheet-body { margin-block: 0 auto; }
-.sm-sheet-body.sm-settings-window { display: flex; flex-direction: column; gap: 0; padding: 0; min-height: min(640px, calc(100dvh - 56px)); }
-/* Sticky against the screen's edge, not the layer's padding: the head meets the top of the screen. */
-.sm-settings-window > .settings-head { position: sticky; top: calc(-1 * var(--sm-sheet-pad, 0px)); z-index: 4; cursor: default; touch-action: auto; background: color-mix(in srgb, var(--bg-2) 96%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); }
-.sm-settings-body { position: relative; flex: 1; display: grid; container: settings / inline-size; }
-.sm-settings-body > * { grid-area: 1 / 1; min-width: 0; }
-.sm-settings-body > .settings-board { align-self: start; overflow: visible; }
-.sm-settings-body > .settings-results { align-self: start; overflow: visible; }
+.sm-sheet-body.sm-settings-window { display: flex; flex-direction: column; gap: 0; padding: 0; height: min(900px, calc(100dvh - 56px)); max-height: none; overflow: hidden; }
+.sm-settings-window > .settings-head { position: relative; z-index: 4; flex: none; cursor: default; touch-action: auto; background: color-mix(in srgb, var(--bg-2) 96%, transparent); }
+.sm-settings-body { position: relative; flex: 1; min-height: 0; overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); container: settings / inline-size; }
+.sm-settings-body > * { grid-area: 1 / 1; min-width: 0; min-height: 0; }
+.sm-settings-body > .settings-board { align-self: stretch; overflow: hidden auto; overscroll-behavior: contain; }
+.sm-settings-body > .settings-results { align-self: stretch; overflow: hidden auto; overscroll-behavior: contain; }
 .sm-settings-body > .settings-scrim { position: absolute; inset: 0; }
-.sm-settings-body > .settings-sheet { position: relative; inset: auto; justify-self: end; width: min(580px, 64%); display: block; overflow: visible; }
-.sm-settings-body .settings-scroll { overflow: visible; }
+.sm-settings-body > .settings-sheet { position: relative; inset: auto; justify-self: end; align-self: stretch; width: min(580px, 64%); display: flex; flex-direction: column; overflow: hidden; }
+.sm-settings-body .settings-scroll { flex: 1; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; }
 @container settings (max-width: 700px) { .sm-settings-body > .settings-sheet { width: 100%; } }
 /* Appearance over the whole window, in two columns when there is room; the wallpapers small enough
    that the thirteen fit in two rows. */

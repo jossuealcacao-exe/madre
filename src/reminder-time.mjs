@@ -75,7 +75,7 @@ export function nextOccurrence(due, repeat, after = new Date()) {
 }
 
 // { due, repeat, said } for the words, or null when they say no time at all.
-export function parseWhen(words, now = new Date()) {
+export function parseWhen(words, now = new Date(), { hour: dayHour = DEFAULT_HOUR } = {}) {
   const text = fold(words);
   const base = new Date(now);
   const repeated = repeatOf(text);
@@ -109,13 +109,13 @@ export function parseWhen(words, now = new Date()) {
   }
 
   if (repeated) {
-    let first = at(base, hour?.hour ?? DEFAULT_HOUR, hour?.minute ?? 0);
+    let first = at(base, hour?.hour ?? dayHour, hour?.minute ?? 0);
     if (repeated.repeat === 'weekly' && Number.isInteger(repeated.day)) first = plusDays(first, (repeated.day - base.getDay() + 7) % 7);
     if (repeated.repeat === 'weekdays') while (first.getDay() === 0 || first.getDay() === 6) first = plusDays(first, 1);
     const due = first > base ? first : nextOccurrence(first, repeated.repeat, base);
     return { due, repeat: repeated.repeat, said: 'repeat' };
   }
-  if (day) return { due: at(day, hour?.hour ?? DEFAULT_HOUR, hour?.minute ?? 0), repeat: null, said: said.join(' ') };
+  if (day) return { due: at(day, hour?.hour ?? dayHour, hour?.minute ?? 0), repeat: null, said: said.join(' ') };
   if (hour) {
     const today = at(base, hour.hour, hour.minute);
     return { due: today > base ? today : plusDays(today, 1), repeat: null, said: 'hour' };
@@ -123,5 +123,5 @@ export function parseWhen(words, now = new Date()) {
   return null;
 }
 
-// When nothing was said: tomorrow, at the start of the day.
-export const tomorrowMorning = (now = new Date()) => at(plusDays(now, 1), DEFAULT_HOUR);
+// When nothing was said: tomorrow, at the start of the day (the person's own start, from Reminders' settings).
+export const tomorrowMorning = (now = new Date(), hour = DEFAULT_HOUR) => at(plusDays(now, 1), hour);

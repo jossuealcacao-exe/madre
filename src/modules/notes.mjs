@@ -91,7 +91,7 @@ const notes = defineModule({
   vendor: 'MADRE',
   version: '0.1.0',
   summary: 'Colored notes on the project, each in a window you move and size as you like. Only you read them: no agent sees them and nothing leaves your computer.',
-  creates: ['nothing in the project', 'notes.json beside the project’s conversations, in ~/.pulse'],
+  creates: ['nothing in the project', 'a notes.json file beside the project’s conversations, in ~/.pulse'],
   settings: { enabled: false },
   async status(ctx) {
     const list = await readNotes(ctx.roomDir);

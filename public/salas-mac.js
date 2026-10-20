@@ -720,12 +720,14 @@ async function restartAll() {
 // REMINDERS (src/modules/reminders.mjs · an idea by Daniel Castillo): the due ones of every
 // project, first in «Needs you», each with its project and the keys to settle it.
 let remindersSeen = null;
+let reminderPrefs = { hour: 9, snooze: 60 };   // Reminders' settings: how long «later» is
 const reminderLocale = () => (document.documentElement.lang === 'en' ? 'en-US' : 'es-MX');
 const reminderWhen = (due) => new Intl.DateTimeFormat(reminderLocale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(due));
 async function loadReminders({ opening = false } = {}) {
   const answer = await fetch('/api/reminders', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
   if (!answer) return;
   remindersSeen = answer.reminders ?? [];
+  if (answer.prefs) reminderPrefs = answer.prefs;
   const due = remindersSeen.filter((one) => Date.parse(one.due) <= Date.now());
   // Said when MADRE opens, once: the reminders themselves stay in «Needs you» until settled.
   if (opening && due.length) toast(due.length === 1 ? t('A reminder is due: {what}', { what: due[0].text }) : t('{n} reminders are due. They are in «Needs you».', { n: due.length }), 'done');
@@ -744,7 +746,7 @@ function attentionItems() {
       tone: 'ok', words: one.text,
       hint: [room ? roomLabel(room) : one.project, t('Reminder · {when}', { when: reminderWhen(one.due) })].filter(Boolean).join(' · '),
       act: () => void settleReminder('/api/reminders/done', { id: one.id }), go: one.repeat ? t('Done for today') : t('Done'),
-      later: { go: t('In an hour'), act: () => void settleReminder('/api/reminders/snooze', { id: one.id, minutes: 60 }) },
+      later: { go: reminderPrefs.snooze === 60 ? t('In an hour') : reminderPrefs.snooze > 60 ? t('In {n} hours', { n: Math.round(reminderPrefs.snooze / 60) }) : t('In {n} minutes', { n: reminderPrefs.snooze }), act: () => void settleReminder('/api/reminders/snooze', { id: one.id, minutes: reminderPrefs.snooze }) },
     });
   }
   for (const room of data?.rooms ?? []) {
@@ -4286,7 +4288,7 @@ const SET_CATS = {
   bar: { name: 'Top bar', icon: '<rect x="2.6" y="5.4" width="14.8" height="9.2" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 10h2.2M11.6 10h2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' },
   agents: { name: 'Agents', icon: '<circle cx="7" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.6" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 16c.6-2.3 2.2-3.6 4.2-3.6s3.6 1.3 4.2 3.6M9.6 13c.9-.4 2.4-.6 4-.6 2 0 3.6 1.3 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   bishop: { name: 'Coordinator', icon: '<path d="M2.6 10c1.7-3.1 4.3-4.8 7.4-4.8s5.7 1.7 7.4 4.8c-1.7 3.1-4.3 4.8-7.4 4.8S4.3 13.1 2.6 10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.3" fill="currentColor"/>' },
-  local: { name: 'Local AI', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.51 5.57L9.09 4.33M6.38 7.46L9.06 9.26M5.73 8.06L9.57 14.94M9.86 5.15L5.64 12.55M11.95 5.01L14.95 8.99M11.80 10.20L14.20 10.37M10.35 11.60L10.44 14.70M6.46 14.93L8.74 15.87M14.82 11.90L11.78 15.20"/><circle cx="4.8" cy="6.4" r="1.9"/><circle cx="10.8" cy="3.5" r="1.9"/><circle cx="10.3" cy="10.1" r="1.5"/><circle cx="16.1" cy="10.5" r="1.9"/><circle cx="4.7" cy="14.2" r="1.9"/><circle cx="10.5" cy="16.6" r="1.9"/></g>' },
+  local: { name: 'Local AI', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path stroke-width=".8" d="M6.47 5.59L9.13 4.31M6.33 7.43L8.97 9.21M5.70 8.01L9.60 14.99M9.88 5.11L5.62 12.59M11.92 4.97L14.98 9.03M11.90 10.21L14.25 10.37M10.35 11.70L10.44 14.75M6.41 14.91L8.79 15.89M14.85 11.86L11.75 15.24"/><circle cx="4.8" cy="6.4" r="1.25"/><circle cx="10.8" cy="3.5" r="1.25"/><circle cx="10.3" cy="10.1" r="1.0"/><circle cx="16.1" cy="10.5" r="1.25"/><circle cx="4.7" cy="14.2" r="1.25"/><circle cx="10.5" cy="16.6" r="1.25"/></g>' },
   projects: { name: 'Projects', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   release: { name: 'Version', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
 };
