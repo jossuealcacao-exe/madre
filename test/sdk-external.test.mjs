@@ -109,7 +109,7 @@ test('the SDK says what it did not understand, and the import that never works e
   assert.deepEqual(defineModule({ id: 'a', name: 'A', summary: 'ok' }).unknown, []);
   assert.deepEqual(defineModule({ id: 'b', name: 'B', sumary: 'x', comand: 'y' }).unknown, ['sumary', 'comand']);
   assert.deepEqual(defineModule({ id: 'c', name: 'C', install: { display: 'ignored before this fix' } }).unknown, ['install']);
-  assert.equal(MODULE_FIELDS.size, 38);
+  assert.equal(MODULE_FIELDS.size, 39);
   assert.ok(MODULE_FIELDS.has('summary') && MODULE_FIELDS.has('toolsForTurn'));
   // A connector says where it reaches, or its traffic shows up in the log as an address nothing
   // declares — true, and useless to a human trying to tell a module from a leak.

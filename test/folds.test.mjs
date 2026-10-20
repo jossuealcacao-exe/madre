@@ -248,11 +248,12 @@ test('modules: a board of tiles, a sheet for each, windows only for MADRE\'s own
   // Every module opens on its own dashboard, and what it touches is a block of the room.
   assert.match(board, /function moduleGlance\(item\)/);
   assert.match(board, /function moduleFacts\(host, item\)/);
-  // Which modules float is MADRE's decision for its own: three with a reading, nothing asked of the SDK.
+  // Which modules float is MADRE's decision for its own: the ones with a reading, and Notes and
+  // Reminders (1.0.5), whose window is their list; nothing asked of the SDK.
   // The faces live in market.js since the Market (2026-10-18): the room and Home draw the same marks.
   const faces = await read('market.js');
   const floating = [...faces.matchAll(/^ {2}([\w'-]+): \{[^\n]*window: true/gm)].map((match) => match[1].replace(/'/g, ''));
-  assert.deepEqual(floating.sort(), ['ash', 'intents', 'ollama']);
+  assert.deepEqual(floating.sort(), ['ash', 'intents', 'notes', 'ollama', 'reminders']);
   for (const field of ['window', 'widget', 'glance']) assert.ok(!new RegExp(`'${field}'`).test(sdk.slice(sdk.indexOf('MODULE_FIELDS'), sdk.indexOf('unknownFields'))), `the SDK grew a ${field} field`);
   // The last tile invites, and opens the guide instead of the SDK.
   assert.match(board, /make\.addEventListener\('click', \(\) => openModuleGuide\(\)\)/);
@@ -439,7 +440,8 @@ test('@madre gone is not a missing install: the room says Ollama, MU/TH/UR opens
   // Rooms that recorded the old sentence get the right remedy too, and never the install one.
   assert.deepEqual(diagnose('madre is not installed on this computer.').map((one) => one.id), ['madre-agent']);
   assert.deepEqual(diagnose('gemini is not installed on this computer.').map((one) => one.id), ['not-installed']);
-  assert.match(app, /if \(condition\.solvedIn === 'ollama'\) \{[\s\S]{0,200}floatModule\('ollama'\)/);
+  // Since 1.0.5 Local AI lives in Settings, not in Modules: the remedy opens it there.
+  assert.match(app, /if \(condition\.solvedIn === 'ollama'\) \{[\s\S]{0,200}openSettingsOn\('local'\)/);
   assert.match(app, /span\.style\.setProperty\('--cat', 'var\(--phosphor\)'\)/);
 });
 

@@ -34,6 +34,20 @@ export const MODEL_TIERS = [
   { id: '72b', params: 72, label: 'Qwen2.5 72B', ollama: 'qwen2.5:72b', base: 'mlx-community/Qwen2.5-72B-Instruct-4bit', quantized: true, runGb: 64, trainGb: 128 },
 ];
 
+// Other families a person may choose instead (2026-10-20). Qwen2.5 stays the ladder MADRE
+// recommends and trains on; these run in Ollama with the same minimums and are only offered where
+// they load. Their notes are said to a person, so they stay in plain words.
+export const OTHER_MODELS = [
+  { ollama: 'llama3.2:1b', label: 'Llama 3.2 1B', maker: 'Meta', params: 1, runGb: 4, note: 'The smallest. For a computer with little memory.' },
+  { ollama: 'llama3.2:3b', label: 'Llama 3.2 3B', maker: 'Meta', params: 3, runGb: 8, note: 'Quick. Strongest in English.' },
+  { ollama: 'gemma3:4b', label: 'Gemma 3 4B', maker: 'Google', params: 4, runGb: 8, note: 'Quick, and good in many languages.' },
+  { ollama: 'mistral:7b', label: 'Mistral 7B', maker: 'Mistral AI', params: 7, runGb: 12, note: 'Balanced, for everyday work.' },
+  { ollama: 'llama3.1:8b', label: 'Llama 3.1 8B', maker: 'Meta', params: 8, runGb: 12, note: 'Balanced. Strongest in English.' },
+  { ollama: 'gemma3:12b', label: 'Gemma 3 12B', maker: 'Google', params: 12, runGb: 16, note: 'Careful answers in many languages.' },
+  { ollama: 'phi4:14b', label: 'Phi-4 14B', maker: 'Microsoft', params: 14, runGb: 20, note: 'Reasons well for its size.' },
+  { ollama: 'gemma3:27b', label: 'Gemma 3 27B', maker: 'Google', params: 27, runGb: 32, note: 'The largest of its family. Needs a lot of memory.' },
+];
+
 // What the local AI does in MADRE, and the smallest model each one is worth turning on with. Below
 // it the feature works but answers poorly enough that it is better left off.
 export const LOCAL_FEATURES = [
@@ -114,6 +128,20 @@ export function hardwareFit(hardware) {
     return { id: feature.id, ok, needs: feature.needs, slow: !feature.train && ok && !accelerated };
   });
   return { hardware, usableGb: usable, accelerated, models, recommended: { run, train, largestRun }, features };
+}
+
+// Every model a person may choose, each with whether it runs on this computer and which one MADRE
+// recommends here: the Qwen2.5 ladder first, then the other families, smallest first.
+export function modelCatalog(fit) {
+  const usable = fit?.usableGb ?? 0;
+  const accelerated = Boolean(fit?.accelerated);
+  const best = fit?.recommended?.run?.ollama ?? null;
+  const qwen = MODEL_TIERS.map((tier) => ({ ollama: tier.ollama, label: tier.label, maker: 'Alibaba', params: tier.params, runGb: tier.runGb, note: 'Good in many languages. The family MADRE recommends and trains.' }));
+  return [...qwen, ...OTHER_MODELS].map((model) => ({
+    ...model,
+    run: usable >= model.runGb ? (accelerated ? 'yes' : 'slow') : 'no',
+    recommended: model.ollama === best,
+  }));
 }
 
 let measured = null;

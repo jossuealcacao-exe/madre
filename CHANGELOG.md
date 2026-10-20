@@ -6,6 +6,25 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.5 · Sin publicar
 
+- **Notas (módulo nuevo, 0.1, gratis).** Notas de seis colores en tu proyecto, cada una en una ventana que mueves por el lienzo y ajustas desde sus bordes, como cualquier otra ventana de MADRE. Cada nota tiene dos teclas propias: la papelera, que la elimina (con «Deshacer» por si fue un error), y la ×, que solo la cierra. Se encienden y se administran desde Módulos, y su tecla se puede fijar en la barra. Solo tú las lees: ningún agente las ve y no se guardan en la carpeta del proyecto.
+- **Recordatorios (módulo nuevo, 0.1, gratis). Una idea de Daniel Castillo.** Cuando escribes algo que tienes pendiente («mañana reviso el PR», «recuérdame llamar a Daniel el lunes») o pides lo mismo varios días, aparece una tarjeta debajo de tu mensaje: «¿Te lo recuerdo?», con la hora ya elegida. Un clic lo guarda; «Otra hora» ofrece en una hora, esta tarde, mañana temprano, el lunes o todos los días. Si el proyecto tiene IA local, @madre lee el mensaje antes y descarta lo que no es una tarea; no se le pregunta a ningún agente de pago. Cuando llega la hora, te avisa Inicio, en «Te necesita» y al abrir MADRE, y también el proyecto de donde salió. También puedes escribir `/remind mañana a las 5 llamar a Daniel`. El crédito de la idea aparece en su ficha y en el Mercado.
+- **IA local: eliges el modelo y todo vive en Ajustes.**
+  - En Inicio › Ajustes › IA local eliges el modelo que usan todos tus proyectos: el que MADRE escoge solo o cualquiera de los que tienes instalados. Debajo aparecen otros modelos que caben en tu computadora (Llama, Gemma, Mistral, Phi y Qwen), cada uno con un botón para descargarlo. El recomendado para tu equipo va primero y está marcado.
+  - Inicio gobierna la IA local de toda la computadora, como ya lo hace con los agentes: el servidor de Ollama, encenderlo o instalarlo, el interruptor general y qué proyectos la usan.
+  - En cada proyecto, Ajustes › IA local tiene su interruptor para ese proyecto, el modelo en uso y lo que hace ahí.
+  - IA local ya no aparece como módulo en el tablero de Módulos: cualquier camino que llevaba a él ahora abre Ajustes.
+- **Cada proyecto con su color.** El acento que eliges en un proyecto vale solo para ese proyecto, e Inicio conserva el suyo. Un proyecto nuevo empieza con el de Inicio (Verde Madre, si no lo cambiaste). Las fichas del panel para cambiar de proyecto y los proyectos fijados en la barra de Inicio llevan el degradado del color de cada uno.
+- **Proyectos fijados: encendido es abierto.** En la barra de Inicio, un proyecto fijado se ilumina con su color mientras está abierto y se apaga cuando duerme. Si algo pasa ahí, como un agente que te espera, late hasta que lo abres. Ya no lleva punto.
+- **La tecla de Conexiones ya no lleva número.**
+- **Íconos que se mueven al pasar el ratón.** En Ahorro de tokens, la flecha baja. IA local tiene un ícono nuevo, una red de nodos que cambia de perspectiva. En Esfuerzo sugerido, la aguja barre de izquierda a derecha como al acelerar. En Lo que recuerda, giran solo las piezas que salen del cuadro central.
+- **El Mercado, más fácil de encontrar y de leer.**
+  - En Módulos, el botón del Mercado tiene su cesta. La primera vez que abres Módulos, una tarjeta te invita a conocerlo.
+  - Cada módulo muestra tres imágenes: qué hace, el módulo trabajando en un proyecto y los pasos para usarlo.
+  - Cada módulo dice su versión. Los que vienen con MADRE dicen «Viene con MADRE 1.0.5».
+  - Las descripciones se reescribieron para que se entiendan sin saber de programación.
+- **«Te necesita» se lee como «Te esperan»:** un número grande, tranquilo en 0 y en tu color cuando algo te necesita.
+- **Cursor ya no aparece como «No está instalado» cuando sí lo está.** MADRE lo busca también en la carpeta de tu usuario, aunque se haya abierto desde otra.
+- **Para quien escribe módulos:** el campo nuevo `credit` dice de quién fue la idea. MADRE lo muestra en la ficha del módulo y en el Mercado («Idea de …»).
 - **Las conexiones, en modo neural.** El mapa de Conexiones de Inicio y su ventana usan el lenguaje del modo neural: cada proyecto es una neurona con dendritas, cada conexión un axón ligeramente curvo, y lo que cruza viaja como una señal de luz, sobre un fondo profundo.
 - **El ícono de Conexiones es un conector** macho y hembra que se enchufa al pasar el ratón. El relleno de Módulos y Agregar widgets es ahora un tinte suave que deja aire entre las piezas.
 - **Botones en una sola fila.** En la ventana de Conexiones, «Abrir el proyecto» y «Ver las conexiones» quedan juntos, y el panel lateral es un poco más ancho para que quepan.

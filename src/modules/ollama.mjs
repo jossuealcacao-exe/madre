@@ -7,14 +7,14 @@ import { defineModule } from './sdk.mjs';
 import { t } from '../i18n.mjs';
 import { findOnPath } from './helpers.mjs';
 import { RECOMMENDED } from '../ollama.mjs';
-import { hardwareOnce } from './local-models.mjs';
+import { hardwareOnce, modelCatalog } from './local-models.mjs';
 
 // The chat model to pull is the one this computer runs well (local-models.mjs), not one size for
 // every machine; the embedding model is small enough for all of them. With the hardware, the page
 // says which sizes run here and which features of the local AI are worth turning on.
 export async function recommendedHere() {
   const fit = await hardwareOnce();
-  return { ...RECOMMENDED, chat: fit.recommended.run?.ollama ?? RECOMMENDED.chat, hardware: fit };
+  return { ...RECOMMENDED, chat: fit.recommended.run?.ollama ?? RECOMMENDED.chat, hardware: fit, catalog: modelCatalog(fit) };
 }
 
 // Ollama is not an npm package, so each system has its own way in. Where MADRE can run it, the

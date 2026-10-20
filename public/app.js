@@ -7226,6 +7226,8 @@ function renderEventNode(event) {
       break;
     }
     case 'mother.alert': node = renderMotherAlert(event); break;
+    case 'reminder.offered': node = renderReminderOffer(event.payload); break;
+    case 'reminder.answered': settleReminderOffer(event.payload); if (!replaying) void loadReminders(); return;
     case 'sentinel.report': state.reports.set(event.payload.id, { ...event.payload }); if (!replaying) { renderMotherSentinel(); toast(t('Diagnostics › {what} was recorded by the failure monitor. Open Diagnostics to report it.', { what: event.payload.kind === 'crash' ? t('a crash') : t('an unexpected problem') })); } return;
     case 'servers.changed': paintPorts(event.payload); return;
     case 'server.stopped': if (!replaying) serverStopped(event.payload); return;
@@ -7639,12 +7641,18 @@ window.addEventListener?.('storage', (event) => {
 // phone's bridge.
 // The wallpaper is each page's own (2026-10-13): this project keeps the one chosen here, Home the
 // one chosen in Home (src/looks.mjs, `rooms`). The rest of the looks are shared.
-const SHARED_LOOKS = ['pulse.theme', 'pulse.accent', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural'];
+// The accent too, since 1.0.5: chosen here it is this project's, and Home's is the one a project
+// wears until it has its own.
+const SHARED_LOOKS = ['pulse.theme', 'pulse.wallpaper.style', 'pulse.wallpaper.veil', 'pulse.wallpaper.blur', 'pulse.bubbles', 'pulse.text', 'pulse.neural'];
 let booted = false;
 let looksPush = 0;
 // Saved for this project alone, on the server, so it outlives the port the page is served on.
 function saveOwnWallpaper(value) {
   void fetch('/api/looks/room', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallpaper: value }) }).catch(() => null);
+}
+// Kept as chosen, the default included: «Madre green» here is a choice, Home's may be another.
+function saveOwnAccent(value) {
+  void fetch('/api/looks/room', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accent: value ?? LOOKS.accent.values[0] }) }).catch(() => null);
 }
 function pushLooks() {
   if (SPLIT_CHAT) return;
@@ -7665,12 +7673,14 @@ async function pullLooks() {
   // Before a project had its own, it wore the shared one: that is where it starts.
   let wall = answer.own?.wallpaper ?? answer.looks['pulse.wallpaper'] ?? null;
   if (wall === CUSTOM_WALL && !answer.custom) wall = null;
+  // Its own accent, or Home's while it has none.
+  const accent = answer.own?.accent ?? answer.looks['pulse.accent'] ?? null;
   try {
     // Nothing kept yet: the first page that has a choice of its own hands it to the others.
     if (!answer.saved) { if (SHARED_LOOKS.some((key) => localStorage.getItem(key) !== null)) pushLooks(); return; }
     let changed = false;
-    for (const key of [...SHARED_LOOKS, 'pulse.wallpaper']) {
-      const value = key === 'pulse.wallpaper' ? (wall === 'default' ? null : wall) : answer.looks[key] ?? null;
+    for (const key of [...SHARED_LOOKS, 'pulse.wallpaper', 'pulse.accent']) {
+      const value = key === 'pulse.wallpaper' ? (wall === 'default' ? null : wall) : key === 'pulse.accent' ? (accent === LOOKS.accent.values[0] ? null : accent) : answer.looks[key] ?? null;
       if (localStorage.getItem(key) === value) continue;
       if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
       changed = true;
@@ -7702,6 +7712,7 @@ function saveLook(name, value) {
   } catch { /* the choice lasts as long as the page */ }
   applyLook(name, value);
   if (name === 'wallpaper') saveOwnWallpaper(value);
+  if (name === 'accent') saveOwnAccent(value);
   pushLooks();
 }
 // What is picked on the sheet is a draft: the preview wears it, the room does not, until ACCEPT.
@@ -8041,10 +8052,10 @@ const SETTINGS_CATS = {
   look: { name: 'Appearance', color: '#8e75e8', icon: '<circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/>' },
   room: { name: 'Work and limits', color: '#d97757', icon: '<rect x="3.5" y="3.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="3.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3.5" y="11" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
   agents: { name: 'Agents', color: '#10a37f', icon: '<circle cx="7" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.6" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 16c.6-2.3 2.2-3.6 4.2-3.6s3.6 1.3 4.2 3.6M9.6 13c.9-.4 2.4-.6 4-.6 2 0 3.6 1.3 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
-  memory: { name: 'What it remembers', color: '#3fb6d9', icon: '<rect x="5" y="5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.1" y="8.1" width="3.8" height="3.8" rx=".6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
+  memory: { name: 'What it remembers', color: '#3fb6d9', icon: '<rect x="5" y="5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.1" y="8.1" width="3.8" height="3.8" rx=".6" fill="none" stroke="currentColor" stroke-width="1.4"/><path class="ic-pins" d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   // Local AI, also here and not only in Modules (2026-10-16): the same card, and what this
   // computer can run and train with it.
-  local: { name: 'Local AI', color: '#7f77dd', icon: '<rect x="5" y="5" width="10" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 2.6v2.4M12 2.6v2.4M8 15v2.4M12 15v2.4M2.6 8h2.4M2.6 12h2.4M15 8h2.4M15 12h2.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="1.8" fill="currentColor"/>' },
+  local: { name: 'Local AI', color: '#7f77dd', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.51 5.57L9.09 4.33M6.38 7.46L9.06 9.26M5.73 8.06L9.57 14.94M9.86 5.15L5.64 12.55M11.95 5.01L14.95 8.99M11.80 10.20L14.20 10.37M10.35 11.60L10.44 14.70M6.46 14.93L8.74 15.87M14.82 11.90L11.78 15.20"/><circle cx="4.8" cy="6.4" r="1.9"/><circle cx="10.8" cy="3.5" r="1.9"/><circle cx="10.3" cy="10.1" r="1.5"/><circle cx="16.1" cy="10.5" r="1.9"/><circle cx="4.7" cy="14.2" r="1.9"/><circle cx="10.5" cy="16.6" r="1.9"/></g>' },
   mcp: { name: 'Outside tools (MCP)', color: '#5b8def', icon: '<path d="M7.2 3.2v3.3M12.8 3.2v3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.2 6.5h9.6v2.4a4.8 4.8 0 0 1-9.6 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 13.7v3.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   files: { name: 'Files and local sites', color: '#c8955a', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   permissions: { name: 'Permissions', color: '#e5484d', icon: '<path d="M10 2.8 4.2 5v4.6c0 3.6 2.4 6.4 5.8 7.6 3.4-1.2 5.8-4 5.8-7.6V5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
@@ -12911,7 +12922,7 @@ function remedyDetail(host, condition, { agent = null, hintAgent = null } = {}) 
     sxRow(block, who ? t('Open @{agent} in Settings', { agent: who }) : t('Open Agents in Settings'), t('Sign it in, install it or change what it may do, from there.'), sxButton(t('Open'), () => openSettingsOn('agents', { agent: who }), { tone: 'primary' }));
   }
   if (condition.solvedIn === 'ollama') {
-    sxRow(block, t('Open Ollama'), t('Start it, download its models and choose what it does in this project.'), sxButton(t('Open'), () => floatModule('ollama'), { tone: 'primary' }));
+    sxRow(block, t('Open Ollama'), t('Start it, download its models and choose what it does in this project.'), sxButton(t('Open'), () => openSettingsOn('local'), { tone: 'primary' }));
   }
   // The other way: the terminal, for another machine, another shell, or whoever prefers typing.
   const terminal = sxBlock(host, t('In your terminal'), `${PLATFORMS[mother.platform].label} · ${PLATFORMS[mother.platform].shell}`, { className: 'remedy-terminal' });
@@ -13692,8 +13703,10 @@ async function refreshModules() {
   drawFilesTarget();
   drawLocalTarget();
   syncSettingsCards();
+  void syncNotes();
+  if (!remindersKit.read) { remindersKit.read = true; void loadReminders(); }
 }
-// AJUSTES › Local AI: the module's own blocks (Modules › Local AI), drawn here too.
+// AJUSTES › Local AI: the module's own blocks. Since 2026-10-20 they live only here: Local AI has no tile in Modules.
 function drawLocalTarget() {
   const target = state.settingsTargets.local;
   if (!target?.isConnected) return;
@@ -15142,6 +15155,8 @@ function moduleSheet(host, item) {
   }
   const on = moduleOn(item);
   const about = sxBlock(host, t('What it does'), moduleFace(item).summary ?? t(item.summary ?? ''));
+  // Whose idea it was, when a module says (Reminders, 2026-10-20): credited where it is used.
+  if (item.credit) sxRow(about, t('Idea by {name}', { name: item.credit }), t('Thank you for building MADRE with us.'));
   if (item.fixed) sxRow(about, t('Always on'), item.status?.detail ? sentenceCase(t(item.status.detail)) : null);
   else {
     const blocked = !on && item.preflight && !item.preflight.ok;
@@ -15222,6 +15237,8 @@ function moduleSheet(host, item) {
     intentsReading(block.rows);
   }
   if (item.id === 'ollama') { ollamaBlock(host, item); hardwareBlock(host, item.recommended?.hardware); }
+  if (item.id === 'notes') notesBlock(host, item);
+  if (item.id === 'reminders') remindersBlock(host, item);
 
   moduleFacts(host, item);
   if (item.external) {
@@ -15244,13 +15261,21 @@ function ollamaBlock(host, item) {
   // Whether this project uses it, beside Home's choice for all of them (src/local-ai.mjs).
   const project = info.project;
   if (project && !project.home) {
-    const why = !project.master ? t('Local AI is off for every project.')
-      : project.mode === 'auto' ? t('Home turns it on in every project, and «Active» switches it for all of them. To choose project by project, go to Home › Settings › Local AI.')
-        : project.mode === 'pick' ? t('Home chooses the projects one by one; «Active» switches this one here too.')
-          : t('Each project decides on its own: «Active» is this project’s switch.');
-    // The switch is the card's own «Active» (src/modules/ollama.mjs, toggle): this row says whose it is.
-    sxRow(block, t('In this project'), why);
+    const why = !project.master ? t('Local AI is off for every project. Turn it on in Home › Settings › Local AI.')
+      : project.mode === 'auto' ? t('Home turns it on in every project. To choose project by project, go to Home › Settings › Local AI.')
+        : project.mode === 'pick' ? t('Home chooses the projects one by one; this switch is the same one Home shows.')
+          : t('Each project decides on its own: this is this project’s switch.');
+    // Since 2026-10-20 Local AI has no tile in Modules: its switch lives here. It is the module's own
+    // toggle (src/modules/ollama.mjs), which outside «auto» moves only this project.
+    const own = project.editable && project.master ? sxSwitch(project.chosen, async (next, box) => {
+      box.disabled = true;
+      await fetch('/api/extensions/ollama/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+      await refreshModules();
+    }, { label: t('In this project') }) : null;
+    sxRow(block, t('In this project'), why, own);
   }
+  // One model for the whole computer, chosen in Home as the agents are.
+  if (info.running && info.chatModel) sxRow(block, t('Model'), t('{model} · chosen for the whole computer in Home › Settings › Local AI.', { model: info.chatModel }));
   if (info.models?.length) sxRow(block, t('Models'), info.models.map((model) => model.name).join(' · '));
   if (!info.running) {
     const step = info.binary
@@ -15320,7 +15345,10 @@ function moduleDetail(item) {
   return detail;
 }
 
+// Modules whose whole sheet is a category of Settings: every way in to them lands there.
+const IN_SETTINGS = { ollama: 'local' };
 function openModuleSheet(id) {
+  if (IN_SETTINGS[id]) { if (modules.dialog?.open) closeModules(); openSettingsOn(IN_SETTINGS[id]); return; }
   modules.open = id;
   if (id) stepDone('module');
   renderModules();
@@ -15342,8 +15370,8 @@ function renderModules() {
   }
   const grid = el('div', 'mods-grid');
   // What is working for you first, what you could turn on after.
-  // A module whose settings live in the project's Settings (Connect MCP) has no tile here.
-  const offered = modules.items.filter((item) => item.card !== 'settings');
+  // A module whose settings live in the project's Settings (Connect MCP, Local AI) has no tile here.
+  const offered = modules.items.filter((item) => item.card !== 'settings' && !IN_SETTINGS[item.id]);
   const ordered = [...offered.filter(moduleOn), ...offered.filter((item) => !moduleOn(item))];
   const shown = ordered.filter((item) => !query || settingsFold(`${item.name} ${t(moduleFace(item).line ?? '')} ${item.summary ?? ''}`).includes(query));
   for (const item of shown) grid.append(moduleTile(item));
@@ -15385,6 +15413,7 @@ function rememberModuleWindows() { try { localStorage.setItem('pulse.moduleWindo
 // From the board to its own window. MODULES open over the whole room is modal, and would sit above
 // the window it just made, so it steps aside; docked or floating, it stays where it is.
 function floatModule(id) {
+  if (IN_SETTINGS[id]) { openModuleSheet(id); return; }
   if (modules.open) openModuleSheet(null);
   openModuleWindow(id);
 }
@@ -15459,6 +15488,312 @@ function closeModuleWindow(id) {
   dropWindow(entry.node);
 }
 function renderModuleWindows() { for (const id of moduleWindows.keys()) drawModuleWindow(id); }
+
+// NOTES (src/modules/notes.mjs, 0.1, 2026-10-20): colored notes on the project, each one a window
+// of the room — carried by its head, sized by its edges, arranged by its key, closed by its ×, as
+// every window is. Its own key beside them throws it away. Kept on this computer, read by no agent.
+const NOTE_COLORS = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'];
+const NOTE_COLOR_WORDS = { yellow: () => t('Yellow'), green: () => t('Green'), blue: () => t('Blue'), pink: () => t('Pink'), purple: () => t('Purple'), orange: () => t('Orange') };
+const TRASH_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g class="ic-lid"><path d="M3.8 5.6h12.4"/><path d="M8 5.4V4.2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.2"/></g><path d="M5.3 5.8l.8 10a1.4 1.4 0 0 0 1.4 1.3h5a1.4 1.4 0 0 0 1.4-1.3l.8-10"/><path d="M8.6 9v5M11.4 9v5"/></svg>';
+const notesKit = { items: [], windows: new Map(), on: null, timers: new Map() };
+const notesOn = () => Boolean(modules.items.find((one) => one.id === 'notes')?.status?.installed);
+const noteTitle = (note) => String(note?.text ?? '').split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 48) || t('Note');
+// After every reading of the modules: the notes come when the module is on here, and go when it is not.
+async function syncNotes() {
+  const on = notesOn();
+  if (on === notesKit.on) return;
+  notesKit.on = on;
+  if (!on) { notesKit.items = []; for (const id of [...notesKit.windows.keys()]) closeNoteWindow(id); return; }
+  const answer = await fetch('/api/notes', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!answer) return;
+  notesKit.items = answer.notes ?? [];
+  for (const note of notesKit.items) if (note.open) openNoteWindow(note.id);
+}
+async function saveNote(change) {
+  const answer = await fetch('/api/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(change) })
+    .then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+  if (!answer.ok) { toast(answer.body.error ?? t('The note was not saved.')); return null; }
+  const note = answer.body.note;
+  const at = notesKit.items.findIndex((one) => one.id === note.id);
+  if (at >= 0) notesKit.items[at] = note; else notesKit.items.push(note);
+  drawNotesSheets();
+  return note;
+}
+async function newNote(color = null, seed = {}) {
+  const used = new Set(notesKit.items.map((one) => one.color));
+  const note = await saveNote({ color: color ?? NOTE_COLORS.find((one) => !used.has(one)) ?? NOTE_COLORS[notesKit.items.length % NOTE_COLORS.length], ...seed });
+  if (!note) return;
+  openNoteWindow(note.id);
+  notesKit.windows.get(note.id)?.text.focus();
+}
+// Its text is saved as it is written, half a second after the last key.
+function saveNoteText(id, text) {
+  clearTimeout(notesKit.timers.get(id));
+  notesKit.timers.set(id, setTimeout(() => { notesKit.timers.delete(id); void saveNote({ id, text }); }, 500));
+}
+function openNoteWindow(id) {
+  const note = notesKit.items.find((one) => one.id === id);
+  if (!note) return;
+  let entry = notesKit.windows.get(id);
+  if (!entry) {
+    const node = el('dialog', 'surface window module-window note-window');
+    node.dataset.color = note.color;
+    const head = el('header', 'module-window-head custom-head note-head');
+    const title = el('div', 'module-window-title');
+    const name = el('b', null, noteTitle(note));
+    title.append(name);
+    const group = el('span', 'surface-modes');
+    const arrange = el('button', 'surface-mode window');
+    arrange.type = 'button';
+    arrange.innerHTML = FLOAT_ICON; // trusted: our own SVG string
+    arrange.setAttribute('aria-pressed', 'true');
+    arrange.setAttribute('aria-label', t('Arrange the windows'));
+    arrange.addEventListener('click', (event) => { event.stopPropagation(); showArrange(arrange, { owner: () => node }); });
+    arrangeOnHover(arrange, { owner: () => node });
+    // Thrown away from the note itself, beside its ×: the two keys of a note.
+    const trash = el('button', 'surface-mode note-delete');
+    trash.type = 'button';
+    trash.innerHTML = TRASH_ICON; // trusted: our own SVG string
+    trash.setAttribute('aria-label', t('Delete the note'));
+    trash.title = t('Delete the note');
+    trash.addEventListener('click', (event) => { event.stopPropagation(); void deleteNote(id); });
+    group.append(arrange, el('span', 'surface-sep'), trash);
+    const close = el('button', 'close', t('Close the note'));
+    close.type = 'button';
+    close.addEventListener('click', () => { closeNoteWindow(id); void saveNote({ id, open: false }); });
+    joinClose(group, close);
+    head.append(title, group);
+    const body = el('div', 'note-body');
+    const text = el('textarea', 'note-text');
+    text.value = note.text;
+    text.placeholder = t('Write here…');
+    text.setAttribute('aria-label', t('Note'));
+    text.addEventListener('input', () => { name.textContent = noteTitle({ text: text.value }); saveNoteText(id, text.value); });
+    const colors = el('div', 'note-colors');
+    colors.setAttribute('role', 'radiogroup');
+    colors.setAttribute('aria-label', t('Color'));
+    for (const color of NOTE_COLORS) {
+      const dot = el('button', 'note-dot');
+      dot.type = 'button';
+      dot.dataset.color = color;
+      dot.setAttribute('role', 'radio');
+      dot.setAttribute('aria-label', NOTE_COLOR_WORDS[color]());
+      dot.addEventListener('click', () => {
+        node.dataset.color = color;
+        for (const other of colors.children) other.setAttribute('aria-checked', String(other === dot));
+        void saveNote({ id, color });
+      });
+      colors.append(dot);
+    }
+    body.append(text, colors);
+    node.append(head, body);
+    (document.querySelector('#settings')?.parentElement ?? document.body).append(node);
+    entry = { node, text, name, colors, box: null };
+    notesKit.windows.set(id, entry);
+    const place = (box) => { entry.box = clampWindowBox(box, { minW: 220, minH: 180 }); applyWindowBox(node, entry.box); };
+    const done = () => void saveNote({ id, box: entry.box });
+    carryWindowBy(head, node, { box: () => entry.box, place, done });
+    windowEdgesFor(node, { box: () => entry.box, place, done, minW: 220, minH: 180 });
+    entry.place = place;
+    node.addEventListener('pointerdown', () => bringWindowForward(node));
+    node.addEventListener('cancel', (event) => { event.preventDefault(); closeNoteWindow(id); void saveNote({ id, open: false }); });
+  }
+  const { node } = entry;
+  node.dataset.color = note.color;
+  for (const dot of entry.colors.children) dot.setAttribute('aria-checked', String(dot.dataset.color === note.color));
+  if (!node.open) {
+    if (DIALOG) DIALOG.show.call(node); else node.show?.();
+    node.classList.add('entering');
+    setTimeout(() => node.classList.remove('entering'), motion(460));
+    // A new note lands a little lower and to the left of the one before, never on top of it.
+    const open = [...notesKit.windows.values()].filter((one) => one.node.open).length;
+    const w = Math.min(280, window.innerWidth - 32);
+    const h = Math.min(260, window.innerHeight - 96);
+    entry.place(note.box ?? { x: Math.max(16, window.innerWidth - w - 40 - 28 * open), y: 96 + 28 * open, w, h });
+    if (!note.open) void saveNote({ id, open: true });
+  }
+  bringWindowForward(node);
+}
+function closeNoteWindow(id) {
+  const entry = notesKit.windows.get(id);
+  if (!entry?.node.open) return;
+  entry.node.close();
+  dropWindow(entry.node);
+}
+async function deleteNote(id) {
+  const note = notesKit.items.find((one) => one.id === id);
+  clearTimeout(notesKit.timers.get(id));
+  const entry = notesKit.windows.get(id);
+  const text = entry?.text.value ?? note?.text ?? '';
+  const answer = await fetch('/api/notes/delete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }).then((response) => response.ok).catch(() => false);
+  if (!answer) { toast(t('The note was not deleted.')); return; }
+  closeNoteWindow(id);
+  entry?.node.remove();
+  notesKit.windows.delete(id);
+  notesKit.items = notesKit.items.filter((one) => one.id !== id);
+  drawNotesSheets();
+  // Thrown away by mistake: it comes back, as it was, from the toast.
+  if (text.trim()) toast(t('Note deleted.'), { action: { label: t('Undo'), run: () => void newNote(note?.color, { text, box: entry?.box ?? note?.box ?? undefined }) } });
+}
+// The module's sheet (Modules › Notes, and its window): every note of the project, the open ones
+// brought forward, the closed ones opened again, and a new one.
+function notesBlock(host, item) {
+  if (!moduleOn(item)) return;
+  const add = sxButton(t('New note'), () => void newNote(), { tone: 'primary' });
+  const block = sxBlock(host, t('Your notes'), notesKit.items.length ? t('{n} in this project. Only you read them.', { n: notesKit.items.length }) : t('None yet. A new one opens as a window you can move anywhere.'), { aside: add, className: 'notes-sheet' });
+  const list = [...notesKit.items].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  for (const note of list) {
+    const row = sxRow(block, noteTitle(note), note.open ? t('Open') : t('Closed'), sxButton(note.open ? t('Bring forward') : t('Open'), () => openNoteWindow(note.id)));
+    const dot = el('span', 'note-dot static');
+    dot.dataset.color = note.color;
+    row.prepend(dot);
+  }
+}
+// REMINDERS (src/modules/reminders.mjs, 0.1, 2026-10-20 · an idea by Daniel Castillo). Under a
+// message that holds something pending, a card offers the reminder with its time already chosen:
+// one press sets it. When one is due, the project it came from says so the moment it opens, and
+// Home says it for every project.
+const reminderCards = new Map();
+const reminderLocale = () => (document.documentElement.lang === 'en' ? 'en-US' : 'es-MX');
+const reminderWhen = (due) => new Intl.DateTimeFormat(reminderLocale(), { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(due));
+const reminderHour = (due) => new Intl.DateTimeFormat(reminderLocale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(due));
+const REPEAT_WORDS = { daily: () => t('every day'), weekdays: () => t('every weekday'), weekly: () => t('every week') };
+const whenLine = (due, repeat) => (repeat ? `${REPEAT_WORDS[repeat]?.() ?? ''} · ${reminderHour(due)}` : reminderWhen(due));
+// The other times a card offers beside its own: in an hour, this evening, tomorrow, Monday.
+function quickReminderTimes(now = new Date()) {
+  const at = (days, hour) => { const next = new Date(now); next.setDate(next.getDate() + days); next.setHours(hour, 0, 0, 0); return next; };
+  const out = [{ label: t('In an hour'), due: new Date(now.getTime() + 3600000) }];
+  if (at(0, 18) > new Date(now.getTime() + 30 * 60000)) out.push({ label: t('This evening'), due: at(0, 18) });
+  out.push({ label: t('Tomorrow morning'), due: at(1, 9) });
+  out.push({ label: t('On Monday'), due: at(((8 - now.getDay()) % 7) || 7, 9) });
+  return out;
+}
+function renderReminderOffer(payload) {
+  const card = el('div', 'system market-offer reminder-offer');
+  const words = el('div', 'market-offer-words');
+  const acts = el('div', 'market-offer-acts');
+  card.append(appIcon({ id: 'reminders' }, 40), words, acts);
+  const entry = { card, words, acts, payload };
+  reminderCards.set(payload.offer, entry);
+  const answer = async (choice, keys) => {
+    for (const key of keys) key.disabled = true;
+    const reply = await fetch('/api/reminders/answer', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ offer: payload.offer, chat: SPLIT_CHAT ?? chats.active, text: payload.what, why: payload.why, ...choice }) })
+      .then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (!reply.ok) { toast(reply.body.error ?? t('The reminder was not set.')); for (const key of keys) key.disabled = false; return; }
+    settleReminderOffer(reply.body);
+    void loadReminders();
+  };
+  const ask = () => {
+    words.replaceChildren(el('b', null, payload.why === 'frequent' ? t('You ask for this often. Shall I remind you?') : t('Shall I remind you?')), el('span', null, `${payload.what} · ${whenLine(payload.due, payload.repeat)}`));
+    const yes = el('button', 'primary', t('Remind me'));
+    const other = el('button', null, t('Another time'));
+    const no = el('button', 'quiet', t('No, thanks'));
+    for (const key of [yes, other, no]) key.type = 'button';
+    const keys = [yes, other, no];
+    yes.addEventListener('click', () => void answer({ accept: true, due: payload.due, repeat: payload.repeat ?? null }, keys));
+    no.addEventListener('click', () => void answer({ accept: false }, keys));
+    // The other times, in the same row: still one press each.
+    other.addEventListener('click', () => {
+      acts.replaceChildren();
+      const times = quickReminderTimes().map(({ label, due }) => { const key = el('button', null, label); key.type = 'button'; key.addEventListener('click', () => void answer({ accept: true, due: due.toISOString(), repeat: null }, times)); return key; });
+      if (!payload.repeat) { const daily = el('button', null, t('Every day')); daily.type = 'button'; daily.addEventListener('click', () => void answer({ accept: true, due: payload.due, repeat: 'daily' }, times)); times.push(daily); }
+      const back = el('button', 'quiet', t('Back'));
+      back.type = 'button';
+      back.addEventListener('click', ask);
+      acts.append(...times, back);
+    });
+    acts.replaceChildren(yes, other, no);
+  };
+  ask();
+  return card;
+}
+function settleReminderOffer(payload) {
+  const entry = reminderCards.get(payload?.offer);
+  if (!entry || entry.card.classList.contains('settled')) return;
+  entry.card.classList.add('settled');
+  entry.words.replaceChildren(el('b', null, payload.accepted ? t('Reminder set') : t('No reminder')), el('span', null, payload.accepted ? `${entry.payload.what} · ${whenLine(payload.due, payload.repeat)}` : t('Nothing was set. Set one any time with /remind.')));
+  entry.acts.replaceChildren();
+}
+
+// The due ones of this project, read when it opens and every minute after: one card at a time,
+// bottom right, until each is done or moved.
+const remindersKit = { list: [], at: 0, card: null };
+async function loadReminders() {
+  if (state.device) return;
+  const answer = await fetch('/api/reminders', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!answer) return;
+  remindersKit.list = answer.reminders ?? [];
+  drawDueReminder();
+  if (modules.open === 'reminders' && modules.dialog.open) renderModules();
+  if (moduleWindows.get('reminders')?.node.open) drawModuleWindow('reminders');
+}
+async function actOnReminder(path, payload) {
+  const ok = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).then((response) => response.ok).catch(() => false);
+  if (!ok) toast(t('The reminder did not change.'));
+  await loadReminders();
+}
+function drawDueReminder() {
+  const due = remindersKit.list.filter((one) => Date.parse(one.due) <= Date.now());
+  if (!due.length) { remindersKit.card?.remove(); remindersKit.card = null; return; }
+  remindersKit.at = Math.min(remindersKit.at, due.length - 1);
+  const one = due[remindersKit.at];
+  const card = remindersKit.card ?? el('aside', 'reminder-due');
+  card.setAttribute('role', 'status');
+  card.replaceChildren();
+  const head = el('div', 'reminder-due-head');
+  head.append(appIcon({ id: 'reminders' }, 28), el('b', null, t('Reminder')));
+  if (due.length > 1) {
+    const next = el('button', 'reminder-due-next', t('{n} of {total}', { n: remindersKit.at + 1, total: due.length }));
+    next.type = 'button';
+    next.addEventListener('click', () => { remindersKit.at = (remindersKit.at + 1) % due.length; drawDueReminder(); });
+    head.append(next);
+  }
+  const acts = el('div', 'reminder-due-acts');
+  const key = (words, tone, run) => { const button = el('button', tone, words); button.type = 'button'; button.addEventListener('click', () => { button.disabled = true; void run(); }); acts.append(button); };
+  key(one.repeat ? t('Done for today') : t('Done'), 'primary', () => actOnReminder('/api/reminders/done', { id: one.id }));
+  key(t('In an hour'), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, minutes: 60 }));
+  key(t('Tomorrow'), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, until: quickReminderTimes().find((time) => time.label === t('Tomorrow morning')).due.toISOString() }));
+  card.append(head, el('p', 'reminder-due-text', one.text), el('small', null, whenLine(one.due, one.repeat)), acts);
+  if (!remindersKit.card) { document.body.append(card); remindersKit.card = card; }
+}
+// Unref'd, as the budget's ticker: under Node (the UI smoke test) a page's clock must not keep it alive.
+if (!state.device) { const ticker = setInterval(() => { if (!document.hidden) void loadReminders(); }, 60000); ticker.unref?.(); }
+// Modules › Reminders: what is coming, each with its keys, and one to write by hand.
+function remindersBlock(host, item) {
+  const form = el('form', 'reminders-new');
+  const input = el('input');
+  input.type = 'text';
+  input.maxLength = 200;
+  input.placeholder = t('What and when: «tomorrow at 5 call Daniel»');
+  input.setAttribute('aria-label', t('New reminder'));
+  const add = el('button', 'sx-btn primary', t('Add'));
+  add.type = 'submit';
+  form.append(input, add);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    add.disabled = true;
+    const ok = await fetch('/api/reminders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }).then((response) => response.ok).catch(() => false);
+    add.disabled = false;
+    if (!ok) { toast(t('The reminder was not set.')); return; }
+    input.value = '';
+    await loadReminders();
+  });
+  const block = sxBlock(host, t('Coming up'), remindersKit.list.length ? t('{n} in this project. Home shows them for every project.', { n: remindersKit.list.length }) : moduleOn(item) ? t('None yet. When you write something you still have to do, a card offers the reminder.') : t('Turn it on and a card offers a reminder when you write something you still have to do.'), { className: 'reminders-sheet' });
+  block.rows.append(form);
+  for (const one of remindersKit.list) {
+    const keys = el('span', 'reminders-keys');
+    const done = sxButton(one.repeat ? t('Done for today') : t('Done'), () => void actOnReminder('/api/reminders/done', { id: one.id }));
+    const drop = sxButton(t('Delete'), () => void actOnReminder('/api/reminders/delete', { id: one.id }));
+    keys.append(done, drop);
+    sxRow(block, one.text, whenLine(one.due, one.repeat), keys);
+  }
+}
+function drawNotesSheets() {
+  if (modules.open === 'notes' && modules.dialog.open) renderModules();
+  if (moduleWindows.get('notes')?.node.open) drawModuleWindow('notes');
+}
 
 // Create your module: the guide, in its own dialog over the board. What a module is, the two ways
 // to make one, where it lives, and the button that loads it — then yours, and what failed.
@@ -15627,6 +15962,20 @@ function openModules() {
   }
   bringWindowForward(node);
   modules.button.setAttribute('aria-pressed', 'true');
+  inviteToMarket();
+}
+// THE MARKET, MET (1.0.5): the first time someone opens Modules, a card beside the Market's key
+// says what it is in plain words. Once per person (hintSeen); after any card already showing.
+let marketInviteTries = 0;
+function inviteToMarket(delay = 900) {
+  if (state.device || hintsSeen().market) return;
+  setTimeout(() => {
+    const key = modules.dialog?.querySelector('.mods-market');
+    if (!modules.dialog?.open || !key?.getClientRects().length || hintsSeen().market) return;
+    if (document.querySelector('.hint-card, .tour-hint')) { if ((marketInviteTries += 1) <= 6) inviteToMarket(4000); return; }
+    hintSeen('market');
+    showFirstTouch({ title: t('Discover the Market'), text: t('More things your project can do, ready to use: see your page in a browser, make images, keep notes, get reminders and more. Most are free. Pick one and turn it on here; you can turn it off whenever you want.') }, key);
+  }, motion(delay));
 }
 function closeModules() {
   const node = modules.dialog;
@@ -15663,8 +16012,11 @@ function openRoomMarket(focus = null) {
   const head = modules.dialog?.querySelector('.mods-head');
   const add = head?.querySelector('#modules-add');
   if (head && add) {
-    const market = el('button', 'sx-btn mods-market', t('Market'));
+    const market = el('button', 'sx-btn mods-market');
     market.type = 'button';
+    // The Market's basket, as on Home's bar (salas-mac.html), beside its word.
+    market.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g class="ic-basket"><g class="ic-mods" stroke-width="1.4"><rect class="ic-m1" x="4.4" y="5.2" width="3.4" height="3.4" rx="1"/><circle class="ic-m2" cx="10" cy="5.3" r="1.8"/><rect class="ic-m3" x="12.2" y="5.2" width="3.4" height="3.4" rx="1"/></g><path d="M2.8 10.4h14.4l-1.5 5.4a1.6 1.6 0 0 1-1.6 1.2H5.9a1.6 1.6 0 0 1-1.6-1.2z"/><path d="M7.6 13v1.6M10 13v1.6M12.4 13v1.6" stroke-width="1.3"/></g></svg>'; // trusted: our own SVG string
+    market.append(el('span', null, t('Market')));
     market.title = t('Every module MADRE can add to this project');
     market.addEventListener('click', () => openRoomMarket());
     add.before(market);
@@ -20006,7 +20358,7 @@ const BAR_BUILT = {
 // They ride with the crew when it is there, and lead the keys when it is not: where they always were.
 const BAR_CONTEXTUAL = ['#steps-pill', '#tour-pill-slot', '#handoff-pill', '#update-pill', '#stop-all'];
 // A module's name before the board has answered; once it has, the module says its own.
-const BAR_MODULE_NAMES = { ash: 'Token saver', ollama: 'Local AI', intents: 'Suggested effort' };
+const BAR_MODULE_NAMES = { ash: 'Token saver', ollama: 'Local AI', intents: 'Suggested effort', notes: 'Notes', reminders: 'Reminders' };
 const BAR_MINUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 // Its mirror on a key that can still go on the bar, in the card under it.
 const BAR_PLUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v7M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -20396,6 +20748,8 @@ function switchDraw() {
     const icon = tile.querySelector('.switch-icon');
     const face = icon.querySelector('.switch-face');
     const coordinator = room.id === switcher.salas;
+    // Each project in its own accent (1.0.5, src/looks.mjs): the gradient of the tile is its colour.
+    if ((icon.dataset.accent ?? '') !== (room.accent ?? '')) { if (room.accent) icon.dataset.accent = room.accent; else delete icon.dataset.accent; }
     if (face.dataset.of !== (coordinator ? 'coordinator' : room.name)) {
       face.dataset.of = coordinator ? 'coordinator' : room.name;
       icon.classList.toggle('is-coordinator', coordinator);

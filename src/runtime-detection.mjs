@@ -2,10 +2,12 @@
 // MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { homedir, userInfo } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+
+const accountHome = () => { try { return userInfo().homedir || homedir(); } catch { return homedir(); } };
 
 const execFileAsync = promisify(execFile);
 
@@ -43,7 +45,9 @@ const definitions = [
     // on the PATH a room is started with.
     id: 'cursor',
     label: 'Cursor',
-    candidates: ['cursor-agent', join(homedir(), '.local', 'bin', 'cursor-agent')],
+    // Also the account's own home, as the system knows it (2026-10-20): a MADRE started with
+    // another HOME (a test home, a launcher) still finds the CLI the person installed.
+    candidates: [...new Set(['cursor-agent', join(homedir(), '.local', 'bin', 'cursor-agent'), join(accountHome(), '.local', 'bin', 'cursor-agent')])],
     versionArgs: ['--version'],
     adapter: 'cursor-readonly',
   },

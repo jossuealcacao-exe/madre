@@ -10269,3 +10269,92 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
   color: var(--acc-ink, #0a1405);
 }
 .switch-icon:not(.is-coordinator) .switch-face { text-shadow: 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent); }
+
+/* ICONS THAT SAY WHAT THEY DO, 1.0.5, on the bar's keys, the modules and Settings: Token saver
+   sends its arrow down once; Suggested effort sweeps its needle from left to right, as a car
+   speeding up; Local AI turns its network a little, to see it from another side; What it
+   remembers turns only the pins that leave its chip. Each under the pointer of its own key. */
+svg .ic-arrow, svg .ic-needle, svg .ic-pins { transform-box: view-box; transition: transform calc(380ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .25, 1.15); }
+svg .ic-needle { transform-origin: 10px 14.2px; transform: rotate(-78deg); }
+svg .ic-pins { transform-origin: 10px 10px; }
+svg .ic-net { transform-box: view-box; transform-origin: 10px 10px; transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):is(:hover, :focus-visible) svg .ic-arrow { animation: icon-arrow-down calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):is(:hover, :focus-visible) svg .ic-needle { transform: rotate(0deg); }
+:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):is(:hover, :focus-visible) svg .ic-pins { transform: rotate(45deg); }
+:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):is(:hover, :focus-visible) svg:has(.ic-net) { transform: perspective(48px) rotateY(26deg) rotateX(8deg); }
+svg:has(.ic-net) { transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+@keyframes icon-arrow-down { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(2.2px); } 70% { transform: translateY(-.6px); } }
+@media (prefers-reduced-motion: reduce) {
+  svg :is(.ic-arrow, .ic-needle, .ic-pins), svg:has(.ic-net) { transition: none; animation: none !important; }
+  svg .ic-needle { transform: none; }
+}
+
+/* The Market's key in Modules, with Home's basket (1.0.5): it shakes once and settles its modules. */
+.mods-head .mods-market { display: inline-flex; align-items: center; gap: 7px; }
+.mods-head .mods-market svg { width: 16px; height: 16px; flex: none; overflow: visible; }
+.mods-market svg .ic-basket { transform-box: fill-box; transform-origin: 50% 100%; }
+.mods-market svg .ic-mods > * { transform-box: fill-box; transform-origin: center; }
+.mods-market:is(:hover, :focus-visible) svg .ic-basket { animation: mk-basket calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.mods-market:is(:hover, :focus-visible) svg .ic-mods > * { animation: mk-settle calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out) 80ms; }
+@keyframes mk-basket { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 55% { transform: rotate(5deg); } 80% { transform: rotate(-2deg); } }
+@keyframes mk-settle { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-1.6px); } 70% { transform: translateY(.5px); } }
+@media (prefers-reduced-motion: reduce) { .mods-market svg :is(.ic-basket, .ic-mods > *) { animation: none !important; } }
+
+/* A module's gallery in the Market (1.0.5): three pictures in a row that scrolls sideways and stops
+   on each one. */
+.mk-gallery { display: grid; grid-auto-flow: column; grid-auto-columns: min(560px, 82%); gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; scrollbar-width: thin; }
+.mk-gallery > .mk-shot { width: 100%; scroll-snap-align: start; }
+
+/* NOTES (src/modules/notes.mjs, 0.1): a note wears its color whole; it is a window like every other,
+   so it is carried, sized and arranged the same way. The dots that change its color show while the
+   pointer or the cursor is on it. */
+[data-color="yellow"] { --note: #fde68a; }
+[data-color="green"] { --note: #bbf7d0; }
+[data-color="blue"] { --note: #bfdbfe; }
+[data-color="pink"] { --note: #fbcfe8; }
+[data-color="purple"] { --note: #ddd6fe; }
+[data-color="orange"] { --note: #fed7aa; }
+dialog.surface.window.module-window.note-window { width: 280px; height: 260px; color: #1c1917; background: color-mix(in srgb, var(--note, #fde68a) 94%, transparent); border: 1px solid color-mix(in srgb, var(--note, #fde68a) 80%, #000); box-shadow: 0 14px 34px rgb(0 0 0 / .22); }
+dialog.surface.window.module-window.note-window.lifted { background-color: var(--note, #fde68a) !important; }
+.note-window .module-window-head { border-bottom: 0; padding: 7px 8px 2px 14px; }
+.note-window .module-window-title b { font-size: 12.5px; font-weight: 600; opacity: .62; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-window .surface-modes { color: rgb(28 25 23 / .7); }
+.note-window .surface-mode:is(:hover, :focus-visible) { color: #1c1917; background: rgb(0 0 0 / .08); }
+.note-window .surface-sep { background: rgb(0 0 0 / .14); }
+.note-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 2px 14px 10px; }
+.note-text { flex: 1; min-height: 0; resize: none; border: 0; outline: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 15px; line-height: 1.45; }
+.note-text::placeholder { color: rgb(28 25 23 / .42); }
+.note-colors { display: flex; gap: 7px; opacity: 0; transition: opacity calc(180ms * var(--motion-scale)) var(--ease-out, ease); }
+.note-window:is(:hover, :focus-within) .note-colors { opacity: 1; }
+.note-dot { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1px solid rgb(0 0 0 / .22); background: var(--note); cursor: pointer; transition: transform calc(160ms * var(--motion-scale)) var(--ease-out, ease); }
+.note-dot:is(:hover, :focus-visible) { transform: scale(1.18); }
+.note-dot[aria-checked="true"] { box-shadow: 0 0 0 2px rgb(28 25 23 / .55); }
+.note-dot.static { flex: none; align-self: center; margin-right: 10px; cursor: default; transform: none; }
+/* The bin's lid lifts under the pointer, as the × turns. */
+.note-delete .ic-lid { transform-box: view-box; transform-origin: 16px 5.6px; transition: transform calc(220ms * var(--motion-scale)) var(--ease-out, ease); }
+.note-delete:is(:hover, :focus-visible) .ic-lid { transform: rotate(-18deg) translateY(-.6px); }
+.note-window .note-delete:is(:hover, :focus-visible) { color: #b91c1c; }
+
+/* REMINDERS (src/modules/reminders.mjs, 0.1 · an idea by Daniel Castillo). The card under a message
+   is the Market's offer card; a settled one goes quiet. A due one waits bottom right, one at a time. */
+#messages .system.reminder-offer.settled { box-shadow: 0 0 0 1px var(--line); }
+#messages .system.reminder-offer.settled .market-offer-acts { display: none; }
+.reminder-due { position: fixed; right: 20px; bottom: 132px; z-index: 60; width: min(340px, calc(100vw - 32px)); display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; color: var(--text); background: var(--plane-solid, var(--panel)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc, var(--phosphor)) 34%, transparent), 0 14px 34px -14px rgba(0, 0, 0, .5); animation: window-in calc(440ms * var(--motion-scale)) var(--ease-glide); }
+.reminder-due-head { display: flex; align-items: center; gap: 8px; }
+.reminder-due-head b { flex: 1; font-size: 12.5px; font-weight: 650; letter-spacing: .02em; color: var(--text-2); }
+.reminder-due-next { border: 0; background: none; color: var(--text-3); font: inherit; font-size: 12px; cursor: pointer; }
+.reminder-due-text { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.reminder-due small { color: var(--text-3); font-size: 12px; }
+.reminder-due-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.reminder-due-acts button { padding: 6px 12px; border: 0; border-radius: 9px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.reminder-due-acts button.primary { color: var(--acc-ink, var(--phosphor-ink, #0b0b0b)); background: var(--acc, var(--phosphor)); }
+.reminder-due-acts button:disabled { opacity: .6; }
+.reminders-new { display: flex; gap: 8px; padding: 4px 0 8px; }
+.reminders-new input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13.5px; }
+.reminders-keys { display: inline-flex; gap: 6px; }
+/* The bell rings on hover, as the other icons move. */
+svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opacity: .55; }
+:is(button, a, [role=button], .sx-card, .mod-card, .settings-card):is(:hover, :focus-visible) svg:has(.ic-ring) { animation: icon-ring calc(700ms * var(--motion-scale)) var(--ease-out, ease); transform-origin: 50% 18%; }
+:is(button, a, [role=button], .sx-card, .mod-card, .settings-card):is(:hover, :focus-visible) svg .ic-ring { opacity: 1; }
+@keyframes icon-ring { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(12deg); } 40% { transform: rotate(-10deg); } 60% { transform: rotate(6deg); } 80% { transform: rotate(-3deg); } }
+@media (prefers-reduced-motion: reduce) { .reminder-due { animation: none; } }

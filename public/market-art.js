@@ -155,7 +155,63 @@ function poster(item) {
   <circle cx="420" cy="110" r="6" fill="#ffffff" fill-opacity=".7"/><circle cx="140" cy="300" r="5" fill="#ffffff" fill-opacity=".6"/>`);
 }
 
+// THE MODULE AT WORK (1.0.5): a project as a person sees it — the conversation, the bar with the
+// module's key lit, and its window open beside, switched on. Drawn from the module's own icon.
+function roomScene(item) {
+  const id = `mka${++drawn}`;
+  const face = moduleFace(item);
+  return svg(`<defs>${shadow(`${id}s`)}</defs>
+  <g filter="url(#${id}s)">
+    <rect x="40" y="40" width="480" height="320" rx="20" fill="#ffffff" fill-opacity=".94"/>
+    <rect x="58" y="56" width="444" height="34" rx="12" fill="#eef2f1"/>
+    ${bar(72, 69, 56, 8, '#0f172a', .55)}
+    <circle cx="300" cy="73" r="10" fill="#e2e8f0"/><circle cx="326" cy="73" r="10" fill="#e2e8f0"/>
+    <rect x="342" y="61" width="24" height="24" rx="8" fill="#0f172a" fill-opacity=".86"/>
+    <g transform="translate(346 65) scale(.8)" color="#ffffff">${face.icon}</g>
+    <circle cx="384" cy="73" r="10" fill="#e2e8f0"/><circle cx="476" cy="73" r="10" fill="#e2e8f0"/>
+    <rect x="72" y="112" width="190" height="44" rx="16" fill="#f1f5f9"/>${bar(88, 126, 130, 7, '#64748b', .55)}${bar(88, 140, 96, 7, '#64748b', .4)}
+    <rect x="132" y="170" width="140" height="34" rx="14" fill="#16a34a" fill-opacity=".85"/>${bar(148, 184, 96, 7, '#ffffff', .9)}
+    <rect x="72" y="218" width="200" height="58" rx="16" fill="#f1f5f9"/>${bar(88, 234, 150, 7, '#64748b', .55)}${bar(88, 248, 168, 7, '#64748b', .45)}${bar(88, 262, 90, 7, '#64748b', .35)}
+    <rect x="72" y="300" width="200" height="38" rx="14" fill="#ffffff" stroke="#e2e8f0"/>${bar(88, 316, 110, 6, '#94a3b8', .5)}
+  </g>
+  <g filter="url(#${id}s)">
+    <rect x="296" y="112" width="206" height="226" rx="18" fill="#ffffff"/>
+    <rect x="314" y="130" width="40" height="40" rx="12" fill="#0f172a" fill-opacity=".86"/>
+    <g transform="translate(320 136) scale(1.4)" color="#ffffff">${face.icon}</g>
+    ${bar(366, 140, 86, 9, '#0f172a', .65)}${bar(366, 156, 62, 6, '#94a3b8', .55)}
+    <rect x="314" y="190" width="170" height="40" rx="12" fill="#f1f5f9"/>${bar(328, 207, 70, 7, '#475569', .55)}
+    <rect x="440" y="200" width="34" height="20" rx="10" fill="#16a34a"/><circle cx="464" cy="210" r="7" fill="#ffffff"/>
+    ${bar(314, 248, 160, 7, '#94a3b8', .5)}${bar(314, 264, 140, 7, '#94a3b8', .4)}${bar(314, 280, 118, 7, '#94a3b8', .35)}
+    <rect x="314" y="300" width="80" height="24" rx="12" fill="#0f172a" fill-opacity=".08"/>
+  </g>`);
+}
+
+// THREE STEPS (1.0.5): find it in the Market, switch it on, and it is working. No words: a basket,
+// a switch and the module's own icon with a check, joined by the way they follow each other.
+function stepsScene(item) {
+  const id = `mka${++drawn}`;
+  const face = moduleFace(item);
+  const card = (x) => `<rect x="${x}" y="130" width="140" height="150" rx="22" fill="#ffffff" fill-opacity=".94"/>`;
+  const arrow = (x) => `<path d="M${x} 205h26m-8-8 8 8-8 8" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`;
+  const basket = '<g fill="none" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="5.2" width="3.4" height="3.4" rx="1"/><circle cx="10" cy="5.3" r="1.8"/><rect x="12.2" y="5.2" width="3.4" height="3.4" rx="1"/><path d="M2.8 10.4h14.4l-1.5 5.4a1.6 1.6 0 0 1-1.6 1.2H5.9a1.6 1.6 0 0 1-1.6-1.2z"/></g>';
+  return svg(`<defs>${shadow(`${id}s`)}</defs>
+  <g filter="url(#${id}s)">${card(46)}${card(210)}${card(374)}</g>
+  <g transform="translate(86 165) scale(3)">${basket}</g>${bar(86, 246, 60, 7, '#94a3b8', .55)}
+  <rect x="244" y="184" width="72" height="40" rx="20" fill="#16a34a"/><circle cx="296" cy="204" r="15" fill="#ffffff"/>${bar(250, 246, 60, 7, '#94a3b8', .55)}
+  <rect x="404" y="160" width="80" height="80" rx="22" fill="#0f172a" fill-opacity=".88"/>
+  <g transform="translate(420 176) scale(2.4)" color="#ffffff">${face.icon}</g>
+  <circle cx="478" cy="166" r="15" fill="#16a34a" stroke="#ffffff" stroke-width="3"/><path d="M471 166l5 5 9-10" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  ${bar(414, 256, 60, 7, '#94a3b8', .55)}
+  ${arrow(190)}${arrow(354)}`);
+}
+
 // The picture of a module: its own scene when it has one — drawn here, or sent with the catalog
 // (kept to the shapes a drawing needs, market.js) — and its poster otherwise.
 export const marketArt = (item) => (SCENES[item?.id] ? SCENES[item.id]() : cleanSvg(remoteEntry(item?.id)?.art) ?? poster(item));
 export const hasScene = (item) => Boolean(SCENES[item?.id] || remoteEntry(item?.id)?.art);
+// Its gallery (1.0.5): its picture, then two more — the ones its catalog entry sends (`shots`,
+// drawings kept to their shapes), or the module at work and its three steps.
+export function marketGallery(item) {
+  const sent = (remoteEntry(item?.id)?.shots ?? []).map((one) => cleanSvg(one)).filter(Boolean).slice(0, 2);
+  return [marketArt(item), sent[0] ?? roomScene(item), sent[1] ?? stepsScene(item)];
+}

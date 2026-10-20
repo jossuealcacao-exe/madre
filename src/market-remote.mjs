@@ -103,6 +103,8 @@ export function readCatalog(text, { url = MARKET_URL } = {}) {
       // Drawings are markup: they travel signed, and the page keeps only the shapes it knows (market.js).
       icon: typeof raw.icon === 'string' && raw.icon.length <= 8000 ? raw.icon : null,
       art: typeof raw.art === 'string' && raw.art.length <= 60000 ? raw.art : null,
+      // Two more pictures for its page (1.0.5), drawings like `art`.
+      shots: Array.isArray(raw.shots) ? raw.shots.filter((one) => typeof one === 'string' && one.length <= 60000).slice(0, 2) : [],
       version: typeof raw.version === 'string' && /^\d+\.\d+\.\d+$/.test(raw.version) ? raw.version : null,
       minMadre: typeof raw.minMadre === 'string' && /^\d+\.\d+\.\d+$/.test(raw.minMadre) ? raw.minMadre : null,
       changes: words(raw.changes, 400),

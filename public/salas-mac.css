@@ -275,7 +275,7 @@ a.sm-tag-room:hover { background: color-mix(in srgb, var(--s-acc) 16%, transpare
 .sm-chip.ask { max-width: 100%; padding: 5px 10px; border: 0; font-family: var(--read); font-size: 12.5px; font-weight: 600; letter-spacing: 0; color: color-mix(in srgb, var(--s-acc) 72%, var(--text)); background: color-mix(in srgb, var(--s-acc) 15%, transparent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
 /* Waiting for you: one number, green when nobody waits, the accent when someone does. */
-.sm-waiting.has .sm-big { color: var(--s-acc); }
+.sm-waiting.has .sm-big, #sm-attention.has .sm-big { color: var(--s-acc); }
 .sm-waiting.has { --ring: inset 0 0 0 1.5px color-mix(in srgb, var(--s-acc) 60%, transparent); }
 .sm-waiting-body { display: grid; gap: 6px; }
 .sm-waiting-row { display: grid; gap: 1px; padding: 7px 10px; border-radius: 12px; color: var(--text); text-decoration: none; background: color-mix(in srgb, var(--s-acc) 12%, transparent); }
@@ -477,6 +477,8 @@ body.sm-in-macro { overflow: hidden; }
 .sm-add { height: 32px; padding: 0 14px; font-size: 13px; }
 .sm-btn[disabled] { opacity: .45; box-shadow: none; cursor: default; }
 .sm-btn.small { height: 28px; padding: 0 11px; border-radius: 8px; font-size: 12px; }
+.sm-btn.small.quiet { background: transparent; box-shadow: none; color: var(--s-text-2, inherit); }
+.sm-attention-acts { display: inline-flex; gap: 6px; flex: none; }
 
 /* An agent's mark: its own colour and glyph (brands.js). */
 .sm-mark { flex: none; display: inline-grid; place-items: center; border-radius: 50%; background: var(--b); color: var(--b-ink); box-shadow: 0 1px 2px rgba(15, 20, 30, .14), 0 4px 10px -5px rgba(15, 20, 30, .28); }
@@ -1477,3 +1479,27 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 :root[data-scheme="dark"] .sm-map .wire { stroke-opacity: .26; }
 .sm-map .flow.signal { stroke: none; animation: none; opacity: 1; }
 .sm-map svg.focusing .flow.signal:not(.lit) { opacity: .08; }
+
+/* THE PROJECTS ON THE BAR, 1.0.5: no dot. A project's key is lit while it is open, in its own
+   accent's light gradient with the accent's ink (src/looks.mjs); asleep, it is a quiet key, and a
+   press wakes it and lights it. When something there needs the person it beats softly until they
+   go in; while an agent works it breathes. One that does not answer keeps a dashed edge. */
+.sm-tb-open > .sm-tb-room:not(.is-more):not(.sm-tb-slot) > i { display: none; }
+.sm-tb-open > .sm-tb-room:not(.is-asleep):not(.is-more):not(.sm-tb-slot) {
+  background: linear-gradient(160deg, color-mix(in oklab, var(--acc, var(--s-acc)) 82%, #ffffff) 0%, var(--acc, var(--s-acc)) 60%, color-mix(in oklab, var(--acc, var(--s-acc)) 84%, #000000) 100%);
+  color: var(--acc-ink, #0a1405);
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18), 0 0 0 .5px color-mix(in srgb, var(--acc, var(--s-acc)) 60%, transparent);
+}
+.sm-tb-open > .sm-tb-room.is-asleep { background: var(--surface, var(--panel)); color: var(--text-3); box-shadow: inset 0 0 0 1px var(--line-2); }
+.sm-tb-open > .sm-tb-room.is-asleep:hover { color: var(--text); }
+.sm-tb-open > .sm-tb-room:is(.is-outdated, .is-quiet) { box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--acc-ink, #000) 45%, transparent); outline: 1px dashed color-mix(in srgb, var(--acc, var(--s-acc)) 70%, transparent); outline-offset: 1px; }
+.sm-tb-open > .sm-tb-room.is-waiting { animation: sm-key-attention calc(2200ms * var(--motion-scale, 1)) ease-out infinite; }
+.sm-tb-open > .sm-tb-room.is-working { animation: sm-key-breathe calc(2600ms * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes sm-key-attention {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc, var(--s-acc)) 60%, transparent); }
+  70% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--acc, var(--s-acc)) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc, var(--s-acc)) 0%, transparent); }
+}
+@keyframes sm-key-breathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
+@media (prefers-reduced-motion: reduce) { .sm-tb-open > .sm-tb-room:is(.is-waiting, .is-working) { animation: none; } }

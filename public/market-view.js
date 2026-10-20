@@ -16,7 +16,7 @@
 
 import { t, language } from './i18n.js';
 import { appIcon, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
-import { marketArt } from './market-art.js';
+import { marketArt, marketGallery } from './market-art.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -48,7 +48,7 @@ const glyph = (node, name) => { node.insertAdjacentHTML('afterbegin', GLYPH[name
 
 // A module from the catalog says its name and what it does in the room's language (market.js).
 const nameOf = (item) => moduleFace(item).name ?? t(item.name ?? item.id);
-const summaryOf = (item) => moduleFace(item).summary ?? t(item.summary ?? '');
+const summaryOf = (item) => (moduleFace(item).summary ? t(moduleFace(item).summary) : t(item.summary ?? ''));
 const lineOf = (item) => (moduleFace(item).line ? t(moduleFace(item).line) : t(item.summary ?? ''));
 const priceOf = (item) => (marketEntry(item.id).price ? `$${marketEntry(item.id).price}` : t('Free'));
 const shelfOf = (item) => marketShelves().find((shelf) => shelf.id === marketEntry(item.id).shelf) ?? null;
@@ -338,14 +338,23 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     }
     fact(home ? t('Where') : t('Here'), reach(item));
     if (shelfOf(item)) fact(t('Shelf'), t(shelfOf(item).title));
-    fact(t('Version'), item.version ? `v${String(item.version).replace(/^v/, '')}` : '—');
+    // MADRE's own modules have no version of their own: they are the version of MADRE they come with.
+    fact(t('Version'), item.version ? `v${String(item.version).replace(/^v/, '')}` : madre ? t('Comes with MADRE {version}', { version: madre }) : t('Comes with MADRE'));
+    // Whose idea it was, when a module says (Reminders, 2026-10-20).
+    if (item.credit) fact(t('Idea'), item.credit);
     page.append(facts);
 
+    // Three pictures (1.0.5), side by side and swiped like a store's: what it does, the module at
+    // work in a project, and the three steps to use it.
     const gallery = el('section', 'mk-section');
     gallery.append(el('h2', null, t('Preview')));
-    const shot = hueOf(el('div', 'mk-shot'), item);
-    shot.innerHTML = marketArt(item); // trusted: our own drawings (market-art.js)
-    gallery.append(shot);
+    const strip = el('div', 'mk-gallery');
+    for (const drawing of marketGallery(item)) {
+      const shot = hueOf(el('div', 'mk-shot'), item);
+      shot.innerHTML = drawing; // trusted: our own drawings, or the catalog's kept to their shapes (market-art.js)
+      strip.append(shot);
+    }
+    gallery.append(strip);
     page.append(gallery);
     if (summaryOf(item)) {
       const about = el('section', 'mk-section');

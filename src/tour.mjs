@@ -39,7 +39,7 @@ export const CHAPTERS = ['moved', 'home', 'renamed', 'board', 'widgets', 'projec
 export const HINTS = ['switch', 'links', 'key4',
   'home-links', 'home-map', 'home-settings', 'home-add', 'new-add-widgets',
   'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage',
-  'touch-settings', 'touch-modules', 'touch-mother', 'touch-memory', 'touch-crew', 'touch-steps', 'touch-browser', 'touch-tree', 'touch-chats',
+  'touch-settings', 'touch-modules', 'touch-market', 'touch-mother', 'touch-memory', 'touch-crew', 'touch-steps', 'touch-browser', 'touch-tree', 'touch-chats',
   'new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots'];
 const PATHS = ['new', 'back', 'since'];
 const BEFORE = ['1.0'];

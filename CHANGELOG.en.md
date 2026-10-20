@@ -6,6 +6,25 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.5 · Unreleased
 
+- **Notes (new module, 0.1, free).** Notes in six colors on your project, each in a window you move around the canvas and size from its edges, like any other MADRE window. Each note has two keys of its own: the bin, which deletes it (with «Undo» in case it was a mistake), and the ×, which only closes it. They are turned on and managed from Modules, and their key can be pinned to the bar. Only you read them: no agent sees them and they are not kept in the project's folder.
+- **Reminders (new module, 0.1, free). An idea by Daniel Castillo.** When you write something you still have to do («I'll review the PR tomorrow», «remind me to call Daniel on Monday») or ask for the same thing on several days, a card appears under your message: «Shall I remind you?», with the time already chosen. One click saves it; «Another time» offers in an hour, this evening, tomorrow morning, on Monday or every day. If the project has the local AI, @madre reads the message first and drops what is not a task; no paid agent is asked. When it is due, Home tells you, in «Needs you» and when MADRE opens, and so does the project it came from. You can also write `/remind tomorrow at 5 call Daniel`. The credit for the idea shows on its card and in the Market.
+- **Local AI: you choose the model, and everything lives in Settings.**
+  - In Home › Settings › Local AI you choose the model every project uses: the one MADRE picks on its own or any of the ones you have installed. Below, other models that fit your computer (Llama, Gemma, Mistral, Phi and Qwen), each with a key to download it. The one recommended for your computer comes first and is marked.
+  - Home governs the local AI of the whole computer, as it already does with the agents: the Ollama server, starting or installing it, the master switch and which projects use it.
+  - In each project, Settings › Local AI has its switch for that project, the model in use and what it does there.
+  - Local AI is no longer a module on the Modules board: every way that led to it now opens Settings.
+- **Each project with its color.** The accent you choose in a project applies only to that project, and Home keeps its own. A new project starts with Home's (Madre Green, unless you changed it). The tiles of the project switcher and the projects pinned to Home's bar wear each one's color as a gradient.
+- **Pinned projects: lit means open.** On Home's bar, a pinned project lights up in its color while it is open and goes dark when it sleeps. If something happens there, like an agent waiting for you, it pulses until you open it. It no longer carries a dot.
+- **The Connections key no longer carries a number.**
+- **Icons that move on hover.** In Token saver, the arrow goes down. Local AI has a new icon, a network of nodes that changes perspective. In Suggested effort, the needle sweeps from left to right as when accelerating. In What it remembers, only the pieces that leave the central square turn.
+- **The Market, easier to find and to read.**
+  - In Modules, the Market key has its basket. The first time you open Modules, a card invites you to discover it.
+  - Each module shows three pictures: what it does, the module at work in a project, and the steps to use it.
+  - Each module says its version. The ones that come with MADRE say «Comes with MADRE 1.0.5».
+  - The descriptions were rewritten so they read without knowing about programming.
+- **«Needs you» reads like «Waiting for you»:** one big number, calm at 0 and in your color when something needs you.
+- **Cursor no longer shows «Not installed» when it is.** MADRE also looks for it in your user's folder, even when MADRE was opened from another one.
+- **For module authors:** the new `credit` field says whose idea it was. MADRE shows it on the module's card and in the Market («Idea by …»).
 - **Connections, in neural mode.** Home's Connections map and its window use the neural mode's language: each project is a neuron with dendrites, each connection a slightly curved axon, and what crosses it travels as a signal of light, over a deep ground.
 - **The Connections icon is a connector**, male and female, that plugs in on hover. The fill of Modules and Add widgets is now a soft tint that leaves air between the pieces.
 - **Keys in one row.** In the Connections window, «Open the project» and «See the connections» sit together, and the side panel is a little wider so they fit.

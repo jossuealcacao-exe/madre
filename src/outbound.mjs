@@ -128,7 +128,7 @@ export const DESTINATIONS = [
     id: 'ollama', host: null, local: true, to: 'Ollama, on this computer',
     what: 'Memories to embed, exchanges to distil, and whatever you ask @madre. It goes to a port on this machine and stops there.',
     when: 'while Ollama is running',
-    where: 'Modules › Local AI',
+    where: 'Settings › Local AI',
     inside: true,
   },
 ];

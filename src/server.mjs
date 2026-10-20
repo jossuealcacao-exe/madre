@@ -714,11 +714,17 @@ export async function createPulseServer({
     return { roomDir, recipeDir: fileURLToPath(new URL('../docs/training/', import.meta.url)), modelName: `madre-${slug}`, baseModel: base.base, memoryGb: fit.hardware?.memoryGb ?? Math.round(totalmem() / 1024 ** 3), fit };
   }
   async function wireOllama({ probe: doProbe = true } = {}) {
-    if (doProbe) ollama = await ollamaProbe();
+    if (doProbe) { ollama = await ollamaProbe(); ollama.autoModel = ollama.chatModel; }
     // A model trained on this room (docs/training) is named madre-<project>: @madre uses it when it exists.
     const slug = basename(canonicalProjectRoot).toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const trained = (ollama.models ?? []).map((model) => model.name).find((name) => name.startsWith(`madre-${slug}`)) ?? null;
-    ollama = { ...ollama, madreModel: trained };
+    // The model the person chose in Home, one for the whole computer (src/local-ai.mjs), while it
+    // is installed; otherwise the one MADRE picked. PULSE_OLLAMA_MODEL still wins over both.
+    const chosen = process.env.PULSE_OLLAMA_MODEL ? null : localAiConfig(await readConfig(root)).model;
+    const bare = (name) => String(name ?? '').replace(/:latest$/, '');
+    const installed = chosen ? (ollama.models ?? []).find((model) => bare(model.name) === bare(chosen))?.name ?? null : null;
+    const auto = ollama.autoModel !== undefined ? ollama.autoModel : ollama.chatModel;
+    ollama = { ...ollama, autoModel: auto, chosenModel: chosen, chatModel: installed ?? auto, madreModel: trained };
     const project = await localAiHere();
     // Off for this project reads exactly as the module switched off, and only here.
     const settings = { ...(await ollamaSettings()), enabled: project.on };
@@ -1638,6 +1644,9 @@ export async function createPulseServer({
     const config = await readConfig(root);
     return {
       projectRoot: canonicalProjectRoot, stateRoot: root, config, env: process.env, agents, room,
+      // Where this project's conversations are kept (~/.pulse/rooms/<id>): a module's own small
+      // files about the project live beside them, never in the project's folder.
+      roomDir,
       // Which project's word a module's switch reads and writes; none in Home (module-scope.mjs).
       roomId: scopeRoom,
       readConfig: () => readConfig(root),
@@ -2079,7 +2088,14 @@ export async function createPulseServer({
             if (!salasRoom) ids.push(thisRoomId);
             for (const id of ids) if (id !== salasId && !(id in rooms)) rooms[id] = localAiFor(before, id).chosen;
           }
-          await updateConfig(root, localAiPatch(before, { mode: patch?.mode, rooms }));
+          // The model for the whole computer: one Ollama has installed, or null to let MADRE pick.
+          let model;
+          if (patch?.model === null) model = null;
+          else if (typeof patch?.model === 'string') {
+            if (!(ollama.models ?? []).some((one) => one.name === patch.model)) return sendJson(response, 400, { error: t('That model is not installed. Download it first.') });
+            model = patch.model;
+          }
+          await updateConfig(root, localAiPatch(before, { mode: patch?.mode, rooms, model }));
           await wireOllama({ probe: false });
           widgetReadings.delete('models');
         }
@@ -2096,19 +2112,22 @@ export async function createPulseServer({
           }));
         }
         const projects = known.map((one) => ({ id: one.id, name: one.name, open: Boolean(one.open), ...localAiFor(config, one.id) }));
-        return sendJson(response, 200, { ...localAiConfig(config), master: localAiFor(config).master, ollama: { running: Boolean(ollama.running), models: (ollama.models ?? []).length }, projects, later });
+        return sendJson(response, 200, { ...localAiConfig(config), master: localAiFor(config).master, ollama: { running: Boolean(ollama.running), models: (ollama.models ?? []).length, using: ollama.chatModel ?? null, auto: ollama.autoModel ?? null }, projects, later });
       }
       if (request.method === 'GET' && url.pathname === '/api/salas') {
         const rooms = await knownRooms(root);
         const here = basename(roomDir);
         const own = await roomLooks(root);
         // A project that never chose its own wears the wallpaper every page shared before.
-        const before = (await readLooks(root)).looks['pulse.wallpaper'] ?? null;
+        const shared = (await readLooks(root)).looks;
+        const before = shared['pulse.wallpaper'] ?? null;
         const seen = await Promise.all(rooms.map(async (one) => ({
           ...one,
           here: one.id === here,
           glance: await lobbyGlance(one),
           wallpaper: own[one.id]?.wallpaper ?? before,
+          // Its accent: its own, or Home's while it has none (1.0.5).
+          accent: own[one.id]?.accent ?? shared['pulse.accent'] ?? 'madre',
         })));
         // The links in force (docs/MACROVERSO.md, fase 3c), each with what crossed: counted from the
         // lines the serving room keeps beside its record, never from a ledger. `salas` is the id of
@@ -2126,11 +2145,15 @@ export async function createPulseServer({
         if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none')) return sendJson(response, 403, { error: t('This is done from Home, on this Mac.') });
         const here = basename(roomDir);
         const rooms = (await knownRooms(root)).filter((one) => one.open);
+        // Each project's accent (src/looks.mjs): its own, or Home's while it has none.
+        const owns = await roomLooks(root);
+        const homeAccent = (await readLooks(root)).looks['pulse.accent'] ?? 'madre';
         const seen = await Promise.all(rooms.map(async (one) => ({
           id: one.id,
           name: one.name,
           port: one.open.port,
           here: one.id === here,
+          accent: owns[one.id]?.accent ?? homeAccent,
           glance: one.id === here ? null : await askRoom(one.open.port, '/api/glance'),
         })));
         return sendJson(response, 200, { here, salas: salasRoomId(root), rooms: seen });
@@ -3046,7 +3069,8 @@ export async function createPulseServer({
       // switch does not move; /apply is how Home tells an open project the choice changed.
       if (request.method === 'GET' && url.pathname === '/api/local-ai') return sendJson(response, 200, { project: await localAiHere(), running: Boolean(ollama.running) });
       if (request.method === 'POST' && url.pathname === '/api/local-ai/apply') {
-        const status = await wireOllama({ probe: false });
+        // Probed again: the model chosen in Home may have been downloaded after this project last looked.
+        const status = await wireOllama();
         return sendJson(response, 200, { project: status.project });
       }
       if (request.method === 'POST' && url.pathname === '/api/local-ai') {
@@ -3296,7 +3320,10 @@ export async function createPulseServer({
       // This project's own wallpaper («only in this project»), or back to the shared one with null.
       if (request.method === 'POST' && url.pathname === '/api/looks/room') {
         const payload = await body(request).catch(() => ({}));
-        const answer = await changeRoomLook(root, basename(roomDir), payload?.wallpaper ?? null);
+        const change = {};
+        if (payload && 'wallpaper' in payload) change.wallpaper = payload.wallpaper ?? null;
+        if (payload && 'accent' in payload) change.accent = payload.accent ?? null;
+        const answer = await changeRoomLook(root, basename(roomDir), Object.keys(change).length ? change : { wallpaper: null });
         return sendJson(response, answer.error ? 400 : 200, answer);
       }
       // How Home is arranged (src/looks.mjs, home.json): the same on every port Home is shown from.

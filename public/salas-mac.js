@@ -717,8 +717,36 @@ async function restartAll() {
 // NEEDS YOU: what the person would want to know before anything else, from what the rooms, the
 // agents and MADRE itself say: a room on an older MADRE or not answering, an agent without a
 // session, a link about to expire, a newer MADRE. Nothing listed is a guess.
+// REMINDERS (src/modules/reminders.mjs · an idea by Daniel Castillo): the due ones of every
+// project, first in «Needs you», each with its project and the keys to settle it.
+let remindersSeen = null;
+const reminderLocale = () => (document.documentElement.lang === 'en' ? 'en-US' : 'es-MX');
+const reminderWhen = (due) => new Intl.DateTimeFormat(reminderLocale(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(due));
+async function loadReminders({ opening = false } = {}) {
+  const answer = await fetch('/api/reminders', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!answer) return;
+  remindersSeen = answer.reminders ?? [];
+  const due = remindersSeen.filter((one) => Date.parse(one.due) <= Date.now());
+  // Said when MADRE opens, once: the reminders themselves stay in «Needs you» until settled.
+  if (opening && due.length) toast(due.length === 1 ? t('A reminder is due: {what}', { what: due[0].text }) : t('{n} reminders are due. They are in «Needs you».', { n: due.length }), 'done');
+  drawAttention();
+}
+async function settleReminder(path, payload) {
+  const answer = await post(path, payload);
+  if (!answer.ok) toast(answer.body?.error ?? t('The reminder did not change.'), 'error');
+  await loadReminders();
+}
 function attentionItems() {
   const items = [];
+  for (const one of (remindersSeen ?? []).filter((item) => Date.parse(item.due) <= Date.now())) {
+    const room = data?.rooms.find((item) => item.id === one.room) ?? null;
+    items.push({
+      tone: 'ok', words: one.text,
+      hint: [room ? roomLabel(room) : one.project, t('Reminder · {when}', { when: reminderWhen(one.due) })].filter(Boolean).join(' · '),
+      act: () => void settleReminder('/api/reminders/done', { id: one.id }), go: one.repeat ? t('Done for today') : t('Done'),
+      later: { go: t('In an hour'), act: () => void settleReminder('/api/reminders/snooze', { id: one.id, minutes: 60 }) },
+    });
+  }
   for (const room of data?.rooms ?? []) {
     if (!room.open) continue;
     const name = roomLabel(room);
@@ -744,8 +772,10 @@ function attentionItems() {
 }
 function drawAttention() {
   const items = attentionItems();
+  // Said like «Waiting for you» (1.0.5): one big number, calm at 0, in the accent when something needs a hand.
   ui.attention.count.textContent = String(items.length);
-  ui.attention.count.hidden = !items.length;
+  ui.attention.count.hidden = false;
+  ui.attention.count.closest('.sm-tile')?.classList.toggle('has', items.length > 0);
   ui.attention.list.replaceChildren();
   if (!items.length) {
     const calm = el('li', 'sm-attention-item is-calm');
@@ -765,6 +795,11 @@ function drawAttention() {
       go.href = item.href;
       if (item.external) { go.target = '_blank'; go.rel = 'noopener'; }
       row.append(go);
+    } else if (item.later) {
+      // Two keys in one row (a reminder: done, or in an hour).
+      const acts = el('span', 'sm-attention-acts');
+      acts.append(button('sm-btn small', item.go, item.act), button('sm-btn small quiet', item.later.go, item.later.act));
+      row.append(acts);
     } else if (item.act) row.append(button('sm-btn small', item.go, item.act));
     ui.attention.list.append(row);
   }
@@ -2734,10 +2769,8 @@ function drawTopbar() {
   // A newer MADRE.
   b.update.hidden = !(versionSeen?.available && versionSeen.latest);
   if (!b.update.hidden) { b.update.lastChild.textContent = t('{version} AVAILABLE', { version: versionSeen.latest }); b.update.title = t('MADRE {version} is out.', { version: versionSeen.latest }); }
-  // The links in force.
-  const links = (data.enlaces ?? []).length;
-  b.linksCount.hidden = !links;
-  b.linksCount.textContent = String(links);
+  // A key, not a counter (1.0.5): how many are in force is said on the Connections tile and in its window.
+  b.linksCount.hidden = true;
 }
 // ---- THE BAR'S ROOMS, the way you want them (2026-10-10), as the room's bar is arranged (app.js,
 // «The bar, the way you want it»). Until the person arranges it, the bar holds the projects that
@@ -2867,6 +2900,8 @@ function drawPins() {
     chip.className = `sm-tb-room is-${busy.get(id) === 'starting' ? 'working' : state.key}${lifted ? ' bar-lifted' : ''}${pins.dropping === id ? ' is-moving' : ''}`;
     chip.querySelector('span').textContent = room.name;
     chip.lastChild.textContent = monogram(room.name);
+    // Its accent (src/looks.mjs): the key lit in its colour while the project is open.
+    if ((chip.dataset.accent ?? '') !== (room.accent ?? '')) { if (room.accent) chip.dataset.accent = room.accent; else delete chip.dataset.accent; }
     chip.title = `${room.name} · ${busy.get(id) === 'starting' ? t('Waking…') : state.words}`;
     chip.setAttribute('aria-label', room.name);
     if (room.open) { chip.href = addressOf(room); chip.removeAttribute('role'); chip.removeAttribute('tabindex'); }
@@ -4251,7 +4286,7 @@ const SET_CATS = {
   bar: { name: 'Top bar', icon: '<rect x="2.6" y="5.4" width="14.8" height="9.2" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 10h2.2M11.6 10h2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' },
   agents: { name: 'Agents', icon: '<circle cx="7" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.6" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 16c.6-2.3 2.2-3.6 4.2-3.6s3.6 1.3 4.2 3.6M9.6 13c.9-.4 2.4-.6 4-.6 2 0 3.6 1.3 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   bishop: { name: 'Coordinator', icon: '<path d="M2.6 10c1.7-3.1 4.3-4.8 7.4-4.8s5.7 1.7 7.4 4.8c-1.7 3.1-4.3 4.8-7.4 4.8S4.3 13.1 2.6 10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.3" fill="currentColor"/>' },
-  local: { name: 'Local AI', icon: '<rect x="5" y="5" width="10" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 2.6v2.4M12 2.6v2.4M8 15v2.4M12 15v2.4M2.6 8h2.4M2.6 12h2.4M15 8h2.4M15 12h2.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="1.8" fill="currentColor"/>' },
+  local: { name: 'Local AI', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.51 5.57L9.09 4.33M6.38 7.46L9.06 9.26M5.73 8.06L9.57 14.94M9.86 5.15L5.64 12.55M11.95 5.01L14.95 8.99M11.80 10.20L14.20 10.37M10.35 11.60L10.44 14.70M6.46 14.93L8.74 15.87M14.82 11.90L11.78 15.20"/><circle cx="4.8" cy="6.4" r="1.9"/><circle cx="10.8" cy="3.5" r="1.9"/><circle cx="10.3" cy="10.1" r="1.5"/><circle cx="16.1" cy="10.5" r="1.9"/><circle cx="4.7" cy="14.2" r="1.9"/><circle cx="10.5" cy="16.6" r="1.9"/></g>' },
   projects: { name: 'Projects', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   release: { name: 'Version', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
 };
@@ -4571,19 +4606,25 @@ function fillBishop(host) {
 }
 // LOCAL AI (src/local-ai.mjs): whether every project uses Ollama, the ones picked here, or each
 // one as it decides in its own Settings. The switch of each project is the same one its Settings
-// show; Ollama itself and what it does are set in a project's Modules › Local AI.
+// show. Since 2026-10-20 Ollama itself is governed here too, as the agents are: the server, the
+// switch for the whole computer and the model every project uses. What it does in one project
+// (its roles) stays in that project's Settings › Local AI.
 const LOCAL_MODE_WORDS = { auto: () => t('Automatic'), pick: () => t('One by one'), manual: () => t('Manual') };
 const LOCAL_MODE_SAYS = {
   auto: () => t('Every project uses it, new ones too.'),
   pick: () => t('Only the projects you switch on below. New projects start without it.'),
-  manual: () => t('Each project decides in its own Modules › Local AI. New ones start with it.'),
+  manual: () => t('Each project decides in its own Settings › Local AI. New ones start with it.'),
 };
 let localFailed = false;        // the last read got no answer: the sheet says so instead of «Reading…» forever
 let localHardware = null;       // what this computer can run and train (src/modules/local-models.mjs)
-async function loadLocal() {
+let localOllama = null;         // what /api/ollama said: the server, its models, and every model this computer may choose
+let localAllModels = false;     // «See every model» was pressed
+async function loadLocal({ probe = false } = {}) {
   const answer = await fetch('/api/salas/local-ai', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
-  const ollama = await fetch('/api/ollama', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  const ollama = probe ? await post('/api/ollama/probe').then((reply) => (reply.ok ? reply.body : null))
+    : await fetch('/api/ollama', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
   if (ollama?.recommended?.hardware) localHardware = ollama.recommended.hardware;
+  if (ollama?.ollama) localOllama = ollama;
   if (answer) localSeen = answer;
   localFailed = !answer;
   settingsSheet?.sync({ detail: true });
@@ -4627,11 +4668,11 @@ function fillLocal(host) {
   }
   if (!localSeen) { host.append(el('p', 'settings-reading', t('Reading…'))); return; }
   host.append(el('p', 'sx-intro', t('Ollama runs local AI: it searches and sums up each project\'s memory and answers as @madre, free and private. Choose which projects use it.')));
+  drawLocalServer(host);
+  drawLocalModel(host);
   const mode = sxBlock(host, t('Which projects'), LOCAL_MODE_SAYS[localSeen.mode]());
   sxRow(mode, t('Mode'), null, localModeSeg());
-  if (!localSeen.master) sxRow(mode, t('Local AI is off for every project.'), t('Turn it on in a project, in Modules › Local AI.'));
-  else if (!localSeen.ollama.running) sxRow(mode, t('Ollama is not running'), t('Projects keep working with their agents meanwhile. Start it from a project, in Modules › Local AI.'));
-  // What this computer can run and train, as a project shows it in Modules › Local AI.
+  // What this computer can run and train, as a project shows it in Settings › Local AI.
   if (localHardware) drawHardware(host, localHardware, { el, sxBlock, sxRow, sxChip: (text, tone = '') => el('span', `sx-chip${tone ? ` ${tone}` : ''}`, text) });
   const list = sxBlock(host, t('Projects'), localSeen.mode === 'auto' ? t('All of them use it. Choose «One by one» or «Manual» to turn some off.') : t('A switch here is the same one the project shows in its Settings.'));
   if (!localSeen.projects.length) { sxRow(list, t('No projects yet'), null); return; }
@@ -4672,6 +4713,107 @@ function fillLocal(host) {
     foot.append(pager, el('small', null, t('{n} projects', { n: localSeen.projects.length })));
     list.rows.append(foot);
   }
+}
+// Ollama for the whole computer: is it there, is it running, is the local AI on at all.
+function drawLocalServer(host) {
+  const info = localOllama?.ollama ?? null;
+  const block = sxBlock(host, t('Ollama'), t('One for the whole computer: every project uses the same one.'));
+  if (!info) { sxRow(block, t('Reading…'), null); return; }
+  const recheck = sxButton(t('Check again'), async () => { recheck.disabled = true; await loadLocal({ probe: true }); });
+  sxRow(block, t('Server'), info.running ? t('Running · {host}', { host: info.host }) : t('Not running'), recheck);
+  if (!info.running) {
+    const step = info.binary
+      ? { label: t('Start Ollama'), path: '/api/ollama/start', note: t('Wakes Ollama on this computer. Nothing leaves it.') }
+      : info.install?.display ? { label: t('Install Ollama'), path: '/api/ollama/install', note: info.install.note ?? info.install.display } : null;
+    if (step) {
+      const go = sxButton(step.label, async () => {
+        go.disabled = true;
+        const answer = await post(step.path);
+        if (!answer.ok) { if (answer.body?.download) window.open(answer.body.download, '_blank', 'noopener'); toast(answer.body?.error ?? t('Home did not answer.')); go.disabled = false; return; }
+        await loadLocal({ probe: true });
+      }, { tone: 'primary' });
+      sxRow(block, step.label, step.note, go);
+    } else if (info.install?.download) {
+      sxRow(block, t('Get Ollama'), null, sxButton(t('Download ↗'), () => window.open(info.install.download, '_blank', 'noopener'), { tone: 'primary' }));
+    }
+    sxRow(block, t('Meanwhile'), t('Projects keep working with their agents.'));
+  }
+  const master = el('label', 'settings-switch');
+  const box = el('input');
+  box.type = 'checkbox';
+  box.checked = Boolean(localSeen.master);
+  box.setAttribute('aria-label', t('Local AI'));
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    await post('/api/ollama/settings', { enabled: box.checked });
+    // Said to every open project at once, as a change of mode is.
+    await saveLocal({});
+    await loadLocal();
+  });
+  master.append(box, el('i'));
+  sxRow(block, t('Local AI on this computer'), localSeen.master ? t('On. The projects you choose below use it.') : t('Off for every project.'), master);
+}
+// The model every project uses: MADRE's pick, or the person's, among the ones installed; then the
+// ones this computer runs that are not here yet, the recommended one first.
+const EMBEDDING = /embed|minilm|bge|nomic/i;
+function drawLocalModel(host) {
+  const info = localOllama?.ollama;
+  if (!info?.running || !localSeen.master) return;
+  const catalog = localOllama.recommended?.catalog ?? [];
+  const known = (name) => catalog.find((one) => one.ollama === String(name).replace(/:latest$/, '')) ?? null;
+  const best = catalog.find((one) => one.recommended) ?? null;
+  const chosen = localSeen.model ?? null;
+  const using = localSeen.ollama?.using ?? info.chatModel ?? null;
+  const block = sxBlock(host, t('Model'), t('The one that answers as @madre and sums up the memory, in every project that uses the local AI.'));
+  const pick = (model) => async () => { await saveLocal({ model }); await loadLocal(); };
+  const inUse = () => el('span', 'sx-chip on', t('In use'));
+  const autoWords = localSeen.ollama?.auto ? t('MADRE picks the best one installed: {model}.', { model: localSeen.ollama.auto }) : t('MADRE picks the best one installed.');
+  sxRow(block, t('Automatic'), autoWords, chosen ? sxButton(t('Use'), pick(null)) : inUse());
+  const chats = (info.models ?? []).filter((model) => !EMBEDDING.test(model.name) && !EMBEDDING.test(model.family ?? ''));
+  for (const model of chats) {
+    const face = known(model.name);
+    const hint = [face?.maker, model.size ? gb(model.size) : null, face && face.run === 'no' ? t('May not fit in this computer\'s memory') : null].filter(Boolean).join(' · ');
+    const row = sxRow(block, face?.label ?? model.name, hint, chosen && model.name === using ? inUse() : sxButton(t('Use'), pick(model.name)));
+    if (face?.recommended) row.querySelector('.sx-words b')?.after(el('span', 'sx-chip', t('Recommended for your computer')));
+  }
+  if (!chats.length) sxRow(block, t('No model yet'), t('Download one below: MADRE starts using it as soon as it arrives.'));
+  // What this computer runs and has not got yet.
+  const have = new Set(chats.map((model) => model.name.replace(/:latest$/, '')));
+  const runs = catalog.filter((one) => one.run !== 'no' && !have.has(one.ollama))
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended) || b.params - a.params);
+  if (!runs.length) return;
+  const more = sxBlock(host, t('More models for your computer'), t('Only the ones that fit in its memory. Each downloads once and stays in Ollama.'));
+  for (const one of localAllModels ? runs : runs.slice(0, 5)) {
+    const hint = [one.maker, t(one.note), one.run === 'slow' ? t('Slow without a graphics card') : null].filter(Boolean).join(' · ');
+    const get = sxButton(t('Download'), async () => {
+      get.disabled = true;
+      const answer = await post('/api/ollama/pull', { model: one.ollama });
+      if (!answer.ok) { toast(answer.body?.error ?? t('Home did not answer.')); get.disabled = false; return; }
+      get.textContent = t('Downloading…');
+      watchPull(one.ollama);
+    }, { tone: one.recommended ? 'primary' : null });
+    const row = sxRow(more, one.label, hint, get);
+    if (one.recommended) row.querySelector('.sx-words b')?.after(el('span', 'sx-chip', t('Recommended for your computer')));
+  }
+  if (runs.length > 5) {
+    const all = sxButton(localAllModels ? t('See fewer') : t('See every model ({n})', { n: runs.length }), () => { localAllModels = !localAllModels; settingsSheet?.sync({ detail: true }); });
+    sxRow(more, '', null, all);
+  }
+}
+// A download takes minutes: Home looks every few seconds until the model is there, then says so.
+const pulling = new Set();
+function watchPull(model) {
+  if (pulling.has(model)) return;
+  pulling.add(model);
+  toast(t('Downloading {model}. It shows here when it arrives.', { model }));
+  const started = Date.now();
+  const look = async () => {
+    await loadLocal({ probe: true });
+    if ((localOllama?.ollama?.models ?? []).some((one) => one.name.replace(/:latest$/, '') === model)) { pulling.delete(model); toast(t('{model} is ready. Choose it in Settings › Local AI.', { model })); return; }
+    if (Date.now() - started > 60 * 60 * 1000) { pulling.delete(model); return; }
+    setTimeout(look, 8000);
+  };
+  setTimeout(look, 8000);
 }
 function fillProjects(host) {
   const block = sxBlock(host, t('Projects'), t('A project is a folder: MADRE gives it its own conversations and its own memory. Adding it does not open it; you open it from its card.'));
@@ -4992,6 +5134,7 @@ void loadAgents();
 void loadVersion();
 void loadWork();
 void loadDecisions();
+void loadReminders({ opening: true });
 // `#welcome`: the first-run wizard again, on purpose (to connect an agent or add projects in steps).
 if (location.hash === '#welcome') { history.replaceState(null, '', location.pathname); welcomed = true; openWizard(); }
 // Sent here for the Macroverso (the key in BISHOP's room): straight into it, on a large screen.
@@ -5005,6 +5148,8 @@ timer = setInterval(() => { if (!document.hidden && !busy.size && !pins.dropping
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { void refresh(); void loadAgents(); void loadWork(); void loadDecisions(); } });
 // The decisions are asked again every few minutes (the route itself asks the rooms no oftener).
 setInterval(() => { if (!document.hidden) void loadDecisions(); }, 5 * 60 * 1000);
+// A reminder comes due while Home is open: looked at every minute.
+setInterval(() => { if (!document.hidden) void loadReminders(); }, 60 * 1000);
 
 // Asking for a star or a review (review-ask.js), when Home is quiet: nothing waking or closing,
 // the bar not being arranged.

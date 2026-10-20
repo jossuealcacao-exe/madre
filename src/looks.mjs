@@ -35,10 +35,16 @@ const looksFile = (stateRoot) => join(stateRoot, 'looks.json');
 // It lives beside the shared looks, under `rooms`, by the room's id; every other look stays shared.
 const ROOM_ID = /^[\w .-]{1,120}$/;
 const readFileLooks = (stateRoot) => readFile(looksFile(stateRoot), 'utf8').then((text) => JSON.parse(text)).catch(() => null);
+// And its own accent (1.0.5): chosen in a project, it is that project's; Home keeps the shared one,
+// and a project that has none of its own wears Home's.
 function roomsOf(raw) {
   const rooms = {};
   for (const [id, own] of Object.entries(raw?.rooms ?? {})) {
-    if (ROOM_ID.test(id) && typeof own?.wallpaper === 'string' && CHOICE.test(own.wallpaper)) rooms[id] = { wallpaper: own.wallpaper };
+    if (!ROOM_ID.test(id)) continue;
+    const kept = {};
+    if (typeof own?.wallpaper === 'string' && CHOICE.test(own.wallpaper)) kept.wallpaper = own.wallpaper;
+    if (typeof own?.accent === 'string' && CHOICE.test(own.accent)) kept.accent = own.accent;
+    if (Object.keys(kept).length) rooms[id] = kept;
   }
   return rooms;
 }
@@ -61,15 +67,21 @@ export async function readLooks(stateRoot, { room = null } = {}) {
 export async function roomLooks(stateRoot) {
   return roomsOf(await readFileLooks(stateRoot));
 }
-// A project's own wallpaper set, or taken away (`null`): it follows the shared one again.
-export function changeRoomLook(stateRoot, room, wallpaper) {
+// A project's own wallpaper or accent set, or taken away (`null`): it follows the shared one again.
+// `change` names what it changes ({ wallpaper }, { accent }); a bare value is the wallpaper, as before.
+export function changeRoomLook(stateRoot, room, change) {
   return oneAtATime(looksFile(stateRoot), async () => {
     if (typeof room !== 'string' || !ROOM_ID.test(room)) return { error: 'room' };
-    if (wallpaper !== null && (typeof wallpaper !== 'string' || !CHOICE.test(wallpaper))) return { error: 'value' };
+    const patch = change !== null && typeof change === 'object' ? change : { wallpaper: change };
+    const keys = Object.keys(patch).filter((key) => key === 'wallpaper' || key === 'accent');
+    if (!keys.length) return { error: 'value' };
+    for (const key of keys) if (patch[key] !== null && (typeof patch[key] !== 'string' || !CHOICE.test(patch[key]))) return { error: 'value' };
     const raw = await readFileLooks(stateRoot);
     const { looks } = await readLooks(stateRoot);
     const rooms = roomsOf(raw);
-    if (wallpaper === null) delete rooms[room]; else rooms[room] = { wallpaper };
+    const own = { ...(rooms[room] ?? {}) };
+    for (const key of keys) { if (patch[key] === null) delete own[key]; else own[key] = patch[key]; }
+    if (Object.keys(own).length) rooms[room] = own; else delete rooms[room];
     await writeWhole(looksFile(stateRoot), `${JSON.stringify({ looks, ...(Object.keys(rooms).length ? { rooms } : {}), at: new Date().toISOString() }, null, 2)}\n`);
     return { own: rooms[room] ?? null };
   });

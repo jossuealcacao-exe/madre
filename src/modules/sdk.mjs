@@ -77,7 +77,7 @@ export const MODULE_FIELDS = new Set([
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
   'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand', 'secrets',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
-  'toggledBody', 'describe', 'ready', 'footer',
+  'toggledBody', 'describe', 'ready', 'footer', 'credit',
 ]);
 export const unknownFields = (spec) => Object.keys(spec ?? {}).filter((key) => !MODULE_FIELDS.has(key));
 
@@ -121,6 +121,8 @@ export function defineModule(spec) {
     updates: spec.updates?.url && /^https:\/\//.test(String(spec.updates.url)) ? { url: String(spec.updates.url) } : null,
     // Keys beside MADRE's version, drawn by MADRE while the module is on (footerKeys).
     footer: footerKeys(spec),
+    // Whose idea it was (2026-10-20, Reminders): said on its card and in the Market.
+    credit: typeof spec.credit === 'string' && spec.credit.trim() ? spec.credit.trim().slice(0, 80) : null,
     summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
     // The settings floor of the card, declared instead of drawn: MADRE renders these and saves

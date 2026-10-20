@@ -23,15 +23,26 @@ test('local AI per project: auto by default, pick starts off, manual starts on, 
   assert.equal(localAiFor(pick, 'salas', { home: true }).on, true);
   assert.equal(localAiFor(off, 'salas', { home: true }).on, false);
   // Junk in the file is read as nothing.
-  assert.deepEqual(localAiConfig({ localAi: { mode: 'sometimes', rooms: { a: 'yes', b: false } } }), { mode: 'auto', rooms: { b: false } });
+  assert.deepEqual(localAiConfig({ localAi: { mode: 'sometimes', rooms: { a: 'yes', b: false } } }), { mode: 'auto', rooms: { b: false }, model: null });
+  assert.equal(localAiConfig({ localAi: { model: 'rm -rf /' } }).model, null);
 });
 
 test('local AI per project: a patch keeps the projects it does not name and can forget one', () => {
   const config = { localAi: { mode: 'pick', rooms: { a: true, b: false } } };
-  assert.deepEqual(localAiPatch(config, { rooms: { c: true } }), { localAi: { mode: 'pick', rooms: { a: true, b: false, c: true } } });
-  assert.deepEqual(localAiPatch(config, { rooms: { a: null } }), { localAi: { mode: 'pick', rooms: { b: false } } });
+  assert.deepEqual(localAiPatch(config, { rooms: { c: true } }), { localAi: { mode: 'pick', rooms: { a: true, b: false, c: true }, model: null } });
+  assert.deepEqual(localAiPatch(config, { rooms: { a: null } }), { localAi: { mode: 'pick', rooms: { b: false }, model: null } });
   assert.deepEqual(localAiPatch(config, { mode: 'nope' }).localAi.mode, 'pick');
   assert.deepEqual(localAiPatch(config, { mode: 'manual' }).localAi.mode, 'manual');
+});
+
+test('local AI: the chosen model is kept beside the projects, and null gives the choice back to MADRE', () => {
+  const config = { localAi: { mode: 'pick', rooms: { a: true } } };
+  const chose = localAiPatch(config, { model: 'llama3.1:8b' });
+  assert.deepEqual(chose, { localAi: { mode: 'pick', rooms: { a: true }, model: 'llama3.1:8b' } });
+  // A patch about the projects keeps the model; junk changes nothing; null forgets it.
+  assert.equal(localAiPatch(chose, { rooms: { b: true } }).localAi.model, 'llama3.1:8b');
+  assert.equal(localAiPatch(chose, { model: 'no spaces allowed' }).localAi.model, 'llama3.1:8b');
+  assert.equal(localAiPatch(chose, { model: null }).localAi.model, null);
 });
 
 test('local AI per project: Home sets the mode, the project moves its own switch only outside auto, and a new mode changes nothing already there', async () => {
