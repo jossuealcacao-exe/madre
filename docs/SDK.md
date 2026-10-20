@@ -61,7 +61,7 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 
 | Campo | Qué es |
 |---|---|
-| `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Su ficha en MODULES. `summary` es una frase: qué hace. `creates` y `requires` son líneas cortas, una idea cada una |
+| `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Su ficha en MODULES. `summary` es una frase: qué hace. `creates` y `requires` son líneas cortas, una idea cada una. `name` y `summary` —y en `slash`, `summary`, `usage` y `title`— pueden ir en los dos idiomas, `{ es, en }`: MADRE muestra el de la sala. Lo que tu módulo escribe al correr (la tarjeta de un comando, una página) va en `ctx.language`, `'es'` o `'en'`, el idioma en que habla la sala |
 | `version` | La tuya, y empieza en `1.0.0`. Si no la declaras, la ficha muestra la fecha del archivo |
 | `tracks` | Si tu módulo envuelve algo de fuera, su versión no es la tuya: es la de esa cosa. Declara `{ name, npm }` o `{ name, github }` y devuelve la versión encontrada en `status(ctx)` como `runs: [{ name, version }]`. MADRE muestra esa versión y busca una más nueva sola, una vez al día, con el botón ↻ de la ficha para mirar ahora |
 | `updatePlan(ctx, { latest })` | Cómo se trae esa versión nueva a esta computadora: `{ command, args, display, note, after }`. MADRE enseña `display` y no corre nada hasta que la humana lo leyó; la salida cae en la sala línea por línea. Sin comando, devuelve `{ command: null, note, download }` y la ficha manda a descargarlo |

@@ -20,6 +20,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from '../vault.mjs';
 import { moduleOnIn, roomsOf, scopeIn, settingsIn, switchIn } from '../module-scope.mjs';
+import { isBilingual } from '../i18n.mjs';
 
 const camel = (id) => id.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
@@ -107,9 +108,14 @@ export function defineModule(spec) {
   if (!spec.name) throw new Error(`Module ${spec.id} needs a name.`);
   const kind = spec.kind ?? 'builtin';
   const configKey = spec.configKey ?? camel(spec.id);
+  // Its name and what it does may come in both languages, { es, en } (2026-10-20): MADRE keeps one
+  // word for its own records (English, else Spanish) and shows the room's (describe, /api/commands).
+  const oneWord = (value) => (isBilingual(value) ? value.en ?? value.es : value);
+  const nameText = oneWord(spec.name);
   const defaults = { ...(kind === 'builtin' ? { enabled: false } : {}), ...(spec.settings ?? {}) };
   const base = {
-    id: spec.id, kind, name: spec.name, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
+    id: spec.id, kind, name: nameText, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
+    words: { name: isBilingual(spec.name) ? spec.name : null, summary: isBilingual(spec.summary) ? spec.summary : null },
     // Keys this contract does not answer to. Carried so whoever installs the module is told.
     unknown: unknownFields(spec),
     // What this module's version follows, when it is not its own: { name, npm } or { name, github }.
@@ -123,7 +129,7 @@ export function defineModule(spec) {
     footer: footerKeys(spec),
     // Whose idea it was (2026-10-20, Reminders): said on its card and in the Market.
     credit: typeof spec.credit === 'string' && spec.credit.trim() ? spec.credit.trim().slice(0, 80) : null,
-    summary: spec.summary ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
+    summary: oneWord(spec.summary) ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),
     card: spec.card ?? (kind === 'builtin' ? 'switch' : 'installer'),
     // The settings floor of the card, declared instead of drawn: MADRE renders these and saves
     // them into the module's own block of ~/.pulse/config.json.
@@ -149,7 +155,7 @@ export function defineModule(spec) {
       for (const answer of ['to', 'what', 'when']) {
         if (!reach[answer]) throw new Error(`Module ${spec.id}: destination ${reach.host} does not say ${answer}.`);
       }
-      return { id: reach.id ?? reach.host, host: reach.host, to: reach.to, what: reach.what, when: reach.when, where: reach.where ?? `MODULES → ${spec.name}`, ...(typeof reach.match === 'function' ? { match: reach.match } : {}) };
+      return { id: reach.id ?? reach.host, host: reach.host, to: reach.to, what: reach.what, when: reach.when, where: reach.where ?? `MODULES → ${nameText}`, ...(typeof reach.match === 'function' ? { match: reach.match } : {}) };
     }),
     // Secrets this module needs to do its job: declared, not drawn. MADRE renders a paste field
     // per entry and keeps the value in its vault under this module's name. The card only ever
@@ -207,6 +213,9 @@ export function defineModule(spec) {
       const stamp = await versionOf(this, { declared: spec.version ?? null, tracked });
       return {
         ...base,
+        // The room's words when the module wrote both (translate() picks them on the way out).
+        ...(base.words.name ? { name: base.words.name } : {}),
+        ...(base.words.summary ? { summary: base.words.summary } : {}),
         ...(this.external ? { external: true, origin: this.origin, file: this.file } : {}),
         ...own,
         version: stamp.version,

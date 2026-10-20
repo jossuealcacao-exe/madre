@@ -35,7 +35,9 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
   - Las descripciones se reescribieron para que se entiendan sin saber de programación.
 - **«Te necesita» se lee como «Te esperan»:** un número grande, tranquilo en 0 y en tu color cuando algo te necesita.
 - **Cursor ya no aparece como «No está instalado» cuando sí lo está.** MADRE lo busca también en la carpeta de tu usuario, aunque se haya abierto desde otra.
-- **Para quien escribe módulos:** el campo nuevo `credit` dice de quién fue la idea. MADRE lo muestra en la ficha del módulo y en el Mercado («Idea de …»).
+- **Para quien escribe módulos:**
+  - El campo nuevo `credit` dice de quién fue la idea. MADRE lo muestra en la ficha del módulo y en el Mercado («Idea de …»).
+  - Un módulo puede escribir su nombre, lo que hace y sus comandos en los dos idiomas, `{ es, en }`, y MADRE muestra el de la sala. Con `ctx.language` el módulo sabe en qué idioma contestar. Así, un módulo del Mercado ya no aparece en inglés en una MADRE en español.
 - **Las conexiones, en modo neural.** El mapa de Conexiones de Inicio y su ventana usan el lenguaje del modo neural: cada proyecto es una neurona con dendritas, cada conexión un axón ligeramente curvo, y lo que cruza viaja como una señal de luz, sobre un fondo profundo.
 - **El ícono de Conexiones es un conector** macho y hembra que se enchufa al pasar el ratón. El relleno de Módulos y Agregar widgets es ahora un tinte suave que deja aire entre las piezas.
 - **Botones en una sola fila.** En la ventana de Conexiones, «Abrir el proyecto» y «Ver las conexiones» quedan juntos, y el panel lateral es un poco más ancho para que quepan.

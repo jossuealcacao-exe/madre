@@ -28,7 +28,7 @@ import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as 
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, forgetCorpus, keepCorpus, keptCorpus, pruneCorpora, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
-import { language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
+import { inRoomLanguage, language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
 const BOOT_ID = `${process.pid}-${Date.now().toString(36)}`;
@@ -1644,6 +1644,8 @@ export async function createPulseServer({
     const config = await readConfig(root);
     return {
       projectRoot: canonicalProjectRoot, stateRoot: root, config, env: process.env, agents, room,
+      // The language the room speaks, 'es' or 'en': a module answers in it (SDK, 2026-10-20).
+      language: roomLanguage(),
       // Where this project's conversations are kept (~/.pulse/rooms/<id>): a module's own small
       // files about the project live beside them, never in the project's folder.
       roomDir,
@@ -3966,7 +3968,7 @@ export async function createPulseServer({
           const on = command.module.kind !== 'builtin' || Boolean(settings.enabled);
           let available = on;
           if (on && command.available) { try { available = Boolean(await command.available({ ...ctx, settings })); } catch { available = false; } }
-          return { name: command.name, module: command.module.id, title: command.title, usage: command.usage, summary: command.summary, available };
+          return { name: command.name, module: command.module.id, title: inRoomLanguage(command.title), usage: inRoomLanguage(command.usage), summary: inRoomLanguage(command.summary), available };
         }));
         return sendJson(response, 200, { commands: [...(await listCommands({ projectRoot: canonicalProjectRoot })), ...fromModules] });
       }
@@ -3988,15 +3990,15 @@ export async function createPulseServer({
           // module switched on from its project's Market never had its command.
           const settings = own.module.settingsFrom(ctx.config, ctx.roomId);
           if (own.module.kind === 'builtin' && !settings.enabled) return sendJson(response, 412, { error: `/${parsed.name} belongs to ${own.module.name}, which is off. Enable it in MODULES.` });
-          if (own.available && !(await own.available({ ...ctx, settings }).catch(() => false))) return sendJson(response, 412, { error: `/${parsed.name} is not available here (${own.title}).` });
+          if (own.available && !(await own.available({ ...ctx, settings }).catch(() => false))) return sendJson(response, 412, { error: `/${parsed.name} is not available here (${inRoomLanguage(own.title)}).` });
           try {
             const answer = await own.execute({ ...ctx, settings }, parsed.args);
-            result = { ok: answer?.ok !== false, title: answer?.title ?? own.title, text: String(answer?.text ?? '') };
+            result = { ok: answer?.ok !== false, title: inRoomLanguage(answer?.title ?? own.title), text: String(answer?.text ?? '') };
             // A page of the module's own (a report to print, say): the card offers it as a key. Only
             // its own routes, /api/x/<id>/, on this room; never an address elsewhere.
             const href = typeof answer?.link?.href === 'string' ? answer.link.href : '';
-            if (href.startsWith(`/api/x/${own.module.id}/`) && !/[\s"'<>\\]/.test(href) && href.length <= 400) result.link = { href, label: String(answer.link.label ?? '').slice(0, 80) || own.title };
-          } catch (error) { result = { ok: false, title: own.title, text: `/${parsed.name} failed: ${error.message}` }; }
+            if (href.startsWith(`/api/x/${own.module.id}/`) && !/[\s"'<>\\]/.test(href) && href.length <= 400) result.link = { href, label: String(inRoomLanguage(answer.link.label) ?? '').slice(0, 80) || inRoomLanguage(own.title) };
+          } catch (error) { result = { ok: false, title: inRoomLanguage(own.title), text: `/${parsed.name} failed: ${error.message}` }; }
           command = own;
         }
         const here = await scopeOf(url);

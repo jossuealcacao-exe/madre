@@ -66,7 +66,13 @@ export function t(text, vars = null) {
 // because those are not sentences and a translated id is a bug.
 const PROSE = new Set(['summary', 'detail', 'note', 'says', 'brief', 'what', 'when', 'where', 'why', 'hint', 'title', 'label', 'remedy', 'diagnosis', 'creates', 'requires']);
 
+// A module's words in both languages, { es, en } (SDK, 2026-10-20): the one the room speaks, or the
+// other when it only wrote one. Anything else comes back as it was.
+export const isBilingual = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0 && Object.keys(value).every((key) => key === 'es' || key === 'en') && Object.values(value).every((one) => typeof one === 'string');
+export const inRoomLanguage = (value) => (isBilingual(value) ? value[current] ?? value.es ?? value.en : value);
+
 export function translate(value, key = null) {
+  if (isBilingual(value)) return value[current] ?? value.es ?? value.en;
   if (Array.isArray(value)) return value.map((one) => translate(one, key));
   if (value && typeof value === 'object') {
     const out = {};

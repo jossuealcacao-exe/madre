@@ -322,3 +322,27 @@ test('SDK · a key beside the version is drawn by MADRE: its icons, the module\'
   assert.throws(() => define({ id: 'plain', name: 'P', footer: [{ label: 'x', url: 'http://example.com' }] }), /https/);
   assert.throws(() => define({ id: 'nolabel', name: 'P', footer: [{ url: 'https://example.com' }] }), /label/);
 });
+
+test('the SDK: a module may write its name, what it does and its commands in both languages, and the room shows its own', async () => {
+  const { defineModule: define } = await import('../src/modules/sdk.mjs');
+  const { setLanguage, translate, inRoomLanguage } = await import('../src/i18n.mjs');
+  const report = define({
+    id: 'bilingual-report',
+    name: { es: 'Informe de trabajo', en: 'Work report' },
+    summary: { es: 'Cuenta lo que se hizo.', en: 'Tells what was done.' },
+    slash: [{ name: 'informe', summary: { es: 'Informe de un periodo.', en: 'Report of a period.' }, async execute() { return { ok: true }; } }],
+  });
+  // MADRE's own records keep one word; the room reads its language.
+  assert.equal(report.name, 'Work report');
+  const ctx = { config: {}, roomId: null, stateRoot: '/nowhere', projectRoot: '/nowhere' };
+  try {
+    setLanguage('es');
+    const es = translate(await report.describe(ctx));
+    assert.deepEqual([es.name, es.summary, inRoomLanguage(report.slash[0].summary)], ['Informe de trabajo', 'Cuenta lo que se hizo.', 'Informe de un periodo.']);
+    setLanguage('en');
+    const en = translate(await report.describe(ctx));
+    assert.deepEqual([en.name, en.summary], ['Work report', 'Tells what was done.']);
+  } finally { setLanguage('es'); }
+  // Only an object of es and en is words in two languages; any other object is left alone.
+  assert.deepEqual(inRoomLanguage({ es: 'a', other: 'b' }), { es: 'a', other: 'b' });
+});

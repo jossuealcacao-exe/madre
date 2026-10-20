@@ -35,7 +35,9 @@ A version closes when it is on npm: until then its section is called **Unrelease
   - The descriptions were rewritten so they read without knowing about programming.
 - **«Needs you» reads like «Waiting for you»:** one big number, calm at 0 and in your color when something needs you.
 - **Cursor no longer shows «Not installed» when it is.** MADRE also looks for it in your user's folder, even when MADRE was opened from another one.
-- **For module authors:** the new `credit` field says whose idea it was. MADRE shows it on the module's card and in the Market («Idea by …»).
+- **For module authors:**
+  - The new `credit` field says whose idea it was. MADRE shows it on the module's card and in the Market («Idea by …»).
+  - A module may write its name, what it does and its commands in both languages, `{ es, en }`, and MADRE shows the room's. With `ctx.language` the module knows which language to answer in. A Market module no longer shows up in English in a Spanish MADRE.
 - **Connections, in neural mode.** Home's Connections map and its window use the neural mode's language: each project is a neuron with dendrites, each connection a slightly curved axon, and what crosses it travels as a signal of light, over a deep ground.
 - **The Connections icon is a connector**, male and female, that plugs in on hover. The fill of Modules and Add widgets is now a soft tint that leaves air between the pieces.
 - **Keys in one row.** In the Connections window, «Open the project» and «See the connections» sit together, and the side panel is a little wider so they fit.
