@@ -13297,7 +13297,14 @@ function renderTerminalCard(event) {
   };
   open(termOpen.has(id));
   head.addEventListener('click', () => open(!node.classList.contains('open')));
-  node.append(head, ...(page ? [page] : []), ...(peek ? [peek] : []), out);
+  // A module's page (a report to print) sits on the same row as its title, a small key at its end:
+  // under it, it turned the pill into a bulging oval (2026-10-20).
+  if (page && fromModule) {
+    const row = el('div', 'term-row');
+    page.classList.add('in-row');
+    row.append(head, page);
+    node.append(row, ...(peek ? [peek] : []), out);
+  } else node.append(head, ...(page ? [page] : []), ...(peek ? [peek] : []), out);
   if (run) {
     markRun(run, ok === false ? 'failed' : 'ran');
     // A command the human ran by hand was photographed first: the same UNDO as a CONTROL turn.
@@ -13497,8 +13504,15 @@ function drawMcpCatalog(host) {
 const MCP_CHECKED_WORDS = { tools: () => t('Checked'), signin: () => t('With your account'), token: () => t('With a token') };
 function mcpConnectorCard(item, connected) {
   const card = el('div', `mcp-card${connected ? ' is-connected' : ''}`);
-  const mark = el('span', 'mcp-mark', mcpInitials(item.label));
-  mark.style.setProperty('--mcp-hue', item.hue);
+  // Its mark on its own color (public/mcp-catalog.js: Simple Icons, CC0), or its initials when there
+  // is none; the ink is white or near black, whichever reads on that color.
+  const mark = el('span', `mcp-mark${item.logo ? ' has-logo' : ''}`, item.logo ? null : mcpInitials(item.label));
+  const color = item.brand ?? item.hue;
+  mark.style.setProperty('--mcp-hue', color);
+  const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(color.slice(at, at + 2), 16) / 255);
+  mark.style.setProperty('--mcp-ink', 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.62 ? '#111111' : '#ffffff');
+  if (item.logo) mark.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="${item.logo}"/></svg>`; // trusted: our own catalog
+  mark.setAttribute('aria-hidden', 'true');
   const words = el('div', 'mcp-card-words');
   const name = el('b', null, item.label);
   const chip = el('span', `sx-chip${item.checked === 'tools' ? ' on' : ''}`, MCP_CHECKED_WORDS[item.checked]());

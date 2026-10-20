@@ -10409,3 +10409,35 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 .mcp-card-state { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .mcp-card-state.ok { color: var(--acc, var(--phosphor)); }
 .mcp-cat-other { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 6px 18px 16px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--line-2); font-size: 13px; color: var(--text-2); }
+/* The module's key on its title's row: the card keeps its pill whatever it offers. */
+.command-card.terminal .term-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.command-card.terminal .term-row > .term-head { flex: 1 1 auto; min-width: 0; width: auto; }
+.command-card.terminal.module-result .term-link.in-row { flex: none; margin: 0 8px 0 0; padding: 5px 12px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+:root[data-term="pill"] #messages#messages .command-card.terminal.module-result:not(.open) .term-row > .term-head { padding-right: 4px; }
+@media (max-width: 560px) { .command-card.terminal .term-row { flex-wrap: wrap; } .command-card.terminal.module-result .term-link.in-row { margin: 0 12px 10px 46px; } }
+
+/* SETTINGS' ICONS MOVE (1.0.5, 2026-10-20): every category's drawing answers the pointer once, each in
+   its own way, in a project's Settings and in Home's alike (data-cat on the card). Local AI turns its
+   network and What it remembers its pins (above); the others: */
+.settings-card .settings-icon svg { transform-origin: 50% 50%; }
+.settings-card:is(:hover, :focus-visible)[data-cat="look"] .settings-icon svg { animation: icon-reload calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="room"] .settings-icon svg { animation: icon-quarter calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible):is([data-cat="files"], [data-cat="projects"], [data-cat="mcp"]) .settings-icon svg { animation: icon-hop calc(480ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="agents"] .settings-icon svg { animation: icon-nod calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="permissions"] .settings-icon svg { animation: icon-pulse calc(520ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="privacy"] .settings-icon svg { animation: icon-shake calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="release"] .settings-icon svg { animation: icon-reload calc(520ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="bar"] .settings-icon svg { animation: icon-stretch calc(460ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.settings-card:is(:hover, :focus-visible)[data-cat="bishop"] .settings-icon svg { animation: icon-blink calc(420ms * var(--motion-scale, 1)) ease-in-out; }
+@keyframes icon-quarter { from { transform: rotate(0); } to { transform: rotate(90deg); } }
+@keyframes icon-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-2.2px); } 70% { transform: translateY(.6px); } }
+@keyframes icon-nod { 0%, 100% { transform: translateY(0) scale(1); } 35% { transform: translateY(-1.6px) scale(1.06); } 70% { transform: translateY(.4px) scale(.98); } }
+@keyframes icon-pulse { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.14); } }
+@keyframes icon-stretch { 0%, 100% { transform: scaleX(1); } 45% { transform: scaleX(1.14); } }
+@keyframes icon-blink { 0%, 100% { transform: scaleY(1); } 45% { transform: scaleY(.12); } }
+@media (prefers-reduced-motion: reduce) { .settings-card .settings-icon svg { animation: none !important; } }
+/* A connector's mark (Simple Icons, CC0) in its brand's flat color: no gradient on a logo that is
+   not ours, a hairline so black marks still stand on a dark Settings. */
+.mcp-mark { color: var(--mcp-ink, #fff); }
+.mcp-mark.has-logo { background: var(--mcp-hue); text-shadow: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent); }
+.mcp-mark.has-logo svg { width: 20px; height: 20px; }

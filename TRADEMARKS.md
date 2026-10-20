@@ -44,6 +44,15 @@ el README, la pantalla «Acerca de» o el pie de página.
 - Dominios, paquetes de npm, cuentas o repositorios cuyo nombre haga creer que son de MADRE.
 - El logo de MADRE en cualquier cosa que no sea MADRE sin modificar.
 
+## Marcas de otros dentro de MADRE
+
+Los nombres y logos de los servicios que aparecen en Ajustes › Herramientas externas (MCP) —Notion,
+GitHub, Stripe y los demás— son marcas de sus dueños. MADRE los muestra solo para decir con qué
+servicio se conecta cada conector (uso nominativo), no porque esos dueños respalden a MADRE ni
+tengan relación con ella. Los dibujos vienen de [Simple Icons](https://simpleicons.org) (CC0 1.0)
+con sus colores oficiales; un servicio que Simple Icons no dibuja aparece con sus iniciales. Si
+eres dueño de una de esas marcas y prefieres que no aparezca, escribe y se quita.
+
 ## Si tienes duda
 
 Escribe a Jossue Alcalá en [jossuealcala.com](https://jossuealcala.com) antes de publicar. Esta
@@ -78,5 +87,12 @@ implying it is official; name a module "X for MADRE"; write and talk about MADRE
 confusable such as "MADRE Pro" or "MADRE+"); anything presented as MADRE or its official
 version; domains, npm packages, accounts or repositories that look like MADRE's; the logo on
 anything that is not unmodified MADRE.
+
+**Other people's marks inside MADRE:** the names and logos of the services in Settings › Outside
+tools (MCP) — Notion, GitHub, Stripe and the rest — are their owners' trademarks. MADRE shows them
+only to say which service a connector reaches (nominative use), not because their owners endorse
+or are affiliated with MADRE. The drawings come from [Simple Icons](https://simpleicons.org)
+(CC0 1.0) with their official colors; a service Simple Icons does not draw shows its initials. If
+you own one of those marks and would rather it not appear, write and it is taken off.
 
 In doubt, contact Jossue Alcalá at [jossuealcala.com](https://jossuealcala.com) before publishing.
