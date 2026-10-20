@@ -20,7 +20,7 @@ A version closes when it is on npm: until then its section is called **Unrelease
   - **Docs and code, no account.** Context7, DeepWiki, Microsoft Learn, Cloudflare Docs and Hugging Face. MADRE connected to each one and read its tools.
   - **With your account.** Notion, Linear, Jira · Confluence, monday.com, Zapier, Sentry, Vercel, Netlify, Supabase, Cloudflare, Stripe, PayPal, Square, Canva, Webflow and Wix. MADRE found their sign-in; their tools are read the moment you sign in on their own page.
   - **With a token.** GitHub, with a link to make one.
-  - Each connector carries its service's logo and color (Simple Icons' drawings, CC0 license). The ones Simple Icons does not draw carry their initials. The marks are their owners', and TRADEMARKS.md says so.
+  - Each connector carries its service's logo and color. The drawings come from Simple Icons, CoreUI Brands and SVG Logos (CC0) and from VSCode Icons (MIT); DeepWiki carries Devin's mark, from the same makers. The marks are their owners': TRADEMARKS.md says so and NOTICE carries the MIT notice.
   - Any other MCP server, yours or a third party's, still goes in with «Add a tool» or is imported from your apps. Every connected tool has **«Check the connection»**, which says how many tools answer.
 - **An MCP server that leaves its answer open now works.** Some online servers (DeepWiki, for one) answer through an event stream they never close. MADRE kept waiting and the tool showed as «did not answer». Now it takes the answer and goes on.
 - **«Active» instead of «Calm».** That is now how an open project with nothing running is described, the Coordinator's too.

@@ -50,7 +50,8 @@ Los nombres y logos de los servicios que aparecen en Ajustes › Herramientas ex
 GitHub, Stripe y los demás— son marcas de sus dueños. MADRE los muestra solo para decir con qué
 servicio se conecta cada conector (uso nominativo), no porque esos dueños respalden a MADRE ni
 tengan relación con ella. Los dibujos vienen de [Simple Icons](https://simpleicons.org) (CC0 1.0)
-con sus colores oficiales; un servicio que Simple Icons no dibuja aparece con sus iniciales. Si
+con sus colores oficiales; los que Simple Icons no dibuja, de CoreUI Brands y SVG Logos (CC0 1.0) y
+de VSCode Icons (MIT). Si
 eres dueño de una de esas marcas y prefieres que no aparezca, escribe y se quita.
 
 ## Si tienes duda
@@ -92,7 +93,8 @@ anything that is not unmodified MADRE.
 tools (MCP) — Notion, GitHub, Stripe and the rest — are their owners' trademarks. MADRE shows them
 only to say which service a connector reaches (nominative use), not because their owners endorse
 or are affiliated with MADRE. The drawings come from [Simple Icons](https://simpleicons.org)
-(CC0 1.0) with their official colors; a service Simple Icons does not draw shows its initials. If
+(CC0 1.0) with their official colors; the ones Simple Icons does not draw, from CoreUI Brands and
+SVG Logos (CC0 1.0) and VSCode Icons (MIT). If
 you own one of those marks and would rather it not appear, write and it is taken off.
 
 In doubt, contact Jossue Alcalá at [jossuealcala.com](https://jossuealcala.com) before publishing.

@@ -20,7 +20,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
   - **Documentación y código, sin cuenta.** Context7, DeepWiki, Microsoft Learn, Cloudflare Docs y Hugging Face. MADRE se conectó a cada uno y leyó sus herramientas.
   - **Con tu cuenta.** Notion, Linear, Jira · Confluence, monday.com, Zapier, Sentry, Vercel, Netlify, Supabase, Cloudflare, Stripe, PayPal, Square, Canva, Webflow y Wix. MADRE encontró su inicio de sesión; sus herramientas se leen en cuanto inicias sesión en su propia página.
   - **Con token.** GitHub, con un enlace para crearlo.
-  - Cada conector lleva el logo y el color de su servicio (dibujos de Simple Icons, licencia CC0). Los que Simple Icons no dibuja llevan sus iniciales. Las marcas son de sus dueños y TRADEMARKS.md lo dice.
+  - Cada conector lleva el logo y el color de su servicio. Los dibujos vienen de Simple Icons, CoreUI Brands y SVG Logos (CC0) y de VSCode Icons (MIT); DeepWiki lleva la marca de Devin, de sus mismos creadores. Las marcas son de sus dueños: TRADEMARKS.md lo dice y NOTICE incluye el aviso MIT.
   - Cualquier otro servidor MCP, tuyo o de alguien más, sigue entrando con «Agregar herramienta» o se importa desde tus apps. Cada herramienta conectada tiene **«Revisar conexión»**, que dice cuántas herramientas responden.
 - **Un servidor MCP que deja abierta su respuesta ya funciona.** Algunos servidores en internet (DeepWiki, por ejemplo) responden por un flujo de eventos y no lo cierran. MADRE se quedaba esperando y la herramienta aparecía como «no contestó». Ahora toma la respuesta y sigue.
 - **«Activo» en vez de «En calma».** Así se dice ahora el estado de un proyecto abierto sin nada en marcha, también el del Coordinador.

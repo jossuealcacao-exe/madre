@@ -13506,12 +13506,14 @@ function mcpConnectorCard(item, connected) {
   const card = el('div', `mcp-card${connected ? ' is-connected' : ''}`);
   // Its mark on its own color (public/mcp-catalog.js: Simple Icons, CC0), or its initials when there
   // is none; the ink is white or near black, whichever reads on that color.
-  const mark = el('span', `mcp-mark${item.logo ? ' has-logo' : ''}`, item.logo ? null : mcpInitials(item.label));
+  const drawn = Boolean(item.logo || item.logoMarkup);
+  const mark = el('span', `mcp-mark${drawn ? ' has-logo' : ''}`, drawn ? null : mcpInitials(item.label));
   const color = item.brand ?? item.hue;
   mark.style.setProperty('--mcp-hue', color);
   const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(color.slice(at, at + 2), 16) / 255);
   mark.style.setProperty('--mcp-ink', 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.62 ? '#111111' : '#ffffff');
-  if (item.logo) mark.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="${item.logo}"/></svg>`; // trusted: our own catalog
+  // One color on the brand's (most), or the mark's own colors when it has several (monday.com).
+  if (drawn) mark.innerHTML = `<svg viewBox="${item.logoBox ?? '0 0 24 24'}" aria-hidden="true">${item.logoMarkup ?? `<path fill="currentColor" d="${item.logo}"/>`}</svg>`; // trusted: our own catalog
   mark.setAttribute('aria-hidden', 'true');
   const words = el('div', 'mcp-card-words');
   const name = el('b', null, item.label);
