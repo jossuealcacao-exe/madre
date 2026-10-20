@@ -15506,7 +15506,7 @@ function renderModuleWindows() { for (const id of moduleWindows.keys()) drawModu
 // every window is. Its own key beside them throws it away. Kept on this computer, read by no agent.
 const NOTE_COLORS = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'];
 const NOTE_COLOR_WORDS = { yellow: () => t('Yellow'), green: () => t('Green'), blue: () => t('Blue'), pink: () => t('Pink'), purple: () => t('Purple'), orange: () => t('Orange') };
-const TRASH_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g class="ic-lid"><path d="M3.8 5.6h12.4"/><path d="M8 5.4V4.2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.2"/></g><path d="M5.3 5.8l.8 10a1.4 1.4 0 0 0 1.4 1.3h5a1.4 1.4 0 0 0 1.4-1.3l.8-10"/><path d="M8.6 9v5M11.4 9v5"/></svg>';
+const TRASH_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><g class="ic-lid"><path d="M3.8 5.6h12.4"/><path d="M8 5.4V4.2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.2"/></g><path d="M5.3 5.8l.8 10a1.4 1.4 0 0 0 1.4 1.3h5a1.4 1.4 0 0 0 1.4-1.3l.8-10"/><path d="M8.6 9v5M11.4 9v5"/></svg>';
 const notesKit = { items: [], windows: new Map(), on: null, timers: new Map() };
 const notesOn = () => Boolean(modules.items.find((one) => one.id === 'notes')?.status?.installed);
 const noteTitle = (note) => String(note?.text ?? '').split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 48) || t('Note');
