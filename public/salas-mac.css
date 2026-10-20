@@ -52,7 +52,11 @@ body.salas-mac {
 .sm-top { position: sticky; top: 0; z-index: 12; display: flex; align-items: stretch; gap: 10px; max-width: 1440px; margin: 0 auto; padding: 10px 20px 0; }
 .sm-topbar { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; height: 48px; padding: 9px 12px 9px 16px; border-radius: 20px; background-color: color-mix(in srgb, var(--bg) 93%, transparent); background-image: var(--sheen); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); box-shadow: var(--bevel), 0 1px 2px rgba(0, 0, 0, .45), 0 10px 24px -10px rgba(0, 0, 0, .6), 16px 24px 50px -24px rgba(0, 0, 0, .55); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text-2); }
 :root[data-scheme="light"] .sm-topbar { background-color: color-mix(in srgb, #ffffff 94%, transparent); box-shadow: var(--bevel), 0 1px 2px rgba(20, 40, 60, .12), 0 10px 24px -12px rgba(20, 40, 60, .24), 16px 24px 50px -26px rgba(20, 40, 60, .28); }
-.sm-topbar:first-child { flex: 1; }
+/* As wide as what it holds (1.0.5): it grows with each project, agent or notice and, once it meets
+   the keys on the right, shrinks and folds what does not fit (fitBar, pinsFit) instead of leaving a
+   gap in the middle or pushing anything out. */
+.sm-topbar:first-child { flex: 0 1 auto; }
+.sm-tb-home { margin-left: auto; }
 .sm-tb-home { flex: none; gap: 6px; padding: 9px 10px; }
 .sm-brand { display: inline-flex; align-items: center; flex: none; color: var(--text); border-radius: 8px; padding: 4px 2px; }
 .sm-brand .brand-logo { height: 15px; }
@@ -117,7 +121,7 @@ body.salas-mac {
 }
 @media (max-width: 560px) { #sm-reload { display: none; } }
 .sm-brand:focus-visible { outline: 2px solid var(--s-acc); outline-offset: 3px; }
-.sm-spacer { flex: 1; }
+.sm-spacer { flex: 0 0 0; margin-left: -6px; }
 /* A bar that does not fit (salas-mac.js, fitBar): the computer's name steps out, then the keys keep
    their icons, then the agents step out. */
 .sm-topbar.is-tight { gap: 10px; }
@@ -1078,13 +1082,6 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 
 /* Connections: the two halves of the link are apart at rest and close on each other under the
    pointer, the bar between them drawn as they meet. */
-#sm-tb-links svg :is(.ic-a, .ic-b) { transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-#sm-tb-links svg .ic-a { transform: translate(1.2px, -1.2px); }
-#sm-tb-links svg .ic-b { transform: translate(-1.2px, 1.2px); }
-#sm-tb-links svg .ic-mid { stroke-dasharray: 6; stroke-dashoffset: 6; transition: stroke-dashoffset calc(260ms * var(--motion-scale, 1)) var(--ease-out, ease-out) 60ms; }
-#sm-tb-links:is(:hover, :focus-visible) svg :is(.ic-a, .ic-b) { transform: none; }
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-mid { stroke-dashoffset: 0; }
-@media (prefers-reduced-motion: reduce) { #sm-tb-links svg :is(.ic-a, .ic-b) { transform: none; } #sm-tb-links svg .ic-mid { stroke-dashoffset: 0; transition: none; } }
 
 /* ==========================================================================================
    EACH PROJECT ON ITS PIECE OF THE WALLPAPER · 13 OCT
@@ -1333,9 +1330,6 @@ dialog.sm-sheet:focus, dialog.sm-sheet:focus-visible { outline: none; }
    Diagnostics do in a project. The widgets key pulses once under the pointer, and its squares fill
    while the sheet it opens is there. */
 .salas-mac :is(#sm-tb-links, #sm-macro):is(:hover, :focus-visible) { box-shadow: var(--key-rest), 0 3px 8px -5px var(--key-lift, rgba(22, 30, 22, .16)); }
-#sm-add-widgets:is(:hover, :focus-visible) svg { animation: icon-pulse calc(520ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-#sm-add-widgets svg rect { fill: currentColor; fill-opacity: 0; transition: fill-opacity calc(200ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-#sm-add-widgets:active svg rect, #sm-add-widgets.filled svg rect { fill-opacity: 1; }
 @keyframes icon-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.16); } 70% { transform: scale(.95); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { #sm-add-widgets:is(:hover, :focus-visible) svg { animation: none; } }
 
@@ -1390,3 +1384,73 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
   100% { transform: translate3d(-5vmax, 3vmax, 0) rotate(-12deg) scale(1.1); opacity: .95; }
 }
 @media (prefers-reduced-motion: reduce) { .sm-gas { animation: none !important; } }
+
+/* CONNECTIONS, 1.0.5: quieter and exact. A project is a solid dot of its tone inside a hairline
+   ring, its halo small and slow; a wire is a 1px line of the source's tone, and the notes on their
+   way are one short spark that travels it, without blur. Under the pointer a project or a wire comes
+   forward and the rest steps back (the focus rules above). The Coordinator keeps its mark. */
+.sm-map .node .star { animation: none; }
+.sm-map .node .star .halo { opacity: calc(var(--star-halo) * .55); mix-blend-mode: normal; animation: sm-breathe-soft 5.2s ease-in-out var(--tw-delay, 0s) infinite; }
+.sm-map .node .star .ring { fill: none; stroke: var(--pc, var(--s-acc)); stroke-width: 1; stroke-opacity: .42; transition: stroke-opacity 160ms var(--ease-out, ease-out); }
+.sm-map .node:not(.linked) .star .ring { stroke-opacity: .2; stroke-dasharray: 2 3; }
+.sm-map .node:not(.linked) .star .body { fill: none; stroke: color-mix(in srgb, var(--pc, var(--s-acc)) 60%, var(--text-3)) !important; stroke-width: 1.4; }
+.sm-map .node:not(.linked) .star .heart { opacity: 0; }
+.sm-map .node .star .heart { opacity: calc(var(--star-heart) * .8); }
+.sm-map .node:is(:hover, .lit) .star .ring { stroke-opacity: .9; }
+.sm-map .node.asleep .star { opacity: .6; }
+.sm-map .wire { stroke-width: 1 !important; stroke-opacity: .3; }
+:root[data-scheme="dark"] .sm-map .wire { stroke-opacity: .34; }
+.sm-map .wire:hover, .sm-map .wire.hover, .sm-map svg.focusing .wire.lit { stroke-width: 1.6 !important; stroke-opacity: .85; }
+.sm-map .spoke { stroke-opacity: .12; stroke-dasharray: 1 5; }
+.sm-map .flow { stroke-width: 2; stroke-dasharray: 5 64; mix-blend-mode: normal; opacity: .95; animation: sm-current-soft 2.6s linear var(--flow-delay, 0s) infinite; }
+.sm-map .flow.back { stroke-dasharray: 3 66; animation-direction: reverse; }
+.sm-map .flow.still { animation: none; stroke-dasharray: none; stroke-width: 1; opacity: .4; }
+.sm-map .bishop .corona { opacity: calc(var(--star-halo) * .45); mix-blend-mode: normal; animation: sm-breathe-soft 6s ease-in-out infinite; }
+.sm-map .label { font-size: 11.5px; font-weight: 560; fill: var(--text-2); letter-spacing: 0; }
+.sm-map .node:is(:hover, .lit) .label, .sm-map .node.waiting .label { fill: var(--text); }
+@keyframes sm-current-soft { from { stroke-dashoffset: 69; } to { stroke-dashoffset: 0; } }
+@keyframes sm-breathe-soft { 0%, 100% { transform: scale(.94); } 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .sm-map :is(.flow, .node .star .halo, .bishop .corona) { animation: none; } }
+
+/* THE BAR'S KEYS, 1.0.5 (salas-mac.html). Each says what it is on hover, small and quiet:
+   Connections is two links already joined, and a few sparks leave the joint; the Market is a
+   basket of modules that shakes once and settles them; Modules fills its four pieces one after
+   another; Add widgets (a wide piece, a square and a circle, like Home itself) fills the same way. */
+.salas-mac :is(#sm-tb-links, #sm-tb-market, #sm-tb-modules, #sm-add-widgets) svg { overflow: visible; }
+#sm-tb-links svg .ic-sparks path { opacity: 0; transform-box: fill-box; transform-origin: center; }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-sparks path { animation: sm-spark calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out) both; }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-sparks path:nth-child(2) { animation-delay: 70ms; }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-sparks path:nth-child(3) { animation-delay: 140ms; }
+#sm-tb-links svg .ic-mid { transition: stroke calc(200ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-mid { stroke: var(--s-acc, currentColor); }
+@keyframes sm-spark { 0% { opacity: 0; transform: translate(0, 0) scale(.4); } 35% { opacity: .9; } 100% { opacity: 0; transform: translate(.6px, -.6px) scale(1.15); } }
+
+#sm-tb-market svg .ic-basket { transform-box: fill-box; transform-origin: 50% 100%; }
+#sm-tb-market svg .ic-mods > * { transform-box: fill-box; transform-origin: center; }
+#sm-tb-market:is(:hover, :focus-visible) svg .ic-basket { animation: sm-basket calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-tb-market:is(:hover, :focus-visible) svg .ic-m1 { animation: sm-settle calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out) 40ms; }
+#sm-tb-market:is(:hover, :focus-visible) svg .ic-m2 { animation: sm-settle calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out) 100ms; }
+#sm-tb-market:is(:hover, :focus-visible) svg .ic-m3 { animation: sm-settle calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out) 160ms; }
+@keyframes sm-basket { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 55% { transform: rotate(5deg); } 80% { transform: rotate(-2deg); } }
+@keyframes sm-settle { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-1.6px); } 70% { transform: translateY(.5px); } }
+
+#sm-tb-modules svg rect, #sm-add-widgets svg :is(rect, circle) { fill: currentColor; fill-opacity: 0; transition: fill-opacity calc(180ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-tb-modules:is(:hover, :focus-visible) svg rect, #sm-add-widgets:is(:hover, :focus-visible) svg :is(rect, circle), #sm-add-widgets.filled svg :is(rect, circle) { fill-opacity: .9; }
+#sm-tb-modules svg .ic-q2, #sm-add-widgets svg .ic-w2 { transition-delay: 60ms; }
+#sm-tb-modules svg .ic-q3, #sm-add-widgets svg .ic-w3 { transition-delay: 120ms; }
+#sm-tb-modules svg .ic-q4 { transition-delay: 180ms; }
+@media (prefers-reduced-motion: reduce) {
+  #sm-tb-links svg .ic-sparks path, #sm-tb-market svg :is(.ic-basket, .ic-mods > *) { animation: none !important; }
+  #sm-tb-modules svg rect, #sm-add-widgets svg :is(rect, circle) { transition: none; }
+}
+
+/* WAITING FOR YOU, 1.0.5: the dot of a project that needs the person beats softly, on the bar, on
+   its card and on its pinned key: a halo of the accent that grows and fades, every 2.2 s. The dot
+   itself does not move or change size, so the bar never shifts; with reduced motion it stays still. */
+.sm-tb-room.is-waiting > i, .is-waiting .sm-state .dot, .sm-pin-glyph.is-waiting i { animation: sm-attention calc(2200ms * var(--motion-scale, 1)) ease-out infinite; }
+@keyframes sm-attention {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-acc) 55%, transparent); }
+  70% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--s-acc) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-acc) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .sm-tb-room.is-waiting > i, .is-waiting .sm-state .dot, .sm-pin-glyph.is-waiting i { animation: none; } }

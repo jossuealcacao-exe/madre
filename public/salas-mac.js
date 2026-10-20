@@ -1255,7 +1255,8 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
     // A still line under it says the connection is there even when nothing moves.
     const ways = enlace.direction === 'both' ? [['out', tone], ['back', reader === data.salas ? 'var(--text-3)' : toneOf(reader)]] : [['out', tone]];
     for (const [way, colour] of ways) {
-      const flow = svgNode('path', { class: `flow ${way}`, d, filter: `url(#${glowId})` });
+      // One clean spark per way (1.0.5): no blur, a short bright dash that travels the line.
+      const flow = svgNode('path', { class: `flow ${way}`, d });
       flow.style.stroke = colour;
       flow.style.setProperty('--flow-delay', `${(index * 0.37) % 1.4}s`);
       flow.dataset.a = source;
@@ -1276,10 +1277,12 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
     const star = svgNode('g', { class: 'star' });
     star.style.setProperty('--tw', `${(2.6 + ((room.id.length * 37) % 19) / 10).toFixed(1)}s`);
     star.style.setProperty('--tw-delay', `${(((room.id.charCodeAt(0) ?? 0) * 13) % 23) / 10}s`);
+    // 1.0.5, quieter: a small soft halo, a solid dot of its tone and a hairline ring around it.
     star.append(
-      svgNode('circle', { class: 'halo', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: (spot.r * (on ? 2.9 : 2.2)).toFixed(1), fill: haloFor(room.id, toneOf(room.id)) }),
-      svgNode('circle', { class: 'body', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: (spot.r * (on ? 0.82 : 0.9)).toFixed(1) }),
-      svgNode('circle', { class: 'heart', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: Math.max(0.9, spot.r * 0.22).toFixed(1) }),
+      svgNode('circle', { class: 'halo', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: (spot.r * (on ? 1.9 : 1.5)).toFixed(1), fill: haloFor(room.id, toneOf(room.id)) }),
+      svgNode('circle', { class: 'ring', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: (spot.r * 0.95 + 3).toFixed(1) }),
+      svgNode('circle', { class: 'body', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: (spot.r * (on ? 0.62 : 0.55)).toFixed(1) }),
+      svgNode('circle', { class: 'heart', cx: spot.x.toFixed(1), cy: spot.y.toFixed(1), r: Math.max(0.8, spot.r * 0.18).toFixed(1) }),
     );
     group.append(star);
     const title = svgNode('title');
@@ -1301,7 +1304,7 @@ function paintMap(host, projects, enlaces, { wide, pick = null, picked = null })
   const hub = svgNode('g', { class: `bishop${linked.has(data.salas) ? ' linked' : ''}` });
   hub.dataset.id = data.salas;
   // The Coordinator is the brightest star, in its own colour, its mark at the heart.
-  hub.append(svgNode('circle', { class: 'corona', cx, cy, r: hubR * 2.4, fill: haloFor(data.salas, brand.solid ?? brand.color) }));
+  hub.append(svgNode('circle', { class: 'corona', cx, cy, r: hubR * 1.6, fill: haloFor(data.salas, brand.solid ?? brand.color) }));
   if (linked.has(data.salas)) hub.append(svgNode('circle', { class: 'halo', cx, cy, r: hubR + 6 }));
   hub.append(svgNode('circle', { class: 'core', cx, cy, r: hubR, fill: brand.solid ?? brand.color }));
   const size = Math.round(hubR * 1.24);

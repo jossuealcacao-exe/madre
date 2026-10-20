@@ -6,6 +6,16 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.5 · Sin publicar
 
+- **Inicio, más limpio:**
+  - **El mapa de Conexiones es más sobrio.** Cada proyecto es un punto de su color con un anillo fino, cada conexión una línea delgada, y las notas viajan como una sola chispa corta, sin resplandor.
+  - **La barra de Inicio mide lo que contiene.** Ya no deja un hueco en medio: crece con cada proyecto y aviso y, cuando ya no cabe, pliega lo que sobra sin empujar nada fuera.
+  - **Íconos nuevos en la barra:**
+    - Conexiones son dos eslabones unidos que sueltan chispas al pasar el ratón.
+    - El Mercado es una cesta de módulos que se sacude y los acomoda.
+    - Los módulos de Módulos se llenan uno tras otro.
+    - Agregar widgets tiene su propio dibujo (una pieza ancha, un cuadro y un círculo) y también se llena.
+  - **El punto de un proyecto que te espera late suave** en la barra, en su tarjeta y en su tecla fijada.
+- **Cambiar de proyecto, con tu color.** En el panel para cambiar de proyecto, cada ficha conserva sus iniciales sobre tu color de acento, con un degradado ligero.
 - **Cuando OpenCode no puede contestar por su proveedor, la tarjeta trae la salida.** Si la llave de un proveedor se quedó sin saldo o ya no es válida, la tarjeta del error ofrece un modelo que sí funciona en tu computadora: el último que contestó o, si no hay ninguno, uno de los modelos gratuitos de OpenCode. Hay dos botones: **Reintentar con** ese modelo (manda de nuevo tu mensaje) y **Usarlo siempre** (lo deja como predeterminado). En Ajustes › Agentes › OpenCode, el proveedor que falló aparece marcado («Sin saldo» o «Su llave ya no es válida») hasta que vuelva a contestar. MADRE nunca cambia de modelo por su cuenta.
 - **Los errores conocidos de los agentes se explican en español.** Cuando un agente falla por una causa que MADRE conoce, la tarjeta roja sigue mostrando lo que dijo el agente, tal cual, y debajo explica qué pasó y qué hacer. Ejemplos: la llave de API se quedó sin saldo (lo que le pasaba a OpenCode con un modelo de Anthropic) o el plan de Cursor llegó a su límite de uso. Esos errores ya no quedan «Aún sin clasificar» en Diagnóstico. «Cursor exited with code 1» ahora se lee «se cerró con el código 1».
 - **La opción que eliges queda marcada.** En las tarjetas en las que un agente te pide elegir, la opción que mandaste lleva «Tu elección» y las demás se atenúan. Se ve igual al recargar o en otra pestaña.

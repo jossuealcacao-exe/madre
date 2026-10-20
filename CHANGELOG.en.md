@@ -6,6 +6,16 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.5 · Unreleased
 
+- **Home, cleaner:**
+  - **The Connections map is quieter.** Each project is a dot of its colour inside a fine ring, each connection a thin line, and the notes travel as one short spark, without glow.
+  - **Home's bar is as wide as what it holds.** No gap in the middle anymore: it grows with each project and notice and, when it no longer fits, folds what is left over without pushing anything out.
+  - **New icons on the bar:**
+    - Connections is two joined links that give off sparks on hover.
+    - The Market is a basket of modules that shakes and settles them.
+    - The pieces of Modules fill one after another.
+    - Add widgets has its own drawing (a wide piece, a square and a circle) and fills too.
+  - **The dot of a project that waits for you beats softly** on the bar, on its card and on its pinned key.
+- **Switch project, in your colour.** In the panel to switch projects, each tile keeps its initials on your accent colour, in a light gradient.
 - **When OpenCode cannot answer because of its provider, the card brings the way out.** If a provider's key ran out of credit or is no longer valid, the error card offers a model that works on your computer: the last one that answered or, if there is none, one of OpenCode's own free models. It has two keys: **Retry on** that model (sends your message again) and **Use it always** (makes it the default). In Settings › Agents › OpenCode, the provider that failed is marked («No credit left» or «Its key is no longer valid») until it answers again. MADRE never switches models on its own.
 - **Known agent failures are explained in your language.** When an agent fails for a reason MADRE knows, the red card still shows what the agent said, word for word, and below it explains what happened and what to do. Examples: the API key ran out of credit (what was happening to OpenCode with an Anthropic model), or Cursor's plan reached its usage limit. Those failures are no longer left «Not classified yet» in Diagnostics. «Cursor exited with code 1» now reads in Spanish too.
 - **The option you choose stays marked.** On cards where an agent asks you to choose, the option you sent carries «Your choice» and the rest step back. It shows the same after a reload or in another tab.

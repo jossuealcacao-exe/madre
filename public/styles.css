@@ -10260,3 +10260,12 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
 :root[data-scheme="light"] .shell .bar > #stop-all.armed:hover { color: #fff; }
 /* A provider OpenCode could not answer through last time (Settings › Agents › OpenCode). */
 .oc-problem { display: block; color: var(--danger, #d93025); font-size: 12px; font-weight: 600; }
+
+/* SWITCH PROJECT, 1.0.5: each project's tile keeps its initials on the accent the person chose, in a
+   light gradient (lighter at the top, a touch deeper below), its letters in the accent's own ink so
+   they read on any accent. The Coordinator keeps its own colours. */
+.switch-icon:not(.is-coordinator) {
+  background: linear-gradient(160deg, color-mix(in oklab, var(--acc, var(--phosphor)) 86%, #ffffff) 0%, var(--acc, var(--phosphor)) 55%, color-mix(in oklab, var(--acc, var(--phosphor)) 82%, #000000) 100%);
+  color: var(--acc-ink, #0a1405);
+}
+.switch-icon:not(.is-coordinator) .switch-face { text-shadow: 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent); }
