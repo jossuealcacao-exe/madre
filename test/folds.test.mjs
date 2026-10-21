@@ -59,9 +59,12 @@ test('mother: the list starts where the trouble is, and a search never comes bac
   // With nothing written and something recorded, the room's own records come first.
   assert.match(paint, /const filter = remedies\.filter \?\? \(!matches && records\.length \? 'room' : 'all'\);/);
   for (const chip of ["t('This project')", "t('Blocking')", "t('Matches') : t('All')"]) assert.ok(paint.includes(chip), `the ${chip} chip is gone`);
-  // A sentence that names no condition still finds the closest ones, ranked.
-  assert.match(paint, /if \(!matches\.length\) matches = looseConditions\(text\);/);
-  assert.match(app, /function looseConditions\(text\) \{/);
+  // A sentence that names no condition still finds the closest ones, ranked. The whole search —
+  // error, symptom, every word, then the closest — lives with the catalogue, where it is tested.
+  assert.match(paint, /matches = findConditions\(text\);/);
+  const { findConditions, looseConditions } = await import('../public/troubleshooting.js');
+  assert.ok(looseConditions('codex responde timeout').some((one) => one.code === 'MU-012'));
+  assert.ok(findConditions('codex responde timeout').length > 0);
   // The detail is never blank while the list has something in it.
   assert.match(paint, /const pick = stillThere \? remedies\.selected : first;/);
   // The record keeps the ledger's tools: download, dismiss, bring back.

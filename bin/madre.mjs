@@ -122,10 +122,10 @@ applyConfigToEnv(await loadConfig(stateRoot));
 
 if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   // The same knowledge base MU/TH/UR uses in the room, printed for this platform.
-  const { CONDITIONS, fixesFor, searchConditions, PLATFORMS } = await import('../public/troubleshooting.js');
+  const { CONDITIONS, findConditions, fixesFor, PLATFORMS } = await import('../public/troubleshooting.js');
   const query = option('--catalog', '') || option('--conditions', '') || '';
   const platform = PLATFORMS[process.platform] ? process.platform : 'linux';
-  const list = query && !query.startsWith('--') ? searchConditions(query) : CONDITIONS;
+  const list = query && !query.startsWith('--') ? findConditions(query) : CONDITIONS;
   console.log(`\nDIAGNOSTICS · KNOWN CONDITIONS · ${list.length} OF ${CONDITIONS.length} · ${PLATFORMS[platform].label.toUpperCase()} / ${PLATFORMS[platform].shell.toUpperCase()}\n`);
   for (const condition of list) {
     console.log(`▌ ${condition.title}`);

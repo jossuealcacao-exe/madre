@@ -247,6 +247,63 @@ test("i18n: every condition MU/TH/UR holds reads in the room's language", async 
   setPage('es');
 });
 
+test('i18n: Diagnosis understands a symptom said in everyday words, in both languages', async () => {
+  const { findConditions, symptomConditions } = await import('../public/troubleshooting.js');
+  const { setLanguage: setPage } = await import('../public/i18n.js');
+  const first = (asked) => findConditions(asked)[0]?.code;
+  const codes = (asked) => findConditions(asked).map((one) => one.code);
+
+  // Checked in a room on 2026-10-21: «un agente no contesta» opened the restart card, «Gemini no
+  // contesta» found nothing about Gemini, «agent does not answer» the install card, and «an agent
+  // stopped answering» only the usage numbers, because «ring» matched inside «answering».
+  for (const [language, phrases] of Object.entries({
+    es: ['un agente no contesta', 'no responde', 'se quedó pensando', 'dejó de contestar', 'no contestó'],
+    en: ['agent does not answer', 'an agent stopped answering', "it doesn't respond", 'the agent is stuck'],
+  })) {
+    setPage(language);
+    for (const asked of phrases) {
+      assert.equal(first(asked), 'MU-012', `"${asked}" (${language}) does not lead with the timeout`);
+      // And the other usual reasons an agent goes quiet come right after: sign-in, credit, limits.
+      for (const code of ['MU-008', 'MU-059', 'MU-005']) assert.ok(codes(asked).slice(0, 6).includes(code), `"${asked}" (${language}) misses ${code}`);
+      assert.ok(!codes(asked).includes('MU-015'), `"${asked}" (${language}) still reaches the usage numbers`);
+    }
+  }
+
+  // An agent's name puts that agent's own cards first and keeps the others' out.
+  for (const language of ['es', 'en']) {
+    setPage(language);
+    for (const asked of ['Gemini no contesta', 'gemini does not answer', '@gemini se quedó pensando']) {
+      const found = findConditions(asked);
+      assert.equal(found[0].agent, 'gemini', `"${asked}" does not lead with a Gemini card`);
+      assert.deepEqual(found.slice(0, 3).map((one) => one.code), ['MU-005', 'MU-006', 'MU-004']);
+      assert.ok(found.some((one) => one.code === 'MU-012'), `"${asked}" lost the timeout`);
+      assert.ok(found.every((one) => !one.agent || one.agent === 'gemini'), `"${asked}" shows another agent's card`);
+    }
+    // «se quedó callado» is what MADRE itself writes when it stops a silent Gemini, so it is the timeout.
+    assert.equal(first('gemini se quedó callado'), 'MU-012');
+    assert.equal(first('cursor no responde'), 'MU-060');
+    assert.equal(first('codex no contesta'), 'MU-012');
+    assert.equal(first('@madre no contesta'), 'MU-036');
+    assert.ok(!symptomConditions('un agente no contesta').some((one) => one.code === 'MU-036'), '@madre\'s card answers for every agent');
+  }
+
+  // What already worked still does, and leads.
+  setPage('es');
+  assert.equal(first('Claude me pide iniciar sesión'), 'MU-008');
+  assert.equal(first('claude tiempo limite'), 'MU-012');
+  assert.equal(first('se me acabó el saldo'), 'MU-059');
+  setPage('en');
+  assert.equal(first('Claude is not signed in'), 'MU-008');
+  assert.equal(first('gemini rate limit'), 'MU-005');
+  // A pasted error still names its own cause first.
+  assert.equal(first('Error: HTTP 429 RESOURCE_EXHAUSTED, the agent does not answer'), 'MU-005');
+  assert.equal(first('Error: listen EADDRINUSE: address already in use :::4400'), 'MU-017');
+  // One card is listed once, and a word that is not a symptom still finds its card.
+  assert.equal(new Set(codes('timeout')).size, codes('timeout').length);
+  assert.ok(codes('privacy').includes('MU-038'));
+  setPage('es');
+});
+
 test('i18n: a failure recorded in another language is read in this one', async () => {
   const { resay } = await import('../public/resay.js');
 

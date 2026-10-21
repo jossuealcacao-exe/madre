@@ -273,7 +273,8 @@ export const CONDITIONS = [
     code: 'MU-015',
     severity: 'informational',
     title: 'Where the usage numbers come from',
-    match: /ring|quota|limit window|resets|rollout|oauth usage|window reset|limits-real/i,
+    // «ring» as a word: inside «answering» or «string» it filed a question about silence here.
+    match: /\bring\b|quota|limit window|resets|rollout|oauth usage|window reset|limits-real/i,
     diagnosis: 'Each sphere\'s usage shows the provider\'s real limit when the CLI publishes it: Codex writes its 5-hour and weekly windows (used %, reset time) into every session rollout under ~/.codex/sessions; Claude Code\'s /usage comes from Anthropic\'s OAuth usage endpoint; MADRE can ask it with the token Claude Code keeps in the keychain when you start with PULSE_CLAUDE_USAGE=1 (macOS may ask once to allow the keychain read). Gemini and OpenCode publish nothing locally, so their usage shows MADRE\'s own rolling 5-hour window of budget tokens. A window whose reset time has passed counts as empty until the CLI reports again, and the failure monitor says "clear" when a full window resets.',
     remedy: 'Click a sphere to see both windows and when they reset. If a sphere\'s usage looks stale, run one turn with that agent: Codex only rewrites its limits when it runs. Set PULSE_OFFICIAL_QUOTA=0 to stop reading provider limits altogether.',
     fixes: same(['# click the sphere → 5h / 7d windows and reset times', 'PULSE_CLAUDE_USAGE=1 madre start     # also read Claude Code\'s usage windows', 'PULSE_OFFICIAL_QUOTA=0 madre start   # local window only']),
@@ -733,26 +734,137 @@ export function said(condition) {
 export const allConditions = () => CONDITIONS.map(said);
 
 // Lowercase and without accents: «limite» finds «límite», and a person types what they type.
-const fold = (text) => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const fold = (text) => String(text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const AGENT_WORDS = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'madre', 'ollama']);
+const named = (words) => words.find((word) => AGENT_WORDS.has(word.replace(/^@/, '')))?.replace(/^@/, '') ?? null;
+const wordsOf = (query) => fold(query).split(/[^a-z0-9#.@_-]+/).filter(Boolean);
+
+// Cards that belong to an agent without being only its own: @madre lives on Ollama.
+const BELONGS = { madre: ['madre-agent', 'ollama', 'local-ready'], ollama: ['ollama', 'madre-agent', 'local-ready'] };
+const belongsTo = (condition, agent) => Boolean(agent) && (condition.agent === agent || Boolean(BELONGS[agent]?.includes(condition.id)));
+// An agent's name narrows to that agent and the general cards, and puts its own first.
+const forAgent = (conditions, agent) => {
+  if (!agent) return conditions;
+  const kept = conditions.filter((condition) => !condition.agent || condition.agent === agent);
+  return [...kept.filter((condition) => belongsTo(condition, agent)), ...kept.filter((condition) => !belongsTo(condition, agent))];
+};
+
+// How people say it, not how a CLI prints it. A person does not paste «HTTP 429»: they write
+// «Gemini no contesta», and every word of that sat in the wrong card — «un agente no contesta»
+// opened the restart card and «agent does not answer» the install one. Each symptom is a few
+// patterns over the folded text, in both languages, and the cards that most often explain it, in
+// that order. Cards owned by another agent or by @madre only count when that agent is named.
+const SYMPTOMS = [
+  {
+    id: 'signed-out',
+    says: [
+      /\b(?:sign(?:ed)?|log(?:ged)?)[ -]?(?:in|out)\b|\blog[ -]?in\b|\bauthenticat|\bcredential|\bpassword|\bre-?auth/,
+      /\b(?:inici\w*|cerr\w*|abr\w*|pide\w*)(?: la| una| mi| de)? sesion|\bsesion (?:cerrada|expirada|vencida)|\bsin sesion|\bautentic|\bcredencial|\bcontrasena|\bme pide (?:entrar|la cuenta|mi cuenta)/,
+    ],
+    cards: ['not-signed-in', 'gemini-ineligible-tier', 'opencode-default-provider', 'custom-agent-endpoint'],
+  },
+  {
+    id: 'no-credit',
+    says: [
+      /\b(?:out of (?:credit|credits|balance|money|tokens)|no (?:credit|credits|balance|money) left|ran out of (?:credit|credits|balance|money|tokens)|(?:credit|balance) (?:is )?(?:too low|exhausted|empty)|billing|top ?up|prepaid)\b/,
+      /\b(?:sin (?:credito|creditos|saldo|fondos|tokens)|se (?:me |le )?(?:acab|termin)\w* (?:el |los |la |mi |mis |su |sus )?(?:credito|creditos|saldo|fondos|tokens)|saldo|recarga\w*|facturacion|prepago)\b/,
+    ],
+    cards: ['provider-credit-exhausted', 'gemini-credits-depleted', 'cursor-usage-limit', 'budget-exhausted'],
+  },
+  {
+    id: 'rate-limited',
+    says: [
+      /\b(?:rate[ -]?limit\w*|usage limit|limit reached|quota|too many requests|429)\b/,
+      /\b(?:cuota|limite de uso|limite de (?:peticiones|solicitudes|mensajes)|demasiadas (?:peticiones|solicitudes)|(?:llego|alcanzo|lleg\w*) (?:al|a su|a mi) limite|se (?:me |le )?acab\w* (?:el |la |mi |su )?(?:cuota|uso|plan))\b/,
+    ],
+    cards: ['gemini-rate-limited', 'cursor-usage-limit', 'gemini-high-demand', 'provider-credit-exhausted', 'gemini-credits-depleted', 'budget-exhausted', 'limits-real'],
+  },
+  {
+    id: 'silent',
+    says: [
+      /\b(?:no|not|never|doesn'?t|don'?t|didn'?t|won'?t|isn'?t|aren'?t|wasn'?t|can'?t|cannot)\s+(?:\w+\s+)?(?:answer|respond|repl|react|say anything|do anything|finish|come back)/,
+      /\bstopped (?:answering|responding|replying|talking|working)|\b(?:hangs?|hanging|hung|stuck|frozen|freez\w*|silent|silence)\b|\bkeeps (?:thinking|loading|spinning|waiting)|\btakes (?:forever|ages|too long)|\bnothing (?:happens|comes back)|\btime ?out|\btimed out|\btime limit/,
+      /\b(?:no|nunca|ya no)\s+(?:me\s+|nos\s+|le\s+|te\s+)?(?:contest|respond|reaccion|termin|regres|devuelv|hace nada|dice nada|sale nada|escrib)|\bdej\w* de (?:contestar|responder|escribir)|\bsin respuesta|\bno hay respuesta/,
+      /\b(?:se )?qued\w* (?:pensando|cargando|callad\w*|colgad\w*|trabad\w*|atorad\w*|congelad\w*|esperando|en silencio)|\bse (?:colg|trab|ator|congel|pasm)\w*|\btarda (?:mucho|demasiado|horas|una eternidad)|\btiempo limite/,
+    ],
+    cards: ['timeout', 'not-signed-in', 'provider-credit-exhausted', 'gemini-rate-limited', 'gemini-high-demand', 'gemini-credits-depleted', 'gemini-ineligible-tier', 'cursor-usage-limit', 'opencode-default-provider', 'opencode-server-error', 'madre-agent', 'ollama', 'stream-reconnecting', 'runaway-room', 'interrupted'],
+  },
+  {
+    id: 'broken',
+    says: [
+      /\b(?:doesn'?t|does not|isn'?t|is not|not|won'?t|stopped) work\w*|\bbroken\b|\bfail(?:s|ed|ing)?\b/,
+      /\bno (?:funciona|jala|sirve|anda|arranca|abre)\b|\bfall(?:a|o|ando)\b|\bdej\w* de funcionar|\besta roto\b/,
+    ],
+    cards: ['not-signed-in', 'not-installed', 'timeout', 'provider-credit-exhausted', 'gemini-rate-limited', 'gemini-ineligible-tier', 'cursor-usage-limit', 'opencode-default-provider', 'madre-agent', 'ollama', 'adapter-pending'],
+  },
+];
+
+// The cards a symptom points to, in the order the symptoms are listed, for that agent if one is named.
+export function symptomConditions(query) {
+  const text = fold(query);
+  const agent = named(wordsOf(query));
+  const ids = [...new Set(SYMPTOMS.filter((symptom) => symptom.says.some((pattern) => pattern.test(text))).flatMap((symptom) => symptom.cards))];
+  const owners = (id) => Object.keys(BELONGS).filter((owner) => BELONGS[owner].includes(id));
+  const cards = ids.map((id) => CONDITIONS.find((condition) => condition.id === id)).filter(Boolean)
+    .filter((condition) => !owners(condition.id).length || owners(condition.id).includes(agent));
+  return forAgent(cards, agent).map(said);
+}
 
 export function searchConditions(query) {
-  const words = fold(query).split(/[^a-z0-9#.@_-]+/).filter(Boolean);
+  const words = wordsOf(query);
   const all = allConditions();
   if (!words.length) return all;
   // A symptom is a few words, not a phrase to be found whole. An agent's name narrows the list to
   // that agent's conditions and the general ones; every other word has to appear somewhere in the
   // condition, read in the language it is shown in, in either language's original, or in its fixes.
   // «claude tiempo limite» used to find nothing, and only «timeout» found the timeout card.
-  const agent = words.find((word) => AGENT_WORDS.has(word.replace(/^@/, '')))?.replace(/^@/, '') ?? null;
+  const agent = named(words);
   const rest = words.filter((word) => !AGENT_WORDS.has(word.replace(/^@/, '')));
-  return all.filter((condition) => {
+  return forAgent(all.filter((condition) => {
     if (agent && condition.agent && condition.agent !== agent) return false;
     const source = CONDITIONS.find((one) => one.id === condition.id);
     const haystack = fold([condition.id, condition.code, condition.title, condition.diagnosis, condition.remedy, condition.agent ?? '', source?.title, source?.diagnosis, ...Object.values(condition.fixes ?? {}).flat()].join(' '));
     if (!rest.length) return !agent || condition.agent === agent || haystack.includes(agent);
     return rest.every((word) => haystack.includes(word));
-  });
+  }), agent);
+}
+
+// A symptom is said in the words a person has, not the catalogue's. When no condition holds every
+// word, the ones sharing the most of them come first: «codex no responde timeout» still finds the
+// timeout. An agent's name keeps to that agent and the general ones; little words do not count.
+const LOOSE_SKIP = new Set(['the', 'and', 'not', 'for', 'with', 'que', 'los', 'las', 'del', 'por', 'una', 'uno', 'con', 'sin', 'esta', 'este', 'muy', 'mas', 'pero']);
+export function looseConditions(query) {
+  const words = wordsOf(query).map((word) => word.replace(/^@/, '')).filter((word) => word.length >= 3 && !LOOSE_SKIP.has(word));
+  const agent = words.find((word) => AGENT_WORDS.has(word)) ?? null;
+  const rest = words.filter((word) => !AGENT_WORDS.has(word));
+  if (!rest.length) return [];
+  return allConditions()
+    .filter((condition) => !agent || !condition.agent || condition.agent === agent)
+    .map((condition) => {
+      const haystack = fold([condition.id, condition.code, condition.title, condition.diagnosis, condition.remedy].join(' '));
+      return { condition, score: rest.filter((word) => haystack.includes(word)).length + (agent && condition.agent === agent ? 0.5 : 0) };
+    })
+    .filter((entry) => entry.score >= 1)
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.condition);
+}
+
+// What Diagnosis shows for what was written, most probable first. A pasted error names its own
+// cause, so those cards lead — except the ones that only explain something, which a stray word
+// can match. Then what the words mean as a symptom, then the cards that hold every word, and only
+// when nothing did, the ones holding the most of them. One card appears once.
+export function findConditions(query) {
+  const agent = named(wordsOf(query));
+  const byError = forAgent(diagnose(query, agent), agent);
+  const found = [
+    ...byError.filter((condition) => condition.severity !== 'informational'),
+    ...symptomConditions(query),
+    ...byError.filter((condition) => condition.severity === 'informational'),
+    ...searchConditions(query),
+  ];
+  const seen = new Set();
+  const unique = found.filter((condition) => !seen.has(condition.id) && seen.add(condition.id));
+  return unique.length ? unique : looseConditions(query);
 }
 
 export function fixesFor(condition, platform, agent = null) {

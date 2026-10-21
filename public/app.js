@@ -3,7 +3,7 @@
 import { archiveQuestion, modeAskedWithTime, MODE_WINDOWS, windowFor } from './routing.js';
 import { calledByName, abduct } from './abduction.js';
 import { brandOf, monogram } from './brands.js';
-import { allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
+import { allConditions, detectPlatform, diagnose, findConditions, fixesFor, PLATFORMS } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
 import { createEditor } from './editor.js';
@@ -12978,27 +12978,6 @@ function roomRecords() {
   return openFailures().map((failure) => ({ failure, key: failureKey(failure), matches: diagnose(failure.error, failure.agent) })).reverse();
 }
 
-// A symptom is said in the words a person has, not the catalogue's. When no condition holds every
-// word, the ones sharing the most of them come first: «codex no responde timeout» still finds the
-// timeout. An agent's name keeps to that agent and the general ones; little words do not count.
-const LOOSE_SKIP = new Set(['the', 'and', 'not', 'for', 'with', 'que', 'los', 'las', 'del', 'por', 'una', 'uno', 'con', 'sin', 'esta', 'este', 'muy', 'mas', 'pero']);
-const LOOSE_AGENTS = new Set(['codex', 'claude', 'gemini', 'opencode', 'cursor', 'madre', 'ollama']);
-function looseConditions(text) {
-  const words = settingsFold(text).split(/[^a-z0-9#.@_-]+/).map((word) => word.replace(/^@/, '')).filter((word) => word.length >= 3 && !LOOSE_SKIP.has(word));
-  const agent = words.find((word) => LOOSE_AGENTS.has(word)) ?? null;
-  const rest = words.filter((word) => !LOOSE_AGENTS.has(word));
-  if (!rest.length) return [];
-  return allConditions()
-    .filter((condition) => !agent || !condition.agent || condition.agent === agent)
-    .map((condition) => {
-      const haystack = settingsFold([condition.id, condition.code, condition.title, condition.diagnosis, condition.remedy].join(' '));
-      return { condition, score: rest.filter((word) => haystack.includes(word)).length + (agent && condition.agent === agent ? 0.5 : 0) };
-    })
-    .filter((entry) => entry.score >= 1)
-    .sort((a, b) => b.score - a.score)
-    .map((entry) => entry.condition);
-}
-
 // Under the title, one quiet line: how serious it is (the only word in colour), who, and its code.
 function remedyTags(condition, agent = null) {
   const tags = el('div', 'remedy-meta');
@@ -13092,9 +13071,7 @@ function paintRemedies() {
     if (/special order|937|expendable/i.test(text)) { remedies.hint = t('NO SPECIAL ORDERS ON THIS SHIP. THE AGENTS ARE NOT EXPENDABLE. RESTATE INQUIRY.'); matches = []; }
     else if (/^(help|\?)$/i.test(text)) remedies.hint = t('INQUIRY ACCEPTS: AN AGENT NAME · A SYMPTOM · A KEYWORD SUCH AS TIMEOUT, LOGIN, PORT, BUDGET.');
     else {
-      const byError = diagnose(text);
-      matches = [...new Set([...byError, ...searchConditions(text)])];
-      if (!matches.length) matches = looseConditions(text);
+      matches = findConditions(text);
       if (!matches.length) remedies.hint = t('Nothing matches that. Try a symptom, an agent, or a word like timeout, login, port or budget.');
     }
   }
