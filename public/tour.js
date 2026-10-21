@@ -18,7 +18,7 @@
 // order they are used (public/tour-chapters.js, ORDER).
 
 import { LOADER_MARK, finishLoader, makeLoader, setLoader } from './loader.js';
-import { language, t } from './i18n.js';
+import { keyWords, language, t } from './i18n.js';
 import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
 
 const say = (pair) => (typeof pair === 'string' ? pair : pair?.[language()] ?? pair?.es ?? '');
@@ -430,7 +430,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     if (chapter.id === 'gestures') words.append(gestureGrid());
     else if (chapter.keys?.length) {
       const keys = el('dl', 'tour-keys');
-      for (const [what, how] of chapter.keys) keys.append(el('dt', null, say(what)), el('dd', null, say(how)));
+      for (const [what, how] of chapter.keys) keys.append(el('dt', null, say(what)), el('dd', null, keyWords(say(how))));
       words.append(keys);
     }
     const acts = el('div', 'tour-acts');
@@ -457,14 +457,15 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     acts.querySelector('.tour-btn.primary')?.focus({ preventScroll: true });
   }
 
-  // ---- `?`: the sheet of gestures, anywhere.
+  // ---- `?`: the sheet of gestures, anywhere. Its keys are the keyboard's in front of the person:
+  // ⌘ on a Mac, Ctrl+ anywhere else.
   function gestureGrid() {
     const grid = el('div', 'tour-gestures');
     for (const [group, rows] of GESTURES) {
       const box = el('section', 'tour-gesture-group');
       box.append(el('h4', null, say(group)));
       const keys = el('dl', 'tour-keys');
-      for (const [what, how] of rows) keys.append(el('dt', null, say(what)), el('dd', null, say(how)));
+      for (const [what, how] of rows) keys.append(el('dt', null, say(what)), el('dd', null, keyWords(say(how))));
       box.append(keys);
       grid.append(box);
     }

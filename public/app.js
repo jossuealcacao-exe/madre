@@ -9688,11 +9688,17 @@ function dropWindow(node) {
   windowStack.at(-1)?.classList.add('front');
   paintDepth();
 }
-// The desktop is clear while it is being used: while you write in the box, or while the windows
-// stand aside at the edges for it. The moment neither is true — you press somewhere else, the
-// windows come back over it — it goes back to its layer. Pressing it once never left it clear for
-// good: that was a desktop that stayed sharp under windows that had come back.
-const writing = () => Boolean(document.activeElement?.closest?.('#composer'));
+// Where you work: the conversation, and whatever is docked beside it — Code in its half, the files,
+// the conversations, the browser. A window over one of them is in the way of it (2026-10-20).
+const DOCKED = '.tree:not(.window), dialog.viewer.split, .browser-dock:not(.window)';
+const WORK_AREAS = `.shell > .thread, ${DOCKED}`;
+function workAreas() { return [...document.querySelectorAll(WORK_AREAS)].filter((node) => !node.hidden && node.getClientRects().length); }
+// The desktop is clear while it is being used: while you write in the box or work in what is docked
+// beside it — the code you edit is never read through the veil — or while the windows stand aside
+// at the edges for it. The moment neither is true — you press somewhere else, the windows come back
+// over it — it goes back to its layer. Pressing it once never left it clear for good: that was a
+// desktop that stayed sharp under windows that had come back.
+const writing = () => Boolean(document.activeElement?.closest?.(`#composer, ${DOCKED}`));
 function deskInUse() { focusDesk(writing() || (windowsAside && !windowsUp().length)); }
 if (!SPLIT_CHAT) {
   document.addEventListener?.('focusin', deskInUse);
@@ -9708,7 +9714,8 @@ document.addEventListener?.('pointerdown', (event) => {
 }, true);
 /* ---------- the room shown: windows to the edges ---------- */
 
-// A press in the conversation's own box says «this, now». Every window lying over the conversation
+// A press in the conversation's own box says «this, now», and so does a press or the first key typed in
+// what is docked beside it (Code, the files, the browser). Every window lying over that place
 // slides to its nearer edge, one just after another, the way a desktop is shown, and leaves a strip
 // of itself in view so it is plain where it went. Pressing a strip, opening a window or the keyboard
 // reaching into one brings back that window only — opening the Finder from the bar is not asking for
@@ -9717,19 +9724,24 @@ document.addEventListener?.('pointerdown', (event) => {
 const ASIDE_PEEK = 30;
 let windowsAside = false;
 let asideSettle = 0;
-function overTheRoom(node) {
+// Over the conversation or over what is docked beside it: Code, the files, the browser.
+function overTheRoom(node, areas = workAreas()) {
   const box = node.getBoundingClientRect();
-  const room = threadBox?.getBoundingClientRect();
-  if (!room?.width || !box.width) return false;
-  return box.right > room.left + 8 && box.left < room.right - 8;
+  if (!box.width) return false;
+  return areas.some((area) => {
+    const room = area.getBoundingClientRect();
+    return room.width > 0 && box.right > room.left + 8 && box.left < room.right - 8 && box.bottom > room.top + 8 && box.top < room.bottom - 8;
+  });
 }
-function windowsUp() {
-  return [...document.querySelectorAll(WINDOW_SELECTOR)].filter((node) => !node.hidden && node.getClientRects().length && !node.classList.contains('aside') && overTheRoom(node));
+function windowsUp(areas = workAreas()) {
+  return [...document.querySelectorAll(WINDOW_SELECTOR)].filter((node) => !node.hidden && node.getClientRects().length && !node.classList.contains('aside') && overTheRoom(node, areas));
 }
-function setWindowsAside(on, { always = false, only = null } = {}) {
+// `over`: only the windows lying over these places move — the box moves what covers the
+// conversation, the code what covers the code; the desktop pressed, what covers any of them.
+function setWindowsAside(on, { always = false, only = null, over = null } = {}) {
   if (!on && !windowsAside) return;
   if (on) {
-    const moving = windowsUp();
+    const moving = over ? windowsUp(over.filter(Boolean)) : windowsUp();
     // Shown on purpose, the desktop clears even when no window lay over the conversation.
     if (!moving.length && (!always || windowsAside)) return;
     clearTimeout(asideSettle);
@@ -9777,12 +9789,33 @@ const NOT_DESK = '.bar, .bar-home, #bar, header, nav, .avatar, .picker, .openq, 
 function deskPress(event) {
   const target = event.target;
   // Inside a dialog — MODULES, MU/TH/UR, a guide — a press is that dialog's, never the desktop's.
-  if (!target?.closest?.('.shell') || target.closest(WINDOW_SELECTOR) || target.closest('dialog') || target.closest('#composer') || target.closest(DESK_ACTIVE) || target.closest(NOT_DESK)) return false;
+  // What is docked beside the conversation is work, not desktop: a press there sets aside what
+  // covers it and never brings the windows back.
+  if (!target?.closest?.('.shell') || target.closest(WINDOW_SELECTOR) || target.closest('dialog') || target.closest('#composer') || target.closest(DOCKED) || target.closest(DESK_ACTIVE) || target.closest(NOT_DESK)) return false;
   if (!globalThis.getSelection?.()?.isCollapsed) return false;
   return floatingWindows().length > 0;
 }
 if (!SPLIT_CHAT) {
-  document.querySelector('#composer .field')?.addEventListener('pointerdown', () => setWindowsAside(true));
+  document.querySelector('#composer .field')?.addEventListener('pointerdown', () => setWindowsAside(true, { over: [threadBox] }));
+  // The same «this, now» in what is docked beside the conversation: a press in Code, the files or
+  // the browser sends aside the windows lying over it, and only those.
+  document.addEventListener?.('pointerdown', (event) => {
+    const area = event.button === 0 && !event.target?.closest?.(WINDOW_SELECTOR) && event.target?.closest?.(DOCKED);
+    if (area) setWindowsAside(true, { over: [area] });
+  });
+  // And starting to write, whichever way the keyboard got there (Tab, a shortcut, after sending):
+  // the first key typed in the box or in the code sends aside what covers it. Once per arrival —
+  // reading every key would measure the windows on each one.
+  let typedIn = null;
+  document.addEventListener?.('focusin', () => { typedIn = null; }, true);
+  document.addEventListener?.('input', (event) => {
+    const target = event.target;
+    if (!event.isTrusted || !target?.closest || target.closest(WINDOW_SELECTOR)) return;
+    const area = target.closest('#composer') ? threadBox : target.closest(DOCKED);
+    if (!area || typedIn === area) return;
+    typedIn = area;
+    setWindowsAside(true, { over: [area] });
+  }, true);
   // A press on a strip brings that window back (bringWindowForward, above); a press that does
   // something else — the bar, a button — leaves the windows where they are.
   // The desktop pressed: windows still over the conversation go aside; with none left, all come back.

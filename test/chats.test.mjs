@@ -322,9 +322,18 @@ test('room: the conversation never gives way, and what stands beside it does, ol
 
 test('room: a press in the conversation\'s box sends the windows to the edges, and the one asked for comes back alone', async () => {
   const [app, css] = await Promise.all(['app.js', 'styles.css'].map((name) => readFile(join(import.meta.dirname, '..', 'public', name), 'utf8')));
-  assert.match(app, /document\.querySelector\('#composer \.field'\)\?\.addEventListener\('pointerdown', \(\) => setWindowsAside\(true\)\);/);
-  // Only what lies over the conversation moves, to its nearer edge, leaving a strip in view.
-  assert.match(app, /overTheRoom\(node\)/);
+  assert.match(app, /document\.querySelector\('#composer \.field'\)\?\.addEventListener\('pointerdown', \(\) => setWindowsAside\(true, \{ over: \[threadBox\] \}\)\);/);
+  // Only what lies over the place in use moves, to its nearer edge, leaving a strip in view.
+  assert.match(app, /overTheRoom\(node, areas\)/);
+  // Code, the files and the browser docked beside the conversation are places in use too: a press
+  // or the first key typed there sets aside what covers them, and they are never the desktop
+  // that brings the windows back (2026-10-20).
+  assert.match(app, /const DOCKED = '\.tree:not\(\.window\), dialog\.viewer\.split, \.browser-dock:not\(\.window\)';/);
+  assert.match(app, /if \(area\) setWindowsAside\(true, \{ over: \[area\] \}\);/);
+  assert.match(app, /const area = target\.closest\('#composer'\) \? threadBox : target\.closest\(DOCKED\);/);
+  assert.match(app, /target\.closest\('#composer'\) \|\| target\.closest\(DOCKED\) \|\|/);
+  // The code being edited is not read through the veil.
+  assert.match(app, /const writing = \(\) => Boolean\(document\.activeElement\?\.closest\?\.\(`#composer, \$\{DOCKED\}`\)\);/);
   assert.match(app, /toLeft \? ASIDE_PEEK - box\.right : window\.innerWidth - ASIDE_PEEK - box\.left/);
   // A window wanted — pressed, opened, or reached by the keyboard — comes back alone: opening the
   // Finder from the bar does not bring Settings back with it (2026-10-14).

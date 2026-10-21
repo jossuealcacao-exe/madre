@@ -412,7 +412,9 @@ export const GESTURES = [
   [{ es: 'Ventanas y paneles', en: 'Windows and panels' }, [
     [{ es: 'Mover', en: 'Move' }, { es: 'arrastrar la cabecera', en: 'drag the header' }],
     [{ es: 'ACOMODAR', en: 'ARRANGE' }, { es: 'mantener el puntero 0,4 s', en: 'hold the pointer 0.4 s' }],
-    [{ es: 'Apartar las ventanas', en: 'Set the windows aside' }, { es: 'clic en el escritorio', en: 'click the desktop' }],
+    [{ es: 'Apartar o traer todas', en: 'All aside, or all back' }, { es: 'clic en el escritorio', en: 'click the desktop' }],
+    [{ es: 'Apartar lo que tapa', en: 'Move aside what covers' }, { es: 'clic o escribir', en: 'click or type' }],
+    [{ es: 'Traer una', en: 'Bring one back' }, { es: 'clic en su borde', en: 'click its edge' }],
     [{ es: 'Ancho del panel', en: 'Panel width' }, { es: '← → · con ⇧, de 64 px en 64 px', en: '← → · ⇧ for 64 px' }],
   ]],
   [{ es: 'La caja', en: 'The box' }, [
@@ -420,6 +422,12 @@ export const GESTURES = [
     [{ es: 'Salto de línea', en: 'New line' }, '⌥ ↵'],
     [{ es: 'Agente, modo, archivo, comando', en: 'Agent, mode, file, command' }, '@ # ! /'],
     [{ es: 'Pegar o soltar imágenes', en: 'Paste or drop images' }, '⌘ V'],
+  ]],
+  [{ es: 'Código', en: 'Code' }, [
+    [{ es: 'Buscar un archivo', en: 'Find a file' }, '⌘ P'],
+    [{ es: 'Guardar', en: 'Save' }, '⌘ S'],
+    [{ es: 'Buscar en el archivo', en: 'Find in the file' }, '⌘ F'],
+    [{ es: 'Comentar las líneas', en: 'Comment the lines' }, '⌘ /'],
   ]],
   [{ es: 'Ajustes', en: 'Settings' }, [
     [{ es: 'Buscar', en: 'Search' }, '/'],
