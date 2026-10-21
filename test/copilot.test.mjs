@@ -115,6 +115,9 @@ test('copilot: the safe lines run by themselves and go back to the agent; the re
     assert.equal(first.copilot, true);
     const ran = await waitFor(store, (all) => all.find((event) => event.type === 'run.started' && event.payload.index === 0));
     assert.equal(ran.payload.auto, 'copilot');
+    // Its answer is in before the human hands it back: on a busy machine `git status` outlived a
+    // fixed 300 ms, and «still running» refused the hand-back (2026-10-21).
+    await waitFor(store, (all) => all.find((event) => event.type === 'command.output' && event.payload?.run?.responseMessageId === first.responseMessageId && event.payload.run.index === 0));
     await new Promise((resolve) => setTimeout(resolve, 300));
     let events = await store.readAll();
     assert.equal(events.some((event) => event.type === 'run.started' && event.payload.index === 1), false, 'rm ran without the human');
