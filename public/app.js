@@ -9398,7 +9398,6 @@ function sideGrip(surface) {
     event.stopPropagation();
     try { grip.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
     shellBox.classList.add('resizing-panel');
-    holdingWindow('sizing-window', true, 'col-resize');
     let frame = 0;
     const move = (moving) => {
       cancelAnimationFrame(frame);
@@ -9408,16 +9407,20 @@ function sideGrip(surface) {
       });
     };
     const done = () => {
+      cancelAnimationFrame(frame);
       grip.removeEventListener('pointermove', move);
       grip.removeEventListener('pointerup', done);
       grip.removeEventListener('pointercancel', done);
+      grip.removeEventListener('lostpointercapture', done);
       shellBox.classList.remove('resizing-panel');
       holdingWindow('sizing-window', false);
       rememberSides();
     };
+    holdingWindow('sizing-window', true, 'col-resize', done);
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', done);
     grip.addEventListener('pointercancel', done);
+    grip.addEventListener('lostpointercapture', done);
   });
   grip.addEventListener('dblclick', () => { delete sideWidths[surface.key]; rememberSides(); layoutPanels(); });
 }
@@ -9913,11 +9916,26 @@ holdShield.setAttribute('aria-hidden', 'true');
 document.body?.append(holdShield);
 // Lit by its own style, never by a class: a class that comes and goes inside the page is read
 // again by every `:has()` of the stylesheet, which cost as much as the rule it replaced.
-function holdingWindow(kind, on, cursor = null) {
+// `release` ends the hold the way a release of the pointer would.
+let holdRelease = null;
+function holdingWindow(kind, on, cursor = null, release = null) {
   document.documentElement.classList.toggle(kind, on);
   if (on) { holdShield.style.pointerEvents = 'auto'; holdShield.style.cursor = cursor ?? 'grabbing'; }
   else { holdShield.style.removeProperty('pointer-events'); holdShield.style.removeProperty('cursor'); }
+  holdRelease = on ? release : null;
 }
+// The pointer reaching the sheet itself means what was held lost it on the way — its capture let
+// go without a release, the page lost the focus mid-drag — and the hold ends there. Left on, the
+// sheet kept the page out of reach and the window stuck where it was (2026-10-20).
+function letGoOfWindow() {
+  const release = holdRelease;
+  if (release) { release(); return; }
+  if (holdShield.style.pointerEvents) for (const kind of ['carrying-window', 'sizing-window']) holdingWindow(kind, false);
+}
+holdShield.addEventListener('pointerdown', letGoOfWindow);
+holdShield.addEventListener('pointerup', letGoOfWindow);
+holdShield.addEventListener('pointermove', (event) => { if (!event.buttons) letGoOfWindow(); });
+window.addEventListener?.('blur', () => { if (holdShield.style.pointerEvents) letGoOfWindow(); });
 
 function windowEdgesFor(node, { active = () => true, box, place, done, minW = WINDOW_MIN_W, minH = WINDOW_MIN_H }) {
   for (const side of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {
@@ -9930,7 +9948,6 @@ function windowEdgesFor(node, { active = () => true, box, place, done, minW = WI
       event.stopPropagation();
       try { edge.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
       bringWindowForward(node);
-      holdingWindow('sizing-window', true, getComputedStyle(edge).cursor);
       const start = { ...box() };
       const fromX = event.clientX;
       const fromY = event.clientY;
@@ -9952,13 +9969,16 @@ function windowEdgesFor(node, { active = () => true, box, place, done, minW = WI
         edge.removeEventListener('pointermove', move);
         edge.removeEventListener('pointerup', finish);
         edge.removeEventListener('pointercancel', finish);
+        edge.removeEventListener('lostpointercapture', finish);
         holdingWindow('sizing-window', false);
         done?.();
         scheduleDepth();
       };
+      holdingWindow('sizing-window', true, getComputedStyle(edge).cursor, finish);
       edge.addEventListener('pointermove', move);
       edge.addEventListener('pointerup', finish);
       edge.addEventListener('pointercancel', finish);
+      edge.addEventListener('lostpointercapture', finish);
     });
   }
 }
@@ -10990,7 +11010,7 @@ function carryWindowBy(head, node, { active = () => true, box, place, done }) {
         if (Math.hypot(moving.clientX - startX, moving.clientY - startY) < 4) return;
         carrying = true;
         veil = veilFor(node);
-        holdingWindow('carrying-window', true);
+        holdingWindow('carrying-window', true, null, drop);
         node.classList.add('lifted');
       }
       to = toward(moving);
@@ -11010,6 +11030,7 @@ function carryWindowBy(head, node, { active = () => true, box, place, done }) {
       head.removeEventListener('pointermove', move);
       head.removeEventListener('pointerup', drop);
       head.removeEventListener('pointercancel', drop);
+      head.removeEventListener('lostpointercapture', drop);
       holdingWindow('carrying-window', false);
       node.classList.remove('lifted');
       if (veil) veil.dataset.snap = '';
@@ -11022,6 +11043,7 @@ function carryWindowBy(head, node, { active = () => true, box, place, done }) {
     head.addEventListener('pointermove', move);
     head.addEventListener('pointerup', drop);
     head.addEventListener('pointercancel', drop);
+    head.addEventListener('lostpointercapture', drop);
   });
 }
 

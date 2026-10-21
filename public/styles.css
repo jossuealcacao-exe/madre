@@ -10259,18 +10259,19 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
 }
 .switch-icon:not(.is-coordinator) .switch-face { text-shadow: 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent); }
 
-/* ICONS THAT SAY WHAT THEY DO, 1.0.5, on the bar's keys, the modules and Settings: Token saver
-   sends its arrow down once; Suggested effort sweeps its needle from left to right, as a car
-   speeding up; Local AI turns its network once on its own axis; What it
-   remembers turns only the pins that leave its chip. Each under the pointer of its own key. */
+/* ICONS THAT SAY WHAT THEY DO, 1.0.5, on the top bar's keys only — the room's, its ••• card and
+   Home's; in Modules, Settings and the Market the same drawings hold still (2026-10-20): Token
+   saver sends its arrow down once; Suggested effort sweeps its needle from left to right, as a car
+   speeding up; Local AI turns its network once on its own axis; What it remembers turns only the
+   pins that leave its chip. Each under the pointer of its own key. */
 svg .ic-arrow, svg .ic-needle, svg .ic-pins { transform-box: view-box; transition: transform calc(380ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .25, 1.15); }
 svg .ic-needle { transform-origin: 10px 14.2px; transform: rotate(-78deg); }
 svg .ic-pins { transform-origin: 10px 10px; }
 svg .ic-net { transform-box: view-box; transform-origin: 10px 10px; transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-arrow { animation: icon-arrow-down calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-needle { transform: rotate(0deg); }
-:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-pins { transform: rotate(45deg); }
-:is(button, a, [role="button"], .sx-card, .mod-card, .settings-card):not([aria-pressed="true"]):is(:hover, :focus-visible) svg:has(.ic-net) { animation: icon-net-turn calc(900ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-arrow { animation: icon-arrow-down calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-needle { transform: rotate(0deg); }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-pins { transform: rotate(45deg); }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg:has(.ic-net) { animation: icon-net-turn calc(900ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
 /* One whole turn on its own vertical axis, the network seen from every side, and back where it was. */
 @keyframes icon-net-turn { from { transform: perspective(60px) rotateY(0deg); } to { transform: perspective(60px) rotateY(360deg); } }
 @keyframes icon-arrow-down { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(2.2px); } 70% { transform: translateY(-.6px); } }
@@ -10279,16 +10280,9 @@ svg .ic-net { transform-box: view-box; transform-origin: 10px 10px; transition: 
   svg .ic-needle { transform: none; }
 }
 
-/* The Market's key in Modules, with Home's basket (1.0.5): it shakes once and settles its modules. */
+/* The Market's key in Modules, with Home's basket (1.0.5). It holds still: only the top bar's keys move. */
 .mods-head .mods-market { display: inline-flex; align-items: center; gap: 7px; }
 .mods-head .mods-market svg { width: 16px; height: 16px; flex: none; overflow: visible; }
-.mods-market svg .ic-basket { transform-box: fill-box; transform-origin: 50% 100%; }
-.mods-market svg .ic-mods > * { transform-box: fill-box; transform-origin: center; }
-.mods-market:is(:hover, :focus-visible) svg .ic-basket { animation: mk-basket calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.mods-market:is(:hover, :focus-visible) svg .ic-mods > * { animation: mk-settle calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out) 80ms; }
-@keyframes mk-basket { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 55% { transform: rotate(5deg); } 80% { transform: rotate(-2deg); } }
-@keyframes mk-settle { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-1.6px); } 70% { transform: translateY(.5px); } }
-@media (prefers-reduced-motion: reduce) { .mods-market svg :is(.ic-basket, .ic-mods > *) { animation: none !important; } }
 
 /* A module's gallery in the Market (1.0.5): three pictures in a row that scrolls sideways and stops
    on each one. */
@@ -10353,10 +10347,10 @@ dialog.note-window .surface-modes .note-delete.note-delete:not(.note-x):is(:hove
 .reminders-new { display: flex; gap: 8px; padding: 4px 0 8px; }
 .reminders-new input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 13.5px; }
 .reminders-keys { display: inline-flex; gap: 6px; }
-/* The bell rings on hover, as the other icons move. */
+/* The bell rings on hover on the top bar, as the other icons move there. */
 svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opacity: .55; }
-:is(button, a, [role=button], .sx-card, .mod-card, .settings-card):not([aria-pressed="true"]):is(:hover, :focus-visible) svg:has(.ic-ring) { animation: icon-ring calc(700ms * var(--motion-scale)) var(--ease-out, ease); transform-origin: 50% 18%; }
-:is(button, a, [role=button], .sx-card, .mod-card, .settings-card):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-ring { opacity: 1; }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg:has(.ic-ring) { animation: icon-ring calc(700ms * var(--motion-scale)) var(--ease-out, ease); transform-origin: 50% 18%; }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-ring { opacity: 1; }
 @keyframes icon-ring { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(12deg); } 40% { transform: rotate(-10deg); } 60% { transform: rotate(6deg); } 80% { transform: rotate(-3deg); } }
 @media (prefers-reduced-motion: reduce) { .reminder-due { animation: none; } }
 .reminders-keys .reminders-move { width: auto; max-width: 150px; height: 30px; padding: 0 8px; font-size: 12.5px; }
@@ -10403,26 +10397,6 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 :root[data-term="pill"] #messages#messages .command-card.terminal.module-result:not(.open) .term-row > .term-head { padding-right: 4px; }
 @media (max-width: 560px) { .command-card.terminal .term-row { flex-wrap: wrap; } .command-card.terminal.module-result .term-link.in-row { margin: 0 12px 10px 46px; } }
 
-/* SETTINGS' ICONS MOVE (1.0.5, 2026-10-20): every category's drawing answers the pointer once, each in
-   its own way, in a project's Settings and in Home's alike (data-cat on the card). Local AI turns its
-   network and What it remembers its pins (above); the others: */
-.settings-card .settings-icon svg { transform-origin: 50% 50%; }
-.settings-card:is(:hover, :focus-visible)[data-cat="look"] .settings-icon svg { animation: icon-reload calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="room"] .settings-icon svg { animation: icon-quarter calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible):is([data-cat="files"], [data-cat="projects"], [data-cat="mcp"]) .settings-icon svg { animation: icon-hop calc(480ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="agents"] .settings-icon svg { animation: icon-nod calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="permissions"] .settings-icon svg { animation: icon-pulse calc(520ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="privacy"] .settings-icon svg { animation: icon-shake calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="release"] .settings-icon svg { animation: icon-reload calc(520ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="bar"] .settings-icon svg { animation: icon-stretch calc(460ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-.settings-card:is(:hover, :focus-visible)[data-cat="bishop"] .settings-icon svg { animation: icon-blink calc(420ms * var(--motion-scale, 1)) ease-in-out; }
-@keyframes icon-quarter { from { transform: rotate(0); } to { transform: rotate(90deg); } }
-@keyframes icon-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-2.2px); } 70% { transform: translateY(.6px); } }
-@keyframes icon-nod { 0%, 100% { transform: translateY(0) scale(1); } 35% { transform: translateY(-1.6px) scale(1.06); } 70% { transform: translateY(.4px) scale(.98); } }
-@keyframes icon-pulse { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.14); } }
-@keyframes icon-stretch { 0%, 100% { transform: scaleX(1); } 45% { transform: scaleX(1.14); } }
-@keyframes icon-blink { 0%, 100% { transform: scaleY(1); } 45% { transform: scaleY(.12); } }
-@media (prefers-reduced-motion: reduce) { .settings-card .settings-icon svg { animation: none !important; } }
 /* A connector's mark (Simple Icons, CC0) in its brand's flat color: no gradient on a logo that is
    not ours, a hairline so black marks still stand on a dark Settings. */
 .mcp-mark { color: var(--mcp-ink, #fff); }
