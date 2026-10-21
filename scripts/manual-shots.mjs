@@ -150,7 +150,7 @@ const SHOTS = {
   modes: {
     go: async (page) => { await toRoom(page); await page.locator('.mode-chip').click(); await settle(page); },
     marks: ['.mode-option.o1', '.mode-option.o2', '.mode-option.o3', '.mode-option.o4'],
-    place: ['left', 'left', 'left', 'left'],
+    place: ['right', 'right', 'right', 'right'],
     frame: ['.mode-ladder', '.mode-chip', '#composer'],
   },
   copilot: {
@@ -202,9 +202,9 @@ const SHOTS = {
       await page.locator('#sm-gear').click();
       await settle(page);
       await openSettingsCard(page, WORDS.local);
-      // The models to download are a list of their own, between the model and the projects: set
-      // aside here, so the three steps fit in one picture.
-      await page.evaluate((more) => { for (const one of document.querySelectorAll('section.sx-block')) if (one.querySelector('h3')?.textContent.startsWith(more)) one.style.display = 'none'; }, lang === 'es' ? 'Más modelos' : 'More models');
+      // The models to download and Ollama's own block are set aside here, so the three steps fit
+      // in one picture: the model, and which projects use it.
+      await page.evaluate((aside) => { for (const one of document.querySelectorAll('section.sx-block')) if (aside.some((title) => one.querySelector('h3')?.textContent.startsWith(title))) one.style.display = 'none'; }, lang === 'es' ? ['Más modelos', 'Ollama'] : ['More models', 'Ollama']);
       await settle(page);
     },
     marks: [firstInSight('.settings-detail-title'), (page) => page.locator('.sx-row', { has: page.locator('.sx-recommend') }).first(), (page) => page.locator('section.sx-block', { hasText: WORDS.projects }).locator('.sx-seg').first()],

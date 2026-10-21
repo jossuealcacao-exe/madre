@@ -109,6 +109,79 @@ function pairUp(part) {
     one.addEventListener('pointerleave', () => light(one.dataset.step, false));
   }
 }
+// Each number goes where there is room for it (2026-10-21): outside its mark — above, to the left,
+// to the right or below, in that order unless the picture asked for one first (`place`) — inside
+// the picture and clear of the numbers already placed; the mark's corner only when nothing else
+// fits. Placed once the picture has its size, and again when the page changes width.
+const SIDES = ['above', 'left', 'right', 'below', 'corner'];
+export function placeNumbers(frame) {
+  const width = frame.clientWidth;
+  const height = frame.clientHeight;
+  if (!width || !height) return;
+  const taken = [];
+  // Every mark's own box: a number never sits on another step's mark.
+  const marks = [...frame.querySelectorAll('.manual-pin')].map((one) => ({ pin: one, x: one.offsetLeft, y: one.offsetTop, w: one.offsetWidth, h: one.offsetHeight }));
+  for (const pin of frame.querySelectorAll('.manual-pin')) {
+    const badge = pin.querySelector('b');
+    if (!badge) continue;
+    // The number grows with the picture: on a phone the marks are about 20 px tall and a full-size
+    // number would sit on the next one.
+    const size = Math.round(Math.min(26, Math.max(18, width * 0.045)));
+    Object.assign(badge.style, { width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, Math.round(size * 0.5))}px` });
+    const gap = 5;
+    const box = { x: pin.offsetLeft, y: pin.offsetTop, w: pin.offsetWidth, h: pin.offsetHeight };
+    const spot = {
+      above: [box.x + box.w / 2 - size / 2, box.y - size - gap],
+      left: [box.x - size - gap, box.y + box.h / 2 - size / 2],
+      right: [box.x + box.w + gap, box.y + box.h / 2 - size / 2],
+      below: [box.x + box.w / 2 - size / 2, box.y + box.h + gap],
+      corner: [box.x - size / 3, box.y - size / 3],
+      // When the four sides are taken: the ends of a side, the outer corners, and last the mark's
+      // own corner from inside, if it is big enough to keep part of the mark in view.
+      aboveStart: [box.x, box.y - size - gap],
+      aboveEnd: [box.x + box.w - size, box.y - size - gap],
+      belowStart: [box.x, box.y + box.h + gap],
+      belowEnd: [box.x + box.w - size, box.y + box.h + gap],
+      outsideTopLeft: [box.x - size - gap, box.y - size - gap],
+      outsideTopRight: [box.x + box.w + gap, box.y - size - gap],
+      outsideBottomLeft: [box.x - size - gap, box.y + box.h + gap],
+      outsideBottomRight: [box.x + box.w + gap, box.y + box.h + gap],
+      ...(box.w >= size * 2 && box.h >= size * 1.6 ? {
+        insideTopLeft: [box.x + 4, box.y + 4],
+        insideTopRight: [box.x + box.w - size - 4, box.y + 4],
+        insideBottomLeft: [box.x + 4, box.y + box.h - size - 4],
+        insideBottomRight: [box.x + box.w - size - 4, box.y + box.h - size - 4],
+      } : {}),
+    };
+    const more = Object.keys(spot).filter((one) => !SIDES.includes(one));
+    const asked = SIDES.find((side) => pin.classList.contains(side));
+    const order = [...(asked ? [asked, ...SIDES.filter((side) => side !== asked && side !== 'corner')] : SIDES.slice(0, -1)), ...more, 'corner'];
+    const fits = ([x, y]) => x >= 2 && y >= 2 && x + size <= width - 2 && y + size <= height - 2;
+    const clear = ([x, y]) => taken.every(([tx, ty]) => Math.abs(tx - x) > size + 3 || Math.abs(ty - y) > size + 3);
+    // A mark that holds this one (a switch inside its card) is not in the way: its number is bound to sit on it.
+    const holds = (one) => one.x <= box.x && one.y <= box.y && one.x + one.w >= box.x + box.w && one.y + one.h >= box.y + box.h;
+    // How much of the other marks a number at (x, y) would cover; two pixels of edge do not count.
+    const covers = ([x, y]) => marks.reduce((sum, one) => (one.pin === pin || holds(one) ? sum
+      : sum + Math.max(0, Math.min(x + size, one.x + one.w) - Math.max(x, one.x) - 2) * Math.max(0, Math.min(y + size, one.y + one.h) - Math.max(y, one.y) - 2)), 0);
+    const offMarks = (at) => covers(at) === 0;
+    // Nowhere free: the place that covers the least of the other marks.
+    const least = order.filter((one) => fits(spot[one]) && clear(spot[one])).sort((a, b) => covers(spot[a]) - covers(spot[b]))[0];
+    const side = order.find((one) => fits(spot[one]) && clear(spot[one]) && offMarks(spot[one])) ?? least ?? order.find((one) => fits(spot[one])) ?? 'corner';
+    const [x, y] = spot[side];
+    const left = Math.min(Math.max(x, 2), width - size - 2);
+    const top = Math.min(Math.max(y, 2), height - size - 2);
+    taken.push([left, top]);
+    Object.assign(badge.style, { left: `${left - box.x}px`, top: `${top - box.y}px`, translate: 'none' });
+  }
+}
+// Every picture's numbers, once its image has its size: what printing waits for.
+async function placeAll(root) {
+  // The frame keeps the picture's shape before it loads, so they can be placed at once; each one
+  // is placed again when its image is in (a lazy image far down comes in later).
+  const frames = [...root.querySelectorAll('.manual-shot-frame')];
+  frames.forEach(placeNumbers);
+  await Promise.all(frames.map((frame) => Promise.resolve(frame.querySelector('img')?.decode?.()).catch(() => null).then(() => placeNumbers(frame))));
+}
 function watchShots(root) {
   if (!('IntersectionObserver' in window)) { for (const one of root.querySelectorAll('.manual-shot')) one.classList.add('shown'); return; }
   const seen = new IntersectionObserver((entries) => {
@@ -309,8 +382,15 @@ function draw(lang, madre) {
   root.append(foot);
   if (printing) for (const one of root.querySelectorAll('.manual-shot')) one.classList.add('shown');
   else watchShots(root);
+  // The numbers once the pictures have their size, and again when the page changes width.
+  // On paper the page is ready once every number is placed; on screen at once (a lazy picture far
+  // down loads only when it is near).
+  const placed = placeAll(root);
+  if (printing) void placed.then(() => { document.documentElement.dataset.ready = '1'; });
+  else document.documentElement.dataset.ready = '1';
+  let resized = 0;
+  window.addEventListener('resize', () => { clearTimeout(resized); resized = setTimeout(() => root.querySelectorAll('.manual-shot-frame').forEach(placeNumbers), 120); });
   if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
-  document.documentElement.dataset.ready = '1';
 }
 
 if (printing) document.documentElement.classList.add('printing');

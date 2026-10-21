@@ -106,7 +106,7 @@ a { color: var(--green); }
 .manual-shot.tall { width: min(100%, 620px); justify-self: center; }
 .manual-shot-frame { position: relative; overflow: hidden; border-radius: 18px; background: var(--card-2); box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 18px 40px -22px rgba(20, 30, 20, .45), inset 0 0 0 1px var(--line); }
 .manual-shot-frame img { display: block; width: 100%; height: auto; }
-.manual-pin { position: absolute; border-radius: 12px; box-shadow: 0 0 0 2px var(--green), 0 0 0 6px color-mix(in srgb, var(--green) 22%, transparent); opacity: 0; transform: scale(.94); transition: opacity .35s ease, transform .35s cubic-bezier(.2, .9, .3, 1.3), box-shadow .2s; transition-delay: calc(var(--at) * 260ms + 150ms); pointer-events: auto; }
+.manual-pin { position: absolute; border-radius: 8px; background: color-mix(in srgb, var(--green) 7%, transparent); box-shadow: 0 0 0 2px var(--green), 0 0 0 4px color-mix(in srgb, var(--green) 16%, transparent); opacity: 0; transform: scale(.94); transition: opacity .35s ease, transform .35s cubic-bezier(.2, .9, .3, 1.3), box-shadow .2s; transition-delay: calc(var(--at) * 260ms + 150ms); pointer-events: auto; }
 .manual-pin b { position: absolute; left: 50%; top: 0; translate: -50% -85%; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 13px; font-weight: 750; color: var(--green-ink); background: var(--green); box-shadow: 0 0 0 3px var(--card), 0 4px 10px -2px rgba(0, 0, 0, .35); }
 .manual-pin.below b { top: 100%; translate: -50% -15%; }
 .manual-pin.left b { left: 0; top: 50%; translate: -55% -50%; }
