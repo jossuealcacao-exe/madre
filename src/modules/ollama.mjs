@@ -83,7 +83,7 @@ export default defineModule({
       status: { installed: settings.enabled && project.on && probe.running && roles.length > 0, detail },
       ollama: { ...view, project },
       recommended: await recommendedHere(),
-      preflight: probe.running ? { ok: true, problems: [] } : { ok: false, problems: ['Ollama is not running: open the Ollama app or run `ollama serve`, then RECHECK.'] },
+      preflight: probe.running ? { ok: true, problems: [] } : { ok: false, problems: ['Ollama is not running: open the Ollama app or run `ollama serve`, then check again.'] },
       install: { display: settings.enabled ? 'disable Ollama' : 'enable Ollama (config.json)', platforms: [] },
     };
   },

@@ -13400,7 +13400,7 @@ function appendModuleOutput(event) {
   modules.logs.set(id, log.slice(-400));
   const box = document.getElementById(`module-log-${id}`);
   if (box) {
-    for (const line of lines) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, line));
+    for (const line of lines) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, saidLine(line)));
     box.scrollTop = box.scrollHeight;
   }
 }
@@ -13760,7 +13760,7 @@ function drawFilesSettings(host) {
     const item = modules.items.find((one) => one.id === id);
     if (!item) { sxRow(show, label, t('Reading…')); continue; }
     const blocked = !item.status?.installed && item.preflight && !item.preflight.ok;
-    sxRow(show, label, blocked ? item.preflight.problems.join(' ') : hint, sxSwitch(item.status?.installed, async (on, box) => {
+    sxRow(show, label, blocked ? item.preflight.problems.map((one) => t(one)).join(' ') : hint, sxSwitch(item.status?.installed, async (on, box) => {
       box.disabled = true;
       try { await switchModule(item); } catch (error) { box.checked = !on; toast(error.message); }
       drawFilesTarget();
@@ -15021,7 +15021,7 @@ function builtinCard(item) {
   if (item.preflight && !item.preflight.ok) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', t('CANNOT ENABLE YET')));
-    for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
+    for (const problem of item.preflight.problems) warn.append(el('p', null, t(problem)));
     panel.append(warn);
   }
 
@@ -15064,7 +15064,7 @@ function moduleCard(item) {
   if (blocked) {
     const warn = el('div', 'confirm');
     warn.append(el('span', 'warn', t('CANNOT INSTALL HERE YET')));
-    for (const problem of item.preflight.problems) warn.append(el('p', null, problem));
+    for (const problem of item.preflight.problems) warn.append(el('p', null, t(problem)));
     // What MADRE can put right itself (Continuity on a Mac with no git): one key, never a terminal.
     if (item.preflight.fix) {
       const fix = el('button', 'primary', item.preflight.fix.label ?? t('Set it up'));
@@ -15124,7 +15124,7 @@ function moduleCard(item) {
   if (log.length || running) {
     const box = el('div', 'module-log');
     box.id = `module-log-${item.id}`;
-    for (const line of log) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, line));
+    for (const line of log) box.append(el('div', /error|failed|ERR/i.test(line) ? 'err' : null, saidLine(line)));
     panel.append(box);
     queueMicrotask(() => { box.scrollTop = box.scrollHeight; });
   }
@@ -15166,7 +15166,7 @@ function moduleTile(item) {
       try { await switchModule(item); } catch (error) { box.checked = !next; box.disabled = false; toast(error.message); }
     }, { disabled: blocked, label: item.name });
     wrap.addEventListener('click', (event) => event.stopPropagation());
-    if (blocked) wrap.title = item.preflight.problems.join(' ');
+    if (blocked) wrap.title = item.preflight.problems.map((one) => t(one)).join(' ');
     top.append(wrap);
   } else {
     top.append(sxChip(item.fixed ? t('Always') : item.kind === 'builtin' ? (on ? t('Turned on') : t('Turned off')) : on ? t('Installed') : t('Not installed'), on ? 'on' : ''));
@@ -15270,7 +15270,7 @@ function moduleSheet(host, item) {
     const blocked = !on && item.preflight && !item.preflight.ok;
     // A project's switch is that project's (src/module-scope.mjs); every project's is moved from Home.
     const ownSwitch = item.scope && item.id !== 'ollama' && item.id !== 'bishop';
-    sxRow(about, ownSwitch ? t('On in this project') : t('Active'), blocked ? item.preflight.problems.join(' ') : item.status?.detail ? sentenceCase(t(item.status.detail)) : null, sxSwitch(on, async (next, box) => {
+    sxRow(about, ownSwitch ? t('On in this project') : t('Active'), blocked ? item.preflight.problems.map((one) => t(one)).join(' ') : item.status?.detail ? sentenceCase(t(item.status.detail)) : null, sxSwitch(on, async (next, box) => {
       box.disabled = true;
       try { await switchModule(item); } catch (error) { box.checked = !next; box.disabled = false; toast(error.message); }
     }, { disabled: blocked, label: item.name }), { off: blocked });
@@ -16549,8 +16549,15 @@ function appendLoginOutput(event) {
   if (url && !replaying) toast(t('@{agent}: open {url} to finish signing in', { agent, url }));
 }
 const HEARTBEAT = /^… still running · \d+s · /;
+// MADRE's own «still running» line (src/extensions.mjs, runInstaller), said in the room's language;
+// what the installer itself printed stays as it printed it (2026-10-20).
+function saidLine(line) {
+  const beat = String(line ?? '').match(/^… still running · (\d+)s · (.*)$/);
+  return beat ? t('… still running · {seconds}s · {note}', { seconds: beat[1], note: t(beat[2]) }) : line;
+}
 function loginLine({ line, url }) {
   const div = el('div', HEARTBEAT.test(line ?? '') ? 'beat' : null);
+  line = saidLine(line);
   if (url) {
     const a = el('a', null, line); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
     div.append(a);

@@ -227,8 +227,10 @@ export default defineModule({
     return {
       runs: [{ name: PLAYWRIGHT_PACKAGE, version }],
       settings: { browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false },
-      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (!version ? t('on · the browser server is not installed') : health?.ok === false ? t('on · the browser does not start: {problem}. Turn it off and on again: MADRE downloads what is missing.', { problem: String(health.problem).replace(/[.\s]+$/, '').slice(0, 160) }) : `${t('on')} · ${ctx.settings.browser}`) : version ? t('off') : t('off · the browser server is not installed') },
-      preflight: version ? { ok: true, problems: [] } : { ok: false, problems: [`Install the browser server first: npm install -g @playwright/mcp, then its browser: ${installBrowserLine(ctx.settings.browser)}`] },
+      status: { installed: Boolean(ctx.settings.enabled), detail: ctx.settings.enabled ? (!version ? t('on · the browser server is not installed') : health?.ok === false ? t('on · the browser does not start: {problem}. Turn it off and on again: MADRE downloads what is missing.', { problem: String(health.problem).replace(/[.\s]+$/, '').slice(0, 160) }) : `${t('on')} · ${ctx.settings.browser}`) : version ? t('off') : process.platform === 'win32' ? t('off · the browser server is not installed') : t('off · turn it on and MADRE installs its browser; it takes a few minutes') },
+      // Missing is not a reason to refuse the switch: turning it on installs what is missing
+      // (playwrightReady) everywhere but Windows (2026-10-20). Only there does the person install it.
+      preflight: version || process.platform !== 'win32' ? { ok: true, problems: [] } : { ok: false, problems: [t('Install the browser server first: {server}, then its browser: {browser}', { server: 'npm install -g @playwright/mcp', browser: installBrowserLine(ctx.settings.browser) })] },
       install: { display: ctx.settings.enabled ? 'disable PLAYWRIGHT' : 'enable PLAYWRIGHT (config.json)', platforms: ['codex', 'claude', 'gemini', 'opencode'] },
     };
   },
