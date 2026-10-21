@@ -5,7 +5,7 @@ import { calledByName, abduct } from './abduction.js';
 import { brandOf, monogram } from './brands.js';
 import { allConditions, detectPlatform, diagnose, fixesFor, PLATFORMS, searchConditions } from './troubleshooting.js';
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
-import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, setLanguage, t, fill } from './i18n.js';
+import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
 import { createEditor } from './editor.js';
 import { labelPowerKey, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
@@ -4345,7 +4345,7 @@ function bridgeCard(agent) {
   const detail = el('div', 'detail');
   if (agent.id === 'madre') detail.append(ollamaDetail(agent));
   else if (stage === 'missing') detail.append(t('Not on this computer.'));
-  else detail.append(`${agent.version ?? t('version unknown')}${session?.detail ? ` · ${session.detail}` : ''}${agent.route?.destination ? ` · ${t('route: {destination}', { destination: agent.route.destination })}` : ''}`);
+  else detail.append(`${agent.version ?? t('version unknown')}${sessionDetail(session) ? ` · ${sessionDetail(session)}` : ''}${agent.route?.destination ? ` · ${t('route: {destination}', { destination: agent.route.destination })}` : ''}`);
   card.append(detail);
   // What is behind this door: the account it needs, and whether there is a way in without paying.
   if (agent.account) {
@@ -16492,7 +16492,7 @@ function renderLoginEvent(event) {
   tint(node, agent);
   node.append(el('b', null, t('connections › ')));
   node.append(finished
-    ? (ok ? t('@{agent} signed in', { agent }) + (session?.detail ? ` · ${session.detail}` : '') : t('@{agent} sign-in did not complete', { agent }) + (error ? ` · ${error}` : code ? t(' · exit {code}', { code }) : ''))
+    ? (ok ? t('@{agent} signed in', { agent }) + (sessionDetail(session) ? ` · ${sessionDetail(session)}` : '') : t('@{agent} sign-in did not complete', { agent }) + (error ? ` · ${error}` : code ? t(' · exit {code}', { code }) : ''))
     : t('signing in @{agent} · {command}', { agent, command }));
   if (finished) { state.sessions[agent] = session ?? state.sessions[agent]; renderAgents(); renderPicker(); renderOnboarding(); if (state.settingsOpen) void loadSettings(); }
   if (!replaying) {
@@ -17782,7 +17782,7 @@ function connectionCard(agent) {
   const where = el('code', null, agent.detected ? `${agent.version ?? t('version unknown')} · ${agent.path}` : (agent.login?.install ?? []).join(' · '));
   where.title = where.textContent;
   meta.append(where);
-  const facts = [session?.detail ? t('Session {detail}', { detail: session.detail }) : null, agent.account ? `${agent.paid === false ? `${t('Free plan')} · ` : ''}${agent.account}` : null].filter(Boolean);
+  const facts = [sessionDetail(session) ? t('Session {detail}', { detail: sessionDetail(session) }) : null, agent.account ? `${agent.paid === false ? `${t('Free plan')} · ` : ''}${agent.account}` : null].filter(Boolean);
   if (facts.length) meta.append(el('span', null, facts.join(' · ')));
   card.append(meta);
   const body = el('div', 'sx-agent-body');

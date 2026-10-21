@@ -7,7 +7,7 @@
 //
 // The phone has its own SALAS (salas.js), served by the bridge; the two read the same rooms.
 
-import { browserLanguage, setLanguage, t } from './i18n.js';
+import { browserLanguage, sessionDetail, setLanguage, t } from './i18n.js';
 import { brandOf, monogram } from './brands.js';
 import { startReviewAsk } from './review-ask.js';
 import { startTour } from './tour.js';
@@ -3226,6 +3226,8 @@ function pinsIndexAt(x) {
     if (pins.editing && !box.contains(event.target) && !pins.card?.contains(event.target)) pinsEdit(false);
   }, true);
   document.addEventListener('keydown', (event) => {
+    // ⌘ , (Ctrl+, off a Mac) opens Settings, as in a project: Home said so and did nothing (2026-10-20).
+    if (event.key === ',' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) { event.preventDefault(); if (settingsSheet) settingsSheet.close(); else openSettings(); return; }
     if (event.key !== 'Escape') return;
     if (pins.menu) { pinsCloseMenu(); return; }
     if (pins.moreCard && !pins.moreCard.hidden) { pinsCloseMore(); return; }
@@ -4033,7 +4035,8 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       // Which account it is signed in with, as its own CLI reports it, and which one it asks for.
       const facts = el('div', 'sm-agent-facts');
       if (agent.detected && agent.version) facts.append(el('code', 'sm-agent-line', `${agent.version}${agent.path ? ` · ${agent.path}` : ''}`));
-      if (agent.detected && answer.sessions?.[agent.id]?.detail) facts.append(el('small', 'sm-agent-line', answer.sessions[agent.id].detail));
+      const said = agent.detected ? sessionDetail(answer.sessions?.[agent.id]) : null;
+      if (said) facts.append(el('small', 'sm-agent-line', said));
       if (agent.account) facts.append(el('small', 'sm-agent-note', agent.account));
       if (lastLine.has(agent.id) && !state.ok) {
         const said = lastLine.get(agent.id);

@@ -14,7 +14,7 @@
 // English, whole, rather than as a hole or an id: half a translated screen is a screen, and a
 // screen full of MISSING_KEY_47 is a bug report.
 //
-// What varies inside a sentence travels as a named slot, `t('{n} blocks', { n })`, so the
+// What varies inside a sentence travels as a named slot, «{n}» filled from `{ n }`, so the
 // Spanish can put it where Spanish puts it rather than where English did.
 //
 // And what is already DATA — the troubleshooting catalogue, the console's inquiries, the
@@ -56,21 +56,43 @@ export function fill(text, vars) {
 
 // «Mac» only where MADRE runs on one (2026-10-15). It installs on Linux too, so a sentence about
 // the machine it runs on («this Mac», «tu Mac», «la Mac») says «computer»/«computadora» anywhere
-// else. The page is always opened on the machine that serves it (127.0.0.1), so the browser's own
-// platform is that machine's. Hardware named on purpose — «a Mac with an M chip» — has no article
-// in front and is left as it is.
-let hostIsMac = /mac/i.test(String(globalThis.navigator?.userAgentData?.platform ?? globalThis.navigator?.platform ?? ''));
+// else, and from 2026-10-20 it says the machine's own name: «Encontrados en cotizapp2». The machine is
+// the one MADRE runs on, which the server writes into the page (<meta name="madre-host">): a page
+// looked at from another computer — a Linux box reached from a Mac — used to take the browser's
+// platform for the server's and said «esta Mac» on Linux. Hardware named on purpose — «a Mac with
+// an M chip» — has no article in front and is left as it is.
+const servedBy = (() => { try { return JSON.parse(globalThis.document?.querySelector?.('meta[name="madre-host"]')?.content ?? 'null'); } catch { return null; } })();
+let hostIsMac = servedBy ? servedBy.os === 'darwin' : /mac/i.test(String(globalThis.navigator?.userAgentData?.platform ?? globalThis.navigator?.platform ?? ''));
+let hostName = typeof servedBy?.name === 'string' && servedBy.name.trim() ? servedBy.name.trim().slice(0, 64) : null;
 export const setHostIsMac = (value) => { hostIsMac = Boolean(value); return hostIsMac; };
+export const setHostName = (value) => { hostName = typeof value === 'string' && value.trim() ? value.trim().slice(0, 64) : null; return hostName; };
+export const hostLabel = () => hostName;
 export function hostWords(text) {
   if (hostIsMac || typeof text !== 'string' || !text.includes('Mac')) return text;
+  // With the machine's own name (2026-10-20) a sentence about it names it: «Found on cotizapp2».
+  if (hostName) {
+    return text
+      .replace(/\b(on|in|from|to) (this|your|the) Mac\b/g, `$1 ${hostName}`)
+      .replace(/\b(this|your|the|This|Your|The) Mac\b/g, hostName)
+      .replace(/(^|[^\p{L}])(en|de|a|desde) (esta|tu|la) Mac\b/gu, `$1$2 ${hostName}`)
+      .replace(/(^|[^\p{L}])(esta|tu|la|Esta|Tu|La) Mac\b/gu, `$1${hostName}`);
+  }
   return text
     .replace(/\b(this|your|the|This|Your|The) Mac\b/g, '$1 computer')
     .replace(/(^|[^\p{L}])(esta|tu|la|Esta|Tu|La) Mac\b/gu, '$1$2 computadora');
 }
 
+// The keys a sentence names are the ones of the keyboard in front of the person, which is the
+// browser's, not the server's: «⌘S» on a Mac, «Ctrl+S» anywhere else (2026-10-20).
+const keysAreMac = /mac|iphone|ipad/i.test(String(globalThis.navigator?.userAgentData?.platform ?? globalThis.navigator?.platform ?? 'mac'));
+export function keyWords(text) {
+  if (keysAreMac || typeof text !== 'string' || !text.includes('⌘')) return text;
+  return text.replace(/⌘\s?/g, 'Ctrl+');
+}
+
 export function t(text, vars = null) {
   const said = CATALOGUES[current]?.[text] ?? text;
-  return fill(hostWords(said), vars);
+  return fill(keyWords(hostWords(said)), vars);
 }
 
 // A table that carries both languages: `{ en: …, es: … }` anywhere inside it. Whole objects,
@@ -88,3 +110,17 @@ export function pick(value) {
 // What the catalogue holds, for the test that keeps it honest: every key it has must be a
 // sentence the product actually says, and every sentence the product asks for must be in it.
 export const catalogue = (id = current) => CATALOGUES[id] ?? {};
+
+// What an agent's own CLI says about its session (src/auth-probe.mjs), in the reader's language
+// (2026-10-20): its words were shown as they came, «not logged in» in a Spanish room. When they only
+// repeat what the card's lamp already says, nothing is added.
+const SESSION_REPEATS = new Set(['not logged in', 'never signed in', 'logged in']);
+export function sessionDetail(session) {
+  const detail = String(session?.detail ?? '').trim();
+  if (!detail || SESSION_REPEATS.has(detail)) return null;
+  const via = detail.match(/^via (.+)$/);
+  if (via) return t('via {method}', { method: t(via[1]) });
+  const as = detail.match(/^as (.+)$/);
+  if (as) return t('as {who}', { who: as[1] });
+  return t(detail);
+}

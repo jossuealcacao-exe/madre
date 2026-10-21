@@ -5564,4 +5564,13 @@ export const ES = {
   'Find, create and export your Canva designs.': 'Encuentra, crea y exporta tus diseños de Canva.',
   'Your Webflow sites, their pages and CMS collections.': 'Tus sitios de Webflow, sus páginas y colecciones del CMS.',
   'Your Wix sites and what they sell.': 'Tus sitios de Wix y lo que venden.',
+  'via {method}': 'con {method}',
+  'as {who}': 'como {who}',
+  'API key': 'llave de API',
+  'API key selected but not found': 'elegiste llave de API, pero no está',
+  'Google login selected but no token': 'elegiste cuenta de Google, pero no hay sesión',
+  'credentials present, auth type not selected': 'hay credenciales, pero falta elegir cómo entrar',
+  'no providers configured': 'sin proveedores configurados',
+  'no status': 'sin estado',
+  'no answer from cursor-agent status': 'cursor-agent no contestó',
 };

@@ -15,6 +15,7 @@
 // what a reading means. Same rule as the page: the key is the English sentence, and a sentence
 // nobody has translated comes back in English, whole.
 
+import { hostname } from 'node:os';
 import { ES } from '../public/es.js';
 
 const CATALOGUES = { es: ES, en: {} };
@@ -30,9 +31,23 @@ export function setLanguage(id) {
 // it runs on says «computer» there. Same rule as public/i18n.js (hostWords); hardware named on
 // purpose («a Mac with an M chip») has no article in front and is left alone.
 let hostIsMac = process.platform === 'darwin';
+// The machine's own name, said instead of «this computer» where it is not a Mac (2026-10-20).
+const ownName = () => { try { return hostname().replace(/\.local$/i, '').trim().slice(0, 64) || null; } catch { return null; } };
+let hostName = ownName();
 export const setHostIsMac = (value) => { hostIsMac = Boolean(value); return hostIsMac; };
+export const setHostName = (value) => { hostName = typeof value === 'string' && value.trim() ? value.trim().slice(0, 64) : null; return hostName; };
+// What the page is told about the machine it is served by (src/server.mjs puts it in a <meta>).
+export const hostFacts = () => ({ os: process.platform, name: hostName });
 export function hostWords(text) {
   if (hostIsMac || typeof text !== 'string' || !text.includes('Mac')) return text;
+  // With the machine's own name (2026-10-20) a sentence about it names it: «Found on cotizapp2».
+  if (hostName) {
+    return text
+      .replace(/\b(on|in|from|to) (this|your|the) Mac\b/g, `$1 ${hostName}`)
+      .replace(/\b(this|your|the|This|Your|The) Mac\b/g, hostName)
+      .replace(/(^|[^\p{L}])(en|de|a|desde) (esta|tu|la) Mac\b/gu, `$1$2 ${hostName}`)
+      .replace(/(^|[^\p{L}])(esta|tu|la|Esta|Tu|La) Mac\b/gu, `$1${hostName}`);
+  }
   return text
     .replace(/\b(this|your|the|This|Your|The) Mac\b/g, '$1 computer')
     .replace(/(^|[^\p{L}])(esta|tu|la|Esta|Tu|La) Mac\b/gu, '$1$2 computadora');

@@ -28,7 +28,7 @@ import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as 
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, forgetCorpus, keepCorpus, keptCorpus, pruneCorpora, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
-import { inRoomLanguage, language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
+import { hostFacts, inRoomLanguage, language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
 const BOOT_ID = `${process.pid}-${Date.now().toString(36)}`;
@@ -1899,6 +1899,9 @@ export async function createPulseServer({
     // The project's own folder name, typed by the human. Declared at the top of the handler and
     // not beside the first route that happened to need it: a const sits in its temporal dead zone
     // until its own line runs, so any route above it threw instead of refusing.
+    // Which machine serves the page, written into it (public/i18n.js, hostWords): the browser that
+    // reads it may be on another one, a Mac looking at a Linux box, and must not say «Mac» there.
+    const withHost = (html) => html.replace('<head>', `<head>\n    <meta name="madre-host" content="${JSON.stringify(hostFacts()).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">`);
     const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
     // A request the bridge passed on from a paired phone. It reaches the room from 127.0.0.1 like
     // anything on this Mac, so «only from this computer» has to ask this too.
@@ -1906,7 +1909,7 @@ export async function createPulseServer({
     const phoneKind = viaPhone ? String(request.headers['x-madre-device-kind'] ?? 'other').slice(0, 20) : null;
     try {
       if (request.method === 'GET' && url.pathname === '/') {
-        const html = await readFile(join(publicDirectory, 'index.html'));
+        const html = withHost(await readFile(join(publicDirectory, 'index.html'), 'utf8'));
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
@@ -2063,7 +2066,7 @@ export async function createPulseServer({
         return sendJson(response, 403, { error: t('This is done on the Mac.') });
       }
       if (request.method === 'GET' && url.pathname === '/salas') {
-        const html = await readFile(join(publicDirectory, 'salas-mac.html'));
+        const html = withHost(await readFile(join(publicDirectory, 'salas-mac.html'), 'utf8'));
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', ...PAGE_GUARDS });
         return response.end(html);
       }

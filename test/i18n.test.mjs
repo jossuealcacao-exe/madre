@@ -66,7 +66,7 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   // Everything that speaks: the page, the console inside the core, and the server text that
   // reaches a screen — a module saying what it is, a reading saying what it means. One
   // catalogue for both sides of the wire, so a sentence is never translated twice.
-  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html'), join(import.meta.dirname, '..', 'public', 'troubleshooting.js'), join(import.meta.dirname, '..', 'public', 'editor.js'), join(import.meta.dirname, '..', 'public', 'salas.js'), join(import.meta.dirname, '..', 'public', 'salas-mac.js'), join(import.meta.dirname, '..', 'public', 'macroverso.js'), join(import.meta.dirname, '..', 'public', 'review-ask.js'), join(import.meta.dirname, '..', 'public', 'tour.js'), join(import.meta.dirname, '..', 'public', 'attribution.js'), join(import.meta.dirname, '..', 'public', 'power.js'), join(import.meta.dirname, '..', 'public', 'hardware.js'), join(import.meta.dirname, '..', 'public', 'code-tools.js'), join(import.meta.dirname, '..', 'public', 'wallpaper.js'), join(import.meta.dirname, '..', 'public', 'neural.js'), join(import.meta.dirname, '..', 'public', 'market.js'), join(import.meta.dirname, '..', 'public', 'market-view.js'), join(import.meta.dirname, '..', 'public', 'market-art.js'), join(import.meta.dirname, '..', 'public', 'mcp-catalog.js'),
+  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html'), join(import.meta.dirname, '..', 'public', 'troubleshooting.js'), join(import.meta.dirname, '..', 'public', 'editor.js'), join(import.meta.dirname, '..', 'public', 'salas.js'), join(import.meta.dirname, '..', 'public', 'salas-mac.js'), join(import.meta.dirname, '..', 'public', 'macroverso.js'), join(import.meta.dirname, '..', 'public', 'review-ask.js'), join(import.meta.dirname, '..', 'public', 'tour.js'), join(import.meta.dirname, '..', 'public', 'attribution.js'), join(import.meta.dirname, '..', 'public', 'power.js'), join(import.meta.dirname, '..', 'public', 'hardware.js'), join(import.meta.dirname, '..', 'public', 'code-tools.js'), join(import.meta.dirname, '..', 'public', 'wallpaper.js'), join(import.meta.dirname, '..', 'public', 'neural.js'), join(import.meta.dirname, '..', 'public', 'market.js'), join(import.meta.dirname, '..', 'public', 'market-view.js'), join(import.meta.dirname, '..', 'public', 'market-art.js'), join(import.meta.dirname, '..', 'public', 'mcp-catalog.js'), join(import.meta.dirname, '..', 'public', 'i18n.js'),
     // What the server wrote in English and the page says again in Spanish: those sentences are
     // listed there, slots and all, because they never pass through a t() of their own.
     join(import.meta.dirname, '..', 'public', 'resay.js')];
@@ -383,26 +383,45 @@ test('i18n: a MADRE nobody has set speaks the browser\'s language — Spanish in
   assert.match(home, /if \(answer\.languageChosen === false && !languageAdopted\) \{/);
 });
 
-test('i18n · «Mac» only where MADRE runs on one; elsewhere the machine is «the computer», in both languages and both sides', async () => {
+test('i18n · «Mac» only where MADRE runs on one; elsewhere the machine is named, or «the computer» without a name, in both languages and both sides', async () => {
   const page = await import('../public/i18n.js');
   const server = await import('../src/i18n.mjs');
   for (const side of [page, server]) {
     const was = side.setHostIsMac(false);
+    const name = side.setHostName(null);
     try {
       assert.equal(side.hostWords('MADRE does not know that project on this Mac.'), 'MADRE does not know that project on this computer.');
       assert.equal(side.hostWords('The Mac offers to continue; your Mac too.'), 'The computer offers to continue; your computer too.');
       assert.equal(side.hostWords('Escrito en esta Mac. Tu Mac lo guarda; se hace en la Mac.'), 'Escrito en esta computadora. Tu computadora lo guarda; se hace en la computadora.');
+      // With the machine's name (2026-10-20): the sentence names it.
+      side.setHostName('cotizapp2');
+      assert.equal(side.hostWords('Found on this Mac'), 'Found on cotizapp2');
+      assert.equal(side.hostWords('Encontrados en esta Mac'), 'Encontrados en cotizapp2');
+      assert.equal(side.hostWords('Tu Mac lo guarda; se hace en la Mac.'), 'cotizapp2 lo guarda; se hace en cotizapp2.');
       // Hardware named on purpose stays.
       assert.equal(side.hostWords('Any Mac with an M chip.'), 'Any Mac with an M chip.');
       assert.equal(side.hostWords('Cualquier Mac con chip M · Mac con chip Apple'), 'Cualquier Mac con chip M · Mac con chip Apple');
       side.setHostIsMac(true);
       assert.equal(side.hostWords('on this Mac'), 'on this Mac');
-    } finally { side.setHostIsMac(was); }
+    } finally { side.setHostIsMac(was); side.setHostName(name); }
   }
   const was = page.setHostIsMac(false);
+  const name = page.setHostName(null);
   try {
     setLanguage('es');
     assert.equal(t('MADRE does not know that project on this Mac.'), 'MADRE no conoce ese proyecto en esta computadora.');
     assert.equal(pick({ en: 'on your Mac', es: 'en tu Mac' }), 'en tu computadora');
-  } finally { page.setHostIsMac(was); setLanguage(DEFAULT_LANGUAGE); }
+  } finally { page.setHostIsMac(was); page.setHostName(name); setLanguage(DEFAULT_LANGUAGE); }
+});
+
+test('i18n · the page is told which machine serves it, not the browser\'s: a Mac looking at Linux does not say «Mac»', async () => {
+  const server = await import('../src/i18n.mjs');
+  const facts = server.hostFacts();
+  assert.equal(facts.os, process.platform);
+  const html = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
+  assert.match(html, /const withHost = \(html\) => html\.replace\('<head>'/);
+  assert.match(html, /withHost\(await readFile\(join\(publicDirectory, 'index\.html'\)/);
+  assert.match(html, /withHost\(await readFile\(join\(publicDirectory, 'salas-mac\.html'\)/);
+  const i18n = await readFile(join(import.meta.dirname, '..', 'public', 'i18n.js'), 'utf8');
+  assert.match(i18n, /meta\[name="madre-host"\]/);
 });
