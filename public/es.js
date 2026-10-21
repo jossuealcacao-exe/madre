@@ -1607,7 +1607,7 @@ export const ES = {
     'SI LA OLVIDAS, YA NO SE USA EN NINGUNA RESPUESTA. EL HISTORIAL DE DONDE SALIÓ SE QUEDA.',
   'NO MEMORIES YET. THE ARCHIVIST WRITES THE FIRST ONES AFTER A FEW EXCHANGES.':
     'TODAVÍA NO HAY MEMORIAS. MADRE ESCRIBE LAS PRIMERAS DESPUÉS DE UNOS INTERCAMBIOS.',
-  'REVIEW WITH ▾': 'REVISAR CON ▾',
+  'ASK ▾': 'PREGUNTAR ▾',
   'OPEN RAW ↗': 'ABRIR SIN FORMATO ↗',
 
   // Títulos y etiquetas del marcado.
@@ -1824,8 +1824,8 @@ export const ES = {
     'Activa Acceso a la web para ese agente en Ajustes → Agentes; se guarda al instante. Aplica a todas sus respuestas; lo que traiga de la web se envía a su proveedor.',
 
   'Commands and mentions in the Write box': 'Comandos y menciones en la caja de Escribir',
-  'Type "/" for the project\'s commands: /create turns on permission to create, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git) and /ahp (Continuity) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label. Type "!" to point at a project file ("!src/room.mjs:12-20" for lines): the agent reads it first. In the viewer, click a line number (Shift+click for a range) and REVIEW WITH sends those lines to an agent.':
-    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) corren en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y REVISAR CON le manda esas líneas a un agente.',
+  'Type "/" for the project\'s commands: /create turns on permission to create, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git) and /ahp (Continuity) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label. Type "!" to point at a project file ("!src/room.mjs:12-20" for lines): the agent reads it first. In the viewer, click a line number (Shift+click for a range) and ASK offers what to ask about those lines, and whom.':
+    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) corren en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y PREGUNTAR te ofrece qué preguntar sobre esas líneas, y a quién.',
   'A struck-through command is a module that is not available in this project: open Modules to install it or turn it on (Git needs a git repository; Continuity needs to be installed).':
     'Un comando tachado es un módulo que no está disponible en este proyecto: abre Módulos para instalarlo o encenderlo (Git necesita un repositorio git; Continuidad necesita instalarse).',
 
@@ -2343,7 +2343,6 @@ export const ES = {
   '@{agent} may {what}': '@{agent} puede {what}',
   ' (cannot {what})': ' (no puede {what})',
   'create files': 'crear archivos',
-  'review it with': 'revisarlo con',
   'no session': 'sin sesión',
   'CLICK A LINE NUMBER TO SELECT · SHIFT FOR A RANGE':
     'CLIC EN UN NÚMERO DE LÍNEA PARA SELECCIONAR · SHIFT PARA UN RANGO',
@@ -3075,6 +3074,7 @@ export const ES = {
   'no results': 'sin resultados',
   'Line {n}': 'Línea {n}',
   'Lines {from}–{to}': 'Líneas {from}–{to}',
+  'Lines {list}': 'Líneas {list}',
   'Explain what this does': 'Explica qué hace esto',
   'Find bugs or edge cases here': 'Busca errores o casos límite aquí',
   'Suggest how to improve this': 'Sugiere cómo mejorarlo',

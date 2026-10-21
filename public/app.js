@@ -849,7 +849,6 @@ const viewerUI = {
   review: document.querySelector('#viewer-review'),
   lang: document.querySelector('#viewer-lang'),
   hintSelect: document.querySelector('#viewer-hint-select'),
-  menu: document.querySelector('#viewer-menu'),
   path: null,      // project-relative path of the open text file, if any
   from: null, to: null,
   // The lines picked, which need not touch: a click picks one, Shift a run from the last one
@@ -916,73 +915,21 @@ function pickLine(n, event) {
   } else if (viewerUI.picked.size === 1 && viewerUI.picked.has(n)) setSelection(null, null);
   else setSelection(n, n);
 }
-function referenceForSelection() {
-  return pickedRuns().map(([lo, hi]) => `!${viewerUI.path}:${lo}${hi !== lo ? `-${hi}` : ''}`).join(' ');
-}
-// "Review with @agent": the selection becomes a !file:lines reference in the
-// composer and that agent becomes the target; the human finishes the sentence.
-function reviewWith(agentId) {
-  const reference = referenceForSelection();
-  const current = els.input.value.trim();
-  // The reference and the cursor, nothing else. This used to seed "review this: " — an English
-  // phrase in a Spanish room, and worse, a sentence MADRE put in the human's mouth: whatever they
-  // typed next landed after it and read like somebody else's words. They just chose an agent and
-  // a range; they know what they want to ask.
-  els.input.value = current ? `${reference} ${current}` : `${reference} `;
-  if (agentId && state.agents.get(agentId)?.ready) { els.target.value = agentId; renderPicker(); }
-  hideViewerMenu();
-  // Over the room it closes so the composer can be reached; split or floating, it stays.
-  if (viewer.dialog.matches?.(':modal')) viewer.dialog.close();
-  autosize();
-  els.input.focus();
-  els.input.setSelectionRange(els.input.value.length, els.input.value.length);
-}
-function showViewerMenu(x, y) {
-  const menuNode = viewerUI.menu;
-  // Two lines: what is being sent, and the question. One line put the verb at one end and its
-  // preposition at the other, and in Spanish the sentence ended on a dangling «CON» that the
-  // menu then cut off.
-  const head = el('div', 'hint');
-  head.append(el('b', null, referenceForSelection()));
-  head.append(el('span', null, t('review it with')));
-  menuNode.replaceChildren(head);
-  for (const agent of state.agents.values()) {
-    const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
-    item.type = 'button';
-    // `@codex Codex` says one thing twice. The handle is the name; beside it goes only what the
-    // handle does not already tell you — the vendor, or why it cannot take this.
-    const aside = agent.ready ? vendorWord(agent.id) : t('no session');
-    item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
-    item.disabled = !agent.ready;
-    item.addEventListener('click', () => reviewWith(agent.id));
-    menuNode.append(item);
-  }
-  menuNode.hidden = false;
-  // In the page's top layer, like the ask card: the viewer's window clipped it at its own edge.
-  if (!menuNode.hasAttribute('popover')) { menuNode.setAttribute('popover', 'manual'); document.body.append(menuNode); }
-  try { menuNode.showPopover?.(); } catch { /* without popovers it stays fixed in the page */ }
-  // Placed by its real size: under the button, or over it when there is no room below.
-  const width = menuNode.offsetWidth || 260;
-  const height = menuNode.offsetHeight || 62 + 36 * state.agents.size;
-  const top = y + height <= window.innerHeight - 12 ? y : Math.max(12, y - height - 44);
-  menuNode.style.left = `${Math.max(12, Math.min(x, window.innerWidth - width - 12))}px`;
-  menuNode.style.top = `${Math.round(top)}px`;
-}
-function hideViewerMenu() { try { viewerUI.menu.hidePopover?.(); } catch { /* not open */ } viewerUI.menu.hidden = true; }
-viewerUI.review?.addEventListener('click', (event) => {
-  const rect = event.currentTarget.getBoundingClientRect();
-  // One run of lines picked in a file of the project: the same card the editor opens, with its
-  // verbs. Several runs, or a file from elsewhere, keep the list of agents.
+// ASK: the lines picked become the room's card — who should look, the verbs, the questions they
+// suggest, one's own. One road for every way of asking about code: the bar's ASK, the editor's, a
+// right-click on a line. There were two until 2026-10-20: «REVIEW WITH» also opened a list of
+// agents that only cited the lines — what the card's «Ask my own question» already does — and the
+// two read as one thing with two names.
+function askAboutPicked(anchor) {
   const runs = pickedRuns();
-  if (runs.length === 1 && viewerUI.path && viewerMode.editable) {
-    const [from, to] = runs[0];
-    askAboutCode({ from, to, text: String(viewerMode.text).split('\n').slice(from - 1, to).join('\n'), anchor: rect, dirty: false });
-    return;
-  }
-  if (viewerUI.menu.hidden) showViewerMenu(rect.left, rect.bottom + 6); else hideViewerMenu();
-});
-document.addEventListener('click', (event) => { if (viewerUI.menu && !viewerUI.menu.hidden && !viewerUI.menu.contains(event.target) && !viewerUI.review?.contains(event.target)) hideViewerMenu(); });
-viewer.dialog.addEventListener('close', () => { hideViewerMenu(); setSelection(null, null); ripley.frame = null; ripley.history = []; ripleyClearErrors(); if (ripley.nav) ripley.nav.hidden = true; });
+  if (!runs.length || !viewerUI.path) return;
+  const lines = String(viewerMode.text).split('\n');
+  const text = runs.map(([lo, hi]) => lines.slice(lo - 1, hi).join('\n')).join('\n');
+  askAboutCode({ runs, text, anchor, dirty: false });
+}
+const pointAt = (event) => ({ left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY });
+viewerUI.review?.addEventListener('click', (event) => askAboutPicked(event.currentTarget.getBoundingClientRect()));
+viewer.dialog.addEventListener('close', () => { setSelection(null, null); ripley.frame = null; ripley.history = []; ripleyClearErrors(); if (ripley.nav) ripley.nav.hidden = true; });
 
 // How much of a file the viewer draws (WEB-09): every line is two nodes and four listeners, and a
 // log of hundreds of thousands of lines froze the tab — the phone's first. Past the limit the
@@ -1042,9 +989,9 @@ function codeView(text, { line = null, lines = null, name = null } = {}) {
     tx.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       if (!viewerUI.picked.has(n)) setSelection(n, n);
-      showViewerMenu(event.clientX, event.clientY);
+      askAboutPicked(pointAt(event));
     });
-    ln.addEventListener('contextmenu', (event) => { event.preventDefault(); if (!viewerUI.picked.size) setSelection(n, n); showViewerMenu(event.clientX, event.clientY); });
+    ln.addEventListener('contextmenu', (event) => { event.preventDefault(); if (!viewerUI.picked.size) setSelection(n, n); askAboutPicked(pointAt(event)); });
     viewerUI.lineNodes.push({ n, ln, tx });
     pre.append(ln, tx);
   });
@@ -1426,8 +1373,8 @@ async function saveEdited(content, { said = null } = {}) {
   if (viewerUI.path) void loadCodeChanges(viewerUI.path);
   return true;
 }
-function askAboutLines({ from, to, prompt, dirty, agentId = null }) {
-  const reference = `!${viewerUI.path}:${from}${to !== from ? `-${to}` : ''}`;
+function askAboutLines({ from, to, runs = [[from, to]], prompt, dirty, agentId = null }) {
+  const reference = runs.map(([lo, hi]) => `!${viewerUI.path}:${lo}${hi !== lo ? `-${hi}` : ''}`).join(' ');
   // Asking again about the same file replaces the last question about it instead of piling
   // references and questions up in the box; anything else the human wrote stays.
   let current = els.input.value;
@@ -1446,14 +1393,16 @@ function askAboutLines({ from, to, prompt, dirty, agentId = null }) {
   els.input.setSelectionRange(els.input.value.length, els.input.value.length);
 }
 // The editor asks the room to ask: the room's own card, with questions read from the lines.
-function askAboutCode({ from, to, text, anchor, dirty }) {
+// Several runs of lines picked apart are one question about all of them.
+function askAboutCode({ from, to, runs = [[from, to]], text, anchor, dirty }) {
+  const [[lo, hi]] = runs;
   openAskCard({
     anchor,
-    head: from === to ? t('Line {n}', { n: from }) : t('Lines {from}–{to}', { from, to }),
+    head: runs.length > 1 ? t('Lines {list}', { list: runs.map(([a, b]) => (a === b ? a : `${a}–${b}`)).join(', ') }) : lo === hi ? t('Line {n}', { n: lo }) : t('Lines {from}–{to}', { from: lo, to: hi }),
     suggestions: codeSuggestions(text, familyOf(viewerUI.path ?? '')?.id ?? null, viewerUI.path ?? ''),
     about: `${viewerUI.path ?? ''} ${text}`,
     actions: CODE_ACTIONS,
-    onAsk: (agentId, prompt) => askAboutLines({ from, to, prompt, dirty, agentId }),
+    onAsk: (agentId, prompt) => askAboutLines({ runs, prompt, dirty, agentId }),
   });
 }
 function openEditor(line = null) {
@@ -9449,7 +9398,7 @@ function sideGrip(surface) {
     event.stopPropagation();
     try { grip.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
     shellBox.classList.add('resizing-panel');
-    holdingWindow('sizing-window', true);
+    holdingWindow('sizing-window', true, 'col-resize');
     let frame = 0;
     const move = (moving) => {
       cancelAnimationFrame(frame);
@@ -9655,8 +9604,11 @@ function paintDepth() {
     one.classList.toggle('behind', depth > 0);
   });
   const desk = deskFocus || !open.length ? 0 : Math.min(3, open.length);
+  // How deep is the veil's own: a variable on the root is inherited by every element of the page,
+  // and changing it restyled all of them — a long file in Code included — each time a window
+  // opened, closed or stopped overlapping another.
   const root = document.documentElement;
-  if (desk) root.style.setProperty('--desk-depth', String(desk)); else root.style.removeProperty('--desk-depth');
+  if (desk) deskVeil.style.setProperty('--desk-depth', String(desk)); else deskVeil.style.removeProperty('--desk-depth');
   root.classList.toggle('desk-behind', desk > 0);
 }
 // Read once a frame, however many things changed in it.
@@ -9952,8 +9904,20 @@ function arrangeOnHover(button, { owner, float = () => {} }) {
 }
 
 // A window held by the pointer: the frames under it stop taking the pointer while it lasts, or
-// the first one it crosses swallows the drag.
-const holdingWindow = (kind, on) => document.documentElement.classList.toggle(kind, on);
+// the first one it crosses swallows the drag. One sheet over the whole page holds the cursor and
+// keeps text from being picked while it lasts. It was a rule on every element, and with a long
+// file open in Code each press and each release restyled tens of thousands of lines: the window
+// stuck for a fifth of a second as it was taken and again as it was let go (2026-10-20).
+const holdShield = el('div', 'hold-shield');
+holdShield.setAttribute('aria-hidden', 'true');
+document.body?.append(holdShield);
+// Lit by its own style, never by a class: a class that comes and goes inside the page is read
+// again by every `:has()` of the stylesheet, which cost as much as the rule it replaced.
+function holdingWindow(kind, on, cursor = null) {
+  document.documentElement.classList.toggle(kind, on);
+  if (on) { holdShield.style.pointerEvents = 'auto'; holdShield.style.cursor = cursor ?? 'grabbing'; }
+  else { holdShield.style.removeProperty('pointer-events'); holdShield.style.removeProperty('cursor'); }
+}
 
 function windowEdgesFor(node, { active = () => true, box, place, done, minW = WINDOW_MIN_W, minH = WINDOW_MIN_H }) {
   for (const side of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {
@@ -9966,7 +9930,7 @@ function windowEdgesFor(node, { active = () => true, box, place, done, minW = WI
       event.stopPropagation();
       try { edge.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
       bringWindowForward(node);
-      holdingWindow('sizing-window', true);
+      holdingWindow('sizing-window', true, getComputedStyle(edge).cursor);
       const start = { ...box() };
       const fromX = event.clientX;
       const fromY = event.clientY;
@@ -15662,7 +15626,10 @@ const notesKit = { items: [], windows: new Map(), on: null, timers: new Map() };
 const notesOn = () => Boolean(modules.items.find((one) => one.id === 'notes')?.status?.installed);
 const noteTitle = (note) => String(note?.text ?? '').split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 48) || t('Note');
 // After every reading of the modules: the notes come when the module is on here, and go when it is not.
+// The notes are the room's, not a conversation's: a conversation open in its own window is this same
+// page in a frame (SPLIT_CHAT), and opening them there too showed every note twice (2026-10-20).
 async function syncNotes() {
+  if (SPLIT_CHAT) return;
   const on = notesOn();
   if (on === notesKit.on) return;
   notesKit.on = on;
@@ -15675,6 +15642,8 @@ async function syncNotes() {
 // What an agent made while it answered (src/mcp/notes-server.mjs): read when its turn ends, the new
 // notes opened where they can be seen and the reminders taken in.
 async function notesAfterTurn() {
+  // In a conversation's window the turn ended here, and the room around it is told to look.
+  if (SPLIT_CHAT) { try { window.parent?.postMessage({ madre: 'notes' }, location.origin); } catch { /* not in a frame of the room */ } return; }
   if (modules.items.find((one) => one.id === 'reminders')?.status?.installed) void loadReminders();
   if (!notesOn()) return;
   const answer = await fetch('/api/notes', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
@@ -15686,6 +15655,11 @@ async function notesAfterTurn() {
   for (const note of fresh) if (note.open) openNoteWindow(note.id);
   drawNotesSheets();
 }
+// A conversation's window says its turn ended: only a frame of this page, from this same address.
+window.addEventListener?.('message', (event) => {
+  if (SPLIT_CHAT || event.origin !== location.origin || event.data?.madre !== 'notes') return;
+  if ([...document.querySelectorAll('iframe')].some((frame) => frame.contentWindow === event.source)) void notesAfterTurn();
+});
 async function saveNote(change) {
   const answer = await fetch('/api/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(change) })
     .then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
@@ -15902,7 +15876,8 @@ function settleReminderOffer(payload) {
 // bottom right, until each is done or moved.
 const remindersKit = { list: [], done: [], prefs: { hour: 9, snooze: 60 }, at: 0, card: null };
 async function loadReminders() {
-  if (state.device) return;
+  // The card of what is due is the room's, once, never again inside a conversation's window.
+  if (state.device || SPLIT_CHAT) return;
   const answer = await fetch('/api/reminders?done=1', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
   if (!answer) return;
   remindersKit.list = answer.reminders ?? [];

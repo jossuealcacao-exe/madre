@@ -144,12 +144,18 @@ test('a new file from the Finder: empty, inside the project, folders made, nothi
   }
 });
 
-test('the Finder carries a key for a new file, and «review it with» stands in the top layer', async () => {
+test('the Finder carries a key for a new file, and asking about lines is one card', async () => {
   const { readFile: read } = await import('node:fs/promises');
   const { join: joinPath } = await import('node:path');
   const [app, page, server] = await Promise.all(['public/app.js', 'public/index.html', 'src/server.mjs'].map((file) => read(joinPath(import.meta.dirname, '..', file), 'utf8')));
   assert.match(page, /<button id="tree-new" class="surface-gear tree-new"/);
   assert.match(app, /document\.querySelector\('#tree-new'\)\?\.addEventListener\('click'/);
   assert.match(server, /if \(request\.method === 'POST' && url\.pathname === '\/api\/files'\) \{[\s\S]{0,400}needsDesignationOnDisk\(canonicalProjectRoot, relative\)/);
-  assert.match(app, /if \(!menuNode\.hasAttribute\('popover'\)\) \{ menuNode\.setAttribute\('popover', 'manual'\); document\.body\.append\(menuNode\); \}/);
+  // ASK, the editor's Ask and a right-click on a line open the same card; the list of agents that
+  // only cited the lines («REVIEW WITH») is gone, and several runs are one question (2026-10-20).
+  assert.match(app, /viewerUI\.review\?\.addEventListener\('click', \(event\) => askAboutPicked\(event\.currentTarget\.getBoundingClientRect\(\)\)\);/);
+  assert.ok(!/showViewerMenu|reviewWith|#viewer-menu/.test(app), 'the list of agents is back beside the card');
+  assert.match(app, /askAboutPicked\(pointAt\(event\)\)/);
+  assert.match(app, /onAsk: \(agentId, prompt\) => askAboutLines\(\{ runs, prompt, dirty, agentId \}\)/);
+  assert.match(page, /<button id="viewer-review" class="viewer-review" type="button" hidden>ASK ▾<\/button>/);
 });
