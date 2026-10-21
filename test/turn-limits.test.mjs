@@ -86,7 +86,8 @@ test('one writer at a time: a second writing turn waits for the first, and each 
       'codex-readonly': async ({ lease }) => {
         order.push('codex in');
         await writeFile(join(lease.outDir, 'tests.html'), '<p>tests</p>\n');
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        // It keeps the pen until the second turn is waiting for it, however long that one takes.
+        for (let i = 0; i < 2000 && !(await store.readAll()).some((event) => event.type === 'write.waiting'); i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
         order.push('codex out');
         return { text: 'tests written', usage: null };
       },
@@ -99,7 +100,9 @@ test('one writer at a time: a second writing turn waits for the first, and each 
     };
     const room = new Room({ store, agents, projectRoot: root, invokers });
     const first = room.send({ text: 'write the tests', target: 'codex', create: true });
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    // The second goes once the first holds the pen: a fixed 60 ms was sometimes less than the
+    // first took to reach it on a busy machine, and then the second wrote first (2026-10-21).
+    for (let i = 0; i < 1000 && !order.includes('codex in'); i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
     const second = room.send({ text: 'write the readme', target: 'opencode', create: true });
     await Promise.all([first, second]);
     await room.settled?.();

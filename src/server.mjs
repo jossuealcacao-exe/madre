@@ -1304,7 +1304,7 @@ export async function createPulseServer({
     agents,
     settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || Boolean(telemetry.autoReport), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? DEFAULT_REPORT_URL },
     fetchImpl: reportFetch,
-    emit: (type, payload) => room.record(type, payload),
+    emit: (type, payload) => writeFromOutside(room, type, payload),
     save: async (settings) => { const current = await readConfig(root); await updateConfig(root, { telemetry: { ...(current.telemetry ?? {}), ...settings } }); },
   });
   outbound.watchReportUrl(sentinel.settings().reportUrl);
@@ -1326,7 +1326,7 @@ export async function createPulseServer({
     research: () => room.memoryResearch(),
     entriesFor: (notes) => (memory ? memory.entriesAt(notes.flatMap((note) => note.sources ?? [])) : []),
     bench: () => room.bench(),
-    emit: (type, payload) => room.record(type, payload),
+    emit: (type, payload) => writeFromOutside(room, type, payload),
   });
   let unsubscribeEyecat = () => {};
 
@@ -1337,6 +1337,22 @@ export async function createPulseServer({
   // when the room closes: a file that reappears while its folder is being removed is a test that
   // fails for a reason that has nothing to do with it.
   let chatWrites = Promise.resolve();
+  // What the watchers outside the room (the error sentinel, EYECAT, the modules' onEvent) write
+  // to a record. They hear an event and answer when they are done, which can be after the room
+  // was told to close: a report written once the server said it was closed landed in a folder
+  // being removed, and in a memory file already shut (2026-10-21). From the close on they write
+  // nothing; what they had started writing is waited for. Their work itself is not: EYECAT may
+  // be asking an agent, and closing does not wait for an answer.
+  let serverClosing = false;
+  const lateWrites = new Set();
+  const writeFromOutside = (target, type, payload) => {
+    if (serverClosing) return Promise.resolve(null);
+    const write = Promise.resolve(target.record(type, payload));
+    lateWrites.add(write);
+    write.finally(() => lateWrites.delete(write)).catch(() => {});
+    return write;
+  };
+  const lateWritesDone = async () => { while (lateWrites.size) await Promise.allSettled([...lateWrites]); };
 
   // Everything that listens to the open conversation, attached in one place so that opening
   // another attaches exactly the same things to it. Live readings go straight to whoever is
@@ -1398,7 +1414,7 @@ export async function createPulseServer({
           // This project's word on the module, not only the one for every project (module-scope.mjs).
           const settings = module.settingsFrom(ctx.config, ctx.roomId);
           if (module.kind === 'builtin' && !settings.enabled) continue;
-          await Promise.resolve(module.onEvent({ ...ctx, settings, room: target, chat: id, record: (type, payload) => target.record(type, payload) }, event))
+          await Promise.resolve(module.onEvent({ ...ctx, settings, room: target, chat: id, record: (type, payload) => writeFromOutside(target, type, payload) }, event))
             .catch((error) => console.error(`MADRE module ${module.id}: onEvent failed: ${error.message}`));
         }
       })().catch((error) => console.error(`MADRE: a module could not hear an event: ${error.message}`));
@@ -1494,7 +1510,7 @@ export async function createPulseServer({
   async function releaseIfIdle(id, target = null) {
     const held = parked.get(id);
     if (!held || (target && held.room !== target)) return;
-    if (held.room.busy() || held.room.hasLiveRuns?.() || held.feed?.clients.size) return;
+    if (held.room.busy() || held.room.hasLiveRuns?.() || held.feed?.clients.size || held.claims) return;
     await closeHeld(id);
   }
   // A conversation's turns starting and ending, said to every page whichever conversation it shows.
@@ -1549,7 +1565,24 @@ export async function createPulseServer({
   // mountChat builds one.
   // The room on screen, for the places where a route names its own conversation `room`.
   const openRoom = () => room;
-  async function scopeOf(url) {
+  // A request about a conversation beside claims it until its response is over: a held room is not
+  // let go while a request is still at work in it. The grace ran out between the room being found
+  // and the request reaching it — a message read and checked before it was handed over, a page's
+  // feed being built — and the room closed under it: the message was accepted and never answered,
+  // the page heard nothing (2026-10-21). The last request to end gives it its grace again.
+  function claimFor(entry, id, response) {
+    if (!response) return;
+    entry.claims = (entry.claims ?? 0) + 1;
+    let done = false;
+    const release = () => {
+      if (done) return;
+      done = true;
+      entry.claims -= 1;
+      if (!entry.claims) setTimeout(() => { void releaseIfIdle(id, entry.room); }, heldGraceMs).unref?.();
+    };
+    if (response.closed) release(); else response.once('close', release);
+  }
+  async function scopeOf(url, response = null) {
     const asked = url.searchParams.get('chat');
     if (!asked || asked === chatId) return { id: chatId, room, store, feed: mainFeed, main: true };
     if (!isChatId(asked)) return { error: `No conversation "${asked}".` };
@@ -1581,6 +1614,7 @@ export async function createPulseServer({
     }
     // It may have become the open one while it was being built.
     if (asked === chatId) return { id: chatId, room, store, feed: mainFeed, main: true };
+    claimFor(entry, asked, response);
     return { id: asked, room: entry.room, store: entry.store, entry, main: false };
   }
   let unsubscribeActivity = () => {};
@@ -2821,7 +2855,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/state') {
         // `?chat=` reads another conversation, held open beside the one on screen; the room-wide
         // parts are the same, the record and what is running in it are that conversation's.
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const room = here.room;
         const store = here.store;
@@ -2886,7 +2920,7 @@ export async function createPulseServer({
         const sinceValue = request.headers['last-event-id'] ?? url.searchParams.get('since');
         const since = sinceValue === undefined || sinceValue === null || sinceValue === '' ? null : Number(sinceValue);
         // `?chat=` watches a conversation held open beside the one on screen, on a feed of its own.
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const feed = here.main ? mainFeed : await watchHeld(here.entry);
         response.writeHead(200, {
@@ -3081,7 +3115,7 @@ export async function createPulseServer({
           return sendJson(response, error.status ?? 400, { error: error.message });
         }
         const name = decodeURIComponent(request.headers['x-pulse-filename'] ?? url.searchParams.get('name') ?? 'attachment');
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const record = await here.room.registerAttachment(await storeAttachment(attachmentsRoot, { name, bytes }));
         return sendJson(response, 201, { attachment: { id: record.id, name: record.name, fileName: record.fileName, size: record.size, contentType: record.contentType, url: `/api/files?root=attachments&path=${encodeURIComponent(record.fileName)}` } });
@@ -3247,13 +3281,13 @@ export async function createPulseServer({
       }
       if (request.method === 'GET' && url.pathname === '/api/questions') {
         const limit = Math.min(5, Math.max(1, Number(url.searchParams.get('limit') ?? 3) || 3));
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         return sendJson(response, 200, { questions: here.room.questions({ limit }) });
       }
       if (request.method === 'GET' && url.pathname === '/api/decisions') {
         const limit = Math.min(5, Math.max(1, Number(url.searchParams.get('limit') ?? 3) || 3));
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         return sendJson(response, 200, { decisions: here.room.decisions({ limit }) });
       }
@@ -3450,7 +3484,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/messages/rate') {
         const payload = await body(request).catch(() => ({}));
         try {
-          const here = await scopeOf(url);
+          const here = await scopeOf(url, response);
           if (here.error) return sendJson(response, 404, here);
           const event = await here.room.rateMessage(String(payload.messageId ?? ''), String(payload.rating ?? ''));
           return sendJson(response, 200, { rated: event.payload });
@@ -3619,7 +3653,7 @@ export async function createPulseServer({
         const mode = Math.min(4, Math.max(0, Number(url.searchParams.get('mode') ?? 1) || 0));
         const text = String(url.searchParams.get('text') ?? '').slice(0, 2000);
         const ash = url.searchParams.get('ash') === 'true';
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const room = here.room;
         const briefing = await room.briefing({ agent: asked, mode, text, ash });
@@ -3977,7 +4011,7 @@ export async function createPulseServer({
       // One answer, not the room. The master brake lives next door and means something else.
       if (request.method === 'POST' && url.pathname === '/api/stop-turn') {
         const payload = await body(request).catch(() => ({}));
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const stopped = await here.room.stopTurn(String(payload.messageId ?? ''));
         return sendJson(response, stopped ? 200 : 404, stopped ? { stopped: true } : { error: t('That turn is not running any more.') });
@@ -4010,7 +4044,7 @@ export async function createPulseServer({
       }
       const stopMatch = request.method === 'POST' && url.pathname.match(/^\/api\/plans\/([0-9a-f-]+)\/stop$/);
       if (stopMatch) {
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const stopped = await here.room.stopPlan(stopMatch[1]);
         return sendJson(response, stopped ? 202 : 404, stopped ? { stopped: true } : { error: t('No running plan with that id.') });
@@ -4022,7 +4056,7 @@ export async function createPulseServer({
         const payload = await body(request).catch(() => ({}));
         const index = Number(payload.index);
         if (typeof payload.responseMessageId !== 'string' || !Number.isInteger(index) || index < 0) return sendJson(response, 400, { error: t('Name the request and the line to run.') });
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         return here.room.stopRun({ responseMessageId: payload.responseMessageId, index }) ? sendJson(response, 202, { stopped: true }) : sendJson(response, 404, { error: t('That command is not running.') });
       }
@@ -4030,7 +4064,7 @@ export async function createPulseServer({
         const payload = await body(request).catch(() => ({}));
         const index = Number(payload.index);
         if (typeof payload.responseMessageId !== 'string' || !Number.isInteger(index) || index < 0) return sendJson(response, 400, { error: t('Name the request and the line to run.') });
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const outcome = await here.room.runRequested({ responseMessageId: payload.responseMessageId, index, returnCap: viaPhone ? PHONE_MAX_MODE : 3 });
         return sendJson(response, outcome.status, outcome.ok ? outcome.result : { error: outcome.error });
@@ -4039,7 +4073,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/runs/return') {
         const payload = await body(request).catch(() => ({}));
         if (typeof payload.responseMessageId !== 'string') return sendJson(response, 400, { error: t('Say which request to hand back.') });
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const outcome = await here.room.returnRun({ responseMessageId: payload.responseMessageId, returnCap: viaPhone ? PHONE_MAX_MODE : 3 });
         return sendJson(response, outcome.status, outcome.ok ? outcome : { error: outcome.error });
@@ -4084,7 +4118,7 @@ export async function createPulseServer({
           } catch (error) { result = { ok: false, title: inRoomLanguage(own.title), text: `/${parsed.name} failed: ${error.message}` }; }
           command = own;
         }
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const event = await here.room.recordCommand({ name: parsed.name, args: parsed.args, ...result });
         return sendJson(response, result.ok ? 200 : 422, { command: parsed.name, title: result.title, ok: result.ok, sequence: event.sequence });
@@ -4250,7 +4284,7 @@ export async function createPulseServer({
         return sendJson(response, result.status, result.body);
       }
       if (request.method === 'POST' && /^\/api\/control\/[\w-]+\/undo$/.test(url.pathname)) {
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const result = await here.room.undoControl(url.pathname.split('/')[3]);
         return sendJson(response, result.ok ? 200 : result.status ?? 400, result);
@@ -4258,7 +4292,7 @@ export async function createPulseServer({
       if (request.method === 'POST' && /^\/api\/modes\/[\w-]+\/decide$/.test(url.pathname)) {
         const requestId = url.pathname.split('/')[3];
         const { decision, key } = await body(request);
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         if (!['once', 'plan', 'deny'].includes(decision)) return sendJson(response, 400, { error: t('Decision must be once, plan or deny.') });
         const asked = here.room.modeRequest(requestId);
@@ -4282,7 +4316,7 @@ export async function createPulseServer({
         } else delete payload.via;
         // `?chat=` sends into a conversation held open beside the one on screen. TURNS counts it
         // like any other: the conversation on screen is one of the "others" when it is working.
-        const here = await scopeOf(url);
+        const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         // A switch moved in Home since this project opened reaches it here (module-scope.mjs).
         applyModuleSwitches(here.room, await readConfig(root));
@@ -4336,6 +4370,7 @@ export async function createPulseServer({
   // long-lived SSE responses must be ended before the native close runs.
   const nativeClose = server.close.bind(server);
   server.close = (callback) => {
+    serverClosing = true;
     clearInterval(poller);
     serverSentinel.stop();
     clearTimeout(embedKick);
@@ -4346,8 +4381,10 @@ export async function createPulseServer({
     // off() also ends the streams of pages watching a conversation held open beside.
     for (const held of parked.values()) held.off();
     parked.clear();
-    shutdown.then(() => {
-      void broadcastPending().then(() => chatWrites).then(() => {
+    // The catalog asked of madre.run at start may still be on its way: when the ask fails, a note
+    // of it is written to the state folder, and the outbound log says the request went out.
+    shutdown.then(lateWritesDone).then(() => marketSync?.catch(() => null)).then(() => {
+      void broadcastPending().then(() => chatWrites).then(async () => {
         unsubscribe();
         unsubscribeSentinel();
         unsubscribeEyecat();
@@ -4357,7 +4394,7 @@ export async function createPulseServer({
         clients.clear();
         // The memory file closes last, once nothing else writes to it; WAL and shm go with it.
         try { memory?.close(); } catch { /* already closed */ }
-        void outbound.drain();
+        await outbound.close().catch(() => null);
         releaseOpen();
         nativeClose(callback);
         server.closeIdleConnections?.();

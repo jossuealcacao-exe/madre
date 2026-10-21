@@ -102,12 +102,13 @@ export class ErrorSentinel {
   // A room event goes by: a failure MU/TH/UR cannot classify is worth a report.
   async observe(event) {
     if (event?.type !== 'message.failed') return null;
-    const { target, error, stopped } = event.payload ?? {};
+    const { target, error, stopped, closing } = event.payload ?? {};
     if (typeof error !== 'string' || !error.trim()) return null;
     // A turn the human stopped is not a condition. It ends exactly like a failure because the
     // process really was killed, but nothing went wrong and there is nothing for anyone to
-    // diagnose — filing it would be reporting the brake as a fault.
-    if (stopped) return null;
+    // diagnose — filing it would be reporting the brake as a fault. A turn cut because MADRE was
+    // closing is the same: every room closed mid-turn filed «MADRE is shutting down» (2026-10-21).
+    if (stopped || closing) return null;
     const known = diagnose(error, target ?? null);
     if (known.length) return null;
     return this.record({ kind: 'unknown', agent: target ?? null, error, at: event.timestamp });

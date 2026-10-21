@@ -138,3 +138,36 @@ test('the sentinel files what nobody can explain, and stops filing what MU/TH/UR
     assert.equal(filed.kind, 'unknown');
   }
 });
+
+// A room closed while a turn runs cuts that turn: nothing went wrong in it. The sentinel used to file
+// «MADRE is shutting down» as an unknown fault, and wrote it after the server said it was closed,
+// into a folder being removed (ENOTEMPTY in the suite, 2026-10-21).
+test('sentinel: a turn cut because MADRE closes is not a fault, and nothing is written after the close', async () => {
+  const state = await mkdtemp(join(tmpdir(), 'madre-sentinel-close-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-sentinel-close-project-'));
+  let started;
+  const running = new Promise((resolve) => { started = resolve; });
+  const invokers = { 'codex-readonly': ({ signal }) => new Promise((resolve, reject) => { started(); signal?.addEventListener('abort', () => reject(new Error(String(signal.reason))), { once: true }); }) };
+  const { server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents, invokers, testMode: true });
+  const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+  try {
+    const sent = await fetch(`http://127.0.0.1:${port}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: 'codex', text: 'a long one' }) });
+    assert.equal(sent.status, 202);
+    await running;
+    await new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve()); });
+    const { readdir } = await import('node:fs/promises');
+    const rooms = join(state, 'rooms');
+    const [roomDir] = await readdir(rooms);
+    const ledger = join(rooms, roomDir, 'events.jsonl');
+    const closedWith = await readFile(ledger, 'utf8');
+    // A moment for anything that would still write once the server said it was closed.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(await readFile(ledger, 'utf8'), closedWith, 'the record changed after the server closed');
+    const events = closedWith.trim().split('\n').map((line) => JSON.parse(line));
+    const failed = events.find((event) => event.type === 'message.failed');
+    assert.equal(failed?.payload.closing, true, 'the cut turn does not say MADRE was closing');
+    assert.equal(events.some((event) => event.type === 'sentinel.report'), false, 'closing MADRE was filed as a fault');
+  } finally {
+    for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
+  }
+});

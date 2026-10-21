@@ -342,6 +342,13 @@ export class OutboundLog {
   }
 
   async drain() { await this.#writes; }
+  // The room that keeps this log closed: what is written down from here on stays in memory. A
+  // request still out when the room closed was written after it, and made its folder again while
+  // that folder was being removed (2026-10-21).
+  async close() {
+    this.#file = null;
+    await this.#writes;
+  }
 }
 
 // The declaration with today's answer filled in: is this one on, and what has it done.

@@ -151,3 +151,74 @@ test('split: a conversation opened beside closes when nobody watches it, and can
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+// A page that starts watching a conversation beside while that conversation is being let go (its
+// grace ran out with nobody watching yet). The feed is built over a few reads; the room used to
+// close in between, and the page stayed on a dead room while the next message opened a new one
+// it never heard (2026-10-21, «the split stream heard its turn finish» on a busy machine). A grace
+// of 1 ms makes that window certain instead of rare.
+test('split: a page that starts watching beside as the room is let go keeps hearing it', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-split-'));
+  const agents = [{ id: 'codex', label: 'codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+  const { server } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: { 'codex-readonly': async () => ({ text: 'ok', usage: null }) }, broadcastIntervalMs: 30, heldGraceMs: 1 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, payload = {}) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  const streams = [];
+  try {
+    const first = (await fetch(`${base}/api/chats`).then((response) => response.json())).active;
+    const second = (await (await post('/api/chats')).json()).opened;
+    await post(`/api/chats/${first}`);
+    for (let round = 0; round < 2; round += 1) {
+      const split = await watch(`${base}/api/events?chat=${second}`);
+      streams.push(split);
+      // Longer than the grace: a room with a page on it stays.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const text = `beside ${round}`;
+      assert.equal((await post(`/api/messages?chat=${second}`, { text, target: 'codex' })).status, 202);
+      for (let i = 0; i < 300 && !split.frames.some((event) => event.type === 'agent.completed'); i += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.ok(split.frames.some((event) => event.type === 'message.created' && event.payload?.text === text), `round ${round}: the page beside never heard its own message — it watches a room that was closed`);
+      assert.ok(split.frames.some((event) => event.type === 'agent.completed'), `round ${round}: the page beside never heard the turn finish`);
+      split.close();
+      // Let it go again before the next round opens it.
+      await new Promise((resolve) => setTimeout(resolve, 1700));
+    }
+  } finally {
+    for (const stream of streams) stream.close();
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+// A message sent to a conversation beside that nobody watches: the room is opened for it and let go
+// if nothing comes. The message took a few reads to be accepted before its turn existed, the room
+// counted as idle all that time, and a grace that ran out in between closed it: the human got 202
+// and the turn never ran (2026-10-21, «the turn beside started» on a busy machine). 1 ms of grace
+// makes that window certain.
+test('split: a message sent beside is answered even if the grace runs out while it is accepted', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-split-'));
+  const agents = [{ id: 'codex', label: 'codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+  const { server } = await createPulseServer({ projectRoot: root, stateRoot: root, agents, invokers: { 'codex-readonly': async () => ({ text: 'ok', usage: null }) }, broadcastIntervalMs: 30, heldGraceMs: 1 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, payload = {}) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  try {
+    const first = (await fetch(`${base}/api/chats`).then((response) => response.json())).active;
+    const second = (await (await post('/api/chats')).json()).opened;
+    await post(`/api/chats/${first}`);
+    for (let round = 0; round < 3; round += 1) {
+      assert.equal((await post(`/api/messages?chat=${second}`, { text: `beside ${round}`, target: 'codex' })).status, 202);
+      let answered = 0;
+      for (let i = 0; i < 300 && answered <= round; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        answered = (await fetch(`${base}/api/state?chat=${second}`).then((response) => response.json())).events.filter((event) => event.type === 'agent.completed').length;
+      }
+      assert.equal(answered, round + 1, `round ${round}: the message was accepted and never answered`);
+      // Let the room go before the next round opens it again.
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

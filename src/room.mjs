@@ -1154,8 +1154,10 @@ export class Room {
     this.#vectors.stop();
   }
 
+  // Counted as work from the first moment: a message is read, checked and written down before its
+  // turn exists, and a room that looked idle all that while was let go under it (2026-10-21).
   async send(options = {}) {
-    await this.#accept(options, null);
+    await this.#track(this.#accept(options, null));
   }
 
   // An order from BISHOP (docs/MACROVERSO.md, S-028, D-S11). The same door as the human's message
@@ -1167,7 +1169,7 @@ export class Room {
   async order({ text, target, mode = 1 } = {}) {
     const wanted = Number(mode);
     if (!Number.isInteger(wanted) || wanted < 0 || wanted > 2) throw new Error('An order comes in at #2 at most; #3 and #4 are armed by the human in this room.');
-    const accepted = await this.#accept({ text, target, mode: wanted }, { via: 'bishop', depth: 1 });
+    const accepted = await this.#track(this.#accept({ text, target, mode: wanted }, { via: 'bishop', depth: 1 }));
     const events = await this.#store.readAll();
     const reply = accepted?.responseMessageId ? events.find((event) => event.type === 'message.created' && event.payload?.messageId === accepted.responseMessageId)?.payload : null;
     const failed = accepted?.messageId ? events.findLast((event) => event.type === 'message.failed' && event.payload?.messageId === accepted.messageId)?.payload : null;
@@ -2026,6 +2028,8 @@ export class Room {
         ...(failedOn ? { ranOn: failedOn } : {}),
         error: this.#privacy ? this.#privacy.redact(plain).text : plain,
         ...(this.#turns.get(messageId)?.stoppedByHuman ? { stopped: true } : {}),
+        // Cut because MADRE is closing: nothing went wrong in the turn, so nobody files it as a fault.
+        ...(this.#shuttingDown ? { closing: true } : {}),
         ...(cutByClock ? { timeout: { ms: this.timeoutFor(agent.id, { writing: Boolean(lease) }), writing: Boolean(lease), idle: error.code === 'IDLE' } } : {}),
         ...(partial ? { partial } : {}),
       });

@@ -123,3 +123,33 @@ test('market · the news is told once: the author\'s lines, and the modules this
     assert.deepEqual([again.news.length, again.modules.map((one) => one.id)], [0, ['tenido']]);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+// A room that closes while it is still asking madre.run for the catalog waits for that answer: the
+// note it writes when the ask fails landed in the state folder after the server said it was
+// closed, while that folder was being removed (ENOTEMPTY in the home widgets' test, 2026-10-21).
+test('market · a room closed while it asks for the catalog writes nothing after it closed', async () => {
+  const { createPulseServer } = await import('../src/server.mjs');
+  const { readdir, stat } = await import('node:fs/promises');
+  // Every file of the state folder with its size: a line added after the close changes one.
+  const listing = async (dir) => Promise.all((await readdir(dir, { recursive: true })).sort().map(async (name) => `${name} ${(await stat(join(dir, name)).catch(() => null))?.size ?? '-'}`));
+  // The catalog fails at once and its signature takes a while: the ask used to end on the first
+  // failure with the second request still out, and that one was written down after the close.
+  const slow = createServer((request, response) => { setTimeout(() => { response.writeHead(503); response.end(); }, request.url.endsWith('.sig') ? 400 : 0); });
+  await new Promise((resolve) => slow.listen(0, '127.0.0.1', resolve));
+  const before = process.env.PULSE_MARKET_URL;
+  process.env.PULSE_MARKET_URL = `http://127.0.0.1:${slow.address().port}/mercado/catalogo.json`;
+  const state = await mkdtemp(join(tmpdir(), 'madre-market-close-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-market-close-project-'));
+  try {
+    const { server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: [], invokers: {}, testMode: true });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await new Promise((resolve) => server.close(() => resolve()));
+    const closedWith = await listing(state);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    assert.deepEqual(await listing(state), closedWith, 'the state folder changed after the room closed');
+  } finally {
+    if (before === undefined) delete process.env.PULSE_MARKET_URL; else process.env.PULSE_MARKET_URL = before;
+    await new Promise((resolve) => slow.close(resolve));
+    for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
+  }
+});

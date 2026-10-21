@@ -149,7 +149,10 @@ export function runReadonlyProcess({
     const armIdle = () => {
       if (!idleTimeoutMs) return;
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
+      // The verdict waits one turn of the loop, after the pipes are read: a timer that fires late,
+      // because the loop was busy, used to judge before the lines already waiting in the pipe were
+      // heard, and stopped a process that had been talking all along (2026-10-21).
+      idleTimer = setTimeout(() => setImmediate(() => {
         if (settled) return;
         if (Date.now() - lastActivity < idleTimeoutMs) { armIdle(); return; }
         terminateProcessTree(child, { graceMs: killGraceMs });
@@ -159,7 +162,7 @@ export function runReadonlyProcess({
         error.partialOutput = stdout;
         error.partialStderr = stderr.slice(-2000);
         finish(() => reject(error));
-      }, idleTimeoutMs);
+      }), idleTimeoutMs);
       idleTimer.unref?.();
     };
 

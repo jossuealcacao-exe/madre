@@ -453,6 +453,26 @@ test('a silent process is stopped by the idle timeout and Gemini retries once', 
   assert.equal(attempts, 1, 'no retry when Gemini had already started answering');
 });
 
+// MADRE's own loop can be busy for a moment (synchronous work, a loaded machine). The idle timer
+// then fires late, and used to judge before reading the lines already waiting in the pipe: a
+// process that talked the whole time was stopped as silent (2026-10-21, this file's idle test
+// failing in a full run).
+test('a process that talked while MADRE was busy is not stopped as silent', async () => {
+  const chatty = runReadonlyProcess({
+    executable: process.execPath,
+    args: ['-e', 'let n=0; const t=setInterval(()=>{ console.log(JSON.stringify({type:"message",role:"assistant",content:"x"})); if(++n===3){clearInterval(t);} }, 150)'],
+    cwd: process.cwd(),
+    timeoutMs: 30000,
+    idleTimeoutMs: 2500,
+    label: 'Gemini',
+    parse: parseGeminiOutput,
+  });
+  // Longer than the idle limit, while the child writes its three lines.
+  const end = Date.now() + 3200;
+  while (Date.now() < end) { /* the loop is busy */ }
+  assert.equal((await chatty).text, 'xxx');
+});
+
 test('runs OpenCode with an ephemeral restricted agent', () => {
   assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: 'openai/gpt-5.6-sol' }).slice(6, 8), ['--model', 'openai/gpt-5.6-sol']);
   const args = buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: undefined });

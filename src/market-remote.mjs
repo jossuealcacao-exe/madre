@@ -159,7 +159,12 @@ export async function refreshCatalog({ stateRoot, env = process.env, fetchImpl =
   if (!force && kept && state.checkedAt && now() - Date.parse(state.checkedAt) < FRESH_MS) return { catalog: kept, fresh: false };
   const url = marketUrl(env);
   try {
-    const [bytes, signature] = await Promise.all([bytesFrom(url, { fetchImpl, max: MAX_CATALOG }), bytesFrom(`${url}.sig`, { fetchImpl, max: MAX_SIGNATURE })]);
+    // Both answers are waited for, also when one fails: the other one used to be still out when
+    // the ask was over, and was written in the outbound log of a room already closed (2026-10-21).
+    const asked = await Promise.allSettled([bytesFrom(url, { fetchImpl, max: MAX_CATALOG }), bytesFrom(`${url}.sig`, { fetchImpl, max: MAX_SIGNATURE })]);
+    const refused = asked.find((one) => one.status === 'rejected');
+    if (refused) throw refused.reason;
+    const [bytes, signature] = asked.map((one) => one.value);
     if (!verifySigned(bytes, signature.toString('utf8'), publicKey)) throw new Error(t('The Market catalog is not signed with MADRE\'s key, so MADRE did not read it.'));
     const catalog = readCatalog(bytes.toString('utf8'), { url });
     if (kept && Date.parse(catalog.issued) < Date.parse(kept.issued)) throw new Error(t('The Market served a catalog older than the one this computer has, so MADRE kept its own.'));

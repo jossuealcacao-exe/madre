@@ -282,6 +282,17 @@ test('ollama: every conversation distills locally, the one switched to and the o
     const here = await distilled(made.opened);
     assert.ok(here.length, 'the new conversation never distilled');
     assert.ok(here.every((event) => event.payload.agent === 'ollama' && event.payload.local), `distilled by ${JSON.stringify(here.map((event) => event.payload.agent))}`);
+    // The memory is the project's, one for every conversation: written to beside while the second
+    // turn here was still running, the batch this room distilled took the lines beside too, and
+    // its note went to this record (2026-10-21). So the one beside starts once this one is quiet
+    // and distilled through its last answer.
+    for (let attempt = 0; attempt < 400; attempt += 1) {
+      const lines = (await readFile(chatLedger(await roomDir(), made.opened), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line));
+      const last = lines.filter((event) => event.type === 'message.created').at(-1)?.sequence ?? 0;
+      const quiet = lines.filter((event) => event.type === 'agent.completed').length >= 2;
+      if (quiet && lines.some((event) => event.type === 'memory.distilled' && event.payload.throughSequence >= last)) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     // The first one, written to beside the open one: its room is built by scopeOf.
     for (const text of ['The categories are fixed.', 'Backups export to JSON.']) await post(`/api/messages?chat=${first}`, { text, target: 'codex' });
     const beside = await distilled(first);

@@ -288,7 +288,10 @@ test('runs: a command that opens a port is a server: it answers at once, is not 
     // The port watcher sees the server it is asked about: the run's own process.
     let serverPid = null;
     const desk = new RunDesk({ listening: async ({ pid }) => (pid === serverPid ? [{ port: 8000, host: '127.0.0.1', pid, group: pid }] : []) });
-    const keepAlive = 'setInterval(() => {}, 1000); console.log("Serving HTTP on 127.0.0.1 port 8000")';
+    // Marked as this run's own: `ps` lists the whole machine, and a second suite running at the
+    // same time has the same server under the same words (2026-10-21).
+    const mark = `serve-${process.pid}-${Date.now()}`;
+    const keepAlive = `setInterval(() => {}, 1000); console.log("Serving HTTP on 127.0.0.1 port 8000", "${mark}")`;
     const room = new Room({ store, agents, projectRoot: root, runDesk: desk, invokers: {
       'claude-readonly': async () => ({ text: `Listo.\n\n\`\`\`pulse-run\nAbrir la app\n$ ${process.execPath} -e '${keepAlive}'\n$ ${process.execPath} -e 'console.log(1)'\n\`\`\``, usage: null }),
     } });
@@ -301,7 +304,7 @@ test('runs: a command that opens a port is a server: it answers at once, is not 
     for (let attempt = 0; attempt < 100 && !serverPid; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 20));
       const { execFileSync } = await import('node:child_process');
-      const listed = execFileSync('ps', ['-o', 'pid=,command=', '-A'], { encoding: 'utf8' }).split('\n').find((line) => line.includes('setInterval') && line.includes('Serving HTTP'));
+      const listed = execFileSync('ps', ['-o', 'pid=,command=', '-A'], { encoding: 'utf8' }).split('\n').find((line) => line.includes('setInterval') && line.includes(mark));
       if (listed) serverPid = Number(listed.trim().split(/\s+/)[0]);
     }
     assert.ok(serverPid, 'the server never started');
