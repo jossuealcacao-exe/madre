@@ -96,12 +96,12 @@ export function ollamaEmbedder({ host = ollamaHost(), model, fetchImpl = globalT
 }
 
 // One answer from a local model. `json: true` asks Ollama for a JSON object.
-export async function ollamaGenerate({ host = ollamaHost(), model, prompt, system = null, json = false, fetchImpl = globalThis.fetch, timeoutMs = 180000, temperature = 0.2, numCtx = DEFAULT_NUM_CTX } = {}) {
+export async function ollamaGenerate({ host = ollamaHost(), model, prompt, system = null, json = false, fetchImpl = globalThis.fetch, timeoutMs = 180000, temperature = 0.2, numCtx = DEFAULT_NUM_CTX, signal = null } = {}) {
   const started = Date.now();
   const messages = [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }];
   // A model that takes longer than the turn allows says so in the room's words, as any agent does:
   // the bare «The operation was aborted due to timeout» reached the person, in English.
-  const response = await fetchImpl(`${host}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages, stream: false, options: { temperature, num_ctx: numCtx }, ...(json ? { format: 'json' } : {}) }), signal: AbortSignal.timeout(timeoutMs) })
+  const response = await fetchImpl(`${host}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages, stream: false, options: { temperature, num_ctx: numCtx }, ...(json ? { format: 'json' } : {}) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) })
     .catch((error) => { throw error?.name === 'TimeoutError' ? new Error(t('{label} did not respond before the timeout ({seconds}s).', { label: `Ollama (${model})`, seconds: Math.round(timeoutMs / 1000) })) : error; });
   if (!response.ok) throw new Error(`Ollama HTTP ${response.status}: ${(await response.text().catch(() => '')).slice(0, 200)}`);
   const payload = await response.json();

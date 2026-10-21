@@ -41,3 +41,24 @@ test('notes: off by default, version 0.1, and its routes refuse while it is off 
   assert.equal(on.status, 200);
   assert.deepEqual(on.body.notes, []);
 });
+
+test('notes for agents: the tool is handed only when a note is asked for, and it can only add', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'madre-notes-agent-'));
+  const ctx = { roomDir: dir, config: { modules: { notes: { enabled: true } } }, roomId: 'p1' };
+  const handed = await notes.toolsForTurn(ctx, { text: '/notas resume lo que hicimos hoy' });
+  assert.equal(handed.length, 1);
+  assert.deepEqual(handed[0].tools, ['create_note']);
+  assert.deepEqual(await notes.toolsForTurn(ctx, { text: 'arregla el bug del IVA' }), []);
+  assert.equal((await notes.toolsForTurn(ctx, { text: '@codex take a note: call the client' })).length, 1);
+  const { handleRequest } = await import('../src/mcp/notes-server.mjs');
+  const env = { PULSE_NOTES_DIR: dir };
+  const listed = await handleRequest({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, { env });
+  assert.deepEqual(listed.result.tools.map((tool) => tool.name), ['create_note']);
+  const made = await handleRequest({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'create_note', arguments: { text: 'Llamar al proveedor', color: 'pink' } } }, { env });
+  assert.equal(made.result.isError, false);
+  const [kept] = await readNotes(dir);
+  assert.deepEqual([kept.text, kept.color, kept.open], ['Llamar al proveedor', 'pink', true]);
+  // Nothing to read, change or delete: those tools do not exist.
+  const refused = await handleRequest({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'delete_note', arguments: { id: kept.id } } }, { env });
+  assert.equal(refused.error.code, -32602);
+});

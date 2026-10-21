@@ -3122,6 +3122,34 @@ test('CONTROL: one holder, checkpoint before, changes reported with forbidden wr
   }
 });
 
+test('a stopped turn says nothing even when its agent does not hear the stop (@madre, 2026-10-20)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-stop-deaf-'));
+  let room = null;
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    room = new Room({
+      store,
+      agents: [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }],
+      projectRoot: root,
+      // Deaf to the signal: it answers late, as @madre's call to Ollama used to.
+      invokers: { 'claude-readonly': () => new Promise((resolve) => setTimeout(() => resolve({ text: 'an answer nobody asked for any more' }), 300)) },
+    });
+    const sent = room.send({ text: 'take your time', target: 'claude' });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const turn = room.activeTurns().find((one) => one.agent === 'claude');
+    assert.ok(turn, 'the turn never started');
+    assert.equal(await room.stopTurn(turn.messageId), true);
+    await Promise.allSettled([sent]);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const events = await store.readAll();
+    assert.equal(events.some((event) => event.type === 'message.created' && event.payload.role === 'assistant' && /nobody asked/.test(event.payload.text ?? '')), false, 'the late answer was posted');
+    assert.ok(events.some((event) => event.type === 'turn.stopped'), 'the stop left no record');
+  } finally {
+    await room?.close?.();
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
 test('a turn the human stops ends alone, and the sentinel does not file the brake as a fault', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-stop-turn-'));
   let room = null;

@@ -191,6 +191,12 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
+/* A project's page is a desktop of its own size on the computer: nothing scrolls it but its own
+   panels (the conversation scrolls inside #messages). A card, a menu or a hint that reached past the
+   edge used to make the whole desktop scroll, wallpaper and all (2026-10-20). Home scrolls as a
+   page (body.salas-mac), and so does a project on a phone (html.via-phone). */
+/* A scrollIntoView() can still move a hidden page: app.js puts it back (pageScrolls). */
+html:not(.via-phone):has(> body:not(.salas-mac)), html:not(.via-phone) > body:not(.salas-mac) { overflow: hidden; overscroll-behavior: none; }
 body {
   margin: 0;
   color: var(--text);
@@ -1659,7 +1665,8 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .ash-toggle:hover { opacity: 1; color: var(--text-2); border-color: var(--text-3); }
 .ash-toggle[aria-pressed="true"] { opacity: 1; border-style: solid; background: #070907; color: var(--brew); border-color: var(--brew); font-weight: 700; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brew) 22%, transparent); text-shadow: none; }
 .ash-toggle[aria-pressed="true"]::before { color: color-mix(in srgb, var(--brew) 75%, transparent); }
-.ash-toggle[aria-pressed="true"]::after { animation: cursor-blink 1s steps(1) infinite; opacity: 1; }
+/* Lit, its cursor stands still (2026-10-20): a blinking one competed with the pulse of the bottom bar. */
+.ash-toggle[aria-pressed="true"]::after { opacity: 1; }
 .ash-toggle[aria-pressed="true"]:hover { color: var(--brew); border-color: var(--brew); }
 /* On a light ground the black terminal turned a dark accent into ink on ink (Dijon's olive, even
    Homebrew's light green). There it is a light terminal: a tint of the tone, its border, and the

@@ -13,7 +13,14 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { defineModule } from './sdk.mjs';
 import { oneAtATime, writeWhole } from '../json-file.mjs';
+import { fileURLToPath } from 'node:url';
 import { t } from '../i18n.mjs';
+
+export const NOTES_SERVER = fileURLToPath(new URL('../mcp/notes-server.mjs', import.meta.url));
+// A message that asks for a note (2026-10-20): «/notas …», «/notes …», «hazme una nota», «take a
+// note». Only then is the tool handed to the turn: a tool in every turn costs its description in
+// every prompt.
+export const ASKS_FOR_NOTE = /(^|\s)\/(notas?|notes?)\b|\b(nota|notas|apunta|anota|note|notes|jot)\b/i;
 
 export const NOTE_COLORS = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'];
 export const NOTES_MAX = 200;
@@ -101,6 +108,18 @@ const notes = defineModule({
       install: { display: enabled ? 'turn off Notes' : 'turn on Notes', platforms: [] },
       notes: list.length,
     };
+  },
+  // An agent makes a note when the person asks for one (src/mcp/notes-server.mjs): it can only add.
+  async toolsForTurn(ctx, turn) {
+    if (!ctx.roomDir || (turn?.text !== undefined && !ASKS_FOR_NOTE.test(turn.text))) return [];
+    return [{
+      name: 'madre-notes',
+      command: process.execPath,
+      args: [NOTES_SERVER],
+      env: { PULSE_NOTES_DIR: ctx.roomDir },
+      tools: ['create_note'],
+      brief: 'When the person asks for a note (they may write /notas or /notes), make it with the create_note tool of server madre-notes: short, clear, in their language. It opens on their screen as a colored note. You cannot read their other notes.',
+    }];
   },
   routes: [
     { method: 'GET', path: '/api/notes', handler: async (ctx) => door(ctx) ?? reply(200, { notes: await readNotes(ctx.roomDir), colors: NOTE_COLORS }) },

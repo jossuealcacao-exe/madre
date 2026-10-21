@@ -279,7 +279,8 @@ export function nothingYet(text, { crew = [] } = {}) {
 
 // The invoker the room calls like any adapter. `text` is the human's request; `prompt` the room's full briefing.
 export function madreInvoker({ memory, ollama, fetchImpl = globalThis.fetch }) {
-  return async ({ prompt, text = '', timeoutMs = 180000, model = null, requester = 'you', crew = [], delegation = false, maxSteps = 4, round = null, bishop = null }) => {
+  // `signal` is the room's STOP (2026-10-20): it reaches Ollama, so a stopped @madre does not answer after all.
+  return async ({ prompt, text = '', timeoutMs = 180000, model = null, requester = 'you', crew = [], delegation = false, maxSteps = 4, round = null, bishop = null, signal = null }) => {
     const state = typeof ollama === 'function' ? ollama() : ollama;
     if (!state?.running || !state.chatModel) throw new Error('@madre left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.');
     const question = text || prompt.match(/User message: ([\s\S]*)$/)?.[1] || prompt.slice(-2000);
@@ -295,7 +296,8 @@ export function madreInvoker({ memory, ollama, fetchImpl = globalThis.fetch }) {
       let comparison = '';
       if (round.answers.filter((answer) => answer.sequence).length >= 2) {
         const full = round.answers.filter((answer) => answer.sequence).map((answer) => `@${answer.agent} [#${answer.sequence}]: ${gist(answer.text, 700)}`).join('\n\n');
-        const compared = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: COMPARE, prompt: `${asked ? `QUESTION: ${asked}\n\n` : ''}ANSWERS:\n${full}\n\n${es ? 'Responde en español.' : 'Answer in English.'}`, fetchImpl, timeoutMs, temperature: 0.1 }).catch(() => null);
+        const compared = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: COMPARE, prompt: `${asked ? `QUESTION: ${asked}\n\n` : ''}ANSWERS:\n${full}\n\n${es ? 'Responde en español.' : 'Answer in English.'}`, fetchImpl, timeoutMs, temperature: 0.1, signal }).catch(() => null);
+        signal?.throwIfAborted();
         if (compared) usage = { ...compared.usage, local: true };
         if (compared && comparisonHolds(compared.text, round)) comparison = plain(compared.text);
       }
@@ -307,7 +309,8 @@ export function madreInvoker({ memory, ollama, fetchImpl = globalThis.fetch }) {
       return { text: nothingYet(question, { crew }), usage: { ...NO_USAGE }, grounded: { notes: 0, quotes: 0 }, synthetic: 'nothing-yet' };
     }
     const briefing = briefingFor({ prompt, text: question, archive: archive.text, bishop });
-    const answer = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: bishop ? BISHOP_SYSTEM : SYSTEM, prompt: briefing, fetchImpl, timeoutMs, temperature: 0.1 });
+    signal?.throwIfAborted();
+    const answer = await ollamaGenerate({ host: state.host, model: model ?? state.chatModel, system: bishop ? BISHOP_SYSTEM : SYSTEM, prompt: briefing, fetchImpl, timeoutMs, temperature: 0.1, signal });
     return { text: answer.text, usage: { ...answer.usage, local: true }, grounded: { notes: archive.notes.length, quotes: archive.quotes.length } };
   };
 }

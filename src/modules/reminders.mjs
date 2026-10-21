@@ -27,7 +27,12 @@ import { defineModule } from './sdk.mjs';
 import { oneAtATime, writeWhole } from '../json-file.mjs';
 import { ollamaGenerate } from '../ollama.mjs';
 import { REPEATS, nextOccurrence, parseWhen, tomorrowMorning } from '../reminder-time.mjs';
+import { fileURLToPath } from 'node:url';
 import { language, t } from '../i18n.mjs';
+
+const NOTES_SERVER = fileURLToPath(new URL('../mcp/notes-server.mjs', import.meta.url));
+// A message that asks for a reminder (2026-10-20): «/recordatorios …», «/reminders …», «recuérdame».
+export const ASKS_FOR_REMINDER = /(^|\s)\/(recordatorios?|reminders?|remind)\b|recu[eé]rd(ame|anos|ale)|\brecordatorios?\b|\bremind(er|ers)?\b/i;
 
 export const REMINDERS_MAX = 500;
 export const REMINDER_TEXT_MAX = 200;
@@ -268,19 +273,18 @@ const reminders = defineModule({
     const offer = await offerFor(ctx, event);
     if (offer) await ctx.record('reminder.offered', offer);
   },
-  slash: [{
-    name: 'remind', usage: '/remind <what and when>', title: 'Reminders',
-    summary: 'Sets a reminder in your own words: «/remind tomorrow at 5 call Daniel».',
-    async execute(ctx, args) {
-      const words = (Array.isArray(args) ? args.join(' ') : String(args ?? '')).trim();
-      if (!words) return { ok: false, title: 'Reminders', text: t('Write what and when after /remind.') };
-      const dayHour = hourOf(ctx.settings);
-      const when = parseWhen(words, new Date(), { hour: dayHour }) ?? { due: tomorrowMorning(new Date(), dayHour), repeat: null };
-      const made = await addReminder(ctx.stateRoot, { text: taskFromWords(words), due: when.due.toISOString(), repeat: when.repeat, room: ctx.roomId ?? null, project: projectOf(ctx), why: 'asked' });
-      if (made.error) return { ok: false, title: 'Reminders', text: t('The reminder was not set.') };
-      return { ok: true, title: 'Reminders', text: t('Reminder set: «{what}», {when}', { what: made.reminder.text, when: whenWords(made.reminder.due) }) };
-    },
-  }],
+  // An agent sets a reminder when the person asks for one (src/mcp/notes-server.mjs): it can only add.
+  async toolsForTurn(ctx, turn) {
+    if (turn?.text !== undefined && !ASKS_FOR_REMINDER.test(turn.text)) return [];
+    return [{
+      name: 'madre-reminders',
+      command: process.execPath,
+      args: [NOTES_SERVER],
+      env: { PULSE_REMINDERS_STATE: ctx.stateRoot, PULSE_ROOM_ID: ctx.roomId ?? '', PULSE_PROJECT: projectOf(ctx) ?? '', PULSE_REMINDER_HOUR: String(hourOf(ctx.settings)) },
+      tools: ['create_reminder'],
+      brief: 'When the person asks to be reminded of something (they may write /recordatorios or /reminders), set it with the create_reminder tool of server madre-reminders: what to remember, short, in their language, and when, in their own words. Then tell them when it is due.',
+    }];
+  },
   routes: [
     // This project's reminders, or every one in Home; the due ones first.
     { method: 'GET', path: '/api/reminders', handler: async (ctx, { url }) => {

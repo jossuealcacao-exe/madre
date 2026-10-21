@@ -82,3 +82,17 @@ test('reminders: kept for the whole computer; done, moved and thrown away', asyn
   assert.equal(reminders.version, '0.1.0');
   assert.equal(reminders.credit, 'Daniel Castillo');
 });
+
+test('reminders for agents: handed when a reminder is asked for; the agent sets it in the person\'s words', async () => {
+  const state = await mkdtemp(join(tmpdir(), 'madre-reminders-agent-'));
+  const ctx = { stateRoot: state, roomId: 'p-1', projectRoot: '/x/tienda', config: { modules: { reminders: { enabled: true, hour: '8' } } } };
+  assert.equal((await reminders.toolsForTurn(ctx, { text: '/recordatorios mañana revisar el banner' })).length, 1);
+  assert.equal((await reminders.toolsForTurn(ctx, { text: 'recuérdame llamar a Daniel' })).length, 1);
+  assert.deepEqual(await reminders.toolsForTurn(ctx, { text: 'corre las pruebas' }), []);
+  const [server] = await reminders.toolsForTurn(ctx, { text: '/reminders call Daniel' });
+  const { handleRequest } = await import('../src/mcp/notes-server.mjs');
+  const made = await handleRequest({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'create_reminder', arguments: { what: 'Llamar a Daniel', when: 'mañana' } } }, { env: server.env });
+  assert.equal(made.result.isError, false);
+  const [kept] = await readReminders(state);
+  assert.deepEqual([kept.text, kept.room, kept.project, new Date(kept.due).getHours()], ['Llamar a Daniel', 'p-1', 'tienda', 8]);
+});

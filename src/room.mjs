@@ -1853,6 +1853,9 @@ export class Room {
         // And for its closing turn of a round: what each agent asked actually said, with its number.
         round: agent.id === MADRE_AGENT_ID && planId && /this is your closing turn/i.test(text) ? await this.#roundAnswers(planId) : undefined,
       });
+      // STOP was pressed while the agent answered: whatever comes back late is not said (2026-10-20).
+      // An adapter that does not hear the signal still cannot post an answer the person stopped.
+      signal?.throwIfAborted();
       // Privacy: a private term in a reply is replaced before the ledger, the plan parser,
       // the archivist or any other agent can see it. The reply says how many, not which.
       const guarded = this.#privacy?.redact(result.text ?? '') ?? { text: result.text, hits: 0 };

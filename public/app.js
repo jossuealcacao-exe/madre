@@ -188,7 +188,17 @@ const CLIENT_COMMANDS = [
   { name: 'module', title: 'MODULE', usage: `/module ${t('<what it should do>')}`, summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: `/image ${t('<what to draw>')}`, summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
+  // Notes and Reminders through an agent (2026-10-20): the message goes to the agent chosen, and
+  // that turn gets the tool to make it (src/mcp/notes-server.mjs). Named in the room's language;
+  // the other language's name works too (ASKING_FOR).
+  ...(language() === 'en'
+    ? [{ name: 'notes', module: 'notes', title: t('Notes'), usage: `/notes ${t('<what to note>')}`, summary: t('Ask the agent for a note: it writes it and it opens as a colored note.'), available: true, client: true },
+      { name: 'reminders', module: 'reminders', title: t('Reminders'), usage: `/reminders ${t('<what and when>')}`, summary: t('Ask the agent for a reminder: MADRE tells you when it is due.'), available: true, client: true }]
+    : [{ name: 'notas', module: 'notes', title: t('Notes'), usage: `/notas ${t('<what to note>')}`, summary: t('Ask the agent for a note: it writes it and it opens as a colored note.'), available: true, client: true },
+      { name: 'recordatorios', module: 'reminders', title: t('Reminders'), usage: `/recordatorios ${t('<what and when>')}`, summary: t('Ask the agent for a reminder: MADRE tells you when it is due.'), available: true, client: true }]),
 ];
+// Every name a note or a reminder may be asked for by, in either language.
+const ASKING_FOR = { notas: 'notes', nota: 'notes', notes: 'notes', note: 'notes', recordatorios: 'reminders', recordatorio: 'reminders', reminders: 'reminders', reminder: 'reminders' };
 
 const PLACEHOLDERS = {
   plain: t('Type here, human. Ask the project…'),
@@ -585,6 +595,9 @@ document.addEventListener('focusin', takeTitle, true);
 // person reads and the room runs on under them; everywhere else the thread is its own scroller.
 // Everything that reads or moves the conversation's scroll asks here.
 const pageScrolls = () => Boolean(state.device);
+// On the computer the project is a desktop that never scrolls as a page (styles.css): a
+// scrollIntoView() that reached past its edge used to move it all, wallpaper too (2026-10-20).
+globalThis.addEventListener?.('scroll', () => { if (!pageScrolls() && (globalThis.scrollX || globalThis.scrollY)) globalThis.scrollTo(0, 0); }, { passive: true });
 const scroller = {
   get node() { return pageScrolls() ? (document.scrollingElement ?? document.documentElement) : els.thread; },
   get top() { return this.node?.scrollTop ?? 0; },
@@ -7180,7 +7193,7 @@ function renderEventNode(event) {
       if (open && !replaying) void paintAshEconomy(open);
       return;
     }
-    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) treeFollowWrites(); return;
+    case 'agent.completed': state.running.delete(event.payload.messageId); updateStopAll(); removeThinking(event.payload.messageId); if (!replaying) { treeFollowWrites(); void notesAfterTurn(); } return;
     case 'files.touched': markTouched(event.payload.agent, event.payload.files, event.timestamp); if (!replaying) treeFollowWrites(); return;
     case 'message.failed': state.running.delete(event.payload.messageId); updateStopAll(); node = renderFailure(event); break;
     case 'handoff.created': node = renderHandoff(event); break;
@@ -12343,6 +12356,14 @@ async function runSlashCommand(text) {
     }
     return { handled: false, text: rest, target };
   }
+  if (ASKING_FOR[name]) {
+    const id = ASKING_FOR[name];
+    const item = modules.items.find((one) => one.id === id);
+    if (!item?.status?.installed) { toast(t('Turn on {name} in Modules first: then any agent can make them for you.', { name: t(id === 'notes' ? 'Notes' : 'Reminders') })); return { handled: true }; }
+    if (!rest) { toast(id === 'notes' ? t('Write the note after /{name}, or what the agent should note.', { name }) : t('Write what and when after /{name}.', { name })); return { handled: true }; }
+    // Sent as written: the slash tells the room to hand the agent its tool, and the agent what to do.
+    return { handled: false, text, target: els.target.value };
+  }
   const known = allCommands().find((item) => item.name === name);
   if (!known) { toast(t('Diagnostics › unknown command /{name}. Type "/" to see what this project offers.', { name })); return { handled: true }; }
   if (!known.available) { toast(t('Diagnostics › /{name} is not available in this project: {title} (see MODULES).', { name, title: known.title })); return { handled: true }; }
@@ -15618,6 +15639,20 @@ async function syncNotes() {
   notesKit.items = answer.notes ?? [];
   for (const note of notesKit.items) if (note.open) openNoteWindow(note.id);
 }
+// What an agent made while it answered (src/mcp/notes-server.mjs): read when its turn ends, the new
+// notes opened where they can be seen and the reminders taken in.
+async function notesAfterTurn() {
+  if (modules.items.find((one) => one.id === 'reminders')?.status?.installed) void loadReminders();
+  if (!notesOn()) return;
+  const answer = await fetch('/api/notes', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!answer) return;
+  const known = new Set(notesKit.items.map((one) => one.id));
+  const fresh = (answer.notes ?? []).filter((one) => !known.has(one.id));
+  if (!fresh.length) return;
+  notesKit.items = answer.notes;
+  for (const note of fresh) if (note.open) openNoteWindow(note.id);
+  drawNotesSheets();
+}
 async function saveNote(change) {
   const answer = await fetch('/api/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(change) })
     .then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
@@ -15826,7 +15861,7 @@ function settleReminderOffer(payload) {
   const entry = reminderCards.get(payload?.offer);
   if (!entry || entry.card.classList.contains('settled')) return;
   entry.card.classList.add('settled');
-  entry.words.replaceChildren(el('b', null, payload.accepted ? t('Reminder set') : t('No reminder')), el('span', null, payload.accepted ? `${entry.payload.what} · ${whenLine(payload.due, payload.repeat)}` : t('Nothing was set. Set one any time with /remind.')));
+  entry.words.replaceChildren(el('b', null, payload.accepted ? t('Reminder set') : t('No reminder')), el('span', null, payload.accepted ? `${entry.payload.what} · ${whenLine(payload.due, payload.repeat)}` : t('Nothing was set. Ask any agent for one with /reminders.')));
   entry.acts.replaceChildren();
 }
 
