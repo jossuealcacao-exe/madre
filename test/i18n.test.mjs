@@ -10,10 +10,12 @@ const read = (file) => readFile(join(import.meta.dirname, '..', 'public', file),
 test('i18n: Spanish is what MADRE speaks, and English is a button away', () => {
   assert.equal(DEFAULT_LANGUAGE, 'es');
   assert.equal(language(), 'es');
-  assert.equal(t('Type here, human. Ask the project…'), 'Escribe aquí, humano. Pregúntale al proyecto…');
+  assert.equal(t('Type here, human. Ask the project…'), '¿Qué necesitas? Pregunta lo que quieras de tu proyecto…');
 
   setLanguage('en');
-  assert.equal(t('Type here, human. Ask the project…'), 'Type here, human. Ask the project…', 'English is the source, so it needs no catalogue');
+  // English is the source; its own catalogue (en.js) says better only what needs it.
+  assert.equal(t('Type here, human. Ask the project…'), 'What do you need? Ask anything about your project…');
+  assert.equal(t('Settings'), 'Settings', 'a line en.js does not name stays as the source says it');
   setLanguage('es');
 
   // Anything that is not one of the two is the default rather than a broken screen.
@@ -424,4 +426,17 @@ test('i18n · the page is told which machine serves it, not the browser\'s: a Ma
   assert.match(html, /withHost\(await readFile\(join\(publicDirectory, 'salas-mac\.html'\)/);
   const i18n = await readFile(join(import.meta.dirname, '..', 'public', 'i18n.js'), 'utf8');
   assert.match(i18n, /meta\[name="madre-host"\]/);
+});
+
+test('i18n: the English catalogue only says better what the source already says (2026-10-21)', async () => {
+  const { EN } = await import('../public/en.js');
+  const { ES } = await import('../public/es.js');
+  // Every line of en.js is a sentence the product says, so it is also in es.js; a word changed in
+  // the code leaves its English line behind, and this says so.
+  for (const key of Object.keys(EN)) assert.ok(Object.hasOwn(ES, key), `en.js says «${key}», which the product no longer says`);
+  // The words people use: chats, connectors, messages.
+  assert.equal(EN.Conversations, 'Chats');
+  assert.equal(EN['Outside tools (MCP)'], 'Connectors (MCP)');
+  assert.equal(ES.Conversations, 'Chats');
+  assert.equal(ES['Outside tools (MCP)'], 'Conectores (MCP)');
 });

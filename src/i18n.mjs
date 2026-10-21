@@ -17,8 +17,9 @@
 
 import { hostname } from 'node:os';
 import { ES } from '../public/es.js';
+import { EN } from '../public/en.js';
 
-const CATALOGUES = { es: ES, en: {} };
+const CATALOGUES = { es: ES, en: EN };
 let current = 'es';
 
 export const language = () => current;

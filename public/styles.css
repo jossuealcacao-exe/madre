@@ -2963,6 +2963,13 @@ dialog.whats-new::backdrop { background: rgba(0, 0, 0, .45); backdrop-filter: bl
 .hint-card p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 .hint-ok { margin-top: 12px; border: 0; border-radius: 10px; padding: 7px 14px; background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
 .hint-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A short walk (1.0.5): «2 of 5» over the title, and «Skip the tips» beside «Next». */
+.hint-step { display: block; margin: 0 0 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+.hint-keys { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.hint-keys .hint-ok { margin-top: 0; }
+.hint-skip { border: 0; border-radius: 10px; padding: 7px 10px; background: transparent; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
+.hint-skip:hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.hint-skip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* A link inside a fold's header: text in the header's own voice, a step dimmer, that does
    something without opening or closing the fold. */
@@ -4096,6 +4103,10 @@ dialog.custom-window::backdrop { display: none; }
 .swatch[data-swatch="pulso"] { --sw: #99a17d; --sw-ink: #ffffff; }
 .swatch[data-swatch="leal"] { --sw: #ff6a1f; --sw-ink: #ffffff; }
 .swatch[data-swatch="dulce"] { --sw: #ffd061; --sw-ink: #2b2000; }
+.swatch[data-swatch="marmol"] { --sw: #a9abab; --sw-ink: #141414; }
+.swatch[data-swatch="durazno"] { --sw: #ffa46b; --sw-ink: #2e1300; }
+.swatch[data-swatch="pistache"] { --sw: #6bff9a; --sw-ink: #003314; }
+.swatch[data-swatch="petalo"] { --sw: #f556d5; --sw-ink: #ffffff; }
 :root[data-scheme="light"] .swatch { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14), inset 0 2px 3px rgba(255, 255, 255, .35), 0 2px 6px -2px rgba(20, 30, 20, .3); }
 :root[data-scheme="light"] .swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px color-mix(in srgb, var(--sw) 80%, #000000), 0 4px 10px -3px rgba(20, 30, 20, .3); }
 .custom-current { transition: color var(--motion-fast) var(--ease-out); }
@@ -4137,6 +4148,11 @@ dialog.custom-window::backdrop { display: none; }
 [data-accent="pulso"] { --acc: #b7bf98; --acc-ink: #ffffff; --acc-bubble: #99a17d; --acc-bubble-ink: #ffffff; }
 [data-accent="leal"] { --acc: #ff6a1f; --acc-ink: #ffffff; --acc-bubble: #ff6a1f; --acc-bubble-ink: #ffffff; }
 [data-accent="dulce"] { --acc: #ffd061; --acc-ink: #2b2000; --acc-bubble: #ffd061; --acc-bubble-ink: #2b2000; }
+/* 2026-10-20: mármol, durazno, pistache y pétalo. */
+[data-accent="marmol"] { --acc: #a9abab; --acc-ink: #141414; --acc-bubble: #a9abab; --acc-bubble-ink: #141414; }
+[data-accent="durazno"] { --acc: #ffa46b; --acc-ink: #2e1300; --acc-bubble: #ffa46b; --acc-bubble-ink: #2e1300; }
+[data-accent="pistache"] { --acc: #6bff9a; --acc-ink: #003314; --acc-bubble: #6bff9a; --acc-bubble-ink: #003314; }
+[data-accent="petalo"] { --acc: #f556d5; --acc-ink: #ffffff; --acc-bubble: #f556d5; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="madre"], :root[data-scheme="light"] [data-accent="madre"] { --acc: #2f8a1c; --acc-ink: #ffffff; --acc-bubble: #2f8a1c; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="mountain"], :root[data-scheme="light"] [data-accent="mountain"] { --acc: #0b7d66; --acc-ink: #ffffff; --acc-bubble: #0b7d66; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="caribbean"], :root[data-scheme="light"] [data-accent="caribbean"] { --acc: #0a7189; --acc-ink: #ffffff; --acc-bubble: #0a7189; --acc-bubble-ink: #ffffff; }
@@ -4154,6 +4170,12 @@ dialog.custom-window::backdrop { display: none; }
 :root[data-scheme="light"][data-accent="pulso"], :root[data-scheme="light"] [data-accent="pulso"] { --acc: #5f6744; --acc-ink: #ffffff; --acc-bubble: #99a17d; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="leal"], :root[data-scheme="light"] [data-accent="leal"] { --acc: #c2470a; --acc-ink: #ffffff; --acc-bubble: #ff6a1f; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="dulce"], :root[data-scheme="light"] [data-accent="dulce"] { --acc: #8a6400; --acc-ink: #ffffff; --acc-bubble: #ffd061; --acc-bubble-ink: #2b2000; }
+:root[data-scheme="light"][data-accent="marmol"], :root[data-scheme="light"] [data-accent="marmol"] { --acc: #5c5f5f; --acc-ink: #ffffff; --acc-bubble: #a9abab; --acc-bubble-ink: #141414; }
+:root[data-scheme="light"][data-accent="durazno"], :root[data-scheme="light"] [data-accent="durazno"] { --acc: #a8510f; --acc-ink: #ffffff; --acc-bubble: #ffa46b; --acc-bubble-ink: #2e1300; }
+/* Pistache in light: the most vivid green that still reads as a key on white (3.5:1), with dark ink as on its
+   bubble. The forest green it had read as another colour beside the pistachio bubble (2026-10-21). */
+:root[data-scheme="light"][data-accent="pistache"], :root[data-scheme="light"] [data-accent="pistache"] { --acc: #049f38; --acc-ink: #002a10; --acc-bubble: #6bff9a; --acc-bubble-ink: #003314; }
+:root[data-scheme="light"][data-accent="petalo"], :root[data-scheme="light"] [data-accent="petalo"] { --acc: #a8178c; --acc-ink: #ffffff; --acc-bubble: #f556d5; --acc-bubble-ink: #ffffff; }
 /* Where the accepted accent is read: the conversation and every button in the room. A button's
    phosphor is set on the button itself, so its border, its fill and its ink follow. */
 :root[data-accent] :is(#messages, button, [role="button"]) { --phosphor: var(--acc); --phosphor-ink: var(--acc-ink); --accent: var(--acc); --accent-ink: var(--acc-ink); }
@@ -4379,6 +4401,10 @@ dialog.custom-window::backdrop { display: none; }
 .swatch[data-swatch="pulso"] { --sw-dark: #b7bf98; --sw-light: #5f6744; }
 .swatch[data-swatch="leal"] { --sw-dark: #ff6a1f; --sw-light: #c2470a; }
 .swatch[data-swatch="dulce"] { --sw-dark: #ffd061; --sw-light: #8a6400; }
+.swatch[data-swatch="marmol"] { --sw-dark: #a9abab; --sw-light: #5c5f5f; }
+.swatch[data-swatch="durazno"] { --sw-dark: #ffa46b; --sw-light: #a8510f; }
+.swatch[data-swatch="pistache"] { --sw-dark: #6bff9a; --sw-light: #049f38; }
+.swatch[data-swatch="petalo"] { --sw-dark: #f556d5; --sw-light: #a8178c; }
 .swatch { background: linear-gradient(135deg, var(--sw-dark) 0 50%, var(--sw-light) 50% 100%); }
 .swatch[aria-checked="true"]::after { border-color: #ffffff; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, .7)); }
 .swatch[aria-checked="true"], :root[data-scheme="light"] .swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--text-2), 0 4px 10px -3px rgba(0, 0, 0, .4); }
@@ -6083,6 +6109,11 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .sx-stepper output { min-width: 26px; text-align: center; font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .sx-chip { flex: none; align-self: center; padding: 3px 9px; border-radius: 7px; font-size: 12px; font-weight: 550; white-space: nowrap; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-2); }
 .sx-chip.on { background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--phosphor); }
+/* The model that fits this computer (Home › Settings › Local AI): a small pill in the accent beside
+   its name, as the room's other tags. */
+.sx-recommend { justify-self: start; align-self: start; display: inline-flex; align-items: center; gap: 4px; width: max-content; max-width: 100%; margin: 2px 0 1px; padding: 2px 9px 2px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; line-height: 1.5; color: var(--acc, var(--phosphor)); background: color-mix(in srgb, var(--acc, var(--phosphor)) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc, var(--phosphor)) 22%, transparent); white-space: nowrap; }
+.sx-recommend svg { width: 11px; height: 11px; flex: none; }
+:root[data-scheme="light"] .sx-recommend { color: color-mix(in srgb, var(--acc, var(--phosphor)) 72%, #000); }
 .sx-chip.off { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
 .sx-chip.busy, .sx-chip.warn { background: color-mix(in srgb, #f2c94c 18%, transparent); color: #d9a90f; }
 :root[data-scheme="light"] :is(.sx-chip.busy, .sx-chip.warn) { color: #7a5c00; }
@@ -6479,9 +6510,12 @@ dialog.surface.window:is(.settings-window, .module-window).lifted { background-c
 
 /* (3) Every tile the same size; its mark in the accent, badge and all; off, it waits in grey. */
 .mods-tile { min-height: 112px; }
+/* Its icon and switch, its name, its line, and «Opens as a window» at the foot whatever the line's
+   length, as on every other tile of the row (2026-10-20). */
+.mods-tile { grid-template-rows: auto auto auto 1fr; }
 .mods-tile .settings-icon, .mods-detail .settings-detail-title .settings-icon, .module-window-title .settings-icon { --cat: var(--phosphor); }
 .mods-tile:not(.on):not(.make) .settings-icon { --cat: var(--text-2); filter: none; opacity: 1; }
-.mods-app { justify-self: start; margin-top: 6px; padding: 2px 8px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 12%, transparent); }
+.mods-app { justify-self: start; align-self: end; margin-top: 6px; padding: 2px 8px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--phosphor); background: color-mix(in srgb, var(--phosphor) 12%, transparent); }
 :root[data-scheme="light"] .mods-app { color: color-mix(in srgb, var(--phosphor) 80%, #000); }
 
 /* (5) What explains a title reads like the conversation: the reading face at a normal weight, in
@@ -7059,9 +7093,11 @@ dialog.room-ask:not(.console) .room-ask-field input { height: 38px; padding: 0 1
 dialog.room-ask:not(.console) .room-ask-field input:focus { box-shadow: var(--key-sink, var(--key-track)); }
 dialog.room-ask:not(.console) .room-ask-field[hidden] { display: none; }
 dialog.room-ask:not(.console) .room-ask-actions { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-dialog.room-ask:not(.console) .room-ask-choice { height: 38px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--surface, var(--panel)); color: var(--text); font-family: var(--read); font-size: 13.5px; font-weight: 550; letter-spacing: 0; text-transform: none; box-shadow: var(--key-rest); }
-dialog.room-ask:not(.console) .room-ask-choice:hover { color: var(--text); box-shadow: var(--raise-over, var(--key-rest)); }
-dialog.room-ask:not(.console) .room-ask-choice:active { box-shadow: var(--key-down); }
+dialog.room-ask:not(.console) .room-ask-choice { height: 38px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--surface, var(--panel)); color: var(--text); font-family: var(--read); font-size: 13.5px; font-weight: 550; letter-spacing: 0; text-transform: none; box-shadow: var(--raise-over, var(--key-rest)); transition: box-shadow calc(140ms * var(--motion-scale, 1)) ease, transform calc(140ms * var(--motion-scale, 1)) ease; }
+/* A dialog's keys stand raised from the start, the way they used to only under the pointer, and
+   sink only when pressed (2026-10-20): the hover was the neumorphic look itself. */
+dialog.room-ask:not(.console) .room-ask-choice:hover { color: var(--text); }
+dialog.room-ask:not(.console) .room-ask-choice:active:not(:disabled) { box-shadow: var(--key-down); transform: translateY(.5px); }
 dialog.room-ask:not(.console) .room-ask-choice.primary { background: var(--phosphor); color: var(--phosphor-ink); }
 dialog.room-ask:not(.console) .room-ask-choice.danger { background: var(--danger); color: #fff; }
 dialog.room-ask:not(.console) .room-ask-choice.danger:hover { background: var(--danger); }
@@ -8568,6 +8604,11 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 13%, transparent); }
 .tour-btn:active:not(:disabled) { transform: scale(.97); }
 .tour-btn:disabled { opacity: .5; cursor: default; }
+/* The keyboard's ring in the room's accent, never the browser's blue; none on the key the welcome
+   focuses for ↵ until the keyboard is used (tour.js, focusQuietly). */
+.tour-btn:focus { outline: none; }
+.tour-btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--tour-acc, var(--phosphor)) 70%, transparent); outline-offset: 3px; }
+.tour-btn.quiet-focus:focus-visible { outline: none; }
 .tour-btn.primary { color: var(--acc-ink, var(--phosphor-ink, #0b0b0b)); background: var(--tour-acc); }
 .tour-btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--tour-acc) 86%, var(--text)); }
 .tour-btn.quiet { background: transparent; color: var(--text-2); }
@@ -8740,6 +8781,9 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-hint b { font-size: 14px; font-weight: 650; }
 .tour-hint p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
 .tour-hint .tour-btn { justify-self: end; margin-top: 4px; }
+/* Its keys: «Got it», or «Next» with «Skip the tips» beside it while a short walk goes on. */
+.tour-hint-keys { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 4px; }
+.tour-hint-keys .tour-btn { margin-top: 0; }
 /* Inside a window (a modal sheet, where a floating card could not be pressed): the same card as the
    floating hint, set into the window with its margins — not a tinted band glued to its edges
    (2026-10-17). Eyebrow, title and line on the left; its one key on the right, the hint's small key. */
@@ -8751,10 +8795,10 @@ dialog.tour-bonjour::backdrop { background: transparent; }
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tour-acc) 32%, transparent), 0 8px 22px -14px rgba(0, 0, 0, .4);
   -webkit-backdrop-filter: none; backdrop-filter: none; animation: none;
 }
-.tour-hint.inline > :not(.tour-btn) { grid-column: 1; }
-.tour-hint.inline > .tour-btn { grid-column: 2; grid-row: 1 / span 3; align-self: center; justify-self: end; margin: 0; }
+.tour-hint.inline > :not(.tour-hint-keys) { grid-column: 1; }
+.tour-hint.inline > .tour-hint-keys { grid-column: 2; grid-row: 1 / span 3; align-self: center; justify-self: end; margin: 0; }
 :root[data-scheme="light"] .tour-hint.inline { background: #ffffff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--tour-acc) 30%, transparent), 0 8px 22px -16px rgba(20, 30, 20, .3); }
-@media (max-width: 560px) { .tour-hint.inline { grid-template-columns: minmax(0, 1fr); } .tour-hint.inline > .tour-btn { grid-column: 1; grid-row: auto; margin-top: 6px; } }
+@media (max-width: 560px) { .tour-hint.inline { grid-template-columns: minmax(0, 1fr); } .tour-hint.inline > .tour-hint-keys { grid-column: 1; grid-row: auto; margin-top: 6px; } }
 /* The way to a first-time hint whose place is out of view: a pill at the edge the place went past,
    with the hint's own title and which way to go. A click takes the page there (tour.js). */
 .tour-hint-away { --tour-acc: var(--s-acc, var(--acc, var(--phosphor))); position: fixed; inset: auto; left: 50%; translate: -50% 0; margin: 0; z-index: 2147483000; display: inline-flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 8px 14px 8px 10px; border: 0; border-radius: 999px; font: inherit; font-family: var(--read); color: var(--text); background: color-mix(in srgb, var(--bg-2, var(--bg)) 94%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tour-acc) 70%, transparent), 0 14px 32px -14px rgba(0, 0, 0, .45); cursor: pointer; animation: tour-rise calc(360ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .2, 1) both; }
@@ -10138,6 +10182,31 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; margin-top: 8px; }
 .mk-state { color: var(--text-2); font-size: 13.5px; }
 .mk-only { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-2); font-size: 13.5px; }
+/* Where a module goes (market-view.js, drawKeys): one question, its two answers side by side, each
+   with the line that says what it means. */
+.mk-where { display: grid; gap: 10px; width: 100%; }
+.mk-where-title { font-size: 14px; font-weight: 650; color: var(--text); }
+.mk-where-options { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; }
+.mk-where-option { display: grid; gap: 6px; justify-items: start; }
+.mk-where-option > small { color: var(--text-2); font-size: 12.5px; }
+.mk-where-option .mk-only { gap: 8px; }
+.mk-where-option .mk-select { height: 40px; }
+.mk-where > .mk-link { justify-self: start; }
+/* Getting it (market-view.js, landed): the key fills as a download does, a tick when it is done,
+   and the module's icon drops into place with the tick on it. */
+.mk-get.getting, .mk-get.got { position: relative; isolation: isolate; overflow: hidden; opacity: 1 !important; cursor: progress; }
+.mk-get.getting::before, .mk-get.got::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, #fff 26%, transparent); transform-origin: left center; transform: scaleX(0); }
+.mk-get.getting::before { animation: mk-fill calc(2600ms * var(--motion-scale, 1)) cubic-bezier(.18, .7, .3, 1) forwards; }
+.mk-get.got::before { transform: scaleX(1); transition: transform calc(220ms * var(--motion-scale, 1)) ease-out; }
+.mk-get.got { display: inline-flex; align-items: center; gap: 6px; }
+.mk-get.got svg { width: 16px; height: 16px; animation: mk-tick calc(420ms * var(--motion-scale, 1)) cubic-bezier(.2, .9, .3, 1.4); }
+.mk-icon.landed { animation: mk-land calc(760ms * var(--motion-scale, 1)) cubic-bezier(.22, 1, .36, 1); position: relative; }
+.mk-got-badge { position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center; width: 34%; aspect-ratio: 1; border-radius: 50%; background: var(--madre-green); color: var(--madre-green-ink, #0b0b0b); box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .5); animation: mk-tick calc(460ms * var(--motion-scale, 1)) cubic-bezier(.2, .9, .3, 1.4) 180ms both; }
+.mk-got-badge svg { width: 62%; height: 62%; }
+@keyframes mk-fill { from { transform: scaleX(0); } to { transform: scaleX(.9); } }
+@keyframes mk-tick { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes mk-land { 0% { transform: translateY(-14px) scale(.94); } 55% { transform: translateY(3px) scale(1.02); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mk-get.getting::before { animation: none; transform: scaleX(.9); } .mk-icon.landed, .mk-got-badge, .mk-get.got svg { animation: none; } }
 .mk-select { height: 32px; max-width: 240px; padding: 0 10px; border: 0; border-radius: 9px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); font: inherit; font-size: 13.5px; }
 .mk-keys > .mk-select { height: 40px; }
 /* A paid module's key, pasted where its keys are (market-view.js, drawPurchase). */
@@ -10402,3 +10471,14 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 .mcp-mark { color: var(--mcp-ink, #fff); }
 .mcp-mark.has-logo { background: var(--mcp-hue); text-shadow: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent); }
 .mcp-mark.has-logo svg { width: 20px; height: 20px; }
+
+/* The looks' preview (app.js, lookPreview): the conversation itself in a frame, on its own ground. */
+.look-frame { display: block; width: 100%; height: 292px; border: 0; border-radius: 14px; background: transparent; opacity: 0; transition: opacity calc(160ms * var(--motion-scale, 1)) ease; color-scheme: normal; }
+.look-frame.ready { opacity: 1; }
+.settings-manual-pdf { text-decoration: none; }
+
+/* Outside tools (MCP): its two keys go under the words when the page is narrow, so the line that
+   says what it is reads in one piece instead of a narrow column beside them (2026-10-21). */
+.mcp-block > .sx-head { flex-wrap: wrap; row-gap: 10px; }
+.mcp-block > .sx-head > .sx-words { flex: 1 1 320px; }
+.mcp-block > .sx-head > .sx-field { flex: 0 0 auto; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }

@@ -1655,11 +1655,11 @@ export class Room {
       claude: ['--no-session-persistence: the run keeps no session of its own.', 'Only the project\'s own CLAUDE.md and MADRE\'s briefing are read; hooks, plugins and outside MCP servers are not.'],
       gemini: ['GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.', 'GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.'],
       opencode: ['The run is given the model you chose and nothing else of your session.'],
-      cursor: ['--mode ask: Cursor\'s read-only mode, whatever its own settings say; no edits and no commands.', 'CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it: every command and every write denied. The sign-in stays in the system keychain.'],
+      cursor: ['#0 and #1: --mode ask, Cursor\'s read-only mode, whatever its own settings say; no edits and no commands. #2 and #3: its agent mode with --force, writing allowed and every command denied. #4: commands allowed too. The places nobody writes stay denied at every mode, and MADRE locks and puts them back itself.', 'CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it, with only what the mode you chose allows. The sign-in stays in the system keychain.'],
     }[agent.id] ?? [];
     const env = {
       gemini: [{ name: 'GEMINI_CLI_HOME', note: 'the temporary home for this turn' }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: 'so the launcher stays killable' }],
-      cursor: [{ name: 'CURSOR_CONFIG_DIR', note: 'the configuration for this turn: read only' }, { name: 'NO_OPEN_BROWSER', note: 'a turn never opens a page' }],
+      cursor: [{ name: 'CURSOR_CONFIG_DIR', note: 'the configuration for this turn, from the mode you chose' }, { name: 'NO_OPEN_BROWSER', note: 'a turn never opens a page' }],
     }[agent.id] ?? [];
     return {
       agent: agent.id, label: agent.label, local: false,

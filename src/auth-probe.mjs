@@ -213,7 +213,7 @@ export const AGENT_SETUP = {
     browser: true,
     terminal: 'cursor-agent login',
     vendor: 'Cursor',
-    account: 'Signs in with your Cursor account and uses its plan. For now it reads and answers; it does not write in your project.',
+    account: 'Signs in with your Cursor account and uses its plan. A free plan answers only with Auto, and only while it has use left.',
     paid: true,
   },
 };

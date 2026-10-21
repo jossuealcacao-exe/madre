@@ -39,12 +39,25 @@ export const CHAPTERS = ['moved', 'home', 'renamed', 'board', 'widgets', 'projec
 export const HINTS = ['switch', 'links', 'key4',
   'home-links', 'home-map', 'home-settings', 'home-add', 'new-add-widgets',
   'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage',
-  'touch-settings', 'touch-modules', 'touch-market', 'touch-mother', 'touch-memory', 'touch-crew', 'touch-steps', 'touch-browser', 'touch-tree', 'touch-chats',
-  'new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots'];
+  'touch-settings', 'touch-modules', 'touch-market', 'touch-mother', 'touch-memory', 'touch-crew', 'touch-steps', 'touch-browser', 'touch-tree', 'touch-chats', 'touch-code', 'touch-mcp',
+  'new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots',
+  // 1.0.5: the way in for whoever is new (the box, the agent, the permission; Home's first step),
+  // and what is new for whoever met MADRE before it.
+  'guide-talk', 'guide-agent', 'guide-mode', 'home-start',
+  // The short walks of 1.0.5 (2026-10-21): Home's Coordinator and where the manual is, in Home and
+  // in a project, and Code, for whoever is new.
+  'guide-code', 'guide-manual', 'home-coordinator', 'home-manual',
+  'new-code-ask', 'new-notes', 'new-connectors', 'new-manual'];
 const PATHS = ['new', 'back', 'since'];
+// The news this code knows (2026-10-21): written on the bonjour as the version a person MET MADRE
+// with (`met`). The cards of what is new are for whoever met it before a version; someone who meets
+// it here is shown the way in instead — the box, the agent, the permission. A tour.json from before
+// this has no `met`: that person met MADRE before 1.0.5.
+export const NEWS_LEVEL = '1.0.5';
+const LEVEL = /^\d+\.\d+\.\d+$/;
 const BEFORE = ['1.0'];
 
-const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before });
+const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null });
 // A tab that shows the bonjour or the chapters says so every few seconds; another tab that finds it
 // said within this long tells the person it is open there, instead of a second bonjour.
 export const HELD_MS = 45 * 1000;
@@ -71,6 +84,7 @@ export async function readTour(stateRoot) {
     hints: Object.fromEntries(HINTS.filter((id) => iso(raw.hints?.[id])).map((id) => [id, raw.hints[id]])),
     held: raw.held && TAB.test(String(raw.held.by ?? '')) && iso(raw.held.at) ? { by: raw.held.by, at: raw.held.at } : null,
     before: BEFORE.includes(raw.before) ? raw.before : null,
+    met: LEVEL.test(String(raw.met ?? '')) ? raw.met : null,
   };
 }
 
@@ -96,7 +110,7 @@ async function applyChange(stateRoot, change, now) {
     if (!PATHS.includes(change.path)) return { error: 'path' };
     state.path = change.path;
   }
-  if (change.bonjour === true) state.bonjourAt ??= at;
+  if (change.bonjour === true && !state.bonjourAt) { state.bonjourAt = at; state.met = NEWS_LEVEL; }
   if (change.chapter !== undefined) {
     if (!CHAPTERS.includes(change.chapter)) return { error: 'chapter' };
     if (!state.done.includes(change.chapter)) state.done = CHAPTERS.filter((id) => id === change.chapter || state.done.includes(id));

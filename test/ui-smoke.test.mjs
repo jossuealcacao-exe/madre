@@ -365,7 +365,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(registry.get('settings').open, true, 'AJUSTES did not open');
   assert.equal(settingsBody.querySelectorAll('.settings-section').length, 3, 'the board is not Tú, La tripulación, Sistema');
   const cards = settingsBody.querySelectorAll('.settings-card');
-  assert.deepEqual(cards.map((card) => card.dataset.cat), ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release']);
+  assert.deepEqual(cards.map((card) => card.dataset.cat), ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release', 'manual']);
   assert.ok(cards.every((card) => card.querySelector('.settings-line')?.textContent.trim()), 'a card does not say where it stands');
   const search = registry.get('settings-search');
   search.value = 'actualizacion';
@@ -427,7 +427,7 @@ test('the bar is yours: a right-click opens it, − takes a key off, a tile puts
   assert.ok(registry.get('modules-button').classList.contains('bar-off'), 'a key that is off is still on the bar');
   assert.ok(registry.get('agents').classList.contains('bar-off') && registry.get('agents-compact').classList.contains('bar-off'), 'the crew is one key: both of its forms go');
   const memoryKey = bar.children.find((node) => node.dataset?.barItem === 'memory');
-  assert.equal(memoryKey.getAttribute('aria-label'), 'Lo que recuerda');
+  assert.equal(memoryKey.getAttribute('aria-label'), 'Memoria');
   assert.ok(memoryKey.classList.contains('tree-button'), 'a new key is not drawn like the others');
 
   // A right-click on a key opens the bar for editing, without the browser's own menu.

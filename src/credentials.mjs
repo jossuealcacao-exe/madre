@@ -54,10 +54,32 @@ export async function readOpenCodeCatalog({ home = homedir(), env = process.env 
   }
   return out;
 }
+// OpenCode writes its catalogue the first time it runs. A person who has just installed it has none
+// yet, and was offered only MADRE's four (2026-10-20): until the catalogue is there, the popular
+// ones a single key opens are offered from this copy of it (models.dev, 2026-10-20), each with the
+// page of its own documentation the catalogue gives.
+export const OPENCODE_BUNDLED = [
+  { id: 'groq', label: 'Groq', docUrl: 'https://console.groq.com/docs/models' },
+  { id: 'deepseek', label: 'DeepSeek', docUrl: 'https://api-docs.deepseek.com/quick_start/pricing' },
+  { id: 'mistral', label: 'Mistral', docUrl: 'https://docs.mistral.ai/getting-started/models/' },
+  { id: 'xai', label: 'xAI', docUrl: 'https://docs.x.ai/docs/models' },
+  { id: 'togetherai', label: 'Together AI', docUrl: 'https://docs.together.ai/docs/serverless-models' },
+  { id: 'fireworks-ai', label: 'Fireworks AI', docUrl: 'https://fireworks.ai/docs/' },
+  { id: 'cerebras', label: 'Cerebras', docUrl: 'https://inference-docs.cerebras.ai/models/overview' },
+  { id: 'perplexity', label: 'Perplexity', docUrl: 'https://docs.perplexity.ai' },
+  { id: 'huggingface', label: 'Hugging Face', docUrl: 'https://huggingface.co/docs/inference-providers' },
+  { id: 'deepinfra', label: 'Deep Infra', docUrl: 'https://deepinfra.com/models' },
+  { id: 'moonshotai', label: 'Moonshot AI', docUrl: 'https://platform.moonshot.ai/docs/api/chat' },
+  { id: 'zai', label: 'Z.AI', docUrl: 'https://docs.z.ai/guides/overview/pricing' },
+  { id: 'cohere', label: 'Cohere', docUrl: 'https://docs.cohere.com/docs/models' },
+  { id: 'vercel', label: 'Vercel AI Gateway', docUrl: null },
+];
 // Every provider a key can be pasted for: MADRE's own four first (their key pages), then the
-// catalogue's, each once, the popular ones marked.
+// catalogue's — or, before OpenCode has written one, the copy above — each once, the popular ones
+// marked.
 export async function openCodeKeyProviders({ home = homedir(), env = process.env } = {}) {
-  const catalog = await readOpenCodeCatalog({ home, env });
+  const read = await readOpenCodeCatalog({ home, env });
+  const catalog = read.length ? read : OPENCODE_BUNDLED;
   const byId = new Map(OPENCODE_PROVIDERS.map((one) => [one.id, { ...one, featured: true }]));
   for (const one of catalog) if (!byId.has(one.id)) byId.set(one.id, { id: one.id, label: one.label, keyUrl: one.docUrl, featured: OPENCODE_FEATURED.includes(one.id) });
   const rank = (one) => { const at = OPENCODE_FEATURED.indexOf(one.id); return at < 0 ? Infinity : at; };

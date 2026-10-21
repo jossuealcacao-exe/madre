@@ -489,16 +489,44 @@ test('1.0.2: what is new is said with first-time cards, one at a time, with no w
   const [app, home] = await Promise.all([read('app.js'), read('salas-mac.js')]);
   const { notesFor } = await import('../src/whats-new.mjs');
   assert.equal(notesFor('1.0.2'), null, 'a patch opened the «what is new» board');
-  for (const id of ['new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots']) assert.match(app, new RegExp(`\\{ id: '${id}', button: `));
+  for (const id of ['new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots']) assert.match(app, new RegExp(`\\{ id: '${id}', level: '1\\.0\\.2', button: `));
   // A key kept behind «more» is pointed at there, and a card with nothing to point at waits.
   assert.match(app, /const anchorOf = \(hint\) => \(hint\.onScreen \? inView\(hint\.button\) : shown\(hint\.button\)\) \?\? shown\(hint\.spill\);/);
   // The dots are pointed at where the person is reading, not at the top of the thread.
-  assert.match(app, /\{ id: 'new-dots', button: '#messages \.sys-dots:not\(\.open\)', onScreen: true,/);
+  assert.match(app, /\{ id: 'new-dots', level: '1\.0\.2', button: '#messages \.sys-dots:not\(\.open\)', onScreen: true,/);
   assert.match(app, /if \(!next\) \{ if \(pending\.length && \(newHintTries \+= 1\) <= 10\) showNewHints\(30000\); return; \}/);
   assert.match(home, /homeTour\.hint\('new-add-widgets', key, /);
   // News only to whoever had the version before (2026-10-19): someone new got five «New:» cards.
-  assert.match(app, /if \(roomTour\(\)\.path\(\) !== 'new'\) showNewHints\(\);/);
+  // News reaches whoever met MADRE before it came, even someone who began new (2026-10-21).
+  // Whoever is new gets the way in first; then the news, only for whoever met MADRE before it (the
+  // version written on the bonjour, src/tour.mjs `met`).
+  assert.match(app, /const walk = \[\.\.\.\(isNewcomer\(\) \? GUIDE_HINTS : \[\]\), \.\.\.NEW_HINTS\.filter\(isNewsFor\)\];\n {4}const pending = walk\.filter\(\(hint\) => !hintsSeen\(\)\[hint\.id\]\);/);
+  assert.match(app, /if \(met\) return levelBelow\(met, hint\.level\);/);
   assert.match(home, /if \(homeTour\.path\(\) === 'new'\) return;/);
+});
+
+test('1.0.5: the hints are a short walk, once each; whoever knew MADRE is told only what is new', async () => {
+  const [app, home, tour] = await Promise.all([read('app.js'), read('salas-mac.js'), read('tour.js')]);
+  const { HINTS } = await import('../src/tour.mjs');
+  // Kept as seen the moment it shows: one left open and the page reloaded came back every time.
+  assert.match(tour, /hintNode = card;\n {4}void keep\(\{ hint: id \}\);/);
+  assert.doesNotMatch(tour.slice(tour.indexOf('const done = () => {'), tour.indexOf('const shown = (node)')), /keep\(/);
+  // Whoever met MADRE before this version (`met` below the server's `level`) is told only the news.
+  assert.match(tour, /const returning = \(\) => Boolean\(state\?\.bonjourAt\) && \(!state\.met \|\| \(Boolean\(info\?\.level\) && below\(state\.met, info\.level\)\)\);/);
+  assert.match(tour, /const forThem = \(id\) => !returning\(\) \|\| id\.startsWith\('new-'\) \|\| \(id === 'links' && path\(\) === 'back'\);/);
+  assert.match(tour, /state\.hints\?\.\[id\] \|\| !forThem\(id\) \|\|/);
+  assert.match(app, /if \(state\.device \|\| roomTour\(\)\.returning\(\)\) return;/);
+  // «2 of 5» and «Next», in a project and in Home; «Skip the tips» puts the rest away.
+  assert.match(app, /showFirstTouch\(behind \? .*, anchorOf\(next\), \{ step, of: here\.length, skip \}\);/);
+  assert.match(home, /step: at \+ 1,\n {8}of: here\.length,/);
+  // Someone new: Home's walk after the bonjour, the project's with Code and the manual.
+  const walk = [...home.slice(home.indexOf('const HOME_WALK = ['), home.indexOf('let walkTries')).matchAll(/id: '([\w-]+)'/g)].map((match) => match[1]);
+  assert.deepEqual(walk, ['home-start', 'home-coordinator', 'links', 'home-manual']);
+  const guides = [...app.slice(app.indexOf('const GUIDE_HINTS = ['), app.indexOf('const NEWS_SINCE')).matchAll(/\{ id: '([\w-]+)'/g)].map((match) => match[1]);
+  assert.deepEqual(guides, ['guide-talk', 'guide-agent', 'guide-mode', 'guide-code', 'guide-manual']);
+  for (const id of [...walk, ...guides]) assert.ok(HINTS.includes(id), `${id} is shown but never kept as seen`);
+  // The server says which version's news this code tells, so a page can tell who is back.
+  assert.match(await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8'), /hints: HINTS, level: NEWS_LEVEL \}\);/);
 });
 
 test('every hint the pages ask for is one the server keeps: a refused id came back on every visit', async () => {
@@ -512,7 +540,8 @@ test('every hint the pages ask for is one the server keeps: a refused id came ba
   const [app] = pages;
   const news = [...app.slice(app.indexOf('const NEW_HINTS = ['), app.indexOf('let newHintTries')).matchAll(/\{ id: '([\w-]+)'/g)].map((match) => match[1]);
   const touches = [...app.slice(app.indexOf('const FIRST_TOUCH = {'), app.indexOf('const HINTS_KEY')).matchAll(/^ {2}([a-z]+): \{$/gm)].map((match) => `touch-${match[1]}`);
-  assert.equal(news.length, 5);
+  // 1.0.2's five, 1.0.5's four and the five of the way in for whoever is new (2026-10-21).
+  assert.equal(news.length, 14);
   assert.ok(touches.length >= 9);
   for (const id of [...news, ...touches]) assert.ok(HINTS.includes(id), `${id} is kept only by the page, on one port`);
   assert.match(app, /if \(!state\.device\) void roomTour\(\)\.seen\(keptId\(id\)\)/);

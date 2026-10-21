@@ -219,7 +219,16 @@ export default defineModule({
   card: 'switch',
   controls: [
     { key: 'browser', label: 'BROWSER', type: 'select', options: PLAYWRIGHT_BROWSERS, note: 'Which browser engine the agents drive.' },
-    { key: 'headless', label: 'SHOW THE WINDOW', type: 'switch', invert: true, note: 'Off, the browser runs headless. On, it opens on this screen so you can watch.' },
+    // Nothing opens the moment it is switched on: the window comes with the next agent that opens
+    // the page, and the person is told so, and how to try it (2026-10-20).
+    {
+      key: 'headless', label: 'SHOW THE WINDOW', type: 'switch', invert: true,
+      note: 'Off, the browser works without a window. On, the next time an agent opens your page, you see its window on this screen.',
+      said: {
+        on: 'Done. The next time an agent opens your page, its window opens on this screen. To try it, ask: «open the page and tell me what you see».',
+        off: 'Done. The browser works without a window again.',
+      },
+    },
   ],
   async status(ctx) {
     const version = await playwrightVersion({ env: ctx.env, projectRoot: ctx.projectRoot });

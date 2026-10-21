@@ -35,12 +35,12 @@ export const CAPABILITIES = {
     imageGen: false,
     web: { how: 'policy: allow google_web_search, web_fetch', note: 'Off until turned on in Settings › Agents › Web access.' },
   },
-  // Cursor (2026-10-17) reads only, in its own ask mode: writing waits until its confinement has
-  // been tried against the real CLI, as OpenCode's was. Attachments are named in the briefing.
+  // Cursor reads in its own ask mode and, from 2026-10-21, writes and runs commands at the modes
+  // that allow it (adapters/cursor.mjs). Attachments are named in the briefing.
   cursor: {
     read: true,
     imageIn: false,
-    write: false,
+    write: { how: 'agent mode with --force under a configuration made for the turn', note: 'Writes where the turn allows; commands only at #4. MADRE locks and puts back .env, .git and its own folders, and at #2 what existed.' },
     imageGen: false,
     web: false,
   },

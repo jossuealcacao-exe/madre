@@ -24,10 +24,12 @@
 // Nothing here is a framework. It is a lookup, a fallback and a switch.
 
 import { ES } from './es.js';
+import { EN } from './en.js';
 
 export const LANGUAGES = { es: { id: 'es', name: 'ESPAÑOL', other: 'en' }, en: { id: 'en', name: 'ENGLISH', other: 'es' } };
 export const DEFAULT_LANGUAGE = 'es';
-const CATALOGUES = { es: ES, en: {} };
+// English has a catalogue too (en.js): the words people use where the source's are not.
+const CATALOGUES = { es: ES, en: EN };
 
 let current = DEFAULT_LANGUAGE;
 

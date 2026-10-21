@@ -144,7 +144,12 @@ export function defineModule(spec) {
       const options = control.options ?? choices?.map((choice) => choice.value) ?? [];
       if (type === 'select' && !options.length) throw new Error(`Module ${spec.id}: control ${control.key} is a select with no options.`);
       if (choices && choices.some((choice) => !options.includes(choice.value))) throw new Error(`Module ${spec.id}: control ${control.key} has a choice that is not one of its options.`);
-      return { key: control.key, label: control.label ?? control.key.toUpperCase(), type, options, ...(choices ? { choices } : {}), note: control.note ?? '', invert: Boolean(control.invert) };
+      // What a switch says the moment it is turned on or off (`said: { on, off }`), for a change
+      // nothing shows at once: the person is told what will happen and when (2026-10-20).
+      const said = type === 'switch' && control.said && typeof control.said === 'object'
+        ? Object.fromEntries(['on', 'off'].filter((side) => typeof control.said[side] === 'string' && control.said[side].trim()).map((side) => [side, control.said[side]]))
+        : null;
+      return { key: control.key, label: control.label ?? control.key.toUpperCase(), type, options, ...(choices ? { choices } : {}), note: control.note ?? '', invert: Boolean(control.invert), ...(said && Object.keys(said).length ? { said } : {}) };
     }),
     // Where this module's traffic goes, in the same four answers `src/outbound.mjs` demands of
     // MADRE's own destinations. Without it a connector's traffic reads in the log as «an address

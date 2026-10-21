@@ -75,7 +75,7 @@ import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand } from './updates.mjs';
 import { bootWhatsNew, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
-import { CHAPTERS, HINTS, TOUR_VERSION, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
+import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
@@ -83,7 +83,13 @@ import { moduleUpdate } from './modules/updates.mjs';
 import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, projectFloor, renameChat, touchChat } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
-import { discoverModels, groupOpenCode, openCodeHidden, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
+import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
+import { cursorOnlyAuto } from './adapters/cursor.mjs';
+// Cursor's own list of models (`cursor-agent --list-models`), kept a few minutes: reading it asks
+// Cursor's servers.
+const cursorModels = { at: 0, ids: [] };
+// And Gemini's, from Google with the person's key.
+const geminiModels = { at: 0, ids: [] };
 import { observable } from './modules/intents-observe.mjs';
 import { summarizeHistory } from './history.mjs';
 import { noteOpenCodeTurn, openCodeHealth, suggestOpenCodeModel } from './opencode-health.mjs';
@@ -335,6 +341,22 @@ export async function createPulseServer({
     };
   }
   const releaseOpen = () => { try { rmSync(openMark, { force: true }); } catch { /* it was already gone */ } };
+  // Every other open project of this Mac, asked to close the way Home closes one, and waited for.
+  // Found by its mark (knownRooms), not by who started its process: a project opened from another
+  // project hangs from that one, not from Home, and closes all the same (2026-10-21). Only rooms
+  // are asked, over their own port; no process is signalled from here.
+  async function closeOtherRooms() {
+    const here = basename(roomDir);
+    const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
+    await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/close', { method: 'POST', body: {}, timeoutMs: 3000 }).catch(() => null)));
+    let left = others;
+    for (let tries = 0; tries < 60 && left.length; tries += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const now = await knownRooms(root);
+      left = left.filter((one) => now.find((room) => room.id === one.id)?.open);
+    }
+    return { closed: others.length - left.length, stuck: left.map((one) => one.name) };
+  }
   // How many memories of each kind, and how many travel into turns. Counted, never read out.
   function memoryCensus() {
     const all = memory ? memory.memories({ limit: 20000 }) : [];
@@ -1923,11 +1945,29 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/mcp-catalog.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
         return sendAsset(request, response, join(publicDirectory, 'styles.css'), 'text/css; charset=utf-8');
+      }
+      // The user manual (public/manual.html, 1.0.5): read here, without a network, in the room's
+      // language; and the same manual printed, in both languages (scripts/manual-pdf.mjs).
+      if (request.method === 'GET' && url.pathname === '/manual') {
+        const html = withHost(await readFile(join(publicDirectory, 'manual.html'), 'utf8'));
+        response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', ...PAGE_GUARDS });
+        return response.end(html);
+      }
+      if (request.method === 'GET' && url.pathname === '/manual.css') {
+        return sendAsset(request, response, join(publicDirectory, 'manual.css'), 'text/css; charset=utf-8');
+      }
+      if (request.method === 'GET' && (url.pathname === '/assets/manual/madre-manual-es.pdf' || url.pathname === '/assets/manual/madre-manual-en.pdf')) {
+        return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'application/pdf');
+      }
+      // Its pictures: MADRE itself, photographed in each language (scripts/manual-shots.mjs). Only
+      // a name of letters and dashes, so no path leaves the folder.
+      if (request.method === 'GET' && /^\/assets\/manual\/shots\/(es|en)-[a-z]+\.webp$/.test(url.pathname)) {
+        return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'image/webp');
       }
       const abductionAssets = new Map([
         ['/assets/abduction-cat.png', 'abduction-cat.png'],
@@ -1952,6 +1992,8 @@ export async function createPulseServer({
         ['/assets/brand/OFL-Sora.txt', 'text/plain; charset=utf-8'],
         ['/assets/brand/OFL-JetBrainsMono.txt', 'text/plain; charset=utf-8'],
         ['/assets/brand/madre-favicon.svg', 'image/svg+xml'],
+        // The app's mark, on the user manual's cover (public/manual.js).
+        ['/assets/brand/madre-app.svg', 'image/svg+xml'],
         // The conversation's wallpapers (Appearance): twelve pictures, encoded by hand from their
         // masters (cwebp), whose light and dark, layer or mesh and intensity are layers in the CSS.
         ['/assets/wallpapers/jarrito.webp', 'image/webp'],
@@ -2365,16 +2407,8 @@ export async function createPulseServer({
         const host = String(request.headers.host ?? '');
         const site = request.headers['sec-fetch-site'];
         if (viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('MADRE is turned off from its own page, on this computer.') });
-        const here = basename(roomDir);
-        const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
-        await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/close', { method: 'POST', body: {}, timeoutMs: 3000 }).catch(() => null)));
-        let left = others;
-        for (let tries = 0; tries < 60 && left.length; tries += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
-          const now = await knownRooms(root);
-          left = left.filter((one) => now.find((room) => room.id === one.id)?.open);
-        }
-        sendJson(response, 202, { closing: true, closed: others.length - left.length, stuck: left.map((one) => one.name) });
+        const { closed, stuck } = await closeOtherRooms();
+        sendJson(response, 202, { closing: true, closed, stuck });
         setTimeout(() => server.emit('madre:close'), 150);
         return undefined;
       }
@@ -3461,11 +3495,11 @@ export async function createPulseServer({
         const fromHere = /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) && (site === undefined || site === 'same-origin' || site === 'none');
         if (request.method === 'GET' && url.pathname === '/api/tour') {
           const state = await readTour(root);
-          if (viaPhone || !fromHere) return sendJson(response, 200, { version: TOUR_VERSION, state, owed: false, returning: false, chapters: CHAPTERS, hints: HINTS });
+          if (viaPhone || !fromHere) return sendJson(response, 200, { version: TOUR_VERSION, state, owed: false, returning: false, chapters: CHAPTERS, hints: HINTS, level: NEWS_LEVEL });
           // Where this person comes from: the tour of 1.0 (path «since»), 0.7.2 (their words in a room's
           // record, path «back»), or nowhere — a first install.
           const from = state.path === 'since' || (!state.path && state.before === '1.0') ? '1.0' : (state.path ? state.path === 'back' : await cameBefore(root)) ? '0.7.2' : null;
-          return sendJson(response, 200, { version: TOUR_VERSION, state, owed: !state.bonjourAt, returning: Boolean(from), from, chapters: CHAPTERS, hints: HINTS });
+          return sendJson(response, 200, { version: TOUR_VERSION, state, owed: !state.bonjourAt, returning: Boolean(from), from, chapters: CHAPTERS, hints: HINTS, level: NEWS_LEVEL });
         }
         if (viaPhone || !fromHere || (request.method === 'POST' && request.headers.origin !== `http://${host}`)) return sendJson(response, 403, { error: t('This is done on the Mac.') });
         if (request.method === 'POST' && url.pathname === '/api/tour') {
@@ -3856,7 +3890,27 @@ export async function createPulseServer({
           await runInstaller({ command: opencode.path, args: ['models', '--verbose'], projectRoot: canonicalProjectRoot, timeoutMs: 30000, onLine: (line) => { lines.push(line); } });
           return parseOpenCodeVerbose(lines);
         };
-        return sendJson(response, 200, { models: await discoverModels({ agents, config: await readConfig(root), listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [] }) });
+        // Gemini's, from Google with the person's own key, read once in a while (src/outbound.mjs,
+        // gemini-models). Signed in with a Google account and no key, there is nothing to ask.
+        const listGemini = async () => {
+          if (geminiModels.at && Date.now() - geminiModels.at < 10 * 60 * 1000) return geminiModels.ids;
+          const key = await imageKey().catch(() => null);
+          if (!key) return [];
+          const answer = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', { headers: { 'x-goog-api-key': key }, signal: AbortSignal.timeout(8000) });
+          if (!answer.ok) return [];
+          const ids = parseGeminiModels(await answer.json());
+          if (ids.length) Object.assign(geminiModels, { at: Date.now(), ids });
+          return ids;
+        };
+        // Cursor's own list, read once in a while: it asks Cursor's servers, so not on every call.
+        const listCursor = async (cursor) => {
+          if (cursorModels.at && Date.now() - cursorModels.at < 10 * 60 * 1000) return cursorModels.ids;
+          const { stdout } = await execFileAsync(cursor.path, ['--list-models'], { timeout: 20000, env: { ...process.env, NO_OPEN_BROWSER: '1' } });
+          const ids = parseCursorModels(stdout);
+          if (ids.length) Object.assign(cursorModels, { at: Date.now(), ids });
+          return ids;
+        };
+        return sendJson(response, 200, { models: await discoverModels({ agents, config: await readConfig(root), listOpenCode: url.searchParams.get('opencode') === '1' ? listOpenCode : async () => [], listCursor: url.searchParams.get('cursor') === '1' ? listCursor : async () => [], cursorOnlyAuto, listGemini: url.searchParams.get('gemini') === '1' ? listGemini : async () => [] }) });
       }
       // OpenCode's providers for AJUSTES: who has a key or an account, what each offers, which are
       // left out of the chooser. Never a key: only that one is there and of what kind.
@@ -4315,11 +4369,11 @@ export async function createPulseServer({
   server.on('close', () => { for (const timer of aliveTimers) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });
-  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone };
+  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms };
 }
 
 export async function startPulse({ port, projectRoot, openBrowser, openPath = '' }) {
-  const { server, agents, markOpen, phone } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources() });
+  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources() });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);
@@ -4337,8 +4391,14 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   console.log(`\nMADRE is ready\n\n  ${url}${openPath}\n  Project: ${projectRoot}\n  Agents installed: ${ready} (who is signed in: Settings › Agents)\n${broken ? `  Found but not answering: ${broken}\n` : ''}`);
   if (openBrowser) openUrl(`${url}${openPath}`);
   // SIGHUP too: closing the Terminal the room was started in is a way of closing it.
+  // Home closed this way closes what Turn MADRE off closes (2026-10-21): every open project, also
+  // one opened from another project, whose process outlives Home on its own. A second signal while
+  // they close is not caught again and ends Home at once.
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
-    process.once(signal, () => server.close(() => process.exit(0)));
+    process.once(signal, async () => {
+      if (salasRoom) await closeOtherRooms().catch(() => null);
+      server.close(() => process.exit(0));
+    });
   }
   // Salas asked this room to close: the same as a signal.
   server.once('madre:close', () => server.close(() => process.exit(0)));

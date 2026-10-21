@@ -164,24 +164,62 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   const refresh = async () => { await load(); host.changed?.(); render(); };
 
   // ACTIONS. Each says what happened in the line under the key, and on the page when it went well.
+  // Getting a module looks like getting it (2026-10-20): its key fills as a download does while
+  // MADRE turns it on, a tick takes its place when it is done, and on its page the module's icon
+  // drops into place with the tick on it. Turning one off is only a moment.
+  const TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.1L15 6.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const startGetting = (key) => {
+    key.classList.add('getting');
+    key.dataset.from = String(Date.now());
+    key.dataset.was = key.textContent;
+    key.textContent = t('Getting it…');
+  };
+  const landed = async (key) => {
+    // A module turned on in an instant still shows its download for a moment: a key that blinks
+    // from «Get» to the tick read as nothing having happened.
+    const shown = Date.now() - Number(key.dataset.from || 0);
+    if (!still() && shown < 700) await new Promise((resolve) => setTimeout(resolve, 700 - shown));
+    key.classList.remove('getting');
+    key.classList.add('got');
+    key.innerHTML = TICK; // trusted: our own SVG string
+    key.append(el('span', null, t('Done')));
+    const icon = key.closest('.mk-product')?.querySelector('.mk-product-top > .mk-icon');
+    if (icon) {
+      icon.classList.add('landed');
+      const badge = el('span', 'mk-got-badge');
+      badge.innerHTML = TICK; // trusted: our own SVG string
+      icon.append(badge);
+    }
+    await new Promise((resolve) => setTimeout(resolve, still() ? 300 : 1100));
+  };
+  const stopGetting = (key) => {
+    if (!key.classList.contains('getting')) return;
+    key.classList.remove('getting');
+    key.textContent = key.dataset.was ?? key.textContent;
+  };
   const turnHere = async (given, on, line, key) => {
     key.disabled = true;
+    if (on) startGetting(key);
     let item = given;
-    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; said(line, error.message, 'bad'); return; }
+    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; stopGetting(key); said(line, error.message, 'bad'); return; }
     said(line, on && item.id === 'playwright' ? t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.') : t('One moment…'));
     const answer = await post(`/api/extensions/${encodeURIComponent(item.id)}/install`, { confirm: true });
-    if (!answer.ok) { key.disabled = false; said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return; }
+    if (!answer.ok) { key.disabled = false; stopGetting(key); said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return; }
+    if (on) await landed(key);
     notice(on ? t('{name} is on in this project.', { name: nameOf(item) }) : t('{name} is off in this project.', { name: nameOf(item) }));
     await refresh();
   };
   const turnScope = async (given, change, line, key) => {
     key.disabled = true;
-    let item = given;
-    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; said(line, error.message, 'bad'); return false; }
     const turningOn = change.all === true || Object.values(change.rooms ?? {}).includes(true);
+    if (turningOn) startGetting(key);
+    let item = given;
+    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; stopGetting(key); said(line, error.message, 'bad'); return false; }
     said(line, turningOn && item.id === 'playwright' ? t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.') : t('One moment…'));
     const answer = await post(`/api/extensions/${encodeURIComponent(item.id)}/scope`, { ...change, confirm: true });
-    if (!answer.ok) { key.disabled = false; said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return false; }
+    if (!answer.ok) { key.disabled = false; stopGetting(key); said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return false; }
+    if (turningOn) await landed(key);
     await refresh();
     return true;
   };
@@ -459,17 +497,32 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       const off = button('mk-get big quiet', t('Turn off in every project'), () => turnScope(item, { all: false }, line, off));
       keys.append(off);
     } else {
-      const all = button('mk-get big', t('Get it for all your projects'), async () => { if (await turnScope(item, { all: true }, line, all)) notice(t('{name} is on in all your projects.', { name: nameOf(item) })); });
-      keys.append(all);
+      // Where it goes, asked as a question with its two answers side by side (2026-10-20): every
+      // project — the ones added later too — or one, chosen by its name. Three keys in a row with
+      // no question («for all», «or only in», «only in this one», «project by project») read as one
+      // choice said three ways.
+      const where = el('div', 'mk-where');
+      where.append(el('b', 'mk-where-title', t('Where do you want it?')));
+      const options = el('div', 'mk-where-options');
+      const everyBox = el('div', 'mk-where-option');
+      const all = button('mk-get big', t('In all my projects'), async () => { if (await turnScope(item, { all: true }, line, all)) notice(t('{name} is on in all your projects.', { name: nameOf(item) })); });
+      everyBox.append(all, el('small', null, t('Also in the ones you add later.')));
+      options.append(everyBox);
       const left = ids.filter((id) => !mine.on.includes(id));
       if (left.length) {
-        const only = el('div', 'mk-only');
+        const oneBox = el('div', 'mk-where-option');
+        const pick = el('div', 'mk-only');
         const select = projectPicker(left);
-        const key = button('mk-get', t('Only in this one'), async () => { const name = projectName(select.value); if (await turnScope(item, { rooms: { [select.value]: true } }, line, key)) notice(t('{name} is on in {project}.', { name: nameOf(item), project: name })); });
-        only.append(el('span', null, t('or only in')), select, key);
-        keys.append(only);
-        if (choose) requestAnimationFrame(() => all.focus());
+        const key = button('mk-get big quiet', t('Only in one'), async () => { const name = projectName(select.value); if (await turnScope(item, { rooms: { [select.value]: true } }, line, key)) notice(t('{name} is on in {project}.', { name: nameOf(item), project: name })); });
+        pick.append(key, select);
+        oneBox.append(pick, el('small', null, t('Choose which one. The others stay as they are.')));
+        options.append(oneBox);
       }
+      where.append(options);
+      if (ids.length > 1) where.append(button('mk-link', t('Or decide project by project'), () => go({ tab: 'mine', focus: item.id })));
+      keys.append(where);
+      if (choose) requestAnimationFrame(() => all.focus());
+      return;
     }
     if (ids.length) keys.append(button('mk-link', t('Choose project by project'), () => go({ tab: 'mine', focus: item.id })));
   };

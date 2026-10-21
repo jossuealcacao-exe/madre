@@ -68,8 +68,8 @@ const revoking = new Set();    // link ids whose row asks before revoking
 
 // The room's looks, from this browser: the same keys the room's own page keeps (app.js, LOOKS),
 // so a choice made here is the room's too when the room is served at this address.
-const ACCENTS = ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce'];
-const ACCENT_WORDS = { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow') };
+const ACCENTS = ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce', 'marmol', 'durazno', 'pistache', 'petalo'];
+const ACCENT_WORDS = { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow'), marmol: () => t('Marble gray'), durazno: () => t('Peach orange'), pistache: () => t('Pistachio green'), petalo: () => t('Petal pink') };
 // The wallpapers are the room's (app.js, LOOKS.wallpaper; styles.css, --wp-*): the same images, the
 // same veil, the same «mesh» and blur the room's PERSONALIZE sets, read from the same keys.
 const WALLPAPERS = ['default', 'jarrito', 'canela', 'paradise', 'ventura', 'magna', 'biznaga', 'oceano', 'quila', 'xico', 'tropical', 'tradicion', 'urbania', CUSTOM_WALL];
@@ -1796,7 +1796,7 @@ async function openHomeAdd() {
   homeAddSheet.addEventListener('close', () => { homeAddSheet?.remove(); homeAddSheet = null; key?.classList.remove('filled'); });
   document.body.append(homeAddSheet);
   homeAddSheet.showModal();
-  void homeTour.hint('home-add', list, { inside: true, title: t('Add to Home'), text: t('The tiles you took off, and the widgets. A widget is offered only when something on this Mac feeds it; right-click any tile to move it, resize it or take it off.') });
+  void homeTour.hint('home-add', list, { inside: true, title: t('Add to Home'), text: t('The tiles you took off and the widgets you can add. A widget shows up only when this Mac has something to put in it. Right-click any tile to move it, change its size or take it off.') });
   // The author's widget is asked about before the list is drawn: where it cannot be read, it is not listed at all.
   const ownerOk = new Set();
   for (const [id, spec] of Object.entries(WIDGETS).filter(([id, spec]) => spec.owner && !placed(id))) {
@@ -2108,18 +2108,79 @@ function welcomeHome() {
   if (welcomeAsked) return;
   welcomeAsked = true;
   void homeTour.loaded.then(async (answer) => {
-    if (answer?.owed) { await homeTour.maybeBonjour(); return; }
-    if (!answer?.state?.bonjourAt) return;
-    setTimeout(() => {
+    // Someone new meets the bonjour and the chapters on this same visit: Home's cards come after
+    // them, once Home is quiet again, not only on the next visit as they did (2026-10-20).
+    // Someone who met MADRE just now (src/tour.mjs, `met`) is walked through Home once the bonjour
+    // and its chapters are behind them (2026-10-21): their project, the Coordinator, connections
+    // and where the manual is, «Next» from one card to the other. A step whose place is not on this
+    // Home is left out of the count.
+    const HOME_WALK = [
+      {
+        id: 'home-start',
+        // The list, not a card in it: the cards are drawn again every few seconds, and a hint whose
+        // place is gone puts itself away.
+        anchor: () => (ui.projects?.querySelector?.(':scope > :not([hidden])') ? ui.projects : ui.add),
+        title: () => (ui.projects?.querySelector?.(':scope > :not([hidden])') ? t('Your project lives here') : t('Begin with a project')),
+        text: () => (ui.projects?.querySelector?.(':scope > :not([hidden])') ? t('Open it to start. Each project keeps its own chats and its own memory.') : t('Press «Add project» and choose the folder you work in. Nothing inside it changes.')),
+      },
+      {
+        id: 'home-coordinator',
+        anchor: () => $('sm-bishop-go'),
+        title: () => t('Your Coordinator'),
+        text: () => t('An agent that sees all your projects. Ask it «which project was I on yesterday?», or to pass an instruction from one project to another.'),
+      },
+      {
+        id: 'links',
+        anchor: () => { const tile = $('sm-links-tile'); return tile && !tile.hidden ? tile.querySelector('.sm-tile-head') ?? tile : null; },
+        title: () => t('Connections'),
+        text: () => t('With a connection, one project can look up what another learned. You decide what and until when; nothing is written into the other.'),
+      },
+      {
+        id: 'home-manual',
+        anchor: () => ui.gear,
+        title: () => t('The user manual'),
+        text: () => t('Pictures of MADRE with every step marked, for when you want to look something up. It is in Settings › System › User manual, and as a PDF.'),
+      },
+    ];
+    // It waits for the bonjour and its chapters, however long they take: maybeBonjour only opens
+    // the bonjour, and the walk asked once, before it was given, never came (2026-10-21).
+    let walkTries = 0;
+    const walk = async () => {
+      if (!homeTour.state()?.bonjourAt) { setTimeout(walk, 2000)?.unref?.(); return; }
+      if (!homeTour.newcomer()) return;
+      const seen = homeTour.state()?.hints ?? {};
+      const here = HOME_WALK.filter((one) => one.anchor()?.getClientRects().length);
+      const at = here.findIndex((one) => !seen[one.id]);
+      if (at < 0) return;
+      const one = here[at];
+      const shown = !document.querySelector('dialog[open]') && await homeTour.hint(one.id, one.anchor(), {
+        title: one.title(),
+        text: one.text(),
+        step: at + 1,
+        of: here.length,
+        skip: () => { for (const rest of here.slice(at + 1)) void homeTour.seen(rest.id); },
+        then: () => setTimeout(walk, 350),
+      });
+      // Not yet (the chapters are open, a sheet is): asked again, for as long as a first visit lasts.
+      if (!shown && (walkTries += 1) < 600) setTimeout(walk, 2000)?.unref?.();
+    };
+    setTimeout(walk, 1500)?.unref?.();
+    if (answer?.owed) await homeTour.maybeBonjour();
+    if (!homeTour.state()?.bonjourAt) return;
+    let linkTries = 0;
+    // For whoever came back: what «Connections» is now. Someone new has it in the walk above.
+    const sayLinks = async () => {
       const tile = $('sm-links-tile');
-      if (!tile || tile.hidden || document.querySelector('dialog[open]')) return;
-      void homeTour.hint('links', tile.querySelector('.sm-tile-head') ?? tile, {
+      if (!tile || tile.hidden || homeTour.newcomer() || homeTour.state()?.hints?.links) return;
+      const shown = !document.querySelector('dialog[open]') && await homeTour.hint('links', tile.querySelector('.sm-tile-head') ?? tile, {
         title: t('Connections'),
         text: homeTour.path() === 'back'
-          ? t('A connection lets one project look up what another learned, by a contract you sign. In 0.7.2 «Connections» was signing your agents in: that is now in Settings › Agents.')
-          : t('A connection lets one project look up what another learned, by a contract you sign. Nothing is written across.'),
+          ? t('With a connection, one project can look up what another learned. In 0.7.2 «Connections» was where you signed your agents in; that is now Settings › Agents.')
+          : t('With a connection, one project can look up what another learned. You decide what and until when; nothing is written into the other.'),
       });
-    }, 2200);
+      if (!shown && (linkTries += 1) < 40) setTimeout(sayLinks, 3000)?.unref?.();
+    };
+    setTimeout(sayLinks, 2200)?.unref?.();
     // 1.0.2 brings one key to Home's bar: said once, after any other card, never over a sheet.
     let tries = 0;
     const sayAdd = async () => {
@@ -4331,7 +4392,7 @@ function openWizard({ then = null } = {}) {
 const SET_SECTIONS = [
   ['You', 'How Home looks and what its bar holds', ['look', 'bar']],
   ['The agents', 'Who works on this Mac', ['agents', 'bishop', 'local']],
-  ['System', 'The projects of this Mac and the version', ['projects', 'release']],
+  ['System', 'The projects of this Mac, the version and the manual', ['projects', 'release', 'manual']],
 ];
 // The room's own icons where the room has the category (app.js, SETTINGS_CATS); the bar, BISHOP
 // and the projects drawn here in the same hand: 20×20, one round stroke.
@@ -4343,6 +4404,7 @@ const SET_CATS = {
   local: { name: 'Local AI', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path stroke-width=".8" d="M6.47 5.59L9.13 4.31M6.33 7.43L8.97 9.21M5.70 8.01L9.60 14.99M9.88 5.11L5.62 12.59M11.92 4.97L14.98 9.03M11.90 10.21L14.25 10.37M10.35 11.70L10.44 14.75M6.41 14.91L8.79 15.89M14.85 11.86L11.75 15.24"/><circle cx="4.8" cy="6.4" r="1.25"/><circle cx="10.8" cy="3.5" r="1.25"/><circle cx="10.3" cy="10.1" r="1.0"/><circle cx="16.1" cy="10.5" r="1.25"/><circle cx="4.7" cy="14.2" r="1.25"/><circle cx="10.5" cy="16.6" r="1.25"/></g>' },
   projects: { name: 'Projects', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   release: { name: 'Version', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
+  manual: { name: 'User manual', icon: '<path d="M4 4.5h4.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 0-1.5-1.5H4zM16 4.5h-4.5A1.5 1.5 0 0 0 10 6v10a1.5 1.5 0 0 1 1.5-1.5H16z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
 };
 const SET_ORDER = ['look', 'bar', 'agents', 'bishop', 'local', 'projects', 'release'];
 // The words the search knows, each pointing to the category that holds it (app.js, SETTINGS_INDEX).
@@ -4403,7 +4465,10 @@ function customSeg(options, current, pick, size = '') {
 }
 
 // How each category stands, in a line, from what the lobby already knows; nothing is guessed.
+// The user manual (1.0.5): its own page in Home's language, and the same manual in PDF.
+function openManual() { window.open(`/manual?lang=${language}`, '_blank', 'noopener'); }
 function setStatus(id) {
+  if (id === 'manual') return { line: t('Every part of MADRE, with pictures and each step marked. Also as a PDF.') };
   const looks = readLooks();
   if (id === 'look') return { line: `${THEME_WORDS[looks.theme]()} · ${WALLPAPER_WORDS[looks.wallpaper]()} · ${ACCENT_WORDS[looks.accent]()}` };
   if (id === 'bar') {
@@ -4439,6 +4504,13 @@ function setStatus(id) {
 function setQuick(id) {
   const rows = el('div', 'settings-quick');
   const add = (label, control) => { const row = el('div', 'settings-quick-row'); row.append(el('span', null, label), control); rows.append(row); };
+  if (id === 'manual') {
+    const pdf = el('a', 'sx-btn settings-manual-pdf', t('PDF'));
+    pdf.href = `/assets/manual/madre-manual-${language}.pdf`;
+    pdf.setAttribute('download', '');
+    pdf.addEventListener('click', (event) => event.stopPropagation());
+    add(t('Download it to print or share'), pdf);
+  }
   if (id === 'look') {
     const { theme } = readLooks();
     const seg = el('div', 'settings-seg');
@@ -4810,6 +4882,15 @@ function drawLocalServer(host) {
 // The model every project uses: MADRE's pick, or the person's, among the ones installed; then the
 // ones this computer runs that are not here yet, the recommended one first.
 const EMBEDDING = /embed|minilm|bge|nomic/i;
+// The model that fits this computer best, said the way the room's tags say things: a small pill in
+// the accent beside its name, never a grey bar the width of the row (2026-10-20).
+const RECOMMENDED_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2l1.9 4.1 4.4.5-3.3 3 .9 4.4L10 13l-3.9 2.2.9-4.4-3.3-3 4.4-.5z" fill="currentColor"/></svg>';
+function recommendedChip() {
+  const chip = el('span', 'sx-recommend');
+  chip.innerHTML = RECOMMENDED_ICON; // trusted: our own SVG string
+  chip.append(el('span', null, t('Recommended for your computer')));
+  return chip;
+}
 function drawLocalModel(host) {
   const info = localOllama?.ollama;
   if (!info?.running || !localSeen.master) return;
@@ -4828,7 +4909,7 @@ function drawLocalModel(host) {
     const face = known(model.name);
     const hint = [face?.maker, model.size ? gb(model.size) : null, face && face.run === 'no' ? t('May not fit in this computer\'s memory') : null].filter(Boolean).join(' · ');
     const row = sxRow(block, face?.label ?? model.name, hint, chosen && model.name === using ? inUse() : sxButton(t('Use'), pick(model.name)));
-    if (face?.recommended) row.querySelector('.sx-words b')?.after(el('span', 'sx-chip', t('Recommended for your computer')));
+    if (face?.recommended) row.querySelector('.sx-words b')?.after(recommendedChip());
   }
   if (!chats.length) sxRow(block, t('No model yet'), t('Download one below: MADRE starts using it as soon as it arrives.'));
   // What this computer runs and has not got yet.
@@ -4847,7 +4928,7 @@ function drawLocalModel(host) {
       watchPull(one.ollama);
     }, { tone: one.recommended ? 'primary' : null });
     const row = sxRow(more, one.label, hint, get);
-    if (one.recommended) row.querySelector('.sx-words b')?.after(el('span', 'sx-chip', t('Recommended for your computer')));
+    if (one.recommended) row.querySelector('.sx-words b')?.after(recommendedChip());
   }
   if (runs.length > 5) {
     const all = sxButton(localAllModels ? t('See fewer') : t('See every model ({n})', { n: runs.length }), () => { localAllModels = !localAllModels; settingsSheet?.sync({ detail: true }); });
@@ -4990,8 +5071,10 @@ function openSettings(section = null) {
     if (status.warn) node.append(el('p', 'settings-warn', status.warn));
     const quick = setQuick(id);
     if (quick) node.append(quick);
-    node.addEventListener('click', () => openCategory(id));
-    node.addEventListener('keydown', (event) => { if (event.target === node && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openCategory(id); } });
+    // The manual is a page of its own, not a panel.
+    const go = () => (id === 'manual' ? openManual() : openCategory(id));
+    node.addEventListener('click', go);
+    node.addEventListener('keydown', (event) => { if (event.target === node && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); go(); } });
     return node;
   };
   const board = () => {
@@ -5058,6 +5141,7 @@ function openSettings(section = null) {
     body.replaceChildren(board(), scrim, sheet);
   };
   const openCategory = (id, landOn = null) => {
+    if (id === 'manual') { openManual(); return; }
     state.open = id;
     draw();
     dialog.scrollTop = 0;

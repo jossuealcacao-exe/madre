@@ -3194,9 +3194,13 @@ agentsCompact?.addEventListener('click', () => {
   if (!pop.hidden && pop.dataset.from === 'crew') closeAgentPop(); else openCrewPop(agentsCompact);
 });
 
+// Drawn again whenever the agents' state arrives, which is often and mostly the same: only a sphere
+// that changed is replaced. Emptying the row every time restarted every sphere's animation and, for
+// the instant it was empty, let the bar fit itself again — the «More» key came and went, and the
+// room blinked every so often for no reason (2026-10-21).
 function renderAgents() {
   renderAgentsCompact();
-  els.agents.replaceChildren();
+  const fresh = [];
   for (const agent of state.agents.values()) {
     const percent = ringPercent(agent);
     const official = liveOfficial(agent);
@@ -3219,8 +3223,11 @@ function renderAgents() {
         : t('Usage: provider limit · {pct}% used', { pct: Math.round(official) }) + (agent.officialResetAt ? t(' · resets {when}', { when: fmtReset(agent.officialResetAt) }) : ''),
       agent.tokens ? t('{n} budget tokens in the local window', { n: agent.tokens.toLocaleString() }) : null,
     ].filter(Boolean).join('\n');
-    els.agents.append(node);
+    fresh.push(node);
   }
+  const now = [...els.agents.children];
+  if (now.length !== fresh.length || typeof now[0]?.isEqualNode !== 'function') { els.agents.replaceChildren(...fresh); return; }
+  fresh.forEach((node, index) => { if (!now[index].isEqualNode(node)) now[index].replaceWith(node); });
 }
 
 /* ---------- what the room may do, said once ---------- */
@@ -3357,7 +3364,8 @@ let modelMenuFor = null;
 async function ensureModels(id) {
   if (state.models[id]) return state.models[id];
   try {
-    const data = await fetch(`/api/models${id === 'opencode' ? '?opencode=1' : ''}`).then((response) => response.json());
+    // OpenCode, Cursor and Gemini are asked for their own lists only when their chooser opens: each asks its CLI or its maker.
+    const data = await fetch(`/api/models${['opencode', 'cursor', 'gemini'].includes(id) ? `?${id}=1` : ''}`).then((response) => response.json());
     state.models = { ...state.models, ...(data.models ?? {}) };
     takeEfforts(data.models);
   } catch { /* offline: fall back to whatever we know */ }
@@ -3399,7 +3407,7 @@ async function toggleModelMenu(id, anchor) {
   if (Array.isArray(info.groups) && info.groups.length) {
     for (const group of info.groups) {
       const head = el('div', `model-group${group.own ? ' own' : ''}`);
-      head.append(el('b', null, group.label), el('span', null, group.own ? t('OpenCode\'s own') : t('{n} models', { n: group.models.length })));
+      head.append(el('b', null, group.label), el('span', null, group.own && id === 'opencode' ? t('OpenCode\'s own') : t('{n} models', { n: group.models.length })));
       list.append(head);
       for (const name of group.models) list.append(option(name, name.slice(name.indexOf('/') + 1)));
     }
@@ -3417,7 +3425,7 @@ async function toggleModelMenu(id, anchor) {
     manage.type = 'button';
     manage.addEventListener('click', () => { closeModelMenu(); openSettingsOn('agents', { anchor: 'sx-opencode' }); });
     modelMenu.append(manage);
-  } else if (info.note) modelMenu.append(el('div', 'model-note', info.note));
+  } else if (info.note) modelMenu.append(el('div', 'model-note', t(info.note)));
   placeModelMenu(anchor);
 }
 function placeModelMenu(anchor) {
@@ -7529,7 +7537,7 @@ async function switchLanguage() {
 // Each choice is a data attribute on the root that styles.css reads under #messages only. The
 // first value of each list is the room as it always was, and is written as no attribute at all.
 const LOOKS = {
-  accent: { key: 'pulse.accent', values: ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce'] },
+  accent: { key: 'pulse.accent', values: ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce', 'marmol', 'durazno', 'pistache', 'petalo'] },
   bubbles: { key: 'pulse.bubbles', values: ['comfortable', 'large', 'compact', 'fitted'] },
   text: { key: 'pulse.text', values: ['comfortable', 'larger', 'smaller', 'visual'] },
   // Last, the person's own picture (public/wallpaper.js): a choice only once there is one.
@@ -7563,7 +7571,7 @@ function saveTune(name, value) {
   applyTune(name, value);  pushLooks();
 }
 const LOOK_WORDS = {
-  accent: { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow') },
+  accent: { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow'), marmol: () => t('Marble gray'), durazno: () => t('Peach orange'), pistache: () => t('Pistachio green'), petalo: () => t('Petal pink') },
   bubbles: { comfortable: () => t('Comfortable'), large: () => t('Large'), compact: () => t('Compact'), fitted: () => t('Fitted') },
   text: { comfortable: () => t('Comfortable'), larger: () => t('Larger'), smaller: () => t('Smaller'), visual: () => t('Visual') },
   wallpaper: { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania', custom: () => t('Your picture') },
@@ -7723,6 +7731,66 @@ function acceptCustom() {
   if (draft.language !== language()) { void switchLanguage(); return; }
   openCustom(false);
 }
+// The preview of the looks is the conversation itself, small: the markup the room draws — a line of
+// the room, an answer with its chips, your message and its delivery — in a frame that loads the
+// room's own stylesheet and wears the draft on its root. Its ground, its planes and its bubbles are
+// the ones the conversation has today. A copy of its own, with its own rules, kept drawing the
+// canvas of before (2026-10-20).
+const LOOK_FRAME_CSS = 'html,body{margin:0;height:100%;overflow:hidden;background:transparent}.shell{position:relative;height:100%;min-height:0;pointer-events:none}#messages{height:100%;overflow:hidden;padding:12px 14px}#messages .thread-inner{max-width:none;display:flex;flex-direction:column;gap:12px;padding:6px 0 0}#messages .thread-inner>*{margin-top:0!important;margin-bottom:0!important}#messages .system{align-self:center}#messages .empty{display:none}html{zoom:.9}';
+const quoted = (value) => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function lookPreview(draft) {
+  const root = document.documentElement;
+  const attributes = new Map([...root.attributes].filter((one) => one.name !== 'class').map((one) => [one.name, one.value]));
+  for (const name of Object.keys(LOOKS)) {
+    const key = `data-${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+    if (draft[name] === LOOKS[name].values[0]) attributes.delete(key); else attributes.set(key, draft[name]);
+  }
+  // The draft's ground too: light, dark, or the system's when automatic.
+  if (draft.theme) {
+    attributes.set('data-theme', draft.theme);
+    attributes.set('data-scheme', draft.theme === 'auto' ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : draft.theme);
+  }
+  const holder = el('div');
+  holder.setAttribute('style', root.getAttribute('style') ?? '');
+  for (const name of Object.keys(TUNES)) TUNES[name].apply(holder, draft[name]);
+  attributes.set('style', holder.getAttribute('style') ?? '');
+
+  const inner = el('div', 'thread-inner');
+  const line = el('div', 'system');
+  line.append(el('b', null, t('MEMORY')), ' ', t('Read 8 exchanges and kept 5 memories.'));
+  const agent = paint(el('article', 'row assistant'), 'codex');
+  const col = el('div', 'col');
+  const who = el('div', 'who');
+  who.append(el('span', null, 'CODEX'), el('span', 'badge mode m2', `#2 ${MODES[2].label}`), el('span', 'badge ash', t('TOKEN SAVER')));
+  const bubble = el('div', 'bubble');
+  const words = el('p');
+  words.append(t('The project keeps what you decide. '), el('b', null, t('Bold reads like this')), ' · ', el('code', null, 'npm test'));
+  const foot = el('div', 'bubble-foot');
+  const stamp = el('div', 'stamp');
+  stamp.append(el('span', null, '08:46 PM'));
+  foot.append(stamp);
+  bubble.append(words, foot);
+  col.append(who, bubble);
+  agent.append(avatar('codex', { size: 28 }), col);
+  const you = el('article', 'row user');
+  const yours = el('div', 'col');
+  const yourWho = el('div', 'who');
+  yourWho.append(el('b', null, t('YOU · AGENTS')));
+  const delivered = paint(el('div', 'stamp'), 'codex');
+  delivered.append(el('span', 'to', '→ @codex'), el('span', null, '08:46 PM'));
+  yours.append(yourWho, el('div', 'bubble', t('Show me how my messages look.')), delivered);
+  you.append(yours);
+  inner.append(line, agent, you);
+
+  const frame = el('iframe', 'look-frame');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  const opening = [...attributes].map(([name, value]) => `${name}="${quoted(value)}"`).join(' ');
+  frame.srcdoc = `<!doctype html><html ${opening}><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"><style>${LOOK_FRAME_CSS}</style></head><body><div class="shell"><main id="messages" class="thread">${inner.outerHTML}</main></div></body></html>`;
+  // Shown once it is painted, never as an empty box between two choices.
+  frame.addEventListener('load', () => frame.classList.add('ready'));
+  return frame;
+}
 // The sheet is a window and only a window: a preview of the conversation on one side, the choices
 // on the other, and below a narrow width one above the other.
 function drawCustom() {
@@ -7752,24 +7820,8 @@ function drawCustom() {
     return row;
   };
 
-  // What the choices do, before they are accepted: one line from the crew, one from you, in the
-  // same bubbles the conversation draws, wearing the draft.
-  const preview = el('div', 'look-preview');
-  preview.setAttribute('aria-hidden', 'true');
-  for (const name of Object.keys(LOOKS)) preview.dataset[name] = draft[name];
-  for (const name of Object.keys(TUNES)) TUNES[name].apply(preview, draft[name]);
-  // The preview stands on the draft's ground too: light, dark, or the system's when automatic.
-  preview.dataset.scheme = draft.theme === 'auto' ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : draft.theme;
-  // The small print too: a line of the room, who answered with its chips, and the delivery line,
-  // because those are the words a wallpaper tests first.
-  const line = el('div', 'system');
-  line.append(el('b', null, t('MEMORY')), t('Read 8 exchanges and kept 5 memories.'));
-  const agent = el('div', 'row assistant');
-  agent.append(el('span', 'avatar'), (() => { const col = el('div', 'col'); const who = el('div', 'who'); who.append(el('span', null, 'CODEX'), el('span', 'badge mode m2', `#2 ${MODES[2].label}`), el('span', 'badge ash', t('TOKEN SAVER'))); col.append(who); const bubble = el('div', 'bubble'); bubble.append(t('The project keeps what you decide. '), el('b', null, t('Bold reads like this')), ' · ', el('code', null, 'npm test')); col.append(bubble); return col; })());
-  const you = el('div', 'row user');
-  you.append((() => { const col = el('div', 'col'); col.append(el('div', 'bubble', t('Show me how my messages look.'))); const stamp = el('div', 'stamp'); stamp.append(el('span', 'to', '→ @codex'), el('span', null, '08:46 PM')); col.append(stamp); return col; })());
-  const button = el('span', 'look-button', t('A BUTTON'));
-  preview.append(line, agent, you, button);
+  // What the choices do, before they are accepted: the conversation itself, small (lookPreview).
+  const preview = lookPreview(draft);
   const look = el('div', 'custom-look');
   look.append(el('b', 'custom-kicker', t('PREVIEW')), preview);
 
@@ -7831,7 +7883,9 @@ function drawCustom() {
       input.addEventListener('input', () => {
         const v = Number(input.value);
         customWindow.draft = { ...(customWindow.draft ?? currentLooks()), [name]: v };
-        tune.apply(preview, v);
+        // The preview is a frame: the dial moves its own root while it is dragged.
+        const frameRoot = preview.contentDocument?.documentElement;
+        if (frameRoot) tune.apply(frameRoot, v);
         if (customWindow.instant) applyTune(name, v);
         value.textContent = shown(v);
         input.style.setProperty('--fill', `${((v - tune.min) / (tune.max - tune.min)) * 100}%`);
@@ -8009,7 +8063,7 @@ customWindow.node?.addEventListener('close', () => { customButton?.setAttribute(
 const SETTINGS_SECTIONS = [
   ['You', 'How it looks, how it works and your files', ['look', 'room', 'files']],
   ['The agents', 'Who works, what they remember and which outside tools they use', ['agents', 'memory', 'local', 'mcp']],
-  ['System', 'What agents may do, privacy and updates', ['permissions', 'privacy', 'release']],
+  ['System', 'What agents may do, privacy, updates and the manual', ['permissions', 'privacy', 'release', 'manual']],
 ];
 const SETTINGS_CATS = {
   look: { name: 'Appearance', color: '#8e75e8', icon: '<circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/>' },
@@ -8024,13 +8078,16 @@ const SETTINGS_CATS = {
   permissions: { name: 'Permissions', color: '#e5484d', icon: '<path d="M10 2.8 4.2 5v4.6c0 3.6 2.4 6.4 5.8 7.6 3.4-1.2 5.8-4 5.8-7.6V5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   privacy: { name: 'Privacy', color: '#d4a72c', icon: '<rect x="4.5" y="8.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6.6a3 3 0 0 1 6 0v1.9" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
   release: { name: 'Updates and errors', color: '#4caf3a', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
+  // The user manual (1.0.5): it opens on its own page, read here or in PDF (public/manual.js).
+  manual: { name: 'User manual', color: '#2f9e6a', icon: '<path d="M4 4.5h4.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 0-1.5-1.5H4zM16 4.5h-4.5A1.5 1.5 0 0 0 10 6v10a1.5 1.5 0 0 1 1.5-1.5H16z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
 };
-const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release'];
+const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release', 'manual'];
 // The words the search knows, each pointing to the category that holds it and to the words on the
 // screen that carry it there, so a result opens the category and lands on the setting.
 const SETTINGS_INDEX = [
   ['look', 'Preview'], ['look', 'Language'], ['look', 'Theme'], ['look', 'Wallpaper'], ['look', 'Accent'], ['look', 'Bubbles'], ['look', 'Text'],
   ['room', 'Several at once'], ['room', 'Notifications'], ['room', 'Conversations at once'], ['room', 'Answers per conversation'], ['room', 'Agents may make plans'], ['room', 'Steps per plan'],
+  ['manual', 'User manual'], ['manual', 'PDF'],
   ['files', 'Files'], ['files', 'Your servers'], ['files', 'File viewer'], ['files', 'Preview'], ['files', "Test browser"],
   ['room', 'Usage limit per agent'], ['room', 'Default time limit'], ['room', 'Silence limit'], ['room', 'Retries'], ['room', 'Model'],
   ['agents', 'Max mode'], ['agents', 'Starting mode'], ['agents', 'Web access'], ['agents', 'Generate images'], ['agents', 'Time limit'], ['agents', 'Sign in'],
@@ -8048,7 +8105,11 @@ const settingsIcon = (id) => { const span = el('span', 'settings-icon'); span.in
 
 // How each category stands, in a line, from what the room already knows. Nothing is guessed: a
 // figure that has not been read yet says so.
+// The user manual: its own page in the room's language, and the same manual in PDF.
+function openManual() { window.open(`/manual?lang=${language()}`, '_blank', 'noopener'); }
+const manualPdf = () => `/assets/manual/madre-manual-${language()}.pdf`;
 function settingsStatus(id) {
+  if (id === 'manual') return { line: t('Every part of MADRE, with pictures and each step marked. Also as a PDF.') };
   const data = settingsUI.data;
   if (id === 'look') {
     const theme = { auto: t('Automatic'), light: t('Light'), dark: t('Dark') }[themeMode] ?? themeMode;
@@ -8116,6 +8177,13 @@ function settingsQuick(id) {
     wrap.append(box, el('i'));
     return wrap;
   };
+  if (id === 'manual') {
+    const pdf = el('a', 'sx-btn settings-manual-pdf', t('PDF'));
+    pdf.href = manualPdf();
+    pdf.setAttribute('download', '');
+    pdf.addEventListener('click', (event) => event.stopPropagation());
+    add(t('Download it to print or share'), pdf);
+  }
   if (id === 'look') {
     const seg = el('div', 'settings-seg');
     for (const [value, word] of [['auto', t('Auto')], ['light', t('Light')], ['dark', t('Dark')]]) {
@@ -8379,7 +8447,7 @@ function settingsCard(id) {
   if (status.warn) card.append(el('p', 'settings-warn', status.warn));
   const quick = settingsQuick(id);
   if (quick) card.append(quick);
-  const go = () => openSettingsCategory(id);
+  const go = () => (id === 'manual' ? openManual() : openSettingsCategory(id));
   card.addEventListener('click', go);
   card.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); go(); } });
   return card;
@@ -8570,8 +8638,11 @@ function syncSettingsCards() {
 }
 
 function openSettingsCategory(id, landOn = null) {
+  // The manual is a page of its own, not a panel: found by the search, it opens there.
+  if (id === 'manual') { openManual(); return; }
   settingsWindow.open = id;
   drawSettings();
+  if (id === 'mcp') firstTouch('mcp');
   if (!landOn) return;
   // Land on the setting the search found, once its panel has drawn.
   let tries = 0;
@@ -11437,7 +11508,7 @@ void adoptLanguage(initial.language, initial.languageChosen);
 // of it at once in the welcome, and five «New:» cards in a row were noise to them (2026-10-19).
 void Promise.all([loadCopilot(), roomTour().loaded]).then(async () => {
   if (!state.device) await keptHints();
-  if (roomTour().path() !== 'new') showNewHints();
+  showNewHints();
 });
 // Behind the bridge this page is on a phone (docs/MOBILE.md): it says so, offers the way back to
 // the list of rooms, and leaves the Mac's keys to the Mac.
@@ -15347,6 +15418,9 @@ function moduleSheet(host, item) {
       const response = await fetch(`/api/extensions/${item.id}/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: control.key, value }) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) toast(`${t('Diagnostics › ')}${result.error ?? t('{name} could not save {label}.', { name: item.name, label: control.label })}`);
+      // A switch whose change shows nothing at once says what will happen, and when.
+      const said = response.ok && control.said?.[(control.invert ? value === false : value === true) ? 'on' : 'off'];
+      if (said) toast(t(said), { tone: 'note' });
       await refreshModules();
     };
     for (const control of item.controls) {
@@ -16164,9 +16238,10 @@ function openModules() {
 }
 // THE MARKET, MET (1.0.5): the first time someone opens Modules, a card beside the Market's key
 // says what it is in plain words. Once per person (hintSeen); after any card already showing.
+// Whoever knew MADRE before had the Market already: they are told only what is new (2026-10-21).
 let marketInviteTries = 0;
 function inviteToMarket(delay = 900) {
-  if (state.device || hintsSeen().market) return;
+  if (state.device || hintsSeen().market || roomTour().returning()) return;
   setTimeout(() => {
     const key = modules.dialog?.querySelector('.mods-market');
     if (!modules.dialog?.open || !key?.getClientRects().length || hintsSeen().market) return;
@@ -19859,6 +19934,12 @@ async function forgetFromCard(card, button) {
 
 
 document.querySelector('#tour-button')?.addEventListener('click', () => { document.querySelector('#mother')?.close?.(); stepsResume(); roomTour().openChapters(); });
+// What Switch project is, once; for someone new, after the walk of the way in (showNewHints), not
+// before its first card (2026-10-21).
+function saySwitch() {
+  if (isNewcomer() && GUIDE_HINTS.some((hint) => !hintsSeen()[hint.id])) return;
+  if (switcher.key && !document.querySelector('dialog[open]')) void roomTour().hint('switch', switcher.key, { title: t('Switch project'), text: t('Takes you to another open project. Its light turns on when that project needs you or finishes something.') });
+}
 function maybeStartTour() {
   // The half on the right of a split window is the same room; the left half already did this.
   // A phone gets the room as it is: the tour points at keys that live on the Mac.
@@ -19874,7 +19955,7 @@ function maybeStartTour() {
     if (answer?.owed) { await roomTour().maybeBonjour(); return; }
     if (answer?.state?.bonjourAt) {
       const shown = await maybeShowWhatsNew();
-      if (!shown) setTimeout(() => { if (switcher.key && !document.querySelector('dialog[open]')) void roomTour().hint('switch', switcher.key, { title: t('Switch project'), text: t('It takes you to another open project. Its light tells you when one needs you or finishes while you are here.') }); }, 2400);
+      if (!shown) setTimeout(saySwitch, 2400);
       return;
     }
     // The welcome could not be read: the news of this version, if any (the five-stop tour that
@@ -19917,54 +19998,67 @@ function roomTour() {
 // what it is for. Once per button: after that the button is just a button. From 1.1 every key of
 // the bar that opens something says so too (2026-10-14).
 const FIRST_TOUCH = {
+  // Code (1.0.3) said nothing the first time it opened, and nor did Outside tools (2026-10-21).
+  code: {
+    button: '#code-button',
+    panel: '#viewer',
+    title: t('Code'),
+    text: t('Your project\'s files, beside the chat. ⌘ P finds one by its name. Click a line number and press ASK to ask an agent about it. What an agent changed shows in its colour.'),
+  },
+  mcp: {
+    // Not a key of the bar: said the first time its page opens in Settings (openSettingsCategory).
+    button: '#settings .settings-detail-head',
+    title: t('Outside tools (MCP)'),
+    text: t('Connect your agents to GitHub, Notion, your calendar and other apps. Pick one from the list and press Connect; «Check the connection» tells you whether it works.'),
+  },
   settings: {
     button: '#custom-button',
     panel: '#settings',
     title: t('Settings'),
-    text: t('Everything this project uses, in one window: appearance, agents, memory, permissions, privacy and version. Press / to search any setting.'),
+    text: t('How this project looks and works. Type in the search to find a setting by its name, such as «accent» or «permissions».'),
   },
   modules: {
     button: '#modules-button',
     panel: '#modules',
     title: t('Modules'),
-    text: t('Extra features for this project, like apps. Each tile says what it does and what it needs; nothing is installed until you ask.'),
+    text: t('Features you turn on when you need them. Press a tile to read what it does before you switch it on.'),
   },
   mother: {
     button: '#mother-button',
     panel: '#mother',
     title: t('Diagnostics'),
-    text: t('When something fails, describe it in your own words: Diagnostics says what is going on and gives you the button that fixes it.'),
+    text: t('When something goes wrong, write it as you see it, for example «Claude asks me to sign in». Diagnostics finds the case and tells you what to do.'),
   },
   memory: {
     button: '#nostromo-bar',
     title: t('Memory map'),
-    text: t('Everything MADRE remembers about this project, as stars. Drag to turn it, use the wheel to zoom in, and click a star to read that memory.'),
+    text: t('What MADRE remembers about this project, drawn as stars. Drag to turn it, scroll to come closer and click a star to read it.'),
   },
   crew: {
     button: '#agents-compact',
     title: t('Agents'),
-    text: t('The agents this project can call, and whether each one is ready. Their sessions are set in Settings › Agents.'),
+    text: t('The agents this project can call, and which of them are ready. You sign in to them in Settings › Agents.'),
   },
   steps: {
     button: '#steps-pill',
     title: t('First steps'),
-    text: t('A short list to get the most out of MADRE. Each step is checked off on its own when you do it, and the pill goes away when you are done.'),
+    text: t('A few things to try in your first days. Each one ticks itself off when you do it.'),
   },
   browser: {
     button: '#browser-button',
     title: t('The browser'),
-    text: t('See what you are building without leaving the project: the servers answering on this computer, in tabs, at phone, tablet or desktop width. To open the web, switch Preview on in MODULES.'),
+    text: t('The pages you are building, inside MADRE: whatever runs on this computer, at phone, tablet or desktop width. For sites on the internet, turn on Preview in Modules.'),
   },
   tree: {
     button: '#tree-button',
     title: t('The project files'),
-    text: t('Your project as a tree. Click a file to read it, search by name, and right-click to copy, move, rename or create files and folders.'),
+    text: t('Your project\'s folders and files. Click one to read it; right-click to copy, move or rename it, or to make a new one.'),
   },
   chats: {
     button: '#chats-button',
     panel: '#chats',
     title: t('Conversations, one memory'),
-    text: t('A project can hold many conversations and a single memory. Start a new one for a new subject: they all feed the same archive, and every agent recalls what was said in the others.'),
+    text: t('Start a new chat for each subject. They all share the project\'s memory, so an agent in one knows what was decided in another.'),
   },
 };
 // What was seen is the person's, in ~/.pulse/tour.json (src/tour.mjs, HINTS), not this page's: a
@@ -19972,13 +20066,22 @@ const FIRST_TOUCH = {
 // every new port (2026-10-19). The page's own copy stays as the fallback, and what it already held
 // is carried to the person once (keptHints).
 const HINTS_KEY = 'madre.hints';
-const keptId = (id) => (id.startsWith('new-') ? id : `touch-${id}`);
-const ownHint = (id) => id in FIRST_TOUCH || NEW_HINTS.some((hint) => hint.id === id);
+const keptId = (id) => (/^(new|guide)-/.test(id) ? id : `touch-${id}`);
+const ownHint = (id) => id in FIRST_TOUCH || [...NEW_HINTS, ...GUIDE_HINTS].some((hint) => hint.id === id);
 function pageHints() {
   try { return JSON.parse(localStorage.getItem(HINTS_KEY) ?? '{}') ?? {}; } catch { return {}; }
 }
+// The page's own copy counts only for whoever met MADRE before the person's copy existed (1.0.4,
+// 2026-10-19). A port is reused by every MADRE that ever ran on this computer — another install, a
+// test, a project that held the port before — and what its storage kept made a new person's cards
+// count as seen before they were ever shown (2026-10-20).
+const HINTS_PERSONAL_SINCE = '2026-10-19';
+function pageHintsCount() {
+  const at = roomTour().state()?.bonjourAt;
+  return !at || at < HINTS_PERSONAL_SINCE;
+}
 function hintsSeen() {
-  const seen = pageHints();
+  const seen = pageHintsCount() ? pageHints() : {};
   for (const id of Object.keys(roomTour().state()?.hints ?? {})) seen[id.startsWith('touch-') ? id.slice('touch-'.length) : id] = true;
   return seen;
 }
@@ -19988,31 +20091,48 @@ function hintSeen(id) {
 }
 async function keptHints() {
   await roomTour().loaded;
+  if (!pageHintsCount()) return;
   const kept = roomTour().state()?.hints ?? {};
   for (const id of Object.keys(pageHints()).filter(ownHint)) if (!kept[keptId(id)]) await roomTour().seen(keptId(id)).catch(() => {});
 }
 function firstTouch(id) {
-  // Its cards speak of the Mac's own gestures (a right-click, a panel beside the room).
-  if (state.device) return;
+  // Its cards speak of the Mac's own gestures (a right-click, a panel beside the room). Whoever knew
+  // MADRE before knows its keys: they are told what is new, not what each key is (2026-10-21).
+  if (state.device || roomTour().returning()) return;
   const hint = FIRST_TOUCH[id];
   const seen = hintsSeen();
   if (!hint || seen[id]) return;
-  hintSeen(id);
+  // Kept as seen only once there is something to point at: a page not drawn yet is not a card shown.
   const button = document.querySelector(hint.button);
   if (!button) return;
+  hintSeen(id);
   // Said once what was pressed has opened: some open after a moment, and a modal window (the
   // Memory map) makes everything outside it unreachable, so the card goes inside that window.
   setTimeout(() => showFirstTouch(hint, button), 320);
 }
-function showFirstTouch(hint, button) {
+// `step` of `of`: one of a short walk (showNewHints), said as «2 of 5» with «Next», and `skip`
+// puts the rest of it away.
+function showFirstTouch(hint, button, { step = 0, of = 0, skip = null } = {}) {
   document.querySelector('.hint-card')?.remove();
   document.querySelectorAll('.hint-spot').forEach((node) => node.remove());
   const card = el('section', 'hint-card');
   card.setAttribute('role', 'dialog');
   card.setAttribute('aria-label', hint.title);
-  const ok = el('button', 'hint-ok', t('Got it'));
+  const walking = step > 0 && of > 1;
+  const more = walking && step < of;
+  const ok = el('button', 'hint-ok', more ? t('Next') : t('Got it'));
   ok.type = 'button';
-  card.append(el('h3', null, hint.title), el('p', null, hint.text), ok);
+  if (walking) card.append(el('span', 'hint-step', t('{n} of {total}', { n: step, total: of })));
+  card.append(el('h3', null, hint.title), el('p', null, hint.text));
+  const keys = el('div', 'hint-keys');
+  if (more && skip) {
+    const away = el('button', 'hint-skip', t('Skip the tips'));
+    away.type = 'button';
+    away.addEventListener('click', () => { skip(); close(); });
+    keys.append(away);
+  }
+  keys.append(ok);
+  card.append(keys);
   const modal = [...document.querySelectorAll('dialog[open]')].reverse().find((one) => one.matches(':modal'));
   (modal ?? document.body).append(card);
   if (modal) card.classList.add('in-modal');
@@ -20066,12 +20186,46 @@ for (const id of Object.keys(FIRST_TOUCH)) document.querySelector(FIRST_TOUCH[id
 // notices). Only when the room is quiet — no dialog open, no
 // other card — one after the other, each pointing at where it lives.
 const NEW_HINTS = [
-  { id: 'new-copilot', button: '.copilot-chip', title: t('New: Copilot'), text: t('Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.') },
-  { id: 'new-mcp', button: '#custom-button', panel: '#settings', title: t('New: Outside tools (MCP)'), text: t('Agents can now use other apps and services: a program on this computer or one on the internet. Add them in Settings › Outside tools (MCP). If you already set some up in Claude Code, Codex, Gemini or Cursor, you can bring them over.') },
-  { id: 'new-finder', button: '#tree-button', spill: '.bar-more', title: t('New: your files stay up to date'), text: t('The file list updates by itself after every answer and every command. A colored dot on a folder tells you which agent changed something inside.') },
-  { id: 'new-memory-access', button: '#nostromo-bar', spill: '.bar-more', title: t('New: open the memory faster'), text: t('The Memory map asks you to type the project name before it opens. You can skip that step for 1, 8 or 24 hours, or for good: choose «Don\'t ask again…» when it asks, or go to Settings › Permissions.') },
-  { id: 'new-dots', button: '#messages .sys-dots:not(.open)', onScreen: true, title: t('New: notices shrink into dots'), text: t('To keep the chat clean, notices shrink into a small dot after 10 seconds. Click the dot to read them again. The ones that need something from you stay open.') },
+  { id: 'new-copilot', level: '1.0.2', button: '.copilot-chip', title: t('New: Copilot'), text: t('Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.') },
+  { id: 'new-mcp', level: '1.0.2', button: '#custom-button', panel: '#settings', title: t('New: Outside tools (MCP)'), text: t('Agents can now use other apps and services: a program on this computer or one on the internet. Add them in Settings › Outside tools (MCP). If you already set some up in Claude Code, Codex, Gemini or Cursor, you can bring them over.') },
+  { id: 'new-finder', level: '1.0.2', button: '#tree-button', spill: '.bar-more', title: t('New: your files stay up to date'), text: t('The file list updates by itself after every answer and every command. A colored dot on a folder tells you which agent changed something inside.') },
+  { id: 'new-memory-access', level: '1.0.2', button: '#nostromo-bar', spill: '.bar-more', title: t('New: open the memory faster'), text: t('The Memory map asks you to type the project name before it opens. You can skip that step for 1, 8 or 24 hours, or for good: choose «Don\'t ask again…» when it asks, or go to Settings › Permissions.') },
+  { id: 'new-dots', level: '1.0.2', button: '#messages .sys-dots:not(.open)', onScreen: true, title: t('New: notices shrink into dots'), text: t('To keep the chat clean, notices shrink into a small dot after 10 seconds. Click the dot to read them again. The ones that need something from you stay open.') },
+  // 1.0.5 (2026-10-21), for whoever met MADRE before it.
+  { id: 'new-code-ask', level: '1.0.5', button: '#code-button', title: t('New in Code: ask about any line'), text: t('In Code, click a line number and press ASK. You choose the agent and what you want: that it explains the line, improves it, tests it or fixes it.') },
+  { id: 'new-notes', level: '1.0.5', button: '#modules-button', spill: '.bar-more', title: t('New: Notes and Reminders'), text: t('Turn them on in Modules. Then write to an agent «remind me tomorrow at 5 to call the client», and MADRE tells you when the time comes.') },
+  { id: 'new-connectors', level: '1.0.5', button: '#custom-button', panel: '#settings', title: t('New: connectors ready to use'), text: t('In Settings › Connectors (MCP) you now pick GitHub, Notion or your calendar from a list and connect it with one key.') },
+  { id: 'new-manual', level: '1.0.5', button: '#custom-button', panel: '#settings', title: t('New: the user manual'), text: t('Pictures of MADRE with every step marked, for whenever you want to look something up. Settings › System › User manual, or as a PDF.') },
 ];
+// The way in, for whoever meets MADRE now (2026-10-21): once the bonjour is behind them and they
+// open a project, the box, who answers and how far it may go, one card after the other. Every other
+// key says what it is the first time it is pressed (FIRST_TOUCH).
+const GUIDE_HINTS = [
+  { id: 'guide-talk', button: '#composer .field', title: t('Start here'), text: t('Write here what you need, the way you would ask a person. Try «explain what this project does». ↵ sends it.') },
+  { id: 'guide-agent', button: '#picker', title: t('Who answers'), text: t('This circle is the agent that will answer you. Press it to pick another: Codex, Claude, Gemini, whichever you are signed in to.') },
+  { id: 'guide-mode', button: '.picker .mode-chip', title: t('How far it may go'), text: t('With #1 the agent reads and answers, nothing more. When you want it to create or change files, raise it here; MADRE asks you first.') },
+  // Code and the manual too (2026-10-21): the two things someone new asked for and did not find.
+  // Each says once what its first touch would have said again (`touches`).
+  { id: 'guide-code', button: '#code-button', spill: '.bar-more', touches: 'code', title: t('Code'), text: t('Your project\'s files open here, beside the chat. Click a line number and press ASK to ask an agent about it.') },
+  { id: 'guide-manual', button: '#custom-button', title: t('The user manual'), text: t('To look something up later: Settings › System › User manual, with pictures of every step. Also as a PDF.') },
+];
+// News is for whoever met MADRE before it came: someone back from 0.7.2 or 1.0, or someone who began
+// new before its version (`met`, written on the bonjour: src/tour.mjs, NEWS_LEVEL). Gated on the path
+// alone, it never reached anyone who had begun new — a person on 1.0.0 never heard of the copilot or
+// outside tools, nor someone on 1.0.4 of what 1.0.5 brings (2026-10-21).
+const NEWS_SINCE = '2026-10-16';
+const levelBelow = (a, b) => { const x = String(a).split('.').map(Number); const y = String(b).split('.').map(Number); for (let i = 0; i < 3; i += 1) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0); return false; };
+function isNewsFor(hint) {
+  if (roomTour().path() !== 'new') return true;
+  const met = roomTour().state()?.met;
+  if (met) return levelBelow(met, hint.level);
+  // A person from before `met` was written met MADRE before 1.0.5; 1.0.2's cards only if before it too.
+  const at = roomTour().state()?.bonjourAt;
+  return Boolean(at) && (hint.level !== '1.0.2' || at < NEWS_SINCE);
+}
+// Someone who met MADRE on this version (public/tour.js, newcomer): walked through the way in.
+// Whoever knew it before is told only what is new (2026-10-21).
+const isNewcomer = () => roomTour().newcomer();
 // Asked again while a card has nothing to point at, a few times only: a timer that never stops would
 // keep a page (and a test) alive for nothing.
 let newHintTries = 0;
@@ -20088,15 +20242,24 @@ function showNewHints(delay = 2500) {
       return box.width && box.bottom > 60 && box.top < window.innerHeight - 160;
     }).at(-1) ?? null;
     const anchorOf = (hint) => (hint.onScreen ? inView(hint.button) : shown(hint.button)) ?? shown(hint.spill);
-    const pending = NEW_HINTS.filter((hint) => !hintsSeen()[hint.id]);
+    // One short walk, «2 of 5» and «Next» from one card to the other: the cards that have a place
+    // on this page, in their order, the seen ones counted too.
+    const walk = [...(isNewcomer() ? GUIDE_HINTS : []), ...NEW_HINTS.filter(isNewsFor)];
+    const pending = walk.filter((hint) => !hintsSeen()[hint.id]);
     const next = pending.find(anchorOf);
+    // The walk is over: what Switch project is, if it was held back for it.
+    if (!pending.length) { if (isNewcomer()) saySwitch(); return; }
     // Nothing to point at yet (no folded notice, a key not on screen): asked again later.
     if (!next) { if (pending.length && (newHintTries += 1) <= 10) showNewHints(30000); return; }
     // Not over something the person is already reading: tried again later, never stacked.
     if (document.querySelector('dialog[open], .hint-card, .tour-hint') || !els.onboarding.hidden) { showNewHints(8000); return; }
     hintSeen(next.id);
+    if (next.touches) hintSeen(next.touches);
     const behind = !next.onScreen && !shown(next.button);
-    showFirstTouch(behind ? { ...next, text: `${next.text} ${t('You\'ll find it under «More», on the top bar.')}` } : next, anchorOf(next));
+    const here = walk.filter((hint) => hintsSeen()[hint.id] || anchorOf(hint));
+    const step = here.indexOf(next) + 1;
+    const skip = () => { for (const rest of here.slice(step)) { hintSeen(rest.id); if (rest.touches) hintSeen(rest.touches); } };
+    showFirstTouch(behind ? { ...next, text: `${next.text} ${t('You\'ll find it under «More», on the top bar.')}` } : next, anchorOf(next), { step, of: here.length, skip });
     const card = document.querySelector('.hint-card');
     const watch = setInterval(() => { if (!card?.isConnected) { clearInterval(watch); showNewHints(600); } }, 400);
     watch?.unref?.();
@@ -20865,16 +21028,18 @@ function switchLamp() {
   const of = (kind) => seen.filter(({ state }) => state.key === kind);
   const waiting = of('waiting');
   const top = waiting.length ? 'waiting' : of('working').length ? 'working' : of('done').length ? 'done' : '';
-  key.dataset.state = top;
+  // Read every few seconds and mostly the same: written only when it changed, so the key is not
+  // restyled for nothing on every reading (2026-10-21).
+  if (key.dataset.state !== top) key.dataset.state = top;
   const lamp = key.querySelector('.switch-lamp');
   if (lamp) {
-    lamp.hidden = !top;
-    lamp.textContent = waiting.length ? String(waiting.reduce((sum, { state }) => sum + state.count, 0)) : '';
+    if (lamp.hidden !== !top) lamp.hidden = !top;
+    const count = waiting.length ? String(waiting.reduce((sum, { state }) => sum + state.count, 0)) : '';
+    if (lamp.textContent !== count) lamp.textContent = count;
   }
   const news = [...waiting, ...of('working'), ...of('done')].map(({ room, state }) => `${switchName(room)}: ${state.words}`);
   const said = [t('Switch project'), ...news].join(' · ');
-  key.title = said;
-  key.setAttribute('aria-label', said);
+  if (key.title !== said) { key.title = said; key.setAttribute('aria-label', said); }
 }
 function switchOpen() {
   if (!switcher.panel) {
@@ -21410,8 +21575,19 @@ if (barKit.node) {
   barKit.more.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.6" fill="currentColor"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><circle cx="15" cy="10" r="1.6" fill="currentColor"/></svg>'; // trusted: our own SVG
   barKit.more.addEventListener('click', (event) => { event.stopPropagation(); if (barKit.moreCard && !barKit.moreCard.hidden) barCloseMore(); else barDrawMore(); });
   barLayout();
+  // While the bar keeps changing size — Code or a panel gliding in narrows it frame by frame — it is
+  // fitted once, when it settles: fitted on every frame, «More» came and went four times in a tenth
+  // of a second and the bar blinked (2026-10-21). A single change is still fitted on the next frame.
   let fitting = 0;
-  const refit = () => { cancelAnimationFrame?.(fitting); fitting = requestAnimationFrame?.(() => barFit()) ?? 0; };
+  let settling = 0;
+  let fittedAt = 0;
+  const refit = () => {
+    cancelAnimationFrame?.(fitting);
+    clearTimeout(settling);
+    const fit = () => { fittedAt = Date.now(); barFit(); };
+    if (Date.now() - fittedAt < 160) { settling = setTimeout(fit, 160); settling?.unref?.(); return; }
+    fitting = requestAnimationFrame?.(fit) ?? 0;
+  };
   window.addEventListener?.('resize', refit);
   // The bar is as wide as the room, not the window (2026-10-17): the code workspace docked beside
   // the conversation narrows it with the window unmoved, and MODULES ended up under the house's

@@ -18,10 +18,13 @@
 // order they are used (public/tour-chapters.js, ORDER).
 
 import { LOADER_MARK, finishLoader, makeLoader, setLoader } from './loader.js';
-import { keyWords, language, t } from './i18n.js';
+import { hostWords, keyWords, language, t } from './i18n.js';
 import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
 
 const say = (pair) => (typeof pair === 'string' ? pair : pair?.[language()] ?? pair?.es ?? '');
+// The chapters' own words, said of the computer and the keyboard in front of the person: «tu Mac» is
+// the machine's name off a Mac, ⌘ is Ctrl+ there (i18n.js).
+const plain = (text) => hostWords(keyWords(text));
 const fill = (template, vars) => template.replace(/\{(\w+)\}/g, (whole, name) => (Object.hasOwn(vars, name) ? String(vars[name]) : whole));
 const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Up, turned for down: the way to a hint whose place is out of view.
@@ -137,6 +140,14 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
   // Three people (src/tour.mjs): new, back from 0.7.2, or back from 1.0 (`since`).
   const path = () => state?.path ?? (info?.from === '1.0' ? 'since' : info?.returning ? 'back' : 'new');
   const chapters = () => (ORDER[path()] ?? ORDER.new).filter((id) => !hidden().includes(id)).map((id) => CHAPTERS.find((chapter) => chapter.id === id)).filter((chapter) => chapter && (!chapter.only || chapter.only === language()));
+  // Who meets MADRE now and who knew it before (src/tour.mjs: `met`, written on the bonjour, and the
+  // version whose news this code tells). Whoever knew it is told only what is new — the cards of
+  // news, and for whoever came from 0.7.2 what «Connections» means now — never again what each key
+  // is (2026-10-21): they were shown cards of things they had used for months.
+  const below = (a, b) => { const x = String(a).split('.').map(Number); const y = String(b).split('.').map(Number); for (let i = 0; i < 3; i += 1) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0); return false; };
+  const returning = () => Boolean(state?.bonjourAt) && (!state.met || (Boolean(info?.level) && below(state.met, info.level)));
+  const newcomer = () => Boolean(state?.bonjourAt) && !returning();
+  const forThem = (id) => !returning() || id.startsWith('new-') || (id === 'links' && path() === 'back');
   const busyWith = () => Boolean(windowNode?.open || sheetNode?.open || document.querySelector('dialog.tour-bonjour[open]'));
 
   // ---- One tab at a time. The tab that shows the bonjour or the chapters holds the tour and says
@@ -251,14 +262,14 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const title = el('h1', 'tour-hello', back || since ? t('Hello again.') : t('Hello.'));
     title.id = 'tour-bonjour-title';
     const body = el('p', 'tour-hello-says', since
-      ? t('Since 1.0, Home became a board you arrange, with widgets; the local AI is chosen project by project, and MADRE speaks more plainly. I tell you what changed, at your own pace.')
+      ? t('Since 1.0, Home became a board you arrange, with widgets; the local AI is chosen project by project, and MADRE speaks more plainly. Here is what changed.')
       : back
-        ? t('MADRE changed a lot since 0.7.2. First I bring your projects to Home; then I tell you what is new, at your own pace.')
-        : t('This is MADRE: all your AI agents in one place, with your projects, their memory and your permissions.'));
+        ? t('MADRE changed a lot since 0.7.2. First I bring your projects to Home; then I tell you what is new.')
+        : t('This is MADRE. Here you work with the AIs you already use: you write to them, they read your project, and you decide what they may change.'));
     const note = el('p', 'tour-hello-note');
     if (since) note.textContent = t('Nothing you set up changed: your projects, agents and permissions are as you left them.');
     else if (back) note.innerHTML = t('<code>madre</code> now opens Home; <code>madre start</code> still opens the project in the folder.'); // trusted: our own catalogue
-    else note.textContent = page === 'home' && welcome?.needed?.() ? t('First we get an agent and a project ready; then I tell you the essentials, at your own pace.') : t('I tell you the essentials in a few short chapters, at your own pace.');
+    else note.textContent = page === 'home' && welcome?.needed?.() ? t('First we get an agent and a project ready; then I show you the basics, whenever you like.') : t('I show you the basics in a few short chapters. You can stop and pick it up later.');
     const acts = el('div', 'tour-hello-acts');
     const later = key('tour-btn quiet', t('Later'), async () => {
       await keep({ path: path(), bonjour: true, closed: true });
@@ -284,7 +295,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     node.addEventListener('close', () => { letGoIfDone(); setTimeout(() => node.remove(), 400); });
     document.body.append(node);
     node.showModal();
-    onward.focus();
+    focusQuietly(onward);
   }
 
   // ---- 0.7.2: the projects Home cannot list, brought back one by one, the loader saying how far.
@@ -320,7 +331,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     acts.append(key('tour-btn primary', t('See what is new'), () => { node.close(); openChapters('moved'); }));
     done.append(acts);
     stage.replaceChildren(done);
-    acts.firstChild.focus();
+    focusQuietly(acts.firstChild);
   }
 
   // ---- The chapters.
@@ -375,7 +386,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const back = path() === 'back';
     const since = path() === 'since';
     windowNode.querySelector('.tour-head .wn-eyebrow').textContent = since ? t('What is new since 1.0') : back ? t('The tour of MADRE 1.0') : t('Getting to know MADRE');
-    windowNode.querySelector('#tour-window-title').textContent = since ? t('What changed, at your pace') : back ? t('Everything new, at your pace') : t('The essentials, at your pace');
+    windowNode.querySelector('#tour-window-title').textContent = since ? t('What changed since 1.0') : back ? t('What is new since 0.7.2') : t('The basics of MADRE');
     void keep({ chapter: chapter.id, at: chapter.id });
     if (!state.done.includes(chapter.id)) state.done = [...state.done, chapter.id];
     const list = chapters();
@@ -408,7 +419,7 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     if (back && chapter.news) {
       const news = el('p', `tour-news ${chapter.news.kind}`);
       const said = el('span');
-      said.innerHTML = say(chapter.news); // trusted: our own copy
+      said.innerHTML = plain(say(chapter.news)); // trusted: our own copy
       news.append(el('b', 'tour-news-tag', chapter.news.kind === 'new' ? t('New in 1.0') : t('Changed in 1.0')), said);
       words.append(news);
     }
@@ -416,15 +427,15 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     if (since && chapter.since) {
       const news = el('p', `tour-news ${chapter.since.kind}`);
       const said = el('span');
-      said.innerHTML = say(chapter.since); // trusted: our own copy
+      said.innerHTML = plain(say(chapter.since)); // trusted: our own copy
       news.append(el('b', 'tour-news-tag', chapter.since.kind === 'new' ? t('New since 1.0') : t('Changed since 1.0')), said);
       words.append(news);
     }
-    words.append(el('p', 'tour-lead', say(chapter.lead)));
+    words.append(el('p', 'tour-lead', plain(say(chapter.lead))));
     const points = chapter.points?.[language()] ?? chapter.points?.es ?? [];
     if (points.length) {
       const ul = el('ul', 'tour-points');
-      for (const point of points) { const item = el('li'); item.innerHTML = point; ul.append(item); } // trusted: our own copy
+      for (const point of points) { const item = el('li'); item.innerHTML = plain(point); ul.append(item); } // trusted: our own copy
       words.append(ul);
     }
     if (chapter.id === 'gestures') words.append(gestureGrid());
@@ -457,6 +468,17 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     acts.querySelector('.tour-btn.primary')?.focus({ preventScroll: true });
   }
 
+  // The key that goes on holds the focus, so ↵ presses it, without wearing the focus ring nobody
+  // asked for: the browser drew it in its own blue around the first key of the welcome, as if it had
+  // been chosen. The ring comes back the moment the keyboard is used (2026-10-20).
+  function focusQuietly(button) {
+    if (!button) return;
+    button.classList.add('quiet-focus');
+    const wake = () => button.classList.remove('quiet-focus');
+    button.addEventListener('keydown', wake, { once: true });
+    button.addEventListener('blur', wake, { once: true });
+    button.focus({ focusVisible: false });
+  }
   // ---- `?`: the sheet of gestures, anywhere. Its keys are the keyboard's in front of the person:
   // ⌘ on a Mac, Ctrl+ anywhere else.
   function gestureGrid() {
@@ -509,36 +531,45 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
   // ---- The hints: one line, once, the first time someone reaches a place that confuses. Never
   // two at once, never over the bonjour or the chapters, never before the bonjour was seen.
   // `inside`: the hint goes into that box, at its top (a window that is modal, where a card
-  // floating over the page could not be pressed); it counts as seen when the box closes.
-  async function hint(id, anchor, { title, text, inside = false }) {
+  // floating over the page could not be pressed). A hint is kept as seen the moment it shows, not
+  // when it is put away: one left open and the page reloaded came back every time (2026-10-21).
+  // `step` of `of`: one of a short walk (Home's, salas-mac.js), said as «2 of 4» with «Next»;
+  // `skip` puts the rest of the walk away, `then` comes after this one is put away.
+  async function hint(id, anchor, { title, text, inside = false, step = 0, of = 0, skip = null, then = null }) {
     const answer = await loaded;
     // Nor over a card of the room's news (app.js, .hint-card): two at once covered each other.
-    if (phone || !answer || !state?.bonjourAt || state.hints?.[id] || hintNode || busyWith() || document.querySelector('.hint-card')) return false;
+    if (phone || !answer || !state?.bonjourAt || state.hints?.[id] || !forThem(id) || hintNode || busyWith() || document.querySelector('.hint-card')) return false;
     if (!anchor?.isConnected) return false;
     const box = anchor.getBoundingClientRect();
     if (!inside && !box.width && !box.height) return false;
     const card = el('section', `tour-hint${inside ? ' inline' : ''}`);
     card.setAttribute('role', 'note');
-    card.append(el('span', 'tour-hint-eyebrow', t('The first time')), el('b', null, title), el('p', null, text));
+    const walking = step > 0 && of > 1;
+    card.append(el('span', 'tour-hint-eyebrow', walking ? t('{n} of {total}', { n: step, total: of }) : t('The first time')), el('b', null, title), el('p', null, text));
     let spot = null;
     let away = null;
     let follow = null;
+    let skipped = false;
     const done = () => {
       if (!hintNode) return;
-      void keep({ hint: id });
       spot?.remove();
       card.remove();
       away?.remove();
       hintNode = null;
       document.removeEventListener('keydown', onKey, true);
       if (follow) { window.removeEventListener('scroll', follow, true); window.removeEventListener('resize', follow); }
+      if (!skipped) then?.();
     };
     // Esc puts away the hint in sight, or the one its way-there key speaks of; one hidden under a
     // layer (the Project map) is not the one meant.
     const shown = (node) => Boolean(node?.isConnected) && getComputedStyle(node).display !== 'none';
     const onKey = (event) => { if (event.key === 'Escape' && hintNode && !inside && (shown(card) || shown(away))) { event.stopPropagation(); done(); } };
-    card.append(key('tour-btn small primary', t('Got it'), done));
+    const keys = el('div', 'tour-hint-keys');
+    if (walking && step < of && skip) keys.append(key('tour-btn small quiet', t('Skip the tips'), () => { skipped = true; skip(); done(); }));
+    keys.append(key('tour-btn small primary', walking && step < of ? t('Next') : t('Got it'), done));
+    card.append(keys);
     hintNode = card;
+    void keep({ hint: id });
     if (inside) {
       anchor.prepend(card);
       anchor.closest('dialog')?.addEventListener('close', done, { once: true });
@@ -579,6 +610,11 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
       const below = at.bottom + 10 + height < window.innerHeight;
       Object.assign(card.style, { left: `${left}px`, top: `${below ? at.bottom + 10 : Math.max(12, at.top - height - 10)}px` });
     };
+    // A step of a walk takes the page to what it speaks of, instead of asking to scroll there.
+    if (walking) {
+      const at = anchor.getBoundingClientRect();
+      if (at.top < 60 || at.bottom > window.innerHeight - 40) anchor.scrollIntoView?.({ block: 'center', behavior: still() ? 'auto' : 'smooth' });
+    }
     spot = spotlight(anchor);
     follow = () => place();
     window.addEventListener('scroll', follow, true);
@@ -621,6 +657,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     openChapters,
     openGestures,
     hint,
+    returning,
+    newcomer,
     // A card the page shows itself (app.js: first touches and news) is kept as seen here, per person.
     seen: (id) => keep({ hint: id }),
     state: () => state,

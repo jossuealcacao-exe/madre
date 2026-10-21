@@ -133,7 +133,7 @@ test('ollama: the module lists its state, the server wires it live, and PULL str
   const listed = await listExtensions({ projectRoot: '/tmp', config: {}, ollama: probe });
   const module = listed.find((item) => item.id === 'ollama');
   assert.equal(module.status.installed, true);
-  assert.match(module.status.detail, /on · smart search · nomic-embed-text:latest · archivist · llama3\.2:3b/);
+  assert.match(module.status.detail, /on · smart search · nomic-embed-text:latest · memory summarizer · llama3\.2:3b/);
   const off = (await listExtensions({ projectRoot: '/tmp', config: { modules: { ollama: { enabled: false } } }, ollama: probe })).find((item) => item.id === 'ollama');
   assert.equal(off.status.installed, false);
   assert.match(off.status.detail, /^off · 3 models available/);

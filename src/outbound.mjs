@@ -57,6 +57,15 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // The models a Gemini key opens, for the chooser under the box (models.mjs, 2026-10-21). The key
+    // travels in a header, never in the address.
+    id: 'gemini-models', host: 'generativelanguage.googleapis.com', match: (url) => /\/models\/?$/.test(url.pathname), to: 'Google · the models of your Gemini key',
+    what: 'Your Gemini API key, so Google says which of its models the key opens. Nothing about you or your project.',
+    when: 'when the model chooser of Gemini opens, at most once every ten minutes',
+    where: 'Settings › Agents › Gemini · without a key it is never asked',
+    inside: true,
+  },
+  {
     id: 'image', host: 'generativelanguage.googleapis.com', match: (url) => /generateContent/.test(url.pathname), to: 'Google · Gemini image model',
     what: 'The prompt an agent wrote for an image.',
     when: 'an agent uses the image tool during a permission to create',

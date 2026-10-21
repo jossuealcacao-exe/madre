@@ -12,7 +12,7 @@
 
 export const ES = {
   // El compositor: lo primero que una persona lee de MADRE.
-  'Type here, human. Ask the project…': 'Escribe aquí, humano. Pregúntale al proyecto…',
+  'Type here, human. Ask the project…': '¿Qué necesitas? Pregunta lo que quieras de tu proyecto…',
   'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.':
     'CREAR encendido: di qué quieres crear. Los archivos nuevos se guardan en su lugar dentro del proyecto; no se modifica nada de lo que ya existe.',
   'Compact prose. Nothing you write is altered; only the answers get shorter.':
@@ -281,7 +281,7 @@ export const ES = {
     'EDITAR desbloqueado. Di qué cambiar en el proyecto: cada acción se ejecuta sin pedirte permiso.',
   '#4 FULL ACCESS unlocked. Commands run here, and changes are pushed or deployed outside your computer. Say exactly what should go out.':
     '#4 ACCESO TOTAL desbloqueado. Aquí se ejecutan comandos y se suben (push) o publican (deploy) cambios fuera de tu computadora. Di exactamente qué se debe subir o publicar.',
-  'Type here, human. MADRE is listening.': 'Escribe aquí, humano. MADRE te escucha.',
+  'Type here, human. MADRE is listening.': '¿Qué necesitas? MADRE te escucha…',
   'Ask what the project remembers. @madre answers from memory with citations; it does not act.':
     'Pregunta qué recuerda el proyecto. @madre contesta desde la memoria y cita de dónde lo saca; no ejecuta nada.',
 
@@ -305,7 +305,7 @@ export const ES = {
   'Modules · optional integrations for this project': 'Módulos · integraciones opcionales para este proyecto',
   'Troubleshooting · Diagnostics': 'Diagnóstico',
   'Project files panel': 'Los archivos del proyecto',
-  'Conversations in this project': 'Las conversaciones de este proyecto',
+  'Conversations in this project': 'Los chats de este proyecto',
 
   // ── EL PUENTE: primer contacto ────────────────────────────────────────────
   'CONNECT YOUR AGENTS': 'CONECTA TUS AGENTES',
@@ -354,8 +354,8 @@ export const ES = {
     '¿Qué cambiarías primero en {project} y qué no tocarías?',
 
   // ── LAS CONVERSACIONES ────────────────────────────────────────────────────
-  'CONVERSATIONS': 'CONVERSACIONES',
-  'NEW CONVERSATION': 'NUEVA CONVERSACIÓN',
+  'CONVERSATIONS': 'CHATS',
+  'NEW CONVERSATION': 'NUEVO CHAT',
   'Start another conversation in this project. The memory stays.':
     'Abre otra conversación en este proyecto. La memoria se queda donde está.',
   'ONE PROJECT, ONE MEMORY. EVERY CONVERSATION FEEDS THE SAME ARCHIVE.':
@@ -429,7 +429,7 @@ export const ES = {
   'WHAT KEEPS IT TO THIS TURN': 'LO QUE LO LIMITA A ESTA RESPUESTA',
   'ENVIRONMENT IT IS GIVEN': 'VARIABLES DE ENTORNO QUE RECIBE',
   'NAMES ONLY. NO VALUE IS EVER SHOWN HERE.': 'SOLO NOMBRES. AQUÍ NUNCA SE MUESTRA UN VALOR.',
-  'OUTSIDE TOOLS (MCP) IT CAN USE': 'HERRAMIENTAS EXTERNAS (MCP) QUE PUEDE USAR',
+  'OUTSIDE TOOLS (MCP) IT CAN USE': 'CONECTORES (MCP) QUE PUEDE USAR',
   'the archive of this project, read and written through MADRE':
     'la memoria de este proyecto, que lee y escribe a través de MADRE',
 
@@ -450,6 +450,14 @@ export const ES = {
     'cuando se escribe o se busca una memoria, mientras la búsqueda por significado use Gemini',
   'Settings › Memory › Smart search · Ollama keeps it on this computer, off drops back to words':
     'Ajustes › Memoria › Búsqueda inteligente · con Ollama se queda en esta computadora; apagada, busca por palabras',
+  'Google · the models of your Gemini key':
+    'Google · los modelos de tu llave de Gemini',
+  'Your Gemini API key, so Google says which of its models the key opens. Nothing about you or your project.':
+    'Tu llave API de Gemini, para que Google diga qué modelos abre esa llave. Nada sobre ti ni sobre tu proyecto.',
+  'when the model chooser of Gemini opens, at most once every ten minutes':
+    'cuando abres el selector de modelo de Gemini, como mucho una vez cada diez minutos',
+  'Settings › Agents › Gemini · without a key it is never asked':
+    'Ajustes › Agentes › Gemini · sin llave nunca se pregunta',
   'Google · Gemini image model':
     'Google · modelo de imágenes de Gemini',
   'The prompt an agent wrote for an image.':
@@ -641,7 +649,7 @@ export const ES = {
   'You': 'Tú',
   'How it looks, how it works and your files': 'Cómo se ve, cómo trabaja y tus archivos',
   'The agents': 'Los agentes',
-  'Who works, what they remember and which outside tools they use': 'Quién trabaja, qué recuerda y qué herramientas externas usa',
+  'Who works, what they remember and which outside tools they use': 'Quién trabaja, qué recuerda y qué conectores usa',
   'System': 'Sistema',
   'Appearance': 'Apariencia',
   'Work and limits': 'Trabajo y límites',
@@ -659,7 +667,7 @@ export const ES = {
   'Error reports': 'Reportes de errores',
   'Several at once': 'Varias a la vez',
   'Several at once · {n}': 'Varias a la vez · {n}',
-  'One conversation at a time': 'Una conversación a la vez',
+  'One conversation at a time': 'Un chat a la vez',
   '{n} tokens per agent': '{n} tokens por agente',
   '{n} of {total} signed in': '{n} de {total} con sesión',
   '{agents} without a session': '{agents} sin sesión',
@@ -873,7 +881,7 @@ export const ES = {
   'notes: the cheapest agent goes first.': 'notas: va primero el agente más barato.',
   'notes: @{agent} goes first.': 'notas: @{agent} va primero.',
   'ARCHIVIST': 'QUIÉN RESUME LA MEMORIA',
-  'notes every {n} exchanges.': 'notas cada {n} intercambios.',
+  'notes every {n} exchanges.': 'notas cada {n} mensajes.',
   'or after {n} quiet minutes.': 'o después de {n} minutos en silencio.',
   'memories may take up to {n}% of what each agent reads.': 'las memorias pueden ocupar hasta {n}% de lo que lee cada agente.',
   'RECALL · % OF CONTEXT': 'RECUERDO AUTOMÁTICO · % DEL CONTEXTO',
@@ -937,14 +945,14 @@ export const ES = {
   'MEMORY REVIEW': 'REVISIÓN DE LA MEMORIA',
   // El tablero de MEMORIA: lo que el archivo hizo día por día y de qué está hecho.
   'READ {time}': 'LEÍDO {time}',
-  'EXCHANGES': 'INTERCAMBIOS',
+  'EXCHANGES': 'MENSAJES',
   'MEMORIES': 'MEMORIAS',
   'TURNS THAT RECALLED': 'RESPUESTAS QUE USARON MEMORIA',
   'WAITING': 'EN ESPERA',
   'MEMORY PROGRESS': 'AVANCE DE LA MEMORIA',
   '{n} THIS WEEK': '{n} ESTA SEMANA',
   '{last} in the last 7 days, {before} in the 7 before': '{last} en los últimos 7 días, {before} en los 7 anteriores',
-  'EXCHANGES NOBODY HAS DISTILLED YET': 'INTERCAMBIOS QUE AÚN NO SE RESUMEN EN NOTAS',
+  'EXCHANGES NOBODY HAS DISTILLED YET': 'MENSAJES QUE AÚN NO SE RESUMEN EN NOTAS',
   'THE ARCHIVIST IS UP TO DATE': 'TODO ESTÁ RESUMIDO EN NOTAS',
   'NEW MEMORIES': 'MEMORIAS NUEVAS',
   'PEAK {n}': 'MÁXIMO {n}',
@@ -1260,7 +1268,6 @@ export const ES = {
   'Paradise': 'Paraíso',
   'The whole interface. The page reloads in it when you accept.': 'Cambia toda la interfaz. Al aceptar, la página se recarga en ese idioma.',
   'Nothing changes until you accept.': 'Nada cambia hasta que aceptes.',
-  'A BUTTON': 'UN BOTÓN',
   'ACCEPT': 'ACEPTAR',
   'HOW MADRE LOOKS TO YOU': 'CÓMO SE VE MADRE PARA TI',
   'Arrange the windows': 'Acomodar las ventanas',
@@ -1268,7 +1275,7 @@ export const ES = {
   'The project keeps what you decide. ': 'El proyecto guarda lo que decides. ',
   'Bold reads like this': 'Así se leen las negritas',
   'Show me how my messages look.': 'Muéstrame cómo se ven mis mensajes.',
-  'Only the conversation and the buttons change.': 'Solo cambian la conversación y los botones.',
+  'Only the conversation and the buttons change.': 'Solo cambian el chat y los botones.',
   'ARRANGE': 'ACOMODAR',
   'Fill': 'Llenar',
   'Halves': 'Mitades',
@@ -1286,7 +1293,7 @@ export const ES = {
   'LANGUAGE': 'IDIOMA',
   'ACCENT': 'ACENTO',
   'BUBBLES': 'BURBUJAS',
-  'TEXT IN THE CONVERSATION': 'TEXTO DE LA CONVERSACIÓN',
+  'TEXT IN THE CONVERSATION': 'TEXTO DEL CHAT',
   'BACK TO DEFAULT': 'VOLVER A LO DE SIEMPRE',
   'Madre green': 'Verde Madre',
   'Mountain green': 'Verde Montaña',
@@ -1302,6 +1309,10 @@ export const ES = {
   'Pulse green': 'Verde Pulso',
   'Loyal orange': 'Naranja Leal',
   'Sweet yellow': 'Amarillo Dulce',
+  'Marble gray': 'Gris Mármol',
+  'Peach orange': 'Naranja Durazno',
+  'Pistachio green': 'Verde Pistache',
+  'Petal pink': 'Rosa Pétalo',
   'Comfortable': 'Cómodo',
   'Large': 'Grande',
   'Compact': 'Compacto',
@@ -1346,7 +1357,7 @@ export const ES = {
   'Layer': 'Capa',
   'Hide these questions': 'Ocultar estas preguntas',
   'Choose who you write to': 'Elige a quién le escribes',
-  'Read 8 exchanges and kept 5 memories.': 'Leyó 8 intercambios y se quedó con 5 memorias.',
+  'Read 8 exchanges and kept 5 memories.': 'Leyó 8 mensajes y se quedó con 5 memorias.',
   'Nothing left to stop: this alert is history.': 'Ya no hay nada que detener: este aviso es solo historial.',
   'Mesh': 'Malla',
   'Intensity': 'Intensidad',
@@ -1463,18 +1474,18 @@ export const ES = {
   'more entries not shown': 'hay más entradas que no se muestran',
   'Delete this conversation. Its transcript goes; what the archive learned from it stays.':
     'Borra esta conversación. Su transcripción se va; lo que la memoria aprendió de ella se queda.',
-  'Press again to delete this conversation.': 'Vuelve a apretar para borrar esta conversación.',
+  'Press again to delete this conversation.': 'Vuelve a apretar para borrar este chat.',
   // La ventana partida en dos: una segunda conversación en la mitad derecha.
   'Open this conversation in the other half of the window': 'Abrir esta conversación en la otra mitad de la ventana',
   'Close the split': 'Cerrar la división',
-  'Second conversation': 'Segunda conversación',
+  'Second conversation': 'Segundo chat',
   'Resize the two halves': 'Cambiar el tamaño de las dos mitades',
   'Swap the two halves': 'Intercambiar las dos mitades',
   'Make this the open conversation, and put the other one here': 'Hacer de esta la conversación abierta y poner la otra aquí',
-  'Trade places with the second conversation': 'Cambiar de lugar con la segunda conversación',
+  'Trade places with the second conversation': 'Cambiar de lugar con el segundo chat',
   'Diagnostics › the window is too narrow for two conversations. Widen it and try again.':
     'Diagnóstico › la ventana es demasiado angosta para dos conversaciones. Ensánchala y vuelve a intentarlo.',
-  'This conversation is no longer here.': 'Esta conversación ya no está aquí.',
+  'This conversation is no longer here.': 'Este chat ya no está aquí.',
   'end of record. nothing else is down here, human. agent status under review.':
     'fin del registro. aquí abajo no hay nada más, humano. estado de los agentes en revisión.',
   'Diagnostics › nobody in the project can generate images right now: turn on Images in Modules, or Generate images for an agent in Settings › Agents.': 'Diagnóstico › nadie en el proyecto puede generar imágenes ahora: enciende Imágenes en Módulos, o Generar imágenes para un agente en Ajustes › Agentes.',
@@ -1510,7 +1521,7 @@ export const ES = {
   'CLOSE ×': 'CERRAR ×',
   'EXPAND ALL': 'ABRIR TODO',
   // MEMORIA, emancipada de CONEXIONES: su propio botón en la barra de MU/TH/UR.
-  'One conversation. Every agent.': 'Una conversación. Todos los agentes.',
+  'One conversation. Every agent.': 'Un chat. Todos tus agentes.',
   'Pick an agent and ask, or start with a mention such as': 'Elige un agente y pregunta, o empieza con una mención como',
   'UNLOCK': 'DESBLOQUEAR',
   'BACK': 'ATRÁS',
@@ -1535,14 +1546,11 @@ export const ES = {
   'a card with what my store sold today': 'una ficha con lo que vendió mi tienda hoy',
   // Primer uso: la tarjeta junto a un botón que nunca se había presionado.
   'The browser': 'El navegador',
-  'See what you are building without leaving the project: the servers answering on this computer, in tabs, at phone, tablet or desktop width. To open the web, switch Preview on in MODULES.':
-    'Mira lo que estás construyendo sin salir del proyecto: los servidores que contestan en esta computadora, en pestañas, a ancho de teléfono, tableta o escritorio. Para abrir la web, activa Vista previa en MÓDULOS.',
+  'The pages you are building, inside MADRE: whatever runs on this computer, at phone, tablet or desktop width. For sites on the internet, turn on Preview in Modules.': 'Las páginas que estás haciendo, dentro de MADRE: lo que corre en esta computadora, en ancho de teléfono, tableta o escritorio. Para sitios de internet, enciende Vista previa en Módulos.',
   'The project files': 'Los archivos del proyecto',
-  'Your project as a tree. Click a file to read it, search by name, and right-click to copy, move, rename or create files and folders.':
-    'Tu proyecto como árbol. Haz clic en un archivo para leerlo, búscalo por nombre, y con clic derecho copia, mueve, renombra o crea archivos y carpetas.',
-  'Conversations, one memory': 'Conversaciones, una sola memoria',
-  'A project can hold many conversations and a single memory. Start a new one for a new subject: they all feed the same archive, and every agent recalls what was said in the others.':
-    'Un proyecto puede tener muchas conversaciones y una sola memoria. Empieza otra para un tema nuevo: todas alimentan la misma memoria y cualquier agente recuerda lo que se dijo en las demás.',
+  'Your project\'s folders and files. Click one to read it; right-click to copy, move or rename it, or to make a new one.': 'Las carpetas y archivos de tu proyecto. Haz clic en uno para leerlo; con clic derecho lo copias, lo mueves, le cambias el nombre o creas otro.',
+  'Conversations, one memory': 'Chats, una sola memoria',
+  'Start a new chat for each subject. They all share the project\'s memory, so an agent in one knows what was decided in another.': 'Abre un chat nuevo para cada tema. Todos comparten la memoria del proyecto: lo que se decidió en uno, el agente lo sabe en otro.',
   'Got it': 'Entendido',
   // Primer contacto: el recorrido sobre la sala, en cinco paradas.
   'Right-click': 'Clic derecho',
@@ -1560,7 +1568,7 @@ export const ES = {
   'Open Diagnostics': 'Abre Diagnóstico',
   'When something fails, write the symptom there: it says what is going on and how to fix it.':
     'Cuando algo falle, escribe ahí el síntoma: te dice qué pasa y cómo arreglarlo.',
-  'Open a second conversation': 'Abre una segunda conversación',
+  'Open a second conversation': 'Abre un segundo chat',
   'From the conversations panel, beside this one or as a window. Both keep working.':
     'Desde el panel de conversaciones, junto a esta o como ventana. Las dos siguen trabajando.',
   'Make the bar yours': 'Acomoda la barra a tu gusto',
@@ -1602,7 +1610,7 @@ export const ES = {
   'SOURCE': 'ORIGEN',
   'DISTILLED': 'RESUMIDA',
   'LINKS': 'CONEXIONES',
-  'EXCHANGE WITH MADRE': 'INTERCAMBIO CON MADRE',
+  'EXCHANGE WITH MADRE': 'CHAT CON MADRE',
   'FORGETTING REMOVES THE NOTE FROM EVERY FUTURE TURN. THE LEDGER IT CAME FROM STAYS.':
     'SI LA OLVIDAS, YA NO SE USA EN NINGUNA RESPUESTA. EL HISTORIAL DE DONDE SALIÓ SE QUEDA.',
   'NO MEMORIES YET. THE ARCHIVIST WRITES THE FIRST ONES AFTER A FEW EXCHANGES.':
@@ -1614,8 +1622,8 @@ export const ES = {
   'Agents': 'Agentes',
   'Language': 'Idioma',
   'Theme': 'Tema',
-  'Conversations': 'Conversaciones',
-  'Close conversations': 'Cerrar las conversaciones',
+  'Conversations': 'Chats',
+  'Close conversations': 'Cerrar los chats',
   'Project files': 'Archivos del proyecto',
   'Close files': 'Cerrar los archivos',
   'What is sent': 'Lo que se envía',
@@ -1655,7 +1663,7 @@ export const ES = {
   // ── LOS ERRORES QUE LA SALA CONTESTA ──────────────────────────────────────
   'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.':
     'Hay una respuesta en curso en esta conversación. Deja que termine, o dale DETENER TODO, y vuelve a intentar.',
-  'A turn is running in this conversation.': 'Hay una respuesta en curso en esta conversación.',
+  'A turn is running in this conversation.': 'Hay una respuesta en camino en este chat.',
   'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
   "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.":
     'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Corre el comando en una terminal y luego dale REVISAR OTRA VEZ.',
@@ -1680,7 +1688,7 @@ export const ES = {
   'Agents are still working. STOPALL or wait, then update.':
     'Los agentes siguen trabajando. Dale DETENER TODO o espera, y luego actualiza.',
   'The Security module did not respond.': 'El módulo de Seguridad no respondió.',
-  'No such conversation.': 'No existe esa conversación.',
+  'No such conversation.': 'No existe ese chat.',
   'That file is empty.': 'Ese archivo está vacío.',
   'A module file that big is not a module. Keep it under 400 KB.':
     'El archivo del módulo es demasiado grande. Debe pesar 400 KB o menos.',
@@ -2121,14 +2129,14 @@ export const ES = {
   'Untitled': 'Sin título',
   'Files': 'Archivos',
   'The viewer': 'El visor',
-  'The second conversation': 'La segunda conversación',
+  'The second conversation': 'El segundo chat',
   '{first} and {second} float over the conversation while there is no room beside it, and go back beside it when there is.': '{first} y {second} flotan sobre la conversación mientras no hay lugar a su lado, y regresan cuando lo hay.',
   '{what} floats over the conversation while there is no room beside it, and goes back beside it when there is.': '{what} flota sobre la conversación mientras no hay lugar a su lado, y regresa cuando lo hay.',
   '{what} moved to a window so the conversation stays readable. Its split button puts it back beside.': '{what} se abrió en una ventana aparte para que la conversación se lea bien. Su botón de pantalla dividida lo regresa al lado.',
   'I want to start a project: ': 'Quiero empezar un proyecto: ',
   'Before writing anything, ask me what I want to build and propose a plan in steps.': 'Antes de escribir nada, pregúntame qué quiero construir y propón un plan por pasos.',
   'Which stack would you use for a small web app that anyone can open, and why?': '¿Qué tecnología usarías para una app web pequeña que cualquiera pueda abrir, y por qué?',
-  'First conversation': 'Primera conversación',
+  'First conversation': 'Primer chat',
   'Fresh input tokens of a typical (median) turn with each outside tool (MCP) connected, and without it.': 'Tokens de entrada nuevos en una respuesta típica (la mediana), con cada herramienta externa (MCP) conectada y sin ella.',
   '@{agent} · {server}: {with} with it ({nWith} turns) · {without} without it ({nWithout} turns)': '@{agent} · {server}: {with} con él ({nWith} respuestas) · {without} sin él ({nWithout} respuestas)',
   'it did not answer within {seconds}s': 'no contestó en {seconds} s',
@@ -2480,7 +2488,7 @@ export const ES = {
   '# project → UNDO under the EDIT notice':
     '# el proyecto → DESHACER debajo del aviso de EDITAR',
   '# project → Conversations → NEW CONVERSATION':
-    '# el proyecto → Conversaciones → NUEVA CONVERSACIÓN',
+    '# el proyecto → Chats → NUEVO CHAT',
   '# the address of the open project is in the refusal itself':
     '# la dirección del proyecto abierto viene en el propio rechazo',
   '# Diagnostics → Memory map → the dark bodies are doubtful memories':
@@ -2969,13 +2977,13 @@ export const ES = {
   'finished while you were away':
     'terminó mientras no estabas',
   'another conversation':
-    'otra conversación',
+    'otro chat',
   'Diagnostics › @{agent} finished in «{chat}».':
     'Diagnóstico › @{agent} terminó en «{chat}».',
   'Diagnostics › @{agent} could not finish in «{chat}».':
     'Diagnóstico › @{agent} no pudo terminar en «{chat}».',
   'Several conversations may work at once.':
-    'Varias conversaciones pueden trabajar a la vez.',
+    'Varios chats pueden trabajar a la vez.',
   'One conversation at a time; switching away from one at work is refused.':
     'Una conversación a la vez; no se puede cambiar de una que está trabajando.',
   'fewer':
@@ -3007,14 +3015,14 @@ export const ES = {
     'Ya hay {n} conversaciones más trabajando, y RESPUESTAS permite {max} a la vez. Espera a que termine una o súbelo en Diagnóstico → RESPUESTAS.',
 
   // Los paneles junto a la conversación.
-  'Resize the conversations panel': 'Cambiar el ancho del panel de conversaciones',
+  'Resize the conversations panel': 'Cambiar el ancho del panel de chats',
   'Resize the files panel': 'Cambiar el ancho del panel de archivos',
 
   // Conversaciones como ventanas.
-  'Open this conversation in a window': 'Abrir esta conversación en una ventana',
+  'Open this conversation in a window': 'Abrir este chat en una ventana',
   'Close this window': 'Cerrar esta ventana',
   'Move it to the other half of the window': 'Pasarla a la otra mitad de la pantalla',
-  'Conversation': 'Conversación',
+  'Conversation': 'Chat',
   'Float it as a window': 'Abrirla en una ventana aparte',
   'Diagnostics › two conversations are already open beside this one. Close one to open another: past three at once they crowd each other, and each keeps its own line open to the project.':
     'Diagnóstico › ya hay dos conversaciones abiertas junto a esta. Cierra una para abrir otra: más de tres a la vez se estorban.',
@@ -3031,7 +3039,7 @@ export const ES = {
   ':{port} stopped': ':{port} se detuvo',
   'The failure monitor saw {command} stop answering. Start it again and this page comes back on its own.': 'El monitor de fallas vio que {command} dejó de responder. Vuelve a iniciarlo y esta página regresa sola.',
   'Float the browser as a window': 'Abrir el navegador en una ventana aparte',
-  'Dock the browser beside the conversation': 'Acoplar el navegador junto a la conversación',
+  'Dock the browser beside the conversation': 'Acoplar el navegador junto al chat',
 
   ' · how much it thinks': ' · cuánto piensa',
   'the CLI decides': 'decide la app del agente',
@@ -3054,7 +3062,7 @@ export const ES = {
   'Give it back its place': 'Devolverlo a su lugar',
   'Split the screen with it': 'Dividir la pantalla con esto',
   'In the other half of the window': 'En la otra mitad de la pantalla',
-  'Beside the conversation': 'Junto a la conversación',
+  'Beside the conversation': 'Junto al chat',
 
   // El editor.
   'SAVE': 'GUARDAR',
@@ -3179,11 +3187,11 @@ export const ES = {
   'Read at {time}': 'Leído a las {time}',
   'Nothing yet: the project has no memories saved.': 'Aún nada: el proyecto no tiene memorias guardadas.',
   '{n} this week': '{n} esta semana',
-  'Exchanges': 'Intercambios',
+  'Exchanges': 'Mensajes',
   'Memories': 'Memorias',
   'Answers that used memories': 'Respuestas que usaron memorias',
   'Not noted yet': 'Aún sin pasar a notas',
-  'Exchanges not turned into notes yet.': 'Intercambios que aún no se pasan a notas.',
+  'Exchanges not turned into notes yet.': 'Mensajes que aún no se pasan a notas.',
   'All caught up.': 'Todo al día.',
   'Memory progress': 'Avance de la memoria',
   'Activity · last {n} days': 'Actividad · últimos {n} días',
@@ -3195,7 +3203,7 @@ export const ES = {
   'Search': 'Búsqueda',
   'Nothing yet.': 'Nada todavía.',
   'Memories searchable by meaning': 'Memorias con búsqueda por significado',
-  'Exchanges searchable by meaning': 'Intercambios con búsqueda por significado',
+  'Exchanges searchable by meaning': 'Mensajes con búsqueda por significado',
   'Search by meaning is off: memories are found by exact words only.': 'La búsqueda por significado está apagada: las memorias se encuentran solo por palabras exactas.',
   'Memory checkup': 'Chequeo de la memoria',
   'Signing in…': 'Iniciando sesión…',
@@ -3235,7 +3243,7 @@ export const ES = {
   'Only the agents switched on here take notes.': 'Solo los agentes encendidos aquí toman notas.',
   'Every': 'Cada',
   'How many exchanges pass before it takes notes again.': 'Cuántos intercambios pasan antes de volver a tomar notas.',
-  'exchanges': 'intercambios',
+  'exchanges': 'mensajes',
   'Or after': 'O después de',
   'Or take notes after this many quiet minutes.': 'O tomar notas tras estos minutos sin actividad.',
   'min': 'min',
@@ -3327,8 +3335,8 @@ export const ES = {
   'At the same time': 'Al mismo tiempo',
   'How much the project does at once. A conversation that takes its time keeps working while you write in it or open another.': 'Cuánto hace el proyecto a la vez. Una conversación que se tarda sigue trabajando mientras le escribes o abres otra.',
   'It could not be read.': 'No se pudo leer.',
-  'Conversations at once': 'Conversaciones a la vez',
-  'Answers per conversation': 'Respuestas por conversación',
+  'Conversations at once': 'Chats a la vez',
+  'Answers per conversation': 'Respuestas por chat',
   'On': 'Encendidas',
   'Blocked': 'Bloqueadas',
   'Not available': 'No disponibles',
@@ -3561,7 +3569,7 @@ export const ES = {
   'The most each agent may do. #3 and #4 still ask you first.': 'Lo máximo que puede hacer cada agente. #3 y #4 siempre te preguntan antes.',
   'Max mode for @{agent}': 'Permiso máximo de @{agent}',
   'Permissions': 'Permisos',
-  'What agents may do, privacy and updates': 'Qué pueden hacer los agentes, privacidad y actualizaciones',
+  'What agents may do, privacy, updates and the manual': 'Qué pueden hacer los agentes, privacidad, actualizaciones y el manual',
   'Diagnostics settings: what the failure monitor keeps and whether it reports': 'Ajustes de Diagnóstico: lo que guarda el monitor de fallas y si envía reportes',
   'Diagnostics settings': 'Ajustes de Diagnóstico',
   'Project': 'Proyecto',
@@ -3953,8 +3961,8 @@ export const ES = {
   'Update MADRE in this project to see it here.': 'Actualiza MADRE en este proyecto para verlo aquí.',
   '@{agent} is working': '@{agent} está trabajando',
   '{n} agents working': '{n} agentes trabajando',
-  '{n} conversations': '{n} conversaciones',
-  '1 conversation': '1 conversación',
+  '{n} conversations': '{n} chats',
+  '1 conversation': '1 chat',
   '1 memory': '1 memoria',
   '{n} memories': '{n} memorias',
   '{n} in use': '{n} en uso',
@@ -4174,10 +4182,45 @@ export const ES = {
   '{name} is on in {project}.': '{name} se encendió en {project}.',
   'Get it for this project': 'Obtener para este proyecto',
   'Turn off in this project': 'Apagar en este proyecto',
-  'Get it for all your projects': 'Obtener para todos tus proyectos',
   'Turn off in every project': 'Apagar en todos los proyectos',
   'or only in': 'o solo en',
-  'Only in this one': 'Solo en este',
+  'Getting it…': 'Obteniéndolo…',
+  'User manual': 'Manual de usuario',
+  'New in Code: ask about any line': 'Nuevo en Código: pregunta por cualquier línea',
+  'In Code, click a line number and press ASK. You choose the agent and what you want: that it explains the line, improves it, tests it or fixes it.': 'En Código, haz clic en el número de una línea y pulsa PREGUNTAR. Eliges al agente y qué quieres: que la explique, la mejore, le escriba pruebas o la arregle.',
+  'New: Notes and Reminders': 'Nuevo: Notas y Recordatorios',
+  'Turn them on in Modules. Then write to an agent «remind me tomorrow at 5 to call the client», and MADRE tells you when the time comes.': 'Enciéndelos en Módulos. Luego escríbele a un agente «recuérdame mañana a las 5 llamar al cliente» y MADRE te avisa a esa hora.',
+  'New: connectors ready to use': 'Nuevo: conectores listos para usar',
+  'In Settings › Connectors (MCP) you now pick GitHub, Notion or your calendar from a list and connect it with one key.': 'En Ajustes › Conectores (MCP) ahora eliges GitHub, Notion o tu calendario de una lista y lo conectas con un botón.',
+  'New: the user manual': 'Nuevo: el manual de usuario',
+  'Pictures of MADRE with every step marked, for whenever you want to look something up. Settings › System › User manual, or as a PDF.': 'Capturas de MADRE con cada paso marcado, para cuando quieras consultar algo. Ajustes › Sistema › Manual de usuario, o en PDF.',
+  'Start here': 'Empieza aquí',
+  'Write here what you need, the way you would ask a person. Try «explain what this project does». ↵ sends it.': 'Escribe aquí lo que necesitas, como se lo pedirías a una persona. Prueba con «explícame qué hace este proyecto». ↵ lo envía.',
+  'Who answers': 'Quién te contesta',
+  'This circle is the agent that will answer you. Press it to pick another: Codex, Claude, Gemini, whichever you are signed in to.': 'Este círculo es el agente que te va a contestar. Tócalo para elegir otro: Codex, Claude, Gemini, el que tengas con sesión.',
+  'How far it may go': 'Hasta dónde puede llegar',
+  'With #1 the agent reads and answers, nothing more. When you want it to create or change files, raise it here; MADRE asks you first.': 'Con #1 el agente lee y te contesta, nada más. Cuando quieras que cree o cambie archivos, súbelo aquí; MADRE te pregunta antes.',
+  'Your project lives here': 'Aquí vive tu proyecto',
+  'Open it to start. Each project keeps its own chats and its own memory.': 'Ábrelo para empezar. Cada proyecto guarda sus chats y su memoria.',
+  'Begin with a project': 'Empieza con un proyecto',
+  'Press «Add project» and choose the folder you work in. Nothing inside it changes.': 'Pulsa «Agregar proyecto» y elige la carpeta en la que trabajas. Nada de lo que hay dentro cambia.',
+  'The models your plan offers in Codex. «default» is the one Codex uses on its own.': 'Los modelos que tu plan ofrece en Codex. «default» es el que Codex usa por su cuenta.',
+  'Each name is the newest model of its family that your Claude plan offers. You can also write a full model name.': 'Cada nombre es el modelo más reciente de su familia que ofrece tu plan de Claude. También puedes escribir el nombre completo de un modelo.',
+  '«auto» lets Gemini choose between its fast model and its strongest one. The others are the ones your Gemini key opens.': '«auto» deja que Gemini elija entre su modelo rápido y el más potente. Los demás son los que abre tu llave de Gemini.',
+  'These are the usual ones. Signed in with a Gemini API key, MADRE shows the ones your account opens.': 'Estos son los habituales. Si Gemini usa una llave API, MADRE muestra los que abre tu cuenta.',
+  '«auto» lets Cursor choose. The others are the ones your Cursor account lists; a free plan answers only with Auto.': '«auto» deja que Cursor elija. Los demás son los que lista tu cuenta de Cursor; un plan gratuito solo contesta con Auto.',
+  'Your Cursor plan answers only with Auto: the other models need a paid plan.': 'Tu plan de Cursor solo contesta con Auto: los demás modelos necesitan un plan de pago.',
+  'Your project\'s files, beside the chat. ⌘ P finds one by its name. Click a line number and press ASK to ask an agent about it. What an agent changed shows in its colour.': 'Los archivos de tu proyecto, junto al chat. ⌘ P busca uno por su nombre. Haz clic en el número de una línea y pulsa PREGUNTAR para consultarlo con un agente. Lo que cambió un agente se ve en su color.',
+  'Connect your agents to GitHub, Notion, your calendar and other apps. Pick one from the list and press Connect; «Check the connection» tells you whether it works.': 'Conecta a tus agentes con GitHub, Notion, tu calendario y otras apps. Elige una de la lista y pulsa Conectar; «Revisar conexión» te dice si funciona.',
+  'Every part of MADRE, with pictures and each step marked. Also as a PDF.': 'Cada parte de MADRE, con capturas y cada paso marcado. También en PDF.',
+  'PDF': 'PDF',
+  'Download it to print or share': 'Descárgalo para imprimir o compartir',
+  'Where do you want it?': '¿Dónde lo quieres?',
+  'In all my projects': 'En todos mis proyectos',
+  'Also in the ones you add later.': 'También en los que agregues después.',
+  'Only in one': 'Solo en uno',
+  'Choose which one. The others stay as they are.': 'Elige cuál. Los demás se quedan como están.',
+  'Or decide project by project': 'O decide proyecto por proyecto',
   'Choose project by project': 'Elegir proyecto por proyecto',
   'See it in MODULES': 'Verlo en MÓDULOS',
   "MADRE shows you the commands before it runs them, in this project's MODULES.": 'MADRE te muestra los comandos antes de correrlos, en MÓDULOS de este proyecto.',
@@ -4207,7 +4250,7 @@ export const ES = {
   "Apple's installer opened. When it finishes, come back here and install.": 'Se abrió el instalador de Apple. Cuando termine, vuelve aquí e instala.',
   'Google signed you in, but it refuses this account on Gemini CLI (free personal accounts are refused). Gemini was left as it was: paste a Gemini API key from Google AI Studio instead.': 'Google te dejó iniciar sesión, pero rechaza esta cuenta en Gemini CLI (no acepta cuentas personales gratuitas). Gemini quedó como estaba: mejor pega una llave de API de Gemini de Google AI Studio.',
   'Opens your browser to sign in with your Cursor account.': 'Abre tu navegador para iniciar sesión con tu cuenta de Cursor.',
-  'Signs in with your Cursor account and uses its plan. For now it reads and answers; it does not write in your project.': 'Inicia sesión con tu cuenta de Cursor y usa su plan. Por ahora lee y contesta; no escribe en tu proyecto.',
+  'Signs in with your Cursor account and uses its plan. A free plan answers only with Auto, and only while it has use left.': 'Inicia sesión con tu cuenta de Cursor y usa su plan. Un plan gratuito solo contesta con Auto, y solo mientras le quede uso.',
   'New project': 'Nuevo proyecto',
   'my-new-project': 'mi-proyecto-nuevo',
   'Project name': 'Nombre del proyecto',
@@ -4289,7 +4332,7 @@ export const ES = {
   'Top bar': 'Barra superior',
   'How Home looks and what its bar holds': 'Cómo se ve Inicio y qué lleva su barra',
   'Who works on this Mac': 'Quién trabaja en esta Mac',
-  'The projects of this Mac and the version': 'Los proyectos de esta Mac y la versión',
+  'The projects of this Mac, the version and the manual': 'Los proyectos de esta Mac, la versión y el manual',
   'Arrange the bar': 'Ordenar la barra',
   'Arrange': 'Ordenar',
   'The open projects, as they open': 'Los proyectos abiertos, según se abren',
@@ -4309,9 +4352,9 @@ export const ES = {
   // The lobby, second round (2026-10-10): MADRE's summary, recent decisions, what needs you.
   'Recent summary': 'Resumen reciente',
   'Summarize again': 'Resumir de nuevo',
-  'Reading your conversations…': 'Leyendo tus conversaciones…',
+  'Reading your conversations…': 'Leyendo tus chats…',
   'No conversations in the last two weeks. What you work on in any project shows here, summarised by MADRE.': 'No hay conversaciones en las últimas dos semanas. Lo que trabajes en cualquier proyecto aparece aquí, resumido por MADRE.',
-  'MADRE is summarising your latest conversations…': 'MADRE está resumiendo tus últimas conversaciones…',
+  'MADRE is summarising your latest conversations…': 'MADRE está resumiendo tus últimos chats…',
   'MADRE\'s local model is off: this is the last summary it wrote.': 'El modelo local de MADRE está apagado: este es el último resumen que escribió.',
   'MADRE\'s local model is off: these are your latest conversations, as they are.': 'El modelo local de MADRE está apagado: estas son tus últimas conversaciones, tal cual.',
   'MADRE could not summarise them this time: these are your latest conversations, as they are.': 'MADRE no pudo resumirlas esta vez: estas son tus últimas conversaciones, tal cual.',
@@ -4409,10 +4452,10 @@ export const ES = {
   'Here you follow your projects and talk to your agents, up to #2.': 'Aquí sigues tus proyectos y hablas con tus agentes, con permisos hasta #2.',
   '#3 and #4, permissions and anything that installs stay on the Mac.': 'Los permisos #3 y #4, las aprobaciones y las instalaciones solo se hacen en la Mac.',
   'What you start here you carry on on the Mac, and the other way round.': 'Lo que empiezas aquí lo sigues en la Mac, y al revés.',
-  'A connection lets one project look up what another learned, by a contract you sign. In 0.7.2 «Connections» was signing your agents in: that is now in Settings › Agents.': 'Una conexión deja que un proyecto consulte lo que otro aprendió, con un contrato que tú firmas. En 0.7.2, «Conexiones» era donde iniciabas sesión en tus agentes: eso ahora está en Ajustes › Agentes.',
-  'A connection lets one project look up what another learned, by a contract you sign. Nothing is written across.': 'Una conexión deja que un proyecto consulte lo que otro aprendió, con un contrato que tú firmas. Ningún proyecto escribe en el otro.',
+  'With a connection, one project can look up what another learned. In 0.7.2 «Connections» was where you signed your agents in; that is now Settings › Agents.': 'Con una conexión, un proyecto puede consultar lo que aprendió otro. En 0.7.2, «Conexiones» era donde iniciabas sesión con tus agentes; eso ahora está en Ajustes › Agentes.',
+  'With a connection, one project can look up what another learned. You decide what and until when; nothing is written into the other.': 'Con una conexión, un proyecto puede consultar lo que aprendió otro. Tú decides qué y hasta cuándo; nada se escribe en el otro.',
   'It is right here, on this screen.': 'Está aquí, en esta pantalla.',
-  'It takes you to another open project. Its light tells you when one needs you or finishes while you are here.': 'Te lleva a otro proyecto abierto. Su luz te avisa cuando uno te necesita o termina mientras estás aquí.',
+  'Takes you to another open project. Its light turns on when that project needs you or finishes something.': 'Te lleva a otro proyecto abierto. Su luz se enciende cuando ese proyecto te necesita o termina algo.',
   'Everything new, chapter by chapter. ? opens the gestures anywhere.': 'Todo lo nuevo, capítulo por capítulo. Pulsa ? en cualquier pantalla para ver los gestos.',
   'See the tour': 'Ver el recorrido',
   '#4 asks you to confirm twice': '#4 pide confirmar dos veces',
@@ -4422,29 +4465,29 @@ export const ES = {
   'Hide the tour. It stays in Settings.': 'Ocultar el recorrido. Puedes retomarlo en Ajustes.',
   'Hello again.': 'Hola de nuevo.',
   'Hello.': 'Hola.',
-  'MADRE changed a lot since 0.7.2. First I bring your projects to Home; then I tell you what is new, at your own pace.': 'MADRE cambió mucho desde 0.7.2. Primero traigo tus proyectos a Inicio; luego te cuento lo nuevo, a tu paso.',
-  'This is MADRE: all your AI agents in one place, with your projects, their memory and your permissions.': 'Esto es MADRE: todos tus agentes de IA en un solo lugar, con tus proyectos, su memoria y tus permisos.',
+  'MADRE changed a lot since 0.7.2. First I bring your projects to Home; then I tell you what is new.': 'MADRE cambió mucho desde 0.7.2. Primero traigo tus proyectos a Inicio; luego te cuento qué hay de nuevo.',
+  'This is MADRE. Here you work with the AIs you already use: you write to them, they read your project, and you decide what they may change.': 'Esto es MADRE. Aquí trabajas con las IAs que ya usas: les escribes, leen tu proyecto y tú decides qué pueden cambiar.',
   '<code>madre</code> now opens Home; <code>madre start</code> still opens the project in the folder.': '<code>madre</code> ahora abre Inicio; <code>madre start</code> sigue abriendo el proyecto de la carpeta.',
   'Later': 'Más tarde',
   'Looking for your projects of 0.7.2…': 'Buscando tus proyectos de 0.7.2…',
   'Bringing your projects of 0.7.2 · {n} of {total}': 'Trayendo tus proyectos de 0.7.2 · {n} de {total}',
   'Your projects are in Home.': 'Tus proyectos ya están en Inicio.',
   'Home is ready.': 'Inicio está listo.',
-  'I brought {list} to Home, with its conversations and its memory.': 'Traje {list} a Inicio, con sus conversaciones y su memoria.',
-  'I brought {n} projects to Home, with their conversations and their memory: {list}.': 'Traje {n} proyectos a Inicio, con sus conversaciones y su memoria: {list}.',
+  'I brought {list} to Home, with its conversations and its memory.': 'Traje {list} a Inicio, con sus chats y su memoria.',
+  'I brought {n} projects to Home, with their conversations and their memory: {list}.': 'Traje {n} proyectos a Inicio, con sus chats y su memoria: {list}.',
   'Your projects were already in Home.': 'Tus proyectos ya estaban en Inicio.',
-  'One I could not find: its folder is no longer where it was. If you moved it, add it in Home and it gets back its conversations.': 'Uno no lo encontré: su carpeta ya no está donde estaba. Si la moviste, agrégala en Inicio y recupera sus conversaciones.',
-  '{n} I could not find: their folders are no longer where they were. If you moved them, add them in Home and they get back their conversations.': '{n} no los encontré: sus carpetas ya no están donde estaban. Si moviste alguno, agrégalo en Inicio y recupera sus conversaciones.',
+  'One I could not find: its folder is no longer where it was. If you moved it, add it in Home and it gets back its conversations.': 'Uno no lo encontré: su carpeta ya no está donde estaba. Si la moviste, agrégala en Inicio y recupera sus chats.',
+  '{n} I could not find: their folders are no longer where they were. If you moved them, add them in Home and they get back their conversations.': '{n} no los encontré: sus carpetas ya no están donde estaban. Si moviste alguno, agrégalo en Inicio y recupera sus chats.',
   'See what is new': 'Ver lo nuevo',
   'The tour of MADRE 1.0': 'El recorrido de MADRE 1.0',
-  'Everything new, at your pace': 'Todo lo nuevo, a tu paso',
+  'What is new since 0.7.2': 'Lo nuevo desde 0.7.2',
   'Getting to know MADRE': 'Conoce MADRE',
-  'The essentials, at your pace': 'Lo esencial, a tu paso',
-  'The essentials, chapter by chapter. ? opens the gestures anywhere.': 'Lo esencial, capítulo por capítulo. Pulsa ? en cualquier pantalla para ver los gestos.',
+  'The basics of MADRE': 'Lo básico de MADRE',
+  'The essentials, chapter by chapter. ? opens the gestures anywhere.': 'Lo básico, capítulo por capítulo. Pulsa ? en cualquier pantalla para ver los atajos.',
   'New in 1.0': 'Nuevo en 1.0',
   'Changed in 1.0': 'Cambió en 1.0',
-  'First we get an agent and a project ready; then I tell you the essentials, at your own pace.': 'Primero dejamos listos un agente y un proyecto; después te cuento lo esencial, a tu paso.',
-  'I tell you the essentials in a few short chapters, at your own pace.': 'Te cuento lo esencial en unos capítulos cortos, a tu paso.',
+  'First we get an agent and a project ready; then I show you the basics, whenever you like.': 'Primero dejamos listo un agente y un proyecto. Después te enseño lo básico, cuando tú quieras.',
+  'I show you the basics in a few short chapters. You can stop and pick it up later.': 'Te enseño lo básico en unos capítulos cortos. Puedes dejarlo y seguir después.',
   'Chapters': 'Capítulos',
   'You try this inside a project.': 'Esto se prueba dentro de un proyecto.',
   'You try this in Home.': 'Esto se prueba en Inicio.',
@@ -4531,7 +4574,7 @@ export const ES = {
   'Downloading MADRE {version}…': 'Descargando MADRE {version}…',
   'Restarting MADRE…': 'Reiniciando MADRE…',
   // La Apariencia de Inicio, solo para Inicio, y la actualización desde Inicio (2026-10-11).
-  'With their last conversation': 'Con su última conversación',
+  'With their last conversation': 'Con su último chat',
   'Name and state only': 'Solo nombre y estado',
   'Attention': 'Te necesita',
   'Name': 'Nombre',
@@ -4788,20 +4831,13 @@ export const ES = {
   'while the «MADRE usage» widget is on Home': 'mientras el widget «Uso de MADRE» esté en Inicio',
   "Only in the author's copy": 'Solo en la copia del autor',
   // Recorrido 1.1: quien ya tenía 1.0, los avisos de la primera vez y las guías de los widgets.
-  'Everything this project uses, in one window: appearance, agents, memory, permissions, privacy and version. Press / to search any setting.':
-    'Todo lo que usa este proyecto, en una ventana: apariencia, agentes, memoria, permisos, privacidad y versión. Presiona / para buscar cualquier ajuste.',
-  'Extra features for this project, like apps. Each tile says what it does and what it needs; nothing is installed until you ask.':
-    'Funciones extra para este proyecto, como apps. Cada mosaico dice qué hace y qué necesita; nada se instala hasta que lo pidas.',
-  'When something fails, describe it in your own words: Diagnostics says what is going on and gives you the button that fixes it.':
-    'Cuando algo falla, descríbelo con tus palabras: Diagnóstico te dice qué pasa y te da el botón que lo resuelve.',
-  'Everything MADRE remembers about this project, as stars. Drag to turn it, use the wheel to zoom in, and click a star to read that memory.':
-    'Todo lo que MADRE recuerda de este proyecto, como estrellas. Arrastra para girarlo, usa la rueda para acercarte y haz clic en una estrella para leer esa memoria.',
-  'The agents this project can call, and whether each one is ready. Their sessions are set in Settings › Agents.':
-    'Los agentes que este proyecto puede llamar y si cada uno está listo. Sus sesiones se configuran en Ajustes › Agentes.',
-  'A short list to get the most out of MADRE. Each step is checked off on its own when you do it, and the pill goes away when you are done.':
-    'Una lista corta para sacarle provecho a MADRE. Cada paso se marca solo cuando lo haces, y la píldora desaparece cuando terminas.',
-  'The tiles you took off, and the widgets. A widget is offered only when something on this Mac feeds it; right-click any tile to move it, resize it or take it off.':
-    'Las tarjetas que quitaste y los widgets. Un widget solo se ofrece si algo en esta Mac lo alimenta; haz clic derecho en cualquier tarjeta para moverla, cambiar su tamaño o quitarla.',
+  'How this project looks and works. Type in the search to find a setting by its name, such as «accent» or «permissions».': 'Cómo se ve y cómo trabaja este proyecto. Escribe en el buscador para encontrar un ajuste por su nombre, como «acento» o «permisos».',
+  'Features you turn on when you need them. Press a tile to read what it does before you switch it on.': 'Funciones que enciendes cuando las necesitas. Toca un mosaico para leer qué hace antes de encenderlo.',
+  'When something goes wrong, write it as you see it, for example «Claude asks me to sign in». Diagnostics finds the case and tells you what to do.': 'Cuando algo falla, escríbelo como lo ves, por ejemplo «Claude me pide iniciar sesión». Diagnóstico encuentra el caso y te dice qué hacer.',
+  'What MADRE remembers about this project, drawn as stars. Drag to turn it, scroll to come closer and click a star to read it.': 'Lo que MADRE recuerda de este proyecto, dibujado como estrellas. Arrastra para girarlo, usa la rueda para acercarte y haz clic en una estrella para leerla.',
+  'The agents this project can call, and which of them are ready. You sign in to them in Settings › Agents.': 'Los agentes que este proyecto puede llamar y cuáles están listos. Inicias sesión con ellos en Ajustes › Agentes.',
+  'A few things to try in your first days. Each one ticks itself off when you do it.': 'Unas cuantas cosas para probar en tus primeros días. Cada una se marca sola cuando la haces.',
+  'The tiles you took off and the widgets you can add. A widget shows up only when this Mac has something to put in it. Right-click any tile to move it, change its size or take it off.': 'Las tarjetas que quitaste y los widgets que puedes agregar. Un widget aparece solo cuando esta Mac tiene algo que poner en él. Con clic derecho en cualquier tarjeta la mueves, le cambias el tamaño o la quitas.',
   'Which projects can look up what another learned, and the contract each one signed. Nothing is shared without your signature, and you can cancel any connection here.':
     'Qué proyectos pueden consultar lo que otro aprendió y el acuerdo que firmó cada uno. Nada se comparte sin tu firma, y aquí puedes cancelar cualquier conexión.',
   'Your projects as a map. Drag one onto another to connect them, click one to go to it, and press Esc to come back.':
@@ -4819,12 +4855,12 @@ export const ES = {
   'Ollama and its models, and how many examples each project has toward a model of its own (8/300 is 8 of 300). «Choose projects» sets which ones use the local AI.':
     'Ollama y sus modelos, y cuántos ejemplos lleva cada proyecto para entrenar el suyo (8/300 son 8 de 300). «Elegir proyectos» decide cuáles usan la IA local.',
   'Right-click it to change its size or take it off.': 'Haz clic derecho en él para cambiar su tamaño o quitarlo.',
-  'Since 1.0, Home became a board you arrange, with widgets; the local AI is chosen project by project, and MADRE speaks more plainly. I tell you what changed, at your own pace.':
-    'Desde 1.0, Inicio es un tablero que acomodas, con widgets; la IA local se elige proyecto por proyecto, y MADRE habla más claro. Te cuento qué cambió, a tu paso.',
+  'Since 1.0, Home became a board you arrange, with widgets; the local AI is chosen project by project, and MADRE speaks more plainly. Here is what changed.':
+    'Desde 1.0, Inicio es un tablero que acomodas, con widgets; la IA local se elige proyecto por proyecto, y MADRE habla más claro. Te cuento qué cambió.',
   'Nothing you set up changed: your projects, agents and permissions are as you left them.':
     'Nada de lo que configuraste cambió: tus proyectos, agentes y permisos siguen como los dejaste.',
   'What is new since 1.0': 'Lo nuevo desde 1.0',
-  'What changed, at your pace': 'Qué cambió, a tu paso',
+  'What changed since 1.0': 'Lo que cambió desde 1.0',
   'New since 1.0': 'Nuevo desde 1.0',
   'Changed since 1.0': 'Cambió desde 1.0',
   'This project is already open in another MADRE, at {address}. Use that one, or close it there first.': 'Este proyecto ya está abierto en otro MADRE, en {address}. Usa ese, o ciérralo ahí primero.',
@@ -4837,14 +4873,14 @@ export const ES = {
   '{n} restarted. Left as they are, because they are busy: {rooms}.': '{n} reiniciados. Se quedaron como estaban porque están ocupados: {rooms}.',
   '{n} restarted with MADRE {version}.': '{n} reiniciados con MADRE {version}.',
   // Ajustes › Conectar MCP (2026-10-14): servidores MCP de este proyecto, revisados antes de usarse.
-  'Outside tools (MCP)': 'Herramientas externas (MCP)',
-  'No outside tools yet': 'Todavía no hay herramientas externas',
+  'Outside tools (MCP)': 'Conectores (MCP)',
+  'No outside tools yet': 'Todavía no hay conectores',
   'no tools yet': 'todavía no hay herramientas',
   '{ready} of {total} tools ready': '{ready} de {total} herramientas listas',
   '{names} need you': '{names} te necesitan',
   '{names} needs you': '{names} te necesita',
   'Import from your apps': 'Importar desde tus apps',
-  'Add a tool': 'Agregar herramienta',
+  'Add a tool': 'Agregar conector',
   'Let the agents use other apps and services: a program on this computer or a service online. MADRE checks each one first; if one fails, the agents carry on without it.': 'Deja que los agentes usen otras apps y servicios: un programa en esta computadora o un servicio en internet. MADRE revisa cada uno antes; si uno falla, los agentes siguen sin él.',
   'Add one by hand, or bring the ones you already use in Claude Code, Codex, Gemini or Cursor.':
     'Agrega una a mano o trae las que ya usas en Claude Code, Codex, Gemini o Cursor.',
@@ -4885,7 +4921,7 @@ export const ES = {
   'Save and check': 'Guardar y revisar',
   '{name} is connected · {n} tools': '{name} quedó conectada · {n} herramientas',
   'Tools you already set up in other apps. Nothing is copied until you import; then MADRE keeps their keys safe and checks each one.': 'Herramientas que ya configuraste en otras apps. No se copia nada hasta que importas; entonces MADRE guarda sus llaves de forma segura y revisa cada una.',
-  'No outside tools were found in .mcp.json, opencode.json, Claude Code, Codex, Gemini CLI or Cursor.': 'No se encontraron herramientas externas en .mcp.json, opencode.json, Claude Code, Codex, Gemini CLI ni Cursor.',
+  'No outside tools were found in .mcp.json, opencode.json, Claude Code, Codex, Gemini CLI or Cursor.': 'No se encontraron conectores en .mcp.json, opencode.json, Claude Code, Codex, Gemini CLI ni Cursor.',
   '{n} secrets to keep safe': '{n} datos secretos que MADRE protege',
   'already in this project': 'ya está en este proyecto',
   'off in that app': 'apagado en esa app',
@@ -4895,13 +4931,13 @@ export const ES = {
   'That server is not connected in this project.': 'Ese servidor no está conectado en este proyecto.',
   'The server did not let MADRE register: {problem}': 'El servidor no dejó que MADRE se registrara: {problem}',
   'This sign-in expired': 'Este inicio de sesión venció',
-  'Sign in again from Settings › Outside tools (MCP).': 'Vuelve a iniciar sesión desde Ajustes › Herramientas externas (MCP).',
+  'Sign in again from Settings › Outside tools (MCP).': 'Vuelve a iniciar sesión desde Ajustes › Conectores (MCP).',
   'The sign-in was not completed': 'El inicio de sesión no se completó',
   'The server said: {problem}': 'El servidor dijo: {problem}',
   '{name} is connected to this project with {n} tools. You can close this tab and go back to MADRE.':
     '{name} quedó conectado a este proyecto con {n} herramientas. Puedes cerrar esta pestaña y volver a MADRE.',
   'You are signed in, but the server did not answer yet: {problem}. Check it again from Settings › Outside tools (MCP).':
-    'Ya iniciaste sesión, pero el servidor todavía no responde: {problem}. Revísalo de nuevo desde Ajustes › Herramientas externas (MCP).',
+    'Ya iniciaste sesión, pero el servidor todavía no responde: {problem}. Revísalo de nuevo desde Ajustes › Conectores (MCP).',
   'The server refused the credentials. Check the token.': 'El servidor rechazó las credenciales. Revisa el token.',
   'Sign in to this server again.': 'Vuelve a iniciar sesión en este servidor.',
   'The name is a short word: lowercase letters, digits and dashes, starting with a letter.': 'El nombre es una palabra corta: minúsculas, números y guiones, empezando con una letra.',
@@ -4924,7 +4960,7 @@ export const ES = {
   '{name} · an MCP server you connected': '{name} · un servidor MCP que conectaste',
   'the sign-in: how to sign in, the registration of MADRE and the token': 'el inicio de sesión: cómo se inicia, el registro de MADRE y el token',
   'when you press Sign in on it': 'cuando presionas Iniciar sesión en él',
-  'Settings › Outside tools (MCP)': 'Ajustes › Herramientas externas (MCP)',
+  'Settings › Outside tools (MCP)': 'Ajustes › Conectores (MCP)',
   // El copiloto (2026-10-14): un rato en que el agente al que le escribes conduce el proyecto.
   '{n} h': '{n} h',
   'Copilot': 'Copiloto',
@@ -4977,8 +5013,8 @@ export const ES = {
   'Whoever offers a modified MADRE must offer its source code too.': 'Quien ofrezca un MADRE modificado debe ofrecer también su código fuente.',
   'New: Copilot': 'Nuevo: Copiloto',
   'Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.': 'Deja que un agente trabaje solo por un rato. Presiona el robot, elige cuánto tiempo, y el agente al que le escribes podrá cambiar archivos, armar planes y correr comandos seguros sin preguntarte cada vez. Te pide permiso una sola vez.',
-  'New: Outside tools (MCP)': 'Nuevo: Herramientas externas (MCP)',
-  'Agents can now use other apps and services: a program on this computer or one on the internet. Add them in Settings › Outside tools (MCP). If you already set some up in Claude Code, Codex, Gemini or Cursor, you can bring them over.': 'Ahora los agentes pueden usar otras apps y servicios: un programa de esta computadora o uno de internet. Agrégalos en Ajustes › Herramientas externas (MCP). Si ya tienes alguno en Claude Code, Codex, Gemini o Cursor, puedes traerlo.',
+  'New: Outside tools (MCP)': 'Nuevo: Conectores (MCP)',
+  'Agents can now use other apps and services: a program on this computer or one on the internet. Add them in Settings › Outside tools (MCP). If you already set some up in Claude Code, Codex, Gemini or Cursor, you can bring them over.': 'Ahora los agentes pueden usar otras apps y servicios: un programa de esta computadora o uno de internet. Agrégalos en Ajustes › Conectores (MCP). Si ya tienes alguno en Claude Code, Codex, Gemini o Cursor, puedes traerlo.',
   'New: your files stay up to date': 'Nuevo: tus archivos al día',
   'The file list updates by itself after every answer and every command. A colored dot on a folder tells you which agent changed something inside.': 'La lista de archivos se actualiza sola después de cada respuesta y de cada comando. Un punto de color en una carpeta te dice qué agente cambió algo adentro.',
   'New: open the memory faster': 'Nuevo: abre la memoria más rápido',
@@ -4994,7 +5030,7 @@ export const ES = {
   '{n} notices': '{n} avisos',
   '{agent} is not installed on this computer.': '{agent} no está instalado en esta computadora.',
   'Suggested effort': 'Esfuerzo sugerido',
-  'What it remembers': 'Lo que recuerda',
+  'What it remembers': 'Memoria',
   'online': 'en internet',
   'on this computer': 'en esta computadora',
   'looks up': 'consulta',
@@ -5261,7 +5297,7 @@ export const ES = {
   'Puts back what was there before, in these lines only': 'Vuelve a poner lo que había antes, solo en estas líneas',
   'Ask why': 'Preguntar por qué',
   'Why did you change these lines?': '¿Por qué cambiaste estas líneas?',
-  'Asks @{agent} in the conversation': 'Se lo pregunta a @{agent} en la conversación',
+  'Asks @{agent} in the conversation': 'Se lo pregunta a @{agent} en el chat',
   'Save or discard your own changes in this file first.': 'Primero guarda o descarta tus propios cambios en este archivo.',
   'Taken back · {path}': 'Deshecho · {path}',
   'as you write': 'mientras escribes',
@@ -5351,7 +5387,7 @@ export const ES = {
   'Ask in the conversation for a logo, a banner or an illustration and the agent makes it with your own Gemini key. The images are saved in your project.': 'Pide en la conversación un logo, un banner o una ilustración y el agente lo hace con tu propia llave de Gemini. Las imágenes se guardan en tu proyecto.',
   'Your agents open your page and look at it': 'Tus agentes abren tu página y la miran',
   'The agents open your page in a browser of their own, click through it, read its errors and bring back screenshots: they check their work the way a person would.': 'Los agentes abren tu página en un navegador propio, la recorren con clics, leen sus errores y te traen capturas: revisan su trabajo como lo haría una persona.',
-  'See your pages beside the conversation': 'Mira tus páginas junto a la conversación',
+  'See your pages beside the conversation': 'Mira tus páginas junto al chat',
   'Shows web pages, drawings (SVG) and documents (Markdown) beside the conversation, updated while the agents work.': 'Muestra páginas web, dibujos (SVG) y documentos (Markdown) junto a la conversación, al día mientras los agentes trabajan.',
   'What changed in your repository, at a glance': 'Lo que cambió en tu repositorio, de un vistazo',
   'Shows how your repository stands: what changed, the last commits and the branch you are on. It only reads; it never commits for you.': 'Muestra cómo está tu repositorio: qué cambió, los últimos commits y la rama en la que estás. Solo lee; nunca hace commits por ti.',
@@ -5577,7 +5613,9 @@ export const ES = {
   'BROWSER': 'NAVEGADOR',
   'Which browser engine the agents drive.': 'Qué navegador usan los agentes.',
   'SHOW THE WINDOW': 'MOSTRAR LA VENTANA',
-  'Off, the browser runs headless. On, it opens on this screen so you can watch.': 'Apagado, el navegador corre sin ventana. Encendido, se abre en esta pantalla para que veas lo que hace.',
+  'Off, the browser works without a window. On, the next time an agent opens your page, you see its window on this screen.': 'Apagado, el navegador trabaja sin ventana. Encendido, la próxima vez que un agente abra tu página verás su ventana en esta pantalla.',
+  'Done. The next time an agent opens your page, its window opens on this screen. To try it, ask: «open the page and tell me what you see».': 'Listo. La próxima vez que un agente abra tu página, su ventana se abrirá en esta pantalla. Para probarlo, pídele: «abre la página y dime qué ves».',
+  'Done. The browser works without a window again.': 'Listo. El navegador vuelve a trabajar sin ventana.',
   '… still running · {seconds}s · {note}': '… sigue trabajando · {seconds} s · {note}',
   'installer is quiet (npm install or git status can take a while)': 'la instalación no dice nada (npm install o git status pueden tardar)',
   'the sign-in is waiting on you: finish it in the page that opened': 'el inicio de sesión te espera: termínalo en la página que se abrió',
@@ -5613,4 +5651,12 @@ export const ES = {
   'Random, made by this copy. It is all the daily usage notice says about it: no name, no projects.': 'Al azar, lo creó esta copia. Es todo lo que el aviso diario de uso dice de ella: sin nombre ni proyectos.',
   'That is not a copy\'s identifier. Copy it from Settings › Version on that copy.': 'Eso no es el identificador de una copia. Cópialo de Ajustes › Versión en esa copia.',
   'madre.run did not answer. Try again in a moment.': 'madre.run no contestó. Inténtalo de nuevo en un momento.',
+  // The short walks of 1.0.5 (2026-10-21): Home's, a project's, and their keys.
+  'Skip the tips': 'Saltar las pistas',
+  'Your Coordinator': 'Tu Coordinador',
+  'An agent that sees all your projects. Ask it «which project was I on yesterday?», or to pass an instruction from one project to another.': 'Un agente que ve todos tus proyectos. Pregúntale «¿en qué proyecto me quedé ayer?», o pídele que pase una instrucción de un proyecto a otro.',
+  'The user manual': 'El manual de usuario',
+  'Pictures of MADRE with every step marked, for when you want to look something up. It is in Settings › System › User manual, and as a PDF.': 'Capturas de MADRE con cada paso marcado, para cuando quieras consultar algo. Está en Ajustes › Sistema › Manual de usuario, y también en PDF.',
+  'Your project\'s files open here, beside the chat. Click a line number and press ASK to ask an agent about it.': 'Aquí se abren los archivos de tu proyecto, junto al chat. Haz clic en el número de una línea y pulsa PREGUNTAR para consultarla con un agente.',
+  'To look something up later: Settings › System › User manual, with pictures of every step. Also as a PDF.': 'Para consultar algo después: Ajustes › Sistema › Manual de usuario, con capturas de cada paso. También en PDF.',
 };

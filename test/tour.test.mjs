@@ -26,7 +26,7 @@ test('tour · kept in ~/.pulse, one change at a time, and a file for another ver
   const state = await scratch('madre-tour-');
   try {
     const first = await readTour(state);
-    assert.deepEqual(first, { version: '1.1', path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before: null });
+    assert.deepEqual(first, { version: '1.1', path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before: null, met: null });
     // One tab holds it while it shows it; only that tab lets go.
     await changeTour(state, { hold: 'tab-aaaaaa' });
     assert.equal((await readTour(state)).held.by, 'tab-aaaaaa');
@@ -242,4 +242,25 @@ test('tour · every path names chapters that exist, and the clearer names are to
   assert.equal(TOLD.find((chapter) => chapter.id === 'renamed').only, 'es');
   // Whoever came from 1.0 reads a line on what changed in every chapter but the names.
   for (const id of ORDER.since) if (id !== 'renamed') assert.ok(TOLD.find((chapter) => chapter.id === id).since, `${id} says nothing of what changed since 1.0`);
+});
+
+test('tour · the bonjour writes the version a person met MADRE with, so the news of a version reaches only who met it before (2026-10-21)', async () => {
+  const { mkdtemp, rm, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+  const { changeTour, readTour, NEWS_LEVEL } = await import('../src/tour.mjs');
+  const root = await mkdtemp(joinPath(tmpdir(), 'madre-tour-met-'));
+  try {
+    assert.equal((await readTour(root)).met, null);
+    await changeTour(root, { path: 'new' });
+    const met = await changeTour(root, { bonjour: true });
+    assert.equal(met.met, NEWS_LEVEL);
+    // A second bonjour does not move it.
+    assert.equal((await changeTour(root, { bonjour: true })).met, NEWS_LEVEL);
+    // A tour.json from before it was written reads as someone who met MADRE before.
+    await writeFile(joinPath(root, 'tour.json'), JSON.stringify({ version: '1.1', path: 'new', bonjourAt: '2026-10-15T10:00:00.000Z', hints: {} }));
+    assert.equal((await readTour(root)).met, null);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

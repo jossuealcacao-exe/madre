@@ -31,7 +31,7 @@ const MESSAGE_LIMIT = 1024 * 1024;
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json' };
 // The bridge's own files, served from the package of the room that hosts it.
-const OWN = { '/salas': 'salas.html', '/bridge/salas.js': 'salas.js', '/bridge/salas.css': 'salas.css', '/bridge/styles.css': 'styles.css', '/bridge/i18n.js': 'i18n.js', '/bridge/es.js': 'es.js', '/bridge/touch.js': 'touch.js', '/bridge/manifest.webmanifest': 'manifest.webmanifest' };
+const OWN = { '/salas': 'salas.html', '/bridge/salas.js': 'salas.js', '/bridge/salas.css': 'salas.css', '/bridge/styles.css': 'styles.css', '/bridge/i18n.js': 'i18n.js', '/bridge/es.js': 'es.js', '/bridge/en.js': 'en.js', '/bridge/touch.js': 'touch.js', '/bridge/manifest.webmanifest': 'manifest.webmanifest' };
 const HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host', 'cookie', 'origin', 'referer']);
 
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };

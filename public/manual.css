@@ -1,0 +1,202 @@
+/* SPDX-License-Identifier: AGPL-3.0-only
+   MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+   The user manual (manual.js), in the room's own look: its ground, its glass, its cards, its keys
+   and its mono labels, so what the page shows is what MADRE looks like. Light on paper, as the brand
+   asks of long documents, with a cover of its own and every section starting cleanly. */
+
+@font-face { font-family: 'Sora'; src: url('/assets/brand/Sora-latin.woff2') format('woff2'); font-weight: 100 800; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Sora'; src: url('/assets/brand/Sora-latin-ext.woff2') format('woff2'); font-weight: 100 800; font-display: swap; unicode-range: U+0100-02AF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Geist'; src: url('/assets/brand/Geist-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Geist'; src: url('/assets/brand/Geist-latin-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0100-02AF, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/assets/brand/JetBrainsMono-latin.woff2') format('woff2'); font-weight: 100 800; font-display: swap; }
+
+
+:root {
+  --green: #9bff66;
+  --green-ink: #0a1405;
+  --bg: #050605;
+  --ground: radial-gradient(120% 80% at 50% -10%, rgba(155, 255, 102, .07), transparent 60%), #050605;
+  --glass: rgba(22, 26, 22, .72);
+  --card: #111411;
+  --card-2: #171b17;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .14);
+  --text: #f1f4ef;
+  --text-2: rgba(241, 244, 239, .72);
+  --text-3: rgba(241, 244, 239, .5);
+  --tint: rgba(155, 255, 102, .1);
+  --lift: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px -12px rgba(0, 0, 0, .6);
+  --bubble: #2f8a1c;
+  --bubble-ink: #ffffff;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not(.printing) {
+    --green: #2f8a1c; --green-ink: #ffffff; --bg: #e9ece6;
+    --ground: radial-gradient(120% 70% at 50% -10%, rgba(255, 255, 255, .9), transparent 60%), linear-gradient(180deg, #eef0eb, #e3e7df);
+    --glass: rgba(255, 255, 255, .72); --card: #ffffff; --card-2: #f4f5f2;
+    --line: rgba(0, 0, 0, .07); --line-2: rgba(0, 0, 0, .13);
+    --text: #121512; --text-2: #4f564f; --text-3: #767d75; --tint: rgba(47, 138, 28, .09);
+    --lift: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 30px -14px rgba(20, 30, 20, .22);
+    color-scheme: light;
+  }
+}
+:root.printing {
+  --green: #2f8a1c; --green-ink: #ffffff; --bg: #ffffff; --ground: #ffffff; --glass: #ffffff; --card: #ffffff; --card-2: #f4f6f2;
+  --line: rgba(10, 20, 10, .12); --line-2: rgba(10, 20, 10, .18); --text: #121512; --text-2: rgba(18, 21, 18, .76); --text-3: rgba(18, 21, 18, .55);
+  --tint: rgba(47, 138, 28, .09); --lift: none; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); color: var(--text); scroll-behavior: smooth; }
+body { margin: 0; min-height: 100vh; background: var(--ground); background-attachment: fixed; font-family: 'Geist', system-ui, sans-serif; font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: var(--green); }
+.manual { max-width: 1040px; margin: 0 auto; padding: 0 24px 96px; }
+.manual-label, .manual-number, .manual-contents h2, .manual-words h2 { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+
+/* The bar: the room's, floating glass, with the brand on the left and two keys on the right. */
+.manual-bar { position: sticky; top: 12px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0 0; padding: 8px 8px 8px 16px; border-radius: 20px; background: var(--glass); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); box-shadow: var(--lift), inset 0 0 0 1px var(--line); }
+.manual-brand { display: inline-flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-2); }
+.manual-brand img { border-radius: 7px; }
+.manual-brand b { font-family: 'Sora', sans-serif; font-weight: 700; letter-spacing: .06em; color: var(--text); }
+.manual-keys { display: flex; gap: 8px; }
+.manual-key { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; color: var(--text); background: var(--card); box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, .06); }
+.manual-key:hover { box-shadow: inset 0 0 0 1px var(--green), 0 0 0 3px var(--tint); }
+.manual-key.primary { background: var(--green); color: var(--green-ink); box-shadow: none; }
+.manual-key.primary:hover { filter: brightness(1.06); }
+
+/* The cover. */
+.manual-cover { display: grid; justify-items: start; margin-top: 28px; padding: 56px 48px 48px; border-radius: 28px; background: var(--card); box-shadow: var(--lift), inset 0 0 0 1px var(--line); }
+.manual-mark { width: 76px; height: 76px; border-radius: 20px; box-shadow: 0 18px 40px -18px rgba(47, 138, 28, .55); }
+.manual-cover h1 { margin: 28px 0 6px; font-family: 'Sora', sans-serif; font-size: clamp(36px, 6vw, 58px); font-weight: 760; letter-spacing: -.03em; line-height: 1.04; }
+.manual-subtitle { margin: 0; font-size: 19px; color: var(--text-2); }
+.manual-version { margin: 18px 0 0; padding: 4px 10px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .08em; color: var(--green); background: var(--tint); }
+.manual-intro { margin-top: 28px; display: grid; gap: 12px; max-width: 680px; font-size: 17.5px; }
+.manual-intro p { margin: 0; }
+
+/* The four words, as the cards of Settings. */
+.manual-words { margin-top: 20px; }
+.manual-words h2 { margin: 0 0 12px 4px; color: var(--text-3); }
+.manual-words dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.manual-words dl > div { padding: 16px 18px; border-radius: 18px; background: var(--card); box-shadow: var(--lift), inset 0 0 0 1px var(--line); }
+.manual-words dt { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 16.5px; }
+.manual-words dd { margin: 4px 0 0; font-size: 14.5px; color: var(--text-2); line-height: 1.5; }
+
+/* The contents, as the tiles of Modules. */
+.manual-contents { margin-top: 32px; }
+.manual-contents h2 { margin: 0 0 12px 4px; color: var(--text-3); }
+.manual-contents ol { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.manual-contents a { display: flex; align-items: center; gap: 12px; height: 100%; padding: 12px 14px; border-radius: 16px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.3; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .18s, transform .18s; }
+.manual-contents a:hover { box-shadow: inset 0 0 0 1px var(--green), 0 0 0 3px var(--tint); transform: translateY(-1px); }
+.manual-contents .manual-icon { width: 34px; height: 34px; border-radius: 10px; }
+.manual-contents .manual-icon svg { width: 18px; height: 18px; }
+
+/* A section: its head, its line, MADRE photographed beside its steps, then what to try. */
+.manual-section { margin-top: 28px; padding: 32px 32px 28px; border-radius: 28px; background: var(--card); box-shadow: var(--lift), inset 0 0 0 1px var(--line); scroll-margin-top: 84px; }
+.manual-section-head { display: flex; align-items: center; gap: 14px; }
+.manual-icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 13px; color: var(--green); background: var(--tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 20%, transparent); }
+.manual-icon svg { width: 22px; height: 22px; }
+.manual-number { display: block; color: var(--text-3); }
+.manual-section h2 { margin: 0; font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -.015em; line-height: 1.2; }
+.manual-lead { margin: 14px 0 22px; max-width: 720px; font-size: 17.5px; color: var(--text-2); }
+.manual-body { display: grid; gap: 20px; }
+
+/* The picture: MADRE itself, framed as one of its windows, with a ring and a number on each step. */
+.manual-shot { margin: 0; }
+.manual-shot.tall { width: min(100%, 620px); justify-self: center; }
+.manual-shot-frame { position: relative; overflow: hidden; border-radius: 18px; background: var(--card-2); box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 18px 40px -22px rgba(20, 30, 20, .45), inset 0 0 0 1px var(--line); }
+.manual-shot-frame img { display: block; width: 100%; height: auto; }
+.manual-pin { position: absolute; border-radius: 12px; box-shadow: 0 0 0 2px var(--green), 0 0 0 6px color-mix(in srgb, var(--green) 22%, transparent); opacity: 0; transform: scale(.94); transition: opacity .35s ease, transform .35s cubic-bezier(.2, .9, .3, 1.3), box-shadow .2s; transition-delay: calc(var(--at) * 260ms + 150ms); pointer-events: auto; }
+.manual-pin b { position: absolute; left: 50%; top: 0; translate: -50% -85%; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 13px; font-weight: 750; color: var(--green-ink); background: var(--green); box-shadow: 0 0 0 3px var(--card), 0 4px 10px -2px rgba(0, 0, 0, .35); }
+.manual-pin.below b { top: 100%; translate: -50% -15%; }
+.manual-pin.left b { left: 0; top: 50%; translate: -55% -50%; }
+.manual-shot.shown .manual-pin { opacity: 1; transform: none; }
+.manual-shot.shown .manual-pin b { animation: manual-ping 1.6s ease-out calc(var(--at) * 260ms + 400ms) 1 both; }
+@keyframes manual-ping { 0% { box-shadow: 0 0 0 3px var(--card), 0 0 0 3px color-mix(in srgb, var(--green) 60%, transparent); } 100% { box-shadow: 0 0 0 3px var(--card), 0 0 0 16px transparent; } }
+.manual-section.pointing .manual-pin { opacity: .25; transition-delay: 0s; }
+.manual-section.pointing .manual-pin.lit { opacity: 1; box-shadow: 0 0 0 3px var(--green), 0 0 0 10px color-mix(in srgb, var(--green) 26%, transparent); }
+
+/* The steps, numbered as the marks. */
+.manual-side { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); gap: 16px; align-items: start; }
+.manual-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.manual-steps li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; padding: 11px 14px; border-radius: 14px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); font-size: 15.5px; line-height: 1.5; transition: box-shadow .18s, background .18s; }
+.manual-steps li > b { display: grid; place-items: center; width: 26px; height: 26px; margin-top: -1px; border-radius: 50%; font-size: 13px; font-weight: 750; color: var(--green-ink); background: var(--green); }
+.manual-steps li.lit { background: var(--tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 45%, transparent); }
+
+/* One thing to try, and what is worth knowing later. */
+.manual-try, .manual-expert { display: grid; gap: 6px; padding: 14px 16px; border-radius: 16px; font-size: 15px; line-height: 1.55; }
+.manual-try { background: var(--tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 26%, transparent); }
+.manual-try .manual-label { color: var(--green); }
+.manual-expert { margin-top: 16px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); }
+.manual-expert .manual-label { color: var(--text-3); }
+.manual-say { display: inline; padding: 2px 10px; border-radius: 12px; color: var(--bubble-ink); background: var(--bubble); quotes: none; font-weight: 500; -webkit-box-decoration-break: clone; box-decoration-break: clone; line-height: 1.9; }
+.manual-say::before, .manual-say::after { content: none; }
+kbd { display: inline-block; padding: 1px 7px; border-radius: 7px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.5; color: var(--text); background: var(--card); box-shadow: inset 0 0 0 1px var(--line-2), inset 0 -1.5px 0 var(--line-2); white-space: nowrap; }
+
+/* Every shortcut. */
+.manual-keys-table { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; margin: 4px 0 16px; padding: 14px 18px; border-radius: 16px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); }
+.manual-keys-table dt { color: var(--text-2); }
+.manual-keys-table dd { margin: 0; text-align: right; max-width: 13em; }
+.manual-keys-table kbd { white-space: normal; overflow-wrap: anywhere; text-align: right; max-width: 100%; }
+.manual-shortcut-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 0 24px; margin-top: 18px; }
+.manual-shortcut-group h3 { margin: 10px 0 6px; font-family: 'Sora', sans-serif; font-size: 15px; }
+.manual-foot { margin-top: 40px; padding: 0 8px; color: var(--text-3); font-size: 14px; }
+.manual-foot p { margin: 0 0 6px; }
+
+@media (max-width: 900px) {
+  .manual-side { grid-template-columns: 1fr; }
+  .manual-words dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .manual { padding: 0 16px 64px; }
+  .manual-bar { padding-left: 12px; }
+  .manual-key { padding: 0 10px; letter-spacing: .06em; }
+  .manual-cover { padding: 36px 22px 28px; border-radius: 22px; }
+  .manual-section { padding: 22px 16px 18px; border-radius: 22px; }
+  .manual-section h2 { font-size: 22px; }
+  .manual-words dl { grid-template-columns: 1fr; }
+  .manual-pin b { width: 22px; height: 22px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .manual-pin { transition: none; }
+  .manual-shot.shown .manual-pin b { animation: none; }
+}
+
+/* Paper: light, one section after another, the picture over its steps, every mark already there. */
+@page { size: A4; margin: 18mm 16mm 20mm; }
+@media print {
+  html, body { background: #fff; }
+  .manual { max-width: none; padding: 0; }
+  .manual-bar { display: none; }
+  .manual-cover { min-height: 240mm; align-content: center; margin: 0; padding: 0; border-radius: 0; box-shadow: none; break-after: page; }
+  .manual-cover .manual-mark { width: 96px; height: 96px; box-shadow: none; }
+  .manual-cover h1 { font-size: 54px; }
+  .manual-words { margin: 0 0 8mm; }
+  .manual-words dl > div, .manual-contents a, .manual-steps li, .manual-try, .manual-expert, .manual-keys-table { box-shadow: inset 0 0 0 1px var(--line); }
+  .manual-contents { margin: 0; break-after: page; }
+  .manual-contents a { padding: 8px 12px; }
+  .manual-section { margin: 0; padding: 0 0 8mm; border-radius: 0; box-shadow: none; break-before: page; }
+  .manual-body { gap: 12px; }
+  .manual-side { grid-template-columns: 1fr; gap: 10px; }
+  /* One section a page: the picture no taller than 112 mm, narrower when it would be. */
+  .manual-shot, .manual-shot.tall { width: auto; justify-self: stretch; }
+  .manual-shot-frame { width: min(100%, calc(112mm * var(--ratio))); margin-inline: auto; box-shadow: inset 0 0 0 1px var(--line); break-inside: avoid; }
+  .manual-section h2 { font-size: 22px; }
+  .manual-lead { margin: 8px 0 12px; font-size: 14.5px; }
+  .manual-steps { gap: 5px; }
+  .manual-steps li { padding: 7px 12px; font-size: 13px; gap: 10px; grid-template-columns: 22px 1fr; }
+  .manual-steps li > b { width: 22px; height: 22px; font-size: 12px; }
+  .manual-try, .manual-expert { padding: 9px 12px; font-size: 13px; gap: 3px; }
+  .manual-expert { margin-top: 10px; }
+  .manual-pin { opacity: 1; transform: none; transition: none; }
+  .manual-pin b { box-shadow: 0 0 0 2px #fff; }
+  .manual-section-head, .manual-steps li, .manual-try, .manual-expert, .manual-keys-table, .manual-shortcut-group { break-inside: avoid; }
+  .manual-section-head, .manual-lead { break-after: avoid; }
+  .manual-shortcuts { break-before: page; }
+  .manual-shortcut-groups { grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .manual-shortcut-group .manual-keys-table { grid-template-columns: 1fr; gap: 2px 0; }
+  .manual-shortcut-group .manual-keys-table dd { max-width: none; text-align: left; margin-bottom: 6px; }
+  .manual-shortcut-group .manual-keys-table kbd { text-align: left; }
+  .manual-say { color: #fff; background: #2f8a1c; }
+  a { color: inherit; text-decoration: none; }
+}

@@ -10,7 +10,17 @@
 // Tried against the real CLI on 2026-10-17: it read and answered; asked to create a file and to run
 // `touch`, it wrote nothing and said it was in Ask mode. `--sandbox enabled` was dropped: on a Mac
 // where Cursor's sandbox is not available the run ends at once («Sandbox mode is enabled but not
-// available on this system»). Writing (#2 and up) waits for its own trial (capabilities.mjs).
+// available on this system»).
+//
+// From 2026-10-21 it works at every mode, as the other agents do. #2 and #3 run in Cursor's agent
+// mode with `--force` (in print mode, changes are only proposed without it), under a configuration
+// that allows writing and denies every command and the places nobody writes; #4 allows commands
+// too. Cursor's own rules are the first wall, not the only one: the room locks .env, .git and its
+// own folders read-only for the turn and puts back whatever reaches them, and at #2 everything that
+// existed before (room/control.mjs) — so a rule Cursor read differently could not cost a file. A
+// command cannot be put back; that is why commands are denied below #4. Not yet run against a paid
+// Cursor account (the author's is free and spent): built on Cursor's documented permissions and
+// held by the room's own guard.
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,11 +34,35 @@ export const READONLY_CONFIG = {
   sandbox: { mode: 'disabled' },
 };
 
-export function buildCursorArgs({ projectRoot, prompt, model = process.env.PULSE_CURSOR_MODEL || null }) {
+// The places no turn writes, whatever its mode (as OpenCode's FORBIDDEN_GLOBS). `.pulse` is left to
+// the room when the turn has a draft folder there, because Cursor's denials win over its allowances
+// and would shut that folder too; the room locks every other `.pulse` path itself.
+const NEVER_WRITTEN = ['.git/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'];
+// One configuration per turn, from the lease the room gave it: none, read only.
+export function cursorConfigFor(lease = null) {
+  if (!lease) return READONLY_CONFIG;
+  const everywhere = Boolean(lease.create || lease.control || lease.airlock);
+  const dir = String(lease.relativeDir ?? '.').replace(/^\.\/+/, '').replace(/\/+$/, '');
+  const writes = everywhere || !dir || dir === '.' ? ['Write(**)'] : [`Write(${dir}/**)`];
+  const never = [...NEVER_WRITTEN, ...(lease.scratchDir ? [] : ['.pulse/**'])].map((glob) => `Write(${glob})`);
+  return {
+    version: 1,
+    permissions: {
+      allow: ['Read(**)', ...writes, ...(lease.airlock ? ['Shell(*)'] : [])],
+      deny: [...(lease.airlock ? [] : ['Shell(*)']), ...never],
+    },
+    approvalMode: 'allowlist',
+    sandbox: { mode: 'disabled' },
+  };
+}
+
+export function buildCursorArgs({ projectRoot, prompt, model = process.env.PULSE_CURSOR_MODEL || null, lease = null }) {
   return [
     '--print',
     '--output-format', 'stream-json',
-    '--mode', 'ask',
+    // Reading: Cursor's own ask mode. Writing: its agent mode, with the changes applied (`--force`)
+    // under the turn's configuration above.
+    ...(lease ? ['--force'] : ['--mode', 'ask']),
     // A headless run cannot answer the «trust this folder?» question; the project is the human's.
     '--trust',
     '--workspace', projectRoot,
@@ -74,14 +108,21 @@ export function parseCursorOutput(output) {
   return { text, usage, ...(error ? { error } : {}) };
 }
 
-export async function invokeCursor({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, onProgress = null }) {
+// A free plan answers only with Auto (2026-10-21): any named model is refused with «Named models
+// unavailable · Free plans can only use Auto». The turn is asked again with Auto, and from then on
+// this room offers Auto alone (models.mjs) — nothing says the plan before a turn does.
+export const ONLY_AUTO = /Free plans can only use Auto|Named models unavailable/i;
+let onlyAuto = false;
+export const cursorOnlyAuto = () => onlyAuto;
+
+export async function invokeCursor({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, lease = null, onProgress = null }) {
   const configDir = await mkdtemp(join(tmpdir(), 'madre-cursor-'));
   try {
-    await writeFile(join(configDir, 'cli-config.json'), `${JSON.stringify(READONLY_CONFIG, null, 2)}\n`);
-    return await runReadonlyProcess({
+    await writeFile(join(configDir, 'cli-config.json'), `${JSON.stringify(cursorConfigFor(lease), null, 2)}\n`);
+    const run = (named) => runReadonlyProcess({
       onProgress: onProgress ? (out) => onProgress({ chars: out.length }) : null,
       executable,
-      args: buildCursorArgs({ projectRoot, prompt, ...(model ? { model } : {}) }),
+      args: buildCursorArgs({ projectRoot, prompt, lease, ...(named ? { model: named } : {}) }),
       cwd: projectRoot,
       env: cursorEnvironment(process.env, { configDir }),
       timeoutMs,
@@ -89,6 +130,14 @@ export async function invokeCursor({ executable, projectRoot, prompt, timeoutMs 
       label: 'Cursor',
       parse: parseCursorOutput,
     });
+    const named = onlyAuto ? null : model;
+    try {
+      return await run(named);
+    } catch (error) {
+      if (!named || named === 'auto' || !ONLY_AUTO.test(String(error?.message ?? ''))) throw error;
+      onlyAuto = true;
+      return await run(null);
+    }
   } finally {
     // The chats and caches the CLI wrote there go with it: a turn keeps no session of its own.
     await rm(configDir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }).catch(() => {});

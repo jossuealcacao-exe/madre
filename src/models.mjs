@@ -10,26 +10,31 @@ import { OPENCODE_PROVIDERS } from './credentials.mjs';
 // list) plus the aliases each vendor documents. Users can add their own in
 // ~/.pulse/config.json under "models".
 
+export const CURSOR_FREE_NOTE = 'Your Cursor plan answers only with Auto: the other models need a paid plan.';
 export const KNOWN_MODELS = {
   codex: {
     defaults: ['gpt-5.6-sol', 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.5'],
-    note: 'Names from ~/.codex/models_cache.json; the CLI default comes from ~/.codex/config.toml.',
+    note: 'The models your plan offers in Codex. «default» is the one Codex uses on its own.',
   },
   claude: {
     defaults: ['fable', 'opus', 'sonnet', 'haiku'],
-    note: 'Aliases resolve to the latest model of each family (e.g. fable → claude-fable-5-1). Full names also work.',
+    note: 'Each name is the newest model of its family that your Claude plan offers. You can also write a full model name.',
   },
+  // Read from Google with the Gemini key when there is one (2026-10-21); these when there is not.
   gemini: {
     defaults: ['auto', 'gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'],
-    note: '"auto" lets Gemini CLI route between pro and flash.',
+    note: '«auto» lets Gemini choose between its fast model and its strongest one. The others are the ones your Gemini key opens.',
+    unread: 'These are the usual ones. Signed in with a Gemini API key, MADRE shows the ones your account opens.',
   },
   opencode: {
     defaults: [],
     note: 'provider/model, from `opencode models`. The room default is PULSE_OPENCODE_MODEL.',
   },
+  // Read from the account itself (`cursor-agent --list-models`, 2026-10-21); «auto» alone when it
+  // cannot be read. The four names that stood here were long gone from Cursor's list.
   cursor: {
-    defaults: ['auto', 'sonnet-4', 'sonnet-4-thinking', 'gpt-5'],
-    note: '"auto" lets Cursor choose. `cursor-agent --list-models` names the ones your account has; the room default is PULSE_CURSOR_MODEL.',
+    defaults: ['auto'],
+    note: '«auto» lets Cursor choose. The others are the ones your Cursor account lists; a free plan answers only with Auto.',
   },
 };
 
@@ -154,7 +159,42 @@ export function isValidModelName(name) {
 
 const unique = (list) => [...new Set(list.filter(isValidModelName))];
 
-export async function discoverModels({ agents = [], config = {}, home = homedir(), listOpenCode = async () => [] } = {}) {
+// Google's list for a Gemini key (`GET v1beta/models`): the models that converse, by their short
+// names, «auto» first — the Gemini CLI's own routing. Embedding, image, voice, live and the
+// computer-use models are for other work and are left out.
+const GEMINI_NOT_CHAT = /embedding|image|imagen|nano-banana|tts|audio|transcribe|live|computer-use|customtools|robotics|aqa|veo|gemma/i;
+// The order a person looks for: the «latest» names, then newest first, and in each version the
+// strongest first (pro, then flash, then lite).
+const geminiRank = (name) => {
+  const version = /latest/.test(name) ? 999 : Number(name.match(/gemini-(\d+(?:\.\d+)?)/)?.[1] ?? 0);
+  const tier = /lite/.test(name) ? 2 : /flash/.test(name) ? 1 : 0;
+  return [version, tier];
+};
+export function parseGeminiModels(json) {
+  let data = json;
+  if (typeof json === 'string') { try { data = JSON.parse(json); } catch { return []; } }
+  const names = [];
+  for (const one of Array.isArray(data?.models) ? data.models : []) {
+    const name = String(one?.name ?? '').replace(/^models\//, '');
+    if (!/^gemini-/.test(name) || GEMINI_NOT_CHAT.test(name) || !isValidModelName(name)) continue;
+    if (Array.isArray(one.supportedGenerationMethods) && !one.supportedGenerationMethods.includes('generateContent')) continue;
+    if (!names.includes(name)) names.push(name);
+  }
+  names.sort((a, b) => { const [va, ta] = geminiRank(a); const [vb, tb] = geminiRank(b); return vb - va || ta - tb || a.localeCompare(b); });
+  return names.length ? ['auto', ...names] : [];
+}
+
+// `cursor-agent --list-models` prints «id - Label» a line, after a heading: the ids, «auto» first.
+export function parseCursorModels(text) {
+  const ids = [];
+  for (const line of String(text ?? '').split('\n')) {
+    const found = line.match(/^\s*([A-Za-z0-9][\w.:[\]-]*)\s+-\s+\S/);
+    if (found && isValidModelName(found[1]) && !ids.includes(found[1])) ids.push(found[1]);
+  }
+  return ids.includes('auto') ? ['auto', ...ids.filter((id) => id !== 'auto')] : ids;
+}
+
+export async function discoverModels({ agents = [], config = {}, home = homedir(), listOpenCode = async () => [], listCursor = async () => [], cursorOnlyAuto = () => false, listGemini = async () => [] } = {}) {
   const result = {};
   for (const agent of agents) {
     const known = KNOWN_MODELS[agent.id] ?? { defaults: [], note: '' };
@@ -197,6 +237,11 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
         }
       }
     }
+    if (agent.id === 'gemini' && agent.detected) discovered = await listGemini(agent).catch(() => []);
+    if (agent.id === 'cursor' && agent.detected) {
+      // A free plan refuses every named model (adapters/cursor.mjs): then Auto is all there is.
+      discovered = cursorOnlyAuto() ? ['auto'] : await listCursor(agent).catch(() => []);
+    }
     const custom = Array.isArray(config.models?.[agent.id]) ? config.models[agent.id] : [];
     // OpenCode speaks to many providers: what `opencode models` lists is already only the ones
     // signed in plus OpenCode's own. The person may hide a provider from the chooser (AJUSTES ›
@@ -207,15 +252,20 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
       discovered = discovered.filter((name) => !hidden.has(providerOf(name)));
       groups = groupOpenCode(unique([...custom, ...discovered]));
     }
+    if (agent.id === 'cursor' && discovered.length > 1) groups = groupCursor(unique([...custom, ...discovered]));
     result[agent.id] = {
       ...(groups ? { groups } : {}),
-      models: unique([...custom, ...discovered, ...known.defaults]),
+      // What the account itself lists, when it can be read, is the whole choice: the names written
+      // here are only for a CLI that cannot say (2026-10-21). Added to it, they offered models the
+      // plan did not have, and a turn that failed on them.
+      models: unique([...custom, ...(discovered.length ? discovered : known.defaults)]),
       default: cliDefault,
-      note: known.note,
+      note: agent.id === 'cursor' && cursorOnlyAuto() ? CURSOR_FREE_NOTE : !discovered.length && known.unread ? known.unread : known.note,
       efforts,
       effortDefault: isValidEffort(agent.id, effortDefault) ? effortDefault : null,
       ...(effortsByModel ? { effortsByModel, effortsShared } : {}),
       source: discovered.length ? 'discovered' : 'known',
+      ...(agent.id === 'cursor' && cursorOnlyAuto() ? { onlyAuto: true } : {}),
     };
   }
   return result;
@@ -256,6 +306,28 @@ export function providerLabel(id) {
   return id.split(/[-_.]/).map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part)).join(' ');
 }
 // Groups in a steady order: the providers with a key first, by name; OpenCode's own models last.
+// Cursor lists every model of every house, each in several speeds (265 on 2026-10-21): shown under
+// the house it comes from, Cursor's own first, so the chooser can be read.
+const CURSOR_HOUSES = [
+  ['cursor', 'Cursor', /^(auto|composer|cursor-small)/],
+  ['openai', 'OpenAI', /^(gpt|o\d|codex)/],
+  ['anthropic', 'Anthropic', /^claude/],
+  ['google', 'Google', /^gemini/],
+  ['xai', 'xAI', /^(cursor-)?grok/],
+  ['deepseek', 'DeepSeek', /^deepseek/],
+  ['moonshot', 'Moonshot', /^kimi/],
+];
+export function groupCursor(names = []) {
+  const groups = new Map();
+  for (const name of names) {
+    const [id, label] = CURSOR_HOUSES.find(([, , test]) => test.test(name)) ?? ['other', 'Other'];
+    if (!groups.has(id)) groups.set(id, { id, label, own: id === 'cursor', models: [] });
+    groups.get(id).models.push(name);
+  }
+  const order = [...CURSOR_HOUSES.map(([id]) => id), 'other'];
+  return [...groups.values()].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+}
+
 export function groupOpenCode(names = []) {
   const byProvider = new Map();
   for (const name of names) {

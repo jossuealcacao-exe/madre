@@ -1881,10 +1881,10 @@ test('capabilities: verified matrix, routing helper', () => {
   assert.equal(capabilitySummary('codex').imageGen, true);
   assert.equal(capabilitySummary('claude').imageGen, false);
   assert.equal(capabilitySummary('gemini').imageGen, false);
-  // Every CLI reads, takes images and writes under a lease — except Cursor, which reads only until
-  // its confinement has been tried against the real CLI (2026-10-17).
-  assert.ok(Object.entries(CAPABILITIES).filter(([id]) => id !== 'cursor').every(([, caps]) => caps.read && caps.imageIn && caps.write));
-  assert.deepEqual([CAPABILITIES.cursor.read, CAPABILITIES.cursor.write], [true, false]);
+  // Every CLI reads and writes under a lease; all but Cursor take an image (Cursor's is named in the
+  // briefing). Cursor writes from 2026-10-21, held by the room's own guard (adapters/cursor.mjs).
+  assert.ok(Object.values(CAPABILITIES).every((caps) => caps.read && caps.write));
+  assert.ok(Object.entries(CAPABILITIES).filter(([id]) => id !== 'cursor').every(([, caps]) => caps.imageIn));
   assert.equal(capabilitySummary('unknown').write, false);
   assert.match(capabilitySummary('codex').detail.imageIn.how, /-i <file>/);
 });
