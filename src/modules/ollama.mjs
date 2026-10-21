@@ -3,6 +3,7 @@
 // OLLAMA: local intelligence. Embeddings and distillation on this machine when
 // Ollama runs. The server offers the wiring through ctx.services.ollama.
 
+import { execFile } from 'node:child_process';
 import { defineModule } from './sdk.mjs';
 import { t } from '../i18n.mjs';
 import { findOnPath } from './helpers.mjs';
@@ -17,30 +18,56 @@ export async function recommendedHere() {
   return { ...RECOMMENDED, chat: fit.recommended.run?.ollama ?? RECOMMENDED.chat, hardware: fit, catalog: modelCatalog(fit) };
 }
 
+// On Linux the official script writes /usr/local and a systemd service, and when it is not root it
+// asks sudo for both. MADRE runs it with no terminal, where sudo cannot ask for a password: it fails
+// for a user who needs one and always for one who is not an administrator. So it runs here only as
+// root or with sudo that needs no password; otherwise the command is handed over for a terminal.
+// (Installing without root into ~/.local from Ollama's archive was weighed and left out: the archive
+// changes format and size with each release, needs the GPU libraries beside it and a PATH the
+// running MADRE does not see, and gives no service. One person keeps this; the script keeps itself.)
+const LINUX_SCRIPT = 'curl -fsSL https://ollama.com/install.sh | sh';
+const NEEDS_PASSWORD = "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.";
+
+// `sudo -n true` answers at once: 0 when no password is needed, an error when one is (or when this
+// user cannot use sudo at all). Asked once per run of MADRE; never with a terminal attached.
+let sudoOnce = null;
+export const sudoWithoutPassword = () => (sudoOnce ??= new Promise((resolve) => {
+  execFile('sudo', ['-n', 'true'], { timeout: 5000 }, (error) => resolve(!error));
+}));
+
+// Whether the Linux script can run from here. Elsewhere the question does not arise.
+export async function adminHere({ platform = process.platform, uid = process.getuid?.() ?? null, sudo = sudoWithoutPassword } = {}) {
+  if (platform !== 'linux') return true;
+  if (uid === 0) return true;
+  return Boolean(await sudo());
+}
+
 // Ollama is not an npm package, so each system has its own way in. Where MADRE can run it, the
 // command is shown on the button before it runs; where it cannot, it hands over the download.
-export function ollamaInstallPlan({ platform = process.platform, brew = null } = {}) {
+export function ollamaInstallPlan({ platform = process.platform, brew = null, admin = true } = {}) {
   if (platform === 'darwin') {
     return brew
       ? { command: brew, args: ['install', 'ollama'], display: 'brew install ollama', note: 'Installs Ollama with Homebrew, the package manager already on this computer.' }
       : { command: null, download: 'https://ollama.com/download', display: null, note: 'Homebrew is not on this computer. Download Ollama from ollama.com, open it once, and press RECHECK.' };
   }
   if (platform === 'linux') {
-    return { command: 'sh', args: ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'], display: 'curl -fsSL https://ollama.com/install.sh | sh', note: "Ollama's own install script, downloaded from ollama.com and run on this computer." };
+    if (!admin) return { command: null, manual: true, display: LINUX_SCRIPT, note: t(NEEDS_PASSWORD) };
+    return { command: 'sh', args: ['-c', LINUX_SCRIPT], display: LINUX_SCRIPT, note: "Ollama's own install script, downloaded from ollama.com and run on this computer." };
   }
   return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the Ollama installer from ollama.com, run it, and press RECHECK.' };
 }
 
 // A newer Ollama. Where MADRE can do it, the command is shown before it runs; where it cannot,
 // it hands over the download rather than pretending.
-export function ollamaUpdatePlan({ platform = process.platform, brew = null } = {}) {
+export function ollamaUpdatePlan({ platform = process.platform, brew = null, admin = true } = {}) {
   if (platform === 'darwin') {
     return brew
       ? { command: brew, args: ['upgrade', 'ollama'], display: 'brew upgrade ollama', note: 'Upgrades Ollama with Homebrew. Your models stay where they are.' }
       : { command: null, download: 'https://ollama.com/download', display: null, note: 'Ollama was not installed with Homebrew. Download the newer one from ollama.com, open it once, and press RECHECK. Your models stay where they are.' };
   }
   if (platform === 'linux') {
-    return { command: 'sh', args: ['-c', 'curl -fsSL https://ollama.com/install.sh | sh'], display: 'curl -fsSL https://ollama.com/install.sh | sh', note: "Ollama's own install script upgrades in place. Your models stay where they are." };
+    if (!admin) return { command: null, manual: true, display: LINUX_SCRIPT, note: `${t(NEEDS_PASSWORD)} ${t('Your models stay where they are.')}` };
+    return { command: 'sh', args: ['-c', LINUX_SCRIPT], display: LINUX_SCRIPT, note: "Ollama's own install script upgrades in place. Your models stay where they are." };
   }
   return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the newer Ollama from ollama.com and run it. Your models stay where they are.' };
 }
@@ -52,7 +79,9 @@ export const ollamaStartPlan = () => ({ command: 'ollama', args: ['serve'], disp
 // computer, and the one step that moves it forward. The card and the routes share this.
 export async function ollamaView(probe, settings) {
   const binary = await findOnPath('ollama');
-  return { ...probe, settings, binary, install: ollamaInstallPlan({ brew: await findOnPath('brew') }), start: ollamaStartPlan() };
+  // The sudo question is only worth asking while there is something to install.
+  const admin = binary ? true : await adminHere();
+  return { ...probe, settings, binary, install: ollamaInstallPlan({ brew: await findOnPath('brew'), admin }), start: ollamaStartPlan() };
 }
 
 export default defineModule({
@@ -89,7 +118,7 @@ export default defineModule({
   },
   async updatePlan(ctx) {
     const { findOnPath } = await import('./helpers.mjs');
-    const plan = ollamaUpdatePlan({ brew: await findOnPath('brew') });
+    const plan = ollamaUpdatePlan({ brew: await findOnPath('brew'), admin: await adminHere() });
     if (!plan.command) return plan;
     // Upgrading replaces the binary, not the server already running: until it restarts, the old
     // version keeps answering. Said before the button is pressed, done after the command.
@@ -122,7 +151,7 @@ export default defineModule({
     } },
     { method: 'POST', path: '/api/ollama/install', handler: async (ctx) => {
       const started = await ctx.services.ollama.install();
-      return started.ok ? { status: 202, body: { installing: true, command: started.command } } : { status: started.download ? 412 : 409, body: { error: started.error, download: started.download ?? null } };
+      return started.ok ? { status: 202, body: { installing: true, command: started.command } } : { status: started.download || started.manual ? 412 : 409, body: { error: started.error, download: started.download ?? null, manual: started.manual ?? null } };
     } },
     { method: 'POST', path: '/api/ollama/start', handler: async (ctx) => {
       const started = await ctx.services.ollama.start();

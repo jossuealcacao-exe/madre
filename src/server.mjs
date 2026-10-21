@@ -1757,9 +1757,9 @@ export async function createPulseServer({
           // Getting Ollama onto this computer, with the command in plain sight, and waking it.
           install: async () => {
             if (installing) return { ok: false, error: `Another install is running (${installing}).` };
-            const { ollamaInstallPlan } = await import('./modules/ollama.mjs');
-            const plan = ollamaInstallPlan({ brew: await findOnPath('brew') });
-            if (!plan.command) return { ok: false, error: plan.note, download: plan.download };
+            const { ollamaInstallPlan, adminHere } = await import('./modules/ollama.mjs');
+            const plan = ollamaInstallPlan({ brew: await findOnPath('brew'), admin: await adminHere() });
+            if (!plan.command) return { ok: false, error: plan.note, download: plan.download, manual: plan.manual ? plan.display : null };
             installing = 'ollama';
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: plan.display, platforms: [], alreadyInstalled: false });
             void (async () => {
