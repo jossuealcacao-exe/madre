@@ -32,6 +32,7 @@ A version closes when it is on npm: until then its section is called **Unrelease
 - **STOP really stops @madre.** Stopping an answer from @madre left the local AI thinking, and the answer showed up anyway. Now it is cut on the spot. And an answer an agent hands in after you stopped it is no longer posted.
 - **The project's desktop no longer scrolls.** A notice, a menu or a window reaching past the edge made the whole desktop move, wallpaper and all. Now only the conversation scrolls.
 - **The Token saver box no longer blinks**, so it does not compete with the pulse of the bottom bar.
+- **Settings › Version shows this copy's identifier**: the random number that is all the daily usage notice says about it, in sight, with a key to copy it.
 - **«Active» instead of «Calm».** That is now how an open project with nothing running is described, the Coordinator's too.
 - **A module's answer looks like the module's.** What a module's command returns (the Work report, for one) no longer looks like a terminal: it carries the module's icon, a readable title in your language and its key in your accent color. Notices' keys use your accent too. When the answer carries a key (printing the Work report), it sits on the title's row and the card keeps its pill shape.
 - **Every Settings icon moves on hover**, each in its own way, in a project and in Home. Before, only Local AI and What it remembers did.

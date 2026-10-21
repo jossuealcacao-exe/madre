@@ -1447,7 +1447,7 @@ const WIDGETS = {
   'w-coordinator': { kind: 'coordinator', name: () => t('Coordinator training'), about: () => t('How far the Coordinator\'s own record is from training a model of its own.'), size: 4, rows: 3 },
   // Only for MADRE's author, in a copy run from source with the author's token (src/server.mjs, homeWidget):
   // anywhere else the server has no such widget and Home never offers it.
-  'w-usage': { kind: 'usage', owner: true, name: () => t('MADRE usage'), about: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'), size: 8, rows: 3 },
+  'w-usage': { kind: 'usage', owner: true, name: () => t('MADRE usage'), about: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'), size: 8, rows: 5 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
 };
 const DEFAULT_LAYOUT = { order: ['bishop', 'waiting', 'links', 'projects', 'decisions', 'attention', 'memory'], size: {}, rows: {} };
@@ -1848,32 +1848,57 @@ const OS_WORDS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows', other: () 
 const WIDGET_PAINT = {
   usage(body, reading) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
+    const n = (value) => Number(value ?? 0).toLocaleString();
+    const pctOf = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0);
+    // The figure that matters first: people using it this week, and whether that grew.
+    const week = Number(reading.active.week ?? 0);
+    const before = Number(reading.active.lastWeek ?? 0);
+    const change = before ? Math.round(((week - before) / before) * 100) : null;
+    const lead = el('div', 'sm-usage-lead');
+    const trend = change === null ? (week ? t('first week with data') : '') : change === 0 ? t('same as the week before') : change > 0 ? t('{n}% more than the week before', { n: change }) : t('{n}% fewer than the week before', { n: -change });
+    lead.append(el('b', 'sm-w-big', n(week)), el('span', null, t('copies used this week')), el('small', `sm-usage-trend${change > 0 ? ' up' : change < 0 ? ' down' : ''}`, trend));
+    body.append(lead);
     const grid = el('div', 'sm-w-grid sm-usage-figures');
-    for (const [label, n, line] of [[t('Today'), reading.active.day, t('copies on')], [t('7 days'), reading.active.week, t('active copies')], [t('30 days'), reading.active.month, t('active copies')], [t('Ever'), reading.active.ever, t('copies seen')]]) {
+    for (const [label, value, line] of [
+      [t('Today'), reading.active.day, t('on today')],
+      [t('30 days'), reading.active.month, t('used this month')],
+      [t('Stayed'), reading.stayed, t('came back another day')],
+      [t('Tried it'), reading.tried, t('seen a single day')],
+    ]) {
       const cell = el('div', 'sm-w-metric');
-      cell.append(el('span', 'sm-w-label', label), el('b', 'sm-w-big', Number(n).toLocaleString()), el('small', null, line));
+      cell.append(el('span', 'sm-w-label', label), el('b', 'sm-w-big', n(value)), el('small', null, line));
       grid.append(cell);
     }
     body.append(grid);
     // The last 30 days: copies on each day, and the part of them seen for the first time.
     const top = Math.max(1, ...reading.days.map((one) => one.active));
+    const chart = el('div', 'sm-usage-chart');
     const days = el('div', 'sm-usage-days');
     days.setAttribute('role', 'img');
     days.setAttribute('aria-label', t('Copies on each day, last 30 days'));
+    const shortDay = (day) => new Date(`${day}T12:00:00Z`).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short' });
     for (const one of reading.days) {
       const bar = el('i');
       bar.style.setProperty('--h', String(one.active / top));
       bar.style.setProperty('--new', String(one.active ? one.new / one.active : 0));
-      bar.title = t('{day}: {n} on · {fresh} new', { day: one.day, n: one.active, fresh: one.new });
+      bar.title = t('{day}: {n} on · {fresh} new', { day: shortDay(one.day), n: one.active, fresh: one.new });
       days.append(bar);
     }
-    body.append(days);
-    const share = (list, word = (name) => name) => list.slice(0, 4).map((one) => `${typeof word(one.name) === 'function' ? word(one.name)() : word(one.name)} ${one.n}`).join(' · ') || '—';
-    const back = (part) => (part.cohort ? `${Math.round((part.back / part.cohort) * 100)}%` : '—');
+    const axis = el('div', 'sm-usage-axis');
+    axis.append(el('small', null, shortDay(reading.days[0]?.day ?? reading.today)), el('small', 'sm-usage-legend', ''), el('small', null, t('today')));
+    axis.children[1].append(el('i', 'is-on'), t('on that day'), el('i', 'is-new'), t('new'));
+    chart.append(days, axis);
+    body.append(chart);
+    // Each with its share; the newest version first if it is there, so «how many updated» reads at once.
+    const shares = (list, word = (name) => name) => {
+      const total = list.reduce((sum, one) => sum + one.n, 0);
+      return list.slice(0, 4).map((one) => `${word(one.name)} ${pctOf(one.n, total)}%`).join(' · ') || '—';
+    };
+    const back = (part) => (part.cohort ? `${pctOf(part.back, part.cohort)}%` : '—');
     const lines = el('div', 'sm-usage-lines');
     for (const [label, said] of [
-      [t('Versions'), share(reading.versions)],
-      [t('Systems'), share(reading.os, (name) => OS_WORDS[name] ?? name)],
+      [t('Versions'), shares(reading.versions)],
+      [t('Systems'), shares(reading.os, (name) => { const word = OS_WORDS[name] ?? name; return typeof word === 'function' ? word() : word; })],
       [t('Came back'), t('after 1 day {d1} · 7 days {d7} · 30 days {d30}', { d1: back(reading.retention.d1), d7: back(reading.retention.d7), d30: back(reading.retention.d30) })],
     ]) {
       const row = el('div', 'sm-w-line');
@@ -1881,6 +1906,30 @@ const WIDGET_PAINT = {
       lines.append(row);
     }
     body.append(lines);
+    // Yours do not count: this one never, and any other you name by its identifier.
+    const foot = el('div', 'sm-usage-mine');
+    foot.append(el('small', null, t('Your copies do not count: {n} left out, this one included.', { n: Math.max(1, Number(reading.excluded ?? 0)) })));
+    const form = el('form', 'sm-usage-exclude');
+    const field = el('input');
+    field.type = 'text'; field.placeholder = t('Another copy of yours: its identifier'); field.spellcheck = false; field.autocomplete = 'off';
+    field.setAttribute('aria-label', t('Another copy of yours: its identifier'));
+    const go = button('sm-btn small', t('Leave it out'), null);
+    go.type = 'submit';
+    form.append(field, go);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const id = field.value.trim();
+      if (!id) return;
+      go.disabled = true;
+      const answer = await post('/api/salas/usage/exclude', { id });
+      go.disabled = false;
+      if (!answer.ok) { toast(answer.body?.error ?? t('Home did not answer.'), 'error'); return; }
+      field.value = '';
+      // The tile reads itself again within 20 s; the server already forgot its old figures.
+      toast(t('That copy no longer counts. The figures update in a moment.'), 'done');
+    });
+    foot.append(form);
+    body.append(foot);
   },
   system(body, reading) {
     const cpu = el('div', 'sm-w-metric');
@@ -4839,6 +4888,14 @@ function fillRelease(host) {
     settingsSheet?.sync({ detail: true });
   }) : null;
   sxRow(block, `MADRE ${info?.current ?? ''}`.trim(), info ? (info.available ? t('{version} available', { version: info.latest }) : info.enabled === false ? t('not checked') : t('up to date')) : t('Reading…'), check);
+  // The one thing the daily usage notice says about this copy (src/heartbeat.mjs), in sight.
+  if (info?.install) {
+    const copy = sxButton(t('Copy'), async () => {
+      try { await navigator.clipboard.writeText(info.install); copy.textContent = t('Copied'); setTimeout(() => { copy.textContent = t('Copy'); }, 1400); } catch { toast(t('Select it and copy it.'), 'error'); }
+    });
+    const row = sxRow(block, t('This copy\'s identifier'), t('Random, made by this copy. It is all the daily usage notice says about it: no name, no projects.'), copy);
+    row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.install));
+  }
   if (info?.available) {
     const notes = el('a', 'sx-btn', t('What it brings'));
     notes.href = info.release ?? 'https://madre.run';

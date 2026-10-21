@@ -451,6 +451,8 @@ export async function createPulseServer({
   // Coordinator, and Ollama as this room probed it. A reading is kept 30 s, so a page that asks
   // every few seconds never makes the projects work for it.
   const widgetReadings = new Map();
+  // This copy's identifier once left out of the author's usage figures (the usage widget, below).
+  const usageExcluded = new Set();
   let cpuSeen = null;
   const cpuTimes = () => cpus().reduce((sum, one) => {
     const times = one.times;
@@ -528,9 +530,15 @@ export async function createPulseServer({
       // (scripts/owner-usage.mjs); anywhere else there is no such widget.
       const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
       if (!token) return null;
+      // This copy is the author's: left out of the figures the first time the widget reads them.
+      const mine = await installId(root).catch(() => null);
+      if (mine && !usageExcluded.has(mine)) {
+        const marked = await reportFetch(process.env.PULSE_USAGE_URL ?? 'https://madre.run/api/usage', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ exclude: mine }), signal: AbortSignal.timeout(8000) }).catch(() => null);
+        if (marked?.ok) usageExcluded.add(mine);
+      }
       const answer = await reportFetch(process.env.PULSE_USAGE_URL ?? 'https://madre.run/api/usage', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
       const body = answer?.ok ? await answer.json().catch(() => null) : null;
-      reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
+      reading = body?.ok ? { available: true, ...body, mine } : { available: false, status: answer?.status ?? 0 };
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
@@ -1446,7 +1454,9 @@ export async function createPulseServer({
   if (!testMode) serverSentinel.start();
   // «Still in use», once a day per copy (src/heartbeat.mjs): a little after start, then looked at
   // every few hours; the day it was already said, nothing goes.
-  const sayAlive = () => { void heartbeat({ root, version: PACKAGE.version, fetchImpl: reportFetch }); };
+  // The author's own copies say nothing (2026-10-20): a copy that holds the author's usage key is
+  // one of his, and it would only count him in his own figures.
+  const sayAlive = () => { void readSecret(root, OWNER_VAULT, 'usage').catch(() => null).then((owner) => (owner ? null : heartbeat({ root, version: PACKAGE.version, fetchImpl: reportFetch }))); };
   const aliveTimers = testMode ? [] : [setTimeout(sayAlive, 20_000), setInterval(sayAlive, 6 * 60 * 60 * 1000)];
   for (const timer of aliveTimers) timer.unref?.();
   const endClients = (feed) => { for (const client of [...feed.clients.keys()]) { feed.clients.delete(client); try { client.end(); } catch { /* already gone */ } } };
@@ -2074,6 +2084,20 @@ export async function createPulseServer({
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), url.pathname.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/css; charset=utf-8');
       }
       // A widget of Home, read here (homeWidget above): only from this Mac's own pages.
+      // Another copy of the author's, left out of the usage figures by its identifier (Settings ›
+      // Version on that copy). Only from this computer's page, and only with the author's key.
+      if (request.method === 'POST' && url.pathname === '/api/salas/usage/exclude') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+        if (!token) return sendJson(response, 404, { error: t('Home has no widget by that name.') });
+        const { id } = await body(request);
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id ?? '').trim())) return sendJson(response, 400, { error: t('That is not a copy\'s identifier. Copy it from Settings › Version on that copy.') });
+        const answer = await reportFetch(process.env.PULSE_USAGE_URL ?? 'https://madre.run/api/usage', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ exclude: String(id).trim().toLowerCase() }), signal: AbortSignal.timeout(8000) }).catch(() => null);
+        const result = answer?.ok ? await answer.json().catch(() => null) : null;
+        if (!result?.ok) return sendJson(response, 502, { error: t('madre.run did not answer. Try again in a moment.') });
+        widgetReadings.delete('usage');
+        return sendJson(response, 200, { ok: true });
+      }
       if (request.method === 'GET' && url.pathname === '/api/salas/widget') {
         const reading = await homeWidget(String(url.searchParams.get('kind') ?? ''));
         if (!reading) return sendJson(response, 404, { error: t('Home has no widget by that name.') });
@@ -3461,7 +3485,9 @@ export async function createPulseServer({
         return sendJson(response, 404, { error: 'Not found' });
       }
       if (request.method === 'GET' && url.pathname === '/api/version') {
-        return sendJson(response, 200, await versionView({ force: url.searchParams.get('force') === '1' }));
+        // With the one thing the daily notice says about this copy: its random identifier, shown so the
+        // person can see it, and so the author can leave out a copy of his own (the usage widget).
+        return sendJson(response, 200, { ...(await versionView({ force: url.searchParams.get('force') === '1' })), install: await installId(root).catch(() => null) });
       }
       // One click: install the newer version and come back on the same port. The room records it,
       // closes its listener so the port is free, hands the command to a detached shell and exits.

@@ -32,6 +32,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - **DETENER detiene de verdad a @madre.** Al detener una respuesta de @madre, la IA local seguía pensando y la respuesta aparecía de todos modos. Ahora se corta en el momento. Además, la respuesta que un agente entregue después de que lo detuviste ya no se publica.
 - **El escritorio del proyecto ya no se desplaza.** Un aviso, un menú o una ventana que se asomaba por el borde hacía que todo el escritorio se moviera, con el fondo incluido. Ahora solo se desplaza la conversación.
 - **El recuadro de Ahorro de tokens ya no parpadea**, para no competir con el pulso de la barra de abajo.
+- **Ajustes › Versión muestra el identificador de esta copia**: el número al azar que es todo lo que el aviso diario de uso dice de ella, para que se vea, con un botón para copiarlo.
 - **«Activo» en vez de «En calma».** Así se dice ahora el estado de un proyecto abierto sin nada en marcha, también el del Coordinador.
 - **La respuesta de un módulo se ve como del módulo.** Lo que devuelve un comando de módulo (el Informe de trabajo, por ejemplo) ya no parece una terminal: lleva el ícono del módulo, un título legible en tu idioma y su botón en tu color de acento. Los botones de los avisos también usan tu acento. Si la respuesta trae un botón (imprimir el Informe), va en la misma fila del título y la tarjeta conserva su forma de píldora.
 - **Todos los íconos de Ajustes se mueven al pasar el ratón**, cada uno a su manera, en un proyecto y en Inicio. Antes solo lo hacían IA local y Lo que recuerda.

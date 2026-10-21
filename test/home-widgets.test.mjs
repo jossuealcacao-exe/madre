@@ -42,7 +42,7 @@ test('home widgets: «MADRE usage» exists only with the author\'s token, and re
   const project = await mkdtemp(join(tmpdir(), 'madre-usage-project-'));
   const heard = [];
   const fake = createServer((request, response) => {
-    heard.push(request.headers.authorization ?? null);
+    heard.push(`${request.method} ${request.headers.authorization ?? null}`);
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ ok: true, today: '2026-10-13', active: { day: 2, week: 3, month: 3, ever: 4 }, days: [], versions: [], os: [], node: [], retention: {} }));
   });
@@ -61,7 +61,9 @@ test('home widgets: «MADRE usage» exists only with the author\'s token, and re
     assert.equal(owner.status, 200);
     assert.equal(owner.body.available, true);
     assert.deepEqual(owner.body.active, { day: 2, week: 3, month: 3, ever: 4 });
-    assert.deepEqual(heard, [`Bearer ${'f'.repeat(64)}`]);
+    // First it leaves this copy out of the figures (the author's own), then it reads them.
+    assert.deepEqual(heard, [`POST Bearer ${'f'.repeat(64)}`, `GET Bearer ${'f'.repeat(64)}`]);
+    assert.match(owner.body.mine, /^[0-9a-f-]{36}$/);
   } finally {
     if (before === undefined) delete process.env.PULSE_USAGE_URL; else process.env.PULSE_USAGE_URL = before;
     if (server) await new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve()); });
