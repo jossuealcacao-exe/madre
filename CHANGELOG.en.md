@@ -6,6 +6,32 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.5 · Unreleased
 
+MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) in one chat that runs on your computer. You write to them, they read your project, and you decide what they may change. This version makes it easier to learn and to use every day.
+
+- **A manual you can follow.** Real pictures of MADRE with every step marked, from installing it to what to do when something fails. It is in Settings › System › User manual, and as a PDF.
+- **Tips that teach you in minutes.** If it is your first time, MADRE walks you through Home and your first project («1 of 4», «Next»). If you used it before, you only see what is new. Each tip shows once.
+- **Notes and Reminders.** Coloured notes on your project, and reminders that tell you on the day and at the hour you said. Ask any agent: «remind me tomorrow at 10 to check the banner».
+- **Ask about any line of code.** In Code, click a line number and press ASK: explain, improve, write tests or fix.
+- **Connectors in one click.** GitHub, Notion, Linear, Stripe and more, from a catalogue in Settings › Connectors (MCP).
+- **Cursor and Gemini show the models of your plan**, and Cursor now works with all four permissions.
+- **Local AI that fits.** MADRE recommends the model that fits your computer, and you choose which one your projects use.
+- **Diagnostics understands you.** Write what you see, such as «Gemini does not answer», and it finds the case and the fix.
+- **Clearer and steadier.** Plainer words in English and Spanish, four new accent colours, less flicker, and closing MADRE from the Terminal closes all your projects.
+
+### Everything that changed, in detail
+
+<details>
+<summary>The full list of 1.0.5</summary>
+
+- **The manual, with real pictures.** Each section says what it is for, gives one exact thing to try, the steps numbered over a picture of MADRE in your language, and a line for whoever knows the basics. Nineteen sections in four parts (Getting started, Working, More, Help), with «Install MADRE», «Connect your agents», «The memory», «Continuity» and «Common problems». The PDF has one section a page.
+- **Tips as a walk.** After the bonjour, Home shows you your project, the Coordinator, Connections and the manual; inside the project, the box, who answers, the permission, Code and the manual. Whoever comes from an earlier version sees only what is new in 1.0.5, without the «first time» cards of things they knew. Each tip is kept as seen the moment it shows: it no longer comes back on reload.
+- **In Code, «Ask» is one action**: you choose the agent and what you want about the marked lines. The windows over the code step aside while you type.
+- **Cursor and Gemini read the models of your plan** (Cursor from its list, Gemini with your key), and Cursor can create and edit at #2, #3 and #4.
+- **Diagnostics understands common phrases** («no contesta», «does not answer») and puts the cases of the agent you name first.
+- **Closing Home with Ctrl-C or by closing the Terminal closes every open project**, as Turn MADRE off does, also those opened from another project.
+- **Four new accents:** marble, peach, pistachio and petal.
+- **Rewritten words** in the tips, the tour, the bonjour and the manual, with no brochure phrases; «chats» instead of «conversations».
+
 - **Notes (new module, 0.1, free).** Notes in six colors on your project, each in a window you move around the canvas and size from its edges, like any other MADRE window. Each note carries three keys drawn alike, on the paper: arrange, the bin, which deletes it (with «Undo» in case it was a mistake), and the ×, which only closes it. They are turned on and managed from Modules, and their key can be pinned to the bar. Only you read them: no agent sees them and they are not kept in the project's folder. A large note adapts: the text grows with it, the colors stay at its foot, and one left larger than the screen comes back whole when it opens.
 - **Reminders (new module, 0.1, free). An idea by Daniel Castillo.** When you write something you still have to do («I'll review the PR tomorrow», «remind me to call Daniel on Monday») or ask for the same thing on several days, a card appears under your message: «Shall I remind you?», with the time already chosen. One click saves it; «Another time» offers in an hour, this evening, tomorrow morning, on Monday or every day. If the project has the local AI, @madre reads the message first and drops what is not a task; no paid agent is asked. When it is due, Home tells you, in «Needs you» and when MADRE opens, and so does the project it came from. You can also ask any agent for one with `/reminders tomorrow at 5 call Daniel`. On its card you choose what to notice (what is pending, what you ask for often), whether the local AI reads it first, the hour when you do not say one and how long «later» is; each reminder can be moved to another time, and the done ones stay in a history to repeat or clear. The Market shows «Developed by Daniel Castillo».
 - **Local AI: you choose the model, and everything lives in Settings.**
@@ -79,6 +105,8 @@ A version closes when it is on npm: until then its section is called **Unrelease
 - **No old news for first-time users.** Someone installing MADRE for the first time no longer gets five «New:» cards in a row about 1.0.2 features, or notices stacked on top of each other. Also, «New: add widgets» came back every time you opened Home; now it closes for good.
 - **Each news card shows only once.** The «New:» cards and each project's «first time» cards (Settings, Modules, Memory…) only remembered that you had seen them on that port. Since a project opens on the first free port, they came back whenever it got another one. Now MADRE remembers them per person, like Home's, and keeps the ones you had already closed. A version's «what's new» board also counts as seen as soon as it appears: before, it came back if you turned MADRE off while it was open.
 - **The terminal no longer says «Ready» before you sign in.** On start, MADRE writes which agents are installed and points you to Settings › Agents to see which ones are signed in.
+
+</details>
 
 ## 1.0.4 · 2026-10-19
 

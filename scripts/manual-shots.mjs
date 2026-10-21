@@ -36,8 +36,8 @@ if (!['es', 'en'].includes(lang) || !home || !room) {
 }
 const { chromium } = await import(process.env.PLAYWRIGHT ? pathToFileURL(join(process.env.PLAYWRIGHT, 'index.mjs')).href : 'playwright');
 const WORDS = {
-  es: { find: 'Buscar un archivo', file: 'carrito.js', saver: 'Ahorro de tokens', connectors: 'Conectores (MCP)', local: 'IA local', symptom: 'Claude me pide iniciar sesión', accent: 'acento', projects: 'Qué proyectos', check: 'Revisar conexión' },
-  en: { find: 'Find a file', file: 'cart.js', saver: 'Token saver', connectors: 'Connectors (MCP)', local: 'Local AI', symptom: 'Claude is not signed in', accent: 'accent', projects: 'Which projects', check: 'Check the connection' },
+  es: { agents: 'Agentes', signIn: 'Cuenta de Claude', signedIn: 'Conectado', home: '~/Proyectos/', continuity: 'Continuidad', changes: 'Lo que modifica', install: 'Instalar', project: 'mi-tienda', find: 'Buscar un archivo', file: 'carrito.js', saver: 'Ahorro de tokens', connectors: 'Conectores (MCP)', local: 'IA local', symptom: 'Claude me pide iniciar sesión', accent: 'acento', projects: 'Qué proyectos', check: 'Revisar conexión' },
+  en: { agents: 'Agents', signIn: 'Claude account', signedIn: 'Connected', home: '~/Projects/', continuity: 'Continuity', changes: 'What it touches', install: 'Install', project: 'my-shop', find: 'Find a file', file: 'cart.js', saver: 'Token saver', connectors: 'Connectors (MCP)', local: 'Local AI', symptom: 'Claude is not signed in', accent: 'accent', projects: 'Which projects', check: 'Check the connection' },
 }[lang];
 
 // What is not the point of a picture is not in it: the version's corner, the first steps of a new
@@ -71,6 +71,14 @@ const firstInSight = (selector, text = null) => (page) => page.evaluate(([select
   }
   return null;
 }, [selector, text]);
+// The smallest thing on screen whose own words are these: a status, a key.
+const leaf = (text) => (page) => page.evaluate((text) => {
+  const all = [...document.querySelectorAll('body *')].filter((node) => { const box = node.getBoundingClientRect(); return box.width && box.height && box.top >= 0 && box.bottom <= innerHeight && node.textContent.trim() === text; });
+  const one = all.find((node) => ![...node.children].some((child) => child.textContent.trim() === text));
+  if (!one) return null;
+  const box = one.getBoundingClientRect();
+  return { x: box.x, y: box.y, width: box.width, height: box.height };
+}, text);
 // What a panel shows of itself: its box, cut where the window ends.
 const inSight = (selector) => (page) => page.evaluate((selector) => {
   const one = [...document.querySelectorAll(selector)].find((node) => node.getBoundingClientRect().width > 0);
@@ -100,6 +108,39 @@ const SHOTS = {
     go: toHome,
     marks: ['#sm-add', (page) => page.locator('article.sm-card', { hasText: project }).first(), '#sm-attention'],
     frame: ['#sm-projects'],
+  },
+  agents: {
+    viewport: { width: 1180, height: 1100 },
+    go: async (page) => { await toHome(page); await page.locator('#sm-gear').click(); await settle(page); await openSettingsCard(page, WORDS.agents); },
+    marks: [firstInSight('.settings-detail-title'), leaf(WORDS.signIn), leaf(WORDS.signedIn)],
+    frame: [],
+  },
+  memory: {
+    viewport: { width: 1500, height: 860 },
+    go: async (page) => {
+      await toRoom(page);
+      await page.locator('#nostromo-bar').click();
+      await settle(page);
+      // The map asks for the project's name first, unless the person said not to ask again.
+      const gate = page.locator('#nostromo-gate-input');
+      if (await gate.isVisible().catch(() => false)) { await gate.fill(WORDS.project); await gate.press('Enter'); }
+      await page.locator('#nostromo[open]').waitFor();
+      await settle(page, 3500);
+    },
+    marks: ['#nostromo .mother-title', '#nostromo .nostromo-legend', null],
+    frame: ['#nostromo'],
+  },
+  continuity: {
+    viewport: { width: 1180, height: 900 },
+    go: async (page) => {
+      await toRoom(page);
+      await page.locator('#modules-button').click();
+      await settle(page, 1000);
+      await page.locator('.mods-tile', { hasText: WORDS.continuity }).first().click();
+      await settle(page, 1200);
+    },
+    marks: [(page) => page.locator('.mods-tile', { hasText: WORDS.continuity }).first(), (page) => page.locator('.mods-sheet h3', { hasText: WORDS.changes }).first(), (page) => page.locator('dialog[open] button.primary', { hasText: new RegExp(`^\\s*${WORDS.install}\\s*$`, 'i') }).first()],
+    frame: ['#modules'],
   },
   composer: {
     go: toRoom,
@@ -242,6 +283,17 @@ try {
     const page = await context.newPage();
     try {
       await shot.go(page);
+      // Nothing of the computer that took the pictures: the house's folders read as a person's
+      // own (~/Projects/…) and a home folder as ~.
+      await page.evaluate((home) => {
+        const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+          const said = node.nodeValue;
+          const clean = said.replace(/\/(?:private\/)?(?:tmp|var)\/[^\s·]*?\/home\/Projects\//g, home).replace(/\/Users\/[^/\s·]+/g, '~');
+          if (clean !== said) node.nodeValue = clean;
+        }
+      }, WORDS.home);
+      await wait(300);
       const marks = await Promise.all(shot.marks.map((one) => boxOf(page, one)));
       const missing = shot.marks.map((one, at) => (one !== null && !marks[at] ? at + 1 : null)).filter(Boolean);
       if (missing.length) console.warn(`${id}: no mark for step ${missing.join(', ')}`);

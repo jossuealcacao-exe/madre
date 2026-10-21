@@ -30,6 +30,11 @@ const ICONS = {
   orbit: '<circle cx="10" cy="10" r="2.2"/><ellipse cx="10" cy="10" rx="7" ry="3.2"/><circle cx="16.4" cy="11.4" r=".9"/>',
   windows: '<rect x="3.5" y="5" width="9" height="7.5" rx="1.6"/><rect x="7.5" y="8" width="9" height="7.5" rx="1.6"/>',
   gear: '<circle cx="10" cy="10" r="2.4"/><path d="M10 3.2v2M10 14.8v2M3.2 10h2M14.8 10h2M5.2 5.2l1.4 1.4M13.4 13.4l1.4 1.4M5.2 14.8l1.4-1.4M13.4 6.6l1.4-1.4"/>',
+  download: '<path d="M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4.5 15.5h11"/>',
+  agents: '<circle cx="7.5" cy="8" r="2.4"/><circle cx="13.5" cy="8.6" r="1.9"/><path d="M3.5 15.5c.5-2.4 2.1-3.6 4-3.6s3.5 1.2 4 3.6M12.3 12.3c1.9-.3 3.6.8 4.2 3.2"/>',
+  stars: '<path d="M7.5 4l1 2.3 2.4.3-1.8 1.6.5 2.4-2.1-1.2-2.1 1.2.5-2.4-1.8-1.6 2.4-.3zM14 11l.6 1.4 1.5.2-1.1 1 .3 1.5-1.3-.8-1.3.8.3-1.5-1.1-1 1.5-.2zM5 14.5h.01M15.5 5h.01"/>',
+  loop: '<path d="M14.5 7.5A5 5 0 0 0 5.4 6.2M5.5 12.5a5 5 0 0 0 9.1 1.3M5 3.5v3h3M15 16.5v-3h-3"/>',
+  warning: '<path d="M10 3.5l7 12.5H3z"/><path d="M10 8.5v3.5M10 14.3h.01"/>',
   keys: '<rect x="3" y="5.5" width="14" height="9" rx="2"/><path d="M6 8.5h.01M8.7 8.5h.01M11.3 8.5h.01M14 8.5h.01M7 11.5h6"/>',
   help: '<circle cx="10" cy="10" r="6.5"/><path d="M8.2 8.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.6M10 13.8h.01"/>',
 };
@@ -49,9 +54,10 @@ const keyChip = (how) => el('kbd', null, plain(how));
 const KEYS = /([⌘⌥⇧⌃]\s?(?:[A-Z]|[,./↵])|↵)/;
 function rich(text) {
   const line = el('span');
-  for (const part of plain(text).split(/(“[^”]+”)/)) {
+  for (const part of plain(text).split(/(“[^”]+”|`[^`]+`)/)) {
     if (!part) continue;
     if (part.startsWith('“')) { line.append(el('q', 'manual-say', part.slice(1, -1))); continue; }
+    if (part.startsWith('`')) { line.append(el('code', null, part.slice(1, -1))); continue; }
     for (const bit of part.split(KEYS)) {
       if (!bit) continue;
       line.append(KEYS.test(bit) && bit.length <= 3 ? el('kbd', null, bit) : document.createTextNode(bit));
@@ -180,26 +186,26 @@ function draw(lang, madre) {
   // The contents, each a link to its section.
   const contents = el('nav', 'manual-contents');
   contents.append(el('h2', null, copy.contents));
-  const list = el('ol');
-  copy.sections.forEach((section) => {
+  // In four parts, in the order someone new needs them: getting started, working, more, help.
+  const entry = (href, iconName, title) => {
     const item = el('li');
     const link = el('a');
-    link.href = `#${section.id}`;
+    link.href = href;
     const badge = el('span', 'manual-icon');
-    badge.innerHTML = icon(section.icon); // trusted: our own SVG
-    link.append(badge, el('span', null, section.title));
+    badge.innerHTML = icon(iconName); // trusted: our own SVG
+    link.append(badge, el('span', null, title));
     item.append(link);
-    list.append(item);
-  });
-  const last = el('li');
-  const toKeys = el('a');
-  toKeys.href = '#atajos';
-  const keysIcon = el('span', 'manual-icon');
-  keysIcon.innerHTML = icon('keys'); // trusted: our own SVG
-  toKeys.append(keysIcon, el('span', null, copy.shortcuts));
-  last.append(toKeys);
-  list.append(last);
-  contents.append(list);
+    return item;
+  };
+  for (const [part, name] of Object.entries(copy.parts)) {
+    const group = el('div', 'manual-part');
+    group.append(el('h3', null, name));
+    const list = el('ol');
+    for (const section of copy.sections.filter((one) => one.part === part)) list.append(entry(`#${section.id}`, section.icon, section.title));
+    if (part === 'help') list.append(entry('#atajos', 'keys', copy.shortcuts));
+    group.append(list);
+    contents.append(group);
+  }
   root.append(contents);
 
   copy.sections.forEach((section, index) => {
@@ -215,21 +221,55 @@ function draw(lang, madre) {
     // What it looks like, its steps numbered as the marks on it, then one thing to try and what is
     // worth knowing once the basics are there.
     const body = el('div', 'manual-body');
-    const picture = shot(section.shot, lang, section.title);
+    const picture = section.shot ? shot(section.shot, lang, section.title) : null;
     if (picture) body.append(picture);
+    // What to paste in the Terminal, with its key to copy it.
+    if (section.code?.length) {
+      const terminal = el('div', 'manual-terminal');
+      terminal.append(el('span', 'manual-terminal-dots'));
+      for (const line of section.code) {
+        const row = el('div', 'manual-terminal-line');
+        row.append(el('span', 'manual-terminal-prompt', '$'), el('code', null, line));
+        if (!printing) {
+          const take = el('button', 'manual-copy', copy.copy);
+          take.type = 'button';
+          take.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(line); take.textContent = copy.copied; setTimeout(() => { take.textContent = copy.copy; }, 1600); } catch { /* the line stays selectable */ }
+          });
+          row.append(take);
+        }
+        terminal.append(row);
+      }
+      body.append(terminal);
+    }
+    // What goes wrong most often: what the person sees, and what to do.
+    if (section.problems?.length) {
+      const table = el('div', 'manual-problems');
+      const head = el('div', 'manual-problem head');
+      head.append(el('span', 'manual-label', copy.problem[0]), el('span', 'manual-label', copy.problem[1]));
+      table.append(head);
+      for (const [seen, fix] of section.problems) {
+        const row = el('div', 'manual-problem');
+        row.append(el('b', null, plain(seen)), rich(fix));
+        table.append(row);
+      }
+      body.append(table);
+    }
     const side = el('div', 'manual-side');
     const steps = el('ol', 'manual-steps');
-    section.steps.forEach((step, at) => {
+    (section.steps ?? []).forEach((step, at) => {
       const item = el('li');
       item.dataset.step = String(at + 1);
       item.append(el('b', null, String(at + 1)), rich(step));
       steps.append(item);
     });
-    side.append(steps);
-    const tryIt = el('aside', 'manual-try');
-    tryIt.append(el('span', 'manual-label', copy.tryIt), rich(section.tryIt));
-    side.append(tryIt);
-    body.append(side);
+    if (section.steps?.length) side.append(steps);
+    if (section.tryIt) {
+      const tryIt = el('aside', 'manual-try');
+      tryIt.append(el('span', 'manual-label', copy.tryIt), rich(section.tryIt));
+      side.append(tryIt);
+    }
+    if (side.childElementCount) body.append(side);
     part.append(body);
     const expert = el('aside', 'manual-expert');
     expert.append(el('span', 'manual-label', copy.expert), rich(section.expert));

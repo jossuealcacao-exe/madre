@@ -28,7 +28,7 @@ const paperDir = join(tmpdir(), `madre-manual-pdf-${process.pid}`);
 mkdirSync(paperDir, { recursive: true });
 function forPaper(file) {
   const out = join(paperDir, `${file.split('/').pop()}.jpg`);
-  if (!existsSync(out)) execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '72', '-Z', '1400', file, '--out', out], { stdio: 'ignore' });
+  if (!existsSync(out)) execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '60', '-Z', '1200', file, '--out', out], { stdio: 'ignore' });
   return out;
 }
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2' };

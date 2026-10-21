@@ -133,6 +133,30 @@ a { color: var(--green); }
 .manual-say::before, .manual-say::after { content: none; }
 kbd { display: inline-block; padding: 1px 7px; border-radius: 7px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.5; color: var(--text); background: var(--card); box-shadow: inset 0 0 0 1px var(--line-2), inset 0 -1.5px 0 var(--line-2); white-space: nowrap; }
 
+/* The contents in four parts. */
+.manual-contents .manual-part + .manual-part { margin-top: 18px; }
+.manual-part h3 { margin: 0 0 8px 4px; font-family: 'Sora', sans-serif; font-size: 15px; }
+
+/* What to paste in the Terminal: a small window of its own, with a key to copy each line. */
+.manual-terminal { padding: 12px 14px 14px; border-radius: 16px; background: #0b0d0b; color: #e8ece6; box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.manual-terminal-dots { display: block; width: 46px; height: 10px; margin-bottom: 12px; background: radial-gradient(circle at 5px 5px, #ff5f57 4px, transparent 4.5px), radial-gradient(circle at 23px 5px, #febc2e 4px, transparent 4.5px), radial-gradient(circle at 41px 5px, #28c840 4px, transparent 4.5px); }
+.manual-terminal-line { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 15px; }
+.manual-terminal-line code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #9bff66; background: none; padding: 0; box-shadow: none; }
+.manual-terminal-prompt { color: rgba(232, 236, 230, .45); }
+.manual-copy { flex: none; height: 30px; padding: 0 12px; border: 0; border-radius: 9px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #0a1405; background: #9bff66; cursor: pointer; }
+.manual-copy:hover { filter: brightness(1.06); }
+code { font-family: 'JetBrains Mono', monospace; font-size: .9em; padding: 1px 6px; border-radius: 6px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); overflow-wrap: anywhere; }
+
+/* Common problems: what you see, and what to do. */
+.manual-problems { display: grid; border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.manual-problem { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; padding: 12px 16px; font-size: 15px; line-height: 1.5; }
+.manual-problem + .manual-problem { border-top: 1px solid var(--line); }
+.manual-problem.head { background: var(--card-2); padding: 9px 16px; }
+.manual-problem.head .manual-label { color: var(--text-3); }
+.manual-problem b { font-weight: 600; }
+.manual-problem > span:last-child { color: var(--text-2); }
+@media (max-width: 640px) { .manual-problem { grid-template-columns: 1fr; gap: 4px; } .manual-problem.head { display: none; } }
+
 /* Every shortcut. */
 .manual-keys-table { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; margin: 4px 0 16px; padding: 14px 18px; border-radius: 16px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); }
 .manual-keys-table dt { color: var(--text-2); }
@@ -198,5 +222,7 @@ kbd { display: inline-block; padding: 1px 7px; border-radius: 7px; font-family: 
   .manual-shortcut-group .manual-keys-table dd { max-width: none; text-align: left; margin-bottom: 6px; }
   .manual-shortcut-group .manual-keys-table kbd { text-align: left; }
   .manual-say { color: #fff; background: #2f8a1c; }
+  .manual-terminal { box-shadow: none; }
+  .manual-problem { break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
 }

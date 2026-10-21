@@ -6,6 +6,32 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.5 · Sin publicar
 
+MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en un chat que corre en tu computadora. Les escribes, leen tu proyecto y tú decides qué pueden cambiar. Esta versión la hace más fácil de aprender y de usar todos los días.
+
+- **Un manual que se entiende.** Capturas reales de MADRE con cada paso marcado, desde instalarla hasta qué hacer cuando algo falla. Está en Ajustes › Sistema › Manual de usuario, y en PDF.
+- **Pistas que te enseñan en minutos.** Si es tu primera vez, MADRE te muestra Inicio y tu primer proyecto paso a paso («1 de 4», «Siguiente»). Si ya la usabas, solo ves lo nuevo. Cada pista sale una sola vez.
+- **Notas y Recordatorios.** Notas de colores en tu proyecto, y recordatorios que te avisan el día y la hora que dijiste. Pídeselos a cualquier agente: «recuérdame mañana a las 10 revisar el banner».
+- **Pregunta por cualquier línea de código.** En Código haces clic en el número de una línea y pulsas PREGUNTAR: explicar, mejorar, escribir pruebas o arreglar.
+- **Conectores con un clic.** GitHub, Notion, Linear, Stripe y más, desde un catálogo en Ajustes › Conectores (MCP).
+- **Cursor y Gemini muestran los modelos de tu plan**, y Cursor ya trabaja con los cuatro permisos.
+- **IA local a tu medida.** MADRE te recomienda el modelo que cabe en tu computadora y tú eliges cuál usan tus proyectos.
+- **Diagnóstico te entiende.** Escribe lo que ves, como «Gemini no contesta», y encuentra el caso y el arreglo.
+- **Más claro y más estable.** Textos más sencillos en español y en inglés, cuatro colores de acento nuevos, menos parpadeos, y cerrar MADRE desde la Terminal cierra todos tus proyectos.
+
+### Todo lo que cambió, en detalle
+
+<details>
+<summary>La lista completa de 1.0.5</summary>
+
+- **El manual, con capturas reales.** Cada sección dice para qué sirve, trae algo exacto para probar, los pasos numerados sobre una captura de MADRE en tu idioma y una línea para quien ya sabe. Diecinueve secciones en cuatro partes (Empezar, Trabajar, Más funciones, Ayuda), con «Instala MADRE», «Conecta tus agentes», «La memoria», «Continuidad» y «Problemas comunes». El PDF tiene una sección por página.
+- **Las pistas, en recorrido.** Después del bonjour, Inicio te muestra tu proyecto, el Coordinador, las Conexiones y el manual; dentro del proyecto, la caja, quién contesta, el permiso, Código y el manual. Quien viene de una versión anterior solo ve las novedades de 1.0.5, sin las tarjetas de «la primera vez» de cosas que ya conocía. Cada pista se marca como vista en cuanto aparece: ya no vuelve al recargar.
+- **En Código, «Preguntar» es una sola acción**: eliges al agente y qué quieres sobre las líneas marcadas. Las ventanas que tapan el código se hacen a un lado mientras escribes.
+- **Cursor y Gemini leen los modelos de tu plan** (Cursor con su lista y Gemini con tu llave), y Cursor puede crear y editar con #2, #3 y #4.
+- **Diagnóstico entiende frases comunes** («no contesta», «does not answer») y pone primero los casos del agente que nombras.
+- **Cerrar Inicio con Ctrl-C o cerrando la Terminal cierra todos los proyectos abiertos**, como Apagar MADRE, también los que se abrieron desde otro proyecto.
+- **Cuatro acentos nuevos:** mármol, durazno, pistache y pétalo.
+- **Textos reescritos** en las pistas, el recorrido, el bonjour y el manual, sin frases de folleto; «chats» en vez de «conversaciones».
+
 - **Notas (módulo nuevo, 0.1, gratis).** Notas de seis colores en tu proyecto, cada una en una ventana que mueves por el lienzo y ajustas desde sus bordes, como cualquier otra ventana de MADRE. Cada nota lleva tres teclas dibujadas igual, sobre el papel: acomodar, la papelera, que la elimina (con «Deshacer» por si fue un error), y la ×, que solo la cierra. Se encienden y se administran desde Módulos, y su tecla se puede fijar en la barra. Solo tú las lees: ningún agente las ve y no se guardan en la carpeta del proyecto. Una nota grande se acomoda: el texto crece con ella, los colores quedan siempre al pie y, si la dejaste más grande que la pantalla, vuelve entera al abrirla.
 - **Recordatorios (módulo nuevo, 0.1, gratis). Una idea de Daniel Castillo.** Cuando escribes algo que tienes pendiente («mañana reviso el PR», «recuérdame llamar a Daniel el lunes») o pides lo mismo varios días, aparece una tarjeta debajo de tu mensaje: «¿Te lo recuerdo?», con la hora ya elegida. Un clic lo guarda; «Otra hora» ofrece en una hora, esta tarde, mañana temprano, el lunes o todos los días. Si el proyecto tiene IA local, @madre lee el mensaje antes y descarta lo que no es una tarea; no se le pregunta a ningún agente de pago. Cuando llega la hora, te avisa Inicio, en «Te necesita» y al abrir MADRE, y también el proyecto de donde salió. También puedes pedírselo a cualquier agente con `/recordatorios mañana a las 5 llamar a Daniel`. En su ficha eliges qué notar (lo pendiente, lo que pides seguido), si la IA local lo lee primero, la hora cuando no dices una y cuánto pospone; cada recordatorio se puede mover de hora, y los hechos quedan en un historial para repetirlos o vaciarlo. En el Mercado aparece «Desarrollado por Daniel Castillo».
 - **IA local: eliges el modelo y todo vive en Ajustes.**
@@ -79,6 +105,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 - **Sin novedades viejas para quien llega por primera vez.** Quien instala MADRE por primera vez ya no recibe cinco tarjetas seguidas de «Nuevo:» sobre cosas de 1.0.2, ni avisos encimados. Además, «Nuevo: agregar widgets» volvía cada vez que abrías Inicio; ahora se cierra para siempre.
 - **Cada aviso de novedades sale una sola vez.** Las tarjetas «Nuevo:» y las de «la primera vez» de cada proyecto (Ajustes, Módulos, Memoria…) recordaban que ya las viste solo en ese puerto. Como un proyecto abre en el primer puerto libre, volvían a salir cuando le tocaba otro. Ahora MADRE las recuerda por persona, igual que las de Inicio, y conserva las que ya habías cerrado. El tablero de novedades de una versión también cuenta como visto en cuanto aparece: antes volvía si apagabas MADRE con él abierto.
 - **La terminal ya no dice «Listos» antes de iniciar sesión.** Al arrancar, MADRE escribe qué agentes están instalados y te remite a Ajustes › Agentes para ver cuáles tienen sesión.
+
+</details>
 
 ## 1.0.4 · 2026-10-19
 

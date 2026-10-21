@@ -18,198 +18,67 @@
 
 # Todas tus IAs en un mismo chat.
 
-Codex, Claude Code, Gemini CLI, OpenCode y Cursor trabajando sobre tus proyectos,
-en la misma conversación, recordando lo mismo. Todos tus proyectos en un lugar,
-y un Coordinador que los ve desde arriba.
+MADRE es una app que corre en tu computadora y junta a las IAs que ya usas (Codex, Claude Code, Gemini CLI, OpenCode y Cursor) en un solo chat. Les escribes como a una persona, leen tu proyecto y tú decides qué pueden cambiar. Todas recuerdan lo mismo, así que no repites nada cuando cambias de una a otra.
 
 ```
 npx @jossuealcala/madre
 ```
 
-Eso es todo. No hay cuenta que crear, ni nube que configurar, ni llave que pegar.
-MADRE usa las sesiones que esas CLIs ya tienen en tu máquina.
+Necesitas Node 22.5 o más nuevo y al menos un agente con sesión. No hay cuenta que crear: MADRE usa las sesiones que tus agentes ya tienen en tu máquina.
 
 <p align="center">
-  <a href="https://github.com/jossuealcacao-exe/madre/blob/main/docs/media/1.0/madre-1-0.mp4"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/madre-1-0-video.webp" alt="Ver MADRE 1.0 en 90 segundos" width="100%"></a>
+  <a href="https://github.com/jossuealcacao-exe/madre/blob/main/docs/media/1.0/madre-1-0.mp4"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/madre-1-0-video.webp" alt="Ver MADRE en 90 segundos" width="100%"></a>
 </p>
 
-<p align="center"><sub>MADRE 1.0 en 90 segundos: pantallas reales sobre proyectos de ejemplo. También en <a href="https://madre.run">madre.run</a>.</sub></p>
+## Qué hace
 
-<br>
-
----
-
-<br>
-
-## Lo nuevo en 1.0
-
-- **Inicio**: todos tus proyectos en un lugar, abiertos o dormidos, con lo que pasó en cada uno.
-- **El Coordinador**: un agente que lee entre tus proyectos, firma conexiones y lleva órdenes de uno a otro.
-- **Conexiones**: un proyecto consulta lo que otro ya aprendió, solo con una conexión que firmas tú o, si lo permites, el Coordinador.
-- **Permisos a tu manera**: de `#0` Incógnito a `#4` Acceso total, con la llave que tú eliges.
-- **Ajustes y Diagnóstico**: todo lo que configuras en una ventana, y el remedio cuando algo falla.
-- **Módulos como apps**, varias conversaciones a la vez y un editor de código en el visor.
-
-Si vienes de 0.7.2, tus proyectos, conversaciones, memoria y ajustes se quedan. El detalle, en el [CHANGELOG](CHANGELOG.md).
-
-<br>
-
-## Una conversación, no cuatro terminales
+- **Un chat, todos tus agentes.** Escribes `@codex` y contesta Codex; escribes `@claude` y Claude contesta leyendo lo que Codex acaba de decir. Sin copiar y pegar entre ventanas.
+- **Tú pones el límite.** Cada mensaje lleva un permiso: `#1` solo conversa, `#2` crea archivos, `#3` los edita con un punto para deshacer, `#4` corre comandos y te pide confirmar dos veces.
+- **Una memoria para todo el proyecto.** Lo que se decide se guarda, y cualquier agente lo recibe cuando hace falta, aunque lo haya dicho otro hace semanas.
+- **Todos tus proyectos en Inicio.** Ves en qué va cada uno, quién te espera, y un Coordinador que puede consultar lo que aprendió cada proyecto.
+- **Código, notas, recordatorios y más.** Revisas y editas el código junto al chat, preguntas por cualquier línea, y enciendes módulos cuando los necesitas.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-agentes.webp" alt="Todas tus IAs en un mismo chat: Claude contesta después de Codex, con la línea de traspaso que dice cuántos mensajes recibió" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-agentes.webp" alt="Claude contesta después de Codex en el mismo chat de MADRE" width="100%">
 </p>
 
-Escribes `@codex` y contesta Codex. Escribes `@claude` y contesta Claude, **leyendo lo que Codex acaba de decir**. Escribes «@madre, pregúntale al equipo…» y cada uno opina por turno sobre lo mismo; al final, @madre resume en qué coinciden y en qué no, citando cada respuesta.
+## En qué te ayuda
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/mesa-redonda.gif" alt="Una mesa redonda en MADRE 1.0: la pregunta, el plan de @madre y las respuestas de cada agente" width="100%">
-</p>
+- **Dejas de saltar entre terminales.** Cuatro IAs, un hilo.
+- **No explicas tu proyecto cada vez.** La memoria se lo cuenta al agente que preguntes.
+- **No te llevas sustos.** Ningún agente cambia un archivo sin que subas el permiso, y lo que hace se puede deshacer.
+- **Aprendes rápido.** La primera vez, MADRE te muestra cada cosa paso a paso, y el [manual](https://madre.run/manual/) trae capturas de cada pantalla.
 
-Hoy eso son cuatro ventanas, cuatro contextos y tú copiando y pegando entre ellas. MADRE lo vuelve un hilo.
+## Lo nuevo en 1.0.5
 
-## Todos tus proyectos, en un lugar
+- Un manual con capturas reales y cada paso marcado, dentro de MADRE y en PDF.
+- Pistas que te enseñan Inicio y tu primer proyecto en minutos; si ya usabas MADRE, solo ves lo nuevo.
+- Notas y Recordatorios, que también le pides a cualquier agente.
+- En Código, preguntas por cualquier línea: explicar, mejorar, escribir pruebas o arreglar.
+- Conectores con un clic: GitHub, Notion, Linear, Stripe y más.
+- Cursor y Gemini muestran los modelos de tu plan, y Cursor ya trabaja con los cuatro permisos.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-inicio.webp" alt="Inicio de MADRE 1.0: el Coordinador con su resumen reciente, quién te espera, las conexiones y una tarjeta por proyecto" width="100%">
-</p>
+El detalle está en el [CHANGELOG](CHANGELOG.md).
 
-`npx @jossuealcala/madre` abre **Inicio**. La primera vez te acompaña en tres pasos: conectar tus agentes (una vez para todos tus proyectos), agregar tus carpetas y abrir las que vas a usar. Cada tarjeta dice si un agente trabaja, si alguien te espera y qué se decidió mientras no estabas.
+## Tus datos
 
-## Un Coordinador que ve todos tus proyectos
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-coordinador.webp" alt="El Coordinador responde qué se decidió en dos proyectos conectados, diciendo de cuál sacó cada dato" width="100%">
-</p>
-
-El **Coordinador** vive en Inicio. Lee lo que tus proyectos aprendieron —solo de los que conectas tú— y te contesta diciendo de qué proyecto sacó cada dato. Si lo permites, lleva tareas de un proyecto a otro, hasta `#2`; lo que pide más permiso llega como propuesta que tú desbloqueas. Desde cualquier proyecto le preguntas con `/bishop`.
-
-Una **conexión** dice qué tipos de nota cruzan (decisiones, hechos, preferencias, preguntas) y hasta cuándo. Nunca tus archivos ni tus conversaciones, y se revoca cuando quieras.
-
-## Una memoria que sobrevive a la sesión
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-memoria.webp" alt="El Mapa de memoria: memorias de colores alrededor de un núcleo de magma, unidas por sus enlaces" width="100%">
-</p>
-
-Todo lo que se dice queda indexado. Cuando la conversación pasa de la ventana de contexto, cada agente recibe de vuelta lo que hace falta, citado. Cada diez intercambios, el proyecto destila lo dicho en notas con tipo: una decisión, un hecho, una preferencia, una pregunta abierta.
-
-Preguntas *«¿por qué elegimos Postgres?»* tres semanas después y el proyecto contesta, aunque esa decisión la tomara otro agente en otra sesión.
-
-Con [Ollama](https://ollama.com) corriendo, esa memoria además **habla**: `@madre` es un quinto agente, local, gratis, que responde desde todo el archivo con citas y no escribe nada. Y la puedes **ver**: el **Mapa de memoria** es un cerebro en tres dimensiones que giras con el ratón, donde cada memoria es una estrella del color de su tipo.
-
-## Leen por defecto. Escriben cuando tú lo dices.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-permisos.webp" alt="El menú de modos de MADRE 1.0, de #0 Incógnito a #4 Acceso total" width="100%">
-</p>
-
-Cada mensaje sale con un modo de permiso, y tu modo es el techo de todo lo que ese mensaje arranque.
-
-| | | |
-|---|---|---|
-| `#1` | **SOLO CONVERSAR** | Leer y coordinar. El predeterminado. |
-| `#2` | **CREAR** | Añadir archivos nuevos. Lo que ya existía se restaura al terminar. |
-| `#3` | **EDITAR** | Editar el proyecto. Punto de restauración antes, lista de cambios y `DESHACER` después. |
-| `#4` | **ACCESO TOTAL** | Comandos, `git push`, deploys. Pide la llave dos veces. |
-
-También hay `#0 INCÓGNITO`, para lo que no debe quedar en ninguna parte.
-
-Subir a `#3` o `#4` es deliberado: MADRE te pide tu llave —por defecto, el nombre de la carpeta del proyecto; en Ajustes › Permisos puedes elegir una frase tuya— y la comprueba el propio proyecto. Ningún agente puede concederse un permiso escribiéndolo en su respuesta.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-deshacer.webp" alt="Claude cambió tres archivos en #3 Editar y el botón Deshacer regresa el proyecto al punto de restauración" width="100%">
-</p>
-
-## Tu espacio, a tu medida
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-espacio.webp" alt="La conversación a la izquierda y el editor de código al lado, en modo Editar" width="100%">
-</p>
-
-Cada panel se abre al lado o en una ventana que mueves. Varias conversaciones trabajan a la vez, el visor edita código, los servidores de tu proyecto se abren dentro de MADRE y la barra se arma con clic derecho. **Ajustes** (⌘ ,) reúne todo lo que configuras, con buscador, y **Diagnóstico** te da el remedio cuando algo falla.
-
-<br>
-
----
-
-<br>
-
-## Hazla tuya
-
-MADRE trae doce módulos —Ahorro de tokens, Esfuerzo sugerido, IA local, GitHub, Continuidad y más—, en un tablero como de apps. El siguiente lo escribes tú, o se lo pides a un agente.
-
-**Un módulo es un archivo.** Sin build, sin dependencias, sin registrarse en ningún lado. Lo copias a una carpeta, recargas y aparece con su interruptor, sus ajustes y su ficha. Con uno puedes añadir un comando `/loquesea` que el proyecto entiende, darle a los agentes una herramienta que antes no tenían, cambiar cómo se comporta MADRE, o conectarla con algo que ya usas.
-
-**O no lo escribes tú.** En la caja de texto:
-
-```
-/module un comando que me diga qué cambió en el repo esta semana
-```
-
-El agente lee el SDK, escribe el archivo, y MADRE te enseña una tarjeta para revisarlo antes de instalarlo. Nunca se instala solo, y ningún agente puede escribir en la carpeta de módulos.
-
-**Conectarla con un servicio de fuera** es lo que más se pide, y la respuesta corta es *casi siempre sí*: el límite no es MADRE, es cómo ese servicio deja que entregues tu propia llave. Vale la pena cuando la consigues en menos de cinco minutos sin ser desarrollador y la puedes revocar sola — GitHub, Linear, Notion, Jira, Slack, Telegram, Stripe, Shopify, Odoo, cualquier base de datos. Donde hay muro es donde el proveedor exige revisar tu app antes de dejarte pasar: Gmail en lectura, Meta, banca.
-
-Tu módulo declara qué llave necesita y MADRE dibuja el campo; declara a dónde llega y el registro de salidas responde por él; declara qué herramientas suyas **mandan** algo, y el proyecto se las retira a los agentes salvo en el peldaño `#4`. Nada de eso lo programas: lo declaras.
-
-**[Escribir un módulo →](docs/SDK.md)** · con dos ejemplos completos que funcionan tal cual: [el mínimo](docs/sdk/hello-module.mjs) y [una integración](docs/sdk/connector-module.mjs).
-
-<br>
-
----
-
-<br>
-
-## Lo que MADRE no es
-
-Esto importa más que cualquier función.
-
-**No hay nube.** MADRE no tiene servidor, ni cuenta, ni backend. Corre en `127.0.0.1` y se muere cuando cierras la terminal.
-
-**Tus llaves, donde hacen falta y en ningún otro lado.** Cuando das la llave de un agente, MADRE la escribe en el archivo donde ese CLI la busca, cerrada a tu usuario, y no conserva copia. Una integración no tiene CLI al que dársela, así que esa —y solo esa— la guarda MADRE, en su propia bodega de tu máquina, con permisos de solo tu usuario, aceptada únicamente desde esta computadora. Nunca en su config, ni en su registro, ni en sus logs, ni en lo que lee un agente: la ficha solo muestra que hay una guardada y cuántos caracteres tiene.
-
-**Nada sale por su cuenta.** Lo que un agente lee viaja a *su* proveedor, con tu cuenta y tus límites — como si lo hubieras corrido en tu terminal, porque eso es exactamente lo que MADRE hace. Lo que MADRE consulta por su cuenta está declarado, con lo que lo apaga: la consulta diaria de versiones nuevas (npm y GitHub), la cuota de tu plan de Claude, los embeddings e imágenes de Gemini si los activas, y los reportes de fallos, apagados por defecto. Y una vez al día, siempre, un aviso de que esta copia sigue en uso: un identificador al azar, la versión de MADRE, el sistema y la versión de Node. Sin tu nombre, tu correo, tu IP ni nada de tus proyectos; es como el autor sabe cuántas personas usan MADRE.
-
-**Y te deja leerlo.** Toca el núcleo del Mapa de memoria y se abre «Lo que se envía»: el documento exacto que MADRE escribe en tu nombre cada turno, el comando exacto con el que lo entrega, y el registro de cada llamada que salió de esta máquina. No es una promesa: es una pantalla.
-
-**Cero dependencias.** Node y nada más.
-
-<br>
-
----
-
-<br>
+- **No hay nube.** MADRE no tiene servidor ni cuenta. Corre en `127.0.0.1` y se cierra cuando cierras la terminal.
+- **Tus llaves no se copian.** Cada agente guarda su propia sesión; si pegas una llave, MADRE la escribe donde ese agente la busca y no conserva copia.
+- **Sabes qué sale.** Lo que lee un agente viaja a su proveedor, con tu cuenta, como si lo corrieras en tu terminal. En Diagnóstico ves cada cosa que sale de tu computadora y cómo apagarla.
+- **Cero dependencias.** Node y nada más.
 
 ## Empezar
 
-Necesitas **Node 22.5** o superior y al menos una de estas CLIs con sesión iniciada: Codex, Claude Code, Gemini CLI, OpenCode o Cursor (`cursor-agent`). Cursor, por ahora, lee y contesta; todavía no escribe en tu proyecto.
-
 ```
-npx @jossuealcala/madre
-```
-
-Desde cualquier carpeta, abre **Inicio** en `http://127.0.0.1:4317/salas`: todos tus proyectos en un lugar, con el Coordinador arriba. La primera vez te acompaña en tres pasos: **conectar tus agentes** (instalar cada CLI e iniciar sesión ahí mismo, una vez para todos tus proyectos), **agregar tus proyectos** (eliges las carpetas; agregarlas no las abre) y **abrir** los que vas a usar. Cada proyecto corre por su cuenta, con su propia memoria.
-
-Si prefieres entrar directo a un proyecto, como antes:
-
-```
-cd tu-proyecto
-npx @jossuealcala/madre start
+npx @jossuealcala/madre             # abre Inicio
+npx @jossuealcala/madre start       # abre directo el proyecto de la carpeta donde estás
+npx @jossuealcala/madre doctor      # qué agentes hay y cuáles tienen sesión
 ```
 
-```
-npx @jossuealcala/madre doctor    # qué hay instalado, quién tiene sesión
-```
+MADRE se actualiza sola: el mismo comando baja la versión más nueva, y dentro de MADRE un aviso te deja actualizar con un clic. Habla español e inglés; la primera vez usa el idioma de tu navegador.
 
-**Actualizar.** `npx @jossuealcala/madre` sin versión baja la más reciente cada vez que arranca: ciérrala y vuelve a abrirla, o usa el aviso de versión nueva dentro de MADRE, que la actualiza con un clic. Si la instalaste con `npm install -g`, vuelve a instalarla: `npm install -g @jossuealcala/madre@latest`.
-
-MADRE habla **español** e **inglés**: la primera vez se abre en el idioma de tu navegador, y en Ajustes › Apariencia lo cambias cuando quieras.
-
-<br>
-
-**Cómo funciona cada cosa, con los números exactos:** [docs/REFERENCE.md](docs/REFERENCE.md)
-**Cómo funciona por dentro:** [docs/INTERNALS.md](docs/INTERNALS.md) · **Escribir un módulo:** [docs/SDK.md](docs/SDK.md)
+- **Manual:** [madre.run/manual](https://madre.run/manual/), también dentro de MADRE en Ajustes › Sistema.
+- **Cómo funciona cada cosa:** [docs/REFERENCE.md](docs/REFERENCE.md) · **Por dentro:** [docs/INTERNALS.md](docs/INTERNALS.md) · **Escribir un módulo:** [docs/SDK.md](docs/SDK.md)
 
 <br>
 
