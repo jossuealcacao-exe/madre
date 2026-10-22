@@ -23,11 +23,12 @@ MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) 
 <details>
 <summary>The full list of 1.0.5</summary>
 
-- **The manual, with real pictures.** Each section says what it is for, gives one exact thing to try, the steps numbered over a picture of MADRE in your language, and a line for whoever knows the basics. Nineteen sections in four parts (Getting started, Working, More, Help), with «Install MADRE», «Connect your agents», «The memory», «Continuity» and «Common problems». The PDF has one section a page.
+- **The manual, with real pictures.** Each section says what it is for, gives one exact thing to try, the steps numbered over a picture of MADRE in your language, and a line for whoever knows the basics. Nineteen sections in four parts (Getting started, Working, More, Help), with «Install MADRE», «Connect your agents», «The memory», «Continuity» and «Common problems». The PDF has one section a page. «Train your AI» walks you through exporting what your project learned, training a small model on your computer and having @madre answer with it.
 - **Tips as a walk.** After the bonjour, Home shows you your project, the Coordinator, Connections and the manual; inside the project, the box, who answers, the permission, Code and the manual. Whoever comes from an earlier version sees only what is new in 1.0.5, without the «first time» cards of things they knew. Each tip is kept as seen the moment it shows: it no longer comes back on reload.
 - **In Code, «Ask» is one action**: you choose the agent and what you want about the marked lines. The windows over the code step aside while you type.
 - **Cursor and Gemini read the models of your plan** (Cursor from its list, Gemini with your key), and Cursor can create and edit at #2, #3 and #4.
 - **Diagnostics understands common phrases** («no contesta», «does not answer») and puts the cases of the agent you name first.
+- **Gemini under load tells you what really happened.** When the model you chose answers 503 or 429, MADRE tries once with gemini-3-flash-preview; it used to try gemini-2.5-flash, which Google no longer gives to new accounts, and that refusal hid the real message. If the spare fails too, the message is still the one about the model you chose. The 2.5 models leave the list MADRE offers when there is no key.
 - **Closing Home with Ctrl-C or by closing the Terminal closes every open project**, as Turn MADRE off does, also those opened from another project.
 - **Four new accents:** marble, peach, pistachio and petal.
 - **Rewritten words** in the tips, the tour, the bonjour and the manual, with no brochure phrases; «chats» instead of «conversations».

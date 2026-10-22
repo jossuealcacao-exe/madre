@@ -13,6 +13,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -90,7 +91,18 @@ const body = sectionOf(changelog, 'CHANGELOG.md', 'El registro completo de esta 
 const bodyEn = sectionOf(changelogEn, 'CHANGELOG.en.md', 'The full log of this version is in');
 // 1.0 left the names borrowed from Alien (docs/MACROVERSO-TRASPASO.md §1·c): the notes open with
 // the version itself, and end on the command that opens Home. Spanish first, then English.
-const notes = `${body}\n\n---\n\n### English\n\n${bodyEn}\n\n---\n\n\`\`\`\nnpx ${pkg.name}@${version}\n\`\`\`\n`;
+// A version with its own pictures (docs/media/<version>/, 2026-10-21) opens each language with the
+// tour's thumbnail, linked to the video, and the how-it-works picture, read from the tag so they
+// never change under the release.
+const media = (lang, alt) => {
+  if (!existsSync(resolve(root, 'docs/media', version, lang, 'video.webp'))) return '';
+  const raw = `https://raw.githubusercontent.com/jossuealcacao-exe/madre/v${version}/docs/media/${version}`;
+  const blob = `https://github.com/jossuealcacao-exe/madre/blob/v${version}/docs/media/${version}`;
+  return `<p align="center"><a href="${blob}/madre-tour-${lang}.mp4"><img src="${raw}/${lang}/video.webp" alt="${alt[0]}" width="100%"></a></p>\n<p align="center"><img src="${raw}/${lang}/how.webp" alt="${alt[1]}" width="100%"></p>\n\n`;
+};
+const mediaEs = media('es', ['Mira cómo se usa MADRE', 'Cómo funciona MADRE: tus IAs, un chat, permisos, memoria y deshacer, en tu computadora']);
+const mediaEn = media('en', ['See how MADRE works', 'How MADRE works: your AIs, one chat, permissions, memory and undo, on your computer']);
+const notes = `${mediaEs}${body}\n\n---\n\n### English\n\n${mediaEn}${bodyEn}\n\n---\n\n\`\`\`\nnpx ${pkg.name}@${version}\n\`\`\`\n`;
 await writeFile(resolve(root, '.release-notes.tmp.md'), notes);
 try { run('gh', ['release', 'create', `v${version}`, '--title', `MADRE ${version}`, '--notes-file', '.release-notes.tmp.md', '--latest']); }
 catch { console.error('  (gh release failed; create it by hand from the tag)'); }

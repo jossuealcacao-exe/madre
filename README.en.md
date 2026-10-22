@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://madre.run"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/madre-banner.png" alt="MADRE · All your AIs in one chat · Codex, Claude Code, Gemini CLI and OpenCode" width="100%"></a>
+  <a href="https://madre.run"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/banner.png" alt="MADRE · All your AIs in one chat · Codex, Claude Code, Gemini CLI, Cursor and OpenCode" width="100%"></a>
 </p>
 
 <p align="center"><a href="README.md">Español</a> · <b>English</b></p>
@@ -16,67 +16,97 @@
 
 # All your AIs in one chat.
 
-MADRE is an app that runs on your computer and puts the AIs you already use (Codex, Claude Code, Gemini CLI, OpenCode and Cursor) in one chat. You write to them as you would to a person, they read your project, and you decide what they may change. They all remember the same things, so you repeat nothing when you switch from one to another.
+**MADRE is not another AI.** It is a free app that runs on your computer and brings the AIs you already use (Codex, Claude Code, Gemini, Cursor and OpenCode) into one chat, inside your project’s folder. You write to them in your own words, each one reads what the others said, and you decide what they may change. What gets decided is kept, so you repeat nothing when you switch from one to another.
 
 ```
 npx @jossuealcala/madre
 ```
 
-You need Node 22.5 or newer and at least one agent signed in. There is no account to create: MADRE uses the sessions your agents already have on your machine.
+You need Node 22.5 or newer and at least one AI signed in. There is no account to create: MADRE uses the sessions your AIs already have on your computer. It runs on macOS and Linux; Windows arrives in version 1.1.
 
 <p align="center">
-  <a href="https://github.com/jossuealcacao-exe/madre/blob/main/docs/media/1.0/madre-1-0.mp4"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/madre-1-0-video.webp" alt="Watch MADRE in 90 seconds" width="100%"></a>
+  <a href="https://github.com/jossuealcacao-exe/madre/blob/main/docs/media/1.0.5/madre-tour-en.mp4"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/video.webp" alt="See how MADRE works in 80 seconds" width="100%"></a>
 </p>
 
-## What it does
-
-- **One chat, every agent.** Type `@codex` and Codex answers; type `@claude` and Claude answers having read what Codex just said. No copying and pasting between windows.
-- **You set the limit.** Every message carries a permission: `#1` only talks, `#2` creates files, `#3` edits them with a point to undo, `#4` runs commands and asks you to confirm twice.
-- **One memory for the whole project.** What gets decided is kept, and any agent gets it when it is needed, even if another one said it weeks ago.
-- **All your projects in Home.** You see where each one stands, who is waiting for you, and a Coordinator that can look up what each project learned.
-- **Code, notes, reminders and more.** You read and edit code beside the chat, ask about any line, and turn on modules when you need them.
+## How it works
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0/ksp-agentes.webp" alt="Claude answers after Codex in the same MADRE chat" width="100%">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/how.webp" alt="The AIs you already use on the left; MADRE in the middle, with one chat for all of them, permissions, memory and undo; your project on the right. Everything runs on your computer." width="100%">
 </p>
 
-## How it helps
+This is what a real round table looks like: you ask the team, Codex, Claude, Gemini and OpenCode answer, and @madre sums up where they agree.
 
-- **You stop jumping between terminals.** Four AIs, one thread.
-- **You do not explain your project every time.** The memory tells the agent you ask.
-- **No nasty surprises.** No agent changes a file until you raise the permission, and what it does can be undone.
-- **You learn it fast.** The first time, MADRE shows you each thing step by step, and the [manual](https://madre.run/en/manual/) has pictures of every screen.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/mesa-redonda.gif" alt="A real round table in MADRE: four AIs answer one after another and @madre sums up" width="100%">
+</p>
 
-## What's new in 1.0.5
+## What it’s for
 
-- A manual with real pictures and every step marked, inside MADRE and as a PDF.
-- Tips that teach you Home and your first project in minutes; if you used MADRE before, you only see what is new.
-- Notes and Reminders, which you can also ask any agent for.
-- In Code, you ask about any line: explain, improve, write tests or fix.
-- Connectors in one click: GitHub, Notion, Linear, Stripe and more.
-- Cursor and Gemini show the models of your plan, and Cursor now works with all four permissions.
+From code to business. You ask in your own words and each AI does the part it does best.
 
-The detail is in the [CHANGELOG](CHANGELOG.en.md).
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/uses.webp" alt="Six cases: fixing a bug between Claude, Codex and Gemini; your business’s page; several opinions before you decide; a local AI for what is private; reminders; a module made to fit" width="100%">
+</p>
+
+## What you can do
+
+<table>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-mesa.webp" alt="Round table: ask the team and they answer one after another; @madre sums up"><br><b>Round table.</b> Ask the team and they answer one after another; @madre sums up.</td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-inicio.webp" alt="Home and Coordinator: all your projects at a glance"><br><b>Home and Coordinator.</b> All your projects at a glance.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-permisos.webp" alt="Permissions and undo: you decide how far each AI goes"><br><b>Permissions and undo.</b> You decide how far each AI goes.</td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-codigo.webp" alt="Code: ask about any line of your project"><br><b>Code.</b> Ask about any line of your project.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-memoria.webp" alt="Memory: what gets decided stays saved"><br><b>Memory.</b> What gets decided stays saved.</td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-modulos.webp" alt="Modules and Market: turn on only what you need"><br><b>Modules and Market.</b> Turn on only what you need.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-local.webp" alt="Local AI: an AI on your computer, no tokens spent"><br><b>Local AI.</b> An AI on your computer, no tokens spent.</td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/jossuealcacao-exe/madre/main/docs/media/1.0.5/en/card-ayuda.webp" alt="Diagnostics: if something fails, it tells you the fix"><br><b>Diagnostics.</b> If something fails, it tells you the fix.</td>
+  </tr>
+</table>
+
+## Start in three steps
+
+1. **Open it.** Run `npx @jossuealcala/madre` in the Terminal. It opens in your browser, in English or Spanish.
+2. **Connect your AIs.** MADRE finds the ones you have installed. If one is not signed in, Settings › Agents has the button to sign in; if one is not installed, MADRE installs it for you.
+3. **Add your project and ask.** Pick the folder and write, for example: `@codex explain this project in five lines`.
+
+The first time, MADRE shows you each thing with tips, step by step. The [manual](https://madre.run/en/manual/) takes you from zero to your first project in about ten minutes; it is also inside MADRE (Settings › System) and as a PDF.
+
+```
+npx @jossuealcala/madre             # opens Home, with all your projects
+npx @jossuealcala/madre start       # opens the project of the folder you are in
+npx @jossuealcala/madre doctor      # which AIs you have and which are signed in
+```
+
+MADRE updates itself: the same command gets the newest version, and inside MADRE a notice lets you update in one click.
+
+## If something fails
+
+Open **Diagnostics** and write what you see, like “Gemini does not answer” or “Claude is not signed in”. It tells you what is going on and gives you the button that fixes it, or the command for the Terminal. Without opening MADRE, `npx @jossuealcala/madre doctor` checks your AIs. The most common problems are in the [manual](https://madre.run/en/manual/#help).
 
 ## Your data
 
-- **There is no cloud.** MADRE has no server and no account. It runs on `127.0.0.1` and stops when you close the terminal.
-- **Your keys are not copied.** Each agent keeps its own session; if you paste a key, MADRE writes it where that agent looks for it and keeps no copy.
-- **You know what leaves.** What an agent reads goes to its provider, with your account, as if you ran it in your terminal. In Diagnostics you see each thing that leaves your computer and how to turn it off.
+- **No cloud.** MADRE has no server and no account. It runs on `127.0.0.1` and stops when you close the Terminal.
+- **Your keys are not copied.** Each AI keeps its own session; if you paste a key, MADRE writes it where that AI looks for it and keeps no copy.
+- **You know what leaves.** What an AI reads travels to its provider, with your account, as if you used it in your Terminal. In Diagnostics you see everything that leaves your computer and how to turn it off.
 - **Zero dependencies.** Node and nothing else.
 
-## Getting started
+## New in 1.0.5
 
-```
-npx @jossuealcala/madre             # opens Home
-npx @jossuealcala/madre start       # opens the project of the folder you are in
-npx @jossuealcala/madre doctor      # which agents are there and which are signed in
-```
+- A manual with real pictures and every step marked, inside MADRE and as a PDF, with a guide to train your own AI on your project.
+- Tips that teach you Home and your first project in minutes.
+- Notes and Reminders, which you can also ask any AI for.
+- In Code, you ask about any line: explain, improve, write tests or fix.
+- Connectors in one click: GitHub, Notion, Linear, Stripe and more.
+- Cursor and Gemini show the models of your plan, and Cursor now works with all four permissions.
+- Gemini under load tells you what really happened.
 
-MADRE keeps itself up to date: the same command fetches the newest version, and inside MADRE a notice lets you update in one click. It speaks English and Spanish; the first time it uses your browser's language.
-
-- **Manual:** [madre.run/en/manual](https://madre.run/en/manual/), also inside MADRE in Settings › System.
-- **How each thing works:** [docs/REFERENCE.md](docs/REFERENCE.md) · **Under the hood:** [docs/INTERNALS.md](docs/INTERNALS.md) · **Writing a module:** [docs/SDK.md](docs/SDK.md)
+The details are in the [CHANGELOG](CHANGELOG.en.md). How each thing works: [docs/en/REFERENCE.md](docs/en/REFERENCE.md) · Inside: [docs/en/INTERNALS.md](docs/en/INTERNALS.md) · Writing a module: [docs/en/SDK.md](docs/en/SDK.md)
 
 <br>
 
