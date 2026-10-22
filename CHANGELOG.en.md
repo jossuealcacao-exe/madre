@@ -4,7 +4,9 @@ Every published version of `@jossuealcala/madre`. Dates in ISO format.
 
 A version closes when it is on npm: until then its section is called **Unreleased** and it can keep growing. Each published version has exactly one `vX.Y.Z` tag, one GitHub release and one section here; the patch number can reach two digits (`0.2.10`) before the minor goes up. See `docs/ROADMAP.md` for the criteria on what bumps each number. This is the English translation of [CHANGELOG.md](CHANGELOG.md); the Spanish file is the original.
 
-## 1.0.5 · Unreleased
+## 1.0.6 · Unreleased
+
+## 1.0.5 · 2026-10-22
 
 MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) in one chat that runs on your computer. You write to them, they read your project, and you decide what they may change. This version makes it easier to learn and to use every day.
 

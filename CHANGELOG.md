@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.0.5 · Sin publicar
+## 1.0.6 · Sin publicar
+
+## 1.0.5 · 2026-10-22
 
 MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en un chat que corre en tu computadora. Les escribes, leen tu proyecto y tú decides qué pueden cambiar. Esta versión la hace más fácil de aprender y de usar todos los días.
 
