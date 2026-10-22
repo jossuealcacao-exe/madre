@@ -358,7 +358,7 @@ Plans live in `bishop-plans.json` next to the record of the Coordinator's projec
 | `PULSE_ESCALATION_MS` | `180000` | Permission request timer |
 | `PULSE_OPENCODE_MODEL` | from the config | `proveedor/modelo` for OpenCode |
 | `PULSE_CLAUDE_USAGE` · `PULSE_OFFICIAL_QUOTA` | `0` · `1` | Claude's official quota (reads the keychain); `0` turns off all provider reads |
-| `PULSE_GEMINI_IDLE_MS` · `PULSE_GEMINI_RETRIES` · `PULSE_GEMINI_FALLBACK_MODEL` | `90000` · `1` · `gemini-2.5-flash` | Gemini under load |
+| `PULSE_GEMINI_IDLE_MS` · `PULSE_GEMINI_RETRIES` · `PULSE_GEMINI_FALLBACK_MODEL` | `90000` · `1` · `gemini-3-flash-preview` (empty: no spare) | Gemini under load |
 
 How the ledger, the stream, the memory, the adapters and recovery work under the hood: [`docs/INTERNALS.md`](INTERNALS.md).
 

@@ -236,6 +236,20 @@ export const MANUAL = {
         expert: 'Funciona con Ollama. MADRE solo te ofrece los modelos que caben en tu equipo.',
       },
       {
+        id: 'entrena',
+        part: 'more',
+        icon: 'stars',
+        title: 'Entrena tu IA',
+        lead: 'Le enseñas a @madre con lo que sabe tu proyecto. Todo pasa en tu computadora: exportas, entrenas un modelo chico y Ollama lo corre.',
+        tryIt: 'Exporta y fíjate cuántos ejemplos tiene ya tu proyecto.',
+        steps: [
+          'Abre Ajustes › Memoria › Entrena tu propia IA y pulsa Exportar. Rutas, nombres, correos y llaves se tapan, y lo de #0 Incógnito no entra.',
+          'Abre Paso a paso: MADRE mide tu equipo, te sugiere el tamaño y te da cada comando con tus carpetas.',
+          'Al terminar, en Ajustes › IA local pulsa Revisar otra vez: @madre ya contesta con tu modelo.',
+        ],
+        expert: 'Funciona en Mac con chip Apple; en Linux con tarjeta NVIDIA es de prueba. Con unos 200 ejemplos aprende el tono, desde 1000 vale la pena. Antes de confiar en él, pregúntale diez cosas que el proyecto decidió y cinco que nunca se hablaron.',
+      },
+      {
         id: 'coordinador',
         part: 'more',
         icon: 'orbit',
@@ -541,6 +555,20 @@ export const MANUAL = {
           'Choose which projects use it.',
         ],
         expert: 'It runs on Ollama. MADRE only offers the models that fit your computer.',
+      },
+      {
+        id: 'entrena',
+        part: 'more',
+        icon: 'stars',
+        title: 'Train your AI',
+        lead: 'You teach @madre with what your project knows. It all happens on your computer: you export, train a small model and Ollama runs it.',
+        tryIt: 'Export and see how many examples your project already has.',
+        steps: [
+          'Open Settings › What it remembers › Train your own AI and press Export. Paths, names, emails and keys are hidden, and nothing from #0 Incognito goes in.',
+          'Open Step by step: MADRE measures your computer, suggests the size and gives you each command with your folders.',
+          'When it’s done, press Check again in Settings › Local AI: @madre now answers with your model.',
+        ],
+        expert: 'It works on Macs with an Apple chip; on Linux with an NVIDIA card it’s experimental. With about 200 examples it learns the tone, from 1000 it’s worth it. Before you trust it, ask it ten things the project decided and five that never came up.',
       },
       {
         id: 'coordinador',

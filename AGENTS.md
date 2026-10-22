@@ -33,9 +33,9 @@ procesos, resuelva rutas o aplique permisos, lee `docs/WINDOWS.md`.**
 
 Lo que hay que saber sin abrir el documento:
 
-- **Hasta nuevo aviso, MADRE no declara soporte ni no-soporte de Windows.** No lo
-  afirmes ni lo niegues en la copia del producto, el README, el sitio ni los mensajes
-  de la interfaz.
+- **Desde 2026-10-21 el anuncio es uno solo: Windows llega en la versión 1.1.** Lo dicen
+  madre.run y su manual. Ninguna copia (producto, README, sitio, interfaz) dice que MADRE
+  ya funciona en Windows antes de que salga 1.1.
 - El puerto va en la rama `windows/1.0` (la rama conserva su nombre; la versión objetivo es 1.1.0, ver D-003 en `docs/WINDOWS.md`). `main` sigue recibiendo los arreglos de 0.5.x.
 - Un arreglo que sirve en las tres plataformas va en `main`; solo lo específico de
   Windows va en la rama.

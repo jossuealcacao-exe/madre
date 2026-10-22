@@ -10,7 +10,7 @@ Windows se anota aquí y en ningún otro lado. Los archivos de contexto de los a
 | Versión objetivo | `1.1.0` |
 | Rama | `windows/1.0` (ver §6; conserva su nombre aunque la versión objetivo pasó a 1.1.0) |
 | Origen | Auditoría de código del 2026-09-29 sobre `main` @ `fca8894` (0.5.2) |
-| Regla en vigor | Hasta que este documento diga otra cosa, **MADRE no declara soporte ni no-soporte de Windows** |
+| Regla en vigor | Desde 2026-10-21 se anuncia **«Windows llega en la versión 1.1»** (madre.run y su manual); nada dice que ya funciona antes de que salga |
 
 ---
 

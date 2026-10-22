@@ -21,8 +21,9 @@ export const KNOWN_MODELS = {
     note: 'Each name is the newest model of its family that your Claude plan offers. You can also write a full model name.',
   },
   // Read from Google with the Gemini key when there is one (2026-10-21); these when there is not.
+  // No 2.5: Google no longer gives it to new accounts, and a name that fails is worse than none.
   gemini: {
-    defaults: ['auto', 'gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'],
+    defaults: ['auto', 'gemini-3-pro-preview', 'gemini-3-flash-preview'],
     note: '«auto» lets Gemini choose between its fast model and its strongest one. The others are the ones your Gemini key opens.',
     unread: 'These are the usual ones. Signed in with a Gemini API key, MADRE shows the ones your account opens.',
   },

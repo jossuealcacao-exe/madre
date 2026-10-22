@@ -2735,6 +2735,26 @@ test('invokeGemini retries once on a fallback model when Google answers 503, and
   assert.equal(result.text, 'answered by gemini-2.5-flash');
 });
 
+test('invokeGemini: when the spare model is refused, the person still reads why the chosen one failed', async () => {
+  // 2026-10-21: a new account is not given 2.5 Flash, and its refusal used to hide the real 503.
+  const refused = async ({ args }) => {
+    const model = args.includes('--model') ? args[args.indexOf('--model') + 1] : 'auto';
+    if (model === 'auto') throw Object.assign(new Error('503'), { code: 'UNAVAILABLE', partialStderr: 'status: 503 UNAVAILABLE', partialOutput: '' });
+    throw Object.assign(new Error('Gemini exited with code 1'), { partialStderr: 'ModelNotFoundError: Requested entity was not found. (404)', partialOutput: '' });
+  };
+  await assert.rejects(
+    invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: refused, fallbackModel: 'gemini-3-flash-preview' }),
+    (error) => error.code === 'UNAVAILABLE' && /HTTP 503/.test(error.message) && /also tried gemini-3-flash-preview/.test(error.message) && !/404/.test(error.message),
+  );
+  // Left empty, there is no spare: one call, and its own trouble.
+  const calls = [];
+  await assert.rejects(
+    invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: async (input) => { calls.push(input); return refused(input); }, fallbackModel: '' }),
+    (error) => error.code === 'UNAVAILABLE' && !/also tried/.test(error.message),
+  );
+  assert.equal(calls.length, 1);
+});
+
 
 test('budgetTokens weighs cache reads a tenth and handles Codex counting cached inside input', () => {
   assert.equal(budgetTokens({ source: 'claude-json', inputTokens: 16, cacheCreationInputTokens: 22181, cachedInputTokens: 162817, outputTokens: 5442, reasoningTokens: 0, totalTokens: 190456 }), 16 + 22181 + 5442 + Math.round(162817 * 0.1));

@@ -59,7 +59,7 @@ With that, RIPLEY, Git Pulse, Image Studio, Ash, the sentinel and the future Oll
 
 MADRE was born on POSIX and its central promise —"they read by default, they write when you say so"— rests today on three mechanisms that Windows doesn't have in the same form: the file system's write bit, process groups and the sandbox each CLI builds on seatbelt or Landlock. The port isn't path compatibility: it's finding out whether that permission ceiling holds on Windows, and declaring with reasons what holds and what doesn't.
 
-Four phases —measure, make it start, make it confine, make it explain itself— with traceability by id, on the `windows/1.0` branch. **Until phase 4 closes, MADRE declares neither support nor non-support of Windows.**
+Four phases —measure, make it start, make it confine, make it explain itself— with traceability by id, on the `windows/1.0` branch. **Since 2026-10-21 the announcement is that Windows arrives in version 1.1; nothing says it already works until phase 4 closes and 1.1 is out.**
 
 The single document is **`docs/WINDOWS.md`**: findings with permanent ids, open decisions, phases, versions and log. Nothing about Windows is decided outside of it.
 

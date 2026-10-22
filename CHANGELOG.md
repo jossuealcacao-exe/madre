@@ -28,6 +28,7 @@ MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en 
 - **En Código, «Preguntar» es una sola acción**: eliges al agente y qué quieres sobre las líneas marcadas. Las ventanas que tapan el código se hacen a un lado mientras escribes.
 - **Cursor y Gemini leen los modelos de tu plan** (Cursor con su lista y Gemini con tu llave), y Cursor puede crear y editar con #2, #3 y #4.
 - **Diagnóstico entiende frases comunes** («no contesta», «does not answer») y pone primero los casos del agente que nombras.
+- **Gemini bajo carga te dice qué pasó de verdad.** Cuando el modelo que elegiste responde 503 o 429, MADRE prueba una vez con gemini-3-flash-preview; antes probaba con gemini-2.5-flash, que Google ya no da a cuentas nuevas, y su rechazo tapaba el aviso real. Si el respaldo también falla, el aviso sigue siendo el del modelo que elegiste. Los modelos 2.5 salen de la lista que MADRE ofrece cuando no hay llave.
 - **Cerrar Inicio con Ctrl-C o cerrando la Terminal cierra todos los proyectos abiertos**, como Apagar MADRE, también los que se abrieron desde otro proyecto.
 - **Cuatro acentos nuevos:** mármol, durazno, pistache y pétalo.
 - **Textos reescritos** en las pistas, el recorrido, el bonjour y el manual, sin frases de folleto; «chats» en vez de «conversaciones».

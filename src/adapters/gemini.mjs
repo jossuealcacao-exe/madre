@@ -322,7 +322,9 @@ export async function invokeGemini({
   mcpServers = [],
   idleTimeoutMs = Number(process.env.PULSE_GEMINI_IDLE_MS ?? 90000),
   retries = Number(process.env.PULSE_GEMINI_RETRIES ?? 1),
-  fallbackModel = process.env.PULSE_GEMINI_FALLBACK_MODEL ?? 'gemini-2.5-flash',
+  // The spare model a 503 or 429 tries once (2026-10-21): 2.5 Flash is no longer given to new
+  // accounts, so it failed again and its refusal hid why the chosen model had failed. Empty: no spare.
+  fallbackModel = process.env.PULSE_GEMINI_FALLBACK_MODEL ?? 'gemini-3-flash-preview',
   failFastMs = 15000,
   run = runReadonlyProcess,
 }) {
@@ -334,6 +336,7 @@ export async function invokeGemini({
     let attempt = 0;
     let currentModel = model;
     let switched = false;
+    let firstTrouble = null;
     for (;;) {
       attempt += 1;
       // The CLI retries a 503 or 429 with backoff for minutes while stderr
@@ -364,6 +367,13 @@ export async function invokeGemini({
       } catch (error) {
         const produced = parseGeminiOutput(error.partialOutput ?? '').text;
         const diagnosis = error.diagnosis ?? diagnoseGeminiStderr(error.partialStderr ?? error.stderr ?? '');
+        // The spare failed too, for whatever reason (a model this account is not given, say): what
+        // the person needs to read is why the model they chose failed, not why the spare did.
+        if (switched && firstTrouble && !produced && !signal?.aborted) {
+          error.message = `${firstTrouble.message} ${firstTrouble.hint} (also tried ${fallbackModel})`;
+          error.code = firstTrouble.code;
+          throw error;
+        }
         if (diagnosis?.code === 'AUTH' || diagnosis?.code === 'INELIGIBLE' || diagnosis?.code === 'CREDITS_DEPLETED') {
           error.message = `${diagnosis.message} ${diagnosis.hint}`;
           error.code = diagnosis.code;
@@ -373,6 +383,7 @@ export async function invokeGemini({
         // try on a lighter, explicit model before giving up.
         if ((diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED') && !produced && !signal?.aborted && fallbackModel && !switched && currentModel !== fallbackModel) {
           switched = true;
+          firstTrouble = diagnosis;
           currentModel = fallbackModel;
           continue;
         }

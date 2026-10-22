@@ -144,9 +144,9 @@ export const CONDITIONS = [
     severity: 'transient',
     title: 'Gemini model under high demand (503)',
     match: /status 503|high demand|UNAVAILABLE/i,
-    diagnosis: 'Google is shedding load on the selected model (HTTP 503). The CLI would retry with backoff for minutes; MADRE stops it after 15 s of that and retries once on gemini-2.5-flash. The turn failed only if the fallback model was refused too.',
-    remedy: 'Ask again in a minute, pick an explicit model from the Write box\'s model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the fallback.',
-    fixes: same(['# wait, then resend — or continue with @codex / @claude / @opencode', 'PULSE_GEMINI_FALLBACK_MODEL=gemini-2.5-flash-lite madre start']),
+    diagnosis: 'Google is shedding load on the selected model (HTTP 503). The CLI would retry with backoff for minutes; MADRE stops it after 15 s of that and retries once on gemini-3-flash-preview. The turn failed only if that spare model failed too; the message is still the one about the model you chose.',
+    remedy: 'Ask again in a minute, pick an explicit model from the Write box\'s model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the spare model; left empty, there is none.',
+    fixes: same(['# wait, then resend — or continue with @codex / @claude / @opencode', 'PULSE_GEMINI_FALLBACK_MODEL= madre start']),
   },
   {
     id: 'opencode-default-provider',

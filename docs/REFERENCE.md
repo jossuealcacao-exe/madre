@@ -358,7 +358,7 @@ Los planes viven en `bishop-plans.json` junto al registro del proyecto del Coord
 | `PULSE_ESCALATION_MS` | `180000` | Cronómetro de la solicitud de permiso |
 | `PULSE_OPENCODE_MODEL` | del config | `proveedor/modelo` para OpenCode |
 | `PULSE_CLAUDE_USAGE` · `PULSE_OFFICIAL_QUOTA` | `0` · `1` | Cuota oficial de Claude (lee el llavero); `0` apaga todas las lecturas de proveedor |
-| `PULSE_GEMINI_IDLE_MS` · `PULSE_GEMINI_RETRIES` · `PULSE_GEMINI_FALLBACK_MODEL` | `90000` · `1` · `gemini-2.5-flash` | Gemini bajo carga |
+| `PULSE_GEMINI_IDLE_MS` · `PULSE_GEMINI_RETRIES` · `PULSE_GEMINI_FALLBACK_MODEL` | `90000` · `1` · `gemini-3-flash-preview` (vacío: sin respaldo) | Gemini bajo carga |
 
 Cómo funcionan por dentro el ledger, el stream, la memoria, los adaptadores y la recuperación: [`docs/INTERNALS.md`](INTERNALS.md).
 

@@ -1728,10 +1728,10 @@ export const ES = {
     'Espera un minuto y vuelve a intentar, elige un modelo explícito en la caja de Escribir (gemini-3-flash-preview se salta el enrutador), o sube el límite de tu plan en Google AI Studio.',
 
   'Gemini model under high demand (503)': 'El modelo de Gemini está saturado (503)',
-  'Google is shedding load on the selected model (HTTP 503). The CLI would retry with backoff for minutes; MADRE stops it after 15 s of that and retries once on gemini-2.5-flash. The turn failed only if the fallback model was refused too.':
-    'Google está rechazando peticiones al modelo elegido por exceso de carga (HTTP 503). La app de Gemini reintentaría durante minutos; MADRE la corta a los 15 s y reintenta una vez con gemini-2.5-flash. La respuesta solo falló si también rechazaron ese modelo de respaldo.',
-  "Ask again in a minute, pick an explicit model from the Write box's model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the fallback.":
-    'Vuelve a preguntar en un minuto, elige un modelo explícito en el menú de la caja de Escribir, o pásale la pregunta a otro agente. PULSE_GEMINI_FALLBACK_MODEL cambia el respaldo.',
+  'Google is shedding load on the selected model (HTTP 503). The CLI would retry with backoff for minutes; MADRE stops it after 15 s of that and retries once on gemini-3-flash-preview. The turn failed only if that spare model failed too; the message is still the one about the model you chose.':
+    'Google está rechazando peticiones al modelo elegido por exceso de carga (HTTP 503). La app de Gemini reintentaría durante minutos; MADRE la corta a los 15 s y reintenta una vez con gemini-3-flash-preview. La respuesta solo falló si ese modelo de respaldo también falló; el aviso sigue siendo el del modelo que elegiste.',
+  "Ask again in a minute, pick an explicit model from the Write box's model menu, or hand the question to another agent. PULSE_GEMINI_FALLBACK_MODEL changes the spare model; left empty, there is none.":
+    'Vuelve a preguntar en un minuto, elige un modelo explícito en el menú de la caja de Escribir, o pásale la pregunta a otro agente. PULSE_GEMINI_FALLBACK_MODEL cambia el modelo de respaldo; vacío, no hay respaldo.',
 
   'OpenCode picked a provider without a valid session': 'OpenCode eligió un proveedor sin sesión válida',
   'Without a model in its config, `opencode run` falls back to its default provider. On this machine that provider holds a stale or invalid key.':
