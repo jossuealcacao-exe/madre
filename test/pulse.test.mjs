@@ -3216,8 +3216,11 @@ test('a turn the human stops ends alone, and the sentinel does not file the brak
 
     const slowSend = room.send({ text: 'take as long as you need', target: 'claude' });
     const fastSend = room.send({ text: 'and you answer now', target: 'codex' });
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    const slow = room.activeTurns().find((turn) => turn.agent === 'claude');
+    // Until it is running, not a fixed 80 ms: on a loaded macOS runner it started later (2026-10-21).
+    let slow = null;
+    for (const stop = Date.now() + 10000; !slow && Date.now() < stop; await new Promise((resolve) => setTimeout(resolve, 20))) {
+      slow = room.activeTurns().find((turn) => turn.agent === 'claude');
+    }
     assert.ok(slow, 'the slow turn never started');
 
     assert.equal(await room.stopTurn('a turn nobody is running'), false);
