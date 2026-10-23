@@ -478,4 +478,7 @@ export const EN = {
   "ASK": "Ask",
   "SEE THE MEMORY": "See the memory",
   "DRAG TO TURN · SHIFT+DRAG TO MOVE · WHEEL TO ZOOM · CLICK A MEMORY · DO NOT TOUCH THE CORE": "Drag to turn · Shift+drag to move · wheel to zoom · click a memory · do not touch the core",
+  // ux/refresh · Inicio B, textos
+  "The project that reads can hand it notes. They wait there until you accept them (or an agent of that project in #3 EDIT or above): nothing enters its memory on its own.": "The project that reads can hand it notes. They wait there until you accept them (or an agent of that project in «#3 Edit» or above): nothing enters its memory on its own.",
+  "{version} AVAILABLE": "{version} available",
 };

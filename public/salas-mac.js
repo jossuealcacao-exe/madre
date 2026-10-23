@@ -291,7 +291,9 @@ const addressOf = (room) => (room.here ? '/' : `http://127.0.0.1:${room.open.por
 const KINDS = ['decision', 'fact', 'preference', 'question', 'aberration'];
 const KIND_WORDS = { decision: t('DECISION'), fact: t('FACT'), preference: t('PREFERENCE'), question: t('QUESTION'), aberration: t('DOUBTFUL MEMORY') };
 // A kind as a sentence says it: «Decisión», not «DECISIÓN».
-const kindWord = (kind) => { const word = String(KIND_WORDS[kind] ?? kind).toLowerCase(); return word.charAt(0).toUpperCase() + word.slice(1); };
+// A word the catalogue keeps in capitals, said in sentence case: «Decisión», «Centrar».
+const asLabel = (text) => { const word = String(text).toLowerCase(); return word.charAt(0).toUpperCase() + word.slice(1); };
+const kindWord = (kind) => asLabel(KIND_WORDS[kind] ?? kind);
 
 function memoryStrip(census) {
   const strip = el('div', 'sm-strip');
@@ -2735,10 +2737,10 @@ function macroWords() {
     notLinked: t('Not connected yet: touch one to connect it'),
     talk: t('Talk to the Coordinator'),
     asleep: t('Asleep'),
-    recenter: t('RECENTER'),
+    recenter: asLabel(t('RECENTER')),
     // The legend under its name, in the Memory map's words.
     legend: t('Memory kinds'),
-    kinds: { ...Object.fromEntries(KINDS.map((kind) => [kind, kindWord(kind)])), dim: t('NOT USED') },
+    kinds: { ...Object.fromEntries(KINDS.map((kind) => [kind, kindWord(kind)])), dim: asLabel(t('NOT USED')) },
     veins: (n) => t('{n} connections', { n }),
     links: t('Connections'),
     link: t('Connect…'),
@@ -2758,7 +2760,7 @@ function macroWords() {
     state: (room) => stateOf(room).words,
     path: homeWord,
     ask: askLine,
-    kind: (kind) => KIND_WORDS[kind] ?? kind,
+    kind: (kind) => kindWord(kind),
     counts: (room) => (room.open ? [conversationsCount(room.glance?.chats ?? 0), memoriesCount(room.glance?.census?.memories ?? 0)].join(' · ') : room.lastOpened ? t('Asleep · last open {when}', { when: ago(room.lastOpened) }) : t('Asleep')),
     enter: t('Enter the project'),
     backToRoom: t('Back to the project'),
@@ -5052,7 +5054,7 @@ function openSettings(section = null) {
   input.spellcheck = false;
   input.setAttribute('aria-label', t('Search any setting'));
   search.append(input);
-  head.append(el('span', 'custom-title', t('SETTINGS')), search, closeKey(() => dialog.close()));
+  head.append(el('span', 'custom-title', t('Settings')), search, closeKey(() => dialog.close()));
   const body = el('div', 'sm-settings-body');
   win.append(head, body);
   dialog.append(win);
