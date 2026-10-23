@@ -285,11 +285,11 @@ test('the room UI boots against a real transcript without throwing', async () =>
   message.value = '/module un reloj local';
   for (const listener of message.listeners.input ?? []) listener({});
   assert.equal(registry.get('composer').classList.contains('module-command'), true, 'the module typebox did not turn on');
-  assert.match(registry.get('crew-label').textContent, /MODULE · REQUIERE #2/);
+  assert.match(registry.get('crew-label').textContent, /Module · Requiere #2/);
   const chosenTarget = registry.get('target').value;
   // Sent, it arms #2 for its message the way /image does, and goes.
   const moduleRequest = await globalThis.__pulse.runSlashCommand(message.value);
-  assert.match(registry.get('crew-label').textContent, /MÓDULO · CREAR/);
+  assert.match(registry.get('crew-label').textContent, /Módulo · Crear/);
   assert.equal(moduleRequest.handled, false);
   assert.equal(moduleRequest.target, chosenTarget, '/module changed the selected agent');
   assert.equal(moduleRequest.draft, true, '/module asked for the whole project instead of its draft folder');
@@ -311,7 +311,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(trackHold(true, t0 + 4100), true, 'pushes every ~1.5 s spanning 4 s arm MOTHER');
   assert.equal(uiState.expendable, true);
   // The page boots in the language MADRE speaks, which is Spanish; the crew label says so.
-  assert.match(registry.get('crew-label').textContent, /PRESCINDIBLE/);
+  assert.match(registry.get('crew-label').textContent, /Prescindible/);
   assert.match(column.children.at(-1).textContent, /fin del registro/);
 
   // The core: four panes, one at a time, with the prompt through all of them. It is the most
@@ -384,7 +384,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   globalThis.__pulse.disarmExpendable();
   assert.equal(uiState.expendable, false);
   // The line in the box is the whole address: who writes, then who it goes to.
-  assert.equal(registry.get('crew-label').textContent, 'HUMANO › @CODEX ›');
+  assert.equal(registry.get('crew-label').textContent, 'Humano › @codex ›');
 
   // Silence longer than two seconds starts over; scrolling up resets.
   assert.equal(trackHold(true, t0 + 20_000), false);

@@ -375,6 +375,10 @@ const el = (tag, className, text) => {
   if ((tag === 'a' || tag === 'button') && typeof text === 'string' && TAIL_MARK.test(text)) tailMark(node);
   return node;
 };
+// Controls read in sentence case: «Detener todo», «Humano › Ahorro de tokens ›», «#2 Crear». The
+// keys stay in capitals because the copy and the agents' prompts name the modes that way.
+const sentence = (text) => String(text).toLocaleLowerCase(language())
+  .replace(/(^|[›·])([^\p{L}]*)(\p{L})/gu, (all, cut, lead, letter) => cut + lead + letter.toLocaleUpperCase(language()));
 
 // A key or a link whose words end in ↗ goes somewhere outside the room, and one that ends in ▾
 // opens a menu (1.0.3): the sign is drawn, at the size of a mark, and the words stay as they are
@@ -3308,7 +3312,7 @@ function renderPicker() {
     const shown = state.typedPending ?? state.mode;
     const modeChip = el('button', `mode-chip m${shown}${state.typedPending ? ' pending' : ''}`);
     modeChip.type = 'button';
-    modeChip.append(el('b', null, `#${shown}`), el('span', 'word', MODES[shown].label), chevron());
+    modeChip.append(el('b', null, `#${shown}`), el('span', 'word', sentence(MODES[shown].label)), chevron());
     modeChip.title = state.typedPending
       ? t('#{n} {label} is written in the message: you will be asked to confirm it when you send it.', { n: shown, label: MODES[shown].label })
       : t('Permission mode for this message · {hint}', { hint: MODES[state.mode].hint });
@@ -3859,7 +3863,7 @@ function toggleModeMenu(id, anchor) {
     option.type = 'button';
     option.disabled = locked && !raise;
     const body = el('span', 'body');
-    body.append(el('span', 'name', MODES[n].label), el('span', 'hint', MODES[n].hint));
+    body.append(el('span', 'name', sentence(MODES[n].label)), el('span', 'hint', MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
     if (onTheMac) option.title = t('#3 EDIT and #4 FULL ACCESS are opened from the Mac.');
     const tag = state.mode === n ? t('NOW') : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
@@ -4606,8 +4610,8 @@ function renderUserMessage(event) {
     }
   }
   const shownMode = Number.isInteger(mode) ? mode : create ? 2 : null;
-  if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, `#${shownMode} ${MODES[shownMode].label}`));
-  if (ash?.active) who.append(el('span', 'badge ash', t('TOKEN SAVER')));
+  if (shownMode !== null && shownMode !== 1) who.append(el('span', `badge mode m${shownMode}`, sentence(`#${shownMode} ${MODES[shownMode].label}`)));
+  if (ash?.active) who.append(el('span', 'badge ash', t('Token saver')));
   if (event.payload.copilot) who.append(el('span', 'badge copilot', t('COPILOT')));
   col.append(who);
   const bubble = el('div', 'bubble', text);
@@ -4647,9 +4651,9 @@ function renderAssistantMessage(event) {
     if (status === 'handoff') who.append(el('span', 'badge', t('handoff note')));
     if (model) who.append(el('span', 'badge model', model));
     if (effort) who.append(el('span', 'badge model effort', t('effort {level}', { level: effortLabel(effort).toLowerCase() })));
-    if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`));
+    if (Number.isInteger(mode) && mode !== 1) who.append(el('span', `badge mode m${mode}`, sentence(`#${mode} ${MODES[mode].label}`)));
     if (event.payload.escalation) who.append(el('span', 'badge mode m1', event.payload.escalation === 'timeout' ? '#2 not answered · read-only' : event.payload.escalation === 'stopped' ? 'stopped' : '#2 denied · read-only'));
-    if (ash?.active) who.append(el('span', 'badge ash', t('TOKEN SAVER')));
+    if (ash?.active) who.append(el('span', 'badge ash', t('Token saver')));
     const question = state.userMessages.get(parentMessageId);
     if (question) {
       const reply = el('span', 'reply', `↳ ${question.text.length > 90 ? `${question.text.slice(0, 90)}…` : question.text}`);
@@ -5182,8 +5186,8 @@ function renderLocalModel(payload, { asked = false } = {}) {
   const node = el('div', 'system local-model');
   // One line, held together: the card is a grid, and loose words in a grid each take a row.
   const head = el('span', 'head');
-  head.append('local · ', el('b', 'who', t('@madre')));
-  if (payload.model) head.append(` · ${payload.model}`);
+  head.append('Local · ', el('b', 'who', t('@madre')));
+  if (payload.model) head.append(' · ', el('span', 'model', payload.model));
   node.append(head);
   const line = el('p', 'says');
   const action = el('div', 'acts');
@@ -5911,7 +5915,7 @@ function renderModeRequest(event) {
   node.id = `mode-request-${requestId}`;
   tint(node, agent);
   const head = el('div', 'head');
-  head.append(el('b', null, t('Diagnostics › ')), el('b', 'who', `@${agent}`), t(' asks '), el('span', `badge mode m${mode}`, `#${mode} ${MODES[mode].label}`), t(" for step {step}/{total} of @{who}'s plan", { step, total: totalSteps, who: orchestrator }));
+  head.append(el('b', null, t('Diagnostics › ')), el('b', 'who', `@${agent}`), t(' asks '), el('span', `badge mode m${mode}`, sentence(`#${mode} ${MODES[mode].label}`)), t(" for step {step}/{total} of @{who}'s plan", { step, total: totalSteps, who: orchestrator }));
   node.append(head);
   const quote = el('div', 'quote', text.length > 220 ? `${text.slice(0, 220)}…` : text);
   quote.title = text;
@@ -7761,7 +7765,7 @@ function lookPreview(draft) {
   const agent = paint(el('article', 'row assistant'), 'codex');
   const col = el('div', 'col');
   const who = el('div', 'who');
-  who.append(el('span', null, 'CODEX'), el('span', 'badge mode m2', `#2 ${MODES[2].label}`), el('span', 'badge ash', t('TOKEN SAVER')));
+  who.append(el('span', null, 'CODEX'), el('span', 'badge mode m2', sentence(`#2 ${MODES[2].label}`)), el('span', 'badge ash', t('Token saver')));
   const bubble = el('div', 'bubble');
   const words = el('p');
   words.append(t('The project keeps what you decide. '), el('b', null, t('Bold reads like this')), ' · ', el('code', null, 'npm test'));
@@ -12571,13 +12575,13 @@ function updateCrewLabel() {
         : state.create ? t('HUMAN · CREATE ›')
           : state.expendable ? t('EXPENDABLE ›') : t('HUMAN ›');
   // The address is two pieces so a narrow box cuts the path with «…» and never who it goes to.
-  if (typeof els.crewLabel.replaceChildren === 'function') els.crewLabel.replaceChildren(el('span', 'crew-path', path));
-  else els.crewLabel.textContent = path;
+  if (typeof els.crewLabel.replaceChildren === 'function') els.crewLabel.replaceChildren(el('span', 'crew-path', sentence(path)));
+  else els.crewLabel.textContent = sentence(path);
   // Who the message goes to closes the line, in that agent's colour: HUMAN › TOKEN SAVER › @CODEX ›.
   const to = els.target?.value;
   if (to && !armed && (piloting || !state.intruder) && typeof els.crewLabel.append === 'function') {
     const who = paint(el('span', 'crew-to'), to);
-    who.textContent = ` @${to.toUpperCase()} ›`;
+    who.textContent = ` @${to} ›`;
     els.crewLabel.append(who);
   }
 }
@@ -12588,7 +12592,7 @@ function updatePlaceholder() {
 function setAsh(on, { wink = false } = {}) {
   state.ash = on;
   els.ashToggle.setAttribute('aria-pressed', String(on));
-  els.ashToggle.textContent = on ? t('TOKEN SAVER') : t('token saver');
+  els.ashToggle.textContent = t('Token saver');
   els.composer.classList.toggle('ash-on', on);
   updateCrewLabel();
   updatePlaceholder();
