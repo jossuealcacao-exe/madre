@@ -4314,7 +4314,7 @@ function bridgeCard(agent) {
   title.append(el('b', null, agent.label));
   title.append(el('span', 'vendor', vendorWord(agent.id)));
   head.append(title);
-  head.append(el('span', `state ${stage}`, stage === 'missing' ? t('NOT INSTALLED') : stage === 'inert' ? t('NO ADAPTER') : stage === 'route-blocked' ? t('ROUTE BLOCKED') : stage === 'ready' ? t('READY') : t('SIGNED OUT')));
+  head.append(el('span', `state ${stage}`, stage === 'missing' ? sentence(t('NOT INSTALLED')) : stage === 'inert' ? t('NO ADAPTER') : stage === 'route-blocked' ? t('ROUTE BLOCKED') : stage === 'ready' ? sentence(t('READY')) : sentence(t('SIGNED OUT'))));
   card.append(head);
   const detail = el('div', 'detail');
   if (agent.id === 'madre') detail.append(ollamaDetail(agent));
@@ -13926,7 +13926,7 @@ function versionLabel(item) {
   if (item.versionSource !== 'tracked') return `v${item.version ?? '1.0.0'}`;
   if (item.version) return `v${item.version}`;
   const target = (item.runs ?? []).find((dep) => dep.name === item.tracks?.name)?.target ?? null;
-  return target ? t('INSTALLS {version}', { version: target }) : t('NOT INSTALLED');
+  return target ? t('INSTALLS {version}', { version: target }) : sentence(t('NOT INSTALLED'));
 }
 
 function updateWord(update) {
@@ -16925,7 +16925,7 @@ async function fillCoreBoard() {
     const head = el('span', 'brew-actions');
     head.append(el('span', 'when', t('READ {time}', { time: formatTime(new Date().toISOString()) })));
     if (!o.running && o.binary) {
-      const start = el('button', 'primary', t('START OLLAMA'));
+      const start = el('button', 'primary', t('START OLLAMA').toLocaleUpperCase());
       start.type = 'button';
       start.addEventListener('click', async () => { start.disabled = true; await fetch('/api/ollama/start', { method: 'POST' }).catch(() => null); await fillCoreBoard(); });
       head.append(start);
@@ -17204,7 +17204,7 @@ function renderCoreDoc(briefing) {
     const copy = el('button', 'core-copy-one', t('COPY'));
     copy.type = 'button';
     copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(part.text); copy.textContent = t('COPIED'); setTimeout(() => { copy.textContent = t('COPY'); }, 1200); }
+      try { await navigator.clipboard.writeText(part.text); copy.textContent = t('COPIED').toLocaleUpperCase(); setTimeout(() => { copy.textContent = t('COPY'); }, 1200); }
       catch { toast(t('The clipboard is not available here.')); }
     });
     body.append(copy);

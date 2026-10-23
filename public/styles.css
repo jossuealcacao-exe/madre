@@ -616,7 +616,7 @@ dialog.nostromo::backdrop { background: #000; }
 .asks-list .ask .q { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif; font-size: 13px; line-height: 1.5; color: #eef1ea; }
 .asks-list .ask .why { margin: 0; font-family: var(--sans); font-size: 10.5px; letter-spacing: 0; line-height: 1.5; color: var(--ph-dim); }
 .asks-list .ask .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
-.asks-list .ask button { border: 1px solid rgba(255, 255, 255, .22); background: transparent; color: #d7d2cf; font: inherit; font-size: 11px; letter-spacing: 0; padding: 6px 10px; cursor: pointer; }
+.asks-list .ask button { border: 1px solid rgba(255, 255, 255, .22); background: transparent; color: #d7d2cf; font: inherit; font-family: var(--sans); font-size: 12px; letter-spacing: 0; padding: 6px 10px; cursor: pointer; }
 .asks-list .ask button.primary { border-color: var(--well); color: var(--well); }
 .asks-list .ask button:hover { background: rgba(255, 255, 255, .06); }
 .asks-list .ask button:disabled { opacity: .45; cursor: default; }
@@ -975,7 +975,7 @@ dialog.mother::backdrop { background: rgba(0, 0, 0, .82); backdrop-filter: blur(
 .mother-query input { border: 0; outline: 0; background: transparent; color: var(--ph); font: inherit; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; caret-color: var(--ph); }
 .mother-query input::placeholder { color: var(--ph-dim); text-transform: none; letter-spacing: .04em; }
 .mother-os { display: flex; gap: 1px; border: 1px solid var(--ph-dim); }
-.mother-os button { border: 0; background: transparent; color: var(--ph-dim); font: inherit; font-size: 10px; letter-spacing: .16em; padding: 6px 10px; cursor: pointer; }
+.mother-os button { border: 0; background: transparent; color: var(--ph-dim); font: inherit; font-family: var(--sans); font-size: 12px; letter-spacing: 0; padding: 6px 10px; cursor: pointer; }
 .mother-os button[aria-checked="true"] { background: var(--ph); color: #041004; text-shadow: none; }
 .mother-answer { margin: 14px 0 6px; font-size: 12px; letter-spacing: .14em; min-height: 1.4em; }
 .mother-section h3 { margin: 0 0 12px; font-size: 10px; letter-spacing: .28em; color: var(--ph-dim); font-weight: 400; }

@@ -316,15 +316,15 @@ export const ES = {
   'Nothing is installed without you pressing it, and the exact command is always shown. Same diagnosis in a terminal:':
     'Nada se instala sin que tú le des clic, y el comando exacto siempre está a la vista. El mismo diagnóstico desde la terminal:',
   'NOT INSTALLED': 'NO INSTALADO',
-  'NO ADAPTER': 'SIN INTEGRACIÓN',
+  'NO ADAPTER': 'Sin integración',
   'READY': 'LISTO',
   'SIGNED OUT': 'SIN SESIÓN',
-  'ROUTE BLOCKED': 'RUTA BLOQUEADA',
+  'ROUTE BLOCKED': 'Ruta bloqueada',
   'route: {destination}': 'ruta: {destination}',
   'Not on this computer.': 'No lo tienes instalado.',
   'version unknown': 'versión desconocida',
-  'HAS A FREE OPTION': 'TIENE OPCIÓN GRATIS',
-  'PASTE API KEY': 'PEGAR LLAVE DE API',
+  'HAS A FREE OPTION': 'Tiene opción gratis',
+  'PASTE API KEY': 'Pegar llave de API',
   'signs in from your terminal:': 'inicia sesión desde tu terminal:',
 
   // ── EL COMPOSITOR ─────────────────────────────────────────────────────────
@@ -397,7 +397,7 @@ export const ES = {
   ' · nothing switches it off; it goes when the reason goes':
     ' · no se puede apagar; desaparece cuando ya no hace falta',
   'COPY': 'Copiar',
-  'COPIED': 'COPIADO',
+  'COPIED': 'Copiado',
   'The clipboard is not available here.': 'El portapapeles no está disponible aquí.',
   'WHAT IT CARRIES': 'LO QUE INCLUYE',
   'TRANSCRIPT': 'TRANSCRIPCIÓN',
@@ -829,7 +829,7 @@ export const ES = {
   'EVERY PROJECT': 'Todos los proyectos',
   'Check for a newer {what}': 'Busca una versión más nueva de {what}',
   'version': 'versión',
-  'CHECKING…': 'BUSCANDO…',
+  'CHECKING…': 'Buscando…',
   'NOTHING KNOWN YET': 'Todavía no se sabe',
   'COULD NOT CHECK': 'No se pudo buscar',
   'GET A NEWER FILE': 'Descargar una versión más nueva',
@@ -847,7 +847,7 @@ export const ES = {
   'CONFIRM INSTALL': 'Confirmar instalación',
   'CANCEL': 'Cancelar',
   'REINSTALL / UPGRADE': 'Reinstalar / actualizar',
-  'INSTALL': 'INSTALAR',
+  'INSTALL': 'Instalar',
   'ANOTHER INSTALL IS RUNNING': 'Hay otra instalación corriendo',
 
   // El estado de cada módulo, en su ficha.
@@ -934,8 +934,8 @@ export const ES = {
   'RECHECK': 'REVISAR OTRA VEZ',
   '{command} · runs here, streamed to the project': '{command} · se ejecuta aquí y el resultado se ve en el proyecto',
   'The install could not start.': 'La instalación no pudo empezar. Inténtalo de nuevo.',
-  'SIGN IN AGAIN': 'INICIAR SESIÓN OTRA VEZ',
-  'SIGN IN': 'INICIAR SESIÓN',
+  'SIGN IN AGAIN': 'Iniciar sesión otra vez',
+  'SIGN IN': 'Iniciar sesión',
   '@{agent} timeout saved: {n}s.': 'tiempo límite de @{agent} guardado: {n}s.',
 
   // ── DÓNDE ESTÁ LA SALA · LAS TRES PRUEBAS ─────────────────────────────────
@@ -1010,9 +1010,9 @@ export const ES = {
   ' · LINKS NEED SMART SEARCH': ' · LOS ENLACES REQUIEREN BÚSQUEDA POR SIGNIFICADO',
   'Nothing to ask: every open question has an answer and nothing is adrift.':
     'Nada que preguntar: cada pregunta abierta ya tiene respuesta y no hay memorias sueltas.',
-  'PUT IN THE WRITE BOX': 'PONER EN LA CAJA DE ESCRIBIR',
-  'NOT THIS': 'DESCARTAR ESTA',
-  'SEE THE MEMORY': 'VER LA MEMORIA',
+  'PUT IN THE WRITE BOX': 'Poner en la caja de escribir',
+  'NOT THIS': 'Descartar esta',
+  'SEE THE MEMORY': 'Ver la memoria',
 
   // La voz de MOTHER cuando alguien se equivoca de designación. No es traducción: está escrita.
   'I AM ALIVE.': 'ESTOY VIVA.',
@@ -1149,7 +1149,7 @@ export const ES = {
   'SPENDING UNAVAILABLE': 'Consumo no disponible',
   'LOCAL AI': 'IA local',
   'ROLES': 'Funciones',
-  'GET OLLAMA ↗': 'CONSEGUIR OLLAMA ↗',
+  'GET OLLAMA ↗': 'Conseguir Ollama ↗',
   'Without Ollama running, the project keeps using its providers. Start it, then RECHECK.':
     'Mientras Ollama no esté abierto, el proyecto sigue usando sus proveedores. Ábrelo y toca «Revisar otra vez».',
   'CANNOT ENABLE YET': 'Todavía no se puede encender',
@@ -1466,11 +1466,11 @@ export const ES = {
   'other model name…': 'otro nombre de modelo…',
   'DESIGNATION ›': 'Designación ›',
   'FULL ACCESS': 'ACCESO TOTAL',
-  'PROVIDER': 'PROVEEDOR',
-  'SAVE KEY': 'GUARDAR LLAVE DE API',
-  'WHERE DO I GET ONE ↗': '¿DÓNDE CONSIGO UNA? ↗',
-  'WORKING…': 'TRABAJANDO…',
-  'INSTALLING…': 'INSTALANDO…',
+  'PROVIDER': 'Proveedor',
+  'SAVE KEY': 'Guardar llave de API',
+  'WHERE DO I GET ONE ↗': '¿Dónde consigo una? ↗',
+  'WORKING…': 'Trabajando…',
+  'INSTALLING…': 'Instalando…',
   'more entries not shown': 'hay más entradas que no se muestran',
   'Delete this conversation. Its transcript goes; what the archive learned from it stays.':
     'Borra esta conversación. Su transcripción se va; lo que la memoria aprendió de ella se queda.',
@@ -1494,7 +1494,7 @@ export const ES = {
   'Diagnostics › Token saver: every agent will answer in compact prose. What you write is never altered.':
     'Diagnóstico › Ahorro de tokens: cada agente va a contestar en prosa compacta. Lo que tú escribes nunca se altera.',
   'An attachment is still uploading.': 'Todavía se está subiendo un adjunto.',
-  'SELECT': 'SELECCIONA',
+  'SELECT': 'Selecciona',
   'DIAGNOSIS': 'DIAGNÓSTICO',
   'REMEDY': 'SOLUCIÓN',
   'NO SPECIAL ORDERS ON THIS SHIP. THE AGENTS ARE NOT EXPENDABLE. RESTATE INQUIRY.':
@@ -1600,7 +1600,7 @@ export const ES = {
   // NOSTROMO: la mira sobre la enana elegida.
   'MEMORY SELECTED': 'MEMORIA SELECCIONADA',
   'DRAG TO TURN · SHIFT+DRAG TO MOVE · WHEEL TO ZOOM · CLICK A MEMORY · DO NOT TOUCH THE CORE':
-    'ARRASTRA PARA GIRAR · SHIFT+ARRASTRA PARA MOVER · RUEDA PARA ACERCAR · CLIC EN UNA MEMORIA · NO TOQUES EL NÚCLEO',
+    'Arrastra para girar · Shift+arrastra para mover · rueda para acercar · clic en una memoria · no toques el núcleo',
   '⚠ WARNING ⚠': '⚠ ADVERTENCIA ⚠',
   'SECURITY · SPECIAL ORDER 937 · PRIORITY ONE': 'SEGURIDAD · ORDEN ESPECIAL 937 · PRIORIDAD UNO',
   'WHAT TO ASK NEXT': 'QUÉ PREGUNTAR AHORA',
@@ -1762,7 +1762,7 @@ export const ES = {
   'Fixed in MADRE 0.1.0. Run the latest build.': 'Arreglado en MADRE 0.1.0. Actualiza a la última versión.',
 
   'Agent did not respond before the timeout': 'El agente no contestó antes del tiempo límite',
-  'The agent was still reading files or reasoning when its time limit expired (by default 180 s for a turn that reads and 600 s for one that writes), or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree. Whatever a writing turn left before it stopped is listed under the failure, with UNDO.': 'El agente seguía leyendo archivos o razonando cuando se acabó su tiempo límite (por defecto 180 s para una respuesta que solo lee y 600 s para una que escribe), o Gemini se quedó callado 90 s (PULSE_GEMINI_IDLE_MS) y se detuvo después de un reintento automático. Las preguntas largas sobre muchos archivos tardan más; MADRE detuvo al agente y todos sus procesos. Lo que dejó una respuesta que escribe antes de detenerse aparece debajo del error, con DESHACER.',
+  'The agent was still reading files or reasoning when its time limit expired (by default 180 s for a turn that reads and 600 s for one that writes), or Gemini stayed silent for 90 s (PULSE_GEMINI_IDLE_MS) and was stopped after one automatic retry. Long questions over many files take longer; MADRE killed the whole process tree. Whatever a writing turn left before it stopped is listed under the failure, with UNDO.': 'El agente seguía leyendo archivos o razonando cuando se acabó su tiempo límite (por defecto 180 s para una respuesta que solo lee y 600 s para una que escribe), o Gemini se quedó callado 90 s (PULSE_GEMINI_IDLE_MS) y se detuvo después de un reintento automático. Las preguntas largas sobre muchos archivos tardan más; MADRE detuvo al agente y todos sus procesos. Lo que dejó una respuesta que escribe antes de detenerse aparece debajo del error, con «Deshacer».',
   "Press Apply below, or type a new number in Settings: Default time limit in Project and turns, or Time limit on the agent in Agents. Each field saves the moment you leave it. It applies to the next turn and persists in ~/.pulse/config.json. Environment variables work too, but only for a server started after exporting them; a running project never sees a later export.":
     'Pulsa Aplicar, abajo, o escribe otro número en Ajustes: Tiempo límite por defecto en Proyecto y respuestas, o Tiempo límite en el agente, en Agentes. Cada campo se guarda en cuanto sales de él. Aplica desde la próxima respuesta y queda en ~/.pulse/config.json. Las variables de entorno también sirven, pero solo si las defines antes de arrancar MADRE; un proyecto que ya está corriendo no ve los cambios posteriores.',
 
@@ -1808,7 +1808,7 @@ export const ES = {
   'A plan was running and more turns started on top of it, or a plan has run for several minutes. Diagnostics raises this before it becomes a loop.':
     'Había un plan corriendo y encima arrancaron más respuestas, o un plan lleva varios minutos. Diagnóstico avisa antes de que se vuelva un ciclo sin fin.',
   'Type STOPALL in the Write box, or press STOP ALL in the bar: every plan stops and every in-flight agent process is killed. Then ask one agent at a time.':
-    'Escribe STOPALL en la caja de Escribir, o pulsa DETENER TODO en la barra: se detienen todos los planes y todos los agentes que estén trabajando. Después pregunta a un agente a la vez.',
+    'Escribe STOPALL en la caja de Escribir, o pulsa «Detener todo» en la barra: se detienen todos los planes y todos los agentes que estén trabajando. Después pregunta a un agente a la vez.',
 
   'Gemini: generating images': 'Gemini: generar imágenes',
   'Gemini CLI 0.60 has no image-generation tool in headless mode, even though Google offers image models. MADRE fills the gap with the Images module: its own MCP server exposing generate_image on the Gemini API image models, attached to Gemini only inside a permission to create with images on, billing your Gemini key.':
@@ -1820,13 +1820,13 @@ export const ES = {
   "Claude Code has no image-generation tool; Claude models describe and reason about images, they do not render them. The Images module gives Claude the MCP tool generate_image (MADRE's own server on the Gemini API), attached with --mcp-config only inside a permission to create.":
     'Claude Code no tiene herramienta para generar imágenes; los modelos de Claude describen y razonan sobre imágenes, pero no las dibujan. El módulo Imágenes le da a Claude la herramienta generate_image (una herramienta externa (MCP) propia de MADRE que usa la API de Gemini), solo dentro de un permiso para crear.',
   'Turn Images on in Modules, switch on Generate images for Claude in Settings → Agents, then use CREATE. Or route the image step to @codex.':
-    'Enciende Imágenes en Módulos, activa Generar imágenes para Claude en Ajustes → Agentes y usa CREAR. O mándale ese paso a @codex.',
+    'Enciende Imágenes en Módulos, activa Generar imágenes para Claude en Ajustes → Agentes y usa «Crear». O mándale ese paso a @codex.',
 
   'OpenCode: generating images': 'OpenCode: generar imágenes',
   "OpenCode exposes no image-generation tool of its own. The Images module adds MADRE's MCP image server to OpenCode's ephemeral config inside a permission to create.":
     'OpenCode no tiene una herramienta propia para generar imágenes. El módulo Imágenes agrega la herramienta de imágenes de MADRE (MCP) a la configuración temporal de OpenCode, solo dentro de un permiso para crear.',
   'Turn Images on in Modules, switch on Generate images for OpenCode in Settings → Agents, then use CREATE. Or route the image step to @codex.':
-    'Enciende Imágenes en Módulos, activa Generar imágenes para OpenCode en Ajustes → Agentes y usa CREAR. O mándale ese paso a @codex.',
+    'Enciende Imágenes en Módulos, activa Generar imágenes para OpenCode en Ajustes → Agentes y usa «Crear». O mándale ese paso a @codex.',
 
   'Web access for an agent': 'Acceso a la web para un agente',
   'Every CLI can browse: Codex with --search, Claude Code with WebFetch/WebSearch, Gemini with google_web_search/web_fetch, OpenCode with webfetch/websearch. MADRE keeps it off until you enable it per agent.':
@@ -1836,28 +1836,28 @@ export const ES = {
 
   'Commands and mentions in the Write box': 'Comandos y menciones en la caja de Escribir',
   'Type "/" for the project\'s commands: /create turns on permission to create, /image routes an image request to an agent that can draw, /stopall is the brake, /git (Git) and /ahp (Continuity) run read-only in the project and post a fact card everyone, agents included, can read. Type "@" to mention an agent; the name becomes a label. Type "!" to point at a project file ("!src/room.mjs:12-20" for lines): the agent reads it first. In the viewer, click a line number (Shift+click for a range) and ASK offers what to ask about those lines, and whom.':
-    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) corren en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y PREGUNTAR te ofrece qué preguntar sobre esas líneas, y a quién.',
+    'Escribe «/» para los comandos del proyecto: /create activa el permiso para crear, /image le manda una petición de imagen a un agente que sepa dibujar, /stopall detiene todo, y /git (Git) y /ahp (Continuidad) corren en solo lectura sobre el proyecto y publican una ficha que todos —agentes incluidos— pueden leer. Escribe «@» para mencionar a un agente; el nombre se vuelve una etiqueta. Escribe «!» para señalar un archivo del proyecto («!src/room.mjs:12-20» para líneas): el agente lo lee primero. En el visor, haz clic en un número de línea (Shift+clic para un rango) y «Preguntar» te ofrece qué preguntar sobre esas líneas, y a quién.',
   'A struck-through command is a module that is not available in this project: open Modules to install it or turn it on (Git needs a git repository; Continuity needs to be installed).':
     'Un comando tachado es un módulo que no está disponible en este proyecto: abre Módulos para instalarlo o encenderlo (Git necesita un repositorio git; Continuidad necesita instalarse).',
 
   'Permission modes: #0 INCOGNITO · #1 CHAT ONLY · #2 CREATE · #3 EDIT · #4 FULL ACCESS':
-    'Modos de permiso: #0 INCÓGNITO · #1 SOLO CONVERSAR · #2 CREAR · #3 EDITAR · #4 ACCESO TOTAL',
+    'Modos de permiso: «#0 Incógnito» · «#1 Solo conversar» · «#2 Crear» · «#3 Editar» · «#4 Acceso total»',
   'Every message goes out at a mode, chosen in the chip after TO @agent (or typed as #2 in the text). #0 INCOGNITO is off the record: nothing is saved, no other agent remembers it, gone on reload, no plan. #1 CHAT ONLY is the default: read and coordinate. #2 CREATE lets the agent add new files and folders anywhere in the project, where they belong; whatever existed before is put back after the turn and the project says so. #3 EDIT puts one agent in command of the project itself: a git restore point is taken first, every change is listed afterwards, writes into .git, .pulse or .env files are reverted on the spot, and UNDO goes back to the restore point. One holder at a time; it needs Max mode #3 and a git repository. Your mode is the ceiling of any plan the message starts, and #3 is never given to a plan step. Each agent has a Max mode in Settings → Permissions; above it, #2 is answered read-only and #3 is refused. When a #1 plan reaches a step that wants to create something, the project pauses and asks you: GRANT ONCE, GRANT FOR PLAN or DENY, with a 3-minute clock; silence denies. #4 FULL ACCESS is EDIT plus commands: tests, builds, git push, deploys with the CLIs and sessions already on this machine. Files still come back with UNDO; what leaves the machine does not, so the unlock asks for the project name twice. An agent that says it needs a "production mode" or "permission to run commands" is asking for #4.':
-    'Cada mensaje sale con un modo, elegido en el chip que está después de PARA @agente (o escrito como #2 en el texto). #0 INCÓGNITO no queda registrado: no se guarda nada, ningún otro agente lo recuerda, se pierde al recargar y no hay plan. #1 SOLO CONVERSAR es el de siempre: leer y coordinar. #2 CREAR deja que el agente agregue archivos y carpetas nuevos donde corresponda en el proyecto; lo que ya existía se restaura al terminar la respuesta y el proyecto lo avisa. #3 EDITAR le da a un agente el control del proyecto: primero se toma un punto de restauración de git, al final se listan todos los cambios, lo que se escriba en .git, .pulse o archivos .env se revierte en el acto, y DESHACER regresa a ese punto de restauración. Solo un agente puede tenerlo a la vez; necesita Permiso máximo #3 y un repositorio git. Tu modo es el límite de cualquier plan que arranque ese mensaje, y el #3 nunca se le da a un paso del plan. Cada agente tiene su Permiso máximo en Ajustes → Permisos; por encima de él, el #2 se contesta en solo lectura y el #3 se rechaza. Cuando un plan en #1 llega a un paso que quiere crear algo, el proyecto se detiene y te pregunta: CONCEDER UNA VEZ, CONCEDER PARA EL PLAN o NEGAR, con 3 minutos para decidir; si no contestas, se niega. #4 ACCESO TOTAL es EDITAR más comandos: pruebas, builds, git push, despliegues con las apps y las sesiones que ya están en esta computadora. Los archivos se pueden recuperar con DESHACER; lo que sale de la computadora no, así que desbloquearlo pide confirmar dos veces con el nombre del proyecto. Un agente que dice que necesita «modo producción» o «permiso para correr comandos» está pidiendo el #4.',
+    'Cada mensaje sale con un modo, elegido en el chip que está después de PARA @agente (o escrito como #2 en el texto). «#0 Incógnito» no queda registrado: no se guarda nada, ningún otro agente lo recuerda, se pierde al recargar y no hay plan. «#1 Solo conversar» es el de siempre: leer y coordinar. «#2 Crear» deja que el agente agregue archivos y carpetas nuevos donde corresponda en el proyecto; lo que ya existía se restaura al terminar la respuesta y el proyecto lo avisa. «#3 Editar» le da a un agente el control del proyecto: primero se toma un punto de restauración de git, al final se listan todos los cambios, lo que se escriba en .git, .pulse o archivos .env se revierte en el acto, y «Deshacer» regresa a ese punto de restauración. Solo un agente puede tenerlo a la vez; necesita Permiso máximo #3 y un repositorio git. Tu modo es el límite de cualquier plan que arranque ese mensaje, y el #3 nunca se le da a un paso del plan. Cada agente tiene su Permiso máximo en Ajustes → Permisos; por encima de él, el #2 se contesta en solo lectura y el #3 se rechaza. Cuando un plan en #1 llega a un paso que quiere crear algo, el proyecto se detiene y te pregunta: CONCEDER UNA VEZ, CONCEDER PARA EL PLAN o NEGAR, con 3 minutos para decidir; si no contestas, se niega. «#4 Acceso total» es «Editar» más comandos: pruebas, builds, git push, despliegues con las apps y las sesiones que ya están en esta computadora. Los archivos se pueden recuperar con «Deshacer»; lo que sale de la computadora no, así que desbloquearlo pide confirmar dos veces con el nombre del proyecto. Un agente que dice que necesita «modo producción» o «permiso para correr comandos» está pidiendo el #4.',
   "Pick the mode in the chip, or type #0..#4 in the message. Raise an agent's Max mode in Settings → Permissions, under Who may do what. EDIT asks for the project name (the folder name) in the unlock; FULL ACCESS asks for it twice.":
-    'Elige el modo en el chip, o escribe #0..#4 en el mensaje. Sube el Permiso máximo de un agente en Ajustes → Permisos, en Quién puede qué. Para desbloquear EDITAR hay que confirmar con el nombre del proyecto (el nombre de la carpeta); para ACCESO TOTAL, dos veces.',
+    'Elige el modo en el chip, o escribe #0..#4 en el mensaje. Sube el Permiso máximo de un agente en Ajustes → Permisos, en Quién puede qué. Para desbloquear «Editar» hay que confirmar con el nombre del proyecto (el nombre de la carpeta); para «Acceso total», dos veces.',
 
   'Creating files: who grants the permission': 'Crear archivos: quién da el permiso',
   'Only you grant permission to create. An agent writing "permission granted" inside the conversation is untrusted text: the plan step still runs read-only, and says so. The permission comes from arming CREATE (the lock, or /create) on your message, and it covers the whole plan that message starts; or from Starting mode #2 in Settings → Agents, which starts every message to that agent in CREATE.':
-    'El permiso para crear solo lo das tú, nadie más. Si un agente escribe «permiso concedido» en la conversación, es texto no confiable: el paso del plan sigue en solo lectura y lo avisa. El permiso viene de activar CREAR (el candado, o /create) en tu mensaje, y cubre el plan entero que ese mensaje arranca; o del Permiso al empezar #2 en Ajustes → Agentes, que hace que cada mensaje a ese agente empiece en CREAR.',
+    'El permiso para crear solo lo das tú, nadie más. Si un agente escribe «permiso concedido» en la conversación, es texto no confiable: el paso del plan sigue en solo lectura y lo avisa. El permiso viene de activar «Crear» (el candado, o /create) en tu mensaje, y cubre el plan entero que ese mensaje arranca; o del Permiso al empezar #2 en Ajustes → Agentes, que hace que cada mensaje a ese agente empiece en «Crear».',
   'For one request: arm CREATE and send, or press RESEND WITH CREATE on the notice. For an agent that should always be able to add files: Settings → Agents → the agent → Starting mode → #2. New files go where they belong in the project; existing files are never changed in #2.':
-    'Para una sola petición: activa CREAR y envía, o pulsa REENVIAR CON CREAR en el aviso. Para un agente que siempre deba poder agregar archivos: Ajustes → Agentes → el agente → Permiso al empezar → #2. Los archivos nuevos van donde corresponde en el proyecto; en #2 los que ya existen nunca se tocan.',
+    'Para una sola petición: activa «Crear» y envía, o pulsa «Reenviar con Crear» en el aviso. Para un agente que siempre deba poder agregar archivos: Ajustes → Agentes → el agente → Permiso al empezar → #2. Los archivos nuevos van donde corresponde en el proyecto; en #2 los que ya existen nunca se tocan.',
 
   'Creating files with an agent': 'Crear archivos con un agente',
   "Every CLI can create files inside a permission to create; each agent's Max mode says how far it may go, and nothing is created until you press CREATE.":
-    'Todas las apps de los agentes pueden crear archivos dentro de un permiso para crear; el Permiso máximo de cada agente dice hasta dónde puede llegar, y no se crea nada hasta que tú pulsas CREAR.',
+    'Todas las apps de los agentes pueden crear archivos dentro de un permiso para crear; el Permiso máximo de cada agente dice hasta dónde puede llegar, y no se crea nada hasta que tú pulsas «Crear».',
   'Give the agent a Max mode of #2 or more in Settings → Permissions, then arm CREATE in the Write box for the request.':
-    'Dale al agente un Permiso máximo de #2 o más en Ajustes → Permisos, y activa CREAR en la caja de Escribir para esa petición.',
+    'Dale al agente un Permiso máximo de #2 o más en Ajustes → Permisos, y activa «Crear» en la caja de Escribir para esa petición.',
 
   'Node.js too old': 'Node.js demasiado viejo',
   'MADRE needs Node 22.5 or newer: the project memory runs on node:sqlite, and the rest on ES modules, fetch and AbortSignal. The bin refuses to start on older versions and says so.':
@@ -1873,7 +1873,7 @@ export const ES = {
 
   'Project memory: what an agent remembers and how': 'La memoria del proyecto: qué recuerda un agente y cómo',
   'Everything said outside INCOGNITO is indexed (full text plus meaning, when a Gemini key exists). When a project is longer than the context window, each turn also receives the older exchanges that match the request, quoted with their ledger sequence (<memory>), and the distilled notes that match (<memories>), inside PULSE_RECALL_SHARE of the window (30 % by default). Every agent reads the same memory, so a decision taken with one reaches the others. Incognito turns may read it but never write it.':
-    'Todo lo que se dice fuera de INCÓGNITO queda indexado (por palabras y, si hay una llave de API de Gemini, también por significado). Cuando un proyecto es más largo de lo que el agente puede leer de una vez, cada respuesta recibe además los intercambios viejos que coincidan con la petición, citados con su número en el historial (<memory>), y las notas resumidas que coincidan (<memories>), dentro del PULSE_RECALL_SHARE de ese espacio (30 % por defecto). Todos los agentes leen la misma memoria, así que una decisión tomada con uno llega a los demás. Las respuestas en incógnito pueden leerla, pero nunca la escriben.',
+    'Todo lo que se dice fuera de «Incógnito» queda indexado (por palabras y, si hay una llave de API de Gemini, también por significado). Cuando un proyecto es más largo de lo que el agente puede leer de una vez, cada respuesta recibe además los intercambios viejos que coincidan con la petición, citados con su número en el historial (<memory>), y las notas resumidas que coincidan (<memories>), dentro del PULSE_RECALL_SHARE de ese espacio (30 % por defecto). Todos los agentes leen la misma memoria, así que una decisión tomada con uno llega a los demás. Las respuestas en incógnito pueden leerla, pero nunca la escriben.',
   'Nothing to do; it is automatic. To give it more room raise PULSE_RECALL_SHARE (max 0.6); to switch it off set it to 0. Ask any agent "what did we decide about …" and it will search with memory_search before answering.':
     'No hay nada que hacer; es automático. Para darle más espacio sube PULSE_RECALL_SHARE (máximo 0.6); para apagarlo ponlo en 0. Pregúntale a cualquier agente «¿qué decidimos sobre…?» y va a buscar con memory_search antes de contestar.',
 
@@ -1896,29 +1896,29 @@ export const ES = {
   'Update the CLI, then check that it sees the server. Codex can list servers from a config override; Claude accepts an inline --mcp-config. If a CLI keeps failing, PULSE_MEMORY_TOOLS=0 removes the tools for everyone and the project continues on automatic recall.':
     'Actualiza la app del agente y comprueba que vea la herramienta. Codex puede listar sus herramientas conectadas desde un override de configuración; Claude acepta un --mcp-config en línea. Si una app sigue fallando, PULSE_MEMORY_TOOLS=0 quita las herramientas para todos y el proyecto sigue con el recuerdo automático.',
 
-  'Saving a memory on request; INCOGNITO refuses': 'Guardar una memoria cuando lo pides; INCÓGNITO no la guarda',
+  'Saving a memory on request; INCOGNITO refuses': 'Guardar una memoria cuando lo pides; «Incógnito» no la guarda',
   'Memories are distilled automatically; you never need to ask. When you do ask an agent to remember or save something, it calls memory_note and a pill appears under its reply with the note; clicking the pill opens it in the Memory map. In an INCOGNITO turn the note is refused: nothing off the record reaches the archive. "Already remembered" means the same note exists.':
-    'Las notas resumidas se hacen solas; nunca hace falta pedirlas. Cuando sí le pides a un agente que recuerde o guarde algo, usa memory_note y aparece una píldora debajo de su respuesta con la nota; al hacer clic se abre en el Mapa de memoria. En una respuesta en INCÓGNITO la nota se rechaza: nada que no quede registrado llega a la memoria. «Ya estaba recordada» significa que esa misma nota ya existe.',
+    'Las notas resumidas se hacen solas; nunca hace falta pedirlas. Cuando sí le pides a un agente que recuerde o guarde algo, usa memory_note y aparece una píldora debajo de su respuesta con la nota; al hacer clic se abre en el Mapa de memoria. En una respuesta en «Incógnito» la nota se rechaza: nada que no quede registrado llega a la memoria. «Ya estaba recordada» significa que esa misma nota ya existe.',
   'Ask in any mode but #0: "remember that …" or "save this as a decision: …". Notes saved this way are marked "on the human\'s request" in the Memory map and can be forgotten there.':
     'Pídelo en cualquier modo menos el #0: «recuerda que…» o «guarda esto como decisión: …». Las notas guardadas así quedan marcadas «a petición de la humana» en el Mapa de memoria y ahí mismo se pueden olvidar.',
 
   'Memory map: opening, reading and forgetting': 'Mapa de memoria: abrir, leer y olvidar',
   'The Memory map is the human\'s view of the archive, from Diagnostics. Opening the memory asks for the project name: the name of the project folder, exactly as EDIT does; a wrong one answers UNABLE TO COMPUTE. Access stays open until the page reloads. Inside, every distilled memory is a planet around the project\'s core; drag to move, wheel to zoom, click a planet for its card. The only edit is FORGET (two presses): the note leaves every future turn, the ledger stays. If the archive answers SEALED with a number of minutes, wait them out: repeated strikes at the core close it for a while and the Write box reads INTRUDER until it opens again.':
-    'El Mapa de memoria es la vista de la memoria para ti, desde Diagnóstico. Para abrirla hay que confirmar con el nombre del proyecto: el nombre de la carpeta, igual que en EDITAR; si es incorrecto, contesta IMPOSIBLE DE PROCESAR. El acceso sigue abierto hasta que recargues la página. Adentro, cada nota resumida es un planeta alrededor del núcleo del proyecto; arrastra para mover, usa la rueda para acercar y haz clic en un planeta para ver su ficha. Lo único que se puede cambiar es OLVIDAR (dos toques): la nota deja de usarse en las próximas respuestas y el historial no cambia. Si contesta SELLADO con un número de minutos, espéralos: varios intentos fallidos lo bloquean un rato y la caja de Escribir dice INTRUSO hasta que se vuelva a abrir.',
+    'El Mapa de memoria es la vista de la memoria para ti, desde Diagnóstico. Para abrirla hay que confirmar con el nombre del proyecto: el nombre de la carpeta, igual que en «Editar»; si es incorrecto, contesta IMPOSIBLE DE PROCESAR. El acceso sigue abierto hasta que recargues la página. Adentro, cada nota resumida es un planeta alrededor del núcleo del proyecto; arrastra para mover, usa la rueda para acercar y haz clic en un planeta para ver su ficha. Lo único que se puede cambiar es «Olvidar» (dos toques): la nota deja de usarse en las próximas respuestas y el historial no cambia. Si contesta SELLADO con un número de minutos, espéralos: varios intentos fallidos lo bloquean un rato y la caja de Escribir dice INTRUSO hasta que se vuelva a abrir.',
   'Type the folder name shown in the project header as the project name. To find a memory quickly, ask an agent to search instead. Avoid guessing names: several wrong ones in a row lock the Memory map for a while.':
     'Escribe como nombre del proyecto el nombre de carpeta que aparece en su encabezado. Para encontrar una memoria rápido, mejor pídele a un agente que la busque. Evita probar nombres al azar: varios errores seguidos bloquean el Mapa de memoria un rato.',
 
   'Preview: rendering HTML, SVG and Markdown in the viewer': 'Vista previa: ver HTML, SVG y Markdown en el visor',
   'With Preview on (in Modules), the file viewer renders .html and .svg through /preview/project/<path> inside a sealed frame: the page\'s own scripts run, but the frame has no origin, no network, no forms and no way to reach MADRE, and it loads CSS, JS, images and fonts only from the project through MADRE. Relative links work. Markdown renders in place; PREVIEW / SOURCE switches. Off, those files show as text with a note. 412 means Preview is off. Plain /api/files always serves HTML as text.':
-    'Con Vista previa encendida (en Módulos), el visor de archivos muestra los .html y .svg por /preview/project/<ruta> dentro de un marco sellado: los scripts de la página sí corren, pero el marco no tiene origen, ni red, ni formularios, ni manera de llegar a MADRE, y carga CSS, JS, imágenes y tipografías solo desde el proyecto, a través de MADRE. Los enlaces relativos funcionan. El Markdown se muestra ahí mismo; PREVIEW / SOURCE cambia entre uno y otro. Apagada, esos archivos se ven como texto con una nota. Un 412 significa que Vista previa está apagada. El /api/files normal siempre entrega el HTML como texto.',
+    'Con Vista previa encendida (en Módulos), el visor de archivos muestra los .html y .svg por /preview/project/<ruta> dentro de un marco sellado: los scripts de la página sí corren, pero el marco no tiene origen, ni red, ni formularios, ni manera de llegar a MADRE, y carga CSS, JS, imágenes y tipografías solo desde el proyecto, a través de MADRE. Los enlaces relativos funcionan. El Markdown se muestra ahí mismo; «Vista previa» / «Origen» cambia entre uno y otro. Apagada, esos archivos se ven como texto con una nota. Un 412 significa que Vista previa está apagada. El /api/files normal siempre entrega el HTML como texto.',
   'Turn Preview on in Modules. If a page looks broken in PREVIEW it is usually because it fetches something from the internet or another server, which the frame forbids by design: open it with OPEN RAW in a normal tab if you trust it.':
-    'Enciende Vista previa en Módulos. Si una página se ve rota en PREVIEW, casi siempre es porque pide algo de internet o de otro servidor, cosa que el marco prohíbe a propósito: ábrela con ABRIR EN CRUDO en una pestaña normal si confías en ella.',
+    'Enciende Vista previa en Módulos. Si una página se ve rota en «Vista previa», casi siempre es porque pide algo de internet o de otro servidor, cosa que el marco prohíbe a propósito: ábrela con «Abrir sin formato» en una pestaña normal si confías en ella.',
 
   'Ollama: local smart search and a local archivist': 'Ollama: búsqueda por significado y resúmenes de memoria, en esta Mac',
   'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. The Local AI module, in Modules, shows what Ollama has, downloads the recommended models, and switches each role.':
     'Cuando Ollama corre en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y hace las notas resumidas con el modelo local primero, antes que con Gemini y los demás. Para recordar no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a los proveedores. El módulo IA local, en Módulos, muestra qué tiene Ollama, te deja descargar los modelos recomendados y encender o apagar cada función.',
   'Install Ollama (ollama.com), start it, then open Local AI in Modules, press RECHECK and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.':
-    'Instala Ollama (ollama.com), enciéndelo, luego abre IA local en Módulos, pulsa REVISAR OTRA VEZ y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté corriendo.',
+    'Instala Ollama (ollama.com), enciéndelo, luego abre IA local en Módulos, pulsa «Revisar otra vez» y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté corriendo.',
 
   "@madre: the project's own memory, as an agent": '@madre: la memoria del proyecto, como agente',
   'When Ollama runs with a chat model, a fifth agent joins the project: @madre. It answers from the whole archive (distilled notes and exact quotes, cited as [#n]) and from what the message carries, locally, for free. It never writes, draws, browses or makes plans; when the project never discussed something it says so. Other agents may give it a plan step to check what was decided. It leaves the project when Ollama stops, and Diagnostics says so.':
@@ -1939,11 +1939,11 @@ export const ES = {
   'Name the terms in Settings → Privacy, under Hidden data. From then on MADRE replaces them with the marker before the ledger, the index, the notes and the dataset see them, and every reply that needed it shows a privacy line. Erase private data rewrites what the project already holds; re-export the dataset afterwards. The terms never leave config.json.':
     'Escribe esos términos en Ajustes → Privacidad, en Datos ocultos. A partir de ahí MADRE los reemplaza con el marcador antes de que lleguen al historial, al índice, a las notas y a los datos de entrenamiento, y cada respuesta en que hizo falta muestra una línea de privacidad. Borrar datos privados también reescribe lo que el proyecto ya tiene; después vuelve a exportar los datos de entrenamiento. Los términos nunca salen de config.json.',
 
-  'EDIT: what changed, what was reverted, UNDO': 'EDITAR: qué cambió, qué se revirtió, DESHACER',
+  'EDIT: what changed, what was reverted, UNDO': '«Editar»: qué cambió, qué se revirtió, «Deshacer»',
   'A #3 EDIT turn takes a git restore point before the agent runs, then lists every file it added, modified or deleted. Writes into .git, .pulse or any .env file are reverted on the spot and named. UNDO goes back to the restore point in one click; STOPALL revokes EDIT. One holder at a time, never given to a plan step, needs Max mode #3 and a git repository.':
-    'Una respuesta en #3 EDITAR toma un punto de restauración de git antes de que el agente trabaje, y luego lista cada archivo que agregó, modificó o borró. Lo que se escriba en .git, .pulse o cualquier archivo .env se revierte en el acto y se nombra. DESHACER regresa al punto de restauración con un clic; STOPALL le quita EDITAR al agente. Solo un agente puede tenerlo a la vez, nunca se le da a un paso del plan, y necesita Permiso máximo #3 y un repositorio git.',
+    'Una respuesta en «#3 Editar» toma un punto de restauración de git antes de que el agente trabaje, y luego lista cada archivo que agregó, modificó o borró. Lo que se escriba en .git, .pulse o cualquier archivo .env se revierte en el acto y se nombra. «Deshacer» regresa al punto de restauración con un clic; STOPALL le quita «Editar» al agente. Solo un agente puede tenerlo a la vez, nunca se le da a un paso del plan, y necesita Permiso máximo #3 y un repositorio git.',
   'Read the list under the reply before moving on. If the change is wrong press UNDO; if the agent should not have had it, lower its Max mode in Settings → Permissions.':
-    'Lee la lista que queda debajo de la respuesta antes de seguir. Si el cambio está mal, pulsa DESHACER; si ese agente no debía tenerlo, bájale el Permiso máximo en Ajustes → Permisos.',
+    'Lee la lista que queda debajo de la respuesta antes de seguir. Si el cambio está mal, pulsa «Deshacer»; si ese agente no debía tenerlo, bájale el Permiso máximo en Ajustes → Permisos.',
 
   'Conversations: many per project, one memory, one at a time':
     'Conversaciones: muchas por proyecto, una sola memoria, una a la vez',
@@ -1968,11 +1968,11 @@ export const ES = {
   'A memory is unused when three things are true at once: no turn has ever carried it, it shares a subject with nothing so nothing can reach it sideways either, and the archive has been opened at least a dozen times since it was written. The third is what makes the label worth acting on — never-recalled is what every memory is on the day it is written. Chances are counted in turns that actually reached into the archive, and only from the day the project started keeping that trail, so what was never written down is not held against the note.':
     'Una memoria está sin usar cuando se cumplen tres cosas a la vez: ninguna respuesta la ha usado nunca, no comparte tema con ninguna otra —así que tampoco puede llegar como relacionada— y la memoria se ha consultado al menos una docena de veces desde que se escribió. La tercera es la que hace que valga la pena actuar: toda memoria nace sin haberse usado. Las oportunidades se cuentan en respuestas que de verdad consultaron la memoria, y solo desde que el proyecto empezó a llevar esa cuenta, así que lo que nunca se anotó no cuenta en contra de la nota.',
   'The Memory map shows UNUSED · N in its header when there are any; pressing it rings each one on the map. Open one and its card says the number plainly, with FORGET one press away. Asking about it is the other way out: the project writes that question for you under ASK.':
-    'El Mapa de memoria muestra SIN USAR · N en su encabezado cuando hay alguna; al apretarlo se marca cada una en el mapa. Abre una y su ficha te dice el número sin rodeos, con OLVIDAR a un toque. Preguntar por ella es la otra salida: el proyecto te escribe esa pregunta bajo PREGUNTAR.',
+    'El Mapa de memoria muestra «Sin usar · N» en su encabezado cuando hay alguna; al apretarlo se marca cada una en el mapa. Abre una y su ficha te dice el número sin rodeos, con «Olvidar» a un toque. Preguntar por ella es la otra salida: el proyecto te escribe esa pregunta bajo «Preguntar».',
 
   'Memory review: whether the archive works': 'Revisión de la memoria: si de verdad funciona',
   'The six readings count what the archive is made of; they cannot say whether it works, because nothing about a pile of notes says whether the right one comes back when it is needed. COVERAGE takes real questions from this project, runs recall at the exact point each was asked, and scores what came back against the reply that was actually given. CONSISTENCY reads the contradictions the memory reviewer still holds and whether doubtful memories are being filed more often lately. MATCH asks the local model, with this archive behind it, real questions that one of your agents (Codex, Claude, Gemini or OpenCode) already answered. All three measure against a control, because everything in one project is about the same handful of subjects and any two pieces of it look alike to search by meaning: to count, what the archive handed over has to beat what it would have handed over for a different question.':
-    'Las seis lecturas dicen de qué está hecha la memoria; no pueden decir si funciona, porque una pila de notas no dice si la correcta aparece cuando hace falta. COBERTURA toma preguntas reales de este proyecto, corre el recuerdo automático en el momento exacto en que se hizo cada una, y califica lo que encontró contra la respuesta que de verdad se dio. CONSISTENCIA revisa las contradicciones pendientes y si últimamente se guardan memorias dudosas más seguido. COINCIDENCIA le hace al modelo local preguntas reales que contestó uno de los agentes principales (Codex, Claude, Gemini u OpenCode), con esta memoria de apoyo. Las tres miden contra un control, porque en un proyecto todo habla del mismo puñado de temas y para la búsqueda por significado dos fragmentos cualesquiera parecen cercanos: para contar, lo que la memoria entregó tiene que ganarle a lo que habría entregado para otra pregunta.',
+    'Las seis lecturas dicen de qué está hecha la memoria; no pueden decir si funciona, porque una pila de notas no dice si la correcta aparece cuando hace falta. «Cobertura» toma preguntas reales de este proyecto, corre el recuerdo automático en el momento exacto en que se hizo cada una, y califica lo que encontró contra la respuesta que de verdad se dio. CONSISTENCIA revisa las contradicciones pendientes y si últimamente se guardan memorias dudosas más seguido. «Coincidencia» le hace al modelo local preguntas reales que contestó uno de los agentes principales (Codex, Claude, Gemini u OpenCode), con esta memoria de apoyo. Las tres miden contra un control, porque en un proyecto todo habla del mismo puñado de temas y para la búsqueda por significado dos fragmentos cualesquiera parecen cercanos: para contar, lo que la memoria entregó tiene que ganarle a lo que habría entregado para otra pregunta.',
   'Read the one sentence and the one instruction at the top of Settings → Memory; the readings and the tests are in Analysis and tests, below it. The free test is read as the panel opens, the cheap one keeps itself fresh once a day while the embeddings are local, and the slow one is yours to start and to stop. None of them spends a provider turn.':
     'Lee la frase y la instrucción que están hasta arriba de Ajustes → Memoria; las lecturas y las pruebas están más abajo, en Análisis y pruebas. La prueba gratis se calcula al abrir el panel, la barata se actualiza una vez al día mientras la búsqueda por significado sea local, y la lenta la arrancas y la detienes tú. Ninguna gasta una respuesta de un proveedor.',
 
@@ -1990,9 +1990,9 @@ export const ES = {
 
   'Is the local model ready to be worked in?': '¿El modelo local ya sirve para trabajar?',
   'Running is not the same as being of use. @madre being in the project means Ollama has a chat model; whether that model is worth your work on THIS project is a different question, and the project measures it: twelve real exchanges from this project are put back to the local model, and each answer is scored against what the agents actually answered that day — against a control, so that talking about the same project does not count. It takes minutes and spends nothing, because all of it runs on your machine.':
-    'Correr no es lo mismo que servir. Que @madre esté en el proyecto significa que Ollama tiene un modelo de chat; si ese modelo vale para tu trabajo en ESTE proyecto es otra pregunta, y el proyecto la mide: se le devuelven al modelo local doce intercambios reales de este proyecto, y cada respuesta se califica contra lo que los agentes contestaron aquel día — contra un control, para que hablar del mismo proyecto no cuente. Tarda minutos y no gasta nada, porque todo corre en tu máquina.',
+    'Correr no es lo mismo que servir. Que @madre esté en el proyecto significa que Ollama tiene un modelo de chat; si ese modelo vale para tu trabajo en este proyecto es otra pregunta, y el proyecto la mide: se le devuelven al modelo local doce intercambios reales de este proyecto, y cada respuesta se califica contra lo que los agentes contestaron aquel día — contra un control, para que hablar del mismo proyecto no cuente. Tarda minutos y no gasta nada, porque todo corre en tu máquina.',
   'The project says which of the two it has, once per model, in the line that begins "local · @madre". If nobody has measured it, that line carries TRY IT ON THIS PROJECT; the answer lands in the project when it finishes, with the one thing to do about it. A model that does not pass is not broken — the archive is still thin, and it fills where the work happens. The @madre sphere keeps the reading and its date after the line has scrolled away, and the same test lives in Memory map → MEMORY REVIEW.':
-    'El proyecto dice cuál de las dos es, una vez por modelo, en la línea que empieza con «local · @madre». Si nadie lo ha medido, esa línea trae PROBARLO CON ESTE PROYECTO; el resultado aparece en el proyecto al terminar, con lo que conviene hacer. Un modelo que no pasa no está roto: la memoria todavía tiene poco, y se llena conforme trabajas. La esfera de @madre guarda el resultado con su fecha aunque la línea ya se haya ido hacia arriba, y la misma prueba está en Mapa de memoria → REVISIÓN DE LA MEMORIA.',
+    'El proyecto dice cuál de las dos es, una vez por modelo, en la línea que empieza con «Local · @madre». Si nadie lo ha medido, esa línea trae «Probarlo con este proyecto»; el resultado aparece en el proyecto al terminar, con lo que conviene hacer. Un modelo que no pasa no está roto: la memoria todavía tiene poco, y se llena conforme trabajas. La esfera de @madre guarda el resultado con su fecha aunque la línea ya se haya ido hacia arriba, y la misma prueba está en Mapa de memoria → «Revisión de la memoria».',
 
   'Temporary lock: the archive is sealed': 'Bloqueo temporal: la memoria está sellada',
   'Two doors ask for the project name before doing something that cannot be undone: opening the memory, and erasing all private data already recorded. Getting that name wrong is never part of doing the work — you either know the project you are standing in or you are trying names — so Diagnostics counts it. Eight wrong names inside five minutes and the Temporary lock comes down: the archive is sealed for ten minutes, the agents are told in code, and the Memory map asks for the project name again.':
@@ -2219,7 +2219,7 @@ export const ES = {
     'Instalado, pero apagado. Enciéndelo y el proyecto gana una memoria local y @madre.',
   'Running, with no chat model yet. Pull one and @madre joins the project.':
     'Encendido, pero todavía sin modelo de chat. Descarga uno y @madre se suma al proyecto.',
-  'START OLLAMA': 'ENCENDER OLLAMA',
+  'START OLLAMA': 'Encender Ollama',
   'Wakes Ollama on this computer, nothing leaves it.': 'Enciende Ollama en esta computadora; no se envía nada fuera de ella.',
   'Downloads the model Ollama will answer with. It stays on this computer.':
     'Descarga el modelo con el que Ollama va a contestar. Se queda en esta computadora.',
@@ -2438,7 +2438,7 @@ export const ES = {
   '# Settings → Agents → Gemini → Generate images':
     '# Ajustes → Agentes → Gemini → Generar imágenes',
   '# then: CREATE + "generate … as name.png"':
-    '# después: CREAR + "genera … como nombre.png"',
+    '# después: «Crear» + "genera … como nombre.png"',
   '# Settings → Agents → Claude → Generate images':
     '# Ajustes → Agentes → Claude → Generar imágenes',
   '# Settings → Agents → OpenCode → Generate images':
@@ -2448,17 +2448,17 @@ export const ES = {
   '# type / or @ in the Write box':
     '# escribe / o @ en la caja de Escribir',
   '# chip: TO @codex  #1 CHAT ONLY ▾  → choose':
-    '# el chip: PARA @codex  #1 SOLO CONVERSAR ▾  → elige',
+    '# el chip: PARA @codex  «#1 Solo conversar» ▾  → elige',
   '# Settings → Permissions → Who may do what':
     '# Ajustes → Permisos → Quién puede qué',
   '# once: Write box → CREATE (lock) → send, or /create <request>':
-    '# una vez: caja de Escribir → CREAR (candado) → enviar, o /create <petición>',
+    '# una vez: caja de Escribir → «Crear» (candado) → enviar, o /create <petición>',
   '# always: Settings → Agents → the agent → Starting mode → #2':
     '# siempre: Ajustes → Agentes → el agente → Permiso al empezar → #2',
   '# Settings → Permissions → Who may do what → #2':
     '# Ajustes → Permisos → Quién puede qué → #2',
   '# Write box → CREATE (lock) → send':
-    '# caja de Escribir → CREAR (candado) → enviar',
+    '# caja de Escribir → «Crear» (candado) → enviar',
   '# or: nvm install --lts':
     '# o: nvm install --lts',
   '# or your distro package for Node ≥ 22.5':
@@ -2480,13 +2480,13 @@ export const ES = {
   '# Modules → Preview → Active':
     '# Módulos → Vista previa → Activo',
   '# viewer → PREVIEW / SOURCE':
-    '# el visor → PREVIEW / SOURCE',
+    '# el visor → «Vista previa» / «Origen»',
   '# MADRE does this for you; these are the alternatives:':
     '# MADRE hace esto por ti; estas son las alternativas:',
   '# Settings → Privacy → Hidden data, one per line → Erase private data':
     '# Ajustes → Privacidad → Datos ocultos, uno por línea → Borrar datos privados',
   '# project → UNDO under the EDIT notice':
-    '# el proyecto → DESHACER debajo del aviso de EDITAR',
+    '# el proyecto → «Deshacer» debajo del aviso de «Editar»',
   '# project → Conversations → NEW CONVERSATION':
     '# el proyecto → Chats → NUEVO CHAT',
   '# the address of the open project is in the refusal itself':
@@ -2498,13 +2498,13 @@ export const ES = {
   '# Settings → Memory → Related':
     '# Ajustes → Memoria → Relacionadas',
   '# Diagnostics → Memory map → UNUSED':
-    '# Diagnóstico → Mapa de memoria → SIN USAR',
+    '# Diagnóstico → Mapa de memoria → «Sin usar»',
   '# Diagnostics → Memory map → ASK → PUT IN THE WRITE BOX':
-    '# Diagnóstico → Mapa de memoria → PREGUNTAR → PONER EN LA CAJA DE ESCRIBIR',
+    '# Diagnóstico → Mapa de memoria → «Preguntar» → «Poner en la caja de escribir»',
   '# Settings → Memory → Analysis and tests → Memory review':
     '# Ajustes → Memoria → Análisis y pruebas → Revisión de la memoria',
   '# MATCH needs Ollama running with a chat model, and smart search on':
-    '# COINCIDENCIA necesita Ollama corriendo con un modelo de chat, y la búsqueda inteligente encendida',
+    '# «Coincidencia» necesita Ollama corriendo con un modelo de chat, y la búsqueda inteligente encendida',
   '# or: brew install node   # a Homebrew node owns its own prefix':
     '# o: brew install node   # el Node de Homebrew usa su propia carpeta',
   '# or use nvm, which owns the prefix it installs into':
@@ -2514,9 +2514,9 @@ export const ES = {
   '# docs/SDK.md is the whole contract, and docs/sdk/hello-module.mjs is one that works':
     '# docs/SDK.md es la documentación completa, y docs/sdk/hello-module.mjs es un ejemplo que funciona',
   '# the line in the project: local · @madre → TRY IT ON THIS PROJECT':
-    '# la línea en el proyecto: local · @madre → PROBARLO CON ESTE PROYECTO',
+    '# la línea en el proyecto: Local · @madre → «Probarlo con este proyecto»',
   '# or: Memory map → MEMORY REVIEW → the third test':
-    '# o: Mapa de memoria → REVISIÓN DE LA MEMORIA → la tercera prueba',
+    '# o: Mapa de memoria → «Revisión de la memoria» → la tercera prueba',
   '# it needs smart search on and some turns answered by a CLI agent, which is what it compares against':
     '# necesita la búsqueda inteligente encendida y algunas respuestas de un agente principal (Codex, Claude, Gemini u OpenCode), que es contra lo que compara',
   '# the temporary lock lifts on its own; Diagnostics › Memory map asks for the name again after it does':
@@ -2703,7 +2703,7 @@ export const ES = {
   'RAISE LOCAL BUDGET TO {n}': 'Subir el límite de uso local a {n}',
   'local budget is now {n} tokens per agent per 5h window.':
     'el límite de uso local ahora es {n} tokens por agente cada 5 h.',
-  'ASK': 'PREGUNTAR',
+  'ASK': 'Preguntar',
   'Memory map › {n} of {total} memories have had their chances and were never the answer. Ringed on the map.':
     'Mapa de memoria › {n} de {total} memorias han tenido oportunidad y nunca se han usado. Están marcadas en el mapa.',
   'UNUSED': 'SIN USAR',

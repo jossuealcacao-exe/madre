@@ -9,7 +9,7 @@ test('mother: a window like AJUSTES, with the answer first and the list beside i
   const [app, page, css] = await Promise.all([read('app.js'), read('index.html'), read('styles.css')]);
   // MU/TH/UR is a window of the room now: carried by its head, pulled by its edges, remembered.
   assert.match(page, /<dialog id="mother" class="surface window settings-window mother-window"/);
-  assert.match(page, /<span class="custom-title mother-mark">DIAGNOSTICS<\/span>/, 'the window says what it is');
+  assert.match(page, /<span class="custom-title mother-mark">Diagnostics<\/span>/, 'the window says what it is');
   assert.match(app, /carryWindowBy\(head, node, \{ box: \(\) => motherWindow\.box, place: placeMother, done: rememberMotherBox \}\);/);
   assert.match(app, /windowEdgesFor\(node, \{ box: \(\) => motherWindow\.box, place: placeMother, done: rememberMotherBox, minW: 340, minH: 320 \}\);/);
   assert.match(app, /localStorage\.setItem\('pulse\.motherWindow'/);
