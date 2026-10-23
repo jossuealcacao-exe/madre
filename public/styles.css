@@ -6258,6 +6258,9 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
   display: inline-block; font-family: var(--read); font-size: 11.5px; letter-spacing: 0; text-transform: lowercase; text-shadow: none;
 }
 .settings-detail .sx-analysis :is(.mem-strip-head b, .mem-strip-head span, .mem-axis span, summary b, summary .caret, th, td, .mem-signal .top b, .mem-bar .name, .exams > .note, .exam-head b, .exam-head .verdict, .exam-bullet span, .exam > .note:not(.about), .exam .actions button, .exam .actions .note)::first-letter { text-transform: uppercase; }
+/* The card's own notes are whole lines, so they keep their block and only change case. */
+.settings-detail .sx-analysis :is(.mem-card > .note, .card-fold-body > .note) { text-transform: lowercase; }
+.settings-detail .sx-analysis :is(.mem-card > .note, .card-fold-body > .note)::first-letter { text-transform: uppercase; }
 .settings-detail .sx-analysis .mem-strip-head b, .settings-detail .sx-analysis .mem-bar .name { color: var(--text); }
 .settings-detail .sx-analysis .mem-signal .top b, .settings-detail .sx-analysis .exam-head b { font-size: 12.5px; font-weight: 500; }
 /* The review's questions are written in sentence case; lowering them would turn «IA» into «ia». */

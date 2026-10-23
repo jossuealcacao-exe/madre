@@ -18536,11 +18536,11 @@ function drawPermissions(host, data) {
   }
   for (const mode of [3, 4]) {
     const current = config.keys[mode];
-    sxRow(keys, `#${mode} ${MODES[mode].label}`, overrideKeyHint(mode, current), sxSeg((mode === 3 ? ['designation', 'phrase', 'confirm'] : ['designation-airlock', 'phrase-airlock', 'designation']).map((key) => ({
+    sxRow(keys, `#${mode} ${sentence(MODES[mode].label)}`, overrideKeyHint(mode, current), sxSeg((mode === 3 ? ['designation', 'phrase', 'confirm'] : ['designation-airlock', 'phrase-airlock', 'designation']).map((key) => ({
       value: key, text: OVERRIDE_KEY_WORDS[key](),
       disabled: key.startsWith('phrase') && (!config.phrase || !canHash),
       title: key.startsWith('phrase') && !config.phrase ? t('Save a phrase below first.') : overrideKeyHint(mode, key),
-    })), current, (key) => saveOverride({ keys: { [mode]: key } }, t('#{n} {label} now asks for: {key}.', { n: mode, label: MODES[mode].label, key: OVERRIDE_KEY_WORDS[key]().toLowerCase() })), { label: `#${mode} ${MODES[mode].label}` }), { stack: true });
+    })), current, (key) => saveOverride({ keys: { [mode]: key } }, t('#{n} {label} now asks for: {key}.', { n: mode, label: sentence(MODES[mode].label), key: OVERRIDE_KEY_WORDS[key]().toLowerCase() })), { label: `#${mode} ${sentence(MODES[mode].label)}` }), { stack: true });
   }
   sxFoot(keys, t('#4 always asks you to confirm: it runs commands, and what leaves the machine does not come back.'));
 
@@ -18571,9 +18571,9 @@ function drawPermissions(host, data) {
   const grace = sxBlock(host, t('Remember permission'), t('After you confirm, the same agent won\'t ask again for a while. Reloading the page or STOP ALL ends it.'));
   for (const mode of [3, 4]) {
     const options = mode === 3 ? [0, 5, 15, 30] : [0, 5];
-    sxRow(grace, `#${mode} ${MODES[mode].label}`, mode === 4 ? t('Never longer than 5 minutes.') : t('Raising an agent\'s max mode always asks, remembered permission or not.'), sxSeg(options.map((minutes) => ({ value: minutes, text: minutes ? t('{n} min', { n: minutes }) : t('Off') })), config.grace[mode] ?? 0, (minutes) => {
+    sxRow(grace, `#${mode} ${sentence(MODES[mode].label)}`, mode === 4 ? t('Never longer than 5 minutes.') : t('Raising an agent\'s max mode always asks, remembered permission or not.'), sxSeg(options.map((minutes) => ({ value: minutes, text: minutes ? t('{n} min', { n: minutes }) : t('Off') })), config.grace[mode] ?? 0, (minutes) => {
       if (!minutes) closeOverrideGrace(mode);
-      return saveOverride({ grace: { [mode]: minutes } }, minutes ? t('#{n} {label} stays unlocked for {minutes} min after you confirm it.', { n: mode, label: MODES[mode].label, minutes }) : t('#{n} {label} asks you to confirm every message.', { n: mode, label: MODES[mode].label }));
+      return saveOverride({ grace: { [mode]: minutes } }, minutes ? t('#{n} {label} stays unlocked for {minutes} min after you confirm it.', { n: mode, label: sentence(MODES[mode].label), minutes }) : t('#{n} {label} asks you to confirm every message.', { n: mode, label: sentence(MODES[mode].label) }));
     }, { label: t('Remember permission for #{n}', { n: mode }) }));
   }
 
@@ -18594,10 +18594,10 @@ function drawPermissions(host, data) {
   for (const agent of data.agents.filter((one) => one.detected)) {
     const scopes = data.settings.capabilities?.[agent.id]?.scopes ?? {};
     const cap = scopes.maxMode ?? 1;
-    const row = sxRow(who, agent.label, `#${cap} ${MODES[cap].label}`, sxSeg([0, 1, 2, 3, 4].map((n) => ({
-      value: n, text: `#${n}`, title: `${MODES[n].label} · ${MODES[n].hint}`, className: `o${n}`, disabled: !(n <= 1 || scopes.write?.capable),
+    const row = sxRow(who, agent.label, `#${cap} ${sentence(MODES[cap].label)}`, sxSeg([0, 1, 2, 3, 4].map((n) => ({
+      value: n, text: `#${n}`, title: `${sentence(MODES[n].label)} · ${MODES[n].hint}`, className: `o${n}`, disabled: !(n <= 1 || scopes.write?.capable),
     })), cap, async (n) => {
-      try { await saveSettingNow({ scopes: { [agent.id]: { maxMode: n } } }, t('@{agent} is now capped at #{n} {label}.', { agent: agent.id, n, label: MODES[n].label })); }
+      try { await saveSettingNow({ scopes: { [agent.id]: { maxMode: n } } }, t('@{agent} is now capped at #{n} {label}.', { agent: agent.id, n, label: sentence(MODES[n].label) })); }
       catch (error) { toast(t('The max mode was not saved: {error}', { error: error.message })); }
       await loadSettings();
     }, { label: t('Max mode for @{agent}', { agent: agent.id }) }));
