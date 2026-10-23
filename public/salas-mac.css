@@ -64,7 +64,7 @@ body.salas-mac {
 .sm-back-room { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 26px; padding: 0 9px 0 5px; border-radius: 6px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); color: var(--text-2); font-weight: 600; text-decoration: none; }
 .sm-back-room svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-back-room:hover { color: var(--text); box-shadow: var(--key-over, var(--key-rest)); }
-.sm-crumb { flex: none; font-weight: 600; color: var(--text); }
+.sm-crumb { flex: none; font-family: var(--read); font-size: 13px; font-weight: 600; color: var(--text); }
 .sm-crumb::before { content: '/ '; color: var(--text-3); font-weight: 400; }
 .sm-live { display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--text-2); }
 .sm-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--session-ok); box-shadow: none; animation: sm-state-pulse 2.6s ease-in-out infinite; }
@@ -195,6 +195,8 @@ body.salas-mac {
 .sm-card-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Chips in a flat tone (the room's, 6 Oct): seven-pixel corners, no rim, no shadow. */
 .sm-chip { flex: none; padding: 3px 8px; border-radius: 7px; font-family: var(--mono); font-size: 11px; letter-spacing: .02em; }
+/* A count is a sentence, not a value to copy: it reads in the room's letter. */
+#sm-memory-total { font-family: var(--read); font-size: 12px; letter-spacing: 0; }
 .sm-chip.port { color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); }
 .sm-chip.here { color: color-mix(in srgb, var(--s-acc) 72%, var(--text)); background: color-mix(in srgb, var(--s-acc) 16%, transparent); font-family: var(--read); font-weight: 650; }
 .sm-path { margin: -5px 0 0; font-family: var(--mono); font-size: 11.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -595,6 +597,7 @@ body.sm-in-macro { overflow: hidden; }
 .sm-fold.known .sm-fold-tick { background: var(--text-3); }
 .sm-fold-words { display: grid; gap: 1px; min-width: 0; }
 .sm-fold-words b { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-fold-words small.note { font-family: var(--read); }
 .sm-fold-words small { font-family: var(--mono); font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-into { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); cursor: pointer; }
 .sm-into svg { width: var(--ico-sm); height: var(--ico-sm); }
@@ -678,7 +681,7 @@ body.sm-in-macro { overflow: hidden; }
 .salas-mac .settings-switch input:checked + i { background: var(--s-acc); }
 .lw-step { gap: 16px; }
 .lw-intro { display: grid; gap: 6px; }
-.lw-eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-2); }
+.lw-eyebrow { font-family: var(--read); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-2); }
 .lw-intro h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.015em; }
 .lw-lead { margin: 0; max-width: 58ch; font-size: 14px; line-height: 1.55; color: var(--text-2); }
 .lw-card { display: grid; margin: 0; padding: 2px 16px; list-style: none; border-radius: 14px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); }

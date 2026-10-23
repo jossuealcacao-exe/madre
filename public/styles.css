@@ -10132,7 +10132,7 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-slide { --mk-a: #60a5fa; --mk-b: #1d4ed8; position: relative; flex: 0 0 100%; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; min-height: 380px; overflow: hidden; scroll-snap-align: start; color: #fff; cursor: pointer; background: radial-gradient(90% 120% at 88% 12%, color-mix(in srgb, var(--mk-a) 70%, #fff) 0%, transparent 60%), linear-gradient(135deg, var(--mk-a), var(--mk-b)); }
 .mk-slide::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 80% at 0% 100%, rgba(0, 0, 0, .28), transparent 70%); }
 .mk-slide-words { position: relative; display: grid; align-content: center; gap: 10px; min-width: 0; padding: 40px 0 40px 46px; }
-.mk-slide-words small { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .86; }
+.mk-slide-words small { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; opacity: .86; }
 .mk-slide-words h2 { margin: 0; font-size: clamp(28px, 3.6vw, 42px); font-weight: 780; letter-spacing: -.025em; line-height: 1.04; text-wrap: balance; }
 .mk-slide-words p { margin: 0; max-width: 34ch; font-size: 16.5px; line-height: 1.45; opacity: .94; text-wrap: pretty; }
 .mk-slide-get { display: flex; align-items: center; gap: 12px; width: max-content; max-width: 100%; margin-top: 16px; padding: 10px 12px 10px 10px; border-radius: 18px; background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); box-sizing: border-box; }

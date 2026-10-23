@@ -3653,7 +3653,7 @@ function foldTile({ name, path, note = null, project = true, known = false, chec
   tick.innerHTML = FOLD_TICK;
   glyph.append(tick);
   const words = el('span', 'sm-fold-words');
-  words.append(el('b', null, name), el('small', null, note ?? homeWord(path)));
+  words.append(el('b', null, name), el('small', note ? 'note' : null, note ?? homeWord(path)));
   item.append(box, glyph, words);
   if (enter) {
     const into = button('sm-into', null, (event) => { event.preventDefault(); enter(); });
