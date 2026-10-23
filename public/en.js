@@ -405,4 +405,14 @@ export const EN = {
   "#{n} {label} now asks for: {key}.": "«#{n} {label}» now asks for: {key}.",
   "#{n} {label} stays unlocked for {minutes} min after you confirm it.": "«#{n} {label}» stays unlocked for {minutes} min after you confirm it.",
   "@{agent} is now capped at #{n} {label}.": "@{agent} is now capped at «#{n} {label}».",
+  // ux/refresh · parte 5, avisos de la sala y del servidor
+  "Diagnostics › /{name} is not available in this project: {title} (see MODULES).": "Diagnostics › /{name} is not available in this project: {title} (see «Modules»).",
+  "Diagnostics › @{agent} {why}. CREATE will be refused; pick another agent or change it in Settings › Agents.": "Diagnostics › @{agent} {why}. «Create» will be refused; pick another agent or change it in «Settings › Agents».",
+  "Diagnostics › MADRE {version} is on npm. Open SETTINGS › Version to restart with it.": "Diagnostics › MADRE {version} is on npm. Open «Settings › Version» to restart with it.",
+  "Ollama did not answer. Open the Ollama app, then press RECHECK.": "Ollama did not answer. Open the Ollama app, then press «Recheck».",
+  "Ollama {client} is installed, but {running} is still the one answering. Quit Ollama (or restart its service) and open it again, then RECHECK.": "Ollama {client} is installed, but {running} is still the one answering. Quit Ollama (or restart its service) and open it again, then press «Recheck».",
+  "The old Ollama ({running}) did not stop. Quit it by hand, then press START OLLAMA.": "The old Ollama ({running}) did not stop. Quit it by hand, then press «Start Ollama».",
+  "Preview is off. Enable it in MODULES to render files.": "«Preview» is off. Enable it in «Modules» to render files.",
+  "PREVIEW reaches this computer only · turn the web on in MODULES to open an address outside it": "«Preview» reaches this computer only · turn the web on in «Modules» to open an address outside it",
+  "EYECAT is not holding that one.": "The memory reviewer is not holding that one.",
 };

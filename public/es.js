@@ -229,7 +229,7 @@ export const ES = {
   'Only http and https.': 'Solo se aceptan direcciones http y https.',
   'That is not an address.': 'Eso no es una dirección.',
   'PREVIEW reaches this computer only · turn the web on in MODULES to open an address outside it':
-    'VISTA PREVIA solo abre páginas de esta computadora · activa la web en MÓDULOS para abrir otras direcciones',
+    '«Vista previa» solo abre páginas de esta computadora · activa la web en «Módulos» para abrir otras direcciones',
   'SEE SPENDING': 'Ver el consumo',
   'SPENDING': 'CONSUMO',
   'NOT CHARGED IN FULL': 'Sin cobro completo',
@@ -1669,14 +1669,14 @@ export const ES = {
     'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Corre el comando en una terminal y luego dale REVISAR OTRA VEZ.',
   'Your models stay where they are.': 'Tus modelos se quedan donde están.',
   'Ollama did not answer. Open the Ollama app, then press RECHECK.':
-    'Ollama no contestó. Abre la app de Ollama y dale REVISAR OTRA VEZ.',
+    'Ollama no contestó. Abre la app de Ollama y dale «Revisar otra vez».',
   'Ollama {client} is installed, but {running} is still the one answering. Quit Ollama (or restart its service) and open it again, then RECHECK.':
-    'Ollama {client} está instalado, pero el que sigue contestando es {running}. Cierra Ollama (o reinicia su servicio), ábrelo otra vez y dale REVISAR OTRA VEZ.',
+    'Ollama {client} está instalado, pero el que sigue contestando es {running}. Cierra Ollama (o reinicia su servicio), ábrelo otra vez y dale «Revisar otra vez».',
   'The old Ollama ({running}) did not stop. Quit it by hand, then press START OLLAMA.':
-    'El Ollama viejo ({running}) no se detuvo. Ciérralo a mano y dale ARRANCAR OLLAMA.',
+    'El Ollama viejo ({running}) no se detuvo. Ciérralo a mano y dale «Encender Ollama».',
   'Installing a module writes into the project; send { "confirm": true } to proceed.':
     'Instalar un módulo escribe en el proyecto; manda { "confirm": true } para seguir.',
-  'Preview is off. Enable it in MODULES to render files.': 'Vista previa está apagada. Enciéndela en MÓDULOS para mostrar archivos.',
+  'Preview is off. Enable it in MODULES to render files.': '«Vista previa» está apagada. Enciéndela en «Módulos» para mostrar archivos.',
   'No such report, or no repository to file it in.': 'No existe ese reporte, o no hay repositorio donde publicarlo.',
   'The project has no memory.': 'El proyecto no tiene memoria.',
   'EYECAT is not holding that one.': 'El revisor de memoria ya no tiene pendiente esa contradicción.',
@@ -2753,11 +2753,11 @@ export const ES = {
   'Diagnostics › @{agent} cannot generate images here; routing to @{other}.':
     'Diagnóstico › @{agent} no puede generar imágenes aquí; lo hará @{other}.',
   'Diagnostics › /{name} is not available in this project: {title} (see MODULES).':
-    'Diagnóstico › /{name} no está disponible en este proyecto: {title} (revisa Módulos).',
+    'Diagnóstico › /{name} no está disponible en este proyecto: {title} (revisa «Módulos»).',
   'Upload failed ({status}).': 'Falló la subida ({status}).',
   'CREATE: let the agent add new files to the project for this request; existing files stay untouched':
     'CREAR: deja que el agente agregue archivos nuevos al proyecto para esta petición; los que ya existen no se tocan',
-  'Diagnostics › @{agent} {why}. CREATE will be refused; pick another agent or change it in Settings › Agents.': 'Diagnóstico › @{agent} {why}. No podrá crear archivos; elige otro agente o cámbialo en Ajustes › Agentes.',
+  'Diagnostics › @{agent} {why}. CREATE will be refused; pick another agent or change it in Settings › Agents.': 'Diagnóstico › @{agent} {why}. No podrá crear archivos; elige otro agente o cámbialo en «Ajustes › Agentes».',
   'has file creation switched off': 'tiene apagada la creación de archivos',
   'cannot create files from its CLI': 'no puede crear archivos desde su app',
   'Request failed ({status}).': 'Falló la petición ({status}).',
@@ -3487,7 +3487,7 @@ export const ES = {
   'Download {model}': 'Descargar {model}',
   'No model for it yet.': 'Aún no hay modelo para esto.',
   'Kept in MADRE\'s vault under this module\'s name. The value goes nowhere but the module.': 'Se guarda de forma segura en MADRE con el nombre de este módulo. Solo lo recibe el módulo.',
-  'Diagnostics › MADRE {version} is on npm. Open SETTINGS › Version to restart with it.': 'Diagnóstico › Ya salió MADRE {version}. Abre Ajustes › Versión para reiniciar con ella.',
+  'Diagnostics › MADRE {version} is on npm. Open SETTINGS › Version to restart with it.': 'Diagnóstico › Ya salió MADRE {version}. Abre «Ajustes › Versión» para reiniciar con ella.',
   'What to do': 'Qué hacer',
   'Apply': 'Aplicar',
   'Applied': 'Aplicado',
