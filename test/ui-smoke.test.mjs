@@ -285,7 +285,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   message.value = '/module un reloj local';
   for (const listener of message.listeners.input ?? []) listener({});
   assert.equal(registry.get('composer').classList.contains('module-command'), true, 'the module typebox did not turn on');
-  assert.match(registry.get('crew-label').textContent, /Module · Requiere #2/);
+  assert.match(registry.get('crew-label').textContent, /Módulo · Requiere #2/);
   const chosenTarget = registry.get('target').value;
   // Sent, it arms #2 for its message the way /image does, and goes.
   const moduleRequest = await globalThis.__pulse.runSlashCommand(message.value);

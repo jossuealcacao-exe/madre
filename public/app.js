@@ -3314,7 +3314,7 @@ function renderPicker() {
     modeChip.type = 'button';
     modeChip.append(el('b', null, `#${shown}`), el('span', 'word', sentence(MODES[shown].label)), chevron());
     modeChip.title = state.typedPending
-      ? t('#{n} {label} is written in the message: you will be asked to confirm it when you send it.', { n: shown, label: MODES[shown].label })
+      ? t('#{n} {label} is written in the message: you will be asked to confirm it when you send it.', { n: shown, label: sentence(MODES[shown].label) })
       : t('Permission mode for this message · {hint}', { hint: MODES[state.mode].hint });
     modeChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModeMenu(current.id, modeChip); });
     text.append(modeChip);
@@ -3326,9 +3326,9 @@ function renderPicker() {
       grace.type = 'button';
       grace.dataset.mode = String(mode);
       grace.dataset.agent = current.id;
-      grace.title = t('{label} does not ask you to confirm again for @{agent} until this runs out. Click to end it now.', { label: MODES[mode].label, agent: current.id });
+      grace.title = t('{label} does not ask you to confirm again for @{agent} until this runs out. Click to end it now.', { label: `«${sentence(MODES[mode].label)}»`, agent: current.id });
       grace.append(el('b', null, `#${mode}`), el('span', null, t('open')), el('span', 'left', graceWords(left)), el('i', null, '×'));
-      grace.addEventListener('click', (event) => { event.stopPropagation(); closeOverrideGrace(mode, current.id); toast(t('Diagnostics › {label} locked again for @{agent}: the next message asks you to confirm again.', { label: MODES[mode].label, agent: current.id }), { tone: 'done' }); });
+      grace.addEventListener('click', (event) => { event.stopPropagation(); closeOverrideGrace(mode, current.id); toast(t('Diagnostics › {label} locked again for @{agent}: the next message asks you to confirm again.', { label: `«${sentence(MODES[mode].label)}»`, agent: current.id }), { tone: 'done' }); });
       text.append(grace);
       break;
     }
@@ -4166,7 +4166,7 @@ async function grantOverride({ agent, raise, mode, then, delay = 0, left = 0, pa
       await saveSettingNow({ scopes: { [agent]: { maxMode: mode } } });
       if (settingsUI.open) renderSettings();
     } catch (error) {
-      toast(t('Diagnostics › MAX MODE was not raised for @{agent}: {error}. {mode} stays off.', { agent, error: error.message, mode: MODES[mode].label }));
+      toast(t('Diagnostics › MAX MODE was not raised for @{agent}: {error}. {mode} stays off.', { agent, error: error.message, mode: `«${sentence(MODES[mode].label)}»` }));
       return;
     }
   }
@@ -4178,7 +4178,7 @@ async function grantOverride({ agent, raise, mode, then, delay = 0, left = 0, pa
     setMode(mode, { wink: true });
   }
   if (then) { await then(); return; }
-  if (left) { toast(t('Diagnostics › {label} is still open for @{agent} · {left} left.', { label: MODES[mode].label, agent, left: graceWords(left) }), { tone: 'look' }); return; }
+  if (left) { toast(t('Diagnostics › {label} is still open for @{agent} · {left} left.', { label: `«${sentence(MODES[mode].label)}»`, agent, left: graceWords(left) }), { tone: 'look' }); return; }
   toast(mode === 4
     ? t('Diagnostics › FULL ACCESS open for @{agent} for this message.{raised} The files get a restore point; what leaves the machine is not undone.', { agent, raised: raise ? t(' Its max mode is now #4 in Permissions.') : '' })
     : t('Diagnostics › EDIT unlocked for @{agent} for this message.{raised} A restore point is taken before it runs; every change is listed and UNDO is one click.', { agent, raised: raise ? t(' Its max mode is now #3 in Permissions.') : '' }));

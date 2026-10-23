@@ -14,7 +14,7 @@ export const ES = {
   // El compositor: lo primero que una persona lee de MADRE.
   'Type here, human. Ask the project…': '¿Qué necesitas? Pregunta lo que quieras de tu proyecto…',
   'CREATE on: what to make. New files land where they belong in the project; nothing existing changes.':
-    'CREAR encendido: di qué quieres crear. Los archivos nuevos se guardan en su lugar dentro del proyecto; no se modifica nada de lo que ya existe.',
+    '«Crear» encendido: di qué quieres crear. Los archivos nuevos se guardan en su lugar dentro del proyecto; no se modifica nada de lo que ya existe.',
   'Compact prose. Nothing you write is altered; only the answers get shorter.':
     'Respuestas más cortas. Lo que tú escribes no cambia; solo se acortan las respuestas.',
   'In this project, a typical answer uses {on} output tokens with TOKEN SAVER ({onTurns} answers) and {off} without it ({offTurns}). You choose when to ask for compact answers, so these are different tasks, not the same task twice.':
@@ -278,9 +278,9 @@ export const ES = {
   'Incognito. Ask anything; nothing is saved and the project will not remember it.':
     'Incógnito. Pregunta lo que quieras: no se guarda nada y el proyecto no lo va a recordar.',
   'EDIT unlocked. Say what to change in the project; every action runs without asking.':
-    'EDITAR desbloqueado. Di qué cambiar en el proyecto: cada acción se ejecuta sin pedirte permiso.',
+    '«Editar» desbloqueado. Di qué cambiar en el proyecto: cada acción se ejecuta sin pedirte permiso.',
   '#4 FULL ACCESS unlocked. Commands run here, and changes are pushed or deployed outside your computer. Say exactly what should go out.':
-    '#4 ACCESO TOTAL desbloqueado. Aquí se ejecutan comandos y se suben (push) o publican (deploy) cambios fuera de tu computadora. Di exactamente qué se debe subir o publicar.',
+    '«#4 Acceso total» desbloqueado. Aquí se ejecutan comandos y se suben (push) o publican (deploy) cambios fuera de tu computadora. Di exactamente qué se debe subir o publicar.',
   'Type here, human. MADRE is listening.': '¿Qué necesitas? MADRE te escucha…',
   'Ask what the project remembers. @madre answers from memory with citations; it does not act.':
     'Pregunta qué recuerda el proyecto. @madre contesta desde la memoria y cita de dónde lo saca; no ejecuta nada.',
@@ -825,7 +825,7 @@ export const ES = {
   // ── LAS FICHAS DE MÓDULO ──────────────────────────────────────────────────
   'Your module · {where} · {file}': 'Tu módulo · {where} · {file}',
   'this project': 'este proyecto',
-  'THIS PROJECT': 'ESTE PROYECTO',
+  'THIS PROJECT': 'Este proyecto',
   'EVERY PROJECT': 'TODOS LOS PROYECTOS',
   'Check for a newer {what}': 'Busca una versión más nueva de {what}',
   'version': 'versión',
@@ -2145,7 +2145,7 @@ export const ES = {
     'NAVEGADOR DE PRUEBAS se queda apagado: MADRE descargó el navegador {browser} y aún no arranca ({problem}). Revisa tu conexión a internet y vuelve a encenderlo, o elige otro navegador en sus ajustes.',
   'TEST BROWSER stays off: MADRE could not install its browser server ({problem}). Check your internet connection and turn it on again.':
     'NAVEGADOR DE PRUEBAS se queda apagado: MADRE no pudo instalar su servidor de navegador ({problem}). Revisa tu conexión a internet y vuelve a encenderlo.',
-  '#{n} {label} is written in the message: you will be asked to confirm it when you send it.': '#{n} {label} está escrito en el mensaje: se te pedirá confirmarlo al enviarlo.',
+  '#{n} {label} is written in the message: you will be asked to confirm it when you send it.': '«#{n} {label}» está escrito en el mensaje: se te pedirá confirmarlo al enviarlo.',
   'stopped at the {seconds}s limit': 'detenido al llegar al límite de {seconds} s',
   'stopped ({why})': 'detenido ({why})',
   'did not start': 'no arrancó',
@@ -2181,12 +2181,12 @@ export const ES = {
 
   // ── EL COMPOSITOR, LOS MODOS Y LA ANULACIÓN ──────────────────────────────
   'Arm CREATE for this message: the agent may add new files to the project where they belong.':
-    'Activa CREAR para este mensaje: el agente puede agregar archivos nuevos al proyecto donde correspondan.',
+    'Activa «Crear» para este mensaje: el agente puede agregar archivos nuevos al proyecto donde correspondan.',
   'Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.':
     'Construye un módulo de MADRE paso a paso: el agente lo escribe y después tú lo revisas e instalas.',
   'Image': 'Imagen',
   'Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.':
-    'Pide una imagen: activa CREAR solo para imágenes y envía la petición a un agente que sepa generarlas.',
+    'Pide una imagen: activa «Crear» solo para imágenes y envía la petición a un agente que sepa generarlas.',
   'Master brake: halt every plan and turn in flight. Never reaches an agent.':
     'Freno de emergencia: detiene todos los planes y respuestas en curso. Este comando no se envía a ningún agente.',
   'Preview can render this file. ': 'Vista previa puede mostrar este archivo. ',
@@ -2198,12 +2198,12 @@ export const ES = {
   'default model': 'modelo por defecto',
   ' · model for this request': ' · modelo para esta petición',
   ' · max mode #{cap}': ' · permiso máximo #{cap}',
-  'NOW': 'AHORA',
-  'RAISE TO #{n} ›': 'SUBIR A #{n} ›',
-  'LOCKED': 'BLOQUEADO',
-  'CONFIRM ×2': 'CONFIRMAR ×2',
-  'CONFIRM': 'CONFIRMAR',
-  'DEFAULT': 'POR DEFECTO',
+  'NOW': 'Ahora',
+  'RAISE TO #{n} ›': 'Subir a #{n} ›',
+  'LOCKED': 'Bloqueado',
+  'CONFIRM ×2': 'Confirmar ×2',
+  'CONFIRM': 'Confirmar',
+  'DEFAULT': 'Por defecto',
   "Above @{id}'s max mode (#{cap}). Raise it in Settings › Permissions.": 'Por encima del permiso máximo de @{id} (#{cap}). Súbelo en Ajustes › Permisos.',
   '@{id} is capped at #{cap}. This raises its max mode to #{n} in Settings › Permissions and opens the unlock.':
     '@{id} tiene su permiso máximo en #{cap}. Esto lo sube a #{n} en Ajustes › Permisos y abre el desbloqueo.',
@@ -2559,15 +2559,15 @@ export const ES = {
   'dark': 'oscuro',
   'could not list: {error}': 'no se pudo listar: {error}',
   'No agent ready': 'Ningún agente listo',
-  'FILE · ↑↓ · TAB OR ENTER · add :12-20 for lines': 'ARCHIVO · ↑↓ · TAB O ENTER · agrega :12-20 para líneas',
-  'MODE · ↑↓ · TAB OR ENTER': 'MODO · ↑↓ · TAB O ENTER',
+  'FILE · ↑↓ · TAB OR ENTER · add :12-20 for lines': 'Archivo · ↑↓ · Tab o Enter · agrega :12-20 para líneas',
+  'MODE · ↑↓ · TAB OR ENTER': 'Modo · ↑↓ · Tab o Enter',
   "{hint} · above @{agent}'s max mode": '{hint} · por encima del permiso máximo de @{agent}',
-  '{title} is not available here · see MODULES': '{title} no está disponible aquí · mira MÓDULOS',
+  '{title} is not available here · see MODULES': '{title} no está disponible aquí · mira «Módulos»',
   'Diagnostics › /{name} needs a request after it, e.g. "/{name} a poster for the launch".':
     'Diagnóstico › /{name} necesita una petición después, por ejemplo «/{name} un póster para el lanzamiento».',
   'Diagnostics › /module needs a job, e.g. "/module summarize today’s commits".':
     'Diagnóstico › /module necesita una tarea, por ejemplo «/module resume los commits de hoy».',
-  'DIAGNOSTICS · MODULE · NEEDS #2 ›': 'DIAGNÓSTICO · MODULE · REQUIERE #2 ›',
+  'DIAGNOSTICS · MODULE · NEEDS #2 ›': 'DIAGNÓSTICO · MÓDULO · REQUIERE #2 ›',
   'Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Set vendor to whoever wrote it — the human\'s name or team if you know it, otherwise leave it out; never the word "you". Do not install it; MADRE will show the human an install card.':
     'Crea un módulo de MADRE para esta petición: {request} Escribe exactamente un archivo <id>.module.mjs para revisión. Pon en vendor a quien lo escribió —el nombre o el equipo del humano si lo sabes, y si no, déjalo fuera; nunca la palabra «you»—. No lo instales; MADRE le va a mostrar al humano una tarjeta de instalación.',
   'Diagnostics › unknown command /{name}. Type "/" to see what this project offers.':
@@ -2770,15 +2770,15 @@ export const ES = {
   // CORREO y, en general, la llave de cualquier conector: lo que MADRE guarda en su bodega.
 
   // Los arranques de /module: una instrucción para editar, no un comando para mandar.
-  'MODULE · ↑↓ · TAB OR ENTER · pick one and edit it': 'MÓDULO · ↑↓ · TAB O ENTER · elige uno y edítalo',
+  'MODULE · ↑↓ · TAB OR ENTER · pick one and edit it': 'Módulo · ↑↓ · Tab o Enter · elige uno y edítalo',
   'a command that tells me what changed in the repo this week': 'un comando que me diga qué cambió en el repo esta semana',
   'a slash command · runs in the project, answers as a card': 'un comando con / · se ejecuta en el proyecto y responde con una tarjeta',
   'connect me to my Notion so the agents can search my pages': 'conéctame con mi Notion para que los agentes busquen en mis páginas',
   'an integration · one key, pasted on its card': 'una integración · una llave de API, pegada en su ficha',
   'ping me on Telegram when a turn fails': 'avísame por Telegram cuando falle una respuesta',
-  'an integration that sends · only offered in #4 FULL ACCESS': 'una integración que envía mensajes · solo en #4 ACCESO TOTAL',
+  'an integration that sends · only offered in #4 FULL ACCESS': 'una integración que envía mensajes · solo en «#4 Acceso total»',
   'a card showing which of my services are up': 'una tarjeta que muestre cuáles de mis servicios están funcionando',
-  'a card of your own · its own panel inside MODULES': 'una ficha propia · su propio panel dentro de MÓDULOS',
+  'a card of your own · its own panel inside MODULES': 'una ficha propia · su propio panel dentro de «Módulos»',
 
   // La tarjeta de desarrollo en MÓDULOS.
   'Puts /module in the Write box, in the project': 'Escribe /module en el cuadro de mensaje del proyecto',
@@ -2828,11 +2828,11 @@ export const ES = {
   'Nobody has measured it against this project yet: Diagnostics → Memory review, or the line in the project when it joined.':
     'Nadie lo ha medido todavía en este proyecto: ve a Diagnóstico → Revisión de la memoria, o revisa el mensaje que apareció en la conversación cuando se conectó.',
   'Diagnostics › FULL ACCESS open for @{agent} for this message.{raised} The files get a restore point; what leaves the machine is not undone.':
-    'Diagnóstico › ACCESO TOTAL desbloqueado para @{agent} en este mensaje.{raised} Se guarda un punto de restauración de los archivos; lo que sale de la computadora no se deshace.',
-  ' Its max mode is now #4 in Permissions.': ' Su permiso máximo ahora es #4 en Permisos.',
+    'Diagnóstico › «Acceso total» desbloqueado para @{agent} en este mensaje.{raised} Se guarda un punto de restauración de los archivos; lo que sale de la computadora no se deshace.',
+  ' Its max mode is now #4 in Permissions.': ' Su permiso máximo ahora es #4 en «Permisos».',
   'Diagnostics › EDIT unlocked for @{agent} for this message.{raised} A restore point is taken before it runs; every change is listed and UNDO is one click.':
-    'Diagnóstico › EDITAR desbloqueado para @{agent} en este mensaje.{raised} Antes de empezar se guarda un punto de restauración; cada cambio aparece en una lista y puedes DESHACER con un clic.',
-  ' Its max mode is now #3 in Permissions.': ' Su permiso máximo ahora es #3 en Permisos.',
+    'Diagnóstico › «Editar» desbloqueado para @{agent} en este mensaje.{raised} Antes de empezar se guarda un punto de restauración; cada cambio aparece en una lista y puedes deshacerlo con un clic.',
+  ' Its max mode is now #3 in Permissions.': ' Su permiso máximo ahora es #3 en «Permisos».',
   "Conversation · {n} messages. The project's memory is shared by all of them.":
     'Conversación · {n} mensajes. La memoria del proyecto es la misma para todos ellos.',
 
@@ -3051,8 +3051,8 @@ export const ES = {
   'It stays for every message to this agent until you change it.': 'Se queda para cada mensaje a este agente hasta que lo cambies.',
 
   // El menú de comandos.
-  'MENTION · ↑↓ · TAB OR ENTER': 'MENCIÓN · ↑↓ · TAB O ENTER',
-  'COMMAND · ↑↓ · TAB OR ENTER': 'COMANDO · ↑↓ · TAB O ENTER',
+  'MENTION · ↑↓ · TAB OR ENTER': 'Mención · ↑↓ · Tab o Enter',
+  'COMMAND · ↑↓ · TAB OR ENTER': 'Comando · ↑↓ · Tab o Enter',
   'Repository status, recent commits, uncommitted changes and branches from the project itself; commit and push by your own hand, with a confirmation before anything leaves.':
     'Estado del repositorio, commits recientes, cambios sin commit y ramas, leídos del propio proyecto; commit y push solo cuando tú lo pides, con una confirmación antes de que algo se suba.',
   'Ask the AHP+ installed in this project for its verified status, checks or session context.':
@@ -3105,8 +3105,8 @@ export const ES = {
   '<what to make>': '<qué crear>',
   '<what it should do>': '<qué debe hacer>',
   '<what to draw>': '<qué dibujar>',
-  'FROM THE MODULES': 'DE LOS MÓDULOS',
-  'NOT AVAILABLE HERE': 'NO DISPONIBLES AQUÍ',
+  'FROM THE MODULES': 'De los módulos',
+  'NOT AVAILABLE HERE': 'No disponibles aquí',
   'move': 'moverse',
   'choose': 'elegir',
   'close': 'cerrar',
@@ -3533,12 +3533,12 @@ export const ES = {
   'Diagnostics › {label} is still open for @{agent} · {left} left.': 'Diagnóstico › {label} sigue abierto para @{agent} · quedan {left}.',
   '#{n} holds {minutes} min': '#{n} dura {minutes} min',
   'asked every message': 'se pide en cada mensaje',
-  'One click on UNLOCK. EDIT saves a copy first, so UNDO is one click away.': 'Un clic en DESBLOQUEAR. EDITAR guarda una copia antes, así que DESHACER está a un clic.',
+  'One click on UNLOCK. EDIT saves a copy first, so UNDO is one click away.': 'Un clic en «Desbloquear». «Editar» guarda una copia antes, así que «Deshacer» está a un clic.',
   'Your phrase, typed when you unlock it.': 'Tu frase, escrita al desbloquearlo.',
   'The folder name of the project ({name}), with no second confirmation.': 'El nombre de la carpeta del proyecto ({name}), sin segunda confirmación.',
   'The folder name of the project ({name}).': 'El nombre de la carpeta del proyecto ({name}).',
   'How you unlock modes': 'Cómo desbloqueas los modos',
-  'What you type to unlock #3 EDIT and #4 FULL ACCESS. Asked on every message, unless you chose to remember it below.': 'Lo que escribes para desbloquear #3 EDITAR y #4 ACCESO TOTAL. Se pide en cada mensaje, salvo que abajo elijas recordarlo.',
+  'What you type to unlock #3 EDIT and #4 FULL ACCESS. Asked on every message, unless you chose to remember it below.': 'Lo que escribes para desbloquear «#3 Editar» y «#4 Acceso total». Se pide en cada mensaje, salvo que abajo elijas recordarlo.',
   'Save a phrase below first.': 'Primero guarda una frase abajo.',
   '#{n} {label} now asks for: {key}.': '#{n} {label} ahora pide: {key}.',
   '#4 always asks you to confirm: it runs commands, and what leaves the machine does not come back.': '#4 siempre pide confirmar: puede ejecutar comandos, y lo que sale de la computadora no se puede deshacer.',
@@ -3573,8 +3573,8 @@ export const ES = {
   'Diagnostics settings': 'Ajustes de Diagnóstico',
   'Project': 'Proyecto',
   'Phrase': 'Frase',
-  'Open #4 FULL ACCESS for @{agent}': 'Desbloquear #4 ACCESO TOTAL para @{agent}',
-  'Unlock #3 EDIT for @{agent}': 'Desbloquear #3 EDITAR para @{agent}',
+  'Open #4 FULL ACCESS for @{agent}': 'Desbloquear «#4 Acceso total» para @{agent}',
+  'Unlock #3 EDIT for @{agent}': 'Desbloquear «#3 Editar» para @{agent}',
   'Unlock': 'Desbloquear',
   'That is not it. Try again, or cancel.': 'No coincide. Escríbela de nuevo o cancela.',
   'Open for @{agent}.': 'Desbloqueado para @{agent}.',
@@ -3582,9 +3582,9 @@ export const ES = {
   'Unlock #3 EDIT': 'Desbloquear #3 EDITAR',
   'Cancel': 'Cancelar',
   '@{id} edits the project itself, with no approval per action.': '@{id} edita los archivos del proyecto directamente, sin que apruebes cada acción.',
-  'A restore point is taken first; UNDO is one click.': 'Antes se toma un punto de restauración; DESHACER está a un clic.',
+  'A restore point is taken first; UNDO is one click.': 'Antes se toma un punto de restauración; «Deshacer» está a un clic.',
   '@{id} can also run commands, git push and deploy with the sessions on this computer.': '@{id} además puede ejecutar comandos, hacer git push y desplegar con las cuentas que tienen sesión iniciada en esta computadora.',
-  'Files come back with UNDO; what leaves the computer does not.': 'Los archivos regresan con DESHACER; lo que sale de la computadora, no.',
+  'Files come back with UNDO; what leaves the computer does not.': 'Los archivos regresan con «Deshacer»; lo que sale de la computadora, no.',
   'Type your phrase': 'Escribe tu frase',
   'Type the project name': 'Escribe el nombre del proyecto',
   'This also raises its max mode to #{n}.': 'También sube su permiso máximo a #{n}.',
@@ -4971,18 +4971,18 @@ export const ES = {
   'Copilot: let the agent you write to drive the project for a while.': 'Copiloto: deja que el agente al que le escribes conduzca el proyecto un rato.',
   'Copilot off. Each #3 message asks you to confirm again.': 'Copiloto apagado. Cada mensaje en #3 vuelve a pedirte confirmación.',
   'The agent you write to drives the project: it edits, makes plans with the other agents (each step can go up to #3 EDIT), and runs the safe commands — reading, tests, builds, local git — on its own.':
-    'El agente al que le escribes conduce el proyecto: edita, arma planes con los demás agentes (cada paso puede llegar hasta #3 EDITAR) y corre por su cuenta los comandos seguros: leer, probar, compilar y git local.',
+    'El agente al que le escribes conduce el proyecto: edita, arma planes con los demás agentes (cada paso puede llegar hasta «#3 Editar») y corre por su cuenta los comandos seguros: leer, probar, compilar y git local.',
   "It never deletes, never touches MADRE's folders or your secrets, and never pushes, publishes or sends anything off this computer: that stays with you.":
     'Nunca borra, nunca toca las carpetas de MADRE ni tus secretos, y nunca sube, publica ni envía nada fuera de esta computadora: eso se queda contigo.',
   'On until {time} · {left} left': 'Encendido hasta las {time} · quedan {left}',
   'For': 'Por',
   'How long the copilot lasts': 'Cuánto dura el copiloto',
-  'It asks you to confirm #3 only once. STOP ALL ends it.': 'Te pide confirmar #3 una sola vez. DETENER TODO lo apaga.',
+  'It asks you to confirm #3 only once. STOP ALL ends it.': 'Te pide confirmar #3 una sola vez. «Detener todo» lo apaga.',
   'Turn the copilot on for {time}': 'Encender el copiloto por {time}',
   'The agent you write to edits the project and runs the safe commands by itself, without asking you to confirm each message, until it ends.':
     'El agente al que le escribes edita el proyecto y corre por su cuenta los comandos seguros, sin pedirte confirmar cada mensaje, hasta que termine.',
   'It never deletes, pushes, publishes or deploys; each change gets a restore point; STOP ALL ends it.':
-    'Nunca borra, sube, publica ni despliega; cada cambio tiene punto de restauración; DETENER TODO lo apaga.',
+    'Nunca borra, sube, publica ni despliega; cada cambio tiene punto de restauración; «Detener todo» lo apaga.',
   'Copilot on.': 'Copiloto encendido.',
   'Copilot on for {time}. Write to the agent that should drive.': 'Copiloto encendido por {time}. Escríbele al agente que quieres que conduzca.',
   '@{agent} answered as your copilot': '@{agent} contestó como tu copiloto',
