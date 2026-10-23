@@ -9,7 +9,7 @@ import { t } from '../i18n.mjs';
 export default defineModule({
   id: 'ripley',
   name: 'Preview',
-  vendor: 'MADRE · PREVIEW',
+  vendor: 'MADRE · Preview',
   version: '1.0.0',
   summary: 'Renders HTML, SVG and Markdown from the project in the file viewer, inside a sealed frame, and opens a browser on the servers answering on this computer.',
   creates: ['nothing in the project', 'a switch in ~/.pulse/config.json', 'scripts run in the frame \u00b7 nothing leaves, nothing is stored, nothing reaches MADRE'],

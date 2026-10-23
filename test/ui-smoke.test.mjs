@@ -495,8 +495,8 @@ test('a module card has the same floors whatever the module is, and its numbers 
   assert.ok(ash.querySelector('.check'), 'the card has no button to look for a newer version');
   assert.equal(ash.querySelector('.state').textContent, 'ON', 'the state is not a plain word');
   assert.ok(ash.querySelector('.card-fold'), 'the bullets are not a section of their own');
-  assert.match(ash.querySelector('.card-fold').textContent, /QUÉ TOCA/);
-  assert.match(ash.querySelector('.card-fold').textContent, /ABRIR|CERRAR/, 'the fold has no button');
+  assert.match(ash.querySelector('.card-fold').textContent, /Qué toca/);
+  assert.match(ash.querySelector('.card-fold').textContent, /Abrir|Cerrar/, 'the fold has no button');
   assert.equal(ash.querySelector('.remove-module'), null, 'a module that ships with MADRE offers to delete itself');
 
   const custom = moduleCard({
@@ -504,7 +504,7 @@ test('a module card has the same floors whatever the module is, and its numbers 
     version: '1.0.0', versionSource: 'declared', summary: 'A custom module.', creates: [], requires: [], commands: [], controls: [],
     status: { installed: true, detail: 'on' }, preflight: { ok: true, problems: [] }, install: { display: 'disable HELLO', platforms: [] },
   });
-  assert.equal(custom.querySelector('.remove-module')?.textContent, 'DESINSTALAR', 'a DEV module cannot be uninstalled from its own card');
+  assert.equal(custom.querySelector('.remove-module')?.textContent, 'Desinstalar', 'a DEV module cannot be uninstalled from its own card');
 
   // The reading fills the card's own panel once the economy answers.
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -528,11 +528,11 @@ test('a module card has the same floors whatever the module is, and its numbers 
   });
   // It wraps a package that is not in this project: not a version, an absence, and what
   // installing would write.
-  assert.match(ahp.querySelector('.version').textContent, /INSTALA 1\.4\.1/);
+  assert.match(ahp.querySelector('.version').textContent, /Instala 1\.4\.1/);
   assert.equal(ahp.querySelector('.state').textContent, 'OFF');
   assert.ok(ahp.classList.contains('off'), 'a module that is off does not step back');
   assert.equal(ahp.children.filter((child) => typeof child !== 'string').at(-1).className, 'actions');
-  assert.match(ahp.querySelector('.actions').textContent, /INSTALAR/);
+  assert.match(ahp.querySelector('.actions').textContent, /Instalar/);
 });
 
 test('the viewer reads a file by what it is, and never rewrites it on the way to the screen', async () => {
@@ -650,9 +650,9 @@ test('a connector\'s card asks for its key and never shows it back', () => {
   const walk = (node) => { all.push(node); for (const child of node.children ?? []) walk(child); };
   walk(card);
   const text = all.map((node) => node.textContent ?? '').join(' ');
-  assert.match(text, /LLAVES/, 'the keys floor did not draw at all');
-  assert.match(text, /BORRARLA/, 'a key that is held cannot be taken out again');
-  assert.match(text, /DÓNDE SACARLA/, 'the card does not say where to get the key');
+  assert.match(text, /Llaves/, 'the keys floor did not draw at all');
+  assert.match(text, /Borrarla/, 'a key that is held cannot be taken out again');
+  assert.match(text, /Dónde sacarla/, 'the card does not say where to get the key');
 
   const field = all.find((node) => node.tagName === 'INPUT' && node.type === 'password');
   assert.ok(field, 'the key would be typed into a field that shows it');
@@ -984,7 +984,7 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     const card = moduleCard(item);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const text = card.textContent;
-    for (const said of ['LO QUE SE MIDIÓ AQUÍ', '@codex', 'Búsqueda', 'BAJO', 'Diseño', 'medido · lo necesita', 'Cambio', 'MEDIO', 'visto en 9 respuestas', 'BAJO no fue suficiente · en pausa hasta', 'probando BAJO · 3 de 8 respuestas', 'ninguno fue suficiente las veces necesarias · 10 respuestas', 'Medir más rápido', 'proyecto con alto', 'Hay 10 preguntas listas para hacer.', 'EL JUEZ DETECTÓ 6 DE 6 PRUEBAS DE CONTROL · confiable', 'PRUEBA RÁPIDA · 12 RESPUESTAS', 'PRUEBA COMPLETA · ~40 RESPUESTAS', 'SUGERENCIAS ACEPTADAS · 3 DE 4']) {
+    for (const said of ['Lo que se midió aquí', '@codex', 'Búsqueda', 'BAJO', 'Diseño', 'medido · lo necesita', 'Cambio', 'MEDIO', 'visto en 9 respuestas', 'BAJO no fue suficiente · en pausa hasta', 'probando BAJO · 3 de 8 respuestas', 'ninguno fue suficiente las veces necesarias · 10 respuestas', 'Medir más rápido', 'proyecto con alto', 'Hay 10 preguntas listas para hacer.', 'El juez detectó 6 de 6 pruebas de control · confiable', 'Prueba rápida · 12 respuestas', 'Prueba completa · ~40 respuestas', 'Sugerencias aceptadas · 3 de 4']) {
       assert.ok(text.includes(said), `the card does not say "${said}"`);
     }
     // A kind the calibration settled says so, over what real use saw; a short reply nobody sent is left out.
@@ -1003,8 +1003,8 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     view = reading({ running: { kind: 'quick', agent: 'codex', reference: 'xhigh', effort: 'high', turns: 4, estimate: 12 }, pending: { step: 3, total: 6, intent: 'lookup', question: '¿dónde está el puerto?', first: 'En src/ports.mjs.', second: 'En la configuración.' } });
     const live = moduleCard(item);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.match(live.textContent, /PRUEBA RÁPIDA EN CURSO · @codex · 4 DE ~12 RESPUESTAS/);
-    assert.match(live.textContent, /UN PAR DE RESPUESTAS TE ESPERA · ABRIR LA PRUEBA/);
+    assert.match(live.textContent, /Prueba rápida en curso · @codex · 4 de ~12 respuestas/);
+    assert.match(live.textContent, /Un par de respuestas te espera · abrir la prueba/);
     assert.doesNotMatch(live.textContent, /PREGUNTA 3 DE 6/, 'the pair is judged in the window, not in MU/TH/UR');
 
     // The window, over the room: what is being compared in words a person reads, then the pair.
@@ -1022,8 +1022,8 @@ test('Intenciones speaks under the box only with a reason, marks the chip, and i
     await new Promise((resolve) => setTimeout(resolve, 0));
     const page = registry.get('intents-body');
     assert.match(page.textContent, /@codex contesta cada pregunta dos veces: en MUY ALTO, el nivel que usas, y en ALTO/);
-    assert.match(page.textContent, /PREGUNTA 3 DE 6 · BÚSQUEDA/);
-    const same = page.querySelectorAll('.primary').find((button) => button.textContent === 'IGUAL');
+    assert.match(page.textContent, /Pregunta 3 de 6 · BÚSQUEDA/);
+    const same = page.querySelectorAll('.primary').find((button) => button.textContent === 'Igual');
     assert.ok(same, 'there is no way to say the two answers are the same');
     await same.listeners.click[0]();
     assert.ok(posted.some(([url, body]) => url === '/api/intents/answer' && body.choice === 'same'));

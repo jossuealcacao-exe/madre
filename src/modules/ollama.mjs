@@ -87,7 +87,7 @@ export async function ollamaView(probe, settings) {
 export default defineModule({
   id: 'ollama',
   name: 'Local AI',
-  vendor: 'MADRE · LOCAL INTELLIGENCE',
+  vendor: 'MADRE · Local AI',
   tracks: { name: 'ollama', github: 'ollama/ollama' },
   summary: 'Searches and sums up the project\'s memory with local AI (Ollama): free, and nothing leaves your computer.',
   creates: ['nothing in the project', 'a block in ~/.pulse/config.json', 'models in Ollama\'s own store when you press PULL'],

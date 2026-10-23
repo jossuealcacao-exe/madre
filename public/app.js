@@ -1316,7 +1316,7 @@ function syncEditButton() {
   const hidden = !viewerMode.editable || viewerMode.preview;
   if (editingSeg) { editingSeg.seg.hidden = hidden && !viewer.open; editingSeg.read.hidden = hidden; editing.button.hidden = hidden; }
   else editing.button.hidden = hidden;
-  editing.button.textContent = t('EDIT');
+  editing.button.textContent = sentence(t('EDIT'));
   editing.button.setAttribute('aria-pressed', String(Boolean(editing.editor)));
   editingSeg?.read.setAttribute('aria-pressed', String(!editing.editor));
 }
@@ -15027,7 +15027,7 @@ function builtinCard(item) {
       const step = info.binary
         ? { label: t('START OLLAMA'), path: '/api/ollama/start', note: t('Wakes Ollama on this computer. Nothing leaves it.') }
         : info.install?.display
-          ? { label: `${t('INSTALL')} · ${info.install.display}`, path: '/api/ollama/install', note: info.install.note ?? '' }
+          ? { label: `${sentence(t('INSTALL'))} · ${info.install.display}`, path: '/api/ollama/install', note: info.install.note ?? '' }
           : null;
       if (step) {
         const go = el('button', 'primary', step.label);
@@ -15205,7 +15205,7 @@ function moduleCard(item) {
     row.append(go, cancel);
     panel.append(confirm, row);
   } else {
-    const install = el('button', installed ? null : 'primary', installed ? t('REINSTALL / UPGRADE') : t('INSTALL'));
+    const install = el('button', installed ? null : 'primary', installed ? t('REINSTALL / UPGRADE') : sentence(t('INSTALL')));
     install.type = 'button';
     install.disabled = Boolean(modules.installing) || blocked;
     install.addEventListener('click', () => { modules.confirming = item.id; renderModules(); });
