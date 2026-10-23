@@ -18,7 +18,7 @@ export const ES = {
   'Compact prose. Nothing you write is altered; only the answers get shorter.':
     'Respuestas más cortas. Lo que tú escribes no cambia; solo se acortan las respuestas.',
   'In this project, a typical answer uses {on} output tokens with TOKEN SAVER ({onTurns} answers) and {off} without it ({offTurns}). You choose when to ask for compact answers, so these are different tasks, not the same task twice.':
-    'En este proyecto, una respuesta típica usa {on} tokens de salida con AHORRO DE TOKENS ({onTurns} respuestas) y {off} sin él ({offTurns}). Tú decides cuándo pedir respuestas compactas, así que se comparan tareas distintas, no la misma tarea dos veces.',
+    'En este proyecto, una respuesta típica usa {on} tokens de salida con «Ahorro de tokens» ({onTurns} respuestas) y {off} sin él ({offTurns}). Tú decides cuándo pedir respuestas compactas, así que se comparan tareas distintas, no la misma tarea dos veces.',
   '{n} uncharged': '{n} tokens no cobrados',
   "{cached} tokens this agent's app read back from its own cache, billed at a lower price than new input (measured). {unsent} tokens MADRE did not need to send the agent (estimated at {rate} characters per token). Neither is the Token saver: the Token saver shortens the answer, and its figure is above the bubble.":
     '{cached} tokens que la app del agente leyó de su caché, cobrados a un precio menor que la entrada nueva (medido). {unsent} tokens que MADRE no tuvo que enviarle al agente (estimado a {rate} caracteres por token). Nada de esto es el Ahorro de tokens: ese acorta la respuesta y su cifra está arriba de la burbuja.',
@@ -120,15 +120,15 @@ export const ES = {
   'You will type the project name, as always. Then @{agent} gets your permission and continues.':
     'Para confirmar, escribe el nombre del proyecto, como siempre. Después @{agent} recibe tu permiso y continúa.',
   '@{agent} gets your permission for one message and continues.': '@{agent} recibe tu permiso solo para este mensaje y continúa.',
-  'GRANT #{n} AND CONTINUE': 'CONCEDER #{n} Y CONTINUAR',
-  'GRANT #{n} · GIVE IT ANOTHER INSTRUCTION': 'CONCEDER #{n} Y AGREGAR INSTRUCCIONES',
+  'GRANT #{n} AND CONTINUE': 'Conceder #{n} y continuar',
+  'GRANT #{n} · GIVE IT ANOTHER INSTRUCTION': 'Conceder #{n} y agregar instrucciones',
   'Unlocks #{n} in the box below, so you can add instructions before sending.':
     'Activa el permiso #{n} en la caja de mensaje para que agregues instrucciones antes de enviar.',
   '#{n} {label} granted · @{agent} continues': '#{n} {label} concedido · @{agent} sigue',
   '#{n} {label} granted': '#{n} {label} concedido',
   'Permission granted: #{n} {label}. Go ahead with what you proposed.': 'Permiso concedido: #{n} {label}. Sigue con lo que propusiste.',
   ' · for {m} min': ' · por {m} min',
-  'GRANT #{n} FOR {m} MIN AND CONTINUE': 'CONCEDER #{n} · {m} MIN Y CONTINUAR',
+  'GRANT #{n} FOR {m} MIN AND CONTINUE': 'Conceder #{n} · {m} min y continuar',
   'How long the permission holds': 'Cuánto dura el permiso',
   'this message': 'este mensaje',
   'YOUR SERVERS': 'TUS SERVIDORES',
@@ -146,8 +146,8 @@ export const ES = {
   'Paste here': 'Pegar aquí',
   'Paste beside it': 'Pegar al lado',
   'Paste in the project root': 'Pegar en la raíz del proyecto',
-  'REPLACE FOR EVERY PROJECT': 'REEMPLAZAR PARA TODOS LOS PROYECTOS',
-  'REPLACE FOR THIS PROJECT': 'REEMPLAZAR PARA ESTE PROYECTO',
+  'REPLACE FOR EVERY PROJECT': 'Reemplazar para todos los proyectos',
+  'REPLACE FOR THIS PROJECT': 'Reemplazar para este proyecto',
   '{name} {version} is already installed for {where}; it keeps running until this file replaces it.':
     '{name} {version} ya está instalado para {where}; sigue funcionando hasta que este archivo lo reemplace.',
   'Right-click a folder, or an empty spot for the project root, to paste it there.':
@@ -267,7 +267,7 @@ export const ES = {
   'The median answer of each group, not an average. You choose when to ask for compact answers, so the two groups are different tasks, not the same task twice — MADRE does not claim a percentage saved.':
     'Se muestra la respuesta mediana de cada grupo, no un promedio. Tú decides cuándo pedir respuestas compactas, así que los dos grupos son tareas distintas, no la misma tarea repetida: por eso MADRE no afirma un porcentaje de ahorro.',
   'REVIEW · the local check found: {details}':
-    'REVISAR · la comprobación local encontró: {details}',
+    'Revisar · la comprobación local encontró: {details}',
   'empty response': 'respuesta vacía',
   'unclosed code fence': 'bloque de código sin cerrar',
   'text after ```pulse block': 'hay texto después del bloque ```pulse',
@@ -982,12 +982,12 @@ export const ES = {
   ' · BY {method}': ' · POR {method}',
   ' · BAR {bar}': ' · MÍNIMO {bar}',
   'RUNNING…': 'CORRIENDO…',
-  'RUN AGAIN': 'CORRER OTRA VEZ',
-  'RUN': 'CORRER',
+  'RUN AGAIN': 'Correr otra vez',
+  'RUN': 'Correr',
   '{done} OF {total}': '{done} DE {total}',
   'NOTHING HERE SPENDS A PROVIDER TURN. THE FIRST TWO ARE FREE; THE THIRD TAKES MINUTES AND STOPS WHEN YOU SAY.':
     'Nada de esto gasta tu plan de IA. Las dos primeras pruebas son gratis; la tercera tarda minutos y la puedes detener cuando quieras.',
-  'STOP': 'DETENER',
+  'STOP': 'Detener',
   'THE TESTS ARE UNAVAILABLE': 'LAS PRUEBAS NO ESTÁN DISPONIBLES',
   'Diagnostics › the local model is answering real questions from this project. It takes a few minutes and spends nothing.':
     'Diagnóstico › el modelo local está contestando preguntas reales de este proyecto. Tarda unos minutos y no gasta nada.',
@@ -1001,7 +1001,7 @@ export const ES = {
   'COLLAPSED': 'COLAPSADA',
   'MEMORY RESEARCH · LOADING…': 'INVESTIGACIÓN DE MEMORIA · CARGANDO…',
   'MEMORY RESEARCH': 'INVESTIGACIÓN DE MEMORIA',
-  ' · TAMPERING ALERT': ' · ALERTA DE MANIPULACIÓN',
+  ' · TAMPERING ALERT': ' · alerta de manipulación',
   '{n} MEMORIES · {alive} RECALLED · {links} LINKS · {entries} EXCHANGES BEHIND THEM':
     '{n} MEMORIAS · {alive} RECORDADAS · {links} ENLACES · SACADAS DE {entries} INTERCAMBIOS',
   'MEMORY RESEARCH · {n} MEMORIES · {links} LINKS · {entries} EXCHANGES BEHIND THEM':
@@ -1130,11 +1130,11 @@ export const ES = {
     'En {matched} de {n} preguntas reales el modelo local llegó a la misma respuesta que el agente de aquel día{control}.',
 
   // ── MODULES · EYECAT · ECONOMÍA · EL SDK ──────────────────────────────────
-  'MODULES › ': 'MÓDULOS › ',
-  '◉ MEMORY REVIEWER': '◉ REVISOR DE MEMORIA',
-  'IN DOUBT': 'EN DUDA',
-  'AGAINST': 'EN CONTRA',
-  'WHAT SEEMS TRUE': 'LO QUE PARECE CIERTO',
+  'MODULES › ': 'Módulos › ',
+  '◉ MEMORY REVIEWER': '◉ Revisor de memoria',
+  'IN DOUBT': 'En duda',
+  'AGAINST': 'En contra',
+  'WHAT SEEMS TRUE': 'Lo que parece cierto',
   'IT IS FALSE': 'ES FALSA',
   'Marks it as a doubtful memory and stops using it in answers. Reversible from the Memory map.':
     'La marca como memoria dudosa y deja de usarla en las respuestas. Se puede deshacer desde el Mapa de memoria.',
@@ -1142,7 +1142,7 @@ export const ES = {
   'The project was right. This contradiction is never flagged again.': 'El proyecto tenía razón. Esta contradicción no se vuelve a señalar.',
   'DEV': 'DEV',
   'Diagnostics › a module is a .mjs file.': 'Diagnóstico › un módulo es un archivo .mjs.',
-  'NOT NOW': 'AHORA NO',
+  'NOT NOW': 'Ahora no',
   'The project rejected the message.': 'El proyecto rechazó el mensaje.',
   'SPENDING · THIS PROJECT': 'CONSUMO · ESTE PROYECTO',
   'NO SPENDING RECORDED YET · SEND A MESSAGE AND THIS FILLS': 'TODAVÍA NO HAY RESPUESTAS CON CONSUMO REGISTRADO · MANDA UN MENSAJE Y ESTO SE LLENA',
@@ -1232,7 +1232,7 @@ export const ES = {
   'The rating was not saved: {error}': 'La calificación no se guardó: {error}',
   'Diagnostics › the clipboard is not available here; select the text and copy.':
     'Diagnóstico › aquí no hay portapapeles; selecciona el texto y cópialo.',
-  'REPLY TO @{agent}{seq} WITH': 'RESPONDER A @{agent}{seq} CON',
+  'REPLY TO @{agent}{seq} WITH': 'Responder a @{agent}{seq} con',
   'the same agent': 'el mismo agente',
   '{label} · not ready': '{label} · no está listo',
   'Answer without quoting this': 'Contestar sin citar esto',
@@ -1253,10 +1253,10 @@ export const ES = {
   '{label} is reading the project… {seconds}s so far; MADRE gives up at {limit}s.':
     '{label} está leyendo el proyecto… {seconds}s hasta ahora; MADRE deja de esperar a los {limit}s.',
   'Diagnostics › {name} installed for {where}. Switch it on in MODULES.':
-    'Diagnóstico › {name} instalado para {where}. Enciéndelo en MÓDULOS.',
+    'Diagnóstico › {name} instalado para {where}. Enciéndelo en «Módulos».',
   'The module was not installed: {error}': 'El módulo no se instaló: {error}',
-  'INSTALL FOR EVERY PROJECT': 'INSTALAR PARA TODOS LOS PROYECTOS',
-  'MODULE': 'MÓDULO',
+  'INSTALL FOR EVERY PROJECT': 'Instalar para todos los proyectos',
+  'MODULE': 'Módulo',
   'THEME': 'TEMA',
   'Automatic': 'Automático',
   'Light': 'Claro',
@@ -1320,12 +1320,12 @@ export const ES = {
   'Larger': 'Más grande',
   'Smaller': 'Más pequeño',
   'Visual': 'Visual',
-  'PRIVACY': 'PRIVACIDAD',
+  'PRIVACY': 'Privacidad',
   'Wrote ': 'Escribió ',
   'Read it first: a module runs inside MADRE with your permissions.': 'Léelo antes de instalarlo: un módulo corre dentro de MADRE con tus permisos.',
-  'Installed for {where} by {who}. Switch it on in MODULES.': 'Instalado para {where} por {who}. Enciéndelo en MÓDULOS.',
+  'Installed for {where} by {who}. Switch it on in MODULES.': 'Instalado para {where} por {who}. Enciéndelo en «Módulos».',
   'Removed by {who}.': 'Quitado por {who}.',
-  'INSTALL FOR THIS PROJECT': 'INSTALAR PARA ESTE PROYECTO',
+  'INSTALL FOR THIS PROJECT': 'Instalar para este proyecto',
   'you': 'ti',
   '@madre': '@madre',
   'Diagnostics › the local model is answering real questions from this project. It takes a few minutes, it spends nothing, and the answer lands here.':
@@ -1334,13 +1334,13 @@ export const ES = {
     'Contestó como tus agentes en {matched} de {n} preguntas reales de este proyecto. Ya puedes darle trabajo.',
   'It answered like your agents on {matched} of {n} real questions from this project. Not yet: keep working with your agents here and try it again later.':
     'Contestó como tus agentes en {matched} de {n} preguntas reales de este proyecto. Todavía no: sigue trabajando con tus agentes aquí y pruébalo otra vez más adelante.',
-  'SEND THE NEXT TURN TO @MADRE': 'ENVIAR EL PRÓXIMO MENSAJE A @MADRE',
-  'MEASURED {when}': 'PROBADO {when}',
+  'SEND THE NEXT TURN TO @MADRE': 'Enviar el próximo mensaje a @madre',
+  'MEASURED {when}': 'Probado {when}',
   '@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.':
     '@madre es el modelo propio de MADRE y corre en esta Mac. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
   'It needs a few conversations with your agents in this project first: without them there is nothing to compare.':
     'Primero necesita algunas conversaciones con tus agentes en este proyecto: sin ellas no hay con qué compararlo.',
-  'PURGE': 'BORRADO DE DATOS PRIVADOS',
+  'PURGE': 'Borrado de datos privados',
   '{events} events · {entries} indexed exchanges · {memories} memories rewritten with the marker':
     '{events} eventos · {entries} intercambios indexados · {memories} memorias reescritas con el marcador',
   '{n} hidden data entries replaced with {marker}': '{n} datos ocultos reemplazados con {marker}',
@@ -1367,8 +1367,8 @@ export const ES = {
   '◉ memory saved': '◉ memoria guardada',
   'Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in the memory map.':
     'Guardada por @{agent} para todas las respuestas que vienen · #{from}–#{through}. Haz clic para verla en el mapa de memoria.',
-  'SECURITY › TO ALL AGENTS': 'SEGURIDAD › A TODOS LOS AGENTES',
-  ' · TEMPORARY LOCK · {n} STRIKES · ARCHIVE SEALED {min} MIN': ' · BLOQUEO TEMPORAL · {n} GOLPES · MEMORIA SELLADA {min} MIN',
+  'SECURITY › TO ALL AGENTS': 'Seguridad › a todos los agentes',
+  ' · TEMPORARY LOCK · {n} STRIKES · ARCHIVE SEALED {min} MIN': ' · bloqueo temporal · {n} golpes · memoria sellada {min} min',
   "Message #{n}, sealed under Security's key in .pulse/mother.env. Only the agents read it in clear.":
     'Mensaje #{n}, cifrado con la clave de Seguridad guardada en .pulse/mother.env. Solo los agentes pueden leerlo.',
   ' · {n} messages carried': ' · {n} mensajes cargados',
@@ -1393,12 +1393,12 @@ export const ES = {
     'el plan de @{agent} no se pudo ejecutar · {why} · vuelve a pedirlo y lo corrige',
   'Diagnostics › ': 'Diagnóstico › ',
   'create · ': 'crear · ',
-  ' · {n} existing files put back, CREATE only adds: {files}': ' · {n} archivos que ya existían volvieron a como estaban, porque CREAR solo agrega archivos nuevos: {files}',
+  ' · {n} existing files put back, CREATE only adds: {files}': ' · {n} archivos que ya existían volvieron a como estaban, porque «Crear» solo agrega archivos nuevos: {files}',
   ' · {n} writes into forbidden zones reverted': ' · se deshicieron {n} cambios en zonas prohibidas',
-  ' · need to change existing files? ask again in #3 EDIT': ' · ¿necesitas cambiar archivos que ya existen? pídelo otra vez en #3 EDITAR',
+  ' · need to change existing files? ask again in #3 EDIT': ' · ¿necesitas cambiar archivos que ya existen? pídelo otra vez en «#3 Editar»',
   ' holds the project · restore point ': ' tiene el proyecto · punto de restauración ',
   'Diagnostics › @{agent} holds EDIT mode. Restore point taken; UNDO will be one click.':
-    'Diagnóstico › @{agent} tiene el modo EDITAR. Se guardó un punto de restauración: podrás DESHACER con un clic.',
+    'Diagnóstico › @{agent} tiene el modo «Editar». Se guardó un punto de restauración: podrás deshacer con un clic.',
   ' changed {n} files': ' cambió {n} archivos',
   ' changed 1 file': ' cambió 1 archivo',
   ' changed nothing': ' no cambió nada',
@@ -1414,36 +1414,36 @@ export const ES = {
   'Stopped while waiting for the project: another turn was writing in it.': 'Se detuvo mientras esperaba su turno: otro agente estaba escribiendo en el proyecto.',
   '@{agent} waits for @{behind} to finish writing in the project · one turn writes at a time': '@{agent} espera a que @{behind} termine de escribir en el proyecto · solo una respuesta escribe a la vez',
   '@{agent} waits for the turn writing in the project · one turn writes at a time': '@{agent} espera a la respuesta que está escribiendo en el proyecto · solo una respuesta escribe a la vez',
-  'SERVING': 'EN MARCHA',
+  'SERVING': 'En marcha',
   'serving on :{port}': 'en marcha en :{port}',
   'serving on :{port} · your network can reach it too': 'en marcha en :{port} · tu red también lo alcanza',
   'your network can reach it too': 'tu red también lo alcanza',
-  'OPEN IN YOUR SERVERS': 'ABRIR EN TUS SERVIDORES',
+  'OPEN IN YOUR SERVERS': 'Abrir en tus servidores',
   'That command is not running.': 'Ese comando no está corriendo.',
   'what it left could not be read ({reason})': 'no se pudo leer lo que dejó ({reason})',
   'before it stopped it left {n} {files} in the project': 'antes de detenerse dejó {n} {files} en el proyecto',
-  '{n} changes to existing files were put back: CREATE only adds.': '{n} cambios a archivos que ya existían se deshicieron: CREAR solo agrega archivos nuevos.',
-  'RETRY WITH MORE TIME · {n}s': 'REINTENTAR CON MÁS TIEMPO · {n}s',
+  '{n} changes to existing files were put back: CREATE only adds.': '{n} cambios a archivos que ya existían se deshicieron: «Crear» solo agrega archivos nuevos.',
+  'RETRY WITH MORE TIME · {n}s': 'Reintentar con más tiempo · {n}s',
   'You were cut off by the time limit. These files already exist: {files}. Finish what is missing; do not start over.': 'Te cortó el tiempo límite. Estos archivos ya existen: {files}. Termina lo que falta; no empieces de nuevo.',
   'Diagnostics › #{n} needs you to confirm again: choose it in the mode selector before sending.': 'Diagnóstico › #{n} necesita que confirmes otra vez: elígelo en el selector de modo antes de enviar.',
-  'IN THE BOX · SEND IT WHEN READY': 'EN LA CAJA · ENVÍALO CUANDO QUIERAS',
+  'IN THE BOX · SEND IT WHEN READY': 'En la caja · envíalo cuando quieras',
   'Git could not list the changes ({reason}). The restore point from before the turn is still there.': 'Git no pudo listar los cambios ({reason}). El punto de restauración de antes de la respuesta sigue ahí.',
-  'UNDO · GO BACK TO THE RESTORE POINT': 'DESHACER · VOLVER AL PUNTO DE RESTAURACIÓN',
+  'UNDO · GO BACK TO THE RESTORE POINT': 'Deshacer · volver al punto de restauración',
   'Put the project back exactly as it was before this EDIT turn.':
-    'Deja el proyecto exactamente como estaba antes de esta respuesta en modo EDITAR.',
-  'RESTORED': 'RESTAURADO',
+    'Deja el proyecto exactamente como estaba antes de esta respuesta en «Editar».',
+  'RESTORED': 'Restaurado',
   "project restored to the restore point before @{agent}'s turn · {restored} restored · {removed} removed":
     'proyecto restaurado a como estaba antes de la respuesta de @{agent} · {restored} restaurados · {removed} quitados',
-  'RESEND TO @{agent} WITH CREATE': 'REENVIAR A @{agent} CON CREAR',
+  'RESEND TO @{agent} WITH CREATE': 'Reenviar a @{agent} con «Crear»',
   'Send this same request again yourself, with permission to create files.': 'Vuelve a enviar esta misma petición tú mismo, con permiso para crear archivos.',
-  'RESENT WITH CREATE': 'REENVIADO CON CREAR',
+  'RESENT WITH CREATE': 'Reenviado con «Crear»',
   'It could not be resent: {error}': 'No se pudo reenviar: {error}',
-  'ALWAYS FOR THIS AGENT': 'SIEMPRE PARA ESTE AGENTE',
-  'GRANT ONCE': 'PERMITIR UNA VEZ',
-  'GRANT FOR PLAN': 'PERMITIR PARA EL PLAN',
+  'ALWAYS FOR THIS AGENT': 'Siempre para este agente',
+  'GRANT ONCE': 'Permitir una vez',
+  'GRANT FOR PLAN': 'Permitir para el plan',
   'Every remaining step of this plan that can write uses the same folder for new files.':
     'Todos los pasos de este plan que todavía pueden escribir usan la misma carpeta para archivos nuevos.',
-  'DENY': 'NEGAR',
+  'DENY': 'Negar',
   'anywhere in the project · existing files stay untouched': 'donde sea en el proyecto · los archivos que ya existen no se tocan',
   ' · scratch ': ' · borrador ',
   'in ': 'en ',
@@ -1517,7 +1517,7 @@ export const ES = {
     'Diagnóstico › el proyecto no volvió a arrancar solo. Ábrelo desde tu terminal.',
 
   // ── EL MARCADO: diálogos, paneles y modales de index.html ─────────────────
-  'STOP ALL': 'DETENER TODO',
+  'STOP ALL': 'Detener todo',
   'CLOSE ×': 'CERRAR ×',
   'EXPAND ALL': 'ABRIR TODO',
   // MEMORIA, emancipada de CONEXIONES: su propio botón en la barra de MU/TH/UR.
@@ -1606,7 +1606,7 @@ export const ES = {
   'WHAT TO ASK NEXT': 'QUÉ PREGUNTAR AHORA',
   'WRITTEN FROM WHAT THE ARCHIVE ALREADY HOLDS. NOTHING IS SENT: A QUESTION GOES TO THE WRITE BOX AND YOU DECIDE WHO ANSWERS IT.':
     'ESCRITAS CON LO QUE LA MEMORIA YA SABE. NO SE ENVÍA NADA: LA PREGUNTA QUEDA EN EL CUADRO DE MENSAJE Y TÚ ELIGES QUÉ AGENTE LA CONTESTA.',
-  'MEMORY': 'MEMORIA',
+  'MEMORY': 'Memoria',
   'SOURCE': 'ORIGEN',
   'DISTILLED': 'RESUMIDA',
   'LINKS': 'CONEXIONES',
@@ -1662,7 +1662,7 @@ export const ES = {
 
   // ── LOS ERRORES QUE LA SALA CONTESTA ──────────────────────────────────────
   'A turn is running in this conversation. Let it finish, or STOP ALL, and try again.':
-    'Hay una respuesta en curso en esta conversación. Deja que termine, o dale DETENER TODO, y vuelve a intentar.',
+    'Hay una respuesta en curso en esta conversación. Deja que termine, o usa «Detener todo», y vuelve a intentar.',
   'A turn is running in this conversation.': 'Hay una respuesta en camino en este chat.',
   'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
   "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.":
@@ -2170,7 +2170,7 @@ export const ES = {
   'Try again shortly or choose another model.': 'Vuelve a intentar en un momento o elige otro modelo.',
   ' · said it created {files}, but it is not in your project': ' · dijo que creó {files}, pero no está en tu proyecto',
   ' · nothing was written in this reply': ' · en esta respuesta no se escribió nada',
-  'ASK AGAIN': 'PEDIRLO OTRA VEZ',
+  'ASK AGAIN': 'Pedirlo otra vez',
   'Last time you said you created {files}, but nothing was written to disk. Create them now and check that they exist before you answer.': 'La vez pasada dijiste que creaste {files}, pero no se escribió nada. Créalos ahora y revisa que existan antes de contestar.',
   'Google rejected the Gemini credentials.': 'Google rechazó las credenciales de Gemini.',
   'Run `gemini` and use /auth, or check GEMINI_API_KEY.': 'Corre `gemini` y usa /auth, o revisa GEMINI_API_KEY.',
@@ -2294,21 +2294,21 @@ export const ES = {
 
   // ── LA SALA EN MOVIMIENTO: PLANES, FRENOS, ADJUNTOS Y AVISOS ─────────────
   'answering @{agent}': 'contestándole a @{agent}',
-  'CHECK AGAIN': 'PROBARLO OTRA VEZ',
-  'TRY IT ON THIS PROJECT': 'PROBARLO CON ESTE PROYECTO',
+  'CHECK AGAIN': 'Probarlo otra vez',
+  'TRY IT ON THIS PROJECT': 'Probarlo con este proyecto',
   'Came along because this project usually uses it together with another memory.':
     'Apareció porque en este proyecto suele usarse junto con otra memoria.',
   'The archive matched this to what you asked.': 'MADRE la relacionó con lo que preguntaste.',
   'Click to see it in the Memory map.': 'Haz clic para verla en el Mapa de memoria.',
   'Diagnostics › CREATE is off: @{agent} will answer read-only. Use the lock or /create.':
-    'Diagnóstico › CREAR está apagado: @{agent} va a contestar en solo lectura. Usa el candado o /create.',
+    'Diagnóstico › «Crear» está apagado: @{agent} va a contestar en solo lectura. Usa el candado o /create.',
   'Diagnostics › @{agent} asks #{mode} {label} for step {step}. The plan waits for you.':
     'Diagnóstico › @{agent} pide #{mode} {label} para el paso {step}. El plan te está esperando.',
-  'GRANTED FOR THE PLAN': 'CONCEDIDO PARA EL PLAN',
-  'GRANTED ONCE': 'CONCEDIDO UNA VEZ',
-  'DENIED · NO ANSWER IN TIME': 'NEGADO · NO HUBO RESPUESTA A TIEMPO',
-  'PLAN STOPPED': 'PLAN DETENIDO',
-  'DENIED': 'NEGADO',
+  'GRANTED FOR THE PLAN': 'Concedido para el plan',
+  'GRANTED ONCE': 'Concedido una vez',
+  'DENIED · NO ANSWER IN TIME': 'Negado · no hubo respuesta a tiempo',
+  'PLAN STOPPED': 'Plan detenido',
+  'DENIED': 'Negado',
   'created · {n} {files}': 'creados · {n} {files}',
   'file': 'archivo',
   'files': 'archivos',
@@ -2544,11 +2544,11 @@ export const ES = {
   'all stop · nothing was running': 'alto total · no había nada corriendo',
   'Diagnostics › all stop. {plans} plans, {turns} turns halted.': 'Diagnóstico › alto total. {plans} planes y {turns} respuestas detenidos.',
   'Diagnostics detected a runaway sequence. STOP ALL halts every plan and every agent turn.':
-    'Diagnóstico detectó una secuencia fuera de control. DETENER TODO detiene todos los planes y todas las respuestas.',
+    'Diagnóstico detectó una secuencia fuera de control. «Detener todo» detiene todos los planes y todas las respuestas.',
   'All quiet. STOP ALL arms itself when Diagnostics detects a runaway sequence; typing STOPALL always works.':
-    'Todo tranquilo. DETENER TODO se activa solo cuando Diagnóstico detecta una secuencia fuera de control; escribir STOPALL siempre funciona.',
+    'Todo tranquilo. «Detener todo» se activa solo cuando Diagnóstico detecta una secuencia fuera de control; escribir STOPALL siempre funciona.',
   'Agents are working normally. STOP ALL arms itself on a Diagnostics alert; typing STOPALL always works.':
-    'Los agentes trabajan con normalidad. DETENER TODO se activa con una alerta de Diagnóstico; escribir STOPALL siempre funciona.',
+    'Los agentes trabajan con normalidad. «Detener todo» se activa con una alerta de Diagnóstico; escribir STOPALL siempre funciona.',
   'Diagnostics › @{agent} limit window reset · {pct}% used now.':
     'Diagnóstico › se reinició el límite de uso de @{agent} · ahora va en {pct}%.',
   'Diagnostics › {what} was recorded by the failure monitor. Open Diagnostics to report it.':
@@ -2726,14 +2726,14 @@ export const ES = {
   // Los cuatro lugares de la sala. Los nombres de la nave —MU/TH/UR, NOSTROMO, ASH, RIPLEY—
   // son nombres propios; estos cuatro no lo son: dicen qué hay detrás de la puerta.
   'MODULES': 'MÓDULOS',
-  'GRANTED': 'CONCEDIDO',
+  'GRANTED': 'Concedido',
   'just now': 'ahora mismo',
   '{n} min ago': 'hace {n} min',
   '{n} h ago': 'hace {n} h',
   '{n} d ago': 'hace {n} d',
   'default': 'por defecto',
-  'YOU · AGENTS (EXPENDABLE)': 'TÚ · AGENTES (PRESCINDIBLES)',
-  'YOU · AGENTS': 'TÚ · AGENTES',
+  'YOU · AGENTS (EXPENDABLE)': 'Tú · agentes (prescindibles)',
+  'YOU · AGENTS': 'Tú · agentes',
   ' · {n} left in the archive': ' · quedan {n} en la memoria',
   ' asks ': ' pide ',
   'default #2 · ': '#2 por defecto · ',
@@ -2861,7 +2861,7 @@ export const ES = {
 
   // Una elección que devuelve un agente.
   '@{agent} asks you to choose': '@{agent} te pide elegir',
-  'RECOMMENDED': 'RECOMENDADA',
+  'RECOMMENDED': 'Recomendada',
   'Pressing it unlocks #{n} {label} for @{agent}': 'Al presionarla se desbloquea #{n} {label} para @{agent}',
   'CLI': 'CLI',
 
@@ -2871,12 +2871,12 @@ export const ES = {
   'Lets an agent ask you to run a command it cannot run in its mode (tests, a build, a linter). Each command is a button: nothing runs until you press it, it runs from the project root with no shell, a restore point is taken first, and when it has run the output goes back to the agent that asked, which goes on. Costs about 300 tokens of instruction per turn below FULL ACCESS while it is on.':
     'Deja que un agente te pida correr un comando que su nivel de permiso no le deja correr (pruebas, un build, un linter). Cada comando es un botón y nada corre hasta que lo presionas. Corre desde la carpeta principal del proyecto, sin terminal; antes se guarda un punto de restauración y, al terminar, el resultado vuelve al agente que lo pidió para que siga. Mientras está encendido, cuesta unos 300 tokens por respuesta en los niveles por debajo de #4 ACCESO TOTAL.',
   'Name the request and the line to run.': 'Di qué petición y qué línea correr.',
-  'Command requests are off. Enable them in MODULES.': 'Las peticiones de comandos están apagadas. Enciéndelas en Módulos.',
-  'A command is already running; wait for it to finish or press STOP ALL.': 'Ya corre un comando; espera a que termine o usa DETENER TODO.',
+  'Command requests are off. Enable them in MODULES.': 'Las peticiones de comandos están apagadas. Enciéndelas en «Módulos».',
+  'A command is already running; wait for it to finish or press STOP ALL.': 'Ya corre un comando; espera a que termine o usa «Detener todo».',
   '@{agent} is working in {mode} on this project; run it when its turn ends.': '@{agent} está trabajando en {mode} en este proyecto; córrelo cuando termine su respuesta.',
   '@{agent} asks you to run': '@{agent} te pide correr',
-  'RUNNING': 'CORRIENDO',
-  'WILL NOT RUN': 'NO CORRE',
+  'RUNNING': 'Corriendo',
+  'WILL NOT RUN': 'No corre',
   'This line does not run: it {why}.': 'Esta línea no corre: {why}.',
   'Does not run: it {why}.': 'No corre: {why}.',
   'Runs {command} from the project root, with no shell. A restore point is taken first.':
@@ -2887,10 +2887,10 @@ export const ES = {
     'Al terminar, el resultado vuelve a @{agent} y sigue con #{n} {label}.',
   'When they have run, the output goes back to @{agent} and it goes on.':
     'Al terminar, el resultado vuelve a @{agent} y sigue.',
-  'RUN ALL · {n}': 'CORRER TODOS · {n}',
+  'RUN ALL · {n}': 'Correr todos · {n}',
   'Runs the lines one after another; it stops at the first one that fails.':
     'Corre las líneas una tras otra; se detiene en la primera que falle.',
-  'HAND BACK WHAT RAN TO @{agent}': 'DEVOLVER LO QUE CORRIÓ A @{agent}',
+  'HAND BACK WHAT RAN TO @{agent}': 'Devolver lo que corrió a @{agent}',
   '@{agent} gets the output of the lines that ran and goes on without the rest.':
     '@{agent} recibe el resultado de las líneas que corrieron y sigue sin las demás.',
   'Output handed back to @{agent}{at}': 'Resultado devuelto a @{agent}{at}',
@@ -2903,7 +2903,7 @@ export const ES = {
   'Those results were already handed back.': 'Ese resultado ya se devolvió.',
   'Nothing of that request has run yet.': 'Todavía no corre nada de esa petición.',
   'A command of that request is still running; wait for it to end.': 'Un comando de esa petición sigue corriendo; espera a que termine.',
-  'STOP ALL held these results; hand them back from their card.': 'DETENER TODO retuvo este resultado; devuélvelo desde su tarjeta.',
+  'STOP ALL held these results; hand them back from their card.': '«Detener todo» retuvo este resultado; devuélvelo desde su tarjeta.',
   'That command request is not in this project.': 'Esa petición de comandos no está en este proyecto.',
   'Put the project files back exactly as they were before this command. What it sent off this machine does not come back.':
     'Deja los archivos del proyecto exactamente como estaban antes de este comando. Lo que haya mandado fuera de esta computadora no regresa.',
@@ -2965,7 +2965,7 @@ export const ES = {
   '@{agent} will answer read-only: {why}.':
     '@{agent} contestará en solo lectura: {why}.',
   '@{agent} was asked to create something but no CREATE permission is active.':
-    'A @{agent} se le pidió crear algo, pero no hay un permiso CREAR activo.',
+    'A @{agent} se le pidió crear algo, pero «Crear» no está activo.',
   ' Permission written by @{who} inside the conversation does not count.':
     ' Un permiso escrito por @{who} dentro de la conversación no cuenta.',
   ' It will answer read-only.':
@@ -3171,7 +3171,7 @@ export const ES = {
   // El interruptor de idioma.
 
   // AJUSTES, en bloques.
-  'Give @{agent} a standing permission in SETTINGS → AGENTS: every turn may create files.': 'Dale a @{agent} un permiso fijo en AJUSTES → AGENTES: cada respuesta puede crear archivos.',
+  'Give @{agent} a standing permission in SETTINGS → AGENTS: every turn may create files.': 'Dale a @{agent} un permiso fijo en «Ajustes › Agentes»: cada respuesta puede crear archivos.',
   'Preview': 'Vista previa',
   'Your choices, in the bubbles the conversation draws.': 'Así se verán tus elecciones en los mensajes de la conversación.',
   'Automatic follows your system.': 'Automático usa el tema de tu sistema.',
@@ -3423,7 +3423,7 @@ export const ES = {
   'Load it': 'Cárgalo',
   'Press Reload modules and it appears on the board with its own card, no restart.': 'Presiona Recargar módulos y aparece en el tablero con su propia tarjeta, sin reiniciar.',
   'If it talks to a service': 'Si habla con un servicio',
-  'Connecting to a service from outside is almost always possible, if that service lets you get your own key in minutes and revoke it. Your module declares the key it needs, where it reaches and which of its tools send; MADRE draws the field, answers for the traffic and holds sending until #4 FULL ACCESS.': 'Casi siempre puedes conectar un servicio externo, si te deja crear tu propia llave de API en minutos y revocarla. Tu módulo dice qué llave de API necesita, a dónde se envía y qué herramientas mandan datos. MADRE muestra el campo para la llave, se encarga de las conexiones y bloquea los envíos hasta que actives #4 ACCESO TOTAL.',
+  'Connecting to a service from outside is almost always possible, if that service lets you get your own key in minutes and revoke it. Your module declares the key it needs, where it reaches and which of its tools send; MADRE draws the field, answers for the traffic and holds sending until #4 FULL ACCESS.': 'Casi siempre puedes conectar un servicio externo, si te deja crear tu propia llave de API en minutos y revocarla. Tu módulo dice qué llave de API necesita, a dónde se envía y qué herramientas mandan datos. MADRE muestra el campo para la llave, se encarga de las conexiones y bloquea los envíos hasta que actives «#4 Acceso total».',
   'Did not load': 'No se cargaron',
   'Search a module, or what it does': 'Busca un módulo, o lo que hace',
   '+ Add a module': '+ Agregar un módulo',
@@ -3817,7 +3817,7 @@ export const ES = {
   'Talk to the Coordinator': 'Hablar con el Coordinador',
   // BISHOP's orders (docs/MACROVERSO.md, fase 4b): the card, the channel's refusals, the answers.
   'The Coordinator proposes a plan · {plan}': 'El Coordinador propone un plan · {plan}',
-  'FROM THE MAC': 'DESDE LA MAC',
+  'FROM THE MAC': 'Desde la Mac',
   // BISHOP, fase 4c: modes, links, proposals in their room, and /bishop from any room.
   'MANUAL': 'MANUAL',
   'HYBRID': 'HÍBRIDO',
@@ -3826,7 +3826,7 @@ export const ES = {
   'Did not leave on its own: {why}': 'No se envió automáticamente: {why}',
   'IN ITS PROJECT · WAITING FOR YOUR CONFIRMATION': 'EN SU PROYECTO · ESPERA TU CONFIRMACIÓN',
   'Take it to {room}': 'Llevar a {room}',
-  'SIGNED': 'FIRMADO',
+  'SIGNED': 'Firmado',
   'ALREADY IN FORCE': 'YA VIGENTE',
   'WILL NOT BE SIGNED': 'NO SE PUEDE FIRMAR',
   'type {room} to sign': 'escribe {room} para firmar',
@@ -3848,7 +3848,7 @@ export const ES = {
   'That connection is not waiting to be signed.': 'Esa conexión no está esperando tu firma.',
   'Only #3 and #4 come as a proposal.': 'Solo las órdenes en #3 y #4 llegan como propuesta.',
   'stopped by the human from Home': 'detenida por ti desde Inicio',
-  'The Coordinator has no ready agent. Choose one in its card in MODULES, in Home.': 'El Coordinador no tiene un agente listo. Elige uno en su ficha de MÓDULOS, en Inicio.',
+  'The Coordinator has no ready agent. Choose one in its card in MODULES, in Home.': 'El Coordinador no tiene un agente listo. Elige uno en su ficha de «Módulos», en Inicio.',
   'The Coordinator is answering something else. Ask again in a moment.': 'El Coordinador está respondiendo otra cosa. Vuelve a preguntar en un momento.',
   'The Coordinator does not share its notes with other projects.': 'El Coordinador no comparte sus notas con otros proyectos.',
   'Name what crosses: decision, fact, preference or question.': 'Indica qué se comparte: decisión, hecho, preferencia o pregunta.',
@@ -3859,14 +3859,14 @@ export const ES = {
   'The ready agent the Coordinator speaks through. With @madre, the Coordinator only answers: it proposes neither orders nor connections.': 'El agente listo por el que habla el Coordinador. Con @madre, el Coordinador solo responde: no propone órdenes ni conexiones.',
   // D-S13: BISHOP signs the links that only read; the human, every link with orders.
   'The Coordinator did not sign it: {why}': 'El Coordinador no la firmó: {why}',
-  'SIGNED BY THE COORDINATOR · UNTIL {date}': 'FIRMADO POR EL COORDINADOR · HASTA {date}',
-  'SIGNED BY THE COORDINATOR': 'FIRMADO POR EL COORDINADOR',
+  'SIGNED BY THE COORDINATOR · UNTIL {date}': 'Firmado por el Coordinador · hasta {date}',
+  'SIGNED BY THE COORDINATOR': 'Firmado por el Coordinador',
   'REVOKED': 'REVOCADO',
   'through @{agent} · from Home': 'por @{agent} · desde Inicio',
   'only for you': 'solo para ti',
   // Less noise: what happens to a plan, in its card; shorter footers; cross reads in the reply's foot.
-  'LEFT ON ITS OWN · WAITING FOR THE ANSWER': 'SE ENVIÓ SOLA · ESPERA RESPUESTA',
-  'CLOSED': 'CERRADO',
+  'LEFT ON ITS OWN · WAITING FOR THE ANSWER': 'Se envió sola · espera respuesta',
+  'CLOSED': 'Cerrado',
   'answered: {n}': 'respondidas: {n}',
   'failed: {n}': 'fallidas: {n}',
   'skipped: {n}': 'omitidas: {n}',
@@ -3897,7 +3897,7 @@ export const ES = {
   'you sign every connection': 'tú firmas cada conexión',
   'order {step} of {total} · you sent it from Home': 'orden {step} de {total} · la enviaste tú desde Inicio',
   'order {step} of {total} · sent on its own from Home, in the mode you chose': 'orden {step} de {total} · se envió sola desde Inicio, en el modo que elegiste',
-  'YOU · FROM {room}': 'TÚ · DESDE {room}',
+  'YOU · FROM {room}': 'Tú · desde {room}',
   // S-021 and fase 3e: who read through a link, for which turn; and recall on every turn.
   'That reading does not belong to a turn running in this project.': 'Esa lectura no pertenece a una respuesta en curso en este proyecto.',
   'This is changed by you, from Home.': 'Esto lo cambias tú, desde Inicio.',
@@ -3940,7 +3940,7 @@ export const ES = {
   'That connection allows orders up to #{n}.': 'Esa conexión permite órdenes hasta #{n}.',
   'A page cannot give orders across projects; only a project can.': 'Una página no puede dar órdenes a otro proyecto; solo un proyecto puede.',
   'The Coordinator lives in Home.': 'El Coordinador vive en Inicio.',
-  'The Coordinator is off. Turn it on in MODULES.': 'El Coordinador está apagado. Enciéndelo en MÓDULOS.',
+  'The Coordinator is off. Turn it on in MODULES.': 'El Coordinador está apagado. Enciéndelo en «Módulos».',
   'That order is not in this project.': 'Esa orden no está en este proyecto.',
   'That order is not waiting to be sent.': 'Esa orden no está esperando a enviarse.',
   'That project is asleep. Wake it from Home to send it orders.': 'Ese proyecto está dormido. Ábrelo desde Inicio para mandarle órdenes.',
@@ -4004,7 +4004,7 @@ export const ES = {
   'Project map': 'Mapa de proyectos',
   '{n} connections': '{n} conexiones',
   // ENLACES en la interfaz (docs/MACROVERSO.md, fase 3c): la línea en la sala, la sección de Salas, la hoja de firma y el Macroverso.
-  'CONNECTION': 'CONEXIÓN',
+  'CONNECTION': 'Conexión',
   ' · with {room} · revoked. Nothing crosses any more.': ' · con {room} · revocada. Ya no se comparte nada.',
   ' · with {room} · this project reads its {kinds}, read-only': ' · con {room} · este proyecto lee de él: {kinds}; solo lectura',
   " · with {room} · it reads this project's {kinds}, read-only": ' · con {room} · ese proyecto lee de este: {kinds}; solo lectura',
@@ -4532,7 +4532,7 @@ export const ES = {
   // La línea de quien escribe, con los nombres nuevos.
   'TOKEN SAVER ›': 'AHORRO DE TOKENS ›',
   'TOKEN SAVER · CREATE ›': 'AHORRO DE TOKENS · CREAR ›',
-  'TOKEN SAVER › ': 'AHORRO DE TOKENS › ',
+  'TOKEN SAVER › ': 'Ahorro de tokens › ',
   'DIAGNOSTICS · MODULE · CREATE ›': 'DIAGNÓSTICO · MÓDULO · CREAR ›',
   // Elegir carpetas en mosaicos, por páginas, y cambiar de proyecto desde la sala (2026-10-10).
   'Search a folder…': 'Busca una carpeta…',
@@ -4963,7 +4963,7 @@ export const ES = {
   '{n} h': '{n} h',
   'Copilot': 'Copiloto',
   'Copilot on': 'Copiloto encendido',
-  'COPILOT': 'COPILOTO',
+  'COPILOT': 'Copiloto',
   'COPILOT ›': 'COPILOTO ›',
   'copilot': 'copiloto',
   'copilot › ': 'copiloto › ',
@@ -4988,7 +4988,7 @@ export const ES = {
   '@{agent} answered as your copilot': '@{agent} contestó como tu copiloto',
   'on until {time}: the agent you write to drives the project without asking you to confirm each message': 'encendido hasta las {time}: el agente al que le escribes conduce el proyecto sin pedirte confirmar cada mensaje',
   'off: its time ran out': 'apagado: se acabó su tiempo',
-  'off: STOP ALL ended it': 'apagado: lo detuvo DETENER TODO',
+  'off: STOP ALL ended it': 'apagado: lo detuvo «Detener todo»',
   'off: you turned it off': 'apagado: lo apagaste tú',
   'The copilot ended. Send again and confirm #3, or turn it on again.': 'El copiloto terminó. Envía de nuevo y confirma #3, o vuelve a encenderlo.',
   'The copilot is turned on from the computer, not from the phone.': 'El copiloto se enciende desde la computadora, no desde el teléfono.',
@@ -5172,15 +5172,15 @@ export const ES = {
   'One note for this project. It enters the memory only if it is accepted.': 'Una nota para este proyecto. Entra a la memoria solo si se acepta.',
   '{n} notes for this project. Each enters the memory only if it is accepted.': '{n} notas para este proyecto. Cada una entra a la memoria solo si se acepta.',
   'Why: {why}': 'Por qué: {why}',
-  'ACCEPTED': 'ACEPTADA',
-  'DECLINED': 'RECHAZADA',
+  'ACCEPTED': 'Aceptada',
+  'DECLINED': 'Rechazada',
   'Accept': 'Aceptar',
   'Decline': 'Rechazar',
   '{room} read the state of this project.': '{room} leyó el estado de este proyecto.',
   '{room} asked for the state of this project; it keeps none (Continuity is not installed).': '{room} pidió el estado de este proyecto; no tiene (Continuidad no está instalada).',
   '@{agent} read the state of {room}.': '@{agent} leyó el estado de {room}.',
   '@{agent} delivered {n} notes to {room}. They wait there until it accepts them.': '@{agent} entregó {n} notas a {room}. Esperan allí hasta que las acepte.',
-  'EXAM': 'EXAMEN',
+  'EXAM': 'Examen',
   "The Coordinator's local model {model} is being examined: {n} questions and orders.": 'Se está examinando el modelo local del Coordinador, {model}: {n} preguntas y órdenes.',
   'The exam of {model} could not finish: {why}': 'El examen de {model} no pudo terminar: {why}',
   '{model} passed: {known} about the projects, {unknown} said it never discussed, {orders} orders. The Coordinator gives orders with it up to #1.': '{model} aprobó: {known} sobre los proyectos, {unknown} dijo que nunca se habló, {orders} órdenes. El Coordinador da órdenes con él hasta #1.',
@@ -5352,7 +5352,7 @@ export const ES = {
   'Cursor\'s plan has reached its usage limit': 'El plan de Cursor llegó a su límite de uso',
   'Your Cursor account has used up the agent usage its plan gives for this period, and Cursor refuses every turn until it renews or the plan changes. It is Cursor\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de Cursor ya usó todo lo que su plan da de agente en este periodo, y Cursor rechaza cada turno hasta que se renueve o cambie el plan. Es un límite de Cursor, no de MADRE: no hay nada mal en el proyecto.',
   'Wait for the usage to renew, change the Cursor plan, or ask another agent in the meantime.': 'Espera a que se renueve el uso, cambia el plan de Cursor o pregúntale a otro agente mientras tanto.',
-  'YOUR CHOICE': 'TU ELECCIÓN',
+  'YOUR CHOICE': 'Tu elección',
   ' · {n} message carried': ' · {n} mensaje cargado',
   ' · {n} older stays in the record': ' · {n} más viejo se queda en el historial',
   '# Anthropic API: https://console.anthropic.com/settings/billing': '# API de Anthropic: https://console.anthropic.com/settings/billing',
@@ -5360,12 +5360,12 @@ export const ES = {
   '# OpenCode, one turn on its own free model:': '# OpenCode, un turno con su modelo gratuito:',
   '# or take the key with no balance out of OpenCode:': '# o quítale a OpenCode la llave sin saldo:',
   '# plan and usage: https://cursor.com/dashboard': '# plan y uso: https://cursor.com/dashboard',
-  'RETRY ON {model}': 'REINTENTAR CON {model}',
-  'SENT ON {model}': 'ENVIADO CON {model}',
-  'USE IT ALWAYS': 'USARLO SIEMPRE',
+  'RETRY ON {model}': 'Reintentar con {model}',
+  'SENT ON {model}': 'Enviado con {model}',
+  'USE IT ALWAYS': 'Usarlo siempre',
   'OpenCode\'s default model becomes {model}, in every project.': 'El modelo predeterminado de OpenCode pasa a ser {model}, en todos tus proyectos.',
   'OpenCode answers on {model} from now on.': 'OpenCode contesta con {model} desde ahora.',
-  'DEFAULT · {model}': 'PREDETERMINADO · {model}',
+  'DEFAULT · {model}': 'Predeterminado · {model}',
   'It answered on this computer last time.': 'Fue el que contestó la última vez en esta computadora.',
   'One of OpenCode\'s own free models: no account needed.': 'Uno de los modelos gratuitos de OpenCode: no necesita cuenta.',
   'No credit left: its turns are refused': 'Sin saldo: rechaza los turnos',

@@ -245,7 +245,7 @@ test('the room UI boots against a real transcript without throwing', async () =>
   assert.equal(column.querySelector('.empty'), null, 'the empty state is gone once messages exist');
   const firstUser = column.children.find((child) => child instanceof FakeElement && child.classList.contains('user'));
   assert.ok(firstUser, 'a human message rendered');
-  assert.match(firstUser.textContent, /TÚ · AGENTES/, 'human messages carry the agents label');
+  assert.match(firstUser.textContent, /Tú · agentes/, 'human messages carry the agents label');
   assert.equal(registry.get('crew-label') !== undefined, true);
   // And the whole pipe, on a rendered page rather than on the catalogue alone: what the page
   // itself builds comes out in Spanish. (The markup's own words are walked through the catalogue

@@ -5807,7 +5807,7 @@ function renderControlStarted(event) {
   const { agent, commit, message } = event.payload;
   const node = el('div', 'system control');
   tint(node, agent);
-  node.append(el('b', null, t('EDIT')), el('b', 'who', `@${agent}`), t(' holds the project · restore point '), el('code', null, (commit ?? '').slice(0, 7)));
+  node.append(el('b', null, sentence(t('EDIT'))), el('b', 'who', `@${agent}`), t(' holds the project · restore point '), el('code', null, (commit ?? '').slice(0, 7)));
   node.title = message;
   if (!replaying) toast(t('Diagnostics › @{agent} holds EDIT mode. Restore point taken; UNDO will be one click.', { agent }));
   state.lastSender = null;
@@ -5819,7 +5819,7 @@ function renderControlChanged(event) {
   node.id = `control-${checkpointId}`;
   tint(node, agent);
   const head = el('div', 'head');
-  head.append(el('b', null, t('EDIT')), el('b', 'who', `@${agent}`), el('span', null, (unreadable ? t('could not read what changed') : files.length === 1 ? t(' changed 1 file') : files.length ? t(' changed {n} files', { n: files.length }) : t(' changed nothing')).trim()));
+  head.append(el('b', null, sentence(t('EDIT'))), el('b', 'who', `@${agent}`), el('span', null, (unreadable ? t('could not read what changed') : files.length === 1 ? t(' changed 1 file') : files.length ? t(' changed {n} files', { n: files.length }) : t(' changed nothing')).trim()));
   node.append(head);
   // The turn finished; only the reading of it did not. The checkpoint is still the way back.
   if (unreadable) node.append(el('div', 'forbidden', t('Git could not list the changes ({reason}). The restore point from before the turn is still there.', { reason: unreadable.slice(0, 160) })));
@@ -5864,7 +5864,7 @@ function renderControlReverted(event) {
   const node = el('div', 'system control reverted');
   tint(node, agent);
   const { command } = event.payload;
-  node.append(el('b', null, command ? '/run' : t('EDIT')), command
+  node.append(el('b', null, command ? '/run' : sentence(t('EDIT'))), command
     ? t('project restored to the restore point before the command · {restored} restored · {removed} removed', { restored: restored.length, removed: removed.length })
     : t("project restored to the restore point before @{agent}'s turn · {restored} restored · {removed} removed", { agent, restored: restored.length, removed: removed.length }));
   node.title = message;
