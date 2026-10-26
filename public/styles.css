@@ -10615,11 +10615,12 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .ch
    accent, as the keys of those apps. */
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover { background: none !important; color: var(--text); }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out), color calc(160ms * var(--motion-scale, 1)) ease; }
-/* Under the pointer the drawing moves, it does not grow (2026-10-26): no beat of the brain, no
-   pop when a key lights up, nothing that changes its size. */
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover svg { transform: translateY(-1px); }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):active svg { transform: none; }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { animation: none !important; }
+/* Under the pointer a key plays its own animation (the globe turns, the piece shakes, the pulse
+   beats, the slash draws itself) and nothing else: it does not rise, and nothing makes it grow —
+   neither the beat of the brain nor the pop when a key lights up (2026-10-26). */
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):is(*, :hover, :active) svg { transform: none; }
+html.chat-shell .shell > .bar > #nostromo-bar .brain-glyph,
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { animation: none !important; }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: none !important; color: var(--phosphor); }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { color: var(--phosphor); }
 @media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .bar > * svg { transition: none !important; transform: none !important; } }

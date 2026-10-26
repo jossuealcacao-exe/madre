@@ -588,9 +588,10 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.match(css, /:root\.chat-shell \.shell > \.bar > :is\(#tree-button, #code-button, [^)]*\):not\(\.stop-all\):is\(\*, :hover, :active, :focus, :focus-visible, \[aria-pressed\]\) \{\n  background: none !important; box-shadow: none !important; transform: none !important;/);
   assert.match(css, /svg :is\(path, circle, ellipse, rect, line, polyline, polygon\) \{ stroke-width: calc\(var\(--icon-w, 1\.6\) \/ var\(--glyph, 1\)\); transition: none; \}/);
   assert.match(app, /const glyph = Math\.min\(1\.3, Math\.max\(\.75, \(SPAN \* view\) \/ \(20 \* span\)\)\);/);
-  // Hover moves the drawing and never grows it; Modules wears no count; the apps and modules put on
+  // Hover plays a key's own animation, never lifts it nor grows it; Modules wears no count; the apps and modules put on
   // the bar are a third family; the agents neither go nor move while the bar is arranged.
-  assert.match(css, /\.chats-button\):hover svg \{ transform: translateY\(-1px\); \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\):is\(\*, :hover, :active\) svg \{ transform: none; \}/);
+  assert.doesNotMatch(css, /\.chats-button\):hover svg \{ transform: translateY/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
   assert.match(app, /for \(const family of \['project', 'madre', 'apps'\]\)/);
   assert.match(css, /> \.bar-extra \{ order: 26; \}/);
