@@ -4673,9 +4673,12 @@ function fillLook(host) {
     }
     paperBox.append(tune);
   }
-  sxBlock(page, t('Wallpaper'), photo
-    ? t('The project\'s background can be a photograph, shown as a layer or as a mesh of its colors: choose how strong it looks and how much the photograph blurs.')
-    : t('Behind Home, and behind the conversation of the project served at this address. Light and dark each have their own.')).rows.append(paperBox);
+  // The chat shell's look has no picture behind Home or a project (2026-10-26): no wallpaper to choose.
+  if (!document.documentElement.classList.contains('chat-shell')) {
+    sxBlock(page, t('Wallpaper'), photo
+      ? t('The project\'s background can be a photograph, shown as a layer or as a mesh of its colors: choose how strong it looks and how much the photograph blurs.')
+      : t('Behind Home, and behind the conversation of the project served at this address. Light and dark each have their own.')).rows.append(paperBox);
+  }
 
   // Home's own: its cards, its text, the order of its projects. The conversation's bubbles and text
   // are each project's, in its own Settings.

@@ -567,7 +567,14 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // At the right one tool at a time: the others wait behind it, still open, a tab away; a tool's
   // key brings it to the front before it closes it.
   assert.match(app, /const front = shelled && side === 'right' \? frontOf\(open\) : null;/);
-  assert.match(app, /if \(!open \|\| !isSplit\(surface\) \|\| !node\.classList\.contains\('tool-behind'\)\) return;/);
+  assert.match(app, /if \(!open \|\| !docked \|\| !node\.classList\.contains\('tool-behind'\)\) return;/);
+  // The browser docked is one more tool of that column, not a column of the grid.
+  assert.match(app, /const rightTools = \(\) => \[\.\.\.splitsOn\('right'\), \.\.\.\(browserDocked\(\) \? \[BROWSER_TOOL\] : \[\]\)\];/);
+  assert.match(css, /html\.chat-shell \.shell\.with-browser, html\.chat-shell \.shell\.with-split\.with-browser \{ grid-template-columns: minmax\(0, 1fr\) !important; \}/);
+  // Home in the same look, and no wallpaper to choose where there is none.
+  const home = await read('salas-mac.css');
+  assert.match(home, /html\.chat-shell \.sm-sky \{ display: none !important; \}/);
+  assert.match(app, /if \(!chatShellOn\(\)\) \{\n      const paperBlock = sxBlock\(page, t\('Wallpaper'\)/);
   assert.match(css, /html\.chat-shell \.tool-behind \{ visibility: hidden !important; pointer-events: none !important; \}/);
   // No picture behind the room, and the field's keys sit inside the one box you write in.
   assert.match(css, /html\.chat-shell \.shell::before \{ display: none !important; \}/);

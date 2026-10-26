@@ -10738,3 +10738,32 @@ html.chat-shell .composer .pick-options .pick-label {
 html.chat-shell .composer .pick-options .pick-label > * { flex: none; }
 html.chat-shell .composer .pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip, .copilot-chip) { border-radius: 999px; }
 html.chat-shell .composer .pick-options .pick-label > :is(.model-chip, .effort-chip, .copilot-chip):hover { background: var(--cs-hover); }
+/* The browser docked is a tool of the column (app.js, BROWSER_TOOL): placed by the layout like the
+   code and the files, not a column of the grid. Floating, it is a window as always. */
+html.chat-shell .shell.with-browser, html.chat-shell .shell.with-split.with-browser { grid-template-columns: minmax(0, 1fr) !important; }
+html.chat-shell .shell > .browser-dock:not(.window) {
+  position: fixed; z-index: 6; grid-column: auto; grid-row: auto;
+  border: 0; border-radius: 0; background: var(--cs-tool); box-shadow: inset 1px 0 0 var(--cs-line);
+}
+html.chat-shell .shell > .browser-dock:not(.window) .viewer-head .surface-modes { display: none !important; }
+/* A narrow canvas: the chips give way under a fade, never over the keys at their right. */
+html.chat-shell .composer > .pick-options { overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent); }
+html.chat-shell .composer .ash-toggle { margin-left: 6px; }
+
+/* ---- windows: solid sheets over the room, as those apps' dialogs ---- */
+html.chat-shell dialog.surface.window, html.chat-shell .tree.window, html.chat-shell .browser-dock.window, html.chat-shell dialog.surface.split.settings-window {
+  background: var(--cs-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  border: 0 !important; border-radius: 14px;
+  box-shadow: 0 0 0 1px var(--cs-line), 0 24px 60px -18px rgba(20, 30, 20, .32), 0 6px 18px -8px rgba(20, 30, 20, .14) !important;
+}
+html.chat-shell[data-scheme="dark"] :is(dialog.surface.window, .tree.window, .browser-dock.window) { box-shadow: 0 0 0 1px var(--cs-line), 0 24px 60px -18px rgba(0, 0, 0, .7) !important; }
+/* What sits inside them: flat cards with a hairline. */
+html.chat-shell .mods-tile { box-shadow: 0 0 0 1px var(--cs-line) !important; background: var(--cs-canvas) !important; }
+html.chat-shell .mods-tile:hover { box-shadow: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .25) !important; }
+html.chat-shell .mods-tile.make { background: var(--cs-side) !important; }
+/* The relief of the cards in Settings, Modules and Diagnostics becomes a hairline, and a soft lift
+   under the pointer: one rule for every one of them (--relief, --relief-over). */
+html.chat-shell, html.chat-shell[data-scheme="light"], html.chat-shell[data-scheme="dark"] {
+  --relief: 0 0 0 1px var(--cs-line);
+  --relief-over: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .25);
+}

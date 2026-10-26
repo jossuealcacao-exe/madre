@@ -2360,7 +2360,7 @@ function browserShow() {
     browser.dialog.hidden = false;
     // Floating, it is a window over the room and asks the grid for no column.
     if (browserFloating()) { placeBrowserWindow(browserWindow.box ?? browserWindowBox()); bringWindowForward(browser.dialog); }
-    else { noteBeside('browser'); document.querySelector('.shell')?.classList.add('with-browser'); }
+    else { noteBeside('browser'); noteShown(BROWSER_TOOL); document.querySelector('.shell')?.classList.add('with-browser'); }
     layoutPanels();
   };
   if (browser.dialog.hidden) void morph('dock', show); else show();
@@ -7945,10 +7945,13 @@ function drawCustom() {
     const paperBox = el('div', 'paper-box');
     paperBox.append(papers);
     if (paperTune.children.length) paperBox.append(paperTune);
-    const paperBlock = sxBlock(page, t('Wallpaper'), PHOTO_WALLPAPERS.has(draft.wallpaper)
-      ? t('The project\'s background can be a photograph, shown as a layer or as a mesh of its colors: choose how strong it looks and how much the photograph blurs.')
-      : t('Behind the conversation, in this window and in every conversation beside it. Light and dark each have their own.'));
-    paperBlock.rows.append(paperBox);
+    // The chat shell has no picture behind the conversation (2026-10-26): no wallpaper to choose.
+    if (!chatShellOn()) {
+      const paperBlock = sxBlock(page, t('Wallpaper'), PHOTO_WALLPAPERS.has(draft.wallpaper)
+        ? t('The project\'s background can be a photograph, shown as a layer or as a mesh of its colors: choose how strong it looks and how much the photograph blurs.')
+        : t('Behind the conversation, in this window and in every conversation beside it. Light and dark each have their own.'));
+      paperBlock.rows.append(paperBox);
+    }
     const talk = sxBlock(page, t('Conversation'));
     sxRow(talk, t('Bubbles'), null, segmented('bubbles'), { stack: true });
     sxRow(talk, t('Text'), null, segmented('text'), { stack: true });
@@ -9269,6 +9272,11 @@ const TOOL_HEAD = 48;
 const shellUI = { built: false, tabs: null, title: null, projects: null, foot: null };
 // The tool in front at the right: the one shown last of those open there (surfaceOrder).
 const frontOf = (stack) => [...stack].sort((a, b) => surfaceOrder.indexOf(a.key) - surfaceOrder.indexOf(b.key)).at(-1) ?? null;
+// The browser docked is one more tool of the column in the chat shell: a tab beside the code and
+// the files, not a column of its own. It keeps its own ways to open, close and float.
+const BROWSER_TOOL = { key: 'browser', side: 'right', kind: 'dock', node: () => browser.dialog, close: () => browserHide() };
+const browserDocked = () => Boolean(browser.dialog && !browser.dialog.hidden && !browserFloating() && !browser.dialog.classList.contains('leaving'));
+const rightTools = () => [...splitsOn('right'), ...(browserDocked() ? [BROWSER_TOOL] : [])];
 const SIDE_MIN = 300;
 const sideWidths = (() => { try { return JSON.parse(localStorage.getItem('pulse.sides') ?? '{}') ?? {}; } catch { return {}; } })();
 function rememberSides() { try { localStorage.setItem('pulse.sides', JSON.stringify(sideWidths)); } catch { /* no storage */ } }
@@ -9319,6 +9327,16 @@ function noteBeside(key) {
 }
 function besideNow() {
   const members = [];
+  // The chat shell: the sidebar, and at the right one column whatever is open in it — only the
+  // tool in front takes room; the browser floats when that column has to give way.
+  if (chatShellOn()) {
+    const left = splitsOn('left')[0];
+    if (left) members.push({ key: left.key, kind: 'side', floor: SIDE_MIN, surface: left });
+    const front = frontOf(rightTools());
+    if (front) members.push(front === BROWSER_TOOL ? { key: 'browser', kind: 'dock', floor: SIDE_MIN } : { key: front.key, kind: 'side', floor: SIDE_MIN, surface: front });
+    if (window.innerWidth > 900 && split.chat && split.box && !split.box.hidden) members.push({ key: 'half', kind: 'half', floor: HALF_MIN + 12 });
+    return members;
+  }
   for (const side of ['left', 'right']) {
     for (const one of splitsOn(side)) members.push({ key: one.key, kind: 'side', floor: SIDE_MIN + 2 * SIDE_GAP, surface: one });
   }
@@ -9411,7 +9429,7 @@ function layoutPanels() {
   const GAP = shelled ? 0 : SIDE_GAP;
   let tools = null;
   for (const side of ['left', 'right']) {
-    const open = splitsOn(side);
+    const open = shelled && side === 'right' ? rightTools() : splitsOn(side);
     // In the chat shell the right is one column with tabs: the tool in front takes it, the others
     // wait behind it in the same box, still open, a tab away.
     const front = shelled && side === 'right' ? frontOf(open) : null;
@@ -9423,7 +9441,7 @@ function layoutPanels() {
     // Never so wide that the room is left without a readable column, nor the browser's dock and the
     // second conversation without their floors. Several at one side share what is left: each keeps
     // the width it was given while they fit, and gives way in proportion when they do not.
-    const grid = besideNow().filter((one) => one.kind !== 'side').reduce((sum, one) => sum + one.floor, 0);
+    const grid = besideNow().filter((one) => one.kind !== 'side' && !(shelled && one.kind === 'dock')).reduce((sum, one) => sum + one.floor, 0);
     const room = window.innerWidth - other - COLUMN_MIN - grid - (stack.length + 2) * GAP;
     const wanted = stack.map((surface) => sideWidthFor(surface));
     const total = wanted.reduce((sum, one) => sum + one, 0);
@@ -21238,7 +21256,7 @@ const NEW_CHAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.
 const PLUS_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 const MARKET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 7.4h13.6l-1.2 8.8a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 7.4V6a3 3 0 0 1 6 0v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const FLOAT_TOOL_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="11" height="11" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.2 13V4.6a1.4 1.4 0 0 1 1.4-1.4H13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const TOOL_NAMES = { viewer: () => t('Code'), tree: () => t('Files') };
+const TOOL_NAMES = { viewer: () => t('Code'), tree: () => t('Files'), browser: () => t('Browser') };
 
 function shellKey(icon, label, run, className = 'shell-key') {
   const key = el('button', className);
@@ -21310,13 +21328,14 @@ function chatShell() {
 
   // A tool's key on the bar: it opens the tool, brings it to the front when it waits behind
   // another tab, and closes it when it is the one in front.
-  for (const [id, key] of [['#code-button', 'viewer'], ['#tree-button', 'tree']]) {
+  for (const [id, key] of [['#code-button', 'viewer'], ['#tree-button', 'tree'], ['#browser-button', 'browser']]) {
     document.querySelector(id)?.addEventListener('click', (event) => {
       if (!chatShellOn()) return;
-      const surface = surfaces.find((one) => one.key === key);
+      const surface = key === 'browser' ? BROWSER_TOOL : surfaces.find((one) => one.key === key);
       const node = surface?.node();
       const open = surface && (surface.kind === 'dialog' ? node?.open : !node?.hidden);
-      if (!open || !isSplit(surface) || !node.classList.contains('tool-behind')) return;
+      const docked = surface === BROWSER_TOOL ? browserDocked() : isSplit(surface);
+      if (!open || !docked || !node.classList.contains('tool-behind')) return;
       event.stopImmediatePropagation();
       event.preventDefault();
       noteShown(surface);
@@ -21395,8 +21414,11 @@ function paintToolTabs(tools, width) {
     tabs.append(tab);
   }
   strip.replaceChildren(tabs,
-    shellKey(FLOAT_TOOL_ICON, t('Float it as a window'), () => setSurfaceMode(frontOf(splitsOn('right')) ?? tools.front, 'window')),
-    shellKey(SIDEBAR_ICON.replace('M7.6 3.9v12.2', 'M12.4 3.9v12.2'), t('Close'), () => { for (const one of splitsOn('right')) one.close(); }));
+    shellKey(FLOAT_TOOL_ICON, t('Float it as a window'), () => {
+      const front = frontOf(rightTools()) ?? tools.front;
+      if (front === BROWSER_TOOL) setBrowserFloating(true); else setSurfaceMode(front, 'window');
+    }),
+    shellKey(SIDEBAR_ICON.replace('M7.6 3.9v12.2', 'M12.4 3.9v12.2'), t('Close'), () => { for (const one of rightTools()) one.close(); }));
 }
 
 function leaveTo(url) {

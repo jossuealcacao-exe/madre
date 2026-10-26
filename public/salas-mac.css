@@ -1572,3 +1572,20 @@ body.salas-mac .sm-top > .sm-tb-home::before {
   body.salas-mac .sm-top > .sm-topbar { height: 44px; }
   body.salas-mac .sm-top > .sm-tb-home { margin-left: 6px; padding-left: 6px; }
 }
+
+/* HOME IN THE CHAT SHELL'S LOOK (2026-10-26): the same plain ground as a project's sidebar, no sky
+   and no picture; every tile and card flat on it, white with a hairline, as a project's canvas;
+   a sleeping project a step quieter. The accent stays where it means something: the dots, the
+   keys, the project that is here. */
+html.chat-shell body.salas-mac { background: var(--cs-side); }
+html.chat-shell .sm-sky { display: none !important; }
+html.chat-shell body.salas-mac .sm-top { background: var(--cs-canvas) !important; box-shadow: inset 0 -1px 0 var(--cs-line) !important; }
+html.chat-shell :is(.sm-tile, .sm-tools) {
+  background: var(--cs-canvas) !important; border-radius: 16px;
+  box-shadow: 0 0 0 1px var(--cs-line) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html.chat-shell .sm-drawer .sm-projects > .sm-card::before, html.chat-shell .sm-drawer .sm-projects > .sm-card::after { display: none !important; }
+html.chat-shell .sm-card { background: var(--cs-canvas) !important; }
+html.chat-shell .sm-card:hover { transform: none; box-shadow: 0 0 0 1px var(--cs-line), 0 6px 18px -10px rgba(20, 30, 20, .22) !important; }
+html.chat-shell .sm-card.is-asleep { background: var(--cs-side) !important; }
+html.chat-shell .sm-card.here { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--s-acc) 60%, transparent) !important; }
