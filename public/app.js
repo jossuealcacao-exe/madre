@@ -21315,6 +21315,11 @@ function chatShell() {
   side.prepend(head, nav, scroll);
   side.append(shellUI.foot);
 
+  // The bar's families (styles.css, .bar-family): a hairline before the project's tools and one
+  // before MADRE's own. Placed by order, so they stand right whatever the bar's own arrangement.
+  const bar = document.querySelector('.shell > .bar:not(.bar-home)');
+  if (bar) for (const family of ['project', 'madre']) { const line = el('span', `bar-family ${family}`); line.setAttribute('aria-hidden', 'true'); bar.append(line); }
+
   // The title over the conversation: which chat, of which project.
   shellUI.title = el('div', 'shell-title');
   document.querySelector('.bar-left')?.append(shellUI.title);

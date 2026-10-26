@@ -579,6 +579,11 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // No picture behind the room, and the field's keys sit inside the one box you write in.
   assert.match(css, /html\.chat-shell \.shell::before \{ display: none !important; \}/);
   assert.match(css, /html\.chat-shell \.shell > \.composer > \.field \{ display: contents; \}/);
+  // The crew in the middle of the bar; the keys with no plate, lit in the accent when pressed, in
+  // two families with a hairline before each.
+  assert.match(css, /html\.chat-shell \.shell > \.bar:not\(\.bar-home\) > #agents \{ position: absolute; left: 50%; top: 50%; transform: translate\(-50%, -50%\);/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.mother-button, \.tree-button, \.chats-button\)\[aria-pressed="true"\] \{ background: none !important; color: var\(--phosphor\); \}/);
+  assert.match(app, /for \(const family of \['project', 'madre'\]\)/);
   // With the field as display: contents, the fade under the box is measured from the box itself.
   assert.match(app, /const field = fieldBox && fieldBox\.height > 0 \? fieldBox : box;/);
 });

@@ -10606,8 +10606,15 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .ch
   font-size: 0; color: var(--text-2);
 }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: 18px !important; height: 18px !important; }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover { background: var(--cs-hover) !important; color: var(--text); }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: var(--cs-sel) !important; color: var(--text); }
+/* No plate under a key (2026-10-26): the pointer wakes the drawing, a press lights it in the
+   accent, as the keys of those apps. */
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover { background: none !important; color: var(--text); }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out), color calc(160ms * var(--motion-scale, 1)) ease; }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover svg { transform: translateY(-1px) scale(1.1); }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):active svg { transform: scale(.94); }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: none !important; color: var(--phosphor); }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { color: var(--phosphor); }
+@media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .bar > * svg { transition: none !important; transform: none !important; } }
 html.chat-shell .shell > .bar .modules-count { position: absolute; top: 2px; right: 0; font-size: 9.5px; }
 html.chat-shell .shell > .bar > .mother-button { position: relative; }
 /* Stop all: only while something runs, as a stop key is in those apps. */
@@ -10776,4 +10783,31 @@ html.chat-shell #messages#messages .row.user .bubble { background: var(--cs-bubb
 html.chat-shell #messages#messages .thread-inner > .system, html.chat-shell #messages#messages :is(.command-card, .choice) {
   background: var(--cs-side) !important; box-shadow: 0 0 0 1px var(--cs-line) !important;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+
+/* ---- the bar over the conversation, in order (2026-10-26) ----
+   The title at the left; the crew in the middle of the bar; then what is happening (the tour, a
+   newer MADRE, Stop all); then the keys in their families, a hairline between them: the project's
+   tools that open at the right (files, code, your servers), then MADRE's own (the memory map,
+   modules, diagnostics). */
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-left { order: 0; }
+html.chat-shell .shell > .bar:not(.bar-home) > :is(#inbox-pill, #steps-pill, #tour-pill-slot, #handoff-pill, #update-pill) { order: 2; }
+html.chat-shell .shell > .bar:not(.bar-home) > #agents-compact { order: 3; }
+html.chat-shell .shell > .bar:not(.bar-home) > #stop-all { order: 4; }
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-family.project { order: 9; }
+html.chat-shell .shell > .bar:not(.bar-home) > #tree-button { order: 10; }
+html.chat-shell .shell > .bar:not(.bar-home) > #code-button { order: 11; }
+html.chat-shell .shell > .bar:not(.bar-home) > #browser-button { order: 12; }
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-family.madre { order: 19; }
+html.chat-shell .shell > .bar:not(.bar-home) > #nostromo-bar { order: 20; }
+html.chat-shell .shell > .bar:not(.bar-home) > #modules-button { order: 21; }
+html.chat-shell .shell > .bar:not(.bar-home) > #mother-button { order: 22; }
+html.chat-shell .shell > .bar:not(.bar-home) > :is(#phone-button, .bar-more, .bar-badges) { order: 30; }
+.bar-family { display: none; }
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-family { display: block; flex: none; width: 1px; height: 18px; margin: 0 8px; background: color-mix(in srgb, var(--text) 16%, transparent); }
+/* The crew in the middle of the bar, while the bar is wide enough to hold it there; narrower, it
+   folds into its key as before (app.js decides which shows). */
+html.chat-shell .shell > .bar:not(.bar-home) > #agents { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; }
+@container roombar (max-width: 900px) {
+  html.chat-shell .shell > .bar:not(.bar-home) > #agents { position: static; transform: none; order: 3; }
 }
