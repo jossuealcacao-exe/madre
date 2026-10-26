@@ -9218,7 +9218,21 @@ function rememberSurfaces() {
     localStorage.setItem('pulse.panelWindows', JSON.stringify(windowBoxes));
   } catch { /* no storage */ }
 }
-const modeOf = (surface) => surfaceModes[surface.key] ?? 'base';
+// SIDEBARS, as people already know them (2026-10-25): in Claude, ChatGPT and every editor the
+// conversations open at the left and the files and the code at the right, docked, with the
+// conversation beside them, and their key shows and hides them. So that is how they open here,
+// unless the person floated one as a window. A phone keeps its sheets.
+const SIDEBAR_KEYS = ['chats', 'tree', 'viewer'];
+const sidebarsByDefault = () => !SPLIT_CHAT && !state.device && !document.documentElement?.classList?.contains('via-phone');
+try {
+  if (!localStorage.getItem('pulse.sidebars')) {
+    // Once: what was left in its old place inside the room becomes a sidebar too.
+    for (const key of SIDEBAR_KEYS) if (surfaceModes[key] === 'base') delete surfaceModes[key];
+    localStorage.setItem('pulse.sidebars', '1');
+    localStorage.setItem('pulse.surfaces', JSON.stringify(surfaceModes));
+  }
+} catch { /* no storage: the defaults still apply */ }
+const modeOf = (surface) => surfaceModes[surface.key] ?? (sidebarsByDefault() && SIDEBAR_KEYS.includes(surface.key) ? 'split' : 'base');
 function isWindow(surface) { return modeOf(surface) === 'window'; }
 function isSplit(surface) { return modeOf(surface) === 'split'; }
 
@@ -10161,16 +10175,9 @@ function seatDialog(surface) {
   const backToBase = () => {
     node.classList.remove('floating', 'no-intro');
     dropWindow(node);
-    // A dialog splits or floats because a button said so, this time. The next time it opens it is
-    // what it always was — opening a file must never divide the room by itself. Where its window
-    // stood is kept for the next time the window button is pressed.
-    if (modeOf(surface) !== 'base') {
-      surfaceModes[surface.key] = 'base';
-      node.classList.remove('split', 'window');
-      for (const property of ['left', 'top', 'width', 'height']) node.style.removeProperty(property);
-      rememberSurfaces();
-      for (const paint of surfacePaints.get(surface.key) ?? []) paint();
-    }
+    // The code opens the way it was left, as the conversations and the files do (2026-10-25): docked
+    // beside the conversation unless the person floated it. Before, every opening was a dialog over
+    // the room again, and the code was the one sidebar that never stayed one.
     requestAnimationFrame(layoutPanels);
   };
   node.close = function closeForReal(...args) {
@@ -10295,7 +10302,7 @@ if (shellBox && !SPLIT_CHAT) {
   for (const surface of surfaces) {
     const node = surface.node();
     if (!node) continue;
-    if (surface.kind === 'dialog') { if (modeOf(surface) !== 'base') surfaceModes[surface.key] = 'base'; seatDialog(surface); }
+    if (surface.kind === 'dialog') seatDialog(surface);
     else {
       node.classList.toggle('window', isWindow(surface));
       node.classList.toggle('split', isSplit(surface));
@@ -11555,7 +11562,11 @@ function boot() {
   if (!state.device && !SPLIT_CHAT) {
     const key = els.chatsButton;
     const bar = document.querySelector('.shell > .bar:not(.bar-home)');
-    if (key && bar && typeof bar.prepend === 'function') { key.style.translate = ''; key.classList.add('tree-button'); key.hidden = false; bar.prepend(key); }
+    if (key && bar && typeof bar.prepend === 'function') {
+      key.style.translate = ''; key.classList.add('tree-button'); key.hidden = false; bar.prepend(key);
+      // The sidebar's own drawing, the one Claude and ChatGPT put in the same corner.
+      key.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
+    }
   }
   if (state.device) {
     phoneSheets();

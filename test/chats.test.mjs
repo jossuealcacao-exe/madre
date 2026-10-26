@@ -132,6 +132,14 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   assert.match(app, /if \(els\.chatsButton && !state\.device && !inBar\) els\.chatsButton\.hidden = open;/);
   assert.match(app, /if \(!state\.device && !SPLIT_CHAT\) \{[\s\S]{0,400}bar\.prepend\(key\)/);
   assert.match(css, /\.shell > \.bar > \.chats-button \{[^}]*translate: none !important/);
+  // Sidebars as people know them (2026-10-25): the conversations, the files and the code open
+  // docked at their side unless the person floated one; once, the old place inside the room moves
+  // to the sidebar; the code remembers how it was left; the key wears the sidebar's drawing.
+  assert.match(app, /const SIDEBAR_KEYS = \['chats', 'tree', 'viewer'\];/);
+  assert.match(app, /const modeOf = \(surface\) => surfaceModes\[surface\.key\] \?\? \(sidebarsByDefault\(\) && SIDEBAR_KEYS\.includes\(surface\.key\) \? 'split' : 'base'\);/);
+  assert.match(app, /if \(surfaceModes\[key\] === 'base'\) delete surfaceModes\[key\];/);
+  assert.doesNotMatch(app, /if \(surface\.kind === 'dialog'\) \{ if \(modeOf\(surface\) !== 'base'\) surfaceModes\[surface\.key\] = 'base';/);
+  assert.match(app, /key\.innerHTML = SPLIT_LEFT_ICON;/);
   // And the handle is lit the way the buttons in the bar are, not with a halo of its own.
   assert.match(css, /\.chats-button:hover,\n:root\[data-theme="light"\]|:root\[data-theme="light"\] \.chats-button:hover/);
   // The handle sits in the canvas, under the bar, where the conversation it opens begins.
