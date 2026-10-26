@@ -9180,8 +9180,8 @@ const FLOAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.25 1
 //             the other half: nothing is covered;
 //   window  — it floats over the room, carried by its header and sized from its edges.
 //
-// Pressing the lit button gives the surface back its base. One split per side: a second one sends
-// the first to a window rather than closing it. While the panels and the splits fit beside a
+// Pressing the lit button gives the surface back its base. Several splits may stand at one side, in
+// a row from the edge (SIDE_STACK): the files beside the code, as in an editor. While the panels and the splits fit beside a
 // readable column, the column moves out of their way (the --rail-* properties); when they do not,
 // the one opened last keeps its place and the other floats over the thread with a veil behind it,
 // because covering what you are reading is only acceptable while it is plainly temporary.
@@ -9272,7 +9272,15 @@ function sideWidthFor(surface) {
   // The viewer docked is the code workspace: the files, the code and what it makes need room.
   return Math.max(420, Math.min(980, vw * .5));
 }
-const splitOn = (side) => surfaces.find((one) => one.side === side && isSplit(one) && (one.kind === 'dialog' ? one.node()?.open : !one.node()?.hidden) && !one.node()?.classList.contains('leaving'));
+const splitShown = (one) => isSplit(one) && (one.kind === 'dialog' ? one.node()?.open : !one.node()?.hidden) && !one.node()?.classList.contains('leaving');
+// More than one per side (2026-10-25), as an editor keeps the files beside the code: what docks at
+// a side stands in a row from the window's edge in, in this order — the code at the right edge, the
+// files between it and the conversation; the conversations alone at the left.
+const SIDE_STACK = { left: ['chats'], right: ['viewer', 'tree'] };
+const splitsOn = (side) => SIDE_STACK[side].map((key) => surfaces.find((one) => one.key === key)).filter((one) => one && one.side === side && splitShown(one));
+const splitOn = (side) => splitsOn(side).at(-1) ?? null;
+// Where each docked surface was put at the last layout: its inner edge is what its grip moves.
+const sideBoxes = {};
 
 // The conversation open in the right half of the window, if any. Declared before the room's
 // layout, which keeps a floor for it, and before the list, which draws the button that opens it.
@@ -9303,8 +9311,7 @@ function noteBeside(key) {
 function besideNow() {
   const members = [];
   for (const side of ['left', 'right']) {
-    const one = splitOn(side);
-    if (one) members.push({ key: one.key, kind: 'side', floor: SIDE_MIN + 2 * SIDE_GAP, surface: one });
+    for (const one of splitsOn(side)) members.push({ key: one.key, kind: 'side', floor: SIDE_MIN + 2 * SIDE_GAP, surface: one });
   }
   // Below 900px the browser and the second conversation stack under the conversation instead.
   if (window.innerWidth > 900) {
@@ -9384,20 +9391,38 @@ function layoutPanels() {
   if (!shellBox || !threadBox || SPLIT_CHAT) return;
   for (let tries = 0; tries < 3 && giveWay(); tries += 1) { /* one at a time, oldest first */ }
   // The sides first: they change how wide the room is.
-  const sides = { left: splitOn('left'), right: splitOn('right') };
   const width = { left: 0, right: 0 };
   for (const side of ['left', 'right']) {
-    const surface = sides[side];
-    if (!surface) continue;
-    const other = side === 'left' ? width.left : 0;
+    const stack = splitsOn(side);
+    if (!stack.length) continue;
+    const other = side === 'left' ? width.right : width.left;
     // Never so wide that the room is left without a readable column, nor the browser's dock and the
-    // second conversation without their floors.
+    // second conversation without their floors. Several at one side share what is left: each keeps
+    // the width it was given while they fit, and gives way in proportion when they do not.
     const grid = besideNow().filter((one) => one.kind !== 'side').reduce((sum, one) => sum + one.floor, 0);
-    const room = window.innerWidth - other - COLUMN_MIN - grid - 3 * SIDE_GAP;
-    width[side] = Math.round(Math.max(SIDE_MIN, Math.min(sideWidthFor(surface), room)));
-    const node = surface.node();
+    const room = window.innerWidth - other - COLUMN_MIN - grid - (stack.length + 2) * SIDE_GAP;
+    const wanted = stack.map((surface) => sideWidthFor(surface));
+    const total = wanted.reduce((sum, one) => sum + one, 0);
+    const scale = total > room ? Math.max(0, room) / total : 1;
+    const widths = wanted.map((one) => Math.round(Math.max(SIDE_MIN, one * scale)));
+    // A floor raised one of them past the room: the widest give it back, never below their floor.
+    let excess = widths.reduce((sum, one) => sum + one, 0) - Math.max(0, room);
+    for (const index of widths.map((one, at) => at).sort((a, b) => widths[b] - widths[a])) {
+      if (excess <= 0) break;
+      const take = Math.min(excess, widths[index] - SIDE_MIN);
+      widths[index] -= take;
+      excess -= take;
+    }
+    width[side] = widths.reduce((sum, one) => sum + one, 0) + (stack.length - 1) * SIDE_GAP;
     const top = sideTop();
-    applyWindowBox(node, { x: side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP - width[side], y: top, w: width[side], h: window.innerHeight - top - SIDE_GAP });
+    let edge = side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP;
+    stack.forEach((surface, index) => {
+      const w = widths[index];
+      const x = side === 'left' ? edge : edge - w;
+      applyWindowBox(surface.node(), { x, y: top, w, h: window.innerHeight - top - SIDE_GAP });
+      sideBoxes[surface.key] = { x, w };
+      edge = side === 'left' ? x + w + SIDE_GAP : x - SIDE_GAP;
+    });
   }
   const sideLeft = width.left ? `${width.left + 2 * SIDE_GAP}px` : '';
   const sideRight = width.right ? `${width.right + 2 * SIDE_GAP}px` : '';
@@ -9500,7 +9525,9 @@ function sideGrip(surface) {
     const move = (moving) => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        sideWidths[surface.key] = Math.round(surface.side === 'left' ? moving.clientX - SIDE_GAP : window.innerWidth - SIDE_GAP - moving.clientX);
+        // From its own outer edge, which is the window's only for the one docked against it.
+        const box = sideBoxes[surface.key] ?? { x: surface.side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP, w: 0 };
+        sideWidths[surface.key] = Math.round(surface.side === 'left' ? moving.clientX - box.x : box.x + box.w - moving.clientX);
         layoutPanels();
       });
     };
@@ -10198,10 +10225,8 @@ function setSurfaceMode(surface, next, { animate = true } = {}) {
   const node = surface.node();
   if (!node || modeOf(surface) === next) return;
   if (next === 'split') noteBeside(surface.key);
-  // One split per side: the one already there goes to a window, nothing closes.
-  if (next === 'split') {
-    for (const other of surfaces) if (other !== surface && other.side === surface.side && isSplit(other)) setSurfaceMode(other, 'window', { animate: false });
-  }
+  // Several may dock at one side (2026-10-25, the files beside the code): while they fit beside a
+  // readable conversation they stand in a row (layoutPanels); when they do not, the oldest floats.
   surfaceModes[surface.key] = next;
   rememberSurfaces();
   // The one just changed is the one being looked at: it is offered the room first.

@@ -299,8 +299,12 @@ test('surfaces: every one carries split and window in its header, and a dialog i
   assert.match(app, /node\.showModal = function showInItsMode\(\)/);
   // Changing how an open dialog is shown is not closing it: its own close handlers must not run.
   assert.match(app, /event\.stopImmediatePropagation\(\);/);
-  // One split per side; the one already there goes to a window, nothing closes.
-  assert.match(app, /if \(other !== surface && other\.side === surface\.side && isSplit\(other\)\) setSurfaceMode\(other, 'window', \{ animate: false \}\);/);
+  // Several splits stand at one side (2026-10-25), in a row from the edge: the code at the right
+  // edge, the files beside it, as in an editor. A second split no longer sends the first away.
+  assert.match(app, /const SIDE_STACK = \{ left: \['chats'\], right: \['viewer', 'tree'\] \};/);
+  assert.doesNotMatch(app, /other\.side === surface\.side && isSplit\(other\)\) setSurfaceMode\(other, 'window'/);
+  // Each one's grip moves its own inner edge, measured from where it stands.
+  assert.match(app, /sideWidths\[surface\.key\] = Math\.round\(surface\.side === 'left' \? moving\.clientX - box\.x : box\.x \+ box\.w - moving\.clientX\);/);
 });
 
 test('room: the conversation never gives way, and what stands beside it does, oldest first', async () => {
@@ -318,8 +322,10 @@ test('room: the conversation never gives way, and what stands beside it does, ol
   assert.match(app, /members\.reduce\(\(sum, one\) => sum \+ one\.floor, COLUMN_MIN\) <= window\.innerWidth/);
   assert.match(app, /const oldest = \[\.\.\.members\]\.sort\(\(a, b\) => rank\(a\) - rank\(b\)\)\[0\];/);
   assert.match(app, /if \(oldest\.kind === 'side'\) setSurfaceMode\(oldest\.surface, 'window', \{ animate: false \}\);/);
-  // A side split may not take the floors of the dock and the second conversation either.
-  assert.match(app, /const room = window\.innerWidth - other - COLUMN_MIN - grid - 3 \* SIDE_GAP;/);
+  // A side split may not take the floors of the dock and the second conversation either, and the
+  // splits at one side share what is left without a floor pushing them past it.
+  assert.match(app, /const room = window\.innerWidth - other - COLUMN_MIN - grid - \(stack\.length \+ 2\) \* SIDE_GAP;/);
+  assert.match(app, /let excess = widths\.reduce\(\(sum, one\) => sum \+ one, 0\) - Math\.max\(0, room\);/);
   // And the dock and the second conversation narrow toward their floors before the conversation does.
   assert.match(app, /function fitGridBeside\(\)/);
   // The split's state exists before the layout that keeps a floor for it.

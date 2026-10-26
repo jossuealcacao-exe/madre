@@ -10506,10 +10506,10 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 /* ==========================================================================================
    THE BAR FROM EDGE TO EDGE (2026-10-25, route A of R-12)
    ------------------------------------------------------------------------------------------
-   The bar stops floating: one band of glass across the top of the window, with a hairline under
-   it. The keys keep their order and their place, inside the same 1440 px as before, and the
+   The bar stops floating: one solid band across the top of the window, with a hairline under it.
+   The keys keep their order and their place, inside the same 1440 px as before, and the
    house's keys (Home, another project, reload, Settings, off) sit at its right after a hairline,
-   on the same glass. It is the bar the app will have: there the group on the right goes to the
+   on the same band. It is the bar the app will have: there the group on the right goes to the
    system and the window's own buttons take its place. A phone keeps its one bar (.via-phone).
    ========================================================================================== */
 html:root:not(.via-phone) .shell > .bar {
@@ -10521,7 +10521,13 @@ html:root:not(.via-phone) .shell > .bar {
   min-height: 48px; padding-block: 8px; padding-left: var(--edge);
   border: 0; border-radius: 0;
   box-shadow: 0 .5px 0 color-mix(in srgb, var(--text) 12%, transparent);
+  /* A layer above the room, not glass over it (2026-10-25): solid, nothing seen or blurred through
+     it, as an app's title bar is. */
+  /* Over the wallpaper's own rules for the bar, which made it see-through on purpose. */
+  background-color: var(--bg) !important; background-image: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
+:root[data-scheme="light"]:not(.via-phone) .shell > .bar:not(.bar-home) { background-color: #ffffff !important; }
 html:root:not(.via-phone) .shell > .bar.with-home {
   margin: 0 calc(-1 * var(--side-r, 0px)) 0 calc(-1 * var(--side-l, 0px)); width: auto;
   padding-right: calc(var(--edge) + var(--home-w, 150px) + 12px);
