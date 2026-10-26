@@ -320,11 +320,17 @@ test('room: the conversation never gives way, and what stands beside it does, ol
   assert.match(app, /if \(seen\.floated\) return;[\s\S]{0,200}floated: true[\s\S]{0,300}sayWhenQuiet\(/);
   assert.match(app, /const card = document\.querySelector\('\.hint-card'\);\n    if \(!card\) \{ say\(\); return; \}/);
   assert.match(app, /members\.reduce\(\(sum, one\) => sum \+ one\.floor, COLUMN_MIN\) <= window\.innerWidth/);
-  assert.match(app, /const oldest = \[\.\.\.members\]\.sort\(\(a, b\) => rank\(a\) - rank\(b\)\)\[0\];/);
+  assert.match(app, /const oldest = \[\.\.\.candidates\]\.sort\(\(a, b\) => rank\(a\) - rank\(b\)\)\[0\];/);
+  // In the chat shell (2026-10-26) the sidebar never floats: the tools give way, and then it shuts.
+  assert.match(app, /const candidates = shelled \? members\.filter\(\(one\) => one\.key !== 'chats'\) : members;/);
+  assert.match(app, /if \(shelled && !candidates\.length\) \{ setChats\(false\); return true; \}/);
+  assert.match(app, /if \(surface\.key === 'chats' && next !== 'split' && chatShellOn\(\)\) return;/);
   assert.match(app, /if \(oldest\.kind === 'side'\) setSurfaceMode\(oldest\.surface, 'window', \{ animate: false \}\);/);
   // A side split may not take the floors of the dock and the second conversation either, and the
   // splits at one side share what is left without a floor pushing them past it.
-  assert.match(app, /const room = window\.innerWidth - other - COLUMN_MIN - grid - \(stack\.length \+ 2\) \* SIDE_GAP;/);
+  assert.match(app, /const room = window\.innerWidth - other - COLUMN_MIN - grid - \(stack\.length \+ 2\) \* GAP;/);
+  // The gap is the room's own outside the chat shell; inside it the columns touch.
+  assert.match(app, /const GAP = shelled \? 0 : SIDE_GAP;/);
   assert.match(app, /let excess = widths\.reduce\(\(sum, one\) => sum \+ one, 0\) - Math\.max\(0, room\);/);
   // And the dock and the second conversation narrow toward their floors before the conversation does.
   assert.match(app, /function fitGridBeside\(\)/);
@@ -545,4 +551,27 @@ test('after the QA: the browser fills its dock, the sealed preview says it keeps
   assert.match(app, /const limitMs = event\.payload\.timeoutMs \?\? state\.timeouts\[agent\] \?\? 180000;/);
   // Two writers do not share the project: the second one is said to be waiting.
   assert.match(app, /case 'write\.waiting': \{/);
+});
+
+test('chat shell: the sidebar, the conversation and the tool column, as people know a chat with an AI', async () => {
+  const read = (name) => readFile(join(import.meta.dirname, '..', 'public', name), 'utf8');
+  const [page, css, app] = await Promise.all([read('index.html'), read('styles.css'), read('app.js')]);
+  // On the Mac from the first frame; never on a phone (the bridge's port) nor in the right half.
+  assert.match(page, /if \(location\.port !== '4316' && !\/\[\?&\]pane=split\\b\/\.test\(location\.search\)\) document\.documentElement\.classList\.add\('chat-shell'\);/);
+  assert.match(app, /if \(state\.device \|\| SPLIT_CHAT\) \{ root\.classList\.remove\('chat-shell'\); return; \}/);
+  // The sidebar is the conversations panel, always docked; it carries the projects and the way Home.
+  assert.match(app, /if \(chatsSurface && modeOf\(chatsSurface\) !== 'split'\) \{ surfaceModes\.chats = 'split';/);
+  assert.match(app, /scroll\.append\(chatsLabel, els\.chatsBody, el\('div', 'side-label', t\('Projects'\)\), shellUI\.projects\);/);
+  // The columns touch; the sidebar runs the window's height; a tool starts under its tabs.
+  assert.match(app, /const top = shelled \? \(side === 'left' \? 0 : TOOL_HEAD\) : sideTop\(\);/);
+  // At the right one tool at a time: the others wait behind it, still open, a tab away; a tool's
+  // key brings it to the front before it closes it.
+  assert.match(app, /const front = shelled && side === 'right' \? frontOf\(open\) : null;/);
+  assert.match(app, /if \(!open \|\| !isSplit\(surface\) \|\| !node\.classList\.contains\('tool-behind'\)\) return;/);
+  assert.match(css, /html\.chat-shell \.tool-behind \{ visibility: hidden !important; pointer-events: none !important; \}/);
+  // No picture behind the room, and the field's keys sit inside the one box you write in.
+  assert.match(css, /html\.chat-shell \.shell::before \{ display: none !important; \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.composer > \.field \{ display: contents; \}/);
+  // With the field as display: contents, the fade under the box is measured from the box itself.
+  assert.match(app, /const field = fieldBox && fieldBox\.height > 0 \? fieldBox : box;/);
 });

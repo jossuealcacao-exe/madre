@@ -14,6 +14,11 @@
          a tab that has seen it once holds it still until the page learns the process restarted. -->
     <script>try { if (sessionStorage.getItem('madre.boot')) document.documentElement.classList.add('logo-still'); } catch {}</script>
     <script>/* Through the phone bridge (src/bridge/server.mjs, BRIDGE_PORT 4316) the page is on a phone from its first frame, so the Mac's bar never shows there while the room's state is on its way; app.js confirms it or takes it back. */ if (location.port === '4316') document.documentElement.classList.add('via-phone');</script>
+    <!-- The chat shell (2026-10-26): conversations at the left, the conversation in the middle, the
+         tool you opened at the right, as Claude and ChatGPT are laid out. From the first frame on the
+         Mac, so the room never draws the old layout first; not on a phone, nor in the right half of a
+         split, which have no sidebar (app.js, chatShell). -->
+    <script>try { if (location.port !== '4316' && !/[?&]pane=split\b/.test(location.search)) document.documentElement.classList.add('chat-shell'); } catch {}</script>
   </head>
   <body>
     <div class="shell">

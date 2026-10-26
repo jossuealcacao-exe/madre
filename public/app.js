@@ -9260,6 +9260,15 @@ function sideTop() {
   const bottom = document.querySelector('.shell > .bar:not(.bar-home)')?.getBoundingClientRect?.().bottom;
   return Number.isFinite(bottom) && bottom > 0 ? Math.round(bottom) + SIDE_GAP : SIDE_GAP;
 }
+// THE CHAT SHELL (2026-10-26): the columns touch, divided by a hairline — the sidebar from the top of
+// the window to its foot, the tool at the right under its own strip of tabs (TOOL_HEAD). The class
+// is put on the page before its first frame (index.html) and taken back on a phone (chatShell).
+const chatShellOn = () => !SPLIT_CHAT && !state.device && Boolean(document.documentElement?.classList?.contains('chat-shell'));
+const TOOL_HEAD = 48;
+// What the shell draws of its own: the sidebar's parts, the title over the conversation, the tabs.
+const shellUI = { built: false, tabs: null, title: null, projects: null, foot: null };
+// The tool in front at the right: the one shown last of those open there (surfaceOrder).
+const frontOf = (stack) => [...stack].sort((a, b) => surfaceOrder.indexOf(a.key) - surfaceOrder.indexOf(b.key)).at(-1) ?? null;
 const SIDE_MIN = 300;
 const sideWidths = (() => { try { return JSON.parse(localStorage.getItem('pulse.sides') ?? '{}') ?? {}; } catch { return {}; } })();
 function rememberSides() { try { localStorage.setItem('pulse.sides', JSON.stringify(sideWidths)); } catch { /* no storage */ } }
@@ -9344,7 +9353,13 @@ function giveWay() {
   // left it a strip and pushed the bar under its own keys.
   if (!members.length || members.reduce((sum, one) => sum + one.floor, COLUMN_MIN) <= window.innerWidth) return false;
   const rank = (one) => besideOrder.indexOf(one.key);
-  const oldest = [...members].sort((a, b) => rank(a) - rank(b))[0];
+  // In the chat shell the sidebar never floats: the tools give way first, and when the
+  // conversation is still short of room the sidebar steps aside, as those apps do on a narrow
+  // window — shut, still a sidebar, one key away.
+  const shelled = chatShellOn();
+  const candidates = shelled ? members.filter((one) => one.key !== 'chats') : members;
+  if (shelled && !candidates.length) { setChats(false); return true; }
+  const oldest = [...candidates].sort((a, b) => rank(a) - rank(b))[0];
   givingWay = true;
   try {
     if (oldest.kind === 'side') setSurfaceMode(oldest.surface, 'window', { animate: false });
@@ -9392,15 +9407,24 @@ function layoutPanels() {
   for (let tries = 0; tries < 3 && giveWay(); tries += 1) { /* one at a time, oldest first */ }
   // The sides first: they change how wide the room is.
   const width = { left: 0, right: 0 };
+  const shelled = chatShellOn();
+  const GAP = shelled ? 0 : SIDE_GAP;
+  let tools = null;
   for (const side of ['left', 'right']) {
-    const stack = splitsOn(side);
+    const open = splitsOn(side);
+    // In the chat shell the right is one column with tabs: the tool in front takes it, the others
+    // wait behind it in the same box, still open, a tab away.
+    const front = shelled && side === 'right' ? frontOf(open) : null;
+    const stack = front ? [front] : open;
+    if (front) tools = { open, front };
+    for (const one of open) one.node()?.classList.toggle('tool-behind', Boolean(front) && one !== front);
     if (!stack.length) continue;
     const other = side === 'left' ? width.right : width.left;
     // Never so wide that the room is left without a readable column, nor the browser's dock and the
     // second conversation without their floors. Several at one side share what is left: each keeps
     // the width it was given while they fit, and gives way in proportion when they do not.
     const grid = besideNow().filter((one) => one.kind !== 'side').reduce((sum, one) => sum + one.floor, 0);
-    const room = window.innerWidth - other - COLUMN_MIN - grid - (stack.length + 2) * SIDE_GAP;
+    const room = window.innerWidth - other - COLUMN_MIN - grid - (stack.length + 2) * GAP;
     const wanted = stack.map((surface) => sideWidthFor(surface));
     const total = wanted.reduce((sum, one) => sum + one, 0);
     const scale = total > room ? Math.max(0, room) / total : 1;
@@ -9413,19 +9437,24 @@ function layoutPanels() {
       widths[index] -= take;
       excess -= take;
     }
-    width[side] = widths.reduce((sum, one) => sum + one, 0) + (stack.length - 1) * SIDE_GAP;
-    const top = sideTop();
-    let edge = side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP;
+    width[side] = widths.reduce((sum, one) => sum + one, 0) + (stack.length - 1) * GAP;
+    // The sidebar runs the window's height; a tool starts under its tabs; outside the shell, both
+    // start under the bar.
+    const top = shelled ? (side === 'left' ? 0 : TOOL_HEAD) : sideTop();
+    let edge = side === 'left' ? GAP : window.innerWidth - GAP;
     stack.forEach((surface, index) => {
       const w = widths[index];
       const x = side === 'left' ? edge : edge - w;
-      applyWindowBox(surface.node(), { x, y: top, w, h: window.innerHeight - top - SIDE_GAP });
+      const box = { x, y: top, w, h: window.innerHeight - top - GAP };
+      applyWindowBox(surface.node(), box);
       sideBoxes[surface.key] = { x, w };
-      edge = side === 'left' ? x + w + SIDE_GAP : x - SIDE_GAP;
+      if (front && surface === front) for (const one of open) if (one !== front) { applyWindowBox(one.node(), box); sideBoxes[one.key] = { x, w }; }
+      edge = side === 'left' ? x + w + GAP : x - GAP;
     });
   }
-  const sideLeft = width.left ? `${width.left + 2 * SIDE_GAP}px` : '';
-  const sideRight = width.right ? `${width.right + 2 * SIDE_GAP}px` : '';
+  const sideLeft = width.left ? `${width.left + 2 * GAP}px` : '';
+  const sideRight = width.right ? `${width.right + 2 * GAP}px` : '';
+  paintToolTabs(tools, width.right);
 
   // Then what stands at the column's edges inside the room: the panels in their base.
   const beside = panelSides
@@ -10224,6 +10253,8 @@ function seatDialog(surface) {
 function setSurfaceMode(surface, next, { animate = true } = {}) {
   const node = surface.node();
   if (!node || modeOf(surface) === next) return;
+  // The sidebar is a sidebar in the chat shell: it shows and hides, it does not float.
+  if (surface.key === 'chats' && next !== 'split' && chatShellOn()) return;
   if (next === 'split') noteBeside(surface.key);
   // Several may dock at one side (2026-10-25, the files beside the code): while they fit beside a
   // readable conversation they stand in a row (layoutPanels); when they do not, the oldest floats.
@@ -10668,6 +10699,7 @@ function paintTitle() {
   const name = here?.title && ![t('Untitled'), t('First conversation'), 'Untitled', 'First conversation'].includes(here.title) ? here.title : (document.querySelector('#project')?.textContent?.replace(/^\/\s*/, '').trim() || '');
   const clipped = name.length > 48 ? `${name.slice(0, 47)}…` : name;
   document.title = clipped ? `MADRE · ${clipped}` : 'MADRE';
+  paintShellTitle();
 }
 
 // The toggle says it too, so a closed panel still shows that something is at work or waiting.
@@ -11299,7 +11331,10 @@ function measureDock() {
   const height = Math.max(0, Math.ceil(pageScrolls() ? box.height + lift : shell.getBoundingClientRect().bottom - box.top));
   // Where the type box itself begins (the strip above it — open questions, offers — is not it):
   // the thread fades out in the last few pixels before that edge (styles.css, --type-gap).
-  const field = els.composer.querySelector?.('.field')?.getBoundingClientRect?.();
+  // In the chat shell the field is only a way to group its keys (display: contents) and has no box
+  // of its own: the box is the composer itself.
+  const fieldBox = els.composer.querySelector?.('.field')?.getBoundingClientRect?.();
+  const field = fieldBox && fieldBox.height > 0 ? fieldBox : box;
   if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - field.top))}px`);
   if (height === measureDock.last) return;
   measureDock.last = height;
@@ -11591,8 +11626,11 @@ function boot() {
       key.style.translate = ''; key.classList.add('tree-button'); key.hidden = false; bar.prepend(key);
       // The sidebar's own drawing, the one Claude and ChatGPT put in the same corner.
       key.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
+      key.title = t('Show the sidebar');
+      key.setAttribute('aria-label', t('Show the sidebar'));
     }
   }
+  chatShell();
   if (state.device) {
     phoneSheets();
     phoneKeyboard();
@@ -21046,6 +21084,7 @@ async function switchPoll() {
   for (const [id, at] of switcher.done) if (!open.has(id) || now - at > SWITCH_NEWS_MS) switcher.done.delete(id);
   switchKeep();
   switchLamp();
+  paintSideProjects();
   if (switcher.panel?.open) switchDraw();
 }
 function switchStart() {
@@ -21186,6 +21225,180 @@ function switchDraw() {
 // ground and goes (styles.css, madre-leaving); the next one lifts the veil as it arrives. Should
 // the page stay (the browser asked whether to leave unsaved work), the veil goes away again, and
 // a page brought back by the browser's Back comes without it.
+
+/* ---------- the chat shell (2026-10-26) ----------
+   The room laid out the way people already know from Claude and ChatGPT: the conversations in a
+   sidebar at the left that one key shows and hides, the conversation in the middle, and at the
+   right whatever tool was opened — the code, the files — one at a time, with a tab for each. The
+   pieces are the room's own (the conversations panel, the files, the code, the bar); the shell
+   only seats them, and every window can still float. Not on a phone, nor in the right half of a
+   split. */
+const SIDEBAR_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3.9v12.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+const NEW_CHAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.6 3.4H5.6a2.2 2.2 0 0 0-2.2 2.2v8.8a2.2 2.2 0 0 0 2.2 2.2h8.8a2.2 2.2 0 0 0 2.2-2.2v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.2 2.8l2 2-6.4 6.4H8.8V9.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+const PLUS_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+const MARKET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 7.4h13.6l-1.2 8.8a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 7.4V6a3 3 0 0 1 6 0v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const FLOAT_TOOL_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="11" height="11" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.2 13V4.6a1.4 1.4 0 0 1 1.4-1.4H13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const TOOL_NAMES = { viewer: () => t('Code'), tree: () => t('Files') };
+
+function shellKey(icon, label, run, className = 'shell-key') {
+  const key = el('button', className);
+  key.type = 'button';
+  key.innerHTML = icon; // trusted: our own SVG strings
+  key.setAttribute('aria-label', label);
+  key.title = label;
+  key.addEventListener('click', (event) => { event.stopPropagation(); run(); });
+  return key;
+}
+function shellRow(icon, label, run) {
+  const row = el('button', 'side-row');
+  row.type = 'button';
+  row.innerHTML = icon; // trusted: our own SVG strings
+  row.append(el('span', null, label));
+  row.addEventListener('click', run);
+  return row;
+}
+
+function chatShell() {
+  const root = document.documentElement;
+  if (!root?.classList?.contains('chat-shell')) return;
+  if (state.device || SPLIT_CHAT) { root.classList.remove('chat-shell'); return; }
+  const side = els.chats;
+  if (!side || shellUI.built) return;
+  shellUI.built = true;
+
+  // The sidebar is the conversations panel, always docked at the left edge.
+  const chatsSurface = surfaces.find((one) => one.key === 'chats');
+  if (chatsSurface && modeOf(chatsSurface) !== 'split') { surfaceModes.chats = 'split'; side.classList.remove('window'); side.classList.add('split'); rememberSurfaces(); }
+
+  const head = el('div', 'side-head');
+  const brand = document.querySelector('.bar .brand')?.cloneNode(true);
+  if (brand) brand.classList.add('side-brand');
+  head.append(shellKey(SIDEBAR_ICON, t('Hide the sidebar'), () => setChats(false)), ...(brand ? [brand] : []), el('span', 'side-grow'), shellKey(NEW_CHAT_ICON, t('New chat'), () => els.chatsNew?.click()));
+
+  const nav = el('nav', 'side-nav');
+  nav.append(
+    shellRow(PLUS_ICON, t('New chat'), () => els.chatsNew?.click()),
+    shellRow(`<svg viewBox="0 0 20 20" aria-hidden="true">${HOME_ICON}</svg>`, t('Home'), () => leaveTo('/salas')),
+    shellRow(MARKET_ICON, t('Market'), () => openRoomMarket()),
+  );
+
+  const scroll = el('div', 'side-scroll');
+  const chatsLabel = el('div', 'side-label', t('Chats'));
+  shellUI.projects = el('div', 'side-projects');
+  scroll.append(chatsLabel, els.chatsBody, el('div', 'side-label', t('Projects')), shellUI.projects);
+
+  shellUI.foot = el('div', 'side-foot');
+  const who = el('div', 'side-who');
+  who.append(el('b', null, 'MADRE'), el('small', null, initial.version ? t('Version {version}', { version: initial.version }) : ''));
+  shellUI.foot.append(who,
+    shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
+    shellKey(document.querySelector('#power-button')?.innerHTML ?? '', t('Turn MADRE off'), () => document.querySelector('#power-button')?.click()));
+
+  side.prepend(head, nav, scroll);
+  side.append(shellUI.foot);
+
+  // The title over the conversation: which chat, of which project.
+  shellUI.title = el('div', 'shell-title');
+  document.querySelector('.bar-left')?.append(shellUI.title);
+  paintShellTitle();
+  paintSideProjects();
+
+  // The tabs of the tool column, drawn by every layout (paintToolTabs).
+  shellUI.tabs = el('div', 'tool-tabs');
+  shellUI.tabs.hidden = true;
+  shellBox?.append(shellUI.tabs);
+
+  // A tool's key on the bar: it opens the tool, brings it to the front when it waits behind
+  // another tab, and closes it when it is the one in front.
+  for (const [id, key] of [['#code-button', 'viewer'], ['#tree-button', 'tree']]) {
+    document.querySelector(id)?.addEventListener('click', (event) => {
+      if (!chatShellOn()) return;
+      const surface = surfaces.find((one) => one.key === key);
+      const node = surface?.node();
+      const open = surface && (surface.kind === 'dialog' ? node?.open : !node?.hidden);
+      if (!open || !isSplit(surface) || !node.classList.contains('tool-behind')) return;
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      noteShown(surface);
+      layoutPanels();
+    }, { capture: true });
+  }
+
+  // Open from the start on a screen that has room for it, as those apps do; then as it was left.
+  let kept = null;
+  try { kept = localStorage.getItem('pulse.chats'); } catch { /* no storage */ }
+  if (kept === null && window.innerWidth >= 1100) setChats(true);
+  layoutPanels();
+}
+
+function paintShellTitle() {
+  if (!shellUI.title) return;
+  const here = chats.list.find((chat) => chat.id === chats.active);
+  const project = document.querySelector('#project')?.textContent?.trim() ?? '';
+  const title = here?.title ?? t('First conversation');
+  const said = `${title}\n${project}`;
+  if (shellUI.title.dataset.said === said) return;
+  shellUI.title.dataset.said = said;
+  shellUI.title.replaceChildren(el('b', null, title), el('span', null, project));
+  shellUI.title.title = `${title} · ${project}`;
+}
+
+// The open projects, this one first: a press goes there, ⌘-press to a new tab. All of them, awake
+// or asleep, live in Home, one row away.
+function paintSideProjects() {
+  const list = shellUI.projects;
+  if (!list) return;
+  const here = { id: 'here', name: document.querySelector('#project')?.textContent?.trim() ?? '', here: true };
+  const rooms = [here, ...switchOrder()];
+  const said = JSON.stringify(rooms.map((room) => [room.id, room.name, room.here ? 'here' : switchState(room).key, switchState(room).count ?? 0]));
+  if (list.dataset.said === said) return;
+  list.dataset.said = said;
+  list.replaceChildren(...rooms.map((room) => {
+    const row = el(room.here ? 'div' : 'a', `side-project${room.here ? ' here' : ''}`);
+    const mood = room.here ? 'here' : switchState(room).key;
+    row.append(el('i', `side-dot ${mood}`), el('span', 'side-project-name', room.here ? room.name : switchName(room)));
+    if (!room.here) {
+      row.href = `http://127.0.0.1:${room.port}/`;
+      const state = switchState(room);
+      if (state.key === 'waiting') row.append(el('small', 'side-count', String(state.count)));
+      row.title = state.words;
+    }
+    return row;
+  }), (() => { const all = shellRow(`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`, t('All your projects'), () => leaveTo('/salas')); all.classList.add('side-all'); return all; })());
+}
+
+// The strip over the tool column: a tab per tool open there, the one in front lit; then «window»
+// for the one in front and the column's own close.
+function paintToolTabs(tools, width) {
+  const strip = shellUI.tabs;
+  if (!strip) return;
+  if (!tools || !width) { if (!strip.hidden) strip.hidden = true; return; }
+  strip.hidden = false;
+  strip.style.width = `${Math.round(width)}px`;
+  const said = JSON.stringify([tools.open.map((one) => one.key), tools.front.key, document.documentElement.lang]);
+  if (strip.dataset.said === said) return;
+  strip.dataset.said = said;
+  const tabs = el('div', 'tool-tab-list');
+  for (const surface of tools.open) {
+    const tab = el('button', `tool-tab${surface === tools.front ? ' on' : ''}`);
+    tab.type = 'button';
+    tab.append(el('span', null, TOOL_NAMES[surface.key]?.() ?? surface.key));
+    const close = el('span', 'tool-tab-x');
+    close.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; // trusted
+    close.setAttribute('aria-label', t('Close'));
+    tab.append(close);
+    tab.addEventListener('click', (event) => {
+      if (event.target.closest('.tool-tab-x')) { surface.close(); return; }
+      noteShown(surface);
+      layoutPanels();
+    });
+    tabs.append(tab);
+  }
+  strip.replaceChildren(tabs,
+    shellKey(FLOAT_TOOL_ICON, t('Float it as a window'), () => setSurfaceMode(frontOf(splitsOn('right')) ?? tools.front, 'window')),
+    shellKey(SIDEBAR_ICON.replace('M7.6 3.9v12.2', 'M12.4 3.9v12.2'), t('Close'), () => { for (const one of splitsOn('right')) one.close(); }));
+}
+
 function leaveTo(url) {
   const root = document.documentElement;
   const still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;

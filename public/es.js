@@ -1666,6 +1666,10 @@ export const ES = {
   'A turn is running in this conversation.': 'Hay una respuesta en camino en este chat.',
   'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
   'The local AI is not running.': 'La IA local no está encendida.',
+  'New chat': 'Nuevo chat',
+  'Chats': 'Chats',
+  'Hide the sidebar': 'Ocultar la barra lateral',
+  'Show the sidebar': 'Mostrar la barra lateral',
   "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.":
     'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Corre el comando en una terminal y luego dale REVISAR OTRA VEZ.',
   'Your models stay where they are.': 'Tus modelos se quedan donde están.',

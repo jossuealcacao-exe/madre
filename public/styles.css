@@ -10559,3 +10559,182 @@ html:root:not(.via-phone) .shell > .bar > .chats-button svg { width: var(--ico-s
 html:root:not(.via-phone) .shell > .bar > .chats-button[hidden] { display: inline-flex; }
 html:root:not(.via-phone) .shell > .bar.keys-square > .chats-button { width: 34px; height: 34px; border-radius: 11px; }
 html:root:not(.via-phone) .shell > .bar.keys-square > .chats-button svg { width: var(--ico-md); height: var(--ico-md); }
+
+/* ==========================================================================================
+   THE CHAT SHELL (2026-10-26)
+   ------------------------------------------------------------------------------------------
+   The room as people already know a chat with an AI: the conversations in a sidebar at the left,
+   the conversation in the middle, the tool you opened at the right with a tab for each. Three
+   columns that touch, divided by a hairline: no cards floating over a picture, no gaps. The
+   pieces are the room's own; app.js (chatShell, layoutPanels) seats them. Not on a phone.
+   ========================================================================================== */
+html.chat-shell {
+  --cs-side: #f7f7f4; --cs-canvas: #ffffff; --cs-tool: #fbfbf9;
+  --cs-line: rgba(20, 30, 20, .09); --cs-hover: rgba(20, 30, 20, .05); --cs-sel: rgba(20, 30, 20, .075);
+  --cs-bubble: #f1f2ef; --cs-input: #ffffff;
+  --cs-input-ring: 0 0 0 .5px rgba(20, 30, 20, .16), 0 2px 10px -3px rgba(20, 30, 20, .1);
+}
+html.chat-shell[data-scheme="dark"] {
+  --cs-side: #171917; --cs-canvas: #1d1f1d; --cs-tool: #191b19;
+  --cs-line: rgba(255, 255, 255, .07); --cs-hover: rgba(255, 255, 255, .05); --cs-sel: rgba(255, 255, 255, .08);
+  --cs-bubble: #2a2d2a; --cs-input: #252825;
+  --cs-input-ring: 0 0 0 .5px rgba(255, 255, 255, .12), 0 2px 10px -3px rgba(0, 0, 0, .45);
+}
+/* No picture behind the room: the ground is the canvas. */
+html.chat-shell body, html.chat-shell .shell { background: var(--cs-canvas) !important; }
+html.chat-shell .shell::before { display: none !important; }
+
+/* ---- the bar over the conversation: the chat's title, the crew, the tools ---- */
+html.chat-shell:not(.via-phone) .shell > .bar:not(.bar-home) {
+  grid-column: 1; margin: 0 !important; width: auto; min-height: 0; height: 48px;
+  padding: 0 10px 0 14px !important; gap: 4px;
+  border: 0; border-radius: 0; background-color: var(--cs-canvas) !important;
+  box-shadow: inset 0 -1px 0 var(--cs-line) !important;
+  font-family: var(--read); letter-spacing: 0;
+}
+html.chat-shell .shell > .bar.bar-home { display: none !important; }
+html.chat-shell .bar > .bar-left { flex: 1 1 auto; min-width: 0; gap: 8px; }
+html.chat-shell .bar > .bar-left > :is(.brand, .project, .connection, .salas-link) { display: none !important; }
+html.chat-shell .bar #connection { display: none !important; }
+.shell-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.shell-title b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 14px/1.2 var(--read); letter-spacing: -.005em; color: var(--text); }
+.shell-title span { flex: none; font: 400 13px/1.2 var(--read); color: var(--text-3); }
+/* The keys: quiet icons, as the tools of those apps are; their names in the tooltip. */
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):not(.stop-all) {
+  width: 32px; height: 32px; min-width: 32px; padding: 0; gap: 0;
+  border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important;
+  font-size: 0; color: var(--text-2);
+}
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: 18px !important; height: 18px !important; }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover { background: var(--cs-hover) !important; color: var(--text); }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: var(--cs-sel) !important; color: var(--text); }
+html.chat-shell .shell > .bar .modules-count { position: absolute; top: 2px; right: 0; font-size: 9.5px; }
+html.chat-shell .shell > .bar > .mother-button { position: relative; }
+/* Stop all: only while something runs, as a stop key is in those apps. */
+html.chat-shell .shell > .bar > #stop-all:not(.armed) { display: none !important; }
+html.chat-shell .shell > .bar > #stop-all.armed { height: 30px; border-radius: 8px; font-size: 12.5px; }
+html.chat-shell .shell > .bar > .steps-pill { height: 28px; border-radius: 999px; }
+html.chat-shell .shell > .bar .agents .avatar { width: 22px !important; height: 22px !important; }
+html.chat-shell .shell > .bar .agents .avatar svg { width: 13px; height: 13px; }
+/* The sidebar's key: in the bar only while the sidebar is shut; open, its own sits in its head. */
+html.chat-shell .shell:has(> #chats:not([hidden]):not(.leaving)) > .bar > .chats-button { display: none !important; }
+
+/* ---- the sidebar ---- */
+html.chat-shell .shell > .tree.chats.split {
+  display: flex; flex-direction: column; padding: 0; z-index: 30;
+  border: 0; border-radius: 0; background: var(--cs-side); box-shadow: inset -1px 0 0 var(--cs-line);
+  font-family: var(--read);
+}
+html.chat-shell #chats > :is(.tree-head, .chats-new, .chats-foot) { display: none !important; }
+.side-head { flex: none; height: 48px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 10px; }
+.side-grow { flex: 1; }
+.side-brand { display: inline-flex; align-items: center; margin-left: 6px; color: var(--text); }
+.side-brand .brand-logo { height: 13px !important; }
+.side-brand .brand-icon { display: none !important; }
+.shell-key { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-2); cursor: pointer; flex: none; }
+.shell-key svg { width: 18px; height: 18px; }
+.shell-key:hover { background: var(--cs-hover); color: var(--text); }
+.shell-key:focus-visible, .side-row:focus-visible, .tool-tab:focus-visible { outline: 2px solid var(--phosphor); outline-offset: -2px; }
+.side-nav { flex: none; display: grid; gap: 1px; padding: 4px 8px 6px; }
+.side-row { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--text); font: 400 13.5px var(--read); text-align: left; text-decoration: none; cursor: pointer; }
+.side-row svg { width: 18px; height: 18px; flex: none; color: var(--text-2); }
+.side-row:hover { background: var(--cs-hover); }
+.side-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; overscroll-behavior: contain; }
+.side-label { margin: 14px 10px 4px; font: 500 12px var(--read); color: var(--text-3); }
+/* The conversations, as a list of titles. */
+html.chat-shell #chats .side-scroll > .chats-body { overflow: visible; padding: 0; max-height: none; }
+html.chat-shell #chats .chat-row { border-radius: 8px; }
+html.chat-shell #chats .chat-row:hover { background: var(--cs-hover); }
+html.chat-shell #chats .chat { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none !important; box-shadow: none !important; font: 400 13.5px var(--read); color: var(--text-2); letter-spacing: 0; text-transform: none; }
+html.chat-shell #chats .chat.on { color: var(--text); font-weight: 500; }
+html.chat-shell #chats .chat-row:has(.chat.on) { background: var(--cs-sel); }
+html.chat-shell #chats .chat .when { font-size: 11.5px; color: var(--text-3); }
+html.chat-shell #chats .chat-glyph { display: none; }
+html.chat-shell #chats .chat.working .chat-glyph, html.chat-shell #chats .chat.unread .chat-glyph { display: inline-grid; }
+.side-projects { display: grid; gap: 1px; }
+.side-project { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--text-2); font: 400 13.5px var(--read); text-decoration: none; }
+.side-project:hover { background: var(--cs-hover); color: var(--text); }
+.side-project.here { color: var(--text); font-weight: 500; }
+.side-project-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--text-3); opacity: .45; }
+.side-dot.here, .side-dot.calm, .side-dot.done { background: var(--phosphor); opacity: 1; }
+.side-dot.working { background: var(--phosphor); opacity: 1; animation: side-beat 1.4s ease-in-out infinite; }
+.side-dot.waiting { background: #e6a417; opacity: 1; }
+@keyframes side-beat { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .side-dot.working { animation: none; } }
+.side-count { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e6a417; color: #fff; font: 600 11px/18px var(--read); text-align: center; }
+.side-all { color: var(--text-3); }
+.side-foot { flex: none; display: flex; align-items: center; gap: 2px; padding: 8px; box-shadow: inset 0 1px 0 var(--cs-line); }
+.side-who { flex: 1; min-width: 0; display: grid; padding: 2px 8px; }
+.side-who b { font: 600 13px var(--read); color: var(--text); }
+.side-who small { font: 400 11.5px var(--read); color: var(--text-3); }
+
+/* ---- the tool column: tabs over the tool in front ---- */
+html.chat-shell .shell > :is(.tree:not(.chats), dialog.viewer).split {
+  border: 0; border-radius: 0; background: var(--cs-tool); box-shadow: inset 1px 0 0 var(--cs-line);
+}
+html.chat-shell .tool-behind { visibility: hidden !important; pointer-events: none !important; }
+html.chat-shell .split :is(.tree-head, .viewer-head) .surface-modes { display: none !important; }
+html.chat-shell .tree.split:not(.chats) .tree-title { display: none; }
+.tool-tabs { position: fixed; top: 0; right: 0; z-index: 31; height: 48px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 10px; background: var(--cs-tool); box-shadow: inset 1px 0 0 var(--cs-line), inset 0 -1px 0 var(--cs-line); font-family: var(--read); }
+.tool-tabs[hidden] { display: none; }
+.tool-tab-list { flex: 1; min-width: 0; display: flex; gap: 2px; overflow: hidden; }
+.tool-tab { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 30px; padding: 0 5px 0 12px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 400 13px var(--read); cursor: pointer; }
+.tool-tab:hover { background: var(--cs-hover); color: var(--text); }
+.tool-tab.on { background: var(--cs-sel); color: var(--text); font-weight: 500; }
+.tool-tab-x { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; opacity: .5; }
+.tool-tab-x svg { width: 12px; height: 12px; }
+.tool-tab-x:hover { opacity: 1; background: var(--cs-hover); }
+
+/* ---- the conversation ---- */
+/* The welcome stands on the canvas, as those apps greet you: no card around it. */
+html.chat-shell .thread-inner > .empty { background: none !important; box-shadow: none !important; border: 0 !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+/* What MADRE says in the conversation: a flat card with a hairline, never a floating one. */
+html.chat-shell .thread-inner > .system, html.chat-shell .thread-inner .row .system {
+  background: var(--cs-side) !important; box-shadow: none !important; border: 1px solid var(--cs-line) !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-radius: 14px;
+}
+/* The agents speak on the canvas, as Claude does; your own words in a soft bubble at the right. */
+html.chat-shell .row.assistant .bubble { background: none !important; box-shadow: none !important; padding: 2px 0 0; border-radius: 0; color: var(--text); }
+html.chat-shell .row.user .bubble { background: var(--cs-bubble) !important; color: var(--text) !important; box-shadow: none !important; border-radius: 18px; padding: 10px 16px; }
+html.chat-shell .row { max-width: 100%; }
+html.chat-shell .row.user { max-width: 82%; }
+
+/* ---- the box you write in: the text on top, the choices in a row under it, inside one box ---- */
+html.chat-shell .shell > .composer {
+  display: grid; align-items: center; gap: 4px 2px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas:
+    "top top top top top top"
+    "quote quote quote quote quote quote"
+    "editor editor editor editor editor editor"
+    "picker options create ash attach send";
+  padding: 12px 10px 8px 14px !important; margin-bottom: 4px;
+  border: 0 !important; border-radius: 24px !important;
+  background: var(--cs-input) !important; box-shadow: var(--cs-input-ring) !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html.chat-shell .shell > .composer > .field { display: contents; }
+html.chat-shell .composer > :is(.attachments, .free-offer, .openq) { grid-column: 1 / -1; }
+html.chat-shell .composer .reply-quote { grid-area: quote; }
+html.chat-shell .composer .editor { grid-area: editor; min-height: 44px; padding: 0 4px; }
+html.chat-shell .composer .editor textarea { font: 400 15px/1.5 var(--read) !important; }
+html.chat-shell .composer .picker.crew { grid-area: picker; }
+html.chat-shell .composer .crew-label { display: none !important; }
+html.chat-shell .composer > .pick-options { grid-area: options; justify-self: start; min-width: 0; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; }
+html.chat-shell .composer .create-toggle { grid-area: create; }
+html.chat-shell .composer .ash-toggle { grid-area: ash; }
+html.chat-shell .composer .attach { grid-area: attach; }
+html.chat-shell .composer .field > button[type="submit"] { grid-area: send; }
+/* The line under the box: what the permission means, and the version, quietly. */
+html.chat-shell .shell > .colophon { justify-self: center; margin: 2px 0 10px; background: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell #chats .chat .when { display: none; }
+/* The mode, the model and the effort: chips in the box's own row, not a pill of their own. */
+html.chat-shell .composer .pick-options .pick-label {
+  flex-wrap: nowrap; gap: 2px; min-width: 0; overflow: hidden; padding: 0 !important;
+  background: none !important; box-shadow: none !important; border: 0 !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html.chat-shell .composer .pick-options .pick-label > * { flex: none; }
+html.chat-shell .composer .pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip, .copilot-chip) { border-radius: 999px; }
+html.chat-shell .composer .pick-options .pick-label > :is(.model-chip, .effort-chip, .copilot-chip):hover { background: var(--cs-hover); }
