@@ -10502,3 +10502,35 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 .mcp-block > .sx-head { flex-wrap: wrap; row-gap: 10px; }
 .mcp-block > .sx-head > .sx-words { flex: 1 1 320px; }
 .mcp-block > .sx-head > .sx-field { flex: 0 0 auto; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ==========================================================================================
+   THE BAR FROM EDGE TO EDGE (2026-10-25, route A of R-12)
+   ------------------------------------------------------------------------------------------
+   The bar stops floating: one band of glass across the top of the window, with a hairline under
+   it. The keys keep their order and their place, inside the same 1440 px as before, and the
+   house's keys (Home, another project, reload, Settings, off) sit at its right after a hairline,
+   on the same glass. It is the bar the app will have: there the group on the right goes to the
+   system and the window's own buttons take its place. A phone keeps its one bar (.via-phone).
+   ========================================================================================== */
+html:root:not(.via-phone) .shell > .bar {
+  --edge: max(16px, calc((100% - 1440px) / 2 + 16px));
+  margin: 0; width: 100%; justify-self: stretch;
+  min-height: 48px; padding-block: 8px; padding-left: var(--edge);
+  border: 0; border-radius: 0;
+  box-shadow: 0 .5px 0 color-mix(in srgb, var(--text) 12%, transparent);
+}
+html:root:not(.via-phone) .shell > .bar.with-home {
+  margin: 0; width: 100%;
+  padding-right: calc(var(--edge) + var(--home-w, 150px) + 12px);
+}
+html:root:not(.via-phone) .shell > .bar.bar-home {
+  --edge: max(16px, calc((100% - 1440px) / 2 + 16px));
+  z-index: 4; width: auto; justify-self: end;
+  margin: 0 calc(var(--edge) - 10px) 0 0; padding: 8px 0 8px 10px;
+  background: none; background-image: none; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html:root:not(.via-phone) .shell > .bar.bar-home::before {
+  content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: .5px;
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+}
