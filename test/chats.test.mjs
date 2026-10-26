@@ -595,6 +595,17 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // MEMORY's beat grew it: its halves part and its folds draw again instead.
   assert.match(page, /<path class="brain-folds" pathLength="1" d="M6\.2 9\.4/);
   assert.match(css, /@keyframes brain-think \{ 0%, 20% \{ stroke-dashoffset: 1; \} 85%, 100% \{ stroke-dashoffset: 0; \} \}/);
+  // The box as Claude's: it grows on the line it really draws, a «+» first and a quiet send last;
+  // the modes mark the one in use with a check and say nothing of confirming; the models search
+  // behind a magnifier and mark the default with a light badge.
+  assert.match(app, /const line = Number\.parseFloat\(look\?\.lineHeight\) \|\| LINE_PX;/);
+  assert.match(css, /"attach picker options create ash send";/);
+  assert.match(page, /<svg class="attach-plus"/);
+  assert.match(page, /<svg class="send-return"/);
+  assert.match(app, /if \(shelled && state\.mode === n\) option\.append\(menuCheck\(\)\);/);
+  assert.match(app, /: shelled && n >= 3 \? '' :/);
+  assert.match(app, /if \(isDefault && label !== t\('default'\)\) button\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
+  assert.match(app, /find\.innerHTML = MENU_SEARCH;/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
   assert.match(app, /for \(const family of \['project', 'madre', 'apps'\]\)/);
   assert.match(css, /> \.bar-extra \{ order: 26; \}/);

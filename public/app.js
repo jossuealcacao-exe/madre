@@ -3361,6 +3361,14 @@ function renderPicker() {
 /* ---------- model menu: which model answers this request ---------- */
 
 const modelMenu = el('div', 'model-menu');
+// The composer's menus mark what is in use with a check, and the model's searches behind a magnifier.
+const MENU_CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.2L15.2 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const MENU_SEARCH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+function menuCheck() {
+  const mark = el('span', 'menu-check');
+  mark.innerHTML = MENU_CHECK; // trusted: our own SVG string
+  return mark;
+}
 modelMenu.hidden = true;
 document.body.append(modelMenu);
 let modelMenuFor = null;
@@ -3395,17 +3403,41 @@ async function toggleModelMenu(id, anchor) {
   const info = await ensureModels(id);
   if (modelMenuFor !== id) return;
   modelMenu.replaceChildren();
+  // The head: who, and a magnifier at its right. Pressed, it opens into the search, which also
+  // takes a name the list does not have (2026-10-26: it was a field of its own under the list).
+  const head = el('div', 'model-menu-head');
   const title = el('div', 'model-menu-title');
   title.append(el('b', null, `@${id}`), t(' · model for this request'));
-  modelMenu.append(title);
+  const search = el('input', 'model-search');
+  search.type = 'search';
+  search.placeholder = t('Search or write a model…');
+  search.spellcheck = false;
+  search.setAttribute('aria-label', t('Search models'));
+  search.hidden = true;
+  const find = el('button', 'model-find');
+  find.type = 'button';
+  find.title = t('Search models');
+  find.setAttribute('aria-label', t('Search models'));
+  find.innerHTML = MENU_SEARCH; // trusted: our own SVG string
+  head.append(title, search, find);
+  modelMenu.append(head);
   const list = el('div', 'model-list');
-  const option = (name, label) => {
-    const button = el('button', `model-option${(state.chosenModel[id] ?? null) === name ? ' current' : ''}`, label);
+  const chosen = state.chosenModel[id] ?? null;
+  // The default is the model the CLI picks by itself: in the list under its own name with a light
+  // badge, and the one marked while nothing else was chosen. Choosing it chooses «default».
+  const option = (name, label, { isDefault = false } = {}) => {
+    const current = isDefault ? chosen === null || chosen === name : chosen === name;
+    const button = el('button', `model-option${current ? ' current' : ''}`);
     button.type = 'button';
-    button.addEventListener('click', () => { rememberModel(id, name); closeModelMenu(); renderPicker(); focusComposer(); });
+    button.dataset.find = `${name ?? ''} ${label}`.toLowerCase();
+    button.append(el('span', 'model-name', label));
+    if (isDefault && label !== t('default')) button.append(el('span', 'model-default', t('default')));
+    if (current) button.append(menuCheck());
+    button.addEventListener('click', () => { rememberModel(id, isDefault ? null : name); closeModelMenu(); renderPicker(); focusComposer(); });
     return button;
   };
-  list.append(option(null, `${t('default')}${info.default ? ` · ${info.default}` : ''}`));
+  const listed = Array.isArray(info.groups) && info.groups.length ? info.groups.flatMap((group) => group.models) : info.models;
+  if (!info.default || !listed.includes(info.default)) list.append(option(null, info.default ?? t('default'), { isDefault: true }));
   // OpenCode answers through many providers: its models come under the provider they belong to,
   // only the ones with a key or an account and OpenCode's own, the name shown without the prefix.
   if (Array.isArray(info.groups) && info.groups.length) {
@@ -3413,17 +3445,54 @@ async function toggleModelMenu(id, anchor) {
       const head = el('div', `model-group${group.own ? ' own' : ''}`);
       head.append(el('b', null, group.label), el('span', null, group.own && id === 'opencode' ? t('OpenCode\'s own') : t('{n} models', { n: group.models.length })));
       list.append(head);
-      for (const name of group.models) list.append(option(name, name.slice(name.indexOf('/') + 1)));
+      for (const name of group.models) list.append(option(name, name.slice(name.indexOf('/') + 1), { isDefault: name === info.default }));
     }
   } else {
-    for (const name of info.models) list.append(option(name, name));
+    for (const name of info.models) list.append(option(name, name, { isDefault: name === info.default }));
   }
+  // What is written and not in the list can still be used, as the old field allowed.
+  const typed = el('button', 'model-option model-typed');
+  typed.type = 'button';
+  typed.hidden = true;
+  typed.addEventListener('click', () => { const name = search.value.trim(); if (name) { rememberModel(id, name); closeModelMenu(); renderPicker(); focusComposer(); } });
+  list.append(typed);
   modelMenu.append(list);
-  const custom = el('form', 'model-custom');
-  const input = el('input'); input.placeholder = t('other model name…'); input.spellcheck = false;
-  custom.append(input);
-  custom.addEventListener('submit', (event) => { event.preventDefault(); const name = input.value.trim(); if (name) { rememberModel(id, name); closeModelMenu(); renderPicker(); } });
-  modelMenu.append(custom);
+  const filter = () => {
+    const query = search.value.trim().toLowerCase();
+    let found = false;
+    for (const node of list.children) {
+      if (node === typed || !node.classList.contains('model-option')) continue;
+      node.hidden = Boolean(query) && !node.dataset.find.includes(query);
+      if (!node.hidden) found = true;
+    }
+    // A provider's head goes with its models.
+    for (const node of list.querySelectorAll(':scope > .model-group')) {
+      let next = node.nextElementSibling;
+      let any = false;
+      while (next && !next.classList.contains('model-group')) { if (next.classList.contains('model-option') && next !== typed && !next.hidden) any = true; next = next.nextElementSibling; }
+      node.hidden = !any;
+    }
+    // Offered only when nothing in the list answers what is written.
+    typed.hidden = !query || found;
+    typed.textContent = t('Use «{name}»', { name: search.value.trim() });
+  };
+  const open = (on) => {
+    head.classList.toggle('searching', on);
+    title.hidden = on;
+    search.hidden = !on;
+    find.setAttribute('aria-expanded', String(on));
+    if (on) search.focus({ preventScroll: true });
+    else { search.value = ''; filter(); }
+  };
+  find.addEventListener('click', () => open(search.hidden));
+  search.addEventListener('input', filter);
+  search.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && search.value) { event.stopPropagation(); search.value = ''; filter(); }
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const shown = [...list.querySelectorAll(':scope > .model-option:not([hidden])')];
+    (shown.length === 1 ? shown[0] : typed.hidden ? null : typed)?.click();
+  });
   if (id === 'opencode') {
     const manage = el('button', 'model-manage', t('Providers and keys…'));
     manage.type = 'button';
@@ -3866,12 +3935,16 @@ function toggleModeMenu(id, anchor) {
     body.append(el('span', 'name', sentence(MODES[n].label)), el('span', 'hint', MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
     if (onTheMac) option.title = t('#3 EDIT and #4 FULL ACCESS are opened from the Mac.');
-    const tag = state.mode === n ? t('NOW') : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
+    // In the chat shell the list is quieter (2026-10-26): the mode in use wears a check, and #3 and
+    // #4 say nothing of their confirming — the unlock itself asks.
+    const shelled = chatShellOn();
+    const tag = state.mode === n ? (shelled ? '' : t('NOW')) : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : shelled && n >= 3 ? '' : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
     if (tag) {
       const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
       if (state.mode === n) label.append(el('span', 'dot'));
       option.append(label);
     }
+    if (shelled && state.mode === n) option.append(menuCheck());
     option.title = !locked ? MODES[n].hint
       : raise ? t('@{id} is capped at #{cap}. This raises its max mode to #{n} in Settings › Permissions and opens the unlock.', { id, cap, n })
       : n >= 3 ? `@${id}'s CLI cannot write files, so ${MODES[n].label} is not possible for it.`
@@ -11921,13 +11994,17 @@ async function paintConversation(payload) {
 // One line, always. Height follows the lines the text actually takes,
 // wrapped or explicit, up to three visible lines; longer text scrolls inside.
 function autosize() {
-  els.input.style.height = `${LINE_PX}px`;
-  const padding = 14; // 7px top + bottom, content-box
-  const needed = Math.max(1, Math.ceil((els.input.scrollHeight - padding) / LINE_PX));
+  // The line and the padding the box really draws: the chat shell writes on a taller line than
+  // LINE_PX, and a single line counted as two left the box a line too tall (2026-10-26).
+  const look = typeof getComputedStyle === 'function' ? getComputedStyle(els.input) : null;
+  const line = Number.parseFloat(look?.lineHeight) || LINE_PX;
+  const padding = (Number.parseFloat(look?.paddingTop) || 7) + (Number.parseFloat(look?.paddingBottom) || 7);
+  els.input.style.height = `${line}px`;
+  const needed = Math.max(1, Math.ceil((els.input.scrollHeight - padding - 1) / line));
   const rows = Math.min(Number.isFinite(needed) ? needed : 1, MAX_ROWS);
   // As tall as what is written, quote or no quote. A second empty line under a quote put the line
   // you write on above the label and the buttons, which stay at the field's middle.
-  els.input.style.height = `${rows * LINE_PX}px`;
+  els.input.style.height = `${rows * line}px`;
   els.highlight.style.height = els.input.style.height;
   renderHighlight();
 }

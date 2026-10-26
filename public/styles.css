@@ -10860,3 +10860,95 @@ html.chat-shell .shell > .bar:not(.bar-home) > #agents { position: absolute; lef
 /* Nor when what stands at either side would run under them: many keys, a pill, a long title
    (public/app.js, barCentre). */
 html.chat-shell .shell > .bar.bar-crowded:not(.bar-home) > #agents { position: static; transform: none; order: 3; }
+
+/* ---- the box you write in, as Claude's (2026-10-26): it grows with what you write, a «+» to attach
+   at the start of its row and a quiet send at the end. Outside the chat shell, the clip and the
+   round send as before. ---- */
+.attach .attach-plus, .field button[type="submit"] .send-return { display: none; }
+html.chat-shell .composer .attach .attach-clip, html.chat-shell .composer .field > button[type="submit"] .send-up { display: none; }
+html.chat-shell .composer .attach .attach-plus, html.chat-shell .composer .field > button[type="submit"] .send-return { display: block; }
+html.chat-shell .shell > .composer {
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "top top top top top top"
+    "quote quote quote quote quote quote"
+    "editor editor editor editor editor editor"
+    "attach picker options create ash send";
+  gap: 6px 2px; padding: 14px 10px 8px 10px !important; border-radius: 22px !important;
+}
+html.chat-shell .composer .editor { min-height: 0; padding: 0 10px; }
+html.chat-shell .composer .editor :is(textarea, .highlight) { font: 400 15px/24px var(--read) !important; padding: 2px 5px !important; }
+/* The keys of its row: drawings with no plate, as the bar's. */
+html.chat-shell .composer :is(.attach, .field > button[type="submit"]) {
+  width: 32px; height: 32px; border-radius: 8px; background: none !important; box-shadow: none !important; filter: none !important;
+  color: var(--text-2); transition: color calc(160ms * var(--motion-scale, 1)) ease;
+}
+html.chat-shell .composer :is(.attach, .field > button[type="submit"]) svg { width: 20px; height: 20px; }
+html.chat-shell .composer .attach:hover { color: var(--text); }
+/* Send waits in grey; with something written it takes the mode's colour, as the chip does. */
+html.chat-shell .composer .field > button[type="submit"] { color: var(--text-3); opacity: 1; }
+html.chat-shell .composer:has(#message:not(:placeholder-shown)) .field > button[type="submit"]:not(:disabled) { color: var(--mode, var(--phosphor)); }
+html.chat-shell .composer .field > button[type="submit"]:not(:disabled):hover { color: var(--mode, var(--phosphor)); }
+html.chat-shell .composer .field > button[type="submit"]:disabled { color: var(--text-3); opacity: .5; }
+
+/* ---- the composer's menus, quieter (2026-10-26): plain rows, the one in use marked with a check ---- */
+html.chat-shell .model-menu {
+  padding: 6px; border: 0 !important; border-radius: 14px;
+  background: var(--cs-canvas, var(--panel)); color: var(--text);
+  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 14px 36px -14px rgba(0, 0, 0, .28) !important;
+}
+html.chat-shell .model-menu .model-menu-title { margin: 6px 8px 6px; font: 400 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .model-menu .model-menu-title b { font: 500 12px var(--read); }
+.menu-check { display: grid; place-items: center; width: 16px; height: 16px; color: var(--agent, var(--phosphor)); }
+.menu-check svg { width: 16px; height: 16px; }
+/* The modes: number, name and what it lets, on one quiet row each. */
+html.chat-shell .model-menu.mode-menu { width: min(360px, calc(100vw - 24px)); }
+html.chat-shell .model-menu.mode-menu .mode-ladder { gap: 1px; }
+html.chat-shell .model-menu.mode-menu .mode-option {
+  grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px;
+  border: 0 !important; border-radius: 9px; background: none;
+}
+html.chat-shell .model-menu.mode-menu .mode-option:hover:not(:disabled) { background: var(--cs-hover); }
+html.chat-shell .model-menu.mode-menu .mode-option.current { background: none; }
+html.chat-shell .model-menu.mode-menu .mode-option.current:hover { background: var(--cs-hover); }
+html.chat-shell .model-menu.mode-menu .mode-option .n,
+html.chat-shell .model-menu.mode-menu .mode-option.current .n {
+  display: block; width: auto; height: auto; border: 0; border-radius: 0; background: none;
+  font: 500 11.5px var(--read); color: var(--mode); text-align: left;
+}
+html.chat-shell .model-menu.mode-menu .mode-option .body { gap: 1px; }
+html.chat-shell .model-menu.mode-menu .mode-option .name { font: 500 13px/1.35 var(--read); color: var(--text) !important; }
+html.chat-shell .model-menu.mode-menu .mode-option .hint { font: 400 12px/1.4 var(--read); color: var(--text-3); -webkit-line-clamp: 1; line-clamp: 1; }
+html.chat-shell .model-menu.mode-menu .mode-option.current .menu-check { color: var(--mode); }
+html.chat-shell .model-menu.mode-menu .mode-option .tag { font: 400 11px var(--read); color: var(--text-3); }
+html.chat-shell .model-menu.mode-menu .mode-option .tag.raise { padding: 2px 8px; border: 0; background: var(--cs-hover); color: var(--text-2); }
+html.chat-shell .model-menu.mode-menu .mode-option .tag .dot { display: none; }
+html.chat-shell .model-menu.mode-menu .mode-option.locked :is(.name, .hint) { color: var(--text-3) !important; }
+
+/* The models: their names in the reading face, the default with a light badge, search behind a
+   magnifier at the head's right. */
+.model-menu-head { display: flex; align-items: center; gap: 6px; }
+.model-menu-head .model-menu-title { flex: 1 1 auto; min-width: 0; }
+.model-find { flex: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer; }
+.model-find svg { width: 16px; height: 16px; }
+.model-find:hover, .model-find[aria-expanded="true"] { color: var(--text); }
+.model-search { flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 10px; border: 0; border-radius: 8px; outline: 0; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font: 400 13px var(--read); }
+.model-search::-webkit-search-cancel-button { display: none; }
+.model-menu-head.searching { margin: 2px 0 4px 2px; }
+.model-option { display: flex; align-items: center; gap: 8px; }
+.model-option .model-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-option[hidden], .model-group[hidden] { display: none; }
+.model-default { flex: none; padding: 1px 7px; border-radius: 999px; font: 500 10.5px/1.5 var(--read); color: var(--text-3); background: color-mix(in srgb, var(--text) 6%, transparent); }
+.model-typed { color: var(--text-2); font-style: italic; }
+html.chat-shell .model-menu:not(.mode-menu):not(.effort-menu) { width: min(300px, calc(100vw - 24px)); }
+html.chat-shell .model-menu .model-menu-head { margin: 0 0 4px 0; }
+html.chat-shell .model-menu .model-menu-head .model-menu-title { margin: 6px 4px 6px 8px; }
+html.chat-shell .model-menu .model-list { gap: 1px; max-height: 300px; }
+html.chat-shell .model-menu .model-option { padding: 7px 10px; border-radius: 9px; font: 400 13px/1.35 var(--read); color: var(--text); background: none; }
+html.chat-shell .model-menu .model-option:hover { background: var(--cs-hover); }
+html.chat-shell .model-menu .model-option.current { background: none; color: var(--text); font-weight: 500; }
+html.chat-shell .model-menu .model-option.current:hover { background: var(--cs-hover); }
+html.chat-shell .model-menu .model-group { margin: 8px 10px 2px; font: 500 11px var(--read); color: var(--text-3); }
+html.chat-shell .model-menu .model-note { margin: 6px 4px 0; padding: 8px 6px 2px; border-top: 1px solid var(--cs-line); font: 400 11.5px/1.5 var(--read); color: var(--text-3); }
+/* The hidden agent select is no cell of the box's grid: placed in one, it opened a row of its own. */
+html.chat-shell .shell > .composer > #target { position: absolute; }

@@ -79,7 +79,8 @@ test('composer: what you are answering sits above the field, smaller and in a ba
   // more: an empty second line under a quote put the writing above the label and the buttons.
   assert.match(app, /classList\.toggle\('quoting'/, 'the field is never told it is holding a quote');
   assert.doesNotMatch(css, /\.field\.quoting textarea[^{]*\{[^}]*min-height/, 'a quote pins the writing line above the label again');
-  assert.match(app, /els\.input\.style\.height = `\$\{rows \* LINE_PX\}px`/, 'the field is not as tall as what is written');
+  // On the line the box really draws (the chat shell's is taller than LINE_PX), 2026-10-26.
+  assert.match(app, /els\.input\.style\.height = `\$\{rows \* line\}px`/, 'the field is not as tall as what is written');
   // The height is worked out again whenever the quote comes or goes.
   const render = app.slice(app.indexOf('function renderReplyQuote('), app.indexOf('function replyWith('));
   assert.equal((render.match(/autosize\(\)/g) ?? []).length, 2, 'the box does not resize when the quote appears or is dropped');
