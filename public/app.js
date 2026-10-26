@@ -20800,6 +20800,8 @@ settingsUI.button?.addEventListener('click', () => openSettingsOn('release', { p
    bar, and in which order, is this browser's own: a convenience, kept in localStorage. */
 const BAR_KEY = 'pulse.barItems';
 const BAR_FIXED = 'settings';
+// In the chat shell the agents sit in the middle of the bar: they neither go nor move.
+const barLocked = (id) => id === BAR_FIXED || (id === 'crew' && chatShellOn());
 const BAR_DEFAULT = ['salas', 'macroverso', 'crew', 'code', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'];
 // The keys that are in the markup. The crew is two elements — five spheres when there is room, one
 // button when there is not — and one key: taking it off takes both.
@@ -20911,6 +20913,60 @@ function barShown(id) {
   const nodes = barNodes(id).filter((node) => !node.classList.contains('bar-off'));
   return nodes.find((node) => node.offsetWidth > 0 && node.offsetHeight > 0) ?? null;
 }
+// One size to the eye (2026-10-26): every drawing of the chat shell's keys, MADRE's and the ones a
+// module brings, spans the same square. Its drawn extent is measured once (what a state shows later,
+// hidden now, does not count) and the key told how much to grow or shrink it; styles.css keeps the
+// stroke as thick as every other's. (Called while the page is still being read: nothing it needs is
+// a constant further down.)
+function barGlyphs(bar) {
+  if (typeof ResizeObserver !== 'function' || typeof MutationObserver !== 'function') return;
+  const SPAN = 14.4; // of the 20 units the bar's drawings are made in
+  const fit = (key) => {
+    const svg = key.querySelector(':scope > svg');
+    if (!svg || svg.dataset.glyph || typeof svg.getBBox !== 'function') return;
+    const view = svg.viewBox?.baseVal?.width || 20;
+    let box = null;
+    for (const part of svg.querySelectorAll('path, circle, ellipse, rect, line, polyline, polygon')) {
+      if (getComputedStyle(part).opacity === '0') continue;
+      const one = part.getBBox();
+      if (!one.width && !one.height) continue;
+      box = box ? { x0: Math.min(box.x0, one.x), y0: Math.min(box.y0, one.y), x1: Math.max(box.x1, one.x + one.width), y1: Math.max(box.y1, one.y + one.height) } : { x0: one.x, y0: one.y, x1: one.x + one.width, y1: one.y + one.height };
+    }
+    const span = box && Math.max(box.x1 - box.x0, box.y1 - box.y0);
+    if (!span) return; // not drawn yet: measured when it shows
+    const glyph = Math.min(1.3, Math.max(.75, (SPAN * view) / (20 * span)));
+    svg.dataset.glyph = glyph.toFixed(3);
+    key.style.setProperty('--glyph', svg.dataset.glyph);
+  };
+  const KEYS = ':scope > :is(.mother-button, .tree-button, .bar-icon, .chats-button):not(.stop-all)';
+  const seen = new WeakSet();
+  const sizes = new ResizeObserver((entries) => { for (const entry of entries) fit(entry.target); });
+  // Measured as it comes, and again when one that was hidden shows.
+  const watch = () => { for (const key of bar.querySelectorAll(KEYS)) if (!seen.has(key)) { seen.add(key); fit(key); sizes.observe(key); } };
+  new MutationObserver(watch).observe(bar, { childList: true });
+  watch();
+}
+// The agents stand in the middle of the chat shell's bar while there is room for them there; when
+// what stands at either side would run under them (many keys, a pill, a long title) they take
+// their place in the row, after the pills (styles.css, .bar-crowded).
+function barCentre(bar = document.querySelector('.shell > .bar:not(.bar-home)')) {
+  const crew = bar?.querySelector(':scope > #agents');
+  if (!crew || !chatShellOn()) return;
+  bar.classList.remove('bar-crowded');
+  const middle = crew.getBoundingClientRect();
+  if (!middle.width) return;
+  let left = -Infinity;
+  let right = Infinity;
+  for (const node of bar.children) {
+    if (node === crew || node.classList.contains('bar-badges') || node.classList.contains('bar-spring')) continue;
+    const box = node.getBoundingClientRect();
+    if (!box.width) continue;
+    const order = Number.parseInt(getComputedStyle(node).order, 10) || 0;
+    if (order < 9) left = Math.max(left, box.right);
+    else right = Math.min(right, box.left);
+  }
+  bar.classList.toggle('bar-crowded', middle.left < left + 12 || middle.right > right - 12);
+}
 // A key made for the bar, drawn in the bar's own hand: 20×20, one round stroke.
 function barButton(entry) {
   const button = el('button', 'tree-button bar-extra');
@@ -20936,7 +20992,7 @@ function barWire(node, id) {
     barEdit(!barKit.editing, { from: node });
   });
   node.addEventListener('pointerdown', (event) => {
-    if (barKit.editing) { if (id !== BAR_FIXED) barDragStart(event, id); return; }
+    if (barKit.editing) { if (!barLocked(id)) barDragStart(event, id); return; }
     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
     const x = event.clientX;
     const y = event.clientY;
@@ -21315,10 +21371,23 @@ function chatShell() {
   side.prepend(head, nav, scroll);
   side.append(shellUI.foot);
 
-  // The bar's families (styles.css, .bar-family): a hairline before the project's tools and one
-  // before MADRE's own. Placed by order, so they stand right whatever the bar's own arrangement.
+  // The bar's families (styles.css, .bar-family), a hairline before each: the project's tools,
+  // MADRE's own, and the apps and modules a person puts on the bar (2026-10-26). Placed by order,
+  // so they stand right whatever the bar's own arrangement.
   const bar = document.querySelector('.shell > .bar:not(.bar-home)');
-  if (bar) for (const family of ['project', 'madre']) { const line = el('span', `bar-family ${family}`); line.setAttribute('aria-hidden', 'true'); bar.append(line); }
+  if (bar) for (const family of ['project', 'madre', 'apps']) { const line = el('span', `bar-family ${family}`); line.setAttribute('aria-hidden', 'true'); bar.append(line); }
+  // And a spring between the pills and the keys: the title and its pills at one end, the keys at the other.
+  if (bar) { const spring = el('span', 'bar-spring'); spring.setAttribute('aria-hidden', 'true'); bar.append(spring); }
+  if (bar) barGlyphs(bar);
+  // Looked at again when the bar, the title, the crew, a key or a pill changes size (one that shows
+  // or hides does too).
+  if (bar && typeof ResizeObserver === 'function' && typeof MutationObserver === 'function') {
+    const again = new ResizeObserver(() => barCentre(bar));
+    const seen = new WeakSet();
+    const watch = () => { for (const node of [bar, ...bar.children]) if (!seen.has(node)) { seen.add(node); again.observe(node); } };
+    new MutationObserver(watch).observe(bar, { childList: true });
+    watch();
+  }
 
   // The title over the conversation: which chat, of which project.
   shellUI.title = el('div', 'shell-title');
@@ -21442,6 +21511,7 @@ function barLayout() {
   homeBar();
   const catalogue = barCatalogue();
   barKit.order = barStored().filter((id) => id !== BAR_FIXED && catalogue.has(id));
+  if (chatShellOn() && catalogue.has('crew') && !barKit.order.includes('crew')) barKit.order.unshift('crew');
   for (const [id, entry] of catalogue) {
     if (id === BAR_FIXED) { for (const node of entry.nodes) barWire(node, id); continue; }
     const on = barKit.order.includes(id);
@@ -21456,6 +21526,7 @@ function barLayout() {
   barPlace();
   if (barKit.editing) { barBadges(); barDrawCard(); }
   barFit();
+  barCentre();
 }
 
 // On a narrow screen the keys that do not fit go, from the end of your order, into one «more» key
@@ -21495,7 +21566,10 @@ function barFit() {
   barKit.more.hidden = true;
   if (barKit.editing || !barSpills(bar)) { barCloseMore(); return; }
   barKit.more.hidden = false;
-  const order = [...barKit.order];
+  // In the chat shell the keys stand by family, not in the order kept: the last on screen goes first
+  // (an app before Diagnostics, Diagnostics before Files), and the agents never do.
+  const rank = (id) => Number.parseInt(getComputedStyle(barNodes(id)[0] ?? bar).order, 10) || 0;
+  const order = chatShellOn() ? barKit.order.filter((id) => !barLocked(id)).sort((a, b) => rank(a) - rank(b)) : [...barKit.order];
   while (order.length && barSpills(bar)) {
     const id = order.pop();
     const nodes = barKit.extras.has(id) ? [barKit.extras.get(id)] : barNodes(id);
@@ -21586,7 +21660,7 @@ function barGap() {
   return Number.isFinite(gap) ? gap : 14;
 }
 function barRemove(id) {
-  if (id === BAR_FIXED || !barKit.order.includes(id)) return;
+  if (barLocked(id) || !barKit.order.includes(id)) return;
   const badge = barKit.badges.get(id);
   const focused = Boolean(badge) && document.activeElement === badge;
   const at = barKit.order.indexOf(id);
@@ -21631,8 +21705,9 @@ function barAdd(id) {
 // hold a button) and follow their key every frame: its place, its tremble, and its carry.
 function barBadges() {
   if (!barKit.layer) return;
-  for (const [id, badge] of barKit.badges) if (!barKit.order.includes(id)) { badge.remove(); barKit.badges.delete(id); }
+  for (const [id, badge] of barKit.badges) if (!barKit.order.includes(id) || barLocked(id)) { badge.remove(); barKit.badges.delete(id); }
   barKit.order.forEach((id, index) => {
+    if (barLocked(id)) return;
     const delay = `${-((index * 97) % 260)}ms`;
     for (const node of barNodes(id)) node.style.setProperty('--jiggle-delay', delay);
     let badge = barKit.badges.get(id);

@@ -583,12 +583,25 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // two families with a hairline before each.
   assert.match(css, /html\.chat-shell \.shell > \.bar:not\(\.bar-home\) > #agents \{ position: absolute; left: 50%; top: 50%; transform: translate\(-50%, -50%\);/);
   assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.mother-button, \.tree-button, \.chats-button\)\[aria-pressed="true"\] \{ background: none !important; color: var\(--phosphor\); \}/);
-  assert.match(app, /for \(const family of \['project', 'madre'\]\)/);
   // No plate in any state, over the older relief of CODE, Modules and Diagnostics (which names
   // them by id, so this one must too); and every drawing at one size to the eye, stroke kept.
   assert.match(css, /:root\.chat-shell \.shell > \.bar > :is\(#tree-button, #code-button, [^)]*\):not\(\.stop-all\):is\(\*, :hover, :active, :focus, :focus-visible, \[aria-pressed\]\) \{\n  background: none !important; box-shadow: none !important; transform: none !important;/);
-  assert.match(css, /svg :is\(path, circle, rect\) \{ stroke-width: calc\(var\(--icon-w, 1\.6\) \/ var\(--glyph, 1\)\); \}/);
-  assert.match(css, /html\.chat-shell \.shell > \.bar > #code-button \{ --glyph: 1\.18; \}/);
+  assert.match(css, /svg :is\(path, circle, ellipse, rect, line, polyline, polygon\) \{ stroke-width: calc\(var\(--icon-w, 1\.6\) \/ var\(--glyph, 1\)\); transition: none; \}/);
+  assert.match(app, /const glyph = Math\.min\(1\.3, Math\.max\(\.75, \(SPAN \* view\) \/ \(20 \* span\)\)\);/);
+  // Hover moves the drawing and never grows it; Modules wears no count; the apps and modules put on
+  // the bar are a third family; the agents neither go nor move while the bar is arranged.
+  assert.match(css, /\.chats-button\):hover svg \{ transform: translateY\(-1px\); \}/);
+  assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
+  assert.match(app, /for \(const family of \['project', 'madre', 'apps'\]\)/);
+  assert.match(css, /> \.bar-extra \{ order: 26; \}/);
+  assert.match(app, /const barLocked = \(id\) => id === BAR_FIXED \|\| \(id === 'crew' && chatShellOn\(\)\);/);
+  assert.match(app, /if \(barKit\.editing\) \{ if \(!barLocked\(id\)\) barDragStart\(event, id\); return; \}/);
+  // The title and its pills at one end, the keys at the other; the agents back in the row when what
+  // stands at either side would run under them; «More» takes the last family first.
+  assert.match(app, /const spring = el\('span', 'bar-spring'\);/);
+  assert.match(app, /bar\.classList\.toggle\('bar-crowded', middle\.left < left \+ 12 \|\| middle\.right > right - 12\);/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar\.bar-crowded:not\(\.bar-home\) > #agents \{ position: static; transform: none; order: 3; \}/);
+  assert.match(app, /const order = chatShellOn\(\) \? barKit\.order\.filter\(\(id\) => !barLocked\(id\)\)\.sort\(\(a, b\) => rank\(a\) - rank\(b\)\) : \[\.\.\.barKit\.order\];/);
   // With the field as display: contents, the fade under the box is measured from the box itself.
   assert.match(app, /const field = fieldBox && fieldBox\.height > 0 \? fieldBox : box;/);
 });

@@ -10593,7 +10593,12 @@ html.chat-shell:not(.via-phone) .shell > .bar:not(.bar-home) {
   font-family: var(--read); letter-spacing: 0;
 }
 html.chat-shell .shell > .bar.bar-home { display: none !important; }
-html.chat-shell .bar > .bar-left { flex: 1 1 auto; min-width: 0; gap: 8px; }
+/* The title holds only what it says, so the pills stand right after it and the keys at the far
+   end (a spring between them, public/app.js): the middle stays free for the agents. */
+html.chat-shell .bar > .bar-left { flex: 0 1 auto; min-width: min(140px, 30%); gap: 8px; }
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-spring { order: 8; flex: 1 1 0; min-width: 0; }
+html.chat-shell .bar-spring { display: block; }
+.bar-spring { display: none; }
 html.chat-shell .bar > .bar-left > :is(.brand, .project, .connection, .salas-link) { display: none !important; }
 html.chat-shell .bar #connection { display: none !important; }
 .shell-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -10610,8 +10615,11 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .ch
    accent, as the keys of those apps. */
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover { background: none !important; color: var(--text); }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out), color calc(160ms * var(--motion-scale, 1)) ease; }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover svg { transform: translateY(-1px) scale(1.1); }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):active svg { transform: scale(.94); }
+/* Under the pointer the drawing moves, it does not grow (2026-10-26): no beat of the brain, no
+   pop when a key lights up, nothing that changes its size. */
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover svg { transform: translateY(-1px); }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):active svg { transform: none; }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { animation: none !important; }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: none !important; color: var(--phosphor); }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { color: var(--phosphor); }
 @media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .bar > * svg { transition: none !important; transform: none !important; } }
@@ -10623,16 +10631,12 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)
 }
 :root.chat-shell .shell > .bar > :is(#tree-button, #code-button, #browser-button, #nostromo-bar, #modules-button, #mother-button, #agents-compact, #chats-button):focus:not(:focus-visible) { outline: none; }
 /* One size to the eye: the drawings fill their square unevenly (the brackets of CODE are short,
-   the globe is full), so each is set to the same weight on screen, and its stroke kept as thick
-   as every other's. */
+   the globe is full), so public/app.js (barGlyphs) measures each and sets its --glyph, and the
+   stroke stays as thick as every other's. */
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: calc(18px * var(--glyph, 1)) !important; height: calc(18px * var(--glyph, 1)) !important; }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg :is(path, circle, rect) { stroke-width: calc(var(--icon-w, 1.6) / var(--glyph, 1)); }
-html.chat-shell .shell > .bar > #code-button { --glyph: 1.18; }
-html.chat-shell .shell > .bar > #browser-button { --glyph: .94; }
-html.chat-shell .shell > .bar > #nostromo-bar { --glyph: 1.04; }
-html.chat-shell .shell > .bar > #modules-button { --glyph: .95; }
-html.chat-shell .shell > .bar > #mother-button { --glyph: 1.08; }
-html.chat-shell .shell > .bar > #agents-compact { --glyph: 1.06; }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg :is(path, circle, ellipse, rect, line, polyline, polygon) { stroke-width: calc(var(--icon-w, 1.6) / var(--glyph, 1)); transition: none; }
+/* Modules says no count on its key: what is new there is said inside. */
+:root.chat-shell .shell > .bar #modules-button .modules-count { display: none !important; }
 /* A count sits on the key's corner, small, cut out of the bar, not over the drawing. */
 :root.chat-shell .shell > .bar :is(.modules-count, .mother-count, .bar-count) {
   position: absolute; top: 2px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px;
@@ -10824,7 +10828,16 @@ html.chat-shell .shell > .bar:not(.bar-home) > .bar-family.madre { order: 19; }
 html.chat-shell .shell > .bar:not(.bar-home) > #nostromo-bar { order: 20; }
 html.chat-shell .shell > .bar:not(.bar-home) > #modules-button { order: 21; }
 html.chat-shell .shell > .bar:not(.bar-home) > #mother-button { order: 22; }
+/* The third family: the apps and modules a person puts on the bar, in the order they chose. */
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-family.apps { order: 25; }
+html.chat-shell .shell > .bar:not(.bar-home) > .bar-extra { order: 26; }
+/* A family with none of its keys on screen (taken off, or behind «More») takes its line too. */
+html.chat-shell .shell > .bar:not(.bar-home):not(:has(> :is(#tree-button, #code-button, #browser-button):not(.bar-off, .bar-overflow, [hidden]))) > .bar-family.project,
+html.chat-shell .shell > .bar:not(.bar-home):not(:has(> :is(#nostromo-bar, #modules-button, #mother-button):not(.bar-off, .bar-overflow, [hidden]))) > .bar-family.madre,
+html.chat-shell .shell > .bar:not(.bar-home):not(:has(> .bar-extra:not(.bar-off, .bar-overflow, [hidden]))) > .bar-family.apps { display: none; }
 html.chat-shell .shell > .bar:not(.bar-home) > :is(#phone-button, .bar-more, .bar-badges) { order: 30; }
+/* The agents hold still while the bar is arranged: they neither go nor move (public/app.js, barLocked). */
+html.chat-shell .shell > .bar.bar-editing > :is(#agents, #agents-compact) { animation: none !important; touch-action: auto; }
 .bar-family { display: none; }
 html.chat-shell .shell > .bar:not(.bar-home) > .bar-family { display: block; flex: none; width: 1px; height: 18px; margin: 0 8px; background: color-mix(in srgb, var(--text) 16%, transparent); }
 /* The crew in the middle of the bar, while the bar is wide enough to hold it there; narrower, it
@@ -10833,3 +10846,6 @@ html.chat-shell .shell > .bar:not(.bar-home) > #agents { position: absolute; lef
 @container roombar (max-width: 900px) {
   html.chat-shell .shell > .bar:not(.bar-home) > #agents { position: static; transform: none; order: 3; }
 }
+/* Nor when what stands at either side would run under them: many keys, a pill, a long title
+   (public/app.js, barCentre). */
+html.chat-shell .shell > .bar.bar-crowded:not(.bar-home) > #agents { position: static; transform: none; order: 3; }
