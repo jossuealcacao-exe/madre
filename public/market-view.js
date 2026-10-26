@@ -136,10 +136,52 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   };
   // A module from the catalog is got first — its signed file, checked, for every project — and
   // then turned on wherever the person said.
+  // BEFORE IT IS INSTALLED (2026-10-25): what the module declares, read from its signed file, and the
+  // one thing every module is — code that runs with the person's permissions. Nothing is installed
+  // until the person says so, and then it is that same file (its sha256).
+  let reviewing = null;
+  const reviewLines = (declares) => {
+    const lines = [];
+    for (const reach of declares?.reaches ?? []) lines.push(reach.to ? t('Connects to {to} ({host}).', { to: reach.to, host: reach.host ?? '?' }) : t('Connects to {host}.', { host: reach.host ?? '?' }));
+    if (!(declares?.reaches ?? []).length) lines.push(t('It declares no address outside this computer.'));
+    for (const secret of declares?.secrets ?? []) lines.push(t('Asks for a key: {label}. MADRE keeps it in its vault, only for this module.', { label: secret.label }));
+    if (declares?.tools) lines.push(t('Hands tools to your agents during their turns.'));
+    if (declares?.reads) lines.push(t('Reads the messages of your chats while it is on.'));
+    if (declares?.commands?.length) lines.push(t('Adds commands to the box: {commands}.', { commands: declares.commands.join(', ') }));
+    if (declares?.pages) lines.push(t('Serves pages of its own inside MADRE.'));
+    if (declares?.writes) lines.push(t('Writes in your project, with a command you read and confirm before it runs.'));
+    return lines;
+  };
+  const askToInstall = (item, review) => new Promise((resolve) => {
+    const sheet = el('div', 'mk-review');
+    sheet.setAttribute('role', 'alertdialog');
+    sheet.setAttribute('aria-modal', 'true');
+    const card = el('div', 'mk-review-card');
+    const head = el('div', 'mk-review-head');
+    head.append(appIcon(item, 44), el('h2', null, t('Before installing {name}', { name: nameOf(item) })));
+    const list = el('ul', 'mk-review-list');
+    for (const line of reviewLines(review.declares)) list.append(el('li', null, line));
+    const warn = el('p', 'mk-review-warn', t('A module runs inside MADRE with your permissions. MADRE checks its signature and what it declares, not everything its code does: install only what you trust.'));
+    const keys = el('div', 'mk-review-keys');
+    const done = (yes) => { reviewing = null; sheet.remove(); resolve(yes); };
+    const no = button('mk-get big quiet', t('Not now'), () => done(false));
+    const yes = button('mk-get big', t('Install'), () => done(true));
+    keys.append(no, yes);
+    card.append(head, el('p', 'mk-review-version', t('Version {version}', { version: review.version ?? '?' })), list, warn, keys);
+    sheet.append(card);
+    sheet.addEventListener('click', (event) => { if (event.target === sheet) done(false); });
+    reviewing = () => done(false);
+    root.append(sheet);
+    yes.focus();
+  });
   const fetchFirst = async (item, line) => {
     if (item.kind !== 'remote') return item;
+    said(line, t('Reading what {name} does…', { name: nameOf(item) }));
+    const review = await post('/api/market/install', { id: item.id, review: true });
+    if (!review.ok) throw new Error(review.body.error ?? t('{name} could not be installed.', { name: nameOf(item) }));
+    if (!(await askToInstall(item, review.body))) throw Object.assign(new Error(''), { declined: true });
     said(line, t('Getting {name} from the Market…', { name: nameOf(item) }));
-    const answer = await post('/api/market/install', { id: item.id });
+    const answer = await post('/api/market/install', { id: item.id, accept: review.body.sha256 });
     if (!answer.ok) throw new Error(answer.body.error ?? t('{name} could not be installed.', { name: nameOf(item) }));
     await load();
     return items.find((one) => one.id === item.id && one.kind !== 'remote') ?? item;
@@ -202,7 +244,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     key.disabled = true;
     if (on) startGetting(key);
     let item = given;
-    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; stopGetting(key); said(line, error.message, 'bad'); return; }
+    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; stopGetting(key); said(line, error.message, error.declined ? '' : 'bad'); return; }
     said(line, on && item.id === 'playwright' ? t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.') : t('One moment…'));
     const answer = await post(`/api/extensions/${encodeURIComponent(item.id)}/install`, { confirm: true });
     if (!answer.ok) { key.disabled = false; stopGetting(key); said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return; }
@@ -215,7 +257,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const turningOn = change.all === true || Object.values(change.rooms ?? {}).includes(true);
     if (turningOn) startGetting(key);
     let item = given;
-    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; stopGetting(key); said(line, error.message, 'bad'); return false; }
+    try { item = await fetchFirst(given, line); } catch (error) { key.disabled = false; stopGetting(key); said(line, error.message, error.declined ? '' : 'bad'); return false; }
     said(line, turningOn && item.id === 'playwright' ? t('Getting the test browser ready: MADRE downloads what it is missing. It can take a few minutes.') : t('One moment…'));
     const answer = await post(`/api/extensions/${encodeURIComponent(item.id)}/scope`, { ...change, confirm: true });
     if (!answer.ok) { key.disabled = false; stopGetting(key); said(line, answer.body.error ?? t('{name} could not be turned on or off.', { name: nameOf(item) }), 'bad'); return false; }
@@ -634,6 +676,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (event.key !== 'Escape') return;
     event.stopPropagation();
     event.preventDefault();
+    if (reviewing) { reviewing(); return; }
     if (input.value && document.activeElement === input) { input.value = ''; render(); return; }
     if (view.focus && view.tab === 'shop') go({ tab: 'shop' });
     else close();

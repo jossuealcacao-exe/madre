@@ -49,7 +49,7 @@ export async function updateBuiltins({ stateRoot, catalog, packaged = {}, unders
     if (!taken) continue;
     await rm(builtinFile(stateRoot, id), { force: true });
     delete record[id];
-    revoked.push({ id, name: names[id] ?? id, version: have.version, why: taken.why ?? null });
+    revoked.push({ id, name: names[id] ?? id, kind: 'returned', version: have.version, why: taken.why ?? null, at: now().toISOString() });
   }
 
   for (const entry of catalog.builtins ?? []) {
@@ -71,11 +71,11 @@ export async function updateBuiltins({ stateRoot, catalog, packaged = {}, unders
 
   if (updated.length || revoked.length) {
     await writeAtomic(recordFile(stateRoot), JSON.stringify(record, null, 2));
-    // Said once, the way a Market module's update is (market/updates.json).
-    if (updated.length) {
-      const news = [...(await marketNews(stateRoot)).filter((one) => !updated.some((fresh) => fresh.id === one.id)), ...updated];
-      await writeAtomic(join(stateRoot, 'market', 'updates.json'), JSON.stringify(news, null, 2));
-    }
+    // Said once, the way a Market module's update is (market/updates.json): what came, and what
+    // went back to the one MADRE came with, and why.
+    const told = [...updated, ...revoked];
+    const news = [...(await marketNews(stateRoot)).filter((one) => !told.some((fresh) => fresh.id === one.id)), ...told];
+    await writeAtomic(join(stateRoot, 'market', 'updates.json'), JSON.stringify(news, null, 2));
   }
   return { updated, revoked };
 }

@@ -74,7 +74,13 @@ test('market · a module is installed only when its file is the one the catalog 
     await assert.rejects(installFromMarket({ ...tools, id: 'saludo', catalog }), /not the one the Market signed/);
     shop.publish('1.0.0', { issued: new Date(Date.now() + 1000).toISOString() });
     ({ catalog } = await refreshCatalog({ stateRoot: root, env, publicKey: PUBLIC, force: true }));
-    const done = await installFromMarket({ ...tools, id: 'saludo', catalog });
+    // What it declares first, and nothing installed; then that same file, accepted by its sha256.
+    const review = await installFromMarket({ ...tools, id: 'saludo', catalog, review: true });
+    assert.deepEqual([review.review, review.version, review.declares.tools, review.declares.reaches], [true, '1.0.0', false, []]);
+    await assert.rejects(readFile(join(root, 'modules', 'saludo.mjs')));
+    await assert.rejects(installFromMarket({ ...tools, id: 'saludo', catalog }), /before installing/);
+    await assert.rejects(installFromMarket({ ...tools, id: 'saludo', catalog, accept: 'f'.repeat(64) }), /before installing/);
+    const done = await installFromMarket({ ...tools, id: 'saludo', catalog, accept: review.sha256 });
     assert.equal(done.version, '1.0.0');
     assert.match(await readFile(join(root, 'modules', 'saludo.mjs'), 'utf8'), /version: '1.0.0'/);
     assert.equal((await updateFromMarket({ ...tools, catalog })).length, 0, 'nothing newer, nothing done');
@@ -89,6 +95,29 @@ test('market · a module is installed only when its file is the one the catalog 
     shop.publish('1.2.0', { issued: new Date(Date.now() + 3000).toISOString() });
     ({ catalog } = await refreshCatalog({ stateRoot: root, env, publicKey: PUBLIC, force: true }));
     assert.equal((await updateFromMarket({ ...tools, catalog })).length, 0);
+  } finally { await shop.close(); await rm(root, { recursive: true, force: true }); await rm(project, { recursive: true, force: true }); }
+});
+
+test('market · a module the catalog takes back is removed and forgotten here, and the person is told why, once', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'madre-market-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-market-project-'));
+  const shop = await market();
+  const tools = { stateRoot: root, projectRoot: project, madre: '1.0.3', verifyText: verifyModuleText, installText: installModuleText };
+  try {
+    shop.publish('1.0.0');
+    const { catalog } = await refreshCatalog({ stateRoot: root, env: { PULSE_MARKET_URL: shop.url }, publicKey: PUBLIC, force: true });
+    const { sha256: accept } = await installFromMarket({ ...tools, id: 'saludo', catalog, review: true });
+    await installFromMarket({ ...tools, id: 'saludo', catalog, accept });
+    const gone = [];
+    const remove = async (id) => gone.push(id);
+    // Another version taken back: this one stays.
+    await updateFromMarket({ ...tools, catalog: { ...catalog, revoked: [{ id: 'saludo', version: '0.9.0', why: null }] }, remove });
+    assert.deepEqual(gone, []);
+    await updateFromMarket({ ...tools, catalog: { ...catalog, revoked: [{ id: 'saludo', version: null, why: { es: 'Mandaba datos.' } }] }, names: { saludo: 'SALUDO' }, remove });
+    assert.deepEqual(gone, ['saludo']);
+    // Named as the Market names it, in both languages: the page says the room's.
+    assert.deepEqual((await marketNews(root)).filter((one) => one.kind === 'removed').map(({ id, name, why }) => ({ id, name, why })), [{ id: 'saludo', name: { en: 'Hello', es: 'Saludo' }, why: { es: 'Mandaba datos.' } }]);
+    assert.equal(await forgetFromMarket(root, 'saludo'), false, 'already forgotten: no next catalog brings it back');
   } finally { await shop.close(); await rm(root, { recursive: true, force: true }); await rm(project, { recursive: true, force: true }); }
 });
 

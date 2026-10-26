@@ -199,7 +199,11 @@ export const installedFromMarket = async (stateRoot) => (await readJson(join(fol
 
 // One module from the catalog onto this computer, for every project (each one turns it on).
 // `verify` and `install` are src/modules/index.mjs's own checks and writer.
-export async function installFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl = globalThis.fetch, verifyText, installText }) {
+// Two steps since 2026-10-25: asked with `review`, the file is fetched and checked but nothing is
+// installed, and what it declares comes back with its sha256; installed only when the person
+// accepted that very file (`accept` = its sha256), so what is installed is what was read.
+// A module MADRE updates on its own later (updateFromMarket) was accepted once, by the person.
+export async function installFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl = globalThis.fetch, verifyText, installText, review = false, accept = null, accepted = false }) {
   const entry = catalog?.modules.find((one) => one.id === id && one.file);
   if (!entry) throw new Error(t('The Market has no module «{id}» to install.', { id }));
   if (!fitsVersion(madre, entry.minMadre)) throw new Error(t('This module needs MADRE {version} or newer.', { version: entry.minMadre }));
@@ -209,6 +213,8 @@ export async function installFromMarket({ stateRoot, projectRoot, id, catalog, m
   const text = bytes.toString('utf8');
   const checked = await verifyText({ text, name: `${id}.mjs`, replace: true });
   if (checked.id !== id) throw new Error(t('The file says it is «{found}», not «{id}», so MADRE did not install it.', { found: checked.id, id }));
+  if (review) return { review: true, id, name: checked.name, version: entry.version, sha256: entry.file.sha256, declares: checked.declares ?? null };
+  if (!accepted && accept !== entry.file.sha256) throw Object.assign(new Error(t('Read what {name} does before installing it.', { name: checked.name ?? id })), { code: 'REVIEW_FIRST' });
   const done = await installText({ text, name: `${id}.mjs`, scope: 'user', stateRoot, projectRoot, source: { kind: 'market', from: entry.file.url }, replace: true });
   const dir = folder(stateRoot);
   await mkdir(dir, { recursive: true });
@@ -254,6 +260,7 @@ export async function marketNewsSeen(stateRoot) { await writeAtomic(join(folder(
 export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre, fetchImpl = globalThis.fetch, verifyText, installText, names = {}, remove = null }) {
   const installed = await installedFromMarket(stateRoot);
   const updated = [];
+  const removed = [];
   // Taken back (2026-10-25): a module, or the version of it this computer has, that the catalog says
   // must not run any more is removed and forgotten here, so no next catalog brings it back.
   for (const [id, have] of Object.entries(installed)) {
@@ -262,17 +269,21 @@ export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre,
     try { await remove(id); } catch { /* already gone by hand */ }
     await forgetFromMarket(stateRoot, id);
     delete installed[id];
+    // Its name as the Market says it, in both languages when it has them; the page picks the room's.
+    removed.push({ id, name: catalog?.modules?.find((one) => one.id === id)?.name ?? names[id] ?? id, kind: 'removed', version: have.version ?? null, why: taken.why ?? null, at: new Date().toISOString() });
   }
   for (const [id, have] of Object.entries(installed)) {
     const entry = catalog?.modules.find((one) => one.id === id && one.file);
     if (!entry || entry.file.sha256 === have.sha256 || !fitsVersion(madre, entry.minMadre)) continue;
     try {
-      await installFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl, verifyText, installText });
+      await installFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl, verifyText, installText, accepted: true });
       updated.push({ id, name: names[id] ?? (typeof entry.name === 'string' ? entry.name : entry.name?.en) ?? id, from: have.version ?? null, to: entry.version, changes: entry.changes ?? null, at: new Date().toISOString() });
     } catch { /* tried again the next time MADRE opens */ }
   }
-  if (updated.length) {
-    const news = [...(await marketNews(stateRoot)).filter((one) => !updated.some((fresh) => fresh.id === one.id)), ...updated];
+  // Said once each: what updated itself, and what was taken out of this computer and why.
+  const told = [...updated, ...removed];
+  if (told.length) {
+    const news = [...(await marketNews(stateRoot)).filter((one) => !told.some((fresh) => fresh.id === one.id)), ...told];
     await writeAtomic(join(folder(stateRoot), 'updates.json'), JSON.stringify(news, null, 2));
   }
   return updated;

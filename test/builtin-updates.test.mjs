@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readCatalog, refreshCatalog, sha256 } from '../src/market-remote.mjs';
+import { marketNews, readCatalog, refreshCatalog, sha256 } from '../src/market-remote.mjs';
 import { builtinFile, readBuiltinRecord, updateBuiltins } from '../src/builtin-updates.mjs';
 import { MODULES, adoptBuiltinUpdates, builtinFailures, loadFailures, packagedVersions, verifyBuiltinText } from '../src/modules/index.mjs';
 import { SDK_LEVEL, understandsSdk } from '../src/modules/sdk.mjs';
@@ -111,9 +111,11 @@ test('builtin · a newer Reminders signed with the factory key runs instead of t
     market.publish({ version: '0.2.1' });
     await sync(root, market.env);
     assert.deepEqual(await adoptBuiltinUpdates({ stateRoot: root, factoryKey: FACTORY_PUBLIC }), [{ id: 'reminders', from: '0.1.0', to: '0.2.1' }]);
-    market.publish({ version: '0.2.1', revoked: [{ id: 'reminders', version: '0.2.1' }] });
+    market.publish({ version: '0.2.1', revoked: [{ id: 'reminders', version: '0.2.1', why: { es: 'Se adelantaba una hora.' } }] });
     const back = await sync(root, market.env);
     assert.deepEqual(back.revoked.map(({ id, version }) => ({ id, version })), [{ id: 'reminders', version: '0.2.1' }]);
+    // Said once to the person, with the author's why.
+    assert.deepEqual((await marketNews(root)).filter((one) => one.kind === 'returned').map(({ id, why }) => ({ id, why })), [{ id: 'reminders', why: { es: 'Se adelantaba una hora.' } }]);
     await adoptBuiltinUpdates({ stateRoot: root, factoryKey: FACTORY_PUBLIC });
     assert.equal(reminders().version, '0.1.0');
     await assert.rejects(readFile(builtinFile(root, 'reminders')));

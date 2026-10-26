@@ -4177,14 +4177,16 @@ export async function createPulseServer({
         const catalog = (await keptCatalog({ stateRoot: root, ...marketKeyed })) ?? (await syncMarket({ force: true }).catch(() => ({}))).catalog;
         if (!catalog) return sendJson(response, 503, { error: t('MADRE could not reach the Market. Check your internet connection and try again.') });
         try {
-          const done = await installFromMarket({ ...marketTools(), id: String(payload.id ?? ''), catalog });
+          // First what it declares, for the person to read; then, with their yes, that same file.
+          if (payload.review === true) return sendJson(response, 200, await installFromMarket({ ...marketTools(), id: String(payload.id ?? ''), catalog, review: true }));
+          const done = await installFromMarket({ ...marketTools(), id: String(payload.id ?? ''), catalog, accept: typeof payload.accept === 'string' ? payload.accept : null });
           await room.record('extension.installed', { id: done.id, name: done.name, origin: 'market', version: done.version, by: 'you' });
           for (const one of await knownRooms(root)) {
             if (!one.open?.port || one.id === thisRoomId) continue;
             await fetch(`http://127.0.0.1:${one.open.port}/api/extensions/reload`, { method: 'POST' }).catch(() => null);
           }
           return sendJson(response, 200, { installed: done, extensions: await describeModules(await moduleContext()) });
-        } catch (error) { return sendJson(response, 422, { error: error.message }); }
+        } catch (error) { return sendJson(response, error.code === 'REVIEW_FIRST' ? 409 : 422, { error: error.message, review: error.code === 'REVIEW_FIRST' }); }
       }
       // A paid module's license (src/market-license.mjs): checked once with Lemon Squeezy when the
       // person activates it, kept here, and given back when they release it. Only from this Mac.

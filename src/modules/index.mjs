@@ -174,8 +174,26 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
       }
       throw error;
     }
-    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null, unknown: module.unknown ?? [] };
+    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null, unknown: module.unknown ?? [], declares: declaredBy(module) };
   } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
+}
+
+// WHAT A MODULE SAYS IT DOES, read from what it declares, for the person to read before it is
+// installed (2026-10-25). Only what the file itself declares: where it reaches, the keys it asks
+// for, whether it hands tools to the agents or reads the conversations, the pages and commands it
+// adds, and whether it writes in the project. What the code does beyond that nobody can promise —
+// which is why the page also says, every time, that a module runs with the person's permissions.
+export function declaredBy(module) {
+  return {
+    reaches: (module.reaches ?? []).map(({ host, to, what, when }) => ({ host: host ?? null, to: to ?? null, what: what ?? null, when: when ?? null })),
+    secrets: (module.secrets ?? []).map(({ name, label }) => ({ name, label: label ?? name })),
+    tools: typeof module.toolsForTurn === 'function',
+    reads: typeof module.onEvent === 'function',
+    pages: (module.routes ?? []).length,
+    commands: (module.slash ?? []).map((command) => command.usage ?? `/${command.name}`),
+    writes: module.kind === 'installer',
+    creates: module.creates ?? [],
+  };
 }
 
 // The same door for a newer file of one of MADRE's own modules, before it is signed and published

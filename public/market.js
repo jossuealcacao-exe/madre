@@ -179,7 +179,15 @@ export async function loadMarket({ toast = null, open = null } = {}) {
   if (!toast) return answer;
   const updated = answer.news ?? [];
   if (updated.length) {
-    toast(updated.map((one) => [t('{name} updated itself to version {version}.', { name: t(one.name ?? one.id), version: one.to }), pick(one.changes)].filter(Boolean).join(' ')).join(' '));
+    // Three kinds, each in its words (2026-10-25): updated itself; one of MADRE's own sent back to the
+    // one MADRE came with; a module taken out of the Market and of this computer. The why is the author's.
+    const line = (one) => {
+      const name = one.name && typeof one.name === 'object' ? pick(one.name) : t(one.name ?? one.id);
+      if (one.kind === 'returned') return [t('{name} went back to the version that comes with MADRE.', { name }), pick(one.why)];
+      if (one.kind === 'removed') return [t('{name} was taken out of the Market and removed from this computer.', { name }), pick(one.why)];
+      return [t('{name} updated itself to version {version}.', { name, version: one.to }), pick(one.changes)];
+    };
+    toast(updated.map((one) => line(one).filter(Boolean).join(' ')).join(' '));
     void fetch('/api/market/seen', { method: 'POST' }).catch(() => null);
   }
   const fresh = answer.announce ?? { news: [], modules: [] };
