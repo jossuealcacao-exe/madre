@@ -9238,6 +9238,14 @@ const panelWidth = (surface) => (panelShown(surface) ? surface.node().getBoundin
 // conversations on the left, anything else on the right — and the whole room (bar, thread,
 // composer) moves over to make room for it. Its width is the human's, dragged from its inner edge.
 const SIDE_GAP = 10;
+// Under the bar (2026-10-25, route A of R-12): the bar runs from edge to edge above everything, so
+// a surface split to the window's edge starts below it, as the app's sidebars will under its title
+// bar. A phone and the right half of a split have no such bar: they keep the window's edge.
+function sideTop() {
+  if (state.device || SPLIT_CHAT) return SIDE_GAP;
+  const bottom = document.querySelector('.shell > .bar:not(.bar-home)')?.getBoundingClientRect?.().bottom;
+  return Number.isFinite(bottom) && bottom > 0 ? Math.round(bottom) + SIDE_GAP : SIDE_GAP;
+}
 const SIDE_MIN = 300;
 const sideWidths = (() => { try { return JSON.parse(localStorage.getItem('pulse.sides') ?? '{}') ?? {}; } catch { return {}; } })();
 function rememberSides() { try { localStorage.setItem('pulse.sides', JSON.stringify(sideWidths)); } catch { /* no storage */ } }
@@ -9374,7 +9382,8 @@ function layoutPanels() {
     const room = window.innerWidth - other - COLUMN_MIN - grid - 3 * SIDE_GAP;
     width[side] = Math.round(Math.max(SIDE_MIN, Math.min(sideWidthFor(surface), room)));
     const node = surface.node();
-    applyWindowBox(node, { x: side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP - width[side], y: SIDE_GAP, w: width[side], h: window.innerHeight - 2 * SIDE_GAP });
+    const top = sideTop();
+    applyWindowBox(node, { x: side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP - width[side], y: top, w: width[side], h: window.innerHeight - top - SIDE_GAP });
   }
   const sideLeft = width.left ? `${width.left + 2 * SIDE_GAP}px` : '';
   const sideRight = width.right ? `${width.right + 2 * SIDE_GAP}px` : '';
