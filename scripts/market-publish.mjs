@@ -14,13 +14,19 @@
 //
 // In the source, a module MADRE already carries is an entry with its words and drawings only; a
 // new one adds `version` and `file` (the path of its .module.mjs, relative to the source folder).
+//
+// A NEWER FILE FOR ONE OF MADRE'S OWN MODULES (2026-10-25) goes in `builtins`, not in `modules`:
+// `{ id, version, file, changes }`. It is checked as MADRE checks it, signed with the FACTORY key as
+// well (~/.madre/fabrica/ed25519.pem, scripts/market-key.mjs --fabrica; --factory-key <pem>), and
+// every MADRE that understands its contract runs it instead of its own (src/builtin-updates.mjs).
+// `revoked` takes a module, or one version of it, back: `{ id, version?, why }`.
 
 import { createPrivateKey, sign } from 'node:crypto';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readCatalog, sha256, verifySigned } from '../src/market-remote.mjs';
-import { verifyModuleText } from '../src/modules/index.mjs';
+import { verifyBuiltinText, verifyModuleText } from '../src/modules/index.mjs';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const fallbackLanding = join(homedir(), 'Pangea OS', 'madre-landing');
@@ -28,6 +34,7 @@ const src = resolve(arg('src', join(fallbackLanding, 'mercado')));
 const out = resolve(arg('out', join(fallbackLanding, 'site', 'mercado')));
 const base = arg('base', 'https://madre.run/mercado').replace(/\/+$/, '');
 const keyFile = arg('key', process.env.MADRE_MARKET_KEY || join(homedir(), '.madre', 'mercado', 'ed25519.pem'));
+const factoryKeyFile = arg('factory-key', process.env.MADRE_FACTORY_KEY || join(homedir(), '.madre', 'fabrica', 'ed25519.pem'));
 
 const source = JSON.parse(await readFile(join(src, 'catalogo.json'), 'utf8'));
 const key = createPrivateKey(await readFile(keyFile, 'utf8'));
@@ -45,7 +52,19 @@ for (const entry of source.modules ?? []) {
   await copyFile(join(src, entry.file), join(out, 'modulos', name));
   modules.push({ ...entry, file: { url: `${base}/modulos/${name}`, sha256: sha256(bytes), size: bytes.length } });
 }
-const catalog = { schema: 1, issued: new Date().toISOString(), shelves: source.shelves ?? [], featured: source.featured ?? [], news: source.news ?? [], modules };
+const builtins = [];
+if ((source.builtins ?? []).length) {
+  const factory = createPrivateKey(await readFile(factoryKeyFile, 'utf8'));
+  for (const entry of source.builtins) {
+    const bytes = await readFile(join(src, entry.file));
+    const checked = await verifyBuiltinText({ text: bytes.toString('utf8'), id: entry.id });
+    if (entry.version && entry.version !== checked.version) throw new Error(`${entry.file} says ${checked.version}; the source says ${entry.version}.`);
+    const name = `${entry.id}-${checked.version}.builtin.mjs`;
+    await copyFile(join(src, entry.file), join(out, 'modulos', name));
+    builtins.push({ id: entry.id, version: checked.version, sdk: checked.sdk, changes: entry.changes ?? null, file: { url: `${base}/modulos/${name}`, sha256: sha256(bytes), size: bytes.length, factory: sign(null, bytes, factory).toString('base64') } });
+  }
+}
+const catalog = { schema: 1, issued: new Date().toISOString(), shelves: source.shelves ?? [], featured: source.featured ?? [], news: source.news ?? [], modules, builtins, revoked: source.revoked ?? [] };
 const bytes = Buffer.from(`${JSON.stringify(catalog, null, 2)}\n`);
 const signature = sign(null, bytes, key).toString('base64');
 await writeFile(join(out, 'catalogo.json'), bytes);
@@ -55,7 +74,9 @@ await writeFile(join(out, 'catalogo.json.sig'), `${signature}\n`);
 const { MARKET_PUBLIC_KEY } = await import('../src/market-key.mjs');
 if (!verifySigned(bytes, signature, MARKET_PUBLIC_KEY)) throw new Error('The signature does not verify with the key in src/market-key.mjs: this is not the key MADRE carries.');
 const read = readCatalog(bytes.toString('utf8'), { url: `${base}/catalogo.json` });
-const lost = catalog.modules.filter((one) => !read.modules.some((kept) => kept.id === one.id)).map((one) => one.id);
+const { FACTORY_PUBLIC_KEY } = await import('../src/market-key.mjs');
+for (const one of builtins) if (!FACTORY_PUBLIC_KEY || !verifySigned(await readFile(join(out, 'modulos', `${one.id}-${one.version}.builtin.mjs`)), one.file.factory, FACTORY_PUBLIC_KEY)) throw new Error(`${one.id}: the factory signature does not verify with the key in src/market-key.mjs.`);
+const lost = [...catalog.modules.filter((one) => !read.modules.some((kept) => kept.id === one.id)), ...builtins.filter((one) => !read.builtins.some((kept) => kept.id === one.id))].map((one) => one.id);
 if (lost.length) throw new Error(`MADRE would leave out: ${lost.join(', ')}.`);
-console.log(`✓ ${out}/catalogo.json · ${read.modules.length} modules (${read.modules.filter((one) => one.file).length} with a file) · issued ${catalog.issued}`);
+console.log(`✓ ${out}/catalogo.json · ${read.modules.length} modules (${read.modules.filter((one) => one.file).length} with a file) · ${read.builtins.length} newer of MADRE's own · ${read.revoked.length} taken back · issued ${catalog.issued}`);
 console.log('  Signed and verified. Publish madre.run as usual to put it online.');

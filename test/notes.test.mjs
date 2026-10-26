@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import notes, { NOTE_COLORS, deleteNote, readNotes, saveNote } from '../src/modules/notes.mjs';
+import { defineModule } from '../src/modules/sdk.mjs';
+import spec, { NOTE_COLORS, deleteNote, readNotes, saveNote } from '../src/modules/notes.mjs';
+const notes = defineModule(spec);
 
 test('notes: a note is made, changed field by field, closed and thrown away', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'madre-notes-'));
@@ -50,7 +52,7 @@ test('notes for agents: the tool is handed only when a note is asked for, and it
   assert.deepEqual(handed[0].tools, ['create_note']);
   assert.deepEqual(await notes.toolsForTurn(ctx, { text: 'arregla el bug del IVA' }), []);
   assert.equal((await notes.toolsForTurn(ctx, { text: '@codex take a note: call the client' })).length, 1);
-  const { handleRequest } = await import('../src/mcp/notes-server.mjs');
+  const { handleRequest } = await import('../src/modules/notes.mjs');
   const env = { PULSE_NOTES_DIR: dir };
   const listed = await handleRequest({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, { env });
   assert.deepEqual(listed.result.tools.map((tool) => tool.name), ['create_note']);

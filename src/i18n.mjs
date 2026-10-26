@@ -86,6 +86,13 @@ const PROSE = new Set(['summary', 'detail', 'note', 'says', 'brief', 'what', 'wh
 // other when it only wrote one. Anything else comes back as it was.
 export const isBilingual = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0 && Object.keys(value).every((key) => key === 'es' || key === 'en') && Object.values(value).every((one) => typeof one === 'string');
 export const inRoomLanguage = (value) => (isBilingual(value) ? value[current] ?? value.es ?? value.en : value);
+// What a module says, as ctx.t (SDK 2, 2026-10-25): an English sentence MADRE's catalogue knows,
+// or the module's own { es, en } — the way to bring a sentence MADRE has not learned yet.
+export function say(text, vars = null) {
+  if (!isBilingual(text)) return t(text, vars);
+  const said = hostWords(String(inRoomLanguage(text) ?? ''));
+  return vars ? said.replace(/\{(\w+)\}/g, (whole, name) => (Object.hasOwn(vars, name) ? String(vars[name]) : whole)) : said;
+}
 
 export function translate(value, key = null) {
   if (isBilingual(value)) return value[current] ?? value.es ?? value.en;

@@ -24,11 +24,13 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
 import { recallForTurn } from './modules/enlaces.mjs';
 import { hardwareOnce, MODEL_TIERS } from './modules/local-models.mjs';
-import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule } from './modules/index.mjs';
+import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule, adoptBuiltinUpdates, packagedVersions } from './modules/index.mjs';
+import { understandsSdk } from './modules/sdk.mjs';
+import { updateBuiltins } from './builtin-updates.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, forgetCorpus, keepCorpus, keptCorpus, pruneCorpora, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
-import { hostFacts, inRoomLanguage, language as roomLanguage, setLanguage as setRoomLanguage, t } from './i18n.mjs';
+import { hostFacts, inRoomLanguage, language as roomLanguage, say, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
 const BOOT_ID = `${process.pid}-${Date.now().toString(36)}`;
@@ -255,6 +257,8 @@ export async function createPulseServer({
   // fake, and the key their catalog is signed with.
   marketFetch = globalThis.fetch,
   marketKey = null,
+  // The factory key that signs newer files of MADRE's own modules (src/builtin-updates.mjs); tests hand in theirs.
+  factoryKey = null,
   // Where a paid module's license is checked (src/market-license.mjs); tests hand in their own.
   licenseApi = null,
   // Ollama detection; tests hand in a fake probe. PULSE_OLLAMA=0 leaves Ollama alone entirely.
@@ -403,6 +407,7 @@ export async function createPulseServer({
   // says so once, the next time a page asks (market/updates.json).
   const marketOn = () => process.env.PULSE_MARKET !== '0' && updatesEnabled();
   const marketKeyed = marketKey ? { publicKey: marketKey } : {};
+  const factoryKeyed = factoryKey ? { factoryKey } : {};
   const licenseKeyed = licenseApi ? { api: licenseApi } : {};
   // OpenCode's own free models, as its CLI lists them, read again at most every ten minutes.
   const openCodeOwn = { names: null, at: 0 };
@@ -412,11 +417,21 @@ export async function createPulseServer({
     if (!marketOn()) return Promise.resolve({ catalog: null, off: true });
     marketSync ??= (async () => {
       const read = await refreshCatalog({ stateRoot: root, fetchImpl: marketFetch, force, ...marketKeyed });
-      if (read.catalog) await updateFromMarket({ ...marketTools(), catalog: read.catalog, names: Object.fromEntries(MODULES.map((one) => [one.id, one.name])) }).catch(() => []);
+      const names = Object.fromEntries(MODULES.map((one) => [one.id, one.name]));
+      if (read.catalog) await updateFromMarket({ ...marketTools(), catalog: read.catalog, names, remove: (id) => removeExternalModule({ id, stateRoot: root, projectRoot: canonicalProjectRoot }) }).catch(() => []);
+      // MADRE's own modules, newer from the Market and signed with the factory key (src/builtin-updates.mjs):
+      // what came or was taken back is run from now on, in this project and in Home.
+      if (read.catalog) {
+        const changed = await updateBuiltins({ stateRoot: root, catalog: read.catalog, packaged: packagedVersions(), understands: understandsSdk, fetchImpl: marketFetch, names, ...factoryKeyed }).catch(() => ({ updated: [], revoked: [] }));
+        if (changed.updated.length || changed.revoked.length) await adoptBuiltinUpdates({ stateRoot: root, enabled: marketOn(), ...factoryKeyed }).catch(() => []);
+      }
       return read;
     })().finally(() => { marketSync = null; });
     return marketSync;
   };
+  // What this computer already kept for MADRE's own modules runs from the start; with «Look for new
+  // versions» off, the ones MADRE came with.
+  await adoptBuiltinUpdates({ stateRoot: root, enabled: marketOn(), ...factoryKeyed }).catch((error) => console.error(`MADRE modules: ${error.message}`));
   void syncMarket().catch(() => null);
   const install = detectInstall({ projectRoot: canonicalProjectRoot });
   async function versionView({ force = false } = {}) {
@@ -1712,6 +1727,8 @@ export async function createPulseServer({
       projectRoot: canonicalProjectRoot, stateRoot: root, config, env: process.env, agents, room,
       // The language the room speaks, 'es' or 'en': a module answers in it (SDK, 2026-10-20).
       language: roomLanguage(),
+      // Its words in that language (SDK 2): a sentence MADRE knows, or the module's own { es, en }.
+      t: say,
       // Where this project's conversations are kept (~/.pulse/rooms/<id>): a module's own small
       // files about the project live beside them, never in the project's folder.
       roomDir,
@@ -1807,6 +1824,13 @@ export async function createPulseServer({
         }),
         ollama: {
           state: () => ollama,
+          // One answer from the local model, for a module that reads something with it (SDK 2):
+          // the model MADRE chose unless one is named. Nothing leaves this computer.
+          generate: ({ model = null, system = null, prompt, json = false, timeoutMs = 60000, temperature = 0 } = {}) => {
+            const chosen = model ?? ollama.madreModel ?? ollama.chatModel ?? null;
+            if (!ollama.running || !chosen) return Promise.reject(new Error(t('The local AI is not running.')));
+            return ollamaGenerate({ host: ollama.host, model: chosen, system, prompt: String(prompt ?? ''), json, timeoutMs, temperature, fetchImpl: reportFetch });
+          },
           project: () => localAiHere(),
           setProject: (on) => setLocalAiHere(on),
           wire: (options) => wireOllama(options),
@@ -3597,7 +3621,7 @@ export async function createPulseServer({
       }
       if (request.method === 'POST' && url.pathname === '/api/updates/settings') {
         const patch = await body(request).catch(() => ({}));
-        if (typeof patch.check === 'boolean') { updatesConfig = { ...updatesConfig, check: patch.check }; await updateConfig(root, { updates: updatesConfig }); }
+        if (typeof patch.check === 'boolean') { updatesConfig = { ...updatesConfig, check: patch.check }; await updateConfig(root, { updates: updatesConfig }); await adoptBuiltinUpdates({ stateRoot: root, enabled: marketOn(), ...factoryKeyed }).catch(() => []); }
         return sendJson(response, 200, { updates: { check: updatesEnabled(), envWins: process.env.PULSE_UPDATE_CHECK !== undefined } });
       }
       if (request.method === 'GET' && url.pathname === '/api/mother') {

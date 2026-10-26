@@ -1665,6 +1665,7 @@ export const ES = {
     'Hay una respuesta en curso en esta conversación. Deja que termine, o usa «Detener todo», y vuelve a intentar.',
   'A turn is running in this conversation.': 'Hay una respuesta en camino en este chat.',
   'Ollama is not on this computer yet.': 'Ollama todavía no está en esta computadora.',
+  'The local AI is not running.': 'La IA local no está encendida.',
   "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.":
     'El instalador de Ollama necesita la contraseña de administrador y MADRE no puede pedírtela. Corre el comando en una terminal y luego dale REVISAR OTRA VEZ.',
   'Your models stay where they are.': 'Tus modelos se quedan donde están.',

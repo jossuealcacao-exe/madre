@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## What a module can declare
 
-This table is **the complete contract**: 38 fields, not one more. Any other field you write, MADRE
+This table is **the complete contract**: 40 fields, not one more. Any other field you write, MADRE
 tells you about at install time ("I didn't understand these fields") instead of silently ignoring it. A test in
 the suite compares this table against the code, so if they ever drift apart, it's a failure.
 
@@ -63,6 +63,7 @@ the suite compares this table against the code, so if they ever drift apart, it'
 |---|---|
 | `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Its page in MODULES. `summary` is one sentence: what it does. `creates` and `requires` are short lines, one idea each |
 | `version` | Yours, and it starts at `1.0.0`. If you don't declare it, the page shows the file's date |
+| `sdk` | The SDK contract your module was written for, a whole number: `1` (up to MADRE 1.0.5) or `2` (`ctx.t`, `ctx.services.ollama.generate`, and a module that is one file importing nothing from MADRE). Without it, it is `1`. A MADRE that does not know your contract does not load it and tells you why; the Market only offers it to the ones that do. The number counts what MADRE hands a module, not MADRE's version: a new MADRE keeps understanding the earlier contracts |
 | `tracks` | If your module wraps something from outside, its version isn't yours: it's that thing's. Declare `{ name, npm }` or `{ name, github }` and return the version found in `status(ctx)` as `runs: [{ name, version }]`. MADRE shows that version and looks for a newer one on its own, once a day, with the page's ↻ button to check now |
 | `updatePlan(ctx, { latest })` | How that new version is brought to this computer: `{ command, args, display, note, after }`. MADRE shows `display` and runs nothing until the human has read it; the output lands in the room line by line. With no command, return `{ command: null, note, download }` and the page sends you to download it |
 | `updates` | An https `{ url }` where you publish **your own module**. With that, its page gets a button that fetches the file, verifies it the same way as an installation, and replaces it if it passes. If you installed it from a file, MADRE remembers which one and you don't need to declare anything: edit it and ask for a new copy |
@@ -263,7 +264,10 @@ ctx = {
   env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
-  services: { history, imageKey, ollama, … }, // lo que el servidor ofrece
+  language, t(text, vars),         // the room's language, 'es' or 'en', and your words in it (sdk: 2):
+                                   // an English sentence MADRE already knows, or your own { es, en }
+  services: { history, imageKey, ollama: { state, generate }, … }, // what the server offers;
+                                   // ollama.generate({ system, prompt, json }) answers with the local model (sdk: 2)
   vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
 ```

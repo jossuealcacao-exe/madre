@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseWhen, nextOccurrence } from '../src/reminder-time.mjs';
-import reminders, { addReminder, deleteReminder, doneReminder, habitKey, offerFor, pendingIn, readReminders, snoozeReminder, taskFromWords } from '../src/modules/reminders.mjs';
+import { defineModule } from '../src/modules/sdk.mjs';
+import spec, { parseWhen, nextOccurrence, addReminder, deleteReminder, doneReminder, habitKey, offerFor, pendingIn, readReminders, snoozeReminder, taskFromWords } from '../src/modules/reminders.mjs';
+const reminders = defineModule(spec);
 
 // A Tuesday morning.
 const NOW = new Date('2026-10-20T10:30:00');
@@ -52,10 +53,10 @@ test('reminders: an offer is one card, the local model may drop what is not a ta
   // An agent's message or a slash command is never read.
   assert.equal(await offerFor(ctx, { type: 'message.created', payload: { role: 'assistant', text: 'mañana lo reviso' } }, { now: NOW }), null);
   // With the local AI: what it says is not a task is not offered; what it is, it says shorter.
-  const local = (answer) => ({ ...ctx, chat: `c-${Math.random()}`, services: { ollama: { state: () => ({ running: true, host: 'http://ollama', chatModel: 'qwen2.5:7b' }), project: async () => ({ on: true }) } } });
-  const fetchSaying = (json) => async () => ({ ok: true, json: async () => ({ message: { content: JSON.stringify(json) } }) });
-  assert.equal(await offerFor(local(), event('tengo que pensar mañana si me gusta este diseño'), { now: NOW, fetchImpl: fetchSaying({ remind: false, what: '', when: '' }) }), null);
-  const said = await offerFor(local(), event('tengo que subir la versión el viernes sin falta'), { now: NOW, fetchImpl: fetchSaying({ remind: true, what: 'Subir la versión', when: 'el viernes' }) });
+  // It reaches the model through the SDK (ctx.services.ollama.generate), never on its own.
+  const local = (json) => ({ ...ctx, chat: `c-${Math.random()}`, services: { ollama: { state: () => ({ running: true, host: 'http://ollama', chatModel: 'qwen2.5:7b' }), project: async () => ({ on: true }), generate: async () => ({ text: JSON.stringify(json) }) } } });
+  assert.equal(await offerFor(local({ remind: false, what: '', when: '' }), event('tengo que pensar mañana si me gusta este diseño'), { now: NOW }), null);
+  const said = await offerFor(local({ remind: true, what: 'Subir la versión', when: 'el viernes' }), event('tengo que subir la versión el viernes sin falta'), { now: NOW });
   assert.deepEqual([said.what, said.by, new Date(said.due).getDay()], ['Subir la versión', 'local', 5]);
   // The same request on three different days.
   const habit = { ...ctx, chat: 'c-habit' };
@@ -90,7 +91,7 @@ test('reminders for agents: handed when a reminder is asked for; the agent sets 
   assert.equal((await reminders.toolsForTurn(ctx, { text: 'recuérdame llamar a Daniel' })).length, 1);
   assert.deepEqual(await reminders.toolsForTurn(ctx, { text: 'corre las pruebas' }), []);
   const [server] = await reminders.toolsForTurn(ctx, { text: '/reminders call Daniel' });
-  const { handleRequest } = await import('../src/mcp/notes-server.mjs');
+  const { handleRequest } = await import('../src/modules/reminders.mjs');
   const made = await handleRequest({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'create_reminder', arguments: { what: 'Llamar a Daniel', when: 'mañana' } } }, { env: server.env });
   assert.equal(made.result.isError, false);
   const [kept] = await readReminders(state);

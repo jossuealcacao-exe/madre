@@ -30,7 +30,8 @@ import enlaces from './enlaces.mjs';
 import bishop from './bishop.mjs';
 import mcpConnect from './mcp-connect.mjs';
 import { isSalasRoom } from '../salas.mjs';
-import { defineModule, matchRoute } from './sdk.mjs';
+import { defineModule, matchRoute, understandsSdk } from './sdk.mjs';
+import { builtinFile, newer, readBuiltinRecord, trustedBytes } from '../builtin-updates.mjs';
 
 // The lab: modules that are built and tested but not offered yet, because they are not finished
 // to the standard of the rest. They stay out of MODULES and out of every prompt unless someone
@@ -38,8 +39,15 @@ import { defineModule, matchRoute } from './sdk.mjs';
 // so a module of somebody's own cannot take one and collide with it the day it comes out.
 export const LAB_MODULES = [correo];
 const labsAsked = new Set(String(process.env.PULSE_LABS ?? '').split(',').map((id) => id.trim()).filter(Boolean));
-export const MODULES = [ahp, imageStudio, gitPulse, ash, intents, choices, notes, reminders, runs, ripley, ollama, playwright, github, enlaces, bishop, mcpConnect, ...LAB_MODULES.filter((module) => labsAsked.has(module.id))];
+// A module of MADRE's own may be one file that imports nothing (SDK 2): it exports its plain spec,
+// and the SDK is applied here, as it is to a module of anyone else's.
+const own = (spec) => (typeof spec?.describe === 'function' ? spec : defineModule(spec));
+export const MODULES = [ahp, imageStudio, gitPulse, ash, intents, choices, own(notes), own(reminders), runs, ripley, ollama, playwright, github, enlaces, bishop, mcpConnect, ...LAB_MODULES.filter((module) => labsAsked.has(module.id))];
 export const BUILTIN_IDS = new Set([...MODULES, ...LAB_MODULES].map((module) => module.id));
+// MADRE's own modules as they came in the package, by id: what a newer file from the Market stands
+// in for, and what comes back when that file fails, is taken back or is turned off.
+const PACKAGED = new Map([...MODULES, ...LAB_MODULES].map((module) => [module.id, module]));
+export const packagedVersions = () => Object.fromEntries([...PACKAGED].map(([id, module]) => [id, module.version ?? '0.0.0']));
 export const loadFailures = [];   // { file, error } for MODULES to show
 export const moduleFolders = ({ stateRoot, projectRoot }) => ({ user: join(stateRoot, 'modules'), project: join(projectRoot, '.madre', 'modules') });
 // Where the SDK guide and the example live in this installation, for agents who build modules.
@@ -103,6 +111,47 @@ export async function loadExternalModules({ stateRoot, projectRoot }) {
   return { loaded: MODULES.filter((module) => module.external), failures: [...loadFailures], folders };
 }
 
+// MADRE's OWN MODULES, NEWER FROM THE MARKET (src/builtin-updates.mjs). Each newer file kept on this
+// computer is checked again here — its bytes against the sha256 and the factory signature it came
+// with, its id, its contract, its version — and stands in for the one in the package. It keeps
+// what MADRE's own have (its own routes, its card) and is never «yours»: it cannot be removed, only
+// sent back. One that fails leaves the package's in place, and why is kept in builtinFailures.
+// `enabled: false` (Look for new versions off) sends every one back to the package's.
+// Why a newer file was not run, for Diagnostics and the log. Not among «your modules that did not
+// load»: the module works, as the one MADRE came with, and it is not the person's to fix.
+export const builtinFailures = [];
+export async function adoptBuiltinUpdates({ stateRoot, enabled = true, factoryKey } = {}) {
+  const adopted = [];
+  builtinFailures.length = 0;
+  const record = enabled && stateRoot ? await readBuiltinRecord(stateRoot) : {};
+  for (const [id, packaged] of PACKAGED) {
+    const index = MODULES.findIndex((module) => module.id === id);
+    const kept = record[id];
+    let module = packaged;
+    if (kept && newer(kept.version, packaged.version ?? '0.0.0')) {
+      const file = builtinFile(stateRoot, id);
+      try {
+        const bytes = await readFile(file);
+        if (!trustedBytes(bytes, kept, ...(factoryKey ? [factoryKey] : []))) throw new Error('the file is not the one the factory key signed');
+        const loaded = await import(`${pathToFileURL(file).href}?sha=${kept.sha256}`);
+        const spec = loaded.default ?? null;
+        if (!spec || typeof spec !== 'object') throw new Error('the default export must be a module spec object');
+        const fresh = typeof spec.describe === 'function' ? spec : defineModule(spec);
+        if (fresh.id !== id) throw new Error(`the file says it is "${fresh.id}"`);
+        if (!understandsSdk(fresh.sdk)) throw new Error(`it needs contract ${fresh.sdk} of the SDK`);
+        if (fresh.version !== kept.version) throw new Error(`it says ${fresh.version}, the catalog said ${kept.version}`);
+        module = Object.freeze({ ...fresh, updated: { from: packaged.version ?? null, to: fresh.version }, file });
+        adopted.push({ id, from: packaged.version ?? null, to: fresh.version });
+      } catch (error) {
+        builtinFailures.push({ id, file, version: kept.version, error: error.message });
+        console.error(`MADRE modules: ${packaged.name} ${kept.version} from the Market did not load (${error.message}); MADRE uses the one it came with.`);
+      }
+    }
+    if (index >= 0 && MODULES[index] !== module) MODULES[index] = module;
+  }
+  return adopted;
+}
+
 // The one door every module comes through, whoever wrote it and wherever the text came from: it
 // is written to a scratch copy, imported there and checked against the house rules. A module runs
 // inside MADRE with the human's own permissions, so the check is the point. Checking installs
@@ -126,6 +175,24 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
       throw error;
     }
     return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null, unknown: module.unknown ?? [] };
+  } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
+}
+
+// The same door for a newer file of one of MADRE's own modules, before it is signed and published
+// (scripts/market-publish.mjs): alone in a scratch folder, where nothing of MADRE resolves, it must
+// load, say it is that module, speak a contract this MADRE knows and be newer than the package's.
+export async function verifyBuiltinText({ text, id }) {
+  const packaged = PACKAGED.get(id);
+  if (!packaged) throw new Error(`"${id}" is not one of MADRE's own modules.`);
+  const scratch = await mkdtemp(join(tmpdir(), 'madre-builtin-check-'));
+  try {
+    const probe = join(scratch, `${id}.mjs`);
+    await writeFile(probe, text);
+    const module = await importModuleFile(probe);
+    if (module.id !== id) throw new Error(`The file says it is "${module.id}", not "${id}".`);
+    if (!understandsSdk(module.sdk)) throw new Error(`${id} needs contract ${module.sdk} of the SDK.`);
+    if (!module.version || !newer(module.version, packaged.version ?? '0.0.0')) throw new Error(`${id} ${module.version ?? '(no version)'} is not newer than the ${packaged.version} MADRE comes with.`);
+    return { id: module.id, version: module.version, sdk: module.sdk };
   } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 }
 

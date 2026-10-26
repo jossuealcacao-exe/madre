@@ -69,7 +69,20 @@ export function dependencies(runs) {
   return list.filter((dep) => dep && dep.name).map((dep) => ({ name: String(dep.name), version: dep.version ?? null, target: dep.target ?? null }));
 }
 
-// Every field this contract answers to. Thirty-eight of them and all but two optional, which is
+// The contracts this MADRE understands (2026-10-25). A module says which one it was written for
+// with `sdk`, a whole number; without it, it is 1, the contract of 1.0.5 and before. A number
+// counts what MADRE hands a module, not MADRE's version: a new MADRE keeps every contract it can,
+// so a module does not have to be published again for it, and the Market offers a module to a
+// MADRE that understands its contract, whatever its release (src/market-remote.mjs).
+//   1  everything up to 1.0.5
+//   2  ctx.t for words in the room's language, ctx.services.ollama.generate, and a module that is
+//      one file: its own logic and its own tool server, nothing imported from MADRE
+export const SDK_LEVELS = Object.freeze([1, 2]);
+export const SDK_LEVEL = SDK_LEVELS.at(-1);
+export const sdkOf = (spec) => (spec?.sdk === undefined ? 1 : spec.sdk);
+export const understandsSdk = (level) => SDK_LEVELS.includes(level);
+
+// Every field this contract answers to. Forty of them and all but two optional, which is
 // generous until you misspell one: `sumary` used to install without a word and leave a card with
 // an empty summary. A key MADRE does not know is not fatal — a module written for a newer MADRE
 // may carry fields this one has not learned yet — so it is said out loud instead of refused.
@@ -78,7 +91,7 @@ export const MODULE_FIELDS = new Set([
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
   'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand', 'secrets',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
-  'toggledBody', 'describe', 'ready', 'footer', 'credit',
+  'toggledBody', 'describe', 'ready', 'footer', 'credit', 'sdk',
 ]);
 export const unknownFields = (spec) => Object.keys(spec ?? {}).filter((key) => !MODULE_FIELDS.has(key));
 
@@ -106,6 +119,9 @@ function footerKeys(spec) {
 export function defineModule(spec) {
   if (!spec?.id || !/^[a-z][a-z0-9-]*$/.test(spec.id)) throw new Error(`Module id must be kebab-case: ${spec?.id}`);
   if (!spec.name) throw new Error(`Module ${spec.id} needs a name.`);
+  const sdk = sdkOf(spec);
+  if (!Number.isInteger(sdk) || sdk < 1) throw new Error(`Module ${spec.id}: sdk is a whole number, the contract it was written for.`);
+  if (!understandsSdk(sdk)) throw new Error(`Module ${spec.id} was written for contract ${sdk} of the SDK, and this MADRE understands up to ${SDK_LEVEL}. Update MADRE to use it.`);
   const kind = spec.kind ?? 'builtin';
   const configKey = spec.configKey ?? camel(spec.id);
   // Its name and what it does may come in both languages, { es, en } (2026-10-20): MADRE keeps one
@@ -114,7 +130,7 @@ export function defineModule(spec) {
   const nameText = oneWord(spec.name);
   const defaults = { ...(kind === 'builtin' ? { enabled: false } : {}), ...(spec.settings ?? {}) };
   const base = {
-    id: spec.id, kind, name: nameText, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
+    id: spec.id, sdk, kind, name: nameText, vendor: spec.vendor ?? 'MADRE', package: spec.package ?? null, version: spec.version ?? null,
     words: { name: isBilingual(spec.name) ? spec.name : null, summary: isBilingual(spec.summary) ? spec.summary : null },
     // Keys this contract does not answer to. Carried so whoever installs the module is told.
     unknown: unknownFields(spec),
@@ -183,7 +199,9 @@ export function defineModule(spec) {
     configKey,
     defaults,
     settingsFrom,
-    routes: (spec.routes ?? []).map((route) => ({ ...route, method: route.method.toUpperCase() })),
+    // A route is handed the module's own settings and vault, as every other hook is (SDK 2): a module
+    // that is one file has no other way to read them.
+    routes: (spec.routes ?? []).map((route) => ({ ...route, method: route.method.toUpperCase(), handler: typeof route.handler === 'function' ? (ctx, request) => route.handler(mine(ctx ?? {}, settingsFrom(ctx?.config, ctx?.roomId)), request) : route.handler })),
     onEvent: spec.onEvent ?? null,
     conditions: spec.conditions ?? [],
     // Slash commands the human types in the composer; they run on the server with the module's

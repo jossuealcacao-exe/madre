@@ -6,6 +6,9 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.0.6 · Sin publicar
 
+- **Notas y Recordatorios se actualizan sin esperar a una MADRE nueva.** Siguen viniendo con MADRE y funcionan sin internet. Cuando sale un arreglo para alguno de los dos, llega por el Mercado y MADRE te avisa una vez («Recordatorios se actualizó solo a la versión…»). Cada archivo viene firmado con una llave aparte de la del Mercado. Si algo no cuadra, MADRE usa el que trajo de fábrica. Con «Buscar versiones nuevas» apagado, siempre usa el de fábrica.
+- **Para quien hace módulos: contrato `sdk: 2`.** Un módulo dice para qué contrato del SDK está escrito, en lugar de la versión de MADRE que necesita. Con `sdk: 2` el módulo puede ser un solo archivo que no importa nada de MADRE: `ctx.t` le da sus palabras en el idioma de la sala, `ctx.services.ollama.generate` le da la IA local, y sus rutas reciben sus propios ajustes.
+
 ## 1.0.5 · 2026-10-22
 
 MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en un chat que corre en tu computadora. Les escribes, leen tu proyecto y tú decides qué pueden cambiar. Esta versión la hace más fácil de aprender y de usar todos los días.

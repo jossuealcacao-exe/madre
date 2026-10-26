@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## Lo que un módulo puede declarar
 
-Esta tabla es **el contrato completo**: 39 campos, ni uno más. Cualquier otro que escribas MADRE
+Esta tabla es **el contrato completo**: 40 campos, ni uno más. Cualquier otro que escribas MADRE
 te lo dice al instalar («no entendí estos campos») en vez de ignorarlo en silencio. Una prueba de
 la suite compara esta tabla contra el código, así que si alguna vez se separan, es un fallo.
 
@@ -63,6 +63,7 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 |---|---|
 | `id`, `name`, `vendor`, `summary`, `creates`, `requires` | Su ficha en MODULES. `summary` es una frase: qué hace. `creates` y `requires` son líneas cortas, una idea cada una. `name` y `summary` —y en `slash`, `summary`, `usage` y `title`— pueden ir en los dos idiomas, `{ es, en }`: MADRE muestra el de la sala. Lo que tu módulo escribe al correr (la tarjeta de un comando, una página) va en `ctx.language`, `'es'` o `'en'`, el idioma en que habla la sala |
 | `version` | La tuya, y empieza en `1.0.0`. Si no la declaras, la ficha muestra la fecha del archivo |
+| `sdk` | El contrato del SDK para el que escribiste tu módulo, un número entero: `1` (hasta MADRE 1.0.5) o `2` (`ctx.t`, `ctx.services.ollama.generate` y un módulo de un solo archivo que no importa nada de MADRE). Sin él, es `1`. Una MADRE que no conoce tu contrato no lo carga y te dice por qué; el Mercado solo se lo ofrece a las que sí. El número cuenta lo que MADRE le da a un módulo, no la versión de MADRE: una MADRE nueva sigue entendiendo los contratos anteriores |
 | `tracks` | Si tu módulo envuelve algo de fuera, su versión no es la tuya: es la de esa cosa. Declara `{ name, npm }` o `{ name, github }` y devuelve la versión encontrada en `status(ctx)` como `runs: [{ name, version }]`. MADRE muestra esa versión y busca una más nueva sola, una vez al día, con el botón ↻ de la ficha para mirar ahora |
 | `updatePlan(ctx, { latest })` | Cómo se trae esa versión nueva a esta computadora: `{ command, args, display, note, after }`. MADRE enseña `display` y no corre nada hasta que la humana lo leyó; la salida cae en la sala línea por línea. Sin comando, devuelve `{ command: null, note, download }` y la ficha manda a descargarlo |
 | `updates` | `{ url }` https donde publicas **tu propio módulo**. Con eso su ficha trae un botón que va por el archivo, lo verifica igual que una instalación y lo reemplaza si pasa. Si lo instalaste desde un archivo, MADRE recuerda cuál y no necesitas declarar nada: edítalo y pide una copia nueva |
@@ -264,7 +265,10 @@ ctx = {
   env, agents, room,               // agentes detectados; la sala (room.capabilities(), room.record(...))
   readConfig(), updateConfig(patch),
   record(type, payload),           // escribe un evento en el ledger; tipo "algo.algo", nunca message.* ni agent.*
-  services: { history, imageKey, ollama, … }, // lo que el servidor ofrece
+  language, t(text, vars),         // el idioma de la sala, 'es' o 'en', y tus palabras en él (sdk: 2):
+                                   // una frase en inglés que MADRE ya conoce, o la tuya en { es, en }
+  services: { history, imageKey, ollama: { state, generate }, … }, // lo que el servidor ofrece;
+                                   // ollama.generate({ system, prompt, json }) contesta con el modelo local (sdk: 2)
   vault: { get, held, keep, forget } // tus secretos, y solo los tuyos
 }
 ```

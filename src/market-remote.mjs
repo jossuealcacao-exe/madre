@@ -30,7 +30,7 @@ import { mayInstall } from './market-license.mjs';
 export const MARKET_URL = 'https://madre.run/mercado/catalogo.json';
 const MAX_CATALOG = 1024 * 1024;
 const MAX_SIGNATURE = 1024;
-const MAX_MODULE = 512 * 1024;
+export const MAX_MODULE = 512 * 1024;
 const FRESH_MS = 10 * 60 * 1000;
 const TIMEOUT_MS = 8000;
 const ID = /^[a-z][a-z0-9-]{1,40}$/;
@@ -39,8 +39,8 @@ const COLOR = /^#[0-9a-f]{6}$/i;
 
 export const marketUrl = (env = process.env) => env.PULSE_MARKET_URL || MARKET_URL;
 const folder = (stateRoot) => join(stateRoot, 'market');
-const readJson = (file) => readFile(file, 'utf8').then((raw) => JSON.parse(raw)).catch(() => null);
-async function writeAtomic(file, data) {
+export const readJson = (file) => readFile(file, 'utf8').then((raw) => JSON.parse(raw)).catch(() => null);
+export async function writeAtomic(file, data) {
   const temp = `${file}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(temp, data);
   await rename(temp, file);
@@ -128,10 +128,25 @@ export function readCatalog(text, { url = MARKET_URL } = {}) {
   // What the author has to say to everyone who opens MADRE: one line each, said once, and the
   // module it is about when there is one.
   const news = (Array.isArray(data.news) ? data.news : []).filter((one) => ID.test(one?.id ?? '')).map((one) => ({ id: one.id, text: words(one.text, 240), module: ID.test(one.module ?? '') ? one.module : null })).filter((one) => one.text).slice(0, 10);
-  return { schema: 1, issued: new Date(issued).toISOString(), shelves, featured, modules, news };
+  // NEWER FILES FOR MADRE'S OWN MODULES (2026-10-25, R-2 of the 1.1 road map): Notes, Reminders…
+  // come with MADRE and are kept up to date from here. A list of their own, so a MADRE that does not
+  // know it (1.0.5 and before) never sees one as a module to install. Each file carries, besides its
+  // sha256, the signature of the FACTORY key (src/market-key.mjs): the Market's key alone cannot
+  // replace a module every MADRE runs (src/builtin-updates.mjs).
+  const builtins = [];
+  for (const raw of (Array.isArray(data.builtins) ? data.builtins : []).slice(0, 50)) {
+    if (!ID.test(raw?.id ?? '') || typeof raw.version !== 'string' || !/^\d+\.\d+\.\d+$/.test(raw.version) || !Number.isInteger(raw.sdk) || raw.sdk < 1) continue;
+    const href = fileUrl(raw.file?.url, url);
+    if (!href || !SHA.test(raw.file?.sha256 ?? '') || typeof raw.file?.factory !== 'string' || raw.file.factory.length > MAX_SIGNATURE) continue;
+    builtins.push({ id: raw.id, version: raw.version, sdk: raw.sdk, changes: words(raw.changes, 400), file: { url: href, sha256: raw.file.sha256, size: Number(raw.file.size) || null, factory: raw.file.factory.trim() } });
+  }
+  // TAKEN BACK: a module, or one version of it, that must not run anywhere any more. A module got
+  // from the Market is removed; a newer file of one of MADRE's own goes back to the one MADRE came with.
+  const revoked = (Array.isArray(data.revoked) ? data.revoked : []).filter((one) => ID.test(one?.id ?? '')).map((one) => ({ id: one.id, version: typeof one.version === 'string' && /^\d+\.\d+\.\d+$/.test(one.version) ? one.version : null, why: words(one.why, 240) })).slice(0, 100);
+  return { schema: 1, issued: new Date(issued).toISOString(), shelves, featured, modules, news, builtins, revoked };
 }
 
-async function bytesFrom(url, { fetchImpl, max }) {
+export async function bytesFrom(url, { fetchImpl, max }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -236,9 +251,18 @@ export async function marketNewsSeen(stateRoot) { await writeAtomic(join(folder(
 
 // Every module got from the Market whose signed file changed: the new one, installed, and a line
 // for the person. One that fails stays as it was and is tried again next time.
-export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre, fetchImpl = globalThis.fetch, verifyText, installText, names = {} }) {
+export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre, fetchImpl = globalThis.fetch, verifyText, installText, names = {}, remove = null }) {
   const installed = await installedFromMarket(stateRoot);
   const updated = [];
+  // Taken back (2026-10-25): a module, or the version of it this computer has, that the catalog says
+  // must not run any more is removed and forgotten here, so no next catalog brings it back.
+  for (const [id, have] of Object.entries(installed)) {
+    const taken = (catalog?.revoked ?? []).find((one) => one.id === id && (!one.version || one.version === have.version));
+    if (!taken || typeof remove !== 'function') continue;
+    try { await remove(id); } catch { /* already gone by hand */ }
+    await forgetFromMarket(stateRoot, id);
+    delete installed[id];
+  }
   for (const [id, have] of Object.entries(installed)) {
     const entry = catalog?.modules.find((one) => one.id === id && one.file);
     if (!entry || entry.file.sha256 === have.sha256 || !fitsVersion(madre, entry.minMadre)) continue;

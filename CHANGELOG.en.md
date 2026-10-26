@@ -6,6 +6,9 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.0.6 · Unreleased
 
+- **Notes and Reminders update without waiting for a new MADRE.** They still come with MADRE and work without internet. When a fix comes out for either one, it arrives through the Market and MADRE tells you once («Reminders updated itself to version…»). Each file comes signed with a key kept apart from the Market's. If anything does not match, MADRE uses the one it came with. With «Look for new versions» off, it always does.
+- **For module makers: contract `sdk: 2`.** A module says which SDK contract it was written for, instead of the MADRE version it needs. With `sdk: 2` a module can be one file that imports nothing from MADRE: `ctx.t` gives it its words in the room's language, `ctx.services.ollama.generate` gives it the local AI, and its routes get its own settings.
+
 ## 1.0.5 · 2026-10-22
 
 MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) in one chat that runs on your computer. You write to them, they read your project, and you decide what they may change. This version makes it easier to learn and to use every day.
