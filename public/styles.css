@@ -10767,3 +10767,13 @@ html.chat-shell, html.chat-shell[data-scheme="light"], html.chat-shell[data-sche
   --relief: 0 0 0 1px var(--cs-line);
   --relief-over: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .25);
 }
+/* The conversation's own rules weigh two ids (#messages#messages): the chat shell's weigh the same. */
+html.chat-shell #messages#messages .row.assistant:not(.delegated) .bubble, html.chat-shell #messages#messages .row.thinking .bubble {
+  background: none !important; box-shadow: none !important; padding: 2px 0 0 !important; border-radius: 0 !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html.chat-shell #messages#messages .row.user .bubble { background: var(--cs-bubble) !important; color: var(--text) !important; box-shadow: none !important; border-radius: 18px !important; }
+html.chat-shell #messages#messages .thread-inner > .system, html.chat-shell #messages#messages :is(.command-card, .choice) {
+  background: var(--cs-side) !important; box-shadow: 0 0 0 1px var(--cs-line) !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
