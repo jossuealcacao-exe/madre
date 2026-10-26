@@ -47,10 +47,10 @@ body.salas-mac {
 }
 
 /* THE BAR, as a room's (styles.css, .shell > .bar and .bar-home): the surface as glass, the sheen,
-   the bevel and the layered shadow, mono at 11 px; a group of its own on the right for reload and
+   the bevel and the layered shadow, Geist at 12 px (mono until 2026-10-25); a group of its own on the right for reload and
    settings. It stays at the top while the lobby scrolls under it. */
 .sm-top { position: sticky; top: 0; z-index: 12; display: flex; align-items: stretch; justify-content: center; gap: 10px; max-width: 1440px; margin: 0 auto; padding: 10px 20px 0; }
-.sm-topbar { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; height: 48px; padding: 9px 12px 9px 16px; border-radius: 20px; background-color: color-mix(in srgb, var(--bg) 93%, transparent); background-image: var(--sheen); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); box-shadow: var(--bevel), 0 1px 2px rgba(0, 0, 0, .45), 0 10px 24px -10px rgba(0, 0, 0, .6), 16px 24px 50px -24px rgba(0, 0, 0, .55); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text-2); }
+.sm-topbar { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; height: 48px; padding: 9px 12px 9px 16px; border-radius: 20px; background-color: color-mix(in srgb, var(--bg) 93%, transparent); background-image: var(--sheen); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); box-shadow: var(--bevel), 0 1px 2px rgba(0, 0, 0, .45), 0 10px 24px -10px rgba(0, 0, 0, .6), 16px 24px 50px -24px rgba(0, 0, 0, .55); font-family: var(--read); font-size: 12px; letter-spacing: 0; color: var(--text-2); }
 :root[data-scheme="light"] .sm-topbar { background-color: color-mix(in srgb, #ffffff 94%, transparent); box-shadow: var(--bevel), 0 1px 2px rgba(20, 40, 60, .12), 0 10px 24px -12px rgba(20, 40, 60, .24), 16px 24px 50px -26px rgba(20, 40, 60, .28); }
 /* As wide as what it holds (1.0.5): it grows with each project, agent or notice and, once it meets
    the keys on the right, shrinks and folds what does not fit (fitBar, pinsFit) instead of leaving a
@@ -74,7 +74,7 @@ body.salas-mac {
 .sm-live.is-off { color: var(--session-bad); }
 /* The projects open: a key each, its state as a lamp — calm, working (it beats), waiting (ringed), older. */
 .sm-tb-open { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; padding: 3px; margin: -3px; }
-.sm-tb-room { display: inline-flex; align-items: center; gap: 6px; flex: none; max-width: 170px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); color: var(--text); font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .02em; text-decoration: none; white-space: nowrap; cursor: pointer; transition: box-shadow calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.sm-tb-room { display: inline-flex; align-items: center; gap: 6px; flex: none; max-width: 170px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); color: var(--text); font-family: var(--read); font-size: 12px; font-weight: 600; letter-spacing: 0; text-decoration: none; white-space: nowrap; cursor: pointer; transition: box-shadow calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
 .sm-tb-room span { overflow: hidden; text-overflow: ellipsis; }
 .sm-tb-room i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--session-ok); }
 .sm-tb-room.is-working i { background: var(--s-acc); animation: sm-beat 1.4s ease-in-out infinite; }
@@ -100,11 +100,11 @@ body.salas-mac {
 .sm-agent-key.off > :first-child { filter: grayscale(1); opacity: .45; }
 .sm-agent-key:focus-visible { outline: 2px solid color-mix(in srgb, var(--s-acc) 70%, transparent); outline-offset: 2px; }
 /* What asks for the person: who waits, a newer MADRE. */
-.sm-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 26px; padding: 0 11px; border-radius: 999px; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .02em; text-decoration: none; white-space: nowrap; }
+.sm-pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 26px; padding: 0 11px; border-radius: 999px; font-family: var(--read); font-size: 12px; font-weight: 600; letter-spacing: 0; text-decoration: none; white-space: nowrap; }
 .sm-pill.is-wait { background: color-mix(in srgb, var(--s-acc) 16%, transparent); color: color-mix(in srgb, var(--s-acc) 70%, var(--text)); }
 .sm-pill.is-wait i { width: 7px; height: 7px; border-radius: 50%; background: var(--s-acc); animation: sm-beat 1.4s ease-in-out infinite; }
 .sm-pill.is-update { background: color-mix(in srgb, var(--session-wait) 18%, transparent); color: var(--text); }
-.sm-badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 2px; padding: 0 4px; border-radius: 999px; background: var(--s-acc); color: var(--s-acc-ink); font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0; }
+.sm-badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 2px; padding: 0 4px; border-radius: 999px; background: var(--s-acc); color: var(--s-acc-ink); font-family: var(--read); font-size: 10px; font-weight: 650; letter-spacing: 0; }
 /* What steps out when the bar is short is fitBar's call, measured, not the window's width: a split or a
    small window with room to spare kept nothing (2026-10-20). Only a phone drops the projects for good. */
 /* However tight the bar, «+n» fits whole: the rooms go behind it, never under the next key. */
@@ -133,7 +133,7 @@ body.salas-mac {
 .sm-topbar.is-tighter .sm-barkey { padding: 0 8px; }
 .sm-topbar.is-tightest .sm-tb-agents { display: none; }
 /* The bar's keys are the room's bar keys (styles.css, .mother-button, .tree-button, .stop-all). */
-.sm-barkey, .sm-stop { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+.sm-barkey, .sm-stop { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; font-family: var(--read); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; white-space: nowrap; cursor: pointer; }
 .sm-barkey svg, .sm-stop svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sm-stop { box-shadow: inset 0 0 0 1px var(--terror); background: color-mix(in srgb, var(--terror) 12%, transparent); color: var(--terror); }
 .sm-stop:hover, .sm-stop.armed { background: var(--terror); color: #fff; }
@@ -194,7 +194,11 @@ body.salas-mac {
 .sm-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sm-card-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Chips in a flat tone (the room's, 6 Oct): seven-pixel corners, no rim, no shadow. */
-.sm-chip { flex: none; padding: 3px 8px; border-radius: 7px; font-family: var(--mono); font-size: 11px; letter-spacing: .02em; }
+.sm-chip { flex: none; padding: 3px 8px; border-radius: 7px; font-family: var(--read); font-size: 12px; letter-spacing: 0; }
+/* A port is a value to copy: it keeps the mono letter (2026-10-25). */
+.sm-chip.port { font-family: var(--mono); font-size: 11px; letter-spacing: .02em; }
+/* The same chip with a project's name, or a count, is words: Geist. */
+.sm-chip.port.sm-tag-room, .sm-drawer-head .sm-chip.port { font-family: var(--read); font-size: 12px; font-weight: 600; letter-spacing: 0; }
 /* A count is a sentence, not a value to copy: it reads in the room's letter. */
 #sm-memory-total { font-family: var(--read); font-size: 12px; letter-spacing: 0; }
 .sm-chip.port { color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); }
@@ -262,7 +266,7 @@ body.sm-gone .sm-hero h1 { color: var(--text-3); }
 .sm-work { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; padding: 14px 16px 14px; border-radius: 16px; background: color-mix(in srgb, var(--text) 4%, transparent); flex: 1; }
 .sm-work-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sm-work-head h3 { margin: 0; font-size: 14.5px; font-weight: 650; color: var(--text); }
-.sm-work-by { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-work-by { flex: 1; min-width: 0; font-family: var(--read); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-work-list { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 12px; row-gap: 10px; margin: 0; padding: 0; list-style: none; }
 .sm-work-list:has(> li.raw) { grid-template-columns: max-content minmax(0, 1fr) max-content; }
 .sm-work-list li { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline; font-size: 13.5px; line-height: 1.5; color: var(--text); animation: sm-line-in calc(320ms * var(--motion-scale, 1)) var(--ease-out, ease-out) both; }
@@ -270,7 +274,7 @@ body.sm-gone .sm-hero h1 { color: var(--text-3); }
 .sm-work-list li:nth-child(2) { animation-delay: 60ms; } .sm-work-list li:nth-child(3) { animation-delay: 120ms; } .sm-work-list li:nth-child(4) { animation-delay: 180ms; } .sm-work-list li:nth-child(5) { animation-delay: 240ms; }
 .sm-work-list li.raw span { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-work-list li.raw b { color: var(--text); font-weight: 600; }
-.sm-work-list time { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+.sm-work-list time { font-family: var(--read); font-size: 12px; color: var(--text-2); }
 .sm-work > .sm-hint { margin-top: auto; padding-top: 2px; }
 .sm-work.is-working .sm-work-by::before, .sm-work.is-working > .sm-hint::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: -1px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--s-acc) 30%, transparent); border-top-color: var(--s-acc); animation: sm-turn .8s linear infinite; }
 @keyframes sm-line-in { from { opacity: 0; transform: translateY(4px); } }
@@ -320,7 +324,7 @@ a.sm-tag-room:hover { background: color-mix(in srgb, var(--s-acc) 16%, transpare
 .sm-decision { display: grid; gap: 4px; padding: 10px 0; border-top: 1px solid var(--line); }
 .sm-decision:first-child { border-top: 0; padding-top: 2px; }
 .sm-decision-head { display: flex; align-items: center; gap: 8px; }
-.sm-decision-head time { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+.sm-decision-head time { font-family: var(--read); font-size: 12px; color: var(--text-2); }
 .sm-decision p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .sm-attention { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .sm-attention-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 4%, transparent); }
@@ -369,7 +373,7 @@ a.sm-tag-room:hover { background: color-mix(in srgb, var(--s-acc) 16%, transpare
 /* LINKS (docs/MACROVERSO.md, phase 3c): the contracts between rooms, and the sheet that signs one. */
 .sm-link-list { display: grid; gap: 14px; }
 .sm-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px 22px; align-items: center; padding: 20px 22px; border-radius: 16px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
-.sm-link-kind { grid-column: 1; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--s-acc); text-transform: uppercase; }
+.sm-link-kind { grid-column: 1; font-family: var(--read); font-size: 12px; font-weight: 600; letter-spacing: 0; color: var(--s-acc); text-transform: none; }
 .sm-link .who { margin: 0; font-family: var(--read); font-size: 15px; font-weight: 650; letter-spacing: -.01em; text-transform: none; }
 .sm-link .who b { color: var(--s-acc); }
 .sm-link .what, .sm-link .traffic { margin: 0; font-family: var(--read); font-size: 12.5px; letter-spacing: 0; text-transform: none; color: var(--text-2); }
@@ -855,7 +859,7 @@ dialog.sm-sheet.sm-settings[open] { --sm-sheet-pad: 20px; }
 .hp-bar { display: flex; align-items: center; gap: 6px; min-width: 0; height: 26px; padding: 0 9px; border-radius: 9px; background: color-mix(in srgb, var(--bg) 84%, transparent); box-shadow: 0 1px 2px rgba(0, 0, 0, .16), 0 6px 14px -10px rgba(0, 0, 0, .4); font-size: 9.5px; color: var(--text-2); overflow: hidden; }
 .hp-logo { flex: none; width: 22px; height: 6px; border-radius: 3px; background: var(--acc, var(--phosphor)); }
 .hp-bar b { flex: none; color: var(--text); font-weight: 650; }
-.hp-pin { display: inline-flex; align-items: center; gap: 4px; min-width: 0; height: 16px; padding: 0 6px; border-radius: 5px; background: var(--panel); color: var(--text); font-family: var(--mono); font-size: 8.5px; white-space: nowrap; overflow: hidden; }
+.hp-pin { display: inline-flex; align-items: center; gap: 4px; min-width: 0; height: 16px; padding: 0 6px; border-radius: 5px; background: var(--panel); color: var(--text); font-family: var(--read); font-size: 9.5px; white-space: nowrap; overflow: hidden; }
 .hp-pin i { flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--session-ok); }
 .hp-grid { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 8px; align-items: start; }
 .hp-tile { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 90%, transparent); box-shadow: 0 1px 2px rgba(0, 0, 0, .16), 0 10px 20px -14px rgba(0, 0, 0, .5); font-size: 10px; color: var(--text); }
