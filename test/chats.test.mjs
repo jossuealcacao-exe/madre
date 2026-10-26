@@ -592,6 +592,9 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // the bar are a third family; the agents neither go nor move while the bar is arranged.
   assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\):is\(\*, :hover, :active\) svg \{ transform: none; \}/);
   assert.doesNotMatch(css, /\.chats-button\):hover svg \{ transform: translateY/);
+  // MEMORY's beat grew it: its halves part and its folds draw again instead.
+  assert.match(page, /<path class="brain-folds" pathLength="1" d="M6\.2 9\.4/);
+  assert.match(css, /@keyframes brain-think \{ 0%, 20% \{ stroke-dashoffset: 1; \} 85%, 100% \{ stroke-dashoffset: 0; \} \}/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
   assert.match(app, /for \(const family of \['project', 'madre', 'apps'\]\)/);
   assert.match(css, /> \.bar-extra \{ order: 26; \}/);

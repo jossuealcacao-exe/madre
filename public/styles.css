@@ -10621,6 +10621,16 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .ch
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):is(*, :hover, :active) svg { transform: none; }
 html.chat-shell .shell > .bar > #nostromo-bar .brain-glyph,
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { animation: none !important; }
+/* MEMORY's own, now that its beat is out (2026-10-26): its two halves part a breath and its folds
+   draw themselves again, as a thought going through. Nothing grows. */
+html.chat-shell .shell > .bar > #nostromo-bar .brain-folds { stroke-dasharray: 1 1; stroke-dashoffset: 0; }
+html.chat-shell .shell > .bar > #nostromo-bar:is(:hover, :focus-visible) .brain-l { animation: brain-part-l calc(680ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+html.chat-shell .shell > .bar > #nostromo-bar:is(:hover, :focus-visible) .brain-r { animation: brain-part-r calc(680ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+html.chat-shell .shell > .bar > #nostromo-bar:is(:hover, :focus-visible) .brain-folds { animation: brain-think calc(680ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+@keyframes brain-part-l { 0%, 100% { transform: none; } 35% { transform: translateX(-.9px); } }
+@keyframes brain-part-r { 0%, 100% { transform: none; } 35% { transform: translateX(.9px); } }
+@keyframes brain-think { 0%, 20% { stroke-dashoffset: 1; } 85%, 100% { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .bar > #nostromo-bar :is(.brain-l, .brain-r, .brain-folds) { animation: none !important; } }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: none !important; color: var(--phosphor); }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { color: var(--phosphor); }
 @media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .bar > * svg { transition: none !important; transform: none !important; } }
