@@ -10615,7 +10615,29 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .ch
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] { background: none !important; color: var(--phosphor); }
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .chats-button)[aria-pressed="true"] svg { color: var(--phosphor); }
 @media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .bar > * svg { transition: none !important; transform: none !important; } }
-html.chat-shell .shell > .bar .modules-count { position: absolute; top: 2px; right: 0; font-size: 9.5px; }
+/* Nothing paints a plate under them, in any state: the older relief of the keys (1.0.3: CODE,
+   Modules and Diagnostics under the pointer or the focus, every key while pressed down) is out
+   of this bar. The keyboard keeps its ring. */
+:root.chat-shell .shell > .bar > :is(#tree-button, #code-button, #browser-button, #nostromo-bar, #modules-button, #mother-button, #agents-compact, #chats-button, .mother-button, .tree-button, .bar-icon, .chats-button):not(.stop-all):is(*, :hover, :active, :focus, :focus-visible, [aria-pressed]) {
+  background: none !important; box-shadow: none !important; transform: none !important;
+}
+:root.chat-shell .shell > .bar > :is(#tree-button, #code-button, #browser-button, #nostromo-bar, #modules-button, #mother-button, #agents-compact, #chats-button):focus:not(:focus-visible) { outline: none; }
+/* One size to the eye: the drawings fill their square unevenly (the brackets of CODE are short,
+   the globe is full), so each is set to the same weight on screen, and its stroke kept as thick
+   as every other's. */
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: calc(18px * var(--glyph, 1)) !important; height: calc(18px * var(--glyph, 1)) !important; }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg :is(path, circle, rect) { stroke-width: calc(var(--icon-w, 1.6) / var(--glyph, 1)); }
+html.chat-shell .shell > .bar > #code-button { --glyph: 1.18; }
+html.chat-shell .shell > .bar > #browser-button { --glyph: .94; }
+html.chat-shell .shell > .bar > #nostromo-bar { --glyph: 1.04; }
+html.chat-shell .shell > .bar > #modules-button { --glyph: .95; }
+html.chat-shell .shell > .bar > #mother-button { --glyph: 1.08; }
+html.chat-shell .shell > .bar > #agents-compact { --glyph: 1.06; }
+/* A count sits on the key's corner, small, cut out of the bar, not over the drawing. */
+:root.chat-shell .shell > .bar :is(.modules-count, .mother-count, .bar-count) {
+  position: absolute; top: 2px; right: -4px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px;
+  font: 600 9px/15px var(--read); letter-spacing: 0; box-shadow: 0 0 0 2px var(--cs-canvas) !important;
+}
 html.chat-shell .shell > .bar > .mother-button { position: relative; }
 /* Stop all: only while something runs, as a stop key is in those apps. */
 html.chat-shell .shell > .bar > #stop-all:not(.armed) { display: none !important; }

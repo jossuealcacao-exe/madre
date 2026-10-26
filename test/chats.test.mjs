@@ -584,6 +584,11 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.match(css, /html\.chat-shell \.shell > \.bar:not\(\.bar-home\) > #agents \{ position: absolute; left: 50%; top: 50%; transform: translate\(-50%, -50%\);/);
   assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.mother-button, \.tree-button, \.chats-button\)\[aria-pressed="true"\] \{ background: none !important; color: var\(--phosphor\); \}/);
   assert.match(app, /for \(const family of \['project', 'madre'\]\)/);
+  // No plate in any state, over the older relief of CODE, Modules and Diagnostics (which names
+  // them by id, so this one must too); and every drawing at one size to the eye, stroke kept.
+  assert.match(css, /:root\.chat-shell \.shell > \.bar > :is\(#tree-button, #code-button, [^)]*\):not\(\.stop-all\):is\(\*, :hover, :active, :focus, :focus-visible, \[aria-pressed\]\) \{\n  background: none !important; box-shadow: none !important; transform: none !important;/);
+  assert.match(css, /svg :is\(path, circle, rect\) \{ stroke-width: calc\(var\(--icon-w, 1\.6\) \/ var\(--glyph, 1\)\); \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar > #code-button \{ --glyph: 1\.18; \}/);
   // With the field as display: contents, the fade under the box is measured from the box itself.
   assert.match(app, /const field = fieldBox && fieldBox\.height > 0 \? fieldBox : box;/);
 });
