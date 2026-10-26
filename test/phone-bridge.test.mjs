@@ -348,7 +348,7 @@ test('phone · the page on a phone: nothing spills past the screen, nothing floa
   assert.match(css, /\.via-phone \.shell > \.bar \{ position: fixed; top: calc\(env\(safe-area-inset-top\) \+ 8px \+ var\(--vv-top, 0px\)\);/);
   // The conversations are a key in the bar, and it does not travel.
   assert.match(app, /key\.classList\.add\('mother-button'\); key\.hidden = false; left\.after\(key\);/);
-  assert.match(app, /if \(event\.button !== 0 \|\| state\.device\) return;/);
+  assert.match(app, /if \(event\.button !== 0 \|\| state\.device \|\| button\.closest\?\.\('\.bar'\)\) return;/);
   // No row slides sideways under a thumb: the chips fit, and a message is never wider than the screen.
   assert.match(css, /\.via-phone \.composer > \.pick-options \{ overflow: hidden;/);
   assert.doesNotMatch(css, /\.via-phone \.composer > \.pick-options \{ overflow-x: auto/);

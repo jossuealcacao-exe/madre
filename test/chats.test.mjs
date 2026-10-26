@@ -127,8 +127,11 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   // One line each: the title is the summary, so a preview under it says the same thing twice.
   assert.ok(!app.includes("el('span', 'said', chat.preview)"), 'a conversation is two lines again');
   // The handle is how a closed panel is opened; once it is open it would only stand on top of it.
-  // On a phone the handle is a key in the bar, under the sheet, and stays.
-  assert.match(app, /if \(els\.chatsButton && !state\.device\) els\.chatsButton\.hidden = open;/);
+  // On a phone the handle is a key in the bar, under the sheet, and stays. On the Mac it is the
+  // first key of the bar since 2026-10-25 (route A): there too it stays, pressed, never hidden.
+  assert.match(app, /if \(els\.chatsButton && !state\.device && !inBar\) els\.chatsButton\.hidden = open;/);
+  assert.match(app, /if \(!state\.device && !SPLIT_CHAT\) \{[\s\S]{0,400}bar\.prepend\(key\)/);
+  assert.match(css, /\.shell > \.bar > \.chats-button \{[^}]*translate: none !important/);
   // And the handle is lit the way the buttons in the bar are, not with a halo of its own.
   assert.match(css, /\.chats-button:hover,\n:root\[data-theme="light"\]|:root\[data-theme="light"\] \.chats-button:hover/);
   // The handle sits in the canvas, under the bar, where the conversation it opens begins.

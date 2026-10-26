@@ -10690,7 +10690,9 @@ function setChats(open) {
   // and the handle would only stand on top of it.
   // It comes back once the panel has gone, not while it is still sliding out over the same corner.
   // On a phone the handle is a key in the bar, under the sheet: it stays where it is.
-  if (open) { if (els.chatsButton && !state.device) els.chatsButton.hidden = open; }
+  // In the bar (2026-10-25) it is a key like the others: it stays, pressed, while the panel is open.
+  const inBar = Boolean(els.chatsButton?.closest?.('.bar'));
+  if (open) { if (els.chatsButton && !state.device && !inBar) els.chatsButton.hidden = open; }
   else setTimeout(() => { if (!chats.open && els.chatsButton) els.chatsButton.hidden = false; }, reducedMotion() ? 0 : 200);
   els.chatsButton?.setAttribute('aria-pressed', String(open));
   try { localStorage.setItem('pulse.chats', open ? 'open' : 'closed'); } catch { /* no storage */ }
@@ -10743,7 +10745,7 @@ els.chatsButton?.addEventListener('click', () => setChats(!chats.open));
     placeNotices();
   };
   button.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || state.device) return;
+    if (event.button !== 0 || state.device || button.closest?.('.bar')) return;
     carried = false;
     const start = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y, id: event.pointerId };
     pending = { start, timer: setTimeout(() => {
@@ -10771,7 +10773,7 @@ els.chatsButton?.addEventListener('click', () => setChats(!chats.open));
     event.stopImmediatePropagation();
   }, { capture: true });
   button.addEventListener('contextmenu', (event) => { if (carry || pending) event.preventDefault(); });
-  window.addEventListener?.('resize', () => { if (state.device || (!offset.x && !offset.y)) return; clamp(); place(); });
+  window.addEventListener?.('resize', () => { if (state.device || button.closest?.('.bar') || (!offset.x && !offset.y)) return; clamp(); place(); });
 })();
 els.chatsClose?.addEventListener('click', () => setChats(false));
 els.chatsNew?.addEventListener('click', async () => {
@@ -11538,6 +11540,14 @@ chats.active = SPLIT_CHAT ?? VIEW_CHAT ?? initial.chats?.active ?? null;
 // down was not there yet (CAP_VERBS and roomTourKept were lost that way). What was read above
 // stays above, so every line below still finds it; the painting waits for the end of the file.
 function boot() {
+  // The chats are the first key of the bar (2026-10-25, route A of R-12), before the logo, as the
+  // app's bar will have them: no longer a handle floating over the conversation. A phone puts them
+  // after its way back, below.
+  if (!state.device && !SPLIT_CHAT) {
+    const key = els.chatsButton;
+    const bar = document.querySelector('.shell > .bar:not(.bar-home)');
+    if (key && bar && typeof bar.prepend === 'function') { key.style.translate = ''; key.classList.add('tree-button'); key.hidden = false; bar.prepend(key); }
+  }
   if (state.device) {
     phoneSheets();
     phoneKeyboard();

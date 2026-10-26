@@ -10534,3 +10534,15 @@ html:root:not(.via-phone) .shell > .bar.bar-home::before {
   content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: .5px;
   background: color-mix(in srgb, var(--text) 16%, transparent);
 }
+/* The chats, first key of the bar (app.js, boot): one of the bar's own icon keys, no longer the
+   handle that floated over the conversation — no rim, no slide, never carried, never hidden. */
+html:root:not(.via-phone) .shell > .bar > .chats-button {
+  position: relative; inset: auto; grid-row: auto; translate: none !important; animation: none;
+  justify-self: auto; align-self: center; z-index: auto;
+  width: 28px; height: 26px; margin: 0 -4px 0 -6px; padding: 0; border: 0; border-radius: 6px;
+  background: transparent; box-shadow: none;
+}
+html:root:not(.via-phone) .shell > .bar > .chats-button svg { width: var(--ico-sm); height: var(--ico-sm); }
+html:root:not(.via-phone) .shell > .bar > .chats-button[hidden] { display: inline-flex; }
+html:root:not(.via-phone) .shell > .bar.keys-square > .chats-button { width: 34px; height: 34px; border-radius: 11px; }
+html:root:not(.via-phone) .shell > .bar.keys-square > .chats-button svg { width: var(--ico-md); height: var(--ico-md); }
