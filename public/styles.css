@@ -11241,9 +11241,11 @@ html.chat-shell .composer #pick-options { max-width: 100%; }
 html.chat-shell .composer #pick-options .pick-label { min-width: 0; max-width: 100%; }
 html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) { flex-shrink: 1; min-width: 0; }
 html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) > .word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@container composer (max-width: 640px) {
-  html.chat-shell .composer #pick-options .effort-chip > .word { display: none; }
-}
+/* When their words do not fit whole, each says the least that still tells it apart: the mode its
+   number, the model its nickname (opus, sol), the effort its bars (public/app.js, composerFit). */
+html.chat-shell .composer #pick-options .model-chip > .nick { display: none; }
+html.chat-shell .composer.tight #pick-options :is(.effort-chip, .mode-chip, .model-chip) > .word { display: none; }
+html.chat-shell .composer.tight #pick-options .model-chip > .nick { display: inline; white-space: nowrap; }
 /* Preview and Side by side, in the same words as Read and Edit: the one on in the accent. */
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is(*, :hover, :focus-visible) { height: 28px; padding: 0 10px; gap: 6px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; font: 500 12.5px var(--read) !important; letter-spacing: 0; color: var(--text-3); }
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
@@ -11306,3 +11308,18 @@ html.chat-shell .ed-chip.ask:is(:hover, :focus-visible) { background: var(--cs-h
 html.chat-shell .browser-dock .viewer-stage .stage-grip:first-of-type { left: max(12px, calc((100% - min(var(--stage, 100%), 100%)) / 2 - 8px)) !important; }
 html.chat-shell .browser-dock .viewer-stage .stage-grip:last-of-type { right: max(12px, calc((100% - min(var(--stage, 100%), 100%)) / 2 - 8px)) !important; }
 html.chat-shell .browser-dock > .dock-grip { z-index: 5; }
+
+/* The composer's pills hug what they hold: the grey under the pointer is the size of the words or
+   the icon, the same breath at both sides. */
+html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) { padding: 0 7px 0 9px; gap: 4px; }
+html.chat-shell .composer #pick-options .copilot-chip { width: 28px; min-width: 28px; padding: 0; justify-content: center; }
+html.chat-shell .composer #ash-toggle { padding: 0 9px; }
+
+/* Scrollbars, everywhere they show: thin, quiet, a little firmer under the pointer. Without weight,
+   so a place that hides its own keeps hiding it. */
+:where(html), :where(html) :where(*) { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 16%, transparent) transparent; }
+:where(html) :where(*):hover { scrollbar-color: color-mix(in srgb, var(--text) 30%, transparent) transparent; }
+
+/* The tools at the right stand apart from the conversation by a hairline over everything they
+   hold; it takes no room and no presses, so the edge that sizes them still answers. */
+html.chat-shell :is(#viewer.split, #tree.split, #browser.browser-dock)::after { content: ''; position: absolute; z-index: 6; top: 0; bottom: 0; left: 0; width: 1px; background: color-mix(in srgb, var(--text) 11%, transparent); pointer-events: none; }

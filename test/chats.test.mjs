@@ -693,3 +693,20 @@ test('chat shell: Code shows the text, both or what it makes; the preview is siz
   assert.match(app, /sideWidths\.browser = Math\.round\(box\.x \+ box\.w - moving\.clientX\);/);
   assert.match(css, /\.browser-dock \.viewer-stage \.stage-grip:first-of-type \{ left: max\(12px,/);
 });
+
+test('chat shell: thin scrollbars, a hairline before the tools, and a narrow box says the mode by number and the model by nickname', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /:where\(html\), :where\(html\) :where\(\*\) \{ scrollbar-width: thin;/);
+  assert.match(css, /:is\(#viewer\.split, #tree\.split, #browser\.browser-dock\)::after \{ content: ''; position: absolute;[^}]*pointer-events: none; \}/);
+  assert.match(app, /const cut = \[\.\.\.box\.querySelectorAll\('\.pick-label > :is\(\.mode-chip, \.model-chip, \.effort-chip\) > \.word'\)\]\.some/);
+  assert.match(css, /html\.chat-shell \.composer\.tight #pick-options \.model-chip > \.nick \{ display: inline; white-space: nowrap; \}/);
+  // The nickname: the family's word, or the last word that is not a maker, a version or a date.
+  const source = app.slice(app.indexOf('const MODEL_FAMILIES'), app.indexOf('/* ---------- model menu'));
+  const modelNick = new Function(`${source}; return modelNick;`)();
+  assert.equal(modelNick('gpt-6-astra'), 'astra');
+  assert.equal(modelNick('claude-opus-4-1-20250805'), 'opus');
+  assert.equal(modelNick('sonnet[1m]'), 'sonnet');
+  assert.equal(modelNick('gemini-2.5-flash'), 'flash');
+  assert.equal(modelNick(null), null);
+});

@@ -3522,7 +3522,8 @@ function renderPicker() {
     const choices = state.models[current.id]?.models ?? null;
     if (!current.local && (choices === null || choices.length)) {
       const modelChip = el('button', 'model-chip');
-      modelChip.append(el('span', 'word', chosen ?? t('default model')), chevron());
+      // And its nickname (opus, sol, astra) for a box too narrow for the whole name (styles.css).
+      modelChip.append(el('span', 'word', chosen ?? t('default model')), el('span', 'nick', modelNick(chosen ?? state.models[current.id]?.default) ?? t('default')), chevron());
       modelChip.type = 'button';
       modelChip.title = t('Choose the model for this agent');
       modelChip.addEventListener('click', (event) => { event.stopPropagation(); toggleModelMenu(current.id, modelChip); });
@@ -3533,12 +3534,39 @@ function renderPicker() {
     if (!current.local && !state.device) text.append(copilotChip());
     (els.pickOptions ?? els.picker).append(text);
   }
+  composerFit();
   updateCrewLabel();
   renderCreateScopes();
   renderHighlight();
   // Another agent, model or rung changes what Intenciones would say; asking again is cheap and
   // answers nothing new when nothing changed.
   scheduleIntentOffer();
+}
+
+// When a selector's words no longer fit whole, the box says the least that still tells them
+// apart (styles.css, .composer.tight): measured with the whole words, kept short if any is cut.
+function composerFit() {
+  const box = els.pickOptions;
+  if (!box || !els.composer) return;
+  try { if (!chatShellOn()) return; } catch { return; } // asked before the page is read through
+  els.composer.classList.remove('tight');
+  const cut = [...box.querySelectorAll('.pick-label > :is(.mode-chip, .model-chip, .effort-chip) > .word')].some((word) => word.offsetWidth > 0 && word.scrollWidth > word.clientWidth + 1);
+  els.composer.classList.toggle('tight', cut);
+}
+let composerWidth = 0;
+if (typeof ResizeObserver === 'function' && els.composer) new ResizeObserver(([entry]) => {
+  const width = Math.round(entry.contentRect.width);
+  if (width !== composerWidth) { composerWidth = width; composerFit(); }
+}).observe(els.composer);
+
+// A model's nickname: its family's word (opus, sonnet) or, failing that, the last word of its name
+// that is not a maker, a version or a date (gpt-6-astra → astra, gemini-2.5-flash → flash).
+const MODEL_FAMILIES = ['opus', 'sonnet', 'haiku', 'fable'];
+const MODEL_FILLER = new Set(['gpt', 'claude', 'gemini', 'openai', 'anthropic', 'google', 'models', 'model', 'latest', 'preview', 'exp']);
+function modelNick(name) {
+  if (!name) return null;
+  const words = String(name).toLowerCase().slice(String(name).lastIndexOf('/') + 1).split(/[\s:_.[\]-]+/).filter((word) => word && !/^v?\d/.test(word) && !MODEL_FILLER.has(word));
+  return words.find((word) => MODEL_FAMILIES.includes(word)) ?? words.at(-1) ?? String(name);
 }
 
 /* ---------- model menu: which model answers this request ---------- */
