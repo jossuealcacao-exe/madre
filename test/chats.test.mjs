@@ -600,10 +600,18 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // behind a magnifier and mark the default with a light badge.
   assert.match(app, /const line = Number\.parseFloat\(look\?\.lineHeight\) \|\| LINE_PX;/);
   assert.match(css, /"attach picker options create ash send";/);
-  assert.match(page, /<svg class="attach-plus"/);
+  assert.match(page, /<svg class="attach-clip"/);
+  // 2026-10-27: the keys centre their drawing; effort is a list; Diagnostics a breathing dot; the
+  // unlocks play over the whole box; the clip stays.
+  assert.match(css, /align-items: center; justify-content: center; position: relative;/);
+  assert.match(app, /if \(chatShellOn\(\)\) \{ effortList\(id, info, anchor\); return; \}/);
+  assert.match(css, /@keyframes diag-dot \{ 0%, 100% \{ opacity: 1; \} 50% \{ opacity: \.35; \} \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.composer\.control-wink::before \{/);
+  assert.match(app, /binaryRain\(chatShellOn\(\) \? els\.composer : els\.composer\.querySelector\('\.field'\)\)/);
+  assert.doesNotMatch(css, /html\.chat-shell \.composer \.attach \.attach-plus/);
   assert.match(page, /<svg class="send-return"/);
-  assert.match(app, /if \(shelled && state\.mode === n\) option\.append\(menuCheck\(\)\);/);
-  assert.match(app, /: shelled && n >= 3 \? '' :/);
+  assert.match(app, /      if \(state\.mode === n\) option\.append\(menuCheck\(\)\);/);
+  assert.match(app, /else if \(n === defaultModeFor\(id\)\) option\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
   assert.match(app, /if \(isDefault && label !== t\('default'\)\) button\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
   assert.match(app, /find\.innerHTML = MENU_SEARCH;/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);

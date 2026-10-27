@@ -3628,6 +3628,7 @@ function toggleEffortMenu(id, anchor) {
   effortMenuFor = id;
   paint(effortMenu, id);
   effortMenu.replaceChildren();
+  if (chatShellOn()) { effortList(id, info, anchor); return; }
   const levels = info.levels;
   const last = levels.length - 1;
   let chosen = levels.includes(state.chosenEffort[id]) ? state.chosenEffort[id] : null;
@@ -3783,7 +3784,39 @@ function toggleEffortMenu(id, anchor) {
   effortMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
   slider.focus({ preventScroll: true });
 }
-function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; }
+// In the chat shell the levels are a list, as the modes and the models are (2026-10-27): Automatic
+// first, then each level with its bars, its name and what it is for; the CLI's own wears the light
+// «default» badge and the one in use a check. Chosen with one click, as a model is.
+function effortList(id, info, anchor) {
+  effortMenu.classList.add('effort-listed');
+  const chosen = info.levels.includes(state.chosenEffort[id]) ? state.chosenEffort[id] : null;
+  const title = el('div', 'model-menu-title');
+  title.append(el('b', null, `@${id}`), t(' · how much it thinks'));
+  const list = el('div', 'effort-list');
+  const row = (level) => {
+    const current = level === chosen;
+    const button = el('button', `effort-option${current ? ' current' : ''}`);
+    button.type = 'button';
+    const body = el('span', 'body');
+    const hint = level ? t(EFFORT_WORDS[level]?.hint ?? '') : info.default ? `${t('the CLI decides')} · ${effortLabel(info.default)}` : t('the CLI decides');
+    body.append(el('span', 'name', level ? effortLabel(level) : t('Automatic')), el('span', 'hint', hint));
+    button.append(effortMeter(info.levels, level ?? info.default, { ghost: !level }), body);
+    if (level && level === info.default) button.append(el('span', 'model-default', t('default')));
+    if (current) button.append(menuCheck());
+    button.title = hint;
+    button.addEventListener('click', () => { rememberEffort(id, level); renderPicker(); closeEffortMenu(); focusComposer(); });
+    return button;
+  };
+  list.append(row(null), ...info.levels.map(row));
+  effortMenu.append(title, list, el('div', 'model-note', t('It stays for every message to this agent until you change it.')));
+  effortMenu.hidden = false;
+  const rect = anchor.getBoundingClientRect();
+  const width = effortMenu.offsetWidth || 320;
+  const height = effortMenu.offsetHeight || 300;
+  effortMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
+  effortMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+}
+function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; effortMenu.classList.remove('effort-listed'); }
 // Placed against its chip when it opened; a window that changes size leaves it pointing nowhere.
 window.addEventListener?.('resize', () => { if (!effortMenu.hidden) closeEffortMenu(); });
 document.addEventListener('click', (event) => { if (!effortMenu.hidden && !effortMenu.contains(event.target) && !event.target.closest('.picker')) closeEffortMenu(); });
@@ -3937,14 +3970,20 @@ function toggleModeMenu(id, anchor) {
     if (onTheMac) option.title = t('#3 EDIT and #4 FULL ACCESS are opened from the Mac.');
     // In the chat shell the list is quieter (2026-10-26): the mode in use wears a check, and #3 and
     // #4 say nothing of their confirming — the unlock itself asks.
-    const shelled = chatShellOn();
-    const tag = state.mode === n ? (shelled ? '' : t('NOW')) : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : shelled && n >= 3 ? '' : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
-    if (tag) {
-      const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
-      if (state.mode === n) label.append(el('span', 'dot'));
-      option.append(label);
+    // The agent's default mode wears the same light badge as the default model, in use or not.
+    if (chatShellOn()) {
+      const note = onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : '';
+      if (note) option.append(el('span', `tag${raise ? ' raise' : ''}`, note));
+      else if (n === defaultModeFor(id)) option.append(el('span', 'model-default', t('default')));
+      if (state.mode === n) option.append(menuCheck());
+    } else {
+      const tag = state.mode === n ? t('NOW') : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
+      if (tag) {
+        const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
+        if (state.mode === n) label.append(el('span', 'dot'));
+        option.append(label);
+      }
     }
-    if (shelled && state.mode === n) option.append(menuCheck());
     option.title = !locked ? MODES[n].hint
       : raise ? t('@{id} is capped at #{cap}. This raises its max mode to #{n} in Settings › Permissions and opens the unlock.', { id, cap, n })
       : n >= 3 ? `@${id}'s CLI cannot write files, so ${MODES[n].label} is not possible for it.`
@@ -12801,7 +12840,9 @@ function winkField(kind = 'ash') {
   els.composer.classList.remove(...classes);
   void els.composer.offsetWidth;
   els.composer.classList.add(`${kind}-wink`);
-  if (kind === 'control') { binaryRain(els.composer.querySelector('.field')); binaryRain(document.body, { fixed: true, duration: 2800, cell: 15, size: 13 }); }
+  // In the chat shell the field draws no box of its own (display: contents): the rain falls over the
+  // whole box, as the sweeps do there (styles.css).
+  if (kind === 'control') { binaryRain(chatShellOn() ? els.composer : els.composer.querySelector('.field')); binaryRain(document.body, { fixed: true, duration: 2800, cell: 15, size: 13 }); }
   winkTimer = setTimeout(() => els.composer.classList.remove(...classes), WINKS[kind] ?? 1600);
 }
 // Red 0/1 glyphs falling like rain, a bright head and a fading trail per column, gone after a couple of seconds.

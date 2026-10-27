@@ -10572,13 +10572,13 @@ html.chat-shell {
   --cs-side: #f7f7f4; --cs-canvas: #ffffff; --cs-tool: #fbfbf9;
   --cs-line: rgba(20, 30, 20, .09); --cs-hover: rgba(20, 30, 20, .05); --cs-sel: rgba(20, 30, 20, .075);
   --cs-bubble: #f1f2ef; --cs-input: #ffffff;
-  --cs-input-ring: 0 0 0 .5px rgba(20, 30, 20, .16), 0 2px 10px -3px rgba(20, 30, 20, .1);
+  --cs-input-ring: 0 0 0 1px rgba(20, 30, 20, .16), 0 2px 10px -3px rgba(20, 30, 20, .1);
 }
 html.chat-shell[data-scheme="dark"] {
   --cs-side: #171917; --cs-canvas: #1d1f1d; --cs-tool: #191b19;
   --cs-line: rgba(255, 255, 255, .07); --cs-hover: rgba(255, 255, 255, .05); --cs-sel: rgba(255, 255, 255, .08);
   --cs-bubble: #2a2d2a; --cs-input: #252825;
-  --cs-input-ring: 0 0 0 .5px rgba(255, 255, 255, .12), 0 2px 10px -3px rgba(0, 0, 0, .45);
+  --cs-input-ring: 0 0 0 1px rgba(255, 255, 255, .13), 0 2px 10px -3px rgba(0, 0, 0, .45);
 }
 /* No picture behind the room: the ground is the canvas. */
 html.chat-shell body, html.chat-shell .shell { background: var(--cs-canvas) !important; }
@@ -10607,6 +10607,10 @@ html.chat-shell .bar #connection { display: none !important; }
 /* The keys: quiet icons, as the tools of those apps are; their names in the tooltip. */
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):not(.stop-all) {
   width: 32px; height: 32px; min-width: 32px; padding: 0; gap: 0;
+  /* Centred: CODE, Modules and Diagnostics carry their name as text of size 0, and started at the
+     left their drawing stood 7px off its place, so the gaps between keys read uneven (2026-10-27). */
+  /* Only the centring: whether a key shows at all (the crew's compact key) is decided elsewhere. */
+  align-items: center; justify-content: center; position: relative;
   border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important;
   font-size: 0; color: var(--text-2);
 }
@@ -10865,8 +10869,9 @@ html.chat-shell .shell > .bar.bar-crowded:not(.bar-home) > #agents { position: s
    at the start of its row and a quiet send at the end. Outside the chat shell, the clip and the
    round send as before. ---- */
 .attach .attach-plus, .field button[type="submit"] .send-return { display: none; }
-html.chat-shell .composer .attach .attach-clip, html.chat-shell .composer .field > button[type="submit"] .send-up { display: none; }
-html.chat-shell .composer .attach .attach-plus, html.chat-shell .composer .field > button[type="submit"] .send-return { display: block; }
+/* Attaching keeps its clip (2026-10-27): a «+» read as «new», not as «add a file». */
+html.chat-shell .composer .field > button[type="submit"] .send-up { display: none; }
+html.chat-shell .composer .field > button[type="submit"] .send-return { display: block; }
 html.chat-shell .shell > .composer {
   grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
   grid-template-areas:
@@ -10952,3 +10957,98 @@ html.chat-shell .model-menu .model-group { margin: 8px 10px 2px; font: 500 11px 
 html.chat-shell .model-menu .model-note { margin: 6px 4px 0; padding: 8px 6px 2px; border-top: 1px solid var(--cs-line); font: 400 11.5px/1.5 var(--read); color: var(--text-3); }
 /* The hidden agent select is no cell of the box's grid: placed in one, it opened a row of its own. */
 html.chat-shell .shell > .composer > #target { position: absolute; }
+
+/* ---- round of 2026-10-27 ---- */
+/* The box's edge is a touch firmer (1px, --cs-input-ring above), so it does not get lost on the canvas. */
+/* Mode, model and effort read at one size and weight; the mode's number in the same face as its
+   word, not a smaller mono. */
+html.chat-shell .composer .pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip),
+html.chat-shell .composer .pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip) :is(.word, b, strong, span:not(.chev-icon):not(.effort-meter)) {
+  font-family: var(--read) !important; font-size: 13px !important; font-weight: 500 !important; letter-spacing: 0 !important;
+}
+/* The unlocks of #3 and #4 play over the whole box: the field draws none of its own here. */
+html.chat-shell .shell > .composer::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; z-index: 2;
+  background:
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--mode, var(--phosphor)) 0%, transparent) 40%, color-mix(in srgb, var(--mode, var(--phosphor)) 38%, transparent) 50%, transparent 60%) no-repeat,
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--mode, var(--phosphor)) 10%, transparent) 0 1px, transparent 1px 3px);
+  background-size: 60% 100%, 100% 100%; background-position: -60% 0, 0 0;
+}
+html.chat-shell .shell > .composer.ash-wink::before { animation: ash-sweep 1.5s cubic-bezier(.2, .7, .2, 1) 1; }
+html.chat-shell .shell > .composer.control-wink::before {
+  animation: control-sweep 2.2s cubic-bezier(.2, .7, .2, 1) 1;
+  background:
+    linear-gradient(90deg, transparent 0%, transparent 40%, color-mix(in srgb, var(--terror) 45%, transparent) 50%, transparent 60%) no-repeat,
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--terror) 14%, transparent) 0 1px, transparent 1px 3px);
+  background-size: 60% 100%, 100% 100%;
+}
+html.chat-shell .shell > .composer.ghost-wink {
+  animation: ghost-dissolve 1.3s cubic-bezier(.45, 0, .2, 1) 1;
+  -webkit-mask-image: radial-gradient(circle, #000 var(--ghost-dot), transparent calc(var(--ghost-dot) + .6px)); -webkit-mask-size: 8px 8px;
+  mask-image: radial-gradient(circle, #000 var(--ghost-dot), transparent calc(var(--ghost-dot) + .6px)); mask-size: 8px 8px;
+}
+html.chat-shell .shell > .composer > .rain { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; pointer-events: none; z-index: 3; }
+html.chat-shell .shell > .composer.control-wink .editor textarea { animation: control-type 1.4s steps(1) 1; }
+html.chat-shell .shell > .composer.ash-wink .editor textarea { animation: ash-type .9s steps(1) 1; }
+@media (prefers-reduced-motion: reduce) { html.chat-shell .shell > .composer:is(.ash-wink, .control-wink, .ghost-wink), html.chat-shell .shell > .composer:is(.ash-wink, .control-wink)::before { animation: none; -webkit-mask-image: none; mask-image: none; } }
+
+/* Diagnostics says it has something with a small dot on the drawing's corner, breathing, not a number. */
+:root.chat-shell .shell > .bar #mother-count:not([hidden]) {
+  top: 7px; right: 6px; width: 7px; min-width: 7px; height: 7px; padding: 0; border-radius: 50%;
+  font-size: 0 !important; color: transparent; background: var(--phosphor);
+  box-shadow: 0 0 0 2px var(--cs-canvas) !important;
+  animation: diag-dot calc(2400ms * var(--motion-scale, 1)) ease-in-out infinite;
+}
+@keyframes diag-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { :root.chat-shell .shell > .bar #mother-count { animation: none; } }
+
+/* The mode's and the effort's rows take a badge and a check side by side, as the model's do. */
+html.chat-shell .model-menu.mode-menu .mode-option { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+html.chat-shell .model-menu .model-default { justify-self: end; }
+
+/* Effort, as a list like the modes and the models. */
+html.chat-shell .model-menu.effort-menu.effort-listed { width: min(320px, calc(100vw - 24px)); padding: 6px; }
+html.chat-shell .effort-list { display: grid; gap: 1px; }
+html.chat-shell .effort-option {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%;
+  padding: 8px 10px; border: 0; border-radius: 9px; background: none; color: var(--text); text-align: left; cursor: pointer;
+}
+html.chat-shell .effort-option:hover { background: var(--cs-hover); }
+html.chat-shell .effort-option .effort-meter { justify-self: start; }
+html.chat-shell .effort-option .effort-meter i.on { background: var(--agent, var(--phosphor)); }
+html.chat-shell .effort-option .body { display: grid; gap: 1px; min-width: 0; }
+html.chat-shell .effort-option .name { font: 500 13px/1.35 var(--read); color: var(--text); }
+html.chat-shell .effort-option .hint { font: 400 12px/1.4 var(--read); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* An agent's limits card, as quiet as the menus: no tiles, no filled pills, one hairline between parts. */
+html.chat-shell .agent-pop {
+  width: 300px; padding: 14px 16px 12px; border: 0 !important; border-radius: 14px;
+  background: var(--cs-canvas, var(--panel)) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 14px 36px -14px rgba(0, 0, 0, .28) !important;
+}
+html.chat-shell .agent-pop .head { margin-bottom: 12px; }
+html.chat-shell .agent-pop .head b { font: 600 13px var(--read); }
+html.chat-shell .agent-pop .pop-session { height: auto; padding: 0; background: none; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-session::before { width: 6px; height: 6px; }
+html.chat-shell .agent-pop .pop-hero { gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--cs-line); }
+html.chat-shell .agent-pop .pop-hero .big { font: 600 22px/1.1 var(--read); }
+html.chat-shell .agent-pop .pop-hero .big small { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-hero .gauge { height: 4px; border-radius: 4px; background: var(--cs-hover); }
+html.chat-shell .agent-pop .pop-reset { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-stats { gap: 10px 16px; padding: 12px 0; border-bottom: 1px solid var(--cs-line); }
+html.chat-shell .agent-pop .pop-stat { gap: 2px; padding: 0; border-radius: 0; background: none; }
+html.chat-shell .agent-pop .pop-stat span { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-stat b { font: 500 13px var(--read); }
+html.chat-shell .agent-pop .pop-provider { gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--cs-line); }
+html.chat-shell .agent-pop .pop-provider h4 { font: 500 12px var(--read); color: var(--text-2); }
+html.chat-shell .agent-pop .pop-limit { font: 400 12px var(--read); }
+html.chat-shell .agent-pop .pop-meta { margin-top: 10px; font: 400 11.5px/1.45 var(--read); }
+html.chat-shell .agent-pop .caps { gap: 0 2px; margin-top: 6px !important; }
+html.chat-shell .agent-pop .caps .cap { padding: 0; background: none !important; font: 400 11.5px var(--read); color: var(--text-3) !important; }
+html.chat-shell .agent-pop .caps .cap.on { color: var(--text-2) !important; }
+html.chat-shell .agent-pop .caps .cap + .cap::before { content: '·'; margin: 0 5px 0 3px; color: var(--text-3); }
+html.chat-shell .agent-pop .pop-go {
+  height: auto; margin-top: 12px; padding: 10px 0 0; border-top: 1px solid var(--cs-line) !important; border-radius: 0;
+  background: none !important; color: var(--text-2); font: 500 12.5px var(--read); text-align: left;
+}
+html.chat-shell .agent-pop .pop-go:is(:hover, :focus-visible) { color: var(--text); background: none !important; }
