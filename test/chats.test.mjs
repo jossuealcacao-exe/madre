@@ -796,3 +796,46 @@ test('chat shell: the first steps and a newer MADRE read as quiet words in the b
   assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.steps-pill, \.update-pill\) \{ width: auto !important;/);
   assert.match(css, /html\.chat-shell \.shell > \.bar > \.update-pill :is\(\.update-words, \.update-glyph\) \{ display: none; \}/);
 });
+
+test('chat shell: a lower box that grows upward, a quiet «/» menu, no /create and no sweep on /module', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  // One line when empty; rows with nothing in them add no gap; up to two fifths of the window.
+  assert.match(css, /html\.chat-shell \.shell > \.composer \{ row-gap: 0; padding: 10px 8px 6px 8px !important; \}/);
+  assert.match(css, /html\.chat-shell \.composer \.editor :is\(textarea, \.highlight\) \{ max-height: min\(40vh, 336px\); \}/);
+  // The menu: the canvas card, one line of what each does, the hover tone and never a colour.
+  assert.match(css, /html\.chat-shell \.slash-menu \.item:is\(\[aria-selected="true"\], :hover\) \{ background: var\(--cs-hover\) !important;/);
+  assert.match(css, /html\.chat-shell \.slash-menu\.with-starters \{ display: grid; grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(app, /el\('div', 'group starters', t\('Ideas to start from'\)\)/);
+  // #2 is how something is created: /create is not in the menu any more.
+  assert.doesNotMatch(app, /name: 'create', title: 'CREATE'/);
+  assert.match(app, /if \(name === 'image' \|\| name === 'module'\) \{/);
+});
+
+test('the flat store: the chat shell\'s canvas, flat icons, featured cards that peek, shelves three rows deep', async () => {
+  const view = await readFile(new URL('../public/market-view.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(view, /const root = el\('div', globalThis\.location\?\.port === '4316' \? 'mk' : 'mk flat'\);/);
+  // A slide starts where it starts: the carousel no longer assumes each is the track's width.
+  assert.match(view, /track\.scrollTo\(\{ left: startOf\(index\),/);
+  assert.match(css, /\.mk\.flat :is\(\.mk-icon, \.mk-slide, \.mk-shot\), html\.chat-shell \.mk-icon \{ --mk-flat: color-mix\(in oklab,/);
+  assert.match(css, /\.mk\.flat \.mk-icon \{ background: var\(--mk-flat\);/);
+  assert.match(css, /\.mk\.flat \.mk-shelf \.mk-list \{\n  grid-template-columns: none; grid-template-rows: repeat\(3, auto\); grid-auto-flow: column;/);
+});
+
+test('the SDK: a module draws its own icon, and MADRE fits it to the tile in one of its colors', async () => {
+  const { defineModule, MODULE_FIELDS } = await import('../src/modules/sdk.mjs');
+  assert.ok(MODULE_FIELDS.has('icon'));
+  assert.deepEqual(defineModule({ id: 'with-icon', name: 'I', icon: { svg: '<path d="M1 1h5"/>', color: '#ABCDEF' } }).icon, { svg: '<path d="M1 1h5"/>', color: '#abcdef' });
+  assert.deepEqual(defineModule({ id: 'plain-icon', name: 'I', icon: '<circle r="2"/>' }).icon, { svg: '<circle r="2"/>', color: null });
+  assert.equal(defineModule({ id: 'no-icon', name: 'I' }).icon, null);
+  assert.throws(() => defineModule({ id: 'huge-icon', name: 'I', icon: { svg: 'x'.repeat(8001) } }), /8000/);
+  // The page fits it, draws it in one color and keeps only drawing.
+  const market = await readFile(new URL('../public/market.js', import.meta.url), 'utf8');
+  assert.match(market, /const own = item\?\.icon\?\.svg \? fitIcon\(item\.icon\.svg\) : null;/);
+  assert.match(market, /const scale = 14 \/ Math\.max\(width, height, 0\.001\);/);
+  assert.match(market, /if \(PAINTED\.test\(attr\.name\) && attr\.value\.trim\(\)\.toLowerCase\(\) !== 'none'\) node\.setAttribute\(attr\.name, 'currentColor'\);/);
+  // The agent that builds a module is told to draw it.
+  const prompt = await readFile(new URL('../src/room/prompt.mjs', import.meta.url), 'utf8');
+  assert.match(prompt, /Give it its own icon, as part of the module: 'icon: \{ svg, color \}'/);
+});

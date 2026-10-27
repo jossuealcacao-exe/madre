@@ -24,6 +24,9 @@ export default {
   creates: ['nothing in the project'],
   requires: [],
   settings: { enabled: false, greeting: 'hola' },   // defaults; the human changes them in config.json
+  // Its icon: the drawing and its tile's color. MADRE centres it, draws it in white and uses the
+  // nearest of its own tile colors, so draw it on any grid and do not worry about its size.
+  icon: { svg: '<path d="M4 10.5c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>', color: '#0f766e' },
 
   // What MODULES shows for this module. ctx.settings already has the defaults applied.
   async status(ctx) {

@@ -593,7 +593,7 @@ test('the room says who wrote a file, and how to ask about a piece of one', asyn
 
 test('/module arms #2 for its message, the way /image does', async () => {
   const app = await readFile(join(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
-  const block = app.slice(app.indexOf("if (name === 'create' || name === 'image' || name === 'module') {"), app.indexOf('const known = allCommands()'));
+  const block = app.slice(app.indexOf("if (name === 'image' || name === 'module') {"), app.indexOf('const known = allCommands()'));
   // Both are asked for by name and both write a file; one stopping to ask for the chip while the
   // other went ahead read as one rule broken.
   assert.ok(!/moduleModeNotice|askForModuleMode/.test(app), '/module still stops to ask for the chip');

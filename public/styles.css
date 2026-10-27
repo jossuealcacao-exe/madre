@@ -1769,8 +1769,8 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .system.escalation.denied { color: var(--text-3); border-color: var(--line-2); background: transparent; }
 .composer.creating .field { border-color: var(--mode-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode-2) 18%, transparent); }
 .composer.creating .crew-label { color: var(--mode-2); }
-/* /module temporarily gives CREATE its own electric MADRE signature. The pixel layer crosses
-   the typebox once, then leaves a clean purple field behind while the request is composed. */
+/* /module temporarily gives CREATE its own electric MADRE signature: a clean purple field while
+   the request is composed. The pixel layer that crossed it as you typed went away (2026-10-27). */
 .composer.module-command { --mode: var(--module-electric); --mode-ink: var(--module-electric-ink); }
 .composer.creating.module-command .field, .composer.module-command .field {
   border-color: var(--module-electric);
@@ -1781,24 +1781,6 @@ dialog.viewer::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px)
 .composer.module-command .crew-label { color: var(--module-electric); text-shadow: none; }
 .composer.module-command .editor textarea { caret-color: var(--module-electric); }
 .composer.module-command .editor .highlight .chip.cmd { --agent: var(--module-electric); }
-.composer .field::after {
-  content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; opacity: 0;
-  background:
-    linear-gradient(90deg, transparent 0 10%, color-mix(in srgb, var(--module-electric) 72%, transparent) 46% 54%, transparent 90% 100%),
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--module-electric) 78%, transparent) 0 7px, transparent 7px 12px),
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--module-electric) 62%, transparent) 0 7px, transparent 7px 12px);
-  background-size: 42% 100%, 100% 12px, 12px 100%;
-  background-position: -55% 0, 0 0, 0 0;
-  mix-blend-mode: normal;
-}
-.composer.module-command .field::after { animation: module-pixel-shift .58s steps(9, end) 1; }
-@keyframes module-pixel-shift {
-  0% { opacity: 0; clip-path: inset(0 100% 0 0); background-position: -55% 0, 0 0, 0 0; }
-  14% { opacity: .82; }
-  58% { opacity: .48; clip-path: inset(0 0 0 0); background-position: 86% 0, 9px 0, 0 7px; }
-  100% { opacity: 0; clip-path: inset(0 0 0 100%); background-position: 155% 0, 18px 0, 0 14px; }
-}
-@media (prefers-reduced-motion: reduce) { .composer.module-command .field::after { animation: none; } }
 .who .badge.lease { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
 .user .stamp .lease { color: var(--warn); }
 .system.lease { color: var(--warn); }
@@ -11539,3 +11521,209 @@ html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill) { width: auto !im
   html.chat-shell .shell > .bar > .update-pill .update-get { margin: 0; }
   html.chat-shell .shell > .bar > .steps-pill { padding: 0 8px 0 7px !important; }
 }
+
+/* ---- The box you write in, lower (2026-10-27): one line when it is empty, as the chat apps do, and
+   taller line by line as you write — upward, since it sits at the bottom — up to two fifths of the
+   window, where it scrolls inside. Its choices stay in the bottom row whatever it holds. The rows
+   with nothing in them (a quote not there) add no gap: each piece says its own space under it. ---- */
+html.chat-shell .shell > .composer { row-gap: 0; padding: 10px 8px 6px 8px !important; }
+html.chat-shell .composer .reply-quote:not([hidden]) { margin-bottom: 6px; }
+html.chat-shell .composer .editor { margin-bottom: 4px; }
+html.chat-shell .composer .editor :is(textarea, .highlight) { max-height: min(40vh, 336px); }
+html.chat-shell .composer .editor textarea { overflow-y: auto; }
+html.chat-shell .composer .crew-orb { width: 30px; height: 30px; }
+html.chat-shell .composer .crew-orb > .avatar { --size: 26px !important; }
+
+/* ---- The «/» menu, minimal (2026-10-27): the same card as the mode and model menus — one hairline,
+   the canvas, soft corners. A row is a drawing with no tile, the command in the reading face with
+   how it is written quietly beside it, and what it does on one line under them. The row you are on
+   takes the hover tone, never a colour. Under /module the ideas are one list, each with its 8-bit
+   mark, the idea, and its kind at the right in quiet words. ---- */
+html.chat-shell .slash-menu {
+  width: min(500px, 92vw); max-height: min(60vh, 520px); padding: 4px; gap: 0;
+  border: 0 !important; border-radius: 14px; background: var(--cs-canvas, var(--panel)); color: var(--text);
+  box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 14px 36px -14px rgba(0, 0, 0, .28) !important;
+}
+html.chat-shell .slash-menu .group { padding: 8px 10px 4px; font: 400 12px/1.4 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell .slash-menu .group:first-child { padding-top: 6px; }
+html.chat-shell .slash-menu .item.cmd { grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; padding: 7px 10px; border: 0; border-radius: 9px; background: none; }
+html.chat-shell .slash-menu .item.cmd .glyph { width: 18px; height: 20px; border: 0 !important; border-radius: 0; background: none !important; color: var(--text-3); }
+html.chat-shell .slash-menu .item.cmd .glyph svg { width: 16px; height: 16px; }
+html.chat-shell .slash-menu .item.cmd .glyph.agent .avatar { --size: 18px !important; }
+html.chat-shell .slash-menu .item.cmd .glyph.mode { font: 600 11px var(--read); color: var(--mode); }
+html.chat-shell .slash-menu .item.cmd .body { gap: 1px; }
+html.chat-shell .slash-menu .item.cmd .line { gap: 6px; }
+html.chat-shell .slash-menu .item.cmd .key { font: 500 13px/20px var(--read); color: var(--text); }
+html.chat-shell .slash-menu .item.cmd .args { padding: 0; border-radius: 0; background: none; font: 400 12px/20px var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .slash-menu .item.cmd .what { font: 400 12px/1.4 var(--read); color: var(--text-3); -webkit-line-clamp: 1; line-clamp: 1; }
+html.chat-shell .slash-menu .item:is([aria-selected="true"], :hover) { background: var(--cs-hover) !important; border-color: transparent !important; }
+html.chat-shell .slash-menu .item.cmd:is([aria-selected="true"], :hover) .glyph { color: var(--text); }
+html.chat-shell .slash-menu .item.cmd[aria-selected="true"] .what { color: var(--text-2); }
+html.chat-shell .slash-menu .item.cmd.off { opacity: .5; }
+html.chat-shell .slash-menu.with-starters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; }
+html.chat-shell .slash-menu .item.starter {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 7px 10px; border: 0 !important; border-radius: 9px; background: none; box-shadow: none;
+}
+html.chat-shell .slash-menu .item.starter .starter-icon { grid-row: auto; width: 14px; height: 14px; margin: 0 auto; }
+html.chat-shell .slash-menu .item.starter .idea { min-width: 0; overflow: hidden; font: 400 13px/20px var(--read); color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
+html.chat-shell .slash-menu .item.starter .shape { padding: 0; border: 0; border-radius: 0; background: none !important; font: 400 11.5px var(--read); color: var(--text-3) !important; white-space: nowrap; }
+html.chat-shell .slash-menu .hint.keys {
+  position: sticky; bottom: -4px; z-index: 1; margin: 4px -4px -4px; padding: 8px 14px;
+  border-top: 1px solid var(--cs-line); border-radius: 0 0 14px 14px; background: var(--cs-canvas, var(--panel));
+  font: 400 11.5px var(--read); color: var(--text-3);
+}
+html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border-radius: 5px; background: var(--cs-hover); font: 500 10.5px var(--read); color: var(--text-2); }
+
+/* ==========================================================================================
+   THE FLAT STORE (market-view.js, 2026-10-27)
+   ------------------------------------------------------------------------------------------
+   The Market in the chat shell's own clothes, laid out as the App Store on a phone: a large title,
+   featured cards that slide with the next one peeking, shelves that page sideways three rows at a
+   time, a module's page with its icon, its key and a strip of facts. The canvas, hairlines and the
+   hover tone are the room's; nothing is a gradient. A module's icon is its drawing in white on one
+   flat color — the mix of its two — with no bevel and no shadow; the featured cards and the
+   pictures wear that color only as a tint. The classic room (4316) keeps the store it had.
+   ========================================================================================== */
+.mk.flat {
+  --mk-canvas: #ffffff; --mk-line: rgba(20, 30, 20, .09); --mk-hover: rgba(20, 30, 20, .05); --mk-fill: rgba(20, 30, 20, .055);
+  --mk-flat: color-mix(in oklab, var(--mk-a, #94a3b8) 32%, var(--mk-b, #334155));
+  background: var(--mk-canvas);
+}
+:root[data-scheme="dark"] .mk.flat { --mk-canvas: #1d1f1d; --mk-line: rgba(255, 255, 255, .07); --mk-hover: rgba(255, 255, 255, .05); --mk-fill: rgba(255, 255, 255, .06); }
+/* The bar: the room's own — a hairline under it, the close as a bare key, the tabs as a segmented
+   control, the search as every other one. */
+.mk.flat .mk-bar { padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px; border-bottom: 1px solid var(--mk-line); background: color-mix(in srgb, var(--mk-canvas) 88%, transparent); }
+.mk.flat .mk-leave { width: 30px; height: 30px; border-radius: 8px; background: none; color: var(--text-2); }
+.mk.flat .mk-leave:hover { background: var(--mk-hover); color: var(--text); }
+.mk.flat .mk-tabs { padding: 2px; border-radius: 9px; background: var(--mk-fill); }
+.mk.flat .mk-tab { min-width: 96px; padding: 5px 14px; border-radius: 7px; font: 500 13px var(--read); color: var(--text-2); }
+.mk.flat .mk-tab[aria-selected="true"] { background: var(--mk-canvas); color: var(--text); box-shadow: 0 0 0 .5px var(--mk-line), 0 1px 2px rgba(0, 0, 0, .08); }
+.mk.flat .mk-here { font: 500 13.5px var(--read); }
+.mk.flat .mk-here span { font-weight: 400; color: var(--text-3); }
+.mk.flat .mk-search { width: min(260px, 100%); height: 30px; border-radius: 9px; background: var(--mk-fill) !important; box-shadow: none !important; }
+.mk.flat .mk-search:focus-within { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--madre-green) 45%, transparent) !important; }
+/* The page: a large title, as the store's, and the rest under it. */
+.mk.flat .mk-page { width: min(1040px, 100%); padding: 26px 32px calc(64px + env(safe-area-inset-bottom, 0px)); gap: 34px; }
+.mk.flat .mk-head h1 { font: 700 32px/1.1 var(--read); letter-spacing: -.02em; }
+.mk.flat .mk-head p { margin-top: 6px; font: 400 14px/1.5 var(--read); color: var(--text-3); }
+.mk.flat .mk-empty { font: 400 14px var(--read); color: var(--text-3); }
+
+/* The icon: one flat color, the drawing in white, no bevel. */
+.mk.flat .mk-icon { background: var(--mk-flat); box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1); }
+.mk.flat .mk-icon svg { filter: none; }
+:root[data-scheme="dark"] .mk.flat .mk-icon { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .08); }
+
+/* Featured: cards that slide, the next one peeking, each on a tint of its module's color. */
+.mk.flat .mk-track { gap: 14px; border-radius: 0; box-shadow: none; scroll-padding-inline: 0; }
+.mk.flat .mk-slide {
+  flex: 0 0 calc(100% - 64px); min-height: 330px; border-radius: 18px; color: var(--text);
+  background: color-mix(in srgb, var(--mk-flat) 13%, var(--mk-canvas)); box-shadow: inset 0 0 0 .5px var(--mk-line);
+}
+.mk.flat .mk-slide:only-child { flex-basis: 100%; }
+.mk.flat .mk-slide::before { content: none; }
+.mk.flat .mk-slide-words { gap: 8px; padding: 34px 0 34px 36px; }
+.mk.flat .mk-slide-words small { font: 600 11.5px var(--read); letter-spacing: .04em; text-transform: uppercase; color: var(--mk-flat); opacity: 1; }
+:root[data-scheme="dark"] .mk.flat .mk-slide-words small { color: color-mix(in srgb, var(--mk-flat) 55%, #fff); }
+.mk.flat .mk-slide-words h2 { font: 700 clamp(26px, 3.2vw, 34px)/1.08 var(--read); letter-spacing: -.02em; }
+.mk.flat .mk-slide-words p { font: 400 15px/1.45 var(--read); color: var(--text-2); opacity: 1; }
+.mk.flat .mk-slide-get { margin-top: 14px; padding: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.mk.flat .mk-slide-get .mk-icon { box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1); }
+.mk.flat .mk-slide-who b { font: 600 14px var(--read); }
+.mk.flat .mk-slide-who span { font: 400 12.5px var(--read); color: var(--text-3); opacity: 1; }
+.mk.flat .mk-slide-art { padding: 20px 24px 20px 0; }
+.mk.flat .mk-slide-art svg { max-height: 300px; }
+.mk.flat .mk-arrow { bottom: auto; top: 50%; translate: 0 -50%; width: 32px; height: 32px; background: var(--mk-canvas); color: var(--text); box-shadow: 0 0 0 .5px var(--mk-line), 0 2px 8px rgba(0, 0, 0, .12); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.mk.flat .mk-arrow.prev { left: 10px; right: auto; }
+.mk.flat .mk-arrow.next { right: 10px; }
+.mk.flat .mk-arrow svg { width: 15px; height: 15px; }
+.mk.flat .mk-dots { gap: 6px; margin-top: 12px; }
+.mk.flat .mk-dot { width: 6px; height: 6px; background: color-mix(in srgb, var(--text) 18%, transparent); }
+.mk.flat .mk-dot[aria-current="true"] { width: 6px; background: var(--text-2); }
+
+/* The key, as the store's: a grey capsule with the word in the accent; a module's page has it full. */
+.mk.flat .mk-get { height: 28px; padding: 0 14px; background: var(--mk-fill); color: var(--madre-green); font: 600 12.5px var(--read); letter-spacing: 0; }
+.mk.flat .mk-get:hover { background: color-mix(in srgb, var(--text) 9%, transparent); }
+.mk.flat .mk-get.on { background: var(--mk-fill); color: var(--text-3); }
+.mk.flat .mk-get.light { background: var(--mk-canvas); color: var(--madre-green); box-shadow: 0 0 0 .5px var(--mk-line); }
+.mk.flat .mk-get.big { height: 34px; padding: 0 20px; background: var(--madre-green); color: var(--madre-green-ink); font-size: 13.5px; }
+.mk.flat .mk-get.big:is(.quiet, .on) { background: var(--mk-fill); color: var(--text); }
+.mk.flat .mk-link { font: 500 13px var(--read); }
+
+/* Shelves: a title and its line, then the modules three rows deep in two columns, paged sideways
+   when there are more; the hairline between rows starts after the icon, as in the store. */
+.mk.flat .mk-shelf { gap: 4px; }
+.mk.flat .mk-shelf > header { padding-bottom: 6px; border-bottom: 0; }
+.mk.flat :is(.mk-shelf h2, .mk-section > h2) { font: 650 19px/1.25 var(--read); letter-spacing: -.01em; }
+.mk.flat .mk-shelf > header p { font: 400 13px var(--read); color: var(--text-3); }
+.mk.flat .mk-shelf .mk-list {
+  grid-template-columns: none; grid-template-rows: repeat(3, auto); grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 32px) / 2); column-gap: 32px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.mk.flat .mk-shelf .mk-list::-webkit-scrollbar { display: none; }
+.mk.flat .mk-list:not(.mk-shelf .mk-list) { column-gap: 28px; }
+.mk.flat .mk-row { position: relative; gap: 12px; padding: 10px 0; border-bottom: 0; scroll-snap-align: start; }
+.mk.flat .mk-row::after { content: ''; position: absolute; left: 64px; right: 0; bottom: 0; height: 1px; background: var(--mk-line); }
+.mk.flat .mk-shelf .mk-row:nth-child(3n)::after, .mk.flat .mk-row:last-child::after { content: none; }
+.mk.flat .mk-row-open { gap: 12px; }
+.mk.flat .mk-row .mk-icon { --mk-size: 52px !important; }
+.mk.flat .mk-row-words { gap: 2px; }
+.mk.flat .mk-row-words b { font: 500 14.5px var(--read); }
+.mk.flat .mk-row-words span { font: 400 12.5px/1.35 var(--read); color: var(--text-3); }
+.mk.flat .mk-row-side small { font: 400 10.5px var(--read); color: var(--text-3); }
+
+/* A module's page: icon, name, line and key at the top; the facts in one strip; then the pictures,
+   sideways, and the words. */
+.mk.flat .mk-product { gap: 26px; }
+.mk.flat .mk-back { padding: 2px 8px 2px 0; font: 500 14px var(--read); }
+.mk.flat .mk-product-top { gap: 22px; }
+.mk.flat .mk-product-top > .mk-icon { --mk-size: 112px !important; }
+.mk.flat .mk-product-words { gap: 4px; }
+.mk.flat .mk-product-words h1 { font: 700 clamp(24px, 3vw, 30px)/1.1 var(--read); letter-spacing: -.02em; }
+.mk.flat .mk-product-words > p:not(.mk-said) { font: 400 15px var(--read); color: var(--text-3); }
+.mk.flat .mk-product-words .mk-maker { font: 500 12.5px var(--read); color: var(--madre-green); }
+.mk.flat .mk-keys { margin-top: 10px; }
+.mk.flat .mk-said { font: 400 13px/1.45 var(--read); color: var(--text-3); }
+.mk.flat .mk-where-title { font: 600 13.5px var(--read); }
+.mk.flat .mk-where-option > small { font: 400 12px var(--read); color: var(--text-3); }
+.mk.flat .mk-select { background: var(--mk-fill); font: 400 13px var(--read); }
+.mk.flat .mk-facts { border-block: 1px solid var(--mk-line); }
+.mk.flat .mk-facts > div { gap: 3px; padding: 12px 14px; }
+.mk.flat .mk-facts > div + div { border-left: 1px solid var(--mk-line); }
+.mk.flat .mk-facts dt { font: 500 11px var(--read); letter-spacing: .02em; text-transform: none; color: var(--text-3); }
+.mk.flat .mk-facts dd { font: 600 14px var(--read); color: var(--text-2); }
+.mk.flat .mk-section { gap: 12px; }
+.mk.flat .mk-gallery { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.mk.flat .mk-gallery::-webkit-scrollbar { display: none; }
+.mk.flat .mk-shot { flex: 0 0 min(520px, 86%); width: auto; border-radius: 16px; scroll-snap-align: start; background: color-mix(in srgb, var(--mk-flat) 13%, var(--mk-canvas)); box-shadow: inset 0 0 0 .5px var(--mk-line); }
+.mk.flat .mk-about { font: 400 15px/1.6 var(--read); color: var(--text-2); }
+.mk.flat .mk-touches { border: 0; border-radius: 0; border-block: 1px solid var(--mk-line); }
+.mk.flat .mk-touch { padding: 11px 0; font: 400 14px/1.45 var(--read); }
+.mk.flat .mk-touch + .mk-touch { border-top: 1px solid var(--mk-line); }
+.mk.flat .mk-touch span:first-child { color: var(--text-3); }
+
+/* MODULES in Home: rows with a hairline, not cards with a shadow. */
+.mk.flat .mk-card { gap: 10px; padding: 14px 0; border-radius: 0; background: none; box-shadow: none; border-bottom: 1px solid var(--mk-line); }
+.mk.flat .mk-card.focused { box-shadow: none; background: var(--mk-hover); border-radius: 12px; padding-inline: 12px; }
+.mk.flat .mk-card-words b { font: 500 14.5px var(--read); }
+.mk.flat .mk-card-words span { font: 400 12.5px var(--read); color: var(--text-3); }
+.mk.flat .mk-all { font: 400 13px var(--read); color: var(--text-3); }
+.mk.flat .mk-chip { padding: 4px 11px; background: var(--mk-fill); font: 400 12.5px var(--read); }
+.mk.flat .mk-chip.on { background: color-mix(in srgb, var(--madre-green) 14%, transparent); font-weight: 500; }
+.mk.flat .mk-review { background: color-mix(in srgb, var(--mk-canvas) 60%, transparent); }
+.mk.flat .mk-review-card { border-radius: 16px; background: var(--mk-canvas); box-shadow: 0 0 0 .5px var(--mk-line), 0 24px 60px -20px rgba(0, 0, 0, .4); }
+.mk.flat .mk-review-warn { background: var(--mk-fill); }
+
+@media (max-width: 760px) {
+  .mk.flat .mk-page { padding: 18px 16px calc(48px + env(safe-area-inset-bottom, 0px)); gap: 26px; }
+  .mk.flat .mk-slide { flex-basis: calc(100% - 28px); }
+  .mk.flat .mk-slide-words { padding: 24px 20px 4px; }
+  .mk.flat .mk-shelf .mk-list { grid-auto-columns: calc(100% - 28px); }
+  .mk.flat .mk-product-top > .mk-icon { --mk-size: 88px !important; }
+}
+/* The flat color is worked out where a module's two colors are set: on its icon, its card, its
+   pictures. The same flat icon wherever the chat shell shows one (a card in the thread, MODULES). */
+.mk.flat :is(.mk-icon, .mk-slide, .mk-shot), html.chat-shell .mk-icon { --mk-flat: color-mix(in oklab, var(--mk-a, #94a3b8) 32%, var(--mk-b, #334155)); }
+html.chat-shell .mk-icon { background: var(--mk-flat); box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1); }
+html.chat-shell .mk-icon svg { filter: none; }

@@ -184,7 +184,7 @@ const els = {
 // Built-in commands live in the composer; module commands come from the
 // server (/api/commands) and run there, read-only, as fact cards.
 const CLIENT_COMMANDS = [
-  { name: 'create', title: 'CREATE', usage: `/create ${t('<what to make>')}`, summary: t('Arm CREATE for this message: the agent may add new files to the project where they belong.'), available: true, client: true },
+  // /create went away (2026-10-27): choosing #2 on the mode chip is the same thing, said once.
   { name: 'module', title: 'MODULE', usage: `/module ${t('<what it should do>')}`, summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
   { name: 'image', title: t('Image'), usage: `/image ${t('<what to draw>')}`, summary: t('Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.'), available: true, client: true },
   { name: 'stopall', title: t('STOP ALL'), usage: '/stopall', summary: t('Master brake: halt every plan and turn in flight. Never reaches an agent.'), available: true, client: true },
@@ -12882,7 +12882,6 @@ function moduleStarters() {
 const COMMAND_GROUPS = ['room', 'modules', 'off'];
 const COMMAND_GROUP_WORDS = { room: 'THIS PROJECT', modules: 'FROM THE MODULES', off: 'NOT AVAILABLE HERE' };
 const COMMAND_GLYPHS = {
-  create: '<path d="M5.5 3.5h5l4.5 4.5v8a1.8 1.8 0 0 1-1.8 1.8H5.5A1.8 1.8 0 0 1 3.7 16V5.3A1.8 1.8 0 0 1 5.5 3.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.4 3.6v3a1.1 1.1 0 0 0 1.1 1.1h3.4M9.35 10.2v4.4M7.15 12.4h4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
   module: '<path class="ic-f" d="M2.75 8.45a2.2 2.2 0 0 1 2.2-2.2h2a1.9 1.9 0 1 1 2.6 0h2a2.2 2.2 0 0 1 2.2 2.2v2a1.9 1.9 0 1 1 0 2.6v2a2.2 2.2 0 0 1-2.2 2.2h-2a1.9 1.9 0 1 0-2.6 0h-2a2.2 2.2 0 0 1-2.2-2.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
   image: '<rect x="3" y="4" width="14" height="12" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.3" cy="8.1" r="1.35" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.4 14.2l3.8-3.8a1 1 0 0 1 1.4 0l2.4 2.4 1.4-1.4a1 1 0 0 1 1.4 0l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
   stopall: '<rect class="ic-f" x="4" y="4" width="12" height="12" rx="3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -12931,10 +12930,14 @@ function showMenu(items, found) {
       // `cmd`, not `row`: `.row` is a message in the thread, and its margins and width came along.
       button.classList.add('cmd');
       button.append(glyph, body);
+      // The chat shell keeps what it does to one line; the whole of it under the pointer.
+      if (item.what) button.title = item.what;
     }
     button.addEventListener('mousedown', (event) => { event.preventDefault(); pickMenu(index); });
     // Each group of commands under its own name.
     if (item.group && item.group !== items[index - 1]?.group) els.slashMenu.append(el('div', 'group', t(COMMAND_GROUP_WORDS[item.group])));
+    // The ideas under /module, under their own name (2026-10-27).
+    if (item.starter && !items[index - 1]?.starter) els.slashMenu.append(el('div', 'group starters', t('Ideas to start from')));
     els.slashMenu.append(button);
   });
   const keys = el('div', 'hint keys');
@@ -12980,7 +12983,7 @@ async function runSlashCommand(text) {
   const name = match[1].toLowerCase();
   const rest = (match[2] ?? '').trim();
   if (name === 'stopall') { await stopAll(); return { handled: true }; }
-  if (name === 'create' || name === 'image' || name === 'module') {
+  if (name === 'image' || name === 'module') {
     if (!rest) {
       toast(name === 'module'
         ? t('Diagnostics › /module needs a job, e.g. "/module summarize today’s commits".')

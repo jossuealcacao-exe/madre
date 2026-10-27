@@ -55,7 +55,7 @@ Then open `http://127.0.0.1:4317/salas` in your computer's browser. The agents a
 | `@codex`, `@claude`, `@gemini`, `@opencode`, `@madre` | Mentions an agent; `@` opens the list |
 | `!src/room.mjs:12-20` | Attaches a project file, with lines if you give them; `!` searches the files |
 | `#0` to `#4` | Sets that message's permission mode. `#3` and `#4` open the unlock, just like the chip: a mode that asks for two keys with the mouse does not come free by typing it |
-| `/create …`, `/image …`, `/stopall`, `/git …`, `/ahp …` | Commands; `/` opens the menu. `/git push` shows what would go out; only `/git push confirm` sends it |
+| `/image …`, `/stopall`, `/git …`, `/ahp …` | Commands; `/` opens the menu. `/git push` shows what would go out; only `/git push confirm` sends it |
 | `STOPALL` | Master brake |
 | Clip, drag or paste an image | Attachment for the project, never inside its folder |
 | `@madre, pregúntale a los agentes …` | Ask everyone: one step per online agent, with a cited wrap-up |

@@ -2204,8 +2204,7 @@ export const ES = {
   // ── EL RECORRIDO DE PRIMER CONTACTO ───────────────────────────────────────
 
   // ── EL COMPOSITOR, LOS MODOS Y LA ANULACIÓN ──────────────────────────────
-  'Arm CREATE for this message: the agent may add new files to the project where they belong.':
-    'Activa «Crear» para este mensaje: el agente puede agregar archivos nuevos al proyecto donde correspondan.',
+  'Ideas to start from': 'Ideas para empezar',
   'Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.':
     'Construye un módulo de MADRE paso a paso: el agente lo escribe y después tú lo revisas e instalas.',
   'Image': 'Imagen',
@@ -3126,7 +3125,6 @@ export const ES = {
   'The file changed on disk since it was opened.': 'El archivo cambió en disco desde que se abrió.',
 
   // El menú de comandos, en grupos.
-  '<what to make>': '<qué crear>',
   '<what it should do>': '<qué debe hacer>',
   '<what to draw>': '<qué dibujar>',
   'FROM THE MODULES': 'De los módulos',

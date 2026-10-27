@@ -41,8 +41,79 @@ export const moduleFace = (item) => {
   // A module that came after this MADRE wears the face its catalog entry gives it.
   const entry = remoteEntry(item?.id);
   if (entry) return { line: pick(entry.line), icon: cleanSvg(entry.icon, { inner: true }) ?? MODULE_ANY, hue: entry.hue ?? HUE_ANY, name: pick(entry.name), summary: pick(entry.summary) };
+  // A module that drew its own icon (the SDK's `icon`, 2026-10-27): fitted to the tile, in one
+  // color, on the nearest of MADRE's own tile colors.
+  const own = item?.icon?.svg ? fitIcon(item.icon.svg) : null;
+  if (own) return { line: null, icon: own, hue: tileColors(item.icon.color) };
   return { line: null, icon: MODULE_ANY, hue: HUE_ANY };
 };
+
+// A MODULE'S OWN ICON, MADE TO SIT WITH THE REST (2026-10-27). Whatever it was drawn on — 20 units or
+// 24 or 512, a whole <svg> or only its shapes — MADRE keeps the drawing and nothing else
+// (cleanSvg), draws every line and fill in the tile's one color, and fits what is drawn to the
+// same square MADRE's own icons use, centred. Its color becomes the nearest of MADRE's tile colors,
+// so no module brings a palette of its own. Measured once per drawing.
+const TILE_COLORS = Object.values(MODULE_FACES).map((face) => face.hue).filter(Boolean);
+const rgb = (hex) => [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
+export function tileColors(color) {
+  if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) return HUE_ANY;
+  const want = rgb(color);
+  const far = (pair) => { const mid = rgb(pair[0]).map((one, at) => (one + rgb(pair[1])[at]) / 2); return mid.reduce((sum, one, at) => sum + (one - want[at]) ** 2, 0); };
+  return TILE_COLORS.reduce((best, pair) => (far(pair) < far(best) ? pair : best), TILE_COLORS[0] ?? HUE_ANY);
+}
+const PAINTED = /^(fill|stroke)$/;
+const DROPPED = new Set(['defs', 'lineargradient', 'radialgradient', 'stop', 'filter', 'fedropshadow', 'fegaussianblur', 'clippath', 'text', 'tspan']);
+const fitted = new Map();
+export function fitIcon(markup) {
+  if (fitted.has(markup)) return fitted.get(markup);
+  const whole = /^\s*<svg[\s>]/i.test(markup);
+  const clean = cleanSvg(markup, { inner: !whole });
+  if (!clean || typeof document === 'undefined') { fitted.set(markup, null); return null; }
+  const host = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = 'position:absolute;left:-9999px;top:0;width:200px;height:200px;visibility:hidden';
+  const box = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  if (whole) {
+    // A whole <svg> often says how its lines are drawn on itself (fill="none" stroke-width="2"): the
+    // group that takes its place keeps that, and leaves its size and viewBox behind.
+    const root = new DOMParser().parseFromString(clean, 'image/svg+xml').documentElement;
+    for (const attr of [...root.attributes]) if (/^(fill|fill-rule|clip-rule|stroke|stroke-width|stroke-linecap|stroke-linejoin|opacity)$/.test(attr.name)) box.setAttribute(attr.name, attr.value);
+    box.innerHTML = root.innerHTML;
+  } else box.innerHTML = clean;
+  const recolor = (node) => {
+    for (const attr of [...node.attributes]) {
+      if (PAINTED.test(attr.name) && attr.value.trim().toLowerCase() !== 'none') node.setAttribute(attr.name, 'currentColor');
+      if (/^(class|id|clip-path|filter)$/.test(attr.name)) node.removeAttribute(attr.name);
+    }
+  };
+  const paint = (node) => {
+    for (const child of [...node.children]) {
+      if (DROPPED.has(child.nodeName.toLowerCase())) { child.remove(); continue; }
+      recolor(child);
+      paint(child);
+    }
+  };
+  recolor(box);
+  paint(box);
+  // A drawing that says neither fill nor stroke is filled, as an <svg> would fill it.
+  if (!box.hasAttribute('fill') && !box.hasAttribute('stroke') && !box.querySelector('[fill], [stroke]')) box.setAttribute('fill', 'currentColor');
+  host.append(box);
+  document.body.append(host);
+  let shape = null;
+  try {
+    const { x, y, width, height } = box.getBBox();
+    if (width > 0 || height > 0) {
+      // The same square as MADRE's own: 14 of the tile's 20 units, centred.
+      const scale = 14 / Math.max(width, height, 0.001);
+      const at = (value) => Math.round(value * 1000) / 1000;
+      const kept = [...box.attributes].map((attr) => ` ${attr.name}="${attr.value.replace(/"/g, '&quot;')}"`).join('');
+      shape = `<g transform="translate(${at(10 - (x + width / 2) * scale)} ${at(10 - (y + height / 2) * scale)}) scale(${at(scale)})"${kept}>${box.innerHTML}</g>`;
+    }
+  } catch { shape = null; }
+  host.remove();
+  fitted.set(markup, shape);
+  return shape;
+}
 // A module's app icon: its drawing in white on its own two colors (the Market, Home's MODULES).
 export function appIcon(item, size = 56) {
   const face = moduleFace(item);

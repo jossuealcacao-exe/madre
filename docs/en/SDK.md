@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## What a module can declare
 
-This table is **the complete contract**: 40 fields, not one more. Any other field you write, MADRE
+This table is **the complete contract**: 41 fields, not one more. Any other field you write, MADRE
 tells you about at install time ("I didn't understand these fields") instead of silently ignoring it. A test in
 the suite compares this table against the code, so if they ever drift apart, it's a failure.
 
@@ -74,6 +74,8 @@ the suite compares this table against the code, so if they ever drift apart, it'
 | `onToggle(ctx, enabled)` | Reacts to the switch |
 | `ready(ctx)` | What you ask before turning on, in one project or in all (from the Market too): `null` when ready, `{ status, body: { error } }` when not. Turning off never asks it |
 | `footer` | Up to two keys beside MADRE's version, bottom right, while your module is on: `[{ icon: 'heart' \| 'star' \| 'link', label, text, action, url }]`. Words can be one sentence or `{ en, es }`; `url` must be https and opens in a new tab. MADRE draws it: on hover it shows `text` and a button with `action` |
+| `credit` | Whose idea it was, if it was not yours: a name. MADRE says it on the module's card and in the Market («Idea by …») |
+| `icon` | Your module's icon: `{ svg, color }`. `svg` is the drawing — its shapes (`<path d="…"/>`) or a whole `<svg>`, on whatever grid you like — and `color` its tile's, `#rrggbb`. MADRE fits it on its own so it looks like MADRE's: centred and scaled to the same square, drawn in white in one color, on the MADRE color nearest to yours, with anything that is not drawing taken out (scripts, images, links, styles, gradients). Without `icon`, your module wears the grey puzzle piece. Up to 8000 characters |
 | `slash` | `/name` commands that run on the server with your `ctx` and return `{ ok, title, text, link }`. The room shows them as a card and the agents read them. `link` is optional: `{ href, label }` with a route of yours (`/api/x/<id>/…`), and the card offers it as a key that opens another tab; an address outside your routes is ignored |
 | `toolsForTurn(ctx, turn)` | MCP servers for an agent's turn: `[{ name, command, args, env, tools, sends, brief }]`. MADRE attaches them to the CLI in its isolated run and describes `brief` to the agent. `turn` carries the agent, the mode, the lease, the folder, the port, and `turn.turn`: the id of the reply that turn will write. If your server calls back to the room on behalf of the turn, send that id; `ctx.room.runningTurn(id)` tells you whether it is still running and for which agent |
 | `toolsForTurn` → `sends` | Which of your tools **send something outside**. The core withdraws them below `#4` AIRLOCK: the model isn't even told they exist. See below |
@@ -304,7 +306,7 @@ Texts come cut at 600 characters. It is the ground for a module that reports on 
 
 ## Let your AI build it, in the room
 
-Type `/module <lo que debe hacer>` in the composer. It is the explicit entry point to the guided flow: if `#2 CREATE` isn't active, MADRE asks you to choose it and keeps your request intact. With `#2` active, it keeps the agent you chose and hands it the SDK contract and the example. The agent must write **a single file** named `<id>.module.mjs` in its scratch folder; it cannot install it on its own.
+Type `/module <lo que debe hacer>` in the composer. It is the explicit entry point to the guided flow: if `#2 CREATE` isn't active, MADRE asks you to choose it and keeps your request intact. With `#2` active, it keeps the agent you chose and hands it the SDK contract and the example. The agent must write **a single file** named `<id>.module.mjs` in its scratch folder; it cannot install it on its own. That file carries its `icon`: the agent draws it with the rest of the module and MADRE fits it to the tile.
 
 MADRE recognizes that name and puts a card in the room: `INSTALL FOR EVERY ROOM` or `INSTALL FOR THIS PROJECT`. Read it, decide, one click. MADRE validates it in a copy, saves it as `<id>.mjs` in the folder you chose, and it appears in MODULES with the «Yours» tag. You can also ask for the same thing in natural language while you're in `#2` or higher; `/module` makes the format explicit and doesn't grant permissions on its own.
 

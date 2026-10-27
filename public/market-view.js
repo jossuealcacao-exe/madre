@@ -74,7 +74,9 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   if (current) { current.go({ tab, focus }); return current; }
   const home = where === 'home';
   const before = document.activeElement;
-  const root = el('div', 'mk');
+  // The flat store (2026-10-27): the chat shell's canvas, hairlines and flat icons, laid out as the
+  // App Store on a phone. The classic room (port 4316) keeps the store it had.
+  const root = el('div', globalThis.location?.port === '4316' ? 'mk' : 'mk flat');
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', t('Market'));
@@ -327,13 +329,20 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       dot.setAttribute('aria-label', t('{n} of {total}', { n: at + 1, total: featured.length }));
       dots.append(dot);
     });
+    // A slide is as wide as the track, or — in the flat store — a little narrower, with the next one
+    // peeking at the edge: either way each one starts where it starts, not at a multiple of the width.
+    const startOf = (at) => (track.children[at]?.offsetLeft ?? 0) - (track.children[0]?.offsetLeft ?? 0);
     const show = (at, smooth = true) => {
       index = (at + featured.length) % featured.length;
-      track.scrollTo({ left: index * track.clientWidth, behavior: smooth && !reducedMotion() ? 'smooth' : 'auto' });
+      track.scrollTo({ left: startOf(index), behavior: smooth && !reducedMotion() ? 'smooth' : 'auto' });
       mark();
     };
     const mark = () => { [...dots.children].forEach((dot, at) => dot.setAttribute('aria-current', String(at === index))); };
-    track.addEventListener('scroll', () => { const at = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)); if (at !== index) { index = at; mark(); } }, { passive: true });
+    track.addEventListener('scroll', () => {
+      let at = 0;
+      featured.forEach((_, one) => { if (Math.abs(startOf(one) - track.scrollLeft) < Math.abs(startOf(at) - track.scrollLeft)) at = one; });
+      if (at !== index) { index = at; mark(); }
+    }, { passive: true });
     const prev = glyph(button('mk-arrow prev', null, () => show(index - 1)), 'back');
     const next = glyph(button('mk-arrow next', null, () => show(index + 1)), 'next');
     prev.setAttribute('aria-label', t('Previous'));

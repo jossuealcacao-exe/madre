@@ -170,7 +170,6 @@ export const EN = {
   "The Coordinator has no ready agent. Choose one in its card in MODULES, in Home.": "The Coordinator has no ready agent. Choose one in its card in «Modules», in Home.",
   "The Coordinator is off. Turn it on in MODULES.": "The Coordinator is off. Turn it on in «Modules».",
   // ux/refresh · parte 2, la caja y los modos
-  "Arm CREATE for this message: the agent may add new files to the project where they belong.": "Turn on «Create» for this message: the agent may add new files to the project where they belong.",
   "Ask for an image: arms CREATE with the image scope and routes to an agent that can generate images.": "Ask for an image: turns on «Create» for images only and sends it to an agent that can generate them.",
   "CREATE on: what to make. New files land where they belong in the project; nothing existing changes.": "«Create» is on: what to make. New files land where they belong in the project; nothing existing changes.",
   "EDIT unlocked. Say what to change in the project; every action runs without asking.": "«Edit» unlocked. Say what to change in the project; every action runs without asking.",

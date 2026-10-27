@@ -55,7 +55,7 @@ Luego abre `http://127.0.0.1:4317/salas` en el navegador de tu computadora. Los 
 | `@codex`, `@claude`, `@gemini`, `@opencode`, `@madre` | Menciona a un agente; `@` abre la lista |
 | `!src/room.mjs:12-20` | Adjunta un archivo del proyecto, con líneas si las das; `!` busca entre los archivos |
 | `#0` a `#4` | Fija el modo de permiso de ese mensaje. `#3` y `#4` abren el desbloqueo, igual que el chip: un modo que pide dos llaves con el ratón no sale gratis por teclearlo |
-| `/create …`, `/image …`, `/stopall`, `/git …`, `/ahp …` | Comandos; `/` abre el menú. `/git push` muestra qué saldría; solo `/git push confirm` lo envía |
+| `/image …`, `/stopall`, `/git …`, `/ahp …` | Comandos; `/` abre el menú. `/git push` muestra qué saldría; solo `/git push confirm` lo envía |
 | `STOPALL` | Freno maestro |
 | Clip, arrastrar o pegar una imagen | Adjunto para el proyecto, nunca dentro de su carpeta |
 | `@madre, pregúntale a los agentes …` | Preguntar a todos: un paso por agente en línea, cierre citado |

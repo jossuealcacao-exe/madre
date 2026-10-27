@@ -82,7 +82,7 @@ export const SDK_LEVEL = SDK_LEVELS.at(-1);
 export const sdkOf = (spec) => (spec?.sdk === undefined ? 1 : spec.sdk);
 export const understandsSdk = (level) => SDK_LEVELS.includes(level);
 
-// Every field this contract answers to. Forty of them and all but two optional, which is
+// Every field this contract answers to. Forty-one of them and all but two optional, which is
 // generous until you misspell one: `sumary` used to install without a word and leave a card with
 // an empty summary. A key MADRE does not know is not fatal — a module written for a newer MADRE
 // may carry fields this one has not learned yet — so it is said out loud instead of refused.
@@ -91,7 +91,7 @@ export const MODULE_FIELDS = new Set([
   'requires', 'models', 'commands', 'card', 'configKey', 'settings', 'controls', 'routes', 'reaches',
   'conditions', 'slash', 'status', 'preflight', 'detect', 'confirm', 'installCommand', 'secrets',
   'updatePlan', 'toolsForTurn', 'toggle', 'onToggle', 'onSettings', 'onEvent', 'toggledEvent',
-  'toggledBody', 'describe', 'ready', 'footer', 'credit', 'sdk',
+  'toggledBody', 'describe', 'ready', 'footer', 'credit', 'sdk', 'icon',
 ]);
 export const unknownFields = (spec) => Object.keys(spec ?? {}).filter((key) => !MODULE_FIELDS.has(key));
 
@@ -114,6 +114,18 @@ function footerKeys(spec) {
     if (!footerWords(key.label)) throw new Error(`Module ${spec.id}: a key beside the version needs a label.`);
     return { icon: FOOTER_ICONS.includes(key.icon) ? key.icon : 'link', label: footerWords(key.label), text: footerWords(key.text), action: footerWords(key.action), url: url.href };
   });
+}
+
+// A module's own icon (2026-10-27): a drawing and the color of its tile. MADRE fits the drawing to
+// its tile, draws it in one color and picks the nearest of its own tile colors, so a module somebody
+// wrote sits beside MADRE's own without looking like another app (public/market.js, moduleFace).
+// Here it is only kept to its size: the page cleans the drawing before it shows it.
+const ICON_COLOR = /^#[0-9a-f]{6}$/i;
+function moduleIconOf(spec) {
+  const given = typeof spec.icon === 'string' ? { svg: spec.icon } : spec.icon;
+  if (!given || typeof given !== 'object' || typeof given.svg !== 'string' || !given.svg.trim()) return null;
+  if (given.svg.length > 8000) throw new Error(`Module ${spec.id}: its icon is a drawing of 8000 characters at most.`);
+  return { svg: given.svg.trim(), color: typeof given.color === 'string' && ICON_COLOR.test(given.color) ? given.color.toLowerCase() : null };
 }
 
 export function defineModule(spec) {
@@ -143,6 +155,8 @@ export function defineModule(spec) {
     updates: spec.updates?.url && /^https:\/\//.test(String(spec.updates.url)) ? { url: String(spec.updates.url) } : null,
     // Keys beside MADRE's version, drawn by MADRE while the module is on (footerKeys).
     footer: footerKeys(spec),
+    // Its own icon, kept to its size (moduleIconOf).
+    icon: moduleIconOf(spec),
     // Whose idea it was (2026-10-20, Reminders): said on its card and in the Market.
     credit: typeof spec.credit === 'string' && spec.credit.trim() ? spec.credit.trim().slice(0, 80) : null,
     summary: oneWord(spec.summary) ?? '', creates: spec.creates ?? [], requires: spec.requires ?? [], models: spec.models ?? [], commands: spec.commands ?? (spec.slash?.length ? spec.slash.map((command) => command.usage ?? `/${command.name}`) : undefined),

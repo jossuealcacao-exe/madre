@@ -54,7 +54,7 @@ export default ({ defineModule }) => defineModule({
 
 ## Lo que un módulo puede declarar
 
-Esta tabla es **el contrato completo**: 40 campos, ni uno más. Cualquier otro que escribas MADRE
+Esta tabla es **el contrato completo**: 41 campos, ni uno más. Cualquier otro que escribas MADRE
 te lo dice al instalar («no entendí estos campos») en vez de ignorarlo en silencio. Una prueba de
 la suite compara esta tabla contra el código, así que si alguna vez se separan, es un fallo.
 
@@ -75,6 +75,7 @@ la suite compara esta tabla contra el código, así que si alguna vez se separan
 | `ready(ctx)` | Lo que pides antes de encender, en un proyecto o en todos (desde el Mercado también): `null` si está listo, `{ status, body: { error } }` si no. Apagar nunca lo pregunta |
 | `footer` | Hasta dos teclas junto a la versión de MADRE, abajo a la derecha, mientras tu módulo está encendido: `[{ icon: 'heart' \| 'star' \| 'link', label, text, action, url }]`. Los textos pueden ser una frase o `{ es, en }`; `url` tiene que ser https y se abre en otra pestaña. MADRE la dibuja: al pasar el ratón muestra `text` y un botón con `action` |
 | `credit` | De quién fue la idea, si no fue tuya: un nombre. MADRE lo dice en la ficha del módulo y en el Mercado («Idea de …») |
+| `icon` | El ícono de tu módulo: `{ svg, color }`. `svg` es el dibujo —sus formas (`<path d="…"/>`) o un `<svg>` entero, en la cuadrícula que quieras— y `color` el de su mosaico, `#rrggbb`. MADRE lo ajusta solo para que se vea como los suyos: lo centra y lo escala al mismo cuadro, lo pinta en blanco y de un solo color, usa el color de MADRE más parecido al tuyo y quita lo que no sea dibujo (scripts, imágenes, enlaces, estilos, degradados). Sin `icon`, tu módulo lleva la pieza de rompecabezas en gris. Hasta 8000 caracteres |
 | `slash` | Comandos `/nombre` que corren en el servidor con tu `ctx` y devuelven `{ ok, title, text, link }`. La sala los muestra como tarjeta y los agentes los leen. `link` es opcional: `{ href, label }` con una ruta tuya (`/api/x/<id>/…`), y la tarjeta la ofrece como botón que abre otra pestaña; una dirección fuera de tus rutas se ignora |
 | `toolsForTurn(ctx, turn)` | Servidores MCP para el turno de un agente: `[{ name, command, args, env, tools, sends, brief }]`. MADRE los adjunta a la CLI en su corrida aislada y describe `brief` al agente. `turn` trae el agente, el modo, el arriendo, la carpeta, el puerto y `turn.turn`: el id de la respuesta que ese turno escribirá. Si tu servidor llama de vuelta a la sala en nombre del turno, manda ese id; `ctx.room.runningTurn(id)` dice si sigue corriendo y para qué agente |
 | `toolsForTurn` → `sends` | Cuáles de tus herramientas **mandan algo fuera**. El núcleo las retira por debajo de `#4` AIRLOCK: ni se le cuenta al modelo que existen. Ver abajo |
@@ -305,7 +306,7 @@ Los textos llegan recortados a 600 caracteres. Es la base de un módulo que info
 
 ## Que lo construya tu IA, en la sala
 
-Escribe `/module <lo que debe hacer>` en el compositor. Es la entrada explícita al flujo guiado: si `#2 CREATE` no está activo, MADRE te pide elegirlo y conserva intacta tu petición. Con `#2` activo, mantiene el agente que elegiste y le entrega el contrato del SDK y el ejemplo. El agente debe escribir **un solo archivo** llamado `<id>.module.mjs` en su carpeta de borrador; no puede instalarlo por su cuenta.
+Escribe `/module <lo que debe hacer>` en el compositor. Es la entrada explícita al flujo guiado: si `#2 CREATE` no está activo, MADRE te pide elegirlo y conserva intacta tu petición. Con `#2` activo, mantiene el agente que elegiste y le entrega el contrato del SDK y el ejemplo. El agente debe escribir **un solo archivo** llamado `<id>.module.mjs` en su carpeta de borrador; no puede instalarlo por su cuenta. Ese archivo trae su `icon`: el agente lo dibuja junto con el resto del módulo y MADRE lo ajusta al mosaico.
 
 MADRE reconoce ese nombre y pone una tarjeta en la sala: `INSTALL FOR EVERY ROOM` o `INSTALL FOR THIS PROJECT`. Léelo, decide, un clic. MADRE lo valida en una copia, lo guarda como `<id>.mjs` en la carpeta que elegiste y aparece en MÓDULOS con la etiqueta «Tuyo». También puedes pedir lo mismo en lenguaje natural mientras estés en `#2` o más; `/module` hace explícito el formato y no concede permisos por sí solo.
 
