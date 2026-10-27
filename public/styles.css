@@ -4230,8 +4230,9 @@ dialog.custom-window::backdrop { display: none; }
 .arrange-options { display: grid; grid-template-columns: repeat(4, 66px); gap: 12px; }
 .arrange-option { display: grid; justify-items: center; gap: 6px; padding: 9px 4px 7px; border: 0; border-radius: 10px; background: transparent; color: var(--text-2); cursor: pointer; transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
 .arrange-option svg { width: 34px; height: 26px; }
-.arrange-option svg rect { fill: color-mix(in srgb, currentColor 22%, transparent); stroke: currentColor; stroke-width: 1.3; }
-.arrange-option svg rect.me { fill: currentColor; }
+.arrange-option svg rect { fill: color-mix(in srgb, currentColor 24%, transparent); stroke: none; }
+.arrange-option svg rect.frame { fill: none; stroke: currentColor; stroke-width: 1.2; opacity: .55; }
+.arrange-option svg rect.me { fill: var(--phosphor); }
 .arrange-option span { font-family: var(--read); font-size: 10.5px; letter-spacing: 0; white-space: nowrap; }
 .arrange-option:hover { background: color-mix(in srgb, var(--phosphor) 12%, transparent); color: var(--phosphor); }
 .arrange-option.spare { opacity: .6; }
@@ -11482,3 +11483,17 @@ html.chat-shell .reply-menu .reply-who span { font: 400 12px var(--read); color:
 html.chat-shell .reply-quote .drop:is(*, :hover, :focus-visible) { width: 22px; height: 22px; border: 0 !important; border-radius: 6px !important; background: none !important; box-shadow: none !important; color: var(--text-3) !important; }
 html.chat-shell .reply-quote .drop:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text) !important; }
 html.chat-shell .reply-quote .drop svg { width: 12px; height: 12px; }
+
+/* Arrange, in the menus' hand: a hairline card, its title as a sentence, the choices on the hover tone. */
+html.chat-shell .arrange-pop { gap: 8px; padding: 10px; border: 1px solid var(--cs-line); border-radius: 12px; background: var(--cs-canvas); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28) !important; }
+html.chat-shell .arrange-title { display: inline-block; padding: 0 6px; font: 600 12px var(--read); color: var(--text-2); text-transform: lowercase; }
+html.chat-shell .arrange-title::first-letter { text-transform: uppercase; }
+html.chat-shell .arrange-options { gap: 4px; }
+html.chat-shell .arrange-option { padding: 8px 4px 6px; border-radius: 8px; color: var(--text-2); }
+html.chat-shell .arrange-option:hover { background: var(--cs-hover); color: var(--text); }
+html.chat-shell .arrange-option span { font: 400 11.5px var(--read); }
+
+/* The box, taking the caret: its edge a touch lighter and the faintest sinking, nothing more. */
+html.chat-shell .shell > .composer { transition: box-shadow calc(160ms * var(--motion-scale, 1)) var(--ease-out); }
+html.chat-shell .shell > .composer:focus-within { box-shadow: 0 0 0 1px rgba(20, 30, 20, .1), inset 0 1px 2px rgba(20, 30, 20, .05) !important; }
+html.chat-shell[data-scheme="dark"] .shell > .composer:focus-within { box-shadow: 0 0 0 1px rgba(255, 255, 255, .09), inset 0 1px 2px rgba(0, 0, 0, .25) !important; }

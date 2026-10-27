@@ -1231,7 +1231,7 @@ export const ES = {
     'Diagnóstico › aquí no hay portapapeles; selecciona el texto y cópialo.',
   'REPLY TO @{agent}{seq} WITH': 'Responder a @{agent}{seq} con',
   'Reply to @{agent}{seq}': 'Responder a @{agent}{seq}',
-  'Who answers? Your message carries it quoted.': '¿Quién contesta? Tu mensaje la lleva citada.',
+  'Choose which agent answers you.': 'Elige qué agente te contesta.',
   'the same agent': 'el mismo agente',
   '{label} · not ready': '{label} · no está listo',
   'Answer without quoting this': 'Contestar sin citar esto',

@@ -5192,7 +5192,7 @@ function showReplyMenu(source, x, y) {
   // who answers it, each with its face; the answer goes quoted in the box.
   if (chatShellOn()) {
     const head = el('div', 'reply-head');
-    head.append(el('b', null, t('Reply to @{agent}{seq}', { agent: source.sender, seq })), el('span', null, t('Who answers? Your message carries it quoted.')));
+    head.append(el('b', null, t('Reply to @{agent}{seq}', { agent: source.sender, seq })), el('span', null, t('Choose which agent answers you.')));
     replyMenu.replaceChildren(head);
   } else replyMenu.replaceChildren(el('div', 'model-menu-title', t('REPLY TO @{agent}{seq} WITH', { agent: source.sender.toUpperCase(), seq })));
   for (const agent of state.agents.values()) {
@@ -10398,11 +10398,14 @@ if (!SPLIT_CHAT) {
 // the button still does what it always did.
 const ARRANGE_OWNER = '.tree, dialog, .conv-window, .browser-dock';
 const ARRANGE_GAP = 10;
+// Each arrangement drawn as the screen it leaves (2026-10-27): the screen's outline, the panes
+// inside it with a gap between them, and this window's pane in the accent (styles.css).
+const ARRANGE_FRAME = '<rect class="frame" x="1.5" y="2.5" width="25" height="17" rx="3.5"/>';
 const ARRANGEMENTS = [
-  { id: 'fill', slots: 1, word: () => t('Fill'), icon: '<rect x="2" y="3" width="24" height="16" rx="2.5" class="me"/>' },
-  { id: 'halves', slots: 2, word: () => t('Halves'), icon: '<rect x="2" y="3" width="11.5" height="16" rx="2.5" class="me"/><rect x="14.5" y="3" width="11.5" height="16" rx="2.5"/>' },
-  { id: 'three', slots: 3, word: () => t('One and two'), icon: '<rect x="2" y="3" width="13.5" height="16" rx="2.5" class="me"/><rect x="16.5" y="3" width="9.5" height="7.5" rx="2"/><rect x="16.5" y="11.5" width="9.5" height="7.5" rx="2"/>' },
-  { id: 'four', slots: 4, word: () => t('Four'), icon: '<rect x="2" y="3" width="11.5" height="7.5" rx="2" class="me"/><rect x="14.5" y="3" width="11.5" height="7.5" rx="2"/><rect x="2" y="11.5" width="11.5" height="7.5" rx="2"/><rect x="14.5" y="11.5" width="11.5" height="7.5" rx="2"/>' },
+  { id: 'fill', slots: 1, word: () => t('Fill'), icon: `${ARRANGE_FRAME}<rect class="me" x="4" y="5" width="20" height="12" rx="1.6"/>` },
+  { id: 'halves', slots: 2, word: () => t('Halves'), icon: `${ARRANGE_FRAME}<rect class="me" x="4" y="5" width="9.25" height="12" rx="1.6"/><rect x="14.75" y="5" width="9.25" height="12" rx="1.6"/>` },
+  { id: 'three', slots: 3, word: () => t('One and two'), icon: `${ARRANGE_FRAME}<rect class="me" x="4" y="5" width="10.5" height="12" rx="1.6"/><rect x="16" y="5" width="8" height="5.25" rx="1.4"/><rect x="16" y="11.75" width="8" height="5.25" rx="1.4"/>` },
+  { id: 'four', slots: 4, word: () => t('Four'), icon: `${ARRANGE_FRAME}<rect class="me" x="4" y="5" width="9.25" height="5.25" rx="1.4"/><rect x="14.75" y="5" width="9.25" height="5.25" rx="1.4"/><rect x="4" y="11.75" width="9.25" height="5.25" rx="1.4"/><rect x="14.75" y="11.75" width="9.25" height="5.25" rx="1.4"/>` },
 ];
 function arrangeArea() {
   const bar = document.querySelector('.bar')?.getBoundingClientRect();

@@ -774,7 +774,9 @@ test('chat shell: notices read open without hover, a failure in one face, the re
   assert.match(css, /html\.chat-shell #messages#messages \.sys-dots\.open > \.system\.folded:hover \{ background: transparent !important; \}/);
   assert.doesNotMatch(css, /\.fail-said \{[^}]*var\(--mono\)/);
   assert.match(css, /html\.chat-shell #messages#messages \.bubble-foot > \.bubble-actions \{ margin-right: 0 !important; \}/);
-  assert.match(app, /t\('Reply to @\{agent\}\{seq\}', \{ agent: source\.sender, seq \}\)\), el\('span', null, t\('Who answers\? Your message carries it quoted\.'\)\)/);
+  assert.match(app, /t\('Reply to @\{agent\}\{seq\}', \{ agent: source\.sender, seq \}\)\), el\('span', null, t\('Choose which agent answers you\.'\)\)/);
+  assert.match(app, /const ARRANGE_FRAME = '<rect class="frame"/);
+  assert.match(css, /html\.chat-shell \.shell > \.composer:focus-within \{ box-shadow: 0 0 0 1px rgba\(20, 30, 20, \.1\), inset 0 1px 2px rgba\(20, 30, 20, \.05\) !important; \}/);
   assert.match(app, /item\.append\(avatar\(agent\.id, \{ size: 22 \}\), body\);/);
   assert.match(css, /html\.chat-shell \.reply-quote \.drop:is\(\*, :hover, :focus-visible\) \{/);
 });
