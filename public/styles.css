@@ -11322,7 +11322,7 @@ html.chat-shell .composer #ash-toggle { padding: 0 9px; }
 
 /* The tools at the right stand apart from the conversation by a hairline over everything they
    hold; it takes no room and no presses, so the edge that sizes them still answers. */
-html.chat-shell :is(#viewer.split, #tree.split, #browser.browser-dock)::after { content: ''; position: absolute; z-index: 6; top: 0; bottom: 0; left: 0; width: 1px; background: color-mix(in srgb, var(--text) 11%, transparent); pointer-events: none; }
+html.chat-shell :is(#viewer.split, #tree.split, #browser.browser-dock, #split.split-dock)::after { content: ''; position: absolute; z-index: 6; top: 0; bottom: 0; left: 0; width: 1px; background: color-mix(in srgb, var(--text) 11%, transparent); pointer-events: none; }
 
 /* A new tab of Your servers opens on this project's servers: the menu's list as the tab's page,
    over the one frame while the tab has no address (public/app.js, browserStartShown). */
@@ -11359,3 +11359,35 @@ html.chat-shell #modules .custom-title { font: 600 14px var(--read); letter-spac
 html.chat-shell #modules .mods-head .sx-btn:is(*, :hover, :active, :focus-visible) { height: 30px; padding: 0 10px; gap: 6px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; font: 500 12.5px var(--read); letter-spacing: 0; color: var(--text-2); }
 html.chat-shell #modules .mods-head .sx-btn:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
 html.chat-shell #modules :is(.settings-seg button, .sx-btn) { font: 500 12.5px var(--read); letter-spacing: 0; }
+
+/* ---- Buttons in the windows, flat (2026-10-27): Settings, Modules, Diagnostics and the rest lose
+   their raised key. A hairline at rest, the hover tone under the pointer; the accent one stays
+   filled, without relief. ---- */
+html.chat-shell :is(.sx-btn, .settings-back, .module-guide-close, .mods-detail .module-card :is(.actions, .version, .card-panel) button, .sx-slot .mother-cmd .copy):not(.primary) {
+  background-color: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important;
+}
+html.chat-shell :is(.sx-btn, .settings-back, .module-guide-close, .mods-detail .module-card :is(.actions, .version, .card-panel) button, .sx-slot .mother-cmd .copy):not(.primary):is(:hover, :focus-visible):not(:disabled) {
+  background-color: var(--cs-hover) !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important;
+}
+html.chat-shell :is(.sx-btn, .settings-back, .module-guide-close, .mods-detail .module-card :is(.actions, .version, .card-panel) button, .sx-slot .mother-cmd .copy):not(.primary):active:not(:disabled) {
+  background-color: var(--cs-sel, var(--cs-hover)) !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important;
+}
+html.chat-shell :is(.sx-btn, .mods-detail .module-card button).primary, html.chat-shell :is(.sx-btn, .mods-detail .module-card button).primary:is(:hover, :active, :focus-visible) { box-shadow: none !important; }
+html.chat-shell .sx-btn.primary:hover:not(:disabled) { filter: brightness(1.06); }
+html.chat-shell .surface-gear:is(*, :hover, :active, :focus-visible, [aria-pressed="true"], [aria-expanded="true"]) { background-color: transparent !important; box-shadow: none !important; }
+html.chat-shell .surface-gear:is(:hover, :focus-visible, [aria-pressed="true"], [aria-expanded="true"]) { background-color: var(--cs-hover) !important; }
+/* The header's own words (Market, Add a module) stay words, without the hairline. */
+html.chat-shell #modules .mods-head .sx-btn:not(.primary):is(*, :hover, :active, :focus-visible) { box-shadow: none !important; }
+
+/* ---- The second conversation, beside the first as the tools are (2026-10-27): from the top of
+   the window, flush, no card; its head as the tools' tabs, its keys quiet. Its own page wears the
+   chat shell too (app.js, chatShell), so no picture from before shows behind it. ---- */
+@media (min-width: 901px) {
+  html.chat-shell:root:not(.via-phone) .shell.with-split > .split-dock { grid-row: 1 / -1; }
+}
+:root.chat-shell .shell > #split.split-dock { margin: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--cs-canvas) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+:root.chat-shell #split .split-head { height: 48px; min-height: 48px; padding: 0 8px 0 16px; gap: 2px; border: 0; background: var(--cs-tool) !important; box-shadow: inset 0 -1px 0 var(--cs-line) !important; }
+:root.chat-shell #split .split-title { font: 500 13px var(--read); letter-spacing: 0; text-transform: none; color: var(--text); }
+:root.chat-shell #split .split-action:is(*, :hover, :focus-visible) { width: 28px; height: 28px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; color: var(--text-3); }
+:root.chat-shell #split .split-action:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
+:root.chat-shell #split .split-frame { border: 0; border-radius: 0; background: var(--cs-canvas); }

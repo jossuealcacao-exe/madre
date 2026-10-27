@@ -9673,7 +9673,9 @@ function sideTop() {
 // THE CHAT SHELL (2026-10-26): the columns touch, divided by a hairline — the sidebar from the top of
 // the window to its foot, the tool at the right under its own strip of tabs (TOOL_HEAD). The class
 // is put on the page before its first frame (index.html) and taken back on a phone (chatShell).
-const chatShellOn = () => !SPLIT_CHAT && !state.device && Boolean(document.documentElement?.classList?.contains('chat-shell'));
+// The second conversation's half wears the chat shell too (2026-10-27): its thread, its box and
+// their menus; it builds none of the room's frame (chatShell), which it has no bar for.
+const chatShellOn = () => !state.device && Boolean(document.documentElement?.classList?.contains('chat-shell'));
 const TOOL_HEAD = 48;
 // What the shell draws of its own: the sidebar's parts, the title over the conversation, the tabs.
 const shellUI = { built: false, tabs: null, title: null, projects: null, foot: null };
@@ -16125,7 +16127,7 @@ function renderModules() {
     const plus = el('span', 'settings-icon');
     plus.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
     plus.style.setProperty('--cat', 'var(--phosphor)');
-    make.append(el('div', 'mods-top'), el('b', 'mods-name', t('Create your module')), el('span', 'mods-line', t('One file. Your agent can write it for you.')));
+    make.append(el('div', 'mods-top'), el('b', 'mods-name', t('Create your module')), el('span', 'mods-line', t('One file. Your agent writes it.')));
     make.firstChild.append(plus);
     make.addEventListener('click', () => openModuleGuide());
     make.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openModuleGuide(); } });
@@ -21770,7 +21772,8 @@ function shellRow(icon, label, run) {
 function chatShell() {
   const root = document.documentElement;
   if (!root?.classList?.contains('chat-shell')) return;
-  if (state.device || SPLIT_CHAT) { root.classList.remove('chat-shell'); return; }
+  if (state.device) { root.classList.remove('chat-shell'); return; }
+  if (SPLIT_CHAT) return;
   const side = els.chats;
   if (!side || shellUI.built) return;
   shellUI.built = true;

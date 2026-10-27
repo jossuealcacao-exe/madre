@@ -557,8 +557,9 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   const read = (name) => readFile(join(import.meta.dirname, '..', 'public', name), 'utf8');
   const [page, css, app] = await Promise.all([read('index.html'), read('styles.css'), read('app.js')]);
   // On the Mac from the first frame; never on a phone (the bridge's port) nor in the right half.
-  assert.match(page, /if \(location\.port !== '4316' && !\/\[\?&\]pane=split\\b\/\.test\(location\.search\)\) document\.documentElement\.classList\.add\('chat-shell'\);/);
-  assert.match(app, /if \(state\.device \|\| SPLIT_CHAT\) \{ root\.classList\.remove\('chat-shell'\); return; \}/);
+  // The right half of a split wears it too, and builds none of the frame (2026-10-27).
+  assert.match(page, /if \(location\.port !== '4316'\) document\.documentElement\.classList\.add\('chat-shell'\);/);
+  assert.match(app, /if \(state\.device\) \{ root\.classList\.remove\('chat-shell'\); return; \}\n  if \(SPLIT_CHAT\) return;/);
   // The sidebar is the conversations panel, always docked; it carries the projects and the way Home.
   assert.match(app, /if \(chatsSurface && modeOf\(chatsSurface\) !== 'split'\) \{ surfaceModes\.chats = 'split';/);
   assert.match(app, /scroll\.append\(chatsLabel, els\.chatsBody, el\('div', 'side-label', t\('Projects'\)\), shellUI\.projects\);/);
@@ -698,7 +699,7 @@ test('chat shell: thin scrollbars, a hairline before the tools, and a narrow box
   const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(css, /:where\(html\), :where\(html\) :where\(\*\) \{ scrollbar-width: thin;/);
-  assert.match(css, /:is\(#viewer\.split, #tree\.split, #browser\.browser-dock\)::after \{ content: ''; position: absolute;[^}]*pointer-events: none; \}/);
+  assert.match(css, /:is\(#viewer\.split, #tree\.split, #browser\.browser-dock, #split\.split-dock\)::after \{ content: ''; position: absolute;[^}]*pointer-events: none; \}/);
   assert.match(app, /const cut = \[\.\.\.box\.querySelectorAll\('\.pick-label > :is\(\.mode-chip, \.model-chip, \.effort-chip\) > \.word'\)\]\.some/);
   assert.match(css, /html\.chat-shell \.composer\.tight #pick-options \.model-chip > \.nick \{ display: inline; white-space: nowrap; \}/);
   // The nickname: the family's word, or the last word that is not a maker, a version or a date.
@@ -729,4 +730,20 @@ test('chat shell: the servers page says Refresh in words, the panel stands flush
   assert.match(css, /:root\.chat-shell \.shell > #browser\.browser-dock:not\(\.window\) \{ margin: 0 !important;/);
   assert.match(css, /html\.chat-shell #modules \.mods-tile:not\(\.make\):hover \{ box-shadow: 0 0 0 1\.5px color-mix\(in srgb, var\(--text\) 20%, transparent\) !important; transform: none !important; \}/);
   assert.match(css, /html\.chat-shell #modules \.mods-line \{ display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;/);
+});
+
+test('chat shell: module lines fit one line, the windows\' buttons are flat, and the second conversation stands as the tools do', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const market = await readFile(new URL('../public/market.js', import.meta.url), 'utf8');
+  // Measured in Spanish, the longer of the two: one line of a card is about forty characters.
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  for (const line of [...market.matchAll(/line: '((?:[^'\\]|\\.)*)'/g)].map((match) => match[1].replace(/\\'/g, "'"))) {
+    const said = es.match(new RegExp(`^  '${line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, "\\\\'")}': '((?:[^'\\\\]|\\\\.)*)',$`, 'm'))?.[1] ?? line;
+    assert.ok(said.length <= 40, `«${said}» is longer than one line`);
+  }
+  assert.match(css, /html\.chat-shell :is\(\.sx-btn, \.settings-back, [^{]*\):not\(\.primary\) \{\n  background-color: transparent !important; box-shadow: inset 0 0 0 1px var\(--cs-line\) !important;/);
+  assert.match(app, /const chatShellOn = \(\) => !state\.device && Boolean/);
+  assert.match(css, /html\.chat-shell:root:not\(\.via-phone\) \.shell\.with-split > \.split-dock \{ grid-row: 1 \/ -1; \}/);
+  assert.match(css, /:root\.chat-shell \.shell > #split\.split-dock \{ margin: 0 !important;/);
 });
