@@ -10994,9 +10994,10 @@ html.chat-shell .shell > .composer.ash-wink .editor textarea { animation: ash-ty
 
 /* Diagnostics says it has something with a small dot on the drawing's corner, breathing, not a number. */
 :root.chat-shell .shell > .bar #mother-count:not([hidden]) {
-  top: 7px; right: 6px; width: 7px; min-width: 7px; height: 7px; padding: 0; border-radius: 50%;
+  /* Small and above the drawing's corner, clear of the line it draws (2026-10-27). */
+  top: 4px; right: 4px; width: 5px; min-width: 5px; height: 5px; padding: 0; border-radius: 50%;
   font-size: 0 !important; color: transparent; background: var(--phosphor);
-  box-shadow: 0 0 0 2px var(--cs-canvas) !important;
+  box-shadow: 0 0 0 1.5px var(--cs-canvas) !important;
   animation: diag-dot calc(2400ms * var(--motion-scale, 1)) ease-in-out infinite;
 }
 @keyframes diag-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
