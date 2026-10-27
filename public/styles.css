@@ -11054,24 +11054,13 @@ html.chat-shell .agent-pop .pop-go {
 }
 html.chat-shell .agent-pop .pop-go:is(:hover, :focus-visible) { color: var(--text); background: none !important; }
 
-/* Each menu as wide as its words (2026-10-27): every row's line under its name reads whole; one too
-   long for the widest the menu may be goes on to a second line, never cut. */
+/* Each menu as wide as its words (2026-10-27), and every line under a name one line: they are
+   written short (MODE_BRIEF, EFFORT_WORDS.brief), and the whole of each is in its tooltip. */
 html.chat-shell .model-menu.mode-menu,
-html.chat-shell .model-menu.effort-menu.effort-listed { width: max-content; min-width: 280px; max-width: min(560px, calc(100vw - 24px)); }
-html.chat-shell .model-menu:not(.mode-menu):not(.effort-menu) { width: max-content; min-width: 280px; max-width: min(440px, calc(100vw - 24px)); }
+html.chat-shell .model-menu.effort-menu.effort-listed { width: max-content; min-width: 280px; max-width: min(420px, calc(100vw - 24px)); }
+html.chat-shell .model-menu:not(.mode-menu):not(.effort-menu) { width: max-content; min-width: 280px; max-width: min(420px, calc(100vw - 24px)); }
 html.chat-shell .model-menu.mode-menu .mode-option .hint,
-html.chat-shell .effort-option .hint { display: block; white-space: normal; overflow: visible; text-overflow: clip; -webkit-line-clamp: unset; line-clamp: none; }
-html.chat-shell .model-menu .model-option .model-name { overflow: visible; text-overflow: clip; }
+html.chat-shell .effort-option .hint { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset; line-clamp: none; }
 html.chat-shell .model-menu .model-note { max-width: 46ch; }
-/* The selector that opened one widens to it, the label at its left and the chevron at its right,
-   turned up while the menu is open. */
-html.chat-shell .composer .pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip) {
-  transition: min-width calc(180ms * var(--motion-scale, 1)) var(--ease-out, ease-out), background-color calc(160ms * var(--motion-scale, 1)) ease;
-}
-html.chat-shell .composer .pick-options .pick-label > .widened:not(.mode-chip) { background: var(--cs-hover); }
-html.chat-shell .composer .pick-options .pick-label > .widened .chev-icon { margin-left: auto; }
-html.chat-shell .composer .pick-options .pick-label > .widened .chev-icon svg { transform: rotate(180deg); }
-html.chat-shell .composer .pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip) .chev-icon svg { transition: transform calc(180ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-@media (prefers-reduced-motion: reduce) { html.chat-shell .composer .pick-options .pick-label > * { transition: none !important; } }
 html.chat-shell .model-menu :is(.mode-option, .effort-option) .name .model-default { display: inline-block; margin-left: 7px; vertical-align: 1px; }
 html.chat-shell .model-menu.mode-menu .mode-option, html.chat-shell .effort-option { grid-template-columns: 22px minmax(0, 1fr) auto; }

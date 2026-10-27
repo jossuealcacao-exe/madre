@@ -225,6 +225,15 @@ const MODES = {
   3: { key: 'control', label: t('EDIT'), hint: t('Edit the project itself, no approval per action, and plan with other agents. Unlock required.') },
   4: { key: 'airlock', label: t('FULL ACCESS'), hint: t('Run commands, push, deploy, and plan with other agents. What leaves your computer cannot be undone. Confirm twice.') },
 };
+// What each mode lets, in one short line: the chat shell's list says it under the name (2026-10-27).
+// The long hints above stay for the tooltips and the old layout.
+const MODE_BRIEF = {
+  0: t('Nothing is saved.'),
+  1: t('Reads and talks; writes nothing.'),
+  2: t('Adds new files; changes none.'),
+  3: t('Edits the project without asking.'),
+  4: t('Runs commands, pushes and deploys.'),
+};
 
 // A sign-in in flight. Claude's CLI opens a page and then waits to be told the code that page
 // gives back: with nowhere to type it, the sign-in could only die of its own timeout, which is
@@ -3353,10 +3362,6 @@ function renderPicker() {
   updateCrewLabel();
   renderCreateScopes();
   renderHighlight();
-  if (chipOpen && !chipOpen.menu.hidden) {
-    const chip = (els.pickOptions ?? els.picker)?.querySelector(`.${chipOpen.kind}-chip`);
-    if (chip) fitChip(chip, chipOpen.menu);
-  }
   // Another agent, model or rung changes what Intenciones would say; asking again is cheap and
   // answers nothing new when nothing changed.
   scheduleIntentOffer();
@@ -3368,35 +3373,6 @@ const modelMenu = el('div', 'model-menu');
 // The composer's menus mark what is in use with a check, and the model's searches behind a magnifier.
 const MENU_CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.2L15.2 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const MENU_SEARCH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-// The chip that opened a menu widens to the menu's width, and the menu stands on it with the same
-// left edge, as the selector of Codex's app does (2026-10-27). Back to its size when the menu
-// closes. Kept by kind, so a chip drawn again while the menu is open (renderPicker) widens too.
-let chipOpen = null; // { kind: 'mode' | 'model' | 'effort', menu }
-function widenChip(chip, menu, kind) {
-  narrowChip();
-  if (!chatShellOn() || !chip?.isConnected || menu.hidden) return;
-  chipOpen = { kind, menu };
-  fitChip(chip, menu);
-}
-function fitChip(chip, menu) {
-  const row = chip.closest('.pick-options')?.getBoundingClientRect();
-  const left = chip.getBoundingClientRect().left;
-  const room = Math.floor(row ? row.right - left : Infinity);
-  // Where the row has less room than the menu wants, the menu takes the chip's width and its lines
-  // wrap: the two always share their edges. Placed again from below, as it may have grown.
-  if (menu.offsetWidth > room) menu.style.width = `${room}px`;
-  chip.classList.add('widened');
-  chip.style.minWidth = `${menu.offsetWidth}px`;
-  const box = chip.getBoundingClientRect();
-  menu.style.left = `${Math.max(12, Math.min(window.innerWidth - menu.offsetWidth - 12, box.left))}px`;
-  menu.style.top = `${Math.max(12, box.top - menu.offsetHeight - 10)}px`;
-}
-function narrowChip() {
-  if (!chipOpen) return;
-  for (const chip of document.querySelectorAll('.pick-label > .widened')) { chip.classList.remove('widened'); chip.style.minWidth = ''; }
-  chipOpen.menu.style.width = '';
-  chipOpen = null;
-}
 function menuCheck() {
   const mark = el('span', 'menu-check');
   mark.innerHTML = MENU_CHECK; // trusted: our own SVG string
@@ -3533,7 +3509,6 @@ async function toggleModelMenu(id, anchor) {
     modelMenu.append(manage);
   } else if (info.note) modelMenu.append(el('div', 'model-note', t(info.note)));
   placeModelMenu(anchor);
-  widenChip(anchor, modelMenu, 'model');
 }
 function placeModelMenu(anchor) {
   const rect = anchor.getBoundingClientRect();
@@ -3542,7 +3517,7 @@ function placeModelMenu(anchor) {
   modelMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   modelMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
 }
-function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; closeEffortMenu(); if (chipOpen?.kind === 'model') narrowChip(); }
+function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; closeEffortMenu(); }
 document.addEventListener('click', (event) => { if (!modelMenu.hidden && !modelMenu.contains(event.target) && !event.target.closest('.picker')) closeModelMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModelMenu(); });
 
@@ -3556,14 +3531,14 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 // dimmed when MADRE can read it (Codex's config.toml), so the human sees what they will get
 // without having chosen it.
 const EFFORT_WORDS = {
-  none: { label: 'None', hint: 'No reasoning: it answers straight away. For the simplest requests.' },
-  minimal: { label: 'Minimal', hint: 'Answers almost at once. For lookups and one-line edits.' },
-  low: { label: 'Low', hint: 'Quick and light. For clear, contained requests.' },
-  medium: { label: 'Medium', hint: 'The everyday balance of speed and depth.' },
-  high: { label: 'High', hint: 'Thinks it through. For design calls and tricky bugs.' },
-  xhigh: { label: 'Extra high', hint: 'Longer reasoning for hard, multi-step problems.' },
-  max: { label: 'Max', hint: 'Everything it has. The slowest and the most expensive.' },
-  ultra: { label: 'Ultra', hint: 'Its deepest reasoning, and it hands parts of the task out on its own.' },
+  none: { label: 'None', hint: 'No reasoning: it answers straight away. For the simplest requests.', brief: 'Answers at once.' },
+  minimal: { label: 'Minimal', hint: 'Answers almost at once. For lookups and one-line edits.', brief: 'For lookups and one-line edits.' },
+  low: { label: 'Low', hint: 'Quick and light. For clear, contained requests.', brief: 'Quick, for clear requests.' },
+  medium: { label: 'Medium', hint: 'The everyday balance of speed and depth.', brief: 'Balances speed and depth.' },
+  high: { label: 'High', hint: 'Thinks it through. For design calls and tricky bugs.', brief: 'For design and tricky bugs.' },
+  xhigh: { label: 'Extra high', hint: 'Longer reasoning for hard, multi-step problems.', brief: 'For long, hard problems.' },
+  max: { label: 'Max', hint: 'Everything it has. The slowest and the most expensive.', brief: 'All it has; slowest and costliest.' },
+  ultra: { label: 'Ultra', hint: 'Its deepest reasoning, and it hands parts of the task out on its own.', brief: 'Deepest; splits the task itself.' },
 };
 const effortMenu = el('div', 'model-menu effort-menu');
 effortMenu.hidden = true;
@@ -3656,7 +3631,6 @@ function effortScore(levels, level) {
 function toggleEffortMenu(id, anchor) {
   if (!effortMenu.hidden && effortMenuFor === id) { closeEffortMenu(); return; }
   modelMenu.hidden = true; modelMenuFor = null;
-  if (chipOpen?.kind === 'model') narrowChip();
   closeModeMenu();
   const info = effortInfo(id);
   if (!info?.levels.length) return;
@@ -3833,14 +3807,15 @@ function effortList(id, info, anchor) {
     const button = el('button', `effort-option${current ? ' current' : ''}`);
     button.type = 'button';
     const body = el('span', 'body');
-    const hint = level ? t(EFFORT_WORDS[level]?.hint ?? '') : info.default ? `${t('the CLI decides')} · ${effortLabel(info.default)}` : t('the CLI decides');
+    const hint = level ? t(EFFORT_WORDS[level]?.brief ?? EFFORT_WORDS[level]?.hint ?? '') : info.default ? `${t('the CLI decides')} · ${effortLabel(info.default)}` : t('the CLI decides');
     const label = el('span', 'name', level ? effortLabel(level) : t('Automatic'));
     // The badge beside the name, not a column of its own: the line under it keeps the width.
     if (level && level === info.default) label.append(el('span', 'model-default', t('default')));
     body.append(label, el('span', 'hint', hint));
     button.append(effortMeter(info.levels, level ?? info.default, { ghost: !level }), body);
     if (current) button.append(menuCheck());
-    button.title = hint;
+    // The whole description stays a pointer away.
+    button.title = level ? t(EFFORT_WORDS[level]?.hint ?? '') : hint;
     button.addEventListener('click', () => { rememberEffort(id, level); renderPicker(); closeEffortMenu(); focusComposer(); });
     return button;
   };
@@ -3852,9 +3827,8 @@ function effortList(id, info, anchor) {
   const height = effortMenu.offsetHeight || 300;
   effortMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   effortMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
-  widenChip(anchor, effortMenu, 'effort');
 }
-function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; effortMenu.classList.remove('effort-listed'); if (chipOpen?.kind === 'effort') narrowChip(); }
+function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; effortMenu.classList.remove('effort-listed'); }
 // Placed against its chip when it opened; a window that changes size leaves it pointing nowhere.
 window.addEventListener?.('resize', () => { if (!effortMenu.hidden) closeEffortMenu(); });
 document.addEventListener('click', (event) => { if (!effortMenu.hidden && !effortMenu.contains(event.target) && !event.target.closest('.picker')) closeEffortMenu(); });
@@ -3865,7 +3839,7 @@ const modeMenu = el('div', 'model-menu mode-menu');
 modeMenu.hidden = true;
 document.body.append(modeMenu);
 let modeMenuFor = null;
-function closeModeMenu() { modeMenu.hidden = true; modeMenuFor = null; if (chipOpen?.kind === 'mode') narrowChip(); }
+function closeModeMenu() { modeMenu.hidden = true; modeMenuFor = null; }
 document.addEventListener('click', (event) => { if (!modeMenu.hidden && !modeMenu.contains(event.target) && !event.target.closest('.picker')) closeModeMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModeMenu(); });
 
@@ -4003,7 +3977,7 @@ function toggleModeMenu(id, anchor) {
     option.type = 'button';
     option.disabled = locked && !raise;
     const body = el('span', 'body');
-    body.append(el('span', 'name', sentence(MODES[n].label)), el('span', 'hint', MODES[n].hint));
+    body.append(el('span', 'name', sentence(MODES[n].label)), el('span', 'hint', chatShellOn() ? MODE_BRIEF[n] : MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
     if (onTheMac) option.title = t('#3 EDIT and #4 FULL ACCESS are opened from the Mac.');
     // In the chat shell the list is quieter (2026-10-26): the mode in use wears a check, and #3 and
@@ -4041,7 +4015,6 @@ function toggleModeMenu(id, anchor) {
   const height = modeMenu.offsetHeight || 260;
   modeMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   modeMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
-  widenChip(anchor, modeMenu, 'mode');
 }
 
 // One place changes the mode: chip, classes, label, placeholder and the old CREATE state.

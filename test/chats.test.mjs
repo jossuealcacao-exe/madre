@@ -612,10 +612,12 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.match(page, /<svg class="send-return"/);
   assert.match(app, /      if \(state\.mode === n\) option\.append\(menuCheck\(\)\);/);
   assert.match(app, /else if \(n === defaultModeFor\(id\)\) option\.querySelector\('\.name'\)\?\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
-  // 2026-10-27: the chip that opens a menu widens to it, edge to edge, as Codex's selector does.
-  assert.match(app, /widenChip\(anchor, modeMenu, 'mode'\);/);
-  assert.match(app, /widenChip\(anchor, modelMenu, 'model'\);/);
-  assert.match(app, /widenChip\(anchor, effortMenu, 'effort'\);/);
+  // 2026-10-27: no widening chip (it broke narrow windows); every line under a name is one short
+  // line, the whole description in the tooltip.
+  assert.doesNotMatch(app, /widenChip/);
+  assert.match(app, /el\('span', 'hint', chatShellOn\(\) \? MODE_BRIEF\[n\] : MODES\[n\]\.hint\)/);
+  assert.match(app, /t\(EFFORT_WORDS\[level\]\?\.brief \?\? EFFORT_WORDS\[level\]\?\.hint \?\? ''\)/);
+  assert.match(css, /\.effort-option \.hint \{ display: block; white-space: nowrap;/);
   assert.match(app, /if \(isDefault && label !== t\('default'\)\) button\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
   assert.match(app, /find\.innerHTML = MENU_SEARCH;/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
