@@ -758,9 +758,14 @@ test('chat shell: flat delegated cards, failures fold into a red dot, one sideba
   assert.match(app, /key\.innerHTML = chatShellOn\(\) \? SIDEBAR_ICON : SPLIT_LEFT_ICON;/);
   assert.match(css, /html\.chat-shell \.shell > \.composer \{ width: var\(--wide-column\); margin-left: var\(--wide-left\); \}/);
   assert.match(app, /const copy = el\('a', 'side-copy', `© \$\{YEAR\} \$\{AUTHOR\}`\);/);
-  // Under the box only the author, shown while the sidebar (which says it) is closed: never off screen.
-  assert.match(app, /if \(credit\) \{ credit\.replaceChildren\(`© \$\{YEAR\} \$\{AUTHOR\}`\);/);
-  assert.match(css, /html\.chat-shell \.shell:has\(> #chats:not\(\[hidden\]\)\) > \.colophon > \.colophon-link \{ display: none; \}/);
+  // The author only in the sidebar, under «MADRE 1.0.5» as one name; under the box only module keys.
+  assert.match(app, /who\.append\(el\('b', null, initial\.version \? `MADRE \$\{initial\.version\}` : 'MADRE'\)\);/);
+  assert.match(css, /html\.chat-shell \.shell > \.colophon > \.colophon-link \{ display: none; \}/);
+  assert.match(css, /html\.chat-shell\.split-pane \.shell > \.composer \{ margin-bottom: 14px; \}/);
+  // The bar's and the sidebar's bare ground are desktop too; carried or set aside, a window stays itself.
+  assert.match(app, /if \(chromePress\(target\)\) return Boolean\(globalThis\.getSelection\?\.\(\)\?\.isCollapsed\) && floatingWindows\(\)\.length > 0;/);
+  assert.match(css, /html\.chat-shell :is\(\.tree\.window, dialog\.surface\.window, \.conv-window, \.browser-dock\.window\)\.aside \{ opacity: 1; \}/);
+  assert.match(css, /html\.chat-shell dialog\.surface\.window:is\(\.settings-window, \.module-window\)\.lifted \{\n  background-color: var\(--cs-canvas\) !important;/);
   assert.match(css, /html\.chat-shell \.shell > \.composer \{ margin-bottom: 14px; \}/);
   // A row of dots is the size of a lone dot; open, a failure says what MADRE knows before the raw output.
   assert.match(css, /html\.chat-shell #messages#messages \.sys-dots:not\(\.open\):not\(\.single\) \{\n  height: 12px;/);

@@ -11417,10 +11417,10 @@ html.chat-shell .shell > .composer { width: var(--wide-column); margin-left: var
 /* The foot of the conversation is gone: the author's line lives in the sidebar, under the version. */
 html.chat-shell .side-who .side-copy { display: block; margin-top: 1px; font: 400 11.5px var(--read); color: var(--text-3); text-decoration: none; white-space: nowrap; }
 html.chat-shell .side-who .side-copy:hover { color: var(--text); text-decoration: underline; }
-/* Under the box, only the author, and only while the sidebar (which says it) is closed; the keys a
-   module puts there stay either way. A little air under the box when nothing is under it. */
-html.chat-shell .shell:has(> #chats:not([hidden])) > .colophon > .colophon-link { display: none; }
-html.chat-shell .shell:has(> #chats:not([hidden])) > .colophon:not(:has(> :not(.colophon-link))) { display: none; }
+/* The author is said in the sidebar, under «MADRE 1.0.5» (2026-10-27): under the box stay only
+   the keys a module puts there, when there are any. A little air under the box. */
+html.chat-shell .shell > .colophon > .colophon-link { display: none; }
+html.chat-shell .shell > .colophon:not(:has(> :not(.colophon-link))) { display: none; }
 html.chat-shell .shell > .composer { margin-bottom: 14px; }
 html.chat-shell .shell > .colophon { margin-top: -6px; padding-bottom: 8px; }
 html.chat-shell .shell > .colophon .colophon-link { font: 400 11.5px var(--read); color: var(--text-3); }
@@ -11497,3 +11497,20 @@ html.chat-shell .arrange-option span { font: 400 11.5px var(--read); }
 html.chat-shell .shell > .composer { transition: box-shadow calc(160ms * var(--motion-scale, 1)) var(--ease-out); }
 html.chat-shell .shell > .composer:focus-within { box-shadow: 0 0 0 1px rgba(20, 30, 20, .1), inset 0 1px 2px rgba(20, 30, 20, .05) !important; }
 html.chat-shell[data-scheme="dark"] .shell > .composer:focus-within { box-shadow: 0 0 0 1px rgba(255, 255, 255, .09), inset 0 1px 2px rgba(0, 0, 0, .25) !important; }
+
+/* The sidebar's foot: «MADRE 1.0.5» as one name, the author under it. */
+html.chat-shell .side-who > b { font: 600 12.5px var(--read); color: var(--text); white-space: nowrap; }
+
+/* Two conversations side by side: both boxes stand the same height from the bottom. */
+html.chat-shell.split-pane .shell > .composer { margin-bottom: 14px; }
+
+/* ---- Windows (2026-10-27): carried, a window keeps its colour and its edge; set aside at the
+   edges, it stays solid, never see-through. ---- */
+html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).lifted,
+html.chat-shell dialog.surface.window:is(.settings-window, .module-window).lifted {
+  background-color: var(--cs-canvas) !important; background-image: none !important;
+  box-shadow: 0 0 0 1px var(--cs-line), 0 24px 60px -18px rgba(20, 30, 20, .32), 0 6px 18px -8px rgba(20, 30, 20, .14) !important;
+}
+html.chat-shell[data-scheme="dark"] :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).lifted { box-shadow: 0 0 0 1px var(--cs-line), 0 24px 60px -18px rgba(0, 0, 0, .7) !important; }
+html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).aside { opacity: 1; }
+html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).aside:hover { opacity: 1; }

@@ -10336,8 +10336,17 @@ const DESK_ACTIVE = 'button, a, input, textarea, select, label, summary, [role="
 // Never the desktop, though nothing there is a button: the room's bars and what stands on them
 // (an agent's sphere is a span that opens its card), any agent's mark, and the rows around the box.
 const NOT_DESK = '.bar, .bar-home, #bar, header, nav, .avatar, .picker, .openq, .settled, .crew-orb, .agent-pop';
+// In the chat shell the frame around the conversation is desktop too (2026-10-27): a press on the
+// bar's or the sidebar's bare ground (not on a key, a row or an agent) shows the desktop as a
+// press on the conversation's ground does.
+const SHELL_CHROME = '#bar, #chats, .tool-tabs';
+const NOT_CHROME_DESK = '#agents, .agents, .avatar, .crew-orb, .agent-pop, .picker, .side-row, .side-project, .chat-row, .chats-body li';
+function chromePress(target) {
+  return chatShellOn() && Boolean(target?.closest?.(SHELL_CHROME)) && !target.closest(DESK_ACTIVE) && !target.closest(NOT_CHROME_DESK) && !target.closest(WINDOW_SELECTOR);
+}
 function deskPress(event) {
   const target = event.target;
+  if (chromePress(target)) return Boolean(globalThis.getSelection?.()?.isCollapsed) && floatingWindows().length > 0;
   // Inside a dialog — MODULES, MU/TH/UR, a guide — a press is that dialog's, never the desktop's.
   // What is docked beside the conversation is work, not desktop: a press there sets aside what
   // covers it and never brings the windows back.
@@ -10350,7 +10359,7 @@ if (!SPLIT_CHAT) {
   // The same «this, now» in what is docked beside the conversation: a press in Code, the files or
   // the browser sends aside the windows lying over it, and only those.
   document.addEventListener?.('pointerdown', (event) => {
-    const area = event.button === 0 && !event.target?.closest?.(WINDOW_SELECTOR) && event.target?.closest?.(DOCKED);
+    const area = event.button === 0 && !event.target?.closest?.(WINDOW_SELECTOR) && !chromePress(event.target) && !(chatShellOn() && event.target?.closest?.('#chats')) && event.target?.closest?.(DOCKED);
     if (area) setWindowsAside(true, { over: [area] });
   });
   // And starting to write, whichever way the keyboard got there (Tab, a shortcut, after sending):
@@ -21819,17 +21828,14 @@ function chatShell() {
 
   shellUI.foot = el('div', 'side-foot');
   const who = el('div', 'side-who');
-  who.append(el('b', null, 'MADRE'), el('small', null, initial.version ? t('Version {version}', { version: initial.version }) : ''));
-  // The author's line under the version (2026-10-27). The version is said here, so the foot of the
-  // conversation keeps only the author: it shows there while the sidebar is closed, and the line is
-  // never off the screen (ADDITIONAL-TERMS.md, term 1; styles.css hides one or the other).
+  // MADRE and its version as one name, the author under it (2026-10-27): the chat shell says them
+  // here and only here; the foot of the conversation keeps only what modules put there (styles.css).
+  who.append(el('b', null, initial.version ? `MADRE ${initial.version}` : 'MADRE'));
   const copy = el('a', 'side-copy', `© ${YEAR} ${AUTHOR}`);
   copy.href = AUTHOR_URL;
   copy.target = '_blank';
   copy.rel = 'noopener';
   who.append(copy);
-  const credit = document.querySelector('#colophon > .colophon-link');
-  if (credit) { credit.replaceChildren(`© ${YEAR} ${AUTHOR}`); credit.title = `MADRE ${initial.version ?? ''}`.trim(); }
   shellUI.foot.append(who,
     shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
     shellKey(document.querySelector('#power-button')?.innerHTML ?? '', t('Turn MADRE off'), () => document.querySelector('#power-button')?.click()));
