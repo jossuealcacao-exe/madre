@@ -611,7 +611,11 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.doesNotMatch(css, /html\.chat-shell \.composer \.attach \.attach-plus/);
   assert.match(page, /<svg class="send-return"/);
   assert.match(app, /      if \(state\.mode === n\) option\.append\(menuCheck\(\)\);/);
-  assert.match(app, /else if \(n === defaultModeFor\(id\)\) option\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
+  assert.match(app, /else if \(n === defaultModeFor\(id\)\) option\.querySelector\('\.name'\)\?\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
+  // 2026-10-27: the chip that opens a menu widens to it, edge to edge, as Codex's selector does.
+  assert.match(app, /widenChip\(anchor, modeMenu, 'mode'\);/);
+  assert.match(app, /widenChip\(anchor, modelMenu, 'model'\);/);
+  assert.match(app, /widenChip\(anchor, effortMenu, 'effort'\);/);
   assert.match(app, /if \(isDefault && label !== t\('default'\)\) button\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
   assert.match(app, /find\.innerHTML = MENU_SEARCH;/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);

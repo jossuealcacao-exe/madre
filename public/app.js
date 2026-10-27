@@ -3353,6 +3353,10 @@ function renderPicker() {
   updateCrewLabel();
   renderCreateScopes();
   renderHighlight();
+  if (chipOpen && !chipOpen.menu.hidden) {
+    const chip = (els.pickOptions ?? els.picker)?.querySelector(`.${chipOpen.kind}-chip`);
+    if (chip) fitChip(chip, chipOpen.menu);
+  }
   // Another agent, model or rung changes what Intenciones would say; asking again is cheap and
   // answers nothing new when nothing changed.
   scheduleIntentOffer();
@@ -3364,6 +3368,35 @@ const modelMenu = el('div', 'model-menu');
 // The composer's menus mark what is in use with a check, and the model's searches behind a magnifier.
 const MENU_CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.2L15.2 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const MENU_SEARCH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+// The chip that opened a menu widens to the menu's width, and the menu stands on it with the same
+// left edge, as the selector of Codex's app does (2026-10-27). Back to its size when the menu
+// closes. Kept by kind, so a chip drawn again while the menu is open (renderPicker) widens too.
+let chipOpen = null; // { kind: 'mode' | 'model' | 'effort', menu }
+function widenChip(chip, menu, kind) {
+  narrowChip();
+  if (!chatShellOn() || !chip?.isConnected || menu.hidden) return;
+  chipOpen = { kind, menu };
+  fitChip(chip, menu);
+}
+function fitChip(chip, menu) {
+  const row = chip.closest('.pick-options')?.getBoundingClientRect();
+  const left = chip.getBoundingClientRect().left;
+  const room = Math.floor(row ? row.right - left : Infinity);
+  // Where the row has less room than the menu wants, the menu takes the chip's width and its lines
+  // wrap: the two always share their edges. Placed again from below, as it may have grown.
+  if (menu.offsetWidth > room) menu.style.width = `${room}px`;
+  chip.classList.add('widened');
+  chip.style.minWidth = `${menu.offsetWidth}px`;
+  const box = chip.getBoundingClientRect();
+  menu.style.left = `${Math.max(12, Math.min(window.innerWidth - menu.offsetWidth - 12, box.left))}px`;
+  menu.style.top = `${Math.max(12, box.top - menu.offsetHeight - 10)}px`;
+}
+function narrowChip() {
+  if (!chipOpen) return;
+  for (const chip of document.querySelectorAll('.pick-label > .widened')) { chip.classList.remove('widened'); chip.style.minWidth = ''; }
+  chipOpen.menu.style.width = '';
+  chipOpen = null;
+}
 function menuCheck() {
   const mark = el('span', 'menu-check');
   mark.innerHTML = MENU_CHECK; // trusted: our own SVG string
@@ -3500,6 +3533,7 @@ async function toggleModelMenu(id, anchor) {
     modelMenu.append(manage);
   } else if (info.note) modelMenu.append(el('div', 'model-note', t(info.note)));
   placeModelMenu(anchor);
+  widenChip(anchor, modelMenu, 'model');
 }
 function placeModelMenu(anchor) {
   const rect = anchor.getBoundingClientRect();
@@ -3508,7 +3542,7 @@ function placeModelMenu(anchor) {
   modelMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   modelMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
 }
-function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; closeEffortMenu(); }
+function closeModelMenu() { modelMenu.hidden = true; modelMenuFor = null; closeEffortMenu(); if (chipOpen?.kind === 'model') narrowChip(); }
 document.addEventListener('click', (event) => { if (!modelMenu.hidden && !modelMenu.contains(event.target) && !event.target.closest('.picker')) closeModelMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModelMenu(); });
 
@@ -3622,6 +3656,7 @@ function effortScore(levels, level) {
 function toggleEffortMenu(id, anchor) {
   if (!effortMenu.hidden && effortMenuFor === id) { closeEffortMenu(); return; }
   modelMenu.hidden = true; modelMenuFor = null;
+  if (chipOpen?.kind === 'model') narrowChip();
   closeModeMenu();
   const info = effortInfo(id);
   if (!info?.levels.length) return;
@@ -3799,9 +3834,11 @@ function effortList(id, info, anchor) {
     button.type = 'button';
     const body = el('span', 'body');
     const hint = level ? t(EFFORT_WORDS[level]?.hint ?? '') : info.default ? `${t('the CLI decides')} · ${effortLabel(info.default)}` : t('the CLI decides');
-    body.append(el('span', 'name', level ? effortLabel(level) : t('Automatic')), el('span', 'hint', hint));
+    const label = el('span', 'name', level ? effortLabel(level) : t('Automatic'));
+    // The badge beside the name, not a column of its own: the line under it keeps the width.
+    if (level && level === info.default) label.append(el('span', 'model-default', t('default')));
+    body.append(label, el('span', 'hint', hint));
     button.append(effortMeter(info.levels, level ?? info.default, { ghost: !level }), body);
-    if (level && level === info.default) button.append(el('span', 'model-default', t('default')));
     if (current) button.append(menuCheck());
     button.title = hint;
     button.addEventListener('click', () => { rememberEffort(id, level); renderPicker(); closeEffortMenu(); focusComposer(); });
@@ -3815,8 +3852,9 @@ function effortList(id, info, anchor) {
   const height = effortMenu.offsetHeight || 300;
   effortMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   effortMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+  widenChip(anchor, effortMenu, 'effort');
 }
-function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; effortMenu.classList.remove('effort-listed'); }
+function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; effortMenu.classList.remove('effort-listed'); if (chipOpen?.kind === 'effort') narrowChip(); }
 // Placed against its chip when it opened; a window that changes size leaves it pointing nowhere.
 window.addEventListener?.('resize', () => { if (!effortMenu.hidden) closeEffortMenu(); });
 document.addEventListener('click', (event) => { if (!effortMenu.hidden && !effortMenu.contains(event.target) && !event.target.closest('.picker')) closeEffortMenu(); });
@@ -3827,7 +3865,7 @@ const modeMenu = el('div', 'model-menu mode-menu');
 modeMenu.hidden = true;
 document.body.append(modeMenu);
 let modeMenuFor = null;
-function closeModeMenu() { modeMenu.hidden = true; modeMenuFor = null; }
+function closeModeMenu() { modeMenu.hidden = true; modeMenuFor = null; if (chipOpen?.kind === 'mode') narrowChip(); }
 document.addEventListener('click', (event) => { if (!modeMenu.hidden && !modeMenu.contains(event.target) && !event.target.closest('.picker')) closeModeMenu(); });
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModeMenu(); });
 
@@ -3974,7 +4012,7 @@ function toggleModeMenu(id, anchor) {
     if (chatShellOn()) {
       const note = onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : '';
       if (note) option.append(el('span', `tag${raise ? ' raise' : ''}`, note));
-      else if (n === defaultModeFor(id)) option.append(el('span', 'model-default', t('default')));
+      else if (n === defaultModeFor(id)) option.querySelector('.name')?.append(el('span', 'model-default', t('default')));
       if (state.mode === n) option.append(menuCheck());
     } else {
       const tag = state.mode === n ? t('NOW') : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
@@ -4003,6 +4041,7 @@ function toggleModeMenu(id, anchor) {
   const height = modeMenu.offsetHeight || 260;
   modeMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   modeMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+  widenChip(anchor, modeMenu, 'mode');
 }
 
 // One place changes the mode: chip, classes, label, placeholder and the old CREATE state.
