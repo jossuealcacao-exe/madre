@@ -898,3 +898,24 @@ test('chat shell: a sharp sidebar, your bubble in the accent, two more accents, 
   assert.match(css, /font: 500 13px\/1\.2 var\(--read\) !important; letter-spacing: 0 !important;/);
   assert.match(css, /\.field > button\[type="submit"\]:not\(:disabled\):hover \{ color: var\(--phosphor\) !important; \}/);
 });
+
+test('chat shell: a plan says each step\'s mode in its colour, the bar\'s keys light in the accent, Local AI is two sparkles', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  const market = await readFile(new URL('../public/market.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  assert.match(app, /node\.append\(el\('span', 'step-mode-in', ` \$\{t\('in mode'\)\} `\), el\('span', `step-mode m\$\{step\.mode\}`, `#\$\{step\.mode\}`\)\);/);
+  assert.match(es, /'in mode': 'en modo',/);
+  for (const n of [0, 2, 3, 4]) assert.match(css, new RegExp(`html\\.chat-shell #messages \\.system\\.plan \\.step-mode\\.m${n} \\{ color: var\\(--mode-${n}\\); \\}`));
+  assert.match(css, /html\.chat-shell #messages \.system\.plan \.step-mode\.m1 \{ color: var\(--acc, var\(--mode-1\)\); \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\):is\(:hover, :focus-visible\) \{ color: var\(--phosphor\) !important; \}/);
+  // The same drawing wherever Local AI is shown, and no network left.
+  for (const source of [app, market, home]) {
+    assert.match(source, /<path class="ic-spark-big"/);
+    assert.match(source, /<path class="ic-spark-small"/);
+    assert.doesNotMatch(source, /class="ic-net"/);
+  }
+  assert.match(css, /svg \.ic-spark-big, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-big \{ transform: scale\(\.5\); \}/);
+  assert.match(css, /svg \.ic-spark-small, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-small \{ transform: scale\(1\.6\); \}/);
+});

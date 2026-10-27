@@ -10350,16 +10350,17 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
 svg .ic-arrow, svg .ic-needle, svg .ic-pins { transform-box: view-box; transition: transform calc(380ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .25, 1.15); }
 svg .ic-needle { transform-origin: 10px 14.2px; transform: rotate(-78deg); }
 svg .ic-pins { transform-origin: 10px 10px; }
-svg .ic-net { transform-box: view-box; transform-origin: 10px 10px; transition: transform calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+/* Local AI's two sparkles (2026-10-27): under the pointer they trade sizes, the large one shrinking
+   as the small one grows, each about its own centre. */
+svg :is(.ic-spark-big, .ic-spark-small) { transform-box: fill-box; transform-origin: center; transition: transform calc(420ms * var(--motion-scale, 1)) cubic-bezier(.2, .8, .25, 1.15); }
 :is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-arrow { animation: icon-arrow-down calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
 :is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-needle { transform: rotate(0deg); }
 :is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-pins { transform: rotate(45deg); }
-:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg:has(.ic-net) { animation: icon-net-turn calc(900ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-/* One whole turn on its own vertical axis, the network seen from every side, and back where it was. */
-@keyframes icon-net-turn { from { transform: perspective(60px) rotateY(0deg); } to { transform: perspective(60px) rotateY(360deg); } }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-spark-big, :is(.settings-card, .settings-rail-item):is(:hover, :focus-visible) svg .ic-spark-big { transform: scale(.5); }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-spark-small, :is(.settings-card, .settings-rail-item):is(:hover, :focus-visible) svg .ic-spark-small { transform: scale(1.6); }
 @keyframes icon-arrow-down { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(2.2px); } 70% { transform: translateY(-.6px); } }
 @media (prefers-reduced-motion: reduce) {
-  svg :is(.ic-arrow, .ic-needle, .ic-pins), svg:has(.ic-net) { transition: none; animation: none !important; }
+  svg :is(.ic-arrow, .ic-needle, .ic-pins, .ic-spark-big, .ic-spark-small) { transition: none; animation: none !important; }
   svg .ic-needle { transform: none; }
 }
 
@@ -11833,3 +11834,23 @@ html.chat-shell .composer #pick-options .grace-chip .left { opacity: .75; }
 html.chat-shell .composer #pick-options .grace-chip i { width: 16px; height: 16px; font: 400 12px/1 var(--read); }
 html.chat-shell .composer:has(#message:not(:placeholder-shown)) .field > button[type="submit"]:not(:disabled),
 html.chat-shell .composer .field > button[type="submit"]:not(:disabled):hover { color: var(--phosphor) !important; }
+
+/* ---- A plan's steps say their mode (2026-10-27): «@claude in mode #1», the number in its mode's own
+   colour — #1 in the accent, as on the box's chip — and the words in the line's. ---- */
+html.chat-shell #messages .system.plan .step-mode-in { font-weight: 400; color: var(--text-3); }
+html.chat-shell #messages .system.plan .step-mode { margin-left: 0; font-weight: 600; }
+html.chat-shell #messages .system.plan .step-mode.m0 { color: var(--mode-0); }
+html.chat-shell #messages .system.plan .step-mode.m1 { color: var(--acc, var(--mode-1)); }
+html.chat-shell #messages .system.plan .step-mode.m2 { color: var(--mode-2); }
+html.chat-shell #messages .system.plan .step-mode.m3 { color: var(--mode-3); }
+html.chat-shell #messages .system.plan .step-mode.m4 { color: var(--mode-4); }
+html.chat-shell[data-scheme="light"] #messages .system.plan .step-mode.m0 { color: color-mix(in srgb, var(--mode-0) 62%, #000000); }
+html.chat-shell[data-scheme="light"] #messages .system.plan .step-mode.m1 { color: var(--acc, color-mix(in srgb, var(--mode-1) 62%, #000000)); }
+html.chat-shell[data-scheme="light"] #messages .system.plan .step-mode.m2 { color: color-mix(in srgb, var(--mode-2) 62%, #000000); }
+html.chat-shell[data-scheme="light"] #messages .system.plan .step-mode.m3 { color: color-mix(in srgb, var(--mode-3) 70%, #000000); }
+html.chat-shell[data-scheme="light"] #messages .system.plan .step-mode.m4 { color: color-mix(in srgb, var(--mode-4) 70%, #000000); }
+
+/* ---- The bar's keys under the pointer take the accent (2026-10-27), as a key pressed does: the
+   drawing lights up in it instead of only going darker. ---- */
+html.chat-shell .shell > .bar :is(.mother-button, .tree-button, .bar-icon, .chats-button) { transition: color calc(160ms * var(--motion-scale, 1)) ease; }
+html.chat-shell .shell > .bar :is(.mother-button, .tree-button, .bar-icon, .chats-button):is(:hover, :focus-visible) { color: var(--phosphor) !important; }

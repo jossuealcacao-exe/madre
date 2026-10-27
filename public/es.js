@@ -175,6 +175,7 @@ export const ES = {
     'Vuelve a pedirlo diciéndole que haga el trabajo él mismo, sin subagentes.',
   'OPEN MODULES': 'Abrir «Módulos»',
   '@{who} puts {agents} to work': '@{who} pone a trabajar a {agents}',
+  'in mode': 'en modo',
   '@{who} puts {agents} to work, then closes': '@{who} pone a trabajar a {agents} y luego cierra',
   '{n} step': '{n} paso',
   '{n} steps': '{n} pasos',

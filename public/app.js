@@ -7254,7 +7254,8 @@ function renderPlanEvent(event) {
     steps.forEach((step, index) => {
       if (index) node.append(', ');
       node.append(`@${step.agent}`);
-      if (Number.isInteger(step.mode)) node.append(el('span', `step-mode m${step.mode}`, `#${step.mode}`));
+      // «in mode #n», the number in the colour of its mode, as on the box's chip (2026-10-27).
+      if (Number.isInteger(step.mode)) node.append(el('span', 'step-mode-in', ` ${t('in mode')} `), el('span', `step-mode m${step.mode}`, `#${step.mode}`));
     });
     node.append(after ?? '');
     // A round key beside the title, the way a reply's actions are: a stop square in a circle.
@@ -8500,7 +8501,7 @@ const SETTINGS_CATS = {
   memory: { name: 'What it remembers', color: '#3fb6d9', icon: '<rect x="5" y="5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.1" y="8.1" width="3.8" height="3.8" rx=".6" fill="none" stroke="currentColor" stroke-width="1.4"/><path class="ic-pins" d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   // Local AI, also here and not only in Modules (2026-10-16): the same card, and what this
   // computer can run and train with it.
-  local: { name: 'Local AI', color: '#7f77dd', icon: '<g class="ic-net" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path stroke-width=".8" d="M6.47 5.59L9.13 4.31M6.33 7.43L8.97 9.21M5.70 8.01L9.60 14.99M9.88 5.11L5.62 12.59M11.92 4.97L14.98 9.03M11.90 10.21L14.25 10.37M10.35 11.70L10.44 14.75M6.41 14.91L8.79 15.89M14.85 11.86L11.75 15.24"/><circle cx="4.8" cy="6.4" r="1.25"/><circle cx="10.8" cy="3.5" r="1.25"/><circle cx="10.3" cy="10.1" r="1.0"/><circle cx="16.1" cy="10.5" r="1.25"/><circle cx="4.7" cy="14.2" r="1.25"/><circle cx="10.5" cy="16.6" r="1.25"/></g>' },
+  local: { name: 'Local AI', color: '#7f77dd', icon: '<path class="ic-spark-big" d="M8 5.2Q8.85 10.65 14.3 11.5Q8.85 12.35 8 17.8Q7.15 12.35 1.7 11.5Q7.15 10.65 8 5.2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path class="ic-spark-small" d="M15 2.2Q15.4 4.6 17.8 5Q15.4 5.4 15 7.8Q14.6 5.4 12.2 5Q14.6 4.6 15 2.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>' },
   mcp: { name: 'Outside tools (MCP)', color: '#5b8def', icon: '<path d="M7.2 3.2v3.3M12.8 3.2v3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.2 6.5h9.6v2.4a4.8 4.8 0 0 1-9.6 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 13.7v3.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
   files: { name: 'Files and local sites', color: '#c8955a', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
   permissions: { name: 'Permissions', color: '#e5484d', icon: '<path d="M10 2.8 4.2 5v4.6c0 3.6 2.4 6.4 5.8 7.6 3.4-1.2 5.8-4 5.8-7.6V5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
