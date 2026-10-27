@@ -4470,7 +4470,7 @@ function customSeg(options, current, pick, size = '') {
 // The user manual (1.0.5): its own page in Home's language, and the same manual in PDF.
 function openManual() { window.open(`/manual?lang=${language}`, '_blank', 'noopener'); }
 function setStatus(id) {
-  if (id === 'manual') return { line: t('Every part of MADRE, with pictures and each step marked. Also as a PDF.') };
+  if (id === 'manual') return { line: t('With pictures, step by step. Also as a PDF.') };
   const looks = readLooks();
   if (id === 'look') return { line: `${THEME_WORDS[looks.theme]()} · ${WALLPAPER_WORDS[looks.wallpaper]()} · ${ACCENT_WORDS[looks.accent]()}` };
   if (id === 'bar') {

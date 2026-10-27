@@ -10873,12 +10873,14 @@ html.chat-shell .shell > .bar.bar-crowded:not(.bar-home) > #agents { position: s
 html.chat-shell .composer .field > button[type="submit"] .send-up { display: none; }
 html.chat-shell .composer .field > button[type="submit"] .send-return { display: block; }
 html.chat-shell .shell > .composer {
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  /* The row, 2026-10-27: the agent, its choices and the copilot, then the token saver while it is on
+     and the clip; send alone at the far end. */
+  grid-template-columns: auto minmax(0, max-content) auto auto auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "top top top top top top"
-    "quote quote quote quote quote quote"
-    "editor editor editor editor editor editor"
-    "attach picker options create ash send";
+    "top top top top top top top"
+    "quote quote quote quote quote quote quote"
+    "editor editor editor editor editor editor editor"
+    "picker options create ash attach . send";
   gap: 6px 2px; padding: 14px 10px 8px 10px !important; border-radius: 22px !important;
 }
 html.chat-shell .composer .editor { min-height: 0; padding: 0 10px; }
@@ -11064,3 +11066,75 @@ html.chat-shell .effort-option .hint { display: block; white-space: nowrap; over
 html.chat-shell .model-menu .model-note { max-width: 46ch; }
 html.chat-shell .model-menu :is(.mode-option, .effort-option) .name .model-default { display: inline-block; margin-left: 7px; vertical-align: 1px; }
 html.chat-shell .model-menu.mode-menu .mode-option, html.chat-shell .effort-option { grid-template-columns: 22px minmax(0, 1fr) auto; }
+
+/* ---- round of 2026-10-27 (2) ---- */
+/* The chips' row ends where its last chip does: no fade over the copilot. */
+html.chat-shell .composer > .pick-options { -webkit-mask-image: none; mask-image: none; }
+/* The token saver is words in the row, as the chips are, and only while it is on. */
+html.chat-shell .composer .ash-toggle[aria-pressed="false"] { display: none !important; }
+html.chat-shell .composer .ash-toggle {
+  height: 30px; margin: 0 2px 0 6px; padding: 0 8px; border: 0 !important; border-radius: 999px;
+  background: none !important; box-shadow: none !important;
+  font: 500 13px var(--read) !important; letter-spacing: 0 !important; text-transform: none !important;
+  color: var(--phosphor) !important; cursor: pointer;
+}
+html.chat-shell .composer .ash-toggle::before, html.chat-shell .composer .ash-toggle::after { content: none !important; display: none !important; }
+html.chat-shell .composer .ash-toggle:hover { background: var(--cs-hover) !important; }
+/* The model's rows: name over what it can do, as the modes'. */
+html.chat-shell .model-menu .model-option { align-items: center; }
+html.chat-shell .model-menu .model-body { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; }
+html.chat-shell .model-menu .model-body .model-name { display: block; }
+html.chat-shell .model-menu .model-body .model-name .model-default { display: inline-block; margin-left: 7px; vertical-align: 1px; }
+html.chat-shell .model-menu .model-body .hint { font: 400 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .model-menu .model-option.current .model-body .hint { font-weight: 400; }
+/* An agent's card stands a little clear of the bar. */
+html.chat-shell .agent-pop { margin-top: 13px; }
+/* The copilot's card, as quiet as the menus: its name and switch on one line, what it does in the
+   reading face, the limits under a hairline, the windows as plain words with the chosen one marked. */
+html.chat-shell .model-menu.copilot-menu { width: min(360px, calc(100vw - 24px)); padding: 12px 14px; gap: 10px; }
+html.chat-shell .copilot-menu .copilot-title { margin: 0; }
+html.chat-shell .copilot-menu .copilot-title b { font: 600 13px var(--read); color: var(--text); }
+html.chat-shell .copilot-menu .copilot-body { gap: 10px; padding: 0; }
+html.chat-shell .copilot-menu .copilot-body .copilot-lead { font: 400 13px/1.5 var(--read); color: var(--text-2); }
+html.chat-shell .copilot-menu .copilot-body .copilot-never { padding-top: 10px; border-top: 1px solid var(--cs-line); font: 400 11.5px/1.5 var(--read); color: var(--text-3); }
+html.chat-shell .copilot-menu .copilot-body .copilot-foot { font: 400 11.5px/1.45 var(--read); color: var(--text-3); }
+html.chat-shell .copilot-menu .copilot-how { gap: 6px; font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .copilot-menu .copilot-how .sx-seg { gap: 2px; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+html.chat-shell .copilot-menu .copilot-how .sx-seg .seg-thumb { display: none !important; }
+html.chat-shell .copilot-menu .copilot-how .sx-seg button {
+  height: 26px; padding: 0 9px; border: 0 !important; border-radius: 999px; background: none !important; box-shadow: none !important;
+  font: 500 12px var(--read) !important; color: var(--text-3) !important;
+}
+html.chat-shell .copilot-menu .copilot-how .sx-seg button:hover { background: var(--cs-hover) !important; color: var(--text) !important; }
+html.chat-shell .copilot-menu .copilot-how .sx-seg button:is([aria-checked="true"], [aria-pressed="true"], .on) { background: var(--cs-hover) !important; color: var(--text) !important; }
+
+/* ---- Settings, as part of the chat shell (2026-10-27): Home's and a project's alike ---- */
+/* Under the pointer a card's hairline grows a touch firmer, and nothing lifts. */
+html.chat-shell #settings { --relief-over: 0 0 0 1.5px color-mix(in srgb, var(--text) 20%, transparent); }
+html.chat-shell #settings .settings-card:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text) 20%, transparent) !important; transform: none !important; }
+html.chat-shell #settings .settings-card:focus-visible { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 60%, transparent) !important; }
+/* What each card says of itself, on one line. */
+html.chat-shell #settings .settings-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 12px/1.45 var(--read); color: var(--text-3); }
+/* The chat shell's type: the title as the conversation's, names at 13.5, rows at 13. */
+html.chat-shell #settings .custom-title { font: 600 14px var(--read); letter-spacing: -.005em; }
+html.chat-shell #settings .settings-section > header b { font: 600 13px var(--read); }
+html.chat-shell #settings .settings-section > header span { display: block; font: 400 12px var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell #settings .settings-card-head b { font: 600 13.5px var(--read); letter-spacing: 0; }
+html.chat-shell #settings .settings-quick-row { font: 400 13px var(--read); }
+html.chat-shell #settings .settings-quick-row .who { font: 500 13px var(--read); }
+html.chat-shell #settings .settings-quick-row .state { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell #settings :is(.settings-seg button, .sx-btn) { font: 500 12.5px var(--read); letter-spacing: 0; }
+
+/* Search fields: the sunk look stays, only lighter, at rest and when they take the caret. */
+html.chat-shell .settings-search { box-shadow: inset 0 1px 2px rgba(20, 30, 20, .1) !important; }
+html.chat-shell .settings-search:focus-within { background: color-mix(in srgb, var(--text) 4%, transparent); box-shadow: inset 0 2px 5px rgba(20, 30, 20, .12), inset 0 1px 1.5px rgba(20, 30, 20, .1) !important; }
+html.chat-shell[data-scheme="dark"] .settings-search { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3) !important; }
+html.chat-shell[data-scheme="dark"] .settings-search:focus-within { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .35), inset 0 1px 1.5px rgba(0, 0, 0, .3) !important; }
+
+/* The window keys (window, split…) sit in their channel with no plate of their own: the one in use
+   only takes the accent. Closing keeps its red under the pointer. */
+html.chat-shell .surface-modes .surface-mode:not(.close):is(*, :hover, :focus-visible, [aria-pressed]) { background: none !important; box-shadow: none !important; }
+html.chat-shell .surface-modes .surface-mode:not(.close) { color: var(--text-3); }
+html.chat-shell .surface-modes .surface-mode:not(.close):is(:hover, :focus-visible) { color: var(--text) !important; }
+html.chat-shell .surface-modes .surface-mode:not(.close)[aria-pressed="true"] { color: var(--phosphor) !important; }
+html.chat-shell .surface-modes .surface-mode[aria-pressed="true"] :is(.ic-h, .ic-f) { fill: none !important; }

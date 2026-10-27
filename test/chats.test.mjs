@@ -599,7 +599,13 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // the modes mark the one in use with a check and say nothing of confirming; the models search
   // behind a magnifier and mark the default with a light badge.
   assert.match(app, /const line = Number\.parseFloat\(look\?\.lineHeight\) \|\| LINE_PX;/);
-  assert.match(css, /"attach picker options create ash send";/);
+  assert.match(css, /"picker options create ash attach \. send";/);
+  // 2026-10-27: the token saver is words in the row and only while on; models say what they can do;
+  // Settings' cards lift no shadow; the window keys have no plate, the one in use in the accent.
+  assert.match(css, /html\.chat-shell \.composer \.ash-toggle\[aria-pressed="false"\] \{ display: none !important; \}/);
+  assert.match(app, /const brief = modelBrief\(info, name \?\? info\.default\);/);
+  assert.match(css, /html\.chat-shell #settings \.settings-card:hover \{ box-shadow: 0 0 0 1\.5px/);
+  assert.match(css, /html\.chat-shell \.surface-modes \.surface-mode:not\(\.close\)\[aria-pressed="true"\] \{ color: var\(--phosphor\) !important; \}/);
   assert.match(page, /<svg class="attach-clip"/);
   // 2026-10-27: the keys centre their drawing; effort is a list; Diagnostics a breathing dot; the
   // unlocks play over the whole box; the clip stays.
@@ -618,7 +624,7 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.match(app, /el\('span', 'hint', chatShellOn\(\) \? MODE_BRIEF\[n\] : MODES\[n\]\.hint\)/);
   assert.match(app, /t\(EFFORT_WORDS\[level\]\?\.brief \?\? EFFORT_WORDS\[level\]\?\.hint \?\? ''\)/);
   assert.match(css, /\.effort-option \.hint \{ display: block; white-space: nowrap;/);
-  assert.match(app, /if \(isDefault && label !== t\('default'\)\) button\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
+  assert.match(app, /if \(isDefault && label !== t\('default'\)\) nameLine\.append\(el\('span', 'model-default', t\('default'\)\)\);/);
   assert.match(app, /find\.innerHTML = MENU_SEARCH;/);
   assert.match(css, /#modules-button \.modules-count \{ display: none !important; \}/);
   assert.match(app, /for \(const family of \['project', 'madre', 'apps'\]\)/);

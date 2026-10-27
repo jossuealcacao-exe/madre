@@ -1809,6 +1809,19 @@ test('effort: offered only where the CLI takes it, and only a level it knows rea
   }
 });
 
+test('models: what each Codex model can do comes from its own cache, and only what it says', async () => {
+  const { parseCodexAbout } = await import('../src/models.mjs');
+  const about = parseCodexAbout(JSON.stringify({ models: [
+    { slug: 'gpt-6-sol', input_modalities: ['text', 'image'], context_window: 272000, additional_speed_tiers: ['fast'] },
+    { slug: 'gpt-text', input_modalities: ['text'] },
+    { slug: 'gpt-bare' },
+  ] }));
+  assert.deepEqual(about['gpt-6-sol'], { images: true, context: 272000, fast: true });
+  assert.deepEqual(about['gpt-text'], { images: false, fast: false });
+  assert.equal(about['gpt-bare'], undefined, 'a model the cache does not describe gets nothing');
+  assert.deepEqual(parseCodexAbout('not json'), {});
+});
+
 test('effort: Codex offers and sends only the levels the model takes, as its own cache lists them', async () => {
   const { parseCodexEfforts, codexLevels } = await import('../src/models.mjs');
   const level = (effort) => ({ effort, description: effort });

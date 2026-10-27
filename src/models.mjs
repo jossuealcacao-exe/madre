@@ -127,6 +127,31 @@ export function parseCodexEfforts(json) {
   }
 }
 
+// What each Codex model can do, from the same cache, for the line under its name in the chooser
+// (2026-10-27): whether it reads images, how much it holds at once, and whether it has a fast tier.
+// Only what the cache says; a model it does not describe gets nothing.
+export function parseCodexAbout(json) {
+  try {
+    const data = JSON.parse(json);
+    const about = {};
+    const walk = (node) => {
+      if (!node || typeof node !== 'object') return;
+      if (typeof node.slug === 'string' && (Array.isArray(node.input_modalities) || Number.isFinite(node.context_window))) {
+        about[node.slug] = {
+          images: Array.isArray(node.input_modalities) && node.input_modalities.includes('image'),
+          ...(Number.isFinite(node.context_window) && node.context_window > 0 ? { context: node.context_window } : {}),
+          fast: Array.isArray(node.additional_speed_tiers) && node.additional_speed_tiers.includes('fast'),
+        };
+      }
+      for (const value of Object.values(node)) walk(value);
+    };
+    walk(data);
+    return about;
+  } catch {
+    return {};
+  }
+}
+
 // The levels one Codex model takes: its own, from the cache; for a name the cache does not list,
 // the ones every listed model shares, so a model MADRE cannot read never meets a refusal.
 export function codexLevels(byModel, model) {
@@ -205,8 +230,12 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
     let efforts = EFFORTS[agent.id] ?? [];
     let effortsByModel;
     let effortsShared;
+    let about;
     if (agent.id === 'codex') {
-      discovered = parseCodexModelCache(await readFile(join(home, '.codex', 'models_cache.json'), 'utf8').catch(() => ''));
+      const cache = await readFile(join(home, '.codex', 'models_cache.json'), 'utf8').catch(() => '');
+      discovered = parseCodexModelCache(cache);
+      about = parseCodexAbout(cache);
+      if (!Object.keys(about).length) about = undefined;
       const read = await readCodexEfforts({ home });
       cliDefault = read.model;
       effortDefault = read.effort;
@@ -265,6 +294,7 @@ export async function discoverModels({ agents = [], config = {}, home = homedir(
       efforts,
       effortDefault: isValidEffort(agent.id, effortDefault) ? effortDefault : null,
       ...(effortsByModel ? { effortsByModel, effortsShared } : {}),
+      ...(about ? { about } : {}),
       source: discovered.length ? 'discovered' : 'known',
       ...(agent.id === 'cursor' && cursorOnlyAuto() ? { onlyAuto: true } : {}),
     };

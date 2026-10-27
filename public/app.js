@@ -3373,6 +3373,19 @@ const modelMenu = el('div', 'model-menu');
 // The composer's menus mark what is in use with a check, and the model's searches behind a magnifier.
 const MENU_CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.2L15.2 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const MENU_SEARCH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+// What a model can do, in one short line: whether it reads images, how much it holds at once and how
+// far its effort goes. Only what its CLI says of it (src/models.mjs); nothing when it says nothing.
+function modelBrief(info, name) {
+  if (!name) return '';
+  const about = info?.about?.[name];
+  const levels = info?.effortsByModel?.[name]?.levels;
+  const size = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : `${Math.round(n / 1000)}k`);
+  return [
+    about?.images ? t('sees images') : null,
+    about?.context ? t('{n} context', { n: size(about.context) }) : null,
+    levels?.length ? t('effort up to {level}', { level: effortLabel(levels.at(-1)) }) : null,
+  ].filter(Boolean).join(' · ');
+}
 function menuCheck() {
   const mark = el('span', 'menu-check');
   mark.innerHTML = MENU_CHECK; // trusted: our own SVG string
@@ -3439,8 +3452,15 @@ async function toggleModelMenu(id, anchor) {
     const button = el('button', `model-option${current ? ' current' : ''}`);
     button.type = 'button';
     button.dataset.find = `${name ?? ''} ${label}`.toLowerCase();
-    button.append(el('span', 'model-name', label));
-    if (isDefault && label !== t('default')) button.append(el('span', 'model-default', t('default')));
+    // Its name (the default's badge beside it) and, under it, what it can do, as the modes say
+    // what they let (2026-10-27).
+    const body = el('span', 'model-body');
+    const nameLine = el('span', 'model-name', label);
+    if (isDefault && label !== t('default')) nameLine.append(el('span', 'model-default', t('default')));
+    body.append(nameLine);
+    const brief = modelBrief(info, name ?? info.default);
+    if (brief) body.append(el('span', 'hint', brief));
+    button.append(body);
     if (current) button.append(menuCheck());
     button.addEventListener('click', () => { rememberModel(id, isDefault ? null : name); closeModelMenu(); renderPicker(); focusComposer(); });
     return button;
@@ -8194,7 +8214,7 @@ customWindow.node?.addEventListener('close', () => { customButton?.setAttribute(
 const SETTINGS_SECTIONS = [
   ['You', 'How it looks, how it works and your files', ['look', 'room', 'files']],
   ['The agents', 'Who works, what they remember and which outside tools they use', ['agents', 'memory', 'local', 'mcp']],
-  ['System', 'What agents may do, privacy, updates and the manual', ['permissions', 'privacy', 'release', 'manual']],
+  ['System', 'Permissions, privacy, updates and the manual', ['permissions', 'privacy', 'release', 'manual']],
 ];
 const SETTINGS_CATS = {
   look: { name: 'Appearance', color: '#8e75e8', icon: '<circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/>' },
@@ -8239,8 +8259,9 @@ const settingsIcon = (id) => { const span = el('span', 'settings-icon'); span.in
 // The user manual: its own page in the room's language, and the same manual in PDF.
 function openManual() { window.open(`/manual?lang=${language()}`, '_blank', 'noopener'); }
 const manualPdf = () => `/assets/manual/madre-manual-${language()}.pdf`;
+// Each card's line is one short line (2026-10-27): what matters at a glance; the rest is one click in.
 function settingsStatus(id) {
-  if (id === 'manual') return { line: t('Every part of MADRE, with pictures and each step marked. Also as a PDF.') };
+  if (id === 'manual') return { line: t('With pictures, step by step. Also as a PDF.') };
   const data = settingsUI.data;
   if (id === 'look') {
     const theme = { auto: t('Automatic'), light: t('Light'), dark: t('Dark') }[themeMode] ?? themeMode;
@@ -8261,7 +8282,9 @@ function settingsStatus(id) {
     const item = modules.items.find((one) => one.id === 'ollama');
     if (!item) return { line: t('Reading…') };
     const daily = item.recommended?.hardware?.recommended?.run;
-    return { line: [item.status?.detail, daily ? t('your computer runs {model}', { model: daily.label }) : null].filter(Boolean).join(' · ') };
+    // Whether it runs, and the model this computer runs best; the rest of its detail is inside.
+    const state = String(item.status?.detail ?? '').split(' · ')[0];
+    return { line: [state, daily?.label].filter(Boolean).join(' · ') };
   }
   if (!data) return { line: t('Reading…') };
   if (id === 'agents') {
@@ -8274,12 +8297,11 @@ function settingsStatus(id) {
     const mem = data.settings.memory;
     if (!mem) return { line: t('This project has no memory yet') };
     const who = mem.archivist === 'auto' || !mem.archivist ? t('the cheapest agent') : `@${mem.archivist}`;
-    return { line: t('Notes by {who} · search by meaning {how}', { who, how: (mem.embedProvider ?? 'auto').toUpperCase() }) };
+    return { line: t('Notes: {who} · search: {how}', { who, how: (mem.embedProvider ?? 'auto').toUpperCase() }) };
   }
   if (id === 'permissions') {
     const config = data.settings.override ?? OVERRIDE_DEFAULT;
-    const graced = [3, 4].filter((mode) => config.grace?.[mode]).map((mode) => t('#{n} holds {minutes} min', { n: mode, minutes: config.grace[mode] }));
-    return { line: [`#3 · ${OVERRIDE_KEY_WORDS[config.keys[3]]().toLowerCase()}`, `#4 · ${OVERRIDE_KEY_WORDS[config.keys[4]]().toLowerCase()}`, ...(graced.length ? graced : [t('asked every message')])].join(' · ') };
+    return { line: `#3 ${OVERRIDE_KEY_WORDS[config.keys[3]]().toLowerCase()} · #4 ${OVERRIDE_KEY_WORDS[config.keys[4]]().toLowerCase()}` };
   }
   if (id === 'privacy') {
     const priv = data.settings.privacy;
@@ -8288,9 +8310,9 @@ function settingsStatus(id) {
   }
   if (id === 'release') {
     const info = updateUI.info;
-    const report = sentinelUI.settings?.autoReport ? t('error reports sent') : t('error reports kept here');
-    if (!info) return { line: report };
-    return { line: `MADRE ${info.current} · ${info.available ? t('{version} available', { version: info.latest }) : info.enabled === false ? t('not checked') : t('up to date')} · ${report}`, warn: info.available ? t('{version} is out', { version: info.latest }) : null };
+    // Whether reports are sent is the switch on the card itself.
+    if (!info) return { line: t('Reading…') };
+    return { line: `MADRE ${info.current} · ${info.available ? t('{version} available', { version: info.latest }) : info.enabled === false ? t('not checked') : t('up to date')}`, warn: info.available ? t('{version} is out', { version: info.latest }) : null };
   }
   return { line: '' };
 }
