@@ -650,10 +650,10 @@ test('chat shell: Files holds the code, and the keys that open beside the conver
   assert.match(css, /> #browser-button \{ order: 36; \}/);
   assert.match(app, /const BAR_SPLIT_KEYS = new Set\(\['code', 'servers'\]\);/);
   assert.match(app, /const rank = \(id\) => \(BAR_SPLIT_KEYS\.has\(id\) \? 9 :/);
-  // One key: Code's, wearing the folder and named Files; whoever kept only Files keeps it.
+  // One key: Code's, with its </>, named Files; whoever kept only Files keeps it.
   assert.match(app, /if \(id === 'finder' && chatShellOn\(\)\) continue;/);
   assert.match(app, /stored\.map\(\(id\) => \(id === 'finder' \? 'code' : id\)\)/);
-  assert.match(app, /codeKey\.querySelector\(':scope > svg'\)\?\.replaceWith\(folder\.cloneNode\(true\)\);/);
+  assert.doesNotMatch(app, /replaceWith\(folder\.cloneNode\(true\)\)/);
   assert.match(app, /const TOOL_NAMES = \{ viewer: \(\) => t\('Files'\), tree: \(\) => t\('Files'\), browser: \(\) => t\('Your servers'\) \};/);
   // The Finder's own tree (search, new file, its menu) stands where Code kept its list.
   assert.match(app, /const parts = \['#tree-search', '#tree-clip', '#tree-body', '#tree-menu'\]\.map/);
@@ -669,4 +669,27 @@ test('chat shell: Files holds the code, and the keys that open beside the conver
   // Your servers in the same quiet hand: tabs as the tool tabs, words as a sentence.
   assert.match(css, /html\.chat-shell \.browser-dock \.browser-tab\.on \{ background: var\(--cs-sel, var\(--cs-hover\)\);/);
   assert.match(css, /html\.chat-shell \.browser-dock \.viewer-sizes button\[aria-pressed="true"\] \{ background: none; color: var\(--phosphor\); \}/);
+});
+
+test('chat shell: Code shows the text, both or what it makes; the preview is sized by hand; the card asks what fits reading or editing', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  // One choice in words, kept for the next file, instead of «Side by side» and «Preview».
+  assert.match(app, /\[\['code', 'Code', 'Only the text'\], \['split', 'Both', 'The text and what it makes, side by side'\], \['preview', 'Preview', 'Only what it makes'\]\]/);
+  assert.match(app, /view: \['code', 'split', 'preview'\]\.includes\(saved\.view\) \? saved\.view : saved\.beside === false \? 'preview' : 'split',/);
+  assert.match(app, /!\(docked && code\.view !== 'preview'\), mtime/);
+  assert.match(css, /\.viewer-head:has\(> \.code-views:not\(\[hidden\]\)\) > :is\(#viewer-mode, \.viewer-beside\) \{ display: none !important; \}/);
+  // Dragged to the end, what it makes covers the text.
+  assert.match(app, /code\.share = share > 0\.94 \? 1 : Math\.max\(0\.2, Math\.min\(1, share\)\);/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) calc\(var\(--share, \.46\) \* 100%\);/);
+  // Reading asks to understand and offers to cite or edit; editing asks to change.
+  assert.match(app, /actions: !shell \? CODE_ACTIONS : reading \? CODE_READ_ACTIONS : CODE_EDIT_ACTIONS,/);
+  assert.match(app, /askAboutCode\(\{ runs, text, anchor, dirty: false, reading: true \}\);/);
+  assert.match(app, /tools\.push\(\[t\('Copy reference'\), \(\) => \{/);
+  assert.match(css, /html\.chat-shell \.ask-card \{ gap: 8px;/);
+  // The key wears </> again.
+  assert.doesNotMatch(app, /files-key/);
+  // Your servers: its edge sizes the column, and the page's own edges stand clear of it.
+  assert.match(app, /sideWidths\.browser = Math\.round\(box\.x \+ box\.w - moving\.clientX\);/);
+  assert.match(css, /\.browser-dock \.viewer-stage \.stage-grip:first-of-type \{ left: max\(12px,/);
 });

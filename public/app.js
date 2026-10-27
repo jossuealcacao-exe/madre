@@ -938,7 +938,7 @@ function askAboutPicked(anchor) {
   if (!runs.length || !viewerUI.path) return;
   const lines = String(viewerMode.text).split('\n');
   const text = runs.map(([lo, hi]) => lines.slice(lo - 1, hi).join('\n')).join('\n');
-  askAboutCode({ runs, text, anchor, dirty: false });
+  askAboutCode({ runs, text, anchor, dirty: false, reading: true });
 }
 const pointAt = (event) => ({ left: event.clientX, right: event.clientX, top: event.clientY, bottom: event.clientY });
 viewerUI.review?.addEventListener('click', (event) => askAboutPicked(event.currentTarget.getBoundingClientRect()));
@@ -1145,7 +1145,7 @@ function closeAskCard() {
   done?.();
 }
 const ASK_OWN_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.7 4.5a1.95 1.95 0 0 1 2.8 2.8l-8.3 8.3-3.6.9.9-3.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 5.7l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = null, actions = [] }) {
+function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = null, actions = [], tools = [] }) {
   closeAskCard();
   askCardClose = onClose;
   const ready = [...state.agents.values()].filter((agent) => agent.ready);
@@ -1204,6 +1204,17 @@ function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = n
   own.append(el('span', null, t('Ask my own question')));
   own.addEventListener('click', () => ask(''));
   askCard.append(own);
+  // And what is done with it without asking anyone, under a hairline.
+  if (tools.length) {
+    const box = el('div', 'ask-tools');
+    for (const [label, run] of tools) {
+      const item = el('button', 'ask-item ask-tool', label);
+      item.type = 'button';
+      item.addEventListener('click', () => { closeAskCard(); run(); });
+      box.append(item);
+    }
+    askCard.append(box);
+  }
   askCard.hidden = false;
   try { askCard.showPopover?.(); } catch { /* a browser without popovers keeps it fixed in the page */ }
 
@@ -1407,14 +1418,28 @@ function askAboutLines({ from, to, runs = [[from, to]], prompt, dirty, agentId =
 }
 // The editor asks the room to ask: the room's own card, with questions read from the lines.
 // Several runs of lines picked apart are one question about all of them.
-function askAboutCode({ from, to, runs = [[from, to]], text, anchor, dirty }) {
+function askAboutCode({ from, to, runs = [[from, to]], text, anchor, dirty, reading = false }) {
   const [[lo, hi]] = runs;
+  const shell = chatShellOn();
+  // Reading, what is done with lines without asking: cite them, or start changing them.
+  const tools = [];
+  if (shell && reading && viewerUI.path) {
+    const path = viewerUI.path;
+    tools.push([t('Copy reference'), () => {
+      const where = runs.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(',');
+      void navigator.clipboard?.writeText(`!${path}:${where}`);
+      toast(t('Reference copied.'), { tone: 'done' });
+    }]);
+    if (viewerMode.editable) tools.push([t('Edit these lines'), () => openEditor(lo)]);
+  }
   openAskCard({
     anchor,
     head: runs.length > 1 ? t('Lines {list}', { list: runs.map(([a, b]) => (a === b ? a : `${a}–${b}`)).join(', ') }) : lo === hi ? t('Line {n}', { n: lo }) : t('Lines {from}–{to}', { from: lo, to: hi }),
-    suggestions: codeSuggestions(text, familyOf(viewerUI.path ?? '')?.id ?? null, viewerUI.path ?? ''),
+    // Reading, nothing in the list asks to write: tests are offered while editing.
+    suggestions: codeSuggestions(text, familyOf(viewerUI.path ?? '')?.id ?? null, viewerUI.path ?? '').filter((words) => !(shell && reading && words === t('Write tests for this'))),
     about: `${viewerUI.path ?? ''} ${text}`,
-    actions: CODE_ACTIONS,
+    actions: !shell ? CODE_ACTIONS : reading ? CODE_READ_ACTIONS : CODE_EDIT_ACTIONS,
+    tools,
     onAsk: (agentId, prompt) => askAboutLines({ runs, prompt, dirty, agentId }),
   });
 }
@@ -1494,7 +1519,11 @@ const code = (() => {
     tabs,
     active: tabs.some((tab) => tab.path === saved.active) ? saved.active : tabs.at(-1)?.path ?? null,
     files: saved.files !== false,
-    beside: saved.beside !== false,
+    // What a page or a document shows docked: its text, both side by side, or what it makes.
+    view: ['code', 'split', 'preview'].includes(saved.view) ? saved.view : saved.beside === false ? 'preview' : 'split',
+    // The share of the width what it makes takes beside its text, dragged by hand.
+    share: Number.isFinite(saved.share) ? Math.min(1, Math.max(0.2, saved.share)) : 0.46,
+    views: null,
     changes: new Map(),   // path → { agent, checkpointId, at, messageId, hunks } — what an agent left here
     button: document.querySelector('#code-button'),
     besideButton: null,
@@ -1508,7 +1537,7 @@ const code = (() => {
   };
 })();
 function rememberCode() {
-  try { localStorage.setItem(CODE_KEY, JSON.stringify({ tabs: code.tabs.map((tab) => tab.path), active: code.active, files: code.files, beside: code.beside })); } catch { /* this page only */ }
+  try { localStorage.setItem(CODE_KEY, JSON.stringify({ tabs: code.tabs.map((tab) => tab.path), active: code.active, files: code.files, view: code.view, beside: code.view === 'split', share: code.share })); } catch { /* this page only */ }
 }
 const viewerSurface = () => surfaces.find((one) => one.key === 'viewer');
 const codeOn = () => Boolean(viewer.dialog?.open) && modeOf(viewerSurface()) !== 'base';
@@ -1519,6 +1548,18 @@ const CODE_ACTIONS = [
   ['Improve', 'Improve this without changing what it does'],
   ['Write tests', 'Write tests for this'],
   ['Fix', 'Find and fix the bugs here'],
+];
+// In the chat shell the card asks what fits what you are doing (2026-10-27): reading, to understand
+// what is written; editing, to change it.
+const CODE_READ_ACTIONS = [
+  ['Explain', 'Explain what this does'],
+  ['Where it is used', 'Where is this used, and what depends on it?'],
+  ['Find bugs', 'Find bugs or edge cases here'],
+];
+const CODE_EDIT_ACTIONS = [
+  ['Improve', 'Improve this without changing what it does'],
+  ['Fix', 'Find and fix the bugs here'],
+  ['Write tests', 'Write tests for this'],
 ];
 
 // Where it lives in the viewer: the tabs and the path under its header, the files beside its body.
@@ -1568,8 +1609,22 @@ const CODE_ACTIONS = [
   code.besideButton.hidden = true;
   // Its words, and its drawing for when the header is too narrow for them.
   code.besideButton.innerHTML = `${BESIDE_ICON}<span></span>`; // trusted: our own SVG string
-  code.besideButton.addEventListener('click', () => { code.beside = !code.beside; rememberCode(); attachBeside(); });
+  code.besideButton.addEventListener('click', () => { code.view = code.view === 'split' ? 'code' : 'split'; rememberCode(); attachBeside(); });
+  // In the chat shell the two read as one choice, in words that say what is seen: the code, both,
+  // or what it makes (syncCode shows it; setCodeView does it).
+  code.views = el('span', 'viewer-seg code-views');
+  code.views.hidden = true;
+  code.views.setAttribute('role', 'group');
+  for (const [view, label, title] of [['code', 'Code', 'Only the text'], ['split', 'Both', 'The text and what it makes, side by side'], ['preview', 'Preview', 'Only what it makes']]) {
+    const key = el('button', 'viewer-seg-btn', t(label));
+    key.type = 'button';
+    key.dataset.view = view;
+    key.title = t(title);
+    key.addEventListener('click', () => void setCodeView(view));
+    code.views.append(key);
+  }
   modeButton?.before?.(code.besideButton);
+  code.besideButton.before?.(code.views);
   if (typeof MutationObserver === 'function') new MutationObserver(() => syncCode()).observe(viewer.dialog, { attributes: true, attributeFilter: ['class', 'open'] });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => syncCode()).observe(viewer.dialog);
   code.button?.addEventListener('click', () => void toggleCode());
@@ -1603,6 +1658,13 @@ function syncCode() {
   if (code.finder) for (const node of els.treeBody.querySelectorAll('button.node.file')) node.classList.toggle('on', node.title === viewerUI.path);
   code.button?.setAttribute('aria-pressed', String(on));
   const kind = viewerMode.kind;
+  code.views.hidden = !on || !kind || !chatShellOn();
+  const seen = viewerMode.preview ? 'preview' : code.preview ? 'split' : 'code';
+  for (const key of code.views.children) {
+    key.setAttribute('aria-pressed', String(key.dataset.view === seen));
+    // What it makes, alone, is Preview's to draw: off in this project, the choice is not offered.
+    if (key.dataset.view === 'preview') key.hidden = !state.ripley;
+  }
   code.besideButton.hidden = !on || !kind || viewerMode.preview;
   const besideWords = code.besideButton.querySelector?.('span');
   if (besideWords) besideWords.textContent = t('Side by side');
@@ -1985,14 +2047,77 @@ async function undoCodeChange(found, hunk, button) {
   void loadCodeChanges(path);
 }
 
+// The chat shell's choice of what is seen: the text, both, or what it makes, kept for the next file.
+async function setCodeView(view) {
+  if (view === 'preview') {
+    if (!viewerMode.preview) {
+      if (!await leaveEditor()) return;
+      code.view = view;
+      viewerMode.preview = true;
+      syncViewerMode();
+      syncEditButton();
+      showViewerPreview();
+    }
+  } else {
+    code.view = view;
+    if (viewerMode.preview) {
+      viewerMode.preview = false;
+      syncViewerMode();
+      syncEditButton();
+      showViewerSource();
+    } else attachBeside();
+  }
+  code.view = view;
+  rememberCode();
+  syncCode();
+}
+// The edge between the text and what it makes, dragged: what it makes takes as much of the width
+// as it is given, all of it when pulled to the end (it then covers the text), and its share is kept.
+// A double press gives the two their first shares back.
+function besideGrip(pane) {
+  const grip = el('div', 'code-beside-grip');
+  grip.setAttribute('role', 'separator');
+  grip.setAttribute('aria-orientation', 'vertical');
+  grip.setAttribute('aria-label', t('Resize the preview'));
+  grip.title = t('Drag to resize · double-click to reset');
+  const apply = () => {
+    viewer.body.style.setProperty('--share', String(code.share));
+    viewer.body.classList.toggle('covered', code.share >= 1);
+  };
+  grip.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || viewer.body.classList.contains('stacked')) return;
+    event.preventDefault();
+    grip.setPointerCapture?.(event.pointerId);
+    viewer.body.classList.add('sizing');
+    const move = (moving) => {
+      const box = viewer.body.getBoundingClientRect();
+      if (!box.width) return;
+      const share = (box.right - moving.clientX) / box.width;
+      code.share = share > 0.94 ? 1 : Math.max(0.2, Math.min(1, share));
+      apply();
+    };
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      viewer.body.classList.remove('sizing');
+      rememberCode();
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up, { once: true });
+    grip.addEventListener('pointercancel', up, { once: true });
+  });
+  grip.addEventListener('dblclick', () => { code.share = 0.46; apply(); rememberCode(); });
+  pane.prepend(grip);
+  apply();
+}
+
 /* side by side: the text and what it makes */
 function attachBeside() {
   code.preview?.remove();
   code.preview = null;
-  viewer.body.classList.remove('with-beside');
+  viewer.body.classList.remove('with-beside', 'covered');
   let on = false;
   try { on = codeOn(); } catch { /* not yet */ }
-  if (on && code.beside && viewerMode.kind && !viewerMode.preview && viewerUI.path) {
+  if (on && code.view === 'split' && viewerMode.kind && !viewerMode.preview && viewerUI.path) {
     const pane = el('div', 'code-beside');
     const head = el('div', 'code-beside-head');
     head.append(el('b', null, t('Preview')));
@@ -2026,6 +2151,7 @@ function attachBeside() {
     viewer.body.querySelector(':scope > .viewer-hint')?.remove();
     viewer.body.append(pane);
     viewer.body.classList.add('with-beside');
+    besideGrip(pane);
     code.preview = pane;
   }
   code.besideButton?.setAttribute('aria-pressed', String(Boolean(code.preview)));
@@ -2808,6 +2934,22 @@ browserGrip?.addEventListener('pointerdown', (event) => {
   if (!shell) return;
   browserGrip.setPointerCapture(event.pointerId);
   shell.classList.add('dragging-dock');
+  // In the chat shell it is one of the tools at the right: its width is the column's, kept as
+  // the other tools keep theirs (sideGrip).
+  if (chatShellOn()) {
+    const sized = (moving) => {
+      const box = sideBoxes.browser ?? { x: window.innerWidth, w: 0 };
+      sideWidths.browser = Math.round(box.x + box.w - moving.clientX);
+      layoutPanels();
+    };
+    browserGrip.addEventListener('pointermove', sized);
+    browserGrip.addEventListener('pointerup', () => {
+      browserGrip.removeEventListener('pointermove', sized);
+      shell.classList.remove('dragging-dock');
+      rememberSides();
+    }, { once: true });
+    return;
+  }
   const move = (moving) => {
     // With a second conversation open, two panes need their floor, not one.
     const floor = shell.classList.contains('with-split') && window.innerWidth > 1100 ? 720 : 360;
@@ -2931,7 +3073,7 @@ function ripleyMaybeReload(paths) {
 function showViewerPreview() {
   // The whole frame for the result: nothing beside it.
   code.preview = null;
-  viewer.body.classList.remove('with-beside');
+  viewer.body.classList.remove('with-beside', 'covered');
   code.besideButton?.setAttribute('aria-pressed', 'false');
   if (viewerMode.kind === 'markdown') {
     ripley.nav.hidden = true;
@@ -2989,7 +3131,7 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
   if (!await leaveEditor({ stash: docked })) return;
   code.preview?.remove();
   code.preview = null;
-  viewer.body.classList.remove('with-beside');
+  viewer.body.classList.remove('with-beside', 'covered');
   code.line = line ?? lines?.from ?? null;
   const src = url ?? `/api/files?root=${root}&path=${encodeURIComponent(path)}`;
   paintViewerPath(label ?? path);
@@ -3021,7 +3163,7 @@ async function openViewer({ root = 'project', path = null, url = null, label = n
     // In the code workspace a page or a document opens as its text, with what it makes beside it.
     let docked = false;
     try { docked = codeOn(); } catch { /* the layout is not up yet */ }
-    Object.assign(viewerMode, { kind, text, src, line, lines, preview: Boolean(kind) && state.ripley && !line && !lines && !(docked && code.beside), mtime: response.headers.get('x-mtime'), editable });
+    Object.assign(viewerMode, { kind, text, src, line, lines, preview: Boolean(kind) && state.ripley && !line && !lines && !(docked && code.view !== 'preview'), mtime: response.headers.get('x-mtime'), editable });
     const tab = editable ? noteCodeTab(path) : null;
     syncViewerMode();
     syncEditButton();
@@ -21587,12 +21729,9 @@ function chatShell() {
   if (bar) for (const family of ['project', 'madre', 'apps']) { const line = el('span', `bar-family ${family}`); line.setAttribute('aria-hidden', 'true'); bar.append(line); }
   // And a spring between the pills and the keys: the title and its pills at one end, the keys at the other.
   if (bar) { const spring = el('span', 'bar-spring'); spring.setAttribute('aria-hidden', 'true'); bar.append(spring); }
-  // Code and Files are one key here: it wears the folder, the thing a person looks for.
+  // Code and Files are one key here: Code's, with its </> (2026-10-27), named for both.
   const codeKey = document.querySelector('#code-button');
-  const folder = document.querySelector('#tree-button > svg');
-  if (codeKey && folder) {
-    codeKey.querySelector(':scope > svg')?.replaceWith(folder.cloneNode(true));
-    codeKey.classList.add('files-key');
+  if (codeKey) {
     codeKey.title = t('Files · your project and its code, beside the conversation');
     codeKey.setAttribute('aria-label', t('Files'));
   }

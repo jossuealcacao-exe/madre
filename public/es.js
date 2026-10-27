@@ -5297,6 +5297,17 @@ export const ES = {
   // El espacio de código (1.0.3).
   'Code · your files, the editor and the preview beside the conversation': 'Código · tus archivos, el editor y la vista previa junto a la conversación',
   // Archivos y Código en una sola tecla (2026-10-27).
+  'Both': 'Ambos',
+  'Only the text': 'Solo el texto',
+  'The text and what it makes, side by side': 'El texto y lo que produce, lado a lado',
+  'Only what it makes': 'Solo lo que produce',
+  'Resize the preview': 'Ajustar la vista previa',
+  'Drag to resize · double-click to reset': 'Arrastra para ajustar · doble clic para restablecer',
+  'Find bugs': 'Buscar errores',
+  'Where it is used': 'Dónde se usa',
+  'Where is this used, and what depends on it?': '¿Dónde se usa esto y qué depende de ello?',
+  'Reference copied.': 'Referencia copiada.',
+  'Edit these lines': 'Editar estas líneas',
   'Files · your project and its code, beside the conversation': 'Archivos · tu proyecto y su código, junto a la conversación',
   'Your project\'s files and their code, beside the chat. Right-click one to copy, move or rename it. Click a line number and press ASK to ask an agent about it.': 'Los archivos de tu proyecto y su código, junto al chat. Clic derecho en uno para copiarlo, moverlo o renombrarlo. Haz clic en un número de línea y pulsa PREGUNTAR para preguntarle a un agente.',
   'Code': 'Código',

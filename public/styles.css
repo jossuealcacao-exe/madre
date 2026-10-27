@@ -11143,11 +11143,6 @@ html.chat-shell .surface-modes .surface-mode[aria-pressed="true"] :is(.ic-h, .ic
    Files is one place: the project's tree (search, a new file, the right-click menu) beside the code,
    its open files as tabs in the head. Narrow, the tree takes the whole column until a file is
    chosen (public/app.js, adoptFinder). Both read in the chat's face, quietly. */
-html.chat-shell #code-button svg .ic-open { opacity: 0; transform-box: fill-box; transform-origin: left bottom; transform: skewX(14deg) scaleY(.6); transition: opacity 140ms var(--ease-out), transform 180ms var(--ease-out); }
-html.chat-shell #code-button svg .ic-k { transition: opacity 120ms var(--ease-out); }
-html.chat-shell #code-button:not([aria-pressed="true"]):hover svg .ic-open { opacity: 1; transform: none; }
-html.chat-shell #code-button:not([aria-pressed="true"]):hover svg .ic-k { opacity: 0; }
-@media (prefers-reduced-motion: reduce) { html.chat-shell #code-button svg .ic-open { transition: none; } }
 
 html.chat-shell .code-files { position: relative; width: 248px; background: none; border-right: 1px solid var(--cs-line); }
 html.chat-shell .code-shell.browse > .code-files { flex: 1 1 auto; width: auto; border-right: 0; }
@@ -11253,3 +11248,61 @@ html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chi
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is(*, :hover, :focus-visible) { height: 28px; padding: 0 10px; gap: 6px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; font: 500 12.5px var(--read) !important; letter-spacing: 0; color: var(--text-3); }
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
 html.chat-shell dialog.viewer .viewer-head .viewer-review:is([aria-pressed="true"], .on) { color: var(--phosphor); }
+
+/* ---- Code, its view and its menus (2026-10-27) ---- */
+/* «Open raw» rounds like the words beside it. */
+html.chat-shell dialog.viewer .viewer-seg .viewer-seg-btn:not([hidden]) + .viewer-open { margin-left: 0; border-radius: 8px !important; }
+/* Code · Both · Preview: one choice in words, in place of «Side by side» and «Preview». */
+html.chat-shell dialog.viewer .viewer-head:has(> .code-views:not([hidden])) > :is(#viewer-mode, .viewer-beside) { display: none !important; }
+html.chat-shell dialog.viewer .code-views[hidden] { display: none; }
+html.chat-shell dialog.viewer .code-views { margin-left: 6px; padding-left: 8px !important; box-shadow: inset 1px 0 0 var(--cs-line); border-radius: 0; }
+/* What it makes takes the share of the width it was dragged to, all of it when pulled to the end. */
+html.chat-shell .viewer-body.with-beside:not(.stacked) { grid-template-columns: minmax(0, 1fr) calc(var(--share, .46) * 100%); }
+html.chat-shell .viewer-body.with-beside.covered:not(.stacked) > :not(.code-beside) { visibility: hidden; }
+html.chat-shell .code-beside { position: relative; border-left: 1px solid var(--cs-line); background: var(--cs-canvas, var(--panel)); }
+html.chat-shell .code-beside-head { padding: 7px 14px; border-bottom: 1px solid var(--cs-line); font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .code-beside-head b { font: 600 12.5px var(--read); }
+html.chat-shell .code-beside-live { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .code-beside-grip { position: absolute; z-index: 3; top: 0; bottom: 0; left: -5px; width: 10px; cursor: col-resize; touch-action: none; }
+html.chat-shell .code-beside-grip::after { content: ''; position: absolute; top: 50%; left: 4px; width: 2px; height: 36px; translate: 0 -50%; border-radius: 2px; background: var(--cs-line); opacity: 0; transition: opacity var(--motion-fast) var(--ease-out), height var(--motion-fast) var(--ease-out); }
+html.chat-shell .code-beside-grip:hover::after, html.chat-shell .viewer-body.sizing .code-beside-grip::after { opacity: 1; height: 56px; background: var(--phosphor); }
+html.chat-shell .viewer-body.covered .code-beside-grip { left: 0; }
+html.chat-shell .viewer-body.covered .code-beside-grip::after { opacity: .7; }
+html.chat-shell .viewer-body.stacked .code-beside-grip { display: none; }
+html.chat-shell .viewer-body.sizing { cursor: col-resize; user-select: none; }
+html.chat-shell .viewer-body.sizing iframe { pointer-events: none; }
+
+/* The card that asks about lines (or a spot on a page): the menus' hand. Who, the verbs as quiet
+   chips, the questions as rows, one's own question as a row too, and what needs no one under a line. */
+html.chat-shell .ask-card { gap: 8px; width: min(280px, calc(100vw - 24px)); padding: 8px; border: 1px solid var(--cs-line); border-radius: 12px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
+html.chat-shell .ask-card-head { padding: 2px 6px 0; font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .ask-crew { gap: 6px; padding: 0 6px; }
+html.chat-shell .ask-agent { --size: 22px; }
+html.chat-shell .ask-actions { gap: 4px; padding: 0 4px; }
+html.chat-shell .ask-action { height: 28px; padding: 0 10px; border-radius: 8px; background: var(--cs-hover); color: var(--text); font: 500 12.5px var(--read); }
+html.chat-shell .ask-action:is(:hover, :focus-visible) { background: var(--cs-sel, color-mix(in srgb, var(--text) 10%, transparent)); color: var(--text); }
+html.chat-shell .ask-group { padding-top: 6px; border-top: 1px solid var(--cs-line); }
+html.chat-shell .ask-group-title { padding: 2px 8px 4px; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .ask-item { padding: 6px 8px; font: 400 13px/1.4 var(--read); color: var(--text); }
+html.chat-shell .ask-item:is(:hover, :focus-visible) { background: var(--cs-hover); }
+html.chat-shell .ask-card .ask-own:is(*, :hover, :active, :focus-visible) {
+  justify-content: flex-start; height: auto; margin: 0; padding: 7px 8px; border: 0 !important; border-top: 0; border-radius: 8px;
+  background: none !important; box-shadow: none !important; transform: none !important; filter: none !important;
+  font: 500 13px var(--read); color: var(--text-2) !important;
+}
+html.chat-shell .ask-card .ask-own:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text) !important; }
+html.chat-shell .ask-card :is(.ask-group, .ask-remembered:not(:empty)) + .ask-own { margin-top: 0; }
+html.chat-shell .ask-tools { display: grid; gap: 1px; padding-top: 6px; border-top: 1px solid var(--cs-line); }
+html.chat-shell .ask-tools .ask-tool { color: var(--text-2); }
+.ask-tools { display: grid; gap: 1px; }
+/* The editor's bar over the chosen lines: the same quiet words, Ask in the text's own colour. */
+html.chat-shell .ed-float { padding: 3px; border-radius: 10px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 0 0 1px var(--cs-line), 0 8px 22px -12px rgba(0, 0, 0, .25) !important; }
+html.chat-shell .ed-chip { height: 28px; border-radius: 7px; font: 500 12.5px var(--read); color: var(--text-2); }
+html.chat-shell .ed-chip:is(:hover, :focus-visible) { background: var(--cs-hover); color: var(--text); }
+html.chat-shell .ed-chip.ask, html.chat-shell[data-scheme="light"] .ed-chip.ask { background: none; color: var(--text); }
+html.chat-shell .ed-chip.ask:is(:hover, :focus-visible) { background: var(--cs-hover); }
+/* Your servers: the page's own edges (to try it narrower) stand inside the panel, clear of the
+   panel's edge that sets its width; both can be reached. */
+html.chat-shell .browser-dock .viewer-stage .stage-grip:first-of-type { left: max(12px, calc((100% - min(var(--stage, 100%), 100%)) / 2 - 8px)) !important; }
+html.chat-shell .browser-dock .viewer-stage .stage-grip:last-of-type { right: max(12px, calc((100% - min(var(--stage, 100%), 100%)) / 2 - 8px)) !important; }
+html.chat-shell .browser-dock > .dock-grip { z-index: 5; }
