@@ -1230,6 +1230,8 @@ export const ES = {
   'Diagnostics › the clipboard is not available here; select the text and copy.':
     'Diagnóstico › aquí no hay portapapeles; selecciona el texto y cópialo.',
   'REPLY TO @{agent}{seq} WITH': 'Responder a @{agent}{seq} con',
+  'Reply to @{agent}{seq}': 'Responder a @{agent}{seq}',
+  'Who answers? Your message carries it quoted.': '¿Quién contesta? Tu mensaje la lleva citada.',
   'the same agent': 'el mismo agente',
   '{label} · not ready': '{label} · no está listo',
   'Answer without quoting this': 'Contestar sin citar esto',

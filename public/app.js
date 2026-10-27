@@ -5187,14 +5187,25 @@ function hideReplyMenu() { replyMenu.hidden = true; }
 function showReplyMenu(source, x, y) {
   if (!replyMenu.hidden && replyMenu.dataset.for === `${source.sequence}`) { hideReplyMenu(); return; }
   replyMenu.dataset.for = `${source.sequence}`;
-  replyMenu.replaceChildren(el('div', 'model-menu-title', t('REPLY TO @{agent}{seq} WITH', { agent: source.sender.toUpperCase(), seq: source.sequence ? ` · #${source.sequence}` : '' })));
+  const seq = source.sequence ? ` · #${source.sequence}` : '';
+  // In the chat shell it says what happens, in the menus' hand (2026-10-27): what is answered, then
+  // who answers it, each with its face; the answer goes quoted in the box.
+  if (chatShellOn()) {
+    const head = el('div', 'reply-head');
+    head.append(el('b', null, t('Reply to @{agent}{seq}', { agent: source.sender, seq })), el('span', null, t('Who answers? Your message carries it quoted.')));
+    replyMenu.replaceChildren(head);
+  } else replyMenu.replaceChildren(el('div', 'model-menu-title', t('REPLY TO @{agent}{seq} WITH', { agent: source.sender.toUpperCase(), seq })));
   for (const agent of state.agents.values()) {
     const item = paint(el('button', `item${agent.ready ? '' : ' off'}`), agent.id);
     item.type = 'button';
     // The same twice-said name as the viewer's menu: the handle IS the name. Beside it goes only
     // what the handle does not carry — that this is the one who just spoke, its vendor, or why not.
     const aside = !agent.ready ? t('no session') : agent.id === source.sender ? t('the same agent') : vendorWord(agent.id);
-    item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
+    if (chatShellOn()) {
+      const body = el('span', 'reply-who');
+      body.append(el('b', null, `@${agent.id}`), el('span', null, aside));
+      item.append(avatar(agent.id, { size: 22 }), body);
+    } else item.append(el('b', null, `@${agent.id}`), el('span', null, aside));
     item.disabled = !agent.ready;
     item.addEventListener('click', () => replyWith(agent.id, source));
     replyMenu.append(item);

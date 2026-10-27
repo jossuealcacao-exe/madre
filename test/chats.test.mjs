@@ -767,3 +767,14 @@ test('chat shell: flat delegated cards, failures fold into a red dot, one sideba
   assert.match(css, /\.system\.fail\.folded > \.fail-known \{ order: 1;/);
   assert.match(css, /\.system\.fail\.folded > \.fail-said \{\n  order: 2;/);
 });
+
+test('chat shell: notices read open without hover, a failure in one face, the reply keys whole, «Reply to» says what happens', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /html\.chat-shell #messages#messages \.sys-dots\.open > \.system\.folded:hover \{ background: transparent !important; \}/);
+  assert.doesNotMatch(css, /\.fail-said \{[^}]*var\(--mono\)/);
+  assert.match(css, /html\.chat-shell #messages#messages \.bubble-foot > \.bubble-actions \{ margin-right: 0 !important; \}/);
+  assert.match(app, /t\('Reply to @\{agent\}\{seq\}', \{ agent: source\.sender, seq \}\)\), el\('span', null, t\('Who answers\? Your message carries it quoted\.'\)\)/);
+  assert.match(app, /item\.append\(avatar\(agent\.id, \{ size: 22 \}\), body\);/);
+  assert.match(css, /html\.chat-shell \.reply-quote \.drop:is\(\*, :hover, :focus-visible\) \{/);
+});
