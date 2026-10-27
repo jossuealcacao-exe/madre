@@ -919,3 +919,17 @@ test('chat shell: a plan says each step\'s mode in its colour, the bar\'s keys l
   assert.match(css, /svg \.ic-spark-big, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-big \{ transform: scale\(\.5\); \}/);
   assert.match(css, /svg \.ic-spark-small, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-small \{ transform: scale\(1\.6\); \}/);
 });
+
+test('chat shell: a module key stays filled while its thing is open, notes keep their colour, reminders by day, notices stand off the canvas', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(app, /for \(const key of document\.querySelectorAll\('\.bar-extra\[data-bar-item\]'\)\) key\.setAttribute\('aria-pressed', String\(barExtraOpen\(key\.dataset\.barItem\)\)\);/);
+  assert.match(app, /if \(IN_SETTINGS\[id\]\) return Boolean\(settingsWindow\.node\?\.open\) && settingsWindow\.open === IN_SETTINGS\[id\];/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar \[aria-pressed="true"\]:is\(\.mother-button, \.tree-button, \.chats-button\) \.ic-f \{ fill: currentColor; fill-opacity: 1; \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar \[data-bar-item="notes"\] svg \{ width: 16px !important; height: 16px !important; \}/);
+  // The room's window rule gave a note the canvas: its colour is its own again.
+  assert.match(css, /html\.chat-shell dialog\.surface\.window\.module-window\.note-window,\nhtml\.chat-shell dialog\.surface\.window\.module-window\.note-window:is\(\.lifted, \.front, \.behind\) \{\n  background: var\(--note, #fde68a\) !important;/);
+  assert.match(app, /const GROUP_WORDS = \{ late: \(\) => t\('Overdue'\), today: \(\) => t\('Today'\), tomorrow: \(\) => t\('Tomorrow'\), later: \(\) => t\('Later'\) \};/);
+  assert.match(css, /\.reminders-row \{ display: grid; grid-template-columns: 64px minmax\(0, 1fr\) auto;/);
+  assert.match(css, /html\.chat-shell\[data-scheme="dark"\] #messages#messages \.sys-dots\.open \{ background: var\(--cs-input\); box-shadow: 0 0 0 1px rgb\(255 255 255 \/ \.11\)/);
+});

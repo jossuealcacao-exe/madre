@@ -9071,6 +9071,7 @@ function syncSettingsCards() {
 }
 
 function openSettingsCategory(id, landOn = null) {
+  paintBarPressed();
   // The manual is a page of its own, not a panel: found by the search, it opens there.
   if (id === 'manual') { openManual(); return; }
   settingsWindow.open = id;
@@ -9088,6 +9089,7 @@ function openSettingsCategory(id, landOn = null) {
 }
 function closeSettingsCategory() {
   settingsWindow.open = null;
+  paintBarPressed();
   drawSettings();
 }
 
@@ -16631,19 +16633,41 @@ function remindersBlock(host, item) {
   });
   const block = sxBlock(host, t('Coming up'), remindersKit.list.length ? t('{n} in this project. Home shows them for every project.', { n: remindersKit.list.length }) : moduleOn(item) ? t('None yet. When you write something you still have to do, a card offers the reminder.') : t('Turn it on and a card offers a reminder when you write something you still have to do.'), { className: 'reminders-sheet' });
   block.rows.append(form);
-  for (const one of remindersKit.list) {
+  // What is coming, by day (2026-10-27): what is already due, today, tomorrow and after, each under
+  // its name; a row is its hour on the left, what to do beside it, and its keys quiet at the right.
+  const day = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const today = day(new Date());
+  const groupOf = (due) => (due.getTime() <= Date.now() ? 'late' : day(due) === today ? 'today' : day(due) === today + 86400000 ? 'tomorrow' : 'later');
+  const GROUP_WORDS = { late: () => t('Overdue'), today: () => t('Today'), tomorrow: () => t('Tomorrow'), later: () => t('Later') };
+  const sorted = [...remindersKit.list].sort((x, y) => Date.parse(x.due) - Date.parse(y.due));
+  let group = null;
+  for (const one of sorted) {
+    const due = new Date(one.due);
+    const here = groupOf(due);
+    if (here !== group) { group = here; block.rows.append(el('div', `reminders-day ${here}`, GROUP_WORDS[here]())); }
+    const row = el('div', `reminders-row ${here}`);
+    const when = el('span', 'reminders-when', here === 'later' ? reminderWhen(one.due) : reminderHour(one.due));
+    const words = el('span', 'reminders-what');
+    words.append(el('b', null, one.text));
+    if (one.repeat) words.append(el('small', null, REPEAT_WORDS[one.repeat]?.() ?? ''));
     const keys = el('span', 'reminders-keys');
     // Moved to another time in one choice, as a card offers it.
-    const move = el('select', 'sx-input reminders-move');
+    const move = el('select', 'reminders-move');
     move.setAttribute('aria-label', t('Move it'));
     move.append(el('option', null, t('Move…')));
     for (const time of quickReminderTimes()) { const option = el('option', null, time.label); option.value = time.due.toISOString(); move.append(option); }
     move.addEventListener('change', () => { if (move.value) { move.disabled = true; void actOnReminder('/api/reminders/snooze', { id: one.id, until: move.value }); } });
     const done = sxButton(one.repeat ? t('Done for today') : t('Done'), () => void actOnReminder('/api/reminders/done', { id: one.id }));
-    const drop = sxButton(t('Delete'), () => void actOnReminder('/api/reminders/delete', { id: one.id }));
+    done.classList.add('reminders-done');
+    const drop = el('button', 'reminders-drop');
+    drop.type = 'button';
+    drop.innerHTML = TRASH_ICON; // trusted: our own SVG string
+    drop.title = t('Delete');
+    drop.setAttribute('aria-label', t('Delete'));
+    drop.addEventListener('click', () => void actOnReminder('/api/reminders/delete', { id: one.id }));
     keys.append(move, done, drop);
-    const late = Date.parse(one.due) <= Date.now();
-    sxRow(block, one.text, `${late ? `${t('Due')} · ` : ''}${whenLine(one.due, one.repeat)}`, keys);
+    row.append(when, words, keys);
+    block.rows.append(row);
   }
   // What was done, newest first: brought back with one press, or cleared.
   if (remindersKit.done.length) {
@@ -21536,6 +21560,23 @@ function barButton(entry) {
 }
 // What every key of the bar answers: right-click opens the bar, a long press on touch does too,
 // and while it is open a key can be carried to another place.
+// A key of the bar stays lit — filled, in the accent — while what it opened is open (2026-10-27): a
+// module's window, or its category of Settings. The room's own keys already said so; a module's
+// went back to its outline the moment it was pressed.
+function barExtraOpen(id) {
+  if (IN_SETTINGS[id]) return Boolean(settingsWindow.node?.open) && settingsWindow.open === IN_SETTINGS[id];
+  return Boolean(moduleWindows.get(id)?.node?.open);
+}
+let barPressFrame = 0;
+function paintBarPressed() {
+  clearTimeout(barPressFrame);
+  barPressFrame = setTimeout(() => {
+    for (const key of document.querySelectorAll('.bar-extra[data-bar-item]')) key.setAttribute('aria-pressed', String(barExtraOpen(key.dataset.barItem)));
+  }, 0);
+}
+if (!SPLIT_CHAT && typeof MutationObserver === 'function') {
+  new MutationObserver(paintBarPressed).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['open'] });
+}
 function barWire(node, id) {
   if (node.dataset.barWired) return;
   node.dataset.barWired = '1';

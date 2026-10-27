@@ -5576,6 +5576,7 @@ export const ES = {
   'Move it': 'Moverlo',
   'Move…': 'Mover…',
   'Due': 'Vencido',
+  'Overdue': 'Vencidos',
   'Clear': 'Vaciar',
   'The last ones you marked done in this project.': 'Los últimos que marcaste como hechos en este proyecto.',
   'Again tomorrow': 'Otra vez mañana',
