@@ -243,7 +243,7 @@ test('modules: a board of tiles, a sheet for each, windows only for MADRE\'s own
   // The sheet and the window are the same sheet, built from AJUSTES' blocks.
   assert.match(board, /detail\.append\(head\);\n  moduleSheet\(detail, item\);/);
   assert.match(board, /entry\.body\.replaceChildren\(\);\n  moduleSheet\(entry\.body, item\);/);
-  assert.match(board, /function moduleSheet\(host, item\) \{\n  host\.append\(moduleGlance\(item\)\);/);
+  assert.match(board, /function moduleSheet\(host, item, \{ inSettings = false \} = \{\}\) \{\n  if \(!inSettings\) host\.append\(moduleGlance\(item\)\);/);
   // A module that keeps no figures gets none made up.
   assert.match(board, /return strip\.childElementCount \|\| strip\.classList\.contains\('loading'\) \? strip : document\.createDocumentFragment\(\);/);
   // A module somebody wrote that installs keeps its install card, inside a block.

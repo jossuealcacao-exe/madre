@@ -165,7 +165,10 @@ export const marketEntry = (id) => {
 export const marketShelves = () => (remote?.shelves?.length ? remote.shelves.map((shelf) => ({ id: shelf.id, title: pick(shelf.title) ?? shelf.id, about: pick(shelf.about) ?? '' })) : MARKET_SHELVES);
 // What the shop shows: every module that can be turned on or installed. One that is always there
 // (Git) is part of MADRE, not something to get, and so is the Coordinator, which is Home itself.
-export const inMarket = (item) => Boolean(item) && !item.fixed && item.kind !== undefined && item.id !== 'bishop';
+// Part of MADRE, not modules (2026-10-27): suggested effort, options, commands and connections between
+// projects are set in each project's Settings (app.js, IN_SETTINGS), and the Market does not sell them.
+export const IN_MADRE = new Set(['intents', 'choices', 'runs', 'enlaces']);
+export const inMarket = (item) => Boolean(item) && !item.fixed && item.kind !== undefined && item.id !== 'bishop' && !IN_MADRE.has(item.id);
 // The ones the carousel shows, in their order.
 export const marketFeatured = (items = []) => items.filter((item) => marketEntry(item.id).featured).sort((a, b) => marketEntry(a.id).featured - marketEntry(b.id).featured);
 

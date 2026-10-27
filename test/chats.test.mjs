@@ -839,3 +839,36 @@ test('the SDK: a module draws its own icon, and MADRE fits it to the tile in one
   const prompt = await readFile(new URL('../src/room/prompt.mjs', import.meta.url), 'utf8');
   assert.match(prompt, /Give it its own icon, as part of the module: 'icon: \{ svg, color \}'/);
 });
+
+test('the Market as a window of the room, by its own width; the room\'s chrome under every window', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const view = await readFile(new URL('../public/market-view.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(view, /const framed = host\.window\?\.\(\{ root, bar, close: \(\) => close\(\) \}\) \?\? null;/);
+  assert.match(app, /host: \{\n      window: marketAsWindow,/);
+  assert.match(app, /carryWindowBy\(bar, root, \{ box: \(\) => marketWindow\.box, place, done: remember \}\);/);
+  assert.match(css, /\.mk\.flat \{ container: mk \/ inline-size; \}/);
+  assert.match(css, /@container mk \(max-width: 760px\) \{/);
+  // Its search is every other search: nothing of its own.
+  assert.doesNotMatch(css, /\.mk\.flat \.mk-search \{[^}]*background/);
+  // The tool tabs and the sidebar used to stand in the windows' layer and cut a window's top.
+  assert.match(css, /html\.chat-shell \.tool-tabs \{ z-index: 19; \}/);
+  assert.match(app, /const SHELL_CHROME = '#bar, #chats, \.tool-tabs, dialog\.viewer\.split > \.viewer-head,/);
+  // The preview of the looks wears the chat shell.
+  assert.match(app, /if \(chatShellOn\(\)\) attributes\.set\('class', 'chat-shell'\);/);
+});
+
+test('suggested effort, options, commands and connections are parts of MADRE, set in Settings', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const { inMarket, IN_MADRE } = await import('../public/market.js');
+  for (const id of ['intents', 'choices', 'runs', 'enlaces']) {
+    assert.ok(IN_MADRE.has(id));
+    assert.equal(inMarket({ id, kind: 'builtin' }), false, `${id} is still sold in the Market`);
+  }
+  assert.equal(inMarket({ id: 'ash', kind: 'builtin' }), true);
+  assert.match(app, /const IN_SETTINGS = \{ ollama: 'local', intents: 'room', choices: 'room', runs: 'room', enlaces: 'memory' \};/);
+  assert.match(app, /if \(id === 'room'\) \{ part\('turns'\); part\('room'\); part\('parts-room'\); \}/);
+  assert.match(app, /for \(const item of items\) moduleSheet\(target, item, \{ inSettings: true \}\);/);
+  // A module's command wears its module's drawing in the «/» menu.
+  assert.match(app, /else glyph = commandGlyph\(item\.glyph \?\? '', item\.module\);/);
+});

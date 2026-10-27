@@ -71,7 +71,7 @@ export const marketOpen = () => Boolean(current);
 export function closeMarket() { current?.close(); }
 
 export function openMarket({ where = 'home', tab = 'shop', focus = null, project = null, host = {} } = {}) {
-  if (current) { current.go({ tab, focus }); return current; }
+  if (current) { current.raise?.(); current.go({ tab, focus }); return current; }
   const home = where === 'home';
   const before = document.activeElement;
   // The flat store (2026-10-27): the chat shell's canvas, hairlines and flat icons, laid out as the
@@ -116,7 +116,11 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   const main = el('main', 'mk-main');
   root.append(bar, main);
   document.body.append(root);
-  document.documentElement.classList.add('mk-open');
+  // In a project the Market is one more window of the room (2026-10-27): carried by its bar, sized by
+  // its edges, arranged and set aside with the others (app.js, marketAsWindow). Without that — Home —
+  // it takes the whole screen, as before.
+  const framed = host.window?.({ root, bar, close: () => close() }) ?? null;
+  if (!framed) document.documentElement.classList.add('mk-open');
   requestAnimationFrame(() => root.classList.add('in'));
 
   let items = [];
@@ -343,6 +347,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
       featured.forEach((_, one) => { if (Math.abs(startOf(one) - track.scrollLeft) < Math.abs(startOf(at) - track.scrollLeft)) at = one; });
       if (at !== index) { index = at; mark(); }
     }, { passive: true });
+    // A window sized narrower or wider keeps the card it showed in place, never half of two.
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (track.isConnected) track.scrollTo({ left: startOf(index), behavior: 'auto' }); }).observe(track);
     const prev = glyph(button('mk-arrow prev', null, () => show(index - 1)), 'back');
     const next = glyph(button('mk-arrow next', null, () => show(index + 1)), 'next');
     prev.setAttribute('aria-label', t('Previous'));
@@ -674,6 +680,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (!current) return;
     clearInterval(timer);
     current = null;
+    framed?.drop();
     document.documentElement.classList.remove('mk-open');
     root.classList.remove('in');
     try { history.replaceState(history.state, '', `${location.pathname}${location.search}`); } catch { /* fine */ }
@@ -691,7 +698,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     else close();
   });
 
-  current = { close, go };
+  current = { close, go, raise: () => framed?.raise() };
   main.append(el('p', 'mk-empty', t('Looking…')));
   root.focus();
   void load().then(() => { if (current) go({ tab, focus, choose: false }); });

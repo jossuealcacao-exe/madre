@@ -16,7 +16,7 @@ import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
-import { MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
+import { MODULE_ANY, MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
 import { openMarket } from './market-view.js';
 import { CATALOG_CHECKED, MCP_CATALOG, MCP_GROUPS, initials as mcpInitials } from './mcp-catalog.js';
 // Where nothing can hover (a phone), a tapped key does not stay lit (public/touch.js).
@@ -8205,6 +8205,9 @@ function lookPreview(draft) {
   const frame = el('iframe', 'look-frame');
   frame.setAttribute('aria-hidden', 'true');
   frame.tabIndex = -1;
+  // The chat shell's own look too (2026-10-27): its canvas, its bubbles, no picture behind. Without the
+  // class the frame drew the room of before, glass bubbles on the old wallpaper.
+  if (chatShellOn()) attributes.set('class', 'chat-shell');
   const opening = [...attributes].map(([name, value]) => `${name}="${quoted(value)}"`).join(' ');
   frame.srcdoc = `<!doctype html><html ${opening}><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"><style>${LOOK_FRAME_CSS}</style></head><body><div class="shell"><main id="messages" class="thread">${inner.outerHTML}</main></div></body></html>`;
   // Shown once it is painted, never as an empty box between two choices.
@@ -8511,6 +8514,7 @@ const SETTINGS_INDEX = [
   ['look', 'Preview'], ['look', 'Language'], ['look', 'Theme'], ['look', 'Wallpaper'], ['look', 'Accent'], ['look', 'Bubbles'], ['look', 'Text'],
   ['room', 'Several at once'], ['room', 'Notifications'], ['room', 'Conversations at once'], ['room', 'Answers per conversation'], ['room', 'Agents may make plans'], ['room', 'Steps per plan'],
   ['manual', 'User manual'], ['manual', 'PDF'],
+  ['room', 'Suggested effort'], ['room', 'Options'], ['room', 'Commands'], ['memory', 'Connections'],
   ['files', 'Files'], ['files', 'Your servers'], ['files', 'File viewer'], ['files', 'Preview'], ['files', "Test browser"],
   ['room', 'Usage limit per agent'], ['room', 'Default time limit'], ['room', 'Silence limit'], ['room', 'Retries'], ['room', 'Model'],
   ['agents', 'Max mode'], ['agents', 'Starting mode'], ['agents', 'Web access'], ['agents', 'Generate images'], ['agents', 'Time limit'], ['agents', 'Sign in'],
@@ -8914,8 +8918,8 @@ function settingsDetail(id) {
     drawCustom();
   }
   if (id === 'agents') part('agents');
-  if (id === 'room') { part('turns'); part('room'); }
-  if (id === 'memory') part('memory');
+  if (id === 'room') { part('turns'); part('room'); part('parts-room'); }
+  if (id === 'memory') { part('memory'); part('parts-memory'); }
   if (id === 'privacy') part('privacy');
   if (id === 'permissions') part('permissions');
   if (id === 'release') { part('release'); part('sentinel'); }
@@ -8930,6 +8934,7 @@ function fillSettingsCategory(id) {
   if (id === 'files') { drawFilesTarget(); void refreshModules(); }
   if (id === 'mcp') { drawMcpTarget(); void loadMcp(); }
   if (id === 'local') { drawLocalTarget(); void refreshModules(); }
+  if (SETTINGS_PARTS[id]) { drawPartsTarget(); void refreshModules(); }
   if (['agents', 'room', 'memory', 'privacy', 'permissions'].includes(id)) { if (settingsUI.data) renderSettings(); void loadSettings(); }
   if (id === 'room' || id === 'release') { if (turnsUI.turns || sentinelUI.settings) renderMotherSentinel(); void loadTurns(); void loadSentinel(); }
   if (id === 'release') renderUpdate();
@@ -10339,7 +10344,9 @@ const NOT_DESK = '.bar, .bar-home, #bar, header, nav, .avatar, .picker, .openq, 
 // In the chat shell the frame around the conversation is desktop too (2026-10-27): a press on the
 // bar's or the sidebar's bare ground (not on a key, a row or an agent) shows the desktop as a
 // press on the conversation's ground does.
-const SHELL_CHROME = '#bar, #chats, .tool-tabs';
+// The heads of what is docked beside it count too (2026-10-27): with Code, the files or the servers
+// open at the side, their bare head shows the desktop and brings the windows back, as the bar does.
+const SHELL_CHROME = '#bar, #chats, .tool-tabs, dialog.viewer.split > .viewer-head, .tree.split:not(.chats) > .tree-head, .browser-dock:not(.window) > .viewer-head';
 const NOT_CHROME_DESK = '#agents, .agents, .avatar, .crew-orb, .agent-pop, .picker, .side-row, .side-project, .chat-row, .chats-body li';
 function chromePress(target) {
   return chatShellOn() && Boolean(target?.closest?.(SHELL_CHROME)) && !target.closest(DESK_ACTIVE) && !target.closest(NOT_CHROME_DESK) && !target.closest(WINDOW_SELECTOR);
@@ -12847,7 +12854,7 @@ function renderMenu() {
     // Grouped and in that order: the room's own commands, then what the modules add, then what
     // cannot run here — so the arrows walk them as they are read.
     : allCommands().filter((item) => item.name.startsWith(found.query) || found.query.startsWith(item.name))
-      .map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? t(item.summary ?? '') : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available, glyph: item.name, group: !item.available ? 'off' : item.client ? 'room' : 'modules' }))
+      .map((item) => ({ key: item.usage ?? `/${item.name}`, insert: `/${item.name} `, what: item.available ? t(item.summary ?? '') : t('{title} is not available here · see MODULES', { title: item.title }), off: !item.available, glyph: item.name, module: item.module, group: !item.available ? 'off' : item.client ? 'room' : 'modules' }))
       .sort((a, b) => COMMAND_GROUPS.indexOf(a.group) - COMMAND_GROUPS.indexOf(b.group));
   if (found.kind === '/' && items.length === 1 && items[0].insert === '/module ') return showMenu([...items, ...moduleStarters()], { ...found, hint: t('MODULE · ↑↓ · TAB OR ENTER · pick one and edit it') });
   if (!items.length) return closeMenu();
@@ -12887,11 +12894,18 @@ const COMMAND_GLYPHS = {
   stopall: '<rect class="ic-f" x="4" y="4" width="12" height="12" rx="3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
   git: '<circle cx="6.5" cy="5.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6.5" cy="14.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="13.5" cy="8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 7.3v5.4M13.5 9.8c0 2.6-2.4 3-5.4 3.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
   ahp: '<path d="M9.3 2.95a2 2 0 0 1 1.4 0l4.2 1.6c.42.16.7.56.7 1V9.5c0 3.4-2.3 5.9-5.6 7.25C6.7 15.4 4.4 12.9 4.4 9.5V5.55c0-.44.28-.84.7-1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  // The Coordinator: one in the middle, the others around it.
+  bishop: '<circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="3.8" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="4.6" cy="13.6" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="15.4" cy="13.6" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 5.3v2.3M5.9 12.8l2-1.2M14.1 12.8l-2-1.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
   slash: '<path d="M12.5 3.5l-5 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
 };
-function commandGlyph(name) {
+// A command a module brings wears that module's own drawing (2026-10-27): /notas its note, /gh
+// GitHub's mark. The slash is left for a command whose module has none.
+function commandGlyph(name, moduleId = null) {
   const glyph = el('span', 'glyph');
-  glyph.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${COMMAND_GLYPHS[name] ?? COMMAND_GLYPHS.slash}</svg>`; // trusted: our own SVG strings
+  const owner = moduleId ? modules.items.find((one) => one.id === moduleId) ?? { id: moduleId } : null;
+  const face = owner ? moduleFace(owner).icon : null;
+  const drawing = COMMAND_GLYPHS[name] ?? (face && face !== MODULE_ANY ? face : COMMAND_GLYPHS.slash);
+  glyph.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${drawing}</svg>`; // trusted: our own SVG strings, or a module's cleaned by market.js
   return glyph;
 }
 
@@ -12921,7 +12935,7 @@ function showMenu(items, found) {
       let glyph;
       if (item.agent) { glyph = el('span', 'glyph agent'); glyph.append(avatar(item.agent, { size: 22 })); }
       else if (Number.isInteger(item.mode)) { glyph = el('span', `glyph mode m${item.mode}`, `#${item.mode}`); }
-      else glyph = commandGlyph(item.glyph ?? '');
+      else glyph = commandGlyph(item.glyph ?? '', item.module);
       const head = el('span', 'line');
       head.append(el('span', 'key', name));
       if (args) head.append(el('span', 'args', args));
@@ -14473,6 +14487,7 @@ async function refreshModules() {
   barModulesChanged();
   drawFilesTarget();
   drawLocalTarget();
+  drawPartsTarget();
   syncSettingsCards();
   void syncNotes();
   if (!remindersKit.read) { remindersKit.read = true; void loadReminders(); }
@@ -15916,8 +15931,11 @@ function moduleFacts(host, item) {
 // Intenciones measured, Ollama's local brain), and last what it touches and what it adds. A module
 // somebody wrote that installs rather than switches keeps its install card, inside a block.
 const sentenceCase = (text) => { const words = String(text ?? ''); return words === words.toUpperCase() ? words.charAt(0) + words.slice(1).toLowerCase() : words.charAt(0).toUpperCase() + words.slice(1); };
-function moduleSheet(host, item) {
-  host.append(moduleGlance(item));
+// In Settings (inSettings, 2026-10-27) a part of MADRE reads as one more block of its category: its
+// name over what it does, its switch and its own settings in the same block, no version of its own
+// and no list of what it touches — it comes with MADRE.
+function moduleSheet(host, item, { inSettings = false } = {}) {
+  if (!inSettings) host.append(moduleGlance(item));
   if (item.kind !== 'builtin') {
     const install = sxBlock(host, t('What it does'), t(item.summary ?? ''), { className: 'mods-legacy' });
     install.rows.append(moduleCard(item));
@@ -15925,7 +15943,7 @@ function moduleSheet(host, item) {
     return;
   }
   const on = moduleOn(item);
-  const about = sxBlock(host, t('What it does'), t(moduleFace(item).summary ?? item.summary ?? ''));
+  const about = sxBlock(host, inSettings ? (moduleFace(item).name ?? t(item.name)) : t('What it does'), t(moduleFace(item).summary ?? item.summary ?? ''));
   // Whose idea it was, when a module says (Reminders, 2026-10-20): credited where it is used.
   if (item.credit) sxRow(about, t('Idea by {name}', { name: item.credit }), t('Thank you for building MADRE with us.'));
   if (item.fixed) sxRow(about, t('Always on'), item.status?.detail ? sentenceCase(t(item.status.detail)) : null);
@@ -15938,7 +15956,11 @@ function moduleSheet(host, item) {
       try { await switchModule(item); } catch (error) { box.checked = !next; box.disabled = false; toast(error.message); }
     }, { disabled: blocked, label: item.name }), { off: blocked });
   }
-  // The version, and the key that goes and looks for a newer one, right where the news is.
+  if (!inSettings) moduleVersionRow(about, item);
+  moduleRest(host, item, { inSettings, about });
+}
+// The version, and the key that goes and looks for a newer one, right where the news is.
+function moduleVersionRow(about, item) {
   const said = updateWord(item.update);
   const versionRow = sxRow(about, t('Version'), [item.vendor, said ? sentenceCase(said.text) : null].filter(Boolean).join(' · ') || null);
   const hint = versionRow.querySelector('.sx-hint');
@@ -15961,10 +15983,11 @@ function moduleSheet(host, item) {
     keys.append(get);
   }
   versionRow.querySelector('.sx-words').after(keys);
-
+}
+function moduleRest(host, item, { inSettings = false, about = null } = {}) {
   // Its own settings, declared by the module and drawn as rows.
   if (item.controls?.length) {
-    const block = sxBlock(host, t('Settings'), t('What this module lets you set. Each change is saved as you make it.'));
+    const block = inSettings && about ? about : sxBlock(host, t('Settings'), t('What this module lets you set. Each change is saved as you make it.'));
     const save = async (control, value, field) => {
       field.disabled = true;
       const response = await fetch(`/api/extensions/${item.id}/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: control.key, value }) });
@@ -16015,7 +16038,7 @@ function moduleSheet(host, item) {
   if (item.id === 'notes') notesBlock(host, item);
   if (item.id === 'reminders') remindersBlock(host, item);
 
-  moduleFacts(host, item);
+  if (!inSettings) moduleFacts(host, item);
   if (item.external) {
     const yours = sxBlock(host, t('Your module'), item.file ?? null);
     const fresh = sxButton(t('Get a newer file'), () => void refreshModuleFile(item, fresh), { title: item.updates?.url ? t('From {url}', { url: item.updates.url }) : t('From the file this module was installed from') });
@@ -16121,7 +16144,22 @@ function moduleDetail(item) {
 }
 
 // Modules whose whole sheet is a category of Settings: every way in to them lands there.
-const IN_SETTINGS = { ollama: 'local' };
+// Suggested effort, options and commands are how the room works (Work and limits); connections between
+// projects are part of what it remembers (2026-10-27): parts of MADRE, set where the rest is set.
+const IN_SETTINGS = { ollama: 'local', intents: 'room', choices: 'room', runs: 'room', enlaces: 'memory' };
+const SETTINGS_PARTS = { room: ['intents', 'choices', 'runs'], memory: ['enlaces'] };
+function drawPartsTarget() {
+  for (const [cat, ids] of Object.entries(SETTINGS_PARTS)) {
+    const target = state.settingsTargets[`parts-${cat}`];
+    if (!target?.isConnected) continue;
+    const items = ids.map((id) => modules.items.find((one) => one.id === id)).filter(Boolean);
+    if (!items.length) continue;
+    target.replaceChildren();
+    // What a part reads (the effort it learned) wears the same rows as in its sheet of before.
+    target.classList.add('mods-detail');
+    for (const item of items) moduleSheet(target, item, { inSettings: true });
+  }
+}
 function openModuleSheet(id) {
   if (IN_SETTINGS[id]) { if (modules.dialog?.open) closeModules(); openSettingsOn(IN_SETTINGS[id]); return; }
   modules.open = id;
@@ -16820,12 +16858,55 @@ modules.close.addEventListener('click', () => closeModules());
 // THE MARKET in a project (2026-10-18): the same store as Home's, full screen, where what you get
 // is for this project. A module that writes into the folder comes back here, to its card, so its
 // commands are read before they run.
+// As a window (2026-10-27): the Market is carried, sized, arranged and set aside like Settings, and
+// keeps the box the person gave it.
+const marketWindow = { box: null, want: null };
+try { marketWindow.box = JSON.parse(localStorage.getItem('pulse.marketWindow') ?? 'null'); } catch { /* no storage */ }
+function marketBoxFor() {
+  const kept = marketWindow.want ?? marketWindow.box;
+  if (kept?.w && kept?.h) return kept;
+  const w = Math.min(1040, window.innerWidth - 32);
+  const h = Math.min(780, window.innerHeight - 90);
+  return { x: Math.max(16, Math.round((window.innerWidth - w) / 2)), y: 56, w, h };
+}
+function marketAsWindow({ root, bar, close }) {
+  if (!chatShellOn()) return null;
+  root.classList.add('surface', 'window', 'market-window');
+  const place = (box) => { marketWindow.want = { ...box }; marketWindow.box = clampWindowBox(box, { minW: 360, minH: 360 }); applyWindowBox(root, marketWindow.box); };
+  const remember = () => { try { localStorage.setItem('pulse.marketWindow', JSON.stringify(marketWindow.box)); } catch { /* no storage */ } };
+  place(marketBoxFor());
+  // The keys every window has, at the right of its bar: arrange, and close.
+  const group = el('span', 'surface-modes');
+  const arrange = el('button', 'surface-mode window');
+  arrange.type = 'button';
+  arrange.innerHTML = FLOAT_ICON; // trusted: our own SVG string
+  arrange.setAttribute('aria-pressed', 'true');
+  arrange.setAttribute('aria-label', t('Arrange the windows'));
+  arrange.addEventListener('click', (event) => { event.stopPropagation(); showArrange(arrange, { owner: () => root }); });
+  arrangeOnHover(arrange, { owner: () => root });
+  group.append(arrange);
+  const shut = el('button', 'close', t('Close'));
+  shut.type = 'button';
+  shut.addEventListener('click', () => close());
+  joinClose(group, shut);
+  bar.append(group);
+  carryWindowBy(bar, root, { box: () => marketWindow.box, place, done: remember });
+  windowEdgesFor(root, { box: () => marketWindow.box, place, done: remember, minW: 360, minH: 360 });
+  const refit = () => { if (root.isConnected) place(marketWindow.want ?? marketWindow.box ?? marketBoxFor()); };
+  window.addEventListener('resize', refit);
+  bringWindowForward(root);
+  return {
+    raise: () => bringWindowForward(root),
+    drop: () => { window.removeEventListener('resize', refit); dropWindow(root); },
+  };
+}
 function openRoomMarket(focus = null) {
   return openMarket({
     where: 'room',
     focus,
     project: { name: projectDesignation() || t('this project') },
     host: {
+      window: marketAsWindow,
       localAi: () => openSettingsOn('local'),
       toast: (words) => toast(words),
       installHere: async (item) => { openModules(); await refreshModules(); renderModules(); openModuleSheet(item.id); },

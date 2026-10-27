@@ -11601,8 +11601,8 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
 .mk.flat .mk-tab[aria-selected="true"] { background: var(--mk-canvas); color: var(--text); box-shadow: 0 0 0 .5px var(--mk-line), 0 1px 2px rgba(0, 0, 0, .08); }
 .mk.flat .mk-here { font: 500 13.5px var(--read); }
 .mk.flat .mk-here span { font-weight: 400; color: var(--text-3); }
-.mk.flat .mk-search { width: min(260px, 100%); height: 30px; border-radius: 9px; background: var(--mk-fill) !important; box-shadow: none !important; }
-.mk.flat .mk-search:focus-within { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--madre-green) 45%, transparent) !important; }
+/* The search is every other search of the room (.settings-search): nothing of its own here. */
+.mk.flat .mk-search { width: min(280px, 100%); }
 /* The page: a large title, as the store's, and the rest under it. */
 .mk.flat .mk-page { width: min(1040px, 100%); padding: 26px 32px calc(64px + env(safe-area-inset-bottom, 0px)); gap: 34px; }
 .mk.flat .mk-head h1 { font: 700 32px/1.1 var(--read); letter-spacing: -.02em; }
@@ -11727,3 +11727,78 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
 .mk.flat :is(.mk-icon, .mk-slide, .mk-shot), html.chat-shell .mk-icon { --mk-flat: color-mix(in oklab, var(--mk-a, #94a3b8) 32%, var(--mk-b, #334155)); }
 html.chat-shell .mk-icon { background: var(--mk-flat); box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1); }
 html.chat-shell .mk-icon svg { filter: none; }
+
+/* ---- A suggestion over the text (how much to think, @madre answers free), 2026-10-27: its own card
+   lifted a little off the box — a hairline and a light shadow all the way round, and air under it,
+   so it does not read as part of what you are writing. ---- */
+html.chat-shell .shell > .composer > :is(.free-offer, .intent-offer.free-offer):not([hidden]) {
+  margin: 0 0 10px; border: 0 !important; background: var(--cs-canvas) !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  box-shadow: 0 0 0 1px var(--cs-line), 0 1px 2px rgba(20, 30, 20, .05), 0 6px 16px -8px rgba(20, 30, 20, .16) !important;
+}
+html.chat-shell[data-scheme="dark"] .shell > .composer > :is(.free-offer, .intent-offer.free-offer):not([hidden]) {
+  background: var(--cs-input) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 1px 2px rgba(0, 0, 0, .25), 0 6px 16px -8px rgba(0, 0, 0, .5) !important;
+}
+
+/* ---- The Market as a window of the room (app.js, marketAsWindow, 2026-10-27): the same sheet as
+   Settings — the canvas, a hairline, the shadow — carried by its bar, sized by its edges, set aside
+   with the others. Its bar reads as Settings' head: the name, the search, the window's keys. ---- */
+.mk.flat.window { inset: auto; border-radius: 14px; overflow: hidden; transform-origin: 50% 40%;
+  box-shadow: 0 0 0 1px var(--mk-line), 0 24px 60px -18px rgba(20, 30, 20, .32), 0 6px 18px -8px rgba(20, 30, 20, .14); }
+:root[data-scheme="dark"] .mk.flat.window { box-shadow: 0 0 0 1px var(--mk-line), 0 24px 60px -18px rgba(0, 0, 0, .7); }
+.mk.window > .win-edge { display: block; }
+.mk.window .mk-leave { display: none; }
+.mk.window .mk-bar { grid-template-columns: auto minmax(0, 1fr) auto; padding: 8px 10px 8px 16px; cursor: grab; }
+.mk.window .mk-bar :is(button, input, label) { cursor: pointer; }
+.mk.window .mk-bar input { cursor: text; }
+.mk.window .mk-bar-mid { justify-self: start; }
+.mk.window .mk-search { justify-self: start; }
+.mk.window .mk-bar > .surface-modes { justify-self: end; }
+.mk.window.aside-moving {
+  transition: translate calc(560ms * var(--motion-scale)) var(--ease-glide) var(--aside-delay, 0ms), opacity calc(420ms * var(--motion-scale)) var(--ease-out) var(--aside-delay, 0ms) !important;
+}
+.mk.window.aside { translate: var(--aside-x, 0px) 0; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .mk.window.aside-moving { transition: none !important; } }
+
+/* ---- The flat store by its own width, not the screen's: a window can be narrow on a wide screen.
+   Narrow, one featured card at a time with the next peeking, one column per shelf, the module's
+   page stacked, the facts two by two. ---- */
+.mk.flat { container: mk / inline-size; }
+@container mk (max-width: 760px) {
+  .mk.flat .mk-bar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding-inline: 12px; }
+  .mk.flat .mk-bar-mid { justify-self: start; min-width: 0; }
+  .mk.flat .mk-here span { display: none; }
+  .mk.flat .mk-search { grid-column: auto; justify-self: stretch; width: auto; max-width: none; }
+  .mk.flat .mk-search[hidden] { display: flex !important; visibility: hidden; }
+  .mk.flat .mk-tab { min-width: 0; padding-inline: 12px; }
+  .mk.flat .mk-page { gap: 26px; padding: 18px 16px calc(44px + env(safe-area-inset-bottom, 0px)); }
+  .mk.flat .mk-head h1 { font-size: 26px; }
+  .mk.flat .mk-slide { flex-basis: calc(100% - 28px); grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .mk.flat .mk-slide-words { padding: 22px 20px 4px; }
+  .mk.flat .mk-slide-words p { max-width: none; }
+  .mk.flat .mk-slide-get { width: 100%; }
+  .mk.flat .mk-slide-who { flex: 1; }
+  .mk.flat .mk-slide-art { padding: 4px 14px 16px; }
+  .mk.flat .mk-slide-art svg { max-height: 200px; }
+  .mk.flat .mk-arrow { display: none; }
+  .mk.flat .mk-shelf .mk-list { grid-auto-columns: calc(100% - 28px); column-gap: 20px; }
+  .mk.flat .mk-product-top { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .mk.flat .mk-product-top > .mk-icon { --mk-size: 84px !important; }
+  .mk.flat .mk-facts, .mk.flat .mk-facts:has(> :nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk.flat .mk-facts > div:nth-child(odd) { border-left: 0; }
+  .mk.flat .mk-facts > div:nth-child(n + 3) { border-top: 1px solid var(--mk-line); }
+  .mk.flat .mk-shot { flex-basis: calc(100% - 28px); }
+  .mk.flat .mk-touch { grid-template-columns: 1fr; gap: 2px; }
+  .mk.flat .mk-chips { padding-left: 0; }
+}
+@container mk (max-width: 460px) {
+  .mk.flat .mk-head p { display: none; }
+  .mk.flat .mk-row-side small { display: none; }
+}
+
+/* ---- The room's chrome under the windows (2026-10-27): the tool tabs and the sidebar stood at 31 and
+   30, in the windows' own layer (30–49), and cut the top of a window carried up beside Code or the
+   files. They stay over what is docked (6) and under the veil and every window. ---- */
+html.chat-shell .tool-tabs { z-index: 19; }
+html.chat-shell .shell > .tree.chats.split { z-index: 19; }
