@@ -1312,6 +1312,8 @@ export const ES = {
   'Peach orange': 'Naranja Durazno',
   'Pistachio green': 'Verde Pistache',
   'Petal pink': 'Rosa Pétalo',
+  'Black': 'Negro',
+  'Fortress blue': 'Azul Fortaleza',
   'Comfortable': 'Cómodo',
   'Large': 'Grande',
   'Compact': 'Compacto',

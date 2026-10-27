@@ -4093,6 +4093,8 @@ dialog.custom-window::backdrop { display: none; }
 .swatch[data-swatch="durazno"] { --sw: #ffa46b; --sw-ink: #2e1300; }
 .swatch[data-swatch="pistache"] { --sw: #6bff9a; --sw-ink: #003314; }
 .swatch[data-swatch="petalo"] { --sw: #f556d5; --sw-ink: #ffffff; }
+.swatch[data-swatch="negro"] { --sw: #141414; --sw-ink: #ffffff; }
+.swatch[data-swatch="fortaleza"] { --sw: #0030ff; --sw-ink: #ffffff; }
 :root[data-scheme="light"] .swatch { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14), inset 0 2px 3px rgba(255, 255, 255, .35), 0 2px 6px -2px rgba(20, 30, 20, .3); }
 :root[data-scheme="light"] .swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px color-mix(in srgb, var(--sw) 80%, #000000), 0 4px 10px -3px rgba(20, 30, 20, .3); }
 .custom-current { transition: color var(--motion-fast) var(--ease-out); }
@@ -4139,6 +4141,10 @@ dialog.custom-window::backdrop { display: none; }
 [data-accent="durazno"] { --acc: #ffa46b; --acc-ink: #2e1300; --acc-bubble: #ffa46b; --acc-bubble-ink: #2e1300; }
 [data-accent="pistache"] { --acc: #6bff9a; --acc-ink: #003314; --acc-bubble: #6bff9a; --acc-bubble-ink: #003314; }
 [data-accent="petalo"] { --acc: #f556d5; --acc-ink: #ffffff; --acc-bubble: #f556d5; --acc-bubble-ink: #ffffff; }
+/* 2026-10-27: negro y azul fortaleza. On a dark ground black turns to its near-white, as a black
+   key does on a dark screen, and the fortress blue lightens until it reads. */
+[data-accent="negro"] { --acc: #ededed; --acc-ink: #141414; --acc-bubble: #ededed; --acc-bubble-ink: #141414; }
+[data-accent="fortaleza"] { --acc: #6b86ff; --acc-ink: #ffffff; --acc-bubble: #0030ff; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="madre"], :root[data-scheme="light"] [data-accent="madre"] { --acc: #2f8a1c; --acc-ink: #ffffff; --acc-bubble: #2f8a1c; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="mountain"], :root[data-scheme="light"] [data-accent="mountain"] { --acc: #0b7d66; --acc-ink: #ffffff; --acc-bubble: #0b7d66; --acc-bubble-ink: #ffffff; }
 :root[data-scheme="light"][data-accent="caribbean"], :root[data-scheme="light"] [data-accent="caribbean"] { --acc: #0a7189; --acc-ink: #ffffff; --acc-bubble: #0a7189; --acc-bubble-ink: #ffffff; }
@@ -4160,8 +4166,11 @@ dialog.custom-window::backdrop { display: none; }
 :root[data-scheme="light"][data-accent="durazno"], :root[data-scheme="light"] [data-accent="durazno"] { --acc: #a8510f; --acc-ink: #ffffff; --acc-bubble: #ffa46b; --acc-bubble-ink: #2e1300; }
 /* Pistache in light: the most vivid green that still reads as a key on white (3.5:1), with dark ink as on its
    bubble. The forest green it had read as another colour beside the pistachio bubble (2026-10-21). */
-:root[data-scheme="light"][data-accent="pistache"], :root[data-scheme="light"] [data-accent="pistache"] { --acc: #049f38; --acc-ink: #002a10; --acc-bubble: #6bff9a; --acc-bubble-ink: #003314; }
+/* Its keys write in white on that green (2026-10-27): the dark ink read as bold black. */
+:root[data-scheme="light"][data-accent="pistache"], :root[data-scheme="light"] [data-accent="pistache"] { --acc: #049f38; --acc-ink: #ffffff; --acc-bubble: #6bff9a; --acc-bubble-ink: #003314; }
 :root[data-scheme="light"][data-accent="petalo"], :root[data-scheme="light"] [data-accent="petalo"] { --acc: #a8178c; --acc-ink: #ffffff; --acc-bubble: #f556d5; --acc-bubble-ink: #ffffff; }
+:root[data-scheme="light"][data-accent="negro"], :root[data-scheme="light"] [data-accent="negro"] { --acc: #141414; --acc-ink: #ffffff; --acc-bubble: #141414; --acc-bubble-ink: #ffffff; }
+:root[data-scheme="light"][data-accent="fortaleza"], :root[data-scheme="light"] [data-accent="fortaleza"] { --acc: #0030ff; --acc-ink: #ffffff; --acc-bubble: #0030ff; --acc-bubble-ink: #ffffff; }
 /* Where the accepted accent is read: the conversation and every button in the room. A button's
    phosphor is set on the button itself, so its border, its fill and its ink follow. */
 :root[data-accent] :is(#messages, button, [role="button"]) { --phosphor: var(--acc); --phosphor-ink: var(--acc-ink); --accent: var(--acc); --accent-ink: var(--acc-ink); }
@@ -4392,6 +4401,8 @@ dialog.custom-window::backdrop { display: none; }
 .swatch[data-swatch="durazno"] { --sw-dark: #ffa46b; --sw-light: #a8510f; }
 .swatch[data-swatch="pistache"] { --sw-dark: #6bff9a; --sw-light: #049f38; }
 .swatch[data-swatch="petalo"] { --sw-dark: #f556d5; --sw-light: #a8178c; }
+.swatch[data-swatch="negro"] { --sw-dark: #ededed; --sw-light: #141414; }
+.swatch[data-swatch="fortaleza"] { --sw-dark: #6b86ff; --sw-light: #0030ff; }
 .swatch { background: linear-gradient(135deg, var(--sw-dark) 0 50%, var(--sw-light) 50% 100%); }
 .swatch[aria-checked="true"]::after { border-color: #ffffff; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, .7)); }
 .swatch[aria-checked="true"], :root[data-scheme="light"] .swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--text-2), 0 4px 10px -3px rgba(0, 0, 0, .4); }
@@ -11799,6 +11810,26 @@ html.chat-shell[data-scheme="dark"] .shell > .composer > :is(.free-offer, .inten
 
 /* ---- The room's chrome under the windows (2026-10-27): the tool tabs and the sidebar stood at 31 and
    30, in the windows' own layer (30–49), and cut the top of a window carried up beside Code or the
-   files. They stay over what is docked (6) and under the veil and every window. ---- */
+   files. They stay over what is docked (6) and under every window. ---- */
 html.chat-shell .tool-tabs { z-index: 19; }
-html.chat-shell .shell > .tree.chats.split { z-index: 19; }
+/* The sidebar stays sharp over the veil (20), as it was, and under every window (30–49). */
+html.chat-shell .shell > .tree.chats.split { z-index: 21; }
+
+/* ---- Your message, tinted (2026-10-27): the bubble takes a wash of the accent instead of the plain
+   grey, deeper on dark so it stands off the canvas, with the room's own text on it — the accent's
+   ink would fail on a wash this light. ---- */
+html.chat-shell #messages#messages .row.user .bubble { background: color-mix(in srgb, var(--phosphor) 15%, var(--cs-canvas)) !important; color: var(--text) !important; }
+html.chat-shell[data-scheme="dark"] #messages#messages .row.user .bubble { background: color-mix(in srgb, var(--phosphor) 22%, var(--cs-canvas)) !important; }
+
+/* ---- The row under the box in one voice (2026-10-27): the mode, an unlock still open, the model, the
+   effort and the token saver in the same face, size, weight and spacing — a mode only changes the
+   colour of its own chip and tag. Send stays in the accent whatever the mode. ---- */
+html.chat-shell .composer :is(#pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip, .grace-chip), .ash-toggle),
+html.chat-shell .composer #pick-options .pick-label > :is(.mode-chip, .model-chip, .effort-chip, .grace-chip) :is(b, strong, .word, .nick, .left, span:not(.chev-icon):not(.effort-meter)) {
+  font: 500 13px/1.2 var(--read) !important; letter-spacing: 0 !important; text-transform: none !important; -webkit-text-stroke: 0 !important; font-variant-numeric: tabular-nums;
+}
+html.chat-shell .composer #pick-options .grace-chip { height: 24px; gap: 5px; margin-left: 4px; padding: 0 5px 0 9px; }
+html.chat-shell .composer #pick-options .grace-chip .left { opacity: .75; }
+html.chat-shell .composer #pick-options .grace-chip i { width: 16px; height: 16px; font: 400 12px/1 var(--read); }
+html.chat-shell .composer:has(#message:not(:placeholder-shown)) .field > button[type="submit"]:not(:disabled),
+html.chat-shell .composer .field > button[type="submit"]:not(:disabled):hover { color: var(--phosphor) !important; }

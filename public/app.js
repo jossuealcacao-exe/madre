@@ -4314,7 +4314,9 @@ function setMode(n, { wink = false, typed = false } = {}) {
   updateCrewLabel(); updatePlaceholder();
   renderPicker();
   autosize();
-  if (wink) winkField(mode >= 3 ? 'control' : mode === 0 ? 'ghost' : 'ash');
+  // #3 and #4 arrive without the red rain and the sweep in the chat shell (2026-10-27): their chip
+  // says what they unlock, and that is enough. The classic room keeps its wink.
+  if (wink && !(mode >= 3 && chatShellOn())) winkField(mode >= 3 ? 'control' : mode === 0 ? 'ghost' : 'ash');
 }
 // After a message goes out the mode falls back to the target's default: #2 for a standing lease, else #1.
 // A leading @agent chose the agent for that message only: the picker goes back to the one it had.
@@ -7957,7 +7959,7 @@ async function switchLanguage() {
 // Each choice is a data attribute on the root that styles.css reads under #messages only. The
 // first value of each list is the room as it always was, and is written as no attribute at all.
 const LOOKS = {
-  accent: { key: 'pulse.accent', values: ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce', 'marmol', 'durazno', 'pistache', 'petalo'] },
+  accent: { key: 'pulse.accent', values: ['madre', 'mountain', 'caribbean', 'phantom', 'malbec', 'dijon', 'pacific', 'love', 'sierra', 'pitahaya', 'papaya', 'agave', 'dinamo', 'marina', 'pulso', 'leal', 'dulce', 'marmol', 'durazno', 'pistache', 'petalo', 'negro', 'fortaleza'] },
   bubbles: { key: 'pulse.bubbles', values: ['comfortable', 'large', 'compact', 'fitted'] },
   text: { key: 'pulse.text', values: ['comfortable', 'larger', 'smaller', 'visual'] },
   // Last, the person's own picture (public/wallpaper.js): a choice only once there is one.
@@ -7991,7 +7993,7 @@ function saveTune(name, value) {
   applyTune(name, value);  pushLooks();
 }
 const LOOK_WORDS = {
-  accent: { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow'), marmol: () => t('Marble gray'), durazno: () => t('Peach orange'), pistache: () => t('Pistachio green'), petalo: () => t('Petal pink') },
+  accent: { madre: () => t('Madre green'), mountain: () => t('Mountain green'), caribbean: () => t('Caribbean blue'), phantom: () => t('Phantom purple'), malbec: () => t('Malbec red'), dijon: () => t('Dijon yellow'), pacific: () => t('Pacific blue'), love: () => t('Love pink'), sierra: () => t('Sierra blue'), pitahaya: () => 'Pitahaya', papaya: () => 'Papaya', agave: () => 'Agave', dinamo: () => t('Dynamo black'), marina: () => t('Marina blue'), pulso: () => t('Pulse green'), leal: () => t('Loyal orange'), dulce: () => t('Sweet yellow'), marmol: () => t('Marble gray'), durazno: () => t('Peach orange'), pistache: () => t('Pistachio green'), petalo: () => t('Petal pink'), negro: () => t('Black'), fortaleza: () => t('Fortress blue') },
   bubbles: { comfortable: () => t('Comfortable'), large: () => t('Large'), compact: () => t('Compact'), fitted: () => t('Fitted') },
   text: { comfortable: () => t('Comfortable'), larger: () => t('Larger'), smaller: () => t('Smaller'), visual: () => t('Visual') },
   wallpaper: { default: () => t('Default'), jarrito: () => 'Jarrito', canela: () => 'Canela', paradise: () => t('Paradise'), ventura: () => 'Ventura', magna: () => 'Magna', biznaga: () => 'Biznaga', oceano: () => 'Oceano', quila: () => 'Quila', xico: () => 'Xico', tropical: () => 'Tropical', tradicion: () => 'Tradicion', urbania: () => 'Urbania', custom: () => t('Your picture') },

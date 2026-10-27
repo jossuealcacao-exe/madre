@@ -872,3 +872,29 @@ test('suggested effort, options, commands and connections are parts of MADRE, se
   // A module's command wears its module's drawing in the «/» menu.
   assert.match(app, /else glyph = commandGlyph\(item\.glyph \?\? '', item\.module\);/);
 });
+
+test('chat shell: a sharp sidebar, your bubble in the accent, two more accents, quiet #3/#4 and one voice under the box', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  // Over the veil (20), under every window (30–49).
+  assert.match(css, /html\.chat-shell \.shell > \.tree\.chats\.split \{ z-index: 21; \}/);
+  assert.match(css, /html\.chat-shell #messages#messages \.row\.user \.bubble \{ background: color-mix\(in srgb, var\(--phosphor\) 15%, var\(--cs-canvas\)\) !important;/);
+  // Pistachio's keys write in white on light; black and fortress blue join the accents everywhere.
+  assert.match(css, /:root\[data-scheme="light"\]\[data-accent="pistache"\][^{]*\{ --acc: #049f38; --acc-ink: #ffffff;/);
+  for (const id of ['negro', 'fortaleza']) {
+    assert.match(css, new RegExp(`\\[data-accent="${id}"\\] \\{ --acc:`));
+    assert.match(css, new RegExp(`:root\\[data-scheme="light"\\]\\[data-accent="${id}"\\]`));
+    assert.match(css, new RegExp(`\\.swatch\\[data-swatch="${id}"\\] \\{ --sw-dark:`));
+  }
+  assert.match(css, /:root\[data-scheme="light"\]\[data-accent="fortaleza"\][^{]*\{ --acc: #0030ff;/);
+  assert.match(css, /:root\[data-scheme="light"\]\[data-accent="negro"\][^{]*\{ --acc: #141414;/);
+  for (const source of [app, home]) assert.match(source, /'pistache', 'petalo', 'negro', 'fortaleza'\]/);
+  assert.match(es, /'Fortress blue': 'Azul Fortaleza',/);
+  // #3 and #4 come without the rain in the chat shell.
+  assert.match(app, /if \(wink && !\(mode >= 3 && chatShellOn\(\)\)\) winkField\(/);
+  // The row in one face and size, the unlock tag included; send in the accent.
+  assert.match(css, /font: 500 13px\/1\.2 var\(--read\) !important; letter-spacing: 0 !important;/);
+  assert.match(css, /\.field > button\[type="submit"\]:not\(:disabled\):hover \{ color: var\(--phosphor\) !important; \}/);
+});
