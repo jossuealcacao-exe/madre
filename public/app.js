@@ -15,7 +15,7 @@ import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
-import { drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
+import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
 import { MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
 import { openMarket } from './market-view.js';
 import { CATALOG_CHECKED, MCP_CATALOG, MCP_GROUPS, initials as mcpInitials } from './mcp-catalog.js';
@@ -7269,7 +7269,7 @@ function renderFailure(event) {
   removeThinking(messageId);
   const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
   node.append(el('span', 'label', recovered ? t('{label} · turn recovered after restart', { label: label(target) }) : t('{label} could not answer', { label: label(target) })));
-  node.append(resay(error));
+  node.append(el('span', 'fail-said', resay(error)));
   // What the CLI printed stays as it printed it (resay.js), and when MADRE knows that failure the
   // card says, in the room's language, what it is and what to do (troubleshooting.js): a provider's
   // English sentence alone left the person guessing whether MADRE was broken (2026-10-19).
@@ -7720,8 +7720,11 @@ function renderEventNode(event) {
 const NOTICE_FOLD_MS = 10000;
 // A limit warning folds too (2026-10-14): the agent's ring in the bar already says it, in red.
 const NOTICE_KEEP = '.fail, .mother-alert, .mother, .escalation, .lease.missing, .lease.refused, .module-proposed, .control.changed, .local-model, .memory.forgotten';
+// In the chat shell a failure folds too (2026-10-27), into a red dot, once nothing on it waits for
+// a press (noticeWaits): RETRY and the way out of a provider keep it open while they are live.
+const NOTICE_KEEP_SHELL = NOTICE_KEEP.replace('.fail, ', '');
 function noticeTone(node) {
-  if (node.matches('.alert, .crit, .halted, .control, .login.failed, .module.failed')) return 'crit';
+  if (node.matches('.alert, .crit, .halted, .control, .login.failed, .module.failed, .fail:not(.recovered)')) return 'crit';
   if (node.matches('.warn, .lease, .privacy, .enlace.warn')) return 'warn';
   if (node.matches('.login, .module, .reverted, .granted, .recovered')) return 'ok';
   return 'info';
@@ -7732,7 +7735,7 @@ function noticeWaits(node) {
   return [...node.querySelectorAll('button')].some((button) => !button.disabled && !button.hidden && !button.classList.contains('cmd'));
 }
 function foldableNotice(node) {
-  return Boolean(node?.classList?.contains('system')) && node.parentElement === els.column && !node.matches(NOTICE_KEEP);
+  return Boolean(node?.classList?.contains('system')) && node.parentElement === els.column && !node.matches(chatShellOn() ? NOTICE_KEEP_SHELL : NOTICE_KEEP);
 }
 function scheduleFold(node, tries = 0) {
   if (!foldableNotice(node)) return;
@@ -12066,8 +12069,9 @@ function boot() {
     const bar = document.querySelector('.shell > .bar:not(.bar-home)');
     if (key && bar && typeof bar.prepend === 'function') {
       key.style.translate = ''; key.classList.add('tree-button'); key.hidden = false; bar.prepend(key);
-      // The sidebar's own drawing, the one Claude and ChatGPT put in the same corner.
-      key.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
+      // The sidebar's own drawing, the one Claude and ChatGPT put in the same corner: in the chat
+      // shell the very one that hides it, at the sidebar's head.
+      key.innerHTML = chatShellOn() ? SIDEBAR_ICON : SPLIT_LEFT_ICON; // trusted: our own SVG strings
       key.title = t('Show the sidebar');
       key.setAttribute('aria-label', t('Show the sidebar'));
     }
@@ -21802,6 +21806,15 @@ function chatShell() {
   shellUI.foot = el('div', 'side-foot');
   const who = el('div', 'side-who');
   who.append(el('b', null, 'MADRE'), el('small', null, initial.version ? t('Version {version}', { version: initial.version }) : ''));
+  // The author's line under the version (2026-10-27): it left the foot of the conversation, and
+  // the keys modules put beside it (drawColophonKeys) came along.
+  const copy = el('a', 'side-copy', `© ${YEAR} ${AUTHOR}`);
+  copy.href = AUTHOR_URL;
+  copy.target = '_blank';
+  copy.rel = 'noopener';
+  who.append(copy);
+  const colophon = document.querySelector('#colophon');
+  if (colophon) { colophon.classList.add('side-colophon'); who.append(colophon); }
   shellUI.foot.append(who,
     shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
     shellKey(document.querySelector('#power-button')?.innerHTML ?? '', t('Turn MADRE off'), () => document.querySelector('#power-button')?.click()));

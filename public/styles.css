@@ -11391,3 +11391,31 @@ html.chat-shell #modules .mods-head .sx-btn:not(.primary):is(*, :hover, :active,
 :root.chat-shell #split .split-action:is(*, :hover, :focus-visible) { width: 28px; height: 28px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; color: var(--text-3); }
 :root.chat-shell #split .split-action:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
 :root.chat-shell #split .split-frame { border: 0; border-radius: 0; background: var(--cs-canvas); }
+
+/* ---- The thread's cards, flat (2026-10-27) ---- */
+/* A delegated answer: the room's card, a hairline, no dashes. */
+html.chat-shell #messages#messages .row.delegated .bubble { border: 0 !important; background: var(--cs-side) !important; box-shadow: 0 0 0 1px var(--cs-line) !important; }
+/* The notices read open: a lighter lift. */
+html.chat-shell #messages .sys-dots.open { box-shadow: 0 0 0 1px var(--cs-line), 0 4px 14px -10px rgb(0 0 0 / .16) !important; }
+/* A failure, before it folds into its red dot and when read again: left-aligned, its name in red
+   with a dot, what the program printed small and quiet, what MADRE knows of it in the reading face. */
+html.chat-shell #messages#messages .thread-inner > .system.fail:not(.folded) {
+  width: min(92%, 560px); padding: 11px 14px 12px !important; border-radius: 12px; text-align: left;
+  background: var(--cs-canvas) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 22%, var(--cs-line)) !important; color: var(--text-2);
+}
+html.chat-shell #messages .system.fail .label { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; opacity: 1; font: 600 13px var(--read) !important; color: var(--danger); }
+html.chat-shell #messages .system.fail:not(.folded) .label::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
+html.chat-shell #messages .system.fail .fail-said { display: block; font: 400 11.5px/1.5 var(--mono); color: var(--text-3); overflow-wrap: anywhere; }
+html.chat-shell #messages .system.fail .fail-known { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cs-line); font: 400 13px/1.5 var(--read); color: var(--text); }
+html.chat-shell #messages .system.fail :is(.fail-actions, .partial .artifacts) { justify-content: flex-start; justify-items: start; }
+html.chat-shell #messages .sys-dots.open > .system.fail.folded .label { display: inline; margin-right: 6px; }
+
+/* The box keeps the wide column whether Token saver is on or not. */
+html.chat-shell .shell > .composer { width: var(--wide-column); margin-left: var(--wide-left); }
+
+/* The foot of the conversation is gone: the author's line lives in the sidebar, under the version. */
+html.chat-shell .side-who .side-copy { display: block; margin-top: 1px; font: 400 11.5px var(--read); color: var(--text-3); text-decoration: none; white-space: nowrap; }
+html.chat-shell .side-who .side-copy:hover { color: var(--text); text-decoration: underline; }
+html.chat-shell .side-who .side-colophon { display: flex; position: static; margin: 0; padding: 0; background: none; }
+html.chat-shell .side-who .side-colophon > .colophon-link { display: none; }
+html.chat-shell .side-who .side-colophon:not(:has(> :not(.colophon-link))) { display: none; }

@@ -139,7 +139,7 @@ test('chats: the panel is the files panel on the other edge, and its handle is i
   assert.match(app, /const modeOf = \(surface\) => surfaceModes\[surface\.key\] \?\? \(sidebarsByDefault\(\) && SIDEBAR_KEYS\.includes\(surface\.key\) \? 'split' : 'base'\);/);
   assert.match(app, /if \(surfaceModes\[key\] === 'base'\) delete surfaceModes\[key\];/);
   assert.doesNotMatch(app, /if \(surface\.kind === 'dialog'\) \{ if \(modeOf\(surface\) !== 'base'\) surfaceModes\[surface\.key\] = 'base';/);
-  assert.match(app, /key\.innerHTML = SPLIT_LEFT_ICON;/);
+  assert.match(app, /key\.innerHTML = chatShellOn\(\) \? SIDEBAR_ICON : SPLIT_LEFT_ICON;/);
   // And the handle is lit the way the buttons in the bar are, not with a halo of its own.
   assert.match(css, /\.chats-button:hover,\n:root\[data-theme="light"\]|:root\[data-theme="light"\] \.chats-button:hover/);
   // The handle sits in the canvas, under the bar, where the conversation it opens begins.
@@ -746,4 +746,17 @@ test('chat shell: module lines fit one line, the windows\' buttons are flat, and
   assert.match(app, /const chatShellOn = \(\) => !state\.device && Boolean/);
   assert.match(css, /html\.chat-shell:root:not\(\.via-phone\) \.shell\.with-split > \.split-dock \{ grid-row: 1 \/ -1; \}/);
   assert.match(css, /:root\.chat-shell \.shell > #split\.split-dock \{ margin: 0 !important;/);
+});
+
+test('chat shell: flat delegated cards, failures fold into a red dot, one sidebar drawing, a box as wide either way, and the author under the version', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /html\.chat-shell #messages#messages \.row\.delegated \.bubble \{ border: 0 !important;/);
+  assert.match(app, /const NOTICE_KEEP_SHELL = NOTICE_KEEP\.replace\('\.fail, ', ''\);/);
+  assert.match(app, /!node\.matches\(chatShellOn\(\) \? NOTICE_KEEP_SHELL : NOTICE_KEEP\)/);
+  assert.match(app, /\.fail:not\(\.recovered\)'\)\) return 'crit';/);
+  assert.match(app, /key\.innerHTML = chatShellOn\(\) \? SIDEBAR_ICON : SPLIT_LEFT_ICON;/);
+  assert.match(css, /html\.chat-shell \.shell > \.composer \{ width: var\(--wide-column\); margin-left: var\(--wide-left\); \}/);
+  assert.match(app, /const copy = el\('a', 'side-copy', `© \$\{YEAR\} \$\{AUTHOR\}`\);/);
+  assert.match(app, /if \(colophon\) \{ colophon\.classList\.add\('side-colophon'\); who\.append\(colophon\); \}/);
 });
