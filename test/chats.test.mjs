@@ -785,3 +785,11 @@ test('chat shell: notices read open without hover, a failure in one face, the re
   assert.match(app, /item\.append\(avatar\(agent\.id, \{ size: 22 \}\), body\);/);
   assert.match(css, /html\.chat-shell \.reply-quote \.drop:is\(\*, :hover, :focus-visible\) \{/);
 });
+
+test('chat shell: the first steps and a newer MADRE read as quiet words in the bar', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(app, /chatShellOn\(\) \? t\('\{version\} available', \{ version: info\.latest \}\) : t\('\{version\} AVAILABLE', \{ version: info\.latest \}\)/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.steps-pill, \.update-pill\):is\(\*, :hover, :active, :focus-visible, \[aria-expanded="true"\]\) \{/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar > \.update-pill \.update-glyph svg \{ display: none; \}/);
+});

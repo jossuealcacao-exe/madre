@@ -21048,7 +21048,7 @@ function renderUpdate() {
   const pill = updateUI.pill;
   if (pill) {
     pill.hidden = !info?.available;
-    if (info?.available) { const glyph = el('span', 'update-glyph'); glyph.innerHTML = UPDATE_GLYPH; pill.replaceChildren(glyph, t('{version} AVAILABLE', { version: info.latest })); pill.title = t('MADRE {latest} is on npm · you run {current} · open SETTINGS for the command', { latest: info.latest, current: info.current }); }
+    if (info?.available) { const glyph = el('span', 'update-glyph'); glyph.innerHTML = UPDATE_GLYPH; pill.replaceChildren(glyph, chatShellOn() ? t('{version} available', { version: info.latest }) : t('{version} AVAILABLE', { version: info.latest })); pill.title = t('MADRE {latest} is on npm · you run {current} · open SETTINGS for the command', { latest: info.latest, current: info.current }); }
   }
   const target = state.settingsTargets.release;
   if (target?.isConnected) drawRelease(target, info);

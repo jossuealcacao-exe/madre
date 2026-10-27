@@ -11514,3 +11514,17 @@ html.chat-shell dialog.surface.window:is(.settings-window, .module-window).lifte
 html.chat-shell[data-scheme="dark"] :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).lifted { box-shadow: 0 0 0 1px var(--cs-line), 0 24px 60px -18px rgba(0, 0, 0, .7) !important; }
 html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).aside { opacity: 1; }
 html.chat-shell :is(.tree.window, dialog.surface.window, .conv-window, .browser-dock.window).aside:hover { opacity: 1; }
+
+/* ---- What is happening, in the bar (2026-10-27): the first steps and a newer MADRE read as the
+   bar's quiet words — a small mark, the words, no coloured pill; the hover tone under the pointer. ---- */
+html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill):is(*, :hover, :active, :focus-visible, [aria-expanded="true"]) {
+  height: 28px; gap: 6px; padding: 0 9px 0 7px; border: 0 !important; border-radius: 8px;
+  background: none !important; box-shadow: none !important; transform: none !important;
+  font: 500 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2);
+}
+html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill):is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--cs-hover) !important; color: var(--text); }
+html.chat-shell .shell > .bar > .steps-pill .steps-ring { width: 14px; height: 14px; color: var(--phosphor); }
+html.chat-shell .shell > .bar > .steps-pill .steps-count { font-weight: 400; color: var(--text-3); }
+/* A newer MADRE: an accent dot where the download arrow was. */
+html.chat-shell .shell > .bar > .update-pill .update-glyph { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--phosphor); opacity: 1; }
+html.chat-shell .shell > .bar > .update-pill .update-glyph svg { display: none; }
