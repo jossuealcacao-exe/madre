@@ -410,7 +410,7 @@ test('bar: right-click opens it for editing, AJUSTES stays last, and the choice 
   // Read with a guard, written with a guard: a private window still gets a bar.
   assert.match(app, /function barStored\(\) \{[\s\S]*?try \{\n    const raw = JSON\.parse\(localStorage\.getItem\(BAR_KEY\) \?\? 'null'\);[\s\S]*?\} catch \{[^}]*\}\n  return \[\.\.\.BAR_DEFAULT\];/);
   assert.match(app, /try \{ localStorage\.setItem\(BAR_KEY, JSON\.stringify\(barKit\.saved\)\); \} catch \{/);
-  assert.match(app, /barKit\.order = barStored\(\)\.filter\(\(id\) => id !== BAR_FIXED && catalogue\.has\(id\)\);/, 'an unknown id or AJUSTES can land in the order');
+  assert.match(app, /barKit\.order = kept\.filter\(\(id\) => id !== BAR_FIXED && catalogue\.has\(id\)\);/, 'an unknown id or AJUSTES can land in the order');
   // What the new keys open.
   assert.match(app, /out\.set\('memory', \{ id: 'memory', name: t\('What it remembers'\), icon: SETTINGS_CATS\.memory\.icon, open: \(\) => openSettingsOn\('memory'\) \}\);/);
   assert.match(app, /if \(face\.window\) offered\.set\(id,/);

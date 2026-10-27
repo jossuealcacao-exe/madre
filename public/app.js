@@ -360,7 +360,7 @@ function markTouched(agent, files, at = null) {
     const key = String(path).replace(/^\.?\//, '');
     if ((touched.get(key)?.at ?? 0) <= when) touched.set(key, { agent, at: when });
   }
-  if (!tree.open) tree.stale = true;
+  if (!treeInView()) tree.stale = true;
 }
 // The newest touch under a folder, for its dot.
 function touchedUnder(dir) {
@@ -1502,6 +1502,9 @@ const code = (() => {
     dirs: new Set(),
     preview: null,
     line: null,
+    finder: false,     // the chat shell's Files live here: the project's tree, with its search and its menu
+    narrow: false,     // too narrow for the files beside the code: one, then the other
+    browsing: false,   // narrow, and the files are the ones in front
   };
 })();
 function rememberCode() {
@@ -1539,7 +1542,8 @@ const CODE_ACTIONS = [
   fold.setAttribute('aria-label', t('Hide the files'));
   fold.title = t('Hide the files');
   fold.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
-  fold.addEventListener('click', () => { code.files = false; rememberCode(); syncCode(); });
+  // Narrow, the files and the code take turns: folding the files goes back to the code.
+  fold.addEventListener('click', () => { if (code.narrow) code.browsing = false; else { code.files = false; rememberCode(); } syncCode(); });
   top.append(fold);
   code.search = el('input', 'code-files-search');
   code.search.type = 'search';
@@ -1584,11 +1588,19 @@ function syncCode() {
   const wide = width >= (code.preview ? 1040 : 600);
   // Too narrow for two columns, what the code makes goes under it instead of squeezing it.
   viewer.body.classList.toggle('stacked', Boolean(code.preview) && width < 720);
-  const showFiles = on && code.files && wide;
+  // In the chat shell the files never hide behind a search: narrow, they take the whole column
+  // until a file is chosen, and come back from the path over it.
+  if (on) adoptFinder();
+  code.narrow = Boolean(code.finder) && width > 0 && !wide;
+  const browse = on && code.narrow && (code.browsing || !viewerUI.path);
+  code.shell.classList.toggle('browse', browse);
+  const showFiles = on && (browse || (code.files && wide));
+  code.explorer.querySelector('.code-files-fold')?.toggleAttribute('hidden', browse && !viewerUI.path);
   if (code.explorer.hidden === showFiles) {
     code.explorer.hidden = !showFiles;
     if (showFiles) void drawCodeFiles();
   }
+  if (code.finder) for (const node of els.treeBody.querySelectorAll('button.node.file')) node.classList.toggle('on', node.title === viewerUI.path);
   code.button?.setAttribute('aria-pressed', String(on));
   const kind = viewerMode.kind;
   code.besideButton.hidden = !on || !kind || viewerMode.preview;
@@ -1622,7 +1634,7 @@ async function openCodeFile(path, { line = null } = {}) {
 // Nothing open yet: where to start, in a sentence and two ways.
 function showCodeHome() {
   void leaveEditor({ stash: true });
-  paintViewerPath(t('Code'));
+  paintViewerPath(chatShellOn() ? t('Files') : t('Code'));
   viewerUI.path = null;
   Object.assign(viewerMode, { kind: null, text: '', src: '', preview: false, editable: false });
   viewer.open.removeAttribute('href');
@@ -1728,14 +1740,14 @@ function paintCodeCrumbs(line = code.line) {
   if (!code.crumbs || code.crumbs.hidden || !viewerUI.path) return;
   code.line = line;
   code.crumbs.replaceChildren();
-  // The files, put away by hand, come back from here.
-  if (!code.files) {
+  // The files, put away by hand (or, narrow, waiting behind the code), come back from here.
+  if (!code.files || code.narrow) {
     const show = el('button', 'code-files-fold code-files-show');
     show.type = 'button';
     show.setAttribute('aria-label', t('Show the files'));
     show.title = t('Show the files');
     show.innerHTML = SPLIT_LEFT_ICON; // trusted: our own SVG string
-    show.addEventListener('click', () => { code.files = true; rememberCode(); syncCode(); });
+    show.addEventListener('click', () => { if (code.narrow) code.browsing = true; else { code.files = true; rememberCode(); } syncCode(); });
     code.crumbs.append(show);
   }
   const where = el('span', 'code-crumbs-path');
@@ -1785,6 +1797,7 @@ function goToCodeLine(n) {
 
 /* the files beside: the project's folders, or what matches what is typed */
 async function drawCodeFiles() {
+  if (code.finder) { if (!code.explorer.hidden) fillTree(); return; }
   if (!code.list || code.explorer.hidden) return;
   const query = code.search.value.trim();
   if (query) {
@@ -1847,6 +1860,25 @@ function codeFileRow(path, depth, withDir) {
   row.addEventListener('click', () => void openCodeFile(path));
   item.append(row);
   return item;
+}
+
+// The chat shell has one place for files (2026-10-27): the Files panel's own tree — its search, a
+// new file, copy, move and rename — stands where Code kept its simpler list, and the panel at the
+// edge is not used. Moved once, the first time Code opens; everything the Finder does keeps working
+// on the same nodes.
+function adoptFinder() {
+  if (code.finder || !chatShellOn() || !code.explorer) return;
+  const parts = ['#tree-search', '#tree-clip', '#tree-body', '#tree-menu'].map((query) => document.querySelector(query));
+  if (parts.some((node) => !node)) return;
+  code.search.remove();
+  code.list.remove();
+  const refresh = document.querySelector('#tree-refresh');
+  if (refresh) code.explorer.querySelector('.code-files-head')?.querySelector('.code-files-fold')?.before(refresh);
+  code.explorer.append(...parts);
+  code.explorer.classList.add('finder');
+  // The open files ride in the head, beside Read and Edit: one row less over the code.
+  viewer.dialog.querySelector('.viewer-head > .viewer-spacer')?.before(code.bar);
+  code.finder = true;
 }
 
 /* what an agent changed, marked in the code */
@@ -9113,10 +9145,10 @@ const finderJoin = (dir, name) => (dir === '.' ? name : `${dir}/${name}`);
 // asked in the panel, is the human's and is left alone.
 let treeFollowTimer = null;
 function treeFollowWrites({ now = false } = {}) {
-  if (!tree.open) { tree.stale = true; return; }
+  if (!treeInView()) { tree.stale = true; return; }
   clearTimeout(treeFollowTimer);
   treeFollowTimer = setTimeout(async () => {
-    const busy = () => !tree.open || finder.q?.value.trim() || finder.clip?.querySelector('.tree-ask');
+    const busy = () => !treeInView() || finder.q?.value.trim() || finder.clip?.querySelector('.tree-ask');
     if (busy()) return;
     const root = el('ul');
     await loadTreeLevel('.', root);
@@ -9137,7 +9169,7 @@ function finderRefresh(landed) {
   }
   if (finder.q?.value.trim()) { finder.q.dispatchEvent(new Event('input')); return; }
   els.treeBody.replaceChildren();
-  void setTree(true);
+  treeAgain();
 }
 
 // One door for everything that writes: it asks for the designation only when it already knows one
@@ -9215,7 +9247,7 @@ function finderMenu(event, path, entry) {
   menu.hidden = false;
   // Opened where the hand is, and kept inside the panel: a menu that spills across the room is a
   // menu the human has to go looking for.
-  const panel = els.tree.getBoundingClientRect();
+  const panel = (menu.offsetParent ?? els.tree).getBoundingClientRect();
   const box = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(6, Math.min(event.clientX - panel.left, panel.width - box.width - 6))}px`;
   menu.style.top = `${Math.max(6, Math.min(event.clientY - panel.top, panel.height - box.height - 6))}px`;
@@ -9238,7 +9270,7 @@ finder.q?.addEventListener('input', () => {
   const asked = ++finderAsked;
   finderTimer = setTimeout(async () => {
     const query = finder.q.value.trim();
-    if (!query) { els.treeBody.replaceChildren(); void setTree(true); return; }
+    if (!query) { els.treeBody.replaceChildren(); treeAgain(); return; }
     let matches = [];
     try { matches = (await fetch(`/api/tree/search?q=${encodeURIComponent(query)}&limit=40`).then((r) => r.json()))?.matches ?? []; }
     catch { return; }
@@ -9302,7 +9334,10 @@ function treeNode(path, entry) {
       dot.title = t('Last changed by @{agent} · {when}', { agent: by.agent, when: agoWords(new Date(by.at).toISOString()) });
       button.append(dot);
     }
-    button.addEventListener('click', () => { void openViewer({ root: 'project', path, label: path }); });
+    button.addEventListener('click', () => {
+      if (code.finder) { code.browsing = false; void openCodeFile(path); return; }
+      void openViewer({ root: 'project', path, label: path });
+    });
     item.append(button);
   }
   if (tree.reveal === path) {
@@ -10603,18 +10638,33 @@ function morph(kind, change) {
   return transition.updateCallbackDone.catch(() => {});
 }
 
-function setTree(open) {
-  tree.open = open;
-  showPanel('tree', open);
-  els.treeButton.setAttribute('aria-pressed', String(open));
-  try { localStorage.setItem('pulse.tree', open ? 'open' : 'closed'); } catch { /* no storage */ }
-  if (open && !els.treeBody.childElementCount) {
+// Where the tree is drawn: the panel at the edge, or, in the chat shell, beside the code.
+const treeInView = () => tree.open || Boolean(code.finder && !code.explorer.hidden);
+function fillTree() {
+  if (!els.treeBody.childElementCount) {
     els.treeRoot.textContent = `/ ${projectDesignation()}`;
     const root = el('ul');
     els.treeBody.append(root);
     void loadTreeLevel('.', root);
-  } else if (open && tree.stale) treeFollowWrites();
-  if (open) tree.stale = false;
+  } else if (tree.stale) treeFollowWrites();
+  tree.stale = false;
+}
+// The tree again after a change: where it is drawn now.
+function treeAgain() {
+  if (code.finder) fillTree();
+  else void setTree(true);
+}
+function setTree(open) {
+  // In the chat shell the files open with the code (adoptFinder).
+  if (chatShellOn()) {
+    if (open && !codeOn()) void toggleCode();
+    return;
+  }
+  tree.open = open;
+  showPanel('tree', open);
+  els.treeButton.setAttribute('aria-pressed', String(open));
+  try { localStorage.setItem('pulse.tree', open ? 'open' : 'closed'); } catch { /* no storage */ }
+  if (open) fillTree();
 }
 // By hand, for anything written from outside MADRE: an editor, a terminal, another app.
 document.querySelector('#tree-refresh')?.addEventListener('click', (event) => {
@@ -10648,7 +10698,7 @@ document.querySelector('#tree-new')?.addEventListener('click', async () => {
   void openViewer({ path: result.path });
 });
 els.treeClose?.addEventListener('click', () => setTree(false));
-try { if (!SPLIT_CHAT && localStorage.getItem('pulse.tree') === 'open') setTree(true); } catch { /* no storage */ }
+try { if (!SPLIT_CHAT && !chatShellOn() && localStorage.getItem('pulse.tree') === 'open') setTree(true); } catch { /* no storage */ }
 
 /* ---------- conversations ---------- */
 
@@ -20246,8 +20296,9 @@ const FIRST_TOUCH = {
   code: {
     button: '#code-button',
     panel: '#viewer',
-    title: t('Code'),
-    text: t('Your project\'s files, beside the chat. ⌘ P finds one by its name. Click a line number and press ASK to ask an agent about it. What an agent changed shows in its colour.'),
+    // In the chat shell the key is Files, and the files are in it (adoptFinder).
+    title: chatShellOn() ? t('Files') : t('Code'),
+    text: chatShellOn() ? t('Your project\'s files and their code, beside the chat. Right-click one to copy, move or rename it. Click a line number and press ASK to ask an agent about it.') : t('Your project\'s files, beside the chat. ⌘ P finds one by its name. Click a line number and press ASK to ask an agent about it. What an agent changed shows in its colour.'),
   },
   mcp: {
     // Not a key of the bar: said the first time its page opens in Settings (openSettingsCategory).
@@ -20954,12 +21005,15 @@ const BAR_KEY = 'pulse.barItems';
 const BAR_FIXED = 'settings';
 // In the chat shell the agents sit in the middle of the bar: they neither go nor move.
 const barLocked = (id) => id === BAR_FIXED || (id === 'crew' && chatShellOn());
+// The keys that open beside the conversation, at the right of the bar (styles.css).
+const BAR_SPLIT_KEYS = new Set(['code', 'servers']);
 const BAR_DEFAULT = ['salas', 'macroverso', 'crew', 'code', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'];
 // The keys that are in the markup. The crew is two elements — five spheres when there is room, one
 // button when there is not — and one key: taking it off takes both.
 const BAR_BUILT = {
   crew: { nodes: ['#agents', '#agents-compact'], name: () => t('Agents') },
-  code: { nodes: ['#code-button'], name: () => t('Code') },
+  // In the chat shell Code and Files are one key, named for what a person looks for (adoptFinder).
+  code: { nodes: ['#code-button'], name: () => (chatShellOn() ? t('Files') : t('Code')) },
   modules: { nodes: ['#modules-button'], name: () => t('Modules') },
   mother: { nodes: ['#mother-button'], name: () => t('Diagnostics') },
   nostromo: { nodes: ['#nostromo-bar'], name: () => t('Memory map') },
@@ -21029,6 +21083,8 @@ function barCatalogue() {
     if (id === 'reload' && homeOn()) continue;
     // The code workspace docks beside the conversation: a phone has no room beside it.
     if (id === 'code' && state.device) continue;
+    // In the chat shell the files open with the code: one key, Code's.
+    if (id === 'finder' && chatShellOn()) continue;
     const nodes = spec.nodes.map((query) => document.querySelector(query)).filter(Boolean);
     if (nodes.length) out.set(id, { id, name: spec.name(), nodes });
   }
@@ -21464,7 +21520,8 @@ const NEW_CHAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.
 const PLUS_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 const MARKET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 7.4h13.6l-1.2 8.8a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 7.4V6a3 3 0 0 1 6 0v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const FLOAT_TOOL_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="11" height="11" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.2 13V4.6a1.4 1.4 0 0 1 1.4-1.4H13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const TOOL_NAMES = { viewer: () => t('Code'), tree: () => t('Files'), browser: () => t('Browser') };
+// Named as their keys on the bar: Files holds the code (adoptFinder).
+const TOOL_NAMES = { viewer: () => t('Files'), tree: () => t('Files'), browser: () => t('Your servers') };
 
 function shellKey(icon, label, run, className = 'shell-key') {
   const key = el('button', className);
@@ -21530,6 +21587,15 @@ function chatShell() {
   if (bar) for (const family of ['project', 'madre', 'apps']) { const line = el('span', `bar-family ${family}`); line.setAttribute('aria-hidden', 'true'); bar.append(line); }
   // And a spring between the pills and the keys: the title and its pills at one end, the keys at the other.
   if (bar) { const spring = el('span', 'bar-spring'); spring.setAttribute('aria-hidden', 'true'); bar.append(spring); }
+  // Code and Files are one key here: it wears the folder, the thing a person looks for.
+  const codeKey = document.querySelector('#code-button');
+  const folder = document.querySelector('#tree-button > svg');
+  if (codeKey && folder) {
+    codeKey.querySelector(':scope > svg')?.replaceWith(folder.cloneNode(true));
+    codeKey.classList.add('files-key');
+    codeKey.title = t('Files · your project and its code, beside the conversation');
+    codeKey.setAttribute('aria-label', t('Files'));
+  }
   if (bar) barGlyphs(bar);
   // Looked at again when the bar, the title, the crew, a key or a pill changes size (one that shows
   // or hides does too).
@@ -21662,7 +21728,10 @@ globalThis.addEventListener?.('pageshow', () => document.documentElement?.classL
 function barLayout() {
   homeBar();
   const catalogue = barCatalogue();
-  barKit.order = barStored().filter((id) => id !== BAR_FIXED && catalogue.has(id));
+  // Whoever kept Files and not Code keeps the one key that now holds both.
+  const stored = barStored();
+  const kept = chatShellOn() && stored.includes('finder') && !stored.includes('code') ? stored.map((id) => (id === 'finder' ? 'code' : id)) : stored;
+  barKit.order = kept.filter((id) => id !== BAR_FIXED && catalogue.has(id));
   if (chatShellOn() && catalogue.has('crew') && !barKit.order.includes('crew')) barKit.order.unshift('crew');
   for (const [id, entry] of catalogue) {
     if (id === BAR_FIXED) { for (const node of entry.nodes) barWire(node, id); continue; }
@@ -21718,9 +21787,9 @@ function barFit() {
   barKit.more.hidden = true;
   if (barKit.editing || !barSpills(bar)) { barCloseMore(); return; }
   barKit.more.hidden = false;
-  // In the chat shell the keys stand by family, not in the order kept: the last on screen goes first
-  // (an app before Diagnostics, Diagnostics before Files), and the agents never do.
-  const rank = (id) => Number.parseInt(getComputedStyle(barNodes(id)[0] ?? bar).order, 10) || 0;
+  // In the chat shell the keys stand by family, not in the order kept: an app goes before Diagnostics,
+  // and the agents never do. Files and your servers stand last, by the side they open at, and go last.
+  const rank = (id) => (BAR_SPLIT_KEYS.has(id) ? 9 : Number.parseInt(getComputedStyle(barNodes(id)[0] ?? bar).order, 10) || 0);
   const order = chatShellOn() ? barKit.order.filter((id) => !barLocked(id)).sort((a, b) => rank(a) - rank(b)) : [...barKit.order];
   while (order.length && barSpills(bar)) {
     const id = order.pop();

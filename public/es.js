@@ -5296,6 +5296,9 @@ export const ES = {
   'Only a WebP, JPEG or PNG picture can be a wallpaper.': 'Solo una imagen WebP, JPEG o PNG puede ser fondo.',
   // El espacio de código (1.0.3).
   'Code · your files, the editor and the preview beside the conversation': 'Código · tus archivos, el editor y la vista previa junto a la conversación',
+  // Archivos y Código en una sola tecla (2026-10-27).
+  'Files · your project and its code, beside the conversation': 'Archivos · tu proyecto y su código, junto a la conversación',
+  'Your project\'s files and their code, beside the chat. Right-click one to copy, move or rename it. Click a line number and press ASK to ask an agent about it.': 'Los archivos de tu proyecto y su código, junto al chat. Clic derecho en uno para copiarlo, moverlo o renombrarlo. Haz clic en un número de línea y pulsa PREGUNTAR para preguntarle a un agente.',
   'Code': 'Código',
   'Open files': 'Archivos abiertos',
   'Hide the files': 'Ocultar los archivos',

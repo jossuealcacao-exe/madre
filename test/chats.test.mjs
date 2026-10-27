@@ -640,3 +640,33 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   // With the field as display: contents, the fade under the box is measured from the box itself.
   assert.match(app, /const field = fieldBox && fieldBox\.height > 0 \? fieldBox : box;/);
 });
+
+test('chat shell: Files holds the code, and the keys that open beside the conversation stand at the right of the bar', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  // Last on the bar, by the side they open at, and the last to go behind «More».
+  assert.match(css, /> \.bar-family\.project \{ order: 34; \}/);
+  assert.match(css, /> #code-button \{ order: 35; \}/);
+  assert.match(css, /> #browser-button \{ order: 36; \}/);
+  assert.match(app, /const BAR_SPLIT_KEYS = new Set\(\['code', 'servers'\]\);/);
+  assert.match(app, /const rank = \(id\) => \(BAR_SPLIT_KEYS\.has\(id\) \? 9 :/);
+  // One key: Code's, wearing the folder and named Files; whoever kept only Files keeps it.
+  assert.match(app, /if \(id === 'finder' && chatShellOn\(\)\) continue;/);
+  assert.match(app, /stored\.map\(\(id\) => \(id === 'finder' \? 'code' : id\)\)/);
+  assert.match(app, /codeKey\.querySelector\(':scope > svg'\)\?\.replaceWith\(folder\.cloneNode\(true\)\);/);
+  assert.match(app, /const TOOL_NAMES = \{ viewer: \(\) => t\('Files'\), tree: \(\) => t\('Files'\), browser: \(\) => t\('Your servers'\) \};/);
+  // The Finder's own tree (search, new file, its menu) stands where Code kept its list.
+  assert.match(app, /const parts = \['#tree-search', '#tree-clip', '#tree-body', '#tree-menu'\]\.map/);
+  assert.match(app, /if \(code\.finder\) \{ code\.browsing = false; void openCodeFile\(path\); return; \}/);
+  assert.match(app, /const treeInView = \(\) => tree\.open \|\| Boolean\(code\.finder && !code\.explorer\.hidden\);/);
+  assert.match(app, /const panel = \(menu\.offsetParent \?\? els\.tree\)\.getBoundingClientRect\(\);/);
+  assert.match(app, /if \(open && !codeOn\(\)\) void toggleCode\(\);/);
+  // Narrow, the files never hide behind a search: they take the column until a file is chosen.
+  assert.match(app, /const browse = on && code\.narrow && \(code\.browsing \|\| !viewerUI\.path\);/);
+  assert.match(css, /html\.chat-shell \.code-shell\.browse > \.viewer-body \{ display: none !important; \}/);
+  // The open files ride in the head, beside Read and Edit.
+  assert.match(app, /viewer\.dialog\.querySelector\('\.viewer-head > \.viewer-spacer'\)\?\.before\(code\.bar\);/);
+  // Your servers in the same quiet hand: tabs as the tool tabs, words as a sentence.
+  assert.match(css, /html\.chat-shell \.browser-dock \.browser-tab\.on \{ background: var\(--cs-sel, var\(--cs-hover\)\);/);
+  assert.match(css, /html\.chat-shell \.browser-dock \.viewer-sizes button\[aria-pressed="true"\] \{ background: none; color: var\(--phosphor\); \}/);
+});
