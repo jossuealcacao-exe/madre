@@ -758,5 +758,12 @@ test('chat shell: flat delegated cards, failures fold into a red dot, one sideba
   assert.match(app, /key\.innerHTML = chatShellOn\(\) \? SIDEBAR_ICON : SPLIT_LEFT_ICON;/);
   assert.match(css, /html\.chat-shell \.shell > \.composer \{ width: var\(--wide-column\); margin-left: var\(--wide-left\); \}/);
   assert.match(app, /const copy = el\('a', 'side-copy', `© \$\{YEAR\} \$\{AUTHOR\}`\);/);
-  assert.match(app, /if \(colophon\) \{ colophon\.classList\.add\('side-colophon'\); who\.append\(colophon\); \}/);
+  // Under the box only the author, shown while the sidebar (which says it) is closed: never off screen.
+  assert.match(app, /if \(credit\) \{ credit\.replaceChildren\(`© \$\{YEAR\} \$\{AUTHOR\}`\);/);
+  assert.match(css, /html\.chat-shell \.shell:has\(> #chats:not\(\[hidden\]\)\) > \.colophon > \.colophon-link \{ display: none; \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.composer \{ margin-bottom: 14px; \}/);
+  // A row of dots is the size of a lone dot; open, a failure says what MADRE knows before the raw output.
+  assert.match(css, /html\.chat-shell #messages#messages \.sys-dots:not\(\.open\):not\(\.single\) \{\n  height: 12px;/);
+  assert.match(css, /\.system\.fail\.folded > \.fail-known \{ order: 1;/);
+  assert.match(css, /\.system\.fail\.folded > \.fail-said \{\n  order: 2;/);
 });

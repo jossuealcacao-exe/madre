@@ -21806,15 +21806,16 @@ function chatShell() {
   shellUI.foot = el('div', 'side-foot');
   const who = el('div', 'side-who');
   who.append(el('b', null, 'MADRE'), el('small', null, initial.version ? t('Version {version}', { version: initial.version }) : ''));
-  // The author's line under the version (2026-10-27): it left the foot of the conversation, and
-  // the keys modules put beside it (drawColophonKeys) came along.
+  // The author's line under the version (2026-10-27). The version is said here, so the foot of the
+  // conversation keeps only the author: it shows there while the sidebar is closed, and the line is
+  // never off the screen (ADDITIONAL-TERMS.md, term 1; styles.css hides one or the other).
   const copy = el('a', 'side-copy', `© ${YEAR} ${AUTHOR}`);
   copy.href = AUTHOR_URL;
   copy.target = '_blank';
   copy.rel = 'noopener';
   who.append(copy);
-  const colophon = document.querySelector('#colophon');
-  if (colophon) { colophon.classList.add('side-colophon'); who.append(colophon); }
+  const credit = document.querySelector('#colophon > .colophon-link');
+  if (credit) { credit.replaceChildren(`© ${YEAR} ${AUTHOR}`); credit.title = `MADRE ${initial.version ?? ''}`.trim(); }
   shellUI.foot.append(who,
     shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
     shellKey(document.querySelector('#power-button')?.innerHTML ?? '', t('Turn MADRE off'), () => document.querySelector('#power-button')?.click()));

@@ -11416,6 +11416,48 @@ html.chat-shell .shell > .composer { width: var(--wide-column); margin-left: var
 /* The foot of the conversation is gone: the author's line lives in the sidebar, under the version. */
 html.chat-shell .side-who .side-copy { display: block; margin-top: 1px; font: 400 11.5px var(--read); color: var(--text-3); text-decoration: none; white-space: nowrap; }
 html.chat-shell .side-who .side-copy:hover { color: var(--text); text-decoration: underline; }
-html.chat-shell .side-who .side-colophon { display: flex; position: static; margin: 0; padding: 0; background: none; }
-html.chat-shell .side-who .side-colophon > .colophon-link { display: none; }
-html.chat-shell .side-who .side-colophon:not(:has(> :not(.colophon-link))) { display: none; }
+/* Under the box, only the author, and only while the sidebar (which says it) is closed; the keys a
+   module puts there stay either way. A little air under the box when nothing is under it. */
+html.chat-shell .shell:has(> #chats:not([hidden])) > .colophon > .colophon-link { display: none; }
+html.chat-shell .shell:has(> #chats:not([hidden])) > .colophon:not(:has(> :not(.colophon-link))) { display: none; }
+html.chat-shell .shell > .composer { margin-bottom: 14px; }
+html.chat-shell .shell > .colophon { margin-top: -6px; padding-bottom: 8px; }
+html.chat-shell .shell > .colophon .colophon-link { font: 400 11.5px var(--read); color: var(--text-3); }
+
+/* ---- Notices as dots, read open (2026-10-27) ----
+   Closed, a row of several is the size of a lone dot: the same 6 px dot in the same 12 px pill, the
+   count beside it as small as the dot. Open, every notice is one shape: its dot, a title line, what
+   it says in the reading face; a failure says what MADRE knows before what the program printed. */
+html.chat-shell #messages#messages .sys-dots:not(.open):not(.single) {
+  height: 12px; box-sizing: border-box; padding: 0 5px 0 3px; gap: 3px; margin-block: 2px; border-color: transparent;
+  background: color-mix(in srgb, var(--bg) 30%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; opacity: .5;
+}
+html.chat-shell #messages#messages .sys-dots:not(.open):is(:hover, :focus-visible) { opacity: 1; }
+html.chat-shell #messages#messages .sys-dots:not(.open) > .system.folded { width: 6px !important; height: 6px !important; box-shadow: none !important; }
+html.chat-shell #messages#messages .sys-dots:not(.open) > .sys-more:not([hidden]) { gap: 1px; font: 600 9px/1 var(--read); color: var(--text-2); }
+html.chat-shell #messages#messages .sys-dots:not(.open) > .sys-more::after { width: 7px; height: 7px; }
+
+html.chat-shell #messages#messages .sys-dots.open { width: min(92%, 600px); padding: 6px 6px 4px; border: 0; border-radius: 14px; background: var(--cs-canvas); }
+html.chat-shell #messages#messages .sys-dots.open > .system.folded {
+  display: block; padding: 9px 12px 10px 30px !important; border-radius: 10px !important;
+  font: 400 13px/1.5 var(--read) !important; color: var(--text-2) !important;
+}
+html.chat-shell #messages#messages .sys-dots.open > .system.folded:hover { background: var(--cs-hover) !important; }
+html.chat-shell #messages#messages .sys-dots.open > .system.folded::before { left: 13px; top: 16px; width: 7px; height: 7px; box-shadow: none; }
+html.chat-shell #messages#messages .sys-dots.open > .system.folded + .system.folded:not(.repeat)::after { left: 30px; right: 12px; background: var(--cs-line); }
+/* The title line: a notice's own label, or a failure's «… could not answer». */
+html.chat-shell #messages#messages .sys-dots.open > .system.folded:not(.handoff) > b:first-child, html.chat-shell #messages#messages .sys-dots.open > .system.folded > .label {
+  display: block; width: auto; margin: 0; font: 500 13px/1.45 var(--read) !important; letter-spacing: 0; text-transform: none; color: var(--text) !important;
+}
+html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded { display: flex; flex-direction: column; gap: 2px; }
+html.chat-shell #messages#messages .sys-dots.open > .system.folded > b:not(:first-child), html.chat-shell #messages#messages .sys-dots.open > .system.handoff.folded > b { font-weight: 500; color: var(--text); }
+html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .label { order: 0; }
+html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .fail-known { order: 1; margin: 0; padding: 0; border: 0; font: 400 13px/1.5 var(--read); color: var(--text-2); }
+html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .fail-said {
+  order: 2; margin-top: 2px; font: 400 11.5px/1.5 var(--mono); color: var(--text-3);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > :not(.label, .fail-known, .fail-said) { order: 3; }
+/* Folding them back: a word and its arrow, no pill. */
+html.chat-shell #messages#messages .sys-dots.open > .sys-more { height: 24px; margin-top: 2px; padding: 0 8px; background: none; font: 500 12px/24px var(--read); color: var(--text-3); }
+html.chat-shell #messages#messages .sys-dots.open > .sys-more:hover { background: none; color: var(--text); }
