@@ -21052,7 +21052,8 @@ function renderUpdate() {
         // The chat shell: its dot, the words, and the download arrow after them (2026-10-27).
         const get = el('span', 'update-get');
         get.innerHTML = UPDATE_GLYPH; // trusted: our own SVG string
-        pill.replaceChildren(glyph, t('{version} available', { version: info.latest }), get);
+        // The words in their own piece: a narrow bar keeps only the arrow (styles.css).
+        pill.replaceChildren(glyph, el('span', 'update-words', t('{version} available', { version: info.latest })), get);
       } else pill.replaceChildren(glyph, t('{version} AVAILABLE', { version: info.latest })); pill.title = t('MADRE {latest} is on npm · you run {current} · open SETTINGS for the command', { latest: info.latest, current: info.current }); }
   }
   const target = state.settingsTargets.release;

@@ -11530,3 +11530,12 @@ html.chat-shell .shell > .bar > .update-pill .update-glyph { display: inline-blo
 html.chat-shell .shell > .bar > .update-pill .update-glyph svg { display: none; }
 html.chat-shell .shell > .bar > .update-pill .update-get { display: inline-grid; place-items: center; flex: none; margin-left: 1px; color: var(--phosphor); }
 html.chat-shell .shell > .bar > .update-pill .update-get svg { width: 14px; height: 14px; }
+/* Never folded into the bar's square keys: as wide as what it says. A narrow bar (a tool or a second
+   conversation beside it) keeps the first steps' ring and count, and the new version's arrow. */
+html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill) { width: auto !important; min-width: 0 !important; flex: none; white-space: nowrap; }
+@container roombar (max-width: 760px) {
+  html.chat-shell .shell > .bar > .update-pill :is(.update-words, .update-glyph) { display: none; }
+  html.chat-shell .shell > .bar > .update-pill { padding: 0 7px !important; }
+  html.chat-shell .shell > .bar > .update-pill .update-get { margin: 0; }
+  html.chat-shell .shell > .bar > .steps-pill { padding: 0 8px 0 7px !important; }
+}
