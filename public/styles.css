@@ -11528,3 +11528,5 @@ html.chat-shell .shell > .bar > .steps-pill .steps-count { font-weight: 400; col
 /* A newer MADRE: an accent dot where the download arrow was. */
 html.chat-shell .shell > .bar > .update-pill .update-glyph { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--phosphor); opacity: 1; }
 html.chat-shell .shell > .bar > .update-pill .update-glyph svg { display: none; }
+html.chat-shell .shell > .bar > .update-pill .update-get { display: inline-grid; place-items: center; flex: none; margin-left: 1px; color: var(--phosphor); }
+html.chat-shell .shell > .bar > .update-pill .update-get svg { width: 14px; height: 14px; }

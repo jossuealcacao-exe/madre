@@ -21048,7 +21048,12 @@ function renderUpdate() {
   const pill = updateUI.pill;
   if (pill) {
     pill.hidden = !info?.available;
-    if (info?.available) { const glyph = el('span', 'update-glyph'); glyph.innerHTML = UPDATE_GLYPH; pill.replaceChildren(glyph, chatShellOn() ? t('{version} available', { version: info.latest }) : t('{version} AVAILABLE', { version: info.latest })); pill.title = t('MADRE {latest} is on npm · you run {current} · open SETTINGS for the command', { latest: info.latest, current: info.current }); }
+    if (info?.available) { const glyph = el('span', 'update-glyph'); glyph.innerHTML = UPDATE_GLYPH; if (chatShellOn()) {
+        // The chat shell: its dot, the words, and the download arrow after them (2026-10-27).
+        const get = el('span', 'update-get');
+        get.innerHTML = UPDATE_GLYPH; // trusted: our own SVG string
+        pill.replaceChildren(glyph, t('{version} available', { version: info.latest }), get);
+      } else pill.replaceChildren(glyph, t('{version} AVAILABLE', { version: info.latest })); pill.title = t('MADRE {latest} is on npm · you run {current} · open SETTINGS for the command', { latest: info.latest, current: info.current }); }
   }
   const target = state.settingsTargets.release;
   if (target?.isConnected) drawRelease(target, info);
