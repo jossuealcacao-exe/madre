@@ -710,3 +710,14 @@ test('chat shell: thin scrollbars, a hairline before the tools, and a narrow box
   assert.equal(modelNick('gemini-2.5-flash'), 'flash');
   assert.equal(modelNick(null), null);
 });
+
+test('servers: a new tab opens on this project\'s servers, the menu\'s own list, and goes when the tab gets an address', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(app, /const blank = \(browserTab\(\)\?\.url \?\? 'about:blank'\) === 'about:blank' && Boolean\(browser\.stage\);/);
+  assert.match(app, /browser\.lastRead = read;\n  paintBrowserStart\(\);/);
+  assert.match(app, /else fillPorts\(list, read\);/);
+  assert.match(app, /  fillPorts\(menu, read\);\n\}/);
+  assert.match(app, /  browser\.tabsBar\.hidden = false;\n  browserStartShown\(\);/);
+  assert.match(css, /\.browser-start \{ position: absolute; inset: 0; z-index: 3;/);
+});

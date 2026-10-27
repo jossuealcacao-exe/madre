@@ -2337,6 +2337,9 @@ const browser = {
   active: null,
   frame: null,
   stage: null,
+  start: null,       // a new tab's page: this project's servers (browserStartShown)
+  lastRead: null,    // the last reading of /api/ports, for that page
+  startAsked: 0,
 };
 
 // Point and ask, over the page: held beside the browser because leaving a page or a tab ends it.
@@ -2393,6 +2396,7 @@ function browserRenderTabs() {
   add.addEventListener('click', () => { browserNewTab(); void browserServers(); });
   browser.tabsBar.append(add);
   browser.tabsBar.hidden = false;
+  browserStartShown();
 }
 
 async function browserOpen(url, { tab = null } = {}) {
@@ -2554,6 +2558,39 @@ function browserHide() {
   portsMenuShown(false);
 }
 
+// A new tab opens on this project's servers (2026-10-27): the list the menu holds, as the tab's
+// page, so the first thing a new tab offers is what there is to open. It stands over the one frame
+// while the tab is blank and goes when the tab is given an address; the list follows the servers
+// sentinel as the menu does.
+function browserStartShown() {
+  if (!browser.body) return;
+  const blank = (browserTab()?.url ?? 'about:blank') === 'about:blank' && Boolean(browser.stage);
+  if (!blank) { browser.start?.remove(); return; }
+  browser.start ??= el('div', 'browser-start');
+  if (browser.start.parentNode !== browser.body) browser.body.append(browser.start);
+  paintBrowserStart();
+  // Read again when the last reading is old; the sentinel keeps it fresh after that.
+  if (!browser.lastRead || Date.now() - (browser.startAsked ?? 0) > 10000) {
+    browser.startAsked = Date.now();
+    void fetch('/api/ports').then((response) => response.json()).then(paintPorts).catch(() => {
+      browser.lastRead = { error: t('COULD NOT SEE WHICH SERVERS ARE RUNNING') };
+      paintBrowserStart();
+    });
+  }
+}
+function paintBrowserStart() {
+  const start = browser.start;
+  if (!start?.isConnected) return;
+  const read = browser.lastRead;
+  const head = el('div', 'browser-start-head');
+  head.append(el('h3', null, t('THIS PROJECT\'S SERVERS')), portsRefreshKey());
+  const list = el('div', 'browser-start-list');
+  if (!read) list.append(el('div', 'ports-note', t('READING…')));
+  else if (read.error) list.append(el('div', 'ports-empty', read.error), portsModulesRow());
+  else fillPorts(list, read);
+  start.replaceChildren(head, list);
+}
+
 // Opening and closing the list in one place: the button carries the state, so it has to be told
 // every time, and it is told nowhere else.
 function portsMenuShown(open) {
@@ -2607,6 +2644,9 @@ function openPort(found) {
 }
 
 function paintPorts(read) {
+  // A new tab shows the same list as its page (paintBrowserStart), whether the menu is open or not.
+  browser.lastRead = read;
+  paintBrowserStart();
   const menu = browser.portsMenu;
   if (!menu) return;
   // The answer's own words when it refuses. Reading `?.ports ?? []` straight past an error turned
@@ -2616,32 +2656,43 @@ function paintPorts(read) {
     browser.servers?.setAttribute('data-live', 'no');
     if (menu.hidden) return;
     menu.replaceChildren(el('div', 'ports-note', read.error));
-    const go = el('button', 'ports-row');
-    go.type = 'button';
-    const gear = el('b', 'ports-gear');
-    gear.innerHTML = GEAR_ICON; // trusted: our own SVG string
-    go.append(gear, el('span', null, t('OPEN MODULES')));
-    go.addEventListener('click', () => { portsMenuShown(false); document.querySelector('#modules-button, [aria-controls="modules"]')?.click(); });
-    menu.append(go);
+    menu.append(portsModulesRow());
     return;
   }
   const ports = read?.ports ?? [];
-  const wider = read?.wider ?? [];
   browser.lastPorts = ports;
   // The lamp on the button keeps what the reading found, so the state survives the menu closing.
   browser.servers?.setAttribute('data-live', ports.length ? 'yes' : 'no');
   if (menu.hidden) return;
   const head = el('div', 'ports-head');
-  head.append(el('span', null, t('THIS PROJECT\'S SERVERS')));
+  head.append(el('span', null, t('THIS PROJECT\'S SERVERS')), portsRefreshKey());
+  menu.replaceChildren(head);
+  fillPorts(menu, read);
+}
+// The way to the switch when Preview is off, as a row of the list.
+function portsModulesRow() {
+  const go = el('button', 'ports-row');
+  go.type = 'button';
+  const gear = el('b', 'ports-gear');
+  gear.innerHTML = GEAR_ICON; // trusted: our own SVG string
+  go.append(gear, el('span', null, t('OPEN MODULES')));
+  go.addEventListener('click', () => { portsMenuShown(false); document.querySelector('#modules-button, [aria-controls="modules"]')?.click(); });
+  return go;
+}
+function portsRefreshKey() {
   const refresh = el('button', 'ports-refresh');
   refresh.type = 'button';
   refresh.setAttribute('aria-label', t('Refresh servers'));
   refresh.title = t('Refresh servers');
   refresh.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.76-4.24M16 3.6v3.6h-3.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   refresh.addEventListener('click', () => void refreshBrowserServers(refresh));
-  head.append(refresh);
-  menu.replaceChildren(head);
-  if (!ports.length && !wider.length) menu.append(el('div', 'ports-empty', t('Nothing started from this project is answering. Start your dev server inside the project folder and it shows up here by itself.')));
+  return refresh;
+}
+// The servers themselves: the ones that open here, the ones bound wider, and what is left out.
+function fillPorts(target, read) {
+  const ports = read?.ports ?? [];
+  const wider = read?.wider ?? [];
+  if (!ports.length && !wider.length) target.append(el('div', 'ports-empty', t('Nothing started from this project is answering. Start your dev server inside the project folder and it shows up here by itself.')));
   for (const found of ports) {
     const row = el('button', `ports-row${found.framable === false ? ' refuses' : ''}`);
     row.type = 'button';
@@ -2651,19 +2702,19 @@ function paintPorts(read) {
     const what = `${found.command} · ${found.status}${kind ? ` · ${kind}` : ''}${found.network ? ` · ${t('your network can reach it too')}` : ''}`;
     row.append(el('i', 'ports-lamp'), el('b', null, `:${found.port}`), el('span', null, found.framable === false ? t('{what} · cannot be shown in here', { what }) : what));
     row.addEventListener('click', () => openPort(found));
-    menu.append(row);
+    target.append(row);
   }
   // Found and not offered: Node and python bind every interface by default, and saying nothing
   // about it made a running server read as no server at all.
   for (const one of wider) {
     const row = el('div', 'ports-row wider');
     row.append(el('i', 'ports-lamp'), el('b', null, `:${one.port}`), el('span', null, t('{command} · open to your whole network · start it on 127.0.0.1 to open it here', { command: one.command })));
-    menu.append(row);
+    target.append(row);
   }
   const foot = read?.others
     ? t('{n} more listening on this computer, from other folders · not shown', { n: read.others })
     : t('ONLY WHAT THIS PROJECT STARTED · THE FAILURE MONITOR WATCHES IT');
-  menu.append(el('div', 'ports-note', foot));
+  target.append(el('div', 'ports-note', foot));
 }
 
 /* ---------- point and ask, on the project's own server ---------- */
