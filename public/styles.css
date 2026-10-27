@@ -11336,5 +11336,26 @@ html.chat-shell :is(#viewer.split, #tree.split, #browser.browser-dock)::after { 
 html.chat-shell .browser-start { background: var(--cs-tool); }
 html.chat-shell .browser-start .ports-row { padding: 9px 10px; border-radius: 10px; }
 html.chat-shell .browser-start .ports-row b { font: 500 14px var(--read); }
-html.chat-shell .browser-start .ports-refresh:is(*, :hover) { box-shadow: none; background: none; color: var(--text-3); }
-html.chat-shell .browser-start .ports-refresh:hover { background: var(--cs-hover); color: var(--text); }
+
+.browser-start-refresh { height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 500 12.5px var(--read); cursor: pointer; }
+.browser-start-refresh:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.browser-start-refresh:disabled { opacity: .55; cursor: default; }
+/* In the column at the right the panel stands flush under its tab, as Files does: the margins of
+   its old dock left a gap over it and set its edge apart from the one above. */
+:root.chat-shell .shell > #browser.browser-dock:not(.window) { margin: 0 !important; border: 0 !important; border-radius: 0 !important; }
+
+/* ---- Modules, in Settings' hand (2026-10-27): the card's hairline firms under the pointer and
+   nothing lifts; names and lines in the same type; one line each; marks as words. ---- */
+html.chat-shell #modules .mods-tile:not(.make):hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text) 20%, transparent) !important; transform: none !important; }
+html.chat-shell #modules .mods-tile.make:hover { background: var(--cs-hover) !important; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text) 20%, transparent) !important; transform: none !important; }
+html.chat-shell #modules .mods-tile:focus-visible { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 60%, transparent) !important; }
+html.chat-shell #modules .mods-tile { min-height: 0; gap: 3px; border-radius: 14px; }
+html.chat-shell #modules .mods-name { font: 600 13.5px var(--read); letter-spacing: 0; color: var(--text); }
+html.chat-shell #modules .mods-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 12px/1.45 var(--read); color: var(--text-3); }
+html.chat-shell #modules .mods-app { margin-top: 4px; padding: 0; border-radius: 0; background: none; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell #modules .mods-top .sx-chip { padding: 0; border: 0; background: none !important; box-shadow: none !important; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell #modules .mods-top .sx-chip.on { color: var(--text-2); }
+html.chat-shell #modules .custom-title { font: 600 14px var(--read); letter-spacing: -.005em; }
+html.chat-shell #modules .mods-head .sx-btn:is(*, :hover, :active, :focus-visible) { height: 30px; padding: 0 10px; gap: 6px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; font: 500 12.5px var(--read); letter-spacing: 0; color: var(--text-2); }
+html.chat-shell #modules .mods-head .sx-btn:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
+html.chat-shell #modules :is(.settings-seg button, .sx-btn) { font: 500 12.5px var(--read); letter-spacing: 0; }

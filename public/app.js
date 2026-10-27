@@ -2583,7 +2583,12 @@ function paintBrowserStart() {
   if (!start?.isConnected) return;
   const read = browser.lastRead;
   const head = el('div', 'browser-start-head');
-  head.append(el('h3', null, t('THIS PROJECT\'S SERVERS')), portsRefreshKey());
+  // The page has room for the word: «Refresh», not the menu's bare arrow.
+  const refresh = el('button', 'browser-start-refresh', t('Refresh'));
+  refresh.type = 'button';
+  refresh.title = t('Refresh servers');
+  refresh.addEventListener('click', () => void refreshBrowserServers(refresh));
+  head.append(el('h3', null, t('THIS PROJECT\'S SERVERS')), refresh);
   const list = el('div', 'browser-start-list');
   if (!read) list.append(el('div', 'ports-note', t('READING…')));
   else if (read.error) list.append(el('div', 'ports-empty', read.error), portsModulesRow());

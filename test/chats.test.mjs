@@ -721,3 +721,12 @@ test('servers: a new tab opens on this project\'s servers, the menu\'s own list,
   assert.match(app, /  browser\.tabsBar\.hidden = false;\n  browserStartShown\(\);/);
   assert.match(css, /\.browser-start \{ position: absolute; inset: 0; z-index: 3;/);
 });
+
+test('chat shell: the servers page says Refresh in words, the panel stands flush under its tab, and Modules wears Settings\' hand', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(app, /const refresh = el\('button', 'browser-start-refresh', t\('Refresh'\)\);/);
+  assert.match(css, /:root\.chat-shell \.shell > #browser\.browser-dock:not\(\.window\) \{ margin: 0 !important;/);
+  assert.match(css, /html\.chat-shell #modules \.mods-tile:not\(\.make\):hover \{ box-shadow: 0 0 0 1\.5px color-mix\(in srgb, var\(--text\) 20%, transparent\) !important; transform: none !important; \}/);
+  assert.match(css, /html\.chat-shell #modules \.mods-line \{ display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;/);
+});
