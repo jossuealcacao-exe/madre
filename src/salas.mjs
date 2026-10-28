@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { closeSync, openSync, realpathSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, stat } from 'node:fs/promises';
+import * as nodePath from 'node:path';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { oneAtATime, writeWhole } from './json-file.mjs';
@@ -108,7 +109,17 @@ const NOT_PROJECTS = new Set(['node_modules', 'Library', 'Applications', 'Pictur
 // Escritorio).
 export const PROJECT_HOMES = ['', 'Projects', 'projects', 'Proyectos', 'proyectos', 'Developer', 'dev', 'Dev', 'code', 'Code', 'src', 'repos', 'Repos', 'GitHub', 'git', 'work', 'Work', 'Sites', 'Documents', 'Documentos', 'Desktop', 'Escritorio'];
 
-const inside = (child, parent) => child === parent || child.startsWith(parent.endsWith('/') ? parent : `${parent}/`);
+// Whether a folder is the other one or inside it (WIN-028, 2026-10-28). Asked of the path module of
+// the system it runs on, not of a '/': on Windows a path is written with '\' and its letters' case
+// does not tell two folders apart, and comparing text with '/' refused every folder there, the
+// home's own included («Only folders inside your home folder»). `path` is a parameter so the
+// Windows rule can be checked anywhere.
+export function insideFolder(child, parent, path = nodePath) {
+  const rel = path.relative(parent, child);
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+export const sameFolder = (one, other, path = nodePath) => path.relative(one, other) === '';
+const inside = (child, parent) => insideFolder(child, parent);
 async function looksLikeProject(folder) {
   for (const mark of PROJECT_MARKS) if (await stat(join(folder, mark)).then(() => true, () => false)) return true;
   return false;
@@ -140,7 +151,7 @@ export async function listFolders({ path = null, home, stateRoot }) {
     entries.push({ name: entry.name, path: full, project: await looksLikeProject(full), known: known.has(full) });
   }
   entries.sort((a, b) => Number(b.project) - Number(a.project) || a.name.localeCompare(b.name));
-  return { path: here, home: top, parent: here === top ? null : dirname(here), entries: entries.slice(0, 400) };
+  return { path: here, home: top, parent: sameFolder(here, top) ? null : dirname(here), entries: entries.slice(0, 400) };
 }
 
 // Folders that look like projects in the places people keep them, newest first, none already here.
@@ -173,7 +184,7 @@ export async function suggestProjects({ home, stateRoot, limit = 24 }) {
 export async function associateProject({ root, home, stateRoot, now = new Date() }) {
   const folder = realFolder(String(root ?? ''));
   const top = realFolder(home);
-  if (!root || !inside(folder, top) || folder === top) return { error: 'outside' };
+  if (!root || !inside(folder, top) || sameFolder(folder, top)) return { error: 'outside' };
   if (inside(folder, realFolder(stateRoot))) return { error: 'madre' };
   const info = await stat(folder).catch(() => null);
   if (!info?.isDirectory()) return { error: 'missing' };

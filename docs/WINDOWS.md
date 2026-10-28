@@ -76,7 +76,7 @@ real, no en CI) · `DESCARTADO`.
 | **WIN-005** | Lo mismo en el servidor MCP de imagen. | `src/mcp/image-server.mjs:195` | 1 | ABIERTO |
 | **WIN-006** | Lo mismo en `bin/madre.mjs` (commit en `--version`) y en los scripts de release y empaquetado. | `bin/madre.mjs:90`, `scripts/release.mjs:16`, `scripts/pack-check.mjs:12` | 1 | ABIERTO |
 | **WIN-007** | `process.kill(-pid)` no existe en Windows; el `catch` mata solo al lanzador. **STOP ALL, timeout e idle dejan CLIs huérfanos quemando cuota.** | `src/adapters/process.mjs:9` | 1 | ABIERTO |
-| **WIN-028** | Inicio no deja agregar ni crear proyectos: `inside()` compara con `/` y las rutas de Windows usan `\`; además compara mayúsculas sobre un sistema que no las distingue. Toda carpeta da «Solo carpetas dentro de tu carpeta de usuario». Reportado por un usuario el 2026-10-28. Arreglo: comparar con `path.relative`, que sirve en las tres plataformas (va en `main`). | `src/salas.mjs:111` | 1 | ABIERTO |
+| **WIN-028** | Inicio no deja agregar ni crear proyectos: `inside()` compara con `/` y las rutas de Windows usan `\`; además compara mayúsculas sobre un sistema que no las distingue. Toda carpeta da «Solo carpetas dentro de tu carpeta de usuario». Reportado por un usuario el 2026-10-28. Arreglo: comparar con `path.relative`, que sirve en las tres plataformas (`insideFolder`, probado con las reglas de `path.win32`). | `src/salas.mjs:111` | 1 | ARREGLADO |
 
 ### P1 · El confinamiento se cae en silencio
 
@@ -205,3 +205,4 @@ Una línea por cambio de estado. Se añade al final, nunca se reescribe.
 - `2026-10-03` · Se abre WIN-027 (comandos que el humano corre por un agente, módulo Runs), sobre la misma restricción que WIN-016.
 - `2026-10-07` · D-003 cambia: la `1.0.0` es el rediseño de la interfaz y el puerto apunta a `1.1.0`. La rama conserva el nombre `windows/1.0`.
 - `2026-10-28` · **D-001 resuelta: WSL2.** Dos casos reales: Juan (Windows nativo, no pudo crear proyectos y terminó en WSL) y Carlos (Linux en una máquina virtual por SSH). La 1.1.0 lleva WSL2 bajo la app de Tauri; Windows nativo, después y solo si hay demanda. Se abre WIN-028 (Inicio no agrega ni crea proyectos: `inside()` en `src/salas.mjs` compara con `/`).
+- `2026-10-28` · WIN-028 arreglado en `ux/refresh` (`insideFolder` con `path.relative`; prueba con `path.win32`). Falta verificarlo en un Windows real.

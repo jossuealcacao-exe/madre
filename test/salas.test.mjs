@@ -191,3 +191,23 @@ test('salas · a universe carries what a NOSTROMO is drawn from and, unless the 
   assert.equal(near.memories[0].agent, 'claude');
   assert.equal(near.memories[0].messageId, undefined, 'more than the words crossed');
 });
+
+// WIN-028 (2026-10-28): on Windows every folder was «outside the home», because the check compared
+// text with '/'. Asked of each system's own path rules, with the Windows rules checked here too.
+test('salas · a folder inside the home is inside it on Windows as on a Mac, whatever the case of its letters', async () => {
+  const { insideFolder, sameFolder } = await import('../src/salas.mjs');
+  const { posix, win32 } = await import('node:path');
+  const home = 'C:\\Users\\Usuario Principal';
+  assert.equal(insideFolder('C:\\Users\\Usuario Principal\\Documents\\mi-proyecto', home, win32), true);
+  assert.equal(insideFolder('c:\\users\\usuario principal\\Documents', home, win32), true, 'the case of the letters does not matter on Windows');
+  assert.equal(insideFolder(home, home, win32), true);
+  assert.equal(sameFolder('C:\\Users\\Usuario Principal', 'c:\\users\\usuario principal', win32), true);
+  assert.equal(insideFolder('C:\\MADRE', home, win32), false);
+  assert.equal(insideFolder('D:\\proyectos\\uno', home, win32), false, 'another drive is outside');
+  assert.equal(insideFolder('C:\\Users\\Usuario Principal2\\x', home, win32), false, 'a folder that only starts with the same name is outside');
+  assert.equal(insideFolder('/home/ana/proyectos/uno', '/home/ana', posix), true);
+  assert.equal(insideFolder('/home/ana', '/home/ana', posix), true);
+  assert.equal(insideFolder('/home/anabel/x', '/home/ana', posix), false);
+  assert.equal(insideFolder('/home/ana/../bob', '/home/ana', posix), false);
+  assert.equal(insideFolder('/home/ana/..hidden', '/home/ana', posix), true, 'a folder whose name starts with two dots is still inside');
+});
