@@ -2506,6 +2506,44 @@ export function createNostromo(nostromo) {
         ctx.restore();
       }
 
+      // A body in space (2026-10-28): the core lights it. The side facing the core takes its light,
+      // the far side falls into a soft night, a thin crescent rides the lit limb and a small sheen
+      // sits where the light strikes — so even a dwarf a few pixels wide reads as a sphere, not a
+      // disc. Its own fire still shows through the night side: it is a star, only a turned one.
+      if (r > 1.5) {
+        const away = Math.hypot(node.x, node.y) || 1;
+        const lx = -node.x / away;
+        const ly = -node.y / away;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, Math.PI * 2); ctx.clip();
+        const night = ctx.createLinearGradient(node.x + lx * r, node.y + ly * r, node.x - lx * r, node.y - ly * r);
+        const dark = node.cold ? 0.72 : 0.56;
+        night.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        night.addColorStop(0.42, 'rgba(0, 0, 0, 0.04)');
+        night.addColorStop(0.7, `rgba(0, 0, 0, ${dark * 0.62})`);
+        night.addColorStop(1, `rgba(0, 0, 0, ${dark})`);
+        ctx.fillStyle = night;
+        ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
+        ctx.globalCompositeOperation = 'lighter';
+        const sheen = ctx.createRadialGradient(node.x + lx * r * 0.42, node.y + ly * r * 0.42, 0, node.x + lx * r * 0.42, node.y + ly * r * 0.42, r * 0.62);
+        sheen.addColorStop(0, `rgba(255, 255, 255, ${0.26 + 0.12 * burn})`);
+        sheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = sheen;
+        ctx.fillRect(node.x - r, node.y - r, r * 2, r * 2);
+        ctx.restore();
+        // The crescent on the lit limb: filled between the limb and an ellipse narrowed toward the core,
+        // never stroked — a line round a ball flattens it however thin it is.
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const facing = Math.atan2(ly, lx);
+        ctx.fillStyle = hexAlpha(hexMix(node.color, '#ffffff', 0.65), 0.42 * glowAt);
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r, facing - 1.15, facing + 1.15);
+        ctx.ellipse(node.x, node.y, r * 0.86, r, facing, 1.15, -1.15, true);
+        ctx.fill();
+        ctx.restore();
+      }
+
       // The glow: the light a star gives off, clinging to it in a tight bloom the width of a finger,
       // the same all the way round because nothing else is lighting it. It carries past the body
       // and stops there, so it belongs to the star rather than hanging off it.

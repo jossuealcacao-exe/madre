@@ -6110,4 +6110,9 @@ export const ES = {
   'Remind me… (tomorrow at 5 call Ana)': 'Recuérdame… (mañana a las 5 llamar a Ana)',
   'Reminder set: {when}.': 'Recordatorio listo: {when}.',
   'Your reminders from every project, by day. ✓ settles one, «Later» moves it, and the box below sets a new one as you would say it.': 'Tus recordatorios de todos los proyectos, por día. ✓ marca uno como hecho, «Más tarde» lo pospone, y en la caja de abajo creas uno nuevo como lo dirías.',
+  // The two drawings of a map (2026-10-28).
+  'Two ways to see it': 'Dos formas de verlo',
+  'Planets or neurons: the same map, drawn two ways. Switch with this key whenever you want.': 'Planetas o neuronas: el mismo mapa, dibujado de dos formas. Cambia con esta tecla cuando quieras.',
+  'See it as planets': 'Verlo como planetas',
+  'See it as neurons': 'Verlo como neuronas',
 };

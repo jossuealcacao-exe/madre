@@ -2985,6 +2985,9 @@ ui.macro.addEventListener('click', async () => {
       wake: async (room) => { await startRoom(room); },
       // Dragged from one universe onto another: the notes of the first would travel to the second.
       link: (source, reader) => openLinkSheet({ source: source?.id ?? null, reader: reader?.id ?? null }),
+      // Planets or neurons, said once and after the map itself was (homeTour 'home-map').
+      mayTellViews: () => { const seen = homeTour.state(); return Boolean(seen?.bonjourAt && seen.hints?.['home-map'] && !seen.hints['map-views'] && !document.querySelector('.tour-hint')); },
+      toldViews: () => void homeTour.seen('map-views'),
       closed: () => { macroFrame?.drop(); macroFrame = null; macro = null; document.body.classList.remove('sm-in-macro'); ui.macro.focus(); },
     },
   });

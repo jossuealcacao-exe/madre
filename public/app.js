@@ -10,7 +10,7 @@ import { createEditor } from './editor.js';
 import { POWER_ICON, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
-import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural } from './neural.js';
+import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural, tellViews } from './neural.js';
 import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
@@ -19804,7 +19804,18 @@ function placeNostromoWindow(box) {
   applyWindowBox(nostromo.dialog, nostromoWindow.box);
   sizeNostromo();
 }
+// The two drawings of the Memory map, said once under the key that switches them (2026-10-28):
+// the same card as Home's Project map (neural.js, tellViews), kept as said in the tour.
+function sayMapViews() {
+  setTimeout(() => {
+    const tour = roomTour();
+    const seen = tour.state();
+    if (!nostromo.dialog?.open || state.device || !seen?.bonjourAt || seen.hints?.['map-views'] || document.querySelector('.tour-hint')) return;
+    if (tellViews({ key: nostromo.neuralKey, host: nostromo.dialog, neural: nostromo.neural, onSwitch: () => setNostromoNeural(!nostromo.neural) })) void tour.seen('map-views');
+  }, 2400);
+}
 function showNostromoDialog() {
+  sayMapViews();
   const dialog = nostromo.dialog;
   const floating = nostromoWindow.on && nostromoCanFloat();
   for (const name of ['surface', 'window', 'nostromo-window']) dialog.classList.toggle(name, floating);

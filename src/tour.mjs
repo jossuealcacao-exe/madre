@@ -47,7 +47,9 @@ export const HINTS = ['switch', 'links', 'key4',
   // The short walks of 1.0.5 (2026-10-21): Home's Coordinator and where the manual is, in Home and
   // in a project, and Code, for whoever is new.
   'guide-code', 'guide-manual', 'home-coordinator', 'home-manual',
-  'new-code-ask', 'new-notes', 'new-connectors', 'new-manual'];
+  'new-code-ask', 'new-notes', 'new-connectors', 'new-manual',
+  // The two drawings of a map, planets and neurons (2026-10-28): said once, by the key that switches them.
+  'map-views'];
 const PATHS = ['new', 'back', 'since'];
 // The news this code knows (2026-10-21): written on the bonjour as the version a person MET MADRE
 // with (`met`). The cards of what is new are for whoever met it before a version; someone who meets

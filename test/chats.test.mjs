@@ -1304,3 +1304,22 @@ test('the agenda widget: every project\'s reminders by day, settled in place, an
   assert.match(home, /if \(body\.contains\(document\.activeElement\) && document\.activeElement\.matches\('input, textarea'\)\) return;/);
   assert.ok(HINTS.includes('w-agenda'), 'its first-time card can be kept as seen');
 });
+
+test('the maps say once that they can be planets or neurons, under the key that switches them, in Home and in a project', async () => {
+  const neural = await readFile(new URL('../public/neural.js', import.meta.url), 'utf8');
+  const macro = await readFile(new URL('../public/macroverso.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const { HINTS } = await import('../src/tour.mjs');
+  // One card for the invitation and for this: the way to switch is on it, and pressing the key answers it too.
+  assert.match(neural, /export function tellViews\(\{ key, host, neural = false, onSwitch \}\)/);
+  assert.match(neural, /go: neural \? t\('See it as planets'\) : t\('See it as neurons'\)/);
+  assert.match(neural, /key\.addEventListener\('click', close, \{ once: true \}\);/);
+  // Home's Project map: after the map's own first-time card, never over another, kept as said.
+  assert.match(macro, /if \(tellViews\(\{ key: neuralButton, host: layer, neural, onSwitch: \(\) => setNeuralMode\(!neural\) \}\)\) actions\.toldViews\?\.\(\);/);
+  assert.match(home, /mayTellViews: \(\) => \{ const seen = homeTour\.state\(\); return Boolean\(seen\?\.bonjourAt && seen\.hints\?\.\['home-map'\] && !seen\.hints\['map-views'\]/);
+  // A project's Memory map, modal or a window: inside the dialog, so it can be pressed.
+  assert.match(app, /tellViews\(\{ key: nostromo\.neuralKey, host: nostromo\.dialog, neural: nostromo\.neural, onSwitch: \(\) => setNostromoNeural\(!nostromo\.neural\) \}\)\) void tour\.seen\('map-views'\)/);
+  assert.match(app, /function showNostromoDialog\(\) \{\n  sayMapViews\(\);/);
+  assert.ok(HINTS.includes('map-views'), 'said once for every map, kept in the tour');
+});

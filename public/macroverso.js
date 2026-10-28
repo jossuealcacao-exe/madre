@@ -25,7 +25,7 @@
 // until a link exists (phase 3c).
 
 import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, texturesReady } from './nostromo-engine.js';
-import { createStrain, inviteNeural, neuralKey, paintNeuralKey } from './neural.js';
+import { createStrain, inviteNeural, neuralKey, paintNeuralKey, tellViews } from './neural.js';
 
 const KINDS = Object.keys(MEMORY_COLORS);
 const TILT = 0.42;                 // how flat the orbits read: the plane seen a little from above
@@ -551,6 +551,11 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   neuralButton.addEventListener('click', () => setNeuralMode(!neural));
   // When this machine does not give the space its frames, the key invites to try the mode.
   const strain = createStrain({ onStrain: () => { if (!neural) inviteNeural({ key: neuralButton, host: layer, map: 'projects', onTry: () => setNeuralMode(true) }); } });
+  // The two drawings, said once (2026-10-28): Home keeps that it was said (salas-mac.js, the tour).
+  setTimeout(() => {
+    if (!layer.isConnected || !actions.mayTellViews?.()) return;
+    if (tellViews({ key: neuralButton, host: layer, neural, onSwitch: () => setNeuralMode(!neural) })) actions.toldViews?.();
+  }, 2200);
   const motes = Array.from({ length: ORB_MOTES }, (_, i) => { const rnd = random(hash(`mote${i}`)); return { phase: rnd() * Math.PI * 2, reach: 1.3 + rnd() * 0.65, speed: 0.12 + rnd() * 0.2, tilt: (rnd() - 0.5) * 0.5, size: 0.35 + rnd() * 0.6 }; });
 
   function layout(all) {
@@ -1036,6 +1041,23 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
       ctx.globalAlpha = awake ? 1 : 0.8;
       ctx.drawImage(orb.canvas, p.x - r, p.y - r, r * 2, r * 2);
       ctx.globalAlpha = 1;
+      // Volume (2026-10-28): the light comes from the upper left, as its atmosphere says; the far side
+      // falls into a soft night and a sheen sits where the light strikes, so it reads as a sphere.
+      ctx.save();
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.clip();
+      const night = ctx.createLinearGradient(p.x - r * 0.72, p.y - r * 0.78, p.x + r * 0.82, p.y + r * 0.88);
+      night.addColorStop(0, 'rgba(6, 4, 20, 0)');
+      night.addColorStop(0.5, 'rgba(6, 4, 20, 0.08)');
+      night.addColorStop(1, `rgba(6, 4, 20, ${0.55 * (awake ? 1 : 0.8)})`);
+      ctx.fillStyle = night;
+      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.globalCompositeOperation = 'lighter';
+      const sheen = ctx.createRadialGradient(p.x - r * 0.4, p.y - r * 0.44, 0, p.x - r * 0.4, p.y - r * 0.44, r * 0.6);
+      sheen.addColorStop(0, `rgba(236, 228, 255, ${0.24 * life})`);
+      sheen.addColorStop(1, 'rgba(236, 228, 255, 0)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.restore();
       // Its own thin atmosphere, brighter on the side the light comes from.
       ctx.globalCompositeOperation = 'lighter';
       const limb = ctx.createRadialGradient(p.x - r * 0.1, p.y - r * 0.12, r * 0.9, p.x, p.y, r * 1.14);

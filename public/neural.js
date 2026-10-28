@@ -99,6 +99,25 @@ export function inviteNeural({ key, host, map, onTry }) {
   if (!key || !host || key.getAttribute('aria-pressed') === 'true') return null;
   const seen = `pulse.neural.invited.${map}`;
   try { if (sessionStorage.getItem(seen)) return null; sessionStorage.setItem(seen, '1'); } catch { /* shown once on this page */ }
+  return keyCard({ key, host, title: t('Try neural mode'), line: t('The same network, as neurons: only the paths something travels light up.'), go: t('Try it'), later: t('Not now'), onGo: onTry });
+}
+
+// The two drawings, said once (2026-10-28): the first times a map opens, the same card under the
+// same key says the map can be planets or neurons, with the way to switch right there. Who calls it
+// keeps that it was said (the tour, src/tour.mjs `map-views`), so it is said once for every map.
+export function tellViews({ key, host, neural = false, onSwitch }) {
+  if (!key || !host || host.querySelector('.neural-invite')) return null;
+  return keyCard({
+    key, host,
+    title: t('Two ways to see it'),
+    line: t('Planets or neurons: the same map, drawn two ways. Switch with this key whenever you want.'),
+    go: neural ? t('See it as planets') : t('See it as neurons'),
+    later: t('Got it'),
+    onGo: onSwitch,
+  });
+}
+
+function keyCard({ key, host, title: said, line: lead, go: goes, later: leaves, onGo }) {
   key.classList.add('invite');
   const card = document.createElement('div');
   card.className = 'neural-invite';
@@ -109,25 +128,27 @@ export function inviteNeural({ key, host, map, onTry }) {
   const words = document.createElement('div');
   words.className = 'neural-invite-words';
   const title = document.createElement('b');
-  title.textContent = t('Try neural mode');
+  title.textContent = said;
   const line = document.createElement('span');
-  line.textContent = t('The same network, as neurons: only the paths something travels light up.');
+  line.textContent = lead;
   words.append(title, line);
   const acts = document.createElement('div');
   acts.className = 'neural-invite-acts';
   const go = document.createElement('button');
   go.type = 'button';
   go.className = 'neural-invite-go';
-  go.textContent = t('Try it');
+  go.textContent = goes;
   const later = document.createElement('button');
   later.type = 'button';
   later.className = 'neural-invite-later';
-  later.textContent = t('Not now');
+  later.textContent = leaves;
   acts.append(go, later);
   card.append(mark, words, acts);
   const close = () => { card.remove(); key.classList.remove('invite'); };
-  go.addEventListener('click', () => { close(); onTry(); });
+  go.addEventListener('click', () => { close(); onGo(); });
   later.addEventListener('click', close);
+  // Pressing the key itself is the answer too.
+  key.addEventListener('click', close, { once: true });
   host.append(card);
   // Under the key, never past the edge of what holds it.
   const place = () => {

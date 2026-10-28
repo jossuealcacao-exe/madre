@@ -453,13 +453,16 @@ test('nostromo: every memory is a star struck from its own middle, and each brea
     checked += 1;
   }
   assert.equal(checked, room.nodes.length);
-  // And nothing is struck off-centre on a body at all: a dwarf makes its own light.
+  // Since 2026-10-28 a dwarf is a body in space: the core lights it. Anything struck off-centre on
+  // a body is its sheen, and it sits on the side that faces the core (at the origin) — never away.
   for (const node of room.nodes) {
     for (const call of calls) {
       if (call.name !== 'createRadialGradient') continue;
-      const off = Math.hypot(call.args[3] - node.x, call.args[4] - node.y);
+      const dx = call.args[3] - node.x;
+      const dy = call.args[4] - node.y;
+      const off = Math.hypot(dx, dy);
       if (off < 0.001 || off > node.r * 2) continue;
-      assert.fail('a memory is being lit from one side');
+      assert.ok(dx * -node.x + dy * -node.y > 0, 'a memory is lit from the side away from the core');
     }
   }
 
