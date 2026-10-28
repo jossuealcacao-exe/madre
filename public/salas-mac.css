@@ -1458,11 +1458,13 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
    another; Add widgets (a wide piece, a square and a circle, like Home itself) fills the same way. */
 .salas-mac :is(#sm-tb-links, #sm-tb-market, #sm-tb-modules, #sm-add-widgets) svg { overflow: visible; }
 #sm-tb-links svg :is(.ic-male, .ic-female) { transition: transform calc(240ms * var(--motion-scale, 1)) var(--ease-out, ease-out), color calc(240ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-/* Two links of a chain (Trazo MADRE, 2026-10-28): a little apart along their diagonal, and under the
-   pointer they come together, joined, in the accent. They only meet: nothing slides past. */
-#sm-tb-links svg .ic-male { transform: translate(-.9px, .9px); }
-#sm-tb-links svg .ic-female { transform: translate(.9px, -.9px); }
-#sm-tb-links:is(:hover, :focus-visible) svg :is(.ic-male, .ic-female) { transform: none; color: var(--s-acc, currentColor); }
+/* Two links of a chain (Trazo MADRE, 2026-10-28). They only meet: nothing slides past. */
+/* Joined at rest; under the pointer they come apart a little and join again (2026-10-28). */
+#sm-tb-links:is(:hover, :focus-visible) svg :is(.ic-male, .ic-female) { color: var(--s-acc, currentColor); }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-male { animation: sm-links-male calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+#sm-tb-links:is(:hover, :focus-visible) svg .ic-female { animation: sm-links-female calc(560ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+@keyframes sm-links-male { 0%, 100% { transform: none; } 40% { transform: translate(-1.1px, 1.1px); } }
+@keyframes sm-links-female { 0%, 100% { transform: none; } 40% { transform: translate(1.1px, -1.1px); } }
 
 #sm-tb-market svg .ic-basket { transform-box: fill-box; transform-origin: 50% 100%; }
 #sm-tb-market svg .ic-mods > * { transform-box: fill-box; transform-origin: center; }
@@ -1481,7 +1483,7 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 #sm-tb-modules svg .ic-q4 { transition-delay: 180ms; }
 @media (prefers-reduced-motion: reduce) {
   #sm-tb-market svg :is(.ic-basket, .ic-mods > *) { animation: none !important; }
-  #sm-tb-links svg :is(.ic-male, .ic-female) { transition: none; }
+  #sm-tb-links svg :is(.ic-male, .ic-female) { transition: none; animation: none !important; }
   #sm-tb-modules svg rect, #sm-add-widgets svg :is(rect, circle) { transition: none; }
 }
 
@@ -1687,7 +1689,10 @@ html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar) {
 }
 html.home-shell .sm-top .sm-barkey > span { display: none; }
 html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar) svg { width: 16px !important; height: 16px !important; }
-html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar):is(:hover, :focus-visible) { color: var(--phosphor); }
+html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar) { transition: color calc(160ms * var(--motion-scale, 1)) ease, background-color calc(160ms * var(--motion-scale, 1)) ease; }
+/* Under the pointer a light square comes up behind the key, as under Settings and Turn off at the
+   sidebar's foot (styles.css, .shell-key), and the drawing takes the accent (2026-10-28). */
+html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar):is(:hover, :focus-visible) { color: var(--phosphor); background: var(--cs-hover) !important; }
 html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar):focus-visible { outline: 2px solid var(--phosphor); outline-offset: -2px; }
 html.home-shell .sm-top .sm-barkey .sm-badge { position: absolute; top: 2px; right: -4px; margin: 0; box-shadow: 0 0 0 2px var(--cs-canvas); }
 /* Settings and turning MADRE off live at the sidebar's foot, as in a project. */

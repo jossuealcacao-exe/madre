@@ -42,7 +42,7 @@ function cog({ cx = 10, cy = 10, outer = 7.4, inner = 5.5, teeth = 6, top = 0.42
   return roundPoly(pts, r);
 }
 // The ring of the planet, broken where it passes behind it.
-const RING = { cx: 10, cy: 10, rx: 8, ry: 2.9, rot: -22, planet: 3.9, gap: 1.3 };
+const RING = { cx: 10, cy: 10, rx: 8, ry: 2.9, rot: -22, planet: 4.7, gap: 1.2 };
 function ringAt(t) {
   const c = Math.cos((RING.rot * Math.PI) / 180);
   const s = Math.sin((RING.rot * Math.PI) / 180);
@@ -100,8 +100,8 @@ const PULSE = 'M2 10h3.2l1.6-4.4 2.6 8.8 2-4.4h1.4l1.2-2.4 1.2 2.4H18';
 const GAUGE = 'M3.2 14.2a6.8 6.8 0 0 1 13.6 0';
 const PLUG = '<path d="M7.4 3v3.4M12.6 3v3.4"/><path d="M5.2 6.4h9.6v2.8a4.8 4.8 0 0 1-9.6 0z"/><path d="M10 14v3"/>';
 const CHAIN_BAR = 'M8.4 11.6l3.2-3.2';
-const CHAIN_A = 'M9.2 6.1l1.3-1.3a3.4 3.4 0 0 1 4.8 4.8L14 10.9';
-const CHAIN_B = 'M10.8 13.9l-1.3 1.3a3.4 3.4 0 0 1-4.8-4.8L6 9.1';
+const CHAIN_A = 'M8.6 6.7l1.3-1.3a3.4 3.4 0 0 1 4.8 4.8L13.4 11.5';
+const CHAIN_B = 'M11.4 13.3l-1.3 1.3a3.4 3.4 0 0 1-4.8-4.8L6.6 8.5';
 const PEOPLE = '<circle cx="7.6" cy="7" r="2.7"/><path d="M2.8 16.4a4.8 4.8 0 0 1 9.6 0"/><path d="M12.4 4.5a2.7 2.7 0 0 1 0 5M14.6 12a4.8 4.8 0 0 1 2.6 4.4"/>';
 const HUB = '<circle cx="10" cy="10" r="2.4"/><circle cx="10" cy="3.8" r="1.4"/><circle cx="4.6" cy="14" r="1.4"/><circle cx="15.4" cy="14" r="1.4"/><path d="M10 5.2v2.4M5.8 13.2l2.1-1.6M14.2 13.2l-2.1-1.6"/>';
 
@@ -199,8 +199,8 @@ export const ICONS = {
   mother: `<circle class="ic-disc" cx="10" cy="10" r="9"/><path class="ic-k" d="${PULSE}"/><path class="ic-beat" pathLength="1" d="${PULSE}"/>`,
   brain: `<path class="ic-f brain-l" d="${BRAIN_L}"/><path class="ic-f brain-r" d="${BRAIN_R}"/><path class="brain-folds" pathLength="1" d="${BRAIN_FOLDS}"/>`,
   neural: '<circle class="ic-f" cx="10" cy="10" r="2.6"/><path d="M10 7.4V4.8M12.15 11.47l2.56 1.75M7.85 11.47l-2.56 1.75M12.23 8.67l2.44-1.46"/><circle cx="10" cy="3.6" r="1.2"/><circle cx="15.7" cy="13.9" r="1.2"/><circle cx="4.3" cy="13.9" r="1.2"/><circle cx="15.7" cy="6.6" r="1.2"/>',
-  map: `<circle cx="10" cy="10" r="3.9"/><path d="${ring()}"/>`,
-  'map-key': `<circle cx="10" cy="10" r="3.9"/><path d="${ring()}"/>${moon(0, 1.2)}${moon(Math.PI, 0.9, ' opacity=".7"')}`,
+  map: `<circle cx="10" cy="10" r="${RING.planet}"/><path d="${ring()}"/>`,
+  'map-key': `<circle cx="10" cy="10" r="${RING.planet}"/><path d="${ring()}"/>${moon(0, 1.2)}${moon(Math.PI, 0.9, ' opacity=".7"')}`,
   coordinator: HUB,
   salas: '<circle cx="5.6" cy="6.4" r="2.6"/><circle cx="14.4" cy="6.4" r="2.6"/><circle cx="10" cy="14.4" r="2.6"/><path d="M8.2 6.4h3.6M7 8.7l1.7 3.2M13 8.7l-1.7 3.2" opacity=".55"/>',
   market: `<path d="${BAG}"/><path d="${BAG_HANDLE}"/>`,

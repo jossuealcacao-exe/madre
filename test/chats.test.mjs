@@ -1129,8 +1129,12 @@ test('Local AI and connectors are MADRE\'s own; restart lives in the power key; 
   assert.match(homeCss, /html\.home-shell \.sm-top #sm-reload \{ display: none !important; \}/);
   // Modules shakes; the Project map stays still and only its moons go round (2026-10-28).
   assert.doesNotMatch(homeCss, /#sm-macro[^{]*svg \{ animation/);
-  // Connections: the two links only come together, along their diagonal.
-  assert.match(homeCss, /#sm-tb-links:is\(:hover, :focus-visible\) svg :is\(\.ic-male, \.ic-female\) \{ transform: none;/);
+  // Connections: joined at rest; under the pointer they part a little along their diagonal and join again.
+  assert.match(homeCss, /@keyframes sm-links-male \{ 0%, 100% \{ transform: none; \} 40% \{ transform: translate\(-1\.1px, 1\.1px\); \} \}/);
+  assert.match(homeCss, /@keyframes sm-links-female \{ 0%, 100% \{ transform: none; \} 40% \{ transform: translate\(1\.1px, -1\.1px\); \} \}/);
+  // A light square under the pointer, as Settings and Turn off at the sidebar's foot.
+  assert.match(homeCss, /html\.home-shell \.sm-top :is\(\.sm-barkey, \.sm-icon-key\.bar\):is\(:hover, :focus-visible\) \{ color: var\(--phosphor\); background: var\(--cs-hover\) !important; \}/);
+  assert.match(css, /:not\(\.stop-all\):is\(:hover, :focus-visible\) \{ background: var\(--cs-hover\) !important; border-radius: 8px; \}/);
   assert.match(homeCss, /html\.home-shell #sm-tb-modules:is\(:hover, :focus-visible\) svg \{ animation: icon-shake/);
   // The maps' keys, this computer's own.
   assert.match(neural, /const shift = mac \? '⇧' : 'Shift';/);
