@@ -12117,3 +12117,10 @@ html.chat-shell .tour-btn.quiet { box-shadow: none; }
   background: color-mix(in srgb, #ffffff 7%, var(--cs-canvas, var(--surface)));
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 6px rgba(0, 0, 0, .35), 0 14px 34px -8px rgba(0, 0, 0, .6), 0 0 28px -6px rgba(255, 255, 255, .07);
 }
+
+/* WHAT IS STILL OPEN STANDS ON THE CANVAS (2026-10-28): the questions this conversation left open
+   («◉ still open here») sit over the box you write in, on the conversation, not inside the box. The
+   box keeps only what you write and its choices; the conversation leaves room for them at its foot. */
+html.chat-shell .shell > .composer { position: relative; }
+html.chat-shell .shell > .composer > .openq { position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); margin: 0; padding: 0 8px; z-index: 2; }
+html.chat-shell:has(.shell > .composer > .openq:not([hidden])) #messages { padding-bottom: 84px; }
