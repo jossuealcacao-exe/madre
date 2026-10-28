@@ -60,20 +60,20 @@ function handoffScene() {
   return svg(`<defs>${shadow(`${id}s`)}
     <linearGradient id="${id}a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#ea580c"/></linearGradient>
     <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
-  <path d="M120 150C150 80 200 70 236 82" fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>
-  <path d="M376 300c40 30 70 22 92-6" fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>
+  <path d="M120 150C150 80 200 70 236 82" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>
+  <path d="M376 300c40 30 70 22 92-6" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>
   <g filter="url(#${id}s)">
     <path d="M176 84h66l14 16h112a20 20 0 0 1 20 20v188a20 20 0 0 1-20 20H176a20 20 0 0 1-20-20V104a20 20 0 0 1 20-20z" fill="#ffffff"/>
     <rect x="182" y="118" width="70" height="22" rx="11" fill="#ecfdf5"/>
     <text x="217" y="133.5" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="12.5" font-weight="700" fill="#047857">.ahp/</text>
     ${row(170)}${row(214)}${row(258)}${row(302, false)}
   </g>
-  <g filter="url(#${id}s)"><circle cx="96" cy="182" r="40" fill="url(#${id}a)"/></g>
+  <g filter="url(#${id}s)"><circle cx="96" cy="182" r="40" fill="#f59e0b"/></g>
   <path d="M96 164l5 12.5 13 5.5-13 5.5-5 12.5-5-12.5-13-5.5 13-5.5z" fill="#ffffff"/>
-  <g filter="url(#${id}s)"><circle cx="474" cy="262" r="40" fill="url(#${id}b)"/></g>
+  <g filter="url(#${id}s)"><circle cx="474" cy="262" r="40" fill="#7c5cf0"/></g>
   <path d="M458 262l10 10 20-22" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
   <g filter="url(#${id}s)" transform="rotate(-18 432 112)"><rect x="404" y="98" width="62" height="26" rx="13" fill="#ffffff"/>${bar(418, 108, 34, 6, '#10b981', .9)}</g>
-  <circle cx="470" cy="70" r="5" fill="#ffffff" fill-opacity=".7"/><circle cx="74" cy="300" r="4" fill="#ffffff" fill-opacity=".6"/><circle cx="520" cy="170" r="3" fill="#ffffff" fill-opacity=".6"/>`);
+  <circle cx="470" cy="70" r="5" fill="currentColor" fill-opacity=".18"/><circle cx="74" cy="300" r="4" fill="currentColor" fill-opacity=".15"/><circle cx="520" cy="170" r="3" fill="currentColor" fill-opacity=".15"/>`);
 }
 
 // IMAGES: what was asked, in a line, and what came back: the picture, with its other takes beside it.
@@ -103,56 +103,58 @@ function imagesScene() {
     <rect x="56" y="116" width="304" height="232" rx="18" fill="none" stroke="#ffffff" stroke-width="5"/>
   </g>
   ${take(116, 't1')}${take(198, 't2', true)}${take(280, 't3')}
-  <path d="M30 150l3 7.5 7.5 3-7.5 3-3 7.5-3-7.5-7.5-3 7.5-3z" fill="#ffffff" fill-opacity=".85"/>
-  <path d="M530 116l2.2 5.4 5.4 2.2-5.4 2.2-2.2 5.4-2.2-5.4-5.4-2.2 5.4-2.2z" fill="#ffffff" fill-opacity=".8"/>
-  <path d="M352 104l1.8 4.4 4.4 1.8-4.4 1.8-1.8 4.4-1.8-4.4-4.4-1.8 4.4-1.8z" fill="#ffffff" fill-opacity=".8"/>`);
+  <path d="M30 150l3 7.5 7.5 3-7.5 3-3 7.5-3-7.5-7.5-3 7.5-3z" fill="currentColor" fill-opacity=".4"/>
+  <path d="M530 116l2.2 5.4 5.4 2.2-5.4 2.2-2.2 5.4-2.2-5.4-5.4-2.2 5.4-2.2z" fill="currentColor" fill-opacity=".35"/>
+  <path d="M352 104l1.8 4.4 4.4 1.8-4.4 1.8-1.8 4.4-1.8-4.4-4.4-1.8 4.4-1.8z" fill="currentColor" fill-opacity=".35"/>`);
 }
 
-// LOCAL AI: the computer itself thinking — a memory of linked notes on its screen — with no cloud
-// above it and a lock beside it: nothing leaves.
+// LOCAL AI (2026-10-27): a laptop drawn as one — a dark screen in its bezel, a thin base with its notch —
+// with the conversation answered on it by the two sparkles, and beside it what that means: no
+// internet needed, nothing leaves. Its accents are the module's flat colour.
+const FLAT = 'var(--mk-flat, var(--mk-b, #334155))';
 function localScene() {
   const id = `mka${++drawn}`;
-  const nodes = [[220, 132], [300, 112], [360, 160], [326, 214], [244, 206], [200, 172], [288, 166]];
-  const links = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5]];
-  const net = links.map(([a, b]) => `<line x1="${nodes[a][0]}" y1="${nodes[a][1]}" x2="${nodes[b][0]}" y2="${nodes[b][1]}" stroke="#86efac" stroke-opacity=".55" stroke-width="2"/>`).join('')
-    + nodes.map(([x, y], index) => (index === 6 ? `<circle cx="${x}" cy="${y}" r="22" fill="#4ade80" fill-opacity=".22"/><circle cx="${x}" cy="${y}" r="13" fill="#4ade80"/>` : `<circle cx="${x}" cy="${y}" r="7" fill="#bbf7d0"/>`)).join('');
-  return svg(`<defs>${shadow(`${id}s`)}<radialGradient id="${id}g" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#14532d"/><stop offset="1" stop-color="#052e16"/></radialGradient></defs>
+  const sparkle = (x, y, k) => `<path d="M${x} ${y - 10 * k}Q${x + 1.4 * k} ${y - 1.4 * k} ${x + 10 * k} ${y}Q${x + 1.4 * k} ${y + 1.4 * k} ${x} ${y + 10 * k}Q${x - 1.4 * k} ${y + 1.4 * k} ${x - 10 * k} ${y}Q${x - 1.4 * k} ${y - 1.4 * k} ${x} ${y - 10 * k}z"/>`;
+  return svg(`<defs>${shadow(`${id}s`)}</defs>
   <g filter="url(#${id}s)">
-    <rect x="128" y="64" width="320" height="206" rx="16" fill="#ffffff"/>
-    <rect x="140" y="76" width="296" height="182" rx="9" fill="url(#${id}g)"/>
-    <path d="M96 278h384l-26 30H122z" fill="#ffffff"/><rect x="250" y="282" width="76" height="7" rx="3.5" fill="#cbd5e1"/>
+    <rect x="110" y="52" width="340" height="226" rx="16" fill="#1c1f24"/>
+    <rect x="122" y="64" width="316" height="198" rx="8" fill="#0f1216"/>
+    <path d="M78 284h404a6 6 0 0 1 6 6v4a14 14 0 0 1-14 14H86a14 14 0 0 1-14-14v-4a6 6 0 0 1 6-6z" fill="#d5d9df"/>
+    <path d="M244 284h72a0 0 0 0 1 0 0v2a6 6 0 0 1-6 6h-60a6 6 0 0 1-6-6v-2z" fill="#aab1ba"/>
   </g>
-  ${net}
+  <rect x="140" y="80" width="280" height="22" rx="6" fill="#ffffff" fill-opacity=".06"/>
+  ${bar(150, 88, 60, 6, '#ffffff', .35)}
+  <rect x="300" y="116" width="106" height="30" rx="14" fill="#ffffff" fill-opacity=".14"/>${bar(312, 128, 80, 6, '#ffffff', .6)}
+  <g style="fill:${FLAT}">${sparkle(160, 178, 1.15)}${sparkle(176, 160, .55)}</g>
+  <rect x="186" y="160" width="188" height="64" rx="14" fill="#ffffff" fill-opacity=".09"/>
+  ${bar(200, 174, 150, 6, '#ffffff', .62)}${bar(200, 188, 128, 6, '#ffffff', .45)}${bar(200, 202, 96, 6, '#ffffff', .35)}
+  <rect x="140" y="236" width="280" height="16" rx="8" fill="#ffffff" fill-opacity=".07"/>
   <g filter="url(#${id}s)">
-    <rect x="22" y="112" width="104" height="58" rx="12" fill="#ffffff"/>${bar(36, 128, 58, 7, '#15803d', .85)}${bar(36, 142, 76, 6, '#94a3b8', .55)}${bar(36, 154, 48, 6, '#94a3b8', .4)}
-    <rect x="452" y="186" width="104" height="58" rx="12" fill="#ffffff"/>${bar(466, 202, 58, 7, '#15803d', .85)}${bar(466, 216, 76, 6, '#94a3b8', .55)}${bar(466, 228, 48, 6, '#94a3b8', .4)}
-  </g>
-  <path d="M126 141c40 0 50-6 74 28" fill="none" stroke="#ffffff" stroke-opacity=".75" stroke-width="2.5" stroke-dasharray="2 8" stroke-linecap="round"/>
-  <path d="M452 215c-46 0-60 2-92-50" fill="none" stroke="#ffffff" stroke-opacity=".75" stroke-width="2.5" stroke-dasharray="2 8" stroke-linecap="round"/>
-  <g transform="translate(452 40)">
-    <path d="M22 50h52a20 20 0 0 0 2-40 28 28 0 0 0-52-6A22 22 0 0 0 22 50z" fill="#ffffff" fill-opacity=".9"/>
-    <path d="M14 8l70 52" stroke="#15803d" stroke-width="6" stroke-linecap="round"/>
-  </g>
-  <g filter="url(#${id}s)"><circle cx="80" cy="282" r="34" fill="#ffffff"/></g>
-  <rect x="66" y="280" width="28" height="22" rx="5" fill="#15803d"/><path d="M71 280v-6a9 9 0 0 1 18 0v6" fill="none" stroke="#15803d" stroke-width="4.5"/>
-  <circle cx="80" cy="290" r="3" fill="#ffffff"/>`);
+    <rect x="404" y="164" width="138" height="44" rx="22" fill="#ffffff"/>
+    <g transform="translate(418 174)" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"><path d="M2 9a16 16 0 0 1 20 0M6 13.5a9.5 9.5 0 0 1 12 0"/><circle cx="12" cy="18" r="1.4" fill="#0f172a" stroke="none"/><path d="M3 2l18 20"/></g>
+    ${bar(450, 182, 76, 8, '#0f172a', .6)}
+    <rect x="18" y="200" width="122" height="44" rx="22" fill="#ffffff"/>
+    <g transform="translate(32 210)"><rect x="3" y="10" width="18" height="13" rx="3.5" style="fill:${FLAT}"/><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" style="stroke:${FLAT}" stroke-width="2.4"/></g>
+    ${bar(64, 218, 60, 8, '#0f172a', .6)}
+  </g>`);
 }
 
 const SCENES = { playwright: browserScene, ahp: handoffScene, 'image-studio': imagesScene, ollama: localScene };
 
-// Every other module: its icon, large, with the cards of what it touches floating round it.
+// Every other module (2026-10-27): its app tile, large, in its flat colour with its drawing in white,
+// and two cards of what it does floating round it, on the shot's own ground.
 function poster(item) {
   const id = `mka${++drawn}`;
   const face = moduleFace(item);
-  return svg(`<defs>${shadow(`${id}s`)}<radialGradient id="${id}r" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffffff" stop-opacity=".35"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>
-  <circle cx="280" cy="200" r="190" fill="url(#${id}r)"/>
+  return svg(`<defs>${shadow(`${id}s`)}</defs>
+  <circle cx="280" cy="200" r="150" fill="none" stroke="currentColor" stroke-opacity=".1" stroke-width="1.5"/>
+  <circle cx="280" cy="200" r="110" fill="none" stroke="currentColor" stroke-opacity=".08" stroke-width="1.5"/>
   <g filter="url(#${id}s)">
-    <rect x="58" y="74" width="138" height="72" rx="14" fill="#ffffff" fill-opacity=".92"/>${bar(74, 92, 70, 8, '#0f172a', .6)}${bar(74, 108, 100, 6, '#94a3b8', .55)}${bar(74, 122, 64, 6, '#94a3b8', .4)}
-    <rect x="370" y="258" width="138" height="72" rx="14" fill="#ffffff" fill-opacity=".92"/>${bar(386, 276, 70, 8, '#0f172a', .6)}${bar(386, 292, 100, 6, '#94a3b8', .55)}${bar(386, 306, 64, 6, '#94a3b8', .4)}
-    <rect x="200" y="120" width="160" height="160" rx="38" fill="#ffffff" fill-opacity=".2" stroke="#ffffff" stroke-opacity=".7" stroke-width="2"/>
+    <rect x="58" y="78" width="148" height="70" rx="16" fill="#ffffff"/>${bar(76, 96, 76, 8, '#0f172a', .6)}${bar(76, 112, 104, 6, '#94a3b8', .55)}${bar(76, 126, 64, 6, '#94a3b8', .4)}
+    <rect x="356" y="254" width="148" height="70" rx="16" fill="#ffffff"/>${bar(374, 272, 76, 8, '#0f172a', .6)}${bar(374, 288, 104, 6, '#94a3b8', .55)}${bar(374, 302, 64, 6, '#94a3b8', .4)}
+    <rect x="210" y="130" width="140" height="140" rx="33" style="fill:${FLAT}"/>
   </g>
-  <g transform="translate(220 140) scale(6)" color="#ffffff">${face.icon}</g>
-  <circle cx="420" cy="110" r="6" fill="#ffffff" fill-opacity=".7"/><circle cx="140" cy="300" r="5" fill="#ffffff" fill-opacity=".6"/>`);
+  <g transform="translate(224 144) scale(5.6)" color="#ffffff">${face.icon}</g>`);
 }
 
 // THE MODULE AT WORK (1.0.5): a project as a person sees it — the conversation, the bar with the
@@ -166,7 +168,7 @@ function roomScene(item) {
     <rect x="58" y="56" width="444" height="34" rx="12" fill="#eef2f1"/>
     ${bar(72, 69, 56, 8, '#0f172a', .55)}
     <circle cx="300" cy="73" r="10" fill="#e2e8f0"/><circle cx="326" cy="73" r="10" fill="#e2e8f0"/>
-    <rect x="342" y="61" width="24" height="24" rx="8" fill="#0f172a" fill-opacity=".86"/>
+    <rect x="342" y="61" width="24" height="24" rx="8" style="fill:${FLAT}"/>
     <g transform="translate(346 65) scale(.8)" color="#ffffff">${face.icon}</g>
     <circle cx="384" cy="73" r="10" fill="#e2e8f0"/><circle cx="476" cy="73" r="10" fill="#e2e8f0"/>
     <rect x="72" y="112" width="190" height="44" rx="16" fill="#f1f5f9"/>${bar(88, 126, 130, 7, '#64748b', .55)}${bar(88, 140, 96, 7, '#64748b', .4)}
@@ -176,7 +178,7 @@ function roomScene(item) {
   </g>
   <g filter="url(#${id}s)">
     <rect x="296" y="112" width="206" height="226" rx="18" fill="#ffffff"/>
-    <rect x="314" y="130" width="40" height="40" rx="12" fill="#0f172a" fill-opacity=".86"/>
+    <rect x="314" y="130" width="40" height="40" rx="12" style="fill:${FLAT}"/>
     <g transform="translate(320 136) scale(1.4)" color="#ffffff">${face.icon}</g>
     ${bar(366, 140, 86, 9, '#0f172a', .65)}${bar(366, 156, 62, 6, '#94a3b8', .55)}
     <rect x="314" y="190" width="170" height="40" rx="12" fill="#f1f5f9"/>${bar(328, 207, 70, 7, '#475569', .55)}
@@ -192,13 +194,13 @@ function stepsScene(item) {
   const id = `mka${++drawn}`;
   const face = moduleFace(item);
   const card = (x) => `<rect x="${x}" y="130" width="140" height="150" rx="22" fill="#ffffff" fill-opacity=".94"/>`;
-  const arrow = (x) => `<path d="M${x} 205h26m-8-8 8 8-8 8" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`;
+  const arrow = (x) => `<path d="M${x} 205h26m-8-8 8 8-8 8" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/>`;
   const basket = '<g fill="none" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="5.2" width="3.4" height="3.4" rx="1"/><circle cx="10" cy="5.3" r="1.8"/><rect x="12.2" y="5.2" width="3.4" height="3.4" rx="1"/><path d="M2.8 10.4h14.4l-1.5 5.4a1.6 1.6 0 0 1-1.6 1.2H5.9a1.6 1.6 0 0 1-1.6-1.2z"/></g>';
   return svg(`<defs>${shadow(`${id}s`)}</defs>
   <g filter="url(#${id}s)">${card(46)}${card(210)}${card(374)}</g>
   <g transform="translate(86 165) scale(3)">${basket}</g>${bar(86, 246, 60, 7, '#94a3b8', .55)}
   <rect x="244" y="184" width="72" height="40" rx="20" fill="#16a34a"/><circle cx="296" cy="204" r="15" fill="#ffffff"/>${bar(250, 246, 60, 7, '#94a3b8', .55)}
-  <rect x="404" y="160" width="80" height="80" rx="22" fill="#0f172a" fill-opacity=".88"/>
+  <rect x="404" y="160" width="80" height="80" rx="22" style="fill:${FLAT}"/>
   <g transform="translate(420 176) scale(2.4)" color="#ffffff">${face.icon}</g>
   <circle cx="478" cy="166" r="15" fill="#16a34a" stroke="#ffffff" stroke-width="3"/><path d="M471 166l5 5 9-10" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
   ${bar(414, 256, 60, 7, '#94a3b8', .55)}

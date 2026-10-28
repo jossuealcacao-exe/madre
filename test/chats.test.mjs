@@ -926,7 +926,7 @@ test('chat shell: a module key stays filled while its thing is open, notes keep 
   assert.match(app, /for \(const key of document\.querySelectorAll\('\.bar-extra\[data-bar-item\]'\)\) key\.setAttribute\('aria-pressed', String\(barExtraOpen\(key\.dataset\.barItem\)\)\);/);
   assert.match(app, /if \(IN_SETTINGS\[id\]\) return Boolean\(settingsWindow\.node\?\.open\) && settingsWindow\.open === IN_SETTINGS\[id\];/);
   assert.match(css, /html\.chat-shell \.shell > \.bar \[aria-pressed="true"\]:is\(\.mother-button, \.tree-button, \.chats-button\) \.ic-f \{ fill: currentColor; fill-opacity: 1; \}/);
-  assert.match(css, /html\.chat-shell \.shell > \.bar \[data-bar-item="notes"\] svg \{ width: 16px !important; height: 16px !important; \}/);
+  assert.match(css, /html\.chat-shell \.shell > \.bar :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\) svg \{ width: 16px !important; height: 16px !important; \}/);
   // The room's window rule gave a note the canvas: its colour is its own again.
   assert.match(css, /html\.chat-shell dialog\.surface\.window\.module-window\.note-window,\nhtml\.chat-shell dialog\.surface\.window\.module-window\.note-window:is\(\.lifted, \.front, \.behind\) \{\n  background: var\(--note, #fde68a\) !important;/);
   assert.match(app, /const GROUP_WORDS = \{ late: \(\) => t\('Overdue'\), today: \(\) => t\('Today'\), tomorrow: \(\) => t\('Tomorrow'\), later: \(\) => t\('Later'\) \};/);
@@ -943,9 +943,7 @@ test('chat shell: Diagnostics in two rows of filters, the memory map head in the
   assert.match(css, /html\.chat-shell #mother \.remedy-scope \{ display: flex;/);
   assert.match(css, /html\.chat-shell #nostromo \.nostromo-head > \.mother-title \{ font: 600 14px var\(--read\);/);
   assert.match(css, /html\.chat-shell #nostromo \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: rgb\(255 255 255 \/ \.08\) !important; color: var\(--phosphor\) !important; \}/);
-  assert.match(app, /\{ id: 'egress', label: t\('Where it connects'\), about: t\('Every address outside your computer this project can reach, and which of them are on\.'\) \},/);
-  assert.match(app, /core\.tabs\.dataset\.about = CORE_TABS\.find\(\(tab\) => tab\.id === core\.pane\)\?\.about \?\? '';/);
-  assert.match(css, /html\.chat-shell #core \.core-tabs::after \{ content: attr\(data-about\);/);
+  assert.match(app, /\{ id: 'egress', label: t\('Where it connects'\) \},/);
   assert.match(app, /head\.append\(el\('b', null, coreBlockName\(part\.id\)\)\);/);
   assert.match(es, /'What the agent reads': 'Lo que lee el agente',/);
 });
@@ -956,6 +954,23 @@ test('neural mode: memories are neurons, links are tracts, and the core is never
   assert.match(engine, /export function fibreBundle\(ctx, x0, y0, cx, cy, x1, y1, \{ strands = 3, spread = 3, seed = 0 \} = \{\}\) \{/);
   assert.match(engine, /function bulbSparks\(t, count = SPARK_SLOTS\) \{/);
   assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, Math\.floor\(\(node\.seed \* 1000\) % 6\)\), -side \/ 2, -side \/ 2, side, side\);/);
-  assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 3,/);
+  assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 6,/);
   assert.match(engine, /for \(const spark of bulbSparks\(t\)\) \{/);
+});
+
+test('chat shell: «What is sent» without the console nor the hint, its reasons in the room\'s language; neurons after the photographs; flat banners', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
+  const art = await readFile(new URL('../public/market-art.js', import.meta.url), 'utf8');
+  assert.match(app, /\.\.\.\(chatShellOn\(\) \? \[\] : \[renderCoreConsole\(\)\]\)\);/);
+  assert.match(app, /for \(const tab of CORE_TABS\.filter\(\(one\) => !\(one\.id === 'console' && chatShellOn\(\)\)\)\) \{/);
+  assert.doesNotMatch(app, /dataset\.about/);
+  assert.match(app, /head\.append\(el\('span', 'when', part\.when === 'always' \? \(chatShellOn\(\) \? t\('always'\) : t\('ALWAYS'\)\) : t\(part\.when\)\)\);/);
+  assert.match(es, /'the room has a memory': 'el proyecto tiene memoria',/);
+  assert.match(engine, /export const NEURAL_COLORS = \{ decision: '#ff9a2e', fact: '#7cc4ff',/);
+  assert.match(engine, /export function neuronChip\(hex, size = 14\) \{/);
+  assert.match(app, /const mark = kind === COLLAPSED \? collapsedChip\(hex, 14\) : nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 14\) : dwarfChip\(hex, 14\);/);
+  assert.match(art, /const FLAT = 'var\(--mk-flat, var\(--mk-b, #334155\)\)';/);
+  assert.match(art, /<rect x="210" y="130" width="140" height="140" rx="33" style="fill:\$\{FLAT\}"\/>/);
 });

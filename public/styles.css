@@ -10609,7 +10609,7 @@ html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .ch
   border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important;
   font-size: 0; color: var(--text-2);
 }
-html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: 18px !important; height: 18px !important; }
+html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: 16px !important; height: 16px !important; }
 /* No plate under a key (2026-10-26): the pointer wakes the drawing, a press lights it in the
    accent, as the keys of those apps. */
 html.chat-shell .shell > .bar > :is(.mother-button, .tree-button, .bar-icon, .chats-button):hover { background: none !important; color: var(--text); }
@@ -11875,8 +11875,8 @@ html.chat-shell .note-window .note-dot { border-color: rgb(0 0 0 / .18); }
 html.chat-shell .shell > .bar [aria-pressed="true"]:is(.mother-button, .tree-button, .chats-button) { color: var(--phosphor) !important; }
 html.chat-shell .shell > .bar [aria-pressed="true"]:is(.mother-button, .tree-button, .chats-button) .ic-f { fill: currentColor; fill-opacity: 1; }
 html.chat-shell .shell > .bar [aria-pressed="true"] :is(.ic-spark-big, .ic-spark-small) { fill: currentColor; }
-/* Notes' key a little smaller than the rest: its sheet read heavier than the other drawings. */
-html.chat-shell .shell > .bar [data-bar-item="notes"] svg { width: 16px !important; height: 16px !important; }
+/* Every key's drawing at 16px (2026-10-27), wherever on the bar it stands. */
+html.chat-shell .shell > .bar :is(.mother-button, .tree-button, .bar-icon, .chats-button) svg { width: 16px !important; height: 16px !important; }
 
 /* ---- Reminders coming up (app.js, remindersBlock, 2026-10-27): the field to add one, then the list by
    day — a quiet name for each day, and rows of the hour, what to do, and its keys. The keys stay
@@ -11925,7 +11925,9 @@ html.chat-shell #nostromo .nostromo-actions .mother-close:is(*, :hover, :active,
 html.chat-shell #nostromo .nostromo-actions .mother-close:is(:hover, :focus-visible) { background: rgb(255 255 255 / .07) !important; color: #fff; }
 html.chat-shell #nostromo .nostromo-actions .mother-close[aria-pressed="true"] { background: rgb(255 255 255 / .08) !important; color: var(--phosphor) !important; }
 html.chat-shell #nostromo .nostromo-actions .neural-key svg { width: 15px; height: 15px; }
-html.chat-shell #nostromo .nostromo-actions > .surface-modes { margin-left: 4px; padding-left: 6px; box-shadow: inset 1px 0 0 rgb(255 255 255 / .1); }
+html.chat-shell #nostromo .nostromo-actions > .surface-modes { margin-left: 4px; padding: 0 0 0 6px; border: 0; border-radius: 0; background: none !important; box-shadow: inset 1px 0 0 rgb(255 255 255 / .1) !important; }
+html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode.close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; }
+html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode.close .x-icon { width: 16px; height: 16px; }
 html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode { color: rgb(242 241 238 / .72); }
 html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode:is(:hover, :focus-visible) { color: #fff; background: rgb(255 255 255 / .07) !important; }
 html.chat-shell #nostromo .nostromo-hint, html.chat-shell #nostromo .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; }
@@ -11973,14 +11975,12 @@ html.chat-shell #core .mother-head { padding: 12px 12px 12px 20px; border-bottom
 html.chat-shell #core .mother-head .mother-title { font: 600 15px var(--read); letter-spacing: -.005em; text-transform: none; color: var(--text); }
 html.chat-shell #core .mother-head .mother-sub { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell #core .core-copy-all { height: 28px; padding: 0 12px; border: 0 !important; border-radius: 8px; background: var(--cs-hover) !important; box-shadow: none !important; font: 500 12.5px var(--read); }
-html.chat-shell #core .core-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 11px; background: var(--cs-hover); }
+html.chat-shell #core .core-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 11px; background: var(--cs-hover); }
 html.chat-shell #core .core-tab { justify-items: center; gap: 1px; padding: 6px 8px; border: 0 !important; border-radius: 8px; background: none; color: var(--text-2); text-align: center; }
 html.chat-shell #core .core-tab b { font: 500 13px var(--read); letter-spacing: 0; text-transform: none; }
 html.chat-shell #core .core-tab .meta { font: 400 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); opacity: 1; }
 html.chat-shell #core .core-tab:hover { color: var(--text); }
 html.chat-shell #core .core-tab.on { background: var(--cs-canvas); color: var(--text); box-shadow: 0 0 0 .5px var(--cs-line), 0 1px 2px rgb(0 0 0 / .1); }
-html.chat-shell #core .core-tabs::after { content: attr(data-about); grid-column: 1 / -1; padding: 8px 6px 2px; font: 400 12.5px/1.45 var(--read); color: var(--text-3); text-align: center; }
-html.chat-shell #core .core-tabs[data-about=""]::after { display: none; }
 html.chat-shell #core .brew-head { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell #core .brew-head b { font: 600 14px var(--read); color: var(--text); }
 html.chat-shell #core :is(.mem-tile, .mem-card) { border: 0; border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line) !important; }
@@ -11993,3 +11993,18 @@ html.chat-shell #core .mem-meter i { border-radius: 99px; background: var(--phos
 html.chat-shell #core .console-line { border: 0; border-radius: 12px; background: var(--cs-input); box-shadow: var(--cs-input-ring); }
 html.chat-shell #core .console-line input { font: 400 13.5px var(--read); }
 html.chat-shell #core .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); border-top: 1px solid var(--cs-line); }
+
+/* ---- «What is sent», the strip above the reading (2026-10-27): who it goes to, at what mode, and the
+   question you would send, in the reading face and sentence case, with the room's chips. ---- */
+html.chat-shell #core .core-strip { gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--cs-line); }
+html.chat-shell #core :is(.core-pick, .core-asking) .k { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .core-agent { height: 26px; padding: 0 10px; border: 0; border-radius: 8px; background: var(--cs-hover); color: var(--text-2); font: 500 12.5px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-agent:hover { color: var(--text); }
+html.chat-shell #core .core-agent.on { background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--text); }
+html.chat-shell #core .core-pick select { height: 26px; padding: 0 8px; border: 0; border-radius: 8px; background: var(--cs-hover); color: var(--text); font: 500 12.5px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-ceiling { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-asking textarea { padding: 6px 0; border-bottom: 1px solid var(--cs-line); color: var(--text); font: 400 13.5px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-asking textarea::placeholder { color: var(--text-3); opacity: 1; }
+html.chat-shell #core .core-asking .note { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+/* The pictures' quiet strokes and dots are drawn in the ink of the page (market-art.js, currentColor). */
+.mk.flat :is(.mk-slide-art, .mk-shot) { color: var(--text); }

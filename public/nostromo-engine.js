@@ -930,11 +930,12 @@ export function neuronGlow(hex) {
   NEURON_GLOWS.set(hex, canvas);
   return canvas;
 }
-// A NEURON, drawn once per colour and shape (2026-10-27): a soma with a lit membrane and a few grains
-// inside, its dendrites leaving it in branches that taper and wander, each ending in a bud. The
-// map draws the sprite turned and sized per memory; light and activity are laid over it.
+// A NEURON, drawn once per colour and shape (2026-10-27), after the photographs: a translucent cell
+// with a fine net over it and a lit rim, and bundles of fibres that leave it together and come
+// apart as they go — the connections peeling off it toward the others. The map draws the sprite
+// turned and sized per memory; light and activity are laid over it.
 const NEURON_SPRITES = new Map();
-export const NEURON_SPRITE = 160;      // the sprite's side; the soma is a tenth of it
+export const NEURON_SPRITE = 192;      // the sprite's side; the soma's radius is a twelfth of it
 export function neuronSprite(hex, variant = 0) {
   const key = `${hex}:${variant}`;
   let canvas = NEURON_SPRITES.get(key);
@@ -944,69 +945,85 @@ export function neuronSprite(hex, variant = 0) {
   canvas.height = NEURON_SPRITE;
   const paint = canvas.getContext('2d');
   const c = NEURON_SPRITE / 2;
-  const r = NEURON_SPRITE * 0.1;
+  const r = NEURON_SPRITE / 12;
   let seed = (variant + 1) * 9301 + [...hex].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) * 49297;
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const pale = hexMix(hex, '#ffffff', 0.35);
   paint.globalCompositeOperation = 'lighter';
   paint.lineCap = 'round';
-  const branch = (x, y, angle, length, width, depth) => {
-    let px = x, py = y, a = angle;
-    const steps = Math.max(3, Math.round(length / 6));
-    for (let i = 1; i <= steps; i += 1) {
-      a += (rnd() - 0.5) * 0.55;
-      const nx = px + Math.cos(a) * (length / steps);
-      const ny = py + Math.sin(a) * (length / steps);
-      const k = i / steps;
-      paint.strokeStyle = hexAlpha(hexMix(hex, '#ffffff', 0.18), (0.62 - 0.35 * k) * (1 - depth * 0.22));
-      paint.lineWidth = Math.max(0.35, width * (1 - 0.8 * k));
-      paint.beginPath(); paint.moveTo(px, py); paint.lineTo(nx, ny); paint.stroke();
-      if (depth < 2 && i === Math.round(steps * (0.4 + rnd() * 0.25)) && rnd() < 0.75) {
-        branch(nx, ny, a + (rnd() < 0.5 ? -1 : 1) * (0.45 + rnd() * 0.45), length * (0.45 + rnd() * 0.2), width * 0.6, depth + 1);
+  // The bundles: a few directions, and in each several strands that start side by side on the
+  // cell and splay apart, each wandering a little, thinning as it goes.
+  const bundles = 4 + Math.floor(rnd() * 3);
+  for (let i = 0; i < bundles; i += 1) {
+    const angle = (i / bundles) * Math.PI * 2 + (rnd() - 0.5) * 0.8;
+    const strands = 5 + Math.floor(rnd() * 5);
+    const reach = NEURON_SPRITE * (0.3 + rnd() * 0.17);
+    const fan = 0.18 + rnd() * 0.3;
+    for (let k = 0; k < strands; k += 1) {
+      const spread = (k / Math.max(1, strands - 1) - 0.5) * fan;
+      let x = c + Math.cos(angle) * r * 0.95, y = c + Math.sin(angle) * r * 0.95;
+      let a = angle + spread * 0.25;
+      const steps = 9;
+      const length = reach * (0.7 + rnd() * 0.3);
+      for (let step = 1; step <= steps; step += 1) {
+        const u = step / steps;
+        a += spread * 0.16 + (rnd() - 0.5) * 0.12;
+        const nx = x + Math.cos(a) * (length / steps), ny = y + Math.sin(a) * (length / steps);
+        paint.strokeStyle = hexAlpha(pale, (0.5 - 0.42 * u) * (0.7 + 0.3 * rnd()));
+        paint.lineWidth = Math.max(0.3, 1.25 * (1 - 0.75 * u));
+        paint.beginPath(); paint.moveTo(x, y); paint.lineTo(nx, ny); paint.stroke();
+        x = nx; y = ny;
       }
-      px = nx; py = ny;
     }
-    // A bud at the tip, where the next one is reached.
-    paint.fillStyle = hexAlpha(hexMix(hex, '#ffffff', 0.4), 0.5 - depth * 0.12);
-    paint.beginPath(); paint.arc(px, py, Math.max(0.6, 1.3 - depth * 0.35), 0, Math.PI * 2); paint.fill();
-  };
-  const arms = 5 + Math.floor(rnd() * 4);
-  for (let i = 0; i < arms; i += 1) {
-    const angle = (i / arms) * Math.PI * 2 + (rnd() - 0.5) * 0.7;
-    branch(c + Math.cos(angle) * r * 0.75, c + Math.sin(angle) * r * 0.75, angle, NEURON_SPRITE * (0.2 + rnd() * 0.2), 2.6, 0);
   }
-  // Its halo, then the soma: light at the heart, its colour, a darker body and a lit rim.
-  const halo = paint.createRadialGradient(c, c, r * 0.6, c, c, r * 3);
-  halo.addColorStop(0, hexAlpha(hex, 0.28)); halo.addColorStop(1, hexAlpha(hex, 0));
+  // Its halo.
+  const halo = paint.createRadialGradient(c, c, r * 0.8, c, c, r * 3.4);
+  halo.addColorStop(0, hexAlpha(hex, 0.32)); halo.addColorStop(1, hexAlpha(hex, 0));
   paint.fillStyle = halo;
-  paint.beginPath(); paint.arc(c, c, r * 3, 0, Math.PI * 2); paint.fill();
+  paint.beginPath(); paint.arc(c, c, r * 3.4, 0, Math.PI * 2); paint.fill();
+  // The cell: dim and clear inside, bright toward its rim, as a shell lit from within.
   paint.globalCompositeOperation = 'source-over';
-  const body = paint.createRadialGradient(c - r * 0.3, c - r * 0.35, r * 0.1, c, c, r);
-  body.addColorStop(0, hexMix(hex, '#ffffff', 0.7));
-  body.addColorStop(0.35, hexMix(hex, '#ffffff', 0.15));
-  body.addColorStop(0.8, hexMix(hex, '#05070d', 0.25));
-  body.addColorStop(1, hexMix(hex, '#05070d', 0.45));
+  const body = paint.createRadialGradient(c - r * 0.25, c - r * 0.3, 0, c, c, r);
+  body.addColorStop(0, hexAlpha(hexMix(hex, '#ffffff', 0.3), 0.5));
+  body.addColorStop(0.55, hexAlpha(hexMix(hex, '#04070d', 0.35), 0.55));
+  body.addColorStop(0.88, hexAlpha(hex, 0.8));
+  body.addColorStop(1, hexAlpha(hexMix(hex, '#ffffff', 0.25), 0.95));
   paint.fillStyle = body;
   paint.beginPath(); paint.arc(c, c, r, 0, Math.PI * 2); paint.fill();
-  paint.strokeStyle = hexAlpha(hexMix(hex, '#ffffff', 0.55), 0.75);
-  paint.lineWidth = 1;
-  paint.beginPath(); paint.arc(c, c, r - 0.5, 0, Math.PI * 2); paint.stroke();
-  // Its membrane, a fine net over the body, as the ones in the photographs.
+  // The net over it: meridians, parallels and a few loose threads, fine and pale.
   paint.save();
-  paint.beginPath(); paint.arc(c, c, r - 0.8, 0, Math.PI * 2); paint.clip();
-  paint.strokeStyle = hexAlpha('#ffffff', 0.16);
-  paint.lineWidth = 0.6;
-  for (let i = -2; i <= 2; i += 1) {
-    paint.beginPath(); paint.ellipse(c, c, r * (0.25 + 0.2 * Math.abs(i)), r, (i * Math.PI) / 5, 0, Math.PI * 2); paint.stroke();
-  }
-  for (const k of [-0.5, 0, 0.5]) { paint.beginPath(); paint.ellipse(c, c + k * r, r * Math.sqrt(1 - k * k), r * 0.22, 0, 0, Math.PI * 2); paint.stroke(); }
-  paint.restore();
+  paint.beginPath(); paint.arc(c, c, r - 0.4, 0, Math.PI * 2); paint.clip();
   paint.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 6; i += 1) {
-    const a = rnd() * Math.PI * 2, d = rnd() * r * 0.6;
-    paint.fillStyle = hexAlpha('#ffffff', 0.18 + rnd() * 0.2);
-    paint.beginPath(); paint.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, 0.6 + rnd() * 0.9, 0, Math.PI * 2); paint.fill();
+  paint.strokeStyle = hexAlpha(pale, 0.42);
+  paint.lineWidth = 0.55;
+  for (let i = 0; i < 5; i += 1) { paint.beginPath(); paint.ellipse(c, c, r * (0.15 + 0.2 * i), r, rnd() * 0.5, 0, Math.PI * 2); paint.stroke(); }
+  for (const k of [-0.66, -0.33, 0, 0.33, 0.66]) { paint.beginPath(); paint.ellipse(c, c + k * r, r * Math.sqrt(1 - k * k), r * 0.2, 0, 0, Math.PI * 2); paint.stroke(); }
+  for (let i = 0; i < 7; i += 1) {
+    const a1 = rnd() * Math.PI * 2, a2 = a1 + 1 + rnd() * 2.4;
+    paint.beginPath(); paint.moveTo(c + Math.cos(a1) * r, c + Math.sin(a1) * r);
+    paint.quadraticCurveTo(c + (rnd() - 0.5) * r, c + (rnd() - 0.5) * r, c + Math.cos(a2) * r, c + Math.sin(a2) * r); paint.stroke();
   }
+  paint.restore();
+  paint.strokeStyle = hexAlpha(hexMix(hex, '#ffffff', 0.5), 0.9);
+  paint.lineWidth = 1.2;
+  paint.beginPath(); paint.arc(c, c, r - 0.6, 0, Math.PI * 2); paint.stroke();
   NEURON_SPRITES.set(key, canvas);
+  return canvas;
+}
+// The neural mode's palette (2026-10-27): the photographs' blue and amber, one hue per kind of memory
+// so the legend still tells them apart.
+export const NEURAL_COLORS = { decision: '#ff9a2e', fact: '#7cc4ff', preference: '#3fe0b0', question: '#9b8cff', aberration: '#b14cff' };
+// A memory's kind as a small neuron for the legend: the cell and where its fibres start.
+export function neuronChip(hex, size = 14) {
+  const canvas = document.createElement('canvas');
+  const ratio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  canvas.width = Math.round(size * ratio);
+  canvas.height = Math.round(size * ratio);
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+  const sprite = neuronSprite(hex, 0);
+  const crop = NEURON_SPRITE * 0.34;
+  canvas.getContext('2d').drawImage(sprite, (NEURON_SPRITE - crop) / 2, (NEURON_SPRITE - crop) / 2, crop, crop, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 // A bundle of fibres from (x0, y0) to (x1, y1) bent through (cx, cy): a few strands that leave
@@ -2431,6 +2448,8 @@ export function createNostromo(nostromo) {
     ctx.drawImage(from.canvas, 0, 0);
     ctx.restore();
   }
+  // A memory's colour in this drawing: the photographs' palette, one hue per kind.
+  const neuralTone = (node) => NEURAL_COLORS[node.memory?.kind] ?? node.color;
   function drawNeural(t) {
     const ctx = nostromo.canvas.getContext('2d');
     const { w, h, dpr } = nostromo.size;
@@ -2439,7 +2458,22 @@ export function createNostromo(nostromo) {
     const alarm = nostromo.alarm ? Math.max(0, 1 - (t - nostromo.alarm) / 3.6) : 0;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    if (!nostromo.bare) neuralGround(ctx, w, h, beat);
+    if (!nostromo.bare) {
+      neuralGround(ctx, w, h, beat);
+      // Depth: cells far behind the scene, out of focus, drifting slowly the other way.
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 18; i += 1) {
+        const hue = i % 3 === 0 ? NEURAL_COLORS.decision : NEURAL_COLORS.fact;
+        const bx = ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1;
+        const by = ((Math.sin(i * 78.233) * 12345.6789) % 1 + 1) % 1;
+        const drift = nostromo.reduced ? 0 : Math.sin(t * 0.05 + i) * 12;
+        const size = 22 + (i % 5) * 14;
+        ctx.globalAlpha = 0.07 + (i % 4) * 0.025;
+        ctx.drawImage(neuronGlow(hue), bx * w + drift - (cam.x ?? 0) * 0.02 - size, by * h - drift * 0.6 - (cam.y ?? 0) * 0.02 - size, size * 2, size * 2);
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.save();
     ctx.translate(w / 2, h / 2);
     ctx.scale(cam.scale, cam.scale);
@@ -2486,18 +2520,20 @@ export function createNostromo(nostromo) {
     ctx.strokeStyle = `rgba(${NEURAL_AXON}, ${0.16 * farLight * reveal})`;
     ctx.lineWidth = 0.7 * px;
     ctx.beginPath();
-    for (const node of nodes) if (!node.forgetting && shown(node) > 0) fibreBundle(ctx, node.rimX, node.rimY, node.cx, node.cy, node.x, node.y, { strands: 2, spread: 2.6 * px * farSize, seed: node.seed });
+    for (const node of nodes) if (!node.forgetting && shown(node) > 0) fibreBundle(ctx, node.rimX, node.rimY, node.cx, node.cy, node.x, node.y, { strands: 3, spread: 4 * px * farSize, seed: node.seed });
     ctx.stroke();
-    ctx.strokeStyle = `rgba(${NEURAL_AXON}, ${0.28 * farLight * reveal})`;
-    ctx.lineWidth = 0.75 * px;
-    ctx.beginPath();
+    // Between two memories, a tract in the colours of both: six strands that leave each cell together
+    // and come apart in the middle.
+    ctx.lineWidth = 0.6 * px;
     for (const link of nostromo.links) {
       const a = byId.get(link.a);
       const b = byId.get(link.b);
       if (!a || !b || shown(a) <= 0 || shown(b) <= 0) continue;
-      fibreBundle(ctx, a.x, a.y, link.cx, link.cy, b.x, b.y, { strands: 3, spread: 3.4 * px * farSize, seed: a.seed + b.seed });
+      ctx.strokeStyle = hexAlpha(hexMix(neuralTone(a), neuralTone(b), 0.5), 0.34 * farLight * reveal);
+      ctx.beginPath();
+      fibreBundle(ctx, a.x, a.y, link.cx, link.cy, b.x, b.y, { strands: 6, spread: 7 * px * farSize, seed: a.seed + b.seed });
+      ctx.stroke();
     }
-    ctx.stroke();
     // A synapse whose neurons are lit answers in their colours.
     for (const link of nostromo.links) {
       const a = byId.get(link.a);
@@ -2505,7 +2541,7 @@ export function createNostromo(nostromo) {
       if (!a || !b) continue;
       const glow = Math.max(lightOf(a), lightOf(b)) * Math.min(shown(a), shown(b));
       if (glow < 0.12) continue;
-      ctx.strokeStyle = hexAlpha(hexMix(a.color, b.color, 0.5), Math.min(0.7, 0.32 * glow) * farLight);
+      ctx.strokeStyle = hexAlpha(hexMix(neuralTone(a), neuralTone(b), 0.5), Math.min(0.7, 0.32 * glow) * farLight);
       ctx.lineWidth = (0.8 + 0.6 * Math.min(1, glow)) * px;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y); ctx.stroke();
     }
@@ -2576,11 +2612,11 @@ export function createNostromo(nostromo) {
       }
       const light = lightOf(node);
       const cold = !travels(node.memory);
-      const colour = cold ? hexMix(node.color, '#2a3346', 0.6) : node.color;
-      // A real neuron (2026-10-27): its soma and dendrites, turning slowly; the more the room leans on
+      const colour = cold ? hexMix(neuralTone(node), '#2a3346', 0.6) : neuralTone(node);
+      // A real neuron (2026-10-27): its cell and its fibres, turning slowly; the more the room leans on
       // it, the larger; what reaches it now lights it from the heart.
       const soma = (8 + 4 * (node.activity ?? 0)) * px * farSize * (0.6 + 0.4 * node.scale);
-      const side = soma * 10;
+      const side = soma * 12;
       ctx.globalAlpha = Math.min(1, (cold ? 0.45 : 0.78 + 0.2 * (node.activity ?? 0))) * seen * near * farLight;
       ctx.globalCompositeOperation = 'source-over';
       ctx.save();

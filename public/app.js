@@ -30,7 +30,7 @@ const welcomeDone = () => welcomeKept !== undefined && (welcomeKept === null || 
 import { LOADER_MARK, creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
-import { COLLAPSED, MEMORY_COLORS, PITCH_LIMIT, TURN_PER_PIXEL, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, rawActivity, travels } from './nostromo-engine.js';
+import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, PITCH_LIMIT, TURN_PER_PIXEL, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels } from './nostromo-engine.js';
 
 // The window split in two. The right half is this same page loaded with `?pane=split&chat=<id>`:
 // a second conversation with its transcript and its composer, and nothing of the bar. Everything
@@ -17470,7 +17470,10 @@ async function openCore() {
   // It opens on the board — you and your local model — and the document is one tab away.
   core.pane = 'board';
   core.body.hidden = true;
-  core.body.replaceChildren(renderCoreTabs(), renderCoreStrip(), renderCorePanes(), renderCoreConsole());
+  // In the chat shell there is no console line to ask it things (2026-10-27): its answers did not
+  // help, and the line wore the room of before. The classic room keeps it.
+  core.console = null;
+  core.body.replaceChildren(renderCoreTabs(), renderCoreStrip(), renderCorePanes(), ...(chatShellOn() ? [] : [renderCoreConsole()]));
   showPane(core.pane);
   core.dialog.showModal();
   void fillCoreBoard();
@@ -17746,7 +17749,8 @@ function renderCoreStrip() {
   }
   pick.append(who, el('span', 'k', t('AT')));
   const modes = el('select');
-  for (const [value, label] of [0, 1, 2, 3, 4].map((n) => [n, `#${n} ${MODES[n].label}`])) {
+  // In sentence case in the chat shell, as the mode chip says it.
+  for (const [value, label] of [0, 1, 2, 3, 4].map((n) => [n, `#${n} ${chatShellOn() ? sentence(MODES[n].label) : MODES[n].label}`])) {
     const option = el('option', null, label);
     option.value = String(value);
     if (value === core.mode) option.selected = true;
@@ -17779,14 +17783,14 @@ function renderCoreStrip() {
 
 /* ---------- the panes ---------- */
 
-// Named for what they answer, in plain words (2026-10-27), each with one line under the tabs that says
-// what is behind it: «document», «launch» and «outbound» were the room's words, not the person's.
+// Named for what they answer, in plain words (2026-10-27): «document», «launch» and «outbound» were
+// the room's words, not the person's.
 const CORE_TABS = [
-  { id: 'board', label: t('Summary'), about: t('Who works in this project, whether each one is signed in, and how much of its plan it has used.') },
-  { id: 'document', label: t('What the agent reads'), about: t('Everything the agent reads before your message — memories, rules and context — in the order it gets them.') },
-  { id: 'launch', label: t('How it starts'), about: t('How MADRE starts the agent on this computer: the program and the options it passes to it.') },
-  { id: 'egress', label: t('Where it connects'), about: t('Every address outside your computer this project can reach, and which of them are on.') },
-  { id: 'console', label: t('Ask'), about: t('Ask about what is sent, in your own words. Type help to see what it understands.') },
+  { id: 'board', label: t('Summary') },
+  { id: 'document', label: t('What the agent reads') },
+  { id: 'launch', label: t('How it starts') },
+  { id: 'egress', label: t('Where it connects') },
+  { id: 'console', label: t('Ask') },
 ];
 // The strip — who it goes to, at what mode, around what — is about the next turn, so it shows
 // with the two panes that are about the next turn and nowhere else.
@@ -17795,7 +17799,7 @@ const CORE_STRIP_PANES = new Set(['document', 'launch']);
 function renderCoreTabs() {
   const tabs = el('nav', 'core-tabs');
   tabs.setAttribute('role', 'tablist');
-  for (const tab of CORE_TABS) {
+  for (const tab of CORE_TABS.filter((one) => !(one.id === 'console' && chatShellOn()))) {
     const button = el('button', 'core-tab');
     button.type = 'button';
     button.dataset.tab = tab.id;
@@ -17829,7 +17833,6 @@ function drawCoreTabs() {
     board: core.local ? (core.local.running ? (core.local.chatModel ?? t('NO CHAT MODEL')) : t('LOCAL MODEL OFF')) : t('READING…'),
     console: core.history.length ? t('{n} ASKED', { n: core.history.length }) : t('ASK ME'),
   };
-  core.tabs.dataset.about = CORE_TABS.find((tab) => tab.id === core.pane)?.about ?? '';
   for (const button of core.tabs.children) {
     button.classList.toggle('on', button.dataset.tab === core.pane);
     button.setAttribute('aria-selected', button.dataset.tab === core.pane ? 'true' : 'false');
@@ -17920,7 +17923,8 @@ function renderCoreDoc(briefing) {
     const weigh = el('i', 'weigh');
     weigh.style.setProperty('--fill', `${Math.max(2, Math.round((part.chars / widest) * 100))}%`);
     head.append(weigh);
-    head.append(el('span', 'when', part.when === 'always' ? t('ALWAYS') : part.when));
+    // The reasons come from the server in English; the room reads them in its own language (2026-10-27).
+    head.append(el('span', 'when', part.when === 'always' ? (chatShellOn() ? t('always') : t('ALWAYS')) : t(part.when)));
     row.addEventListener('toggle', () => { head.querySelector('.sign').textContent = row.open ? '−' : '+'; });
     const body = el('div', 'core-text');
     // What put these words here, and where the human takes them away. Nothing in the core can be
@@ -17928,8 +17932,8 @@ function renderCoreDoc(briefing) {
     if (part.when || part.where) {
       const from = el('p', 'core-from');
       from.append(el('b', null, part.when === 'always' ? t('ALWAYS') : t('HERE BECAUSE')));
-      if (part.when !== 'always') from.append(` ${part.when}`);
-      if (part.where) from.append(el('span', 'where', ` · ${part.where}`));
+      if (part.when !== 'always') from.append(` ${t(part.when)}`);
+      if (part.where) from.append(el('span', 'where', ` · ${t(part.where)}`));
       else if (part.when !== 'always') from.append(el('span', 'where', t(' · nothing switches it off; it goes when the reason goes')));
       body.append(from);
     }
@@ -19540,6 +19544,7 @@ function setNostromoNeural(on) {
   setNeural(on, performance.now() / 1000);
   rememberNeural(on);
   paintNeuralKey(nostromo.neuralKey, on);
+  paintLegend();
   nostromo.dialog?.querySelector('.neural-invite')?.remove();
   pushLooks();
 }
@@ -19548,6 +19553,7 @@ function syncNostromoNeural() {
   if (Boolean(nostromo.neural) === want) return;
   setNeural(want, performance.now() / 1000);
   paintNeuralKey(nostromo.neuralKey, want);
+  paintLegend();
 }
 nostromo.strain = createStrain({
   onStrain: () => { if (!nostromo.neural && !state.device) inviteNeural({ key: nostromo.neuralKey, host: nostromo.dialog, map: 'memory', onTry: () => setNostromoNeural(true) }); },
@@ -19630,24 +19636,27 @@ const DWARF_CLASS = { decision: t('YELLOW STAR'), fact: t('WHITE STAR'), prefere
 // The legend: one real star per class, with the kind of memory that burns as that class.
 function paintLegend() {
   const host = document.querySelector('.nostromo-legend');
-  if (!host || host.dataset.lit === 'yes') return;
+  // In the neural drawing each kind is a neuron of its colour (2026-10-27), and the legend says so.
+  const drawing = nostromo.neural ? 'neural' : 'yes';
+  if (!host || host.dataset.lit === drawing) return;
   const chips = [];
   for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
     const chip = el('span', `k ${kind}`);
     // The star is the name of its class. Writing it out as well says the same thing twice.
-    chip.append(kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), el('i', null, kindWord(kind)));
-    chip.title = `${DWARF_CLASS[kind]} · ${kindWord(kind)}`;
+    const mark = kind === COLLAPSED ? collapsedChip(hex, 14) : nostromo.neural ? neuronChip(NEURAL_COLORS[kind] ?? hex, 14) : dwarfChip(hex, 14);
+    chip.append(mark, el('i', null, kindWord(kind)));
+    chip.title = nostromo.neural ? kindWord(kind) : `${DWARF_CLASS[kind]} · ${kindWord(kind)}`;
     chips.push(chip);
   }
   // The zones do not get a palette of their own: the hue on a star is its kind and the chips above
   // say so. What a zone changes is whether the star is lit, which is one more thing to name here
   // rather than a second legend to read.
   const dim = el('span', 'k dim');
-  dim.append(dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), el('i', null, t('NOT USED')));
+  dim.append(nostromo.neural ? neuronChip(hexMix(NEURAL_COLORS.fact, '#2a3346', 0.6), 14) : dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), el('i', null, t('NOT USED')));
   dim.title = t('A faded star is a quarantined or discarded memory: it is kept, but never used in answers.');
   chips.push(dim);
   host.replaceChildren(...chips);
-  host.dataset.lit = 'yes';
+  host.dataset.lit = drawing;
 }
 
 async function openNostromo() {

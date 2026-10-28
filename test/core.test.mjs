@@ -163,7 +163,8 @@ test('core: what you type survives the rebuild it causes', async () => {
   const [app, css] = await Promise.all([read('app.js'), read('styles.css')]);
   // The controls are built once and the document is what gets replaced; rebuilding the whole
   // panel on every keystroke would take the caret with it.
-  assert.match(app, /core\.body\.replaceChildren\(renderCoreTabs\(\), renderCoreStrip\(\), renderCorePanes\(\), renderCoreConsole\(\)\)/);
+  // The chat shell leaves the console line out (2026-10-27); the classic room keeps it.
+  assert.match(app, /core\.body\.replaceChildren\(renderCoreTabs\(\), renderCoreStrip\(\), renderCorePanes\(\), \.\.\.\(chatShellOn\(\) \? \[\] : \[renderCoreConsole\(\)\]\)\)/);
   assert.match(app, /paneInto\('document', renderCoreDoc\(briefing\)\)/);
   assert.match(app, /\.\.\.\(core\.text \? \{ text: core\.text \} : \{\}\)/, 'what you would ask never reaches the document');
   // Half a sentence already in the composer is what you are about to send, so it starts there.
@@ -227,7 +228,8 @@ test('core: four panes, one at a time, and the prompt through all of them', asyn
   for (const [part, row] of [['core-tabs', 1], ['core-strip', 2], ['core-panes', 3], ['console-line', 4]]) {
     assert.match(css, new RegExp(`\\.core-body > \\.${part} \\{ grid-row: ${row}; \\}`), `${part} is not held in its own row`);
   }
-  assert.match(app, /core\.body\.replaceChildren\(renderCoreTabs\(\), renderCoreStrip\(\), renderCorePanes\(\), renderCoreConsole\(\)\)/);
+  // The chat shell leaves the console line out (2026-10-27); the classic room keeps it.
+  assert.match(app, /core\.body\.replaceChildren\(renderCoreTabs\(\), renderCoreStrip\(\), renderCorePanes\(\), \.\.\.\(chatShellOn\(\) \? \[\] : \[renderCoreConsole\(\)\]\)\)/);
   assert.match(css, /\.core-panes \{ overflow: auto; min-height: 0;/);
 
   // And it is laid out the way the terminal this room is dressed as lays out its own output:
