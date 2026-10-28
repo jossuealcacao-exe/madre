@@ -113,7 +113,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     moveTo: record('moveTo'), lineTo: record('lineTo'), arc: record('arc'), quadraticCurveTo: record('quadraticCurveTo'),
     fill: record('fill'), stroke: record('stroke'), clip: record('clip'), fillRect: record('fillRect'),
     clearRect: record('clearRect'), setTransform: record('setTransform'), translate: record('translate'),
-    rotate: record('rotate'), scale: record('scale'), fillText: record('fillText'), measureText: () => ({ width: 10 }),
+    rotate: record('rotate'), scale: record('scale'), fillText: record('fillText'), measureText: () => ({ width: 10 }), bezierCurveTo: record('bezierCurveTo'),
     setLineDash: record('setLineDash'), ellipse: record('ellipse'), rect: record('rect'), drawImage: record('drawImage'),
     ...(conic ? { createConicGradient: (...args) => { calls.push({ name: 'createConicGradient', args }); return gradient(); } } : {}),
   }, {
@@ -135,6 +135,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
       fillRect: (...args) => own.push({ name: 'fillRect', args }), beginPath: () => {}, closePath: () => {},
       arc: (...args) => own.push({ name: 'arc', args }), fill: () => own.push({ name: 'fill', args: [] }),
       moveTo: () => {}, lineTo: () => {}, stroke: () => {}, save: () => {}, restore: () => {},
+      ellipse: () => {}, clip: () => {},
     }, { get: (target, key) => (key in target ? target[key] : undefined), set: () => true });
     const canvas = { width: 0, height: 0, getContext: () => paint, calls: own };
     offscreen.push(canvas);
@@ -154,7 +155,8 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawCage')} ${fn('drawHoverLabel')} ${fn('fadeOver')}
     ${block('NEURAL_AXON')} ${block('NEURAL_IGNITION')} ${block('NEURAL_CROSSFADE')} ${block('NEURON_GLOWS')} ${fn('neuronGlow')}
-    ${block('BULB_TONES')} ${block('BULB')} ${fn('drawNeuralBulb')} ${fn('neuralGround')} ${block('UNDERWAY')} ${block('travels')} ${block('FOCUS_VEIL')}
+    ${block('NEURON_SPRITES')} ${block('NEURON_SPRITE')} ${fn('neuronSprite')} ${fn('fibreBundle')}
+    ${block('BULB_TONES')} ${block('BULB')} ${block('SPARK_SLOTS')} ${block('sparkNoise')} ${fn('bulbSparks')} ${fn('drawNeuralBulb')} ${fn('neuralGround')} ${block('UNDERWAY')} ${block('travels')} ${block('FOCUS_VEIL')}
     ${fn('drawNeural')} ${fn('setNeural')}
     ${fn('drawNostromo')}
     nostromo.canvas = { getContext: () => ctx, width: 1800, height: 1200 };
@@ -214,9 +216,10 @@ test('nostromo: neural mode draws the same scene as neurons, whole, and shades n
       if (typeof arg === 'string') assert.ok(!/NaN|undefined|Infinity/.test(arg), `${call.name} was handed "${arg}"`);
     }
   }
-  // Every neuron and every cell of the bulb is one stamped light: the glows are made once per colour.
+  // Every neuron and every cell of the bulb is one stamped light: the glows are made once per colour,
+  // and since 2026-10-27 each neuron's drawing once per colour and shape (six shapes at most).
   assert.ok(calls.filter((call) => call.name === 'drawImage').length > 90 * 12, 'a neuron was not stamped');
-  assert.ok(offscreen.length <= 12, `a glow was made again instead of being kept: ${offscreen.length} canvases`);
+  assert.ok(offscreen.length <= 24, `a glow or a neuron was made again instead of being kept: ${offscreen.length} canvases`);
   assert.ok(!calls.some((call) => ['putImageData', 'createImageData', 'getImageData'].includes(call.name)), 'something was shaded pixel by pixel');
   // Per frame, gradients are a handful (the ground, the vignette, the bulb's air), never one per memory.
   const gradients = calls.filter((call) => call.name === 'createRadialGradient').length / 90;

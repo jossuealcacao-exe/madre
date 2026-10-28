@@ -11907,3 +11907,89 @@ html.chat-shell .shell > .bar [data-bar-item="notes"] svg { width: 16px !importa
    round on a ground a step lighter; on light a soft shadow under a hairline barely there. ---- */
 html.chat-shell #messages#messages .sys-dots.open { box-shadow: 0 0 0 1px rgb(20 30 20 / .06), 0 2px 4px rgb(20 30 20 / .05), 0 10px 24px -12px rgb(20 30 20 / .22) !important; }
 html.chat-shell[data-scheme="dark"] #messages#messages .sys-dots.open { background: var(--cs-input); box-shadow: 0 0 0 1px rgb(255 255 255 / .11), 0 10px 24px -14px rgb(0 0 0 / .6) !important; }
+
+/* ---- The memory map's head in the room's voice (2026-10-27): its name in the reading face and in
+   sentence case, what it holds quietly beside it, the legend under them, and its keys bare —
+   words on the dark, a soft ground under the pointer, the one switched on in the accent. ---- */
+html.chat-shell #nostromo .nostromo-head { padding: 10px 12px 10px 18px; gap: 6px 14px; border-bottom: 1px solid rgb(255 255 255 / .07); background: rgb(10 12 14 / .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html.chat-shell #nostromo .nostromo-head > .mother-title { font: 600 14px var(--read); letter-spacing: -.005em; text-transform: lowercase; color: #f2f1ee; }
+html.chat-shell #nostromo .nostromo-head > .mother-title::first-letter { text-transform: uppercase; }
+html.chat-shell #nostromo .nostromo-head > .mother-sub { font: 400 12.5px var(--read); color: rgb(242 241 238 / .5); }
+html.chat-shell #nostromo .nostromo-legend { gap: 12px; }
+html.chat-shell #nostromo .nostromo-legend .k i { font: 400 12px var(--read); font-style: normal; letter-spacing: 0; color: rgb(242 241 238 / .62); }
+html.chat-shell #nostromo .nostromo-actions { gap: 2px; }
+html.chat-shell #nostromo .nostromo-actions .mother-close:is(*, :hover, :active, .ask, .cold, .neural-key) {
+  height: 28px; padding: 0 10px; border: 0 !important; border-radius: 8px; box-shadow: none !important;
+  background: none !important; color: rgb(242 241 238 / .72); font: 500 12.5px var(--read); letter-spacing: 0;
+}
+html.chat-shell #nostromo .nostromo-actions .mother-close:is(:hover, :focus-visible) { background: rgb(255 255 255 / .07) !important; color: #fff; }
+html.chat-shell #nostromo .nostromo-actions .mother-close[aria-pressed="true"] { background: rgb(255 255 255 / .08) !important; color: var(--phosphor) !important; }
+html.chat-shell #nostromo .nostromo-actions .neural-key svg { width: 15px; height: 15px; }
+html.chat-shell #nostromo .nostromo-actions > .surface-modes { margin-left: 4px; padding-left: 6px; box-shadow: inset 1px 0 0 rgb(255 255 255 / .1); }
+html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode { color: rgb(242 241 238 / .72); }
+html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode:is(:hover, :focus-visible) { color: #fff; background: rgb(255 255 255 / .07) !important; }
+html.chat-shell #nostromo .nostromo-hint, html.chat-shell #nostromo .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; }
+
+/* ---- Diagnostics in the room's voice (2026-10-27): a head like Settings', one quiet line of how the
+   project stands, and two columns that touch — the list on the side ground, the answer on the
+   canvas. Where to look is one segmented choice; the agents, a quieter row under it. A row is a
+   dot, its words, its agent and its code; the chosen one takes the selection tone, never a plate.
+   The answer's blocks are flat with a hairline, as Settings' are. ---- */
+html.chat-shell #mother .mother-status { padding: 7px 18px; border-bottom: 1px solid var(--cs-line); font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell #mother .mother-body { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); }
+html.chat-shell #mother .mother-list { gap: 10px; padding: 12px 10px 16px 12px; border-right: 1px solid var(--cs-line); background: var(--cs-side); }
+html.chat-shell #mother .mother-detail { gap: 12px; padding: 14px 18px 22px; }
+html.chat-shell #mother .remedy-chips { display: grid; gap: 8px; }
+html.chat-shell #mother .remedy-scope { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--cs-hover); }
+html.chat-shell #mother .remedy-scope .remedy-chip { flex: 1 1 auto; min-width: 0; gap: 5px; white-space: nowrap; }
+html.chat-shell #mother .remedy-chip .remedy-badge { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; font: 600 10.5px/16px var(--read); color: var(--phosphor-ink); }
+html.chat-shell #mother .remedy-scope .remedy-chip { justify-content: center; height: 28px; padding: 0 8px; border-radius: 7px; font: 500 12.5px var(--read); color: var(--text-2); box-shadow: none; }
+html.chat-shell #mother .remedy-scope .remedy-chip.on { background: var(--cs-canvas); color: var(--text); font-weight: 500; box-shadow: 0 0 0 .5px var(--cs-line), 0 1px 2px rgb(0 0 0 / .08); }
+html.chat-shell #mother .remedy-agents { display: flex; flex-wrap: wrap; gap: 2px 4px; padding: 0 2px; }
+html.chat-shell #mother .remedy-agents .remedy-chip { height: 24px; padding: 0 8px; border-radius: 6px; font: 500 12px var(--read); color: var(--text-3); box-shadow: none; background: none; }
+html.chat-shell #mother .remedy-agents .remedy-chip:hover { background: var(--cs-hover); color: var(--text-2); }
+html.chat-shell #mother .remedy-agents .remedy-chip.on { background: var(--cs-sel); color: var(--text); }
+html.chat-shell #mother .remedy-chip span { font: 400 11px var(--read); color: var(--text-3); }
+html.chat-shell #mother .remedy-rows { gap: 1px; }
+html.chat-shell #mother .remedy-row { min-height: 34px; padding: 6px 8px; gap: 9px; border-radius: 8px; }
+html.chat-shell #mother .remedy-row:hover { background: var(--cs-hover); }
+html.chat-shell #mother .remedy-row.on { background: var(--cs-sel); box-shadow: none; }
+html.chat-shell #mother .remedy-row.on .remedy-title { font-weight: 500; }
+html.chat-shell #mother .remedy-dot { width: 7px; height: 7px; }
+html.chat-shell #mother .remedy-title { font: 400 13px var(--read); }
+html.chat-shell #mother .remedy-agent { font: 500 11.5px var(--read); }
+html.chat-shell #mother .remedy-code { font-size: 10.5px; color: var(--text-3); }
+html.chat-shell #mother .remedy-foot { padding: 6px 2px 0; border-top: 1px solid var(--cs-line); }
+html.chat-shell #mother .mother-detail .sx-block { border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line) !important; }
+html.chat-shell #mother .remedy .sx-head h3 { font: 600 15.5px/1.35 var(--read); letter-spacing: -.005em; }
+html.chat-shell #mother .remedy-what { font: 400 14px/1.6 var(--read); color: var(--text-2); }
+html.chat-shell #mother .remedy-error { font-size: 12px; line-height: 1.55; color: var(--text-2); }
+
+/* ---- «What is sent» in the room's voice (2026-10-27): the canvas sheet with its head, its five
+   views as one segmented choice with the one figure each holds, a line under them that says in
+   plain words what the chosen view shows, and flat tiles and cards with a hairline. ---- */
+html.chat-shell #core .mother-frame { background: var(--cs-canvas); }
+html.chat-shell #core .mother-head { padding: 12px 12px 12px 20px; border-bottom: 1px solid var(--cs-line); }
+html.chat-shell #core .mother-head .mother-title { font: 600 15px var(--read); letter-spacing: -.005em; text-transform: none; color: var(--text); }
+html.chat-shell #core .mother-head .mother-sub { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .core-copy-all { height: 28px; padding: 0 12px; border: 0 !important; border-radius: 8px; background: var(--cs-hover) !important; box-shadow: none !important; font: 500 12.5px var(--read); }
+html.chat-shell #core .core-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 11px; background: var(--cs-hover); }
+html.chat-shell #core .core-tab { justify-items: center; gap: 1px; padding: 6px 8px; border: 0 !important; border-radius: 8px; background: none; color: var(--text-2); text-align: center; }
+html.chat-shell #core .core-tab b { font: 500 13px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-tab .meta { font: 400 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); opacity: 1; }
+html.chat-shell #core .core-tab:hover { color: var(--text); }
+html.chat-shell #core .core-tab.on { background: var(--cs-canvas); color: var(--text); box-shadow: 0 0 0 .5px var(--cs-line), 0 1px 2px rgb(0 0 0 / .1); }
+html.chat-shell #core .core-tabs::after { content: attr(data-about); grid-column: 1 / -1; padding: 8px 6px 2px; font: 400 12.5px/1.45 var(--read); color: var(--text-3); text-align: center; }
+html.chat-shell #core .core-tabs[data-about=""]::after { display: none; }
+html.chat-shell #core .brew-head { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .brew-head b { font: 600 14px var(--read); color: var(--text); }
+html.chat-shell #core :is(.mem-tile, .mem-card) { border: 0; border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line) !important; }
+html.chat-shell #core .mem-tile .label { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .mem-tile .value { font: 650 26px/1.15 var(--read); letter-spacing: -.02em; }
+html.chat-shell #core .mem-tile .sub, html.chat-shell #core .mem-signal .detail { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell #core .mem-card h4 { font: 600 13.5px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .mem-meter { height: 4px; border-radius: 99px; background: var(--cs-hover); }
+html.chat-shell #core .mem-meter i { border-radius: 99px; background: var(--phosphor); }
+html.chat-shell #core .console-line { border: 0; border-radius: 12px; background: var(--cs-input); box-shadow: var(--cs-input-ring); }
+html.chat-shell #core .console-line input { font: 400 13.5px var(--read); }
+html.chat-shell #core .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); border-top: 1px solid var(--cs-line); }

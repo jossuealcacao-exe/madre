@@ -933,3 +933,29 @@ test('chat shell: a module key stays filled while its thing is open, notes keep 
   assert.match(css, /\.reminders-row \{ display: grid; grid-template-columns: 64px minmax\(0, 1fr\) auto;/);
   assert.match(css, /html\.chat-shell\[data-scheme="dark"\] #messages#messages \.sys-dots\.open \{ background: var\(--cs-input\); box-shadow: 0 0 0 1px rgb\(255 255 255 \/ \.11\)/);
 });
+
+test('chat shell: Diagnostics in two rows of filters, the memory map head in the room\'s voice, «What is sent» in plain words', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  assert.match(app, /const scope = el\('div', 'remedy-scope'\);/);
+  assert.match(app, /if \(count\) chip\(`agent:\$\{agent\}`, `@\$\{agent\}`, count, byAgent\);/);
+  assert.match(css, /html\.chat-shell #mother \.remedy-scope \{ display: flex;/);
+  assert.match(css, /html\.chat-shell #nostromo \.nostromo-head > \.mother-title \{ font: 600 14px var\(--read\);/);
+  assert.match(css, /html\.chat-shell #nostromo \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: rgb\(255 255 255 \/ \.08\) !important; color: var\(--phosphor\) !important; \}/);
+  assert.match(app, /\{ id: 'egress', label: t\('Where it connects'\), about: t\('Every address outside your computer this project can reach, and which of them are on\.'\) \},/);
+  assert.match(app, /core\.tabs\.dataset\.about = CORE_TABS\.find\(\(tab\) => tab\.id === core\.pane\)\?\.about \?\? '';/);
+  assert.match(css, /html\.chat-shell #core \.core-tabs::after \{ content: attr\(data-about\);/);
+  assert.match(app, /head\.append\(el\('b', null, coreBlockName\(part\.id\)\)\);/);
+  assert.match(es, /'What the agent reads': 'Lo que lee el agente',/);
+});
+
+test('neural mode: memories are neurons, links are tracts, and the core is never quiet', async () => {
+  const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
+  assert.match(engine, /export function neuronSprite\(hex, variant = 0\) \{/);
+  assert.match(engine, /export function fibreBundle\(ctx, x0, y0, cx, cy, x1, y1, \{ strands = 3, spread = 3, seed = 0 \} = \{\}\) \{/);
+  assert.match(engine, /function bulbSparks\(t, count = SPARK_SLOTS\) \{/);
+  assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, Math\.floor\(\(node\.seed \* 1000\) % 6\)\), -side \/ 2, -side \/ 2, side, side\);/);
+  assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 3,/);
+  assert.match(engine, /for \(const spark of bulbSparks\(t\)\) \{/);
+});

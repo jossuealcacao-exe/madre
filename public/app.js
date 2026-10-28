@@ -13674,22 +13674,30 @@ function paintRemedies() {
   const agents = [...new Set(every.map((condition) => condition.agent).filter(Boolean))];
   // With nothing written, it starts where the trouble is: this room, when anything happened in it.
   const filter = remedies.filter ?? (!matches && records.length ? 'room' : 'all');
+  // Two rows of filters (2026-10-27): where to look — all, this project, what blocks — as one
+  // segmented choice, and under it, quieter, one agent at a time.
   const chips = el('div', 'remedy-chips');
-  const chip = (id, label, count) => {
+  const scope = el('div', 'remedy-scope');
+  scope.setAttribute('role', 'tablist');
+  const byAgent = el('div', 'remedy-agents');
+  const chip = (id, label, count, into = scope) => {
     const node = el('button', `remedy-chip${filter === id ? ' on' : ''}`);
     node.type = 'button';
+    if (into === scope) { node.setAttribute('role', 'tab'); node.setAttribute('aria-selected', String(filter === id)); }
     // This room's count wears the bar's badge when something happened, so it reads at a glance.
     node.append(label, el('span', id === 'room' && count ? 'remedy-badge' : null, String(count)));
     node.addEventListener('click', () => { remedies.filter = id; remedies.selected = null; paintRemedies(); });
-    chips.append(node);
+    into.append(node);
   };
   chip('all', matches ? t('Matches') : t('All'), pool.length);
   if (!matches) chip('room', t('This project'), records.length);
   chip('blocking', t('Blocking'), pool.filter((condition) => condition.severity === 'blocking').length);
   for (const agent of agents) {
     const count = pool.filter((condition) => condition.agent === agent).length;
-    if (count) chip(`agent:${agent}`, `@${agent}`, count);
+    if (count) chip(`agent:${agent}`, `@${agent}`, count, byAgent);
   }
+  chips.append(scope);
+  if (byAgent.childElementCount) chips.append(byAgent);
   const rows = el('div', 'remedy-rows');
   let first = null;
   if (filter === 'room' && !matches) {
@@ -17771,12 +17779,14 @@ function renderCoreStrip() {
 
 /* ---------- the panes ---------- */
 
+// Named for what they answer, in plain words (2026-10-27), each with one line under the tabs that says
+// what is behind it: «document», «launch» and «outbound» were the room's words, not the person's.
 const CORE_TABS = [
-  { id: 'board', label: t('WHAT IS SENT') },
-  { id: 'document', label: t('DOCUMENT') },
-  { id: 'launch', label: t('LAUNCH') },
-  { id: 'egress', label: t('OUTBOUND') },
-  { id: 'console', label: t('DIAGNOSTICS') },
+  { id: 'board', label: t('Summary'), about: t('Who works in this project, whether each one is signed in, and how much of its plan it has used.') },
+  { id: 'document', label: t('What the agent reads'), about: t('Everything the agent reads before your message — memories, rules and context — in the order it gets them.') },
+  { id: 'launch', label: t('How it starts'), about: t('How MADRE starts the agent on this computer: the program and the options it passes to it.') },
+  { id: 'egress', label: t('Where it connects'), about: t('Every address outside your computer this project can reach, and which of them are on.') },
+  { id: 'console', label: t('Ask'), about: t('Ask about what is sent, in your own words. Type help to see what it understands.') },
 ];
 // The strip — who it goes to, at what mode, around what — is about the next turn, so it shows
 // with the two panes that are about the next turn and nowhere else.
@@ -17805,13 +17815,21 @@ function drawCoreTabs() {
   const briefing = core.last;
   const tokens = briefing ? t(' · ≈{n} TOKENS', { n: tokensFor(briefing.chars).toLocaleString() }) : '';
   const on = (core.outbound?.destinations ?? []).filter((one) => one.on === true).length;
-  const meta = {
+  // Under each name, the one figure a person reads: how long, for whom, how many are on.
+  const meta = chatShellOn() ? {
+    document: briefing ? t('≈{n} tokens · {parts} parts', { n: tokensFor(briefing.chars).toLocaleString(), parts: briefing.parts.length }) : t('Reading…'),
+    launch: briefing?.launch ? (briefing.launch.local ? t('Runs inside MADRE') : `@${briefing.agent}`) : '—',
+    egress: core.outbound ? t('{on} of {n} on', { n: core.outbound.destinations.length, on }) : '—',
+    board: t('Sessions and use'),
+    console: core.history.length ? t('{n} asked', { n: core.history.length }) : t('In your own words'),
+  } : {
     document: briefing ? t('{n} BLOCKS · {ch} CH', { n: briefing.parts.length, ch: briefing.chars.toLocaleString() }) + tokens : t('READING…'),
     launch: briefing?.launch ? (briefing.launch.local ? t('NO PROCESS') : t('@{agent} · {n} ARGS', { agent: briefing.agent, n: briefing.launch.args.length })) : '—',
     egress: core.outbound ? t('{n} ADDRESSES · {on} ON', { n: core.outbound.destinations.length, on }) : '—',
     board: core.local ? (core.local.running ? (core.local.chatModel ?? t('NO CHAT MODEL')) : t('LOCAL MODEL OFF')) : t('READING…'),
     console: core.history.length ? t('{n} ASKED', { n: core.history.length }) : t('ASK ME'),
   };
+  core.tabs.dataset.about = CORE_TABS.find((tab) => tab.id === core.pane)?.about ?? '';
   for (const button of core.tabs.children) {
     button.classList.toggle('on', button.dataset.tab === core.pane);
     button.setAttribute('aria-selected', button.dataset.tab === core.pane ? 'true' : 'false');
@@ -17846,6 +17864,42 @@ function showPane(id) {
 
 /* ---------- pane · the document ---------- */
 
+// What each block is, in the words of the person reading it (2026-10-27): the ids are the prompt's.
+const CORE_BLOCK_NAMES = {
+  'abilities': 'What it can do',
+  'ash': 'Token saver',
+  'ask': 'How to ask you',
+  'attachments': 'Your attachments',
+  'bishop': 'The Coordinator',
+  'choices': 'Options',
+  'context': 'Recent context',
+  'control-held': 'Edit unlocked',
+  'copilot': 'Copilot',
+  'delegation': 'Working with others',
+  'escalation': 'When to ask for more',
+  'inspect': 'What it may look at',
+  'lease': 'Permission for this message',
+  'linked': 'Connected projects',
+  'madre': '@madre',
+  'mcp': 'Outside tools',
+  'memories': 'Memories',
+  'memory-server': 'Memory tools',
+  'mode': 'Permission mode',
+  'mother': 'Diagnostics',
+  'privacy': 'Privacy',
+  'recall': 'What it recalls',
+  'references': 'Files you pointed at',
+  'returned': 'Answers that came back',
+  'room': 'The project',
+  'runs': 'Commands',
+  'sdk': 'Building a module',
+  'shared-lease': 'Shared permission',
+  'style': 'How to answer',
+  'web': 'Web access',
+  'who': 'Who is writing',
+};
+const coreBlockName = (id) => (chatShellOn() ? (CORE_BLOCK_NAMES[id] ? t(CORE_BLOCK_NAMES[id]) : id) : id.toUpperCase());
+
 function renderCoreDoc(briefing) {
   const doc = el('div', 'core-doc');
   doc.append(brewHead(t('THE DOCUMENT'), t('{n} BLOCKS · {ch} CH · ≈{tokens} TOKENS', { n: briefing.parts.length, ch: briefing.chars.toLocaleString(), tokens: tokensFor(briefing.chars).toLocaleString() })));
@@ -17859,7 +17913,7 @@ function renderCoreDoc(briefing) {
     const row = el('details', 'core-block');
     const head = el('summary');
     head.append(el('i', 'sign', '+'));
-    head.append(el('b', null, part.id.toUpperCase()));
+    head.append(el('b', null, coreBlockName(part.id)));
     head.append(el('span', 'n', `${part.chars.toLocaleString()} CH`));
     // `weigh`, not `bar`: .bar is the room's own top bar, and a name taken twice in one
     // stylesheet is a rule you did not write arriving on an element you did not mean.
