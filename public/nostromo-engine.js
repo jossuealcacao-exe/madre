@@ -115,7 +115,14 @@ const FISSURE = 0.07;
 // sends pulses or answers a click keeps working on the screen it always worked on.
 const BRAIN_WIDTH = 0.84;      // ear to ear, against front to back
 const VIEW_DISTANCE = 1500;    // world units from the eye to MOTHER: enough to read depth, not to distort
-export const PITCH_LIMIT = 1.1;       // the head tips forward and back, never over
+export const PITCH_LIMIT = 1.1;       // how far a held memory tips the head to face you
+// Your hand turns it any way (2026-10-27): over the top and under, all the way round. Past the
+// pole the body is upside down, so a sideways drag turns it the other way to keep following the hand.
+export const turnBy = (yaw, pitch, dx, dy) => {
+  const upright = Math.cos(pitch) >= 0 ? 1 : -1;
+  const next = pitch + dy * TURN_PER_PIXEL;
+  return { yaw: yaw + dx * TURN_PER_PIXEL * upright, pitch: Math.atan2(Math.sin(next), Math.cos(next)) };
+};
 export const TURN_PER_PIXEL = 0.008;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 // How deep under the surface a memory sits. Thin, on purpose: a thick shell fills the outline in
@@ -945,6 +952,7 @@ const NEURON_SPARK = '#ffb45c';              // the warm spark at a synapse, as 
 export function neuronSkeleton(rnd, c, r, reach, { depth = 3, thin = 0.4, trunks = 4 + Math.floor(rnd() * 3) } = {}) {
   const segs = [];
   const tips = [];
+  const knots = [];
   const axon = rnd() * Math.PI * 2;
   // `z` is how near the branch stands: one further back is thinner and fainter, which is most of
   // what makes the cell read as a body in space rather than a drawing on the page.
@@ -954,12 +962,16 @@ export function neuronSkeleton(rnd, c, r, reach, { depth = 3, thin = 0.4, trunks
     for (let step = 0; step < steps; step += 1) {
       a += bend + (rnd() - 0.5) * 0.46;
       const nx = x + Math.cos(a) * (length / steps), ny = y + Math.sin(a) * (length / steps);
-      const w1 = Math.max(thin, w * (1 - 0.45 * ((step + 1) / steps)));
-      segs.push({ x0: x, y0: y, x1: nx, y1: ny, w0: Math.max(thin, w * (1 - 0.45 * (step / steps))), w1, sheath: false, z });
+      const w1 = Math.max(thin, w * (1 - 0.4 * ((step + 1) / steps)));
+      // Now and then the fibre swells a little, the beads a living dendrite carries.
+      const bead = step > 1 && step < steps - 1 && rnd() < 0.09;
+      segs.push({ x0: x, y0: y, x1: nx, y1: ny, w0: Math.max(thin, w * (1 - 0.4 * (step / steps))), w1, sheath: false, z, bead });
       x = nx; y = ny;
     }
-    w = Math.max(thin, w * 0.55);
+    w = Math.max(thin, w * 0.6);
     if (level <= 0 || w <= thin) { tips.push({ x, y, spark: rnd() < 0.3, z }); return; }
+    // Where it forks the fibre pools a little, as a fluid does at a joint: the web between branches.
+    knots.push({ x, y, w: w * 1.5, z });
     const kids = rnd() < 0.3 ? 3 : 2;
     for (let k = 0; k < kids; k += 1) grow(x, y, a + (k - (kids - 1) / 2) * (0.5 + rnd() * 0.45), w, length * (0.62 + rnd() * 0.2), level - 1, Math.max(0.45, z - rnd() * 0.18));
   };
@@ -983,7 +995,7 @@ export function neuronSkeleton(rnd, c, r, reach, { depth = 3, thin = 0.4, trunks
   }
   for (let k = 0; k < 3; k += 1) grow(x, y, a + (k - 1) * 0.6, r * 0.12, reach * 0.14, 0);
   roots.push(axon);
-  return { c, r, segs, tips, roots, axon };
+  return { c, r, segs, tips, knots, roots, axon };
 }
 // The cell body's outline: round, swelling where its trunks leave and toward its axon.
 function somaPath(paint, sk, scale = 1) {
@@ -992,31 +1004,53 @@ function somaPath(paint, sk, scale = 1) {
   for (let i = 0; i <= 48; i += 1) {
     const th = (i / 48) * Math.PI * 2;
     let k = 1;
-    for (const root of sk.roots) k += 0.32 * Math.max(0, Math.cos(th - root)) ** 8;
+    for (const root of sk.roots) k += 0.38 * Math.max(0, Math.cos(th - root)) ** 6;
     const x = c + Math.cos(th) * r * k * scale, y = c + Math.sin(th) * r * k * scale;
     if (i) paint.lineTo(x, y); else paint.moveTo(x, y);
   }
   paint.closePath();
 }
 // One fibre as a tube, in passes so each lies over the last: a glow round it, a dark edge, its
-// colour, and a highlight on the side the light comes from.
+// colour, and a highlight on the side the light comes from. Each pass is laid down solid on a layer
+// and the layer goes on at the pass's strength, so a fibre is one continuous piece of gel: no
+// seams where its pieces overlap, and two branches crossing merge instead of doubling. A branch
+// further back is the colour sunk toward the dark rather than see-through.
+let neuronLayer = null;
 function tubePass(paint, sk, colour, alpha, widen, toward = 0, add = 0) {
-  paint.strokeStyle = hexAlpha(colour, alpha);
+  const size = paint.canvas;
+  neuronLayer ??= document.createElement('canvas');
+  if (neuronLayer.width !== size.width || neuronLayer.height !== size.height) { neuronLayer.width = size.width; neuronLayer.height = size.height; }
+  const layer = neuronLayer.getContext('2d');
+  layer.setTransform(1, 0, 0, 1, 0, 0);
+  layer.clearRect(0, 0, size.width, size.height);
+  layer.setTransform(paint.getTransform());
+  layer.lineCap = 'round';
+  const sunk = (z) => hexMix(colour, '#050a14', (1 - z) * 0.55);
   for (const seg of sk.segs) {
     const dx = seg.x1 - seg.x0, dy = seg.y1 - seg.y0;
     const d = Math.hypot(dx, dy) || 1;
     let nx = -dy / d, ny = dx / d;
     if (nx * NEURON_LIGHT.x + ny * NEURON_LIGHT.y < 0) { nx = -nx; ny = -ny; }
-    const w = (seg.w0 + seg.w1) / 2 * (seg.sheath ? 1.25 : 1);
+    const w = (seg.w0 + seg.w1) / 2 * (seg.sheath ? 1.25 : seg.bead ? 1.7 : 1);
     const off = toward * w;
-    paint.globalAlpha = seg.z ** 1.5;
-    paint.lineWidth = Math.max(0.35, w * widen + add);
-    paint.beginPath();
-    paint.moveTo(seg.x0 + nx * off, seg.y0 + ny * off);
-    paint.lineTo(seg.x1 + nx * off, seg.y1 + ny * off);
-    paint.stroke();
+    layer.strokeStyle = sunk(seg.z);
+    layer.lineWidth = Math.max(0.35, w * widen + add);
+    layer.beginPath();
+    layer.moveTo(seg.x0 + nx * off, seg.y0 + ny * off);
+    layer.lineTo(seg.x1 + nx * off, seg.y1 + ny * off);
+    layer.stroke();
   }
-  paint.globalAlpha = 1;
+  for (const knot of sk.knots ?? []) {
+    layer.fillStyle = sunk(knot.z);
+    layer.beginPath();
+    layer.arc(knot.x + NEURON_LIGHT.x * toward * knot.w, knot.y + NEURON_LIGHT.y * toward * knot.w, Math.max(0.35, knot.w * widen + add) / 2, 0, Math.PI * 2);
+    layer.fill();
+  }
+  paint.save();
+  paint.setTransform(1, 0, 0, 1, 0, 0);
+  paint.globalAlpha = alpha;
+  paint.drawImage(neuronLayer, 0, 0);
+  paint.restore();
 }
 // A living neuron. `life` runs from a cell going out (grey, no glow, no sparks) to one the room
 // leans on (its colour, its halo, its sparks).
@@ -1027,15 +1061,21 @@ export function drawLivingNeuron(paint, sk, hex, life = 1) {
   paint.lineCap = 'round';
   paint.lineJoin = 'round';
   paint.globalCompositeOperation = 'lighter';
-  tubePass(paint, sk, tone, 0.07 * life, 3.4, 0, 1.5);
-  const halo = paint.createRadialGradient(sk.c, sk.c, sk.r * 0.6, sk.c, sk.c, sk.r * 3.6);
-  halo.addColorStop(0, hexAlpha(tone, 0.34 * life)); halo.addColorStop(1, hexAlpha(tone, 0));
+  // A faint haze round the fibres and the body, no more: the cell is the subject, not its light.
+  tubePass(paint, sk, tone, 0.03 * life, 2.6, 0, 1);
+  const halo = paint.createRadialGradient(sk.c, sk.c, sk.r * 0.8, sk.c, sk.c, sk.r * 2.6);
+  halo.addColorStop(0, hexAlpha(tone, 0.12 * life)); halo.addColorStop(1, hexAlpha(tone, 0));
   paint.fillStyle = halo;
-  paint.beginPath(); paint.arc(sk.c, sk.c, sk.r * 3.6, 0, Math.PI * 2); paint.fill();
+  paint.beginPath(); paint.arc(sk.c, sk.c, sk.r * 2.6, 0, Math.PI * 2); paint.fill();
   paint.globalCompositeOperation = 'source-over';
-  tubePass(paint, sk, deep, 0.92, 1.1);
-  tubePass(paint, sk, tone, 0.9, 0.72, -0.08);
-  tubePass(paint, sk, pale, 0.55 + 0.3 * life, 0.3, 0.2);
+  // Viscous, not wired: a soft edge, a body of colour you can half see through, a wet highlight
+  // along the side the light comes from, and light carried inside it.
+  tubePass(paint, sk, deep, 0.55, 1.15);
+  tubePass(paint, sk, tone, 0.72, 0.82, -0.06);
+  paint.globalCompositeOperation = 'lighter';
+  tubePass(paint, sk, pale, 0.12 + 0.1 * life, 0.5, 0);
+  paint.globalCompositeOperation = 'source-over';
+  tubePass(paint, sk, pale, 0.45 + 0.25 * life, 0.26, 0.24);
   // The sheath's beads: a pale ring between each, the way the photographs show the axon in segments.
   paint.strokeStyle = hexAlpha(deep, 0.85);
   for (const seg of sk.segs) if (seg.sheath) {
@@ -1049,11 +1089,11 @@ export function drawLivingNeuron(paint, sk, hex, life = 1) {
   // behind it catches; the nucleus shows through.
   const { c, r } = sk;
   const lx = c + NEURON_LIGHT.x * r * 0.42, ly = c + NEURON_LIGHT.y * r * 0.42;
-  const body = paint.createRadialGradient(lx, ly, 0, c, c, r * 1.35);
-  body.addColorStop(0, hexAlpha(hexMix(tone, '#ffffff', 0.78), 0.97));
-  body.addColorStop(0.3, hexAlpha(hexMix(tone, '#ffffff', 0.25), 0.94));
-  body.addColorStop(0.7, hexAlpha(tone, 0.9));
-  body.addColorStop(1, hexAlpha(deep, 0.95));
+  const body = paint.createRadialGradient(lx, ly, 0, c, c, r * 1.55);
+  body.addColorStop(0, hexAlpha(hexMix(tone, '#ffffff', 0.7), 0.95));
+  body.addColorStop(0.3, hexAlpha(hexMix(tone, '#ffffff', 0.2), 0.88));
+  body.addColorStop(0.7, hexAlpha(tone, 0.8));
+  body.addColorStop(1, hexAlpha(deep, 0.85));
   paint.fillStyle = body;
   somaPath(paint, sk); paint.fill();
   paint.save();
@@ -1065,21 +1105,21 @@ export function drawLivingNeuron(paint, sk, hex, life = 1) {
   paint.fillStyle = hexAlpha(pale, 0.5 * life);
   paint.beginPath(); paint.arc(c + r * 0.2, c + r * 0.16, r * 0.1, 0, Math.PI * 2); paint.fill();
   paint.globalCompositeOperation = 'lighter';
-  const rim = paint.createRadialGradient(c - NEURON_LIGHT.x * r * 0.5, c - NEURON_LIGHT.y * r * 0.5, r * 0.55, c, c, r * 1.3);
-  rim.addColorStop(0, hexAlpha(tone, 0)); rim.addColorStop(0.7, hexAlpha(tone, 0)); rim.addColorStop(1, hexAlpha(pale, 0.45 * life + 0.1));
+  const rim = paint.createRadialGradient(c - NEURON_LIGHT.x * r * 0.5, c - NEURON_LIGHT.y * r * 0.5, r * 0.55, c, c, r * 1.5);
+  rim.addColorStop(0, hexAlpha(tone, 0)); rim.addColorStop(0.75, hexAlpha(tone, 0)); rim.addColorStop(1, hexAlpha(pale, 0.25 * life + 0.06));
   paint.fillStyle = rim;
   paint.fillRect(c - r * 2, c - r * 2, r * 4, r * 4);
   paint.restore();
   // The shine, and the sparks at its tips.
   paint.globalCompositeOperation = 'lighter';
   const shine = paint.createRadialGradient(lx, ly, 0, lx, ly, r * 0.32);
-  shine.addColorStop(0, `rgba(255, 255, 255, ${0.35 + 0.5 * life})`); shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  shine.addColorStop(0, `rgba(255, 255, 255, ${0.25 + 0.35 * life})`); shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
   paint.fillStyle = shine;
   paint.beginPath(); paint.arc(lx, ly, r * 0.32, 0, Math.PI * 2); paint.fill();
   if (life > 0.2) for (const tip of sk.tips) if (tip.spark) {
-    const s = sk.r * 0.3 * tip.z;
+    const s = sk.r * 0.2 * tip.z;
     const spark = paint.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, s);
-    spark.addColorStop(0, hexAlpha('#fff3dc', 0.9 * life)); spark.addColorStop(0.3, hexAlpha(NEURON_SPARK, 0.7 * life)); spark.addColorStop(1, hexAlpha(NEURON_SPARK, 0));
+    spark.addColorStop(0, hexAlpha('#fff3dc', 0.75 * life)); spark.addColorStop(0.35, hexAlpha(NEURON_SPARK, 0.45 * life)); spark.addColorStop(1, hexAlpha(NEURON_SPARK, 0));
     paint.fillStyle = spark;
     paint.beginPath(); paint.arc(tip.x, tip.y, s, 0, Math.PI * 2); paint.fill();
   }
@@ -1177,6 +1217,46 @@ export function fibreBundle(ctx, x0, y0, cx, cy, x1, y1, { strands = 3, spread =
     ctx.bezierCurveTo(x0 + (cx - x0) * 0.66 + nx * off, y0 + (cy - y0) * 0.66 + ny * off, x1 + (cx - x1) * 0.66 + nx * off * 0.8, y1 + (cy - y1) * 0.66 + ny * off * 0.8, x1, y1);
   }
 }
+// A synapse as living tissue (2026-10-27): one viscous tube from (x0, y0) to (x1, y1) bent through
+// (cx, cy), full where it leaves each cell and drawn thin in the middle, the way two dendrites
+// reach for each other, wavering a little, with the same edge, colour and wet highlight as the
+// cells' own fibres. Widths are in the context's units, so it thickens as you come closer.
+export function gooTube(ctx, x0, y0, cx, cy, x1, y1, { w = 2, mid = 0.35, colour = '#7cc4ff', alpha = 1, seed = 0, min = 0.4 } = {}) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = -dy / d, ny = dx / d;
+  const points = [];
+  const N = 18;
+  for (let i = 0; i <= N; i += 1) {
+    const u = i / N;
+    const p = alongCurve(x0, y0, cx, cy, x1, y1, u);
+    const wob = Math.sin(u * Math.PI * 3 + seed) * Math.sin(u * Math.PI) * Math.min(14, d * 0.025);
+    points.push({ x: p.x + nx * wob, y: p.y + ny * wob, w: w * (1 - (1 - mid) * Math.sin(u * Math.PI)) });
+  }
+  // Each pass is one filled outline — its two edges walked out along the normals, its ends inside
+  // the cells — so the tube is a single piece with no seams.
+  for (const [tint, a, k, toward] of [[hexMix(colour, '#050a14', 0.62), 0.5, 1.15, 0], [colour, 0.62, 0.8, -0.06], [hexMix(colour, '#ffffff', 0.55), 0.42, 0.26, 0.24]]) {
+    const left = [], right = [];
+    for (let i = 0; i <= N; i += 1) {
+      const p = points[Math.max(0, i - 1)], q = points[Math.min(N, i + 1)];
+      const sx = q.x - p.x, sy = q.y - p.y;
+      const sd = Math.hypot(sx, sy) || 1;
+      let ox = -sy / sd, oy = sx / sd;
+      if (ox * NEURON_LIGHT.x + oy * NEURON_LIGHT.y < 0) { ox = -ox; oy = -oy; }
+      const half = Math.max(min, points[i].w * k) / 2;
+      const cx0 = points[i].x + ox * toward * half * 2, cy0 = points[i].y + oy * toward * half * 2;
+      left.push([cx0 + ox * half, cy0 + oy * half]);
+      right.push([cx0 - ox * half, cy0 - oy * half]);
+    }
+    ctx.fillStyle = hexAlpha(tint, a * alpha);
+    ctx.beginPath();
+    ctx.moveTo(left[0][0], left[0][1]);
+    for (const [x, y] of left) ctx.lineTo(x, y);
+    for (let i = N; i >= 0; i -= 1) ctx.lineTo(right[i][0], right[i][1]);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
 // The bulb's cells, laid out once: a golden-angle spiral through a body a little wider above,
 // most of them near its skin so its shape reads, a warm few deep inside, and a stem below.
 const BULB_TONES = {
@@ -1245,7 +1325,8 @@ function bulbSparks(t, count = SPARK_SLOTS) {
 export function drawNeuralBulb(ctx, x, y, R, t, { yaw = 0, pitch = 0, beat = 0, lit = 0, alarm = 0, px = 1, light = 1, ignite = 1, tone = 'mother', still = false } = {}) {
   const colours = BULB_TONES[tone] ?? BULB_TONES.mother;
   const turn = yaw + (still ? 0 : t * 0.07);
-  const cy = Math.cos(turn), sy = Math.sin(turn), cp = Math.cos(pitch * 0.6), sp = Math.sin(pitch * 0.6);
+  // Turned exactly as the memories are (2026-10-27), so the body and what it holds are one thing in space.
+  const cy = Math.cos(turn), sy = Math.sin(turn), cp = Math.cos(pitch), sp = Math.sin(pitch);
   const flash = ignite < 0.3 ? 1 - ignite / 0.3 : 0;
   const energy = Math.min(1.6, (0.62 + 0.38 * beat + 0.45 * Math.min(1, lit) + 1.2 * flash) * light);
   const reach = R * 1.12;
@@ -1315,7 +1396,7 @@ export function drawNeuralBulb(ctx, x, y, R, t, { yaw = 0, pitch = 0, beat = 0, 
     ctx.drawImage(neuronGlow(hex), point.x - size, point.y - size, size * 2, size * 2);
   }
   // The nucleus: one wide soft light at the centre.
-  const heart = R * (0.62 + 0.08 * beat + 0.4 * flash);
+  const heart = R * (0.5 + 0.06 * beat + 0.4 * flash);
   ctx.globalAlpha = Math.min(1, (0.55 + 0.35 * beat) * energy);
   ctx.drawImage(neuronGlow(alarm ? colours.alarm : colours.heart), x - heart, y - heart, heart * 2, heart * 2);
   ctx.globalAlpha = 1;
@@ -1527,9 +1608,11 @@ export function createNostromo(nostromo) {
     const pitchTo = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, Math.atan2(held.wy, across)));
     const yaw = nostromo.yaw ?? 0;
     const short = ((yawTo - yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    // The head turns freely now, so it may be upside down: the tip back is the short way round too.
+    const tip = ((pitchTo - (nostromo.pitch ?? 0) + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
     const step = Math.min(1, FOCUS_TURN * dt);
     nostromo.yaw = yaw + short * step;
-    nostromo.pitch = (nostromo.pitch ?? 0) + (pitchTo - (nostromo.pitch ?? 0)) * step;
+    nostromo.pitch = (nostromo.pitch ?? 0) + tip * step;
   }
 
   function projectNostromo() {
@@ -2604,7 +2687,7 @@ export function createNostromo(nostromo) {
         const by = ((Math.sin(i * 78.233) * 12345.6789) % 1 + 1) % 1;
         const drift = nostromo.reduced ? 0 : Math.sin(t * 0.05 + i) * 12;
         const size = 22 + (i % 5) * 14;
-        ctx.globalAlpha = 0.07 + (i % 4) * 0.025;
+        ctx.globalAlpha = 0.035 + (i % 4) * 0.012;
         ctx.drawImage(neuronGlow(hue), bx * w + drift - (cam.x ?? 0) * 0.02 - size, by * h - drift * 0.6 - (cam.y ?? 0) * 0.02 - size, size * 2, size * 2);
       }
       ctx.globalAlpha = 1;
@@ -2658,18 +2741,26 @@ export function createNostromo(nostromo) {
     ctx.beginPath();
     for (const node of nodes) if (!node.forgetting && shown(node) > 0) fibreBundle(ctx, node.rimX, node.rimY, node.cx, node.cy, node.x, node.y, { strands: 3, spread: 4 * px * farSize, seed: node.seed });
     ctx.stroke();
-    // Between two memories, a tract in the colours of both: six strands that leave each cell together
-    // and come apart in the middle.
-    ctx.lineWidth = 0.6 * px;
+    // Between two memories, tissue in the colours of both (2026-10-27): one viscous tube that leaves
+    // each cell full and thins between them, and two fine fibres peeling off it. Nearer is thicker.
+    ctx.globalCompositeOperation = 'source-over';
     for (const link of nostromo.links) {
       const a = byId.get(link.a);
       const b = byId.get(link.b);
       if (!a || !b || shown(a) <= 0 || shown(b) <= 0) continue;
-      ctx.strokeStyle = hexAlpha(hexMix(neuralTone(a), neuralTone(b), 0.5), 0.34 * farLight * reveal);
+      const colour = hexMix(neuralTone(a), neuralTone(b), 0.5);
+      const persp = ((a.r3 ? a.r / a.r3 : 1) + (b.r3 ? b.r / b.r3 : 1)) / 2;
+      const depthLight = 0.55 + 0.45 * Math.min(1, Math.max(0, (((a.depth ?? 0) + (b.depth ?? 0)) / 2 + 700) / 1400));
+      gooTube(ctx, a.x, a.y, link.cx, link.cy, b.x, b.y, { w: 2.6 * persp * farSize, mid: 0.3, colour, alpha: 0.75 * farLight * reveal * depthLight, seed: a.seed + b.seed, min: 0.5 * px });
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = hexAlpha(colour, 0.16 * farLight * reveal * depthLight);
+      ctx.lineWidth = 0.5 * px;
       ctx.beginPath();
-      fibreBundle(ctx, a.x, a.y, link.cx, link.cy, b.x, b.y, { strands: 6, spread: 7 * px * farSize, seed: a.seed + b.seed });
+      fibreBundle(ctx, a.x, a.y, link.cx, link.cy, b.x, b.y, { strands: 2, spread: 9 * px * farSize, seed: a.seed + b.seed });
       ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
     }
+    ctx.globalCompositeOperation = 'lighter';
     // A synapse whose neurons are lit answers in their colours.
     for (const link of nostromo.links) {
       const a = byId.get(link.a);
@@ -2677,8 +2768,8 @@ export function createNostromo(nostromo) {
       if (!a || !b) continue;
       const glow = Math.max(lightOf(a), lightOf(b)) * Math.min(shown(a), shown(b));
       if (glow < 0.12) continue;
-      ctx.strokeStyle = hexAlpha(hexMix(neuralTone(a), neuralTone(b), 0.5), Math.min(0.7, 0.32 * glow) * farLight);
-      ctx.lineWidth = (0.8 + 0.6 * Math.min(1, glow)) * px;
+      ctx.strokeStyle = hexAlpha(hexMix(neuralTone(a), neuralTone(b), 0.5), Math.min(0.4, 0.2 * glow) * farLight);
+      ctx.lineWidth = (0.7 + 0.4 * Math.min(1, glow)) * px;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(link.cx, link.cy, b.x, b.y); ctx.stroke();
     }
     // The pulses: a head of light and the stretch of path it has just lit, fading behind it.
@@ -2728,33 +2819,33 @@ export function createNostromo(nostromo) {
       ctx.beginPath(); ctx.arc(0, 0, front, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.globalCompositeOperation = 'source-over';
-    // The central bulb.
-    drawNeuralBulb(ctx, 0, 0, R, t, { yaw: (nostromo.spin ?? 0) * 0.2 - (nostromo.yaw ?? 0), pitch: nostromo.pitch ?? 0, beat, lit: nostromo.coreLit ?? 0, alarm, px, light: farLight, ignite, still: nostromo.reduced });
     // The neurons, each a cell of its kind (2026-10-27): the more the room leans on one, the more
     // alive it is — larger, its colour full, a breath of light round it; one the room no longer uses
     // goes out, grey and flickering lower the less it was used; a claim found false is a dead cell,
     // only its shape in points. What reaches a neuron now lights it from the heart.
-    for (const node of nodes) {
-      if (node.forgetting || node.scale <= 0.01) continue;
+    const drawNeuron = (node) => {
+      if (node.forgetting || node.scale <= 0.01) return;
       const seen = shown(node);
-      if (seen <= 0) continue;
+      if (seen <= 0) return;
+      // Truly in space (2026-10-27): a nearer cell is larger, a further one smaller and dimmer.
+      const persp = node.r3 ? node.r / node.r3 : 1;
       const near = 0.55 + 0.45 * Math.min(1, Math.max(0, ((node.depth ?? 0) + 700) / 1400));
       const activity = node.activity ?? 0;
       const shape = Math.floor((node.seed * 1000) % NEURON_SHAPES);
       const fade = seen * near * farLight;
       if (node.memory.kind === COLLAPSED) {
-        const side = 10 * px * farSize * 12 * (0.6 + 0.4 * node.scale);
+        const side = 5 * persp * farSize * 12 * (0.6 + 0.4 * node.scale);
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 0.8 * fade;
         ctx.drawImage(neuronSprite(neuralTone(node), shape, 'dead'), node.x - side / 2, node.y - side / 2, side, side);
-        continue;
+        return;
       }
       const light = lightOf(node);
       const cold = !travels(node.memory);
       const life = cold ? 0.08 + 0.22 * activity : 0.3 + 0.7 * activity;
       const flicker = cold && !nostromo.reduced ? 0.78 + 0.22 * Math.sin(t * 1.3 + node.seed * 7) * Math.sin(t * 0.41 + node.seed) : 1;
       const breath = nostromo.reduced ? 1 : 0.85 + 0.15 * Math.sin(t * 1.4 + node.seed * 3);
-      const soma = (9 + 6 * activity) * px * farSize * (0.6 + 0.4 * node.scale);
+      const soma = (4.5 + 3.5 * activity) * persp * farSize * (0.6 + 0.4 * node.scale);
       const side = soma * 12;
       const colour = neuralTone(node);
       ctx.globalCompositeOperation = 'source-over';
@@ -2765,13 +2856,23 @@ export function createNostromo(nostromo) {
       ctx.globalAlpha = Math.min(1, life) * flicker * fade;
       ctx.drawImage(neuronSprite(colour, shape), node.x - side / 2, node.y - side / 2, side, side);
       ctx.globalCompositeOperation = 'lighter';
-      const glow = Math.max(light, cold ? 0 : 0.35 * life * breath);
+      // Its light: a breath round a cell in use, more while something reaches it — kept close to it.
+      const glow = Math.max(light, cold ? 0 : 0.12 * life * breath);
       if (glow > 0.05) {
-        const size = (soma * 2.2 + 12 * Math.min(1, light) * px * farSize);
-        ctx.globalAlpha = Math.min(1, 0.7 * glow) * fade;
+        const size = soma * (1.4 + 1.2 * Math.min(1, light));
+        ctx.globalAlpha = Math.min(0.55, 0.45 * glow) * fade;
         ctx.drawImage(neuronGlow(colour), node.x - size, node.y - size, size * 2, size * 2);
       }
-    }
+    };
+    // Far to near: the cells behind the core first, then the core, then the ones before it, so
+    // the body hides what is behind it from whichever side it is seen.
+    const byDepth = nodes.slice().sort((p, q) => (p.depth ?? 0) - (q.depth ?? 0));
+    for (const node of byDepth) if ((node.depth ?? 0) < 0) drawNeuron(node);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    // The central bulb.
+    drawNeuralBulb(ctx, 0, 0, R, t, { yaw: (nostromo.spin ?? 0) * 0.2 + (nostromo.yaw ?? 0), pitch: nostromo.pitch ?? 0, beat, lit: nostromo.coreLit ?? 0, alarm, px, light: farLight, ignite, still: nostromo.reduced });
+    for (const node of byDepth) if ((node.depth ?? 0) >= 0) drawNeuron(node);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     for (const node of nodes) if (node === nostromo.hover && !nostromo.selected) drawSight(ctx, node.x, node.y, 9 * px, t, cam.scale);

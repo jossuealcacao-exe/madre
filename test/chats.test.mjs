@@ -954,7 +954,7 @@ test('neural mode: memories are neurons, links are tracts, and the core is never
   assert.match(engine, /export function fibreBundle\(ctx, x0, y0, cx, cy, x1, y1, \{ strands = 3, spread = 3, seed = 0 \} = \{\}\) \{/);
   assert.match(engine, /function bulbSparks\(t, count = SPARK_SLOTS\) \{/);
   assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, shape\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
-  assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 6,/);
+  assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 2,/);
   assert.match(engine, /for \(const spark of bulbSparks\(t\)\) \{/);
 });
 
@@ -990,4 +990,25 @@ test('neural mode: a real neuron — body, branching dendrites, a sheathed axon 
   assert.match(app, /const mark = nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\) : kind === COLLAPSED \? collapsedChip\(hex, 14\) : dwarfChip\(hex, 14\);/);
   assert.match(app, /neuronChip\(NEURAL_COLORS\.fact, 16, 'spent'\)/);
   assert.match(es, /'A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers\.': 'Una neurona que se apaga es/);
+});
+
+test('neural mode: smaller viscous neurons, quiet light, and a body you can turn any way', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
+  // Smaller, and sized in the world: nearer is larger.
+  assert.match(engine, /const soma = \(4\.5 \+ 3\.5 \* activity\) \* persp \* farSize/);
+  // Viscous: forks pool, fibres bead, each pass one seamless piece; synapses are tissue.
+  assert.match(engine, /knots\.push\(\{ x, y, w: w \* 1\.5, z \}\);/);
+  assert.match(engine, /paint\.drawImage\(neuronLayer, 0, 0\);/);
+  assert.match(engine, /export function gooTube\(ctx, x0, y0, cx, cy, x1, y1,/);
+  assert.match(engine, /gooTube\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ w: 2\.6 \* persp \* farSize,/);
+  // Quiet light.
+  assert.match(engine, /halo\.addColorStop\(0, hexAlpha\(tone, 0\.12 \* life\)\);/);
+  assert.match(engine, /const glow = Math\.max\(light, cold \? 0 : 0\.12 \* life \* breath\);/);
+  // In space: back to front around the core, the core turned as the memories are, any angle.
+  assert.match(engine, /for \(const node of byDepth\) if \(\(node\.depth \?\? 0\) < 0\) drawNeuron\(node\);/);
+  assert.match(engine, /yaw: \(nostromo\.spin \?\? 0\) \* 0\.2 \+ \(nostromo\.yaw \?\? 0\)/);
+  assert.match(engine, /cp = Math\.cos\(pitch\), sp = Math\.sin\(pitch\);/);
+  assert.match(app, /nostromo\.pitch = turned\.pitch;/);
+  assert.doesNotMatch(app, /PITCH_LIMIT/);
 });

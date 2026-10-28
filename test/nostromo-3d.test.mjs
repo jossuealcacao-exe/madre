@@ -101,8 +101,15 @@ test('nostromo 3d: turning the body moves depth across the screen, and nearer is
 test('nostromo 3d: dragging turns the archive, Shift+drag moves the camera, and it says so', async () => {
   const handler = source.slice(source.indexOf("nostromo.canvas?.addEventListener('mousemove'"), source.indexOf("window.addEventListener?.('mouseup'"));
   assert.match(handler, /if \(drag\.pan && nostromoLive\(\)\) \{[\s\S]*nostromo\.cam\.x -= dx/, 'Shift+drag no longer moves the camera');
-  assert.match(handler, /nostromo\.yaw = \(nostromo\.yaw \?\? 0\) \+ dx \* TURN_PER_PIXEL/, 'a drag does not turn the body');
-  assert.match(handler, /Math\.max\(-PITCH_LIMIT, Math\.min\(PITCH_LIMIT/, 'the head can be tipped over');
+  assert.match(handler, /const turned = turnBy\(nostromo\.yaw \?\? 0, nostromo\.pitch \?\? 0, dx, dy\);/, 'a drag does not turn the body');
+  // Since 2026-10-27 it turns any way, over the top and under; past the pole a sideways drag
+  // still follows the hand.
+  const turnBy = new Function(`${block('TURN_PER_PIXEL')} ${block('turnBy')} return turnBy;`)();
+  const over = turnBy(0, 0, 0, 250);
+  assert.ok(over.pitch > 1.9, `the head stops before going over: ${over.pitch}`);
+  assert.ok(Math.abs(turnBy(0, 0, 0, 500).pitch) <= Math.PI, 'the turn is not kept within one round');
+  assert.ok(turnBy(0, Math.PI, 10, 0).yaw < 0, 'upside down, a sideways drag turns against the hand');
+  assert.ok(turnBy(0, 0, 10, 0).yaw > 0);
   assert.match(source, /drag\.pan = event\.shiftKey/);
   // RECENTER brings back the side view as well as the camera.
   assert.match(source, /#nostromo-recenter'\)\?\.addEventListener\('click', \(event\) => \{[\s\S]*?nostromo\.yaw = 0;\n  nostromo\.pitch = 0;/);

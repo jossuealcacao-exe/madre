@@ -30,7 +30,7 @@ const welcomeDone = () => welcomeKept !== undefined && (welcomeKept === null || 
 import { LOADER_MARK, creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
-import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, PITCH_LIMIT, TURN_PER_PIXEL, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels } from './nostromo-engine.js';
+import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
 
 // The window split in two. The right half is this same page loaded with `?pane=split&chat=<id>`:
 // a second conversation with its transcript and its composer, and nothing of the bar. Everything
@@ -20211,8 +20211,9 @@ nostromo.canvas?.addEventListener('mousemove', (event) => {
         nostromo.cam.y -= dy / nostromo.cam.scale;
       } else if (!drag.pan) {
         if (nostromo.lock) nostromo.lock.aim = false;
-        nostromo.yaw = (nostromo.yaw ?? 0) + dx * TURN_PER_PIXEL;
-        nostromo.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, (nostromo.pitch ?? 0) + dy * TURN_PER_PIXEL));
+        const turned = turnBy(nostromo.yaw ?? 0, nostromo.pitch ?? 0, dx, dy);
+        nostromo.yaw = turned.yaw;
+        nostromo.pitch = turned.pitch;
       }
       drag.x = event.clientX; drag.y = event.clientY;
       nostromo.canvas.classList.add('dragging');
