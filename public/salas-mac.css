@@ -1458,11 +1458,11 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
    another; Add widgets (a wide piece, a square and a circle, like Home itself) fills the same way. */
 .salas-mac :is(#sm-tb-links, #sm-tb-market, #sm-tb-modules, #sm-add-widgets) svg { overflow: visible; }
 #sm-tb-links svg :is(.ic-male, .ic-female) { transition: transform calc(240ms * var(--motion-scale, 1)) var(--ease-out, ease-out), color calc(240ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-#sm-tb-links svg .ic-male { transform: translateX(-.6px); }
-#sm-tb-links svg .ic-female { transform: translateX(.6px); }
-/* Plugged in: the prongs go into the socket and the pair takes the accent. */
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-male { transform: translateX(2.4px); color: var(--s-acc, currentColor); }
-#sm-tb-links:is(:hover, :focus-visible) svg .ic-female { transform: translateX(-.4px); color: var(--s-acc, currentColor); }
+/* Two links of a chain (Trazo MADRE, 2026-10-28): a little apart along their diagonal, and under the
+   pointer they come together, joined, in the accent. They only meet: nothing slides past. */
+#sm-tb-links svg .ic-male { transform: translate(-.9px, .9px); }
+#sm-tb-links svg .ic-female { transform: translate(.9px, -.9px); }
+#sm-tb-links:is(:hover, :focus-visible) svg :is(.ic-male, .ic-female) { transform: none; color: var(--s-acc, currentColor); }
 
 #sm-tb-market svg .ic-basket { transform-box: fill-box; transform-origin: 50% 100%; }
 #sm-tb-market svg .ic-mods > * { transform-box: fill-box; transform-origin: center; }
@@ -1823,12 +1823,10 @@ html.home-shell .mv.window > .win-edge.se::after { border-color: rgb(242 241 238
 /* Restarting lives in the power key now (public/power.js): no reload key on Home's bar. */
 html.home-shell .sm-top #sm-reload { display: none !important; }
 /* The keys play under the pointer (2026-10-28): the piece of Modules shakes as a project's does
-   (styles.css, icon-shake), and the Project map turns on its own axis while the pointer stays. */
+   (styles.css, icon-shake). The Project map stays still: its moons go round the ring while the
+   pointer stays (salas-mac.js, the map key's animateMotion), the planet does not turn. */
 html.home-shell #sm-tb-modules:is(:hover, :focus-visible) svg { animation: icon-shake calc(340ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
-html.home-shell #sm-macro svg { transform-origin: 50% 50%; }
-html.home-shell #sm-macro:is(:hover, :focus-visible) svg { animation: sm-map-turn calc(2400ms * var(--motion-scale, 1)) linear infinite; }
-@keyframes sm-map-turn { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { html.home-shell :is(#sm-tb-modules, #sm-macro) svg { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { html.home-shell #sm-tb-modules svg { animation: none !important; } }
 
 /* What went wrong with an install or a sign-in (2026-10-28, salas-mac.js, TROUBLE_WORDS): said in the
    agent's own card, plainly, with what the program printed last folded under it. */

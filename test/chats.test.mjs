@@ -918,8 +918,10 @@ test('chat shell: a plan says each step\'s mode in its colour, the bar\'s keys l
   assert.match(market, /ollama: \{[^\n]*icon: trazoDrawing\('spark'\)/);
   assert.match(home, /local: \{ name: 'Local AI', icon: trazoDrawing\('spark'\) \}/);
   for (const source of [app, market, home, icons]) assert.doesNotMatch(source, /class="ic-net"/);
-  assert.match(css, /svg \.ic-spark-big, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-big \{ transform: scale\(\.5\); \}/);
-  assert.match(css, /svg \.ic-spark-small, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-small \{ transform: scale\(1\.6\); \}/);
+  // The sparkles play on the bar's key only; in Settings the drawing stays still (2026-10-28).
+  assert.match(css, /:hover, :focus-visible\) svg \.ic-spark-big \{ transform: scale\(\.5\); \}/);
+  assert.match(css, /:hover, :focus-visible\) svg \.ic-spark-small \{ transform: scale\(1\.6\); \}/);
+  assert.doesNotMatch(css, /\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark/);
 });
 
 test('chat shell: a module key stays filled while its thing is open, notes keep their colour, reminders by day, notices stand off the canvas', async () => {
@@ -1125,8 +1127,10 @@ test('Local AI and connectors are MADRE\'s own; restart lives in the power key; 
   assert.match(server, /if \(!args\.includes\('--no-open'\)\) next\.push\('--no-open'\);/);
   assert.match(css, /html\.chat-shell #reload-button \{ display: none !important; \}/);
   assert.match(homeCss, /html\.home-shell \.sm-top #sm-reload \{ display: none !important; \}/);
-  // Modules shakes; the Project map turns on its own axis.
-  assert.match(homeCss, /html\.home-shell #sm-macro:is\(:hover, :focus-visible\) svg \{ animation: sm-map-turn/);
+  // Modules shakes; the Project map stays still and only its moons go round (2026-10-28).
+  assert.doesNotMatch(homeCss, /#sm-macro[^{]*svg \{ animation/);
+  // Connections: the two links only come together, along their diagonal.
+  assert.match(homeCss, /#sm-tb-links:is\(:hover, :focus-visible\) svg :is\(\.ic-male, \.ic-female\) \{ transform: none;/);
   assert.match(homeCss, /html\.home-shell #sm-tb-modules:is\(:hover, :focus-visible\) svg \{ animation: icon-shake/);
   // The maps' keys, this computer's own.
   assert.match(neural, /const shift = mac \? '⇧' : 'Shift';/);
@@ -1324,4 +1328,11 @@ test('the maps say once that they can be planets or neurons, under the key that 
   assert.match(app, /tellViews\(\{ key: nostromo\.neuralKey, host: nostromo\.dialog, neural: nostromo\.neural, onSwitch: \(\) => setNostromoNeural\(!nostromo\.neural\) \}\)\) void tour\.seen\('map-views'\)/);
   assert.match(app, /function showNostromoDialog\(\) \{\n  sayMapViews\(\);/);
   assert.ok(HINTS.includes('map-views'), 'said once for every map, kept in the tour');
+});
+
+test('chat shell: choosing another conversation leaves the conversations open, their column does not go away', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(app, /const chatsStay = \(\) => chatShellOn\(\);/);
+  assert.match(app, /if \(id === chats\.active\) \{ if \(!chatsStay\(\)\) setChats\(false\); return; \}/);
+  assert.match(app, /if \(beside\) openSplit\(beside, \{ animate: false \}\);\n  \}\);\n  if \(!chatsStay\(\)\) setChats\(false\);\n\}/);
 });

@@ -11209,8 +11209,11 @@ function phoneChatAddress(id, extra = '') {
 // back last was painted, whichever was asked last — the column showed one conversation while the
 // stream brought the other's.
 let chatSwitch = 0;
+// The conversations put themselves away once one is chosen where they lie over the room (a phone,
+// the old layout); in the chat shell they are its left column and stay open (2026-10-28).
+const chatsStay = () => chatShellOn();
 async function openChat(id, { beside = null } = {}) {
-  if (id === chats.active) { setChats(false); return; }
+  if (id === chats.active) { if (!chatsStay()) setChats(false); return; }
   const mine = ++chatSwitch;
   if (state.device) { globalThis.location.href = phoneChatAddress(id); return; }
   // Leaving a conversation at work is the moment to ask once for a system notification, while
@@ -11233,7 +11236,7 @@ async function openChat(id, { beside = null } = {}) {
     await paintConversation(payload);
     if (beside) openSplit(beside, { animate: false });
   });
-  setChats(false);
+  if (!chatsStay()) setChats(false);
 }
 
 function setChats(open) {

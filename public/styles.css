@@ -10356,8 +10356,9 @@ svg :is(.ic-spark-big, .ic-spark-small) { transform-box: fill-box; transform-ori
 :is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-arrow { animation: icon-arrow-down calc(620ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
 :is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-needle { transform: rotate(0deg); }
 :is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-pins { transform: rotate(45deg); }
-:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-spark-big, :is(.settings-card, .settings-rail-item):is(:hover, :focus-visible) svg .ic-spark-big { transform: scale(.5); }
-:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-spark-small, :is(.settings-card, .settings-rail-item):is(:hover, :focus-visible) svg .ic-spark-small { transform: scale(1.6); }
+/* Only on the bar's key: in Settings the drawing of Local AI stays still (2026-10-28). */
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-spark-big { transform: scale(.5); }
+:is(#bar, .bar-more-card, .sm-topbar) :is(button, a, [role="button"]):not([aria-pressed="true"]):is(:hover, :focus-visible) svg .ic-spark-small { transform: scale(1.6); }
 @keyframes icon-arrow-down { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(2.2px); } 70% { transform: translateY(-.6px); } }
 @media (prefers-reduced-motion: reduce) {
   svg :is(.ic-arrow, .ic-needle, .ic-pins, .ic-spark-big, .ic-spark-small) { transition: none; animation: none !important; }
