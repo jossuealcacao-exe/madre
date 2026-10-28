@@ -23,6 +23,7 @@ import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCust
 import { mapKeys, neuralChosen, rememberNeural } from './neural.js';
 import { openMarket } from './market-view.js';
 import { openWelcome, welcomeOpen, WELCOME_STEPS } from './welcome.js';
+import { remedyKey } from './remedy.js';
 import { loadMarket } from './market.js';
 
 const $ = (id) => document.getElementById(id);
@@ -4104,6 +4105,12 @@ const TROUBLE_WORDS = {
     unknown: () => t('The connection did not finish.'),
   },
 };
+// The card of Diagnostics for each of those (public/troubleshooting.js), opened beside the failure.
+const TROUBLE_CARDS = {
+  install: { network: 'install-offline', timeout: 'install-offline', permission: 'install-needs-admin', disk: 'disk-full', 'npm-missing': 'node-missing' },
+  login: { network: 'install-offline', timeout: 'sign-in-unfinished', cancelled: 'sign-in-unfinished', unknown: 'sign-in-unfinished' },
+};
+const troubleCard = (agent, kind, cause) => (kind === 'login' && cause === 'refused-account' ? (agent === 'gemini' ? 'gemini-ineligible-tier' : 'not-signed-in') : TROUBLE_CARDS[kind]?.[cause] ?? null);
 function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
   const list = el('div', 'sm-agents');
   const lastLine = new Map();   // agent → what its install or sign-in said last
@@ -4275,6 +4282,7 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
           more.append(el('summary', null, t('What it said')), el('code', null, wrong.detail));
           box.append(more);
         }
+        if (wrong.card) box.append(remedyKey(wrong.card));
         body.append(box);
       }
       // One button per account the CLI can sign in with: Claude has two, and only the human can
@@ -4353,7 +4361,7 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
             const kind = event.type === 'connection.install.finished' ? 'install' : 'login';
             if (cause) {
               const words = TROUBLE_WORDS[kind][cause]?.() ?? error ?? TROUBLE_WORDS[kind].unknown();
-              trouble.set(agent, { kind, words: cause === 'refused-account' ? error : words, tone: cause === 'cancelled' ? 'quiet' : null, detail: (tail ?? []).slice(-3).join('\n') || error || null });
+              trouble.set(agent, { kind, words: cause === 'refused-account' ? error : words, tone: cause === 'cancelled' ? 'quiet' : null, detail: (tail ?? []).slice(-3).join('\n') || error || null, card: troubleCard(agent, kind, cause) });
             } else trouble.delete(agent);
           }
           if (/^connection\./.test(event.type)) void paint();

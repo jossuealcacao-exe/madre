@@ -8,10 +8,15 @@ import { t } from './i18n.js';
 // Pure module (no DOM) so the catalog can be unit-tested and reused by the CLI.
 
 // The two MADRE is tested on. Every remedy below is a command written for one of these two
-// shells; a third set that nobody has ever run would be worse than none.
+// shells; a third set that nobody has ever run would be worse than none. Since 2026-10-28 (D-001,
+// docs/WINDOWS.md) two more columns are read from those: WSL is Linux inside Windows, so it reads
+// Linux's unless a card has a line of its own; and Windows says one thing — MADRE for Windows
+// arrives in 1.1, and until then it runs inside WSL — before Linux's commands (fixesFor).
 export const PLATFORMS = {
   darwin: { label: 'macOS', shell: 'zsh' },
   linux: { label: 'Linux', shell: 'bash' },
+  wsl: { label: 'WSL', shell: 'bash' },
+  win32: { label: 'Windows', shell: 'PowerShell · WSL' },
 };
 
 const envExport = (name, value) => ({
@@ -546,7 +551,7 @@ export const CONDITIONS = [
     diagnosis: 'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. The Local AI module, in Modules, shows what Ollama has, downloads the recommended models, and switches each role.',
     remedy: 'Install Ollama (ollama.com), start it, then open Local AI in Modules, press RECHECK and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.',
     fixes: {
-      darwin: ['brew install ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
+      darwin: ['# the official app, which opens by itself with the Mac: https://ollama.com/download', '# or with Homebrew:', 'brew install ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
       linux: ['curl -fsSL https://ollama.com/install.sh | sh', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b']
     },
   },
@@ -704,6 +709,154 @@ export const CONDITIONS = [
       '# smart search, to keep memories on this computer: Settings → Memory → Smart search → Ollama',
       'PULSE_UPDATE_CHECK=0 madre start   # no version checks at all',
     ]),
+  },
+  // THE WELCOME OF 1.0.6 (2026-10-28, docs/private/BIENVENIDA-1.0.6.md): what goes wrong on the way
+  // from `npx madre` to a MADRE that is ready, each with the steps for the system it happens on. The
+  // welcome and Home open these from the step where it went wrong («See how to fix it»).
+  {
+    id: 'no-browser',
+    code: 'MU-061',
+    severity: 'common',
+    title: 'The browser did not open',
+    match: /could not open (?:the|a) browser|no browser (?:opened|found)|Open this address in (?:a browser on this computer|your Windows browser)|xdg-open|wslview/i,
+    diagnosis: 'MADRE opens its page in the browser of the computer it runs on. A Linux without a screen has none, a virtual machine may have none, and from inside WSL it asks Windows for its own, which does not always answer. When no browser opens, the terminal prints the address to open by hand: MADRE is running all the same.',
+    remedy: 'Copy the address the terminal printed (it ends in /salas) and open it in your browser. In WSL, open it in your Windows browser, with localhost instead of 127.0.0.1.',
+    fixes: {
+      darwin: ['# the port is the one the terminal printed', 'open http://127.0.0.1:5317/salas'],
+      linux: ['# the port is the one the terminal printed', 'xdg-open http://127.0.0.1:5317/salas', '# with no screen here, open that address in a browser on this computer'],
+      wsl: ['# the port is the one the terminal printed', 'explorer.exe http://localhost:5317/salas', '# so MADRE opens it by itself next time:', 'sudo apt install wslu'],
+    },
+  },
+  {
+    id: 'ssh-tunnel',
+    code: 'MU-062',
+    severity: 'informational',
+    title: 'MADRE runs on another computer (SSH)',
+    match: /\bSSH_CONNECTION\b|connected to this computer from another one|the browser is over there|ssh -L \d+:127\.0\.0\.1/i,
+    diagnosis: 'You reached the computer where MADRE runs from another one, over SSH. MADRE listens only on its own computer (127.0.0.1), on purpose: nothing on your network can reach it. So the browser on your computer needs a tunnel, which SSH makes with one command. The terminal printed it with your user, your server and the port.',
+    remedy: 'On your own computer, open a new terminal, paste the command, leave it open, and open the address in your browser. Each project you open uses one more port: add it to the same command.',
+    fixes: same(['# on YOUR computer, in a new terminal (leave it open):', 'ssh -L 5317:127.0.0.1:5317 user@server', '# then open http://127.0.0.1:5317/salas', '# one more -L for each open project:', 'ssh -L 5317:127.0.0.1:5317 -L 5318:127.0.0.1:5318 user@server']),
+  },
+  {
+    id: 'tunnel-ipv6',
+    code: 'MU-063',
+    severity: 'common',
+    title: 'The tunnel connects but the page does not load',
+    match: /channel \d+: open failed|connect failed: Connection refused|bind \[::1\]|cannot assign requested address/i,
+    diagnosis: 'A tunnel written with «localhost» can land on the server\'s IPv6 address (::1), where MADRE does not listen: SSH says «open failed» and the browser stays blank. MADRE listens on 127.0.0.1.',
+    remedy: 'Write 127.0.0.1 in the tunnel instead of localhost, and open http://127.0.0.1 with the same port in your browser.',
+    fixes: same(['# 127.0.0.1, not localhost, on both sides of the tunnel:', 'ssh -L 5317:127.0.0.1:5317 user@server']),
+  },
+  {
+    id: 'install-offline',
+    code: 'MU-064',
+    severity: 'transient',
+    title: 'An install could not download',
+    match: /ENOTFOUND|EAI_AGAIN|getaddrinfo|ECONNRESET|network (?:is )?unreachable|unable to get local issuer certificate|self[- ]signed certificate in certificate chain|request to https?:\/\/registry\.npmjs\.org\S* failed/i,
+    diagnosis: 'Installing an agent or a model downloads it from the internet: agents from npm, models from Ollama. The download did not get through: there is no connection, the server\'s name could not be found, or something on this network (a VPN, a proxy, a company firewall) stopped it. Nothing was left half installed.',
+    remedy: 'Check that this computer has internet and try again. On a company network or a VPN, try from another one, or ask whoever runs it to allow registry.npmjs.org and ollama.com.',
+    fixes: same(['npm ping', 'curl -I https://registry.npmjs.org', '# behind a proxy, npm has to be told:', 'npm config set proxy http://proxy:port']),
+  },
+  {
+    id: 'node-missing',
+    code: 'MU-065',
+    severity: 'blocking',
+    title: 'An agent needs Node and npm',
+    match: /spawn npm(?:\.cmd)? ENOENT|npm(?:\.cmd)?: (?:command )?not found|'npm' is not recognized|command not found: npm/i,
+    diagnosis: 'Codex, Claude, Gemini and OpenCode install with npm, the installer that comes with Node, and this computer does not have it where MADRE looks.',
+    remedy: 'Install Node 22 or newer (it brings npm), open MADRE again, and press Install.',
+    fixes: {
+      darwin: ['brew install node', '# or the installer from https://nodejs.org'],
+      linux: ['# Node 22 or newer (the one in your system\'s packages may be older):', 'curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -', 'sudo apt install -y nodejs', '# or nvm, with no administrator: https://github.com/nvm-sh/nvm'],
+    },
+  },
+  {
+    id: 'sign-in-unfinished',
+    code: 'MU-066',
+    severity: 'transient',
+    title: 'The sign-in did not finish',
+    match: /sign-in (?:was )?cancell?ed|login (?:was )?cancell?ed|sign-in timed out|login timed out|device code (?:has )?expired|authorization (?:was )?denied/i,
+    diagnosis: 'Connecting an agent opens its page and waits for you to finish there. It stops if it waits too long (15 minutes), if you cancel it, or if the page was opened on another computer and its code never came back. Nothing is wrong with the account.',
+    remedy: 'Start it again from Settings › Agents and finish it on the page that opens. If MADRE runs on another computer, choose «With a code» (Codex) or paste back the code the page gives you (Claude); for Gemini, paste an API key instead.',
+    fixes: same(['# Home → Settings → Agents → Sign in again', '# or in a terminal on the computer where MADRE runs:', 'codex login --device-auth', 'claude auth login']),
+  },
+  {
+    id: 'ollama-not-starting',
+    code: 'MU-067',
+    severity: 'blocking',
+    title: 'Ollama does not start',
+    match: /Ollama did not answer|listen tcp 127\.0\.0\.1:11434: bind|address already in use[^\n]*11434|could not connect to ollama/i,
+    diagnosis: 'Ollama is installed but nothing answers on its port (11434). Usually it is closed (on a Mac, the app is not open), another copy of Ollama already holds the port, or on Linux its service did not start.',
+    remedy: 'On a Mac, open the Ollama app. On Linux, start its service. Then press «I did it», or Check again in Settings › Local AI.',
+    fixes: {
+      darwin: ['open -a Ollama', 'curl http://127.0.0.1:11434/api/version'],
+      linux: ['sudo systemctl start ollama', 'systemctl status ollama --no-pager', '# without systemd (WSL without it, a container):', 'ollama serve', 'curl http://127.0.0.1:11434/api/version'],
+    },
+  },
+  {
+    id: 'model-download',
+    code: 'MU-068',
+    severity: 'transient',
+    title: 'A model download stopped',
+    match: /Ollama pull HTTP|pull model manifest|max retries exceeded/i,
+    diagnosis: 'Models are big (from half a GB to dozens) and come down in pieces. A cut connection or a full disk stops the download; what already arrived stays, and trying again picks up where it stopped.',
+    remedy: 'Try again from the same place. If it stops at the same point, check the free space (the model needs its size plus some room) or choose a smaller model.',
+    fixes: same(['ollama pull qwen2.5:3b   # the model you chose; it resumes where it stopped', 'ollama list', 'df -h ~']),
+  },
+  {
+    id: 'disk-full',
+    code: 'MU-069',
+    severity: 'blocking',
+    title: 'Not enough free space',
+    match: /ENOSPC|no space left on device/i,
+    diagnosis: 'The computer ran out of room while installing or downloading. An AI on your computer takes the most: each model is a file of one to several GB, kept by Ollama in its own folder.',
+    remedy: 'Free some space, or remove models you do not use, and try again. A smaller model needs less.',
+    fixes: {
+      darwin: ['df -h ~', 'du -sh ~/.ollama/models', 'ollama list', 'ollama rm qwen2.5:7b   # a model you do not use'],
+      linux: ['df -h ~', 'du -sh ~/.ollama/models /usr/share/ollama/.ollama/models 2>/dev/null', 'ollama list', 'ollama rm qwen2.5:7b   # a model you do not use'],
+    },
+  },
+  {
+    id: 'ollama-remote',
+    code: 'MU-070',
+    severity: 'common',
+    title: 'Another computer\'s Ollama does not answer',
+    match: /Nothing answers at http|Expose Ollama to the network|OLLAMA_HOST=0\.0\.0\.0/i,
+    diagnosis: 'MADRE can use the AI of another computer on your network: Windows\' own from inside WSL, or one with a graphics card. Ollama only listens on its own computer unless it is told otherwise, and a firewall may close its port (11434).',
+    remedy: 'On the computer with Ollama, turn on «Expose Ollama to the network» in the app\'s settings (or start it with OLLAMA_HOST=0.0.0.0), let port 11434 through its firewall, and test the address again in Settings › Local AI.',
+    fixes: {
+      darwin: ['# on the computer that has Ollama:', 'OLLAMA_HOST=0.0.0.0 ollama serve', '# from here, check that it answers:', 'curl http://192.168.1.40:11434/api/version'],
+      linux: ['# on the computer that has Ollama:', 'OLLAMA_HOST=0.0.0.0 ollama serve', '# from here, check that it answers:', 'curl http://192.168.1.40:11434/api/version'],
+      wsl: ['# in Windows: the Ollama app → Settings → Expose Ollama to the network', '# from Ubuntu, Windows is the nameserver WSL writes:', 'grep nameserver /etc/resolv.conf', 'curl http://172.28.80.1:11434/api/version   # with that address'],
+    },
+  },
+  {
+    id: 'wsl-windows-folder',
+    code: 'MU-071',
+    severity: 'degraded',
+    title: 'A project in a Windows folder (/mnt/c)',
+    match: /\/mnt\/[a-z]\//i,
+    diagnosis: 'Inside WSL, the Windows disk shows up as /mnt/c. It works, but every file goes through a bridge between the two systems: MADRE reads slower there, and the protections Linux gives a project (which agent may write where) do not hold on Windows files.',
+    remedy: 'Keep projects inside Linux, in your folder in /home. Copy the project once and add the copy in Home.',
+    fixes: {
+      darwin: ['# this only happens inside WSL, on Windows'],
+      linux: ['# inside WSL: keep the project in Linux', 'mkdir -p ~/projects', 'cp -r "/mnt/c/Users/<you>/<project>" ~/projects/', '# then add ~/projects/<project> in Home'],
+    },
+  },
+  {
+    id: 'windows-use-wsl',
+    code: 'MU-072',
+    severity: 'informational',
+    title: 'MADRE on Windows',
+    match: /\bwin32\b|native Windows|Windows nativo|wsl --install/i,
+    diagnosis: 'The version of MADRE for Windows arrives in 1.1. Until then MADRE runs on Linux, and Windows 10 and 11 bring Linux with them: WSL (Windows Subsystem for Linux). Inside it MADRE works as on any Linux, and opens in your Windows browser.',
+    remedy: 'Install WSL once (it asks for an administrator and a restart), open Ubuntu from the Start menu, and start MADRE there. Keep your projects inside Linux, not in /mnt/c.',
+    fixes: {
+      darwin: ['# this is for Windows'],
+      linux: ['# this is for Windows'],
+      wsl: ['# you are already in WSL: MADRE runs here as on any Linux'],
+      win32: ['# in PowerShell, as administrator, once:', 'wsl --install', '# restart, open «Ubuntu» from the Start menu, and in it:', 'curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -', 'sudo apt install -y nodejs', 'npx @jossuealcala/madre'],
+    },
   },
 ];
 
@@ -867,8 +1020,15 @@ export function findConditions(query) {
   return unique.length ? unique : looseConditions(query);
 }
 
+// A column of commands for a system: its own, or for WSL and Windows Linux's, which is what runs
+// there; macOS's only when nothing else was written.
+const columnFor = (fixes, platform) => fixes?.[platform] ?? (platform === 'wsl' || platform === 'win32' ? fixes?.linux : null) ?? fixes?.darwin ?? null;
+// On Windows a card that has no line of its own says first where those commands run (D-001).
+export const WINDOWS_FIRST = ['# MADRE for Windows arrives in version 1.1. Until then it runs inside WSL, Linux inside Windows: see «MADRE on Windows».', '# in Ubuntu (WSL):'];
 export function fixesFor(condition, platform, agent = null) {
-  const base = condition.fixes?.[platform] ?? condition.fixes?.darwin ?? [];
-  const perAgent = condition.perAgent?.[agent]?.[platform];
-  return perAgent ? [...perAgent, ...(base.length && !base[0].startsWith('#') ? base : [])] : base;
+  const base = columnFor(condition.fixes, platform) ?? [];
+  const perAgent = condition.perAgent?.[agent] ? columnFor(condition.perAgent[agent], platform) : null;
+  const lines = perAgent ? [...perAgent, ...(base.length && !base[0].startsWith('#') ? base : [])] : base;
+  const ownWindows = condition.fixes?.win32 || condition.perAgent?.[agent]?.win32;
+  return platform === 'win32' && !ownWindows && lines.length ? [...WINDOWS_FIRST, ...lines] : lines;
 }

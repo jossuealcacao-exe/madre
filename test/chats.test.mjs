@@ -1185,3 +1185,41 @@ test('the welcome of 1.0.6: seven steps in place of the bonjour, kept in ~/.puls
   // Settings keeps the address of another computer's Ollama.
   assert.match(home, /sxRow\(block, t\('Ollama address'\),/);
 });
+
+test('Diagnostics for the welcome (F7): each way it goes wrong has its card, for macOS, Linux, WSL and Windows, one press from where it happened', async () => {
+  const { CONDITIONS, PLATFORMS, diagnose, fixesFor } = await import('../public/troubleshooting.js');
+  const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const remedy = await readFile(new URL('../public/remedy.js', import.meta.url), 'utf8');
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  const ids = (text) => diagnose(text).map((one) => one.id);
+  // What the programs really print lands on its card.
+  assert.ok(ids('npm ERR! request to https://registry.npmjs.org/@openai%2fcodex failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org').includes('install-offline'));
+  assert.ok(ids('write /home/carlos/.ollama/models/blobs/sha256-x-partial: no space left on device').includes('disk-full'));
+  assert.ok(ids('Error: spawn npm ENOENT').includes('node-missing'));
+  assert.ok(ids('channel 3: open failed: connect failed: Connection refused').includes('tunnel-ipv6'));
+  assert.ok(ids('Nothing answers at http://172.28.80.1:11434. Check that Ollama is open on that computer and accepts connections from your network.').includes('ollama-remote'));
+  assert.ok(ids('Ollama did not answer. Open the Ollama app, then press RECHECK.').includes('ollama-not-starting'));
+  assert.ok(ids('Ollama pull HTTP 500: pull model manifest: file does not exist').includes('model-download'));
+  assert.ok(ids('/mnt/c/Users/juan/tienda').includes('wsl-windows-folder'));
+  assert.deepEqual(ids('listen EADDRINUSE: address already in use 127.0.0.1:4317'), ['port-in-use'], 'a busy MADRE port is not Ollama\'s');
+  // Codes are permanent and never shared.
+  const codes = CONDITIONS.map((one) => one.code);
+  assert.equal(new Set(codes).size, codes.length);
+  for (const id of ['no-browser', 'ssh-tunnel', 'tunnel-ipv6', 'install-offline', 'node-missing', 'sign-in-unfinished', 'ollama-not-starting', 'model-download', 'disk-full', 'ollama-remote', 'wsl-windows-folder', 'windows-use-wsl']) {
+    const card = CONDITIONS.find((one) => one.id === id);
+    assert.ok(card, `no card for ${id}`);
+    for (const platform of Object.keys(PLATFORMS)) assert.ok(fixesFor(card, platform).length, `${id} says nothing on ${platform}`);
+  }
+  // Windows: its version arrives in 1.1 (docs/WINDOWS.md); until then WSL. No card says MADRE runs on Windows itself.
+  assert.match(CONDITIONS.find((one) => one.id === 'windows-use-wsl').diagnosis, /The version of MADRE for Windows arrives in 1\.1/);
+  assert.doesNotMatch(welcome, /that is how MADRE runs on Windows/);
+  // A project in WSL reads WSL's column; the card opens from the welcome and from an agent's failure.
+  assert.match(server, /platform: await environmentOnce\(\)\.then\(\(one\) => \(one\?\.wsl \? 'wsl' : process\.platform\)/);
+  assert.match(welcome, /const fix = \(id\) => \(id \? remedyKey\(id, \{ platform: platformOf\(s\.env\) \}\) : null\);/);
+  for (const id of ['ssh-tunnel', 'windows-use-wsl', 'disk-full', 'model-download', 'ollama-remote', 'wsl-windows-folder', 'ollama-not-starting']) assert.match(welcome, new RegExp(`fix\\([^;]*'${id}'`), `the welcome never opens ${id}`);
+  assert.match(home, /if \(wrong\.card\) box\.append\(remedyKey\(wrong\.card\)\);/);
+  assert.match(home, /const troubleCard = \(agent, kind, cause\) =>/);
+  assert.match(remedy, /const lines = fixesFor\(condition, system\);/);
+  assert.match(server, /'\/remedy\.js'/);
+});

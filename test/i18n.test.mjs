@@ -68,7 +68,7 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   // Everything that speaks: the page, the console inside the core, and the server text that
   // reaches a screen — a module saying what it is, a reading saying what it means. One
   // catalogue for both sides of the wire, so a sentence is never translated twice.
-  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html'), join(import.meta.dirname, '..', 'public', 'troubleshooting.js'), join(import.meta.dirname, '..', 'public', 'editor.js'), join(import.meta.dirname, '..', 'public', 'salas.js'), join(import.meta.dirname, '..', 'public', 'salas-mac.js'), join(import.meta.dirname, '..', 'public', 'macroverso.js'), join(import.meta.dirname, '..', 'public', 'review-ask.js'), join(import.meta.dirname, '..', 'public', 'tour.js'), join(import.meta.dirname, '..', 'public', 'attribution.js'), join(import.meta.dirname, '..', 'public', 'power.js'), join(import.meta.dirname, '..', 'public', 'hardware.js'), join(import.meta.dirname, '..', 'public', 'code-tools.js'), join(import.meta.dirname, '..', 'public', 'wallpaper.js'), join(import.meta.dirname, '..', 'public', 'neural.js'), join(import.meta.dirname, '..', 'public', 'market.js'), join(import.meta.dirname, '..', 'public', 'market-view.js'), join(import.meta.dirname, '..', 'public', 'market-art.js'), join(import.meta.dirname, '..', 'public', 'welcome.js'), join(import.meta.dirname, '..', 'public', 'mcp-catalog.js'), join(import.meta.dirname, '..', 'public', 'i18n.js'),
+  const files = [join(import.meta.dirname, '..', 'public', 'app.js'), join(import.meta.dirname, '..', 'public', 'inquiry.js'), join(import.meta.dirname, '..', 'public', 'index.html'), join(import.meta.dirname, '..', 'public', 'troubleshooting.js'), join(import.meta.dirname, '..', 'public', 'editor.js'), join(import.meta.dirname, '..', 'public', 'salas.js'), join(import.meta.dirname, '..', 'public', 'salas-mac.js'), join(import.meta.dirname, '..', 'public', 'macroverso.js'), join(import.meta.dirname, '..', 'public', 'review-ask.js'), join(import.meta.dirname, '..', 'public', 'tour.js'), join(import.meta.dirname, '..', 'public', 'attribution.js'), join(import.meta.dirname, '..', 'public', 'power.js'), join(import.meta.dirname, '..', 'public', 'hardware.js'), join(import.meta.dirname, '..', 'public', 'code-tools.js'), join(import.meta.dirname, '..', 'public', 'wallpaper.js'), join(import.meta.dirname, '..', 'public', 'neural.js'), join(import.meta.dirname, '..', 'public', 'market.js'), join(import.meta.dirname, '..', 'public', 'market-view.js'), join(import.meta.dirname, '..', 'public', 'market-art.js'), join(import.meta.dirname, '..', 'public', 'welcome.js'), join(import.meta.dirname, '..', 'public', 'remedy.js'), join(import.meta.dirname, '..', 'public', 'mcp-catalog.js'), join(import.meta.dirname, '..', 'public', 'i18n.js'),
     // What the server wrote in English and the page says again in Spanish: those sentences are
     // listed there, slots and all, because they never pass through a t() of their own.
     join(import.meta.dirname, '..', 'public', 'resay.js')];
@@ -96,8 +96,8 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
   // than written out — `envExport` builds the same line for each variable it is given. Those are
   // said by the product even though the literal never appears in a file, so the scan asks the
   // conditions themselves as well as the source.
-  const { CONDITIONS: ALL } = await import('../public/troubleshooting.js');
-  const fromData = new Set(ALL.flatMap((condition) => ['darwin', 'linux'].flatMap((os) => condition.fixes?.[os] ?? [])).map((line) => line.trim()));
+  const { CONDITIONS: ALL, PLATFORMS: SYSTEMS, fixesFor: linesFor } = await import('../public/troubleshooting.js');
+  const fromData = new Set(ALL.flatMap((condition) => Object.keys(SYSTEMS).flatMap((os) => linesFor(condition, os))).map((line) => line.trim()));
   for (const key of Object.keys(ES)) {
     const escaped = key.replace(/'/g, "\\'");
     assert.ok(app.includes(key) || app.includes(escaped) || fromData.has(key), `the catalogue translates "${key.slice(0, 60)}…", which the page no longer says`);
@@ -187,7 +187,7 @@ test('i18n: every word the markup shows is one the catalogue knows', async () =>
 });
 
 test("i18n: every condition MU/TH/UR holds reads in the room's language", async () => {
-  const { CONDITIONS, allConditions, diagnose, searchConditions } = await import('../public/troubleshooting.js');
+  const { CONDITIONS, PLATFORMS, allConditions, diagnose, fixesFor, searchConditions } = await import('../public/troubleshooting.js');
   const { setLanguage: setPage } = await import('../public/i18n.js');
 
   // All 51, in all three of the fields a person reads. What MATCHES a failure is not one of
@@ -217,8 +217,9 @@ test("i18n: every condition MU/TH/UR holds reads in the room's language", async 
     // The prose inside the commands. A `#` line is not a command: it explains one, and most of
     // them name buttons — which this room calls something else. The commands themselves are
     // never translated and are not checked here.
-    for (const os of ['darwin', 'linux']) {
-      for (const line of condition.fixes?.[os] ?? []) {
+    // Every system the catalogue answers for, WSL and Windows included (fixesFor).
+    for (const os of Object.keys(PLATFORMS)) {
+      for (const line of fixesFor(condition, os)) {
         if (!line.trim().startsWith('#')) continue;
         assert.ok(Object.hasOwn(ES, line.trim()), `${condition.id} explains a fix in English: "${line.trim().slice(0, 50)}…"`);
       }

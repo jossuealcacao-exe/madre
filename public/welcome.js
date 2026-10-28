@@ -16,6 +16,7 @@
 // and `closed()`.
 
 import { t, language } from './i18n.js';
+import { platformOf, remedyKey } from './remedy.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -61,6 +62,9 @@ const TROUBLE = {
   permission: () => t('This computer did not let MADRE install it. Copy the line below into a terminal, once.'),
   timeout: () => t('It took too long and was stopped. Try again.'),
 };
+
+// The card of Diagnostics that explains each of those, with its steps for this system (remedy.js).
+const TROUBLE_CARD = { network: 'install-offline', disk: 'disk-full', permission: 'install-needs-admin', timeout: 'install-offline', 'npm-missing': 'node-missing' };
 
 // Ollama prints each piece it downloads as «pulling <digest> · 45%» (src/ollama.mjs, pullModel). The
 // first piece is the model itself, by far the heaviest: its share is the download's.
@@ -186,6 +190,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     box.append(...children.filter(Boolean).map((child) => (typeof child === 'string' ? el('p', null, child) : child)));
     return box;
   };
+  // «See how to fix it», under what went wrong: the card of Diagnostics for it, for this system.
+  const fix = (id) => (id ? remedyKey(id, { platform: platformOf(s.env) }) : null);
   const chip = (tone, words) => { const node = el('span', `wl-chip${tone ? ` ${tone}` : ''}`); node.append(el('i'), el('span', null, words)); return node; };
   const copyLine = (line) => {
     const box = el('div', 'wl-copyline');
@@ -298,10 +304,12 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (carry === 'yes') notes.push(note('ok', t('Your computer can run its own AI. We recommend a model in step 4.')));
     else if (carry === 'slow') notes.push(note('warn', t('Your computer can run a small AI, but slowly: it has no graphics card the AI can use.')));
     else notes.push(note('warn', t('This computer does not have enough memory for an AI of its own. MADRE works just the same with your agents.')));
-    if (env.place === 'wsl') notes.push(note('', t('MADRE runs in Linux inside Windows (WSL): that is how MADRE runs on Windows. Your Windows browser opens it directly.')));
+    if (env.place === 'wsl') notes.push(note('', t('MADRE runs here on Linux, inside Windows (WSL). Your Windows browser opens it directly.')));
+    // On Windows itself: its version arrives in 1.1 (docs/WINDOWS.md, D-001); until then, WSL.
+    if (env.os === 'windows') notes.push(note('warn', t('The version of MADRE for Windows arrives in 1.1. Until then it runs inside WSL, Linux inside Windows.'), fix('windows-use-wsl')));
     // A virtual machine reached over SSH is both (Carlos, 2026-10-28): each is said.
     if (env.vm && env.vm !== 'macOS') notes.push(note('warn', t('MADRE runs in a virtual machine: an AI here runs slower than on the computer itself. If that computer runs Windows, MADRE works better in WSL.')));
-    if (env.place === 'ssh') notes.push(note('', t('You came in from another computer. Some agents connect with a code instead of opening a page; each one says so.')));
+    if (env.place === 'ssh') notes.push(note('', t('You came in from another computer. Some agents connect with a code instead of opening a page; each one says so.'), fix('ssh-tunnel')));
     if (env.place === 'container') notes.push(note('', t('MADRE runs inside a container: what it installs stays in that container.')));
     if (env.disk && env.disk.freeGb < 10) notes.push(note('warn', t('Only {n} GB free. Agents fit, but an AI of its own needs more room: free some up before step 4.', { n: number(env.disk.freeGb) })));
     content.replaceChildren(...head(t('Here is what we found'), t('We use it to recommend what works best on your computer. It never leaves your computer.')), grid, ...notes);
@@ -422,7 +430,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
         start.disabled = true;
         const answer = await post('/api/ollama/start');
         await readOllama({ probe: true });
-        if (!answer.ok) s.install = { error: answer.body?.error ?? t('Ollama did not answer.') };
+        if (!answer.ok) s.install = { error: answer.body?.error ?? t('Ollama did not answer.'), card: 'ollama-not-starting' };
         paintAi();
       });
       box.append(start);
@@ -459,7 +467,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       row.append(checkKey(), el('small', 'wl-tiny', t('MADRE checks by itself.')));
       box.append(row);
     }
-    if (s.install?.error && !info.running) box.append(note('bad', s.install.trouble && TROUBLE[s.install.trouble] ? TROUBLE[s.install.trouble]() : s.install.error));
+    if (s.install?.error && !info.running) box.append(note('bad', s.install.trouble && TROUBLE[s.install.trouble] ? TROUBLE[s.install.trouble]() : s.install.error, fix(s.install.card ?? (s.install.trouble === 'permission' ? 'ollama' : TROUBLE_CARD[s.install.trouble]) ?? 'ollama')));
     // 2 · The model, and 3 · trying it, once Ollama answers.
     if (info.running) box.append(...modelFlow());
     return box;
@@ -470,7 +478,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       key.textContent = t('Checking…');
       await readOllama({ probe: true });
       if (s.ollama?.binary && !s.ollama.running) await post('/api/ollama/start').then(() => readOllama({ probe: true }));
-      if (!s.ollama?.running) s.install = { error: s.ollama?.binary ? t('Ollama is installed but did not answer. Open the Ollama app, then press «I did it» again.') : t('Ollama is not on this computer yet. Install it, then press «I did it» again.') };
+      if (!s.ollama?.running) s.install = s.ollama?.binary ? { error: t('Ollama is installed but did not answer. Open the Ollama app, then press «I did it» again.'), card: 'ollama-not-starting' } : { error: t('Ollama is not on this computer yet. Install it, then press «I did it» again.'), card: 'ollama' };
       else s.install = null;
       paintAi();
     });
@@ -501,9 +509,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       return parts;
     }
     if (pull?.error) {
-      parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error })));
+      parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : 'model-download')));
     }
-    if (!roomFor(model.sizeGb ?? 0)) parts.push(note('warn', t('There are {free} GB free and this model needs {size} GB plus some room. Free up space or choose a smaller model.', { free: number(s.env.disk.freeGb), size: number(model.sizeGb ?? 0) })));
+    if (!roomFor(model.sizeGb ?? 0)) parts.push(note('warn', t('There are {free} GB free and this model needs {size} GB plus some room. Free up space or choose a smaller model.', { free: number(s.env.disk.freeGb), size: number(model.sizeGb ?? 0) }), fix('disk-full')));
     const row = el('div', 'wl-row');
     const get = button('wl-btn primary small', pull?.error ? t('Try again') : t('Download · {size} GB', { size: number(model.sizeGb ?? 0) }), () => void startPull(model.ollama));
     get.disabled = !roomFor(model.sizeGb ?? 0) && !pull?.error;
@@ -547,7 +555,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       else talk.append(el('p', 'wl-bubble wl-thinking', t('Thinking…')));
       parts.push(talk);
     }
-    if (s.tried?.error) parts.push(note('bad', s.tried.error));
+    if (s.tried?.error) parts.push(note('bad', s.tried.error, fix('ollama-not-starting')));
     return parts;
   }
   // The AI of another computer, or of Windows from inside WSL: its address, tried before it is kept.
@@ -581,7 +589,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     });
     box.append(form);
     const connected = s.ollama?.running && !localHost(s.ollama.host);
-    if (s.address?.error) box.append(note('bad', s.address.error));
+    if (s.address?.error) box.append(note('bad', s.address.error, fix('ollama-remote')));
     else if (connected) box.append(chip('ok', t('Connected · {host}', { host: s.ollama.host })));
     box.append(el('small', 'wl-tiny', t('It is kept in Settings › Local AI › Ollama address.')));
     if (connected) box.append(...modelFlow());
@@ -615,7 +623,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       const pull = s.pulls.get(EMBED_MODEL);
       if (embedReady) parts.push(chip('ok', t('Memory model ready · {model}', { model: EMBED_MODEL })));
       else if (pull?.running) parts.push(bar(pull.pct ?? 0), el('small', 'wl-tiny', t('{pct} % · {mb} MB', { pct: Math.round(pull.pct ?? 0), mb: EMBED_MB })));
-      else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error })), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
+      else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : 'model-download')), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
       else parts.push(button('wl-btn primary small', t('Download the memory model · {mb} MB', { mb: EMBED_MB }), () => void startPull(EMBED_MODEL)));
     }
     if (s.memoryChoice === 'gemini' && !s.geminiKey) parts.push(button('wl-btn small', t('Go to step 3'), () => go('agents')));
@@ -638,7 +646,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const lead = t('A project is a folder you work in: a store, a website, your documents. Each one has its own conversations and its own memory.');
     const parts = [...head(t('Your first project'), lead)];
     if (had.length) parts.push(note('ok', had.length === 1 ? t('You already have a project in Home: {name}. Add another one, or continue.', { name: had[0].name }) : t('You already have {n} projects in Home. Add another one, or continue.', { n: had.length })));
-    if (s.env?.place === 'wsl') parts.push(note('warn', t('Keep your projects inside Linux (your folder in /home). A Windows folder (/mnt/c/…) makes MADRE slower and protects your files less.')));
+    if (s.env?.place === 'wsl') parts.push(note('warn', t('Keep your projects inside Linux (your folder in /home). A Windows folder (/mnt/c/…) makes MADRE slower and protects your files less.'), fix('wsl-windows-folder')));
     let picker = null;
     const primary = () => actions.querySelector('[data-next]');
     picker = host.projectPicker?.({

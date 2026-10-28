@@ -1943,3 +1943,27 @@ dialog.wl::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: b
   .wl-skipnote { flex-basis: 100%; order: -1; text-align: left; }
 }
 @media (prefers-reduced-motion: reduce) { .wl-bar > i { transition: none; } }
+
+/* «See how to fix it» (2026-10-28, public/remedy.js): a link-like key under what went wrong, and the
+   card of Diagnostics it opens over the welcome or Home — the steps for this system, then why. */
+.wl-remedy-key, .wl-remedy-key.wl-btn { justify-self: start; width: fit-content; height: auto; margin-top: 2px; padding: 0; border: 0; background: none !important; box-shadow: none !important; color: var(--s-acc, var(--phosphor)); font: 500 12.5px var(--read); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.wl-remedy-key:hover { filter: brightness(1.1); }
+:root[data-scheme="light"] .wl-remedy-key { color: color-mix(in srgb, var(--s-acc, var(--phosphor)) 75%, var(--text)); }
+.wl-remedy-key:focus-visible { outline: 2px solid var(--s-acc, var(--phosphor)); outline-offset: 2px; border-radius: 4px; }
+.wl-remedy-box { position: relative; display: grid; gap: 12px; width: min(640px, 100%); max-height: calc(100dvh - 48px); padding: 24px 26px; overflow: auto; border-radius: 14px; background: var(--wl-canvas); box-shadow: 0 0 0 1px var(--wl-line), 0 34px 90px -30px rgba(0, 0, 0, .55); }
+.wl-remedy-box > * { margin: 0; }
+.wl-remedy-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wl-remedy-head .wl-title { margin: 0; }
+.wl-remedy .wl-title { padding-right: 0; }
+.wl-remedy-terminal { display: grid; gap: 10px; }
+.wl-remedy-top { gap: 8px; }
+.wl-remedy-top .wl-seg button { height: 26px; padding: 0 10px; font-size: 12px; }
+.wl-remedy-lines { display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; background: #111311; color: #e5e8e3; }
+.wl-remedy-lines code { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: #e5e8e3; font: 400 12px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.wl-remedy-say { margin: 4px 0 0; font: 400 12px/1.45 var(--read); color: #9ea59d; }
+.wl-remedy-say:first-child { margin-top: 0; }
+.wl-remedy-terminal > .wl-btn { justify-self: start; }
+.wl-remedy-why summary { cursor: pointer; font: 500 13px var(--read); color: var(--text-2); }
+.wl-remedy-why p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.sm-agent-trouble .wl-remedy-key { margin-top: 0; }
+@media (max-width: 640px) { .wl-remedy-box { padding: 18px; } .wl-remedy-top .wl-grow { display: none; } }

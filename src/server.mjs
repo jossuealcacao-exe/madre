@@ -2053,7 +2053,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -2960,7 +2960,9 @@ export async function createPulseServer({
           // The project's name as this system writes paths (WEB-11): the page cut it at «/», and on
           // Windows the name was the whole path, so the key for #3 never matched.
           projectName: basename(canonicalProjectRoot),
-          platform: process.platform,
+          // The column Diagnostics reads its commands from (public/troubleshooting.js): WSL is Linux
+          // inside Windows, and says so (2026-10-28).
+          platform: await environmentOnce().then((one) => (one?.wsl ? 'wsl' : process.platform), () => process.platform),
           // Behind the bridge, the page is on a phone and knows it. On the Mac it learns whether a
           // phone is paired, so it keeps its place for the phone only when there is one.
           device: viaPhone ? { kind: phoneKind } : null,

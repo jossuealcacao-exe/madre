@@ -13616,7 +13616,8 @@ function remedyDetail(host, condition, { agent = null, hintAgent = null } = {}) 
     for (const id of Object.keys(condition.perAgent)) {
       const label = paint(el('p', 'per-agent'), id);
       label.append(el('b', null, `@${id}`));
-      terminal.rows.append(label, commandBlock(condition.perAgent[id][mother.platform] ?? []));
+      // WSL and Windows read Linux's commands (troubleshooting.js, fixesFor); the base lines were said above.
+      terminal.rows.append(label, commandBlock(condition.perAgent[id][mother.platform] ?? (['wsl', 'win32'].includes(mother.platform) ? condition.perAgent[id].linux : null) ?? []));
     }
   }
   const why = el('details', 'sx-more remedy-why');

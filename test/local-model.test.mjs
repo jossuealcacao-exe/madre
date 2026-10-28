@@ -48,7 +48,7 @@ test('local model: the slow test tells the room, and only when it really ran', a
 });
 
 test('local model: MU/TH/UR can explain the difference between running and being of use', async () => {
-  const { CONDITIONS, diagnose, PLATFORMS } = await import('../public/troubleshooting.js');
+  const { CONDITIONS, diagnose, fixesFor, PLATFORMS } = await import('../public/troubleshooting.js');
   const one = CONDITIONS.find((condition) => condition.id === 'local-ready');
   assert.ok(one, 'the catalogue cannot answer the question the room now raises');
   assert.match(one.diagnosis, /Running is not the same as being of use/);
@@ -58,5 +58,5 @@ test('local model: MU/TH/UR can explain the difference between running and being
     assert.ok(diagnose(asked).some((condition) => condition.id === 'local-ready'), `"${asked}" does not reach it`);
   }
   // And it answers on both systems this room is tested on, like everything else in there.
-  for (const platform of Object.keys(PLATFORMS)) assert.ok(one.fixes[platform]?.length, `no answer for ${platform}`);
+  for (const platform of Object.keys(PLATFORMS)) assert.ok(fixesFor(one, platform).length, `no answer for ${platform}`);
 });

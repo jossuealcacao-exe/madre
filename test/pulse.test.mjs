@@ -1160,14 +1160,19 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.deepEqual(ids('gemini is not installed on this computer.', 'gemini'), ['not-installed']);
   assert.deepEqual(ids('listen EADDRINUSE: address already in use 127.0.0.1:4317'), ['port-in-use']);
   assert.deepEqual(ids('everything is fine'), []);
-  // Two platforms, the two MADRE is tested on. Every condition answers on both, because a
-  // remedy that exists for one shell and not the other is a dead end for half the readers.
-  assert.deepEqual(Object.keys(PLATFORMS), ['darwin', 'linux']);
+  // The two platforms MADRE is tested on, and since 2026-10-28 (D-001) WSL, which is Linux inside
+  // Windows, and Windows, which says its version arrives in 1.1 and points to WSL. Every condition
+  // answers on all of them, because a remedy that exists for one shell and not another is a dead end.
+  assert.deepEqual(Object.keys(PLATFORMS), ['darwin', 'linux', 'wsl', 'win32']);
   for (const condition of CONDITIONS) {
-    for (const platform of ['darwin', 'linux']) {
+    for (const platform of Object.keys(PLATFORMS)) {
       assert.ok(fixesFor(condition, platform).length > 0, `${condition.id} has a ${platform} remedy`);
     }
   }
+  // WSL reads Linux's commands; Windows says first where they run, unless the card has its own.
+  assert.deepEqual(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'wsl'), fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'linux'));
+  assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'win32')[0], /arrives in version 1\.1/);
+  assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'windows-use-wsl'), 'win32').join('\n'), /wsl --install/);
   assert.deepEqual(fixesFor(CONDITIONS.find((c) => c.id === 'not-installed'), 'linux', 'gemini'), ['npm install -g @google/gemini-cli']);
   assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'linux').join('\n'), /ss -ltnp/);
   assert.match(fixesFor(CONDITIONS.find((c) => c.id === 'port-in-use'), 'darwin').join('\n'), /lsof/);
