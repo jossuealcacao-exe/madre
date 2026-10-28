@@ -1146,3 +1146,42 @@ test('Home says why an install or a sign-in failed, in plain words, where it hap
   assert.match(es, /'Another install is running\. Wait for it to finish and try again\.': 'Ya hay otra instalación en curso/);
   assert.match(es, /'It could not download: there is no internet connection, or something on this network blocked it\. Check your connection and try again\.': 'No se pudo descargar/);
 });
+
+test('the welcome of 1.0.6: seven steps in place of the bonjour, kept in ~/.pulse, each adapted to where MADRE runs', async () => {
+  const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const tour = await readFile(new URL('../public/tour.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  const { WELCOME_STEPS: kept } = await import('../src/tour.mjs');
+  // The page and the server name the same steps, in the same order.
+  const said = welcome.match(/export const WELCOME_STEPS = (\[[^\]]+\]);/)[1].replace(/'/g, '"');
+  assert.deepEqual(JSON.parse(said), kept);
+  // Someone new in Home meets it in place of the bonjour; the three steps of 1.0 are gone.
+  assert.match(tour, /if \(page === 'home' && path\(\) === 'new' && welcome\?\.instead\) \{/);
+  assert.match(home, /welcome: \{ instead: true, needed: /);
+  assert.doesNotMatch(home, /function openWizard\(/);
+  assert.match(server, /'\/welcome\.js'/, 'served like every module of the page');
+  // Where the person is goes to the server, and an unfinished welcome waits in «Needs you».
+  assert.match(welcome, /const answer = await post\('\/api\/tour', \{ welcome: change \}\);/);
+  assert.match(home, /if \(welcomeSeen\?\.at && !welcomeSeen\.finished\) \{/);
+  // Each place has its own way: Windows' Ollama from WSL, a code over SSH, a virtual machine said.
+  assert.match(welcome, /const suggested = windows \? `http:\/\/\$\{env\.wsl\?\.windowsHost \?\? 'localhost'\}:11434` : '';/);
+  assert.match(welcome, /if \(env\.place === 'ssh' && agent\.detected && !state\.ok && \(agent\.login\?\.methods \?\? \[\]\)\.some\(\(method\) => method\.id === 'device'\)\)/);
+  assert.match(welcome, /if \(env\.vm && env\.vm !== 'macOS'\) notes\.push/);
+  // MADRE never asks for a password nor runs a downloaded installer: on Linux the line is copied.
+  assert.match(welcome, /const OLLAMA_SCRIPT = 'curl -fsSL https:\/\/ollama\.com\/install\.sh \| sh';/);
+  assert.match(welcome, /box\.append\(el\('p', 'wl-muted', why\), copyLine\(OLLAMA_SCRIPT\)\);/);
+  assert.doesNotMatch(welcome, /post\('\/api\/[^']*', \{[^}]*password/i);
+  // The download's share is the model's own piece, the first Ollama names.
+  const PULL_LINE = new RegExp(welcome.match(/const PULL_LINE = \/(.+)\/;/)[1]);
+  assert.deepEqual(PULL_LINE.exec('pulling 2bada8a74506 · 45%').slice(1), ['2bada8a74506', '45']);
+  assert.equal(PULL_LINE.exec('pulling manifest'), null);
+  // Training is made ready here and switched on in a project's Settings (B-7).
+  assert.match(welcome, /you turn it on in your project\\'s Settings › Memory › Train your own AI/);
+  // Its own window, the chat shell's grounds, and no sideways scroll on a phone.
+  assert.match(css, /\.wl-window \{ position: relative; width: min\(980px, 100%\);/);
+  assert.match(css, /@media \(max-width: 760px\) \{\n  \.wl-window \{ grid-template-columns: 1fr;/);
+  // Settings keeps the address of another computer's Ollama.
+  assert.match(home, /sxRow\(block, t\('Ollama address'\),/);
+});

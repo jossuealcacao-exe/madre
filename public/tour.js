@@ -247,6 +247,14 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     if (fresh?.state) state = fresh.state;
     if (!fresh?.owed) return false;
     if (heldElsewhere(fresh.state)) { elsewhere(); return false; }
+    // Someone new in Home meets the welcome itself (2026-10-28, public/welcome.js), with no bonjour
+    // before it to put off: it is what leaves MADRE ready, and its last step leads to the chapters.
+    if (page === 'home' && path() === 'new' && welcome?.instead) {
+      await keep({ path: 'new', bonjour: true });
+      void fetch('/api/whats-new/seen', { method: 'POST' }).catch(() => null);
+      welcome.open(() => openChapters('home'));
+      return true;
+    }
     showBonjour();
     return true;
   }

@@ -32,7 +32,14 @@ export async function detectEnvironment({ platform = process.platform, env = pro
   if (platform === 'linux') {
     const kernel = await read('/proc/version').catch(() => '');
     if (env.WSL_DISTRO_NAME || /microsoft/i.test(kernel)) wsl = { distro: env.WSL_DISTRO_NAME || null, version: /wsl2|microsoft-standard/i.test(kernel) ? 2 : 1 };
+    // Where Windows answers from inside WSL 2: the nameserver WSL writes for itself is Windows. The
+    // welcome offers it as the address of an Ollama installed in Windows.
+    if (wsl) wsl.windowsHost = String(await read('/etc/resolv.conf').catch(() => '')).match(/^nameserver\s+(\d+\.\d+\.\d+\.\d+)\s*$/m)?.[1] ?? null;
   }
+  // The system's own name for itself, as a person would read it: «Ubuntu 24.04.1 LTS», «macOS 26.0».
+  let name = null;
+  if (platform === 'linux') name = String(await read('/etc/os-release').catch(() => '')).match(/^PRETTY_NAME="?([^"\n]+)"?$/m)?.[1] ?? null;
+  else if (platform === 'darwin') { const version = (await run('sw_vers', ['-productVersion']))?.trim(); name = version ? `macOS ${version}` : 'macOS'; }
   // Reached from another computer: the variables sshd leaves in every session.
   const pair = String(env.SSH_CONNECTION ?? '').trim().split(/\s+/);
   let user = null;
@@ -57,7 +64,7 @@ export async function detectEnvironment({ platform = process.platform, env = pro
   const disk = await space(home).then((info) => ({ freeGb: gb(Number(info.bavail) * Number(info.bsize)), totalGb: gb(Number(info.blocks) * Number(info.bsize)) })).catch(() => null);
   // One word for the place, the one that changes most what the person has to do.
   const place = ssh ? 'ssh' : wsl ? 'wsl' : container ? 'container' : vm ? 'vm' : 'local';
-  return { os, platform, place, wsl, vm, container: Boolean(container), ssh, display: ssh ? false : display, disk };
+  return { os, platform, name, place, wsl, vm, container: Boolean(container), ssh, display: ssh ? false : display, disk };
 }
 
 let measured = null;

@@ -95,3 +95,84 @@ test('local AI per project: Home sets the mode, the project moves its own switch
     for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
   }
 });
+
+// The welcome of 1.0.6 (2026-10-28): the AI of another computer — or Windows' own, from inside WSL
+// — is tried before it is kept, then every reading goes there; and a first word with the model.
+test('local AI: another computer\'s Ollama is tried before it is kept, and the welcome\'s «try it» answers with its model', async () => {
+  const { createServer } = await import('node:http');
+  const { probeOllama } = await import('../src/ollama.mjs');
+  const asked = [];
+  const fake = createServer((request, response) => {
+    asked.push(`${request.method} ${request.url}`);
+    let body = '';
+    request.on('data', (chunk) => { body += chunk; });
+    request.on('end', () => {
+      response.setHeader('content-type', 'application/json');
+      if (request.url === '/api/tags') return response.end(JSON.stringify({ models: [{ name: 'qwen2.5:1.5b', size: 986e6, details: { family: 'qwen2' } }] }));
+      if (request.url === '/api/version') return response.end(JSON.stringify({ version: '0.12.6' }));
+      if (request.url === '/api/chat') {
+        const said = JSON.parse(body);
+        return response.end(JSON.stringify({ message: { content: `¡Hola! (${said.model}: ${said.messages.at(-1).content})` } }));
+      }
+      response.statusCode = 404;
+      response.end('{}');
+    });
+  });
+  const fakePort = await new Promise((resolve) => fake.listen(0, '127.0.0.1', () => resolve(fake.address().port)));
+  const state = await mkdtemp(join(tmpdir(), 'madre-local-host-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-local-host-project-'));
+  const before = { pulse: process.env.PULSE_OLLAMA_HOST, ollama: process.env.OLLAMA_HOST };
+  delete process.env.PULSE_OLLAMA_HOST;
+  delete process.env.OLLAMA_HOST;
+  let server;
+  try {
+    // The probe the room uses reads the address where every reading does: the environment. Until
+    // one is kept, this computer has no Ollama (the suite never reaches the real one on 11434).
+    const nothing = { running: false, host: null, models: [], embedModel: null, chatModel: null };
+    ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: [], invokers: {}, testMode: true, ollamaProbe: async () => (process.env.PULSE_OLLAMA_HOST ? probeOllama() : nothing) }));
+    const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+    const page = { origin: `http://127.0.0.1:${port}` };
+    const call = (path, payload, headers = page) => fetch(`http://127.0.0.1:${port}${path}`, payload === undefined ? { headers } : { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(payload) })
+      .then(async (response) => ({ status: response.status, body: await response.json() }));
+    const config = async () => JSON.parse(await readFile(join(state, 'config.json'), 'utf8').catch(() => '{}'));
+
+    // Only MADRE's own page: an address chosen by any other would send the memory's text there.
+    assert.equal((await call('/api/local-ai/host', { host: `127.0.0.1:${fakePort}` }, { origin: 'https://example.com' })).status, 403);
+    assert.equal((await call('/api/local-ai/host', { host: `127.0.0.1:${fakePort}` }, {})).status, 403, 'kept with no page at all');
+    assert.equal((await call('/api/local-ai/host', { host: `127.0.0.1:${fakePort}` }, { ...page, 'sec-fetch-site': 'cross-site' })).status, 403);
+    assert.equal((await call('/api/local-ai/try', { text: 'hola' }, { origin: 'https://example.com' })).status, 403);
+    assert.equal((await config()).ollama, undefined, 'a refused address was kept');
+    assert.equal((await call('/api/local-ai/host', { host: 'not an address at all' })).status, 400);
+    // Nothing answers there: nothing is kept, and it says where it looked.
+    const dead = await call('/api/local-ai/host', { host: '127.0.0.1:9' });
+    assert.equal(dead.status, 422);
+    assert.match(dead.body.error, /127\.0\.0\.1:9/);
+    assert.equal((await config()).ollama, undefined);
+    assert.equal((await call('/api/local-ai/try', { text: 'hola' })).status, 412, 'answered with no model');
+
+    // It answers: kept with Ollama's port when none was written, and every reading goes there.
+    const kept = await call('/api/local-ai/host', { host: `127.0.0.1:${fakePort}` });
+    assert.equal(kept.status, 200);
+    assert.equal(kept.body.host, `http://127.0.0.1:${fakePort}`);
+    assert.deepEqual(kept.body.models, ['qwen2.5:1.5b']);
+    assert.equal((await config()).ollama.host, `http://127.0.0.1:${fakePort}`);
+    assert.equal(process.env.PULSE_OLLAMA_HOST, `http://127.0.0.1:${fakePort}`);
+    const tried = await call('/api/local-ai/try', { text: 'hola' });
+    assert.equal(tried.status, 200);
+    assert.equal(tried.body.model, 'qwen2.5:1.5b');
+    assert.match(tried.body.text, /^¡Hola! \(qwen2\.5:1\.5b: hola\)$/);
+    assert.equal((await call('/api/local-ai/host', { host: `127.0.0.1:${fakePort}` }, { ...page, 'x-madre-device': 'phone-1' })).status, 403, 'changed from a phone');
+
+    // Empty puts it back on this computer.
+    const back = await call('/api/local-ai/host', { host: '' });
+    assert.equal(back.status, 200);
+    assert.equal(back.body.host, null);
+    assert.equal((await config()).ollama.host, null);
+    assert.equal(process.env.PULSE_OLLAMA_HOST, undefined);
+  } finally {
+    if (server) await new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve()); });
+    await new Promise((resolve) => fake.close(() => resolve()));
+    for (const [name, value] of [['PULSE_OLLAMA_HOST', before.pulse], ['OLLAMA_HOST', before.ollama]]) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
+    for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -24,14 +24,15 @@ const GB = 1024 ** 3;
 // One family, every size, so a recommendation is a step up or down a single ladder and a model
 // trained at one size is the same model at another. Qwen2.5 Instruct: multilingual (it answers in
 // the human's language), open weights, an Ollama tag and an MLX 4-bit build at every size.
+// `sizeGb`: what Ollama downloads for it, as its library lists it (the welcome says it before).
 export const MODEL_TIERS = [
-  { id: '0.5b', params: 0.5, label: 'Qwen2.5 0.5B', ollama: 'qwen2.5:0.5b', base: 'Qwen/Qwen2.5-0.5B-Instruct', runGb: 4, trainGb: 8 },
-  { id: '1.5b', params: 1.5, label: 'Qwen2.5 1.5B', ollama: 'qwen2.5:1.5b', base: 'Qwen/Qwen2.5-1.5B-Instruct', runGb: 6, trainGb: 12 },
-  { id: '3b', params: 3, label: 'Qwen2.5 3B', ollama: 'qwen2.5:3b', base: 'mlx-community/Qwen2.5-3B-Instruct-4bit', quantized: true, runGb: 8, trainGb: 16 },
-  { id: '7b', params: 7, label: 'Qwen2.5 7B', ollama: 'qwen2.5:7b', base: 'mlx-community/Qwen2.5-7B-Instruct-4bit', quantized: true, runGb: 12, trainGb: 24 },
-  { id: '14b', params: 14, label: 'Qwen2.5 14B', ollama: 'qwen2.5:14b', base: 'mlx-community/Qwen2.5-14B-Instruct-4bit', quantized: true, runGb: 20, trainGb: 36 },
-  { id: '32b', params: 32, label: 'Qwen2.5 32B', ollama: 'qwen2.5:32b', base: 'mlx-community/Qwen2.5-32B-Instruct-4bit', quantized: true, runGb: 36, trainGb: 64 },
-  { id: '72b', params: 72, label: 'Qwen2.5 72B', ollama: 'qwen2.5:72b', base: 'mlx-community/Qwen2.5-72B-Instruct-4bit', quantized: true, runGb: 64, trainGb: 128 },
+  { id: '0.5b', sizeGb: 0.4, params: 0.5, label: 'Qwen2.5 0.5B', ollama: 'qwen2.5:0.5b', base: 'Qwen/Qwen2.5-0.5B-Instruct', runGb: 4, trainGb: 8 },
+  { id: '1.5b', sizeGb: 1, params: 1.5, label: 'Qwen2.5 1.5B', ollama: 'qwen2.5:1.5b', base: 'Qwen/Qwen2.5-1.5B-Instruct', runGb: 6, trainGb: 12 },
+  { id: '3b', sizeGb: 1.9, params: 3, label: 'Qwen2.5 3B', ollama: 'qwen2.5:3b', base: 'mlx-community/Qwen2.5-3B-Instruct-4bit', quantized: true, runGb: 8, trainGb: 16 },
+  { id: '7b', sizeGb: 4.7, params: 7, label: 'Qwen2.5 7B', ollama: 'qwen2.5:7b', base: 'mlx-community/Qwen2.5-7B-Instruct-4bit', quantized: true, runGb: 12, trainGb: 24 },
+  { id: '14b', sizeGb: 9, params: 14, label: 'Qwen2.5 14B', ollama: 'qwen2.5:14b', base: 'mlx-community/Qwen2.5-14B-Instruct-4bit', quantized: true, runGb: 20, trainGb: 36 },
+  { id: '32b', sizeGb: 20, params: 32, label: 'Qwen2.5 32B', ollama: 'qwen2.5:32b', base: 'mlx-community/Qwen2.5-32B-Instruct-4bit', quantized: true, runGb: 36, trainGb: 64 },
+  { id: '72b', sizeGb: 47, params: 72, label: 'Qwen2.5 72B', ollama: 'qwen2.5:72b', base: 'mlx-community/Qwen2.5-72B-Instruct-4bit', quantized: true, runGb: 64, trainGb: 128 },
 ];
 
 // Other families a person may choose instead (2026-10-20). Qwen2.5 stays the ladder MADRE
@@ -136,7 +137,7 @@ export function modelCatalog(fit) {
   const usable = fit?.usableGb ?? 0;
   const accelerated = Boolean(fit?.accelerated);
   const best = fit?.recommended?.run?.ollama ?? null;
-  const qwen = MODEL_TIERS.map((tier) => ({ ollama: tier.ollama, label: tier.label, maker: 'Alibaba', params: tier.params, runGb: tier.runGb, note: 'Good in many languages. The family MADRE recommends and trains.' }));
+  const qwen = MODEL_TIERS.map((tier) => ({ ollama: tier.ollama, label: tier.label, maker: 'Alibaba', params: tier.params, runGb: tier.runGb, sizeGb: tier.sizeGb, note: 'Good in many languages. The family MADRE recommends and trains.' }));
   return [...qwen, ...OTHER_MODELS].map((model) => ({
     ...model,
     run: usable >= model.runGb ? (accelerated ? 'yes' : 'slow') : 'no',

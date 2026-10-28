@@ -18,7 +18,42 @@ test('a pasted key is checked before anything is written, and only the CLIs that
   assert.equal(keyPlanFor('claude').writesTo, '~/.claude/settings.json');
   assert.match(keyPlanFor('claude').note, /every Claude Code|Claude Code uses on this computer/, 'a key there is the whole machine\'s, and that is said');
   assert.deepEqual(keyPlanFor('opencode').providers.map((provider) => provider.id), OPENCODE_PROVIDERS.map((provider) => provider.id));
-  assert.equal(keyPlanFor('codex'), null, 'Codex signs in with a click');
+  // Codex takes an OpenAI key too (2026-10-28): handed to its own CLI, which keeps it.
+  assert.deepEqual([keyPlanFor('codex').writesTo, keyPlanFor('codex').keyUrl], ['~/.codex/auth.json', 'https://platform.openai.com/api-keys']);
+  assert.match(keyPlanFor('codex').note, /MADRE keeps no copy/);
+});
+
+test('Codex: the key goes to its own CLI on stdin, never in its arguments, and a refusal puts its file back', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'pulse-key-codex-'));
+  const KEY_OPENAI = 'sk-proj-not-a-real-key-000000000000';
+  const before = process.env.CODEX_HOME;
+  delete process.env.CODEX_HOME;
+  try {
+    const file = join(home, '.codex', 'auth.json');
+    await mkdir(join(home, '.codex'), { recursive: true });
+    await writeFile(file, '{"tokens":"the account it had"}');
+    const runs = [];
+    // What `codex login --with-api-key` does: reads the key from stdin and writes its own file.
+    const codex = (code) => async (executable, args, input) => { runs.push({ executable, args, input }); await writeFile(file, JSON.stringify({ OPENAI_API_KEY: input })); return { code, out: code ? 'Error: invalid key\n' : 'Successfully logged in\n' }; };
+    const refused = await applyKey({ agent: 'codex', key: KEY_OPENAI, home, executable: '/x/codex', run: codex(1), probe: async () => assert.fail('asked who is signed in after a refusal') });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /did not take the key \(Error: invalid key\)[\s\S]*Nothing was changed/);
+    assert.equal(await readFile(file, 'utf8'), '{"tokens":"the account it had"}', 'the account it had is back');
+    assert.deepEqual(runs[0], { executable: '/x/codex', args: ['login', '--with-api-key'], input: KEY_OPENAI });
+    assert.ok(!runs[0].args.some((arg) => arg.includes(KEY_OPENAI)), 'the key never shows in the process list');
+
+    const done = await applyKey({ agent: 'codex', key: KEY_OPENAI, home, run: codex(0), probe: async () => ({ state: 'signed-in', detail: 'via API key' }) });
+    assert.deepEqual(done, { ok: true, detail: 'via API key' });
+    assert.equal(runs[1].executable, 'codex', 'Codex, not another agent, when no path is given');
+    // Its CLI took it, but it still reads as signed out: put back too.
+    await writeFile(file, '{"tokens":"again"}');
+    const odd = await applyKey({ agent: 'codex', key: KEY_OPENAI, home, run: codex(0), probe: async () => ({ state: 'signed-out' }) });
+    assert.equal(odd.ok, false);
+    assert.equal(await readFile(file, 'utf8'), '{"tokens":"again"}');
+  } finally {
+    if (before === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = before;
+    await rm(home, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
 });
 
 test('Claude: the key goes into the settings its own CLI reads, and everything else there survives', async () => {
@@ -121,8 +156,9 @@ test('the key route: this computer only, and the room records that a key was set
       agents: [
         { id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/fake/gemini', version: '1' },
         { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake/codex', version: '1' },
+        { id: 'cursor', label: 'Cursor', detected: true, ready: true, adapter: 'cursor-readonly', path: '/fake/cursor-agent', version: '1' },
       ],
-      probe: async () => ({ gemini: { state: 'signed-in', detail: 'via API key' }, codex: { state: 'signed-out', detail: 'not logged in' } }),
+      probe: async () => ({ gemini: { state: 'signed-in', detail: 'via API key' }, codex: { state: 'signed-out', detail: 'not logged in' }, cursor: { state: 'signed-out' } }),
     });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -130,9 +166,14 @@ test('the key route: this computer only, and the room records that a key was set
     try {
       const state = await fetch(`${base}/api/state`).then((response) => response.json());
       assert.equal(state.agents.find((agent) => agent.id === 'gemini').key.writesTo, '~/.gemini/.env', 'the bridge knows it can offer a key here');
-      assert.equal(state.agents.find((agent) => agent.id === 'codex').key, null);
+      assert.equal(state.agents.find((agent) => agent.id === 'codex').key.writesTo, '~/.codex/auth.json', 'Codex takes an OpenAI key too');
+      assert.equal(state.agents.find((agent) => agent.id === 'cursor').key, null);
 
-      assert.equal((await send('codex', { key: KEY })).status, 400, 'an agent that signs in with a click takes no key');
+      assert.equal((await send('cursor', { key: KEY })).status, 400, 'an agent that signs in with a click takes no key');
+      // Codex is handed the key by its own CLI; one that is not there changes nothing.
+      const noCodex = await send('codex', { key: KEY });
+      assert.equal(noCodex.status, 422);
+      assert.match((await noCodex.json()).error, /Codex did not take the key[\s\S]*Nothing was changed/);
       assert.equal((await send('gemini', { key: 'tiny' })).status, 422);
 
       const ok = await send('gemini', { key: KEY });

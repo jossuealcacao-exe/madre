@@ -22,6 +22,7 @@ import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { mapKeys, neuralChosen, rememberNeural } from './neural.js';
 import { openMarket } from './market-view.js';
+import { openWelcome, welcomeOpen, WELCOME_STEPS } from './welcome.js';
 import { loadMarket } from './market.js';
 
 const $ = (id) => document.getElementById(id);
@@ -48,7 +49,8 @@ let timer = 0;
 let arming = 0;
 let data = null;
 let macro = null;              // the macroverse, while it is open
-let welcomed = false;          // the first-run wizard was offered this visit
+let welcomed = false;          // the welcome was offered this visit (public/welcome.js)
+let welcomeSeen = null;         // where the welcome is (src/tour.mjs, `welcome`), as last saved
 let agentsSeen = null;         // what /api/settings said of the agents, last time it was asked
 let localSeen = null;          // what /api/salas/local-ai said: the mode and which projects use the local AI
 let versionSeen = null;        // what /api/version said of MADRE, last time it was asked
@@ -487,7 +489,9 @@ function draw() {
   drawBishop(data.rooms.find((room) => room.id === data.salas) ?? null);
   drawWaiting();
   drawProjects(all);
-  if (!all.length && !welcomed) { welcomed = true; void homeTour.loaded.then((answer) => { if (!answer?.owed) openWizard(); }); }
+  // An empty Home opens the welcome where it was left, or at the project when it was finished
+  // without one; someone new meets it in place of the bonjour (public/tour.js).
+  if (!all.length && !welcomed) { welcomed = true; void homeTour.loaded.then((answer) => { if (!answer?.owed) openHomeWelcome({ at: answer?.state?.welcome?.finished ? 'project' : null }); }); }
   welcomeHome();
   const working = open.some((room) => room.glance?.working?.length);
   ui.stop.hidden = !working;
@@ -760,6 +764,11 @@ function attentionItems() {
   for (const agent of (agentsSeen?.agents ?? []).filter((one) => one.id !== 'madre')) {
     const state = agentState(agent, agentsSeen);
     if (!state.ok) items.push({ tone: state.key, words: `${agent.label ?? agent.id} · ${state.words}`, hint: t('Connected once, every project uses it.'), act: () => openSettings('agents'), go: t('Connect') });
+  }
+  // The welcome left halfway: where it stopped, and the way back to it.
+  if (welcomeSeen?.at && !welcomeSeen.finished) {
+    const n = WELCOME_STEPS.indexOf(welcomeSeen.at) + 1;
+    items.unshift({ tone: 'wait', words: t('MADRE is not ready yet.'), hint: t('The welcome stopped at step {n} of {total}.', { n, total: WELCOME_STEPS.length }), act: () => void openHomeWelcome(), go: t('Continue') });
   }
   const soon = Date.now() + 3 * 86400000;
   for (const enlace of data?.enlaces ?? []) {
@@ -2047,7 +2056,8 @@ applyLayout();
 // THE WELCOME OF 1.0 (public/tour.js): the bonjour the first time, the chapters after it, the pill
 // that waits in the bar, `?` for the gestures, and the hint on Connections. In Home, «Take me
 // there» opens what lives here; for what lives inside a project it opens the one open most
-// recently, if any is. A new person is handed to the wizard (agents, projects, open) first.
+// recently, if any is. A new person meets the welcome (public/welcome.js) in place of the bonjour,
+// and its last step leads to the chapters.
 const agentsReady = () => (agentsSeen?.agents ?? []).some((agent) => agent.id !== 'madre' && agentState(agent, agentsSeen).ok);
 const intoAProject = () => {
   const room = data ? projectsInOrder().open[0] : null;
@@ -2057,8 +2067,8 @@ const homeTour = startTour({
   page: 'home',
   pillSlot: $('sm-tour-pill'),
   hidden: () => (data?.phonePreview ? [] : ['phone']),
-  ready: () => Boolean(data) && !wizard && !sheet,
-  welcome: { needed: () => !projectsInOrder().all.length || !agentsReady(), open: (then) => { welcomed = true; openWizard({ then }); } },
+  ready: () => Boolean(data) && !welcomeOpen() && !sheet,
+  welcome: { instead: true, needed: () => !projectsInOrder().all.length || !agentsReady(), open: (then) => openHomeWelcome({ then }) },
   onProjects: () => void refresh(),
   go: {
     get project() { return intoAProject(); },
@@ -2116,6 +2126,8 @@ function welcomeHome() {
   if (welcomeAsked) return;
   welcomeAsked = true;
   void homeTour.loaded.then(async (answer) => {
+    welcomeSeen = answer?.state?.welcome ?? null;
+    drawAttention();
     // Someone new meets the bonjour and the chapters on this same visit: Home's cards come after
     // them, once Home is quiet again, not only on the next visit as they did (2026-10-20).
     // Someone who met MADRE just now (src/tour.mjs, `met`) is walked through Home once the bonjour
@@ -2630,7 +2642,7 @@ async function refresh({ polled = false } = {}) {
     const mine = chosenHere === 'es' || chosenHere === 'en' ? chosenHere : browserLanguage();
     if (await post('/api/language', { language: mine }).then((response) => response?.ok !== false).catch(() => false)) answer.language = mine;
   }
-  if (answer.language && answer.language !== language) { language = setLanguage(answer.language); root.lang = language; translateStatic(); drawAttention(); drawDecisions(); drawWork(); for (const widget of document.querySelectorAll('.sm-widget')) widget.say?.(); homeTour.repaint(); }
+  if (answer.language && answer.language !== language) sayIn(answer.language);
   data = answer;
   // A project that came up after Home stopped waiting is open: its card no longer says it did not.
   for (const room of answer.rooms ?? []) if (room.open) failed.delete(room.id);
@@ -2642,6 +2654,25 @@ async function refresh({ polled = false } = {}) {
   drawnRooms = said;
   drawnRoomsAt = Date.now();
   draw();
+}
+
+// Home in another language, without a reload: what it says now, and every widget and the tour's pill.
+function sayIn(code) {
+  language = setLanguage(code);
+  root.lang = language;
+  translateStatic();
+  drawAttention();
+  drawDecisions();
+  drawWork();
+  for (const widget of document.querySelectorAll('.sm-widget')) widget.say?.();
+  homeTour.repaint();
+}
+// Chosen in the welcome's first step: kept for every project (as Settings › Language keeps it), and
+// said at once.
+async function adoptLanguage(code) {
+  try { localStorage.setItem('pulse.language', code); } catch { /* no storage */ }
+  await post('/api/language', { language: code });
+  sayIn(code);
 }
 
 async function startRoom(room, { enter = false } = {}) {
@@ -4073,7 +4104,7 @@ const TROUBLE_WORDS = {
     unknown: () => t('The connection did not finish.'),
   },
 };
-function agentsPanel({ onPaint = null, compact = false } = {}) {
+function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
   const list = el('div', 'sm-agents');
   const lastLine = new Map();   // agent → what its install or sign-in said last
   const trouble = new Map();    // agent → what went wrong last, said in plain words, until it works
@@ -4214,6 +4245,10 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       head.append(mark(agent.id, 34), words, chip, el('span', 'sm-chevron'));
       item.append(head);
       const body = el('div', 'sm-agent-body');
+      // The welcome says first what this agent needs (public/welcome.js): Gemini's key, Cursor's own
+      // installer, a code when MADRE runs on another computer.
+      const why = explain?.(agent, state, answer);
+      if (why) body.append(why);
       // Which account it is signed in with, as its own CLI reports it, and which one it asks for.
       const facts = el('div', 'sm-agent-facts');
       if (agent.detected && agent.version) facts.append(el('code', 'sm-agent-line', `${agent.version}${agent.path ? ` · ${agent.path}` : ''}`));
@@ -4282,8 +4317,11 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
         }));
         else if (agent.detected && agent.login?.headless) for (const key of doorKeys()) acts.append(key);
       }
-      // Installed by hand in a terminal (its own installer): one press looks for it again.
-      if (!agent.detected && agent.install && !agent.install.command) acts.append(button('sm-btn small', t('Check again'), async (event) => { event.currentTarget.disabled = true; await post('/api/agents/probe'); void paint(); }));
+      // Installed by hand in a terminal (its own installer): one press looks for it again. In the
+      // welcome its line is unfolded, and the key says what the person just did.
+      const byHand = !agent.detected && agent.install && !agent.install.command;
+      if (byHand && compact) openWays.add(agent.id);
+      if (byHand) acts.append(button('sm-btn small', compact ? t('I did it') : t('Check again'), async (event) => { event.currentTarget.disabled = true; await post('/api/agents/probe'); void paint(); }));
       if (acts.childNodes.length) body.append(acts);
       const ask = askBlock(agent);
       if (ask) body.append(ask);
@@ -4384,107 +4422,27 @@ function wizardScene(kind) {
   }
   return scene;
 }
-let wizard = null;
-let wizardThen = null;          // what comes once the wizard closes: the chapters, after a bonjour
-function openWizard({ then = null } = {}) {
-  if (wizard) return;
-  wizardThen = then;
-  wizard = el('dialog', 'sm-sheet sm-wide sm-wizard');
-  const inner = el('div', 'sm-sheet-body');
-  wizard.append(inner);
-  document.body.append(wizard);
-  let step = 0;
-  let panel = null;
-  let scene = null;
-  const steps = [t('Agents'), t('Projects'), t('Open')];
-  const KINDS_OF_STEP = ['agents', 'projects', 'open'];
-  const stop = () => { panel?.stop(); panel = null; };
-  const frame = (title, note, body, actions, { back = false } = {}) => {
-    stop();
-    inner.replaceChildren();
-    const head = el('header', 'sm-sheet-head');
-    const dots = el('ol', 'sm-steps');
-    steps.forEach((name, index) => { const item = el('li', index === step ? 'on' : index < step ? 'done' : null, name); dots.append(item); });
-    head.append(dots, closeKey(() => wizard.close()));
-    scene = wizardScene(KINDS_OF_STEP[step]);
-    const page = el('div', `sm-step${back ? ' back' : ''}`);
-    page.append(el('h3', null, title));
-    if (note) page.append(el('p', 'hint', note));
-    page.append(body, actions);
-    inner.append(head, scene, page);
-  };
-  async function agentsStep(options) {
-    const actions = el('div', 'actions');
-    const next = button('sm-btn primary', t('Continue'), () => { step = 1; projectsStep(); });
-    actions.append(next);
-    const fresh = agentsPanel({
-      compact: true,
-      onPaint: (ready, answer) => {
-        next.textContent = ready ? t('Continue') : t('Continue without agents');
-        // The scene lights the agents that are connected, and their wire to MADRE.
-        for (const agent of answer.agents) {
-          const on = agentState(agent, answer).ok;
-          scene?.querySelector(`.sm-scene-node[data-agent="${agent.id}"]`)?.classList.toggle('on', on);
-          scene?.querySelector(`.sm-wire[data-agent="${agent.id}"]`)?.classList.toggle('on', on);
-        }
-      },
-    });
-    frame(t('Connect your agents'), t('Agents are the AI tools that write code, such as Claude Code or Codex. MADRE works with the ones already on this computer: each one is connected once, and every project uses it.'), fresh.node, actions, options);
-    panel = fresh;
-    await fresh.paint();
-    fresh.live();
-  }
-  function projectsStep(options) {
-    // What is chosen here is added on the way to the next step: one key, not two.
-    const actions = el('div', 'actions');
-    const next = button('sm-btn primary', t('Continue'), async () => {
-      if (picker.count()) {
-        next.disabled = true;
-        const added = await picker.add();
-        next.disabled = false;
-        if (!added) return;
-      }
-      step = 2;
-      openStep();
-    });
-    const picker = projectPicker({ withAdd: false, onChange: (n) => { next.textContent = n ? t('Add and continue') : t('Continue'); } });
-    actions.append(button('sm-btn', t('Back'), () => { step = 0; void agentsStep({ back: true }); }), next);
-    frame(t('Add your projects'), t('A project is a folder you work in. Choose yours: adding them does not open them; in the next step you pick which to open.'), picker.node, actions, options);
-  }
-  function openStep() {
-    const projects = (data?.rooms ?? []).filter((room) => room.id !== data?.salas);
-    const chosen = new Set();
-    const pages = foldPages({ snug: true });
-    const list = el('div', 'sm-picker');
-    const foot = el('div', 'sm-picker-foot');
-    foot.append(pages.pager);
-    list.append(pages.grid, foot);
-    pages.show(projects, {
-      draw: (room) => foldTile({
-        name: room.name,
-        path: room.root ?? '',
-        note: room.open ? t('Already open') : null,
-        checked: Boolean(room.open) || chosen.has(room.id),
-        known: Boolean(room.open),
-        onToggle: (on) => { if (on) chosen.add(room.id); else chosen.delete(room.id); },
-      }),
-      empty: () => t('No projects yet. You can add them from Home whenever you like.'),
-    });
-    const actions = el('div', 'actions');
-    const go = button('sm-btn primary', t('Done'), async () => {
-      go.disabled = true;
-      for (const id of chosen) {
-        go.textContent = t('Opening {name}…', { name: projects.find((room) => room.id === id)?.name ?? id });
-        await startRoom({ id });
-      }
-      wizard.close();
-    });
-    actions.append(button('sm-btn', t('Back'), () => { step = 1; projectsStep({ back: true }); }), go);
-    frame(t('Open what you will use'), t('Each open project runs on this Mac on its own. The rest stay in Home, asleep, until you open them.'), list, actions);
-  }
-  wizard.addEventListener('close', () => { stop(); wizard.remove(); wizard = null; void loadAgents(); const after = wizardThen; wizardThen = null; after?.(); });
-  wizard.showModal();
-  void agentsStep();
+// THE WELCOME (2026-10-28, public/welcome.js): seven steps that leave MADRE ready — agents, an AI on
+// this computer, the memory's search and the first project —, adapted to where MADRE runs. It took
+// the place of the three steps of 1.0 (agents, projects, open). Home hands it its own panel of
+// agents and its picker of folders, so the welcome and Home never say a thing two ways.
+const welcomeHost = {
+  agentsPanel: (options) => agentsPanel(options),
+  projectPicker: (options) => projectPicker(options),
+  closeKey: (onClick) => closeKey(onClick),
+  agentState: (agent, answer) => agentState(agent, answer),
+  projects: () => (data ? projectsInOrder().all : []),
+  openProject: (room) => startRoom(room, { enter: true }),
+  setLanguage: (code) => adoptLanguage(code),
+  openLinks: () => openLinkSheet(),
+  openMarket: () => void openHomeMarket('shop'),
+  chapters: () => homeTour.openChapters('home'),
+  saved: (welcome) => { welcomeSeen = welcome; drawAttention(); },
+  closed: () => { void loadAgents(); void refresh(); },
+};
+function openHomeWelcome({ at = null, then = null } = {}) {
+  welcomed = true;
+  return openWelcome({ at, then, host: welcomeHost });
 }
 
 // ---- AJUSTES, as the room's (app.js, SETTINGS_SECTIONS and its sheets; 2026-10-10): a board of
@@ -4960,6 +4918,30 @@ function drawLocalServer(host) {
   if (!info) { sxRow(block, t('Reading…'), null); return; }
   const recheck = sxButton(t('Check again'), async () => { recheck.disabled = true; await loadLocal({ probe: true }); });
   sxRow(block, t('Server'), info.running ? t('Running · {host}', { host: info.host }) : t('Not running'), recheck);
+  // Where Ollama is (2026-10-28, src/server.mjs, /api/local-ai/host): this computer's, or another
+  // one's — Windows' own from inside WSL, a computer with a graphics card —, tried before it is kept.
+  const local = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(info.host ?? '');
+  const address = el('form', 'sm-agent-key-form sm-ollama-host');
+  const field = el('input');
+  field.type = 'text';
+  field.spellcheck = false;
+  field.autocomplete = 'off';
+  field.value = local ? '' : info.host ?? '';
+  field.placeholder = 'http://192.168.1.40:11434';
+  field.setAttribute('aria-label', t('Ollama address'));
+  const test = sxButton(t('Test'), () => {});
+  test.type = 'submit';
+  const keep = async (host) => {
+    test.disabled = true;
+    const answer = await post('/api/local-ai/host', { host });
+    test.disabled = false;
+    if (!answer.ok) { toast(answer.body?.error ?? t('Home did not answer.')); return; }
+    await loadLocal({ probe: true });
+  };
+  address.addEventListener('submit', (event) => { event.preventDefault(); void keep(field.value.trim()); });
+  address.append(field, test);
+  if (!local) address.append(sxButton(t('This computer'), () => void keep(null)));
+  sxRow(block, t('Ollama address'), local ? t('This computer. Write another computer\'s address to use its AI.') : t('Another computer\'s. Every project uses it.'), address, { stack: true });
   if (!info.running) {
     const step = info.binary
       ? { label: t('Start Ollama'), path: '/api/ollama/start', note: t('Wakes Ollama on this computer. Nothing leaves it.') }
@@ -5066,7 +5048,7 @@ function watchPull(model) {
 function fillProjects(host) {
   const block = sxBlock(host, t('Projects'), t('A project is a folder: MADRE gives it its own conversations and its own memory. Adding it does not open it; you open it from its card.'));
   sxRow(block, t('Add a project'), null, sxButton(t('Add'), () => { settingsSheet?.close(); openAddSheet(); }, { tone: 'primary' }));
-  sxRow(block, t('See the welcome again'), null, sxButton(t('Open'), () => { settingsSheet?.close(); welcomed = true; openWizard(); }));
+  sxRow(block, t('See the welcome again'), t('Agents, AI on your computer, memory and a project, step by step.'), sxButton(t('Open'), () => { settingsSheet?.close(); openHomeWelcome({ at: 'hello' }); }));
   const back = homeTour.path() === 'back';
   sxRow(block, back ? t('The tour of MADRE 1.0') : t('Getting to know MADRE'), back ? t('Everything new, chapter by chapter. ? opens the gestures anywhere.') : t('The essentials, chapter by chapter. ? opens the gestures anywhere.'), sxButton(t('See the tour'), () => { settingsSheet?.close(); homeTour.openChapters(); }));
 }
@@ -5703,8 +5685,8 @@ void loadVersion();
 void loadWork();
 void loadDecisions();
 void loadReminders({ opening: true });
-// `#welcome`: the first-run wizard again, on purpose (to connect an agent or add projects in steps).
-if (location.hash === '#welcome') { history.replaceState(null, '', location.pathname); welcomed = true; openWizard(); }
+// `#welcome`: the welcome again, on purpose (to connect an agent or add projects in steps).
+if (location.hash === '#welcome') { history.replaceState(null, '', location.pathname); openHomeWelcome(); }
 // Sent here for the Macroverso (the key in BISHOP's room): straight into it, on a large screen.
 if (location.hash === '#macroverso' && data && !ui.macro.hidden) { history.replaceState(null, '', location.pathname); ui.macro.click(); }
 // Sent here for the Market (a project's MODULES, or a module offered in the conversation): straight in,

@@ -57,7 +57,13 @@ export const NEWS_LEVEL = '1.0.5';
 const LEVEL = /^\d+\.\d+\.\d+$/;
 const BEFORE = ['1.0'];
 
-const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null });
+// The welcome of 1.0.6 (2026-10-28, docs/private/BIENVENIDA-1.0.6.md): the steps that leave MADRE
+// ready after `npx madre` — agents, local AI, memory, the first project — in their order. Where the
+// person is, what they finished and what they left for later are kept here too, so closing the page
+// halfway brings them back to the same step, from whichever project or port they open next.
+export const WELCOME_STEPS = ['hello', 'machine', 'agents', 'ai', 'memory', 'project', 'ready'];
+const freshWelcome = () => ({ at: null, done: [], skipped: [], finished: null });
+const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null, welcome: freshWelcome() });
 // A tab that shows the bonjour or the chapters says so every few seconds; another tab that finds it
 // said within this long tells the person it is open there, instead of a second bonjour.
 export const HELD_MS = 45 * 1000;
@@ -85,6 +91,12 @@ export async function readTour(stateRoot) {
     held: raw.held && TAB.test(String(raw.held.by ?? '')) && iso(raw.held.at) ? { by: raw.held.by, at: raw.held.at } : null,
     before: BEFORE.includes(raw.before) ? raw.before : null,
     met: LEVEL.test(String(raw.met ?? '')) ? raw.met : null,
+    welcome: {
+      at: WELCOME_STEPS.includes(raw.welcome?.at) ? raw.welcome.at : null,
+      done: Array.isArray(raw.welcome?.done) ? WELCOME_STEPS.filter((id) => raw.welcome.done.includes(id)) : [],
+      skipped: Array.isArray(raw.welcome?.skipped) ? WELCOME_STEPS.filter((id) => raw.welcome.skipped.includes(id)) : [],
+      finished: iso(raw.welcome?.finished),
+    },
   };
 }
 
@@ -131,6 +143,24 @@ async function applyChange(stateRoot, change, now) {
   if (change.hint !== undefined) {
     if (!HINTS.includes(change.hint)) return { error: 'hint' };
     state.hints[change.hint] ??= at;
+  }
+  // The welcome: where the person is, a step done or left for later (one undoes the other), done
+  // with it, or from the start again (Settings › «See the welcome again»).
+  if (change.welcome !== undefined) {
+    const said = change.welcome;
+    if (!said || typeof said !== 'object') return { error: 'welcome' };
+    if (said.reset === true) state.welcome = freshWelcome();
+    const step = (id) => id === undefined || WELCOME_STEPS.includes(id);
+    if (!step(said.at) && said.at !== null) return { error: 'step' };
+    if (!step(said.done) || !step(said.skipped)) return { error: 'step' };
+    if (said.at !== undefined) state.welcome.at = said.at;
+    const mark = (into, other, id) => {
+      state.welcome[other] = state.welcome[other].filter((one) => one !== id);
+      state.welcome[into] = WELCOME_STEPS.filter((one) => one === id || state.welcome[into].includes(one));
+    };
+    if (said.done !== undefined) mark('done', 'skipped', said.done);
+    if (said.skipped !== undefined) mark('skipped', 'done', said.skipped);
+    if (said.finished === true) state.welcome.finished ??= at;
   }
   return writeTour(stateRoot, state);
 }

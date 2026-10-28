@@ -115,6 +115,12 @@ export const AGENT_SETUP = {
     login: ['login'],
     loginNote: 'Opens your browser to sign in with ChatGPT.',
     browser: true,
+    // Two doors (2026-10-28): the browser, which comes back to this computer, and a code typed on
+    // OpenAI's page from any device — the one that works when MADRE runs on another computer (SSH).
+    methods: [
+      { id: 'chatgpt', label: 'ChatGPT account', args: ['login'], note: 'Opens your browser to sign in with your ChatGPT account.' },
+      { id: 'device', label: 'With a code', args: ['login', '--device-auth'], note: 'Gives you a code to type on OpenAI\'s page, from this or any other device. Use it when MADRE runs on another computer.', room: { deviceCode: true } },
+    ],
     // What a newcomer needs to know before choosing this door: which account, and whether
     // there is a way in without paying. `paid: null` means it depends on the provider you pick.
     vendor: 'OpenAI',
@@ -229,7 +235,7 @@ export const AGENT_PACKAGE = {
 };
 // One honest line per agent about the account it needs, for the bridge and for Settings › Agents.
 // Which agents take a pasted key instead of a browser flow.
-export const TAKES_KEY = new Set(['claude', 'gemini', 'opencode']);
+export const TAKES_KEY = new Set(['codex', 'claude', 'gemini', 'opencode']);
 
 // A CLI that signs in through a page and then waits for the code that page gives back. The room
 // reads its output for both: the address to open, and the moment it starts waiting.
@@ -239,7 +245,10 @@ export const looksLikeCodePrompt = (line) => CODE_PROMPT.test(String(line ?? '')
 // The other way round: a device sign-in shows a code to type on the provider's page
 // ("Enter code: 3475-C193"), and the room has to show it, not ask for one.
 export const DEVICE_CODE = /enter\s+(?:the\s+|this\s+)?code:?\s+([A-Z0-9]{4,}(?:-[A-Z0-9]{4,})+)/i;
-export const deviceCodeIn = (line) => String(line ?? '').match(DEVICE_CODE)?.[1] ?? null;
+// Codex prints its code alone on the line under «Enter this one-time code» (2026-10-28): a line that is
+// nothing but a code counts too. Read only from a sign-in that gives a code to type, never elsewhere.
+const CODE_ALONE = /^\s*([A-Z0-9]{4,}(?:-[A-Z0-9]{4,})+)\s*$/;
+export const deviceCodeIn = (line) => String(line ?? '').match(DEVICE_CODE)?.[1] ?? String(line ?? '').match(CODE_ALONE)?.[1] ?? null;
 
 export function accountNoteFor(id) {
   // Said in the room's language when it is asked for, not when this file is imported.

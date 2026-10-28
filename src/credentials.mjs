@@ -11,11 +11,12 @@
 // signed in now. If it is not, the previous files are put back, so a format MADRE guessed wrong
 // leaves nothing behind.
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { t } from './i18n.mjs';
 
 const execFileAsync = promisify(execFile);
 const OWNER_ONLY = 0o600;
@@ -23,9 +24,9 @@ const OWNER_ONLY = 0o600;
 // A key is one opaque token: no spaces, no newlines, and long enough to be one.
 export function normalizeKey(value) {
   const key = String(value ?? '').trim();
-  if (!key) return { ok: false, error: 'Paste the key first.' };
-  if (/\s/.test(key)) return { ok: false, error: 'That does not look like a key: it has spaces or line breaks.' };
-  if (key.length < 12 || key.length > 400) return { ok: false, error: 'That does not look like a key: check you copied all of it and nothing else.' };
+  if (!key) return { ok: false, error: t('Paste the key first.') };
+  if (/\s/.test(key)) return { ok: false, error: t('That does not look like a key: it has spaces or line breaks.') };
+  if (key.length < 12 || key.length > 400) return { ok: false, error: t('That does not look like a key: check you copied all of it and nothing else.') };
   return { ok: true, key };
 }
 
@@ -88,6 +89,18 @@ export async function openCodeKeyProviders({ home = homedir(), env = process.env
 
 // What the room offers for each agent that cannot be signed in with a click.
 export function keyPlanFor(id) {
+  // Codex takes its key through its own login (2026-10-28): `codex login --with-api-key`, the key on
+  // its input, so the file it lands in is Codex's own and written by Codex.
+  if (id === 'codex') {
+    return {
+      agent: 'codex',
+      label: 'OpenAI API key',
+      keyUrl: 'https://platform.openai.com/api-keys',
+      writesTo: '~/.codex/auth.json',
+      note: 'The key is handed to Codex itself, which keeps it in its own file, readable only by you. MADRE keeps no copy. It replaces the account Codex was signed in with, here and in your own terminal.',
+      providers: null,
+    };
+  }
   if (id === 'claude') {
     return {
       agent: 'claude',
@@ -154,13 +167,13 @@ async function applyGeminiKey(key, { home, probe }) {
     if (state?.state !== 'signed-in') {
       await restore(envFile, beforeEnv);
       await restore(settingsFile, beforeSettings);
-      return { ok: false, error: `The key was written but Gemini still reads as ${state?.state ?? 'unknown'}${state?.detail ? ` (${state.detail})` : ''}. Nothing was changed.` };
+      return { ok: false, error: t('The key was written but {agent} still reads as {state}. Nothing was changed.', { agent: 'Gemini', state: `${state?.state ?? 'unknown'}${state?.detail ? ` (${state.detail})` : ''}` }) };
     }
     return { ok: true, detail: state.detail ?? 'via API key' };
   } catch (error) {
     await restore(envFile, beforeEnv);
     await restore(settingsFile, beforeSettings);
-    return { ok: false, error: `The key could not be written: ${error.message}` };
+    return { ok: false, error: t('The key could not be written: {error}', { error: error.message }) };
   }
 }
 
@@ -182,19 +195,45 @@ async function applyClaudeKey(key, { home, probe }) {
     const state = await probe();
     if (state?.state !== 'signed-in') {
       await restore(file, before);
-      return { ok: false, error: `The key was written but Claude still reads as ${state?.state ?? 'unknown'}${state?.detail ? ` (${state.detail})` : ''}. Nothing was changed.` };
+      return { ok: false, error: t('The key was written but {agent} still reads as {state}. Nothing was changed.', { agent: 'Claude', state: `${state?.state ?? 'unknown'}${state?.detail ? ` (${state.detail})` : ''}` }) };
     }
     return { ok: true, detail: state.detail ?? 'via API key' };
   } catch (error) {
     await restore(file, before);
-    return { ok: false, error: `The key could not be written: ${error.message}` };
+    return { ok: false, error: t('The key could not be written: {error}', { error: error.message }) };
   }
+}
+
+// ---- Codex: its own login, with the key on its input (never in its arguments, where `ps` shows
+// them), confirmed by asking Codex again. Its sign-in file is kept first and put back if the key is
+// refused, so a wrong key never signs out an account that worked.
+const runWithInput = (command, args, input, { timeoutMs = 30000 } = {}) => new Promise((resolve) => {
+  let child;
+  try { child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: { ...process.env, NO_COLOR: '1' } }); } catch (error) { resolve({ code: null, out: error.message }); return; }
+  let out = '';
+  child.stdout.on('data', (chunk) => { out += chunk; });
+  child.stderr.on('data', (chunk) => { out += chunk; });
+  const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
+  child.on('error', (error) => { clearTimeout(timer); resolve({ code: null, out: error.message }); });
+  child.on('close', (code) => { clearTimeout(timer); resolve({ code, out }); });
+  child.stdin.on('error', () => {});
+  child.stdin.end(`${input}\n`);
+});
+async function applyCodexKey(key, { home, probe, executable = 'codex', run = runWithInput }) {
+  const file = join(process.env.CODEX_HOME || join(home, '.codex'), 'auth.json');
+  const before = await readIfThere(file);
+  const said = await run(executable, ['login', '--with-api-key'], key);
+  const state = said.code === 0 ? await probe() : null;
+  if (state?.state === 'signed-in') return { ok: true, detail: state.detail ?? 'via API key' };
+  await restore(file, before);
+  const why = String(said.out ?? '').trim().split('\n').filter(Boolean).at(-1);
+  return { ok: false, error: why ? t('Codex did not take the key ({why}). Nothing was changed.', { why: why.slice(0, 160) }) : t('Codex did not take the key. Nothing was changed.') };
 }
 
 // ---- OpenCode: an entry in its auth.json, confirmed by asking `opencode auth list`.
 async function applyOpenCodeKey(key, { home, provider, executable, run }) {
   const known = typeof provider === 'string' ? (await openCodeKeyProviders({ home })).find((item) => item.id === provider) : null;
-  if (!known) return { ok: false, error: 'Pick the provider this key belongs to.' };
+  if (!known) return { ok: false, error: t('Pick the provider this key belongs to.') };
   const file = join(home, '.local', 'share', 'opencode', 'auth.json');
   await mkdir(join(home, '.local', 'share', 'opencode'), { recursive: true });
   const before = await readIfThere(file);
@@ -210,12 +249,12 @@ async function applyOpenCodeKey(key, { home, provider, executable, run }) {
     const listed = String(await run(executable, ['auth', 'list'])).toLowerCase();
     if (!listed.includes(provider.toLowerCase()) && !listed.includes(String(known.label).toLowerCase())) {
       await restore(file, before);
-      return { ok: false, error: `OpenCode does not list ${provider} after the key was written, so MADRE put the file back. Run \`opencode auth login\` in a terminal for this one.` };
+      return { ok: false, error: t('OpenCode does not list {provider} after the key was written, so MADRE put the file back. Run `opencode auth login` in a terminal for this one.', { provider }) };
     }
     return { ok: true, detail: `${provider} (api)` };
   } catch (error) {
     await restore(file, before);
-    return { ok: false, error: `The key could not be written: ${error.message}` };
+    return { ok: false, error: t('The key could not be written: {error}', { error: error.message }) };
   }
 }
 
@@ -229,13 +268,14 @@ const runOpenCode = async (executable, args) => {
 };
 
 // Writes the key for one agent and answers whether that agent is signed in now.
-export async function applyKey({ agent, key, provider = null, home = homedir(), probe, executable = 'opencode', run = runOpenCode }) {
+export async function applyKey({ agent, key, provider = null, home = homedir(), probe, executable = null, run = null }) {
   const checked = normalizeKey(key);
   if (!checked.ok) return checked;
+  if (agent === 'codex') return applyCodexKey(checked.key, { home, probe, executable: executable ?? 'codex', run: run ?? runWithInput });
   if (agent === 'claude') return applyClaudeKey(checked.key, { home, probe });
   if (agent === 'gemini') return applyGeminiKey(checked.key, { home, probe });
-  if (agent === 'opencode') return applyOpenCodeKey(checked.key, { home, provider, executable, run });
-  return { ok: false, error: `${agent} does not take a key here: it signs in with a click.` };
+  if (agent === 'opencode') return applyOpenCodeKey(checked.key, { home, provider, executable: executable ?? 'opencode', run: run ?? runOpenCode });
+  return { ok: false, error: t('{agent} does not take a key here: it signs in with a click.', { agent }) };
 }
 
 // ---- OpenCode's providers, as its auth.json says them: who is signed in and how, never the key.

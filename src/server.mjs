@@ -848,6 +848,18 @@ export async function createPulseServer({
     return view;
   };
   let room = null;
+  // WHERE OLLAMA IS (2026-10-28): this computer's by default, or the one the person pointed MADRE to —
+  // Windows' own from inside WSL, or another computer with a graphics card — saved in Settings
+  // (config.ollama.host). A host given when MADRE was started (PULSE_OLLAMA_HOST, OLLAMA_HOST) wins,
+  // as it did before. Every reading of the host asks the environment, so it is set there.
+  const ollamaHostFromLaunch = Boolean(process.env.PULSE_OLLAMA_HOST || process.env.OLLAMA_HOST);
+  let ollamaHostFromConfig = false;
+  const adoptOllamaHost = (config) => {
+    if (ollamaHostFromLaunch) return;
+    const host = typeof config?.ollama?.host === 'string' && config.ollama.host ? config.ollama.host : null;
+    if (host) { process.env.PULSE_OLLAMA_HOST = host; ollamaHostFromConfig = true; } else if (ollamaHostFromConfig) { delete process.env.PULSE_OLLAMA_HOST; ollamaHostFromConfig = false; }
+  };
+  adoptOllamaHost(await readConfig(root));
   await wireOllama();
   const memoryServer = memory ? memoryServerFor({ dbFile: memory.file, projectRoot: canonicalProjectRoot }) : null;
   // MOTHER's channel to the crew: her seal's fingerprint lives in the memory
@@ -1883,7 +1895,7 @@ export async function createPulseServer({
               const lines = [];
               const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { lines.push(line); void room.record('extension.install.output', { id: 'ollama', lines: [line.slice(0, 500)] }); } });
               const status = await wireOllama();
-              await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: result.code === 0, installed: Boolean(await findOnPath('ollama')), detail: result.code === 0 ? 'Ollama installed · START it to wake it' : (result.error ?? `exit ${result.code}`), ollama: status });
+              await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: result.code === 0, installed: Boolean(await findOnPath('ollama')), detail: result.code === 0 ? 'Ollama installed · START it to wake it' : (result.error ?? `exit ${result.code}`), trouble: result.code === 0 ? null : installTrouble(`${result.error ?? ''}\n${lines.slice(-20).join('\n')}`), ollama: status });
               installing = null;
             })();
             return { ok: true, command: plan.display };
@@ -1940,10 +1952,11 @@ export async function createPulseServer({
                 await pullModel({ host: ollama.host, model, fetchImpl: reportFetch, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
                 await flush();
                 const status = await wireOllama();
-                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, ollama: status });
+                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, model, ollama: status });
               } catch (error) {
                 await flush();
-                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message });
+                // Why it stopped, in one word the page says in plain words (src/setup-trouble.mjs).
+                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message, model, trouble: installTrouble(error.message) });
               } finally { installing = null; }
             })();
             return { ok: true };
@@ -2040,7 +2053,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -3247,8 +3260,55 @@ export async function createPulseServer({
       // This project's switch for the local AI (src/local-ai.mjs). In «auto» Home decides and the
       // switch does not move; /apply is how Home tells an open project the choice changed.
       if (request.method === 'GET' && url.pathname === '/api/local-ai') return sendJson(response, 200, { project: await localAiHere(), running: Boolean(ollama.running) });
+      // Where Ollama is (2026-10-28): tried first, kept only when it answers, and every open project
+      // told. Empty puts it back on this computer. Only from MADRE's own page on this computer, as
+      // turning it off is: an address chosen by any other page would send the memory's text there.
+      const ownPage = () => {
+        const host = String(request.headers.host ?? '');
+        const site = request.headers['sec-fetch-site'];
+        return !viaPhone && /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) && (site === undefined || site === 'same-origin' || site === 'none') && request.headers.origin === `http://${host}`;
+      };
+      if (request.method === 'POST' && url.pathname === '/api/local-ai/host') {
+        if (!ownPage()) return sendJson(response, 403, { error: t('This is done from MADRE\'s own page, on this computer.') });
+        if (ollamaHostFromLaunch) return sendJson(response, 409, { error: t('MADRE was started with an Ollama address of its own (PULSE_OLLAMA_HOST or OLLAMA_HOST). Start it without it to choose one here.') });
+        const payload = await body(request).catch(() => ({}));
+        const said = String(payload.host ?? '').trim();
+        let host = null;
+        if (said) {
+          let parsed = null;
+          try { parsed = new URL(/^https?:\/\//i.test(said) ? said : `http://${said}`); } catch { /* said below */ }
+          if (!parsed || !['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) return sendJson(response, 400, { error: t('Write an address like 192.168.1.40 or http://192.168.1.40:11434.') });
+          host = `${parsed.protocol}//${parsed.hostname.includes(':') && !parsed.hostname.startsWith('[') ? `[${parsed.hostname}]` : parsed.hostname}:${parsed.port || '11434'}`;
+          const found = await probeOllama({ host, timeoutMs: 3000 });
+          if (!found.running) return sendJson(response, 422, { error: t('Nothing answers at {host}. Check that Ollama is open on that computer and accepts connections from your network.', { host }) });
+        }
+        await updateConfig(root, { ollama: { host } });
+        adoptOllamaHost(await readConfig(root));
+        await wireOllama();
+        const later = [];
+        await Promise.all((await knownRooms(root)).filter((one) => one.open && one.id !== thisRoomId).map(async (one) => {
+          const answer = await askRoom(one.open.port, '/api/local-ai/apply', { method: 'POST', timeoutMs: 6000 });
+          if (answer.unreachable || answer.outdated) later.push(one.name);
+        }));
+        return sendJson(response, 200, { host, running: Boolean(ollama.running), models: (ollama.models ?? []).map((one) => one.name), later });
+      }
+      // A first word with the local AI (the welcome's «try it»): one short answer from the model in use.
+      if (request.method === 'POST' && url.pathname === '/api/local-ai/try') {
+        if (!ownPage()) return sendJson(response, 403, { error: t('This is done from MADRE\'s own page, on this computer.') });
+        if (!ollama.running || !ollama.chatModel) return sendJson(response, 412, { error: t('The local AI has no model to answer with yet.') });
+        const payload = await body(request).catch(() => ({}));
+        const said = String(payload.text ?? '').slice(0, 300) || 'hola';
+        try {
+          const answer = await ollamaGenerate({ host: ollama.host, model: ollama.chatModel, system: t('You are @madre, the AI that runs on this computer inside MADRE. Answer in one or two short, friendly sentences, in the language the person writes in.'), prompt: said, timeoutMs: 120000, temperature: 0.4, fetchImpl: reportFetch });
+          return sendJson(response, 200, { text: String(answer.text ?? '').trim(), model: ollama.chatModel });
+        } catch (error) {
+          return sendJson(response, 502, { error: t('The local AI did not answer: {error}', { error: error.message }) });
+        }
+      }
       if (request.method === 'POST' && url.pathname === '/api/local-ai/apply') {
-        // Probed again: the model chosen in Home may have been downloaded after this project last looked.
+        // Probed again: the model chosen in Home may have been downloaded after this project last looked,
+        // and where Ollama is may have changed.
+        adoptOllamaHost(await readConfig(root));
         const status = await wireOllama();
         return sendJson(response, 200, { project: status.project });
       }
@@ -3638,8 +3698,10 @@ export async function createPulseServer({
       // welcome to adapt its steps: the system, WSL, a virtual machine, SSH, a screen, free space.
       if (request.method === 'GET' && url.pathname === '/api/environment') {
         if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
-        const [environment, hardware] = await Promise.all([environmentOnce(), hardwareOnce()]);
-        return sendJson(response, 200, { environment, hardware, port: request.socket.localPort });
+        const [environment, hardware, geminiKey, memorySaid] = await Promise.all([environmentOnce(), hardwareOnce(), imageKey().then(Boolean, () => false), memoryConfig()]);
+        // With what the welcome needs to choose the memory's search (src/embeddings.mjs): whether a
+        // Gemini key is already on this computer, and what is chosen now.
+        return sendJson(response, 200, { environment, hardware, port: request.socket.localPort, geminiKey, memory: { embedProvider: memorySaid.embedProvider ?? 'auto', embedder: memory?.embedder?.model ?? null } });
       }
       if (request.method === 'GET' && url.pathname === '/api/version') {
         // With the one thing the daily notice says about this copy: its random identifier, shown so the

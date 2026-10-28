@@ -188,8 +188,16 @@ test('the bridge: every door a CLI has, not only the first — Claude sells two 
 
   // A door that does not exist falls back to the first rather than inventing arguments.
   assert.deepEqual(loginPlanFor({ id: 'claude', path: '/x/claude' }, { method: 'nope' }).args, ['auth', 'login']);
-  // Codex has one way in, and nothing to paste afterwards: its own CLI listens on localhost.
-  assert.deepEqual([loginPlanFor({ id: 'codex' }).methods, loginPlanFor({ id: 'codex' }).asksForCode], [null, false]);
+  // Codex: its ChatGPT account in the browser (its own CLI listens on localhost, nothing to paste),
+  // or a code typed on OpenAI's page from any device — the way in when MADRE runs on another
+  // computer (2026-10-28). The code is shown, as `codex login --device-auth` prints it: alone on its line.
+  const codex = loginPlanFor({ id: 'codex' });
+  assert.deepEqual([codex.methods.map((method) => method.id), codex.method, codex.args, codex.asksForCode, codex.deviceCode], [['chatgpt', 'device'], 'chatgpt', ['login'], false, undefined]);
+  const device = loginPlanFor({ id: 'codex' }, { method: 'device' });
+  assert.deepEqual([device.args, device.deviceCode], [['login', '--device-auth'], true]);
+  assert.equal(deviceCodeIn('   MSB0-ZWWCS   '), 'MSB0-ZWWCS');
+  assert.equal(deviceCodeIn('Follow these steps to sign in with ChatGPT using device code authorization:'), null);
+  assert.equal(deviceCodeIn('2026-10-28'), null, 'a date is not a code');
 });
 
 test('a sign-in with a code: the address is kept, the code is typed in, and it never reaches the ledger', async () => {
