@@ -1262,7 +1262,8 @@ test('review of 2026-10-28: a download can be stopped, «try it» is a talk, App
   assert.match(welcome, /const reader = response\.body\.getReader\(\);/);
   assert.match(server, /if \(event\.message\?\.content\) response\.write\(event\.message\.content\);/);
   // The brandbook's logo, drawn once; the close key solid.
-  assert.match(welcome, /const BRAND_LOGO = '<svg class="brand-logo"/);
+  assert.match(welcome, /import \{ MADRE_LOGO as BRAND_LOGO \} from '\.\/loader\.js';/);
+  assert.match(await readFile(new URL('../public/loader.js', import.meta.url), 'utf8'), /export const MADRE_LOGO = '<svg class="brand-logo"/);
   assert.match(homeCss, /\.wl-close\.surface-modes, \.wl-close \{ border-radius: 10px; background: var\(--wl-canvas\) !important;/);
   // Appearance opens from the side like every category, with Home as it looks now in its preview.
   assert.match(home, /const full = false;/);
@@ -1271,4 +1272,22 @@ test('review of 2026-10-28: a download can be stopped, «try it» is a talk, App
   assert.match(css, /html\.chat-shell body \{ font-weight: 450; \}/);
   assert.match(css, /--read-weight: 430;/);
   assert.match(home, /t\('All caught up\. When an agent asks you something, it shows up here\.'\)/);
+});
+
+test('review of 2026-10-28 (2): Home\'s sheets in the new look, Connections understood at a glance, «Add to Home» a window, the chapters with the logo', async () => {
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const homeCss = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const tour = await readFile(new URL('../public/tour.js', import.meta.url), 'utf8');
+  assert.match(homeCss, /html\.home-shell dialog\.sm-sheet:not\(\.sm-settings\) > \.sm-sheet-body \{\n  border-radius: 14px; background-color: var\(--cs-canvas\);/);
+  // Connections: three steps, the pair drawn as on the map, switches that say what they do, a plain cancel.
+  assert.match(home, /function drawLinkSteps\(\) \{/);
+  assert.match(home, /pair\.append\(LINK_MARK\(reader\), arrow, LINK_MARK\(source\)\);/);
+  assert.match(home, /option\(enlace\.deliver, t\('It receives delivered notes'\), t\('Notes can be handed to it; they wait for you to accept them before entering its memory\.'\)/);
+  assert.match(home, /t\('Cancel the connection'\)/);
+  // «Add to Home» is a window like Settings.
+  assert.match(home, /const framed = homeWindow\(\{ root: sheetNow, bar: head, close: \(\) => sheetNow\.close\(\), key: 'pulse\.homeAddWindow'/);
+  // The chapters wear the logo and the flat window.
+  assert.match(tour, /logo\.innerHTML = MADRE_LOGO;/);
+  assert.match(css, /html\.chat-shell dialog\.tour-window \.tour-sheet \{ border-radius: 14px; background: var\(--cs-canvas\) !important;/);
 });

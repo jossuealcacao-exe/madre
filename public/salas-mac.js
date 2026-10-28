@@ -915,74 +915,98 @@ function endsOf(enlace) {
   const { a, b } = enlace.rooms;
   return enlace.direction === 'b→a' ? { source: b, reader: a } : { source: a, reader: b };
 }
+// A connection, said so it is understood at a glance (2026-10-28): who looks up whom, drawn as on the
+// project map — the one that reads, an arrow, the one that shares —; what crosses, until when and
+// whether orders go, as tags; what was read lately; and each thing it allows as a switch with one
+// line on what it does. «Cancel the connection» asks once more before it does.
+const LINK_MARK = (id) => {
+  const face = el('span', `sm-link-end${id === data.salas ? ' hub' : ''}`);
+  if (id === data.salas) face.append(mark('bishop', 30)); else { face.style.setProperty('--pc', toneOf(id)); face.append(el('i', null, roomName(id).slice(0, 1).toUpperCase())); }
+  const words = el('span', 'sm-link-end-words');
+  words.append(el('b', null, roomName(id)));
+  const box = el('span', 'sm-link-end-box');
+  box.append(face, words);
+  return box;
+};
+const LINK_ARROW = '<svg viewBox="0 0 60 16" aria-hidden="true"><path d="M58 8H6M12 2.5 6 8l6 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const LINK_BOTH = '<svg viewBox="0 0 60 16" aria-hidden="true"><path d="M6 8h48M12 2.5 6 8l6 5.5M48 2.5 54 8l-6 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function linkRow(enlace) {
   const { source, reader } = endsOf(enlace);
   const node = el('article', `sm-link${revoking.has(enlace.id) ? ' revoking' : ''}`);
   node.dataset.link = enlace.id;
   node.append(el('span', 'sm-link-kind', source === data.salas || reader === data.salas ? t('With the Coordinator') : t('Between projects')));
-  const who = el('p', 'who');
+  // Who looks up whom, as the map draws it.
+  const pair = el('div', 'sm-link-pair');
+  const arrow = el('span', 'sm-link-arrow');
+  arrow.innerHTML = enlace.direction === 'both' ? LINK_BOTH : LINK_ARROW; // trusted: our own SVG strings
+  arrow.append(el('small', null, enlace.direction === 'both' ? t('read each other') : t('looks up')));
+  pair.append(LINK_MARK(reader), arrow, LINK_MARK(source));
+  // The drawing says it; the sentence is kept for whoever hears the page.
+  const who = el('span');
   who.append(enlace.direction === 'both' ? sayTinted('{a} and {b} read each other', { a: enlace.rooms.a, b: enlace.rooms.b }) : sayTinted('{reader} reads from {source}', { reader, source }));
-  node.append(who);
-  const what = [kindsWords(enlace.kinds), enlace.expires ? t('until {date}', { date: new Date(enlace.expires).toLocaleDateString(language, { day: 'numeric', month: 'short' }) }) : t('no expiry')];
-  if (enlace.orders?.allowed) what.push(t('orders up to #{n}', { n: enlace.orders.maxMode }));
+  pair.setAttribute('role', 'img');
+  pair.setAttribute('aria-label', who.textContent);
+  node.append(pair);
+  // What crosses, until when, and whether orders go.
+  const tags = el('div', 'sm-link-tags');
+  for (const kind of enlace.kinds ?? []) {
+    const word = String(KIND_WORDS[kind] ?? kind).toLocaleLowerCase(language);
+    const tag = el('span', 'sm-link-tag');
+    tag.append(el('i', `k-${kind}`), word.slice(0, 1).toLocaleUpperCase(language) + word.slice(1));
+    tags.append(tag);
+  }
+  tags.append(el('span', 'sm-link-tag plain', enlace.expires ? t('until {date}', { date: new Date(enlace.expires).toLocaleDateString(language, { day: 'numeric', month: 'short' }) }) : t('no expiry')));
+  tags.append(el('span', 'sm-link-tag plain', enlace.orders?.allowed ? t('orders up to #{n}', { n: enlace.orders.maxMode }) : t('no orders')));
   // D-S13: a link BISHOP signed on its own says so, so it is never mistaken for one you signed.
-  if (enlace.signed?.by === 'bishop') what.push(t('signed by the Coordinator'));
-  if (enlace.train) what.push(t('the Coordinator learns from it'));
-  if (enlace.state) what.push(t('shares its state'));
-  if (enlace.deliver) what.push(t('receives delivered notes'));
-  node.append(el('p', 'what', what.join(' · ')));
+  if (enlace.signed?.by === 'bishop') tags.append(el('span', 'sm-link-tag plain', t('signed by the Coordinator')));
+  node.append(tags);
   const traffic = enlace.traffic ?? {};
   // S-021: the last reading says who read, as the room that asked said it.
   const last = traffic.lastAt ? (traffic.lastAgent ? t('last by @{agent} of {room}, {when}', { agent: traffic.lastAgent, room: roomName(traffic.lastRoom), when: ago(traffic.lastAt) }) : t('last {when}', { when: ago(traffic.lastAt) })) : t('none yet');
   node.append(el('p', 'traffic', [t('{n} reads in 24 h', { n: traffic.reads24h ?? 0 }), last].join(' · ')));
-  // Fase 3e: recall on every turn, ticked or cleared here by the human.
-  const recall = el('label', 'row sm-recall');
-  const recallBox = el('input'); recallBox.type = 'checkbox'; recallBox.checked = Boolean(enlace.recall);
-  recallBox.addEventListener('change', async () => {
-    recallBox.disabled = true;
-    const answer = await fetch('/api/salas/enlaces/recall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: enlace.id, recall: recallBox.checked }) })
-      .then((response) => response.ok).catch(() => false);
-    if (!answer) recallBox.checked = !recallBox.checked;
-    recallBox.disabled = false;
-    await refresh();
-  });
-  recall.append(recallBox, document.createTextNode(t('Always include (up to 3 notes)')));
-  node.append(recall);
-  // D-S15: on a link the Coordinator reads, whether it also learns from that project.
-  if (reader === data.salas) {
-    const learn = el('label', 'row sm-recall');
-    const learnBox = el('input'); learnBox.type = 'checkbox'; learnBox.checked = Boolean(enlace.train);
-    learnBox.addEventListener('change', async () => {
-      learnBox.disabled = true;
-      const answer = await fetch('/api/salas/enlaces/train', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: enlace.id, train: learnBox.checked }) })
-        .then((response) => response.ok).catch(() => false);
-      if (!answer) learnBox.checked = !learnBox.checked;
-      learnBox.disabled = false;
-      await refresh();
-    });
-    learn.append(learnBox, document.createTextNode(t('The Coordinator learns from it')));
-    node.append(learn);
-  }
-  // D-S16 and D-S17: what else the link allows, ticked or cleared here by you.
-  for (const [field, label] of [['state', t('It shares its state')], ['deliver', t('It receives delivered notes')]]) {
-    const allow = el('label', 'row sm-recall');
-    const box = el('input'); box.type = 'checkbox'; box.checked = Boolean(enlace[field]);
+  // What else it allows, each a switch that says what it does (Fase 3e, D-S15, D-S16, D-S17).
+  const options = el('div', 'sm-link-options');
+  const option = (on, title, says, path, payload) => {
+    const line = el('label', 'sm-link-option');
+    const words = el('span', 'sm-link-option-words');
+    words.append(el('b', null, title), el('small', null, says));
+    const wrap = el('span', 'settings-switch');
+    const box = el('input');
+    box.type = 'checkbox';
+    box.checked = Boolean(on);
     box.addEventListener('change', async () => {
       box.disabled = true;
-      const answer = await fetch('/api/salas/enlaces/allow', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: enlace.id, field, on: box.checked }) })
+      const answer = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload(box.checked)) })
         .then((response) => response.ok).catch(() => false);
       if (!answer) box.checked = !box.checked;
       box.disabled = false;
       await refresh();
     });
-    allow.append(box, document.createTextNode(label));
-    node.append(allow);
-  }
+    wrap.append(box, el('i'));
+    line.append(words, wrap);
+    options.append(line);
+  };
+  option(enlace.recall, t('Always include its notes'), t('Up to 3 of its notes go with every answer, not only when an agent asks for them.'), '/api/salas/enlaces/recall', (on) => ({ id: enlace.id, recall: on }));
+  if (reader === data.salas) option(enlace.train, t('The Coordinator learns from it'), t('What the Coordinator reads here also goes into what it is trained with.'), '/api/salas/enlaces/train', (on) => ({ id: enlace.id, train: on }));
+  option(enlace.state, t('It shares its state'), t('Its goal, phase, next step and what is open can be read too, never its files.'), '/api/salas/enlaces/allow', (on) => ({ id: enlace.id, field: 'state', on }));
+  option(enlace.deliver, t('It receives delivered notes'), t('Notes can be handed to it; they wait for you to accept them before entering its memory.'), '/api/salas/enlaces/allow', (on) => ({ id: enlace.id, field: 'deliver', on }));
+  node.append(options);
   const actions = el('div', 'sm-actions');
-  if (revoking.has(enlace.id)) actions.append(el('span', 'sm-ask', t('Nothing crosses from then on.')), button('sm-btn danger', t('Revoke it'), () => revokeLink(enlace.id)), button('sm-btn ghost', t('Cancel'), () => { revoking.delete(enlace.id); draw(); }));
-  else actions.append(button('sm-btn ghost', t('Revoke'), () => { revoking.add(enlace.id); draw(); }));
+  if (revoking.has(enlace.id)) actions.append(el('span', 'sm-ask', t('Nothing crosses from then on.')), button('sm-btn danger small', t('Yes, cancel it'), () => revokeLink(enlace.id)), button('sm-btn ghost small', t('Keep the connection'), () => { revoking.delete(enlace.id); draw(); }));
+  else actions.append(button('sm-btn ghost small', t('Cancel the connection'), () => { revoking.add(enlace.id); draw(); }));
   node.append(actions);
   return node;
+}
+// How a connection works, in three steps under the sheet's title, as the project map says its own
+// gestures: who shares, who looks up, and you sign — cancelled whenever you want.
+function drawLinkSteps() {
+  let steps = ui.linksSheet.querySelector('.sm-link-steps');
+  if (!steps) { steps = el('ol', 'sm-link-steps'); ui.linksNote.after(steps); }
+  steps.replaceChildren(...[
+    [t('Choose what it shares'), t('A project and what it learned: decisions, facts, preferences.')],
+    [t('Choose who looks it up'), t('Another project, or the Coordinator, which sees them all.')],
+    [t('You sign it'), t('Until a date or with no end. Cancel it here whenever you want.')],
+  ].map(([title, says], index) => { const item = el('li'); item.append(el('i', null, String(index + 1)), el('b', null, title), el('small', null, says)); return item; }));
 }
 function drawLinks(projects) {
   const enlaces = [...(data.enlaces ?? [])].sort((a, b) => {
@@ -997,7 +1021,8 @@ function drawLinks(projects) {
   ui.linksSum.textContent = enlaces.length
     ? [enlaces.length === 1 ? t('1 in force') : t('{n} in force', { n: enlaces.length }), t('{n} reads in 24 h', { n: reads })].join(' · ')
     : enough ? t('No connections yet.') : t('Add a project to connect it.');
-  ui.linksNote.textContent = t('A connection lets one project read the summarized notes of another, read-only, by a contract you sign here. Nothing is written across, and only notes already used in answers are shared.');
+  ui.linksNote.textContent = t('A connection lets one project look up what another already learned: its decisions, facts and preferences. It only reads, never changes the other project, and you can cancel it whenever you want.');
+  drawLinkSteps();
   ui.links.replaceChildren(...enlaces.map(linkRow));
   if (!enlaces.length && ui.linksSheet.open) ui.linksSheet.close();
   drawMap(projects, enlaces);
@@ -1792,6 +1817,8 @@ document.querySelector('.sm-main')?.addEventListener('contextmenu', (event) => {
 // it would need when nothing feeds it yet.
 let homeAddSheet = null;
 async function openHomeAdd() {
+  // Asked again while it is open: the same window comes forward, not a second one.
+  if (homeAddSheet?.open) { homeAddSheet.focus?.(); homeWindowForward(homeAddSheet); return; }
   homeAddSheet?.remove();
   homeAddSheet = el('dialog', 'sm-sheet sm-add-sheet');
   const body = el('div', 'sm-sheet-body');
@@ -1811,9 +1838,18 @@ async function openHomeAdd() {
   // The key's squares stay filled while the sheet it opened is there.
   const key = document.getElementById('sm-add-widgets');
   key?.classList.add('filled');
-  homeAddSheet.addEventListener('close', () => { homeAddSheet?.remove(); homeAddSheet = null; key?.classList.remove('filled'); });
   document.body.append(homeAddSheet);
-  homeAddSheet.showModal();
+  // A window of Home, as Settings and the Market are (2026-10-28): carried by its head, sized by its
+  // sides, its place kept. On a phone it stays the sheet it was.
+  const sheetNow = homeAddSheet;
+  const framed = homeWindow({ root: sheetNow, bar: head, close: () => sheetNow.close(), key: 'pulse.homeAddWindow', minW: 420, minH: 360, keys: false, size: { w: 560, h: 640 } });
+  sheetNow.addEventListener('close', () => { framed?.drop(); sheetNow.remove(); if (homeAddSheet === sheetNow) homeAddSheet = null; key?.classList.remove('filled'); });
+  if (framed) {
+    sheetNow.classList.add('sm-add-framed');
+    sheetNow.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); sheetNow.close(); } });
+    sheetNow.show();
+    framed.raise();
+  } else sheetNow.showModal();
   void homeTour.hint('home-add', list, { inside: true, title: t('Add to Home'), text: t('The tiles you took off and the widgets you can add. A widget shows up only when this Mac has something to put in it. Right-click any tile to move it, change its size or take it off.') });
   // The author's widget is asked about before the list is drawn: where it cannot be read, it is not listed at all.
   const ownerOk = new Set();

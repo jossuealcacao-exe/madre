@@ -12075,3 +12075,29 @@ html.chat-shell #reload-button { display: none !important; }
 }
 .map-key > i { font-style: normal; color: rgb(242 241 238 / .35); }
 html.chat-shell #nostromo .nostromo-help:has(> .map-keys) { text-transform: none; letter-spacing: 0; }
+
+/* «Get to know MADRE» in the new look (2026-10-28): the welcome's window — the canvas, a hairline, a
+   soft shadow, no glass —, MADRE's logo in its head, the chapters on a rail like the welcome's steps,
+   the scenes and the keys on flat grounds. Every animation stays. */
+html.chat-shell dialog.tour-window .tour-sheet { border-radius: 14px; background: var(--cs-canvas) !important; background-image: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: 0 0 0 1px var(--cs-line), 0 34px 90px -30px rgba(0, 0, 0, .42), 0 8px 24px -8px rgba(0, 0, 0, .16) !important; }
+html.chat-shell .tour-logo { display: block; margin-bottom: 8px; }
+html.chat-shell .tour-logo .brand-logo { height: 14px; }
+html.chat-shell .tour-head h2 { font: 600 20px/1.25 var(--read); letter-spacing: -.01em; }
+html.chat-shell .tour-head .wn-eyebrow { font: 450 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell .tour-close { border-radius: 9px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line); }
+html.chat-shell .tour-close:hover { background: var(--cs-hover); }
+html.chat-shell .tour-body { border-top-color: var(--cs-line); }
+html.chat-shell .tour-window .tour-nav { padding: 12px 10px; background: var(--cs-side); border-right-color: var(--cs-line); }
+html.chat-shell .tour-nav-key { font: 450 13.5px var(--read); border-radius: 8px; }
+html.chat-shell .tour-nav-key:hover { background: var(--cs-hover); }
+html.chat-shell .tour-nav-key.on { background: var(--cs-sel); font-weight: 550; }
+html.chat-shell .tour-words h3 { font: 600 20px/1.25 var(--read); letter-spacing: -.01em; }
+html.chat-shell .tour-lead { font: 450 14px/1.5 var(--read); }
+html.chat-shell .tour-scene { border-radius: 12px; background: var(--cs-side) !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
+html.chat-shell .tour-keys { border-radius: 10px; background: var(--cs-side); box-shadow: inset 0 0 0 1px var(--cs-line); }
+html.chat-shell .tour-news { border-radius: 10px; }
+html.chat-shell .tour-btn { border-radius: 8px; padding: 8px 14px; font: 500 13px var(--read); background: transparent; box-shadow: inset 0 0 0 1px var(--cs-line); }
+html.chat-shell .tour-btn:hover:not(:disabled) { background: var(--cs-hover); }
+html.chat-shell .tour-btn.primary { background: var(--tour-acc); box-shadow: none; font-weight: 600; }
+html.chat-shell .tour-btn.primary:hover:not(:disabled) { background: var(--tour-acc); filter: brightness(1.06); }
+html.chat-shell .tour-btn.quiet { box-shadow: none; }

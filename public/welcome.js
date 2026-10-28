@@ -17,6 +17,7 @@
 
 import { t, language } from './i18n.js';
 import { platformOf, remedyKey } from './remedy.js';
+import { MADRE_LOGO as BRAND_LOGO } from './loader.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -52,8 +53,6 @@ const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
 const EMBED_MODEL = 'nomic-embed-text';
 const EMBED_MB = 274;
 const EMBEDDING = /embed|minilm|bge|nomic/i;
-// MADRE's logo as the brandbook draws it (salas-mac.html, .brand-logo): the beat, then the word.
-const BRAND_LOGO = '<svg class="brand-logo" viewBox="-4.8 -4.8 377.1 49.6" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><g class="pulse" transform="translate(0 0) scale(2.5) translate(0 -2)"><path class="beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" stroke-width="1.92" pathLength="100"/><circle class="beat-dot" cx="60" cy="10" r="3" stroke="none"/></g><g class="word" transform="translate(193.5 7)" stroke-width="4.8"><path d="M0 26V0L14 14.3L28 0V26"/><path transform="translate(36.5 0)" d="M0 26V7.8A7.8 7.8 0 0 1 7.8 0H17.2A7.8 7.8 0 0 1 25 7.8V26M0 15.6H25"/><path transform="translate(71.5 0)" d="M0 0H16A12 12 0 0 1 28 12V14A12 12 0 0 1 16 26H0Z"/><path transform="translate(110.5 0)" d="M0 26V0H20.85A7.15 7.15 0 0 1 28 7.15V7.15A7.15 7.15 0 0 1 20.85 14.3H0M15.12 14.3L28 26"/><path transform="translate(146 0)" d="M28 0H0V26H28M0 13H21"/></g></g></svg>';
 const TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 // What a failed install or download said, in one word (src/setup-trouble.mjs), in plain words.

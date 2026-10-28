@@ -17,7 +17,7 @@
 // assistant that connects agents and adds projects; then the chapters tell the essentials, in the
 // order they are used (public/tour-chapters.js, ORDER).
 
-import { LOADER_MARK, finishLoader, makeLoader, setLoader } from './loader.js';
+import { LOADER_MARK, MADRE_LOGO, finishLoader, makeLoader, setLoader } from './loader.js';
 import { hostWords, keyWords, language, t } from './i18n.js';
 import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
 
@@ -360,7 +360,11 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const words = el('div', 'tour-head-words');
     const title = el('h2');
     title.id = 'tour-window-title';
-    words.append(el('span', 'wn-eyebrow'), title);
+    // MADRE's own logo over the chapters (2026-10-28), as the welcome wears it.
+    const logo = el('span', 'tour-logo');
+    logo.setAttribute('aria-hidden', 'true');
+    logo.innerHTML = MADRE_LOGO; // trusted: our own SVG string
+    words.append(logo, el('span', 'wn-eyebrow'), title);
     const close = key('tour-close', null, () => windowNode.close());
     close.innerHTML = CLOSE_ICON; // trusted: our own SVG string
     close.setAttribute('aria-label', t('Close'));

@@ -252,12 +252,12 @@ export const CHAPTERS = [
       es: [
         'Tú firmas cada conexión: qué puede consultar, por cuánto tiempo y si el Coordinador puede dar instrucciones.',
         'Solo se comparten notas que ya se usan, sin datos privados. Tus archivos y tus chats nunca salen del proyecto.',
-        'Puedes cancelar una conexión cuando quieras desde Conexiones, en Inicio.',
+        'En Conexiones, en Inicio, cada una se ve como en el mapa: quién consulta a quién, qué comparte y hasta cuándo. Cada opción dice qué hace, y «Cancelar conexión» la termina cuando quieras.',
       ],
       en: [
         'You sign every connection: what it may look up, for how long and whether the Coordinator may give instructions.',
         'Only notes already in use are shared, without private data. Your files and your chats never leave the project.',
-        'You can cancel a connection whenever you want from Connections, in Home.',
+        'In Connections, in Home, each one reads as on the map: who looks up whom, what it shares and until when. Each option says what it does, and «Cancel the connection» ends it whenever you want.',
       ],
     },
     since: { kind: 'changed', es: 'El mapa de Conexiones en Inicio ahora es un cielo: cada proyecto es una estrella y cada conexión, un flujo de luz. Ábrelo en una ventana para explorarlo.', en: 'The Connections map in Home is now a sky: every project is a star and every connection a flow of light. Open it in a window to explore it.' },
@@ -299,12 +299,12 @@ export const CHAPTERS = [
       es: [
         'Ábrelos con ⌘ , y escribe / para buscar cualquier ajuste. Lo que cambias se aplica en ese momento.',
         'En Apariencia eliges los colores, el fondo, el tema claro u oscuro y el idioma.',
-        'Si algo no funciona, abre Diagnóstico y cuéntale qué pasa con tus palabras: te dice qué hacer y te da el botón para arreglarlo.',
+        'Si algo no funciona, abre Diagnóstico y cuéntale qué pasa con tus palabras: te dice qué hacer y te da el botón para arreglarlo. Cuando algo falla al instalar, «Ver cómo arreglarlo» te da los pasos para tu sistema.',
       ],
       en: [
         'Open them with ⌘ , and type / to find any setting. What you change applies right away.',
         'In Appearance you choose the colours, the background, light or dark and the language.',
-        'If something does not work, open Diagnostics and tell it what happens in your own words: it says what to do and gives you the key that fixes it.',
+        'If something does not work, open Diagnostics and tell it what happens in your own words: it says what to do and gives you the key that fixes it. When an install fails, «See how to fix it» gives you the steps for your system.',
       ],
     },
     keys: [
@@ -342,13 +342,13 @@ export const CHAPTERS = [
     since: { kind: 'new', es: 'En 1.0 la IA local era todo o nada; ahora se elige proyecto por proyecto.', en: 'In 1.0 the local AI was all or nothing; now it is chosen project by project.' },
     points: {
       es: [
-        'Se configura en Inicio › Ajustes › IA local. Ahí eliges si la usan todos tus proyectos, solo los que tú enciendas, o si cada proyecto lo decide en sus Ajustes.',
-        'MADRE te recomienda los modelos que caben en tu equipo y te dice cuánto pesan antes de descargarlos.',
+        'Se configura en Inicio › Ajustes › IA local. Ahí eliges si la usan todos tus proyectos, solo los que tú enciendas, o si cada proyecto lo decide; y en «Dirección de Ollama», la de otra computadora de tu red.',
+        'MADRE te recomienda los modelos que caben en tu equipo y te dice cuánto pesan antes de descargarlos. Una descarga se puede cancelar: lo que ya bajó se queda y sigue desde ahí.',
         'Un proyecto sin IA local sigue trabajando con tus agentes. Solo deja de buscar por significado, de resumir su memoria y de usar a @madre.',
       ],
       en: [
-        'It is set in Home › Settings › Local AI. There you choose whether all your projects use it, only the ones you switch on, or each project decides in its Settings.',
-        'MADRE recommends the models that fit your computer and tells you how big they are before you download them.',
+        'It is set in Home › Settings › Local AI. There you choose whether all your projects use it, only the ones you switch on, or each project decides; and in «Ollama address», another computer\'s on your network.',
+        'MADRE recommends the models that fit your computer and tells you how big they are before you download them. A download can be cancelled: what arrived stays, and it picks up from there.',
         'A project without the local AI keeps working with your agents. It only stops searching by meaning, summing up its memory and using @madre.',
       ],
     },

@@ -2020,3 +2020,86 @@ dialog.wl::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: b
 .wl-remedy-why p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
 .sm-agent-trouble .wl-remedy-key { margin-top: 0; }
 @media (max-width: 640px) { .wl-remedy-box { padding: 18px; } .wl-remedy-top .wl-grow { display: none; } }
+
+/* THE SHEETS OF HOME IN THE NEW LOOK (2026-10-28): adding a project, the connections, the assistant
+   that signs one, and «Add to Home» are windows like the welcome's and Settings' — the canvas, a
+   hairline, a soft shadow, no glass — and what is inside them is flat: hairline cards, quiet
+   segmented rails, the accent only where something is chosen. Their scenes keep every animation;
+   only the ground under them changes. */
+html.home-shell dialog.sm-sheet:not(.sm-settings) > .sm-sheet-body {
+  border-radius: 14px; background-color: var(--cs-canvas); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 0 0 1px var(--cs-line), 0 34px 90px -30px rgba(0, 0, 0, .42), 0 8px 24px -8px rgba(0, 0, 0, .16);
+}
+html.home-shell dialog.sm-sheet:not(.sm-settings) :is(.sm-sheet-head > h3, .sm-sheet-body > h3, .lw-intro h3) { font: 600 20px/1.25 var(--read); letter-spacing: -.01em; }
+html.home-shell dialog.sm-sheet:not(.sm-settings) :is(.hint, .lw-lead) { font: 450 13.5px/1.5 var(--read); color: var(--text-2); }
+html.home-shell dialog.sm-sheet .sm-scene { border-radius: 12px; background: var(--cs-side) !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
+html.home-shell dialog.sm-sheet .sm-tray { background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .25); }
+html.home-shell dialog.sm-sheet .sm-slot { box-shadow: inset 0 0 0 1px var(--cs-line); }
+/* The rails to choose among a few: a hairline track, the chosen one on the selection's tone. */
+html.home-shell dialog.sm-sheet :is(.custom-seg, .sm-picker-head .custom-seg) { padding: 3px; border-radius: 10px; background: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
+html.home-shell dialog.sm-sheet .seg-option { border-radius: 8px; background: none; box-shadow: none !important; color: var(--text-2); font: 450 12.5px var(--read); }
+html.home-shell dialog.sm-sheet .seg-option:hover { color: var(--text); }
+html.home-shell dialog.sm-sheet .seg-option[aria-checked="true"] { background: var(--cs-sel) !important; box-shadow: none !important; color: var(--text); font-weight: 550; }
+html.home-shell dialog.sm-sheet .sm-picker-search { border-radius: 9px; background: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; }
+/* Folders: hairline cards that lift under the pointer; a chosen one ringed in the accent. */
+html.home-shell dialog.sm-sheet .sm-fold-grid > .sm-fold { border-radius: 10px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line); }
+html.home-shell dialog.sm-sheet .sm-fold-grid > .sm-fold:hover { box-shadow: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .25); }
+html.home-shell dialog.sm-sheet .sm-fold-grid > .sm-fold.is-on { background: color-mix(in srgb, var(--s-acc) 8%, var(--cs-canvas)); box-shadow: 0 0 0 1.5px var(--s-acc); }
+html.home-shell dialog.sm-sheet .sm-fold-grid > .sm-fold.known { background: var(--cs-side); box-shadow: 0 0 0 1px var(--cs-line); }
+html.home-shell dialog.sm-sheet :is(.lw-card, .sm-link, .sm-add-row) { border-radius: 12px; background: var(--cs-canvas) !important; box-shadow: 0 0 0 1px var(--cs-line) !important; }
+html.home-shell dialog.sm-sheet :is(.lw-row, .lw-caution, .lw-allows, .lw-review li) { border-top-color: var(--cs-line); }
+html.home-shell dialog.sm-sheet .lw-select, html.home-shell dialog.sm-sheet select { border-radius: 8px; background: var(--cs-canvas); box-shadow: inset 0 0 0 1px var(--cs-line); }
+html.home-shell dialog.sm-sheet .lw-room-mark { background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line), 0 6px 16px -10px rgba(20, 30, 20, .3); }
+html.home-shell dialog.sm-sheet .scene-link .lw-terms span { background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line); }
+html.home-shell dialog.sm-sheet .lw-eyebrow { font: 450 12.5px var(--read); color: var(--text-3); }
+
+/* CONNECTIONS, understood at a glance (2026-10-28): how one works in three steps, then each
+   connection drawn as the project map draws it — who looks up, an arrow, who shares —, what crosses
+   as tags, and what else it allows as switches with a line each. */
+.sm-link-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.sm-link-steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 10px 12px; border-radius: 12px; background: var(--cs-side, var(--panel-2)); box-shadow: inset 0 0 0 1px var(--cs-line, var(--line)); }
+.sm-link-steps li i { grid-row: 1 / span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--s-acc) 16%, transparent); color: color-mix(in srgb, var(--s-acc) 75%, var(--text)); font: 600 12px var(--read); font-style: normal; }
+.sm-link-steps li b { font: 600 13px/1.3 var(--read); color: var(--text); }
+.sm-link-steps li small { font: 450 12px/1.4 var(--read); color: var(--text-2); }
+.sm-link-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 12px; }
+.sm-link-list .sm-link { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px 18px; }
+.sm-link-list .sm-link > * { grid-column: 1 / -1; }
+.sm-link-list .sm-link > .sm-actions { grid-column: 1 / -1; grid-row: auto; justify-content: flex-end; margin: 0; }
+/* Its switches read as sentences, not as the sheet's small capital labels. */
+.sm-sheet .sm-link-option { display: flex; font: inherit; letter-spacing: 0; text-transform: none; color: var(--text); }
+.sm-link-pair { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sm-link-end-box { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.sm-link-end { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--pc, var(--s-acc)); color: #fff; font: 650 13px var(--read); box-shadow: 0 0 0 2px var(--cs-canvas, var(--panel)), 0 0 0 3px color-mix(in srgb, var(--pc, var(--s-acc)) 40%, transparent); }
+.sm-link-end.hub { background: none; box-shadow: none; }
+.sm-link-end i { font-style: normal; }
+.sm-link-end-words b { font: 600 14px var(--read); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sm-link-arrow { position: relative; display: grid; justify-items: center; flex: 1 1 60px; max-width: 140px; color: var(--text-3); }
+.sm-link-arrow svg { width: 100%; height: 14px; }
+.sm-link-arrow small { font: 450 11px var(--read); color: var(--text-3); }
+.sm-link .who { font: 450 13px/1.45 var(--read); color: var(--text-2); }
+.sm-link .who b { color: var(--text); }
+.sm-link-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.sm-link-tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; background: var(--cs-side, var(--panel-2)); box-shadow: inset 0 0 0 1px var(--cs-line, var(--line)); font: 500 12px var(--read); color: var(--text); }
+.sm-link-tag.plain { color: var(--text-2); }
+.sm-link-tag i { width: 7px; height: 7px; border-radius: 50%; }
+.sm-link-tag i.k-decision { background: var(--mem-decision); } .sm-link-tag i.k-fact { background: var(--mem-fact); } .sm-link-tag i.k-preference { background: var(--mem-preference); } .sm-link-tag i.k-question { background: var(--mem-question); }
+.sm-link .traffic { font: 450 12px var(--read); color: var(--text-3); }
+.sm-link-options { display: grid; gap: 0; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--cs-line, var(--line)); }
+.sm-link-option { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 12px; cursor: pointer; }
+.sm-link-option + .sm-link-option { border-top: 1px solid var(--cs-line, var(--line)); }
+.sm-link-option-words { display: grid; gap: 2px; min-width: 0; }
+.sm-link-option-words b { font: 550 13px var(--read); color: var(--text); }
+.sm-link-option-words small { font: 450 12px/1.4 var(--read); color: var(--text-2); }
+@media (max-width: 640px) { .sm-link-steps { grid-template-columns: 1fr; } }
+/* The assistant's steps on top: the welcome's rail, flat — a hairline track, the step on the selection's tone. */
+html.home-shell dialog.sm-sheet .sm-steps { border-radius: 10px; box-shadow: inset 0 0 0 1px var(--cs-line); }
+html.home-shell dialog.sm-sheet .sm-steps li { font: 450 12.5px var(--read); }
+html.home-shell dialog.sm-sheet .sm-steps li.on { background: var(--cs-sel); box-shadow: none; font-weight: 600; }
+
+/* «Add to Home» as a window of Home (2026-10-28), like Settings: the canvas, a hairline, carried by
+   its head; its list scrolls inside it. */
+html.home-shell dialog.sm-sheet.sm-add-sheet.sm-add-framed { inset: auto; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 14px; box-shadow: 0 0 0 1px var(--cs-line), 0 24px 60px -18px rgba(0, 0, 0, .35), 0 6px 18px -8px rgba(0, 0, 0, .14); }
+html.home-shell dialog.sm-add-framed > .sm-sheet-body { flex: 1; width: 100%; height: 100%; max-height: none; margin: 0; border-radius: 0; overflow: auto; box-shadow: none !important; }
+html.home-shell dialog.sm-add-framed .sm-sheet-head { cursor: grab; }
+html.home-shell dialog.sm-add-framed .sm-sheet-head button { cursor: pointer; }
+html.home-shell dialog.sm-add-sheet .sm-add-row { padding: 12px 14px; }
