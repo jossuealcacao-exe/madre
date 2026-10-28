@@ -135,7 +135,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
       fillRect: (...args) => own.push({ name: 'fillRect', args }), beginPath: () => {}, closePath: () => {},
       arc: (...args) => own.push({ name: 'arc', args }), fill: () => own.push({ name: 'fill', args: [] }),
       moveTo: () => {}, lineTo: () => {}, stroke: () => {}, save: () => {}, restore: () => {},
-      ellipse: () => {}, clip: () => {}, quadraticCurveTo: () => {},
+      ellipse: () => {}, clip: () => {}, quadraticCurveTo: () => {}, scale: () => {},
     }, { get: (target, key) => (key in target ? target[key] : undefined), set: () => true });
     const canvas = { width: 0, height: 0, getContext: () => paint, calls: own };
     offscreen.push(canvas);
@@ -155,7 +155,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawCage')} ${fn('drawHoverLabel')} ${fn('fadeOver')}
     ${block('NEURAL_AXON')} ${block('NEURAL_IGNITION')} ${block('NEURAL_CROSSFADE')} ${block('NEURON_GLOWS')} ${fn('neuronGlow')}
-    ${block('NEURON_SPRITES')} ${block('NEURON_SPRITE')} ${fn('neuronSprite')} ${fn('fibreBundle')} ${block('NEURAL_COLORS')} ${block('neuralTone')}
+    ${block('NEURON_SPRITES')} ${block('NEURON_SPRITE')} ${block('NEURON_SHAPES')} ${block('NEURON_LIGHT')} ${block('NEURON_SPARK')} ${fn('neuronSkeleton')} ${fn('somaPath')} ${fn('tubePass')} ${fn('drawLivingNeuron')} ${fn('drawDeadNeuron')} ${fn('neuronSprite')} ${fn('fibreBundle')} ${block('NEURAL_COLORS')} ${block('neuralTone')}
     ${block('BULB_TONES')} ${block('BULB')} ${block('SPARK_SLOTS')} ${block('sparkNoise')} ${fn('bulbSparks')} ${fn('drawNeuralBulb')} ${fn('neuralGround')} ${block('UNDERWAY')} ${block('travels')} ${block('FOCUS_VEIL')}
     ${fn('drawNeural')} ${fn('setNeural')}
     ${fn('drawNostromo')}
@@ -217,9 +217,10 @@ test('nostromo: neural mode draws the same scene as neurons, whole, and shades n
     }
   }
   // Every neuron and every cell of the bulb is one stamped light: the glows are made once per colour,
-  // and since 2026-10-27 each neuron's drawing once per colour and shape (six shapes at most).
+  // and since 2026-10-27 each neuron's drawing once per colour, shape (six at most) and state (alive,
+  // going out, dead): five colours by six shapes by two states, and the glows, is the ceiling.
   assert.ok(calls.filter((call) => call.name === 'drawImage').length > 90 * 12, 'a neuron was not stamped');
-  assert.ok(offscreen.length <= 24, `a glow or a neuron was made again instead of being kept: ${offscreen.length} canvases`);
+  assert.ok(offscreen.length <= 72, `a glow or a neuron was made again instead of being kept: ${offscreen.length} canvases`);
   assert.ok(!calls.some((call) => ['putImageData', 'createImageData', 'getImageData'].includes(call.name)), 'something was shaded pixel by pixel');
   // Per frame, gradients are a handful (the ground, the vignette, the bulb's air), never one per memory.
   const gradients = calls.filter((call) => call.name === 'createRadialGradient').length / 90;

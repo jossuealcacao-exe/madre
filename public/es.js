@@ -193,6 +193,7 @@ export const ES = {
     'Nunca más · el proyecto deja de usar lo que recuerde de esto',
   'A faded star is a quarantined or discarded memory: it is kept, but never used in answers.':
     'Una estrella apagada es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
+  'A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers.': 'Una neurona que se apaga es una memoria en cuarentena o descartada: se guarda, pero nunca se usa en las respuestas.',
   'A summarized note nobody has reviewed yet. It is used in answers.':
     'Nota resumida que nadie ha revisado todavía. Se usa en las respuestas.',
   'You marked the reply it came from as good. Confirmed: it is used in answers.':

@@ -950,10 +950,10 @@ test('chat shell: Diagnostics in two rows of filters, the memory map head in the
 
 test('neural mode: memories are neurons, links are tracts, and the core is never quiet', async () => {
   const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
-  assert.match(engine, /export function neuronSprite\(hex, variant = 0\) \{/);
+  assert.match(engine, /export function neuronSprite\(hex, variant = 0, state = 'alive'\) \{/);
   assert.match(engine, /export function fibreBundle\(ctx, x0, y0, cx, cy, x1, y1, \{ strands = 3, spread = 3, seed = 0 \} = \{\}\) \{/);
   assert.match(engine, /function bulbSparks\(t, count = SPARK_SLOTS\) \{/);
-  assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, Math\.floor\(\(node\.seed \* 1000\) % 6\)\), -side \/ 2, -side \/ 2, side, side\);/);
+  assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, shape\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
   assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 6,/);
   assert.match(engine, /for \(const spark of bulbSparks\(t\)\) \{/);
 });
@@ -969,8 +969,25 @@ test('chat shell: «What is sent» without the console nor the hint, its reasons
   assert.match(app, /head\.append\(el\('span', 'when', part\.when === 'always' \? \(chatShellOn\(\) \? t\('always'\) : t\('ALWAYS'\)\) : t\(part\.when\)\)\);/);
   assert.match(es, /'the room has a memory': 'el proyecto tiene memoria',/);
   assert.match(engine, /export const NEURAL_COLORS = \{ decision: '#ff9a2e', fact: '#7cc4ff',/);
-  assert.match(engine, /export function neuronChip\(hex, size = 14\) \{/);
-  assert.match(app, /const mark = kind === COLLAPSED \? collapsedChip\(hex, 14\) : nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 14\) : dwarfChip\(hex, 14\);/);
+  assert.match(engine, /export function neuronChip\(hex, size = 16, state = 'alive'\) \{/);
   assert.match(art, /const FLAT = 'var\(--mk-flat, var\(--mk-b, #334155\)\)';/);
   assert.match(art, /<rect x="210" y="130" width="140" height="140" rx="33" style="fill:\$\{FLAT\}"\/>/);
+});
+
+test('neural mode: a real neuron — body, branching dendrites, a sheathed axon — alive by use, going out unused, dead when doubtful; the legend shows it whole', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
+  assert.match(engine, /export function neuronSkeleton\(rnd, c, r, reach, \{ depth = 3, thin = 0\.4, trunks = 4 \+ Math\.floor\(rnd\(\) \* 3\) \} = \{\}\) \{/);
+  assert.match(engine, /export function drawLivingNeuron\(paint, sk, hex, life = 1\) \{/);
+  assert.match(engine, /export function drawDeadNeuron\(paint, sk, hex, rnd, \{ step = 3\.2, dot = 1 \} = \{\}\) \{/);
+  assert.match(engine, /sheath: step > 0 && step < steps - 1, z: 1/);
+  assert.match(engine, /ctx\.drawImage\(neuronSprite\(neuralTone\(node\), shape, 'dead'\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
+  assert.match(engine, /const life = cold \? 0\.08 \+ 0\.22 \* activity : 0\.3 \+ 0\.7 \* activity;/);
+  assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, shape, 'spent'\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
+  // The cells are not turned: their light comes from one side.
+  assert.doesNotMatch(engine, /ctx\.rotate\(node\.seed \+/);
+  assert.match(app, /const mark = nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\) : kind === COLLAPSED \? collapsedChip\(hex, 14\) : dwarfChip\(hex, 14\);/);
+  assert.match(app, /neuronChip\(NEURAL_COLORS\.fact, 16, 'spent'\)/);
+  assert.match(es, /'A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers\.': 'Una neurona que se apaga es/);
 });

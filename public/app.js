@@ -19643,7 +19643,8 @@ function paintLegend() {
   for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
     const chip = el('span', `k ${kind}`);
     // The star is the name of its class. Writing it out as well says the same thing twice.
-    const mark = kind === COLLAPSED ? collapsedChip(hex, 14) : nostromo.neural ? neuronChip(NEURAL_COLORS[kind] ?? hex, 14) : dwarfChip(hex, 14);
+    // A doubtful memory is a dead neuron: its shape in loose points (2026-10-27).
+    const mark = nostromo.neural ? neuronChip(NEURAL_COLORS[kind] ?? hex, 16, kind === COLLAPSED ? 'dead' : 'alive') : kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14);
     chip.append(mark, el('i', null, kindWord(kind)));
     chip.title = nostromo.neural ? kindWord(kind) : `${DWARF_CLASS[kind]} · ${kindWord(kind)}`;
     chips.push(chip);
@@ -19652,8 +19653,8 @@ function paintLegend() {
   // say so. What a zone changes is whether the star is lit, which is one more thing to name here
   // rather than a second legend to read.
   const dim = el('span', 'k dim');
-  dim.append(nostromo.neural ? neuronChip(hexMix(NEURAL_COLORS.fact, '#2a3346', 0.6), 14) : dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), el('i', null, t('NOT USED')));
-  dim.title = t('A faded star is a quarantined or discarded memory: it is kept, but never used in answers.');
+  dim.append(nostromo.neural ? neuronChip(NEURAL_COLORS.fact, 16, 'spent') : dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), el('i', null, t('NOT USED')));
+  dim.title = nostromo.neural ? t('A neuron going out is a quarantined or discarded memory: it is kept, but never used in answers.') : t('A faded star is a quarantined or discarded memory: it is kept, but never used in answers.');
   chips.push(dim);
   host.replaceChildren(...chips);
   host.dataset.lit = drawing;
