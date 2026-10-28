@@ -19,14 +19,13 @@ export const RESTART_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d
 
 // The key itself, in the classes of the bar it sits in. Since 2026-10-28 it holds restarting too: a
 // press opens two choices, restart and turn off, and the bar has no reload key of its own.
-// `restart` is the page's own way back in (app.js and salas-mac.js, reloadWithGrace).
-export function powerKey(className, { restart = null } = {}) {
+export function powerKey(className) {
   const key = node('button', `${className} power-key`);
   key.type = 'button';
   key.innerHTML = POWER_ICON; // trusted: our own SVG string
   labelPowerKey(key);
   key.setAttribute('aria-haspopup', 'menu');
-  key.addEventListener('click', () => openPowerMenu(key, { restart }));
+  key.addEventListener('click', () => openPowerMenu(key));
   return key;
 }
 export function labelPowerKey(key) {
@@ -37,7 +36,7 @@ export function labelPowerKey(key) {
 // The two choices, beside the key that opened them: above it when the key is low on the screen (the
 // sidebar's foot), under it when it is high (a bar). Escape, a press elsewhere or a choice closes them.
 let powerMenu = null;
-export function openPowerMenu(anchor, { restart = null } = {}) {
+export function openPowerMenu(anchor) {
   // A second press on the same key puts the choices away.
   const was = powerMenu;
   if (was) { was.close(); if (was.anchor === anchor) return; }
@@ -63,7 +62,7 @@ export function openPowerMenu(anchor, { restart = null } = {}) {
     return one;
   };
   const items = [
-    ...(restart ? [item(RESTART_ICON, t('Restart'), t('MADRE loads again on this page'), () => restart())] : []),
+    item(RESTART_ICON, t('Restart'), t('Home and every open project start again'), () => void askRestart()),
     item(POWER_ICON, t('Turn off'), t('Home and every open project close'), () => void askPowerOff(), true),
   ];
   card.append(...items);
@@ -108,7 +107,7 @@ export async function askPowerOff() {
   icon.innerHTML = POWER_ICON; // trusted: our own SVG string
   const title = node('h2', 'room-ask-title', t('Turn MADRE off?'));
   title.id = 'power-ask-title';
-  const what = open === null ? t('Home and every open project close.') : open === 1 ? t('Home and the one open project close.') : t('Home and the {n} open projects close.', { n: open });
+  const what = open === null ? t('Home and every open project close.') : open === 0 ? t('Home closes.') : open === 1 ? t('Home and the one open project close.') : t('Home and the {n} open projects close.', { n: open });
   const body = node('p', 'room-ask-body', `${what} ${t('If an agent is working, it stops and the conversation says so; everything else is kept as it is.')}`);
   const again = node('p', 'key-safe', t('To use it again, open MADRE the way you always do. Your projects, conversations and settings will be there.'));
   const reply = node('p', 'key-reply');
@@ -146,6 +145,80 @@ export async function askPowerOff() {
   });
   dialog.showModal();
   cancel.focus();
+}
+
+// RESTARTING MADRE (2026-10-28): the same question, then the server — Home and every open project —
+// closes and comes back on the same addresses (src/server.mjs, /api/madre/restart). The page says
+// so while it waits, and loads again by itself the moment MADRE answers.
+export async function askRestart() {
+  if (document.querySelector('dialog.power-ask')) return;
+  const open = await openProjects();
+  const dialog = node('dialog', 'room-ask power-ask');
+  dialog.setAttribute('aria-labelledby', 'restart-ask-title');
+  const card = node('div', 'room-ask-card');
+  const icon = node('span', 'room-ask-icon');
+  icon.innerHTML = RESTART_ICON; // trusted: our own SVG string
+  const title = node('h2', 'room-ask-title', t('Restart MADRE?'));
+  title.id = 'restart-ask-title';
+  const what = open === null ? t('Home and every open project close and open again.') : open === 0 ? t('Home closes and opens again.') : open === 1 ? t('Home and the one open project close and open again.') : t('Home and the {n} open projects close and open again.', { n: open });
+  const body = node('p', 'room-ask-body', `${what} ${t('If an agent is working, it stops and the conversation says so; everything else is kept as it is.')}`);
+  const again = node('p', 'key-safe', t('It takes a few seconds. Every page you have open comes back on its own.'));
+  const reply = node('p', 'key-reply');
+  reply.setAttribute('aria-live', 'polite');
+  const actions = node('div', 'room-ask-actions');
+  const cancel = node('button', 'room-ask-choice', t('Cancel'));
+  cancel.type = 'button';
+  const go = node('button', 'room-ask-choice primary', t('Restart'));
+  go.type = 'button';
+  actions.append(cancel, go);
+  card.append(icon, title, body, again, reply, actions);
+  dialog.append(card);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  cancel.addEventListener('click', () => dialog.close());
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    cancel.disabled = true;
+    go.textContent = t('Restarting…');
+    reply.textContent = '';
+    try {
+      const response = await fetch('/api/madre/restart', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      const answer = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(answer.error ?? `HTTP ${response.status}`);
+    } catch (error) {
+      reply.textContent = error.message;
+      go.disabled = false;
+      cancel.disabled = false;
+      go.textContent = t('Restart');
+      return;
+    }
+    dialog.close();
+    await waitForRestart();
+  });
+  dialog.showModal();
+  go.focus();
+}
+// While MADRE is away: a screen that says so, until this page's own server answers again — first
+// gone, then back — and the page loads. A minute at most; after it, the screen says what to do.
+async function waitForRestart() {
+  const screen = node('div', 'madre-off madre-restarting');
+  screen.setAttribute('role', 'status');
+  const mark = node('span', 'madre-off-mark');
+  mark.innerHTML = RESTART_ICON; // trusted: our own SVG string
+  const said = node('p', null, t('Home and your projects close and open again on the same addresses.'));
+  screen.append(mark, node('h1', null, t('Restarting MADRE…')), said);
+  document.body.append(screen);
+  document.documentElement.classList.add('madre-is-off');
+  const answers = () => fetch(`/api/version?ts=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(1500) }).then((response) => response.ok).catch(() => false);
+  const until = Date.now() + 60000;
+  let gone = false;
+  while (Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const up = await answers();
+    if (!up) gone = true;
+    else if (gone) { location.reload(); return; }
+  }
+  said.textContent = t('MADRE is taking longer than usual. Open it the way you always do; your projects, conversations and settings are there.');
 }
 
 // What stays on screen once MADRE is off.

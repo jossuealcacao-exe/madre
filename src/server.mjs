@@ -361,6 +361,28 @@ export async function createPulseServer({
     }
     return { closed: others.length - left.length, stuck: left.map((one) => one.name) };
   }
+  // RESTARTING MADRE (2026-10-28): this process goes and a new one takes its place — the same
+  // command, the same project, on the same port so every page open on it finds it again, and
+  // without opening the browser a second time. Its listener is closed first, so the port is free
+  // for the new one; what it says on the way up lands beside the ledger (restart.log).
+  function restartSelf(port) {
+    const args = process.argv.slice(1);
+    const next = [...args];
+    if (!args.includes('--port')) next.push('--port', String(port));
+    if (!args.includes('--no-open')) next.push('--no-open');
+    setTimeout(() => {
+      server.close(() => {
+        let log = 'ignore';
+        try { log = openSync(join(roomDir, 'restart.log'), 'a'); } catch { /* no witness, still restart */ }
+        const env = { ...process.env, PULSE_RESTARTED: '1' };
+        delete env.PULSE_UPDATE_RESTART;
+        const child = spawn(process.execPath, [...process.execArgv, ...next], { cwd: process.cwd(), detached: process.platform !== 'win32', windowsHide: true, stdio: ['ignore', log, log], env });
+        child.unref();
+        setTimeout(() => process.exit(0), 200);
+      });
+      for (const client of clients.keys()) { try { client.end(); } catch { /* gone */ } }
+    }, 300);
+  }
   // How many memories of each kind, and how many travel into turns. Counted, never read out.
   function memoryCensus() {
     const all = memory ? memory.memories({ limit: 20000 }) : [];
@@ -2475,6 +2497,27 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/room/close') {
         sendJson(response, 202, { closing: true });
         setTimeout(() => server.emit('madre:close'), 150);
+        return undefined;
+      }
+      // Restart MADRE, from its own page on this computer (public/power.js, askRestart): every other
+      // open project restarts itself, then this one. Each comes back on its own port, open as it was.
+      if (request.method === 'POST' && url.pathname === '/api/madre/restart') {
+        const host = String(request.headers.host ?? '');
+        const site = request.headers['sec-fetch-site'];
+        if (viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('MADRE is restarted from its own page, on this computer.') });
+        const here = basename(roomDir);
+        const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
+        const asked = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/restart', { method: 'POST', body: {}, timeoutMs: 3000 }).then(() => true).catch(() => false)));
+        await room.record('room.restarting', { others: others.length });
+        sendJson(response, 202, { restarting: true, others: others.length, stuck: others.filter((_, index) => !asked[index]).map((one) => one.name) });
+        restartSelf(request.socket.localPort);
+        return undefined;
+      }
+      // This room, asked by another MADRE process on this computer to restart (never by a page).
+      if (request.method === 'POST' && url.pathname === '/api/room/restart') {
+        if (viaPhone || request.headers.origin !== undefined) return sendJson(response, 403, { error: t('MADRE is restarted from its own page, on this computer.') });
+        sendJson(response, 202, { restarting: true });
+        restartSelf(request.socket.localPort);
         return undefined;
       }
       // ---------- ENLACES (docs/MACROVERSO.md, fase 3b) ----------

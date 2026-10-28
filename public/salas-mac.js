@@ -5269,7 +5269,7 @@ function openSettings(section = null) {
 }
 ui.gear.addEventListener('click', () => openSettings());
 // Turning MADRE off (public/power.js), last in the bar, after the settings.
-const powerButton = powerKey('sm-icon-key bar', { restart: () => reloadWithGrace() });
+const powerButton = powerKey('sm-icon-key bar');
 powerButton.id = 'sm-power';
 ui.gear.after(powerButton);
 
@@ -5410,7 +5410,7 @@ function buildHomeShell() {
   copy.rel = 'noopener';
   who.append(homeShell.version, copy);
   homeShell.settings = sideKey(ui.gear.innerHTML, t('Settings'), () => openSettings());
-  homeShell.power = sideKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(homeShell.power, { restart: () => reloadWithGrace() }));
+  homeShell.power = sideKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(homeShell.power));
   homeShell.power.setAttribute('aria-haspopup', 'menu');
   foot.append(who, homeShell.settings, homeShell.power);
   side.append(head, nav, scroll, foot);

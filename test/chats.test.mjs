@@ -1110,10 +1110,16 @@ test('Local AI and connectors are MADRE\'s own; restart lives in the power key; 
   const neural = await readFile(new URL('../public/neural.js', import.meta.url), 'utf8');
   const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
   // Restart and turn off, two choices of one key; no reload key on either bar.
-  assert.match(power, /export function openPowerMenu\(anchor, \{ restart = null \} = \{\}\) \{/);
-  assert.match(power, /key\.addEventListener\('click', \(\) => openPowerMenu\(key, \{ restart \}\)\);/);
-  assert.match(app, /homePower = powerKey\('tree-button', \{ restart: \(\) => reloadWithGrace\(\) \}\);/);
-  assert.match(home, /const powerButton = powerKey\('sm-icon-key bar', \{ restart: \(\) => reloadWithGrace\(\) \}\);/);
+  assert.match(power, /export function openPowerMenu\(anchor\) \{/);
+  assert.match(power, /key\.addEventListener\('click', \(\) => openPowerMenu\(key\)\);/);
+  assert.match(power, /item\(RESTART_ICON, t\('Restart'\), t\('Home and every open project start again'\), \(\) => void askRestart\(\)\),/);
+  assert.match(power, /const response = await fetch\('\/api\/madre\/restart',/);
+  assert.match(app, /homePower = powerKey\('tree-button'\);/);
+  assert.match(home, /const powerButton = powerKey\('sm-icon-key bar'\);/);
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /if \(request\.method === 'POST' && url\.pathname === '\/api\/madre\/restart'\) \{/);
+  assert.match(server, /if \(!args\.includes\('--port'\)\) next\.push\('--port', String\(port\)\);/);
+  assert.match(server, /if \(!args\.includes\('--no-open'\)\) next\.push\('--no-open'\);/);
   assert.match(css, /html\.chat-shell #reload-button \{ display: none !important; \}/);
   assert.match(homeCss, /html\.home-shell \.sm-top #sm-reload \{ display: none !important; \}/);
   // Modules shakes; the Project map turns on its own axis.

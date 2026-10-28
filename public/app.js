@@ -21832,7 +21832,7 @@ function homeBar() {
     if (key.parentNode !== home) home.append(key);
   }
   // Last, after the settings: turning MADRE off (public/power.js). On the Mac only.
-  if (!homePower) { homePower = powerKey('tree-button', { restart: () => reloadWithGrace() }); homePower.id = 'power-button'; }
+  if (!homePower) { homePower = powerKey('tree-button'); homePower.id = 'power-button'; }
   labelPowerKey(homePower);
   if (homePower.parentNode !== home || (home.lastElementChild && home.lastElementChild !== homePower)) home.append(homePower);
   home.hidden = false;
@@ -22126,7 +22126,7 @@ function chatShell() {
   who.append(copy);
   shellUI.foot.append(who,
     shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
-    (() => { const off = shellKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(off, { restart: () => reloadWithGrace() })); off.setAttribute('aria-haspopup', 'menu'); return off; })());
+    (() => { const off = shellKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(off)); off.setAttribute('aria-haspopup', 'menu'); return off; })());
 
   side.prepend(head, nav, scroll);
   side.append(shellUI.foot);
