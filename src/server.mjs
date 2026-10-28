@@ -24,6 +24,7 @@ import { ErrorSentinel } from './sentinel-errors.mjs';
 import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
 import { recallForTurn } from './modules/enlaces.mjs';
 import { hardwareOnce, MODEL_TIERS } from './modules/local-models.mjs';
+import { browserAdvice, environmentOnce, openBrowser as openInBrowser } from './environment.mjs';
 import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule, adoptBuiltinUpdates, packagedVersions } from './modules/index.mjs';
 import { understandsSdk } from './modules/sdk.mjs';
 import { updateBuiltins } from './builtin-updates.mjs';
@@ -187,10 +188,15 @@ async function body(request, { limit = BODY_LIMIT } = {}) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 
-export function openUrl(url) {
-  const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
-  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
-  execFile(command, args, () => {});
+// Opens a page of MADRE in this computer's browser, the way this place allows (src/environment.mjs):
+// in WSL, Windows' own browser; over SSH or on a Linux with no screen, none. When none opened, the
+// terminal says where to open it, and over SSH the one command that brings it to the person's own
+// computer (2026-10-28). Answers whether it opened.
+export async function openUrl(url) {
+  const environment = await environmentOnce().catch(() => null);
+  const opened = await openInBrowser(url, environment);
+  if (!opened) console.log(`${browserAdvice(environment, url, { t }).map((line) => `  ${line}`).join('\n')}\n`);
+  return opened;
 }
 
 // PULSE_AGENT_TIMEOUT_MS applies to every agent; PULSE_<AGENT>_TIMEOUT_MS
@@ -3619,6 +3625,13 @@ export async function createPulseServer({
         }
         return sendJson(response, 404, { error: 'Not found' });
       }
+      // Where this MADRE runs and what the computer is (src/environment.mjs, local-models.mjs), for the
+      // welcome to adapt its steps: the system, WSL, a virtual machine, SSH, a screen, free space.
+      if (request.method === 'GET' && url.pathname === '/api/environment') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const [environment, hardware] = await Promise.all([environmentOnce(), hardwareOnce()]);
+        return sendJson(response, 200, { environment, hardware, port: request.socket.localPort });
+      }
       if (request.method === 'GET' && url.pathname === '/api/version') {
         // With the one thing the daily notice says about this copy: its random identifier, shown so the
         // person can see it, and so the author can leave out a copy of his own (the usage widget).
@@ -4495,7 +4508,8 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || 'none';
   const broken = agents.filter((agent) => agent.detected && !agent.ready).map((agent) => agent.label).join(', ');
   console.log(`\nMADRE is ready\n\n  ${url}${openPath}\n  Project: ${projectRoot}\n  Agents installed: ${ready} (who is signed in: Settings › Agents)\n${broken ? `  Found but not answering: ${broken}\n` : ''}`);
-  if (openBrowser) openUrl(`${url}${openPath}`);
+  // Not waited for: the signals below are set up while the browser opens.
+  if (openBrowser) void openUrl(`${url}${openPath}`);
   // SIGHUP too: closing the Terminal the room was started in is a way of closing it.
   // Home closed this way closes what Turn MADRE off closes (2026-10-21): every open project, also
   // one opened from another project, whose process outlives Home on its own. A second signal while

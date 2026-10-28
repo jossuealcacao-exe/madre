@@ -217,7 +217,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   const running = await roomAlreadyOpen(port, projectRoot);
   if (running) {
     console.log(`\nMADRE is already open for this project\n\n  ${running.url}${openPath}\n  Project: ${projectRoot}\n  Close that room first if you want a fresh one.\n`);
-    if (!noOpen) openUrl(`${running.url}${openPath}`);
+    if (!noOpen) await openUrl(`${running.url}${openPath}`);
     process.exit(0);
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen, openPath });
