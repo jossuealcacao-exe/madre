@@ -276,7 +276,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   // ---- 2 · YOUR COMPUTER: what MADRE found, in plain words, and what it means for the next steps.
   function placeWords() {
     const env = s.env ?? {};
-    if (env.place === 'ssh') return t('You came in from another computer (SSH)');
+    if (env.place === 'ssh') return t('You\'re connected from another computer (SSH)');
     if (env.place === 'wsl') return env.wsl?.distro ? t('Linux inside Windows (WSL · {distro})', { distro: env.wsl.distro }) : t('Linux inside Windows (WSL)');
     if (env.place === 'vm') return t('A virtual machine ({vm})', { vm: env.vm });
     if (env.place === 'container') return t('Inside a container');
@@ -309,7 +309,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (env.os === 'windows') notes.push(note('warn', t('The version of MADRE for Windows arrives in 1.1. Until then it runs inside WSL, Linux inside Windows.'), fix('windows-use-wsl')));
     // A virtual machine reached over SSH is both (Carlos, 2026-10-28): each is said.
     if (env.vm && env.vm !== 'macOS') notes.push(note('warn', t('MADRE runs in a virtual machine: an AI here runs slower than on the computer itself. If that computer runs Windows, MADRE works better in WSL.')));
-    if (env.place === 'ssh') notes.push(note('', t('You came in from another computer. Some agents connect with a code instead of opening a page; each one says so.'), fix('ssh-tunnel')));
+    if (env.place === 'ssh') notes.push(note('', t('You\'re connected from another computer. Some agents connect with a code instead of opening a page; each one says so.'), fix('ssh-tunnel')));
     if (env.place === 'container') notes.push(note('', t('MADRE runs inside a container: what it installs stays in that container.')));
     if (env.disk && env.disk.freeGb < 10) notes.push(note('warn', t('Only {n} GB free. Agents fit, but an AI of its own needs more room: free some up before step 4.', { n: number(env.disk.freeGb) })));
     content.replaceChildren(...head(t('Here is what we found'), t('We use it to recommend what works best on your computer. It never leaves your computer.')), grid, ...notes);
@@ -320,9 +320,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   function explainAgent(agent, state) {
     const env = s.env ?? {};
     if (agent.id === 'gemini' && !state.ok) return el('p', 'wl-agent-why', t('Gemini no longer works with personal Google accounts: it needs an access key (API key) from Google AI Studio. You pay for what you use, usually very little. «Where do I get one?» opens the page that gives it.'));
-    if (agent.id === 'cursor' && !agent.detected) return el('p', 'wl-agent-why', t('Cursor installs with its own installer. For your safety MADRE does not run installers downloaded from the internet: copy the line below into a terminal, once, then press «I did it». Or skip it: it is optional.'));
-    if (env.place === 'ssh' && agent.detected && !state.ok && (agent.login?.methods ?? []).some((method) => method.id === 'device')) return el('p', 'wl-agent-why', t('You came in from another computer: choose «With a code», and type the code on the page from any device.'));
-    if (env.place === 'ssh' && agent.detected && !state.ok) return el('p', 'wl-agent-why', t('You came in from another computer: open the page it gives you on your own computer, and paste the code it shows back here.'));
+    if (agent.id === 'cursor' && !agent.detected) return el('p', 'wl-agent-why', t('Cursor installs with its own installer. For your safety MADRE does not run installers downloaded from the internet: copy the line below into a terminal (the window where you type commands), once, then press «I did it». Or skip it: it is optional.'));
+    if (env.place === 'ssh' && agent.detected && !state.ok && (agent.login?.methods ?? []).some((method) => method.id === 'device')) return el('p', 'wl-agent-why', t('You\'re connected from another computer: choose «With a code», and type the code on the page from any device.'));
+    if (env.place === 'ssh' && agent.detected && !state.ok) return el('p', 'wl-agent-why', t('You\'re connected from another computer: open the page it gives you on your own computer, and paste back here the code it shows.'));
     return null;
   }
   function agents() {
@@ -378,7 +378,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   let aiBody = null;
   function ai() {
     const carry = canCarry();
-    const intro = carry === 'yes' ? note('ok', t('Your computer can run its own AI: free, private and without internet. It gives life to @madre, the archivist and the search in your memory.'))
+    const intro = carry === 'yes' ? note('ok', t('Your computer can run its own AI: free, private and offline. It powers @madre, the archivist and the search in your memory.'))
       : carry === 'slow' ? note('warn', t('Your computer can, but it will be slow ({gb} GB, no graphics card the AI can use). We recommend a small model.', { gb: number(facts().memoryGb ?? 0) }))
         : note('warn', t('This computer does not have enough memory for an AI of its own: here it would be too slow. MADRE works just the same with your agents.'));
     // Chosen before: what is already there says which way this goes.
@@ -441,7 +441,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       get.href = OLLAMA_DOWNLOAD;
       get.target = '_blank';
       get.rel = 'noopener';
-      row.append(get, checkKey(), el('small', 'wl-tiny', t('MADRE checks by itself.')));
+      row.append(get, checkKey(), el('small', 'wl-tiny', t('MADRE checks on its own.')));
       box.append(row);
     } else if (info.install?.command && !s.install?.manual) {
       box.append(el('p', 'wl-muted', t('MADRE installs it with Ollama\'s own installer, from ollama.com. It takes a few minutes.')));
@@ -461,10 +461,10 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     } else {
       const why = env.place === 'wsl'
         ? t('It installs inside Linux (WSL). Linux asks for your Linux user\'s password to install programs; MADRE never asks for it or keeps it. Copy this line into the Ubuntu terminal, once.')
-        : t('To install programs, Linux asks for your password. MADRE never asks for it or keeps it: copy this line into a terminal on this computer, once.');
+        : t('To install programs, Linux asks for your password. MADRE never asks for it or keeps it: copy this line into a terminal (the window where you type commands) on this computer, once.');
       box.append(el('p', 'wl-muted', why), copyLine(OLLAMA_SCRIPT));
       const row = el('div', 'wl-row');
-      row.append(checkKey(), el('small', 'wl-tiny', t('MADRE checks by itself.')));
+      row.append(checkKey(), el('small', 'wl-tiny', t('MADRE checks on its own.')));
       box.append(row);
     }
     if (s.install?.error && !info.running) box.append(note('bad', s.install.trouble && TROUBLE[s.install.trouble] ? TROUBLE[s.install.trouble]() : s.install.error, fix(s.install.card ?? (s.install.trouble === 'permission' ? 'ollama' : TROUBLE_CARD[s.install.trouble]) ?? 'ollama')));
@@ -668,7 +668,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
 
   // ---- 7 · READY: what is set, what was left for later with its key, and what comes next.
   async function ready() {
-    content.replaceChildren(...head(t('MADRE is ready'), t('Here is what is set. Anything you left for later has its button.')), el('p', 'wl-muted', t('Reading…')));
+    content.replaceChildren(...head(t('MADRE is ready'), t('Here is what is ready. Anything you left for later has its button.')), el('p', 'wl-muted', t('Reading…')));
     actions.replaceChildren();
     const settings = s.agents ?? await getJson('/api/settings');
     await readOllama();
@@ -681,7 +681,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const provider = s.memory?.embedProvider;
     const rows = [
       [t('Agents'), connected.length ? new Intl.ListFormat(language(), { type: 'conjunction' }).format(connected) : t('None connected yet'), connected.length > 0, 'agents'],
-      [t('AI on your computer'), aiOn ? `${s.ollama.chatModel ?? chatModels()[0].name}${localHost(s.ollama.host) ? '' : ` · ${t('another computer\'s')}`}` : t('For later'), aiOn, 'ai'],
+      [t('AI on your computer'), aiOn ? `${s.ollama.chatModel ?? chatModels()[0].name}${localHost(s.ollama.host) ? '' : ` · ${t('on another computer')}`}` : t('For later'), aiOn, 'ai'],
       [t('Memory'), provider === 'ollama' ? t('Search by meaning, on your computer') : provider === 'gemini' ? t('Search by meaning, with Gemini') : t('Exact words'), provider === 'ollama' || provider === 'gemini', 'memory'],
       [t('Project'), room ? room.name : t('None yet'), Boolean(room), 'project'],
     ];
@@ -717,7 +717,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     } else {
       trainCard.append(el('p', 'wl-muted', t('This computer cannot train. It takes a Mac with an Apple chip and 12 GB of memory, or an NVIDIA card with 9 GB or more.')));
     }
-    content.replaceChildren(...head(t('MADRE is ready'), t('Here is what is set. Anything you left for later has its button.')), summary, el('p', 'wl-eyebrow wl-gap', t('What comes next')), nextCards, trainCard);
+    content.replaceChildren(...head(t('MADRE is ready'), t('Here is what is ready. Anything you left for later has its button.')), summary, el('p', 'wl-eyebrow wl-gap', t('What comes next')), nextCards, trainCard);
     const learn = button('wl-btn', t('Get to know MADRE'), () => { const after = then ?? host.chapters; finish(); after?.(); });
     footer({
       next: room ? t('Go to my project') : t('Go to Home'),

@@ -1223,3 +1223,23 @@ test('Diagnostics for the welcome (F7): each way it goes wrong has its card, for
   assert.match(remedy, /const lines = fixesFor\(condition, system\);/);
   assert.match(server, /'\/remedy\.js'/);
 });
+
+test('the manual starts with «Start here»: the way in for each system, then the welcome, the same in both languages', async () => {
+  const { MANUAL } = await import('../public/manual-content.js');
+  const manualJs = await readFile(new URL('../public/manual.js', import.meta.url), 'utf8');
+  for (const [lang, title] of [['es', 'Empieza aquí'], ['en', 'Start here']]) {
+    const first = MANUAL[lang].sections[0];
+    assert.equal(first.title, title);
+    assert.equal(first.systems.length, 4, `${lang}: Mac, Linux, Windows with WSL, SSH or a virtual machine`);
+    for (const system of first.systems) assert.deepEqual(system.code, ['npx @jossuealcala/madre']);
+    // Windows says what docs/WINDOWS.md says: its version arrives in 1.1; until then, WSL.
+    assert.match(first.systems[2].note, lang === 'es' ? /llega en la 1\.1/ : /arrives in 1\.1/);
+    assert.ok(first.systems[2].steps.some((step) => step.includes('`wsl --install`')));
+    // The intro points to it by its new name.
+    assert.ok(MANUAL[lang].intro.some((line) => line.includes(`«${title}»`)));
+  }
+  // The two languages tell the same things: as many sections, systems, steps and problems.
+  const shape = (copy) => copy.sections.map((one) => [one.id, one.systems?.map((system) => system.steps.length) ?? null, one.steps?.length ?? 0, one.problems?.length ?? 0]);
+  assert.deepEqual(shape(MANUAL.es), shape(MANUAL.en));
+  assert.match(manualJs, /if \(section\.systems\?\.length\) \{/);
+});

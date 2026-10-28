@@ -297,10 +297,10 @@ function draw(lang, madre) {
     const picture = section.shot ? shot(section.shot, lang, section.title) : null;
     if (picture) body.append(picture);
     // What to paste in the Terminal, with its key to copy it.
-    if (section.code?.length) {
+    const terminalOf = (lines) => {
       const terminal = el('div', 'manual-terminal');
       terminal.append(el('span', 'manual-terminal-dots'));
-      for (const line of section.code) {
+      for (const line of lines) {
         const row = el('div', 'manual-terminal-line');
         row.append(el('span', 'manual-terminal-prompt', '$'), el('code', null, line));
         if (!printing) {
@@ -313,7 +313,27 @@ function draw(lang, madre) {
         }
         terminal.append(row);
       }
-      body.append(terminal);
+      return terminal;
+    };
+    if (section.code?.length) body.append(terminalOf(section.code));
+    // «Start here» (2026-10-28): the way in for each system, side by side — what it says first, its
+    // steps, the command, and one thing worth knowing there.
+    if (section.systems?.length) {
+      const systems = el('div', 'manual-systems');
+      for (const system of section.systems) {
+        const card = el('article', 'manual-system');
+        card.append(el('h3', null, plain(system.name)));
+        if (system.note) card.append(el('p', 'manual-system-note', plain(system.note)));
+        if (system.steps?.length) {
+          const list = el('ol', 'manual-system-steps');
+          for (const step of system.steps) { const item = el('li'); item.append(rich(step)); list.append(item); }
+          card.append(list);
+        }
+        if (system.code?.length) card.append(terminalOf(system.code));
+        if (system.tip) { const tip = el('p', 'manual-system-tip'); tip.append(rich(system.tip)); card.append(tip); }
+        systems.append(card);
+      }
+      body.append(systems);
     }
     // What goes wrong most often: what the person sees, and what to do.
     if (section.problems?.length) {

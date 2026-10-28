@@ -10,6 +10,11 @@
 // whoever already knows the basics. Its `shot` is a picture of MADRE itself (scripts/manual-shots.mjs)
 // whose numbered marks are the steps, in order. No «in one place», no «at your own pace»: what to
 // press and what to type. `«Mac»` is said of the computer (i18n.js, hostWords).
+//
+// «Start here» (2026-10-28, docs/private/BIENVENIDA-1.0.6.md, F8): the first section is the way in
+// for each system — a Mac, Linux, Windows with WSL, and a computer reached over SSH or a virtual
+// machine — then the welcome, which leaves MADRE ready. Windows says what docs/WINDOWS.md says: its
+// version arrives in 1.1, and until then MADRE runs inside WSL.
 
 export const MANUAL = {
   es: {
@@ -17,7 +22,7 @@ export const MANUAL = {
     subtitle: 'Cómo trabajar con tus agentes de IA',
     intro: [
       'En MADRE trabajas con las IAs que ya usas: Codex, Claude, Gemini, Cursor u OpenCode. Les escribes, leen tu proyecto y tú decides qué pueden cambiar.',
-      'Si nunca has usado una IA, empieza por «Instala MADRE» y sigue en orden. Si ya las usas, ve directo a lo que necesites: cada sección cierra con lo que conviene saber cuando ya tienes práctica.',
+      'Si nunca has usado una IA, empieza por «Empieza aquí» y sigue en orden. Si ya las usas, ve directo a lo que necesites: cada sección cierra con lo que conviene saber cuando ya tienes práctica.',
     ],
     words: {
       title: 'Cuatro palabras antes de empezar',
@@ -41,16 +46,57 @@ export const MANUAL = {
         id: 'instalar',
         part: 'start',
         icon: 'download',
-        title: 'Instala MADRE',
-        lead: 'MADRE se instala con un comando y se abre en tu navegador. No pide cuenta ni tarjeta.',
-        code: ['npx @jossuealcala/madre'],
-        tryIt: 'Para saber si ya tienes Node, escribe en la Terminal `node --version`. Si dice v22.5 o un número mayor, ya está.',
-        steps: [
-          'Instala Node.js 22.5 o más nuevo desde nodejs.org. Si ya lo tienes, sáltate este paso.',
-          'Abre la Terminal, pega el comando de arriba y pulsa ↵.',
-          'MADRE se abre en tu navegador, en Inicio. La próxima vez usa el mismo comando.',
+        title: 'Empieza aquí',
+        lead: 'Un comando instala MADRE y la abre en tu navegador. Ahí, la bienvenida te deja todo listo paso a paso: tus agentes, la IA en tu computadora, la memoria y tu primer proyecto. Después ya no necesitas la terminal (la ventana donde se escriben comandos). No pide cuenta ni tarjeta.',
+        systems: [
+          {
+            name: 'Mac',
+            steps: [
+              'Instala Node 22.5 o más nuevo desde nodejs.org, o con `brew install node`. Si ya lo tienes, sáltate este paso.',
+              'Abre la app Terminal (búscala con Spotlight) y pega el comando.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'Para la IA en tu computadora, la bienvenida te da el enlace a la app oficial de Ollama.',
+          },
+          {
+            name: 'Linux',
+            steps: [
+              'Instala Node 22.5 o más nuevo desde nodejs.org o con nvm: el de los paquetes de tu sistema puede ser más viejo.',
+              'Abre tu terminal y pega el comando.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'Para instalar Ollama, Linux pide tu contraseña. La bienvenida te da la línea para copiarla: MADRE nunca pide ni guarda contraseñas.',
+          },
+          {
+            name: 'Windows, con WSL',
+            note: 'La versión de MADRE para Windows llega en la 1.1. Mientras tanto corre dentro de WSL, el Linux que traen Windows 10 y 11.',
+            steps: [
+              'Una vez, en PowerShell como administrador, escribe `wsl --install` y reinicia.',
+              'Abre «Ubuntu» desde el menú Inicio e instala Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` y luego `sudo apt install -y nodejs`.',
+              'Pega el comando en Ubuntu. MADRE se abre en tu navegador de Windows.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'Guarda tus proyectos dentro de Linux (en /home), no en /mnt/c: ahí MADRE va más rápido y protege mejor tus archivos.',
+          },
+          {
+            name: 'Otra computadora (SSH) o máquina virtual',
+            note: 'Si MADRE corre en un servidor o en una máquina virtual a la que entras por SSH, tu navegador está en tu computadora y llega a MADRE por un túnel.',
+            steps: [
+              'En el servidor, pega el comando de MADRE. La terminal te escribe el comando del túnel con tu usuario, tu servidor y el puerto.',
+              'En tu computadora, abre otra terminal, pega ese comando y déjala abierta.',
+              'Abre http://127.0.0.1:5317/salas en tu navegador.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'En una máquina virtual la IA en tu computadora va lenta. Si tu PC tiene Windows, MADRE va mejor con WSL que en una máquina virtual.',
+          },
         ],
-        expert: 'MADRE no guarda tus contraseñas: usa las sesiones que tus agentes ya tienen en tu Mac. Con `--port 4800` la abres en otro puerto.',
+        tryIt: 'Para saber si ya tienes Node, escribe en la terminal `node --version`. Si dice v22.5 o un número mayor, ya está.',
+        steps: [
+          'MADRE se abre en tu navegador con la bienvenida. Elige tu idioma y sigue los siete pasos; cada uno se puede dejar para después.',
+          'Si algo falla, la bienvenida te dice qué pasó, y «Ver cómo arreglarlo» te da los pasos para tu sistema.',
+          'Al terminar, pulsa «Ir a mi proyecto». La próxima vez usa el mismo comando.',
+        ],
+        expert: 'MADRE no guarda tus contraseñas: usa las sesiones que tus agentes ya tienen en tu Mac. Con `--port 4800` la abres en otro puerto. La bienvenida se vuelve a abrir en Inicio › Ajustes › Proyectos › «Ver la bienvenida otra vez».',
       },
       {
         id: 'agentes',
@@ -61,11 +107,11 @@ export const MANUAL = {
         lead: 'Un agente es una IA como Codex, Claude o Gemini. Lo conectas una vez y todos tus proyectos lo usan. Con uno basta para empezar.',
         tryIt: 'Si ya usas ChatGPT, conecta Codex con esa misma cuenta: es lo más rápido.',
         steps: [
-          'En Inicio, abre Ajustes › Agentes. La primera vez MADRE te lo muestra solo.',
+          'En Inicio, abre Ajustes › Agentes. La primera vez, la bienvenida te lleva ahí.',
           'Abre un agente que diga «Sin iniciar sesión» y pulsa su botón, como «Cuenta de Claude». Entras con tu cuenta en la página del proveedor. Si no lo tienes, verás Instalar.',
           'Cuando dice «Conectado», ya puedes hablarle.',
         ],
-        expert: 'Cada agente guarda su propia sesión; MADRE no la lee. Las llaves de API (Gemini, OpenCode) se pegan en la misma tarjeta, y «¿Prefieres tu terminal?» te da el comando.',
+        expert: 'Cada agente guarda su propia sesión; MADRE no la lee. Las llaves de acceso (API key) de Codex, Claude, Gemini y OpenCode se pegan en la misma tarjeta, y «¿Prefieres tu terminal?» te da el comando. Si MADRE corre en otra computadora, Codex se conecta «Con un código».',
       },
       {
         id: 'inicio',
@@ -233,7 +279,7 @@ export const MANUAL = {
           'Descarga el modelo marcado como «Recomendado para tu equipo»: ya está medido para tu Mac.',
           'Elige qué proyectos la usan.',
         ],
-        expert: 'Funciona con Ollama. MADRE solo te ofrece los modelos que caben en tu equipo.',
+        expert: 'Funciona con Ollama. MADRE solo te ofrece los modelos que caben en tu equipo. Si otra computadora de tu red tiene Ollama y tarjeta gráfica (o, desde WSL, la de Windows), escribe su dirección en «Dirección de Ollama».',
       },
       {
         id: 'entrena',
@@ -318,12 +364,14 @@ export const MANUAL = {
           ['Un agente dice «Sin iniciar sesión».', 'Ajustes › Agentes: ábrelo y pulsa su botón para entrar con tu cuenta.'],
           ['MADRE no encuentra un agente.', 'Ajustes › Agentes › Instalar. MADRE corre el comando por ti.'],
           ['Gemini dice que llegó a su límite (429) o que está saturado (503).', 'Espera un minuto y vuelve a preguntar, elige otro modelo en el menú de modelo o pásale la pregunta a otro agente.'],
-          ['Gemini rechaza tu cuenta personal de Google.', 'Pega una llave de Google AI Studio en Ajustes › Agentes › Gemini.'],
+          ['Gemini rechaza tu cuenta personal de Google.', 'Pega una llave de acceso (API key) de Google AI Studio en Ajustes › Agentes › Gemini.'],
           ['Cursor dice que llegó al límite de su plan.', 'Es el límite de tu plan de Cursor, no de MADRE. Espera a que se renueve o pregúntale a otro agente.'],
           ['«La cuenta de API se quedó sin saldo».', 'Recarga esa cuenta o, en Ajustes › Agentes, elige un modelo que use tu plan, como ChatGPT o GitHub Copilot.'],
           ['El agente no contestó a tiempo.', 'Vuelve a preguntar. Si pasa seguido, sube el tiempo límite en Ajustes › Trabajo y límites.'],
           ['«El puerto ya está en uso».', 'Ya hay otra MADRE abierta: usa esa, o abre esta en otro puerto con `npx @jossuealcala/madre --port 4800`.'],
           ['La Terminal dice que tu Node es muy viejo.', 'Instala Node 22.5 o más nuevo desde nodejs.org y vuelve a correr el comando.'],
+          ['No se abrió el navegador.', 'Abre la dirección que escribió la terminal (termina en /salas). En WSL, ábrela en tu navegador de Windows con localhost.'],
+          ['Entraste por SSH y la página no carga.', 'Abre en tu computadora el túnel que escribió la terminal, con 127.0.0.1 y no localhost, y déjalo abierto.'],
           ['Una respuesta se cortó porque MADRE se reinició.', 'Vuelve a preguntar. El chat no se perdió.'],
         ],
         expert: 'Diagnóstico también funciona desde la Terminal: `npx @jossuealcala/madre doctor`.',
@@ -338,7 +386,7 @@ export const MANUAL = {
     subtitle: 'How to work with your AI agents',
     intro: [
       'In MADRE you work with the AIs you already use: Codex, Claude, Gemini, Cursor or OpenCode. You write to them, they read your project, and you decide what they may change.',
-      'If you have never used an AI, start with «Install MADRE» and go in order. If you use them already, go straight to what you need: each section ends with what is worth knowing once you have some practice.',
+      'If you have never used an AI, start with «Start here» and go in order. If you use them already, go straight to what you need: each section ends with what is worth knowing once you have some practice.',
     ],
     words: {
       title: 'Four words before you start',
@@ -362,16 +410,57 @@ export const MANUAL = {
         id: 'instalar',
         part: 'start',
         icon: 'download',
-        title: 'Install MADRE',
-        lead: 'MADRE installs with one command and opens in your browser. No account, no card.',
-        code: ['npx @jossuealcala/madre'],
-        tryIt: 'To know whether you have Node already, type `node --version` in the Terminal. If it says v22.5 or a higher number, you are set.',
-        steps: [
-          'Install Node.js 22.5 or newer from nodejs.org. If you have it, skip this step.',
-          'Open the Terminal, paste the command above and press ↵.',
-          'MADRE opens in your browser, in Home. Next time, use the same command.',
+        title: 'Start here',
+        lead: 'One command installs MADRE and opens it in your browser. There, the welcome gets everything ready step by step: your agents, AI on your computer, the memory and your first project. After that you do not need the terminal (the window where you type commands). No account, no card.',
+        systems: [
+          {
+            name: 'Mac',
+            steps: [
+              'Install Node 22.5 or newer from nodejs.org, or with `brew install node`. If you have it, skip this step.',
+              'Open the Terminal app (find it with Spotlight) and paste the command.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'For AI on your computer, the welcome gives you the link to the official Ollama app.',
+          },
+          {
+            name: 'Linux',
+            steps: [
+              'Install Node 22.5 or newer from nodejs.org or with nvm: the one in your system\'s packages may be older.',
+              'Open your terminal and paste the command.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'To install Ollama, Linux asks for your password. The welcome gives you the line to copy: MADRE never asks for passwords or keeps them.',
+          },
+          {
+            name: 'Windows, with WSL',
+            note: 'The version of MADRE for Windows arrives in 1.1. Until then it runs inside WSL, the Linux that comes with Windows 10 and 11.',
+            steps: [
+              'Once, in PowerShell as administrator, type `wsl --install` and restart.',
+              'Open «Ubuntu» from the Start menu and install Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` and then `sudo apt install -y nodejs`.',
+              'Paste the command in Ubuntu. MADRE opens in your Windows browser.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'Keep your projects inside Linux (in /home), not in /mnt/c: there MADRE is faster and protects your files better.',
+          },
+          {
+            name: 'Another computer (SSH) or a virtual machine',
+            note: 'If MADRE runs on a server or in a virtual machine you reach over SSH, your browser is on your own computer and reaches MADRE through a tunnel.',
+            steps: [
+              'On the server, paste MADRE\'s command. The terminal writes the tunnel command for you, with your user, your server and the port.',
+              'On your own computer, open another terminal, paste that command and leave it open.',
+              'Open http://127.0.0.1:5317/salas in your browser.',
+            ],
+            code: ['npx @jossuealcala/madre'],
+            tip: 'In a virtual machine, AI on your computer is slow. If your PC runs Windows, MADRE works better with WSL than in a virtual machine.',
+          },
         ],
-        expert: 'MADRE does not keep your passwords: it uses the sessions your agents already have on your Mac. With `--port 4800` it opens on another port.',
+        tryIt: 'To know whether you have Node already, type `node --version` in the terminal. If it says v22.5 or a higher number, you are set.',
+        steps: [
+          'MADRE opens in your browser with the welcome. Choose your language and follow the seven steps; any of them can wait.',
+          'If something fails, the welcome tells you what happened, and «See how to fix it» gives you the steps for your system.',
+          'When you finish, press «Go to my project». Next time, use the same command.',
+        ],
+        expert: 'MADRE does not keep your passwords: it uses the sessions your agents already have on your Mac. With `--port 4800` it opens on another port. The welcome opens again from Home › Settings › Projects › «See the welcome again».',
       },
       {
         id: 'agentes',
@@ -382,11 +471,11 @@ export const MANUAL = {
         lead: 'An agent is an AI such as Codex, Claude or Gemini. You connect it once and every project uses it. One is enough to start.',
         tryIt: 'If you use ChatGPT already, connect Codex with that same account: it is the quickest.',
         steps: [
-          'In Home, open Settings › Agents. The first time, MADRE shows it to you on its own.',
+          'In Home, open Settings › Agents. The first time, the welcome takes you there.',
           'Open an agent that says «Not signed in» and press its key, such as «Claude account». You sign in with your account on the provider\'s page. If you do not have it, you will see Install.',
           'Once it says «Connected», you can talk to it.',
         ],
-        expert: 'Each agent keeps its own session; MADRE does not read it. API keys (Gemini, OpenCode) are pasted on the same card, and «Prefer your terminal?» gives you the command.',
+        expert: 'Each agent keeps its own session; MADRE does not read it. Access keys (API keys) for Codex, Claude, Gemini and OpenCode are pasted on the same card, and «Prefer your terminal?» gives you the command. When MADRE runs on another computer, Codex connects «With a code».',
       },
       {
         id: 'inicio',
@@ -554,7 +643,7 @@ export const MANUAL = {
           'Download the model marked «Recommended for your computer»: it is already sized for your Mac.',
           'Choose which projects use it.',
         ],
-        expert: 'It runs on Ollama. MADRE only offers the models that fit your computer.',
+        expert: 'It runs on Ollama. MADRE only offers the models that fit your computer. If another computer on your network has Ollama and a graphics card (or, from WSL, Windows\' own), write its address in «Ollama address».',
       },
       {
         id: 'entrena',
@@ -639,12 +728,14 @@ export const MANUAL = {
           ['An agent says «Not signed in».', 'Settings › Agents: open it and press its key to sign in with your account.'],
           ['MADRE does not find an agent.', 'Settings › Agents › Install. MADRE runs the command for you.'],
           ['Gemini says it hit its limit (429) or is overloaded (503).', 'Wait a minute and ask again, pick another model in the model menu, or hand the question to another agent.'],
-          ['Gemini refuses your personal Google account.', 'Paste a Google AI Studio key in Settings › Agents › Gemini.'],
+          ['Gemini refuses your personal Google account.', 'Paste an access key (API key) from Google AI Studio in Settings › Agents › Gemini.'],
           ['Cursor says its plan hit its limit.', 'It is your Cursor plan\'s limit, not MADRE\'s. Wait for it to renew or ask another agent.'],
           ['«The API account has no credit left».', 'Top up that account or, in Settings › Agents, pick a model that uses your plan, such as ChatGPT or GitHub Copilot.'],
           ['The agent did not answer in time.', 'Ask again. If it keeps happening, raise the time limit in Settings › Work and limits.'],
           ['«The port is already in use».', 'Another MADRE is open: use that one, or open this one on another port with `npx @jossuealcala/madre --port 4800`.'],
           ['The Terminal says your Node is too old.', 'Install Node 22.5 or newer from nodejs.org and run the command again.'],
+          ['The browser did not open.', 'Open the address the terminal printed (it ends in /salas). In WSL, open it in your Windows browser with localhost.'],
+          ['You came in over SSH and the page does not load.', 'On your own computer, open the tunnel the terminal printed, with 127.0.0.1 and not localhost, and leave it open.'],
           ['An answer stopped because MADRE restarted.', 'Ask again. The chat was not lost.'],
         ],
         expert: 'Diagnostics works from the Terminal too: `npx @jossuealcala/madre doctor`.',
