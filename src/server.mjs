@@ -25,6 +25,7 @@ import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, 
 import { recallForTurn } from './modules/enlaces.mjs';
 import { hardwareOnce, MODEL_TIERS } from './modules/local-models.mjs';
 import { browserAdvice, environmentOnce, openBrowser as openInBrowser } from './environment.mjs';
+import { installTrouble, loginTrouble } from './setup-trouble.mjs';
 import { MODULES, moduleById, describeModules, findModuleRoute, toolsForTurn as modulesToolsForTurn, loadExternalModules, loadFailures, moduleFolders, moduleCommands, installModuleFile, installModuleText, verifyModuleText, moduleOrigin, removeExternalModule, adoptBuiltinUpdates, packagedVersions } from './modules/index.mjs';
 import { understandsSdk } from './modules/sdk.mjs';
 import { updateBuiltins } from './builtin-updates.mjs';
@@ -1064,6 +1065,8 @@ export async function createPulseServer({
   }
 
   let loggingIn = null;
+  // Sign-ins the person stopped: their end is a choice, not a failure to explain.
+  const cancelled = new Set();
   // A sign-in in flight, as the room is allowed to see it: which door, the address to open, and
   // whether the CLI is waiting to be told the code that page gave back. Never the code itself.
   // A device sign-in's code is the opposite case: it is shown to be typed on the provider's page.
@@ -1072,12 +1075,12 @@ export async function createPulseServer({
 
   async function loginAgent(id, { method = null } = {}) {
     const agent = agents.find((item) => item.id === id);
-    if (!agent) return { status: 404, body: { error: `Unknown agent: ${id}.` } };
-    if (!agent.detected) return { status: 412, body: { error: `${agent.label} is not installed on this computer.`, install: loginPlanFor(agent)?.install ?? [] } };
+    if (!agent) return { status: 404, body: { error: t('Unknown agent: {id}.', { id }) } };
+    if (!agent.detected) return { status: 412, body: { error: t('{label} is not installed on this computer.', { label: agent.label }), install: loginPlanFor(agent)?.install ?? [] } };
     const plan = loginRunners[id]?.(agent, { method }) ?? loginPlanFor(agent, { method });
-    if (!plan) return { status: 404, body: { error: `No sign-in flow known for ${id}.` } };
-    if (!plan.headless) return { status: 409, body: { error: `${agent.label} signs in from its own prompt. Run this in a terminal, then press RECHECK.`, command: plan.display, note: plan.note } };
-    if (loggingIn) return { status: 409, body: { error: `A sign-in is already running (${loggingIn}).` } };
+    if (!plan) return { status: 404, body: { error: t('MADRE does not know how to sign in to {id}.', { id }) } };
+    if (!plan.headless) return { status: 409, body: { error: t('{label} signs in from its own window: run this in a terminal, then press Check again.', { label: agent.label }), command: plan.display, note: plan.note } };
+    if (loggingIn) return { status: 409, body: { error: t('Another sign-in is running ({label}). Wait for it to finish or cancel it.', { label: agents.find((one) => one.id === loggingIn)?.label ?? loggingIn }) } };
     // A CLI with no sign-in command of its own (Gemini) signs in on its first question: its settings
     // are set before, and the run is stopped as soon as the credentials are written. It runs in an
     // empty folder, so that question never sees the project.
@@ -1089,7 +1092,7 @@ export async function createPulseServer({
         cwd = await mkdtemp(join(tmpdir(), 'madre-signin-'));
       } catch (error) {
         await flow.undo().catch(() => {});
-        return { status: 500, body: { error: `The sign-in could not be prepared: ${error.message}` } };
+        return { status: 500, body: { error: t('The sign-in could not be prepared: {error}', { error: error.message }) } };
       }
     }
     const env = { ...process.env, ...(plan.env ?? {}) };
@@ -1162,7 +1165,10 @@ export async function createPulseServer({
       const error = refused
         ? t('Google signed you in, but it refuses this account on Gemini CLI (free personal accounts are refused). Gemini was left as it was: paste a Gemini API key from Google AI Studio instead.')
         : finished ? null : result.error ?? null;
-      await room.record('connection.login.finished', { agent: id, code, error, session: sessions[id] ?? null, tail: lines.slice(-6) });
+      // Why it did not finish, in one word the page turns into plain words (src/setup-trouble.mjs).
+      const trouble = code === 0 && !error ? null : loginTrouble({ refused, text: `${cancelled.has(id) ? 'cancelled ' : ''}${error ?? ''}\n${lines.slice(-6).join('\n')}` });
+      cancelled.delete(id);
+      await room.record('connection.login.finished', { agent: id, code, error, trouble, session: sessions[id] ?? null, tail: lines.slice(-6) });
       loggingIn = null;
       loginRun = null;
     })();
@@ -1185,7 +1191,8 @@ export async function createPulseServer({
   }
 
   async function cancelLogin(id) {
-    if (!loginRun || loginRun.agent !== id) return { status: 409, body: { error: 'No sign-in is running for that agent.' } };
+    if (!loginRun || loginRun.agent !== id) return { status: 409, body: { error: t('No sign-in is running for that agent.') } };
+    cancelled.add(id);
     loginRun.child?.cancel?.();
     await room.record('connection.login.cancelled', { agent: id });
     return { status: 202, body: { cancelled: true } };
@@ -1220,12 +1227,12 @@ export async function createPulseServer({
   // other install, and looks again when it finishes. Nothing is written into the project.
   async function installAgent(id) {
     const agent = agents.find((item) => item.id === id);
-    if (!agent) return { status: 404, body: { error: `Unknown agent: ${id}.` } };
-    if (agent.detected) return { status: 409, body: { error: `${agent.label} is already installed.` } };
+    if (!agent) return { status: 404, body: { error: t('Unknown agent: {id}.', { id }) } };
+    if (agent.detected) return { status: 409, body: { error: t('{label} is already installed.', { label: agent.label }) } };
     const plan = installPlanFor(agent, { prefix: toolsPrefix() });
-    if (!plan) return { status: 404, body: { error: `MADRE does not know how to install ${id}.` } };
+    if (!plan) return { status: 404, body: { error: t('MADRE does not know how to install {id}.', { id }) } };
     if (!plan.command) return { status: 409, body: { error: t('{label} installs with its own installer: copy the command into a terminal, then check again.', { label: agent.label }) } };
-    if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
+    if (installing) return { status: 409, body: { error: t('Another install is running. Wait for it to finish and try again.') } };
     installing = `agent:${id}`;
     await room.record('connection.install.started', { agent: id, label: agent.label, command: plan.display });
     void (async () => {
@@ -1241,7 +1248,7 @@ export async function createPulseServer({
       let where = 'system';
       // Walled out of the system folders: install into MADRE's own, where it will be found.
       if (result.code !== 0 && plan.fallback && looksLikeAdminProblem(`${lines.join('\n')}\n${result.error ?? ''}`)) {
-        await room.record('connection.install.output', { agent: id, line: `npm cannot write to this computer's system folder without an administrator. Installing into MADRE's own folder instead: ${toolsPrefix()}` });
+        await room.record('connection.install.output', { agent: id, line: t('This computer does not let npm install in its system folder without an administrator. Installing in MADRE\'s own folder instead: {folder}', { folder: toolsPrefix() }) });
         result = await attempt(plan.fallback);
         where = 'madre';
       }
@@ -1257,6 +1264,8 @@ export async function createPulseServer({
         detected: Boolean(found?.detected),
         version: found?.version ?? null,
         session: sessions[id] ?? null,
+        // Why it did not install, in one word the page turns into plain words (src/setup-trouble.mjs).
+        trouble: found?.detected ? null : installTrouble(`${result.error ?? ''}\n${lines.join('\n')}`),
         tail: lines.slice(-6),
       });
       installing = null;

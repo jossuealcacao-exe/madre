@@ -4053,9 +4053,30 @@ const openCodeProviders = (() => {
   };
 })();
 
+// What went wrong with an install or a sign-in, in plain words (2026-10-28): the server names the
+// cause in one word (src/setup-trouble.mjs) and this says it and what to do. Home used to drop these
+// failures: the person pressed Install, nothing happened, and nothing said why.
+const TROUBLE_WORDS = {
+  install: {
+    network: () => t('It could not download: there is no internet connection, or something on this network blocked it. Check your connection and try again.'),
+    permission: () => t('This computer did not let MADRE install it. Try again; if it fails again, install it from a terminal (below).'),
+    disk: () => t('There is not enough free space on this computer to install it.'),
+    'npm-missing': () => t('Installing it needs Node and npm, and this computer does not have them. Install Node from nodejs.org, then try again.'),
+    timeout: () => t('It took too long and was stopped. Try again.'),
+    unknown: () => t('It did not install.'),
+  },
+  login: {
+    'refused-account': () => null,
+    network: () => t('It could not connect: there is no internet connection, or something on this network blocked it.'),
+    timeout: () => t('The connection was not finished in time. Start it again.'),
+    cancelled: () => t('You cancelled the connection.'),
+    unknown: () => t('The connection did not finish.'),
+  },
+};
 function agentsPanel({ onPaint = null, compact = false } = {}) {
   const list = el('div', 'sm-agents');
   const lastLine = new Map();   // agent → what its install or sign-in said last
+  const trouble = new Map();    // agent → what went wrong last, said in plain words, until it works
   const openMore = new Set();   // agents whose connection detail is unfolded
   const foldedMore = new Set(); // agents the person folded, even one that would open by itself
   let live = null;              // the sign-in running right now, as the server tells it
@@ -4199,13 +4220,28 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       const said = agent.detected ? sessionDetail(answer.sessions?.[agent.id]) : null;
       if (said) facts.append(el('small', 'sm-agent-line', said));
       if (agent.account) facts.append(el('small', 'sm-agent-note', agent.account));
-      if (lastLine.has(agent.id) && !state.ok) {
+      if (lastLine.has(agent.id) && !state.ok && !trouble.has(agent.id)) {
         const said = lastLine.get(agent.id);
         const line = el('small', 'sm-agent-line', said.line);
         if (said.url) { const link = el('a', null, t('Open the sign-in page')); link.href = said.url; link.target = '_blank'; link.rel = 'noopener'; line.append(' ', link); }
         facts.append(line);
       }
       if (facts.childNodes.length) body.append(facts);
+      // What went wrong, said where it happened, with what the program printed last for whoever
+      // wants to look closer. It goes away once the agent works.
+      if (state.ok) trouble.delete(agent.id);
+      const wrong = trouble.get(agent.id);
+      if (wrong && !state.busyNow) {
+        const box = el('div', `sm-agent-trouble${wrong.tone === 'quiet' ? ' quiet' : ''}`);
+        box.setAttribute('role', 'status');
+        box.append(el('p', null, wrong.words));
+        if (wrong.detail) {
+          const more = el('details', 'sm-agent-trouble-more');
+          more.append(el('summary', null, t('What it said')), el('code', null, wrong.detail));
+          box.append(more);
+        }
+        body.append(box);
+      }
       // One button per account the CLI can sign in with: Claude has two, and only the human can
       // say which one is paying.
       const doorKeys = () => {
@@ -4223,7 +4259,9 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
             if (door.choose) { choosingAccount.add(agent.id); void paint(); return; }
             choosingAccount.delete(agent.id);
             event.currentTarget.disabled = true;
-            await post(`/api/agents/${agent.id}/login`, { method: door.id });
+            trouble.delete(agent.id);
+            const answer = await post(`/api/agents/${agent.id}/login`, { method: door.id });
+            if (!answer.ok) trouble.set(agent.id, { kind: 'login', words: answer.body?.error ?? t('The connection did not finish.') });
             void paint();
           });
           if (door.note) key.title = t(door.note);
@@ -4235,7 +4273,13 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
       if (keyFirst) body.append(keyForm(agent));
       const acts = el('div', 'sm-agent-acts');
       if (!state.busyNow) {
-        if (!agent.detected && agent.install?.command) acts.append(button('sm-btn primary small', t('Install'), async (event) => { event.currentTarget.disabled = true; await post(`/api/agents/${agent.id}/install`); void paint(); }));
+        if (!agent.detected && agent.install?.command) acts.append(button('sm-btn primary small', wrongAt(agent.id, 'install') ? t('Try again') : t('Install'), async (event) => {
+          event.currentTarget.disabled = true;
+          trouble.delete(agent.id);
+          const answer = await post(`/api/agents/${agent.id}/install`);
+          if (!answer.ok) trouble.set(agent.id, { kind: 'install', words: answer.body?.error ?? t('It did not install.') });
+          void paint();
+        }));
         else if (agent.detected && agent.login?.headless) for (const key of doorKeys()) acts.append(key);
       }
       // Installed by hand in a terminal (its own installer): one press looks for it again.
@@ -4265,11 +4309,21 @@ function agentsPanel({ onPaint = null, compact = false } = {}) {
         try {
           const event = JSON.parse(message.data);
           if (event.type === 'connection.login.output' || event.type === 'connection.install.output') lastLine.set(event.payload.agent, { line: event.payload.line, url: event.payload.url ?? null });
+          // An install or a sign-in that ended without working says why, in plain words.
+          if (event.type === 'connection.install.finished' || event.type === 'connection.login.finished') {
+            const { agent, trouble: cause, error, tail } = event.payload ?? {};
+            const kind = event.type === 'connection.install.finished' ? 'install' : 'login';
+            if (cause) {
+              const words = TROUBLE_WORDS[kind][cause]?.() ?? error ?? TROUBLE_WORDS[kind].unknown();
+              trouble.set(agent, { kind, words: cause === 'refused-account' ? error : words, tone: cause === 'cancelled' ? 'quiet' : null, detail: (tail ?? []).slice(-3).join('\n') || error || null });
+            } else trouble.delete(agent);
+          }
           if (/^connection\./.test(event.type)) void paint();
         } catch { /* not ours */ }
       };
     } catch { /* no stream: the poll keeps it current */ }
   };
+  const wrongAt = (id, kind) => trouble.get(id)?.kind === kind;
   const stop = () => { clearInterval(poll); poll = 0; stream?.close(); stream = null; };
   return { node: list, paint, live: liveOn, stop };
 }

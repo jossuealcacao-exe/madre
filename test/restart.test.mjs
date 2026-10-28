@@ -53,8 +53,13 @@ test('restart · Home and every open project come back as new processes on the s
       assert.equal(now[id].port, before[id].port, `${id} came back on another port`);
     }
   } finally {
-    // Only what this test opened: what its own state folder marks open, and the first Home.
-    for (const one of await knownRooms(state)) if (one.open) { try { process.kill(one.open.pid, 'SIGKILL'); } catch { /* already gone */ } }
+    // Only what this test opened: what its own state folder marks open, and the first Home. A project
+    // still on its way up when the test gave up opens after it: it is waited for a few seconds and
+    // closed too, so a failed run leaves nothing holding a port.
     if (lobby.exitCode === null) lobby.kill('SIGKILL');
+    for (let round = 0; round < 20; round += 1) {
+      for (const one of await knownRooms(state)) if (one.open) { try { process.kill(one.open.pid, 'SIGKILL'); } catch { /* already gone */ } }
+      await pause(500);
+    }
   }
 });

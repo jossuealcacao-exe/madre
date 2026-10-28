@@ -1798,3 +1798,11 @@ html.home-shell #sm-macro svg { transform-origin: 50% 50%; }
 html.home-shell #sm-macro:is(:hover, :focus-visible) svg { animation: sm-map-turn calc(2400ms * var(--motion-scale, 1)) linear infinite; }
 @keyframes sm-map-turn { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { html.home-shell :is(#sm-tb-modules, #sm-macro) svg { animation: none !important; } }
+
+/* What went wrong with an install or a sign-in (2026-10-28, salas-mac.js, TROUBLE_WORDS): said in the
+   agent's own card, plainly, with what the program printed last folded under it. */
+.sm-agent-trouble { display: grid; gap: 6px; margin: 2px 0 4px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--terror, #e5484d) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--terror, #e5484d) 22%, transparent); }
+.sm-agent-trouble > p { margin: 0; font: 400 13px/1.45 var(--read); color: var(--text); }
+.sm-agent-trouble.quiet { background: color-mix(in srgb, var(--text) 5%, transparent); box-shadow: none; }
+.sm-agent-trouble-more summary { cursor: pointer; font: 500 12px var(--read); color: var(--text-2); }
+.sm-agent-trouble-more code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--text) 6%, transparent); font: 400 11.5px/1.45 var(--mono); color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
