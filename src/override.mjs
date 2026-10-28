@@ -16,16 +16,18 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 //   · #4 is never opened by one press: two confirmations, or the phrase twice;
 //   · a personal phrase is never stored, only its salted SHA-256; the phrase typed to unlock is
 //     compared here and forgotten, and the fingerprint never leaves the project (`publicOverride`);
-//   · the grace is short: #3 up to 30 minutes, #4 up to 5, and off unless chosen.
+//   · the grace has a limit: #3 up to 8 hours, #4 up to 1, and off unless chosen.
 export const OVERRIDE_KEYS = Object.freeze({
   3: Object.freeze(['confirm', 'phrase']),
   4: Object.freeze(['confirm-airlock', 'phrase-airlock']),
 });
 // What the page sends for each press of a confirmation.
 export const CONFIRMED = 'confirm';
+// How long a confirmed mode stays open (2026-10-28, more room, as Claude's and Codex's auto modes
+// give): #3 up to a working day, #4 up to an hour, and off unless chosen.
 export const OVERRIDE_GRACE = Object.freeze({
-  3: Object.freeze([0, 5, 15, 30]),
-  4: Object.freeze([0, 5]),
+  3: Object.freeze([0, 5, 15, 30, 60, 240, 480]),
+  4: Object.freeze([0, 5, 15, 30, 60]),
 });
 const DEFAULT_KEYS = { 3: 'confirm', 4: 'confirm-airlock' };
 

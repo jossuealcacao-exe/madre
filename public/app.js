@@ -322,7 +322,7 @@ const vendorWord = (id) => { const said = brandOf(id).vendor ?? ''; return VENDO
 // the top of this file, long before half of it has run: `renderLease` reached for these while
 // they were still in their dead zone, the try around it swallowed the error, and every CREATE
 // strip in the history simply never appeared.
-const CAP_LABELS = { read: t('read'), imageIn: t('sees images'), write: t('create'), imageGen: t('image gen'), web: t('web') };
+const CAP_LABELS = { read: t('read'), imageIn: t('accepts images'), write: t('create'), imageGen: t('image gen'), web: t('web') };
 const CAP_VERBS = { read: t('read the project'), imageIn: t('receive images'), write: t('create files'), imageGen: t('generate images'), web: t('reach the web') };
 const capVerb = (scope) => CAP_VERBS[scope] ?? CAP_LABELS[scope] ?? scope;
 
@@ -3640,7 +3640,9 @@ function modelBrief(info, name) {
   const levels = info?.effortsByModel?.[name]?.levels;
   const size = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M` : `${Math.round(n / 1000)}k`);
   return [
-    about?.images ? t('sees images') : null,
+    // It takes the screenshots and pictures you attach (Codex's catalog says «image» among what a
+    // model reads, 2026-10-28: «sees images» read as if it looked at the screen).
+    about?.images ? t('accepts images') : null,
     about?.context ? t('{n} context', { n: size(about.context) }) : null,
     levels?.length ? t('effort up to {level}', { level: effortLabel(levels.at(-1)) }) : null,
   ].filter(Boolean).join(' · ');
@@ -4448,7 +4450,9 @@ function tickGrace() {
     if (!overrideGrace.size) { clearInterval(graceTick); graceTick = null; }
   }, 20000);
 }
-const graceWords = (ms) => t('{n} min', { n: Math.max(1, Math.ceil(ms / 60000)) });
+// A time left or a window, as a person says it: minutes under the hour, hours over it.
+const minutesWords = (minutes) => (minutes >= 60 ? (minutes % 60 ? t('{h} h {m} min', { h: Math.floor(minutes / 60), m: minutes % 60 }) : t('{h} h', { h: minutes / 60 })) : t('{n} min', { n: minutes }));
+const graceWords = (ms) => minutesWords(Math.max(1, Math.ceil(ms / 60000)));
 // The project's name as the project says it (WEB-11): cut at «/» it was the whole path on Windows.
 // The cut stays only for a project too old to say it.
 function projectDesignation() { return state.projectName || ((state.projectRoot ?? '').split(/[\\/]/).filter(Boolean).pop() ?? ''); }
@@ -8828,6 +8832,14 @@ document.addEventListener?.('pointerdown', (event) => {
   document.addEventListener('pointerup', up);
   document.addEventListener('pointercancel', up);
 });
+// A menu of a few choices, for a row with more of them than a row of segments can hold.
+function sxSelect(options, current, change, label) {
+  const node = el('select', 'sx-input');
+  node.setAttribute('aria-label', label);
+  for (const [value, text] of options) { const option = el('option', null, text); option.value = value; if (value === current) option.selected = true; node.append(option); }
+  node.addEventListener('change', () => change(node.value, node));
+  return node;
+}
 function sxButton(text, click, { tone = null, title = '' } = {}) {
   const button = el('button', `sx-btn${tone ? ` ${tone}` : ''}`, text);
   button.type = 'button';
@@ -15539,7 +15551,23 @@ async function paintIntentsWindow() {
   const page = el('div', 'intents-page');
   body.replaceChildren(page);
   const run = read.running;
+  // What Intenciones is for, said once at the top (2026-10-28).
+  page.append(el('p', 'intents-about', t('Intenciones finds out how much thinking each kind of question needs. The same question is answered at the level you use and at a lower one; if you cannot tell the answers apart, MADRE suggests the lower level for questions like it next time: faster, and fewer tokens.')));
   if (run) {
+    // How far the test got: the pairs already judged out of the ones it will ask.
+    if (run.total) {
+      const done = Math.max(0, Math.min(run.total, (run.step || 1) - 1));
+      const share = Math.round((done / run.total) * 100);
+      const progress = el('div', 'intents-progress');
+      const words = el('div', 'intents-progress-words');
+      words.append(el('span', null, t('Question {n} of {total}', { n: Math.min(run.total, Math.max(1, run.step)), total: run.total })), el('strong', null, `${share}%`));
+      const bar = el('div', 'intents-progress-bar');
+      const fill = el('i');
+      fill.style.width = `${share}%`;
+      bar.append(fill);
+      progress.append(words, bar);
+      page.append(progress);
+    }
     page.append(el('p', 'intents-lead', run.kind === 'quick'
       ? t('@{agent} answers each question twice: at {from}, the level you use, and at {to}. You do not see which is which. Say whether one of them leaves out something that matters.', { agent: run.agent, from: effortLabel(run.reference).toUpperCase(), to: effortLabel(run.effort ?? run.reference).toUpperCase() })
       : t('An agent that is not @{agent} is comparing the answers, and is checked before it is believed. It runs on its own: you can close this window.', { agent: run.agent })));
@@ -18426,9 +18454,14 @@ async function drawMemoryDashboard(glance, analysis, stamp) {
   top.append(el('b', null, t('Memory progress')), el('span', 'stage', said(v.headline ?? m.stage.label)), el('strong', null, memPct(m.score)));
   ripe.append(top, memMeter(m.score), el('p', null, said(v.says)));
   if (v.next?.text) {
-    const next = el('p', 'next');
-    next.append(el('b', null, t('Next')), ` ${said(v.next.text)}`);
-    if (v.next.where) next.append(el('span', 'where', ` → ${said(v.next.where)}`));
+    // What to do now, and a key that takes you there (2026-10-28): «→ The project» said where,
+    // not what to do there, and nobody knew where it led.
+    const next = el('div', 'next');
+    const words = el('div', 'next-words');
+    words.append(el('b', null, t('What to do now')), el('p', null, said(v.next.text)));
+    next.append(words);
+    const key = memNextKey(v.next.go);
+    if (key) next.append(key);
     ripe.append(next);
   }
   glance.append(ripe);
@@ -18922,7 +18955,9 @@ function drawMemory(host, data) {
   train.append(el('p', 'sx-hint sx-train-what', t('The training data are question-and-answer pairs taken from this project\'s conversations and notes, with private details hidden. With them a small model is adjusted on your computer, and @madre answers with it.')));
   const recipe = el('details', 'sx-more');
   recipe.append(el('summary', null, t('Step by step')));
-  let platform = /Mac/i.test(navigator.platform ?? '') || !/Linux/i.test(navigator.userAgent ?? '') ? 'mac' : 'linux';
+  // Windows trains inside WSL with its NVIDIA card (2026-10-28): the same recipe as Linux, run in
+  // Ubuntu, where MADRE runs too until 1.1.
+  let platform = state.platform === 'wsl' ? 'wsl' : /Mac/i.test(navigator.platform ?? '') || !/Linux/i.test(navigator.userAgent ?? '') ? 'mac' : 'linux';
   // The size to train: the largest this computer trains and then runs, unless the human picks
   // another (to train it on a larger machine, say). Every size is offered; the note says what fits.
   let size = null;
@@ -18936,10 +18971,12 @@ function drawMemory(host, data) {
   train.append(recipe);
   let lastPayload = null;
   const drawPlatform = () => {
-    pickRow.replaceChildren(sxSeg([{ value: 'mac', text: t('Mac with Apple chip') }, { value: 'linux', text: t('Linux with NVIDIA') }], platform, (value) => { platform = value; showDataset(lastPayload); }, { label: t('Your computer') }));
+    pickRow.replaceChildren(sxSeg([{ value: 'mac', text: t('Mac with Apple chip') }, { value: 'linux', text: t('Linux with NVIDIA') }, { value: 'wsl', text: t('Windows with WSL') }], platform, (value) => { platform = value; showDataset(lastPayload); }, { label: t('Your computer') }));
     platformNote.textContent = platform === 'mac'
       ? t('Any Mac with an M chip. Its memory decides the size you can train, below.')
-      : t('Experimental: MLX runs on Linux with an NVIDIA card (CUDA 12, compute capability 7.5 or newer, glibc 2.35, Python 3.10), but mlx-lm only promises Apple chips. Step 2 checks the card first.');
+      : platform === 'wsl'
+        ? t('In Ubuntu inside Windows (WSL 2), with an NVIDIA card: keep the NVIDIA driver for Windows up to date (it brings CUDA into WSL) and do not install a Linux driver in Ubuntu. Every command runs in the Ubuntu terminal. Experimental, as on Linux: step 2 checks the card first.')
+        : t('Experimental: MLX runs on Linux with an NVIDIA card (CUDA 12, compute capability 7.5 or newer, glibc 2.35, Python 3.10), but mlx-lm only promises Apple chips. Step 2 checks the card first.');
   };
   const drawSize = (fit) => {
     const models = fit?.models ?? [];
@@ -18968,7 +19005,7 @@ function drawMemory(host, data) {
     datasetHint.textContent = `${exported} ${trained}${sources.length ? ` ${t('Learned from your projects: {list}.', { list: sources.join(' · ') })}` : ''}`;
     const info = payload?.training;
     // The first reading sets the recipe for this computer: an NVIDIA card goes the Linux way.
-    if (!measured && info?.fit?.hardware) { measured = true; if (info.fit.hardware.accelerator === 'nvidia') platform = 'linux'; else if (info.fit.hardware.accelerator === 'apple') platform = 'mac'; }
+    if (!measured && info?.fit?.hardware) { measured = true; if (info.fit.hardware.accelerator === 'nvidia') platform = state.platform === 'wsl' ? 'wsl' : 'linux'; else if (info.fit.hardware.accelerator === 'apple') platform = 'mac'; }
     drawPlatform();
     const chosen = drawSize(info?.fit);
     steps.replaceChildren();
@@ -19307,17 +19344,20 @@ function drawPermissions(host, data) {
   pair.append(field, keep);
   sxRow(phrase, config.phrase ? t('A phrase is saved') : t('No phrase yet'), canHash ? null : t('This browser cannot make the fingerprint here.'), pair, { stack: true });
   if (config.phrase) {
-    sxRow(phrase, t('Forget the phrase'), t('The modes that used it go back to the project name.'), sxButton(t('Forget'), () => saveOverride({ phrase: null }, t('The phrase was forgotten.')), { tone: 'danger' }));
+    sxRow(phrase, t('Forget the phrase'), t('The modes that used it go back to asking you to confirm.'), sxButton(t('Forget'), () => saveOverride({ phrase: null }, t('The phrase was forgotten.')), { tone: 'danger' }));
   }
   field.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); keep.click(); } });
 
   const grace = sxBlock(host, t('Remember permission'), t('After you confirm, the same agent won\'t ask again for a while. Reloading the page or STOP ALL ends it.'));
+  // Up to a working day for #3 and an hour for #4 (2026-10-28), as the auto modes of Claude and Codex
+  // let a session run: a menu, there are too many to stand in a row.
   for (const mode of [3, 4]) {
-    const options = mode === 3 ? [0, 5, 15, 30] : [0, 5];
-    sxRow(grace, `#${mode} ${sentence(MODES[mode].label)}`, mode === 4 ? t('Never longer than 5 minutes.') : t('Raising an agent\'s max mode always asks, remembered permission or not.'), sxSeg(options.map((minutes) => ({ value: minutes, text: minutes ? t('{n} min', { n: minutes }) : t('Off') })), config.grace[mode] ?? 0, (minutes) => {
+    const options = mode === 3 ? [0, 5, 15, 30, 60, 240, 480] : [0, 5, 15, 30, 60];
+    sxRow(grace, `#${mode} ${sentence(MODES[mode].label)}`, mode === 4 ? t('Up to an hour: what leaves the computer does not come back.') : t('Raising an agent\'s max mode always asks, remembered permission or not.'), sxSelect(options.map((minutes) => [String(minutes), minutes ? minutesWords(minutes) : t('Off')]), String(config.grace[mode] ?? 0), (value) => {
+      const minutes = Number(value);
       if (!minutes) closeOverrideGrace(mode);
-      return saveOverride({ grace: { [mode]: minutes } }, minutes ? t('#{n} {label} stays unlocked for {minutes} min after you confirm it.', { n: mode, label: sentence(MODES[mode].label), minutes }) : t('#{n} {label} asks you to confirm every message.', { n: mode, label: sentence(MODES[mode].label) }));
-    }, { label: t('Remember permission for #{n}', { n: mode }) }));
+      return saveOverride({ grace: { [mode]: minutes } }, minutes ? t('#{n} {label} stays unlocked for {time} after you confirm it.', { n: mode, label: sentence(MODES[mode].label), time: minutesWords(minutes) }) : t('#{n} {label} asks you to confirm every message.', { n: mode, label: sentence(MODES[mode].label) }));
+    }, t('Remember permission for #{n}', { n: mode })));
   }
 
   // The Memory map asks for the project name; here it can stop asking for a while, or for good
@@ -19714,6 +19754,27 @@ async function openNostromo() {
     if (node) showNostromoCard(node);
   }
 }
+// What to ask and why, in the person's language (2026-10-28): the project sends what it found
+// (src/asking.mjs, `reason`, `subject`, `kind`), the page says it. A project too old to send it
+// keeps its own words.
+const ASK_BY_KIND = {
+  decision: () => t('What have we decided lately that is not written down anywhere?'),
+  preference: () => t('What do I keep asking for that nobody has written down as a preference?'),
+  fact: () => t('What is true about this project that a new agent would have to be told?'),
+};
+function askQuestionWords(ask) {
+  if (ask.source === 'cold' && ask.subject) return t('Is this still true, and does it still matter here? "{note}"', { note: ask.subject });
+  if (ask.source === 'thin' && ASK_BY_KIND[ask.kind]) return ASK_BY_KIND[ask.kind]();
+  return ask.text;
+}
+function askReasonWords(ask) {
+  const reason = ask.reason;
+  if (reason?.key === 'carried') return t('It has come up in {n} turn(s) and still has no answer.', { n: reason.n });
+  if (reason?.key === 'recorded') return t('It was written down as open and nothing has answered it yet.');
+  if (reason?.key === 'cold') return t('The memory was opened {n} times since this was written and never used it.', { n: reason.n });
+  if (reason?.key === 'thin') return t('Only {count} of {of} memories are of this kind.', { count: reason.count, of: reason.of });
+  return ask.why ?? '';
+}
 // The questions, each one traceable to what raised it. Sending is the human's: the button puts
 // the question in the composer and gets out of the way.
 function renderAsks() {
@@ -19725,13 +19786,14 @@ function renderAsks() {
   }
   for (const ask of nostromo.asks) {
     const row = el('li', `ask ask-${ask.source}`);
-    row.append(el('p', 'q', ask.text));
-    row.append(el('p', 'why', ask.why.toUpperCase()));
+    const asked = askQuestionWords(ask);
+    row.append(el('p', 'q', asked));
+    row.append(el('p', 'why', askReasonWords(ask)));
     const actions = el('div', 'actions');
     const put = el('button', 'primary', t('PUT IN THE WRITE BOX'));
     put.type = 'button';
     put.addEventListener('click', () => {
-      els.input.value = ask.text;
+      els.input.value = asked;
       autosize();
       nostromo.dialog.close();
       els.input.focus();
@@ -22967,6 +23029,34 @@ function drawPhones(host) {
   phoneCall('/api/phone').then(paint).catch(() => sxRow(block, t('Not available here'), t('The list of phones could not be read.')));
 }
 function closeSettingsIfOpen() { if (settingsWindow.node?.open) openSettings(false); }
+// The key under «What to do now» in Settings › Memory (src/verdict.mjs, `go`): to the answer to
+// rate, the map, its questions, the checkups or the conversation.
+function memNextKey(go) {
+  const key = (words, run) => sxButton(words, run, { tone: 'primary' });
+  if (go === 'rate') return key(t('Rate an answer'), () => {
+    closeSettingsIfOpen();
+    const bubble = [...document.querySelectorAll('#messages .row.assistant')].filter((row) => row.querySelector('.rate.good')).pop();
+    if (!bubble) { toast(t('When an agent answers, rate it with the thumbs under its answer.'), { tone: 'look' }); els.input?.focus(); return; }
+    bubble.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    bubble.classList.add('rate-here');
+    setTimeout(() => bubble.classList.remove('rate-here'), 6000);
+    toast(t('Rate it with the thumbs under the answer: 👍 keeps it for your model, 👎 keeps it out.'));
+  });
+  if (go === 'nostromo') return key(t('Open the Memory map'), () => { closeSettingsIfOpen(); void openNostromo(); });
+  if (go === 'ask') return key(t('See the questions'), async () => {
+    closeSettingsIfOpen();
+    await openNostromo();
+    if (nostromo.askPanel?.hidden) nostromo.askButton?.click();
+  });
+  if (go === 'tests') return key(t('Go to the checkups'), () => {
+    const more = [...document.querySelectorAll('details')].find((one) => one.querySelector(':scope > summary')?.textContent === t('Details and checkups'));
+    if (!more) return;
+    more.open = true;
+    more.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  });
+  if (go === 'room') return key(t('Back to the conversation'), () => { closeSettingsIfOpen(); els.input?.focus(); });
+  return null;
+}
 
 // ---- Where the person was ----
 const handoff = { timer: 0, last: '', pill: document.querySelector('#handoff-pill'), touched: false };

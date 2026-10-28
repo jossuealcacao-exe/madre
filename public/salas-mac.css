@@ -517,6 +517,8 @@ body.sm-in-macro { overflow: hidden; }
 @keyframes sm-scene-in { from { opacity: 0; transform: scale(.985); } }
 .sm-step { display: grid; gap: 14px; animation: sm-step-in calc(380ms * var(--motion-scale, 1)) var(--ease-out, ease-out) both; }
 .sm-step.back { animation-name: sm-step-back; }
+/* The same step drawn again for a choice (2026-10-28): no entrance, so nothing blinks. */
+.sm-step.still { animation: none; }
 @keyframes sm-step-in { from { opacity: 0; transform: translateX(18px); } }
 @keyframes sm-step-back { from { opacity: 0; transform: translateX(-18px); } }
 .sm-scene-node { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; }

@@ -784,6 +784,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       reqs.append(el('li', null, facts().accelerator === 'apple' ? t('Apple chip with 12 GB of memory or more') : t('NVIDIA card with 9 GB or more and CUDA 12 (experimental)')));
       reqs.append(el('li', null, t('About {gb} GB free while it trains', { gb: Math.ceil(train.params * 5.5) + 2 })));
       trainCard.append(reqs);
+      // How it is done, step by step, in the manual (2026-10-28).
+      trainCard.append(button('wl-btn ghost small', t('How it is trained'), () => window.open(`/manual?lang=${language()}#entrena`, '_blank', 'noopener')));
     } else {
       trainCard.append(el('p', 'wl-muted', t('This computer cannot train. It takes a Mac with an Apple chip and 12 GB of memory, or an NVIDIA card with 9 GB or more.')));
     }

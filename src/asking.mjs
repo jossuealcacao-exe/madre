@@ -76,6 +76,8 @@ export function questionsFor({ notes = [], cold = new Map(), dismissed = [], lim
       why: Number(note.recalled ?? 0) > 0
         ? `the room has carried this open question into ${note.recalled} turn${Number(note.recalled) === 1 ? '' : 's'} and still has no answer`
         : 'the archivist recorded this as open and nothing has answered it',
+      // The why as the page says it, in the person's language (2026-10-28).
+      reason: Number(note.recalled ?? 0) > 0 ? { key: 'carried', n: Number(note.recalled) } : { key: 'recorded' },
       weight: 100 + Number(note.recalled ?? 0),
     });
   }
@@ -90,6 +92,8 @@ export function questionsFor({ notes = [], cold = new Map(), dismissed = [], lim
       memoryId: note.id,
       text: `Is this still true, and does it still matter here? ${quote(note.text)}`,
       why: `the archive has been opened ${chill.chances} times since this was written and never once carried it`,
+      reason: { key: 'cold', n: chill.chances },
+      subject: String(note.text ?? '').replace(/\s+/g, ' ').trim(),
       weight: 50 + chill.chances,
     });
   }
@@ -107,6 +111,8 @@ export function questionsFor({ notes = [], cold = new Map(), dismissed = [], lim
         memoryId: null,
         text: KIND_ASK[kind],
         why: `${count} of ${standing.length} notes are ${KIND_WHY[kind]}`,
+        reason: { key: 'thin', count, of: standing.length },
+        kind,
         weight: 40 - count,
       });
     }

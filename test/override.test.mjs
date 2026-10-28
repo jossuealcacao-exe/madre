@@ -17,12 +17,14 @@ test('override: nothing stored is one confirmation for #3 and two for #4, asked 
   assert.deepEqual(overrideSettings(null), overrideSettings({}));
 });
 
-test('override: #4 is never opened by one press, and its grace is never longer than 5 minutes', () => {
+test('override: #4 is never opened by one press; its grace reaches an hour, #3\'s a working day', () => {
   assert.ok(!OVERRIDE_KEYS[4].includes('confirm'), '#4 FULL ACCESS can be opened with one click');
   assert.equal(overrideSettings({ keys: { 4: 'confirm' } }).keys[4], 'confirm-airlock');
-  assert.equal(overrideSettings({ grace: { 4: 30 } }).grace[4], 0);
-  assert.deepEqual(OVERRIDE_GRACE[4], [0, 5]);
-  assert.equal(overrideSettings({ grace: { 3: 30, 4: 5 } }).grace[3], 30);
+  // As long as the auto modes of Claude and Codex let a session run (2026-10-28), never longer.
+  assert.deepEqual(OVERRIDE_GRACE[3], [0, 5, 15, 30, 60, 240, 480]);
+  assert.deepEqual(OVERRIDE_GRACE[4], [0, 5, 15, 30, 60]);
+  assert.equal(overrideSettings({ grace: { 4: 240 } }).grace[4], 0, '#4 open for four hours');
+  assert.equal(overrideSettings({ grace: { 3: 480, 4: 60 } }).grace[3], 480);
   assert.equal(overrideSettings({ grace: { 3: 45 } }).grace[3], 0, 'an unlisted grace is taken');
 });
 

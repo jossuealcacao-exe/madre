@@ -364,7 +364,8 @@ export class IntentsDesk {
           }),
         };
       }),
-      running: this.#run ? { ...this.#run } : null,
+      // With how far it got (2026-10-28): the window shows the share of the test already done.
+      running: this.#run ? { ...this.#run, step: this.#pendingAt?.step ?? 0, total: this.#pendingAt?.total ?? 0 } : null,
       // The pair on the table, with nothing in it that says which answer came from which rung.
       pending: this.#pending ? { step: this.#pending.step, total: this.#pending.total, intent: this.#pending.intent, question: this.#pending.question, first: this.#pending.first, second: this.#pending.second } : null,
       last: this.#last,

@@ -88,7 +88,7 @@ export function modeAskedWithTime(text = '', { ran = 1 } = {}) {
 
 // The windows a key may open, as the project allows them (src/override.mjs): what the agent asked
 // for becomes the smallest one that covers it, or the longest there is.
-export const MODE_WINDOWS = Object.freeze({ 3: Object.freeze([5, 15, 30]), 4: Object.freeze([5]) });
+export const MODE_WINDOWS = Object.freeze({ 3: Object.freeze([5, 15, 30, 60, 240, 480]), 4: Object.freeze([5, 15, 30, 60]) });
 export function windowFor(mode, minutes) {
   const allowed = MODE_WINDOWS[mode];
   if (!allowed || !Number.isFinite(minutes) || minutes <= 0) return 0;

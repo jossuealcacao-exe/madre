@@ -17,6 +17,9 @@ import { t } from './i18n.mjs';
 
 export const WHERE = { nostromo: 'MEMORY MAP', ask: 'MEMORY MAP · ASK', room: 'THE PROJECT', tests: 'MEMORY REVIEW' };
 const where = (key) => t(WHERE[key]);
+// And what the page's key does there (2026-10-28): the place, or for a thin reading the act itself.
+// `go` is read by public/app.js (memNextKey); `where` stays for a page too old to know it.
+const to = (key, go = key) => ({ where: where(key), go });
 
 export function verdictFor({ maturity = null, exams = {}, cold = null, asks = 0 } = {}) {
   const consistency = exams.consistency ?? null;
@@ -30,7 +33,7 @@ export function verdictFor({ maturity = null, exams = {}, cold = null, asks = 0 
     return {
       headline: stage?.label ?? null,
       says: consistency.says,
-      next: { text: (consistency.open === 1 ? t('Settle the contradiction the memory reviewer found. Until it is settled, everything built on this memory inherits it.') : t('Settle the {n} contradictions the memory reviewer found. Until they are settled, everything built on this memory inherits them.', { n: consistency.open })), where: where('nostromo') },
+      next: { text: (consistency.open === 1 ? t('Settle the contradiction the memory reviewer found. Until it is settled, everything built on this memory inherits it.') : t('Settle the {n} contradictions the memory reviewer found. Until they are settled, everything built on this memory inherits them.', { n: consistency.open })), ...to('nostromo') },
     };
   }
 
@@ -41,15 +44,15 @@ export function verdictFor({ maturity = null, exams = {}, cold = null, asks = 0 
       headline: stage?.label ?? null,
       says: coverage.says,
       next: asks
-        ? { text: t('Answer the {n} questions the project wrote for itself. They are the holes this test is finding.', { n: asks }), where: where('ask') }
-        : { text: t('Keep working in the project. The archive fills where the work happens, and this test measures exactly that.'), where: where('room') },
+        ? { text: t('Answer the {n} questions the project wrote for itself. They are the holes this test is finding.', { n: asks }), ...to('ask') }
+        : { text: t('Keep working in the project. The archive fills where the work happens, and this test measures exactly that.'), ...to('room') },
     };
   }
 
   // 3 · Then whatever the readings say is thinnest. That advice is already written where the
   // reading is taken, so it is quoted rather than invented here.
   if (weakest && weakest.value < 0.6) {
-    return { headline: stage?.label ?? null, says: `${weakest.label.toLowerCase()}: ${weakest.detail}.`, next: { text: weakest.next, where: where('room') } };
+    return { headline: stage?.label ?? null, says: `${weakest.label.toLowerCase()}: ${weakest.detail}.`, next: { text: weakest.next, ...to('room', weakest.id === 'judgement' ? 'rate' : 'room') } };
   }
 
   // 4 · And when nothing is wrong, the only honest thing left is the test nobody has run.
@@ -57,7 +60,7 @@ export function verdictFor({ maturity = null, exams = {}, cold = null, asks = 0 
     return {
       headline: stage?.label ?? null,
       says: coverage?.ran ? coverage.says : t('Nothing contradicts anything and the archive answers what this project asks.'),
-      next: { text: t('Run the third test: it puts real questions from this project back to the local model and says whether it lands where the agents landed.'), where: where('tests') },
+      next: { text: t('Run the third test: it puts real questions from this project back to the local model and says whether it lands where the agents landed.'), ...to('tests') },
     };
   }
 
@@ -69,8 +72,8 @@ export function verdictFor({ maturity = null, exams = {}, cold = null, asks = 0 
       : match.says,
     next: match.passed
       ? (dead
-        ? { text: t('Nothing is wrong. {n} memories have had every chance and were never the answer: look at them and decide.', { n: dead }), where: where('nostromo') }
-        : { text: t('Nothing to fix. Keep using the project; the archive grows where the work is.'), where: where('room') })
-      : { text: t('The local model does not land where the agents land yet. Keep the archive growing and run this test again in a week.'), where: where('tests') },
+        ? { text: t('Nothing is wrong. {n} memories have had every chance and were never the answer: look at them and decide.', { n: dead }), ...to('nostromo') }
+        : { text: t('Nothing to fix. Keep using the project; the archive grows where the work is.'), ...to('room') })
+      : { text: t('The local model does not land where the agents land yet. Keep the archive growing and run this test again in a week.'), ...to('tests') },
   };
 }

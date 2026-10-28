@@ -2437,8 +2437,14 @@ function openLinkSheet({ reader = null, source = null } = {}) {
     const seg = el('div', 'sx-seg');
     seg.setAttribute('role', 'radiogroup');
     seg.setAttribute('aria-label', label);
+    // A choice slides the mark and says it over the scene; the step is not drawn again (2026-10-28:
+    // drawing it again made the whole sheet blink at every press).
     for (const [value, words] of options) {
-      const one = button(null, words, () => { choose(value); render(); });
+      const one = button(null, words, () => {
+        choose(value);
+        for (const other of seg.children) other.setAttribute('aria-checked', String(other === one));
+        paintStage();
+      });
       one.setAttribute('role', 'radio');
       one.setAttribute('aria-checked', String(value === current));
       seg.append(one);
@@ -2574,7 +2580,9 @@ function openLinkSheet({ reader = null, source = null } = {}) {
     stage.append(terms);
   }
 
-  function render({ back = false } = {}) {
+  // `still`: the same step drawn again for a choice that adds or takes rows (orders), without the
+  // step's entrance, so nothing blinks.
+  function render({ back = false, still = false } = {}) {
     settle();
     const steps = stepsNow();
     at = Math.min(at, steps.length - 1);
@@ -2583,7 +2591,7 @@ function openLinkSheet({ reader = null, source = null } = {}) {
     const dots = el('ol', 'sm-steps');
     steps.forEach((name, index) => dots.append(el('li', index === at ? 'on' : index < at ? 'done' : null, STEP_WORDS[name]())));
     head.append(dots, closeKey(() => sheet.close()));
-    const page = el('div', `sm-step lw-step${back ? ' back' : ''}`);
+    const page = el('div', `sm-step lw-step${back ? ' back' : ''}${still ? ' still' : ''}`);
     // The swap, on the first step: it turns the link round, and the scene shows it.
     const turn = button('sm-btn small', t('Swap'), () => { [pick.reader, pick.source] = [pick.source, pick.reader]; render(); });
     const intro = (title, lead) => {
@@ -2650,7 +2658,7 @@ function openLinkSheet({ reader = null, source = null } = {}) {
       const box = card();
       box.classList.add('lw-grid');
       for (const kindOf of LINK_KINDS) {
-        box.append(row(kindWord(kindOf), LINK_KIND_NOTES[kindOf](), toggle(pick.kinds.has(kindOf), (on) => { if (on) pick.kinds.add(kindOf); else pick.kinds.delete(kindOf); error.textContent = ''; render(); }, kindWord(kindOf)), { recommended: kindOf === 'decision' || kindOf === 'fact', dot: kindOf }));
+        box.append(row(kindWord(kindOf), LINK_KIND_NOTES[kindOf](), toggle(pick.kinds.has(kindOf), (on) => { if (on) pick.kinds.add(kindOf); else pick.kinds.delete(kindOf); error.textContent = ''; paintStage(); }, kindWord(kindOf)), { recommended: kindOf === 'decision' || kindOf === 'fact', dot: kindOf }));
       }
       page.append(box, el('p', 'lw-foot', t('Only the notes already in use are shared, cleaned of private data first. Never your files, your whole conversations or the notes you set aside.')));
       actions.append(next(() => (pick.kinds.size ? null : t('Choose at least one kind.'))));
@@ -2660,19 +2668,19 @@ function openLinkSheet({ reader = null, source = null } = {}) {
       const ends = el('div', 'lw-control');
       ends.append(rail(LINK_DAYS.map(([value, words]) => [value, words()]), pick.days, (value) => { pick.days = value; }, t('It ends')));
       box.append(row(t('It ends'), t('A week is enough to try it; signing it again takes a moment.'), ends, { recommended: pick.days === 7 }));
-      box.append(row(t('Always include'), t('With every question it gets up to 3 related notes without looking for them; each time counts toward the hourly limit. Off, its agents look them up only when they need to.'), toggle(pick.recall, (on) => { pick.recall = on; render(); }, t('Always include'))));
+      box.append(row(t('Always include'), t('With every question it gets up to 3 related notes without looking for them; each time counts toward the hourly limit. Off, its agents look them up only when they need to.'), toggle(pick.recall, (on) => { pick.recall = on; paintStage(); }, t('Always include'))));
       // D-S15: only with the Coordinator reading, and only by you.
-      if (coordinator(pick.reader)) box.append(row(t('The Coordinator learns from it'), t("Its notes also go into the training of the Coordinator's local AI, so it knows this project without opening it. Clearing it or revoking takes it out of the next export; a model already trained keeps what it learned until you train it again."), toggle(pick.train, (on) => { pick.train = on; render(); }, t('The Coordinator learns from it'))));
+      if (coordinator(pick.reader)) box.append(row(t('The Coordinator learns from it'), t("Its notes also go into the training of the Coordinator's local AI, so it knows this project without opening it. Clearing it or revoking takes it out of the next export; a model already trained keeps what it learned until you train it again."), toggle(pick.train, (on) => { pick.train = on; paintStage(); }, t('The Coordinator learns from it'))));
       // D-S16 and D-S17: by you only, off unless you turn them on.
-      box.append(row(t('It shares its state'), t('Besides its notes, its canonical state as Continuity keeps it: objective, phase, next step, its last handoff, decisions and what is still open. Only if the project has Continuity installed; never its files or its code.'), toggle(pick.state, (on) => { pick.state = on; render(); }, t('It shares its state'))));
-      box.append(row(t('It receives delivered notes'), t('The project that reads can hand it notes. They wait there until you accept them (or an agent of that project in #3 EDIT or above): nothing enters its memory on its own.'), toggle(pick.deliver, (on) => { pick.deliver = on; render(); }, t('It receives delivered notes'))));
+      box.append(row(t('It shares its state'), t('Besides its notes, its canonical state as Continuity keeps it: objective, phase, next step, its last handoff, decisions and what is still open. Only if the project has Continuity installed; never its files or its code.'), toggle(pick.state, (on) => { pick.state = on; paintStage(); }, t('It shares its state'))));
+      box.append(row(t('It receives delivered notes'), t('The project that reads can hand it notes. They wait there until you accept them (or an agent of that project in #3 EDIT or above): nothing enters its memory on its own.'), toggle(pick.deliver, (on) => { pick.deliver = on; paintStage(); }, t('It receives delivered notes'))));
       page.append(box);
       actions.append(next());
     } else if (kind === 'orders') {
       const name = nameOf(ordersInto());
       intro(t('Orders from the Coordinator'), sayBold('With orders, the Coordinator can ask {room} for a task, and its agents do it there. Without them, it only reads. #3 EDIT and #4 FULL ACCESS never go this way: they arrive as a proposal you unlock in that project.', { room: name }));
       const box = card();
-      box.append(row(sayBold('Allow orders into {room}', { room: name }), sayBold('Leave it off unless you need the Coordinator to act in {room}.', { room: name }), toggle(pick.orders, (on) => { pick.orders = on; render(); }, t('Allow orders into {room}', { room: name })), { recommended: !pick.orders }));
+      box.append(row(sayBold('Allow orders into {room}', { room: name }), sayBold('Leave it off unless you need the Coordinator to act in {room}.', { room: name }), toggle(pick.orders, (on) => { pick.orders = on; render({ still: true }); }, t('Allow orders into {room}', { room: name })), { recommended: !pick.orders }));
       if (pick.orders) {
         const modes = el('div', 'lw-control');
         modes.append(rail([1, 2].map((n) => [n, `#${n} ${modeName(n)}`]), pick.maxMode, (value) => { pick.maxMode = value; }, t('Up to which mode')));

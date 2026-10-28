@@ -293,7 +293,7 @@ export const MANUAL = {
           'Abre Paso a paso: MADRE mide tu equipo, te sugiere el tamaño y te da cada comando con tus carpetas.',
           'Al terminar, en Ajustes › IA local pulsa Revisar otra vez: @madre ya contesta con tu modelo.',
         ],
-        expert: 'Funciona en Mac con chip Apple; en Linux con tarjeta NVIDIA es de prueba. Con unos 200 ejemplos aprende el tono, desde 1000 vale la pena. Antes de confiar en él, pregúntale diez cosas que el proyecto decidió y cinco que nunca se hablaron.',
+        expert: 'Funciona en Mac con chip Apple; en Linux con tarjeta NVIDIA, o en Windows dentro de WSL con su tarjeta NVIDIA, es de prueba. Con unos 200 ejemplos aprende el tono, desde 1000 vale la pena. Antes de confiar en él, pregúntale diez cosas que el proyecto decidió y cinco que nunca se hablaron.',
       },
       {
         id: 'coordinador',
@@ -657,7 +657,7 @@ export const MANUAL = {
           'Open Step by step: MADRE measures your computer, suggests the size and gives you each command with your folders.',
           'When it’s done, press Check again in Settings › Local AI: @madre now answers with your model.',
         ],
-        expert: 'It works on Macs with an Apple chip; on Linux with an NVIDIA card it’s experimental. With about 200 examples it learns the tone, from 1000 it’s worth it. Before you trust it, ask it ten things the project decided and five that never came up.',
+        expert: 'It works on Macs with an Apple chip; on Linux with an NVIDIA card, or on Windows inside WSL with its NVIDIA card, it’s experimental. With about 200 examples it learns the tone, from 1000 it’s worth it. Before you trust it, ask it ten things the project decided and five that never came up.',
       },
       {
         id: 'coordinador',

@@ -402,7 +402,7 @@ export const EN = {
   // ux/refresh · parte 4, los modos en Permisos
   "#{n} {label} asks you to confirm every message.": "«#{n} {label}» asks you to confirm every message.",
   "#{n} {label} now asks for: {key}.": "«#{n} {label}» now asks for: {key}.",
-  "#{n} {label} stays unlocked for {minutes} min after you confirm it.": "«#{n} {label}» stays unlocked for {minutes} min after you confirm it.",
+  "#{n} {label} stays unlocked for {time} after you confirm it.": "«#{n} {label}» stays unlocked for {time} after you confirm it.",
   "@{agent} is now capped at #{n} {label}.": "@{agent} is now capped at «#{n} {label}».",
   // ux/refresh · parte 5, avisos de la sala y del servidor
   "Diagnostics › /{name} is not available in this project: {title} (see MODULES).": "Diagnostics › /{name} is not available in this project: {title} (see «Modules»).",

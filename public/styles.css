@@ -11087,7 +11087,7 @@ html.chat-shell .model-menu .model-option { align-items: center; }
 html.chat-shell .model-menu .model-body { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; }
 html.chat-shell .model-menu .model-body .model-name { display: block; }
 html.chat-shell .model-menu .model-body .model-name .model-default { display: inline-block; margin-left: 7px; vertical-align: 1px; }
-html.chat-shell .model-menu .model-body .hint { font: 450 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .model-menu .model-body .hint { font: 450 12px/1.4 var(--read); color: var(--text-3); white-space: normal; text-wrap: pretty; }
 html.chat-shell .model-menu .model-option.current .model-body .hint { font-weight: 450; }
 /* An agent's card stands a little clear of the bar. */
 html.chat-shell .agent-pop { margin-top: 13px; }
@@ -12124,3 +12124,53 @@ html.chat-shell .tour-btn.quiet { box-shadow: none; }
 html.chat-shell .shell > .composer { position: relative; }
 html.chat-shell .shell > .composer > .openq { position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); margin: 0; padding: 0 8px; z-index: 2; }
 html.chat-shell:has(.shell > .composer > .openq:not([hidden])) #messages { padding-bottom: 84px; }
+
+/* WHAT TO ASK NOW IN THE NEW LOOK (2026-10-28): the Memory map stays dark in either theme, so the
+   panel is its own glass; each question a soft card, why it is worth asking in a quiet sentence with
+   the dot of where it came from, and its keys as the room's: one filled, the rest plain. */
+#nostromo .nostromo-card.asks { padding: 14px 14px 12px; border: 0; border-radius: 16px; background: rgb(14 17 15 / .9); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 0 0 1px rgb(255 255 255 / .08), 0 18px 48px -16px rgb(0 0 0 / .7); }
+#nostromo .nostromo-card.asks .kind { font: 600 14px/1.3 var(--read); letter-spacing: 0; text-transform: none; color: #f1f4ee; }
+#nostromo .nostromo-card.asks .foot { margin: 4px 0 12px; font: 450 12px/1.5 var(--read); letter-spacing: 0; text-transform: none; color: rgb(220 230 220 / .62); }
+#nostromo .asks-list { gap: 8px; }
+#nostromo .asks-list .ask { gap: 8px; padding: 12px 13px; border: 0; border-radius: 12px; background: rgb(255 255 255 / .045); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06); }
+#nostromo .asks-list .ask .q { font: 500 13.5px/1.5 var(--read); letter-spacing: 0; color: #eef1ea; }
+#nostromo .asks-list .ask .why { display: flex; align-items: baseline; gap: 7px; font: 450 12px/1.45 var(--read); letter-spacing: 0; text-transform: none; color: rgb(220 230 220 / .6); }
+#nostromo .asks-list .ask .why::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--well); transform: translateY(-1px); }
+#nostromo .asks-list .ask .actions { gap: 6px; margin-top: 2px; }
+#nostromo .asks-list .ask button { height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: rgb(255 255 255 / .07); color: #e7ebe4; font: 550 12.5px var(--read); letter-spacing: 0; text-transform: none; transition: background-color calc(140ms * var(--motion-scale, 1)) ease; }
+#nostromo .asks-list .ask button:is(:hover, :focus-visible) { background: rgb(255 255 255 / .13); outline: 0; }
+#nostromo .asks-list .ask button.primary { background: #eef1ea; color: #121512; }
+#nostromo .asks-list .ask button.primary:is(:hover, :focus-visible) { background: #ffffff; }
+#nostromo .asks-list .none { font: 450 12.5px/1.5 var(--read); color: rgb(220 230 220 / .62); }
+
+/* «What to do now» in Settings › Memory (2026-10-28): what to do in a sentence and the key that
+   takes you there, side by side, instead of an arrow naming a place. */
+.sx-ripe .next { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #3fb6d9 9%, transparent); }
+.sx-ripe .next .next-words { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.sx-ripe .next .next-words b { font-size: 13px; font-weight: 600; color: var(--text); }
+.sx-ripe .next .next-words p { color: var(--text-2); }
+.sx-ripe .next > .sx-btn { flex: none; white-space: nowrap; }
+@media (max-width: 560px) { .sx-ripe .next { flex-direction: column; align-items: stretch; } }
+/* The answer to rate, found from Settings: its thumbs show and call for a moment. */
+#messages .row.rate-here .bubble-actions { opacity: 1 !important; }
+#messages .row.rate-here :is(.rate.good, .rate.bad) { animation: rate-call calc(1100ms * var(--motion-scale, 1)) ease-in-out 3; }
+@keyframes rate-call { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--phosphor) 0%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--phosphor) 32%, transparent); } }
+@media (prefers-reduced-motion: reduce) { #messages .row.rate-here :is(.rate.good, .rate.bad) { animation: none; } }
+
+/* Intenciones in the new look (2026-10-28): its name in a sentence with what it is under it, what
+   the test is for at the top, and how far it got as a share and a bar. */
+dialog.intents-window .custom-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: 12px; row-gap: 2px; }
+dialog.intents-window .custom-head .custom-title { grid-column: 1; grid-row: 1; font: 600 15px/1.3 var(--read); letter-spacing: 0; text-transform: none; color: var(--text); }
+dialog.intents-window .custom-head .custom-sub { grid-column: 1; grid-row: 2; margin: 0; font: 450 12.5px/1.4 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-2); }
+dialog.intents-window .custom-head .surface-modes { grid-column: 2; grid-row: 1 / span 2; }
+.intents-page .intents-about { margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--text) 4%, transparent); font: 450 13px/1.55 var(--read); color: var(--text-2); }
+.intents-page .intents-progress { display: grid; gap: 6px; }
+.intents-page .intents-progress-words { display: flex; align-items: baseline; justify-content: space-between; font: 500 12.5px var(--read); color: var(--text-2); }
+.intents-page .intents-progress-words strong { font: 650 14px var(--read); font-variant-numeric: tabular-nums; color: var(--text); }
+.intents-page .intents-progress-bar { height: 6px; border-radius: 99px; background: color-mix(in srgb, var(--text) 9%, transparent); overflow: hidden; }
+.intents-page .intents-progress-bar i { display: block; height: 100%; border-radius: inherit; background: var(--phosphor); transition: width calc(400ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+.intents-page .intents-note { font-family: var(--read); font-size: 12.5px; }
+
+/* The Market's shelves (2026-10-28): what each shelf is, under its name, not beside it. */
+.mk-shelf > header { display: grid; justify-items: start; gap: 3px; }
+.mk.flat .mk-shelf > header p { line-height: 1.45; }
