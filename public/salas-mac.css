@@ -1704,3 +1704,62 @@ html.home-shell .sm-main .sm-icon-key svg { width: 16px; height: 16px; }
 /* MADRE, its version and its author are said at the sidebar's foot while it is open, as in a project;
    shut, the foot of Home says them. */
 html.home-shell.home-side .sm-foot-row .sm-colophon { display: none; }
+
+/* THE BAR BY FAMILIES (2026-10-28), as a project's (styles.css, .bar-family): a hairline between the
+   projects' own keys — Connections, Project map — and MADRE's — Market, Modules —; Home's own sit
+   after the line before them. */
+.sm-family { display: none; }
+html.home-shell .sm-top .sm-family { display: block; flex: none; width: 1px; height: 16px; margin: 0 6px; background: var(--cs-line); }
+
+/* The Project map is a screen of its own, over everything, the sidebar too — as the Memory map is in
+   a project (a dialog over the whole room). */
+html.home-shell .mv { z-index: 60; }
+
+/* The Market in a window over Home (salas-mac.js, homeWindow): the project's Market window
+   (styles.css, .mk.window), carried by its bar, its tabs and search beside its name. */
+html.home-shell .mk.window { position: fixed; }
+html.home-shell .mk.window.moving { transition: none !important; }
+html.home-shell .mk.window .mk-bar { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; }
+html.home-shell .mk.window .mk-bar-mid { justify-self: start; }
+
+/* Modules, as a project's Modules window: a board of tiles — the module's flat icon and its switch at
+   the top, its name and how far it reaches under them, the projects as chips below. */
+html.home-shell .mk.flat .mk-mine { gap: 18px; }
+html.home-shell .mk.flat .mk-mine .mk-head h1 { font: 600 18px/1.25 var(--read); letter-spacing: -.01em; }
+html.home-shell .mk.flat .mk-mine .mk-head p { margin-top: 4px; font: 400 13px/1.45 var(--read); color: var(--text-3); }
+html.home-shell .mk.flat .mk-mine .mk-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+html.home-shell .mk.flat .mk-mine .mk-section > h2 { grid-column: 1 / -1; margin: 4px 2px 0; font: 500 12px var(--read); letter-spacing: 0; color: var(--text-3); }
+html.home-shell .mk.flat .mk-mine .mk-card {
+  position: relative; display: grid; align-content: start; gap: 8px; padding: 12px 14px; border: 0;
+  border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line);
+  transition: box-shadow calc(160ms * var(--motion-scale, 1)) ease;
+}
+html.home-shell .mk.flat .mk-mine .mk-card:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent); }
+html.home-shell .mk.flat .mk-mine .mk-card.focused { box-shadow: 0 0 0 2px var(--phosphor); padding-inline: 14px; background: var(--cs-canvas); }
+html.home-shell .mk.flat .mk-mine .mk-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; }
+html.home-shell .mk.flat .mk-mine .mk-card-open { display: grid; justify-items: start; gap: 10px; min-width: 0; }
+html.home-shell .mk.flat .mk-mine .mk-card-open > :first-child { width: 28px !important; height: 28px !important; border-radius: 8px; }
+html.home-shell .mk.flat .mk-mine .mk-card-open > :first-child svg { width: 16px; height: 16px; }
+html.home-shell .mk.flat .mk-mine .mk-card-words b { font: 600 13.5px/1.3 var(--read); }
+html.home-shell .mk.flat .mk-mine .mk-card-words span { font: 400 12.5px/1.4 var(--read); color: var(--text-2); }
+html.home-shell .mk.flat .mk-mine .mk-all > span { display: none; }
+html.home-shell .mk.flat .mk-mine .mk-card-head .mk-get { height: 26px; padding: 0 10px; font: 500 12px var(--read); }
+html.home-shell .mk.flat .mk-mine .mk-chips { gap: 6px; padding: 0; }
+html.home-shell .mk.flat .mk-mine .mk-chip { height: 24px; padding: 0 9px; font: 500 12px var(--read); }
+html.home-shell .mk.flat .mk-mine .mk-said:empty { display: none; }
+
+/* The Coordinator's summary before there is one (2026-10-28): what will come there, in the middle of
+   its box, with a drawing of it — not an empty box with a line at its foot. */
+html.home-shell .sm-work:has(> .sm-work-list:empty) > .sm-work-list { display: none; }
+html.home-shell .sm-work:not(.is-working):has(> .sm-work-list:empty) > .sm-hint {
+  margin: auto; max-width: 46ch; padding: 10px 0 14px; text-align: center; font-size: 13px; line-height: 1.5; color: var(--text-3);
+}
+html.home-shell .sm-work:not(.is-working):has(> .sm-work-list:empty) > .sm-hint::before {
+  content: ''; display: block; width: 26px; height: 26px; margin: 0 auto 10px; background: currentColor; opacity: .8;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 5.5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2H9.2l-3.7 3v-3a2 2 0 0 1-2-2z'/%3E%3Cpath d='M7 7.2h6M7 9.8h3.6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 5.5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5.5a2 2 0 0 1-2 2H9.2l-3.7 3v-3a2 2 0 0 1-2-2z'/%3E%3Cpath d='M7 7.2h6M7 9.8h3.6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* A module whose key is a word (Local AI settings, Install in another): the word under its name, so
+   the name and its line keep the tile's width. */
+html.home-shell .mk.flat .mk-mine .mk-card-head:has(> .mk-get) { grid-template-columns: minmax(0, 1fr); }
+html.home-shell .mk.flat .mk-mine .mk-card-head:has(> .mk-get) > .mk-get { grid-row: 2; justify-self: start; }

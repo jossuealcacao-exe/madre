@@ -858,6 +858,8 @@ async function loadWork({ again = false } = {}) {
 function drawWork() {
   const w = ui.work;
   w.list.replaceChildren();
+  // Whatever it says, the Coordinator's tile is measured again once it is said (fitTile).
+  queueMicrotask(() => { if (typeof fitTiles === 'function' && layout) fitTiles(); });
   const state = work?.state ?? 'loading';
   w.box.classList.toggle('is-working', state === 'working');
   w.again.hidden = !work || state === 'empty' || state === 'unavailable';
@@ -1529,7 +1531,11 @@ const rowsOf = (id) => layout.rows?.[id] ?? (HOME_TILES[id] ?? WIDGETS[id])?.row
 const PAIRED = window.matchMedia?.('(max-width: 1180px) and (min-width: 761px)');
 PAIRED?.addEventListener?.('change', () => fitTiles());
 function fitTile(node) {
-  const own = rowsOf(node.dataset.tile);
+  // The Coordinator with no summary yet, across the whole board, is as tall as what it holds (2026-10-28):
+  // its five rows only kept an empty box open. Beside other tiles it keeps its rows, and the box says
+  // what will come there (salas-mac.css, the empty summary).
+  const unsaid = node.id === 'sm-bishop' && !ui.work.list.childElementCount && !layout.rows?.bishop && node.getBoundingClientRect().width > ($(BOARD)?.getBoundingClientRect().width ?? Infinity) * 0.9;
+  const own = unsaid ? 0 : rowsOf(node.dataset.tile);
   const chosen = own && PAIRED?.matches && spanOf(node.dataset.tile) < 12 ? Math.max(3, own) : own;
   node.classList.toggle('sm-fixed', chosen > 0);
   // How many rows it has, for the tile's own CSS: a short tile shows what matters and leaves the rest.
@@ -3878,6 +3884,8 @@ const openHomeMarket = (tab = 'shop', focus = null) => openMarket({
   tab,
   focus,
   host: {
+    // In the chat shell the Market is a window, as in a project (homeWindow); on a phone, the screen.
+    window: (parts) => homeWindow({ ...parts, key: 'pulse.homeMarketWindow' }),
     localAi: () => openSettings('local'),
     toast: (words) => toast(words),
     changed: () => drawColophonKeys(ui.colophon),
@@ -4424,8 +4432,10 @@ const SET_INDEX = [
   ['release', 'Check now'],
 ];
 const THEME_WORDS = { auto: () => t('Automatic'), light: () => t('Light'), dark: () => t('Dark') };
-const catName = (id) => t(SET_CATS[id].name);
-const setIcon = (id) => { const span = el('span', 'settings-icon'); span.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${SET_CATS[id].icon}</svg>`; span.style.setProperty('--cat', 'var(--phosphor)'); return span; }; // trusted: our own SVG strings
+// In the chat shell the projects at hand live in the sidebar, and Settings calls them so (2026-10-28).
+const SIDEBAR_CAT = '<rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3.9v12.2" fill="none" stroke="currentColor" stroke-width="1.6"/>';
+const catName = (id) => (id === 'bar' && homeShellOn() ? t('Sidebar') : t(SET_CATS[id].name));
+const setIcon = (id) => { const span = el('span', 'settings-icon'); span.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${id === 'bar' && homeShellOn() ? SIDEBAR_CAT : SET_CATS[id].icon}</svg>`; span.style.setProperty('--cat', 'var(--phosphor)'); return span; }; // trusted: our own SVG strings
 const CHEVRON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const chevron = (className) => { const mark = el('span', `${className} chev-icon`); mark.innerHTML = CHEVRON; return mark; }; // trusted: our own SVG string
 const fold = (text) => String(text).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
@@ -4526,7 +4536,7 @@ function setQuick(id) {
     }
     add(t('Theme'), seg);
   }
-  if (id === 'bar') add(t('Arrange the bar'), sxButton(t('Arrange'), (event) => { event.stopPropagation(); settingsSheet?.close(); pinsEdit(true); }));
+  if (id === 'bar' && !homeShellOn()) add(t('Arrange the bar'), sxButton(t('Arrange'), (event) => { event.stopPropagation(); settingsSheet?.close(); pinsEdit(true); }));
   if (id === 'agents' && agentsSeen) {
     for (const agent of agentsSeen.agents.filter((one) => one.id !== 'madre' && one.detected)) {
       const state = agentState(agent, agentsSeen);
@@ -4713,17 +4723,20 @@ function fillLook(host) {
   host.append(frame);
 }
 function fillBar(host) {
-  const block = sxBlock(host, t('Top bar'), t('The projects you keep at hand, in the order you choose. A project comes to the bar from its card: right-click it, or drag it to the bar.'));
+  const side = homeShellOn();
+  const block = side
+    ? sxBlock(host, t('Sidebar'), t('The projects you keep at hand in the sidebar, in the order you choose. A project comes to it from its card: right-click it, or drag it onto the list.'))
+    : sxBlock(host, t('Top bar'), t('The projects you keep at hand, in the order you choose. A project comes to the bar from its card: right-click it, or drag it to the bar.'));
   const ids = pinsShown();
-  if (!ids.length) sxRow(block, t('Nothing pinned'), null);
+  if (!ids.length) sxRow(block, side ? t('No project in the sidebar yet') : t('Nothing pinned'), null);
   for (const id of ids) {
     const room = data.rooms.find((one) => one.id === id);
     sxRow(block, room.name, stateOf(room).words, sxButton(t('Remove'), () => pinRemove(id)));
   }
   const acts = el('div', 'sx-actions end');
   if (pinsStored()) acts.append(sxButton(t('Back to default'), () => pinsReset()));
-  acts.append(sxButton(t('Arrange the bar'), () => { settingsSheet?.close(); pinsEdit(true); }, { tone: 'primary' }));
-  host.append(acts);
+  if (!side) acts.append(sxButton(t('Arrange the bar'), () => { settingsSheet?.close(); pinsEdit(true); }, { tone: 'primary' }));
+  if (acts.childElementCount) host.append(acts);
 }
 function fillAgents(host, keep) {
   // The project's AJUSTES › Agents, here too: a sentence, then a card per agent.
@@ -5092,7 +5105,7 @@ function openSettings(section = null) {
     for (const [name, sub, ids] of SET_SECTIONS) {
       const section = el('section', 'settings-section');
       const top = el('header');
-      top.append(el('b', null, t(name)), el('span', null, t(sub)));
+      top.append(el('b', null, t(name)), el('span', null, t(homeShellOn() && sub === 'How Home looks and what its bar holds' ? 'How Home looks and what its sidebar holds' : sub)));
       const cards = el('div', 'settings-cards');
       for (const id of ids) cards.append(card(id));
       section.append(top, cards);
@@ -5254,7 +5267,8 @@ function translateStatic() {
   ui.memory.title.textContent = t('Memory');
   ui.decisions.title.textContent = t('Recent decisions');
   ui.attention.title.textContent = t('Needs you');
-  for (const kind of KINDS) KIND_WORDS[kind] = t(kind.toUpperCase());
+  // A claim the room found false is said as everywhere else: a doubtful memory, not «aberration».
+  for (const kind of KINDS) KIND_WORDS[kind] = t(kind === 'aberration' ? 'DOUBTFUL MEMORY' : kind.toUpperCase());
   sayHomeShell();
 }
 
@@ -5351,6 +5365,7 @@ function buildHomeShell() {
   side.append(head, nav, scroll, foot);
   document.body.prepend(side);
   homeShell.side = side;
+  arrangeHomeBar();
   // In the bar, while the sidebar is shut: its key, before the page's name.
   homeShell.show = sideKey(SIDEBAR_GLYPH, t('Show the sidebar'), () => setSide(true));
   homeShell.show.classList.add('sm-side-show');
@@ -5415,6 +5430,126 @@ function sayHomeShell() {
   homeShell.said = '';
   drawSideProjects();
 }
+// ---- WINDOWS IN HOME (2026-10-28), as a project's are (app.js, marketAsWindow and its helpers):
+// the sheet carried by its bar, sized by its sides and corners, always whole inside the browser
+// window, the one touched last in front, and its place kept for the next time. Over the sidebar,
+// as a project's windows stand over its sidebar; the Market is the one that opens this way.
+const HOME_WINDOW_LAYER = 44;
+const HOME_WINDOW_INSET = 8;
+const homeWindows = [];
+function homeWindowForward(node) {
+  const at = homeWindows.indexOf(node);
+  if (at >= 0) homeWindows.splice(at, 1);
+  homeWindows.push(node);
+  homeWindows.forEach((one, index) => { one.style.zIndex = String(HOME_WINDOW_LAYER + index); one.classList.toggle('front', index === homeWindows.length - 1); });
+}
+function homeWindowBox(box, { minW, minH }) {
+  const w = Math.round(Math.max(minW, Math.min(box.w, window.innerWidth - 2 * HOME_WINDOW_INSET)));
+  const h = Math.round(Math.max(minH, Math.min(box.h, window.innerHeight - 2 * HOME_WINDOW_INSET)));
+  // Partly past a side is allowed; the bar always stays in reach, never under the top edge.
+  const x = Math.round(Math.max(120 - w, Math.min(window.innerWidth - 120, box.x)));
+  const y = Math.round(Math.max(HOME_WINDOW_INSET, Math.min(window.innerHeight - 48, box.y)));
+  return { x, y, w, h };
+}
+function homeWindow({ root, bar, close, key, minW = 360, minH = 360 }) {
+  if (!homeShellOn()) return null;
+  root.classList.add('surface', 'window', 'home-window');
+  let kept = null;
+  try { kept = JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { /* no storage */ }
+  const fresh = () => {
+    const w = Math.min(1040, window.innerWidth - 32);
+    const h = Math.min(780, window.innerHeight - 90);
+    return { x: Math.max(16, Math.round((window.innerWidth - w) / 2)), y: 56, w, h };
+  };
+  let want = kept?.w && kept?.h ? kept : fresh();
+  let box = null;
+  const place = (next) => {
+    want = { ...next };
+    box = homeWindowBox(next, { minW, minH });
+    root.style.left = `${box.x}px`;
+    root.style.top = `${box.y}px`;
+    root.style.width = `${box.w}px`;
+    root.style.height = `${box.h}px`;
+  };
+  const remember = () => { try { localStorage.setItem(key, JSON.stringify(box)); } catch { /* as long as the page lasts */ } };
+  place(want);
+  // Its close, at the right of its bar, as every window's (styles.css, .surface-modes, .x-close).
+  const group = el('span', 'surface-modes');
+  const shut = button('surface-mode close x-close x-only', null, () => close());
+  shut.setAttribute('aria-label', t('Close'));
+  shut.innerHTML = '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'; // trusted: our own SVG
+  group.append(shut);
+  bar.append(group);
+  // Carried by its bar, wherever the bar is not a key, a field or a tab.
+  const hold = (handle, change, skip = () => false) => handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || skip(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    homeWindowForward(root);
+    try { handle.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
+    const start = { ...box };
+    const from = { x: event.clientX, y: event.clientY };
+    let frame = 0;
+    root.classList.add('moving');
+    const move = (moving) => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => place(change(start, moving.clientX - from.x, moving.clientY - from.y))); };
+    const finish = () => {
+      cancelAnimationFrame(frame);
+      root.classList.remove('moving');
+      for (const [type, run] of [['pointermove', move], ['pointerup', finish], ['pointercancel', finish], ['lostpointercapture', finish]]) handle.removeEventListener(type, run);
+      remember();
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+    handle.addEventListener('lostpointercapture', finish);
+  });
+  hold(bar, (start, dx, dy) => ({ ...start, x: start.x + dx, y: start.y + dy }), (event) => Boolean(event.target.closest('button, input, label, a, select, textarea, [role="tab"]')));
+  for (const side of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {
+    const edge = el('div', `win-edge ${side}`);
+    edge.setAttribute('aria-hidden', 'true');
+    root.append(edge);
+    hold(edge, (start, dx, dy) => {
+      const next = { ...start };
+      if (side.includes('e')) next.w = start.w + dx;
+      if (side.includes('s')) next.h = start.h + dy;
+      if (side.includes('w')) { next.w = Math.max(minW, start.w - dx); next.x = start.x + start.w - next.w; }
+      if (side.includes('n')) { next.h = Math.max(minH, start.h - dy); next.y = start.y + start.h - next.h; }
+      return next;
+    });
+  }
+  root.addEventListener('pointerdown', () => homeWindowForward(root), true);
+  const refit = () => { if (root.isConnected) place(want); };
+  window.addEventListener('resize', refit);
+  homeWindowForward(root);
+  return {
+    raise: () => homeWindowForward(root),
+    drop: () => {
+      window.removeEventListener('resize', refit);
+      const at = homeWindows.indexOf(root);
+      if (at >= 0) homeWindows.splice(at, 1);
+      homeWindows.at(-1)?.classList.add('front');
+    },
+  };
+}
+// The bar's keys by family, a hairline between them as in a project (styles.css, .bar-family): the
+// projects' own — how they connect and their map —, then MADRE's — the Market and the modules —,
+// then Home's own after its line. The modules wear the project's piece, the same key there and here.
+function arrangeHomeBar() {
+  const links = $('sm-tb-links');
+  const market = $('sm-tb-market');
+  const modules = $('sm-tb-modules');
+  if (!links || !market || !modules) return;
+  links.after(ui.macro);
+  const line = el('span', 'sm-family');
+  line.setAttribute('aria-hidden', 'true');
+  market.before(line);
+  modules.querySelector('svg')?.replaceWith(Object.assign(document.createElement('span'), { innerHTML: MODULES_GLYPH }).firstElementChild);
+  // The map's flattened orbit read as an eye at 16 px: a round orbit, a planet on it, the centre.
+  ui.macro.querySelector('svg')?.replaceWith(Object.assign(document.createElement('span'), { innerHTML: MAP_GLYPH }).firstElementChild);
+}
+const MAP_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.4" fill="currentColor"/><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.2 2.4" stroke-linecap="round"/><circle cx="15" cy="5" r="1.9" fill="currentColor"/></svg>';
+const MODULES_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.75 8.45a2.2 2.2 0 0 1 2.2-2.2h2a1.9 1.9 0 1 1 2.6 0h2a2.2 2.2 0 0 1 2.2 2.2v2a1.9 1.9 0 1 1 0 2.6v2a2.2 2.2 0 0 1-2.2 2.2h-2a1.9 1.9 0 1 0-2.6 0h-2a2.2 2.2 0 0 1-2.2-2.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 buildHomeShell();
 
 translateStatic();

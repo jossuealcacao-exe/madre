@@ -24,7 +24,7 @@
 // for less motion gets one still frame redrawn when something changes. No line joins two universes
 // until a link exists (phase 3c).
 
-import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronGlow, texturesReady } from './nostromo-engine.js';
+import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, texturesReady } from './nostromo-engine.js';
 import { createStrain, inviteNeural, neuralKey, paintNeuralKey } from './neural.js';
 
 const KINDS = Object.keys(MEMORY_COLORS);
@@ -434,22 +434,27 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   const legend = document.createElement('span');
   legend.className = 'nostromo-legend';
   legend.setAttribute('aria-label', words.legend ?? 'Memory kinds');
-  for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
-    const chip = document.createElement('span');
-    chip.className = `k ${kind}`;
-    const said = document.createElement('i');
-    said.textContent = words.kinds?.[kind] ?? kind;
-    chip.append(kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), said);
-    legend.append(chip);
-  }
-  {
+  // In the neural drawing each kind is the neuron the Memory map draws (2026-10-28): alive, going out
+  // when it is not used, dead when it is doubtful (app.js, paintLegend).
+  const paintLegend = (asNeurons) => {
+    const chips = [];
+    for (const [kind, hex] of Object.entries(MEMORY_COLORS)) {
+      const chip = document.createElement('span');
+      chip.className = `k ${kind}`;
+      const said = document.createElement('i');
+      said.textContent = words.kinds?.[kind] ?? kind;
+      chip.append(asNeurons ? neuronChip(NEURAL_COLORS[kind] ?? hex, 16, kind === COLLAPSED ? 'dead' : 'alive') : kind === COLLAPSED ? collapsedChip(hex, 14) : dwarfChip(hex, 14), said);
+      chips.push(chip);
+    }
     const chip = document.createElement('span');
     chip.className = 'k dim';
     const said = document.createElement('i');
     said.textContent = words.kinds?.dim ?? 'Out of circulation';
-    chip.append(dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), said);
-    legend.append(chip);
-  }
+    chip.append(asNeurons ? neuronChip(NEURAL_COLORS.fact, 16, 'spent') : dwarfChip(hexMix(MEMORY_COLORS.fact, '#0b0f16', 0.52), 14), said);
+    chips.push(chip);
+    legend.replaceChildren(...chips);
+  };
+  paintLegend(Boolean(neuralStart));
   const keys = document.createElement('span');
   keys.className = 'nostromo-actions';
   const recenter = document.createElement('button');
@@ -530,6 +535,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     neural = on;
     neuralSince = on && !reduced ? clock : null;
     paintNeuralKey(neuralButton, on);
+    paintLegend(on);
     layer.querySelector('.neural-invite')?.remove();
     const now = performance.now() / 1000;
     for (const one of universes) {

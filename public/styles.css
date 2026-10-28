@@ -11913,27 +11913,28 @@ html.chat-shell[data-scheme="dark"] #messages#messages .sys-dots.open { backgrou
 
 /* ---- The memory map's head in the room's voice (2026-10-27): its name in the reading face and in
    sentence case, what it holds quietly beside it, the legend under them, and its keys bare —
-   words on the dark, a soft ground under the pointer, the one switched on in the accent. ---- */
-html.chat-shell #nostromo .nostromo-head { padding: 10px 12px 10px 18px; gap: 6px 14px; border-bottom: 1px solid rgb(255 255 255 / .07); background: rgb(10 12 14 / .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-html.chat-shell #nostromo .nostromo-head > .mother-title { font: 600 14px var(--read); letter-spacing: -.005em; text-transform: lowercase; color: #f2f1ee; }
-html.chat-shell #nostromo .nostromo-head > .mother-title::first-letter { text-transform: uppercase; }
-html.chat-shell #nostromo .nostromo-head > .mother-sub { font: 400 12.5px var(--read); color: rgb(242 241 238 / .5); }
-html.chat-shell #nostromo .nostromo-legend { gap: 12px; }
-html.chat-shell #nostromo .nostromo-legend .k i { font: 400 12px var(--read); font-style: normal; letter-spacing: 0; color: rgb(242 241 238 / .62); }
-html.chat-shell #nostromo .nostromo-actions { gap: 2px; }
-html.chat-shell #nostromo .nostromo-actions .mother-close:is(*, :hover, :active, .ask, .cold, .neural-key) {
+   words on the dark, a soft ground under the pointer, the one switched on in the accent. The Project
+   map wears the same head (2026-10-28). ---- */
+html.chat-shell :is(#nostromo, .mv) .nostromo-head { padding: 10px 12px 10px 18px; gap: 6px 14px; border-bottom: 1px solid rgb(255 255 255 / .07); background: rgb(10 12 14 / .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title { font: 600 14px var(--read); letter-spacing: -.005em; text-transform: lowercase; color: #f2f1ee; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title::first-letter { text-transform: uppercase; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-sub { font: 400 12.5px var(--read); color: rgb(242 241 238 / .5); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-legend { gap: 12px; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-legend .k i { font: 400 12px var(--read); font-style: normal; letter-spacing: 0; color: rgb(242 241 238 / .62); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions { gap: 2px; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close:is(*, :hover, :active, .ask, .cold, .neural-key) {
   height: 28px; padding: 0 10px; border: 0 !important; border-radius: 8px; box-shadow: none !important;
   background: none !important; color: rgb(242 241 238 / .72); font: 500 12.5px var(--read); letter-spacing: 0;
 }
-html.chat-shell #nostromo .nostromo-actions .mother-close:is(:hover, :focus-visible) { background: rgb(255 255 255 / .07) !important; color: #fff; }
-html.chat-shell #nostromo .nostromo-actions .mother-close[aria-pressed="true"] { background: rgb(255 255 255 / .08) !important; color: var(--phosphor) !important; }
-html.chat-shell #nostromo .nostromo-actions .neural-key svg { width: 15px; height: 15px; }
-html.chat-shell #nostromo .nostromo-actions > .surface-modes { margin-left: 4px; padding: 0 0 0 6px; border: 0; border-radius: 0; background: none !important; box-shadow: inset 1px 0 0 rgb(255 255 255 / .1) !important; }
-html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode.close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; }
-html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode.close .x-icon { width: 16px; height: 16px; }
-html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode { color: rgb(242 241 238 / .72); }
-html.chat-shell #nostromo .nostromo-actions > .surface-modes .surface-mode:is(:hover, :focus-visible) { color: #fff; background: rgb(255 255 255 / .07) !important; }
-html.chat-shell #nostromo .nostromo-hint, html.chat-shell #nostromo .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close:is(:hover, :focus-visible) { background: rgb(255 255 255 / .07) !important; color: #fff; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close[aria-pressed="true"] { background: rgb(255 255 255 / .08) !important; color: var(--phosphor) !important; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .neural-key svg { width: 15px; height: 15px; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes { margin-left: 4px; padding: 0 0 0 6px; border: 0; border-radius: 0; background: none !important; box-shadow: inset 1px 0 0 rgb(255 255 255 / .1) !important; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode.close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode.close .x-icon { width: 16px; height: 16px; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode { color: rgb(242 241 238 / .72); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode:is(:hover, :focus-visible) { color: #fff; background: rgb(255 255 255 / .07) !important; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-hint, html.chat-shell :is(#nostromo, .mv) .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; }
 
 /* ---- Diagnostics in the room's voice (2026-10-27): a head like Settings', one quiet line of how the
    project stands, and two columns that touch — the list on the side ground, the answer on the

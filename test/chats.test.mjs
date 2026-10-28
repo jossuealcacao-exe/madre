@@ -941,8 +941,8 @@ test('chat shell: Diagnostics in two rows of filters, the memory map head in the
   assert.match(app, /const scope = el\('div', 'remedy-scope'\);/);
   assert.match(app, /if \(count\) chip\(`agent:\$\{agent\}`, `@\$\{agent\}`, count, byAgent\);/);
   assert.match(css, /html\.chat-shell #mother \.remedy-scope \{ display: flex;/);
-  assert.match(css, /html\.chat-shell #nostromo \.nostromo-head > \.mother-title \{ font: 600 14px var\(--read\);/);
-  assert.match(css, /html\.chat-shell #nostromo \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: rgb\(255 255 255 \/ \.08\) !important; color: var\(--phosphor\) !important; \}/);
+  assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-head > \.mother-title \{ font: 600 14px var\(--read\);/);
+  assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: rgb\(255 255 255 \/ \.08\) !important; color: var\(--phosphor\) !important; \}/);
   assert.match(app, /\{ id: 'egress', label: t\('Where it connects'\) \},/);
   assert.match(app, /head\.append\(el\('b', null, coreBlockName\(part\.id\)\)\);/);
   assert.match(es, /'What the agent reads': 'Lo que lee el agente',/);
@@ -1039,4 +1039,32 @@ test('Home framed as a project: the room\'s sidebar, its bar of quiet keys, flat
   assert.match(es, /'Keep in the sidebar': 'Dejar en la barra lateral',/);
   // CODE's drawing follows its key, as its neighbours' do.
   assert.match(css, /html\.chat-shell \.shell > \.bar > #code-button svg \{ color: inherit !important; \}/);
+});
+
+test('Home: the sidebar in Settings, the bar by families, the Market and Modules as windows, the Project map over all in the new head', async () => {
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const homeCss = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const macro = await readFile(new URL('../public/macroverso.js', import.meta.url), 'utf8');
+  // Settings calls the projects at hand what they are now, and has no bar to arrange.
+  assert.match(home, /const catName = \(id\) => \(id === 'bar' && homeShellOn\(\) \? t\('Sidebar'\) : t\(SET_CATS\[id\]\.name\)\);/);
+  assert.match(home, /if \(!side\) acts\.append\(sxButton\(t\('Arrange the bar'\)/);
+  // The Coordinator with no summary is as tall as what it holds, its box says what will come.
+  assert.match(home, /const unsaid = node\.id === 'sm-bishop' && !ui\.work\.list\.childElementCount/);
+  assert.match(homeCss, /html\.home-shell \.sm-work:not\(\.is-working\):has\(> \.sm-work-list:empty\) > \.sm-hint::before \{/);
+  // The bar by families, the project's piece for Modules, a round orbit for the map.
+  assert.match(home, /links\.after\(ui\.macro\);/);
+  assert.match(home, /const line = el\('span', 'sm-family'\);/);
+  assert.match(homeCss, /html\.home-shell \.sm-top \.sm-family \{ display: block;/);
+  // The Market and Modules open as a window: carried, sized, kept, over the sidebar.
+  assert.match(home, /window: \(parts\) => homeWindow\(\{ \.\.\.parts, key: 'pulse\.homeMarketWindow' \}\),/);
+  assert.match(home, /const HOME_WINDOW_LAYER = 44;/);
+  assert.match(home, /for \(const side of \['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'\]\) \{/);
+  assert.match(homeCss, /html\.home-shell \.mk\.flat \.mk-mine \.mk-section \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(210px, 1fr\)\); gap: 10px; \}/);
+  // The Project map covers the sidebar, wears the Memory map's head, and its legend is neurons.
+  assert.match(homeCss, /html\.home-shell \.mv \{ z-index: 60; \}/);
+  assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-head \{/);
+  assert.match(macro, /chip\.append\(asNeurons \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\)/);
+  assert.match(macro, /paintNeuralKey\(neuralButton, on\);\n    paintLegend\(on\);/);
+  assert.match(home, /KIND_WORDS\[kind\] = t\(kind === 'aberration' \? 'DOUBTFUL MEMORY' : kind\.toUpperCase\(\)\);/);
 });
