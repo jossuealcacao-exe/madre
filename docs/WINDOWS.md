@@ -76,6 +76,7 @@ real, no en CI) · `DESCARTADO`.
 | **WIN-005** | Lo mismo en el servidor MCP de imagen. | `src/mcp/image-server.mjs:195` | 1 | ABIERTO |
 | **WIN-006** | Lo mismo en `bin/madre.mjs` (commit en `--version`) y en los scripts de release y empaquetado. | `bin/madre.mjs:90`, `scripts/release.mjs:16`, `scripts/pack-check.mjs:12` | 1 | ABIERTO |
 | **WIN-007** | `process.kill(-pid)` no existe en Windows; el `catch` mata solo al lanzador. **STOP ALL, timeout e idle dejan CLIs huérfanos quemando cuota.** | `src/adapters/process.mjs:9` | 1 | ABIERTO |
+| **WIN-028** | Inicio no deja agregar ni crear proyectos: `inside()` compara con `/` y las rutas de Windows usan `\`; además compara mayúsculas sobre un sistema que no las distingue. Toda carpeta da «Solo carpetas dentro de tu carpeta de usuario». Reportado por un usuario el 2026-10-28. Arreglo: comparar con `path.relative`, que sirve en las tres plataformas (va en `main`). | `src/salas.mjs:111` | 1 | ABIERTO |
 
 ### P1 · El confinamiento se cae en silencio
 
@@ -118,7 +119,7 @@ Ninguna se toma sin el usuario. Hasta que se cierren, las fases posteriores no a
 
 | ID | Decisión | Bloquea | Estado |
 |---|---|---|---|
-| **D-001** | ¿Windows nativo, o WSL2 declarado como el camino soportado? WSL2 elimina casi toda la sección P1 a cambio de fricción de instalación. | Fase 1 completa | **ABIERTA** |
+| **D-001** | ¿Windows nativo, o WSL2 declarado como el camino soportado? WSL2 elimina casi toda la sección P1 a cambio de fricción de instalación. | Fase 1 completa | **RESUELTA · WSL2** (2026-10-28). En Windows, MADRE corre dentro de WSL2: hoy por `npx` dentro de WSL y, en la 1.1.0, bajo la app de Tauri (ventana en Windows, núcleo en WSL). Windows nativo queda para después y solo si hay demanda real. Motivo: conserva el confinamiento de Linux sin reinventarlo (sección P1) y una sola persona mantiene un solo núcleo. La bienvenida guía la instalación de WSL (`docs/private/BIENVENIDA-1.0.6.md`). |
 | **D-002** | Si en Fase 2 resulta que Codex no se puede confinar en Windows nativo: ¿CONTROL degradado y avisado, o Codex fuera de Windows? | Fase 2 → 3 | **ABIERTA** |
 | **D-003** | Versión del puerto. Se resolvió como `1.0.0` (excepción consciente: declarar una plataforma nueva es mayor a nivel de producto). El 2026-10-07 cambió: la `1.0.0` se libera con el rediseño de la interfaz, sin declarar soporte ni no-soporte de Windows, y el puerto pasa a `1.1.0`, una menor, porque no rompe el ledger ni la memoria. | Fase 4 | **RESUELTA · 1.1.0** |
 | **D-004** | ¿`.ahp/` en este repo? `project_state` lo leería y todos los agentes de la sala verían el estado verificado. Requiere el CLI de AHP+ (gestiona instance ids, locks y eventos); no se escribe a mano. | Nada · mejora la difusión | **ABIERTA** |
@@ -203,3 +204,4 @@ Una línea por cambio de estado. Se añade al final, nunca se reescribe.
 - `2026-09-29` · Auditoría de `main` @ `fca8894`. Se abren WIN-001..032 y D-001..004. Fase 0 sin empezar.
 - `2026-10-03` · Se abre WIN-027 (comandos que el humano corre por un agente, módulo Runs), sobre la misma restricción que WIN-016.
 - `2026-10-07` · D-003 cambia: la `1.0.0` es el rediseño de la interfaz y el puerto apunta a `1.1.0`. La rama conserva el nombre `windows/1.0`.
+- `2026-10-28` · **D-001 resuelta: WSL2.** Dos casos reales: Juan (Windows nativo, no pudo crear proyectos y terminó en WSL) y Carlos (Linux en una máquina virtual por SSH). La 1.1.0 lleva WSL2 bajo la app de Tauri; Windows nativo, después y solo si hay demanda. Se abre WIN-028 (Inicio no agrega ni crea proyectos: `inside()` en `src/salas.mjs` compara con `/`).

@@ -40,7 +40,7 @@ No. En la documentación significa exportar la memoria de una sala con `madre da
 | “Tu problema es de autenticación.” | Diagnostica una máquina que no se inspeccionó. | Pedir la salida redactada de `madre doctor --json` y una reproducción mínima. |
 | “Publica aquí el prompt, la llave o el ledger completo.” | Puede exponer secretos o memoria privada. | Pedir solo datos mínimos y redactados; una vulnerabilidad va por canal privado. |
 | “MADRE cuesta/no cuesta X” o “este plan alcanza.” | Precios y planes de proveedores no están fijados en el corpus. | Explicar que cada CLI usa su propia cuenta y límites, sin cotizar. |
-| “Te recomiendo WSL2.” | `D-001` sigue abierta. | Decir que no hay recomendación oficial todavía. |
+| “Funciona en Windows nativo.” | No está soportado; `D-001` eligió WSL2 (2026-10-28). | Recomendar WSL2 (Ubuntu) mientras sale la 1.1. |
 
 ## Protocolo de escalamiento hacia el humano
 

@@ -174,10 +174,11 @@ tráfico de cada agente, el aviso diario de uso y los dos flujos propios con int
   consulta npm, `RELEASE CHANNEL` o `madre doctor`; no uses automáticamente el
   número de `package.json` ni una sección `Sin publicar`. (`CHANGELOG.md`;
   `CONTRIBUTING.md` · «Versions»)
-- La postura vigente de `docs/WINDOWS.md` es exacta: MADRE no declara soporte ni
-  no-soporte de Windows. El documento sitúa el puerto en Fase 0 y mantiene abierta
-  `D-001` sobre Windows nativo o WSL2. No recomiendes una opción ni conviertas la
-  auditoría por lectura en resultados verificados sobre Windows real.
+- La postura vigente de `docs/WINDOWS.md` es exacta: Windows llega en la versión 1.1 y,
+  desde el 2026-10-28 (`D-001`), el camino de Windows es **WSL2**. Mientras sale la 1.1,
+  en Windows se recomienda correr MADRE dentro de WSL2 (Ubuntu); eso es Linux, que sí está
+  soportado. No digas que MADRE funciona en Windows nativo ni conviertas la auditoría por
+  lectura en resultados verificados sobre Windows real.
 
 ## 5 · Respuestas modelo
 
@@ -199,9 +200,9 @@ previos al terminar. `#3 CONTROL` permite editar el proyecto con checkpoint y
 `UNDO`. (`docs/REFERENCE.md` · «Modos de permiso»)
 
 **¿Funciona en Windows?**  
-El proyecto no declara todavía soporte ni no-soporte de Windows. El puerto está en
-Fase 0 y la decisión entre Windows nativo y WSL2 sigue abierta; el estado canónico
-vive en `docs/WINDOWS.md`. Esta respuesta refleja el corpus del 2026-09-29.
+Windows llega en la versión 1.1. Mientras tanto, en Windows MADRE se usa dentro de
+WSL2 (Linux dentro de Windows), que es el camino elegido (`D-001`, 2026-10-28); Windows
+nativo no está soportado. El estado canónico vive en `docs/WINDOWS.md`.
 
 **¿Cuál es la versión más reciente?**  
 Una versión solo se considera cerrada cuando está en npm. Verifícala con
@@ -225,7 +226,7 @@ consulta al proveedor correspondiente para información vigente.
 |---|---|
 | «Nada sale nunca de tu máquina». | Separa tráfico de agentes, consulta a npm y sentinel. |
 | «MADRE es compatible/incompatible con Windows». | Repite la postura vigente de `docs/WINDOWS.md`. |
-| «Te recomiendo WSL2». | Explica que `D-001` sigue abierta. |
+| «Funciona en Windows nativo». | En Windows se usa WSL2 (`D-001`); nativo no está soportado. |
 | «`#3` es completamente seguro». | Explica checkpoint, `UNDO`, zonas protegidas y límites. |
 | «Usa `PULSE_*`» con un nombre inferido. | Cita solo variables documentadas o di que no existe documentación. |
 | «La próxima versión traerá X en tal fecha». | Separa lo publicado, `Sin publicar` y roadmap sin prometer fecha. |

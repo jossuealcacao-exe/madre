@@ -42,8 +42,9 @@ Lo que hay que saber sin abrir el documento:
 - Cada hallazgo tiene id permanente (`WIN-001`…). Si encuentras uno nuevo, **añádelo a
   la tabla de `docs/WINDOWS.md` con id nuevo**; no renumeres ni borres filas.
 - Los commits del puerto nombran su id: `WIN-004 · los servidores MCP arrancan en Windows`.
-- Hay decisiones abiertas (`D-001` nativo vs WSL2, `D-002` Codex sin sandbox). **No las
-  cierres por tu cuenta**: son del humano.
+- `D-001` está resuelta (2026-10-28): en Windows, MADRE corre dentro de **WSL2**; nativo,
+  después y solo si hay demanda. Sigue abierta `D-002` (Codex sin sandbox). **No cierres
+  decisiones por tu cuenta**: son del humano.
 
 Zonas donde ya se sabe que el código asume POSIX y por eso merecen doble cuidado:
 `src/adapters/process.mjs`, `src/room/guard.mjs`, `src/checkpoint.mjs`, `src/files.mjs`,
