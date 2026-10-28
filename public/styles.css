@@ -9502,7 +9502,7 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 
 /* La fila de avisos dice con una flecha que se despliega: hacia abajo junto a «+N» cerrada, hacia
    arriba en «Plegar» abierta. La flecha es la misma, girada, y va centrada con el texto. */
-#messages .sys-dots { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 10 8 6l4 4' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+#messages .sys-dots { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.6 12 10 7.6l4.4 4.4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
 #messages .sys-dots > .sys-more::after {
   content: ''; display: inline-block; flex: none; width: 10px; height: 10px; background: currentColor;
   -webkit-mask: var(--chev) center / contain no-repeat; mask: var(--chev) center / contain no-repeat;

@@ -16,6 +16,7 @@
 // way they undo typing. Where the browser no longer offers it, `setRangeText` does the edit and
 // undo is the browser's own business.
 
+import { trazo } from './icons.js';
 const PAIRS = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`' };
 const CLOSERS = new Set([')', ']', '}', '"', "'", '`']);
 const COMMENTS = {
@@ -25,18 +26,17 @@ const COMMENTS = {
 // Past this many lines the colours step aside: the text stays exact, the drawing stays fast.
 const COLOUR_LIMIT = 6000;
 const isMac = () => /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? '');
-// The tools' drawings: one stroke weight, one size, the room's own line.
-const svg = (d) => `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// The tools' drawings: Trazo MADRE (public/icons.js), the room's own line.
 const ICONS = {
-  find: svg('M12.4 12.4 16 16M13.6 8.6a5 5 0 1 1-10 0 5 5 0 0 1 10 0z'),
-  replace: svg('M4 7h10.5l-2.5-2.5M16 13H5.5L8 15.5'),
-  goto: svg('M4 10h9M10 6.5 13.5 10 10 13.5M16.5 4.5v11'),
-  comment: svg('M8.5 4 5.5 16M14.5 4l-3 12'),
-  wrap: svg('M3.5 5.5h13M3.5 10h10a2.6 2.6 0 0 1 0 5.2H10M11.8 13.3 10 15.2l1.8 1.8M3.5 15h3.5'),
-  ask: svg('M4 5.6A2.6 2.6 0 0 1 6.6 3h6.8A2.6 2.6 0 0 1 16 5.6v4.8A2.6 2.6 0 0 1 13.4 13H9.2L5.6 16v-3A2.6 2.6 0 0 1 4 10.4z'),
-  link: svg('M8.3 11.7l3.4-3.4M7.2 13.2 6 14.4a2.6 2.6 0 0 1-3.7-3.7l2.6-2.6a2.6 2.6 0 0 1 3.7 0M12.8 6.8 14 5.6a2.6 2.6 0 0 1 3.7 3.7l-2.6 2.6a2.6 2.6 0 0 1-3.7 0'),
-  // The room's chooser chevron (app.js, ICON_CHEVRON), drawn on this grid: a menu opens under it.
-  chevron: svg('M5.25 7.75 10 12.5l4.75-4.75'),
+  find: trazo('search'),
+  replace: trazo('replace'),
+  goto: trazo('goto'),
+  comment: trazo('comment'),
+  wrap: trazo('wrap'),
+  ask: trazo('chat'),
+  link: trazo('links'),
+  // The room's chooser chevron (app.js, ICON_CHEVRON): a menu opens under it.
+  chevron: trazo('chevron'),
 };
 
 // Spaces or tabs, and how many: what the file already does, not what the editor prefers.

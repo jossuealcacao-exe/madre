@@ -31,6 +31,7 @@ import { LOADER_MARK, creep, finishLoader, makeLoader, setLoader, showCurtain } 
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
+import { trazo, trazoDrawing } from './icons.js';
 
 // The window split in two. The right half is this same page loaded with `?pane=split&chat=<id>`:
 // a second conversation with its transcript and its composer, and nothing of the bar. Everything
@@ -92,14 +93,14 @@ if (SPLIT_CHAT) {
 // stylesheet is in place before anything moves.
 let motionScale = null;
 // The chooser's chevron: one drawing for every menu that opens downward, in the same round line.
-const ICON_CHEVRON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_CHEVRON = trazo('chevron');
 // The panels' drawings: a panel at the left, a panel at the right, and the code workspace's side
 // by side. Declared this early because the code workspace is built while the page loads.
-const SPLIT_LEFT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect class="ic-h" x="5" y="6" width="3.6" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10.6 6.4v7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const SPLIT_RIGHT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect class="ic-h" x="11.4" y="6" width="3.6" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9.4 6.4v7.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const SPLIT_LEFT_ICON = trazo('split-left');
+const SPLIT_RIGHT_ICON = trazo('split-right');
 // Side by side in the code workspace: the text on the left in lines, what it makes on the right.
 // Not the window's split (two empty halves), which stands two keys further along the same header.
-const BESIDE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 3.75v12.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.2 7.6h2.4M5.2 10h1.6M5.2 12.4h2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><rect x="11.9" y="8.1" width="3.4" height="3.8" rx="1" fill="currentColor"/></svg>';
+const BESIDE_ICON = trazo('beside');
 function chevron(className = 'chev') {
   const mark = el('span', `${className} chev-icon`);
   mark.innerHTML = ICON_CHEVRON;
@@ -376,7 +377,7 @@ function touchedUnder(dir) {
 
 // The signs a key's words may end in, drawn by tailMark (below).
 const TAIL_MARK = /\s*[↗▾]\s*$/;
-const OUT_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.2 10.8 10.6 5.4M6.4 5.2h4.4v4.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const OUT_ICON = trazo('out');
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -407,7 +408,7 @@ function tailMark(node) {
 
 // A label that opens with ◉ (still open here, decided here, memory saved): the ring and its dot are
 // drawn at the size of a mark, the words after them as written.
-const LEAD_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2.1" fill="currentColor"/></svg>';
+const LEAD_ICON = trazo('target');
 function leadWords(tag, className, said) {
   const node = el(tag, className);
   const words = String(said ?? '').replace(/^◉\s*/u, '');
@@ -421,7 +422,7 @@ function leadWords(tag, className, said) {
 // Every way to close something closes the same way: one × drawn as a line, not a letter, that
 // turns a quarter and thickens under the pointer — the one the conversations panel already had.
 // A labelled button keeps its words («CLOSE ×» says what it closes); only its × becomes the mark.
-const X_ICON = '<svg focusable="false" viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const X_ICON = trazo('close');
 function xIcon() {
   const mark = el('span', 'x-icon');
   mark.innerHTML = X_ICON; // trusted: our own SVG
@@ -699,7 +700,7 @@ function toEndButton() {
   const button = el('button', 'to-end');
   button.type = 'button';
   button.hidden = true;
-  button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v10.5M5.2 10.4 10 15.2l4.8-4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="to-end-dot"></i>'; // trusted: our own SVG string
+  button.innerHTML = `${trazo('arrow-down')}<i class="to-end-dot"></i>`; // trusted: our own SVG string
   button.addEventListener('click', () => {
     setPinned(true);
     scroller.to({ top: scroller.height, behavior: 'smooth' });
@@ -1067,10 +1068,10 @@ function askWords(text) {
 }
 // One glyph per kind of question: something will be lost, a key is asked for, or a plain choice.
 const ASK_ICONS = {
-  danger: '<svg viewBox="0 0 20 20"><path d="M10 3.4 17 15.6H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 8.2v3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="10" cy="13.6" r="1" fill="currentColor"/></svg>',
-  key: '<svg viewBox="0 0 20 20"><rect x="4.5" y="8.6" width="11" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.6V6.4a3 3 0 0 1 6 0v2.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="12.6" r="1.2" fill="currentColor"/></svg>',
-  file: '<svg viewBox="0 0 20 20"><path d="M11.5 3.5H6.2c-.9 0-1.7.8-1.7 1.7v9.6c0 .9.8 1.7 1.7 1.7h7.6c.9 0 1.7-.8 1.7-1.7V7.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M11.5 3.5v4h4M10 10v4M8 12h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  ask: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8a2 2 0 1 1 2.8 1.8c-.6.3-.8.7-.8 1.3v.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="13.8" r="1" fill="currentColor"/></svg>',
+  danger: trazo('warning'),
+  key: trazo('lock'),
+  file: trazo('file-new'),
+  ask: trazo('help'),
 };
 function roomAsk({ title, body = '', choices, input = null, command = null, icon = null, console: inConsole = false }) {
   return new Promise((resolve) => {
@@ -1144,7 +1145,7 @@ function closeAskCard() {
   askCardClose = null;
   done?.();
 }
-const ASK_OWN_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.7 4.5a1.95 1.95 0 0 1 2.8 2.8l-8.3 8.3-3.6.9.9-3.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 5.7l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ASK_OWN_ICON = trazo('pencil');
 function openAskCard({ anchor, head, suggestions, about = '', onAsk, onClose = null, actions = [], tools = [] }) {
   closeAskCard();
   askCardClose = onClose;
@@ -2689,7 +2690,7 @@ function portsRefreshKey() {
   refresh.type = 'button';
   refresh.setAttribute('aria-label', t('Refresh servers'));
   refresh.title = t('Refresh servers');
-  refresh.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.76-4.24M16 3.6v3.6h-3.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  refresh.innerHTML = trazo('refresh');
   refresh.addEventListener('click', () => void refreshBrowserServers(refresh));
   return refresh;
 }
@@ -2731,8 +2732,8 @@ function fillPorts(target, read) {
 // inside it, so it does not pretend to: the agent is told what was marked and where, and finds in
 // the project what draws it. The question lands in the composer with the agent chosen; sending
 // stays the human's, as with every other question asked from a surface.
-const POINT_DOT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="5.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M10 2v2.6M10 15.4V18M2 10h2.6M15.4 10H18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const POINT_AREA_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.75h6M7 15.25h6M4.75 7v6M15.25 7v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="3" width="3.5" height="3.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="13.5" y="3" width="3.5" height="3.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="13.5" width="3.5" height="3.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="13.5" y="13.5" width="3.5" height="3.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const POINT_DOT_ICON = trazo('crosshair');
+const POINT_AREA_ICON = trazo('area');
 // The layer covers the frame exactly, wherever the frame stands inside the stage.
 function pointFit() {
   if (!pointing.layer || !browser.frame || !browser.stage) return;
@@ -3629,8 +3630,8 @@ function modelNick(name) {
 
 const modelMenu = el('div', 'model-menu');
 // The composer's menus mark what is in use with a check, and the model's searches behind a magnifier.
-const MENU_CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.2L15.2 6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const MENU_SEARCH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const MENU_CHECK = trazo('check');
+const MENU_SEARCH = trazo('search');
 // What a model can do, in one short line: whether it reads images, how much it holds at once and how
 // far its effort goes. Only what its CLI says of it (src/models.mjs); nothing when it says nothing.
 function modelBrief(info, name) {
@@ -4124,7 +4125,7 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 // The copilot (2026-10-14): a while — up to 24 hours, opened with the #3 key — in which a message
 // at #3 needs no key, whichever agent it goes to, as long as its CLI can write. The project holds
 // the window (GET/POST /api/copilot); the page only shows it and counts it down.
-const COPILOT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.4v2.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="3" r="1.05" fill="currentColor"/><rect x="4.2" y="6.2" width="11.6" height="9.2" rx="3.1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.7" cy="10.3" r="1.15" fill="currentColor"/><circle cx="12.3" cy="10.3" r="1.15" fill="currentColor"/><path d="M8.1 13h3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2.5 9.6v2.6M17.5 9.6v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const COPILOT_ICON = trazo('robot');
 const copilotUI = { active: false, until: 0, windows: [30, 60, 240, 480, 1440], chosen: 60, tick: null };
 const copilotOn = () => copilotUI.active && copilotUI.until > Date.now();
 const canWrite = (id) => Boolean(state.capabilities[id]?.scopes?.write?.capable);
@@ -5100,9 +5101,9 @@ function renderAssistantMessage(event) {
 }
 
 // Two quiet icons at the end of a reply: copy it, or answer it through the agent you choose.
-const ICON_COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="3.3" width="9.6" height="10.9" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><rect x="5.7" y="1.8" width="4.6" height="2.8" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.8 8.1h4.4M5.8 10.6h2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_DONE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.6l3 2.9 6.2-6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_REPLY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5 2.5 7.5l4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 7.5h5.7a4.5 4.5 0 0 1 4.5 4.5v.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const ICON_COPY = trazo('copy');
+const ICON_DONE = trazo('check');
+const ICON_REPLY = trazo('reply');
 function iconButton(svg, title, className) {
   const button = el('button', `act ${className}`);
   button.type = 'button';
@@ -5111,17 +5112,17 @@ function iconButton(svg, title, className) {
   button.innerHTML = svg;
   return button;
 }
-const ICON_GOOD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 7.5v5.5H3.2a.7.7 0 0 1-.7-.7V8.2a.7.7 0 0 1 .7-.7h2.3Zm0 0 2.6-4.6a1.3 1.3 0 0 1 2.4.8L10 6.8h2.6a1.3 1.3 0 0 1 1.3 1.5l-.8 3.9a1.3 1.3 0 0 1-1.3 1H5.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-const ICON_BAD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 8.5V3H12.8a.7.7 0 0 1 .7.7v4.1a.7.7 0 0 1-.7.7h-2.3Zm0 0-2.6 4.6a1.3 1.3 0 0 1-2.4-.8L6 9.2H3.4a1.3 1.3 0 0 1-1.3-1.5l.8-3.9A1.3 1.3 0 0 1 4.2 3h6.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-const ICON_PREFER = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7.45 2.7c.22-.45.88-.45 1.1 0l1.3 2.65 2.92.43c.5.07.7.69.34 1.04l-2.12 2.06.5 2.9c.09.5-.44.88-.89.65L8 11.06l-2.6 1.37c-.45.23-.98-.15-.89-.65l.5-2.9-2.12-2.06c-.36-.35-.16-.97.34-1.04l2.92-.43z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_GOOD = trazo('good');
+const ICON_BAD = trazo('bad');
+const ICON_PREFER = trazo('star');
 // The settings' gear: the drawing AJUSTES wears in the bar, for any way into Settings.
-const GEAR_ICON = '<svg class="gear-glyph" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M8.65 3.85L8.92 1.97L11.08 1.97L11.35 3.85L13.40 4.69L14.91 3.56L16.44 5.09L15.31 6.60L16.15 8.65L18.03 8.92L18.03 11.08L16.15 11.35L15.31 13.40L16.44 14.91L14.91 16.44L13.40 15.31L11.35 16.15L11.08 18.03L8.92 18.03L8.65 16.15L6.60 15.31L5.09 16.44L3.56 14.91L4.69 13.40L3.85 11.35L1.97 11.08L1.97 8.92L3.85 8.65L4.69 6.60L3.56 5.09L5.09 3.56L6.60 4.69ZM12.6 10a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+const GEAR_ICON = trazo('settings', 'gear-glyph');
 // A small ×, in the same round line, for an aside that can be put away.
-const ICON_STOP = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="6" height="6" rx="1.3" fill="currentColor"/></svg>';
-const ICON_CLOSE_SMALL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const ICON_STOP = trazo('stop');
+const ICON_CLOSE_SMALL = trazo('close');
 // An open question: a circle and its question mark, in the same round line as the rest.
-const ICON_ASK = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.3 6.4a1.75 1.75 0 1 1 2.55 1.55c-.5.27-.85.62-.85 1.2v.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11.2v.05" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-const ICON_NEVER = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 12 12 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_ASK = trazo('help');
+const ICON_NEVER = trazo('never');
 
 // The human's verdict on a reply, and the only place in the room where four of them are said.
 // Two of them are the everyday act; the other two are the same thing meant harder, so they are
@@ -5449,7 +5450,7 @@ function renderThinking(event) {
   // wrong road, or hit an error and is still being waited on.
   // A stop square in a circle: the glyph says it, the title and the label say what it stops.
   const stop = el('button', 'stop-turn');
-  const STOP_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="7" width="6" height="6" rx="1.4" fill="currentColor"/></svg>';
+  const STOP_GLYPH = trazo('stop-circle');
   stop.innerHTML = STOP_GLYPH; // trusted: our own SVG string
   stop.type = 'button';
   stop.title = t('Stop this answer · the project and the other agents keep going');
@@ -8495,20 +8496,20 @@ const SETTINGS_SECTIONS = [
   ['System', 'Permissions, privacy, updates and the manual', ['permissions', 'privacy', 'release', 'manual']],
 ];
 const SETTINGS_CATS = {
-  look: { name: 'Appearance', color: '#8e75e8', icon: '<circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/>' },
-  room: { name: 'Work and limits', color: '#d97757', icon: '<rect x="3.5" y="3.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="3.5" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3.5" y="11" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="5.5" height="5.5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
-  agents: { name: 'Agents', color: '#10a37f', icon: '<circle cx="7" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.6" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 16c.6-2.3 2.2-3.6 4.2-3.6s3.6 1.3 4.2 3.6M9.6 13c.9-.4 2.4-.6 4-.6 2 0 3.6 1.3 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
-  memory: { name: 'What it remembers', color: '#3fb6d9', icon: '<rect x="5" y="5" width="10" height="10" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="8.1" y="8.1" width="3.8" height="3.8" rx=".6" fill="none" stroke="currentColor" stroke-width="1.4"/><path class="ic-pins" d="M8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
+  look: { name: 'Appearance', color: '#8e75e8', icon: trazoDrawing('appearance') },
+  room: { name: 'Work and limits', color: '#d97757', icon: trazoDrawing('modules') },
+  agents: { name: 'Agents', color: '#10a37f', icon: trazoDrawing('agents') },
+  memory: { name: 'What it remembers', color: '#3fb6d9', icon: trazoDrawing('chip') },
   // Local AI, also here and not only in Modules (2026-10-16): the same card, and what this
   // computer can run and train with it.
-  local: { name: 'Local AI', color: '#7f77dd', icon: '<path class="ic-spark-big" d="M8 5.2Q8.85 10.65 14.3 11.5Q8.85 12.35 8 17.8Q7.15 12.35 1.7 11.5Q7.15 10.65 8 5.2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path class="ic-spark-small" d="M15 2.2Q15.4 4.6 17.8 5Q15.4 5.4 15 7.8Q14.6 5.4 12.2 5Q14.6 4.6 15 2.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>' },
-  mcp: { name: 'Outside tools (MCP)', color: '#5b8def', icon: '<path d="M7.2 3.2v3.3M12.8 3.2v3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.2 6.5h9.6v2.4a4.8 4.8 0 0 1-9.6 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 13.7v3.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
-  files: { name: 'Files and local sites', color: '#c8955a', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
-  permissions: { name: 'Permissions', color: '#e5484d', icon: '<path d="M10 2.8 4.2 5v4.6c0 3.6 2.4 6.4 5.8 7.6 3.4-1.2 5.8-4 5.8-7.6V5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 10.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
-  privacy: { name: 'Privacy', color: '#d4a72c', icon: '<rect x="4.5" y="8.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.5V6.6a3 3 0 0 1 6 0v1.9" fill="none" stroke="currentColor" stroke-width="1.6"/>' },
-  release: { name: 'Updates and errors', color: '#4caf3a', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
+  local: { name: 'Local AI', color: '#7f77dd', icon: trazoDrawing('spark') },
+  mcp: { name: 'Outside tools (MCP)', color: '#5b8def', icon: trazoDrawing('plug') },
+  files: { name: 'Files and local sites', color: '#c8955a', icon: trazoDrawing('folder') },
+  permissions: { name: 'Permissions', color: '#e5484d', icon: trazoDrawing('shield') },
+  privacy: { name: 'Privacy', color: '#d4a72c', icon: trazoDrawing('lock') },
+  release: { name: 'Updates and errors', color: '#4caf3a', icon: trazoDrawing('refresh') },
   // The user manual (1.0.5): it opens on its own page, read here or in PDF (public/manual.js).
-  manual: { name: 'User manual', color: '#2f9e6a', icon: '<path d="M4 4.5h4.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 0-1.5-1.5H4zM16 4.5h-4.5A1.5 1.5 0 0 0 10 6v10a1.5 1.5 0 0 1 1.5-1.5H16z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
+  manual: { name: 'User manual', color: '#2f9e6a', icon: trazoDrawing('book') },
 };
 const SETTINGS_ORDER = ['look', 'room', 'files', 'agents', 'memory', 'local', 'mcp', 'permissions', 'privacy', 'release', 'manual'];
 // The words the search knows, each pointing to the category that holds it and to the words on the
@@ -9602,7 +9603,7 @@ function treeNode(path, entry) {
 
 // The two buttons every surface carries in its header, beside its ×: split, and window. Declared
 // before the surfaces are built, which happens while this file is still being read.
-const FLOAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.25 12.25v-6.5a2.5 2.5 0 0 1 2.5-2.5h6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect class="ic-f" x="6.25" y="6.25" width="10.5" height="10.5" rx="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+const FLOAT_ICON = trazo('window');
 
 /* ---------- surfaces: everything that can stand beside the conversation ---------- */
 
@@ -10976,9 +10977,9 @@ const chats = { open: false, list: [], active: null, working: false, unread: new
 // Conversations open as windows over the room, by id. Declared beside the list because the list
 // draws the buttons that open them, and it can be drawn before either is used.
 const convWindows = new Map();
-const WINDOW_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.25 12.25v-6.5a2.5 2.5 0 0 1 2.5-2.5h6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect class="ic-f" x="6.25" y="6.25" width="10.5" height="10.5" rx="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-const SWAP_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h11.5M12.5 4l3 3-3 3M16 13H4.5M7.5 10l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const SPLIT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect class="ic-f" x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="ic-k" d="M10 6.2v7.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const WINDOW_ICON = trazo('window');
+const SWAP_ICON = trazo('swap');
+const SPLIT_ICON = trazo('split');
 
 function whenWords(iso) {
   const when = iso ? Date.parse(iso) : NaN;
@@ -10992,8 +10993,8 @@ function whenWords(iso) {
 }
 
 // One drawing per conversation, in the bar's own hand: 20×20, a 1.6 stroke, round ends.
-const UPDATE_GLYPH = '<svg class="bar-glyph" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v8.4M6.6 8.6 10 12l3.4-3.4M3.8 13.2v1.2a2.2 2.2 0 0 0 2.2 2.2h8a2.2 2.2 0 0 0 2.2-2.2v-1.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const CHAT_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path class="ic-f" d="M10 3.5c3.85 0 6.75 2.6 6.75 5.85S13.85 15.2 10 15.2c-.85 0-1.7-.13-2.45-.37l-2.9 1.33c-.45.2-.9-.2-.78-.66l.56-2.27C3.95 12.25 3.25 10.85 3.25 9.35 3.25 6.1 6.15 3.5 10 3.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const UPDATE_GLYPH = trazo('download', 'bar-glyph');
+const CHAT_GLYPH = trazo('chat');
 // What the list shows, as one string: the same string twice is the same list, and drawing it again
 // would only restart the rows' arrival under the human's eyes.
 let chatsDrawn = '';
@@ -11996,7 +11997,7 @@ function stepsDraw() {
     const item = el('li', done.has(step.id) ? 'done' : null);
     const tick = el('span', 'steps-tick');
     tick.setAttribute('aria-hidden', 'true');
-    tick.innerHTML = '<svg viewBox="0 0 16 16"><path d="M4.2 8.4l2.4 2.4 5.2-5.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>'; // trusted: our own glyph
+    tick.innerHTML = trazo('check'); // trusted: our own glyph
     const words = el('span', 'steps-words');
     words.append(el('b', null, step.title), el('span', null, step.how));
     item.append(tick, words);
@@ -12894,14 +12895,14 @@ function moduleStarters() {
 const COMMAND_GROUPS = ['room', 'modules', 'off'];
 const COMMAND_GROUP_WORDS = { room: 'THIS PROJECT', modules: 'FROM THE MODULES', off: 'NOT AVAILABLE HERE' };
 const COMMAND_GLYPHS = {
-  module: '<path class="ic-f" d="M2.75 8.45a2.2 2.2 0 0 1 2.2-2.2h2a1.9 1.9 0 1 1 2.6 0h2a2.2 2.2 0 0 1 2.2 2.2v2a1.9 1.9 0 1 1 0 2.6v2a2.2 2.2 0 0 1-2.2 2.2h-2a1.9 1.9 0 1 0-2.6 0h-2a2.2 2.2 0 0 1-2.2-2.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
-  image: '<rect x="3" y="4" width="14" height="12" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.3" cy="8.1" r="1.35" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.4 14.2l3.8-3.8a1 1 0 0 1 1.4 0l2.4 2.4 1.4-1.4a1 1 0 0 1 1.4 0l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
-  stopall: '<rect class="ic-f" x="4" y="4" width="12" height="12" rx="3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
-  git: '<circle cx="6.5" cy="5.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6.5" cy="14.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="13.5" cy="8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 7.3v5.4M13.5 9.8c0 2.6-2.4 3-5.4 3.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
-  ahp: '<path d="M9.3 2.95a2 2 0 0 1 1.4 0l4.2 1.6c.42.16.7.56.7 1V9.5c0 3.4-2.3 5.9-5.6 7.25C6.7 15.4 4.4 12.9 4.4 9.5V5.55c0-.44.28-.84.7-1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  module: trazoDrawing('puzzle'),
+  image: trazoDrawing('image'),
+  stopall: trazoDrawing('stop-key'),
+  git: trazoDrawing('git'),
+  ahp: trazoDrawing('guard'),
   // The Coordinator: one in the middle, the others around it.
-  bishop: '<circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="3.8" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="4.6" cy="13.6" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="15.4" cy="13.6" r="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 5.3v2.3M5.9 12.8l2-1.2M14.1 12.8l-2-1.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
-  slash: '<path d="M12.5 3.5l-5 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  bishop: trazoDrawing('coordinator'),
+  slash: trazoDrawing('slash'),
 };
 // A command a module brings wears that module's own drawing (2026-10-27): /notas its note, /gh
 // GitHub's mark. The slash is left for a command whose module has none.
@@ -13499,7 +13500,7 @@ function commandBlock(lines) {
   copy.title = t('COPY');
   copy.setAttribute('aria-label', t('COPY'));
   // Two sheets, drawn rather than written: a word here sat on top of the command it was offering.
-  copy.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="3.3" width="9.6" height="10.9" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><rect x="5.7" y="1.8" width="4.6" height="2.8" rx="1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.8 8.1h4.4M5.8 10.6h2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  copy.innerHTML = trazo('copy', '', 'width="12" height="12"');
   const runnable = lines.filter((line) => !line.trim().startsWith('#'));
   copy.addEventListener('click', async () => {
     try {
@@ -16207,7 +16208,7 @@ function renderModules() {
     make.tabIndex = 0;
     make.setAttribute('role', 'button');
     const plus = el('span', 'settings-icon');
-    plus.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    plus.innerHTML = trazo('add');
     plus.style.setProperty('--cat', 'var(--phosphor)');
     make.append(el('div', 'mods-top'), el('b', 'mods-name', t('Create your module')), el('span', 'mods-line', t('One file. Your agent writes it.')));
     make.firstChild.append(plus);
@@ -16321,7 +16322,7 @@ function renderModuleWindows() { for (const id of moduleWindows.keys()) drawModu
 // every window is. Its own key beside them throws it away. Kept on this computer, read by no agent.
 const NOTE_COLORS = ['yellow', 'green', 'blue', 'pink', 'purple', 'orange'];
 const NOTE_COLOR_WORDS = { yellow: () => t('Yellow'), green: () => t('Green'), blue: () => t('Blue'), pink: () => t('Pink'), purple: () => t('Purple'), orange: () => t('Orange') };
-const TRASH_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><g class="ic-lid"><path d="M3.8 5.6h12.4"/><path d="M8 5.4V4.2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.2"/></g><path d="M5.3 5.8l.8 10a1.4 1.4 0 0 0 1.4 1.3h5a1.4 1.4 0 0 0 1.4-1.3l.8-10"/><path d="M8.6 9v5M11.4 9v5"/></svg>';
+const TRASH_ICON = trazo('trash');
 const notesKit = { items: [], windows: new Map(), on: null, timers: new Map() };
 const notesOn = () => Boolean(modules.items.find((one) => one.id === 'notes')?.status?.installed);
 const noteTitle = (note) => String(note?.text ?? '').split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 48) || t('Note');
@@ -16957,7 +16958,7 @@ function openRoomMarket(focus = null) {
     const market = el('button', 'sx-btn mods-market');
     market.type = 'button';
     // The Market's basket, as on Home's bar (salas-mac.html), beside its word.
-    market.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g class="ic-basket"><g class="ic-mods" stroke-width="1.4"><rect class="ic-m1" x="4.4" y="5.2" width="3.4" height="3.4" rx="1"/><circle class="ic-m2" cx="10" cy="5.3" r="1.8"/><rect class="ic-m3" x="12.2" y="5.2" width="3.4" height="3.4" rx="1"/></g><path d="M2.8 10.4h14.4l-1.5 5.4a1.6 1.6 0 0 1-1.6 1.2H5.9a1.6 1.6 0 0 1-1.6-1.2z"/><path d="M7.6 13v1.6M10 13v1.6M12.4 13v1.6" stroke-width="1.3"/></g></svg>'; // trusted: our own SVG string
+    market.innerHTML = trazo('market-key'); // trusted: our own SVG string
     market.append(el('span', null, t('Market')));
     market.title = t('Every module MADRE can add to this project');
     market.addEventListener('click', () => openRoomMarket());
@@ -18827,7 +18828,7 @@ async function refreshDeliveries() {
     pill = el('button', 'stop-all handoff-pill inbox-pill');
     pill.id = 'inbox-pill';
     pill.type = 'button';
-    pill.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 11.2 5.4 4.6c.2-.6.8-1 1.4-1h6.4c.6 0 1.2.4 1.4 1l2.2 6.6v3.6c0 .9-.7 1.6-1.6 1.6H4.8c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.4 11.2h3.8l1 2h3.6l1-2h3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span class="handoff-words"></span><span class="inbox-count"></span>'; // trusted: our own SVG string
+    pill.innerHTML = `${trazo('inbox')}<span class="handoff-words"></span><span class="inbox-count"></span>`; // trusted: our own SVG string
     pill.addEventListener('click', () => openSettingsOn('memory', { anchor: 'sx-delivered' }));
     anchor.before(pill);
   }
@@ -21565,9 +21566,9 @@ const BAR_BUILT = {
 const BAR_CONTEXTUAL = ['#steps-pill', '#tour-pill-slot', '#handoff-pill', '#update-pill', '#stop-all'];
 // A module's name before the board has answered; once it has, the module says its own.
 const BAR_MODULE_NAMES = { ash: 'Token saver', ollama: 'Local AI', intents: 'Suggested effort', notes: 'Notes', reminders: 'Reminders' };
-const BAR_MINUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const BAR_MINUS = trazo('minus');
 // Its mirror on a key that can still go on the bar, in the card under it.
-const BAR_PLUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5v7M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const BAR_PLUS = trazo('add');
 const barKit = {
   node: document.querySelector('#bar'),
   order: [],
@@ -21589,9 +21590,9 @@ const barKit = {
 // be found; taken off after that, it stays off.
 const BAR_JOINED = ['phone', 'salas', 'macroverso', 'code'];
 // The MACROVERSO: an orbit, a sun and two worlds. Only the room of SALAS carries the key.
-const MACROVERSO_ICON = '<ellipse cx="10" cy="10" rx="8.2" ry="3.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/><circle cx="16.4" cy="8.6" r="1.5" fill="currentColor"/><circle cx="4.2" cy="11.6" r="1.1" fill="currentColor" opacity=".7"/>';
+const MACROVERSO_ICON = trazoDrawing('map');
 // SALAS: three rooms of one Mac, and what joins them.
-const SALAS_ICON = '<circle cx="5.6" cy="6.4" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="14.4" cy="6.4" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="14.4" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.2 6.4h3.6M7 8.7l1.7 3.2M13 8.7l-1.7 3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".55"/>';
+const SALAS_ICON = trazoDrawing('salas');
 function barStored() {
   if (barKit.saved) return [...barKit.saved];
   try {
@@ -21804,7 +21805,7 @@ function barPlace() {
 // The second bar (2026-10-09): the way out to Salas (a house), reload and AJUSTES (a gear), in a
 // small bar of their own beside the keys you arrange. On the Mac only: a phone keeps one bar, with
 // «‹ Salas» at its start. The three are not keys you place, so the bar's card never offers them.
-const HOME_ICON = '<path d="M3.4 9.2 10 3.6l6.6 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="ic-f" d="M5.2 7.9v7.5a1.2 1.2 0 0 0 1.2 1.2h2.3v-4a1.3 1.3 0 0 1 2.6 0v4h2.3a1.2 1.2 0 0 0 1.2-1.2V7.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
+const HOME_ICON = trazoDrawing('home');
 const homeOn = () => !state.device && Boolean(document.querySelector('#bar-home'));
 let homePower = null;
 function homeBar() {
@@ -21864,8 +21865,8 @@ function homeBar() {
 // project is open the panel says so. The page asks its own room (/api/salas/open), which asks the
 // others; on the Mac only, and only while the page is in view. «Finished» is this tab's own news:
 // a project seen working that stopped, for half an hour or until you go to it.
-const SWITCH_ICON = '<rect class="ic-f" x="2.8" y="6.2" width="10.6" height="10.6" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.6 3.2h7.6a2.6 2.6 0 0 1 2.6 2.6v7.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
-const SWITCH_TICK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4 6.8 11 12 5.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const SWITCH_ICON = trazo('switch');
+const SWITCH_TICK = trazo('check');
 const SWITCH_KEPT = 'madre.switch';
 const SWITCH_NEWS_MS = 30 * 60 * 1000;
 const switcher = { key: null, panel: null, rooms: [], salas: null, timer: 0, asking: false, working: new Set(), done: new Map() };
@@ -21895,7 +21896,7 @@ function switchKey() {
   key.type = 'button';
   key.setAttribute('aria-haspopup', 'dialog');
   key.setAttribute('aria-expanded', 'false');
-  key.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${SWITCH_ICON}</svg>`; // trusted: our own SVG string
+  key.innerHTML = SWITCH_ICON; // trusted: our own SVG string
   const lamp = el('span', 'switch-lamp');
   lamp.hidden = true;
   key.append(lamp);
@@ -22070,11 +22071,11 @@ function switchDraw() {
    pieces are the room's own (the conversations panel, the files, the code, the bar); the shell
    only seats them, and every window can still float. Not on a phone, nor in the right half of a
    split. */
-const SIDEBAR_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3.9v12.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-const NEW_CHAT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.6 3.4H5.6a2.2 2.2 0 0 0-2.2 2.2v8.8a2.2 2.2 0 0 0 2.2 2.2h8.8a2.2 2.2 0 0 0 2.2-2.2v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.2 2.8l2 2-6.4 6.4H8.8V9.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
-const PLUS_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-const MARKET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 7.4h13.6l-1.2 8.8a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 7.4V6a3 3 0 0 1 6 0v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const FLOAT_TOOL_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="11" height="11" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.2 13V4.6a1.4 1.4 0 0 1 1.4-1.4H13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const SIDEBAR_ICON = trazo('sidebar');
+const NEW_CHAT_ICON = trazo('compose');
+const PLUS_ICON = trazo('add');
+const MARKET_ICON = trazo('market');
+const FLOAT_TOOL_ICON = trazo('window');
 // Named as their keys on the bar: Files holds the code (adoptFinder).
 const TOOL_NAMES = { viewer: () => t('Files'), tree: () => t('Files'), browser: () => t('Your servers') };
 
@@ -22235,7 +22236,7 @@ function paintSideProjects() {
       row.title = state.words;
     }
     return row;
-  }), (() => { const all = shellRow(`<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`, t('All your projects'), () => leaveTo('/salas')); all.classList.add('side-all'); return all; })());
+  }), (() => { const all = shellRow(trazo('list'), t('All your projects'), () => leaveTo('/salas')); all.classList.add('side-all'); return all; })());
 }
 
 // The strip over the tool column: a tab per tool open there, the one in front lit; then «window»
@@ -22255,7 +22256,7 @@ function paintToolTabs(tools, width) {
     tab.type = 'button';
     tab.append(el('span', null, TOOL_NAMES[surface.key]?.() ?? surface.key));
     const close = el('span', 'tool-tab-x');
-    close.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; // trusted
+    close.innerHTML = trazo('close'); // trusted
     close.setAttribute('aria-label', t('Close'));
     tab.append(close);
     tab.addEventListener('click', (event) => {
@@ -22704,7 +22705,7 @@ if (barKit.node) {
   barKit.more.title = t('More');
   barKit.more.setAttribute('aria-label', t('More'));
   barKit.more.setAttribute('aria-haspopup', 'menu');
-  barKit.more.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.6" fill="currentColor"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><circle cx="15" cy="10" r="1.6" fill="currentColor"/></svg>'; // trusted: our own SVG
+  barKit.more.innerHTML = trazo('more'); // trusted: our own SVG
   barKit.more.addEventListener('click', (event) => { event.stopPropagation(); if (barKit.moreCard && !barKit.moreCard.hidden) barCloseMore(); else barDrawMore(); });
   barLayout();
   // While the bar keeps changing size — Code or a panel gliding in narrows it frame by frame — it is

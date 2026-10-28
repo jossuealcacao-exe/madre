@@ -8,11 +8,12 @@
 // Both links open in the person's browser; MADRE itself sends nothing.
 
 import { language, t } from './i18n.js';
+import { trazo } from './icons.js';
 
 export const STAR_URL = 'https://github.com/jossuealcacao-exe/madre';
 export const REVIEW_URLS = { es: 'https://madre.run/resenas/', en: 'https://madre.run/en/reviews/' };
 const TICK_MS = 60 * 1000;
-const STAR = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 8.1l5-.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+const STAR = trazo('star');
 
 const post = (url, payload) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload ?? {}) })
   .then((response) => (response.ok ? response.json() : null)).catch(() => null);

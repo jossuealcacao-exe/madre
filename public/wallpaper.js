@@ -7,13 +7,14 @@
 // server keeps it once for every page (src/looks.mjs); each page still chooses it or not. Shared by
 // the room (app.js) and Home (salas-mac.js), which each draw it with their own keys.
 import { t } from './i18n.js';
+import { trazo } from './icons.js';
 
 export const CUSTOM_WALL = 'custom';
 const SIDE = 2880;
 const READ_MAX = 40 * 1024 * 1024;
 const SEND_MAX = 8 * 1024 * 1024;
 const META_KEY = 'pulse.wallpaper.custom';
-const PLUS_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const PLUS_ICON = trazo('add');
 
 const node = (tag, className, text) => {
   const made = document.createElement(tag);

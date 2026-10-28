@@ -20,6 +20,7 @@
 import { LOADER_MARK, MADRE_LOGO, finishLoader, makeLoader, setLoader } from './loader.js';
 import { hostWords, keyWords, language, t } from './i18n.js';
 import { CHAPTERS, GESTURES, ORDER } from './tour-chapters.js';
+import { trazo } from './icons.js';
 
 const say = (pair) => (typeof pair === 'string' ? pair : pair?.[language()] ?? pair?.es ?? '');
 // The chapters' own words, said of the computer and the keyboard in front of the person: «tu Mac» is
@@ -28,10 +29,10 @@ const plain = (text) => hostWords(keyWords(text));
 const fill = (template, vars) => template.replace(/\{(\w+)\}/g, (whole, name) => (Object.hasOwn(vars, name) ? String(vars[name]) : whole));
 const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Up, turned for down: the way to a hint whose place is out of view.
-const ARROW_UP = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15.5V4.5M5.5 9 10 4.5 14.5 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const CLOSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ARROW_UP = trazo('arrow-up');
+const CLOSE_ICON = trazo('close');
 const FOLDER = '<svg viewBox="0 0 32 26" aria-hidden="true"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3h7.2l3 3.2h12.8A2.5 2.5 0 0 1 30 8.7v12.8a2.5 2.5 0 0 1-2.5 2.5h-23A2.5 2.5 0 0 1 2 21.5z" fill="currentColor"/></svg>';
-const ROBOT = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 4.5V8M3 13v2M21 13v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9.5" cy="13.5" r="1.3" fill="currentColor"/><circle cx="14.5" cy="13.5" r="1.3" fill="currentColor"/></svg>';
+const ROBOT = trazo('robot');
 
 function el(tag, className = null, text = null) {
   const node = document.createElement(tag);

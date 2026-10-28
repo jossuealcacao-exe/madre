@@ -18,6 +18,7 @@
 import { t, language } from './i18n.js';
 import { platformOf, remedyKey } from './remedy.js';
 import { MADRE_LOGO as BRAND_LOGO } from './loader.js';
+import { trazo } from './icons.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -53,7 +54,7 @@ const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
 const EMBED_MODEL = 'nomic-embed-text';
 const EMBED_MB = 274;
 const EMBEDDING = /embed|minilm|bge|nomic/i;
-const TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const TICK = trazo('check');
 
 // What a failed install or download said, in one word (src/setup-trouble.mjs), in plain words.
 const TROUBLE = {

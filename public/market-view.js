@@ -17,6 +17,7 @@
 import { t, language } from './i18n.js';
 import { appIcon, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
+import { trazo } from './icons.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -39,10 +40,10 @@ const post = async (url, payload = {}) => {
 const getJson = (url) => fetch(url, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
 
 const GLYPH = {
-  close: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-  back: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  next: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  search: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  close: trazo('close'),
+  back: trazo('back'),
+  next: trazo('next'),
+  search: trazo('search'),
 };
 const glyph = (node, name) => { node.insertAdjacentHTML('afterbegin', GLYPH[name]); return node; }; // trusted: our own SVG strings
 
@@ -215,7 +216,7 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
   // Getting a module looks like getting it (2026-10-20): its key fills as a download does while
   // MADRE turns it on, a tick takes its place when it is done, and on its page the module's icon
   // drops into place with the tick on it. Turning one off is only a moment.
-  const TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.1L15 6.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const TICK = trazo('check');
   const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const startGetting = (key) => {
     key.classList.add('getting');

@@ -8,6 +8,7 @@
 // for both pages, so the words cannot drift from NOTICE and the terms (test/attribution.test.mjs).
 
 import { language, t } from './i18n.js';
+import { trazoDrawing } from './icons.js';
 
 export const AUTHOR = 'Jossue Alcalá';
 export const AUTHOR_URL = 'https://jossuealcala.com';
@@ -40,9 +41,9 @@ export function drawAttribution(host, version) {
 // new tab; hovered or focused, it shows the module's words and the key that goes there. Asked again
 // whenever the modules change.
 const FOOTER_GLYPHS = {
-  heart: '<path d="M10 16.4s-6-3.5-6-7.9A3.3 3.3 0 0 1 10 6.6a3.3 3.3 0 0 1 6 1.9c0 4.4-6 7.9-6 7.9z" fill="currentColor"/>',
-  star: '<path d="M10 3.4l2 4.2 4.6.6-3.4 3.2.9 4.6L10 13.8 5.9 16l.9-4.6-3.4-3.2 4.6-.6z" fill="currentColor"/>',
-  link: '<path d="M8.6 11.4l2.8-2.8M9 5.8l1.5-1.5a3 3 0 0 1 4.2 4.2L13.2 10M11 14.2l-1.5 1.5a3 3 0 0 1-4.2-4.2L6.8 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  heart: trazoDrawing('heart'),
+  star: trazoDrawing('star'),
+  link: trazoDrawing('links'),
 };
 const footerWords = (value) => (value == null ? '' : typeof value === 'string' ? value : value[language()] ?? value.en ?? value.es ?? '');
 export async function drawColophonKeys(host) {

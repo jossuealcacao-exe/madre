@@ -6,9 +6,10 @@
 // invitation to try the mode when it is not — an invitation to a way of seeing, never a warning:
 // the person chooses when to use each.
 import { t } from './i18n.js';
+import { trazo } from './icons.js';
 
 // A neuron: its body, four dendrites, a bead at the end of each. Open, the body fills.
-export const NEURAL_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ic-f" cx="10" cy="10" r="2.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 7.3V4M12.4 11.3l3 2.4M7.6 11.3l-3 2.4M12.5 8.7l2.9-1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="3.4" r="1.15" fill="currentColor"/><circle cx="15.9" cy="14.1" r="1.15" fill="currentColor"/><circle cx="4.1" cy="14.1" r="1.15" fill="currentColor"/><circle cx="15.9" cy="6.5" r="1.15" fill="currentColor"/></svg>';
+export const NEURAL_ICON = trazo('neural');
 
 // HOW TO MOVE ROUND A MAP (2026-10-28): the gestures as keys, in this computer's own words — ⇧ on a
 // Mac and Shift elsewhere, a trackpad's pinch on a Mac —, read from the system, never asked. In

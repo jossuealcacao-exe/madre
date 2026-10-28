@@ -26,6 +26,7 @@
 
 import { COLLAPSED, FOCUS_VEIL, MEMORY_COLORS, NEURAL_AXON, NEURAL_COLORS, NEURAL_CROSSFADE, NEURAL_IGNITION, PITCH_LIMIT, TURN_PER_PIXEL, alongCurve, collapsedChip, createNostromo, currentAlong, drawNeuralBulb, dwarfChip, hexAlpha, hexMix, magmaMap, neuralGround, neuronChip, neuronGlow, texturesReady } from './nostromo-engine.js';
 import { createStrain, inviteNeural, neuralKey, paintNeuralKey, tellViews } from './neural.js';
+import { trazo } from './icons.js';
 
 const KINDS = Object.keys(MEMORY_COLORS);
 const TILT = 0.42;                 // how flat the orbits read: the plane seen a little from above
@@ -471,7 +472,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   back.className = 'surface-mode close x-close x-only mv-back';
   back.setAttribute('aria-label', words.back);
   back.title = words.back;
-  back.insertAdjacentHTML('beforeend', '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'); // trusted: our own SVG
+  back.insertAdjacentHTML('beforeend', `<span class="x-icon">${trazo('close')}</span>`); // trusted: our own SVG
   backTrack.append(back);
   // Neural mode (public/neural.js): the same space drawn as neurons, chosen here or in a project.
   const neuralButton = document.createElement('button');
@@ -1258,7 +1259,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     shut.setAttribute('aria-label', words.close ?? 'Close');
     const cross = document.createElement('span');
     cross.className = 'x-icon';
-    cross.innerHTML = '<svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    cross.innerHTML = trazo('close');
     shut.append(cross);
     track.append(shut);
     head.append(kind, track);

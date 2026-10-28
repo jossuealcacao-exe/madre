@@ -27,7 +27,7 @@
     <header class="sm-top">
       <nav class="sm-topbar" aria-label="Home">
         <a id="sm-back-room" class="sm-back-room" href="/" hidden>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="back"><path d="M12.2 5.2 7.4 10l4.8 4.8"/></svg><span></span>
         </a>
         <a id="sm-back" class="sm-brand" href="https://madre.run" target="_blank" rel="noopener noreferrer" aria-label="MADRE · madre.run" title="MADRE · madre.run">
           <svg class="brand-logo" viewBox="-4.8 -4.8 377.1 49.6" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><g class="pulse" transform="translate(0 0) scale(2.5) translate(0 -2)"><path class="beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" stroke-width="1.92" pathLength="100"/><circle class="beat-dot" cx="60" cy="10" r="3" stroke="none"/></g><g class="word" transform="translate(193.5 7)" stroke-width="4.8"><path d="M0 26V0L14 14.3L28 0V26"/><path transform="translate(36.5 0)" d="M0 26V7.8A7.8 7.8 0 0 1 7.8 0H17.2A7.8 7.8 0 0 1 25 7.8V26M0 15.6H25"/><path transform="translate(71.5 0)" d="M0 0H16A12 12 0 0 1 28 12V14A12 12 0 0 1 16 26H0Z"/><path transform="translate(110.5 0)" d="M0 26V0H20.85A7.15 7.15 0 0 1 28 7.15V7.15A7.15 7.15 0 0 1 20.85 14.3H0M15.12 14.3L28 26"/><path transform="translate(146 0)" d="M28 0H0V26H28M0 13H21"/></g></g></svg>
@@ -40,37 +40,37 @@
         <a id="sm-tb-waiting" class="sm-pill is-wait" href="/" hidden><i></i><span></span></a>
         <span id="sm-tour-pill" class="tour-pill-slot" hidden></span>
         <!-- A newer MADRE: it opens Home's Version, where Home restarts with it (salas-mac.js, fillRelease). -->
-        <button id="sm-tb-update" class="sm-pill is-update" type="button" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v8.4M6.6 8.6 10 12l3.4-3.4M3.8 13.2v1.2a2.2 2.2 0 0 0 2.2 2.2h8a2.2 2.2 0 0 0 2.2-2.2v-1.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button>
+        <button id="sm-tb-update" class="sm-pill is-update" type="button" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="download"><path d="M10 3.6v8.8M6.4 9l3.6 3.6L13.6 9"/><path d="M3.8 13.4v.8a2.2 2.2 0 0 0 2.2 2.2h8a2.2 2.2 0 0 0 2.2-2.2v-.8"/></svg><span></span></button>
         <button id="sm-stop" class="sm-stop" type="button" hidden>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="5" width="10" height="10" rx="2.6" fill="currentColor"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="stop"><rect x="5.4" y="5.4" width="9.2" height="9.2" rx="2.6" fill="currentColor" stroke="none"/></svg>
           <span>Stop all</span>
         </button>
         <button id="sm-tb-links" class="sm-barkey" type="button">
-          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g class="ic-male"><path d="M1.2 10h1.4"/><rect x="2.6" y="6.9" width="4.8" height="6.2" rx="1.6"/><path d="M7.4 8.7h2.1M7.4 11.3h2.1" stroke-width="1.4"/></g><g class="ic-female"><path d="M12.6 7.6V6.9h3a1.6 1.6 0 0 1 1.6 1.6v3a1.6 1.6 0 0 1-1.6 1.6h-3v-.7"/><path d="M12.6 8.3v3.4"/><path d="M17.2 10h1.6"/></g></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="links-key"><g class="ic-male"><path d="M8.4 11.6l3.2-3.2"/><path d="M10.8 13.9l-1.3 1.3a3.4 3.4 0 0 1-4.8-4.8L6 9.1"/></g><g class="ic-female"><path d="M9.2 6.1l1.3-1.3a3.4 3.4 0 0 1 4.8 4.8L14 10.9"/></g></svg>
           <span>Connections</span><b id="sm-tb-links-count" class="sm-badge" hidden></b>
         </button>
         <button id="sm-tb-market" class="sm-barkey" type="button">
-          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g class="ic-basket"><g class="ic-mods" stroke-width="1.4"><rect class="ic-m1" x="4.4" y="5.2" width="3.4" height="3.4" rx="1"/><circle class="ic-m2" cx="10" cy="5.3" r="1.8"/><rect class="ic-m3" x="12.2" y="5.2" width="3.4" height="3.4" rx="1"/></g><path d="M2.8 10.4h14.4l-1.5 5.4a1.6 1.6 0 0 1-1.6 1.2H5.9a1.6 1.6 0 0 1-1.6-1.2z"/><path d="M7.6 13v1.6M10 13v1.6M12.4 13v1.6" stroke-width="1.3"/></g></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="market-key"><g class="ic-basket"><path d="M5.3 6.8h9.4a1.1 1.1 0 0 1 1.1 1.2l-.7 6.9a2 2 0 0 1-2 1.8H6.9a2 2 0 0 1-2-1.8L4.2 8a1.1 1.1 0 0 1 1.1-1.2z"/><path d="M7.2 6.8v-.6a2.8 2.8 0 0 1 5.6 0v.6"/><g class="ic-mods"><rect class="ic-m1" x="6.3" y="10.4" width="2.3" height="2.3" rx=".8"/><circle class="ic-m2" cx="10" cy="11.55" r="1.2"/><rect class="ic-m3" x="11.4" y="10.4" width="2.3" height="2.3" rx=".8"/></g></g></svg>
           <span>Market</span>
         </button>
         <button id="sm-tb-modules" class="sm-barkey" type="button">
-          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="ic-q1" x="3" y="3" width="6" height="6" rx="1.8"/><rect class="ic-q2" x="11" y="3" width="6" height="6" rx="1.8"/><rect class="ic-q3" x="3" y="11" width="6" height="6" rx="1.8"/><rect class="ic-q4" x="11" y="11" width="6" height="6" rx="1.8"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="modules"><rect class="ic-q1" x="3.4" y="3.4" width="5.6" height="5.6" rx="1.9"/><rect class="ic-q2" x="11" y="3.4" width="5.6" height="5.6" rx="1.9"/><rect class="ic-q3" x="3.4" y="11" width="5.6" height="5.6" rx="1.9"/><rect class="ic-q4" x="11" y="11" width="5.6" height="5.6" rx="1.9"/></svg>
           <span>Modules</span>
         </button>
         <button id="sm-macro" class="sm-barkey sm-macro" type="button" hidden>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="8.2" ry="3.6" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".6"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/><circle class="ic-planet" cx="18.2" cy="10" r="1.5" fill="currentColor"><animateMotion begin="indefinite" dur="2.4s" repeatCount="indefinite" path="M0 0a8.2 3.6 0 1 1-16.4 0a8.2 3.6 0 1 1 16.4 0"/></circle><circle class="ic-planet" cx="1.8" cy="10" r="1.1" fill="currentColor" opacity=".7"><animateMotion begin="indefinite" dur="2.4s" repeatCount="indefinite" path="M0 0a8.2 3.6 0 1 1 16.4 0a8.2 3.6 0 1 1-16.4 0"/></circle></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="map-key"><circle cx="10" cy="10" r="3.9"/><path d="M13.42 6.07A8 2.9 -22 1 1 4.83 9.53"/><circle class="ic-planet" cx="17.42" cy="7" r="1.2" fill="currentColor" stroke="none"><animateMotion begin="indefinite" dur="2.4s" repeatCount="indefinite" path="M0 0a8 2.9 -22 1 1 -14.83 5.99a8 2.9 -22 1 1 14.83 -5.99"/></circle><circle class="ic-planet" cx="2.58" cy="13" r="0.9" fill="currentColor" stroke="none" opacity=".7"><animateMotion begin="indefinite" dur="2.4s" repeatCount="indefinite" path="M0 0a8 2.9 -22 1 1 14.83 -5.99a8 2.9 -22 1 1 -14.83 5.99"/></circle></svg>
           <span>Project map</span>
         </button>
       </nav>
       <nav class="sm-topbar sm-tb-home" aria-label="Reload and settings">
         <button id="sm-add-widgets" class="sm-icon-key bar" type="button" aria-label="Add widgets to Home" title="Add widgets to Home">
-          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect class="ic-w1" x="2.8" y="2.8" width="14.4" height="5.6" rx="2.4"/><rect class="ic-w2" x="2.8" y="11" width="6.2" height="6.2" rx="1.8"/><circle class="ic-w3" cx="14.1" cy="14.1" r="3.1"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="widgets"><rect class="ic-w1" x="3" y="3" width="14" height="5.6" rx="2.2"/><rect class="ic-w2" x="3" y="11" width="5.8" height="5.8" rx="1.9"/><circle class="ic-w3" cx="14.1" cy="13.9" r="2.9"/></svg>
         </button>
         <button id="sm-reload" class="sm-icon-key bar" type="button" aria-label="Reload the page" title="Reload the page">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.76-4.24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.1 3.6v3.6h-3.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="refresh"><path d="M16.2 10a6.2 6.2 0 1 1-1.9-4.5l1.9 1.9"/><path d="M16.2 3.6v3.8h-3.8"/></svg>
         </button>
         <button id="sm-gear" class="sm-icon-key bar" type="button" aria-label="Home settings" title="Home settings">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M8.65 3.85L8.92 1.97L11.08 1.97L11.35 3.85L13.40 4.69L14.91 3.56L16.44 5.09L15.31 6.60L16.15 8.65L18.03 8.92L18.03 11.08L16.15 11.35L15.31 13.40L16.44 14.91L14.91 16.44L13.40 15.31L11.35 16.15L11.08 18.03L8.92 18.03L8.65 16.15L6.60 15.31L5.09 16.44L3.56 14.91L4.69 13.40L3.85 11.35L1.97 11.08L1.97 8.92L3.85 8.65L4.69 6.60L3.56 5.09L5.09 3.56L6.60 4.69ZM12.6 10a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="settings"><path class="ic-f" fill-rule="evenodd" d="M7.28 5.3Q8.04 4.86 8.19 3.97L8.24 3.67Q8.39 2.78 9.29 2.78L10.71 2.78Q11.61 2.78 11.76 3.67L11.81 3.97Q11.96 4.86 12.72 5.3L12.72 5.3Q13.47 5.73 14.31 5.42L14.6 5.31Q15.45 4.99 15.9 5.77L16.61 7.01Q17.06 7.79 16.37 8.36L16.13 8.55Q15.43 9.13 15.43 10L15.43 10Q15.43 10.87 16.13 11.45L16.37 11.64Q17.06 12.21 16.61 12.99L15.9 14.23Q15.45 15.01 14.6 14.69L14.31 14.58Q13.47 14.27 12.72 14.7L12.72 14.7Q11.96 15.14 11.81 16.03L11.76 16.33Q11.61 17.22 10.71 17.22L9.29 17.22Q8.39 17.22 8.24 16.33L8.19 16.03Q8.04 15.14 7.28 14.7L7.28 14.7Q6.53 14.27 5.69 14.58L5.4 14.69Q4.55 15.01 4.1 14.23L3.39 12.99Q2.94 12.21 3.63 11.64L3.87 11.45Q4.57 10.87 4.57 10L4.57 10Q4.57 9.13 3.87 8.55L3.63 8.36Q2.94 7.79 3.39 7.01L4.1 5.77Q4.55 4.99 5.4 5.31L5.69 5.42Q6.53 5.73 7.28 5.3ZM12.3 10a2.3 2.3 0 1 1-4.6 0 2.3 2.3 0 1 1 4.6 0z"/></svg>
         </button>
       </nav>
     </header>
@@ -90,7 +90,7 @@
             <div class="sm-bishop-keys">
               <a id="sm-bishop-go" class="sm-btn primary" href="/">Talk to the Coordinator</a>
               <a id="sm-bishop-tab" class="sm-icon-key" href="/" target="_blank" rel="noopener" aria-label="Open the Coordinator in a new tab" title="Open the Coordinator in a new tab">
-                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 4.5h4v4M15.5 4.5 9 11M8.5 5.5H6.2a1.7 1.7 0 0 0-1.7 1.7v6.6a1.7 1.7 0 0 0 1.7 1.7h6.6a1.7 1.7 0 0 0 1.7-1.7v-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="open"><path d="M9 4.2H6.6a2.4 2.4 0 0 0-2.4 2.4v6.8a2.4 2.4 0 0 0 2.4 2.4h6.8a2.4 2.4 0 0 0 2.4-2.4V11"/><path d="M12 4.2h3.8V8M15.6 4.4l-5.4 5.4"/></svg>
               </a>
             </div>
           </header>
@@ -123,7 +123,7 @@
             <h2 id="sm-drawer-title">Projects</h2><span id="sm-drawer-count" class="sm-chip port"></span>
             <div class="sm-tools">
               <label class="settings-search sm-search">
-                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="search"><circle cx="9" cy="9" r="5.4"/><path d="m13.1 13.1 3.5 3.5"/></svg>
                 <input id="sm-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search a project…" aria-label="Search a project…">
               </label>
               <div id="sm-filter" class="sx-seg" role="radiogroup" aria-label="Show">
@@ -162,7 +162,7 @@
 
     <dialog id="sm-links-sheet" class="sm-sheet sm-wide">
       <div class="sm-sheet-body">
-        <header class="sm-sheet-head"><h3 id="sm-links-title">Connections</h3><span class="surface-modes"><button id="sm-links-close" class="surface-mode close x-close x-only" type="button" aria-label="Close"><span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button></span></header>
+        <header class="sm-sheet-head"><h3 id="sm-links-title">Connections</h3><span class="surface-modes"><button id="sm-links-close" class="surface-mode close x-close x-only" type="button" aria-label="Close"><span class="x-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="close"><path d="M5.4 5.4l9.2 9.2M14.6 5.4l-9.2 9.2"/></svg></span></button></span></header>
         <p id="sm-links-note" class="hint"></p>
         <div id="sm-links" class="sm-link-list"></div>
         <div class="actions"><button id="sm-link-more" class="sm-btn primary" type="button">Connect projects</button></div>

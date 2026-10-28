@@ -5,8 +5,9 @@
 // itself the clean way (src/server.mjs, /api/madre/shutdown). What is left on screen says MADRE is
 // off, so a page that no longer answers is never mistaken for one that broke.
 import { t } from './i18n.js';
+import { trazo } from './icons.js';
 
-export const POWER_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.9v6.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M6.2 5.3a6.1 6.1 0 1 0 7.6 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+export const POWER_ICON = trazo('power');
 
 const node = (tag, className, text) => {
   const made = document.createElement(tag);
@@ -15,7 +16,7 @@ const node = (tag, className, text) => {
   return made;
 };
 
-export const RESTART_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.76-4.24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.1 3.6v3.6h-3.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+export const RESTART_ICON = trazo('refresh');
 
 // The key itself, in the classes of the bar it sits in. Since 2026-10-28 it holds restarting too: a
 // press opens two choices, restart and turn off, and the bar has no reload key of its own.

@@ -594,7 +594,7 @@ test('chat shell: the sidebar, the conversation and the tool column, as people k
   assert.match(css, /html\.chat-shell \.shell > \.bar > :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\):is\(\*, :hover, :active\) svg \{ transform: none; \}/);
   assert.doesNotMatch(css, /\.chats-button\):hover svg \{ transform: translateY/);
   // MEMORY's beat grew it: its halves part and its folds draw again instead.
-  assert.match(page, /<path class="brain-folds" pathLength="1" d="M6\.2 9\.4/);
+  assert.match(page, /<path class="brain-folds" pathLength="1" d="M6\.4 9\.4/);
   assert.match(css, /@keyframes brain-think \{ 0%, 20% \{ stroke-dashoffset: 1; \} 85%, 100% \{ stroke-dashoffset: 0; \} \}/);
   // The box as Claude's: it grows on the line it really draws, a «+» first and a quiet send last;
   // the modes mark the one in use with a check and say nothing of confirming; the models search
@@ -911,11 +911,13 @@ test('chat shell: a plan says each step\'s mode in its colour, the bar\'s keys l
   assert.match(css, /html\.chat-shell #messages \.system\.plan \.step-mode\.m1 \{ color: var\(--acc, var\(--mode-1\)\); \}/);
   assert.match(css, /html\.chat-shell \.shell > \.bar :is\(\.mother-button, \.tree-button, \.bar-icon, \.chats-button\):is\(:hover, :focus-visible\) \{ color: var\(--phosphor\) !important; \}/);
   // The same drawing wherever Local AI is shown, and no network left.
-  for (const source of [app, market, home]) {
-    assert.match(source, /<path class="ic-spark-big"/);
-    assert.match(source, /<path class="ic-spark-small"/);
-    assert.doesNotMatch(source, /class="ic-net"/);
-  }
+  // One drawing, Trazo MADRE's (public/icons.js, 2026-10-28), that each of them asks for by name.
+  const icons = await readFile(new URL('../public/icons.js', import.meta.url), 'utf8');
+  assert.match(icons, /spark: '<path class="ic-spark-big" d="[^"]+"\/><path class="ic-spark-small" d="[^"]+"\/>',/);
+  assert.match(app, /local: \{ name: 'Local AI', color: '#7f77dd', icon: trazoDrawing\('spark'\) \}/);
+  assert.match(market, /ollama: \{[^\n]*icon: trazoDrawing\('spark'\)/);
+  assert.match(home, /local: \{ name: 'Local AI', icon: trazoDrawing\('spark'\) \}/);
+  for (const source of [app, market, home, icons]) assert.doesNotMatch(source, /class="ic-net"/);
   assert.match(css, /svg \.ic-spark-big, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-big \{ transform: scale\(\.5\); \}/);
   assert.match(css, /svg \.ic-spark-small, :is\(\.settings-card, \.settings-rail-item\):is\(:hover, :focus-visible\) svg \.ic-spark-small \{ transform: scale\(1\.6\); \}/);
 });

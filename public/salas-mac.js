@@ -25,6 +25,7 @@ import { openMarket } from './market-view.js';
 import { openWelcome, welcomeOpen, WELCOME_STEPS } from './welcome.js';
 import { remedyKey } from './remedy.js';
 import { loadMarket } from './market.js';
+import { trazo, trazoDrawing } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -577,7 +578,7 @@ for (const choice of ui.filter.querySelectorAll('[data-filter]')) {
 // ORDER, where the projects are (2026-10-13): the same four orders as Home's Appearance, one press
 // away from the list they arrange. «Yours» is the order made by dragging a card or by its
 // right-click › Move; the menu says so, so the way to make it is never a secret.
-const SORT_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4.5v11M3.5 13 6 15.5 8.5 13"/><path d="M11 6h5.5M11 10h4M11 14h2.5"/></svg>';
+const SORT_ICON = trazo('sort');
 const orderKey = button('sm-btn sm-order', null, () => {
   const box = orderKey.getBoundingClientRect();
   const now = readLooks().home.order;
@@ -1145,7 +1146,7 @@ function openGraph() {
   const keys = el('span', 'surface-modes');
   const close = button('surface-mode close x-close x-only', null, () => graphWindow.close());
   close.setAttribute('aria-label', t('Close'));
-  close.innerHTML = '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'; // trusted
+  close.innerHTML = `<span class="x-icon">${trazo('close')}</span>`; // trusted
   keys.append(close);
   head.append(words, keys);
   const stage = el('div', 'sm-graph-stage');
@@ -1500,20 +1501,20 @@ const WIDGETS = {
 const DEFAULT_LAYOUT = { order: ['bishop', 'waiting', 'links', 'projects', 'decisions', 'attention', 'memory'], size: {}, rows: {} };
 // What each tile is, drawn in the accent the person chose (the same line as the room's AJUSTES icons).
 const TILE_ICONS = {
-  'bishop': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.6"/><circle cx="10" cy="3.6" r="1.4"/><circle cx="4.4" cy="14" r="1.4"/><circle cx="15.6" cy="14" r="1.4"/><path d="M10 5v2.4M8 11.6 5.6 13.2M12 11.6l2.4 1.6"/></svg>',
-  'waiting': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8M6 16.5h8M6.8 3.5c0 3.2 3.2 4 3.2 6.5S6.8 13.3 6.8 16.5M13.2 3.5c0 3.2-3.2 4-3.2 6.5s3.2 3.3 3.2 6.5"/></svg>',
-  'projects': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12.5" rx="2.4"/><path d="M3 9.2h14M8 6.6h4"/></svg>',
-  'links': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="13.5" r="2.2"/><circle cx="15" cy="6.5" r="2.2"/><path d="M7 12.2 13 7.8"/></svg>',
-  'decisions': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="13" height="13" rx="3"/><path d="m7 10.2 2.1 2.1L13.2 8"/></svg>',
-  'attention': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.6v4.2"/><path d="M10 13.4h.01" stroke-width="2.2"/></svg>',
-  'memory': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="10" cy="5.6" rx="5.5" ry="2.1"/><path d="M4.5 5.6v4.4c0 1.2 2.5 2.1 5.5 2.1s5.5-.9 5.5-2.1V5.6M4.5 10v4.4c0 1.2 2.5 2.1 5.5 2.1s5.5-.9 5.5-2.1V10"/></svg>',
-  'w-system': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="9" height="9" rx="1.8"/><path d="M8 3v2.5M12 3v2.5M8 14.5V17M12 14.5V17M3 8h2.5M3 12h2.5M14.5 8H17M14.5 12H17"/></svg>',
-  'w-servers': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.8" width="13" height="5" rx="1.6"/><rect x="3.5" y="11.2" width="13" height="5" rx="1.6"/><path d="M6.4 6.3h.01M6.4 13.7h.01" stroke-width="2.2"/><path d="M10 6.3h3.4M10 13.7h3.4"/></svg>',
-  'w-memory': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 13.5a6.2 6.2 0 1 1 12.4 0"/><path d="m10 13.5 3-4"/><path d="M10 13.5h.01" stroke-width="2.4"/></svg>',
-  'w-coordinator': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5h13"/><path d="M5 13.5l3.2-3.2 2.6 2.4 4.2-5.2"/><path d="M12.4 7.5H15v2.6"/></svg>',
-  'w-models': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.2 16 6.6v6.8L10 16.8 4 13.4V6.6z"/><path d="M4 6.6 10 10l6-3.4M10 10v6.8"/></svg>',
-  'w-agenda': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="13" height="12" rx="2.4"/><path d="M3.5 8.5h13M7 3v3M13 3v3"/><path d="M7 11.5h2M11 11.5h2M7 14h2"/></svg>',
-  'w-usage': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5h13"/><path d="M5.5 13.5v-3M9 13.5V7M12.5 13.5v-4.5M16 13.5V4.5"/></svg>',
+  'bishop': trazo('coordinator'),
+  'waiting': trazo('hourglass'),
+  'projects': trazo('card'),
+  'links': trazo('edge'),
+  'decisions': trazo('checkbox'),
+  'attention': trazo('alert'),
+  'memory': trazo('database'),
+  'w-system': trazo('chip'),
+  'w-servers': trazo('server'),
+  'w-memory': trazo('gauge'),
+  'w-coordinator': trazo('trending'),
+  'w-models': trazo('cube'),
+  'w-agenda': trazo('calendar'),
+  'w-usage': trazo('bars'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -1617,16 +1618,16 @@ function addTile(id) {
 
 // The menu a right-click opens, shared by the tiles and the space between them: the same card and
 // keys as a project's menu (pinsMenu), closed the same way.
-const MOVE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v13M5.5 8 10 3.5 14.5 8M5.5 12 10 16.5 14.5 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const BEFORE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const AFTER_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const MOVE_ICON = trazo('move');
+const BEFORE_ICON = trazo('back');
+const AFTER_ICON = trazo('next');
 // A height is drawn as the rows it takes, out of five; «Automatic» as rows that follow the content.
-const heightIcon = (count) => `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.2" y="2.8" width="9.6" height="14.4" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".45"/>${count ? `<rect x="7" y="${(15.4 - 10.8 * count / 5).toFixed(2)}" width="6" height="${(10.8 * count / 5).toFixed(2)}" rx="1.2" fill="currentColor"/>` : '<path d="M7.2 8.6 10 6l2.8 2.6M7.2 11.4 10 14l2.8-2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'}</svg>`;
+const heightIcon = (count) => `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5.2" y="2.8" width="9.6" height="14.4" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/>${count ? `<rect x="7" y="${(15.4 - 10.8 * count / 5).toFixed(2)}" width="6" height="${(10.8 * count / 5).toFixed(2)}" rx="1.2" fill="currentColor"/>` : '<path d="M7.2 8.6 10 6l2.8 2.6M7.2 11.4 10 14l2.8-2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'}</svg>`;
 // A size is drawn as the share of the row it takes: a third, a half, two thirds, all of it.
-const sizeIcon = (span) => `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.8" y="5.2" width="14.4" height="9.6" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".45"/><rect x="4.6" y="7" width="${(10.8 * span / 12).toFixed(2)}" height="6" rx="1.2" fill="currentColor"/></svg>`;
-const ADD_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-const RESET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 8.6A6 6 0 1 1 4.8 13"/><path d="M3.8 4.6v4.2H8"/></svg>';
-const HIDE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 10h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const sizeIcon = (span) => `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.8" y="5.2" width="14.4" height="9.6" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="4.6" y="7" width="${(10.8 * span / 12).toFixed(2)}" height="6" rx="1.2" fill="currentColor"/></svg>`;
+const ADD_ICON = trazo('add');
+const RESET_ICON = trazo('reset');
+const HIDE_ICON = trazo('minus');
 function homeMenu(point, entries, label) {
   pinsCloseMenu();
   const menu = el('div', 'bar-card sm-menu');
@@ -1837,7 +1838,7 @@ async function openHomeAdd() {
   const keys = el('span', 'surface-modes');
   const close = button('surface-mode close x-close x-only', null, () => homeAddSheet.close());
   close.setAttribute('aria-label', t('Close'));
-  close.innerHTML = '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'; // trusted
+  close.innerHTML = `<span class="x-icon">${trazo('close')}</span>`; // trusted
   keys.append(close);
   head.append(keys);
   body.append(head, el('p', 'hint', t('Tiles you took off and widgets you can put on Home. Right-click any tile to move it, resize it or take it off.')));
@@ -1943,7 +1944,7 @@ const WIDGET_PAINT = {
         const room = data?.rooms.find((item) => item.id === one.room) ?? null;
         words.append(el('b', null, one.text), el('small', null, [when, room ? roomLabel(room) : one.project, one.repeat ? t('repeats') : null].filter(Boolean).join(' · ')));
         const done = button('sm-agenda-key', null, async () => { done.disabled = true; await settleReminder('/api/reminders/done', { id: one.id }); again?.(); });
-        done.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; // trusted
+        done.innerHTML = trazo('check'); // trusted
         done.setAttribute('aria-label', t('Done'));
         done.title = t('Done');
         const later = button('sm-agenda-later', t('Later'), async () => { later.disabled = true; await settleReminder('/api/reminders/snooze', { id: one.id, minutes: reminderPrefs.snooze }); again?.(); });
@@ -2364,9 +2365,9 @@ function sayBold(key, vars, bold = Object.keys(vars)) {
   out.append(template.slice(at));
   return out;
 }
-const ALLOWED_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.4l3.2 3.1L15 6.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const NOT_ALLOWED_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 6.5l7 7M13.5 6.5l-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-const BOTH_WAYS_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7.2h11.2L12.4 4.4M16 12.8H4.8l2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ALLOWED_GLYPH = trazo('check');
+const NOT_ALLOWED_GLYPH = trazo('close');
+const BOTH_WAYS_ICON = trazo('swap');
 function openLinkSheet({ reader = null, source = null } = {}) {
   if (!data || sheet) return;
   const rooms = [...data.rooms].sort((x, y) => Number(Boolean(y.open)) - Number(Boolean(x.open)) || roomLabel(x).localeCompare(roomLabel(y)));
@@ -3009,7 +3010,7 @@ function frameMacro() {
       try { localStorage.setItem(`${MACRO_WINDOW_KEY}.on`, on ? '1' : '0'); } catch { /* as long as the page lasts */ }
       frameMacro();
     });
-    key.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.25 12.25v-6.5a2.5 2.5 0 0 1 2.5-2.5h6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="6.25" y="6.25" width="10.5" height="10.5" rx="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'; // trusted: our own SVG
+    key.innerHTML = trazo('window'); // trusted: our own SVG
     const track = layer.querySelector('.nostromo-actions > .surface-modes');
     if (track) track.before(key); else layer.querySelector('.nostromo-actions')?.append(key);
   }
@@ -3093,12 +3094,12 @@ function drawTopbar() {
 // browser's own (localStorage), as the room keeps its bar.
 const PIN_KEY = 'pulse.lobbyBar';
 const PIN_TYPE = 'application/x-madre-room';
-const PIN_MINUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 8h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-const PIN_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.4 3.4h5.2l-.9 4.4 2.6 2.6v1.2H5.7v-1.2l2.6-2.6zM10 11.6v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const UNPIN_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.4 3.4h5.2l-.9 4.4 2.6 2.6v1.2H5.7v-1.2l2.6-2.6zM10 11.6v5M3.6 3.6l12.8 12.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ARRANGE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.6" y="5.4" width="14.8" height="9.2" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 10h2.2M11.6 10h2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-const FORGET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.6 11h4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-const MORE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="1.6" fill="currentColor"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><circle cx="15" cy="10" r="1.6" fill="currentColor"/></svg>';
+const PIN_MINUS = trazo('minus');
+const PIN_ICON = trazo('pin');
+const UNPIN_ICON = trazo('unpin');
+const ARRANGE_ICON = trazo('arrange');
+const FORGET_ICON = trazo('forget');
+const MORE_ICON = trazo('more');
 const pins = {
   saved: null,          // what this page decided, for when storage will not keep it
   chips: new Map(),     // room id → its key on the bar
@@ -3768,10 +3769,10 @@ for (const [way, alwaysNew] of [[ui.bishop.go, false], [ui.bishop.tab, true]]) {
 // level at a time; a search narrows either. Several can be chosen; a folder already in Home says
 // so and is not offered again. The sheet never runs past the screen: the tiles take as many rows
 // as it holds, and ‹ › turn the page, so nothing scrolls inside it.
-const SEARCH_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.2 13.2 17 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const PAGE_BACK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const PAGE_ON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const FOLD_TICK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4 6.8 11 12 5.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const SEARCH_GLYPH = trazo('search');
+const PAGE_BACK = trazo('back');
+const PAGE_ON = trazo('next');
+const FOLD_TICK = trazo('check');
 const FOLD_ROWS = 5;
 
 // The tiles and their pages. How many rows is measured, not guessed: from five down to two, the
@@ -4044,7 +4045,7 @@ function closeKey(onClick) {
   const key = button('surface-mode close x-close x-only', null, onClick);
   key.setAttribute('aria-label', t('Close'));
   const icon = el('span', 'x-icon');
-  icon.innerHTML = '<svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  icon.innerHTML = trazo('close');
   key.append(icon);
   track.append(key);
   return track;
@@ -4593,14 +4594,14 @@ const SET_SECTIONS = [
 // The room's own icons where the room has the category (app.js, SETTINGS_CATS); the bar, BISHOP
 // and the projects drawn here in the same hand: 20×20, one round stroke.
 const SET_CATS = {
-  look: { name: 'Appearance', icon: '<circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/>' },
-  bar: { name: 'Top bar', icon: '<rect x="2.6" y="5.4" width="14.8" height="9.2" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 10h2.2M11.6 10h2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' },
-  agents: { name: 'Agents', icon: '<circle cx="7" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13.6" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.8 16c.6-2.3 2.2-3.6 4.2-3.6s3.6 1.3 4.2 3.6M9.6 13c.9-.4 2.4-.6 4-.6 2 0 3.6 1.3 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' },
-  bishop: { name: 'Coordinator', icon: '<path d="M2.6 10c1.7-3.1 4.3-4.8 7.4-4.8s5.7 1.7 7.4 4.8c-1.7 3.1-4.3 4.8-7.4 4.8S4.3 13.1 2.6 10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.3" fill="currentColor"/>' },
-  local: { name: 'Local AI', icon: '<path class="ic-spark-big" d="M8 5.2Q8.85 10.65 14.3 11.5Q8.85 12.35 8 17.8Q7.15 12.35 1.7 11.5Q7.15 10.65 8 5.2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path class="ic-spark-small" d="M15 2.2Q15.4 4.6 17.8 5Q15.4 5.4 15 7.8Q14.6 5.4 12.2 5Q14.6 4.6 15 2.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>' },
-  projects: { name: 'Projects', icon: '<path d="M3.5 6.2c0-.9.7-1.6 1.6-1.6h3l1.6 1.8h5.2c.9 0 1.6.7 1.6 1.6v6.4c0 .9-.7 1.6-1.6 1.6H5.1c-.9 0-1.6-.7-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
-  release: { name: 'Version', icon: '<path d="M15.6 10a5.6 5.6 0 1 1-1.64-3.96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.7 3.6v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' },
-  manual: { name: 'User manual', icon: '<path d="M4 4.5h4.5a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 0-1.5-1.5H4zM16 4.5h-4.5A1.5 1.5 0 0 0 10 6v10a1.5 1.5 0 0 1 1.5-1.5H16z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' },
+  look: { name: 'Appearance', icon: trazoDrawing('appearance') },
+  bar: { name: 'Top bar', icon: trazoDrawing('arrange') },
+  agents: { name: 'Agents', icon: trazoDrawing('agents') },
+  bishop: { name: 'Coordinator', icon: trazoDrawing('coordinator') },
+  local: { name: 'Local AI', icon: trazoDrawing('spark') },
+  projects: { name: 'Projects', icon: trazoDrawing('folder') },
+  release: { name: 'Version', icon: trazoDrawing('refresh') },
+  manual: { name: 'User manual', icon: trazoDrawing('book') },
 };
 const SET_ORDER = ['look', 'bar', 'agents', 'bishop', 'local', 'projects', 'release'];
 // The words the search knows, each pointing to the category that holds it (app.js, SETTINGS_INDEX).
@@ -4614,10 +4615,10 @@ const SET_INDEX = [
 ];
 const THEME_WORDS = { auto: () => t('Automatic'), light: () => t('Light'), dark: () => t('Dark') };
 // In the chat shell the projects at hand live in the sidebar, and Settings calls them so (2026-10-28).
-const SIDEBAR_CAT = '<rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3.9v12.2" fill="none" stroke="currentColor" stroke-width="1.6"/>';
+const SIDEBAR_CAT = trazoDrawing('sidebar');
 const catName = (id) => (id === 'bar' && homeShellOn() ? t('Sidebar') : t(SET_CATS[id].name));
 const setIcon = (id) => { const span = el('span', 'settings-icon'); span.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${id === 'bar' && homeShellOn() ? SIDEBAR_CAT : SET_CATS[id].icon}</svg>`; span.style.setProperty('--cat', 'var(--phosphor)'); return span; }; // trusted: our own SVG strings
-const CHEVRON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CHEVRON = trazo('chevron');
 const chevron = (className) => { const mark = el('span', `${className} chev-icon`); mark.innerHTML = CHEVRON; return mark; }; // trusted: our own SVG string
 const fold = (text) => String(text).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 const bishopRoom = () => data?.rooms.find((room) => room.id === data.salas) ?? null;
@@ -5144,7 +5145,7 @@ function drawLocalServer(host) {
 const EMBEDDING = /embed|minilm|bge|nomic/i;
 // The model that fits this computer best, said the way the room's tags say things: a small pill in
 // the accent beside its name, never a grey bar the width of the row (2026-10-20).
-const RECOMMENDED_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2l1.9 4.1 4.4.5-3.3 3 .9 4.4L10 13l-3.9 2.2.9-4.4-3.3-3 4.4-.5z" fill="currentColor"/></svg>';
+const RECOMMENDED_ICON = trazo('star-filled');
 function recommendedChip() {
   const chip = el('span', 'sx-recommend');
   chip.innerHTML = RECOMMENDED_ICON; // trusted: our own SVG string
@@ -5304,7 +5305,7 @@ function openSettings(section = null) {
   win.id = 'settings';
   const head = el('header', 'custom-head settings-head');
   const search = el('label', 'settings-search');
-  search.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.2 13.2 17 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'; // trusted: our own SVG
+  search.innerHTML = trazo('search'); // trusted: our own SVG
   const input = el('input');
   input.type = 'search';
   input.placeholder = t('Search any setting');
@@ -5532,11 +5533,11 @@ function translateStatic() {
 // the ones the bar held (the pins: the open ones, until the person chooses), and a card dropped on
 // the list pins it there. Not on a phone, where the bar keeps them as before.
 const SIDE_KEY = 'pulse.homeSide';
-const SIDEBAR_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3.9v12.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-const HOME_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.4 9.2 10 3.6l6.6 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 7.9v7.5a1.2 1.2 0 0 0 1.2 1.2h2.3v-4a1.3 1.3 0 0 1 2.6 0v4h2.3a1.2 1.2 0 0 0 1.2-1.2V7.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const MARKET_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 7.4h13.6l-1.2 8.8a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 7.4V6a3 3 0 0 1 6 0v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const COORDINATOR_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="4.4" cy="5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="15.6" cy="5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="16.4" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.6 6.1 8.2 8.4M14.4 6.1l-2.6 2.3M10 12.4v2.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
-const ALL_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const SIDEBAR_GLYPH = trazo('sidebar');
+const HOME_GLYPH = trazo('home');
+const MARKET_GLYPH = trazo('market');
+const COORDINATOR_GLYPH = trazo('coordinator');
+const ALL_GLYPH = trazo('list');
 const homeShell = { side: null, list: null, said: '', open: false };
 const homeShellOn = () => root.classList.contains('home-shell');
 // A phone keeps Home as it was; a narrow window gets the sidebar over the canvas, shut at first.
@@ -5730,7 +5731,7 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360, keys = true
   const group = el('span', 'surface-modes');
   const shut = button('surface-mode close x-close x-only', null, () => close());
   shut.setAttribute('aria-label', t('Close'));
-  shut.innerHTML = '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'; // trusted: our own SVG
+  shut.innerHTML = `<span class="x-icon">${trazo('close')}</span>`; // trusted: our own SVG
   group.append(shut);
   if (keys) bar.append(group);
   // Carried by its bar, wherever the bar is not a key, a field or a tab.
@@ -5808,11 +5809,10 @@ function arrangeHomeBar() {
   line.setAttribute('aria-hidden', 'true');
   market.before(line);
   modules.querySelector('svg')?.replaceWith(Object.assign(document.createElement('span'), { innerHTML: MODULES_GLYPH }).firstElementChild);
-  // The map's flattened orbit read as an eye at 16 px: a round orbit, a planet on it, the centre.
-  ui.macro.querySelector('svg')?.replaceWith(Object.assign(document.createElement('span'), { innerHTML: MAP_GLYPH }).firstElementChild);
+  // The map keeps its own key (salas-mac.html): since Trazo MADRE (2026-10-28) it is the planet with
+  // its ring, as in the side panel, and its moons still go round while the pointer stays.
 }
-const MAP_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.4" fill="currentColor"/><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.2 2.4" stroke-linecap="round"/><circle cx="15" cy="5" r="1.9" fill="currentColor"/></svg>';
-const MODULES_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.75 8.45a2.2 2.2 0 0 1 2.2-2.2h2a1.9 1.9 0 1 1 2.6 0h2a2.2 2.2 0 0 1 2.2 2.2v2a1.9 1.9 0 1 1 0 2.6v2a2.2 2.2 0 0 1-2.2 2.2h-2a1.9 1.9 0 1 0-2.6 0h-2a2.2 2.2 0 0 1-2.2-2.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const MODULES_GLYPH = trazo('puzzle');
 
 buildHomeShell();
 

@@ -11,6 +11,7 @@ import { hostWords, keyWords } from './i18n.js';
 import { MANUAL } from './manual-content.js';
 import { GESTURES } from './tour-chapters.js';
 import { SHOTS } from './manual-shots.js';
+import { trazoDrawing } from './icons.js';
 
 const asked = new URLSearchParams(location.search);
 const printing = asked.get('print') === '1';
@@ -18,27 +19,27 @@ const pick = (value) => (value === 'en' || value === 'es' ? value : null);
 const browser = String(navigator.languages?.[0] ?? navigator.language ?? '').toLowerCase().startsWith('es') ? 'es' : 'en';
 
 const ICONS = {
-  home: '<path d="M3.8 9.2L10 4l6.2 5.2M5.6 8v7.5h8.8V8"/>',
-  chat: '<path d="M4 5.5h12v7.5H9l-3.4 2.6V13H4z"/>',
-  shield: '<path d="M10 3.2l5.6 2v4.2c0 3.4-2.4 5.9-5.6 7.2-3.2-1.3-5.6-3.8-5.6-7.2V5.2z"/><path d="M7.6 10l1.7 1.7 3.1-3.3"/>',
-  robot: '<rect x="4.5" y="7" width="11" height="8" rx="2.4"/><path d="M10 4v3M8 11h.01M12 11h.01"/>',
-  code: '<path d="M7.4 6.5L4 10l3.4 3.5M12.6 6.5L16 10l-3.4 3.5M11 5l-2 10"/>',
-  note: '<path d="M5 4.5h10v7.5l-3.5 3.5H5z"/><path d="M11.5 15.5V12H15M7.5 8h5M7.5 10.5h3"/>',
-  grid: '<rect x="4" y="4" width="5" height="5" rx="1.2"/><rect x="11" y="4" width="5" height="5" rx="1.2"/><rect x="4" y="11" width="5" height="5" rx="1.2"/><rect x="11" y="11" width="5" height="5" rx="1.2"/>',
-  plug: '<path d="M7.5 3.5v3.3M12.5 3.5v3.3M5.5 6.8h9v2.6a4.5 4.5 0 0 1-9 0zM10 13.9v2.6"/>',
-  chip: '<rect x="5.5" y="5.5" width="9" height="9" rx="1.8"/><path d="M8 3v2.5M12 3v2.5M8 14.5V17M12 14.5V17M3 8h2.5M3 12h2.5M14.5 8H17M14.5 12H17"/>',
-  orbit: '<circle cx="10" cy="10" r="2.2"/><ellipse cx="10" cy="10" rx="7" ry="3.2"/><circle cx="16.4" cy="11.4" r=".9"/>',
-  windows: '<rect x="3.5" y="5" width="9" height="7.5" rx="1.6"/><rect x="7.5" y="8" width="9" height="7.5" rx="1.6"/>',
-  gear: '<circle cx="10" cy="10" r="2.4"/><path d="M10 3.2v2M10 14.8v2M3.2 10h2M14.8 10h2M5.2 5.2l1.4 1.4M13.4 13.4l1.4 1.4M5.2 14.8l1.4-1.4M13.4 6.6l1.4-1.4"/>',
-  download: '<path d="M10 3.5v9M6.5 9l3.5 3.5L13.5 9M4.5 15.5h11"/>',
-  agents: '<circle cx="7.5" cy="8" r="2.4"/><circle cx="13.5" cy="8.6" r="1.9"/><path d="M3.5 15.5c.5-2.4 2.1-3.6 4-3.6s3.5 1.2 4 3.6M12.3 12.3c1.9-.3 3.6.8 4.2 3.2"/>',
-  stars: '<path d="M7.5 4l1 2.3 2.4.3-1.8 1.6.5 2.4-2.1-1.2-2.1 1.2.5-2.4-1.8-1.6 2.4-.3zM14 11l.6 1.4 1.5.2-1.1 1 .3 1.5-1.3-.8-1.3.8.3-1.5-1.1-1 1.5-.2zM5 14.5h.01M15.5 5h.01"/>',
-  loop: '<path d="M14.5 7.5A5 5 0 0 0 5.4 6.2M5.5 12.5a5 5 0 0 0 9.1 1.3M5 3.5v3h3M15 16.5v-3h-3"/>',
-  warning: '<path d="M10 3.5l7 12.5H3z"/><path d="M10 8.5v3.5M10 14.3h.01"/>',
-  keys: '<rect x="3" y="5.5" width="14" height="9" rx="2"/><path d="M6 8.5h.01M8.7 8.5h.01M11.3 8.5h.01M14 8.5h.01M7 11.5h6"/>',
-  help: '<circle cx="10" cy="10" r="6.5"/><path d="M8.2 8.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.6M10 13.8h.01"/>',
+  home: trazoDrawing('home'),
+  chat: trazoDrawing('chat'),
+  shield: trazoDrawing('shield-check'),
+  robot: trazoDrawing('robot'),
+  code: trazoDrawing('code'),
+  note: trazoDrawing('note'),
+  grid: trazoDrawing('modules'),
+  plug: trazoDrawing('plug'),
+  chip: trazoDrawing('chip'),
+  orbit: trazoDrawing('map'),
+  windows: trazoDrawing('window'),
+  gear: trazoDrawing('settings'),
+  download: trazoDrawing('download'),
+  agents: trazoDrawing('agents'),
+  stars: trazoDrawing('spark'),
+  loop: trazoDrawing('sync'),
+  warning: trazoDrawing('warning'),
+  keys: trazoDrawing('keyboard'),
+  help: trazoDrawing('help'),
 };
-const icon = (name) => `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] ?? ICONS.help}</svg>`;
+const icon = (name) => `<svg viewBox="0 0 20 20" aria-hidden="true">${ICONS[name] ?? ICONS.help}</svg>`;
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
