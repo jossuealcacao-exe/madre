@@ -167,7 +167,9 @@ export const marketShelves = () => (remote?.shelves?.length ? remote.shelves.map
 // (Git) is part of MADRE, not something to get, and so is the Coordinator, which is Home itself.
 // Part of MADRE, not modules (2026-10-27): suggested effort, options, commands and connections between
 // projects are set in each project's Settings (app.js, IN_SETTINGS), and the Market does not sell them.
-export const IN_MADRE = new Set(['intents', 'choices', 'runs', 'enlaces']);
+// Local AI and the connectors (MCP) came in by default since 2026-10-28: MADRE's own, in Settings, not
+// in the shop.
+export const IN_MADRE = new Set(['intents', 'choices', 'runs', 'enlaces', 'ollama', 'mcp']);
 export const inMarket = (item) => Boolean(item) && !item.fixed && item.kind !== undefined && item.id !== 'bishop' && !IN_MADRE.has(item.id);
 // The ones the carousel shows, in their order.
 export const marketFeatured = (items = []) => items.filter((item) => marketEntry(item.id).featured).sort((a, b) => marketEntry(a.id).featured - marketEntry(b.id).featured);
@@ -191,7 +193,8 @@ export function marketOffer(text, items = [], { declined = [], shown = [] } = {}
   for (const offer of MARKET_OFFERS) {
     if (declined.includes(offer.id) || shown.includes(offer.id)) continue;
     const item = items.find((one) => one.id === offer.id);
-    if (!item || item.status?.installed || !inMarket(item)) continue;
+    // Local AI is MADRE's own now, but a conversation that asks for it is still pointed to it.
+    if (!item || item.status?.installed || (!inMarket(item) && item.id !== 'ollama')) continue;
     if (offer.when.test(words)) return { item, says: offer.says };
   }
   return null;

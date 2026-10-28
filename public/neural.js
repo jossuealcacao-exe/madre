@@ -10,6 +10,40 @@ import { t } from './i18n.js';
 // A neuron: its body, four dendrites, a bead at the end of each. Open, the body fills.
 export const NEURAL_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle class="ic-f" cx="10" cy="10" r="2.7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 7.3V4M12.4 11.3l3 2.4M7.6 11.3l-3 2.4M12.5 8.7l2.9-1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="3.4" r="1.15" fill="currentColor"/><circle cx="15.9" cy="14.1" r="1.15" fill="currentColor"/><circle cx="4.1" cy="14.1" r="1.15" fill="currentColor"/><circle cx="15.9" cy="6.5" r="1.15" fill="currentColor"/></svg>';
 
+// HOW TO MOVE ROUND A MAP (2026-10-28): the gestures as keys, in this computer's own words — ⇧ on a
+// Mac and Shift elsewhere, a trackpad's pinch on a Mac —, read from the system, never asked. In
+// place of the long line of small print the maps carried under them.
+export const mapSystem = () => {
+  const said = String(globalThis.navigator?.userAgentData?.platform || globalThis.navigator?.platform || '').toLowerCase();
+  return said.includes('mac') ? 'mac' : said.includes('win') ? 'windows' : 'other';
+};
+export function mapKeys(which = 'memory') {
+  const mac = mapSystem() === 'mac';
+  const shift = mac ? '⇧' : 'Shift';
+  const closer = mac ? t('Pinch or wheel') : t('Wheel');
+  const steps = which === 'projects'
+    ? [[[t('Drag')], t('pan')], [[closer], t('come closer')], [[t('Click')], t('look at a project')], [[t('Drag a project')], t('onto another to connect them')], [['←', '→'], t('from one to the next')], [['Esc'], t('back')]]
+    : [[[t('Drag')], t('turn')], [[shift, t('Drag')], t('pan')], [[closer], t('come closer')], [[t('Click')], t('read a memory')]];
+  const line = document.createElement('span');
+  line.className = 'map-keys';
+  line.dataset.system = mapSystem();
+  for (const [keys, words] of steps) {
+    const step = document.createElement('span');
+    step.className = 'map-key';
+    keys.forEach((key, index) => {
+      if (index && keys[0] !== '←') { const plus = document.createElement('i'); plus.textContent = '+'; step.append(plus); }
+      const cap = document.createElement('kbd');
+      cap.textContent = key;
+      step.append(cap);
+    });
+    const said = document.createElement('span');
+    said.textContent = words;
+    step.append(said);
+    line.append(step);
+  }
+  return line;
+}
+
 const KEY = 'pulse.neural';
 export function neuralChosen() {
   try { return localStorage.getItem(KEY) === 'on'; } catch { return false; }

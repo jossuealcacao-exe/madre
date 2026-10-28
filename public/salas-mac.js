@@ -17,10 +17,10 @@ import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal 
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
 import { creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
-import { labelPowerKey, powerKey } from './power.js';
+import { POWER_ICON, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
-import { neuralChosen, rememberNeural } from './neural.js';
+import { mapKeys, neuralChosen, rememberNeural } from './neural.js';
 import { openMarket } from './market-view.js';
 import { loadMarket } from './market.js';
 
@@ -2736,7 +2736,8 @@ function macroWords() {
   return {
     title: t('Project map'),
     back: t('Back to Home'),
-    hint: t('Drag the space to move it · wheel to come closer · click a project to look at it · drag it to turn it · carry one onto the Coordinator for the Coordinator to read it, or onto another to connect them · ← → from one to the next · Esc to come back'),
+    // How to move round it, as keys of this computer; on a phone, where there are none, its line.
+    hint: homeShellOn() ? mapKeys('projects') : t('Drag the space to move it · wheel to come closer · click a project to look at it · drag it to turn it · carry one onto the Coordinator for the Coordinator to read it, or onto another to connect them · ← → from one to the next · Esc to come back'),
     bishop: t('Coordinator'),
     bishopAbout: t('Your Coordinator. It reads across your projects, signs the connections between them and carries an order from one to another.'),
     bishopReads: (n) => (n ? (n === 1 ? t('It reads 1 project by a connection') : t('It reads {n} projects by connections', { n })) : t('It reads no project yet: each one it reads is a connection you sign.')),
@@ -5268,7 +5269,7 @@ function openSettings(section = null) {
 }
 ui.gear.addEventListener('click', () => openSettings());
 // Turning MADRE off (public/power.js), last in the bar, after the settings.
-const powerButton = powerKey('sm-icon-key bar');
+const powerButton = powerKey('sm-icon-key bar', { restart: () => reloadWithGrace() });
 powerButton.id = 'sm-power';
 ui.gear.after(powerButton);
 
@@ -5409,7 +5410,8 @@ function buildHomeShell() {
   copy.rel = 'noopener';
   who.append(homeShell.version, copy);
   homeShell.settings = sideKey(ui.gear.innerHTML, t('Settings'), () => openSettings());
-  homeShell.power = sideKey(document.getElementById('sm-power')?.innerHTML ?? '', t('Turn MADRE off'), () => document.getElementById('sm-power')?.click());
+  homeShell.power = sideKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(homeShell.power, { restart: () => reloadWithGrace() }));
+  homeShell.power.setAttribute('aria-haspopup', 'menu');
   foot.append(who, homeShell.settings, homeShell.power);
   side.append(head, nav, scroll, foot);
   document.body.prepend(side);
@@ -5475,7 +5477,7 @@ function sayHomeShell() {
   homeShell.side.setAttribute('aria-label', t('Home'));
   const words = { add: t('Add a project'), home: t('Home'), coordinator: t('Coordinator'), market: t('Market') };
   for (const [key, row] of Object.entries(homeShell.rows)) row.querySelector('span').textContent = words[key];
-  for (const [key, label] of [[homeShell.add, t('Add a project')], [homeShell.hide, t('Hide the sidebar')], [homeShell.show, t('Show the sidebar')], [homeShell.settings, t('Settings')], [homeShell.power, t('Turn MADRE off')]]) { key.title = label; key.setAttribute('aria-label', label); }
+  for (const [key, label] of [[homeShell.add, t('Add a project')], [homeShell.hide, t('Hide the sidebar')], [homeShell.show, t('Show the sidebar')], [homeShell.settings, t('Settings')], [homeShell.power, t('Restart or turn off MADRE')]]) { key.title = label; key.setAttribute('aria-label', label); }
   homeShell.said = '';
   drawSideProjects();
 }

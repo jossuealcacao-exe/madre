@@ -15,18 +15,79 @@ const node = (tag, className, text) => {
   return made;
 };
 
-// The key itself, in the classes of the bar it sits in.
-export function powerKey(className) {
+export const RESTART_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.76-4.24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.1 3.6v3.6h-3.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// The key itself, in the classes of the bar it sits in. Since 2026-10-28 it holds restarting too: a
+// press opens two choices, restart and turn off, and the bar has no reload key of its own.
+// `restart` is the page's own way back in (app.js and salas-mac.js, reloadWithGrace).
+export function powerKey(className, { restart = null } = {}) {
   const key = node('button', `${className} power-key`);
   key.type = 'button';
   key.innerHTML = POWER_ICON; // trusted: our own SVG string
   labelPowerKey(key);
-  key.addEventListener('click', () => void askPowerOff());
+  key.setAttribute('aria-haspopup', 'menu');
+  key.addEventListener('click', () => openPowerMenu(key, { restart }));
   return key;
 }
 export function labelPowerKey(key) {
-  key.title = t('Turn MADRE off');
-  key.setAttribute('aria-label', t('Turn MADRE off'));
+  key.title = t('Restart or turn off MADRE');
+  key.setAttribute('aria-label', t('Restart or turn off MADRE'));
+}
+
+// The two choices, beside the key that opened them: above it when the key is low on the screen (the
+// sidebar's foot), under it when it is high (a bar). Escape, a press elsewhere or a choice closes them.
+let powerMenu = null;
+export function openPowerMenu(anchor, { restart = null } = {}) {
+  // A second press on the same key puts the choices away.
+  const was = powerMenu;
+  if (was) { was.close(); if (was.anchor === anchor) return; }
+  const card = node('div', 'power-menu');
+  card.setAttribute('role', 'menu');
+  card.setAttribute('aria-label', t('Restart or turn off MADRE'));
+  const close = () => {
+    card.remove();
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('keydown', keys, true);
+    anchor?.setAttribute?.('aria-expanded', 'false');
+    if (powerMenu?.card === card) powerMenu = null;
+  };
+  const item = (icon, words, about, run, danger = false) => {
+    const one = node('button', `power-item${danger ? ' danger' : ''}`);
+    one.type = 'button';
+    one.setAttribute('role', 'menuitem');
+    one.innerHTML = icon; // trusted: our own SVG strings
+    const said = node('span', 'power-words');
+    said.append(node('b', null, words), node('small', null, about));
+    one.append(said);
+    one.addEventListener('click', () => { close(); run(); });
+    return one;
+  };
+  const items = [
+    ...(restart ? [item(RESTART_ICON, t('Restart'), t('MADRE loads again on this page'), () => restart())] : []),
+    item(POWER_ICON, t('Turn off'), t('Home and every open project close'), () => void askPowerOff(), true),
+  ];
+  card.append(...items);
+  document.body.append(card);
+  const at = anchor.getBoundingClientRect();
+  const box = card.getBoundingClientRect();
+  const low = at.top > window.innerHeight / 2;
+  const top = low ? at.top - box.height - 6 : at.bottom + 6;
+  const left = Math.max(8, Math.min(window.innerWidth - box.width - 8, at.left + at.width / 2 > window.innerWidth / 2 ? at.right - box.width : at.left));
+  card.style.top = `${Math.round(Math.max(8, top))}px`;
+  card.style.left = `${Math.round(left)}px`;
+  const outside = (event) => { if (!card.contains(event.target) && !anchor.contains(event.target)) close(); };
+  const keys = (event) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); anchor.focus?.(); return; }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const at = items.indexOf(document.activeElement);
+    items[(at + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+  };
+  document.addEventListener('pointerdown', outside, true);
+  document.addEventListener('keydown', keys, true);
+  anchor.setAttribute?.('aria-expanded', 'true');
+  powerMenu = { card, anchor, close };
+  items[0]?.focus();
 }
 
 // How many projects are open besides this page, to say what closes.

@@ -485,7 +485,8 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   card.hidden = true;
   const hint = document.createElement('p');
   hint.className = 'mv-hint';
-  hint.textContent = words.hint;
+  // A line of words, or the keys to move round it (public/neural.js, mapKeys).
+  if (typeof Node === 'function' && words.hint instanceof Node) hint.append(words.hint); else hint.textContent = words.hint;
   layer.append(canvas, head, card, hint);
   host.append(layer);
 

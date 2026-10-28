@@ -1098,3 +1098,30 @@ test('the maps: name over its state, as a window too; the neurons living tissue 
   assert.match(home, /const framed = homeWindow\(\{ root: dialog, bar: head, close: \(\) => dialog\.close\(\), key: 'pulse\.homeSettingsWindow',/);
   assert.match(home, /if \(!dialog\.open\) \{ if \(framed\) \{ dialog\.show\(\); framed\.raise\(\); \} else dialog\.showModal\(\); \}/);
 });
+
+test('Local AI and connectors are MADRE\'s own; restart lives in the power key; the keys play; the maps say their keys for this system', async () => {
+  const { inMarket, IN_MADRE } = await import('../public/market.js');
+  for (const id of ['ollama', 'mcp']) { assert.ok(IN_MADRE.has(id)); assert.equal(inMarket({ id, kind: 'builtin' }), false, `${id} is still sold in the Market`); }
+  const power = await readFile(new URL('../public/power.js', import.meta.url), 'utf8');
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const homeCss = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const neural = await readFile(new URL('../public/neural.js', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  // Restart and turn off, two choices of one key; no reload key on either bar.
+  assert.match(power, /export function openPowerMenu\(anchor, \{ restart = null \} = \{\}\) \{/);
+  assert.match(power, /key\.addEventListener\('click', \(\) => openPowerMenu\(key, \{ restart \}\)\);/);
+  assert.match(app, /homePower = powerKey\('tree-button', \{ restart: \(\) => reloadWithGrace\(\) \}\);/);
+  assert.match(home, /const powerButton = powerKey\('sm-icon-key bar', \{ restart: \(\) => reloadWithGrace\(\) \}\);/);
+  assert.match(css, /html\.chat-shell #reload-button \{ display: none !important; \}/);
+  assert.match(homeCss, /html\.home-shell \.sm-top #sm-reload \{ display: none !important; \}/);
+  // Modules shakes; the Project map turns on its own axis.
+  assert.match(homeCss, /html\.home-shell #sm-macro:is\(:hover, :focus-visible\) svg \{ animation: sm-map-turn/);
+  assert.match(homeCss, /html\.home-shell #sm-tb-modules:is\(:hover, :focus-visible\) svg \{ animation: icon-shake/);
+  // The maps' keys, this computer's own.
+  assert.match(neural, /const shift = mac \? '⇧' : 'Shift';/);
+  assert.match(app, /if \(chatShellOn\(\)\) help\.replaceChildren\(mapKeys\('memory'\)\);/);
+  assert.match(home, /hint: homeShellOn\(\) \? mapKeys\('projects'\) :/);
+  assert.match(es, /'Restart or turn off MADRE': 'Reiniciar o apagar MADRE',/);
+});

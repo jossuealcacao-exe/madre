@@ -7,10 +7,10 @@ import { allConditions, detectPlatform, diagnose, findConditions, fixesFor, PLAT
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
 import { createEditor } from './editor.js';
-import { labelPowerKey, powerKey } from './power.js';
+import { POWER_ICON, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
-import { createStrain, inviteNeural, neuralChosen, neuralKey, paintNeuralKey, rememberNeural } from './neural.js';
+import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural } from './neural.js';
 import { resay } from './resay.js';
 import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
@@ -19664,7 +19664,9 @@ async function openNostromo() {
   // Its small print speaks in sentences, MOTHER's name kept.
   const help = nostromo.dialog?.querySelector('.nostromo-help');
   if (help && !help.dataset.said) {
-    help.textContent = askWords(help.textContent);
+    // How to move round it, as keys of this computer (public/neural.js, mapKeys); in the classic room,
+    // its line as it was.
+    if (chatShellOn()) help.replaceChildren(mapKeys('memory')); else help.textContent = askWords(help.textContent);
     help.dataset.said = '1';
     // The cards' own headings, once: their first words in sentences, the names kept.
     for (const heading of nostromo.dialog.querySelectorAll('.nostromo-card h6, .nostromo-card.asks .kind')) {
@@ -21830,7 +21832,7 @@ function homeBar() {
     if (key.parentNode !== home) home.append(key);
   }
   // Last, after the settings: turning MADRE off (public/power.js). On the Mac only.
-  if (!homePower) { homePower = powerKey('tree-button'); homePower.id = 'power-button'; }
+  if (!homePower) { homePower = powerKey('tree-button', { restart: () => reloadWithGrace() }); homePower.id = 'power-button'; }
   labelPowerKey(homePower);
   if (homePower.parentNode !== home || (home.lastElementChild && home.lastElementChild !== homePower)) home.append(homePower);
   home.hidden = false;
@@ -22124,7 +22126,7 @@ function chatShell() {
   who.append(copy);
   shellUI.foot.append(who,
     shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
-    shellKey(document.querySelector('#power-button')?.innerHTML ?? '', t('Turn MADRE off'), () => document.querySelector('#power-button')?.click()));
+    (() => { const off = shellKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(off, { restart: () => reloadWithGrace() })); off.setAttribute('aria-haspopup', 'menu'); return off; })());
 
   side.prepend(head, nav, scroll);
   side.append(shellUI.foot);

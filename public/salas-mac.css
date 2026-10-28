@@ -1788,3 +1788,13 @@ html.home-shell .mv.window {
 html.home-shell .mv.window .mv-head { cursor: grab; }
 html.home-shell .mv.window .mv-head :is(button, a) { cursor: pointer; }
 html.home-shell .mv.window > .win-edge.se::after { border-color: rgb(242 241 238 / .5); }
+
+/* Restarting lives in the power key now (public/power.js): no reload key on Home's bar. */
+html.home-shell .sm-top #sm-reload { display: none !important; }
+/* The keys play under the pointer (2026-10-28): the piece of Modules shakes as a project's does
+   (styles.css, icon-shake), and the Project map turns on its own axis while the pointer stays. */
+html.home-shell #sm-tb-modules:is(:hover, :focus-visible) svg { animation: icon-shake calc(340ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+html.home-shell #sm-macro svg { transform-origin: 50% 50%; }
+html.home-shell #sm-macro:is(:hover, :focus-visible) svg { animation: sm-map-turn calc(2400ms * var(--motion-scale, 1)) linear infinite; }
+@keyframes sm-map-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { html.home-shell :is(#sm-tb-modules, #sm-macro) svg { animation: none !important; } }
