@@ -590,8 +590,11 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const head = el('section', 'mk-head');
     head.append(el('h1', null, t('Modules')), el('p', null, t('What you have on or installed, and in which projects. A change here reaches each project with its next message.')));
     page.append(head);
-    const onNow = items.filter((item) => isOn(item));
-    const offNow = items.filter((item) => !isOn(item));
+    // Local AI and the connectors are MADRE's own, set in Settings (2026-10-28), as a project's
+    // Modules leaves them out (app.js, IN_SETTINGS): not a module to turn on here.
+    const offered = items.filter((item) => item.card !== 'settings' && item.id !== 'ollama');
+    const onNow = offered.filter((item) => isOn(item));
+    const offNow = offered.filter((item) => !isOn(item));
     if (onNow.length) {
       const group = el('section', 'mk-section');
       group.append(el('h2', null, t('What is on')));

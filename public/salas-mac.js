@@ -2831,10 +2831,45 @@ ui.macro.addEventListener('click', async () => {
       wake: async (room) => { await startRoom(room); },
       // Dragged from one universe onto another: the notes of the first would travel to the second.
       link: (source, reader) => openLinkSheet({ source: source?.id ?? null, reader: reader?.id ?? null }),
-      closed: () => { macro = null; document.body.classList.remove('sm-in-macro'); ui.macro.focus(); },
+      closed: () => { macroFrame?.drop(); macroFrame = null; macro = null; document.body.classList.remove('sm-in-macro'); ui.macro.focus(); },
     },
   });
+  frameMacro();
 });
+// THE PROJECT MAP AS A WINDOW (2026-10-28), as a project's Memory map can be one (app.js,
+// showNostromoDialog): the whole screen, or a window over Home from a key in its head, carried and
+// sized as Home's windows are (homeWindow). How it was left is how it opens the next time.
+const MACRO_WINDOW_KEY = 'pulse.homeMapWindow';
+let macroFrame = null;
+const macroFloats = () => { try { return localStorage.getItem(`${MACRO_WINDOW_KEY}.on`) === '1'; } catch { return false; } };
+function frameMacro() {
+  const layer = macro?.layer;
+  if (!layer || !homeShellOn()) return;
+  let key = layer.querySelector('.nostromo-float');
+  if (!key) {
+    key = button('mother-close nostromo-float', null, () => {
+      const on = !macroFrame;
+      try { localStorage.setItem(`${MACRO_WINDOW_KEY}.on`, on ? '1' : '0'); } catch { /* as long as the page lasts */ }
+      frameMacro();
+    });
+    key.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.25 12.25v-6.5a2.5 2.5 0 0 1 2.5-2.5h6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="6.25" y="6.25" width="10.5" height="10.5" rx="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'; // trusted: our own SVG
+    const track = layer.querySelector('.nostromo-actions > .surface-modes');
+    if (track) track.before(key); else layer.querySelector('.nostromo-actions')?.append(key);
+  }
+  const floating = macroFloats();
+  if (floating && !macroFrame) {
+    macroFrame = homeWindow({ root: layer, bar: layer.querySelector('.mv-head'), close: () => macro?.close(), key: MACRO_WINDOW_KEY, minW: 480, minH: 360, keys: false, size: { w: 980, h: 680 } });
+    document.body.classList.remove('sm-in-macro');
+  } else if (!floating && macroFrame) {
+    macroFrame.release();
+    macroFrame = null;
+    document.body.classList.add('sm-in-macro');
+  }
+  const said = macroFrame ? t('Fill the screen') : t('Open as a window');
+  key.setAttribute('aria-pressed', String(Boolean(macroFrame)));
+  key.title = said;
+  key.setAttribute('aria-label', said);
+}
 window.addEventListener('resize', () => { if (data) ui.macro.hidden = !data.rooms.length || window.innerWidth < 900; });
 
 ui.stop.addEventListener('click', async () => {
@@ -5080,6 +5115,20 @@ function openSettings(section = null) {
   win.append(head, body);
   dialog.append(win);
   document.body.append(dialog);
+  // A window of Home in the chat shell (2026-10-28), as a project's Settings is one: not modal,
+  // carried by its head, sized by its sides, its place kept (homeWindow). Its own × stays.
+  const framed = homeWindow({ root: dialog, bar: head, close: () => dialog.close(), key: 'pulse.homeSettingsWindow', minW: 560, minH: 420, keys: false, size: { w: 980, h: 700 } });
+  if (framed) {
+    dialog.classList.add('sm-settings-framed');
+    // Not modal, so Escape is asked here; it steps back the same way the modal sheet's does.
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      const ask = new Event('cancel', { cancelable: true });
+      dialog.dispatchEvent(ask);
+      if (!ask.defaultPrevented) dialog.close();
+    });
+  }
 
   const stop = () => { for (const one of state.stops.splice(0)) one(); };
   const card = (id) => {
@@ -5209,12 +5258,12 @@ function openSettings(section = null) {
   // say so, and Appearance is drawn again with it.
   const paintLooks = () => { sync({ detail: state.open === 'look' }); };
   const show = (wanted) => {
-    if (!dialog.open) dialog.showModal();
+    if (!dialog.open) { if (framed) { dialog.show(); framed.raise(); } else dialog.showModal(); }
     if (wanted && SET_FILL[wanted]) openCategory(wanted); else draw();
   };
   const close = () => dialog.close();
   settingsSheet = { show, paintLooks, sync, close };
-  dialog.addEventListener('close', () => { stop(); dialog.remove(); settingsSheet = null; });
+  dialog.addEventListener('close', () => { stop(); framed?.drop(); dialog.remove(); settingsSheet = null; });
   show(section);
 }
 ui.gear.addEventListener('click', () => openSettings());
@@ -5451,14 +5500,15 @@ function homeWindowBox(box, { minW, minH }) {
   const y = Math.round(Math.max(HOME_WINDOW_INSET, Math.min(window.innerHeight - 48, box.y)));
   return { x, y, w, h };
 }
-function homeWindow({ root, bar, close, key, minW = 360, minH = 360 }) {
+function homeWindow({ root, bar, close, key, minW = 360, minH = 360, keys = true, size = { w: 1040, h: 780 } }) {
   if (!homeShellOn()) return null;
+  let framed = true;
   root.classList.add('surface', 'window', 'home-window');
   let kept = null;
   try { kept = JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { /* no storage */ }
   const fresh = () => {
-    const w = Math.min(1040, window.innerWidth - 32);
-    const h = Math.min(780, window.innerHeight - 90);
+    const w = Math.min(size.w, window.innerWidth - 32);
+    const h = Math.min(size.h, window.innerHeight - 90);
     return { x: Math.max(16, Math.round((window.innerWidth - w) / 2)), y: 56, w, h };
   };
   let want = kept?.w && kept?.h ? kept : fresh();
@@ -5479,10 +5529,10 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360 }) {
   shut.setAttribute('aria-label', t('Close'));
   shut.innerHTML = '<span class="x-icon"><svg viewBox="0 0 20 20" focusable="false" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'; // trusted: our own SVG
   group.append(shut);
-  bar.append(group);
+  if (keys) bar.append(group);
   // Carried by its bar, wherever the bar is not a key, a field or a tab.
   const hold = (handle, change, skip = () => false) => handle.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || skip(event)) return;
+    if (event.button !== 0 || !framed || skip(event)) return;
     event.preventDefault();
     event.stopPropagation();
     homeWindowForward(root);
@@ -5517,8 +5567,8 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360 }) {
       return next;
     });
   }
-  root.addEventListener('pointerdown', () => homeWindowForward(root), true);
-  const refit = () => { if (root.isConnected) place(want); };
+  root.addEventListener('pointerdown', () => { if (framed) homeWindowForward(root); }, true);
+  const refit = () => { if (root.isConnected && framed) place(want); };
   window.addEventListener('resize', refit);
   homeWindowForward(root);
   return {
@@ -5528,6 +5578,17 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360 }) {
       const at = homeWindows.indexOf(root);
       if (at >= 0) homeWindows.splice(at, 1);
       homeWindows.at(-1)?.classList.add('front');
+    },
+    // Back to the whole screen: the same node, its place and its sides put away.
+    release: () => {
+      framed = false;
+      window.removeEventListener('resize', refit);
+      const at = homeWindows.indexOf(root);
+      if (at >= 0) homeWindows.splice(at, 1);
+      for (const side of ['left', 'top', 'width', 'height', 'z-index']) root.style.removeProperty(side);
+      root.classList.remove('surface', 'window', 'home-window', 'front');
+      for (const edge of root.querySelectorAll(':scope > .win-edge')) edge.remove();
+      group.remove();
     },
   };
 }

@@ -137,7 +137,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
       arc: (...args) => own.push({ name: 'arc', args }), fill: () => own.push({ name: 'fill', args: [] }),
       moveTo: () => {}, lineTo: () => {}, stroke: () => {}, save: () => {}, restore: () => {},
       ellipse: () => {}, clip: () => {}, quadraticCurveTo: () => {}, scale: () => {},
-      clearRect: () => {}, setTransform: () => {}, getTransform: () => ({}), drawImage: () => {},
+      clearRect: () => {}, setTransform: () => {}, getTransform: () => ({}), drawImage: () => {}, rect: () => {},
     }, { get: (target, key) => (key === 'canvas' ? canvas : key in target ? target[key] : undefined), set: () => true });
     canvas = { width: 0, height: 0, getContext: () => paint, calls: own };
     offscreen.push(canvas);
@@ -157,7 +157,7 @@ async function nostromoRenderer(room, { conic = false, noCanvas = false } = {}) 
     ${fn('heartbeat')} ${fn('hexAlpha')} ${fn('hexMix')} ${fn('alongCurve')} ${fn('toScreen')} ${fn('currentAlong')}
     ${fn('drawCage')} ${fn('drawHoverLabel')} ${fn('fadeOver')}
     ${block('NEURAL_AXON')} ${block('NEURAL_IGNITION')} ${block('NEURAL_CROSSFADE')} ${block('NEURON_GLOWS')} ${fn('neuronGlow')}
-    ${block('NEURON_SPRITES')} ${block('NEURON_SPRITE')} ${block('NEURON_SHAPES')} ${block('NEURON_LIGHT')} ${block('NEURON_SPARK')} ${fn('neuronSkeleton')} ${fn('somaPath')} let neuronLayer = null; ${fn('tubePass')} ${fn('drawLivingNeuron')} ${fn('drawDeadNeuron')} ${fn('neuronSprite')} ${fn('fibreBundle')} ${fn('gooTube')} ${block('NEURAL_COLORS')} ${block('neuralTone')}
+    ${block('NEURON_SPRITES')} ${block('NEURON_SPRITE')} ${block('NEURON_SHAPES')} ${block('NEURON_LIGHT')} ${block('NEURON_SPARK')} ${fn('neuronSkeleton')} ${fn('somaPath')} let neuronLayer = null; ${fn('tubePass')} ${block('cellGrain')} ${fn('drawLivingNeuron')} ${fn('drawDeadNeuron')} ${block('neuronShape')} ${block('neuronSkeletonOf')} ${block('NEURON_LIVES')} ${block('neuronLife')} ${fn('neuronSprite')} ${block('NEURON_RIGS')} ${block('RIG_SCALE')} ${fn('neuronRig')} ${fn('rigSway')} ${fn('drawNeuronRig')} ${fn('fibreBundle')} ${fn('gooTube')} ${block('NEURAL_COLORS')} ${block('neuralTone')}
     ${block('BULB_TONES')} ${block('BULB')} ${block('SPARK_SLOTS')} ${block('sparkNoise')} ${fn('bulbSparks')} ${fn('drawNeuralBulb')} ${fn('neuralGround')} ${block('UNDERWAY')} ${block('travels')} ${block('FOCUS_VEIL')}
     ${fn('drawNeural')} ${fn('setNeural')}
     ${fn('drawNostromo')}

@@ -1583,6 +1583,9 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   // the new size, the sprites only if the density changed.
   const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { size(); layout(rooms); redraw(); }, 150); };
   window.addEventListener('resize', onResize);
+  // As a window (salas-mac.js, homeWindow) it is sized by its own sides, not the browser's.
+  const sized = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { if (view.w && Math.abs(layer.getBoundingClientRect().width - view.w) + Math.abs(layer.getBoundingClientRect().height - view.h) > 1) onResize(); }) : null;
+  sized?.observe(layer);
   const onVisible = () => { if (!document.hidden && !raf && !reduced) { last = performance.now(); if (live) live.last = last; raf = requestAnimationFrame(frame); } else if (document.hidden && raf) { cancelAnimationFrame(raf); raf = 0; } };
   document.addEventListener('visibilitychange', onVisible);
 
@@ -1593,6 +1596,7 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     live = null;
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('resize', onResize);
+    sized?.disconnect();
     document.removeEventListener('visibilitychange', onVisible);
     layer.classList.add('leaving');
     setTimeout(() => layer.remove(), reduced ? 0 : 260);
@@ -1612,5 +1616,6 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
   return {
     update(next, nextEnlaces = enlaces) { rooms = next; enlaces = nextEnlaces; layout(next); redraw(); },
     close,
+    layer,
   };
 }

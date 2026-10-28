@@ -4461,6 +4461,7 @@ export const ES = {
   'Remove from the sidebar': 'Quitar de la barra lateral',
   'Keep in the sidebar': 'Dejar en la barra lateral',
   'Sidebar': 'Barra lateral',
+  'Fill the screen': 'Ocupar toda la pantalla',
   'No project in the sidebar yet': 'Todavía no hay proyectos en la barra lateral',
   'How Home looks and what its sidebar holds': 'Cómo se ve Inicio y qué tiene su barra lateral',
   'The projects you keep at hand in the sidebar, in the order you choose. A project comes to it from its card: right-click it, or drag it onto the list.': 'Los proyectos que tienes a la mano en la barra lateral, en el orden que elijas. Un proyecto llega desde su tarjeta: haz clic derecho, o arrástrala a la lista.',

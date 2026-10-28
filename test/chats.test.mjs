@@ -950,10 +950,10 @@ test('chat shell: Diagnostics in two rows of filters, the memory map head in the
 
 test('neural mode: memories are neurons, links are tracts, and the core is never quiet', async () => {
   const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
-  assert.match(engine, /export function neuronSprite\(hex, variant = 0, state = 'alive'\) \{/);
+  assert.match(engine, /export function neuronSprite\(hex, variant = 0, state = 'alive', life = state === 'spent' \? 0 : 1\) \{/);
   assert.match(engine, /export function fibreBundle\(ctx, x0, y0, cx, cy, x1, y1, \{ strands = 3, spread = 3, seed = 0 \} = \{\}\) \{/);
   assert.match(engine, /function bulbSparks\(t, count = SPARK_SLOTS\) \{/);
-  assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, shape\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
+  assert.match(engine, /else ctx\.drawImage\(neuronSprite\(colour, shape, 'alive', baked\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
   assert.match(engine, /fibreBundle\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ strands: 2,/);
   assert.match(engine, /for \(const spark of bulbSparks\(t\)\) \{/);
 });
@@ -968,7 +968,7 @@ test('chat shell: «What is sent» without the console nor the hint, its reasons
   assert.doesNotMatch(app, /dataset\.about/);
   assert.match(app, /head\.append\(el\('span', 'when', part\.when === 'always' \? \(chatShellOn\(\) \? t\('always'\) : t\('ALWAYS'\)\) : t\(part\.when\)\)\);/);
   assert.match(es, /'the room has a memory': 'el proyecto tiene memoria',/);
-  assert.match(engine, /export const NEURAL_COLORS = \{ decision: '#ff9a2e', fact: '#7cc4ff',/);
+  assert.match(engine, /export const NEURAL_COLORS = \{ decision: '#f0b47c', fact: '#9fd2ea',/);
   assert.match(engine, /export function neuronChip\(hex, size = 16, state = 'alive'\) \{/);
   assert.match(art, /const FLAT = 'var\(--mk-flat, var\(--mk-b, #334155\)\)';/);
   assert.match(art, /<rect x="210" y="130" width="140" height="140" rx="33" style="fill:\$\{FLAT\}"\/>/);
@@ -979,12 +979,12 @@ test('neural mode: a real neuron — body, branching dendrites, a sheathed axon 
   const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
   const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
   assert.match(engine, /export function neuronSkeleton\(rnd, c, r, reach, \{ depth = 3, thin = 0\.4, trunks = 4 \+ Math\.floor\(rnd\(\) \* 3\) \} = \{\}\) \{/);
-  assert.match(engine, /export function drawLivingNeuron\(paint, sk, hex, life = 1\) \{/);
+  assert.match(engine, /export function drawLivingNeuron\(paint, sk, hex, life = 1, \{ body = true, fibres = true \} = \{\}\) \{/);
   assert.match(engine, /export function drawDeadNeuron\(paint, sk, hex, rnd, \{ step = 3\.2, dot = 1 \} = \{\}\) \{/);
   assert.match(engine, /sheath: step > 0 && step < steps - 1, z: 1/);
   assert.match(engine, /ctx\.drawImage\(neuronSprite\(neuralTone\(node\), shape, 'dead'\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
   assert.match(engine, /const life = cold \? 0\.08 \+ 0\.22 \* activity : 0\.3 \+ 0\.7 \* activity;/);
-  assert.match(engine, /ctx\.drawImage\(neuronSprite\(colour, shape, 'spent'\), node\.x - side \/ 2, node\.y - side \/ 2, side, side\);/);
+  assert.match(engine, /const baked = neuronLife\(life\);/);
   // The cells are not turned: their light comes from one side.
   assert.doesNotMatch(engine, /ctx\.rotate\(node\.seed \+/);
   assert.match(app, /const mark = nostromo\.neural \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\) : kind === COLLAPSED \? collapsedChip\(hex, 14\) : dwarfChip\(hex, 14\);/);
@@ -998,7 +998,7 @@ test('neural mode: smaller viscous neurons, quiet light, and a body you can turn
   // Smaller, and sized in the world: nearer is larger.
   assert.match(engine, /const soma = \(4\.5 \+ 3\.5 \* activity\) \* persp \* farSize/);
   // Viscous: forks pool, fibres bead, each pass one seamless piece; synapses are tissue.
-  assert.match(engine, /knots\.push\(\{ x, y, w: w \* 1\.5, z \}\);/);
+  assert.match(engine, /knots\.push\(\{ x, y, w: w \* 1\.5, z, part \}\);/);
   assert.match(engine, /paint\.drawImage\(neuronLayer, 0, 0\);/);
   assert.match(engine, /export function gooTube\(ctx, x0, y0, cx, cy, x1, y1,/);
   assert.match(engine, /gooTube\(ctx, a\.x, a\.y, link\.cx, link\.cy, b\.x, b\.y, \{ w: 2\.6 \* persp \* farSize,/);
@@ -1067,4 +1067,34 @@ test('Home: the sidebar in Settings, the bar by families, the Market and Modules
   assert.match(macro, /chip\.append\(asNeurons \? neuronChip\(NEURAL_COLORS\[kind\] \?\? hex, 16, kind === COLLAPSED \? 'dead' : 'alive'\)/);
   assert.match(macro, /paintNeuralKey\(neuralButton, on\);\n    paintLegend\(on\);/);
   assert.match(home, /KIND_WORDS\[kind\] = t\(kind === 'aberration' \? 'DOUBTFUL MEMORY' : kind\.toUpperCase\(\)\);/);
+});
+
+test('the maps: name over its state, as a window too; the neurons living tissue that sways; Home\'s Modules and Settings as a project\'s', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const engine = await readFile(new URL('../public/nostromo-engine.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const homeCss = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const market = await readFile(new URL('../public/market-view.js', import.meta.url), 'utf8');
+  // The name on its line, its state under it, the keys at the right of both.
+  assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-head \{ grid-template-columns: minmax\(0, 1fr\) auto; grid-template-areas: "title actions" "sub actions" "legend legend";/);
+  // The Memory map as a window, in a project and (the Project map) in Home.
+  assert.match(app, /function showNostromoDialog\(\) \{/);
+  assert.match(app, /carryWindowBy\(head, nostromo\.dialog, \{ active: nostromoFramed,/);
+  assert.match(app, /windowEdgesFor\(nostromo\.dialog, \{ active: nostromoFramed,/);
+  assert.match(css, /html\.chat-shell dialog#nostromo\.window \.nostromo-frame \{ height: 100%; grid-template-rows: auto minmax\(0, 1fr\); \}/);
+  assert.match(home, /macroFrame = homeWindow\(\{ root: layer, bar: layer\.querySelector\('\.mv-head'\),/);
+  // The neurons: a rig whose pieces sway on their roots, a biological palette, texture.
+  assert.match(engine, /export function neuronRig\(hex, variant = 0, life = 1\) \{/);
+  assert.match(engine, /function rigSway\(t, seed, index, kind\) \{/);
+  assert.match(engine, /if \(!nostromo\.reduced && side \* cam\.scale > 44\) drawNeuronRig\(ctx, neuronRig\(colour, shape, baked\), node\.x, node\.y, side, t, node\.seed\);/);
+  assert.match(engine, /\/\/ Spines along the thin dendrites/);
+  assert.match(engine, /\/\/ Its grain: dark granules and pale ones/);
+  // Home: no way back to one project on the bar; Modules in the accent, without Settings' own.
+  assert.match(homeCss, /html\.home-shell \.sm-top #sm-back-room \{ display: none !important; \}/);
+  assert.match(homeCss, /html\.home-shell \.mk\.flat \.mk-mine \.mk-icon \{ background: color-mix\(in srgb, var\(--phosphor\) 16%, transparent\) !important;/);
+  assert.match(market, /const offered = items\.filter\(\(item\) => item\.card !== 'settings' && item\.id !== 'ollama'\);/);
+  // Home's Settings a window, not a sheet over the page.
+  assert.match(home, /const framed = homeWindow\(\{ root: dialog, bar: head, close: \(\) => dialog\.close\(\), key: 'pulse\.homeSettingsWindow',/);
+  assert.match(home, /if \(!dialog\.open\) \{ if \(framed\) \{ dialog\.show\(\); framed\.raise\(\); \} else dialog\.showModal\(\); \}/);
 });

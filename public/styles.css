@@ -11919,6 +11919,12 @@ html.chat-shell :is(#nostromo, .mv) .nostromo-head { padding: 10px 12px 10px 18p
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title { font: 600 14px var(--read); letter-spacing: -.005em; text-transform: lowercase; color: #f2f1ee; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title::first-letter { text-transform: uppercase; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-sub { font: 400 12.5px var(--read); color: rgb(242 241 238 / .5); }
+/* The name on its line and how the memory stands under it (2026-10-28), the keys at the right of
+   both, the legend under all of it — the head of a window, not a row of words. */
+html.chat-shell :is(#nostromo, .mv) .nostromo-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title actions" "sub actions" "legend legend"; row-gap: 2px; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title { align-self: end; line-height: 1.25; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-sub { align-self: start; line-height: 1.35; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .nostromo-legend { margin-top: 8px; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-legend { gap: 12px; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-legend .k i { font: 400 12px var(--read); font-style: normal; letter-spacing: 0; color: rgb(242 241 238 / .62); }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions { gap: 2px; }
@@ -12012,3 +12018,20 @@ html.chat-shell #core .core-asking textarea::placeholder { color: var(--text-3);
 html.chat-shell #core .core-asking .note { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 /* The pictures' quiet strokes and dots are drawn in the ink of the page (market-art.js, currentColor). */
 .mk.flat :is(.mk-slide-art, .mk-shot) { color: var(--text); }
+
+/* ---- The memory map as a window (2026-10-28, app.js, showNostromoDialog): the night of the map in
+   a sheet of the room's — 14 px corners, a hairline, the shadow —, carried by its head, sized by its
+   sides and corners. ---- */
+html.chat-shell dialog#nostromo.window {
+  position: fixed; inset: auto; margin: 0; max-width: none; max-height: none; overflow: hidden;
+  border-radius: 14px; background: #030203 !important;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / .1), 0 24px 60px -18px rgb(0 0 0 / .6), 0 6px 18px -8px rgb(0 0 0 / .3) !important;
+}
+/* Its canvas takes what the window leaves under the head, not the size it was drawn at last. */
+html.chat-shell dialog#nostromo.window .nostromo-frame { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+html.chat-shell dialog#nostromo.window .nostromo-canvas { min-height: 0; height: 100%; }
+html.chat-shell dialog#nostromo.window .nostromo-head { cursor: grab; }
+html.chat-shell dialog#nostromo.window .nostromo-head :is(button, a, input) { cursor: pointer; }
+html.chat-shell dialog#nostromo.window > .win-edge.se::after { border-color: rgb(242 241 238 / .5); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .nostromo-float svg { width: 15px; height: 15px; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .nostromo-float { width: 28px; padding: 0 !important; display: inline-grid; place-items: center; }

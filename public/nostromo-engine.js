@@ -953,10 +953,14 @@ export function neuronSkeleton(rnd, c, r, reach, { depth = 3, thin = 0.4, trunks
   const segs = [];
   const tips = [];
   const knots = [];
+  // The rig (2026-10-28): each trunk is a piece, and each branch that leaves a trunk is a piece hung
+  // from it, so the drawing can sway them on their roots (neuronRig, drawNeuronRig). `part` says
+  // which piece a fibre, a fork or a tip belongs to; the shapes are the same as without it.
+  const parts = [];
   const axon = rnd() * Math.PI * 2;
   // `z` is how near the branch stands: one further back is thinner and fainter, which is most of
   // what makes the cell read as a body in space rather than a drawing on the page.
-  const grow = (x, y, a, w, length, level, z = 1) => {
+  const grow = (x, y, a, w, length, level, z = 1, part = -1, rig = 0) => {
     const steps = 8;
     const bend = (rnd() - 0.5) * 0.2;
     for (let step = 0; step < steps; step += 1) {
@@ -965,37 +969,44 @@ export function neuronSkeleton(rnd, c, r, reach, { depth = 3, thin = 0.4, trunks
       const w1 = Math.max(thin, w * (1 - 0.4 * ((step + 1) / steps)));
       // Now and then the fibre swells a little, the beads a living dendrite carries.
       const bead = step > 1 && step < steps - 1 && rnd() < 0.09;
-      segs.push({ x0: x, y0: y, x1: nx, y1: ny, w0: Math.max(thin, w * (1 - 0.4 * (step / steps))), w1, sheath: false, z, bead });
+      segs.push({ x0: x, y0: y, x1: nx, y1: ny, w0: Math.max(thin, w * (1 - 0.4 * (step / steps))), w1, sheath: false, z, bead, part });
       x = nx; y = ny;
     }
     w = Math.max(thin, w * 0.6);
-    if (level <= 0 || w <= thin) { tips.push({ x, y, spark: rnd() < 0.3, z }); return; }
+    if (level <= 0 || w <= thin) { tips.push({ x, y, spark: rnd() < 0.3, z, part }); return; }
     // Where it forks the fibre pools a little, as a fluid does at a joint: the web between branches.
-    knots.push({ x, y, w: w * 1.5, z });
+    knots.push({ x, y, w: w * 1.5, z, part });
     const kids = rnd() < 0.3 ? 3 : 2;
-    for (let k = 0; k < kids; k += 1) grow(x, y, a + (k - (kids - 1) / 2) * (0.5 + rnd() * 0.45), w, length * (0.62 + rnd() * 0.2), level - 1, Math.max(0.45, z - rnd() * 0.18));
+    for (let k = 0; k < kids; k += 1) {
+      // A branch leaving a trunk is a piece of its own, hung where it leaves.
+      const own = rig === 0 && part >= 0 ? parts.push({ x, y, parent: part, kind: 'branch' }) - 1 : part;
+      grow(x, y, a + (k - (kids - 1) / 2) * (0.5 + rnd() * 0.45), w, length * (0.62 + rnd() * 0.2), level - 1, Math.max(0.45, z - rnd() * 0.18), own, rig + 1);
+    }
   };
   const roots = [];
   for (let i = 0; i < trunks; i += 1) {
     const a = axon + 0.7 + ((i + 0.2 + rnd() * 0.6) / trunks) * (Math.PI * 2 - 1.4);
     roots.push(a);
     const z = 0.6 + rnd() * 0.4;
-    grow(c + Math.cos(a) * r * 0.5, c + Math.sin(a) * r * 0.5, a, r * (0.32 + 0.22 * z), reach * (0.26 + rnd() * 0.1), depth, z);
+    const x0 = c + Math.cos(a) * r * 0.5, y0 = c + Math.sin(a) * r * 0.5;
+    const trunk = parts.push({ x: x0, y: y0, parent: -1, kind: 'trunk' }) - 1;
+    grow(x0, y0, a, r * (0.32 + 0.22 * z), reach * (0.26 + rnd() * 0.1), depth, z, trunk, 0);
   }
   // The axon: long, nearly straight, sheathed, then a few short terminals.
   let x = c + Math.cos(axon) * r * 0.6, y = c + Math.sin(axon) * r * 0.6, a = axon;
+  const axonPart = parts.push({ x, y, parent: -1, kind: 'axon' }) - 1;
   const steps = 12;
   const length = reach * 0.78;
   for (let step = 0; step < steps; step += 1) {
     a += (rnd() - 0.5) * 0.14;
     const nx = x + Math.cos(a) * (length / steps), ny = y + Math.sin(a) * (length / steps);
     const w0 = step === 0 ? r * 0.42 : r * 0.24, w1 = r * 0.24;
-    segs.push({ x0: x, y0: y, x1: nx, y1: ny, w0, w1, sheath: step > 0 && step < steps - 1, z: 1 });
+    segs.push({ x0: x, y0: y, x1: nx, y1: ny, w0, w1, sheath: step > 0 && step < steps - 1, z: 1, part: axonPart });
     x = nx; y = ny;
   }
-  for (let k = 0; k < 3; k += 1) grow(x, y, a + (k - 1) * 0.6, r * 0.12, reach * 0.14, 0);
+  for (let k = 0; k < 3; k += 1) grow(x, y, a + (k - 1) * 0.6, r * 0.12, reach * 0.14, 0, 1, axonPart, 2);
   roots.push(axon);
-  return { c, r, segs, tips, knots, roots, axon };
+  return { c, r, segs, tips, knots, roots, axon, parts };
 }
 // The cell body's outline: round, swelling where its trunks leave and toward its axon.
 function somaPath(paint, sk, scale = 1) {
@@ -1053,8 +1064,12 @@ function tubePass(paint, sk, colour, alpha, widen, toward = 0, add = 0) {
   paint.restore();
 }
 // A living neuron. `life` runs from a cell going out (grey, no glow, no sparks) to one the room
-// leans on (its colour, its halo, its sparks).
-export function drawLivingNeuron(paint, sk, hex, life = 1) {
+// leans on (its colour, its halo, its sparks). Its body and its fibres can be drawn apart (`body`,
+// `fibres`), so the rig lays each piece on a sheet of its own (neuronRig).
+// Its texture, after the photographs (2026-10-28): a membrane you half see through, spines along
+// the thin dendrites, vesicles caught in the light, and the body grained with what fills it.
+const cellGrain = (x, y, k = 0) => (((Math.sin(x * 12.9898 + y * 78.233 + k * 37.719) * 43758.5453) % 1) + 1) % 1;
+export function drawLivingNeuron(paint, sk, hex, life = 1, { body = true, fibres = true } = {}) {
   const tone = hexMix(hex, '#3b4250', (1 - life) * 0.72);
   const pale = hexMix(tone, '#ffffff', 0.55);
   const deep = hexMix(tone, '#050a14', 0.62);
@@ -1062,61 +1077,105 @@ export function drawLivingNeuron(paint, sk, hex, life = 1) {
   paint.lineJoin = 'round';
   paint.globalCompositeOperation = 'lighter';
   // A faint haze round the fibres and the body, no more: the cell is the subject, not its light.
-  tubePass(paint, sk, tone, 0.03 * life, 2.6, 0, 1);
-  const halo = paint.createRadialGradient(sk.c, sk.c, sk.r * 0.8, sk.c, sk.c, sk.r * 2.6);
-  halo.addColorStop(0, hexAlpha(tone, 0.12 * life)); halo.addColorStop(1, hexAlpha(tone, 0));
-  paint.fillStyle = halo;
-  paint.beginPath(); paint.arc(sk.c, sk.c, sk.r * 2.6, 0, Math.PI * 2); paint.fill();
-  paint.globalCompositeOperation = 'source-over';
-  // Viscous, not wired: a soft edge, a body of colour you can half see through, a wet highlight
-  // along the side the light comes from, and light carried inside it.
-  tubePass(paint, sk, deep, 0.55, 1.15);
-  tubePass(paint, sk, tone, 0.72, 0.82, -0.06);
-  paint.globalCompositeOperation = 'lighter';
-  tubePass(paint, sk, pale, 0.12 + 0.1 * life, 0.5, 0);
-  paint.globalCompositeOperation = 'source-over';
-  tubePass(paint, sk, pale, 0.45 + 0.25 * life, 0.26, 0.24);
-  // The sheath's beads: a pale ring between each, the way the photographs show the axon in segments.
-  paint.strokeStyle = hexAlpha(deep, 0.85);
-  for (const seg of sk.segs) if (seg.sheath) {
-    const dx = seg.x1 - seg.x0, dy = seg.y1 - seg.y0;
-    const d = Math.hypot(dx, dy) || 1;
-    const w = seg.w0 * 1.25;
-    paint.lineWidth = Math.max(0.4, w * 0.16);
-    paint.beginPath(); paint.moveTo(seg.x1 + (dy / d) * w * 0.55, seg.y1 - (dx / d) * w * 0.55); paint.lineTo(seg.x1 - (dy / d) * w * 0.55, seg.y1 + (dx / d) * w * 0.55); paint.stroke();
+  if (fibres) tubePass(paint, sk, tone, 0.03 * life, 2.6, 0, 1);
+  if (body) {
+    const halo = paint.createRadialGradient(sk.c, sk.c, sk.r * 0.8, sk.c, sk.c, sk.r * 2.6);
+    halo.addColorStop(0, hexAlpha(tone, 0.12 * life)); halo.addColorStop(1, hexAlpha(tone, 0));
+    paint.fillStyle = halo;
+    paint.beginPath(); paint.arc(sk.c, sk.c, sk.r * 2.6, 0, Math.PI * 2); paint.fill();
   }
-  // The body: light at its upper left, its colour, dark toward its far edge, and a rim the light
-  // behind it catches; the nucleus shows through.
+  paint.globalCompositeOperation = 'source-over';
+  if (fibres) {
+    // Viscous, not wired: a soft edge, a body of colour you can half see through, a wet highlight
+    // along the side the light comes from, and light carried inside it.
+    tubePass(paint, sk, deep, 0.55, 1.15);
+    tubePass(paint, sk, tone, 0.72, 0.82, -0.06);
+    paint.globalCompositeOperation = 'lighter';
+    tubePass(paint, sk, pale, 0.12 + 0.1 * life, 0.5, 0);
+    paint.globalCompositeOperation = 'source-over';
+    tubePass(paint, sk, pale, 0.45 + 0.25 * life, 0.26, 0.24);
+    // The sheath's beads: a pale ring between each, the way the photographs show the axon in segments.
+    paint.strokeStyle = hexAlpha(deep, 0.85);
+    for (const seg of sk.segs) if (seg.sheath) {
+      const dx = seg.x1 - seg.x0, dy = seg.y1 - seg.y0;
+      const d = Math.hypot(dx, dy) || 1;
+      const w = seg.w0 * 1.25;
+      paint.lineWidth = Math.max(0.4, w * 0.16);
+      paint.beginPath(); paint.moveTo(seg.x1 + (dy / d) * w * 0.55, seg.y1 - (dx / d) * w * 0.55); paint.lineTo(seg.x1 - (dy / d) * w * 0.55, seg.y1 + (dx / d) * w * 0.55); paint.stroke();
+    }
+    // Spines along the thin dendrites: short stalks with a head, where the synapses land.
+    for (const seg of sk.segs) {
+      if (seg.sheath || seg.w0 > sk.r * 0.24 || cellGrain(seg.x0, seg.y0, 1) > 0.42) continue;
+      const dx = seg.x1 - seg.x0, dy = seg.y1 - seg.y0;
+      const d = Math.hypot(dx, dy) || 1;
+      const side = cellGrain(seg.x0, seg.y0, 2) < 0.5 ? 1 : -1;
+      const u = 0.3 + 0.4 * cellGrain(seg.x0, seg.y0, 3);
+      const w = Math.max(0.35, (seg.w0 + seg.w1) / 2);
+      const mx = seg.x0 + dx * u, my = seg.y0 + dy * u;
+      const len = w * 1.4 + sk.r * 0.08;
+      const ex = mx + (-dy / d) * side * len, ey = my + (dx / d) * side * len;
+      paint.globalAlpha = (seg.z ?? 1) ** 1.5;
+      paint.strokeStyle = hexAlpha(tone, 0.8);
+      paint.lineWidth = Math.max(0.3, w * 0.4);
+      paint.beginPath(); paint.moveTo(mx, my); paint.lineTo(ex, ey); paint.stroke();
+      paint.fillStyle = hexAlpha(hexMix(tone, '#ffffff', 0.3), 0.85);
+      paint.beginPath(); paint.arc(ex, ey, Math.max(0.35, w * 0.55), 0, Math.PI * 2); paint.fill();
+    }
+    paint.globalAlpha = 1;
+    // Vesicles caught in the light, a few along each fibre.
+    paint.globalCompositeOperation = 'lighter';
+    for (const seg of sk.segs) {
+      if (cellGrain(seg.x1, seg.y1, 4) > 0.3) continue;
+      const u = cellGrain(seg.x1, seg.y1, 5);
+      const w = (seg.w0 + seg.w1) / 2;
+      paint.fillStyle = hexAlpha(pale, (0.25 + 0.3 * life) * ((seg.z ?? 1) ** 1.5));
+      paint.beginPath(); paint.arc(seg.x0 + (seg.x1 - seg.x0) * u, seg.y0 + (seg.y1 - seg.y0) * u, Math.max(0.3, w * 0.22), 0, Math.PI * 2); paint.fill();
+    }
+    paint.globalCompositeOperation = 'source-over';
+  }
   const { c, r } = sk;
   const lx = c + NEURON_LIGHT.x * r * 0.42, ly = c + NEURON_LIGHT.y * r * 0.42;
-  const body = paint.createRadialGradient(lx, ly, 0, c, c, r * 1.55);
-  body.addColorStop(0, hexAlpha(hexMix(tone, '#ffffff', 0.7), 0.95));
-  body.addColorStop(0.3, hexAlpha(hexMix(tone, '#ffffff', 0.2), 0.88));
-  body.addColorStop(0.7, hexAlpha(tone, 0.8));
-  body.addColorStop(1, hexAlpha(deep, 0.85));
-  paint.fillStyle = body;
-  somaPath(paint, sk); paint.fill();
-  paint.save();
-  somaPath(paint, sk); paint.clip();
-  const nucleus = paint.createRadialGradient(c + r * 0.12, c + r * 0.1, 0, c + r * 0.12, c + r * 0.1, r * 0.46);
-  nucleus.addColorStop(0, hexAlpha(deep, 0.42)); nucleus.addColorStop(0.75, hexAlpha(deep, 0.22)); nucleus.addColorStop(1, hexAlpha(deep, 0));
-  paint.fillStyle = nucleus;
-  paint.beginPath(); paint.arc(c + r * 0.12, c + r * 0.1, r * 0.46, 0, Math.PI * 2); paint.fill();
-  paint.fillStyle = hexAlpha(pale, 0.5 * life);
-  paint.beginPath(); paint.arc(c + r * 0.2, c + r * 0.16, r * 0.1, 0, Math.PI * 2); paint.fill();
+  if (body) {
+    // The body: light at its upper left, its colour, dark toward its far edge, and a rim the light
+    // behind it catches; the nucleus shows through, and what fills it gives it grain.
+    const fill = paint.createRadialGradient(lx, ly, 0, c, c, r * 1.55);
+    fill.addColorStop(0, hexAlpha(hexMix(tone, '#ffffff', 0.7), 0.95));
+    fill.addColorStop(0.3, hexAlpha(hexMix(tone, '#ffffff', 0.2), 0.88));
+    fill.addColorStop(0.7, hexAlpha(tone, 0.8));
+    fill.addColorStop(1, hexAlpha(deep, 0.85));
+    paint.fillStyle = fill;
+    somaPath(paint, sk); paint.fill();
+    paint.save();
+    somaPath(paint, sk); paint.clip();
+    const nucleus = paint.createRadialGradient(c + r * 0.12, c + r * 0.1, 0, c + r * 0.12, c + r * 0.1, r * 0.46);
+    nucleus.addColorStop(0, hexAlpha(deep, 0.42)); nucleus.addColorStop(0.75, hexAlpha(deep, 0.22)); nucleus.addColorStop(1, hexAlpha(deep, 0));
+    paint.fillStyle = nucleus;
+    paint.beginPath(); paint.arc(c + r * 0.12, c + r * 0.1, r * 0.46, 0, Math.PI * 2); paint.fill();
+    paint.fillStyle = hexAlpha(pale, 0.5 * life);
+    paint.beginPath(); paint.arc(c + r * 0.2, c + r * 0.16, r * 0.1, 0, Math.PI * 2); paint.fill();
+    // Its grain: dark granules and pale ones, scattered through it.
+    for (let i = 0; i < 64; i += 1) {
+      const a = cellGrain(i, c, 6) * Math.PI * 2, k = Math.sqrt(cellGrain(i, r, 7)) * r * 1.15;
+      const dark = cellGrain(i, c, 8) < 0.55;
+      paint.fillStyle = dark ? hexAlpha(deep, 0.2) : hexAlpha(pale, 0.22 * (0.5 + life));
+      paint.beginPath(); paint.arc(c + Math.cos(a) * k, c + Math.sin(a) * k, r * (dark ? 0.05 + 0.05 * cellGrain(i, 1, 9) : 0.03 + 0.03 * cellGrain(i, 2, 9)), 0, Math.PI * 2); paint.fill();
+    }
+    paint.globalCompositeOperation = 'lighter';
+    const rim = paint.createRadialGradient(c - NEURON_LIGHT.x * r * 0.5, c - NEURON_LIGHT.y * r * 0.5, r * 0.55, c, c, r * 1.5);
+    rim.addColorStop(0, hexAlpha(tone, 0)); rim.addColorStop(0.75, hexAlpha(tone, 0)); rim.addColorStop(1, hexAlpha(pale, 0.25 * life + 0.06));
+    paint.fillStyle = rim;
+    paint.fillRect(c - r * 2, c - r * 2, r * 4, r * 4);
+    paint.restore();
+    // The shine.
+    paint.globalCompositeOperation = 'lighter';
+    const shine = paint.createRadialGradient(lx, ly, 0, lx, ly, r * 0.32);
+    shine.addColorStop(0, `rgba(255, 255, 255, ${0.25 + 0.35 * life})`); shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    paint.fillStyle = shine;
+    paint.beginPath(); paint.arc(lx, ly, r * 0.32, 0, Math.PI * 2); paint.fill();
+  }
+  // And the sparks at its tips.
   paint.globalCompositeOperation = 'lighter';
-  const rim = paint.createRadialGradient(c - NEURON_LIGHT.x * r * 0.5, c - NEURON_LIGHT.y * r * 0.5, r * 0.55, c, c, r * 1.5);
-  rim.addColorStop(0, hexAlpha(tone, 0)); rim.addColorStop(0.75, hexAlpha(tone, 0)); rim.addColorStop(1, hexAlpha(pale, 0.25 * life + 0.06));
-  paint.fillStyle = rim;
-  paint.fillRect(c - r * 2, c - r * 2, r * 4, r * 4);
-  paint.restore();
-  // The shine, and the sparks at its tips.
-  paint.globalCompositeOperation = 'lighter';
-  const shine = paint.createRadialGradient(lx, ly, 0, lx, ly, r * 0.32);
-  shine.addColorStop(0, `rgba(255, 255, 255, ${0.25 + 0.35 * life})`); shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
-  paint.fillStyle = shine;
-  paint.beginPath(); paint.arc(lx, ly, r * 0.32, 0, Math.PI * 2); paint.fill();
-  if (life > 0.2) for (const tip of sk.tips) if (tip.spark) {
+  if (fibres && life > 0.2) for (const tip of sk.tips) if (tip.spark) {
     const s = sk.r * 0.2 * tip.z;
     const spark = paint.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, s);
     spark.addColorStop(0, hexAlpha('#fff3dc', 0.75 * life)); spark.addColorStop(0.35, hexAlpha(NEURON_SPARK, 0.45 * life)); spark.addColorStop(1, hexAlpha(NEURON_SPARK, 0));
@@ -1164,26 +1223,115 @@ export function drawDeadNeuron(paint, sk, hex, rnd, { step = 3.2, dot = 1 } = {}
   }
   paint.globalCompositeOperation = 'source-over';
 }
-// The sprite of one neuron: its colour, its shape, and whether it lives, is going out or is dead.
-export function neuronSprite(hex, variant = 0, state = 'alive') {
-  const key = `${hex}:${variant}:${state}`;
+// The sprite of one neuron: its colour, its shape, whether it lives, is going out or is dead, and
+// how alive (`life`, one of NEURON_LIVES: its colour baked in, so a neuron is one stamp, not two).
+// Seen small, or with motion reduced, this whole still drawing is what the map stamps.
+const neuronShape = (variant) => { let seed = (variant + 1) * 9301 + 49297; return () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }; };
+const neuronSkeletonOf = (variant) => { const rnd = neuronShape(variant); return { rnd, sk: neuronSkeleton(rnd, NEURON_SPRITE / 2, NEURON_SPRITE / 12, NEURON_SPRITE * 0.47, { depth: 4, thin: 0.35 }) }; };
+export const NEURON_LIVES = [0.15, 0.55, 1];
+export const neuronLife = (life) => NEURON_LIVES[life < 0.35 ? 0 : life < 0.7 ? 1 : 2];
+export function neuronSprite(hex, variant = 0, state = 'alive', life = state === 'spent' ? 0 : 1) {
+  const key = `${hex}:${variant}:${state}:${life}`;
   let canvas = NEURON_SPRITES.get(key);
   if (canvas) return canvas;
   canvas = document.createElement('canvas');
   canvas.width = NEURON_SPRITE;
   canvas.height = NEURON_SPRITE;
   const paint = canvas.getContext('2d');
-  let seed = (variant + 1) * 9301 + 49297;
-  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-  const sk = neuronSkeleton(rnd, NEURON_SPRITE / 2, NEURON_SPRITE / 12, NEURON_SPRITE * 0.47, { depth: 4, thin: 0.35 });
+  const { rnd, sk } = neuronSkeletonOf(variant);
   if (state === 'dead') drawDeadNeuron(paint, sk, hex, rnd);
-  else drawLivingNeuron(paint, sk, hex, state === 'spent' ? 0 : 1);
+  else drawLivingNeuron(paint, sk, hex, life);
   NEURON_SPRITES.set(key, canvas);
   return canvas;
 }
-// The neural mode's palette (2026-10-27): the photographs' blue and amber, one hue per kind of memory
-// so the legend still tells them apart.
-export const NEURAL_COLORS = { decision: '#ff9a2e', fact: '#7cc4ff', preference: '#3fe0b0', question: '#9b8cff', aberration: '#c45cff' };
+// THE RIG (2026-10-28): the same neuron cut into pieces — each trunk, each branch that leaves a
+// trunk, the axon, the body — laid side by side on one sheet, each with the point it hangs from.
+// The map stamps the pieces turned a little on their roots, each to its own slow rhythm, so the
+// dendrites move as living tissue does; the body stays, drawn last, over where they leave it.
+const NEURON_RIGS = new Map();
+const RIG_SCALE = 0.75;   // the sheet's pixels per unit of the sprite: a rig is seen near, not huge
+export function neuronRig(hex, variant = 0, life = 1) {
+  const key = `${hex}:${variant}:${life}`;
+  let rig = NEURON_RIGS.get(key);
+  if (rig) return rig;
+  const { sk } = neuronSkeletonOf(variant);
+  const pad = sk.r * 0.3 + 3;
+  const reachOf = (w) => w * 1.6 + 1.5;
+  const pieces = sk.parts.map((part, index) => ({ index, part, x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }));
+  const grow = (piece, x, y, w) => { piece.x0 = Math.min(piece.x0, x - w); piece.y0 = Math.min(piece.y0, y - w); piece.x1 = Math.max(piece.x1, x + w); piece.y1 = Math.max(piece.y1, y + w); };
+  for (const seg of sk.segs) { const piece = pieces[seg.part]; if (!piece) continue; const w = reachOf(Math.max(seg.w0, seg.w1) * 1.7); grow(piece, seg.x0, seg.y0, w); grow(piece, seg.x1, seg.y1, w); }
+  for (const knot of sk.knots) { const piece = pieces[knot.part]; if (piece) grow(piece, knot.x, knot.y, reachOf(knot.w)); }
+  for (const tip of sk.tips) { const piece = pieces[tip.part]; if (piece) grow(piece, tip.x, tip.y, sk.r * 0.22 + 1); }
+  const body = { index: -1, part: null, x0: sk.c - sk.r * 2.7, y0: sk.c - sk.r * 2.7, x1: sk.c + sk.r * 2.7, y1: sk.c + sk.r * 2.7 };
+  const all = [...pieces.filter((piece) => Number.isFinite(piece.x0)), body];
+  // On the sheet, shelf by shelf.
+  const width = Math.ceil(NEURON_SPRITE * 2.2 * RIG_SCALE);
+  let x = 0, y = 0, row = 0;
+  for (const piece of all) {
+    piece.x0 -= pad; piece.y0 -= pad; piece.x1 += pad; piece.y1 += pad;
+    piece.w = Math.ceil((piece.x1 - piece.x0) * RIG_SCALE);
+    piece.h = Math.ceil((piece.y1 - piece.y0) * RIG_SCALE);
+    if (x + piece.w > width) { x = 0; y += row; row = 0; }
+    piece.sx = x; piece.sy = y;
+    x += piece.w;
+    row = Math.max(row, piece.h);
+  }
+  const sheet = document.createElement('canvas');
+  sheet.width = width;
+  sheet.height = Math.max(1, y + row);
+  const paint = sheet.getContext('2d');
+  for (const piece of all) {
+    paint.setTransform(RIG_SCALE, 0, 0, RIG_SCALE, piece.sx - piece.x0 * RIG_SCALE, piece.sy - piece.y0 * RIG_SCALE);
+    paint.save();
+    paint.beginPath(); paint.rect(piece.x0, piece.y0, piece.x1 - piece.x0, piece.y1 - piece.y0); paint.clip();
+    if (piece.part) {
+      const own = (one) => one.part === piece.index;
+      drawLivingNeuron(paint, { ...sk, segs: sk.segs.filter(own), knots: sk.knots.filter(own), tips: sk.tips.filter(own) }, hex, life, { body: false });
+    } else drawLivingNeuron(paint, sk, hex, life, { fibres: false });
+    paint.restore();
+  }
+  paint.setTransform(1, 0, 0, 1, 0, 0);
+  const trunks = all.filter((piece) => piece.part && piece.part.parent < 0);
+  for (const trunk of trunks) trunk.kids = all.filter((piece) => piece.part && piece.part.parent === trunk.index);
+  rig = { sheet, trunks, body };
+  NEURON_RIGS.set(key, rig);
+  return rig;
+}
+// How far a piece is turned at `t`: a trunk a little, a branch more, the axon hardly; two slow waves
+// of its own each, so no two pieces and no two neurons move together.
+function rigSway(t, seed, index, kind) {
+  const reach = kind === 'axon' ? 0.035 : kind === 'trunk' ? 0.1 : 0.22;
+  const pace = 0.5 + (((seed * 7.13 + index * 0.37) % 1) + 1) % 1 * 0.4;
+  return reach * (0.72 * Math.sin(pace * t + seed * 3 + index * 1.9) + 0.28 * Math.sin(pace * 0.53 * t + index * 2.7 + seed));
+}
+export function drawNeuronRig(ctx, rig, x, y, side, t, seed) {
+  const k = side / NEURON_SPRITE;
+  const stamp = (piece) => ctx.drawImage(rig.sheet, piece.sx, piece.sy, piece.w, piece.h, piece.x0, piece.y0, piece.w / RIG_SCALE, piece.h / RIG_SCALE);
+  const hang = (piece, turn, inner) => {
+    ctx.save();
+    ctx.translate(piece.part.x, piece.part.y);
+    ctx.rotate(turn);
+    ctx.translate(-piece.part.x, -piece.part.y);
+    stamp(piece);
+    inner?.();
+    ctx.restore();
+  };
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(k, k);
+  ctx.translate(-NEURON_SPRITE / 2, -NEURON_SPRITE / 2);
+  for (const trunk of rig.trunks) {
+    hang(trunk, rigSway(t, seed, trunk.index, trunk.part.kind), () => {
+      for (const kid of trunk.kids) hang(kid, rigSway(t, seed, kid.index, 'branch'));
+    });
+  }
+  stamp(rig.body);
+  ctx.restore();
+}
+// The neural mode's palette (2026-10-28): the photographs' own — the pale, see-through blue of a
+// living cell, its warm amber where light catches it, a sea green, a lavender —, membranes rather
+// than paint, one per kind so the legend still tells them apart; the dead one keeps its violet.
+export const NEURAL_COLORS = { decision: '#f0b47c', fact: '#9fd2ea', preference: '#8fd8c0', question: '#b7a8f2', aberration: '#cf74f0' };
 // A memory's kind as a whole neuron for the legend, drawn for its size: fewer branches, thicker,
 // the same light. `state` is alive, spent (not used) or dead (doubtful).
 export function neuronChip(hex, size = 16, state = 'alive') {
@@ -2690,6 +2838,19 @@ export function createNostromo(nostromo) {
         ctx.globalAlpha = 0.035 + (i % 4) * 0.012;
         ctx.drawImage(neuronGlow(hue), bx * w + drift - (cam.x ?? 0) * 0.02 - size, by * h - drift * 0.6 - (cam.y ?? 0) * 0.02 - size, size * 2, size * 2);
       }
+      // What floats between the cells, as in the photographs (2026-10-28): small warm motes and a few
+      // cold ones, drifting slowly and breathing in and out of the light.
+      for (let i = 0; i < 42; i += 1) {
+        const mx = ((Math.sin(i * 91.7) * 23456.789) % 1 + 1) % 1;
+        const my = ((Math.sin(i * 47.3) * 34567.891) % 1 + 1) % 1;
+        const float = nostromo.reduced ? 0 : t * (4 + (i % 7));
+        const px0 = ((mx * w + float * (i % 2 ? 1 : -0.6) - (cam.x ?? 0) * 0.05) % w + w) % w;
+        const py0 = ((my * h - float * 0.5 - (cam.y ?? 0) * 0.05) % h + h) % h;
+        const breath = nostromo.reduced ? 0.7 : 0.45 + 0.55 * Math.abs(Math.sin(t * 0.4 + i * 1.3));
+        const size = 1.5 + (i % 4);
+        ctx.globalAlpha = (i % 3 ? 0.32 : 0.22) * breath;
+        ctx.drawImage(neuronGlow(i % 5 === 0 ? NEURAL_COLORS.fact : NEURON_SPARK), px0 - size, py0 - size, size * 2, size * 2);
+      }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
@@ -2849,12 +3010,13 @@ export function createNostromo(nostromo) {
       const side = soma * 12;
       const colour = neuralTone(node);
       ctx.globalCompositeOperation = 'source-over';
-      if (life < 0.9) {
-        ctx.globalAlpha = Math.min(1, 0.35 + 0.65 * life) * flicker * fade;
-        ctx.drawImage(neuronSprite(colour, shape, 'spent'), node.x - side / 2, node.y - side / 2, side, side);
-      }
-      ctx.globalAlpha = Math.min(1, life) * flicker * fade;
-      ctx.drawImage(neuronSprite(colour, shape), node.x - side / 2, node.y - side / 2, side, side);
+      // How alive it is, baked into its colour (NEURON_LIVES), and how much light it has on top.
+      const baked = neuronLife(life);
+      ctx.globalAlpha = Math.min(1, 0.35 + 0.65 * life) * flicker * fade;
+      // Alive and near enough to be seen moving, its dendrites sway (2026-10-28); small, or with motion
+      // reduced, it is the still drawing.
+      if (!nostromo.reduced && side * cam.scale > 44) drawNeuronRig(ctx, neuronRig(colour, shape, baked), node.x, node.y, side, t, node.seed);
+      else ctx.drawImage(neuronSprite(colour, shape, 'alive', baked), node.x - side / 2, node.y - side / 2, side, side);
       ctx.globalCompositeOperation = 'lighter';
       // Its light: a breath round a cell in use, more while something reaches it — kept close to it.
       const glow = Math.max(light, cold ? 0 : 0.12 * life * breath);

@@ -19673,8 +19673,9 @@ async function openNostromo() {
     }
   }
   if (!nostromo.dialog) return;
-  // MU/TH/UR is a window of the room: it stays where it was, under NOSTROMO.
-  nostromo.dialog.showModal();
+  // MU/TH/UR is a window of the room: it stays where it was, under NOSTROMO. The map opens over the
+  // whole screen, or as a window when it was left as one.
+  showNostromoDialog();
   // A dialog hands focus to its first focusable child, and with COLD, ASK and RECENTER hidden
   // that was LEAVE: you pressed Enter to come in and the next Enter threw you out. The map is
   // what you came for, so the map takes it.
@@ -19772,7 +19773,90 @@ nostromo.coldButton?.addEventListener('click', () => {
   flatPaint();
 });
 document.querySelector('#nostromo-close')?.addEventListener('click', () => nostromo.dialog.close());
-nostromo.dialog?.addEventListener('close', stopNostromo);
+nostromo.dialog?.addEventListener('close', () => {
+  // Turned from the screen into a window or back, it was closed only to open again the other way.
+  if (nostromoReframing) { nostromoReframing = false; return; }
+  if (nostromoFramed()) dropWindow(nostromo.dialog);
+  stopNostromo();
+});
+
+// THE MEMORY MAP AS A WINDOW (2026-10-28): the whole screen, as it always opened, or one more window
+// of the room — carried by its head, sized by its sides and corners, in the stack with the others —
+// from a key in its head. How it was left is how it opens the next time. Not on a phone, nor in the
+// classic room.
+const NOSTROMO_WINDOW_KEY = 'pulse.nostromoWindow';
+const nostromoWindow = (() => { try { return JSON.parse(localStorage.getItem(NOSTROMO_WINDOW_KEY) ?? 'null') ?? { on: false, box: null }; } catch { return { on: false, box: null }; } })();
+let nostromoReframing = false;
+function rememberNostromoWindow() { try { localStorage.setItem(NOSTROMO_WINDOW_KEY, JSON.stringify(nostromoWindow)); } catch { /* as long as the page lasts */ } }
+const nostromoFramed = () => Boolean(nostromo.dialog?.classList.contains('window'));
+const nostromoCanFloat = () => chatShellOn() && !state.device;
+function nostromoBoxFor() {
+  if (nostromoWindow.box?.w && nostromoWindow.box?.h) return nostromoWindow.box;
+  const w = Math.min(980, window.innerWidth - 32);
+  const h = Math.min(680, window.innerHeight - 90);
+  return { x: Math.max(16, Math.round((window.innerWidth - w) / 2)), y: 56, w, h };
+}
+function placeNostromoWindow(box) {
+  nostromoWindow.box = clampWindowBox(box, { minW: 420, minH: 320 });
+  applyWindowBox(nostromo.dialog, nostromoWindow.box);
+  sizeNostromo();
+}
+function showNostromoDialog() {
+  const dialog = nostromo.dialog;
+  const floating = nostromoWindow.on && nostromoCanFloat();
+  for (const name of ['surface', 'window', 'nostromo-window']) dialog.classList.toggle(name, floating);
+  if (floating) {
+    dialog.show();
+    placeNostromoWindow(nostromoBoxFor());
+    bringWindowForward(dialog);
+  } else {
+    for (const side of ['left', 'top', 'width', 'height']) dialog.style.removeProperty(side);
+    dropWindow(dialog);
+    dialog.showModal();
+  }
+  paintNostromoFloat();
+}
+function paintNostromoFloat() {
+  const key = nostromo.floatKey;
+  if (!key) return;
+  key.hidden = !nostromoCanFloat();
+  const floating = nostromoFramed();
+  key.setAttribute('aria-pressed', String(floating));
+  const said = floating ? t('Fill the screen') : t('Open as a window');
+  key.title = said;
+  key.setAttribute('aria-label', said);
+}
+function frameNostromo(on) {
+  const dialog = nostromo.dialog;
+  if (!dialog || !nostromoCanFloat()) return;
+  nostromoWindow.on = on;
+  rememberNostromoWindow();
+  if (!dialog.open) { paintNostromoFloat(); return; }
+  nostromoReframing = true;
+  if (nostromoFramed()) dropWindow(dialog);
+  dialog.close();
+  showNostromoDialog();
+  sizeNostromo();
+  nostromo.canvas?.focus?.({ preventScroll: true });
+}
+if (nostromo.dialog) {
+  const actions = nostromo.dialog.querySelector('.nostromo-actions');
+  const track = actions?.querySelector('.surface-modes');
+  const key = el('button', 'mother-close nostromo-float');
+  key.type = 'button';
+  key.innerHTML = FLOAT_ICON; // trusted: our own SVG string
+  key.addEventListener('click', () => frameNostromo(!nostromoFramed()));
+  if (track) track.before(key); else actions?.append(key);
+  nostromo.floatKey = key;
+  const head = nostromo.dialog.querySelector('.nostromo-head');
+  if (head) carryWindowBy(head, nostromo.dialog, { active: nostromoFramed, box: () => nostromoWindow.box, place: placeNostromoWindow, done: rememberNostromoWindow });
+  windowEdgesFor(nostromo.dialog, { active: nostromoFramed, box: () => nostromoWindow.box, place: placeNostromoWindow, done: rememberNostromoWindow, minW: 420, minH: 320 });
+  nostromo.dialog.addEventListener('pointerdown', () => { if (nostromoFramed()) bringWindowForward(nostromo.dialog); }, true);
+  // A window is not modal: Escape is asked here, as a modal dialog answers it on its own.
+  nostromo.dialog.addEventListener('keydown', (event) => { if (event.key === 'Escape' && nostromoFramed() && !event.defaultPrevented) { event.preventDefault(); nostromo.dialog.close(); } });
+  window.addEventListener?.('resize', () => { if (nostromoFramed()) placeNostromoWindow(nostromoWindow.box ?? nostromoBoxFor()); });
+  paintNostromoFloat();
+}
 
 function buildNostromo(data) {
   // The bodies are the engine's to build; what is said about them is the room's.
@@ -20192,8 +20276,11 @@ const drag = { active: false, moved: false, pan: false, x: 0, y: 0 };
 // command or a window's glass must never be interpreted as a click on the map behind it.
 function nostromoCovered(event) {
   const panels = [...nostromo.cards, ...floatingWindows(), ...document.querySelectorAll('dialog[open]')];
+  // As a window, only what stands over it covers it: a window behind it does not.
+  const mine = nostromoFramed() ? Number(nostromo.dialog.style.zIndex) || 0 : -1;
   return panels.some((panel) => {
     if (panel.hidden || panel === nostromo.dialog || panel.contains(nostromo.canvas)) return false;
+    if (mine >= 0 && !nostromo.cards.includes(panel) && !panel.matches?.(':modal') && (Number(getComputedStyle(panel).zIndex) || 0) < mine) return false;
     const rect = panel.getBoundingClientRect();
     return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
   });
