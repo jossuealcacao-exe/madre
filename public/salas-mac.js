@@ -607,7 +607,7 @@ function drawWaiting() {
   ui.waiting.count.textContent = String(total);
   ui.waiting.box.classList.toggle('has', Boolean(total));
   ui.waiting.body.replaceChildren();
-  if (!total) { ui.waiting.body.append(el('p', 'sm-hint', t('Nobody needs you. When an agent asks for you, it shows here.'))); return; }
+  if (!total) { ui.waiting.body.append(el('p', 'sm-hint', t('All caught up. When an agent asks you something, it shows up here.'))); return; }
   for (const room of rooms.slice(0, 2)) {
     const row = el('a', 'sm-waiting-row');
     row.href = addressOf(room);
@@ -4437,6 +4437,7 @@ function wizardScene(kind) {
 const welcomeHost = {
   agentsPanel: (options) => agentsPanel(options),
   projectPicker: (options) => projectPicker(options),
+  mark: (id, size) => mark(id, size),
   closeKey: (onClick) => closeKey(onClick),
   agentState: (agent, answer) => agentState(agent, answer),
   projects: () => (data ? projectsInOrder().all : []),
@@ -4639,6 +4640,38 @@ function lookPreview(looks) {
     grid.append(card);
   });
   preview.append(bar, grid);
+  // Home as it looks now (2026-10-28), in the chat shell: the sidebar, the bar, and flat cards on the
+  // canvas, in the theme and accent chosen — the old preview drew the Home of glass and pills.
+  if (root.classList.contains('home-shell')) {
+    preview.classList.add('shell');
+    const side = el('div', 'hps-side');
+    const brand = el('i', 'hps-brand');
+    side.append(brand);
+    for (const [words, on] of [[t('Home'), true], [t('Coordinator'), false], [t('Market'), false]]) side.append(el('span', `hps-row${on ? ' on' : ''}`, words));
+    side.append(el('small', 'hps-label', t('Projects')));
+    names.forEach((name, index) => { const row = el('span', 'hps-row hps-project'); row.append(el('i', index ? 'asleep' : null), name); side.append(row); });
+    const main = el('div', 'hps-main');
+    const top = el('div', 'hps-top');
+    top.append(el('b', null, t('Home')), el('span', 'hps-keys'));
+    const tiles = el('div', 'hps-tiles');
+    const coordTile = el('div', 'hps-tile hps-coord');
+    const coordHead = el('div', 'hp-head');
+    coordHead.append(el('span', 'hp-mark'), el('b', null, t('Coordinator')));
+    coordTile.append(coordHead, el('span', 'hps-key on', t('Talk to the Coordinator')));
+    const waiting = el('div', 'hps-tile hps-wait');
+    waiting.append(el('b', null, t('Waiting on you')), el('strong', null, '0'));
+    const cards = el('div', 'hps-tile hps-cards');
+    names.forEach((name, index) => {
+      const card = el('div', 'hps-card');
+      const state = el('small', 'hp-state');
+      state.append(el('i'), index ? t('Asleep') : t('Active'));
+      card.append(el('b', null, name), state, el('span', 'hp-chat'), el('span', `hps-key${index ? '' : ' on'}`, t('Open')));
+      cards.append(card);
+    });
+    tiles.append(coordTile, waiting, cards);
+    main.append(top, tiles);
+    preview.replaceChildren(side, main);
+  }
   return preview;
 }
 
@@ -5245,9 +5278,9 @@ function openSettings(section = null) {
     stop();
     if (state.query.trim()) { body.replaceChildren(results()); return; }
     if (!state.open) { body.replaceChildren(board()); return; }
-    // Appearance has more to show than a sheet holds: it takes the whole window, as a category
-    // does in the room when a sheet would be cramped (app.js, «push»). The others open over the board.
-    const full = state.open === 'look';
+    // Every category opens over the board from the side, Appearance too, as in a project's Settings
+    // (2026-10-28: it took the whole window, and read as another screen rather than one of its sheets).
+    const full = false;
     const sheet = el('div', `settings-sheet${full ? ' full' : ''}`);
     const scroll = el('div', 'settings-scroll');
     scroll.append(detail(state.open));

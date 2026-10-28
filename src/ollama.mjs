@@ -121,8 +121,10 @@ export function ollamaInvoker({ host = ollamaHost(), model, fetchImpl = globalTh
 }
 
 // Pulls a model, reporting progress lines as Ollama streams them.
-export async function pullModel({ host = ollamaHost(), model, fetchImpl = globalThis.fetch, onLine = () => {}, timeoutMs = 30 * 60 * 1000 } = {}) {
-  const response = await fetchImpl(`${host}/api/pull`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, stream: true }), signal: AbortSignal.timeout(timeoutMs) });
+// `signal` stops it halfway (the welcome's «Cancel»): what Ollama already wrote stays in its own
+// folder, and the next pull of the same model goes on from there.
+export async function pullModel({ host = ollamaHost(), model, fetchImpl = globalThis.fetch, onLine = () => {}, timeoutMs = 30 * 60 * 1000, signal = null } = {}) {
+  const response = await fetchImpl(`${host}/api/pull`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, stream: true }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) });
   if (!response.ok) throw new Error(`Ollama pull HTTP ${response.status}: ${(await response.text().catch(() => '')).slice(0, 200)}`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

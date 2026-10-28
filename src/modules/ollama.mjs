@@ -157,6 +157,12 @@ export default defineModule({
       const started = await ctx.services.ollama.start();
       return started.ok ? { status: 200, body: { ollama: ctx.services.ollama.state() } } : { status: 412, body: { error: started.error } };
     } },
+    // Stops the download running now (the welcome's «Cancel»). What Ollama already wrote stays, and
+    // pulling the same model again goes on from there.
+    { method: 'POST', path: '/api/ollama/pull/cancel', handler: async (ctx, { payload }) => {
+      const stopped = ctx.services.ollama.cancelPull?.(typeof payload?.model === 'string' ? payload.model : null) ?? { ok: false };
+      return stopped.ok ? { status: 200, body: { cancelling: stopped.model } } : { status: 409, body: { error: stopped.error } };
+    } },
     { method: 'POST', path: '/api/ollama/pull', handler: async (ctx, { payload }) => {
       const model = String(payload.model ?? '').trim();
       if (!/^[a-z0-9][a-z0-9._:/-]{1,80}$/i.test(model)) return { status: 400, body: { error: 'Give a model name like nomic-embed-text or qwen2.5:3b.' } };

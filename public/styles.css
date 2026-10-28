@@ -10564,12 +10564,16 @@ html:root:not(.via-phone) .shell > .bar.keys-square > .chats-button svg { width:
    pieces are the room's own; app.js (chatShell, layoutPanels) seats them. Not on a phone.
    ========================================================================================== */
 html.chat-shell {
+  /* Readable for everyone (2026-10-28): the reading face a touch firmer than regular, and the quiet
+     greys a step darker, so small text holds up for eyes that need it. */
+  --read-weight: 430;
   --cs-side: #f7f7f4; --cs-canvas: #ffffff; --cs-tool: #fbfbf9;
   --cs-line: rgba(20, 30, 20, .09); --cs-hover: rgba(20, 30, 20, .05); --cs-sel: rgba(20, 30, 20, .075);
   --cs-bubble: #f1f2ef; --cs-input: #ffffff;
   --cs-input-ring: 0 0 0 1px rgba(20, 30, 20, .16), 0 2px 10px -3px rgba(20, 30, 20, .1);
 }
 html.chat-shell[data-scheme="dark"] {
+  --text-2: #aab0a7; --text-3: #848b81;
   --cs-side: #171917; --cs-canvas: #1d1f1d; --cs-tool: #191b19;
   --cs-line: rgba(255, 255, 255, .07); --cs-hover: rgba(255, 255, 255, .05); --cs-sel: rgba(255, 255, 255, .08);
   --cs-bubble: #2a2d2a; --cs-input: #252825;
@@ -10577,6 +10581,8 @@ html.chat-shell[data-scheme="dark"] {
 }
 /* No picture behind the room: the ground is the canvas. */
 html.chat-shell body, html.chat-shell .shell { background: var(--cs-canvas) !important; }
+html.chat-shell body { font-weight: 450; }
+html.chat-shell:not([data-scheme="dark"]) { --text-2: #4f564f; --text-3: #697069; }
 html.chat-shell .shell::before { display: none !important; }
 
 /* ---- the bar over the conversation: the chat's title, the crew, the tools ---- */
@@ -10688,7 +10694,7 @@ html.chat-shell #chats > :is(.tree-head, .chats-new, .chats-foot) { display: non
 html.chat-shell #chats .side-scroll > .chats-body { overflow: visible; padding: 0; max-height: none; }
 html.chat-shell #chats .chat-row { border-radius: 8px; }
 html.chat-shell #chats .chat-row:hover { background: var(--cs-hover); }
-html.chat-shell #chats .chat { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none !important; box-shadow: none !important; font: 400 13.5px var(--read); color: var(--text-2); letter-spacing: 0; text-transform: none; }
+html.chat-shell #chats .chat { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none !important; box-shadow: none !important; font: 450 13.5px var(--read); color: var(--text-2); letter-spacing: 0; text-transform: none; }
 html.chat-shell #chats .chat.on { color: var(--text); font-weight: 500; }
 html.chat-shell #chats .chat-row:has(.chat.on) { background: var(--cs-sel); }
 html.chat-shell #chats .chat .when { font-size: 11.5px; color: var(--text-3); }
@@ -10761,7 +10767,7 @@ html.chat-shell .shell > .composer > .field { display: contents; }
 html.chat-shell .composer > :is(.attachments, .free-offer, .openq) { grid-column: 1 / -1; }
 html.chat-shell .composer .reply-quote { grid-area: quote; }
 html.chat-shell .composer .editor { grid-area: editor; min-height: 44px; padding: 0 4px; }
-html.chat-shell .composer .editor textarea { font: 400 15px/1.5 var(--read) !important; }
+html.chat-shell .composer .editor textarea { font: 450 15px/1.5 var(--read) !important; }
 html.chat-shell .composer .picker.crew { grid-area: picker; }
 html.chat-shell .composer .crew-label { display: none !important; }
 html.chat-shell .composer > .pick-options { grid-area: options; justify-self: start; min-width: 0; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; }
@@ -10770,7 +10776,7 @@ html.chat-shell .composer .ash-toggle { grid-area: ash; }
 html.chat-shell .composer .attach { grid-area: attach; }
 html.chat-shell .composer .field > button[type="submit"] { grid-area: send; }
 /* The line under the box: what the permission means, and the version, quietly. */
-html.chat-shell .shell > .colophon { justify-self: center; margin: 2px 0 10px; background: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .shell > .colophon { justify-self: center; margin: 2px 0 10px; background: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; font: 450 11.5px var(--read); color: var(--text-3); }
 html.chat-shell #chats .chat .when { display: none; }
 /* The mode, the model and the effort: chips in the box's own row, not a pill of their own. */
 html.chat-shell .composer .pick-options .pick-label {
@@ -10879,7 +10885,7 @@ html.chat-shell .shell > .composer {
   gap: 6px 2px; padding: 14px 10px 8px 10px !important; border-radius: 22px !important;
 }
 html.chat-shell .composer .editor { min-height: 0; padding: 0 10px; }
-html.chat-shell .composer .editor :is(textarea, .highlight) { font: 400 15px/24px var(--read) !important; padding: 2px 5px !important; }
+html.chat-shell .composer .editor :is(textarea, .highlight) { font: 450 15px/24px var(--read) !important; padding: 2px 5px !important; }
 /* The keys of its row: drawings with no plate, as the bar's. */
 html.chat-shell .composer :is(.attach, .field > button[type="submit"]) {
   width: 32px; height: 32px; border-radius: 8px; background: none !important; box-shadow: none !important; filter: none !important;
@@ -10899,7 +10905,7 @@ html.chat-shell .model-menu {
   background: var(--cs-canvas, var(--panel)); color: var(--text);
   box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 14px 36px -14px rgba(0, 0, 0, .28) !important;
 }
-html.chat-shell .model-menu .model-menu-title { margin: 6px 8px 6px; font: 400 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .model-menu .model-menu-title { margin: 6px 8px 6px; font: 450 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html.chat-shell .model-menu .model-menu-title b { font: 500 12px var(--read); }
 .menu-check { display: grid; place-items: center; width: 16px; height: 16px; color: var(--agent, var(--phosphor)); }
 .menu-check svg { width: 16px; height: 16px; }
@@ -10920,9 +10926,9 @@ html.chat-shell .model-menu.mode-menu .mode-option.current .n {
 }
 html.chat-shell .model-menu.mode-menu .mode-option .body { gap: 1px; }
 html.chat-shell .model-menu.mode-menu .mode-option .name { font: 500 13px/1.35 var(--read); color: var(--text) !important; }
-html.chat-shell .model-menu.mode-menu .mode-option .hint { font: 400 12px/1.4 var(--read); color: var(--text-3); -webkit-line-clamp: 1; line-clamp: 1; }
+html.chat-shell .model-menu.mode-menu .mode-option .hint { font: 450 12px/1.4 var(--read); color: var(--text-3); -webkit-line-clamp: 1; line-clamp: 1; }
 html.chat-shell .model-menu.mode-menu .mode-option.current .menu-check { color: var(--mode); }
-html.chat-shell .model-menu.mode-menu .mode-option .tag { font: 400 11px var(--read); color: var(--text-3); }
+html.chat-shell .model-menu.mode-menu .mode-option .tag { font: 450 11px var(--read); color: var(--text-3); }
 html.chat-shell .model-menu.mode-menu .mode-option .tag.raise { padding: 2px 8px; border: 0; background: var(--cs-hover); color: var(--text-2); }
 html.chat-shell .model-menu.mode-menu .mode-option .tag .dot { display: none; }
 html.chat-shell .model-menu.mode-menu .mode-option.locked :is(.name, .hint) { color: var(--text-3) !important; }
@@ -10946,12 +10952,12 @@ html.chat-shell .model-menu:not(.mode-menu):not(.effort-menu) { width: min(300px
 html.chat-shell .model-menu .model-menu-head { margin: 0 0 4px 0; }
 html.chat-shell .model-menu .model-menu-head .model-menu-title { margin: 6px 4px 6px 8px; }
 html.chat-shell .model-menu .model-list { gap: 1px; max-height: 300px; }
-html.chat-shell .model-menu .model-option { padding: 7px 10px; border-radius: 9px; font: 400 13px/1.35 var(--read); color: var(--text); background: none; }
+html.chat-shell .model-menu .model-option { padding: 7px 10px; border-radius: 9px; font: 450 13px/1.35 var(--read); color: var(--text); background: none; }
 html.chat-shell .model-menu .model-option:hover { background: var(--cs-hover); }
 html.chat-shell .model-menu .model-option.current { background: none; color: var(--text); font-weight: 500; }
 html.chat-shell .model-menu .model-option.current:hover { background: var(--cs-hover); }
 html.chat-shell .model-menu .model-group { margin: 8px 10px 2px; font: 500 11px var(--read); color: var(--text-3); }
-html.chat-shell .model-menu .model-note { margin: 6px 4px 0; padding: 8px 6px 2px; border-top: 1px solid var(--cs-line); font: 400 11.5px/1.5 var(--read); color: var(--text-3); }
+html.chat-shell .model-menu .model-note { margin: 6px 4px 0; padding: 8px 6px 2px; border-top: 1px solid var(--cs-line); font: 450 11.5px/1.5 var(--read); color: var(--text-3); }
 /* The hidden agent select is no cell of the box's grid: placed in one, it opened a row of its own. */
 html.chat-shell .shell > .composer > #target { position: absolute; }
 
@@ -11016,7 +11022,7 @@ html.chat-shell .effort-option .effort-meter { justify-self: start; }
 html.chat-shell .effort-option .effort-meter i.on { background: var(--agent, var(--phosphor)); }
 html.chat-shell .effort-option .body { display: grid; gap: 1px; min-width: 0; }
 html.chat-shell .effort-option .name { font: 500 13px/1.35 var(--read); color: var(--text); }
-html.chat-shell .effort-option .hint { font: 400 12px/1.4 var(--read); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.chat-shell .effort-option .hint { font: 450 12px/1.4 var(--read); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* An agent's limits card, as quiet as the menus: no tiles, no filled pills, one hairline between parts. */
 html.chat-shell .agent-pop {
@@ -11026,23 +11032,23 @@ html.chat-shell .agent-pop {
 }
 html.chat-shell .agent-pop .head { margin-bottom: 12px; }
 html.chat-shell .agent-pop .head b { font: 600 13px var(--read); }
-html.chat-shell .agent-pop .pop-session { height: auto; padding: 0; background: none; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-session { height: auto; padding: 0; background: none; font: 450 11.5px var(--read); color: var(--text-3); }
 html.chat-shell .agent-pop .pop-session::before { width: 6px; height: 6px; }
 html.chat-shell .agent-pop .pop-hero { gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--cs-line); }
 html.chat-shell .agent-pop .pop-hero .big { font: 600 22px/1.1 var(--read); }
-html.chat-shell .agent-pop .pop-hero .big small { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-hero .big small { font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell .agent-pop .pop-hero .gauge { height: 4px; border-radius: 4px; background: var(--cs-hover); }
-html.chat-shell .agent-pop .pop-reset { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-reset { font: 450 11.5px var(--read); color: var(--text-3); }
 html.chat-shell .agent-pop .pop-stats { gap: 10px 16px; padding: 12px 0; border-bottom: 1px solid var(--cs-line); }
 html.chat-shell .agent-pop .pop-stat { gap: 2px; padding: 0; border-radius: 0; background: none; }
-html.chat-shell .agent-pop .pop-stat span { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .agent-pop .pop-stat span { font: 450 11.5px var(--read); color: var(--text-3); }
 html.chat-shell .agent-pop .pop-stat b { font: 500 13px var(--read); }
 html.chat-shell .agent-pop .pop-provider { gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--cs-line); }
 html.chat-shell .agent-pop .pop-provider h4 { font: 500 12px var(--read); color: var(--text-2); }
-html.chat-shell .agent-pop .pop-limit { font: 400 12px var(--read); }
-html.chat-shell .agent-pop .pop-meta { margin-top: 10px; font: 400 11.5px/1.45 var(--read); }
+html.chat-shell .agent-pop .pop-limit { font: 450 12px var(--read); }
+html.chat-shell .agent-pop .pop-meta { margin-top: 10px; font: 450 11.5px/1.45 var(--read); }
 html.chat-shell .agent-pop .caps { gap: 0 2px; margin-top: 6px !important; }
-html.chat-shell .agent-pop .caps .cap { padding: 0; background: none !important; font: 400 11.5px var(--read); color: var(--text-3) !important; }
+html.chat-shell .agent-pop .caps .cap { padding: 0; background: none !important; font: 450 11.5px var(--read); color: var(--text-3) !important; }
 html.chat-shell .agent-pop .caps .cap.on { color: var(--text-2) !important; }
 html.chat-shell .agent-pop .caps .cap + .cap::before { content: '·'; margin: 0 5px 0 3px; color: var(--text-3); }
 html.chat-shell .agent-pop .pop-go {
@@ -11080,8 +11086,8 @@ html.chat-shell .model-menu .model-option { align-items: center; }
 html.chat-shell .model-menu .model-body { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; }
 html.chat-shell .model-menu .model-body .model-name { display: block; }
 html.chat-shell .model-menu .model-body .model-name .model-default { display: inline-block; margin-left: 7px; vertical-align: 1px; }
-html.chat-shell .model-menu .model-body .hint { font: 400 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html.chat-shell .model-menu .model-option.current .model-body .hint { font-weight: 400; }
+html.chat-shell .model-menu .model-body .hint { font: 450 12px/1.4 var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .model-menu .model-option.current .model-body .hint { font-weight: 450; }
 /* An agent's card stands a little clear of the bar. */
 html.chat-shell .agent-pop { margin-top: 13px; }
 /* The copilot's card, as quiet as the menus: its name and switch on one line, what it does in the
@@ -11090,10 +11096,10 @@ html.chat-shell .model-menu.copilot-menu { width: min(360px, calc(100vw - 24px))
 html.chat-shell .copilot-menu .copilot-title { margin: 0; }
 html.chat-shell .copilot-menu .copilot-title b { font: 600 13px var(--read); color: var(--text); }
 html.chat-shell .copilot-menu .copilot-body { gap: 10px; padding: 0; }
-html.chat-shell .copilot-menu .copilot-body .copilot-lead { font: 400 13px/1.5 var(--read); color: var(--text-2); }
-html.chat-shell .copilot-menu .copilot-body .copilot-never { padding-top: 10px; border-top: 1px solid var(--cs-line); font: 400 11.5px/1.5 var(--read); color: var(--text-3); }
-html.chat-shell .copilot-menu .copilot-body .copilot-foot { font: 400 11.5px/1.45 var(--read); color: var(--text-3); }
-html.chat-shell .copilot-menu .copilot-how { gap: 6px; font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .copilot-menu .copilot-body .copilot-lead { font: 450 13px/1.5 var(--read); color: var(--text-2); }
+html.chat-shell .copilot-menu .copilot-body .copilot-never { padding-top: 10px; border-top: 1px solid var(--cs-line); font: 450 11.5px/1.5 var(--read); color: var(--text-3); }
+html.chat-shell .copilot-menu .copilot-body .copilot-foot { font: 450 11.5px/1.45 var(--read); color: var(--text-3); }
+html.chat-shell .copilot-menu .copilot-how { gap: 6px; font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell .copilot-menu .copilot-how .sx-seg { gap: 2px; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
 html.chat-shell .copilot-menu .copilot-how .sx-seg .seg-thumb { display: none !important; }
 html.chat-shell .copilot-menu .copilot-how .sx-seg button {
@@ -11109,15 +11115,15 @@ html.chat-shell #settings { --relief-over: 0 0 0 1.5px color-mix(in srgb, var(--
 html.chat-shell #settings .settings-card:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--text) 20%, transparent) !important; transform: none !important; }
 html.chat-shell #settings .settings-card:focus-visible { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 60%, transparent) !important; }
 /* What each card says of itself, on one line. */
-html.chat-shell #settings .settings-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 12px/1.45 var(--read); color: var(--text-3); }
+html.chat-shell #settings .settings-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 450 12px/1.45 var(--read); color: var(--text-3); }
 /* The chat shell's type: the title as the conversation's, names at 13.5, rows at 13. */
 html.chat-shell #settings .custom-title { font: 600 14px var(--read); letter-spacing: -.005em; }
 html.chat-shell #settings .settings-section > header b { font: 600 13px var(--read); }
-html.chat-shell #settings .settings-section > header span { display: block; font: 400 12px var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell #settings .settings-section > header span { display: block; font: 450 12px var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html.chat-shell #settings .settings-card-head b { font: 600 13.5px var(--read); letter-spacing: 0; }
-html.chat-shell #settings .settings-quick-row { font: 400 13px var(--read); }
+html.chat-shell #settings .settings-quick-row { font: 450 13px var(--read); }
 html.chat-shell #settings .settings-quick-row .who { font: 500 13px var(--read); }
-html.chat-shell #settings .settings-quick-row .state { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell #settings .settings-quick-row .state { font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell #settings :is(.settings-seg button, .sx-btn) { font: 500 12.5px var(--read); letter-spacing: 0; }
 
 /* Search fields: the sunk look stays, only lighter, at rest and when they take the caret. */
@@ -11150,8 +11156,8 @@ html.chat-shell .code-files :is(.code-files-fold, .surface-gear):is(*, :hover, :
 html.chat-shell .code-files :is(.code-files-fold, .surface-gear):is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text); }
 html.chat-shell .code-files .tree-search { padding: 2px 10px 6px; gap: 4px; }
 html.chat-shell .code-files .tree-search .tree-find { height: 30px; border-radius: 8px; }
-html.chat-shell .code-files .tree-search .tree-find input { height: 28px; font: 400 13px var(--read); }
-html.chat-shell .code-files .tree-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 2px 6px 14px; font: 400 13px var(--read); letter-spacing: 0; }
+html.chat-shell .code-files .tree-search .tree-find input { height: 28px; font: 450 13px var(--read); }
+html.chat-shell .code-files .tree-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 2px 6px 14px; font: 450 13px var(--read); letter-spacing: 0; }
 html.chat-shell .code-files .tree-body ul ul { padding-left: 10px; margin-left: 11px; border-left: 1px solid var(--cs-line); }
 html.chat-shell .code-files .tree-body .node { gap: 6px; padding: 4px 8px; border-radius: 7px; color: var(--text-2); }
 html.chat-shell .code-files .tree-body .node:hover { background: var(--cs-hover); color: var(--text); }
@@ -11160,16 +11166,16 @@ html.chat-shell .code-files .tree-body .node.dir .name { color: var(--text); }
 html.chat-shell .code-files .tree-body .node.file .name::before { content: none; }
 html.chat-shell .code-files .tree-body .node .size { display: none; }
 html.chat-shell .code-files .tree-body .node .caret { color: var(--text-3); }
-html.chat-shell .code-files .tree-body :is(.empty-dir, .error) { padding: 4px 10px; font: 400 12px var(--read); color: var(--text-3); }
-html.chat-shell .code-files .tree-body .tree-empty { padding: 10px; font: 400 12.5px var(--read); color: var(--text-3); }
+html.chat-shell .code-files .tree-body :is(.empty-dir, .error) { padding: 4px 10px; font: 450 12px var(--read); color: var(--text-3); }
+html.chat-shell .code-files .tree-body .tree-empty { padding: 10px; font: 450 12.5px var(--read); color: var(--text-3); }
 html.chat-shell .code-files .node .touched { width: 6px; height: 6px; border-radius: 50%; background: var(--agent, var(--ph)); flex: 0 0 auto; margin-left: 2px; }
 html.chat-shell .code-files .node .touched.trail { background: transparent; box-shadow: inset 0 0 0 1.5px var(--agent, var(--ph)); }
 html.chat-shell .code-files .node.fresh { animation: tree-fresh 2.4s ease-out; }
-html.chat-shell .code-files .tree-clip { margin: 0 10px 6px; padding: 8px 10px; border: 0; border-radius: 10px; background: var(--cs-hover); font: 400 12px var(--read); }
-html.chat-shell .code-files .tree-clip .how { font: 400 11.5px/1.45 var(--read); }
+html.chat-shell .code-files .tree-clip { margin: 0 10px 6px; padding: 8px 10px; border: 0; border-radius: 10px; background: var(--cs-hover); font: 450 12px var(--read); }
+html.chat-shell .code-files .tree-clip .how { font: 450 11.5px/1.45 var(--read); }
 html.chat-shell .code-files .tree-clip button { font: 500 12px var(--read); letter-spacing: 0; }
 html.chat-shell .code-files .tree-menu { min-width: 180px; padding: 4px; border: 1px solid var(--cs-line); border-radius: 12px; box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
-html.chat-shell .code-files .tree-menu button { padding: 7px 10px; border-radius: 8px; font: 400 13px var(--read); }
+html.chat-shell .code-files .tree-menu button { padding: 7px 10px; border-radius: 8px; font: 450 13px var(--read); }
 html.chat-shell .code-files .tree-menu button:hover { background: var(--cs-hover); }
 
 /* The open files, in the head beside Read and Edit: one row less, as the tool tabs. */
@@ -11178,9 +11184,9 @@ html.chat-shell dialog.viewer.code > .viewer-head:has(> .code-tabs:not([hidden])
 html.chat-shell .code-tab { height: 30px; padding: 0 3px 0 4px; border-radius: 8px; color: var(--text-2); }
 html.chat-shell .code-tab:hover { background: var(--cs-hover); color: var(--text); }
 html.chat-shell .code-tab.on { background: var(--cs-sel, var(--cs-hover)); box-shadow: none; color: var(--text); }
-html.chat-shell .code-tab-name { height: 28px; padding: 0 6px; font: 400 13px var(--read); }
+html.chat-shell .code-tab-name { height: 28px; padding: 0 6px; font: 450 13px var(--read); }
 html.chat-shell .code-tab.on .code-tab-name { font-weight: 500; }
-html.chat-shell .code-crumbs { min-height: 30px; padding: 2px 14px; border-bottom: 1px solid var(--cs-line); font: 400 12px var(--read); }
+html.chat-shell .code-crumbs { min-height: 30px; padding: 2px 14px; border-bottom: 1px solid var(--cs-line); font: 450 12px var(--read); }
 html.chat-shell .code-crumbs .code-files-fold:is(*, :hover) { background: none; }
 html.chat-shell .code-crumbs .code-files-fold:hover { background: var(--cs-hover); color: var(--text); }
 /* Read · Edit · raw: words, the one in use in the text's own colour on the hover tone. */
@@ -11189,7 +11195,7 @@ html.chat-shell dialog.viewer .viewer-seg :is(.viewer-seg-btn, .viewer-open) { h
 html.chat-shell dialog.viewer .viewer-seg :is(.viewer-seg-btn, .viewer-open):hover { background: var(--cs-hover); color: var(--text); }
 html.chat-shell dialog.viewer .viewer-seg .viewer-seg-btn[aria-pressed="true"] { background: var(--cs-sel, var(--cs-hover)); color: var(--text); }
 html.chat-shell .code-home h3 { font: 600 15px var(--read); }
-html.chat-shell .code-home p { font: 400 13px/1.55 var(--read); color: var(--text-3); }
+html.chat-shell .code-home p { font: 450 13px/1.55 var(--read); color: var(--text-3); }
 
 /* Your servers: the same head and tabs. */
 /* Its ground is the code's: one tone for everything that opens at the right. */
@@ -11203,7 +11209,7 @@ html.chat-shell .browser-dock .viewer-nav .nav:is(.ports, .point) { gap: 6px; pa
 html.chat-shell .browser-dock .viewer-nav .nav:is(.ports, .point) > span { display: inline-block; text-transform: lowercase; }
 html.chat-shell .browser-dock .viewer-nav .nav:is(.ports, .point) > span::first-letter { text-transform: uppercase; }
 html.chat-shell .browser-dock .viewer-nav .nav.ports[aria-expanded="true"], html.chat-shell .browser-dock .viewer-nav .nav.point[aria-pressed="true"] { background: var(--cs-sel, var(--cs-hover)) !important; color: var(--text); }
-html.chat-shell .browser-dock .browser-where { font: 400 12px var(--read); letter-spacing: 0; color: var(--text-3); }
+html.chat-shell .browser-dock .browser-where { font: 450 12px var(--read); letter-spacing: 0; color: var(--text-3); }
 html.chat-shell .browser-dock .viewer-sizes { gap: 0; padding: 0; border: 0; background: none; }
 html.chat-shell .browser-dock .viewer-sizes button { height: 28px; padding: 0 8px; border-radius: 8px; background: none; font: 500 12px var(--read); color: var(--text-3); text-transform: lowercase; }
 html.chat-shell .browser-dock .viewer-sizes button::first-letter { text-transform: uppercase; }
@@ -11215,19 +11221,19 @@ html.chat-shell .browser-dock .ports-menu { padding: 4px; border: 1px solid var(
 html.chat-shell .browser-dock .ports-row { padding: 7px 10px; border-radius: 8px; }
 html.chat-shell .browser-dock .ports-row:hover { background: var(--cs-hover); }
 html.chat-shell .browser-dock .ports-row b { font: 500 13px var(--read); color: var(--text); }
-html.chat-shell .browser-dock .ports-row span { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .browser-dock .ports-row span { font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell .browser-dock .ports-head { font: 600 12px var(--read); color: var(--text-2); }
-html.chat-shell .browser-dock .ports-note { font: 400 11.5px/1.5 var(--read); }
+html.chat-shell .browser-dock .ports-note { font: 450 11.5px/1.5 var(--read); }
 html.chat-shell .browser-dock .browser-tabs { gap: 2px; padding: 0 10px 6px; border-top: 0; border-bottom: 1px solid var(--cs-line); }
-html.chat-shell .browser-dock .browser-tab { height: 30px; gap: 4px; padding: 0 4px 0 10px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 400 13px var(--read); }
+html.chat-shell .browser-dock .browser-tab { height: 30px; gap: 4px; padding: 0 4px 0 10px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 450 13px var(--read); }
 html.chat-shell .browser-dock .browser-tab:hover { background: var(--cs-hover); color: var(--text); }
 html.chat-shell .browser-dock .browser-tab.on { background: var(--cs-sel, var(--cs-hover)); border: 0; color: var(--text); font-weight: 500; }
 html.chat-shell .browser-dock .browser-tab .tab-close { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; opacity: 0; color: var(--text-3); }
 html.chat-shell .browser-dock .browser-tab:is(:hover, .on) .tab-close { opacity: .7; }
 html.chat-shell .browser-dock .browser-tab .tab-close:hover { opacity: 1; color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
-html.chat-shell .browser-dock .browser-newtab { width: 30px; height: 30px; border: 0; border-radius: 8px; color: var(--text-3); font: 400 16px var(--read); }
+html.chat-shell .browser-dock .browser-newtab { width: 30px; height: 30px; border: 0; border-radius: 8px; color: var(--text-3); font: 450 16px var(--read); }
 html.chat-shell .browser-dock .browser-newtab:hover { background: var(--cs-hover); color: var(--text); }
-html.chat-shell .browser-dock .ports-empty { font: 400 12.5px/1.5 var(--read); color: var(--text-2); }
+html.chat-shell .browser-dock .ports-empty { font: 450 12.5px/1.5 var(--read); color: var(--text-2); }
 html.chat-shell .browser-dock .ports-refresh:is(*, :hover) { box-shadow: none; background: none; color: var(--text-3); }
 html.chat-shell .browser-dock .ports-refresh:hover { background: var(--cs-hover); color: var(--text); }
 /* A narrow box (a tool open beside the conversation): the selectors give way, their words cut with
@@ -11257,9 +11263,9 @@ html.chat-shell dialog.viewer .code-views { margin-left: 6px; padding-left: 8px 
 html.chat-shell .viewer-body.with-beside:not(.stacked) { grid-template-columns: minmax(0, 1fr) calc(var(--share, .46) * 100%); }
 html.chat-shell .viewer-body.with-beside.covered:not(.stacked) > :not(.code-beside) { visibility: hidden; }
 html.chat-shell .code-beside { position: relative; border-left: 1px solid var(--cs-line); background: var(--cs-canvas, var(--panel)); }
-html.chat-shell .code-beside-head { padding: 7px 14px; border-bottom: 1px solid var(--cs-line); font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .code-beside-head { padding: 7px 14px; border-bottom: 1px solid var(--cs-line); font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell .code-beside-head b { font: 600 12.5px var(--read); }
-html.chat-shell .code-beside-live { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .code-beside-live { font: 450 11.5px var(--read); color: var(--text-3); }
 html.chat-shell .code-beside-grip { position: absolute; z-index: 3; top: 0; bottom: 0; left: -5px; width: 10px; cursor: col-resize; touch-action: none; }
 html.chat-shell .code-beside-grip::after { content: ''; position: absolute; top: 50%; left: 4px; width: 2px; height: 36px; translate: 0 -50%; border-radius: 2px; background: var(--cs-line); opacity: 0; transition: opacity var(--motion-fast) var(--ease-out), height var(--motion-fast) var(--ease-out); }
 html.chat-shell .code-beside-grip:hover::after, html.chat-shell .viewer-body.sizing .code-beside-grip::after { opacity: 1; height: 56px; background: var(--phosphor); }
@@ -11272,15 +11278,15 @@ html.chat-shell .viewer-body.sizing iframe { pointer-events: none; }
 /* The card that asks about lines (or a spot on a page): the menus' hand. Who, the verbs as quiet
    chips, the questions as rows, one's own question as a row too, and what needs no one under a line. */
 html.chat-shell .ask-card { gap: 8px; width: min(280px, calc(100vw - 24px)); padding: 8px; border: 1px solid var(--cs-line); border-radius: 12px; background: var(--cs-canvas, var(--panel)); box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
-html.chat-shell .ask-card-head { padding: 2px 6px 0; font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .ask-card-head { padding: 2px 6px 0; font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell .ask-crew { gap: 6px; padding: 0 6px; }
 html.chat-shell .ask-agent { --size: 22px; }
 html.chat-shell .ask-actions { gap: 4px; padding: 0 4px; }
 html.chat-shell .ask-action { height: 28px; padding: 0 10px; border-radius: 8px; background: var(--cs-hover); color: var(--text); font: 500 12.5px var(--read); }
 html.chat-shell .ask-action:is(:hover, :focus-visible) { background: var(--cs-sel, color-mix(in srgb, var(--text) 10%, transparent)); color: var(--text); }
 html.chat-shell .ask-group { padding-top: 6px; border-top: 1px solid var(--cs-line); }
-html.chat-shell .ask-group-title { padding: 2px 8px 4px; font: 400 11.5px var(--read); color: var(--text-3); }
-html.chat-shell .ask-item { padding: 6px 8px; font: 400 13px/1.4 var(--read); color: var(--text); }
+html.chat-shell .ask-group-title { padding: 2px 8px 4px; font: 450 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .ask-item { padding: 6px 8px; font: 450 13px/1.4 var(--read); color: var(--text); }
 html.chat-shell .ask-item:is(:hover, :focus-visible) { background: var(--cs-hover); }
 html.chat-shell .ask-card .ask-own:is(*, :hover, :active, :focus-visible) {
   justify-content: flex-start; height: auto; margin: 0; padding: 7px 8px; border: 0 !important; border-top: 0; border-radius: 8px;
@@ -11346,9 +11352,9 @@ html.chat-shell #modules .mods-tile.make:hover { background: var(--cs-hover) !im
 html.chat-shell #modules .mods-tile:focus-visible { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 60%, transparent) !important; }
 html.chat-shell #modules .mods-tile { min-height: 0; gap: 3px; border-radius: 14px; }
 html.chat-shell #modules .mods-name { font: 600 13.5px var(--read); letter-spacing: 0; color: var(--text); }
-html.chat-shell #modules .mods-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 12px/1.45 var(--read); color: var(--text-3); }
-html.chat-shell #modules .mods-app { margin-top: 4px; padding: 0; border-radius: 0; background: none; font: 400 11.5px var(--read); color: var(--text-3); }
-html.chat-shell #modules .mods-top .sx-chip { padding: 0; border: 0; background: none !important; box-shadow: none !important; font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell #modules .mods-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 450 12px/1.45 var(--read); color: var(--text-3); }
+html.chat-shell #modules .mods-app { margin-top: 4px; padding: 0; border-radius: 0; background: none; font: 450 11.5px var(--read); color: var(--text-3); }
+html.chat-shell #modules .mods-top .sx-chip { padding: 0; border: 0; background: none !important; box-shadow: none !important; font: 450 11.5px var(--read); color: var(--text-3); }
 html.chat-shell #modules .mods-top .sx-chip.on { color: var(--text-2); }
 html.chat-shell #modules .custom-title { font: 600 14px var(--read); letter-spacing: -.005em; }
 html.chat-shell #modules .mods-head .sx-btn:is(*, :hover, :active, :focus-visible) { height: 30px; padding: 0 10px; gap: 6px; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; font: 500 12.5px var(--read); letter-spacing: 0; color: var(--text-2); }
@@ -11400,8 +11406,8 @@ html.chat-shell #messages#messages .thread-inner > .system.fail:not(.folded) {
 }
 html.chat-shell #messages .system.fail .label { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; opacity: 1; font: 600 13px var(--read) !important; color: var(--danger); }
 html.chat-shell #messages .system.fail:not(.folded) .label::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
-html.chat-shell #messages .system.fail .fail-said { display: block; font: 400 12px/1.5 var(--read); color: var(--text-3); overflow-wrap: anywhere; }
-html.chat-shell #messages .system.fail .fail-known { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cs-line); font: 400 13px/1.5 var(--read); color: var(--text); }
+html.chat-shell #messages .system.fail .fail-said { display: block; font: 450 12px/1.5 var(--read); color: var(--text-3); overflow-wrap: anywhere; }
+html.chat-shell #messages .system.fail .fail-known { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cs-line); font: 450 13px/1.5 var(--read); color: var(--text); }
 html.chat-shell #messages .system.fail :is(.fail-actions, .partial .artifacts) { justify-content: flex-start; justify-items: start; }
 html.chat-shell #messages .sys-dots.open > .system.fail.folded .label { display: inline; margin-right: 6px; }
 
@@ -11409,7 +11415,7 @@ html.chat-shell #messages .sys-dots.open > .system.fail.folded .label { display:
 html.chat-shell .shell > .composer { width: var(--wide-column); margin-left: var(--wide-left); }
 
 /* The foot of the conversation is gone: the author's line lives in the sidebar, under the version. */
-html.chat-shell .side-who .side-copy { display: block; margin-top: 1px; font: 400 11.5px var(--read); color: var(--text-3); text-decoration: none; white-space: nowrap; }
+html.chat-shell .side-who .side-copy { display: block; margin-top: 1px; font: 450 11.5px var(--read); color: var(--text-3); text-decoration: none; white-space: nowrap; }
 html.chat-shell .side-who .side-copy:hover { color: var(--text); text-decoration: underline; }
 /* The author is said in the sidebar, under «MADRE 1.0.5» (2026-10-27): under the box stay only
    the keys a module puts there, when there are any. A little air under the box. */
@@ -11417,7 +11423,7 @@ html.chat-shell .shell > .colophon > .colophon-link { display: none; }
 html.chat-shell .shell > .colophon:not(:has(> :not(.colophon-link))) { display: none; }
 html.chat-shell .shell > .composer { margin-bottom: 14px; }
 html.chat-shell .shell > .colophon { margin-top: -6px; padding-bottom: 8px; }
-html.chat-shell .shell > .colophon .colophon-link { font: 400 11.5px var(--read); color: var(--text-3); }
+html.chat-shell .shell > .colophon .colophon-link { font: 450 11.5px var(--read); color: var(--text-3); }
 
 /* ---- Notices as dots, read open (2026-10-27) ----
    Closed, a row of several is the size of a lone dot: the same 6 px dot in the same 12 px pill, the
@@ -11448,7 +11454,7 @@ html.chat-shell #messages#messages .sys-dots.open > .system.folded:not(.handoff)
 html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded { display: flex; flex-direction: column; gap: 2px; }
 html.chat-shell #messages#messages .sys-dots.open > .system.folded > b:not(:first-child), html.chat-shell #messages#messages .sys-dots.open > .system.handoff.folded > b { font-weight: 500; color: var(--text); }
 html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .label { order: 0; }
-html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .fail-known { order: 1; margin: 0; padding: 0; border: 0; font: 400 13px/1.5 var(--read); color: var(--text-2); }
+html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .fail-known { order: 1; margin: 0; padding: 0; border: 0; font: 450 13px/1.5 var(--read); color: var(--text-2); }
 html.chat-shell #messages#messages .sys-dots.open > .system.fail.folded > .fail-said {
   order: 2; margin-top: 2px; font: 400 12px/1.5 var(--read); color: var(--text-3);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -11466,13 +11472,13 @@ html.chat-shell #messages#messages .bubble-foot > .bubble-actions { margin-right
 html.chat-shell .reply-menu { width: min(300px, calc(100vw - 24px)); padding: 6px; border: 1px solid var(--cs-line); border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .28); }
 html.chat-shell .reply-menu .reply-head { display: grid; gap: 1px; padding: 6px 8px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--cs-line); }
 html.chat-shell .reply-menu .reply-head b { font: 600 13px var(--read); color: var(--text); }
-html.chat-shell .reply-menu .reply-head span { font: 400 12px/1.4 var(--read); color: var(--text-3); }
+html.chat-shell .reply-menu .reply-head span { font: 450 12px/1.4 var(--read); color: var(--text-3); }
 html.chat-shell .reply-menu .item { gap: 10px; padding: 6px 8px; border-radius: 8px; background: none !important; }
 html.chat-shell .reply-menu .item:is(:hover, :focus-visible):not(:disabled) { background: var(--cs-hover) !important; outline: 0; }
 html.chat-shell .reply-menu .item.off { opacity: .5; cursor: default; }
 html.chat-shell .reply-menu .reply-who { display: grid; gap: 0; min-width: 0; }
 html.chat-shell .reply-menu .reply-who b { font: 500 13px var(--read); letter-spacing: 0; color: var(--text); }
-html.chat-shell .reply-menu .reply-who span { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell .reply-menu .reply-who span { font: 450 12px var(--read); color: var(--text-3); }
 /* The quote in the box: its × is a quiet mark, not a red key. */
 html.chat-shell .reply-quote .drop:is(*, :hover, :focus-visible) { width: 22px; height: 22px; border: 0 !important; border-radius: 6px !important; background: none !important; box-shadow: none !important; color: var(--text-3) !important; }
 html.chat-shell .reply-quote .drop:is(:hover, :focus-visible) { background: var(--cs-hover) !important; color: var(--text) !important; }
@@ -11485,7 +11491,7 @@ html.chat-shell .arrange-title::first-letter { text-transform: uppercase; }
 html.chat-shell .arrange-options { gap: 4px; }
 html.chat-shell .arrange-option { padding: 8px 4px 6px; border-radius: 8px; color: var(--text-2); }
 html.chat-shell .arrange-option:hover { background: var(--cs-hover); color: var(--text); }
-html.chat-shell .arrange-option span { font: 400 11.5px var(--read); }
+html.chat-shell .arrange-option span { font: 450 11.5px var(--read); }
 
 /* The box, taking the caret: its edge a touch lighter and the faintest sinking, nothing more. */
 html.chat-shell .shell > .composer { transition: box-shadow calc(160ms * var(--motion-scale, 1)) var(--ease-out); }
@@ -11518,7 +11524,7 @@ html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill):is(*, :hover, :ac
 }
 html.chat-shell .shell > .bar > :is(.steps-pill, .update-pill):is(:hover, :focus-visible, [aria-expanded="true"]) { background: var(--cs-hover) !important; color: var(--text); }
 html.chat-shell .shell > .bar > .steps-pill .steps-ring { width: 14px; height: 14px; color: var(--phosphor); }
-html.chat-shell .shell > .bar > .steps-pill .steps-count { font-weight: 400; color: var(--text-3); }
+html.chat-shell .shell > .bar > .steps-pill .steps-count { font-weight: 450; color: var(--text-3); }
 /* A newer MADRE: an accent dot where the download arrow was. */
 html.chat-shell .shell > .bar > .update-pill .update-glyph { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--phosphor); opacity: 1; }
 html.chat-shell .shell > .bar > .update-pill .update-glyph svg { display: none; }
@@ -11556,7 +11562,7 @@ html.chat-shell .slash-menu {
   border: 0 !important; border-radius: 14px; background: var(--cs-canvas, var(--panel)); color: var(--text);
   box-shadow: 0 0 0 .5px color-mix(in srgb, var(--text) 14%, transparent), 0 14px 36px -14px rgba(0, 0, 0, .28) !important;
 }
-html.chat-shell .slash-menu .group { padding: 8px 10px 4px; font: 400 12px/1.4 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell .slash-menu .group { padding: 8px 10px 4px; font: 450 12px/1.4 var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell .slash-menu .group:first-child { padding-top: 6px; }
 html.chat-shell .slash-menu .item.cmd { grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; padding: 7px 10px; border: 0; border-radius: 9px; background: none; }
 html.chat-shell .slash-menu .item.cmd .glyph { width: 18px; height: 20px; border: 0 !important; border-radius: 0; background: none !important; color: var(--text-3); }
@@ -11566,8 +11572,8 @@ html.chat-shell .slash-menu .item.cmd .glyph.mode { font: 600 11px var(--read); 
 html.chat-shell .slash-menu .item.cmd .body { gap: 1px; }
 html.chat-shell .slash-menu .item.cmd .line { gap: 6px; }
 html.chat-shell .slash-menu .item.cmd .key { font: 500 13px/20px var(--read); color: var(--text); }
-html.chat-shell .slash-menu .item.cmd .args { padding: 0; border-radius: 0; background: none; font: 400 12px/20px var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html.chat-shell .slash-menu .item.cmd .what { font: 400 12px/1.4 var(--read); color: var(--text-3); -webkit-line-clamp: 1; line-clamp: 1; }
+html.chat-shell .slash-menu .item.cmd .args { padding: 0; border-radius: 0; background: none; font: 450 12px/20px var(--read); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.chat-shell .slash-menu .item.cmd .what { font: 450 12px/1.4 var(--read); color: var(--text-3); -webkit-line-clamp: 1; line-clamp: 1; }
 html.chat-shell .slash-menu .item:is([aria-selected="true"], :hover) { background: var(--cs-hover) !important; border-color: transparent !important; }
 html.chat-shell .slash-menu .item.cmd:is([aria-selected="true"], :hover) .glyph { color: var(--text); }
 html.chat-shell .slash-menu .item.cmd[aria-selected="true"] .what { color: var(--text-2); }
@@ -11578,8 +11584,8 @@ html.chat-shell .slash-menu .item.starter {
   padding: 7px 10px; border: 0 !important; border-radius: 9px; background: none; box-shadow: none;
 }
 html.chat-shell .slash-menu .item.starter .starter-icon { grid-row: auto; width: 14px; height: 14px; margin: 0 auto; }
-html.chat-shell .slash-menu .item.starter .idea { min-width: 0; overflow: hidden; font: 400 13px/20px var(--read); color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
-html.chat-shell .slash-menu .item.starter .shape { padding: 0; border: 0; border-radius: 0; background: none !important; font: 400 11.5px var(--read); color: var(--text-3) !important; white-space: nowrap; }
+html.chat-shell .slash-menu .item.starter .idea { min-width: 0; overflow: hidden; font: 450 13px/20px var(--read); color: var(--text); white-space: nowrap; text-overflow: ellipsis; }
+html.chat-shell .slash-menu .item.starter .shape { padding: 0; border: 0; border-radius: 0; background: none !important; font: 450 11.5px var(--read); color: var(--text-3) !important; white-space: nowrap; }
 html.chat-shell .slash-menu .hint.keys {
   position: sticky; bottom: -4px; z-index: 1; margin: 4px -4px -4px; padding: 8px 14px;
   border-top: 1px solid var(--cs-line); border-radius: 0 0 14px 14px; background: var(--cs-canvas, var(--panel));
@@ -11831,13 +11837,13 @@ html.chat-shell .composer #pick-options .pick-label > :is(.mode-chip, .model-chi
 }
 html.chat-shell .composer #pick-options .grace-chip { height: 24px; gap: 5px; margin-left: 4px; padding: 0 5px 0 9px; }
 html.chat-shell .composer #pick-options .grace-chip .left { opacity: .75; }
-html.chat-shell .composer #pick-options .grace-chip i { width: 16px; height: 16px; font: 400 12px/1 var(--read); }
+html.chat-shell .composer #pick-options .grace-chip i { width: 16px; height: 16px; font: 450 12px/1 var(--read); }
 html.chat-shell .composer:has(#message:not(:placeholder-shown)) .field > button[type="submit"]:not(:disabled),
 html.chat-shell .composer .field > button[type="submit"]:not(:disabled):hover { color: var(--phosphor) !important; }
 
 /* ---- A plan's steps say their mode (2026-10-27): «@claude in mode #1», the number in its mode's own
    colour — #1 in the accent, as on the box's chip — and the words in the line's. ---- */
-html.chat-shell #messages .system.plan .step-mode-in { font-weight: 400; color: var(--text-3); }
+html.chat-shell #messages .system.plan .step-mode-in { font-weight: 450; color: var(--text-3); }
 html.chat-shell #messages .system.plan .step-mode { margin-left: 0; font-weight: 600; }
 html.chat-shell #messages .system.plan .step-mode.m0 { color: var(--mode-0); }
 html.chat-shell #messages .system.plan .step-mode.m1 { color: var(--acc, var(--mode-1)); }
@@ -11918,7 +11924,7 @@ html.chat-shell[data-scheme="dark"] #messages#messages .sys-dots.open { backgrou
 html.chat-shell :is(#nostromo, .mv) .nostromo-head { padding: 10px 12px 10px 18px; gap: 6px 14px; border-bottom: 1px solid rgb(255 255 255 / .07); background: rgb(10 12 14 / .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title { font: 600 14px var(--read); letter-spacing: -.005em; text-transform: lowercase; color: #f2f1ee; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title::first-letter { text-transform: uppercase; }
-html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-sub { font: 400 12.5px var(--read); color: rgb(242 241 238 / .5); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-sub { font: 450 12.5px var(--read); color: rgb(242 241 238 / .5); }
 /* The name on its line and how the memory stands under it (2026-10-28), the keys at the right of
    both, the legend under all of it — the head of a window, not a row of words. */
 html.chat-shell :is(#nostromo, .mv) .nostromo-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title actions" "sub actions" "legend legend"; row-gap: 2px; }
@@ -11926,7 +11932,7 @@ html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-title { align-self:
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .mother-sub { align-self: start; line-height: 1.35; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-head > .nostromo-legend { margin-top: 8px; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-legend { gap: 12px; }
-html.chat-shell :is(#nostromo, .mv) .nostromo-legend .k i { font: 400 12px var(--read); font-style: normal; letter-spacing: 0; color: rgb(242 241 238 / .62); }
+html.chat-shell :is(#nostromo, .mv) .nostromo-legend .k i { font: 450 12px var(--read); font-style: normal; letter-spacing: 0; color: rgb(242 241 238 / .62); }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions { gap: 2px; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close:is(*, :hover, :active, .ask, .cold, .neural-key) {
   height: 28px; padding: 0 10px; border: 0 !important; border-radius: 8px; box-shadow: none !important;
@@ -11940,14 +11946,14 @@ html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode.close .x-icon { width: 16px; height: 16px; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode { color: rgb(242 241 238 / .72); }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode:is(:hover, :focus-visible) { color: #fff; background: rgb(255 255 255 / .07) !important; }
-html.chat-shell :is(#nostromo, .mv) .nostromo-hint, html.chat-shell :is(#nostromo, .mv) .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-hint, html.chat-shell :is(#nostromo, .mv) .mother-foot { font: 450 11.5px var(--read); letter-spacing: 0; }
 
 /* ---- Diagnostics in the room's voice (2026-10-27): a head like Settings', one quiet line of how the
    project stands, and two columns that touch — the list on the side ground, the answer on the
    canvas. Where to look is one segmented choice; the agents, a quieter row under it. A row is a
    dot, its words, its agent and its code; the chosen one takes the selection tone, never a plate.
    The answer's blocks are flat with a hairline, as Settings' are. ---- */
-html.chat-shell #mother .mother-status { padding: 7px 18px; border-bottom: 1px solid var(--cs-line); font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell #mother .mother-status { padding: 7px 18px; border-bottom: 1px solid var(--cs-line); font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell #mother .mother-body { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); }
 html.chat-shell #mother .mother-list { gap: 10px; padding: 12px 10px 16px 12px; border-right: 1px solid var(--cs-line); background: var(--cs-side); }
 html.chat-shell #mother .mother-detail { gap: 12px; padding: 14px 18px 22px; }
@@ -11961,20 +11967,20 @@ html.chat-shell #mother .remedy-agents { display: flex; flex-wrap: wrap; gap: 2p
 html.chat-shell #mother .remedy-agents .remedy-chip { height: 24px; padding: 0 8px; border-radius: 6px; font: 500 12px var(--read); color: var(--text-3); box-shadow: none; background: none; }
 html.chat-shell #mother .remedy-agents .remedy-chip:hover { background: var(--cs-hover); color: var(--text-2); }
 html.chat-shell #mother .remedy-agents .remedy-chip.on { background: var(--cs-sel); color: var(--text); }
-html.chat-shell #mother .remedy-chip span { font: 400 11px var(--read); color: var(--text-3); }
+html.chat-shell #mother .remedy-chip span { font: 450 11px var(--read); color: var(--text-3); }
 html.chat-shell #mother .remedy-rows { gap: 1px; }
 html.chat-shell #mother .remedy-row { min-height: 34px; padding: 6px 8px; gap: 9px; border-radius: 8px; }
 html.chat-shell #mother .remedy-row:hover { background: var(--cs-hover); }
 html.chat-shell #mother .remedy-row.on { background: var(--cs-sel); box-shadow: none; }
 html.chat-shell #mother .remedy-row.on .remedy-title { font-weight: 500; }
 html.chat-shell #mother .remedy-dot { width: 7px; height: 7px; }
-html.chat-shell #mother .remedy-title { font: 400 13px var(--read); }
+html.chat-shell #mother .remedy-title { font: 450 13px var(--read); }
 html.chat-shell #mother .remedy-agent { font: 500 11.5px var(--read); }
 html.chat-shell #mother .remedy-code { font-size: 10.5px; color: var(--text-3); }
 html.chat-shell #mother .remedy-foot { padding: 6px 2px 0; border-top: 1px solid var(--cs-line); }
 html.chat-shell #mother .mother-detail .sx-block { border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line) !important; }
 html.chat-shell #mother .remedy .sx-head h3 { font: 600 15.5px/1.35 var(--read); letter-spacing: -.005em; }
-html.chat-shell #mother .remedy-what { font: 400 14px/1.6 var(--read); color: var(--text-2); }
+html.chat-shell #mother .remedy-what { font: 450 14px/1.6 var(--read); color: var(--text-2); }
 html.chat-shell #mother .remedy-error { font-size: 12px; line-height: 1.55; color: var(--text-2); }
 
 /* ---- «What is sent» in the room's voice (2026-10-27): the canvas sheet with its head, its five
@@ -11983,39 +11989,39 @@ html.chat-shell #mother .remedy-error { font-size: 12px; line-height: 1.55; colo
 html.chat-shell #core .mother-frame { background: var(--cs-canvas); }
 html.chat-shell #core .mother-head { padding: 12px 12px 12px 20px; border-bottom: 1px solid var(--cs-line); }
 html.chat-shell #core .mother-head .mother-title { font: 600 15px var(--read); letter-spacing: -.005em; text-transform: none; color: var(--text); }
-html.chat-shell #core .mother-head .mother-sub { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .mother-head .mother-sub { font: 450 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell #core .core-copy-all { height: 28px; padding: 0 12px; border: 0 !important; border-radius: 8px; background: var(--cs-hover) !important; box-shadow: none !important; font: 500 12.5px var(--read); }
 html.chat-shell #core .core-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: 11px; background: var(--cs-hover); }
 html.chat-shell #core .core-tab { justify-items: center; gap: 1px; padding: 6px 8px; border: 0 !important; border-radius: 8px; background: none; color: var(--text-2); text-align: center; }
 html.chat-shell #core .core-tab b { font: 500 13px var(--read); letter-spacing: 0; text-transform: none; }
-html.chat-shell #core .core-tab .meta { font: 400 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); opacity: 1; }
+html.chat-shell #core .core-tab .meta { font: 450 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); opacity: 1; }
 html.chat-shell #core .core-tab:hover { color: var(--text); }
 html.chat-shell #core .core-tab.on { background: var(--cs-canvas); color: var(--text); box-shadow: 0 0 0 .5px var(--cs-line), 0 1px 2px rgb(0 0 0 / .1); }
-html.chat-shell #core .brew-head { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .brew-head { font: 450 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell #core .brew-head b { font: 600 14px var(--read); color: var(--text); }
 html.chat-shell #core :is(.mem-tile, .mem-card) { border: 0; border-radius: 12px; background: var(--cs-canvas); box-shadow: 0 0 0 1px var(--cs-line) !important; }
-html.chat-shell #core .mem-tile .label { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .mem-tile .label { font: 450 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell #core .mem-tile .value { font: 650 26px/1.15 var(--read); letter-spacing: -.02em; }
-html.chat-shell #core .mem-tile .sub, html.chat-shell #core .mem-signal .detail { font: 400 12px var(--read); color: var(--text-3); }
+html.chat-shell #core .mem-tile .sub, html.chat-shell #core .mem-signal .detail { font: 450 12px var(--read); color: var(--text-3); }
 html.chat-shell #core .mem-card h4 { font: 600 13.5px var(--read); letter-spacing: 0; text-transform: none; }
 html.chat-shell #core .mem-meter { height: 4px; border-radius: 99px; background: var(--cs-hover); }
 html.chat-shell #core .mem-meter i { border-radius: 99px; background: var(--phosphor); }
 html.chat-shell #core .console-line { border: 0; border-radius: 12px; background: var(--cs-input); box-shadow: var(--cs-input-ring); }
-html.chat-shell #core .console-line input { font: 400 13.5px var(--read); }
-html.chat-shell #core .mother-foot { font: 400 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); border-top: 1px solid var(--cs-line); }
+html.chat-shell #core .console-line input { font: 450 13.5px var(--read); }
+html.chat-shell #core .mother-foot { font: 450 11.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); border-top: 1px solid var(--cs-line); }
 
 /* ---- «What is sent», the strip above the reading (2026-10-27): who it goes to, at what mode, and the
    question you would send, in the reading face and sentence case, with the room's chips. ---- */
 html.chat-shell #core .core-strip { gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--cs-line); }
-html.chat-shell #core :is(.core-pick, .core-asking) .k { font: 400 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core :is(.core-pick, .core-asking) .k { font: 450 12.5px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 html.chat-shell #core .core-agent { height: 26px; padding: 0 10px; border: 0; border-radius: 8px; background: var(--cs-hover); color: var(--text-2); font: 500 12.5px var(--read); letter-spacing: 0; text-transform: none; }
 html.chat-shell #core .core-agent:hover { color: var(--text); }
 html.chat-shell #core .core-agent.on { background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--text); }
 html.chat-shell #core .core-pick select { height: 26px; padding: 0 8px; border: 0; border-radius: 8px; background: var(--cs-hover); color: var(--text); font: 500 12.5px var(--read); letter-spacing: 0; text-transform: none; }
-html.chat-shell #core .core-ceiling { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; }
-html.chat-shell #core .core-asking textarea { padding: 6px 0; border-bottom: 1px solid var(--cs-line); color: var(--text); font: 400 13.5px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-ceiling { font: 450 12px var(--read); letter-spacing: 0; text-transform: none; }
+html.chat-shell #core .core-asking textarea { padding: 6px 0; border-bottom: 1px solid var(--cs-line); color: var(--text); font: 450 13.5px var(--read); letter-spacing: 0; text-transform: none; }
 html.chat-shell #core .core-asking textarea::placeholder { color: var(--text-3); opacity: 1; }
-html.chat-shell #core .core-asking .note { font: 400 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
+html.chat-shell #core .core-asking .note { font: 450 12px var(--read); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 /* The pictures' quiet strokes and dots are drawn in the ink of the page (market-art.js, currentColor). */
 .mk.flat :is(.mk-slide-art, .mk-shot) { color: var(--text); }
 

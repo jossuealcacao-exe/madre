@@ -1767,6 +1767,8 @@ export async function createPulseServer({
   poller.unref();
 
   let installing = null;
+  let pulling = null;          // the model download running now, and how to stop it
+
   // Intenciones' reading of every conversation, kept per ledger file until that file changes.
   const observedLedgers = new Map();
   // The context a module works in: the project, its settings, the room, and what this server offers.
@@ -1939,27 +1941,37 @@ export async function createPulseServer({
             if (down.running) return { ok: false, error: t('The old Ollama ({running}) did not stop. Quit it by hand, then press START OLLAMA.', { running: status.version }) };
             return this.start();
           },
-          // Pulls stream into the room like a module install; one at a time.
+          // Pulls stream into the room like a module install; one at a time, and one can be stopped
+          // (the welcome's «Cancel», 2026-10-28).
           pull: async (model) => {
             if (installing) return { ok: false, error: `Another install is running (${installing}).` };
             installing = 'ollama';
+            const stopper = new AbortController();
+            pulling = { model, stopper };
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: `ollama pull ${model}`, platforms: [], alreadyInstalled: false });
             void (async () => {
               let pending = [];
               let flushTimer = null;
               const flush = async () => { flushTimer = null; if (!pending.length) return; const batch = pending; pending = []; await room.record('extension.install.output', { id: 'ollama', lines: batch }); };
               try {
-                await pullModel({ host: ollama.host, model, fetchImpl: reportFetch, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
+                await pullModel({ host: ollama.host, model, fetchImpl: reportFetch, signal: stopper.signal, onLine: (line) => { pending.push(line); if (!flushTimer) flushTimer = setTimeout(() => void flush(), 400); } });
                 await flush();
                 const status = await wireOllama();
                 await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: true, installed: true, detail: `pulled ${model}`, model, ollama: status });
               } catch (error) {
                 await flush();
+                // Stopped on purpose: said as that, not as a failure.
+                if (stopper.signal.aborted) await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: 'cancelled', model, cancelled: true });
                 // Why it stopped, in one word the page says in plain words (src/setup-trouble.mjs).
-                await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message, model, trouble: installTrouble(error.message) });
-              } finally { installing = null; }
+                else await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: false, detail: error.message, model, trouble: installTrouble(error.message) });
+              } finally { installing = null; pulling = null; }
             })();
             return { ok: true };
+          },
+          cancelPull: (model = null) => {
+            if (!pulling || (model && pulling.model !== model)) return { ok: false, error: t('No download is running.') };
+            pulling.stopper.abort();
+            return { ok: true, model: pulling.model };
           },
         },
       },
@@ -3294,18 +3306,53 @@ export async function createPulseServer({
         }));
         return sendJson(response, 200, { host, running: Boolean(ollama.running), models: (ollama.models ?? []).map((one) => one.name), later });
       }
-      // A first word with the local AI (the welcome's «try it»): one short answer from the model in use.
+      // A first talk with the local AI (the welcome's «try it», 2026-10-28): the model in use answers as
+      // it writes, word by word, and remembers the last few turns — so it reads as talking to it, not
+      // as a form that comes back. Plain text streamed as Ollama hands it over.
       if (request.method === 'POST' && url.pathname === '/api/local-ai/try') {
         if (!ownPage()) return sendJson(response, 403, { error: t('This is done from MADRE\'s own page, on this computer.') });
         if (!ollama.running || !ollama.chatModel) return sendJson(response, 412, { error: t('The local AI has no model to answer with yet.') });
         const payload = await body(request).catch(() => ({}));
-        const said = String(payload.text ?? '').slice(0, 300) || 'hola';
+        const said = Array.isArray(payload.messages) ? payload.messages : [{ role: 'user', content: String(payload.text ?? '') || 'hola' }];
+        const turns = said.filter((one) => one && (one.role === 'user' || one.role === 'assistant') && typeof one.content === 'string' && one.content.trim())
+          .slice(-10).map((one) => ({ role: one.role, content: one.content.slice(0, 600) }));
+        if (!turns.length || turns.at(-1).role !== 'user') return sendJson(response, 400, { error: t('Write something to the local AI first.') });
+        const stop = new AbortController();
+        request.on('close', () => { if (!response.writableEnded) stop.abort(); });
+        let upstream = null;
         try {
-          const answer = await ollamaGenerate({ host: ollama.host, model: ollama.chatModel, system: t('You are @madre, the AI that runs on this computer inside MADRE. Answer in one or two short, friendly sentences, in the language the person writes in.'), prompt: said, timeoutMs: 120000, temperature: 0.4, fetchImpl: reportFetch });
-          return sendJson(response, 200, { text: String(answer.text ?? '').trim(), model: ollama.chatModel });
+          upstream = await reportFetch(`${ollama.host}/api/chat`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ model: ollama.chatModel, stream: true, options: { temperature: 0.5, num_ctx: 4096 }, messages: [{ role: 'system', content: t('You are @madre, the AI that runs on this computer inside MADRE. Answer in one or two short, friendly sentences, in the language the person writes in.') }, ...turns] }),
+            signal: AbortSignal.any([stop.signal, AbortSignal.timeout(120000)]),
+          });
         } catch (error) {
           return sendJson(response, 502, { error: t('The local AI did not answer: {error}', { error: error.message }) });
         }
+        if (!upstream.ok) return sendJson(response, 502, { error: t('The local AI did not answer: {error}', { error: `HTTP ${upstream.status}` }) });
+        response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-cache', 'x-madre-model': ollama.chatModel });
+        const reader = upstream.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        try {
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let at;
+            while ((at = buffer.indexOf('\n')) >= 0) {
+              const line = buffer.slice(0, at).trim();
+              buffer = buffer.slice(at + 1);
+              if (!line) continue;
+              let event = null;
+              try { event = JSON.parse(line); } catch { continue; }
+              if (event.message?.content) response.write(event.message.content);
+            }
+          }
+        } catch { /* the page went away, or the model stopped: what was said is what it said */ }
+        response.end();
+        return;
       }
       if (request.method === 'POST' && url.pathname === '/api/local-ai/apply') {
         // Probed again: the model chosen in Home may have been downloaded after this project last looked,

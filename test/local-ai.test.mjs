@@ -111,8 +111,13 @@ test('local AI: another computer\'s Ollama is tried before it is kept, and the w
       if (request.url === '/api/tags') return response.end(JSON.stringify({ models: [{ name: 'qwen2.5:1.5b', size: 986e6, details: { family: 'qwen2' } }] }));
       if (request.url === '/api/version') return response.end(JSON.stringify({ version: '0.12.6' }));
       if (request.url === '/api/chat') {
+        // As Ollama streams: one line per piece of the answer, then done.
         const said = JSON.parse(body);
-        return response.end(JSON.stringify({ message: { content: `¡Hola! (${said.model}: ${said.messages.at(-1).content})` } }));
+        asked.push(`turns ${said.messages.length}`);
+        response.setHeader('content-type', 'application/x-ndjson');
+        response.write(`${JSON.stringify({ message: { content: '¡Hola! ' } })}\n`);
+        response.write(`${JSON.stringify({ message: { content: `(${said.model}: ${said.messages.at(-1).content})` } })}\n`);
+        return response.end(`${JSON.stringify({ done: true })}\n`);
       }
       response.statusCode = 404;
       response.end('{}');
@@ -157,10 +162,13 @@ test('local AI: another computer\'s Ollama is tried before it is kept, and the w
     assert.deepEqual(kept.body.models, ['qwen2.5:1.5b']);
     assert.equal((await config()).ollama.host, `http://127.0.0.1:${fakePort}`);
     assert.equal(process.env.PULSE_OLLAMA_HOST, `http://127.0.0.1:${fakePort}`);
-    const tried = await call('/api/local-ai/try', { text: 'hola' });
-    assert.equal(tried.status, 200);
-    assert.equal(tried.body.model, 'qwen2.5:1.5b');
-    assert.match(tried.body.text, /^¡Hola! \(qwen2\.5:1\.5b: hola\)$/);
+    // It answers as it writes, and remembers the turns before: the welcome's «try it» is a talk.
+    const talk = await fetch(`http://127.0.0.1:${port}/api/local-ai/try`, { method: 'POST', headers: { 'content-type': 'application/json', ...page }, body: JSON.stringify({ messages: [{ role: 'user', content: 'hola' }, { role: 'assistant', content: '¡Hola!' }, { role: 'user', content: '¿qué haces?' }] }) });
+    assert.equal(talk.status, 200);
+    assert.equal(talk.headers.get('x-madre-model'), 'qwen2.5:1.5b');
+    assert.equal(await talk.text(), '¡Hola! (qwen2.5:1.5b: ¿qué haces?)');
+    assert.ok(asked.includes('turns 4'), 'the system line and the three turns reach the model');
+    assert.equal((await call('/api/local-ai/try', { messages: [{ role: 'assistant', content: 'solo' }] })).status, 400, 'nothing asked');
     assert.equal((await call('/api/local-ai/host', { host: `127.0.0.1:${fakePort}` }, { ...page, 'x-madre-device': 'phone-1' })).status, 403, 'changed from a phone');
 
     // Empty puts it back on this computer.

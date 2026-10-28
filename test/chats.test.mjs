@@ -1035,7 +1035,8 @@ test('Home framed as a project: the room\'s sidebar, its bar of quiet keys, flat
   assert.match(homeCss, /html\.home-shell \.sm-top :is\(\.sm-barkey, \.sm-icon-key\.bar\) svg \{ width: 16px !important; height: 16px !important; \}/);
   assert.match(homeCss, /html\.home-shell \.sm-top :is\(#sm-gear, #sm-power\) \{ display: none !important; \}/);
   // Flat widgets.
-  assert.match(homeCss, /html\.home-shell \.sm-tile \{ gap: 12px; padding: 16px 18px; border-radius: 12px; background: var\(--cs-canvas\) !important; box-shadow: 0 0 0 1px var\(--cs-line\) !important; \}/);
+  // Flat, with only a whisper of depth under the hairline (2026-10-28).
+  assert.match(homeCss, /html\.home-shell \.sm-tile \{ gap: 12px; padding: 16px 18px; border-radius: 12px; background: var\(--cs-canvas\) !important; box-shadow: 0 0 0 1px var\(--cs-line\), 0 1px 2px rgba\(20, 30, 20, \.035\), 0 6px 18px -10px rgba\(20, 30, 20, \.08\) !important; \}/);
   assert.match(es, /'Keep in the sidebar': 'Dejar en la barra lateral',/);
   // CODE's drawing follows its key, as its neighbours' do.
   assert.match(css, /html\.chat-shell \.shell > \.bar > #code-button svg \{ color: inherit !important; \}/);
@@ -1242,4 +1243,32 @@ test('the manual starts with «Start here»: the way in for each system, then th
   const shape = (copy) => copy.sections.map((one) => [one.id, one.systems?.map((system) => system.steps.length) ?? null, one.steps?.length ?? 0, one.problems?.length ?? 0]);
   assert.deepEqual(shape(MANUAL.es), shape(MANUAL.en));
   assert.match(manualJs, /if \(section\.systems\?\.length\) \{/);
+});
+
+test('review of 2026-10-28: a download can be stopped, «try it» is a talk, Appearance opens from the side, text a touch firmer', async () => {
+  const welcome = await readFile(new URL('../public/welcome.js', import.meta.url), 'utf8');
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const homeCss = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  const ollamaModule = await readFile(new URL('../src/modules/ollama.mjs', import.meta.url), 'utf8');
+  // Stopping a download: the route, the signal into Ollama's pull, and the page says what stays.
+  assert.match(ollamaModule, /path: '\/api\/ollama\/pull\/cancel'/);
+  assert.match(server, /await pullModel\(\{ host: ollama\.host, model, fetchImpl: reportFetch, signal: stopper\.signal,/);
+  assert.match(server, /if \(stopper\.signal\.aborted\) await room\.record\('extension\.install\.finished', \{[^}]*cancelled: true \}\);/);
+  assert.match(welcome, /You cancelled the download\. What already arrived stays in Ollama: download it again and it picks up from there\./);
+  // «Try it» greets first and streams.
+  assert.match(welcome, /if \(!s\.talk\.greeted\) \{ s\.talk\.greeted = true; void say\(GREETING\(\), \{ hidden: true \}\); \}/);
+  assert.match(welcome, /const reader = response\.body\.getReader\(\);/);
+  assert.match(server, /if \(event\.message\?\.content\) response\.write\(event\.message\.content\);/);
+  // The brandbook's logo, drawn once; the close key solid.
+  assert.match(welcome, /const BRAND_LOGO = '<svg class="brand-logo"/);
+  assert.match(homeCss, /\.wl-close\.surface-modes, \.wl-close \{ border-radius: 10px; background: var\(--wl-canvas\) !important;/);
+  // Appearance opens from the side like every category, with Home as it looks now in its preview.
+  assert.match(home, /const full = false;/);
+  assert.match(home, /if \(root\.classList\.contains\('home-shell'\)\) \{\n    preview\.classList\.add\('shell'\);/);
+  // Firmer text and darker quiet greys in the chat shell.
+  assert.match(css, /html\.chat-shell body \{ font-weight: 450; \}/);
+  assert.match(css, /--read-weight: 430;/);
+  assert.match(home, /t\('All caught up\. When an agent asks you something, it shows up here\.'\)/);
 });

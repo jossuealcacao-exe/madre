@@ -52,7 +52,8 @@ const OLLAMA_DOWNLOAD = 'https://ollama.com/download';
 const EMBED_MODEL = 'nomic-embed-text';
 const EMBED_MB = 274;
 const EMBEDDING = /embed|minilm|bge|nomic/i;
-const BEAT = '<svg viewBox="-2 -1 66 22" aria-hidden="true"><path d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="60" cy="10" r="3" fill="currentColor"/></svg>';
+// MADRE's logo as the brandbook draws it (salas-mac.html, .brand-logo): the beat, then the word.
+const BRAND_LOGO = '<svg class="brand-logo" viewBox="-4.8 -4.8 377.1 49.6" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><g class="pulse" transform="translate(0 0) scale(2.5) translate(0 -2)"><path class="beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" stroke-width="1.92" pathLength="100"/><circle class="beat-dot" cx="60" cy="10" r="3" stroke="none"/></g><g class="word" transform="translate(193.5 7)" stroke-width="4.8"><path d="M0 26V0L14 14.3L28 0V26"/><path transform="translate(36.5 0)" d="M0 26V7.8A7.8 7.8 0 0 1 7.8 0H17.2A7.8 7.8 0 0 1 25 7.8V26M0 15.6H25"/><path transform="translate(71.5 0)" d="M0 0H16A12 12 0 0 1 28 12V14A12 12 0 0 1 16 26H0Z"/><path transform="translate(110.5 0)" d="M0 26V0H20.85A7.15 7.15 0 0 1 28 7.15V7.15A7.15 7.15 0 0 1 20.85 14.3H0M15.12 14.3L28 26"/><path transform="translate(146 0)" d="M28 0H0V26H28M0 13H21"/></g></g></svg>';
 const TICK = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 // What a failed install or download said, in one word (src/setup-trouble.mjs), in plain words.
@@ -157,10 +158,11 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   const roomFor = (gb) => (s.env?.disk?.freeGb == null ? true : s.env.disk.freeGb >= gb + 2);
 
   // ---- The rail: the seven steps, where the person is, what is done and what was left for later.
+  // The logo draws itself in once, when the welcome opens: made here once, not with each repaint.
+  const brand = el('div', 'wl-brand');
+  brand.setAttribute('aria-label', 'MADRE');
+  brand.innerHTML = BRAND_LOGO; // trusted: our own SVG string
   function paintRail() {
-    const brand = el('div', 'wl-brand');
-    brand.innerHTML = BEAT; // trusted: our own SVG string
-    brand.append(el('span', null, 'MADRE'));
     const list = el('ol', 'wl-steps');
     WELCOME_STEPS.forEach((id, index) => {
       const done = s.progress.done.includes(id);
@@ -505,15 +507,18 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (pull?.running) {
       const pct = pull.pct ?? 0;
       const got = ((model.sizeGb ?? 0) * pct) / 100;
-      parts.push(bar(pct), el('small', 'wl-tiny', pull.phase === 'verify' ? t('Checking the download…') : t('{pct} % · {got} of {size} GB', { pct: Math.round(pct), got: number(got), size: number(model.sizeGb ?? 0) })));
+      const line = el('div', 'wl-row wl-pull-line');
+      line.append(el('small', 'wl-tiny', pull.phase === 'verify' ? t('Checking the download…') : t('{pct} % · {got} of {size} GB', { pct: Math.round(pct), got: number(got), size: number(model.sizeGb ?? 0) })), el('span', 'wl-grow'), cancelKey(model.ollama, pull));
+      parts.push(bar(pct), line);
       return parts;
     }
+    if (pull?.cancelled) parts.push(note('', t('You cancelled the download. What already arrived stays in Ollama: download it again and it picks up from there.')));
     if (pull?.error) {
       parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : 'model-download')));
     }
     if (!roomFor(model.sizeGb ?? 0)) parts.push(note('warn', t('There are {free} GB free and this model needs {size} GB plus some room. Free up space or choose a smaller model.', { free: number(s.env.disk.freeGb), size: number(model.sizeGb ?? 0) }), fix('disk-full')));
     const row = el('div', 'wl-row');
-    const get = button('wl-btn primary small', pull?.error ? t('Try again') : t('Download · {size} GB', { size: number(model.sizeGb ?? 0) }), () => void startPull(model.ollama));
+    const get = button('wl-btn primary small', pull?.error ? t('Try again') : pull?.cancelled ? t('Continue the download') : t('Download · {size} GB', { size: number(model.sizeGb ?? 0) }), () => void startPull(model.ollama));
     get.disabled = !roomFor(model.sizeGb ?? 0) && !pull?.error;
     row.append(get);
     const down = smaller();
@@ -521,6 +526,18 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     parts.push(row, el('small', 'wl-tiny', t('It downloads once and stays in Ollama.')));
     return parts;
   }
+  // Stopping a download halfway: the server stops asking Ollama for it (/api/ollama/pull/cancel).
+  const cancelKey = (model, pull) => {
+    const key = button('wl-btn ghost small', pull.cancelling ? t('Cancelling…') : t('Cancel'), async () => {
+      pull.cancelling = true;
+      key.disabled = true;
+      key.textContent = t('Cancelling…');
+      const answer = await post('/api/ollama/pull/cancel', { model });
+      if (!answer.ok) { pull.cancelling = false; key.disabled = false; key.textContent = t('Cancel'); }
+    });
+    key.disabled = Boolean(pull.cancelling);
+    return key;
+  };
   async function startPull(model) {
     s.pulls.set(model, { running: true, pct: 0, first: null, phase: 'pull' });
     repaint();
@@ -528,35 +545,84 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (!answer.ok) s.pulls.set(model, { error: answer.body?.error ?? t('Home did not answer.') });
     repaint();
   }
+  // «Try it» (2026-10-28): a talk with @madre, not a form. It greets first as soon as its model is
+  // there, answers as it writes (the server streams what Ollama says), and keeps the turns before, so
+  // the person can go on. Built once per step and kept: the download's events repaint the step, and a
+  // talk being written must not be rebuilt under the person.
+  const GREETING = () => t('Introduce yourself in one short, warm sentence: you are @madre, the AI on this computer, and you are ready to help.');
+  const SUGGESTIONS = () => [t('What can you do for me?'), t('Explain what MADRE is in one line'), t('Tell me something fun in one line')];
   function tryFlow() {
-    const parts = [el('b', 'wl-flow-title', t('3 · Try it'))];
-    const said = s.tried?.said ?? t('hello');
-    const form = el('form', 'wl-try');
+    s.talk ??= { messages: [], busy: false, error: null, node: null, greeted: false };
+    if (!s.talk.node) s.talk.node = talkNode();
+    if (!s.talk.greeted) { s.talk.greeted = true; void say(GREETING(), { hidden: true }); }
+    return [el('b', 'wl-flow-title', t('3 · Talk to it')), s.talk.node];
+  }
+  function talkNode() {
+    const box = el('div', 'wl-talk-card');
+    const list = el('div', 'wl-talk');
+    list.setAttribute('aria-live', 'polite');
+    const chips = el('div', 'wl-chips');
+    for (const words of SUGGESTIONS()) chips.append(button('wl-chip-key', words, () => void say(words)));
+    const form = el('form', 'wl-try wl-talk-form');
     const input = el('input', 'wl-field');
-    input.value = said;
+    input.placeholder = t('Write to @madre…');
     input.setAttribute('aria-label', t('Write to the AI on your computer'));
-    const send = el('button', 'wl-btn small', s.tried?.busy ? t('Thinking…') : t('Send'));
+    const send = el('button', 'wl-btn primary small', t('Send'));
     send.type = 'submit';
-    send.disabled = Boolean(s.tried?.busy);
     form.append(input, send);
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      s.tried = { said: input.value.trim() || t('hello'), busy: true };
-      paintAi();
-      const answer = await post('/api/local-ai/try', { text: s.tried.said });
-      s.tried = { said: s.tried.said, answer: answer.ok ? answer.body.text : null, error: answer.ok ? null : answer.body?.error ?? t('Home did not answer.') };
-      paintAi();
-    });
-    parts.push(form);
-    if (s.tried?.answer || s.tried?.busy) {
-      const talk = el('div', 'wl-talk');
-      talk.append(el('p', 'wl-bubble me', s.tried.said));
-      if (s.tried.answer) talk.append(el('p', 'wl-bubble', s.tried.answer));
-      else talk.append(el('p', 'wl-bubble wl-thinking', t('Thinking…')));
-      parts.push(talk);
+    form.addEventListener('submit', (event) => { event.preventDefault(); const words = input.value.trim(); if (!words) return; input.value = ''; void say(words); });
+    const where = localHost(s.ollama?.host) ? t('It runs on this computer: nothing you write here leaves it.') : t('It runs on the other computer you chose, on your network.');
+    box.append(list, chips, form, el('small', 'wl-tiny', where));
+    box.refs = { list, chips, input, send };
+    return box;
+  }
+  async function say(words, { hidden = false } = {}) {
+    const talk = s.talk;
+    const { list, chips, input, send } = talk.node.refs;
+    if (talk.busy) return;
+    talk.busy = true;
+    talk.error = null;
+    send.disabled = true;
+    chips.hidden = true;
+    talk.node.querySelector('.wl-talk-error')?.remove();
+    talk.messages.push({ role: 'user', content: words });
+    if (!hidden) list.append(el('p', 'wl-bubble me', words));
+    // @madre's turn: its mark, three dots while it thinks, then its words as they come.
+    const row = el('div', 'wl-msg');
+    const face = host.mark?.('madre', 26) ?? el('span', 'wl-msg-face');
+    const bubble = el('p', 'wl-bubble wl-typing');
+    bubble.append(el('i'), el('i'), el('i'));
+    row.append(face, bubble);
+    list.append(row);
+    list.scrollTop = list.scrollHeight;
+    let text = '';
+    try {
+      const response = await fetch('/api/local-ai/try', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: talk.messages }) });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? t('Home did not answer.'));
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        if (text) { bubble.classList.remove('wl-typing'); bubble.classList.add('wl-writing'); bubble.textContent = text; list.scrollTop = list.scrollHeight; }
+      }
+      if (!text.trim()) throw new Error(t('The local AI did not answer.'));
+      talk.messages.push({ role: 'assistant', content: text.trim() });
+    } catch (error) {
+      row.remove();
+      talk.messages.pop();
+      talk.error = error.message;
+      const wrong = note('bad', talk.error, fix('ollama-not-starting'));
+      wrong.classList.add('wl-talk-error');
+      list.after(wrong);
+    } finally {
+      bubble.classList.remove('wl-writing');
+      talk.busy = false;
+      send.disabled = false;
+      chips.hidden = talk.messages.filter((one) => one.role === 'user').length > 2;
+      if (!hidden && document.activeElement === document.body) input.focus({ preventScroll: true });
     }
-    if (s.tried?.error) parts.push(note('bad', s.tried.error, fix('ollama-not-starting')));
-    return parts;
   }
   // The AI of another computer, or of Windows from inside WSL: its address, tried before it is kept.
   function addressFlow() {
@@ -622,7 +688,11 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (s.memoryChoice === 'local') {
       const pull = s.pulls.get(EMBED_MODEL);
       if (embedReady) parts.push(chip('ok', t('Memory model ready · {model}', { model: EMBED_MODEL })));
-      else if (pull?.running) parts.push(bar(pull.pct ?? 0), el('small', 'wl-tiny', t('{pct} % · {mb} MB', { pct: Math.round(pull.pct ?? 0), mb: EMBED_MB })));
+      else if (pull?.running) {
+        const line = el('div', 'wl-row wl-pull-line');
+        line.append(el('small', 'wl-tiny', t('{pct} % · {mb} MB', { pct: Math.round(pull.pct ?? 0), mb: EMBED_MB })), el('span', 'wl-grow'), cancelKey(EMBED_MODEL, pull));
+        parts.push(bar(pull.pct ?? 0), line);
+      } else if (pull?.cancelled) parts.push(note('', t('You cancelled the download. What already arrived stays in Ollama: download it again and it picks up from there.')), button('wl-btn primary small', t('Continue the download'), () => void startPull(EMBED_MODEL)));
       else if (pull?.error) parts.push(note('bad', pull.trouble && TROUBLE[pull.trouble] ? TROUBLE[pull.trouble]() : t('The download stopped: {error}', { error: pull.error }), fix(pull.trouble === 'disk' ? 'disk-full' : 'model-download')), button('wl-btn small', t('Try again'), () => void startPull(EMBED_MODEL)));
       else parts.push(button('wl-btn primary small', t('Download the memory model · {mb} MB', { mb: EMBED_MB }), () => void startPull(EMBED_MODEL)));
     }
@@ -750,7 +820,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
           const model = event.payload.model ?? null;
           const pull = model ? s.pulls.get(model) : [...s.pulls.values()].find((one) => one.running);
           if (pull) {
-            if (event.payload.ok) { pull.running = false; pull.pct = 100; } else Object.assign(pull, { running: false, error: event.payload.detail ?? t('It did not finish.'), trouble: event.payload.trouble ?? null });
+            if (event.payload.ok) { pull.running = false; pull.pct = 100; }
+            else if (event.payload.cancelled) Object.assign(pull, { running: false, cancelled: true, cancelling: false, error: null });
+            else Object.assign(pull, { running: false, error: event.payload.detail ?? t('It did not finish.'), trouble: event.payload.trouble ?? null });
           } else if (s.install?.running) {
             s.install = event.payload.ok ? null : { error: event.payload.detail ?? t('It did not install.'), trouble: event.payload.trouble ?? null, manual: event.payload.trouble === 'permission' };
           }
