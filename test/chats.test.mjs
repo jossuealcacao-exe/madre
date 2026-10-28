@@ -1291,3 +1291,16 @@ test('review of 2026-10-28 (2): Home\'s sheets in the new look, Connections unde
   assert.match(tour, /logo\.innerHTML = MADRE_LOGO;/);
   assert.match(css, /html\.chat-shell dialog\.tour-window \.tour-sheet \{ border-radius: 14px; background: var\(--cs-canvas\) !important;/);
 });
+
+test('the agenda widget: every project\'s reminders by day, settled in place, and a new one written as you would say it', async () => {
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const { HINTS } = await import('../src/tour.mjs');
+  assert.match(home, /'w-agenda': \{ kind: 'agenda', name: \(\) => t\('Agenda'\)/);
+  assert.match(home, /fetch\('\/api\/reminders\?all=1'/);
+  assert.match(home, /await settleReminder\('\/api\/reminders\/done', \{ id: one\.id \}\);/);
+  assert.match(home, /const answer = await post\('\/api\/reminders', \{ text \}\);/);
+  // A widget that reads for itself is offered when it can read, and never redrawn under a field being written.
+  assert.match(home, /const reading = entry\.spec\.read \? \(\(await entry\.spec\.read\(\)\) \? \{ available: true \} : \{ failed: true \}\)/);
+  assert.match(home, /if \(body\.contains\(document\.activeElement\) && document\.activeElement\.matches\('input, textarea'\)\) return;/);
+  assert.ok(HINTS.includes('w-agenda'), 'its first-time card can be kept as seen');
+});

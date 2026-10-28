@@ -6100,4 +6100,14 @@ export const ES = {
   'Until a date or with no end. Cancel it here whenever you want.': 'Hasta una fecha o sin fin. Cancélala aquí cuando quieras.',
   'A connection lets one project look up what another already learned: its decisions, facts and preferences. It only reads, never changes the other project, and you can cancel it whenever you want.': 'Una conexión deja que un proyecto consulte lo que otro ya aprendió: sus decisiones, hechos y preferencias. Solo lee, nunca cambia el otro proyecto, y la puedes cancelar cuando quieras.',
   'Keep the connection': 'Conservarla',
+  // The agenda widget (2026-10-28).
+  'Agenda': 'Agenda',
+  'Your reminders from every project, by day, and a new one written as you would say it.': 'Tus recordatorios de todos los proyectos, por día, y uno nuevo escrito como lo dirías.',
+  'Late': 'Atrasados',
+  'This week': 'Esta semana',
+  'repeats': 'se repite',
+  'Nothing on your agenda. Write one below, or ask an agent to remind you of something.': 'Nada en tu agenda. Escribe uno abajo, o pídele a un agente que te recuerde algo.',
+  'Remind me… (tomorrow at 5 call Ana)': 'Recuérdame… (mañana a las 5 llamar a Ana)',
+  'Reminder set: {when}.': 'Recordatorio listo: {when}.',
+  'Your reminders from every project, by day. ✓ settles one, «Later» moves it, and the box below sets a new one as you would say it.': 'Tus recordatorios de todos los proyectos, por día. ✓ marca uno como hecho, «Más tarde» lo pospone, y en la caja de abajo creas uno nuevo como lo dirías.',
 };

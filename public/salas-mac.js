@@ -1488,6 +1488,14 @@ const WIDGETS = {
   // anywhere else the server has no such widget and Home never offers it.
   'w-usage': { kind: 'usage', owner: true, name: () => t('MADRE usage'), about: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'), size: 8, rows: 5 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
+  // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
+  // this week, later —, each settled here, and a new one written as you would say it. Read from the
+  // reminders themselves (src/modules/reminders.mjs), not from a widget of the server.
+  'w-agenda': { kind: 'agenda', name: () => t('Agenda'), about: () => t('Your reminders from every project, by day, and a new one written as you would say it.'), size: 4, rows: 4, read: async () => {
+    const answer = await fetch('/api/reminders?all=1', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+    if (answer?.prefs) reminderPrefs = answer.prefs;
+    return answer ? { reminders: answer.reminders ?? [] } : null;
+  } },
 };
 const DEFAULT_LAYOUT = { order: ['bishop', 'waiting', 'links', 'projects', 'decisions', 'attention', 'memory'], size: {}, rows: {} };
 // What each tile is, drawn in the accent the person chose (the same line as the room's AJUSTES icons).
@@ -1504,6 +1512,7 @@ const TILE_ICONS = {
   'w-memory': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 13.5a6.2 6.2 0 1 1 12.4 0"/><path d="m10 13.5 3-4"/><path d="M10 13.5h.01" stroke-width="2.4"/></svg>',
   'w-coordinator': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5h13"/><path d="M5 13.5l3.2-3.2 2.6 2.4 4.2-5.2"/><path d="M12.4 7.5H15v2.6"/></svg>',
   'w-models': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.2 16 6.6v6.8L10 16.8 4 13.4V6.6z"/><path d="M4 6.6 10 10l6-3.4M10 10v6.8"/></svg>',
+  'w-agenda': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="13" height="12" rx="2.4"/><path d="M3.5 8.5h13M7 3v3M13 3v3"/><path d="M7 11.5h2M11 11.5h2M7 14h2"/></svg>',
   'w-usage': '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5h13"/><path d="M5.5 13.5v-3M9 13.5V7M12.5 13.5v-4.5M16 13.5V4.5"/></svg>',
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
@@ -1876,7 +1885,9 @@ async function openHomeAdd() {
     if (entry.ready === null) {
       add.disabled = true;
       said.textContent = t('Checking…');
-      const reading = await fetch(`/api/salas/widget?kind=${entry.spec.kind}`, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : { failed: response.status })).catch(() => ({ failed: true }));
+      // One that reads for itself (the agenda) is ready when it can read: it has a box to start with.
+      const reading = entry.spec.read ? ((await entry.spec.read()) ? { available: true } : { failed: true })
+        : await fetch(`/api/salas/widget?kind=${entry.spec.kind}`, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : { failed: response.status })).catch(() => ({ failed: true }));
       if (!row.isConnected) return;
       const ok = Boolean(reading?.available);
       add.disabled = !ok;
@@ -1900,6 +1911,77 @@ function meter(value, tone = null) {
 const toneFor = (share) => (share >= 0.85 ? 'hot' : share >= 0.6 ? 'warm' : null);
 const OS_WORDS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows', other: () => t('other') };
 const WIDGET_PAINT = {
+  // The agenda: what is late and what is today first, then tomorrow, this week and later; a line per
+  // reminder with its project and its keys; and a box for a new one, in the person's own words.
+  agenda(body, reading, { again } = {}) {
+    const list = reading.reminders ?? [];
+    const now = new Date();
+    const day = (offset) => { const one = new Date(now); one.setHours(0, 0, 0, 0); one.setDate(one.getDate() + offset); return one.getTime(); };
+    const groups = [
+      [t('Late'), (at) => at < now.getTime()],
+      [t('Today'), (at) => at < day(1)],
+      [t('Tomorrow'), (at) => at < day(2)],
+      [t('This week'), (at) => at < day(7)],
+      [t('Later'), () => true],
+    ];
+    const used = new Set();
+    const time = (due) => new Intl.DateTimeFormat(reminderLocale(), { hour: 'numeric', minute: '2-digit' }).format(new Date(due));
+    const date = (due) => new Intl.DateTimeFormat(reminderLocale(), { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(due));
+    const box = el('div', 'sm-agenda');
+    let shown = 0;
+    for (const [title, fits] of groups) {
+      const mine = list.filter((one) => !used.has(one.id) && fits(Date.parse(one.due)));
+      for (const one of mine) used.add(one.id);
+      if (!mine.length || shown >= 6) continue;
+      const group = el('div', `sm-agenda-group${title === t('Late') ? ' late' : ''}`);
+      group.append(el('span', 'sm-agenda-day', title));
+      for (const one of mine.slice(0, 6 - shown)) {
+        shown += 1;
+        const row = el('div', 'sm-agenda-row');
+        const words = el('div', 'sm-agenda-words');
+        const when = title === t('Today') || title === t('Late') || title === t('Tomorrow') ? time(one.due) : date(one.due);
+        const room = data?.rooms.find((item) => item.id === one.room) ?? null;
+        words.append(el('b', null, one.text), el('small', null, [when, room ? roomLabel(room) : one.project, one.repeat ? t('repeats') : null].filter(Boolean).join(' · ')));
+        const done = button('sm-agenda-key', null, async () => { done.disabled = true; await settleReminder('/api/reminders/done', { id: one.id }); again?.(); });
+        done.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; // trusted
+        done.setAttribute('aria-label', t('Done'));
+        done.title = t('Done');
+        const later = button('sm-agenda-later', t('Later'), async () => { later.disabled = true; await settleReminder('/api/reminders/snooze', { id: one.id, minutes: reminderPrefs.snooze }); again?.(); });
+        row.append(done, words, later);
+        group.append(row);
+      }
+      box.append(group);
+    }
+    if (!list.length) box.append(el('p', 'sm-hint sm-agenda-empty', t('Nothing on your agenda. Write one below, or ask an agent to remind you of something.')));
+    else if (list.length > shown) box.append(el('p', 'sm-hint', t('And {n} more.', { n: list.length - shown })));
+    // A new one, as you would say it: «tomorrow at 5 call Ana» (the time first is taken off the words).
+    const form = el('form', 'sm-agenda-add');
+    const input = el('input');
+    input.type = 'text';
+    input.autocomplete = 'off';
+    input.placeholder = t('Remind me… (tomorrow at 5 call Ana)');
+    input.setAttribute('aria-label', t('New reminder'));
+    const add = el('button', 'sm-btn small', t('Add'));
+    add.type = 'submit';
+    const said = el('small', 'sm-agenda-said');
+    form.append(input, add, said);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      add.disabled = true;
+      const answer = await post('/api/reminders', { text });
+      add.disabled = false;
+      if (!answer.ok) { said.textContent = answer.body?.error ?? t('The reminder was not set.'); return; }
+      input.value = '';
+      input.blur();
+      const due = answer.body?.reminder?.due;
+      if (due) toast(t('Reminder set: {when}.', { when: reminderWhen(due) }));
+      again?.();
+      void loadReminders();
+    });
+    body.append(box, form);
+  },
   usage(body, reading) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
     const n = (value) => Number(value ?? 0).toLocaleString();
@@ -2069,13 +2151,15 @@ function makeWidget(id) {
   let timer = 0;
   const read = async () => {
     if (document.hidden || !node.isConnected) return;
-    const reading = await fetch(`/api/salas/widget?kind=${spec.kind}`, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+    // A field being written in is never redrawn under the person (the agenda's new reminder).
+    if (body.contains(document.activeElement) && document.activeElement.matches('input, textarea')) return;
+    const reading = spec.read ? await spec.read() : await fetch(`/api/salas/widget?kind=${spec.kind}`, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
     if (!node.isConnected) return;
     body.replaceChildren();
     // The author's widget is not there at all for a copy that cannot read it (no token, not from source).
     if (spec.owner) node.hidden = !reading;
     if (!reading) { body.append(el('p', 'sm-hint', t('It could not be read just now.'))); return; }
-    WIDGET_PAINT[spec.kind](body, reading);
+    WIDGET_PAINT[spec.kind](body, reading, { again: () => void read() });
     fitTile(node);
     // The first time it shows, what it is (homeTour is set up below this, so it is read late).
     if (!node.dataset.guided) { node.dataset.guided = '1'; setTimeout(() => { try { guideWidget(node, spec.kind); } catch { /* the tour is not up yet */ } }, 1500); }
@@ -2150,6 +2234,7 @@ const WIDGET_GUIDE = {
   coordinator: () => t('How far the Coordinator\'s own record is from training a model of its own.'),
   models: () => t('Ollama and its models, and how many examples each project has toward a model of its own (8/300 is 8 of 300). «Choose projects» sets which ones use the local AI.'),
   usage: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'),
+  agenda: () => t('Your reminders from every project, by day. ✓ settles one, «Later» moves it, and the box below sets a new one as you would say it.'),
 };
 function guideWidget(node, kind) {
   const said = WIDGET_GUIDE[kind];

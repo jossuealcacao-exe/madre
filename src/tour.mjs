@@ -38,7 +38,7 @@ export const CHAPTERS = ['moved', 'home', 'renamed', 'board', 'widgets', 'projec
 // got another one, and the project that got the old port inherited them (2026-10-19).)
 export const HINTS = ['switch', 'links', 'key4',
   'home-links', 'home-map', 'home-settings', 'home-add', 'new-add-widgets',
-  'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage',
+  'w-system', 'w-servers', 'w-memory', 'w-coordinator', 'w-models', 'w-usage', 'w-agenda',
   'touch-settings', 'touch-modules', 'touch-market', 'touch-mother', 'touch-memory', 'touch-crew', 'touch-steps', 'touch-browser', 'touch-tree', 'touch-chats', 'touch-code', 'touch-mcp',
   'new-copilot', 'new-mcp', 'new-finder', 'new-memory-access', 'new-dots',
   // 1.0.5: the way in for whoever is new (the box, the agent, the permission; Home's first step),
