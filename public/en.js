@@ -202,7 +202,7 @@ export const EN = {
   "MENTION · ↑↓ · TAB OR ENTER": "Mention · ↑↓ · Tab or Enter",
   "COMMAND · ↑↓ · TAB OR ENTER": "Command · ↑↓ · Tab or Enter",
   "One click on UNLOCK. EDIT saves a copy first, so UNDO is one click away.": "One click on «Unlock». «Edit» saves a copy first, so «Undo» is one click away.",
-  "What you type to unlock #3 EDIT and #4 FULL ACCESS. Asked on every message, unless you chose to remember it below.": "What you type to unlock «#3 Edit» and «#4 Full access». Asked on every message, unless you chose to remember it below.",
+  "#3 EDIT asks you to confirm and #4 FULL ACCESS to confirm twice, or your phrase if you choose it. Asked on every message, unless you chose to remember it below.": "«#3 Edit» asks you to confirm and «#4 Full access» to confirm twice, or your phrase if you choose it. Asked on every message, unless you chose to remember it below.",
   // ux/refresh · parte 2, los grupos del menú de comandos
   "THIS PROJECT": "This project",
   "FROM THE MODULES": "From the modules",

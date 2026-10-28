@@ -1016,3 +1016,16 @@ test('nostromo: a pulse is something passing, never something to look at', async
   // Its halo follows the dot, so shrinking one shrinks both.
   assert.match(source, /size \* 4\.5/, 'the halo no longer follows the dot it belongs to');
 });
+
+test('nostromo: a memory that knows more is a bigger body, read against the richest one, never past the biggest size', async () => {
+  const { BODY_BIG, BODY_SMALL, bodyOf, knowledgeOf } = await import('../public/nostromo-engine.js');
+  const thin = knowledgeOf({ text: 'ok', fromSequence: 1, throughSequence: 1 });
+  const rich = knowledgeOf({ text: 'word '.repeat(120), sources: [1, 2, 3, 4], fromSequence: 1, throughSequence: 40 });
+  // A far room's memory, by its count of words: the same measure.
+  assert.equal(knowledgeOf({ words: 120, sourcesCount: 4, fromSequence: 1, throughSequence: 40 }), rich);
+  assert.ok(rich > thin * 3);
+  assert.ok(bodyOf(rich, rich) === BODY_BIG && bodyOf(0, rich) === BODY_SMALL);
+  assert.ok(bodyOf(thin, rich) < bodyOf(rich / 2, rich) && bodyOf(rich / 2, rich) < BODY_BIG);
+  // A young archive of thin memories does not draw giants: the floor of the reading.
+  assert.ok(bodyOf(thin, thin) < BODY_BIG * 0.6);
+});

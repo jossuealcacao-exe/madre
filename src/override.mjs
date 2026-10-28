@@ -6,23 +6,28 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 //
 // The key is checked here, by the project, since 2026-10-12 (SRV-01 of the 1.0 review): before,
 // only the browser checked it, and two POSTs from any process on the Mac opened #4 with no key.
-// The page asks for the key and sends what was typed; `keyHolds` decides. Four rules never move,
-// whatever the file says:
-//   · #4 always asks for something — there is no «just confirm» for a mode that runs commands;
+// The page asks for the key and sends what was typed; `keyHolds` decides.
+//
+// Since 2026-10-28 (the person's decision) nothing has to be typed to unlock: #3 is one
+// confirmation and #4 two, or the person's own phrase (once for #3, twice for #4) for whoever wants
+// a key a program cannot know. The project's name, typed, is gone as a key: any process can read a
+// folder's name, so it stopped a slip, not a program, and the confirmation stops the slip as well.
+// The rules that never move, whatever the file says:
+//   · #4 is never opened by one press: two confirmations, or the phrase twice;
 //   · a personal phrase is never stored, only its salted SHA-256; the phrase typed to unlock is
 //     compared here and forgotten, and the fingerprint never leaves the project (`publicOverride`);
-//   · the grace is short: #3 up to 30 minutes, #4 up to 5, and off unless chosen;
-//   · the project name stops a slip, not a program: any process can read a folder's name. The
-//     phrase is the key a program on the Mac cannot know.
+//   · the grace is short: #3 up to 30 minutes, #4 up to 5, and off unless chosen.
 export const OVERRIDE_KEYS = Object.freeze({
-  3: Object.freeze(['designation', 'phrase', 'confirm']),
-  4: Object.freeze(['designation-airlock', 'phrase-airlock', 'designation']),
+  3: Object.freeze(['confirm', 'phrase']),
+  4: Object.freeze(['confirm-airlock', 'phrase-airlock']),
 });
+// What the page sends for each press of a confirmation.
+export const CONFIRMED = 'confirm';
 export const OVERRIDE_GRACE = Object.freeze({
   3: Object.freeze([0, 5, 15, 30]),
   4: Object.freeze([0, 5]),
 });
-const DEFAULT_KEYS = { 3: 'designation', 4: 'designation-airlock' };
+const DEFAULT_KEYS = { 3: 'confirm', 4: 'confirm-airlock' };
 
 const HEX = (length) => new RegExp(`^[0-9a-f]{${length}}$`);
 function cleanPhrase(phrase) {
@@ -76,20 +81,18 @@ export function phraseHash(salt, phrase) {
 }
 const same = (a, b) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-// Whether what was typed opens this mode with the key chosen for it. `words` holds what was typed,
-// once, or twice for a key that #4 asks for twice; `designation` is the project's folder name.
-export function keyHolds(stored, { mode, words = [], designation = '' } = {}) {
+// Whether what was sent opens this mode with the key chosen for it. `words` holds one entry per
+// press or phrase: «confirm» for a confirmation, the phrase as typed for a phrase; #4 sends two.
+export function keyHolds(stored, { mode, words = [] } = {}) {
   if (mode !== 3 && mode !== 4) return false;
   const settings = overrideSettings(stored);
   const typed = (Array.isArray(words) ? words : []).map((word) => (typeof word === 'string' ? word.trim() : ''));
-  const isProject = (word) => Boolean(word) && Boolean(designation) && word.toLowerCase() === String(designation).toLowerCase();
   const isPhrase = (word) => Boolean(word) && Boolean(settings.phrase) && same(phraseHash(settings.phrase.salt, word), settings.phrase.hash);
   switch (settings.keys[mode]) {
-    case 'confirm': return mode === 3;
-    case 'designation': return isProject(typed[0]);
-    case 'phrase': return isPhrase(typed[0]);
-    case 'designation-airlock': return isProject(typed[0]) && isProject(typed[1]);
-    case 'phrase-airlock': return isPhrase(typed[0]) && isPhrase(typed[1]);
+    case 'confirm': return mode === 3 && typed[0] === CONFIRMED;
+    case 'phrase': return mode === 3 && isPhrase(typed[0]);
+    case 'confirm-airlock': return mode === 4 && typed[0] === CONFIRMED && typed[1] === CONFIRMED;
+    case 'phrase-airlock': return mode === 4 && isPhrase(typed[0]) && isPhrase(typed[1]);
     default: return false;
   }
 }

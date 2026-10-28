@@ -12105,3 +12105,15 @@ html.chat-shell .tour-btn:hover:not(:disabled) { background: var(--cs-hover); }
 html.chat-shell .tour-btn.primary { background: var(--tour-acc); box-shadow: none; font-weight: 600; }
 html.chat-shell .tour-btn.primary:hover:not(:disabled) { background: var(--tour-acc); filter: brightness(1.06); }
 html.chat-shell .tour-btn.quiet { box-shadow: none; }
+
+/* THE SYSTEM'S NOTICES STAND OFF THE CANVAS (2026-10-28): in the new look the canvas, the bubbles and
+   the notice were one grey, and a notice got lost. A step off the canvas, a soft shadow in light and,
+   in dark, a hairline of light and a faint glow: just enough to lift it, nothing that shouts. */
+:is(html.chat-shell, html.home-shell) .toast:not([hidden]) {
+  background: var(--cs-canvas, var(--surface));
+  box-shadow: 0 0 0 1px rgba(20, 30, 20, .1), 0 1px 2px rgba(20, 30, 20, .08), 0 8px 22px -6px rgba(20, 30, 20, .22), 0 22px 48px -18px rgba(20, 30, 20, .2);
+}
+:is(html.chat-shell, html.home-shell)[data-scheme="dark"] .toast:not([hidden]) {
+  background: color-mix(in srgb, #ffffff 7%, var(--cs-canvas, var(--surface)));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 6px rgba(0, 0, 0, .35), 0 14px 34px -8px rgba(0, 0, 0, .6), 0 0 28px -6px rgba(255, 255, 255, .07);
+}

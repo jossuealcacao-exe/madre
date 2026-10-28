@@ -181,7 +181,9 @@ test('salas · a universe carries what a NOSTROMO is drawn from and, unless the 
     stats: { entries: 12, embeddings: 2, memories: 2 },
   };
   const far = universeOf(research);
-  assert.deepEqual(far.memories[0], { id: 7, kind: 'decision', zone: 'bridge', fromSequence: 4, throughSequence: 9, sourcesCount: 3, recalled: 2, lastRecalled: '2026-10-08T00:00:00.000Z', cold: null });
+  assert.deepEqual(far.memories[0], { id: 7, kind: 'decision', zone: 'bridge', fromSequence: 4, throughSequence: 9, sourcesCount: 3, words: 3, recalled: 2, lastRecalled: '2026-10-08T00:00:00.000Z', cold: null });
+  // How much it holds goes as a count, for its size on the map (2026-10-28); the words stay home.
+  assert.equal(far.memories[1].words, 1);
   assert.equal(far.memories[1].zone, 'hold');
   assert.ok(!JSON.stringify(far).includes('secret'), 'a memory\'s words left the room without being asked for');
   assert.deepEqual(far.links, [{ a: 7, b: 8, weight: 0.8 }], 'a vein runs to a memory that was not sent');

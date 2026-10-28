@@ -49,6 +49,25 @@ export const VOID_DUST = Array.from({ length: 64 }, (_, i) => {
 
 // How alive a memory is: how often the room has actually recalled it, how recently, and how
 // woven it is into the rest.
+// HOW MUCH A MEMORY KNOWS (2026-10-28): the more it holds, the bigger its planet or its neuron. What
+// it says (its words, or their count from a far room), the sources it cites and how much of the
+// conversation it distils. Read against the richest memory of the same archive, so the difference
+// shows in a young archive and in an old one; a floor keeps a small archive from drawing giants, and
+// the biggest stays the size the map always allowed (no body so big it looks wrong).
+export function knowledgeOf(memory) {
+  const words = Number.isFinite(memory?.words) ? memory.words : (typeof memory?.text === 'string' ? (memory.text.match(/\S+/g) ?? []).length : 0);
+  const span = Math.max(1, (memory?.throughSequence ?? 0) - (memory?.fromSequence ?? 0));
+  const cited = memory?.sources?.length ?? memory?.sourcesCount ?? 0;
+  // A far room sends how many sources a memory cites, not the list of them.
+  return Math.log2(1 + words / 12) + 0.8 * Math.log2(1 + span) + 0.6 * Math.min(cited, 8);
+}
+export const BODY_SMALL = 5.5;
+export const BODY_BIG = 18;
+export function bodyOf(known, richest) {
+  const share = Math.min(1, known / Math.max(richest, 6));
+  return BODY_SMALL + (BODY_BIG - BODY_SMALL) * share ** 0.85;
+}
+
 export function rawActivity(memory, degree = 0) {
   const use = 1 - Math.exp(-Number(memory.recalled ?? 0) / 4);
   const since = memory.lastRecalled ? (Date.now() - Date.parse(memory.lastRecalled)) / 86400000 : null;
@@ -3220,14 +3239,14 @@ export function createNostromo(nostromo) {
     const raw = memories.map((memory) => rawActivity(memory, degree.get(memory.id) ?? 0));
     const top = raw.reduce((best, value) => (value > best ? value : best), 0);
     nostromo.rawTop = top;
+    // How much each one knows, read against the richest of this archive (2026-10-28).
+    const known = memories.map(knowledgeOf);
+    const richest = known.reduce((best, value) => (value > best ? value : best), 0);
     nostromo.nodes = memories.map((memory, index) => {
       const sector = kinds.indexOf(memory.kind) < 0 ? 1 : kinds.indexOf(memory.kind);
       const angle = (sector / kinds.length) * Math.PI * 2 + ((index % 7) / 7 - 0.5) * (Math.PI / 2.4) + Math.random() * 0.2;
       const distance = 0.42 + Math.random() * 0.5;
-      const span = Math.max(1, (memory.throughSequence ?? 0) - (memory.fromSequence ?? 0));
-      // A far room sends how many sources a memory cites, not the list of them.
-      const cited = memory.sources?.length ?? memory.sourcesCount ?? 0;
-      return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * (7 + Math.min(11, Math.log2(span + 1) * 2.2 + cited * 0.6)), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: travels(memory) ? (MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact) : hexMix(MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, '#0b0f16', 0.52), placed: false };
+      return { memory, cold: memory.cold ?? null, angle, distance, activity: activityOf(raw[index], top), lit: 0, charge: 0, x: 0, y: 0, vx: 0, vy: 0, r: MEMORY_SCALE * bodyOf(known[index], richest), scale: 1, seed: Math.random() * Math.PI * 2, rate: 0.5 + Math.random() * 0.9, color: travels(memory) ? (MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact) : hexMix(MEMORY_COLORS[memory.kind] ?? MEMORY_COLORS.fact, '#0b0f16', 0.52), placed: false };
     });
     return nostromo.nodes;
   }

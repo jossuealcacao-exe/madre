@@ -877,6 +877,15 @@ export async function createPulseServer({
   // a restart take them all back. Wrong keys are counted: a program trying words is slowed down.
   const passes = new Map();          // token -> { agent, mode, until, once }
   const keyMisses = [];              // when the last wrong keys were typed
+  // A key that is only pressed (2026-10-28) is pressed on MADRE's own page: a web page elsewhere
+  // cannot send it. (A program on the Mac could, as it could read a folder's name before; the
+  // phrase is the key for whoever wants one a program cannot know.)
+  const pressedHere = (request) => {
+    const host = String(request.headers.host ?? '');
+    const site = request.headers['sec-fetch-site'];
+    return /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) && (site === undefined || site === 'same-origin' || site === 'none') && request.headers.origin === `http://${host}`;
+  };
+  const onlyPressed = (mode) => !overrideSettings(overrideConfig).keys[mode].startsWith('phrase');
   const PASS_ONCE_MS = 30 * 60 * 1000;
   // `asked` is a window the human chose on an agent's request for this mode (2026-10-14): one of
   // the windows the project allows, never longer, and only for that agent and mode.
@@ -3240,7 +3249,8 @@ export async function createPulseServer({
         const now = Date.now();
         while (keyMisses.length && keyMisses[0] < now - 60000) keyMisses.shift();
         if (keyMisses.length >= 8) return sendJson(response, 429, { error: t('Too many wrong confirmations. Wait a minute and try again.') });
-        if (!keyHolds(overrideConfig, { mode, words: payload.words, designation: basename(canonicalProjectRoot) })) {
+        if (onlyPressed(mode) && !pressedHere(request)) return sendJson(response, 403, { error: t('This is confirmed from MADRE\'s own page, on this computer.') });
+        if (!keyHolds(overrideConfig, { mode, words: payload.words })) {
           keyMisses.push(now);
           return sendJson(response, 403, { error: t('That is not it. Try again, or cancel.'), denied: true });
         }
@@ -3256,7 +3266,8 @@ export async function createPulseServer({
         const now = Date.now();
         while (keyMisses.length && keyMisses[0] < now - 60000) keyMisses.shift();
         if (keyMisses.length >= 8) return sendJson(response, 429, { error: t('Too many wrong confirmations. Wait a minute and try again.') });
-        if (!keyHolds(overrideConfig, { mode: 3, words: payload.words, designation: basename(canonicalProjectRoot) })) {
+        if (onlyPressed(3) && !pressedHere(request)) return sendJson(response, 403, { error: t('This is confirmed from MADRE\'s own page, on this computer.') });
+        if (!keyHolds(overrideConfig, { mode: 3, words: payload.words })) {
           keyMisses.push(now);
           return sendJson(response, 403, { error: t('That is not it. Try again, or cancel.'), denied: true });
         }

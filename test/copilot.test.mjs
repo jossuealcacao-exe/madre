@@ -4,7 +4,7 @@ import { copilotSafe, copilotBrief, COPILOT_WINDOWS } from '../src/room/copilot.
 import { splitCommand } from '../src/runs.mjs';
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, basename } from 'node:path';
+import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { EventStore } from '../src/event-store.mjs';
 import { Room } from '../src/room.mjs';
@@ -151,13 +151,13 @@ test('copilot: turned on with the #3 key for a chosen while, never from a phone;
     ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents, invokers, testMode: true }));
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
-    const post = (path, payload, headers = {}) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(payload) });
-    const name = basename(project);
+    // As MADRE's own page sends it: a confirmation counts only from there (2026-10-28).
+    const post = (path, payload, headers = {}) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, ...headers }, body: JSON.stringify(payload) });
     assert.equal((await (await fetch(`${base}/api/copilot`)).json()).active, false);
     assert.equal((await post('/api/copilot', { minutes: 60, words: ['nope'] })).status, 403);
-    assert.equal((await post('/api/copilot', { minutes: 90, words: [name] })).status, 400, 'a window it does not offer');
-    assert.equal((await post('/api/copilot', { minutes: 60, words: [name] }, { 'x-madre-device': 'phone-1' })).status, 403, 'turned on from a phone');
-    const on = await (await post('/api/copilot', { minutes: 60, words: [name] })).json();
+    assert.equal((await post('/api/copilot', { minutes: 90, words: ['confirm'] })).status, 400, 'a window it does not offer');
+    assert.equal((await post('/api/copilot', { minutes: 60, words: ['confirm'] }, { 'x-madre-device': 'phone-1' })).status, 403, 'turned on from a phone');
+    const on = await (await post('/api/copilot', { minutes: 60, words: ['confirm'] })).json();
     assert.equal(on.active, true);
     assert.ok(on.until - Date.now() > 59 * 60000);
     assert.equal((await post('/api/messages', { target: 'codex', text: 'arregla', mode: 3, copilot: true })).status, 202, 'the copilot asked for a key');

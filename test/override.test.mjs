@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { changeNeedsPhrase, keyHolds, mergeOverride, overrideSettings, phraseHash, publicOverride, OVERRIDE_GRACE, OVERRIDE_KEYS } from '../src/override.mjs';
 import { phonePolicy } from '../src/bridge/policy.mjs';
 import { createPulseServer } from '../src/server.mjs';
@@ -10,14 +10,16 @@ import { createPulseServer } from '../src/server.mjs';
 const read = (file) => readFile(join(import.meta.dirname, '..', file), 'utf8');
 const PHRASE = { salt: 'a'.repeat(32), hash: 'b'.repeat(64) };
 
-test('override: nothing stored is today\'s ritual — the designation, typed twice for #4, asked every message', () => {
-  assert.deepEqual(overrideSettings(), { keys: { 3: 'designation', 4: 'designation-airlock' }, grace: { 3: 0, 4: 0 }, phrase: null });
+test('override: nothing stored is one confirmation for #3 and two for #4, asked every message (2026-10-28)', () => {
+  assert.deepEqual(overrideSettings(), { keys: { 3: 'confirm', 4: 'confirm-airlock' }, grace: { 3: 0, 4: 0 }, phrase: null });
+  // A key that asked for the project's name, from before, is a confirmation now.
+  assert.deepEqual(overrideSettings({ keys: { 3: 'designation', 4: 'designation-airlock' } }).keys, { 3: 'confirm', 4: 'confirm-airlock' });
   assert.deepEqual(overrideSettings(null), overrideSettings({}));
 });
 
-test('override: #4 always asks for something, and its grace is never longer than 5 minutes', () => {
+test('override: #4 is never opened by one press, and its grace is never longer than 5 minutes', () => {
   assert.ok(!OVERRIDE_KEYS[4].includes('confirm'), '#4 FULL ACCESS can be opened with one click');
-  assert.equal(overrideSettings({ keys: { 4: 'confirm' } }).keys[4], 'designation-airlock');
+  assert.equal(overrideSettings({ keys: { 4: 'confirm' } }).keys[4], 'confirm-airlock');
   assert.equal(overrideSettings({ grace: { 4: 30 } }).grace[4], 0);
   assert.deepEqual(OVERRIDE_GRACE[4], [0, 5]);
   assert.equal(overrideSettings({ grace: { 3: 30, 4: 5 } }).grace[3], 30);
@@ -28,7 +30,7 @@ test('override: a phrase is a salted fingerprint or nothing, and a key that need
   assert.equal(overrideSettings({ phrase: { salt: 'x', hash: 'y' } }).phrase, null);
   assert.equal(overrideSettings({ phrase: { plain: 'open sesame' } }).phrase, null, 'a phrase in clear is kept');
   assert.deepEqual(overrideSettings({ phrase: PHRASE }).phrase, PHRASE);
-  assert.equal(overrideSettings({ keys: { 3: 'phrase' } }).keys[3], 'designation');
+  assert.equal(overrideSettings({ keys: { 3: 'phrase' } }).keys[3], 'confirm');
   assert.equal(overrideSettings({ keys: { 3: 'phrase', 4: 'phrase-airlock' }, phrase: PHRASE }).keys[4], 'phrase-airlock');
 });
 
@@ -40,7 +42,7 @@ test('override: a change merges over what is stored, and forgetting the phrase t
   assert.equal(later.keys[3], 'phrase', 'a grace change dropped the key');
   const forgot = mergeOverride(later, { phrase: null });
   assert.equal(forgot.phrase, null);
-  assert.deepEqual(forgot.keys, { 3: 'designation', 4: 'designation-airlock' });
+  assert.deepEqual(forgot.keys, { 3: 'confirm', 4: 'confirm-airlock' });
 });
 
 test('override: the room stores it, says it on boot and in AJUSTES without the fingerprint, and the page asks it for a pass', async () => {
@@ -72,17 +74,19 @@ test('override: the key for #3 and #4 is one of the room\'s alerts, said in sent
   assert.match(css, /dialog\.room-ask:not\(\.console\) \.room-ask-actions \{ width: 100%; display: grid;/);
 });
 
-test('override: the project checks the key — a phrase as the browser hashes it, the name twice for #4', () => {
+test('override: the project checks the key — a phrase as the browser hashes it, two confirmations for #4', () => {
   const salt = 'c'.repeat(32);
   const stored = mergeOverride({}, { phrase: { salt, hash: phraseHash(salt, 'Una  Frase larga') }, keys: { 3: 'phrase', 4: 'phrase-airlock' } });
   assert.ok(keyHolds(stored, { mode: 3, words: ['una frase LARGA'] }), 'the same words, spaced and capitalised otherwise');
   assert.ok(!keyHolds(stored, { mode: 3, words: ['otra cosa'] }));
   assert.ok(keyHolds(stored, { mode: 4, words: ['una frase larga', 'una frase larga'] }));
   assert.ok(!keyHolds(stored, { mode: 4, words: ['una frase larga'] }), '#4 opened with its key typed once');
-  assert.ok(keyHolds({}, { mode: 3, words: ['Pulse'], designation: 'pulse' }));
-  assert.ok(!keyHolds({}, { mode: 4, words: ['pulse'], designation: 'pulse' }), '#4 opened with the name typed once');
-  assert.ok(keyHolds({ keys: { 3: 'confirm' } }, { mode: 3 }));
-  assert.ok(!keyHolds({}, { mode: 2, words: ['pulse'], designation: 'pulse' }));
+  assert.ok(keyHolds({}, { mode: 3, words: ['confirm'] }));
+  assert.ok(!keyHolds({}, { mode: 3, words: [] }), 'nothing pressed');
+  assert.ok(!keyHolds({}, { mode: 4, words: ['confirm'] }), '#4 opened with one press');
+  assert.ok(keyHolds({}, { mode: 4, words: ['confirm', 'confirm'] }));
+  assert.ok(!keyHolds(stored, { mode: 4, words: ['confirm', 'confirm'] }), 'a confirmation where the phrase is the key');
+  assert.ok(!keyHolds({}, { mode: 2, words: ['confirm'] }));
   // What the pages are told never carries the fingerprint.
   assert.deepEqual(publicOverride(stored).phrase, { set: true });
   assert.ok(!JSON.stringify(publicOverride(stored)).includes(stored.phrase.hash));
@@ -100,8 +104,8 @@ test('override: #3 and #4 go only with a pass the key gave, and a phone never ab
     ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents, invokers, testMode: true }));
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
-    const post = (path, payload, headers = {}) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(payload) });
-    const name = basename(project);
+    // As MADRE's own page sends it: a confirmation counts only from there (2026-10-28).
+    const post = (path, payload, headers = {}) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, ...headers }, body: JSON.stringify(payload) });
     // The pages are framed only by themselves, and draw pictures only from here (SRV-04, WEB-01).
     const page = await fetch(`${base}/`);
     assert.equal(page.headers.get('x-frame-options'), 'SAMEORIGIN');
@@ -112,17 +116,18 @@ test('override: #3 and #4 go only with a pass the key gave, and a phone never ab
     assert.equal(bare.status, 403);
     assert.equal((await bare.json()).needsKey, true);
     assert.equal((await post('/api/messages', { target: 'codex', text: 'deploy', mode: 4, key: 'f'.repeat(48) })).status, 403, 'a made-up pass');
-    // The key: the name once is not #4; twice is.
-    assert.equal((await post('/api/override/arm', { agent: 'codex', mode: 4, words: [name] })).status, 403);
-    assert.equal((await post('/api/override/arm', { agent: 'codex', mode: 4, words: [name, name] }, { 'x-madre-device': 'phone-1' })).status, 403, 'unlocked from a phone');
-    const pass = await (await post('/api/override/arm', { agent: 'codex', mode: 4, words: [name, name] })).json();
+    // The key: one press is not #4; two are, and only from MADRE's own page.
+    assert.equal((await fetch(`${base}/api/override/arm`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://elsewhere.example' }, body: JSON.stringify({ agent: 'codex', mode: 4, words: ['confirm', 'confirm'] }) })).status, 403, 'confirmed from another site');
+    assert.equal((await post('/api/override/arm', { agent: 'codex', mode: 4, words: ['confirm'] })).status, 403);
+    assert.equal((await post('/api/override/arm', { agent: 'codex', mode: 4, words: ['confirm', 'confirm'] }, { 'x-madre-device': 'phone-1' })).status, 403, 'unlocked from a phone');
+    const pass = await (await post('/api/override/arm', { agent: 'codex', mode: 4, words: ['confirm', 'confirm'] })).json();
     assert.match(pass.token, /^[0-9a-f]{48}$/);
     assert.equal(pass.once, true);
     assert.equal((await post('/api/messages', { target: 'codex', text: 'deploy', mode: 3, key: pass.token })).status, 202, 'a #4 pass opens a message at #3');
     assert.equal((await post('/api/messages', { target: 'codex', text: 'deploy', mode: 4, key: pass.token })).status, 403, 'a pass for one message opened two');
     // Wrong keys are slowed down.
     for (let i = 0; i < 8; i += 1) await post('/api/override/arm', { agent: 'codex', mode: 3, words: ['nope'] });
-    assert.equal((await post('/api/override/arm', { agent: 'codex', mode: 3, words: [name] })).status, 429);
+    assert.equal((await post('/api/override/arm', { agent: 'codex', mode: 3, words: ['confirm'] })).status, 429);
     // The fingerprint of a phrase is never read back, and while it guards a mode it guards the keys.
     const salt = 'd'.repeat(32);
     assert.equal((await post('/api/settings', { override: { phrase: { salt, hash: phraseHash(salt, 'mi frase secreta') }, keys: { 3: 'phrase' } } })).status, 200);
@@ -157,7 +162,7 @@ test('override: a delegated #4 step waits for the right agent key before it can 
     ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents, invokers, testMode: true }));
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
-    const post = (path, payload) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const post = (path, payload) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify(payload) });
     const stateNow = () => fetch(`${base}/api/state`).then((response) => response.json());
     assert.equal((await post('/api/settings', { scopes: { codex: { maxMode: 4 } } })).status, 200);
     assert.equal((await post('/api/messages', { target: 'claude', text: 'coordinate the checks', mode: 1 })).status, 202);
@@ -170,11 +175,10 @@ test('override: a delegated #4 step waits for the right agent key before it can 
     assert.equal(pending?.agent, 'codex');
     assert.equal(pending.mode, 4);
     const path = `/api/modes/${pending.requestId}/decide`;
-    assert.equal((await post(path, { decision: 'once' })).status, 403, 'a click alone is not the #4 key');
-    const name = basename(project);
-    const wrongAgent = await (await post('/api/override/arm', { agent: 'claude', mode: 4, words: [name, name] })).json();
+    assert.equal((await post(path, { decision: 'once' })).status, 403, 'a click on the card alone is not the #4 key');
+    const wrongAgent = await (await post('/api/override/arm', { agent: 'claude', mode: 4, words: ['confirm', 'confirm'] })).json();
     assert.equal((await post(path, { decision: 'once', key: wrongAgent.token })).status, 403, 'one provider cannot unlock another');
-    const pass = await (await post('/api/override/arm', { agent: 'codex', mode: 4, words: [name, name] })).json();
+    const pass = await (await post('/api/override/arm', { agent: 'codex', mode: 4, words: ['confirm', 'confirm'] })).json();
     assert.equal((await post(path, { decision: 'once', key: pass.token })).status, 200);
     let events = [];
     for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -205,11 +209,10 @@ test('override: under a #4 message, a delegate without a number only reads and a
     ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents, invokers, testMode: true }));
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const base = `http://127.0.0.1:${port}`;
-    const post = (path, payload) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const post = (path, payload) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify(payload) });
     const stateNow = () => fetch(`${base}/api/state`).then((response) => response.json());
     assert.equal((await post('/api/settings', { scopes: { claude: { maxMode: 4 }, codex: { maxMode: 4 }, gemini: { maxMode: 4 } } })).status, 200);
-    const name = basename(project);
-    const pass = await (await post('/api/override/arm', { agent: 'claude', mode: 4, words: [name, name] })).json();
+    const pass = await (await post('/api/override/arm', { agent: 'claude', mode: 4, words: ['confirm', 'confirm'] })).json();
     assert.equal((await post('/api/messages', { target: 'claude', text: 'coordinate the checks', mode: 4, key: pass.token })).status, 202);
     let pending;
     for (let attempt = 0; attempt < 150; attempt += 1) {

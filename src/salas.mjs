@@ -310,6 +310,7 @@ export async function roomComesUp(stateRoot, id, { timeoutMs = 60000, everyMs = 
 // `full`, no memory's words leave their room: a far universe is drawn from kinds, zones, how much
 // ledger each memory covers, how often it was reached for, and the links between them. Only the
 // chosen universe asks for the words, and only the Mac may ask (the route refuses a phone).
+const wordCount = (text) => (typeof text === 'string' ? (text.match(/\S+/g) ?? []).length : 0);
 export function universeOf(research, { full = false } = {}) {
   const memories = (research?.memories ?? []).map((memory) => ({
     id: memory.id,
@@ -318,6 +319,8 @@ export function universeOf(research, { full = false } = {}) {
     fromSequence: memory.fromSequence ?? 0,
     throughSequence: memory.throughSequence ?? 0,
     sourcesCount: Array.isArray(memory.sources) ? memory.sources.length : 0,
+    // How much it holds, as a count: its size on the map (2026-10-28). The words stay in their room.
+    words: wordCount(memory.text),
     recalled: memory.recalled ?? 0,
     lastRecalled: memory.lastRecalled ?? null,
     cold: memory.cold ?? null,

@@ -4385,9 +4385,9 @@ const override = {
   mode: 3,        // #3 CONTROL or #4 AIRLOCK
   minutes: 0,     // a window chosen on an agent's request; 0 is what Permissions says
   preserveComposer: false,
-  stage: 'designation',   // designation · phrase · confirm; #4 asks for the same key a second time
+  stage: 'confirm',       // confirm · phrase; #4 asks for the same key a second time
   again: false,           // the second time, for #4
-  key: 'designation',     // the key chosen in AJUSTES › Permissions for this mode
+  key: 'confirm',         // the key chosen in AJUSTES › Permissions for this mode
   words: [],              // what was typed, once or twice, sent to the project to be checked
 };
 // The key for #3 and #4 is an alert of the room, said plainly: what the mode lets the agent do in
@@ -4396,11 +4396,14 @@ const OVERRIDE_BRIEF = {
   3: { what: (id) => t('@{id} edits the project itself, with no approval per action.', { id }), safe: () => t('A restore point is taken first; UNDO is one click.') },
   4: { what: (id) => t('@{id} can also run commands, git push and deploy with the sessions on this computer.', { id }), safe: () => t('Files come back with UNDO; what leaves the computer does not.') },
 };
+// Nothing to type (2026-10-28): #3 is one confirmation and #4 two, or the person's own phrase.
 const OVERRIDE_KEY_WORDS = {
-  designation: () => t('The project'), phrase: () => t('Your phrase'), confirm: () => t('Just confirm'),
-  'designation-airlock': () => t('Project, twice'), 'phrase-airlock': () => t('Phrase, twice'),
+  confirm: () => t('Just confirm'), phrase: () => t('Your phrase'),
+  'confirm-airlock': () => t('Confirm twice'), 'phrase-airlock': () => t('Phrase, twice'),
 };
-const OVERRIDE_DEFAULT = { keys: { 3: 'designation', 4: 'designation-airlock' }, grace: { 3: 0, 4: 0 }, phrase: null };
+const OVERRIDE_DEFAULT = { keys: { 3: 'confirm', 4: 'confirm-airlock' }, grace: { 3: 0, 4: 0 }, phrase: null };
+// What the key asks for: a press, or the phrase.
+const overrideStage = (key) => (key.startsWith('phrase') ? 'phrase' : 'confirm');
 const overrideConfig = () => state.override ?? OVERRIDE_DEFAULT;
 // The project checks the key (src/override.mjs): the page asks for the one chosen in Permissions.
 function overrideKeyFor(mode) {
@@ -4458,7 +4461,7 @@ function askOverrideKey(stage, { again = false } = {}) {
   override.input.value = '';
   override.input.closest('label').hidden = stage === 'confirm';
   // The label says what to type; the field stays empty, so nothing has to be cleared first.
-  override.form.querySelector('.k').textContent = stage === 'phrase' ? (again ? t('Type your phrase again') : t('Type your phrase')) : again ? t('Type the project name again') : t('Type the project name');
+  override.form.querySelector('.k').textContent = again ? t('Type your phrase again') : t('Type your phrase');
   override.input.placeholder = '';
 }
 function openOverride(id, { raise = false, mode = 3, then = null, cancelled = null, preserveComposer = false, forceKey = false, minutes = 0, copilot = 0 } = {}) {
@@ -4481,14 +4484,14 @@ function openOverride(id, { raise = false, mode = 3, then = null, cancelled = nu
   override.mode = mode;
   override.preserveComposer = preserveComposer;
   override.key = overrideKeyFor(mode);
-  askOverrideKey(override.key.startsWith('phrase') ? 'phrase' : override.key === 'confirm' ? 'confirm' : 'designation');
+  askOverrideKey(overrideStage(override.key));
   override.title.textContent = override.copilot ? t('Turn the copilot on for {time}', { time: copilotWindowWords(override.copilot) }) : mode === 4 ? t('Open #4 FULL ACCESS for @{agent}', { agent: id }) : t('Unlock #3 EDIT for @{agent}', { agent: id });
   override.arm.textContent = override.copilot ? t('Turn on') : mode === 4 ? t('Open') : t('Unlock');
   override.dialog.classList.toggle('m4', mode === 4);
   if (mode === 4) {
     let slot = override.frame?.querySelector('.tour-hint-slot');
     if (!slot && override.form) { slot = el('div', 'tour-hint-slot'); override.form.before(slot); }
-    if (slot) void roomTour().hint('key4', slot, { inside: true, title: t('#4 asks you to confirm twice'), text: t('With #4 the agent may run commands, publish and deploy: what leaves your Mac does not come back. That is why the confirmation is typed twice.') });
+    if (slot) void roomTour().hint('key4', slot, { inside: true, title: t('#4 asks you to confirm twice'), text: t('With #4 the agent may run commands, publish and deploy: what leaves your Mac does not come back. That is why it asks you to confirm twice.') });
   }
   override.brief.textContent = override.copilot ? t('The agent you write to edits the project and runs the safe commands by itself, without asking you to confirm each message, until it ends.') : OVERRIDE_BRIEF[mode].what(id);
   override.safe.textContent = override.copilot ? t('It never deletes, pushes, publishes or deploys; each change gets a restore point; STOP ALL ends it.') : OVERRIDE_BRIEF[mode].safe();
@@ -4516,17 +4519,16 @@ override.form?.addEventListener('submit', async (event) => {
     override.frame.classList.remove('shake'); void override.frame.offsetWidth; override.frame.classList.add('shake');
     override.input.select();
   };
-  // A slip in the project's name is told at once; whether the key opens the mode, the project says.
-  if (override.stage === 'designation' && (!typed || typed.toLowerCase() !== projectDesignation().toLowerCase())) { deny(); return; }
+  // Whether the key opens the mode, the project says; an empty phrase is told at once.
   if (override.stage === 'phrase' && !typed) { deny(); return; }
-  if (override.stage !== 'confirm') override.words.push(typed);
+  override.words.push(override.stage === 'phrase' ? typed : 'confirm');
   if (override.mode === 4 && override.key.endsWith('-airlock') && !override.again) {
-    // The second key is the same one, typed again: #4 is never opened by one key alone, and
-    // there is no other word to learn.
+    // #4 is never opened by one press: the same confirmation, or the phrase, once more.
     askOverrideKey(override.stage, { again: true });
-    override.reply.textContent = t('Type it once more to open it.');
+    override.reply.textContent = override.stage === 'phrase' ? t('Type it once more to open it.') : t('Confirm once more to open it: what leaves your computer does not come back.');
     override.reply.className = 'key-reply';
-    override.input.focus();
+    if (override.stage === 'confirm') override.arm.textContent = t('Yes, open #4');
+    (override.input.hidden ? override.arm : override.input).focus();
     return;
   }
   override.arm.disabled = true;
@@ -4541,7 +4543,7 @@ override.form?.addEventListener('submit', async (event) => {
   }
   override.arm.disabled = false;
   if (!answer.ok) {
-    askOverrideKey(override.key.startsWith('phrase') ? 'phrase' : override.key === 'confirm' ? 'confirm' : 'designation');
+    askOverrideKey(overrideStage(override.key));
     deny(answer.error ? resay(answer.error) : undefined);
     return;
   }
@@ -19245,10 +19247,9 @@ function openCodeProviderRow(provider, reload, hidden) {
 // chooses which key and lets an accepted one hold a few minutes. #4 always asks for something.
 function overrideKeyHint(mode, key) {
   if (key === 'confirm') return t('One click on UNLOCK. EDIT saves a copy first, so UNDO is one click away.');
+  if (key === 'confirm-airlock') return t('Two clicks: OPEN, then a second confirmation, because what leaves the computer does not come back.');
   if (key === 'phrase') return t('Your phrase, typed when you unlock it.');
-  if (key === 'phrase-airlock') return t('Your phrase, typed twice.');
-  if (key === 'designation-airlock') return t('The folder name of the project ({name}), typed twice.', { name: projectDesignation() });
-  return mode === 4 ? t('The folder name of the project ({name}), with no second confirmation.', { name: projectDesignation() }) : t('The folder name of the project ({name}).', { name: projectDesignation() });
+  return t('Your phrase, typed twice.');
 }
 // While a phrase guards a mode, a change to the keys shows it first (the project checks it): a
 // program that could change the key could also take the phrase away.
@@ -19267,7 +19268,7 @@ function drawPermissions(host, data) {
   }
   const config = data.settings.override ?? OVERRIDE_DEFAULT;
   const canHash = Boolean(globalThis.crypto?.subtle);
-  const keys = sxBlock(host, t('How you unlock modes'), t('What you type to unlock #3 EDIT and #4 FULL ACCESS. Asked on every message, unless you chose to remember it below.'), { className: 'perm-keys' });
+  const keys = sxBlock(host, t('How you unlock modes'), t('#3 EDIT asks you to confirm and #4 FULL ACCESS to confirm twice, or your phrase if you choose it. Asked on every message, unless you chose to remember it below.'), { className: 'perm-keys' });
   overrideProof = null;
   if (config.phrase && [3, 4].some((mode) => config.keys[mode].startsWith('phrase'))) {
     overrideProof = el('input', 'sx-input');
@@ -19278,7 +19279,7 @@ function drawPermissions(host, data) {
   }
   for (const mode of [3, 4]) {
     const current = config.keys[mode];
-    sxRow(keys, `#${mode} ${sentence(MODES[mode].label)}`, overrideKeyHint(mode, current), sxSeg((mode === 3 ? ['designation', 'phrase', 'confirm'] : ['designation-airlock', 'phrase-airlock', 'designation']).map((key) => ({
+    sxRow(keys, `#${mode} ${sentence(MODES[mode].label)}`, overrideKeyHint(mode, current), sxSeg((mode === 3 ? ['confirm', 'phrase'] : ['confirm-airlock', 'phrase-airlock']).map((key) => ({
       value: key, text: OVERRIDE_KEY_WORDS[key](),
       disabled: key.startsWith('phrase') && (!config.phrase || !canHash),
       title: key.startsWith('phrase') && !config.phrase ? t('Save a phrase below first.') : overrideKeyHint(mode, key),

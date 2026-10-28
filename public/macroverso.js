@@ -302,8 +302,12 @@ function bishopOrb() {
   return { canvas, wisps, reach: REACH, paint, paintedAt: -1 };
 }
 
-// How big a universe reads at zoom 1, in css px of radius: it grows slowly with what it holds.
-const reachOf = (room) => 60 + 14 * Math.log2(1 + (room.glance?.census?.memories ?? 0) / 10);
+// How big a universe reads at zoom 1, in css px of radius: the more it knows, the bigger
+// (2026-10-28), plainly enough to tell one project from another, and never past a size that looks
+// wrong beside the rest.
+const REACH_SMALL = 52;
+const REACH_BIG = 140;
+const reachOf = (room) => Math.min(REACH_BIG, REACH_SMALL + 18 * Math.log2(1 + (room.glance?.census?.memories ?? 0) / 8));
 
 // A scene for the engine: everything it reads, and nothing of a room's page. `bare`: no sky, no
 // stars, no vignette — the space around it is this file's to draw.
