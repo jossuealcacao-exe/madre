@@ -11854,6 +11854,9 @@ html.chat-shell[data-scheme="light"] #messages .system.plan .step-mode.m4 { colo
    drawing lights up in it instead of only going darker. ---- */
 html.chat-shell .shell > .bar :is(.mother-button, .tree-button, .bar-icon, .chats-button) { transition: color calc(160ms * var(--motion-scale, 1)) ease; }
 html.chat-shell .shell > .bar :is(.mother-button, .tree-button, .bar-icon, .chats-button):is(:hover, :focus-visible) { color: var(--phosphor) !important; }
+/* CODE's drawing kept a darker green of its own on a light ground (1.0.3), so under the pointer it
+   was not the accent its neighbours take: it follows its key now, as theirs do. */
+html.chat-shell .shell > .bar > #code-button svg { color: inherit !important; }
 
 /* ---- A note in the chat shell (2026-10-27): the sheet every window is — its corners, its hairline,
    its shadow, its corner to size it — on the note's own flat colour. The room's window rule gave it

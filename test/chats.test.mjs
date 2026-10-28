@@ -1012,3 +1012,31 @@ test('neural mode: smaller viscous neurons, quiet light, and a body you can turn
   assert.match(app, /nostromo\.pitch = turned\.pitch;/);
   assert.doesNotMatch(app, /PITCH_LIMIT/);
 });
+
+test('Home framed as a project: the room\'s sidebar, its bar of quiet keys, flat widgets; CODE takes the accent', async () => {
+  const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const homeCss = await readFile(new URL('../public/salas-mac.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const es = await readFile(new URL('../public/es.js', import.meta.url), 'utf8');
+  // The same pieces as a project's sidebar: its head, its ways, the projects at hand, its foot.
+  assert.match(home, /const side = el\('aside', 'sm-side'\);/);
+  assert.match(home, /head\.append\(homeShell\.hide, \.\.\.\(brand \? \[brand\] : \[\]\), el\('span', 'side-grow'\), homeShell\.add\);/);
+  assert.match(home, /home: sideRow\(HOME_GLYPH, t\('Home'\), .*\{ here: true \}\),/);
+  assert.match(home, /foot\.append\(who, homeShell\.settings, homeShell\.power\);/);
+  // The projects at hand are the bar's pins, drawn in the sidebar; a phone keeps the bar.
+  assert.match(home, /if \(homeShellOn\(\)\) \{ box\.hidden = true; pinsFit\(\); drawSideProjects\(\); return; \}/);
+  assert.match(home, /const SHELL_PHONE = '\(max-width: 560px\)';/);
+  assert.match(home, /side \? t\('Keep in the sidebar'\) : t\('Pin to the bar'\)/);
+  // Shut or open as it was left, over the canvas on a narrow window.
+  assert.match(home, /localStorage\.setItem\(SIDE_KEY, open \? 'open' : 'shut'\)/);
+  assert.match(homeCss, /html\.home-shell\.home-side body\.salas-mac \{ padding-left: var\(--side-w\); \}/);
+  assert.match(homeCss, /html\.home-shell\.home-side \.sm-side-scrim \{ display: block;/);
+  // The bar's keys: 16 px icons, the accent under the pointer; settings and power at the sidebar's foot.
+  assert.match(homeCss, /html\.home-shell \.sm-top :is\(\.sm-barkey, \.sm-icon-key\.bar\) svg \{ width: 16px !important; height: 16px !important; \}/);
+  assert.match(homeCss, /html\.home-shell \.sm-top :is\(#sm-gear, #sm-power\) \{ display: none !important; \}/);
+  // Flat widgets.
+  assert.match(homeCss, /html\.home-shell \.sm-tile \{ gap: 12px; padding: 16px 18px; border-radius: 12px; background: var\(--cs-canvas\) !important; box-shadow: 0 0 0 1px var\(--cs-line\) !important; \}/);
+  assert.match(es, /'Keep in the sidebar': 'Dejar en la barra lateral',/);
+  // CODE's drawing follows its key, as its neighbours' do.
+  assert.match(css, /html\.chat-shell \.shell > \.bar > #code-button svg \{ color: inherit !important; \}/);
+});

@@ -1589,3 +1589,118 @@ html.chat-shell .sm-card { background: var(--cs-canvas) !important; }
 html.chat-shell .sm-card:hover { transform: none; box-shadow: 0 0 0 1px var(--cs-line), 0 6px 18px -10px rgba(20, 30, 20, .22) !important; }
 html.chat-shell .sm-card.is-asleep { background: var(--cs-side) !important; }
 html.chat-shell .sm-card.here { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--s-acc) 60%, transparent) !important; }
+
+/* HOME FRAMED AS A PROJECT (2026-10-27): the chat shell's frame, with the room's own pieces
+   (styles.css, .side-*, .shell-key) so going from Home into a project and back is one place. A
+   sidebar at the left that one key shows and hides; over the canvas a bar of 48 px with the page's
+   name, the agents, and the tools as quiet 16 px icons; the widgets flat on the canvas, a hairline
+   round each, their titles in the room's letter, one filled key per widget at most. A narrow
+   window gets the sidebar over the canvas; a phone keeps Home as it was (salas-mac.js, html.home-shell). */
+html:not(.home-shell) :is(.sm-side, .sm-side-show, .sm-side-scrim) { display: none !important; }
+html.home-shell { --side-w: 260px; }
+html.home-shell body.salas-mac { background: var(--cs-canvas); transition: padding-left calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+html.home-shell.home-side body.salas-mac { padding-left: var(--side-w); }
+html.home-shell .sm-side {
+  position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: var(--side-w);
+  display: flex; flex-direction: column;
+  background: var(--cs-side); box-shadow: inset -1px 0 0 var(--cs-line);
+  font-family: var(--read); font-size: 13.5px; line-height: 1.3;
+  transform: translateX(-100%); visibility: hidden;
+  transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out), visibility 0s linear calc(220ms * var(--motion-scale, 1));
+}
+html.home-shell.home-side .sm-side { transform: none; visibility: visible; transition: transform calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out); }
+html.home-shell .sm-side .side-brand { display: inline-flex; align-items: center; margin-left: 6px; padding: 4px 2px; border-radius: 6px; color: var(--text); }
+html.home-shell .sm-side .side-brand .brand-logo { height: 13px; }
+html.home-shell .sm-side .side-grow { flex: 1; }
+html.home-shell .sm-side .side-row[aria-current="page"] { background: var(--cs-sel); font-weight: 500; }
+html.home-shell .sm-side .side-row[aria-current="page"] svg { color: var(--text); }
+html.home-shell .sm-side .shell-key svg { width: 16px; height: 16px; }
+html.home-shell .sm-side .side-row svg { width: 16px; height: 16px; }
+html.home-shell .sm-side .side-project { width: 100%; border: 0; background: none; font: 400 13.5px var(--read); text-align: left; cursor: pointer; }
+html.home-shell .sm-side .side-project.asleep { color: var(--text-3); }
+html.home-shell .sm-side .side-project.asleep:hover { color: var(--text); }
+html.home-shell .sm-side .side-project:focus-visible, html.home-shell .sm-side .side-brand:focus-visible { outline: 2px solid var(--phosphor); outline-offset: -2px; }
+html.home-shell .sm-side .side-dot.quiet { background: var(--session-wait); opacity: 1; }
+html.home-shell .sm-side .side-dot.asleep { background: none; box-shadow: inset 0 0 0 1.5px var(--text-3); opacity: .7; }
+html.home-shell .sm-side .side-empty { margin: 2px 10px 6px; font: 400 12.5px/1.45 var(--read); color: var(--text-3); }
+html.home-shell .sm-side .side-scroll.is-drop .side-projects { border-radius: 8px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--phosphor) 60%, transparent); }
+html.home-shell .sm-side .side-who b { font: 600 12.5px var(--read); color: var(--text); white-space: nowrap; }
+html.home-shell .sm-side .side-copy { display: block; margin-top: 1px; font: 400 11.5px var(--read); color: var(--text-3); text-decoration: none; white-space: nowrap; }
+html.home-shell .sm-side .side-copy:hover { color: var(--text); text-decoration: underline; }
+html.home-shell .sm-side-scrim { display: none; }
+@media (max-width: 960px) {
+  html.home-shell.home-side body.salas-mac { padding-left: 0; }
+  html.home-shell .sm-side { box-shadow: inset -1px 0 0 var(--cs-line), 0 24px 60px -18px rgb(0 0 0 / .4); }
+  html.home-shell.home-side .sm-side-scrim { display: block; position: fixed; inset: 0; z-index: 39; background: rgb(0 0 0 / .28); }
+}
+@media (prefers-reduced-motion: reduce) { html.home-shell :is(.sm-side, body.salas-mac) { transition: none !important; } }
+
+/* The bar over the canvas: the room's, 48 px, the canvas's colour and a hairline under it. */
+html.home-shell body.salas-mac .sm-top { min-height: 48px; padding: 0 10px 0 14px; background: var(--cs-canvas) !important; box-shadow: inset 0 -1px 0 var(--cs-line) !important; }
+html.home-shell body.salas-mac .sm-top > .sm-topbar { gap: 6px; }
+html.home-shell .sm-top #sm-back { display: none; }
+html.home-shell .sm-side-show { margin-left: -6px; }
+html.home-shell.home-side .sm-side-show { display: none; }
+html.home-shell .sm-crumb { font: 600 14px/1.2 var(--read); letter-spacing: -.005em; color: var(--text); }
+html.home-shell .sm-crumb::before { content: none; }
+html.home-shell .sm-live { margin-left: 2px; font: 400 13px/1.2 var(--read); color: var(--text-3); }
+html.home-shell .sm-live i { display: none; }
+html.home-shell .sm-live.is-off { color: var(--session-bad); }
+/* The agents in the middle, as in a project. */
+html.home-shell body.salas-mac .sm-top > .sm-topbar:first-child > .sm-tb-agents { margin: 0 auto; gap: 6px; }
+html.home-shell body.salas-mac .sm-top > .sm-topbar:first-child > .sm-spacer { flex: 0 0 0; margin: 0; }
+html.home-shell .sm-agent-key .sm-mark { width: 22px !important; height: 22px !important; }
+html.home-shell .sm-agent-key::after { width: 7px; height: 7px; box-shadow: 0 0 0 2px var(--cs-canvas); }
+/* The tools: quiet icons of 16 px, their names in the tooltip; the pointer lights them in the accent. */
+html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar) {
+  position: relative; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; gap: 0;
+  border: 0; border-radius: 8px; background: none !important; box-shadow: none !important; color: var(--text-2);
+  transition: color calc(160ms * var(--motion-scale, 1)) ease;
+}
+html.home-shell .sm-top .sm-barkey > span { display: none; }
+html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar) svg { width: 16px !important; height: 16px !important; }
+html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar):is(:hover, :focus-visible) { color: var(--phosphor); }
+html.home-shell .sm-top :is(.sm-barkey, .sm-icon-key.bar):focus-visible { outline: 2px solid var(--phosphor); outline-offset: -2px; }
+html.home-shell .sm-top .sm-barkey .sm-badge { position: absolute; top: 2px; right: -4px; margin: 0; box-shadow: 0 0 0 2px var(--cs-canvas); }
+/* Settings and turning MADRE off live at the sidebar's foot, as in a project. */
+html.home-shell .sm-top :is(#sm-gear, #sm-power) { display: none !important; }
+html.home-shell body.salas-mac .sm-top > .sm-tb-home { gap: 2px; margin-left: 8px; padding-left: 8px; }
+html.home-shell body.salas-mac .sm-top > .sm-tb-home::before { top: 16px; bottom: 16px; width: 1px; background: var(--cs-line); }
+html.home-shell .sm-top .sm-pill { height: 28px; font: 500 12.5px var(--read); }
+
+/* The canvas and its widgets: flat, a hairline round each, 12 px corners, the room's letter. */
+html.home-shell .sm-main { max-width: 1180px; padding: 28px 32px 56px; }
+html.home-shell .sm-bento { gap: 12px; }
+html.home-shell .sm-bento + .sm-bento, html.home-shell .sm-none + .sm-bento, html.home-shell .sm-bento + .sm-none { margin-top: 12px; }
+html.home-shell .sm-tile { gap: 12px; padding: 16px 18px; border-radius: 12px; background: var(--cs-canvas) !important; box-shadow: 0 0 0 1px var(--cs-line) !important; }
+html.home-shell .sm-tools { padding: 0; border-radius: 0; background: none !important; box-shadow: none !important; }
+html.home-shell .sm-tile-head { min-height: 30px; }
+html.home-shell .sm-tile-head h2, html.home-shell #sm-bishop-name { margin: 0; font: 600 14px/1.3 var(--read); letter-spacing: -.005em; color: var(--text); }
+html.home-shell .sm-big { font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--text); }
+html.home-shell .sm-hint, html.home-shell .sm-bishop-about { font-size: 13px; color: var(--text-2); }
+html.home-shell .sm-state { font-size: 12.5px; }
+html.home-shell .sm-work { gap: 10px; padding: 14px 16px; border-radius: 10px; background: var(--cs-side); }
+html.home-shell .sm-work-head h3 { font: 600 13px/1.3 var(--read); color: var(--text); }
+html.home-shell .sm-chip.port { padding: 2px 8px; border-radius: 999px; background: var(--cs-hover); color: var(--text-2); font: 500 12px var(--read); letter-spacing: 0; }
+html.home-shell .sm-none { padding: 18px; border-radius: 12px; background: var(--cs-side); font-size: 13.5px; }
+html.home-shell .sm-card { border-radius: 12px; }
+html.home-shell .sm-card:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 16%, transparent) !important; }
+html.home-shell .sm-card-head h3 { font-size: 15px; font-weight: 600; letter-spacing: -.005em; }
+html.home-shell .sm-map { border-radius: 10px; }
+/* Keys, as the room's windows have them (styles.css, .sx-btn in the chat shell): a hairline at rest,
+   the hover tone under the pointer, the accent one filled and flat. */
+html.home-shell .sm-btn { height: 30px; padding: 0 12px; border-radius: 8px; background: transparent !important; box-shadow: inset 0 0 0 1px var(--cs-line) !important; color: var(--text); font: 500 12.5px var(--read); letter-spacing: 0; }
+html.home-shell .sm-btn:is(:hover, :focus-visible):not([disabled]) { background: var(--cs-hover) !important; }
+html.home-shell .sm-btn:active:not([disabled]) { background: var(--cs-sel) !important; }
+html.home-shell .sm-btn.small { height: 28px; padding: 0 10px; font-size: 12.5px; }
+html.home-shell .sm-btn:is(.ghost, .quiet) { box-shadow: none !important; color: var(--text-2); }
+html.home-shell .sm-btn:is(.ghost, .quiet):is(:hover, :focus-visible) { color: var(--text); }
+html.home-shell .sm-btn.primary { background: var(--s-acc) !important; box-shadow: none !important; color: var(--s-acc-ink); font-weight: 600; }
+html.home-shell .sm-btn.primary:is(:hover, :focus-visible):not([disabled]) { background: var(--s-acc) !important; filter: brightness(1.06); }
+html.home-shell .sm-btn:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+html.home-shell .sm-main .sm-icon-key { width: 30px; height: 30px; border-radius: 8px; background: none; box-shadow: none; color: var(--text-2); }
+html.home-shell .sm-main .sm-icon-key:is(:hover, :focus-visible) { background: var(--cs-hover); box-shadow: none; color: var(--text); }
+html.home-shell .sm-main .sm-icon-key svg { width: 16px; height: 16px; }
+/* MADRE, its version and its author are said at the sidebar's foot while it is open, as in a project;
+   shut, the foot of Home says them. */
+html.home-shell.home-side .sm-foot-row .sm-colophon { display: none; }

@@ -12,7 +12,7 @@ import { brandOf, monogram } from './brands.js';
 import { startReviewAsk } from './review-ask.js';
 import { startTour } from './tour.js';
 import { dropStickyHover } from './touch.js';
-import { drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
+import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
 
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
@@ -3005,6 +3005,8 @@ function pinsPlace(ids) {
 }
 function drawPins() {
   const box = ui.bar.open;
+  // In the chat shell the projects at hand are the sidebar's (drawSideProjects), not the bar's.
+  if (homeShellOn()) { box.hidden = true; pinsFit(); drawSideProjects(); return; }
   const ids = pinsShown();
   for (const id of ids) {
     const room = data.rooms.find((one) => one.id === id);
@@ -3255,8 +3257,11 @@ function pinsMenu(event, room, at = null) {
     menu.append(one);
   };
   const on = pinsShown().includes(room.id);
-  item(on ? t('Remove from the bar') : t('Pin to the bar'), on ? UNPIN_ICON : PIN_ICON, () => (on ? pinRemove(room.id) : pinAdd(room.id)));
-  item(t('Arrange the bar'), ARRANGE_ICON, () => pinsEdit(true));
+  // In the chat shell the projects at hand live in the sidebar, and it says so; its order is the
+  // menu's and the drop's, so there is no bar to arrange.
+  const side = homeShellOn();
+  item(on ? (side ? t('Remove from the sidebar') : t('Remove from the bar')) : (side ? t('Keep in the sidebar') : t('Pin to the bar')), on ? UNPIN_ICON : PIN_ICON, () => (on ? pinRemove(room.id) : pinAdd(room.id)));
+  if (!side) item(t('Arrange the bar'), ARRANGE_ICON, () => pinsEdit(true));
   menu.append(el('i', 'sm-menu-sep'));
   // Where it sits among the projects: moved by hand, the order becomes «Yours».
   const order = projectsInOrder().all.map((one) => one.id);
@@ -5250,7 +5255,167 @@ function translateStatic() {
   ui.decisions.title.textContent = t('Recent decisions');
   ui.attention.title.textContent = t('Needs you');
   for (const kind of KINDS) KIND_WORDS[kind] = t(kind.toUpperCase());
+  sayHomeShell();
 }
+
+// ---- HOME IN THE CHAT SHELL (2026-10-27) ------------------------------------------------------
+// Home framed as a project is (app.js, chatShell): a sidebar at the left that one key shows and
+// hides — MADRE, the ways to go, the projects at hand, the version and the house's keys at its
+// foot —, a bar of 48 px over the canvas with the page's name, the agents and the tools as quiet
+// icons, and the widgets flat on the canvas. The same classes as the room's sidebar (styles.css,
+// .side-*), so moving between Home and a project feels like one place. The projects at hand are
+// the ones the bar held (the pins: the open ones, until the person chooses), and a card dropped on
+// the list pins it there. Not on a phone, where the bar keeps them as before.
+const SIDE_KEY = 'pulse.homeSide';
+const SIDEBAR_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3.9v12.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+const HOME_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.4 9.2 10 3.6l6.6 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 7.9v7.5a1.2 1.2 0 0 0 1.2 1.2h2.3v-4a1.3 1.3 0 0 1 2.6 0v4h2.3a1.2 1.2 0 0 0 1.2-1.2V7.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const MARKET_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.2 7.4h13.6l-1.2 8.8a1 1 0 0 1-1 .9H5.4a1 1 0 0 1-1-.9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 7.4V6a3 3 0 0 1 6 0v1.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const COORDINATOR_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="4.4" cy="5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="15.6" cy="5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="16.4" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.6 6.1 8.2 8.4M14.4 6.1l-2.6 2.3M10 12.4v2.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const ALL_GLYPH = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M4 10h12M4 14h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const homeShell = { side: null, list: null, said: '', open: false };
+const homeShellOn = () => root.classList.contains('home-shell');
+// A phone keeps Home as it was; a narrow window gets the sidebar over the canvas, shut at first.
+const SHELL_PHONE = '(max-width: 560px)';
+const SHELL_NARROW = '(max-width: 960px)';
+function sideKey(icon, label, run) {
+  const key = button('shell-key', null, (event) => { event.stopPropagation(); run(); });
+  key.innerHTML = icon; // trusted: our own SVG strings
+  key.setAttribute('aria-label', label);
+  key.title = label;
+  return key;
+}
+function sideRow(icon, label, run, { here = false } = {}) {
+  const row = button('side-row', null, run);
+  row.innerHTML = icon; // trusted: our own SVG strings
+  row.append(el('span', null, label));
+  if (here) row.setAttribute('aria-current', 'page');
+  return row;
+}
+function setSide(open, { keep = true } = {}) {
+  homeShell.open = open;
+  root.classList.toggle('home-side', open);
+  homeShell.side?.toggleAttribute('inert', !open);
+  if (keep && !window.matchMedia(SHELL_NARROW).matches) { try { localStorage.setItem(SIDE_KEY, open ? 'open' : 'shut'); } catch { /* as long as the page lasts */ } }
+}
+function buildHomeShell() {
+  if (!root.classList.contains('chat-shell') || homeShell.side) return;
+  const side = el('aside', 'sm-side');
+  side.id = 'sm-side';
+  const head = el('div', 'side-head');
+  const brand = document.getElementById('sm-back')?.cloneNode(true);
+  if (brand) { brand.removeAttribute('id'); brand.className = 'side-brand'; }
+  homeShell.add = sideKey(ADD_ICON, t('Add a project'), () => ui.add.click());
+  homeShell.hide = sideKey(SIDEBAR_GLYPH, t('Hide the sidebar'), () => setSide(false));
+  head.append(homeShell.hide, ...(brand ? [brand] : []), el('span', 'side-grow'), homeShell.add);
+  const nav = el('nav', 'side-nav');
+  homeShell.rows = {
+    add: sideRow(ADD_ICON, t('Add a project'), () => ui.add.click()),
+    home: sideRow(HOME_GLYPH, t('Home'), () => window.scrollTo({ top: 0, behavior: motionStill() ? 'auto' : 'smooth' }), { here: true }),
+    coordinator: sideRow(COORDINATOR_GLYPH, t('Coordinator'), () => openBishop()),
+    market: sideRow(MARKET_GLYPH, t('Market'), () => openHomeMarket('shop')),
+  };
+  nav.append(...Object.values(homeShell.rows));
+  const scroll = el('div', 'side-scroll');
+  homeShell.label = el('div', 'side-label', t('Projects'));
+  homeShell.list = el('div', 'side-projects');
+  scroll.append(homeShell.label, homeShell.list);
+  // A project's card dropped on the list keeps it here, where it was let go.
+  scroll.addEventListener('dragover', (event) => {
+    if (!pins.dropping || !event.dataTransfer?.types.includes(PIN_TYPE)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    scroll.classList.add('is-drop');
+  });
+  scroll.addEventListener('dragleave', (event) => { if (!scroll.contains(event.relatedTarget)) scroll.classList.remove('is-drop'); });
+  scroll.addEventListener('drop', (event) => {
+    const id = event.dataTransfer?.getData(PIN_TYPE);
+    scroll.classList.remove('is-drop');
+    if (!id) return;
+    event.preventDefault();
+    const rows = [...homeShell.list.querySelectorAll('[data-room]')];
+    const at = rows.findIndex((row) => { const box = row.getBoundingClientRect(); return event.clientY < box.top + box.height / 2; });
+    pinsDropEnd();
+    pinAdd(id, at < 0 ? rows.length : at);
+  });
+  const foot = el('div', 'side-foot');
+  const who = el('div', 'side-who');
+  homeShell.version = el('b', null, 'MADRE');
+  const copy = el('a', 'side-copy', `© ${YEAR} ${AUTHOR}`);
+  copy.href = AUTHOR_URL;
+  copy.target = '_blank';
+  copy.rel = 'noopener';
+  who.append(homeShell.version, copy);
+  homeShell.settings = sideKey(ui.gear.innerHTML, t('Settings'), () => openSettings());
+  homeShell.power = sideKey(document.getElementById('sm-power')?.innerHTML ?? '', t('Turn MADRE off'), () => document.getElementById('sm-power')?.click());
+  foot.append(who, homeShell.settings, homeShell.power);
+  side.append(head, nav, scroll, foot);
+  document.body.prepend(side);
+  homeShell.side = side;
+  // In the bar, while the sidebar is shut: its key, before the page's name.
+  homeShell.show = sideKey(SIDEBAR_GLYPH, t('Show the sidebar'), () => setSide(true));
+  homeShell.show.classList.add('sm-side-show');
+  document.querySelector('.sm-top > .sm-topbar:first-child')?.prepend(homeShell.show);
+  // Over the canvas on a narrow window: a press outside, or Escape, puts it away.
+  homeShell.scrim = el('div', 'sm-side-scrim');
+  homeShell.scrim.addEventListener('click', () => setSide(false, { keep: false }));
+  document.body.append(homeShell.scrim);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && homeShell.open && window.matchMedia(SHELL_NARROW).matches && !document.querySelector('dialog[open]')) setSide(false, { keep: false });
+  });
+  const place = () => {
+    const was = homeShellOn();
+    const on = !window.matchMedia(SHELL_PHONE).matches;
+    root.classList.toggle('home-shell', on);
+    if (on !== was && data) drawPins();
+    let kept = null;
+    try { kept = localStorage.getItem(SIDE_KEY); } catch { /* no storage */ }
+    if (window.matchMedia(SHELL_NARROW).matches) setSide(false, { keep: false });
+    else setSide(kept ? kept === 'open' : true, { keep: false });
+  };
+  window.matchMedia(SHELL_PHONE).addEventListener?.('change', place);
+  window.matchMedia(SHELL_NARROW).addEventListener?.('change', place);
+  place();
+}
+// The projects at hand, each with its state as the room's sidebar says it: a press goes there, or
+// wakes it and goes in; ⌘-press opens it in a new tab. The rest are one row away, on Home itself.
+function drawSideProjects() {
+  if (!homeShell.list || !data) return;
+  if (data.version) homeShell.version.textContent = `MADRE ${data.version}`;
+  const ids = pinsShown();
+  const rooms = ids.map((id) => data.rooms.find((one) => one.id === id)).filter(Boolean);
+  const said = JSON.stringify([language, rooms.map((room) => [room.id, room.name, room.open?.port ?? 0, busy.get(room.id) ?? stateOf(room).key, room.glance?.waitingCount ?? 0])]);
+  if (said === homeShell.said) return;
+  homeShell.said = said;
+  homeShell.label.textContent = t('Projects');
+  const MOOD = { calm: 'calm', working: 'working', waiting: 'waiting', outdated: 'quiet', quiet: 'quiet', asleep: 'asleep' };
+  const rows = rooms.map((room) => {
+    const state = stateOf(room);
+    const waking = busy.get(room.id) === 'starting';
+    const row = el(room.open ? 'a' : 'button', `side-project${room.open ? '' : ' asleep'}`);
+    row.dataset.room = room.id;
+    row.append(el('i', `side-dot ${waking ? 'working' : MOOD[state.key] ?? 'calm'}`), el('span', 'side-project-name', room.name));
+    if (state.key === 'waiting') row.append(el('small', 'side-count', String(room.glance.waitingCount)));
+    row.title = `${room.name} · ${waking ? t('Waking…') : state.words}`;
+    if (room.open) row.href = addressOf(room);
+    else { row.type = 'button'; row.addEventListener('click', (event) => { if (busy.has(room.id)) return; if (event.metaKey || event.ctrlKey) void startRoom(room); else void startRoom(room, { enter: true }); }); }
+    row.addEventListener('contextmenu', (event) => pinsMenu(event, room));
+    return row;
+  });
+  const all = sideRow(ALL_GLYPH, t('All your projects'), () => document.getElementById('sm-drawer')?.scrollIntoView({ behavior: motionStill() ? 'auto' : 'smooth', block: 'start' }));
+  all.classList.add('side-all');
+  if (!rooms.length) rows.push(el('p', 'side-empty', t('Open a project and it shows here.')));
+  homeShell.list.replaceChildren(...rows, all);
+}
+function sayHomeShell() {
+  if (!homeShell.side) return;
+  homeShell.side.setAttribute('aria-label', t('Home'));
+  const words = { add: t('Add a project'), home: t('Home'), coordinator: t('Coordinator'), market: t('Market') };
+  for (const [key, row] of Object.entries(homeShell.rows)) row.querySelector('span').textContent = words[key];
+  for (const [key, label] of [[homeShell.add, t('Add a project')], [homeShell.hide, t('Hide the sidebar')], [homeShell.show, t('Show the sidebar')], [homeShell.settings, t('Settings')], [homeShell.power, t('Turn MADRE off')]]) { key.title = label; key.setAttribute('aria-label', label); }
+  homeShell.said = '';
+  drawSideProjects();
+}
+buildHomeShell();
 
 translateStatic();
 drawWork();
