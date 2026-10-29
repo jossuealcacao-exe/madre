@@ -6,14 +6,32 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.0 · Sin publicar
 
+MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en un chat que corre en tu computadora. La 1.1 la ordena como una app de chat, suma el Mercado y llega a Windows.
+
+- **Inicio, todo en un lugar.** Al abrir MADRE llegas a Inicio: tus proyectos, el Coordinador y lo que te espera. A la izquierda tienes tus chats y tus proyectos, como en las apps de chat.
+- **Tus chats, a un lado.** Cada proyecto guarda sus chats en la columna de la izquierda. Puedes abrir dos lado a lado, o uno en su propia ventana. Archivos, el navegador y el mapa se abren a la derecha.
+- **El Mercado.** Suma funciones con un clic: Notas, Recordatorios, Vista previa, Antes de subir y más. Cada módulo te dice qué hace antes de instalarlo, y cualquiera puede proponer el suyo.
+- **Una bienvenida paso a paso.** Conecta tus agentes, pon una IA gratis en tu computadora y prepara la memoria, sin usar la terminal. Si vienes de una versión anterior, te recibe un resumen corto de lo nuevo.
+- **Windows, con WSL2.** MADRE corre dentro de WSL2, el Linux que trae Windows: `wsl --install`, abrir Ubuntu y `npx @jossuealcala/madre`. Si la abres en Windows directo, te dice esos tres pasos. Desde WSL encuentra la IA local que tengas en Windows.
+- **Errores anónimos para mejorar MADRE.** Una vez al día manda qué falló y cuánto se usa, sin nada de lo que escribes ni de tus proyectos. Lo apagas en Ajustes › Actualizaciones y errores.
+- **Licencia nueva.** Desde 1.1.0, MADRE usa la Business Source License 1.1: gratis para personas y equipos de hasta 10, también para trabajar para clientes; las organizaciones más grandes o quien la ofrezca como servicio necesitan una licencia comercial. Cada versión pasa a la GNU AGPL v3 a los cuatro años. Las versiones hasta la 1.0.5 siguen con su licencia.
+
+### La lista completa de 1.1.0
+
+<details>
+<summary>La lista completa de 1.1.0</summary>
+
 - **MADRE se ve como un chat con IA.** A la izquierda, una barra lateral con tus chats y tus proyectos, que se muestra y se oculta con su ícono, como en Claude o ChatGPT. Al centro, la conversación, con tus mensajes en una burbuja suave y la caja de texto con el agente, el modo y el modelo adentro. A la derecha, la herramienta que abras: Código, Archivos o el Navegador, cada una en su pestaña. Sin fondo de pantalla ni tarjetas flotando: tres columnas limpias. Inicio, Módulos, Diagnóstico y Ajustes hablan el mismo idioma. Las ventanas flotantes siguen ahí para quien las prefiera.
 - **Notas y Recordatorios se actualizan sin esperar a una MADRE nueva.** Siguen viniendo con MADRE y funcionan sin internet. Cuando sale un arreglo para alguno de los dos, llega por el Mercado y MADRE te avisa una vez («Recordatorios se actualizó solo a la versión…»). Cada archivo viene firmado con una llave aparte de la del Mercado. Si algo no cuadra, MADRE usa el que trajo de fábrica. Con «Buscar versiones nuevas» apagado, siempre usa el de fábrica.
 - **Antes de instalar un módulo del Mercado, lo lees.** MADRE muestra lo que declara: a dónde se conecta, qué llaves pide, si les da herramientas a tus agentes o lee tus chats, y qué comandos agrega. Te recuerda que corre con tus permisos y lo instala solo cuando aceptas, y siempre el mismo archivo que leíste.
 - **Si el Mercado retira un módulo, te enteras.** Un módulo retirado se quita de tu computadora. Si es una versión nueva de Notas o Recordatorios, vuelve a la que trae MADRE. En los dos casos MADRE te avisa una vez y te dice por qué.
-- **La barra, de borde a borde.** En Inicio y en cada proyecto, la barra deja de flotar: queda pegada arriba, de orilla a orilla, con las mismas teclas en el mismo orden. Inicio, cambiar de proyecto, recargar, ajustes y apagar quedan a la derecha, después de una línea. Tus chats ya no flotan sobre la conversación: son la primera tecla de la barra, antes del logo, y se quedan marcados mientras el panel está abierto. Lo que acoplas a un lado (tus chats, los archivos, el navegador o un segundo chat) se acomoda debajo de la barra, que sigue completa arriba. Es la barra que tendrá la app de MADRE.
+- **La barra, de borde a borde.** En Inicio y en cada proyecto, la barra deja de flotar: queda pegada arriba, de orilla a orilla, con las mismas teclas en el mismo orden. Inicio, cambiar de proyecto, recargar, ajustes y apagar quedan a la derecha, después de una línea. Tus chats ya no flotan sobre la conversación: son la primera tecla de la barra, antes del logo, y se quedan marcados mientras el panel está abierto. Lo que acoplas a un lado (tus chats, los archivos, el navegador o un segundo chat) se acomoda debajo de la barra, que sigue completa arriba. 
 - **Tus chats, los archivos y el código, como en las apps que ya usas.** El ícono de barra lateral, arriba a la izquierda, muestra y oculta tus chats, como en Claude o ChatGPT. Archivos y Código se abren a la derecha, acoplados, con la conversación al lado, y su tecla los vuelve a cerrar. Archivos y Código pueden quedar abiertos a la vez, uno junto al otro, como en un editor. Cada uno recuerda cómo lo dejaste: si prefieres uno como ventana flotante, se queda así. La barra de arriba es sólida: ya no deja ver ni desenfoca lo que pasa por debajo.
 - **Inicio, en la letra de MADRE.** La barra, las píldoras de proyecto y las líneas de datos de Inicio pasan a Geist. Las rutas de carpeta y el puerto se quedan en mono.
 - **Para quien hace módulos: contrato `sdk: 2`.** Un módulo dice para qué contrato del SDK está escrito, en lugar de la versión de MADRE que necesita. Con `sdk: 2` el módulo puede ser un solo archivo que no importa nada de MADRE: `ctx.t` le da sus palabras en el idioma de la sala, `ctx.services.ollama.generate` le da la IA local, y sus rutas reciben sus propios ajustes.
+- **Revisión antes de publicar.** Archivos guarda lo que no guardaste aunque lo cierres desde su pestaña. La barra lateral se abre encima de la conversación en ventanas angostas, en vez de cerrarse sola. Apagar el diagnóstico anónimo lo apaga en Inicio y en todos los proyectos. Recordatorios entiende «hoy a las 8» de noche, «esta noche a las 9» y «look at 3 files»; «Hecho» antes de la hora sí cuenta para hoy, y «Más tarde» mueve solo esa vez. Las copias de los proyectos sin git viven en una carpeta que solo tú puedes abrir. Rutas con corchetes, como `app/[id]`, se restauran bien. Gemini acepta carpetas con apóstrofo. Los errores de red se dicen en tu idioma.
+
+</details>
 
 ## 1.0.5 · 2026-10-22
 

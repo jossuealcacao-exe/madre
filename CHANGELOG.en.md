@@ -6,14 +6,32 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.0 · Unreleased
 
+MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) in one chat that runs on your computer. 1.1 lays it out like a chat app, adds the Market and comes to Windows.
+
+- **Home, everything in one place.** Opening MADRE takes you to Home: your projects, the Coordinator and what is waiting for you. Your chats and projects are on the left, like in chat apps.
+- **Your chats, to one side.** Each project keeps its chats in the left column. You can open two side by side, or one in its own window. Files, the browser and the map open on the right.
+- **The Market.** Add features in one click: Notes, Reminders, Preview, Before you push and more. Every module tells you what it does before you install it, and anyone can propose their own.
+- **A step-by-step welcome.** Connect your agents, put a free AI on your computer and get the memory ready, without the terminal. If you come from an earlier version, a short summary of what is new greets you.
+- **Windows, through WSL2.** MADRE runs inside WSL2, the Linux that comes with Windows: `wsl --install`, open Ubuntu and `npx @jossuealcala/madre`. Started on Windows itself, it tells you those three steps. From WSL it finds the local AI you have on Windows.
+- **Anonymous errors to improve MADRE.** Once a day it sends what failed and how much it is used, with nothing you write and nothing from your projects. Turn it off in Settings › Updates and errors.
+- **A new license.** From 1.1.0, MADRE uses the Business Source License 1.1: free for individuals and teams of up to 10, also to work for clients; larger organizations, or anyone offering it as a service, need a commercial license. Each version becomes GNU AGPL v3 after four years. Versions up to 1.0.5 keep their license.
+
+### Everything in 1.1.0
+
+<details>
+<summary>Everything in 1.1.0</summary>
+
 - **MADRE looks like a chat with an AI.** At the left, a sidebar with your chats and your projects, shown and hidden by its icon, as in Claude or ChatGPT. In the middle, the conversation, your messages in a soft bubble and the box you write in holding the agent, the mode and the model. At the right, the tool you open: Code, Files or the Browser, each in its tab. No wallpaper and no floating cards: three clean columns. Home, Modules, Diagnostics and Settings speak the same language. Floating windows are still there for whoever prefers them.
 - **Notes and Reminders update without waiting for a new MADRE.** They still come with MADRE and work without internet. When a fix comes out for either one, it arrives through the Market and MADRE tells you once («Reminders updated itself to version…»). Each file comes signed with a key kept apart from the Market's. If anything does not match, MADRE uses the one it came with. With «Look for new versions» off, it always does.
 - **Before installing a module from the Market, you read it.** MADRE shows what it declares: where it connects, which keys it asks for, whether it hands tools to your agents or reads your chats, and the commands it adds. It reminds you that it runs with your permissions and installs it only when you accept, and always the same file you read.
 - **If the Market takes a module back, you find out.** A module taken back is removed from your computer. If it is a newer Notes or Reminders, MADRE goes back to the one it came with. Either way, MADRE tells you once, and why.
-- **The bar, from edge to edge.** In Home and in every project the bar stops floating: it sits at the top, from side to side, with the same keys in the same order. Home, switching projects, reload, Settings and turning off sit at its right, after a hairline. Your chats no longer float over the conversation: they are the bar's first key, before the logo, and stay pressed while their panel is open. Whatever you dock to a side (your chats, the files, the browser or a second chat) sits under the bar, which stays whole across the top. It is the bar MADRE's app will have.
+- **The bar, from edge to edge.** In Home and in every project the bar stops floating: it sits at the top, from side to side, with the same keys in the same order. Home, switching projects, reload, Settings and turning off sit at its right, after a hairline. Your chats no longer float over the conversation: they are the bar's first key, before the logo, and stay pressed while their panel is open. Whatever you dock to a side (your chats, the files, the browser or a second chat) sits under the bar, which stays whole across the top. 
 - **Your chats, the files and the code, as in the apps you already use.** The sidebar icon at the top left shows and hides your chats, as in Claude or ChatGPT. Files and Code open at the right, docked, with the conversation beside them, and their key closes them again. Files and Code can stay open at once, side by side, as in an editor. Each one remembers how you left it: if you prefer one as a floating window, it stays that way. The bar at the top is solid: it no longer shows or blurs what passes under it.
 - **Home, in MADRE's letter.** Home's bar, project pills and data lines move to Geist. Folder paths and the port stay in mono.
 - **For module makers: contract `sdk: 2`.** A module says which SDK contract it was written for, instead of the MADRE version it needs. With `sdk: 2` a module can be one file that imports nothing from MADRE: `ctx.t` gives it its words in the room's language, `ctx.services.ollama.generate` gives it the local AI, and its routes get its own settings.
+- **Reviewed before release.** Files keeps what you had not saved even when closed from its tab. On a narrow window the sidebar opens over the conversation instead of closing itself. Turning anonymous diagnostics off turns it off in Home and every project. Reminders understands «today at 8» at night, «tonight at 9» and «look at 3 files»; «Done» before the hour counts for today, and «Later» moves only that time. Copies of projects without git live in a folder only you can open. Paths with brackets, like `app/[id]`, restore correctly. Gemini accepts folders with an apostrophe. Network errors are said in your language.
+
+</details>
 
 ## 1.0.5 · 2026-10-22
 
