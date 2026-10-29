@@ -305,6 +305,19 @@ Cada proyecto recuerda dónde está su carpeta (`project.json`, junto a su regis
 
 Los planes viven en `bishop-plans.json` junto al registro del proyecto del Coordinador (los últimos 40) y cada orden recibida se cuenta en `enlaces.jsonl` del proyecto que la recibió.
 
+### Desinstalar MADRE
+
+En **Inicio › Ajustes › Versión › Desinstalar MADRE** (`src/uninstall.mjs`, `public/power.js`). Antes de tocar nada muestra la lista entera (`GET /api/madre/uninstall`); con tu sí (`POST`, solo desde la página de Inicio en esta computadora) cierra cada proyecto abierto como «Apagar MADRE» y, si alguno no cierra, no borra nada. Con todo cerrado, Inicio se cierra y borra:
+
+| Se borra | Se queda |
+|---|---|
+| La carpeta de MADRE (`~/.pulse` o `PULSE_HOME`): chats, memoria, ajustes, módulos, catálogo, identificador de la copia y las IAs que instaló en su carpeta (`tools/`) | Tus proyectos y sus archivos |
+| `.pulse/` dentro de cada proyecto que MADRE conoce, menos `.pulse/out/` (lo que crearon las IAs en #2) salvo que marques la casilla | `.madre/` dentro de un proyecto: los módulos que escribiste |
+| Los puntos de restauración de esos proyectos (`$TMPDIR/madre-shadow-<uid>/…`) | Tus IAs y sus sesiones, Ollama y sus modelos, la caché de npm |
+| La copia que descargó `npx` (`~/.npm/_npx/<hash>` con solo MADRE) | Con `npm -g` o dentro de un proyecto, el programa: la pantalla final da el comando (`npm uninstall -g @jossuealcala/madre`). Desde el código, su carpeta |
+
+La carpeta de MADRE se borra entera solo si es suya sin duda: ruta absoluta, nunca tu carpeta personal ni una que la contenga, y con algo que MADRE siempre escribe (`install-id`, `config.json`, `rooms`, `salas`).
+
 ---
 
 ## LO QUE SALE DE LA MÁQUINA

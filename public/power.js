@@ -309,3 +309,125 @@ export async function askCloseProject() {
   dialog.showModal();
   go.focus();
 }
+// UNINSTALLING MADRE (2026-10-29), from Home's Settings: first what goes and what stays, as the server
+// would do it (src/uninstall.mjs, GET /api/madre/uninstall); then, on a yes, Home and every open
+// project close and MADRE takes away what it put on this computer. What is left on screen says it
+// is done, and what is still the person's to do: npm's command, when npm installed it.
+const TRASH_ICON = trazo('trash');
+const filesSaid = (n) => (n === 1 ? t('1 file') : t('{n} files', { n }));
+export async function askUninstall() {
+  if (document.querySelector('dialog.power-ask')) return;
+  let plan = null;
+  try {
+    const response = await fetch('/api/madre/uninstall', { cache: 'no-store' });
+    plan = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(plan?.error ? t(plan.error) : t('MADRE did not answer. Check that it is still open.'));
+  } catch (error) {
+    plan = { ok: false, error: error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message };
+  }
+  const dialog = node('dialog', 'room-ask power-ask uninstall-ask');
+  dialog.setAttribute('aria-labelledby', 'uninstall-ask-title');
+  const card = node('div', 'room-ask-card');
+  const icon = node('span', 'room-ask-icon');
+  icon.innerHTML = TRASH_ICON; // trusted: our own SVG string
+  const title = node('h2', 'room-ask-title', t('Uninstall MADRE?'));
+  title.id = 'uninstall-ask-title';
+  const body = node('p', 'room-ask-body', t('Home and every open project close, and MADRE takes away what it put on this computer. It cannot be undone.'));
+  const list = (heading, items) => {
+    const box = node('div', 'uninstall-part');
+    const ul = node('ul', 'uninstall-list');
+    for (const item of items) ul.append(node('li', null, item));
+    box.append(node('b', null, heading), ul);
+    return box;
+  };
+  const reply = node('p', 'key-reply');
+  reply.setAttribute('aria-live', 'polite');
+  const actions = node('div', 'room-ask-actions');
+  const cancel = node('button', 'room-ask-choice', t('Cancel'));
+  cancel.type = 'button';
+  const go = node('button', 'room-ask-choice danger', t('Uninstall'));
+  go.type = 'button';
+  actions.append(cancel, go);
+  card.append(icon, title, body);
+  let made = null;
+  if (plan?.ok) {
+    const names = plan.projects.map((one) => one.name);
+    const goes = [t('Your conversations, memory and settings in MADRE ({path})', { path: plan.stateRoot })];
+    if (names.length) goes.push(t('MADRE\'s folder inside your projects (.pulse) and their restore points: {list}', { list: names.join(', ') }));
+    if (plan.tools.length) goes.push(t('The AIs MADRE installed in its own folder: {list}', { list: plan.tools.join(', ') }));
+    if (plan.npx) goes.push(t('The copy of MADRE that npx downloaded'));
+    const stays = [t('Your projects and their files'), t('Your AIs and their sign-ins, and Ollama with its models')];
+    if (plan.made) stays.push(t('What the AIs created in your projects (.pulse/out, {files}), unless you tick the box below', { files: filesSaid(plan.made) }));
+    if (plan.modules.length) stays.push(t('The modules you wrote inside a project (.madre): {list}', { list: plan.modules.join(', ') }));
+    if (plan.program.command) stays.push(t('MADRE itself: npm takes it away with the command you will see at the end'));
+    if (plan.program.install === 'source') stays.push(t('MADRE\'s source folder: {folder}', { folder: plan.program.folder ?? '' }));
+    card.append(list(t('What goes'), goes), list(t('What stays'), stays));
+    if (plan.made) {
+      const label = node('label', 'uninstall-made');
+      made = node('input');
+      made.type = 'checkbox';
+      label.append(made, node('span', null, t('Also delete what the AIs created in .pulse/out ({files})', { files: filesSaid(plan.made) })));
+      card.append(label);
+    }
+  } else {
+    reply.textContent = plan?.error ?? t('MADRE did not answer. Check that it is still open.');
+    go.disabled = true;
+  }
+  card.append(reply, actions);
+  dialog.append(card);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  cancel.addEventListener('click', () => dialog.close());
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    cancel.disabled = true;
+    if (made) made.disabled = true;
+    go.textContent = t('Uninstalling…');
+    reply.textContent = '';
+    let answer = null;
+    try {
+      const response = await fetch('/api/madre/uninstall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ made: Boolean(made?.checked) }) });
+      answer = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(answer.error ? t(answer.error) : t('MADRE did not answer. Check that it is still open.'));
+    } catch (error) {
+      reply.textContent = error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message;
+      go.disabled = false;
+      cancel.disabled = false;
+      if (made) made.disabled = false;
+      go.textContent = t('Uninstall');
+      return;
+    }
+    dialog.close();
+    showUninstalled(answer);
+  });
+  dialog.showModal();
+  cancel.focus();
+}
+
+// What stays on screen once MADRE is gone: done, and what is still the person's to do.
+function showUninstalled(plan) {
+  const screen = node('div', 'madre-off madre-gone');
+  screen.setAttribute('role', 'status');
+  const mark = node('span', 'madre-off-mark');
+  mark.innerHTML = TRASH_ICON; // trusted: our own SVG string
+  screen.append(mark, node('h1', null, t('MADRE was uninstalled')), node('p', null, t('You can close this tab. Your projects are where they were.')));
+  if (plan?.made && !plan.madeGo) screen.append(node('p', null, t('What the AIs created is still in each project, in .pulse/out.')));
+  if (plan?.program?.command) {
+    screen.append(node('p', null, t('To take the program away as well, type this in your Terminal:')));
+    const line = node('div', 'madre-gone-command');
+    const code = node('code', null, plan.program.command);
+    const copy = node('button', 'room-ask-choice', t('Copy'));
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(plan.program.command); copy.textContent = t('Copied'); } catch { copy.textContent = t('Select it and copy it.'); }
+    });
+    line.append(code, copy);
+    screen.append(line);
+  } else if (plan?.program?.install === 'source') {
+    screen.append(node('p', null, t('This copy runs from its source folder; delete it yourself if you no longer want it: {folder}', { folder: plan.program.folder ?? '' })));
+  } else {
+    screen.append(node('p', null, t('If you ever want it back: npx @jossuealcala/madre')));
+  }
+  document.body.append(screen);
+  document.documentElement.classList.add('madre-is-off');
+}

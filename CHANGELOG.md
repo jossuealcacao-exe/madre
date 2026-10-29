@@ -14,6 +14,7 @@ MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en 
 - **Una bienvenida paso a paso.** Conecta tus agentes, pon una IA gratis en tu computadora y prepara la memoria, sin usar la terminal. Si vienes de una versión anterior, te recibe un resumen corto de lo nuevo.
 - **Windows, con WSL2.** MADRE corre dentro de WSL2, el Linux que trae Windows: `wsl --install`, abrir Ubuntu y `npx @jossuealcala/madre`. Si la abres en Windows directo, te dice esos tres pasos. Desde WSL encuentra la IA local que tengas en Windows.
 - **Errores anónimos para mejorar MADRE.** Una vez al día manda qué falló y cuánto se usa, sin nada de lo que escribes ni de tus proyectos. Lo apagas en Ajustes › Actualizaciones y errores.
+- **Desinstalar con un botón.** En Inicio › Ajustes › Versión, «Desinstalar MADRE» te muestra primero qué se borra y qué se queda. Cierra todo y borra lo que MADRE puso en tu computadora: sus conversaciones, memoria y ajustes, su carpeta `.pulse` en tus proyectos y sus puntos de restauración. Tus proyectos y tus IAs se quedan, y lo que crearon las IAs en `.pulse/out` también, salvo que pidas borrarlo.
 - **Licencia nueva.** Desde 1.1.0, MADRE usa la Business Source License 1.1: gratis para personas y equipos de hasta 10, también para trabajar para clientes; las organizaciones más grandes o quien la ofrezca como servicio necesitan una licencia comercial. Cada versión pasa a la GNU AGPL v3 a los cuatro años. Las versiones hasta la 1.0.5 siguen con su licencia.
 
 ### La lista completa de 1.1.0

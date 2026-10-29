@@ -14,6 +14,7 @@ MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) 
 - **A step-by-step welcome.** Connect your agents, put a free AI on your computer and get the memory ready, without the terminal. If you come from an earlier version, a short summary of what is new greets you.
 - **Windows, through WSL2.** MADRE runs inside WSL2, the Linux that comes with Windows: `wsl --install`, open Ubuntu and `npx @jossuealcala/madre`. Started on Windows itself, it tells you those three steps. From WSL it finds the local AI you have on Windows.
 - **Anonymous errors to improve MADRE.** Once a day it sends what failed and how much it is used, with nothing you write and nothing from your projects. Turn it off in Settings › Updates and errors.
+- **Uninstall with one button.** In Home › Settings › Version, «Uninstall MADRE» first shows what goes and what stays. It closes everything and takes away what MADRE put on your computer: its conversations, memory and settings, its `.pulse` folder in your projects and its restore points. Your projects and your AIs stay, and so does what the AIs created in `.pulse/out`, unless you ask for it to go.
 - **A new license.** From 1.1.0, MADRE uses the Business Source License 1.1: free for individuals and teams of up to 10, also to work for clients; larger organizations, or anyone offering it as a service, need a commercial license. Each version becomes GNU AGPL v3 after four years. Versions up to 1.0.5 keep their license.
 
 ### Everything in 1.1.0

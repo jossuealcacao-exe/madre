@@ -60,6 +60,12 @@ async function shadowHome() {
   shadowBase = ours ? base : await mkdtemp(join(tmpdir(), 'madre-shadow-'));
   return shadowBase;
 }
+// Where a project's shadow would be, without making it (src/uninstall.mjs takes it away). Only the
+// folder of this user's own: a fresh one made beside someone else's lasts as long as the process.
+export function shadowFolderFor(root) {
+  const uid = process.getuid?.();
+  return join(tmpdir(), uid === undefined ? 'madre-shadow' : `madre-shadow-${uid}`, createHash('sha1').update(resolve(root)).digest('hex').slice(0, 16));
+}
 async function shadowFor(root) {
   const canonical = resolve(root);
   if (!shadows.has(canonical)) {

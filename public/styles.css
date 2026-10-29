@@ -9797,6 +9797,15 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 .madre-off-mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; color: var(--text-2); background: color-mix(in srgb, var(--text) 7%, transparent); }
 .madre-off-mark svg { width: 24px; height: 24px; }
 html.madre-is-off body > :not(.madre-off) { visibility: hidden; }
+/* Uninstalling MADRE (public/power.js, askUninstall): what goes and what stays, then the box. */
+dialog.uninstall-ask .room-ask-card { max-width: 520px; }
+.uninstall-part { display: grid; gap: 4px; text-align: left; }
+.uninstall-part > b { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: color-mix(in srgb, var(--text) 78%, transparent); }
+.uninstall-list { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13px; line-height: 1.45; color: color-mix(in srgb, var(--text) 66%, transparent); overflow-wrap: anywhere; }
+.uninstall-made { display: flex; gap: 8px; align-items: flex-start; text-align: left; font-size: 13px; line-height: 1.45; color: var(--text); cursor: pointer; }
+.uninstall-made input { margin-top: 3px; accent-color: var(--danger); }
+.madre-gone-command { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.madre-gone-command code { padding: 6px 10px; border-radius: 8px; font-family: var(--mono); font-size: 13px; background: color-mix(in srgb, var(--text) 8%, transparent); overflow-wrap: anywhere; }
 
 /* 1.0.3 · Modules and Diagnostics lift less under the pointer: the key's own shadow and a slight
    one beneath, not the heavier one of the keys that are pressed (2026-10-17). */

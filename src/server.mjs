@@ -77,6 +77,7 @@ import { applyKey, keyPlanFor, openCodeKeyProviders, readOpenCodeProviders, remo
 import { forgetSecret, readSecret, summary as vaultSummary, writeSecret } from './vault.mjs';
 import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './config.mjs';
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
+import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand } from './updates.mjs';
 import { bootWhatsNew, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
@@ -2641,6 +2642,26 @@ export async function createPulseServer({
         setTimeout(() => server.emit('madre:close'), 150);
         return undefined;
       }
+      // Uninstalling MADRE (2026-10-29), from Home's Settings only (src/uninstall.mjs). GET says what
+      // would go and what stays; POST, from a page of this computer, closes every open project the
+      // way turning MADRE off does and — only once all of them closed — closes Home and takes away
+      // what the plan said (startPulse listens for «madre:uninstall»). A project that did not
+      // close keeps everything where it was: nothing is removed while something could still write.
+      if (url.pathname === '/api/madre/uninstall' && (request.method === 'GET' || request.method === 'POST')) {
+        const host = String(request.headers.host ?? '');
+        if (!salasRoom || viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) return sendJson(response, 403, { error: t('MADRE is uninstalled from Home, on this computer.') });
+        const plan = await uninstallPlan({ stateRoot: root, install, name: PACKAGE.name });
+        if (!plan.ok) return sendJson(response, 409, { error: t(plan.error) });
+        if (request.method === 'GET') return sendJson(response, 200, planView(plan));
+        const site = request.headers['sec-fetch-site'];
+        if ((site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('MADRE is uninstalled from Home, on this computer.') });
+        const payload = await body(request).catch(() => ({}));
+        const { stuck } = await closeOtherRooms();
+        if (stuck.length) return sendJson(response, 409, { error: t('These projects did not close, so nothing was removed: {list}. Close them from Home and try again.', { list: stuck.join(', ') }), stuck });
+        sendJson(response, 202, { uninstalling: true, ...planView(plan), madeGo: payload?.made === true });
+        setTimeout(() => server.emit('madre:uninstall', { plan, made: payload?.made === true }), 150);
+        return undefined;
+      }
       // This room, asked to close by Salas: what is running stops and the room closes the way a
       // signal closes it (startPulse listens). Nothing here ends the process itself.
       if (request.method === 'POST' && url.pathname === '/api/room/close') {
@@ -4813,5 +4834,13 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   }
   // Salas asked this room to close: the same as a signal.
   server.once('madre:close', () => server.close(() => process.exit(0)));
+  // Uninstalling (src/uninstall.mjs): the room closes as it does for a signal — every write done,
+  // the memory file closed — and only then is what the plan named taken away, last thing before the
+  // process ends, so nothing of MADRE's writes it back.
+  server.once('madre:uninstall', ({ plan, made }) => server.close(async () => {
+    const done = await removeMadre(plan, { made }).catch((error) => ({ removed: [], failed: [{ path: null, error: error.message }] }));
+    console.log(done.failed.length ? `\nMADRE was uninstalled, except:\n${done.failed.map((one) => `  ${one.path ?? ''} ${one.error}`).join('\n')}\n` : '\nMADRE was uninstalled.\n');
+    process.exit(0);
+  }));
   return { server, url };
 }

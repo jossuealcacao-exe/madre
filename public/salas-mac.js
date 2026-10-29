@@ -17,7 +17,7 @@ import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal 
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
 import { creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
-import { POWER_ICON, labelPowerKey, openPowerMenu, powerKey } from './power.js';
+import { POWER_ICON, askUninstall, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { mapKeys, neuralChosen, rememberNeural } from './neural.js';
@@ -4768,7 +4768,7 @@ const SET_INDEX = [
   ['bishop', 'Talk to the Coordinator'], ['bishop', 'Open the Coordinator in a new tab'],
   ['local', 'Ollama'], ['local', 'Automatic'], ['local', 'One by one'], ['local', 'Manual'],
   ['projects', 'Add a project'], ['projects', 'See the welcome again'], ['projects', 'The tour of MADRE 1.0'],
-  ['release', 'Check now'],
+  ['release', 'Check now'], ['release', 'Uninstall MADRE'],
 ];
 const THEME_WORDS = { auto: () => t('Automatic'), light: () => t('Light'), dark: () => t('Dark') };
 // In the chat shell the projects at hand live in the sidebar, and Settings calls them so (2026-10-28).
@@ -5421,6 +5421,10 @@ function fillRelease(host) {
     const late = sxBlock(host, t('Projects on an older MADRE'), t('They keep running the version they started with until you restart them. What is running in them stops.'), { aside: behind.length > 1 ? sxButton(t('Restart all'), () => void restartAll(), { tone: 'primary' }) : null });
     for (const room of behind) sxRow(late, roomLabel(room), `MADRE ${room.open.version}`, sxButton(t('Restart'), () => { settingsSheet?.close(); void restartRoom(room); }));
   }
+  // Uninstalling MADRE (2026-10-29): what goes and what stays is said before anything happens
+  // (public/power.js, askUninstall).
+  const leave = sxBlock(host, t('Uninstall MADRE'), t('Takes away what MADRE put on this computer: its conversations, memory and settings, and its folder inside your projects. Your projects and your AIs stay.'));
+  sxRow(leave, t('Remove MADRE from this computer'), t('You will see the whole list before anything is removed.'), sxButton(t('Uninstall…'), () => void askUninstall(), { tone: 'danger' }));
   drawLegal(host);
 }
 async function updateHome(info, key, said) {

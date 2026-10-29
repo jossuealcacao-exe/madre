@@ -305,6 +305,19 @@ Each project remembers where its folder is (`project.json`, next to its record);
 
 Plans live in `bishop-plans.json` next to the record of the Coordinator's project (the last 40) and each order received is counted in `enlaces.jsonl` of the project that received it.
 
+### Uninstalling MADRE
+
+In **Home › Settings › Version › Uninstall MADRE** (`src/uninstall.mjs`, `public/power.js`). Before touching anything it shows the whole list (`GET /api/madre/uninstall`); on your yes (`POST`, only from Home's page on this computer) it closes every open project the way «Turn MADRE off» does and, if one does not close, removes nothing. With everything closed, Home closes and takes away:
+
+| Goes | Stays |
+|---|---|
+| MADRE's folder (`~/.pulse` or `PULSE_HOME`): chats, memory, settings, modules, catalog, this copy's identifier and the AIs it installed in its own folder (`tools/`) | Your projects and their files |
+| `.pulse/` inside each project MADRE knows, except `.pulse/out/` (what the AIs created at #2) unless you tick the box | `.madre/` inside a project: the modules you wrote |
+| Those projects' restore points (`$TMPDIR/madre-shadow-<uid>/…`) | Your AIs and their sign-ins, Ollama and its models, npm's cache |
+| The copy `npx` downloaded (`~/.npm/_npx/<hash>` holding only MADRE) | With `npm -g` or inside a project, the program: the last screen gives the command (`npm uninstall -g @jossuealcala/madre`). From source, its folder |
+
+MADRE's folder is only taken away whole when it is MADRE's beyond doubt: an absolute path, never your home folder or one holding it, and with something MADRE always writes (`install-id`, `config.json`, `rooms`, `salas`).
+
 ---
 
 ## WHAT LEAVES THE MACHINE
