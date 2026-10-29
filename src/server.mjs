@@ -862,12 +862,17 @@ export async function createPulseServer({
   // Windows' own from inside WSL, or another computer with a graphics card — saved in Settings
   // (config.ollama.host). A host given when MADRE was started (PULSE_OLLAMA_HOST, OLLAMA_HOST) wins,
   // as it did before. Every reading of the host asks the environment, so it is set there.
-  const ollamaHostFromLaunch = Boolean(process.env.PULSE_OLLAMA_HOST || process.env.OLLAMA_HOST);
-  let ollamaHostFromConfig = false;
+  // The host saved in Settings is written to the environment marked as such (PULSE_OLLAMA_HOST_FROM),
+  // so the projects Home opens and MADRE restarted read it as the saved one, still changeable, and
+  // not as one given at the start.
+  const inheritedFromConfig = process.env.PULSE_OLLAMA_HOST_FROM === 'config';
+  const ollamaHostFromLaunch = Boolean(process.env.OLLAMA_HOST || (process.env.PULSE_OLLAMA_HOST && !inheritedFromConfig));
+  let ollamaHostFromConfig = inheritedFromConfig;
   const adoptOllamaHost = (config) => {
     if (ollamaHostFromLaunch) return;
     const host = typeof config?.ollama?.host === 'string' && config.ollama.host ? config.ollama.host : null;
-    if (host) { process.env.PULSE_OLLAMA_HOST = host; ollamaHostFromConfig = true; } else if (ollamaHostFromConfig) { delete process.env.PULSE_OLLAMA_HOST; ollamaHostFromConfig = false; }
+    if (host) { process.env.PULSE_OLLAMA_HOST = host; process.env.PULSE_OLLAMA_HOST_FROM = 'config'; ollamaHostFromConfig = true; }
+    else if (ollamaHostFromConfig) { delete process.env.PULSE_OLLAMA_HOST; delete process.env.PULSE_OLLAMA_HOST_FROM; ollamaHostFromConfig = false; }
   };
   adoptOllamaHost(await readConfig(root));
   await wireOllama();
@@ -1382,10 +1387,20 @@ export async function createPulseServer({
 
   // ANONYMOUS DIAGNOSTICS (src/telemetry.mjs, 2026-10-28): every failure, known or not, and how much
   // of MADRE is used, kept in ~/.pulse/telemetry and told to madre.run once a day, unless the person
-  // turned it off. Read once here and kept current by its own setting.
+  // turned it off. The setting is ~/.pulse's, one for Home and every project: each process reads it
+  // again every few seconds, so turning it off in one turns it off in all of them, not only there.
   const telemetry = (await readConfig(root)).telemetry ?? {};
   let diagnosticsOn = telemetryOn({ telemetry });
-  const diagnostics = new Telemetry({ root, version: PACKAGE.version, enabled: () => diagnosticsOn });
+  let diagnosticsReadAt = Date.now();
+  const diagnosticsNow = async () => {
+    if (Date.now() - diagnosticsReadAt > 5000) {
+      diagnosticsReadAt = Date.now();
+      const config = await readConfig(root).catch(() => null);
+      if (config) diagnosticsOn = telemetryOn({ telemetry: config.telemetry ?? {} });
+    }
+    return diagnosticsOn;
+  };
+  const diagnostics = new Telemetry({ root, version: PACKAGE.version, enabled: diagnosticsNow });
   diagnostics.onSoon(() => diagnostics.flush({ fetchImpl: reportFetch }));
   // The error sentinel: failures MU/TH/UR cannot classify, and crashes, become
   // redacted reports in the ledger. Sending them anywhere is the human's call.
@@ -1942,7 +1957,7 @@ export async function createPulseServer({
           wire: (options) => wireOllama(options),
           // Getting Ollama onto this computer, with the command in plain sight, and waking it.
           install: async () => {
-            if (installing) return { ok: false, error: `Another install is running (${installing}).` };
+            if (installing) return { ok: false, error: t('Another install is running. Wait for it to finish and try again.') };
             const { ollamaInstallPlan, adminHere } = await import('./modules/ollama.mjs');
             const plan = ollamaInstallPlan({ brew: await findOnPath('brew'), admin: await adminHere() });
             if (!plan.command) return { ok: false, error: plan.note, download: plan.download, manual: plan.manual ? plan.display : null };
@@ -1999,7 +2014,7 @@ export async function createPulseServer({
           // Pulls stream into the room like a module install; one at a time, and one can be stopped
           // (the welcome's «Cancel», 2026-10-28).
           pull: async (model) => {
-            if (installing) return { ok: false, error: `Another install is running (${installing}).` };
+            if (installing) return { ok: false, error: t('Another install is running. Wait for it to finish and try again.') };
             installing = 'ollama';
             const stopper = new AbortController();
             pulling = { model, stopper };
@@ -2045,7 +2060,7 @@ export async function createPulseServer({
       return toggled;
     }
     if (confirm !== true) return { status: 400, body: { error: t('Installing a module writes into the project; send { "confirm": true } to proceed.') } };
-    if (installing) return { status: 409, body: { error: `Another install is running (${installing}).` } };
+    if (installing) return { status: 409, body: { error: t('Another install is running. Wait for it to finish and try again.') } };
     const preflight = extension.preflight ? await extension.preflight(canonicalProjectRoot) : { ok: true, problems: [] };
     if (!preflight.ok && !installers[id]) {
       await room.record('extension.install.refused', { id, name: extension.name, problems: preflight.problems });
@@ -2631,7 +2646,7 @@ export async function createPulseServer({
         if (viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('MADRE is restarted from its own page, on this computer.') });
         const here = basename(roomDir);
         const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
-        const asked = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/restart', { method: 'POST', body: {}, timeoutMs: 3000 }).then(() => true).catch(() => false)));
+        const asked = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/restart', { method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer?.unreachable && !answer?.outdated).catch(() => false)));
         await room.record('room.restarting', { others: others.length });
         sendJson(response, 202, { restarting: true, others: others.length, stuck: others.filter((_, index) => !asked[index]).map((one) => one.name) });
         restartSelf(request.socket.localPort);
@@ -3404,7 +3419,9 @@ export async function createPulseServer({
           .slice(-10).map((one) => ({ role: one.role, content: one.content.slice(0, 600) }));
         if (!turns.length || turns.at(-1).role !== 'user') return sendJson(response, 400, { error: t('Write something to the local AI first.') });
         const stop = new AbortController();
-        request.on('close', () => { if (!response.writableEnded) stop.abort(); });
+        // The response's close, not the request's: the request's was over once its body was read, so
+        // a page that went away left Ollama answering it for up to two minutes.
+        response.on('close', () => { if (!response.writableFinished) stop.abort(); });
         let upstream = null;
         try {
           upstream = await reportFetch(`${ollama.host}/api/chat`, {
@@ -3477,7 +3494,7 @@ export async function createPulseServer({
       // ANONYMOUS DIAGNOSTICS (src/telemetry.mjs): whether it is on, and the exact batch that would go
       // next, for Settings › Version and reports to show as it is. Turning it off forgets what waits.
       if (url.pathname === '/api/telemetry' && request.method === 'GET') {
-        return sendJson(response, 200, { on: diagnosticsOn, env: process.env.PULSE_TELEMETRY === '0', next: await diagnostics.preview() });
+        return sendJson(response, 200, { on: await diagnosticsNow(), env: process.env.PULSE_TELEMETRY === '0', next: await diagnostics.preview() });
       }
       if (url.pathname === '/api/telemetry' && request.method === 'POST') {
         if (viaPhone) return sendJson(response, 403, { error: t('This is changed on the computer.') });
@@ -3486,6 +3503,7 @@ export async function createPulseServer({
         const current = (await readConfig(root)).telemetry ?? {};
         await updateConfig(root, { telemetry: { ...current, diagnostics: payload.on } });
         diagnosticsOn = payload.on && process.env.PULSE_TELEMETRY !== '0';
+        diagnosticsReadAt = Date.now();
         if (!payload.on) await diagnostics.forget();
         return sendJson(response, 200, { on: diagnosticsOn });
       }
@@ -4099,7 +4117,7 @@ export async function createPulseServer({
         const plan = await module.updatePlan(context, { latest: known?.latest ?? null, current: item.version ?? null });
         if (!plan?.command) return sendJson(response, 412, { error: plan?.note ?? 'There is no way to update this from here.', download: plan?.download ?? null });
         if (payload.confirm !== true) return sendJson(response, 200, { plan: { display: plan.display, note: plan.note ?? '' }, update: known });
-        if (installing) return sendJson(response, 409, { error: `Another install is running (${installing}).` });
+        if (installing) return sendJson(response, 409, { error: t('Another install is running. Wait for it to finish and try again.') });
         installing = module.id;
         await room.record('extension.install.started', { id: module.id, name: item.name, command: plan.display, platforms: [], alreadyInstalled: true });
         void (async () => {
@@ -4187,8 +4205,8 @@ export async function createPulseServer({
           return sendJson(response, 403, { error: t('A key is only accepted from this computer, never over the network.') });
         }
         const agent = agents.find((item) => item.id === id);
-        if (!agent?.detected) return sendJson(response, 412, { error: `${agent?.label ?? id} is not installed on this computer.` });
-        if (!TAKES_KEY.has(id)) return sendJson(response, 400, { error: `${agent.label} signs in with a click, not with a key.` });
+        if (!agent?.detected) return sendJson(response, 412, { error: t('{label} is not installed on this computer.', { label: agent?.label ?? id }) });
+        if (!TAKES_KEY.has(id)) return sendJson(response, 400, { error: t('{agent} does not take a key here: it signs in with a click.', { agent: agent.label }) });
         const payload = await body(request).catch(() => ({}));
         const result = await applyKey({
           agent: id,

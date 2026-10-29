@@ -35,8 +35,10 @@ const button = (className, text, onClick) => {
 const post = async (url, payload = {}) => {
   try {
     const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-    return { ok: response.ok, status: response.status, body: await response.json().catch(() => ({})) };
-  } catch (error) { return { ok: false, status: 0, body: { error: error.message } }; }
+    const body = await response.json().catch(() => ({}));
+    if (typeof body.error === 'string') body.error = t(body.error);
+    return { ok: response.ok, status: response.status, body };
+  } catch { return { ok: false, status: 0, body: { error: t('MADRE did not answer. Check that it is still open.') } }; }
 };
 const getJson = (url) => fetch(url, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
 const number = (value) => new Intl.NumberFormat(language(), { maximumFractionDigits: 1 }).format(value);
@@ -617,7 +619,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     } catch (error) {
       row.remove();
       talk.messages.pop();
-      talk.error = error.message;
+      talk.error = error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message;
       const wrong = note('bad', talk.error, fix('ollama-not-starting'));
       wrong.classList.add('wl-talk-error');
       list.after(wrong);
@@ -673,8 +675,18 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     memoryBody = el('div', 'wl-memory');
     content.replaceChildren(...head(t('Memory'), t('MADRE remembers what you decide in each project. With search by meaning it finds it even when you ask in other words.')), memoryBody);
     paintMemory();
-    // With the AI of step 4 there, its memory model comes on its own: nothing to press.
-    if (s.memoryChoice === 'local' && !hasModel(EMBED_MODEL) && !s.pulls.has(EMBED_MODEL)) void startPull(EMBED_MODEL);
+    // A Gemini key pasted in step 3 counts here: asked again, not the one read when the welcome opened.
+    void getJson('/api/environment').then((environment) => {
+      if (!environment) return;
+      const had = s.geminiKey;
+      s.geminiKey = Boolean(environment.geminiKey);
+      s.memory = environment.memory ?? s.memory;
+      if (had !== s.geminiKey) paintMemory();
+    });
+    // With the AI of step 4 there, its memory model comes on its own: nothing to press — unless
+    // another download is still running (step 4's model): Ollama takes one at a time.
+    const busy = [...s.pulls.values()].some((one) => one.running);
+    if (s.memoryChoice === 'local' && !hasModel(EMBED_MODEL) && !s.pulls.has(EMBED_MODEL) && !busy) void startPull(EMBED_MODEL);
   }
   function paintMemory() {
     if (!memoryBody?.isConnected) return;
@@ -853,6 +865,12 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     else if (id === 'memory') memoryStep();
     else if (id === 'project') project();
     else void ready();
+    // The key just pressed left with the step it was on: the keyboard and a screen reader start
+    // again at the new step's title, not at the top of the page.
+    if (dialog.open && !dialog.classList.contains('intro')) {
+      const title = content.querySelector('.wl-title');
+      if (title) { title.tabIndex = -1; title.focus({ preventScroll: true }); }
+    }
   }
   function finish() {
     if (finished) return;

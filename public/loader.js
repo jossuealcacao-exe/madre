@@ -116,10 +116,12 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
   return new Promise((resolve) => {
     const light = document.documentElement.dataset.scheme === 'light';
     const hues = INTRO_HUES[light ? 'light' : 'dark'];
+    // Only the picture is hidden from a screen reader: «Skip» inside it stays a key it can reach.
     const stage = make('div', 'wl-intro');
-    stage.setAttribute('aria-hidden', 'true');
     const sky = make('canvas', 'wl-intro-sky');
+    sky.setAttribute('aria-hidden', 'true');
     const mark = make('div', 'wl-intro-mark');
+    mark.setAttribute('aria-hidden', 'true');
     mark.innerHTML = MADRE_LOGO.replace('class="brand-logo"', 'class="wl-intro-logo"'); // trusted: our own SVG string
     const skip = make('button', 'wl-intro-skip', skipLabel);
     skip.type = 'button';
@@ -276,7 +278,8 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
       dialog.removeEventListener('keydown', onKey, true);
       dialog.removeEventListener('cancel', onCancel);
       stage.removeEventListener('click', onClick);
-      stage.classList.add(early ? 'leaving fast' : 'leaving');
+      stage.classList.add('leaving');
+      if (early) stage.classList.add('fast');
       dialog.classList.remove('intro');
       dialog.classList.add('arriving');
       setTimeout(() => stage.remove(), early ? 280 : INTRO.out);
@@ -300,8 +303,8 @@ export function playProjectOpening(dialog, { name = '', skipLabel = 'Skip' } = {
   if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return Promise.resolve(false);
   return new Promise((resolve) => {
     const stage = make('div', 'wl-intro po-stage');
-    stage.setAttribute('aria-hidden', 'true');
     const mark = make('div', 'po-mark');
+    mark.setAttribute('aria-hidden', 'true');
     const pulse = make('span', 'po-pulse');
     pulse.innerHTML = '<svg viewBox="-2 -12 76 44" aria-hidden="true"><path class="po-beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" pathLength="100" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle class="po-ring" cx="60" cy="10" r="3" fill="none" stroke-width="1"/><circle class="po-dot" cx="60" cy="10" r="3"/></svg>'; // trusted: our own SVG string
     mark.append(pulse, make('span', 'po-name', name));

@@ -22,7 +22,7 @@
 // go next can be read in the same place (`preview`). docs/REFERENCE.md › «Lo que sale de la máquina».
 
 import { createHash } from 'node:crypto';
-import { appendFile, mkdir, readdir, readFile, rename, rm, rmdir } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, rm, rmdir, stat } from 'node:fs/promises';
 import { arch } from 'node:os';
 import { join } from 'node:path';
 import { installId } from './heartbeat.mjs';
@@ -37,6 +37,8 @@ const MAX_ERRORS = 60;
 const MAX_COUNTS = 160;
 const MAX_DAYS = 14;
 const SOON_MS = 60 * 60 * 1000;
+// A send waits at most 8 s for madre.run: a lock this old was left behind.
+const STALE_LOCK_MS = 2 * 60 * 1000;
 const KINDS = new Set(['agent', 'crash', 'route', 'page', 'install', 'model', 'startup', 'other']);
 const KEY = /^[a-z0-9][a-z0-9._:-]{0,47}$/;
 const AGENT = /^[a-z][a-z0-9-]{0,23}$/;
@@ -84,7 +86,9 @@ export function placesOut(text) {
 
 // One failure, in the shape that leaves: everything that could name the person or the machine out.
 export function errorEntry({ kind = 'other', code = null, agent = null, agentVersion = null, message = '', stack = null, where = null } = {}, { home, user } = {}) {
-  const said = placesOut(redact(String(message ?? '').split('\n')[0] || String(message ?? ''), { home, user })).replace(/\s+/g, ' ').trim().slice(0, MAX_MESSAGE);
+  // What an agent quotes in its error («…», "…") is often the person's own text: it leaves as «…».
+  const first = placesOut(redact(String(message ?? '').split('\n')[0] || String(message ?? ''), { home, user })).replace(/\s+/g, ' ').trim();
+  const said = (kind === 'agent' ? first.replace(/"[^"]{1,}"|«[^»]{1,}»|“[^”]{1,}”/g, '«…»') : first).slice(0, MAX_MESSAGE);
   const frames = ownFrames(stack ?? message);
   const safeKind = KINDS.has(kind) ? kind : 'other';
   const safeAgent = typeof agent === 'string' && AGENT.test(agent) ? agent : null;
@@ -223,7 +227,15 @@ export class Telemetry {
     const dir = telemetryDir(this.#root);
     const lock = join(dir, '.sending');
     await this.settled();
-    try { await mkdir(dir, { recursive: true }); await mkdir(lock); } catch { return { sent: false, reason: 'busy' }; }
+    // A lock older than any send can last was left by a process that ended mid-way (Ctrl+C, «Turn
+    // MADRE off», a restart): it is taken back, or this copy would never send again.
+    const take = async () => { await mkdir(dir, { recursive: true }); await mkdir(lock); };
+    try { await take(); } catch {
+      const left = await stat(lock).catch(() => null);
+      if (!left || Date.now() - left.mtimeMs < STALE_LOCK_MS) return { sent: false, reason: 'busy' };
+      await rmdir(lock).catch(() => null);
+      try { await take(); } catch { return { sent: false, reason: 'busy' }; }
+    }
     const aside = [];
     try {
       for (const name of (await readdir(dir)).filter((one) => FILE.test(one))) {

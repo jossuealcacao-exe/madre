@@ -27,14 +27,36 @@
 // (src/market-check.mjs), and joins the catalog with `community: true`, its author and its license.
 
 import { createPrivateKey, sign } from 'node:crypto';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readCatalog, sha256, verifySigned } from '../src/market-remote.mjs';
 import { verifyBuiltinText, verifyModuleText } from '../src/modules/index.mjs';
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { checkSubmission } from '../src/market-check.mjs';
+
+// A community module is checked by loading it, and loading runs its code. Never here, where the
+// Market's key is read and the factory's is a file away: in a node of its own that may read MADRE's
+// code, the module's folder and a scratch folder of its own, and nothing else (Node's permission
+// model) — not ~/.madre.
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+async function checkApart({ file, entryFile, id }) {
+  const scratch = await realpath(await mkdtemp(join(tmpdir(), 'madre-community-check-')));
+  const check = pathToFileURL(join(REPO, 'src', 'market-check.mjs')).href;
+  const script = `import { readFile } from 'node:fs/promises';
+const { checkSubmission } = await import(${JSON.stringify(check)});
+const [file, entryFile, id] = process.argv.slice(1);
+const result = await checkSubmission({ text: await readFile(file, 'utf8'), entry: JSON.parse(await readFile(entryFile, 'utf8')), name: id + '.mjs' });
+process.stdout.write(JSON.stringify({ ok: result.ok, problems: result.problems }));`;
+  try {
+    const out = execFileSync(process.execPath, ['--permission', `--allow-fs-read=${REPO}`, `--allow-fs-read=${await realpath(dirname(file))}`, `--allow-fs-read=${scratch}`, `--allow-fs-write=${scratch}`, '--input-type=module', '-e', script, await realpath(file), await realpath(entryFile), id], { cwd: scratch, env: { PATH: process.env.PATH ?? '', HOME: scratch, TMPDIR: scratch }, encoding: 'utf8', timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
+    return JSON.parse(out);
+  } catch (error) {
+    return { ok: false, problems: [`the check did not finish: ${String(error.stderr || error.message).trim().split('\n')[0]}`] };
+  } finally { await rm(scratch, { recursive: true, force: true }); }
+}
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const fallbackLanding = join(homedir(), 'Pangea OS', 'madre-landing');
@@ -68,8 +90,9 @@ if (community) {
     if (modules.some((one) => one.id === id)) throw new Error(`${id}: the community's module has the id of one already in the Market.`);
     const file = join(community, 'modulos', id, `${id}.module.mjs`);
     const text = await readFile(file, 'utf8');
-    const entry = JSON.parse(await readFile(join(community, 'modulos', id, 'entrada.json'), 'utf8'));
-    const checked = await checkSubmission({ text, entry, name: `${id}.mjs` });
+    const entryFile = join(community, 'modulos', id, 'entrada.json');
+    const entry = JSON.parse(await readFile(entryFile, 'utf8'));
+    const checked = await checkApart({ file, entryFile, id });
     if (!checked.ok) throw new Error(`${id} does not pass the community's check:\n- ${checked.problems.join('\n- ')}`);
     const bytes = Buffer.from(text);
     const name = `${id}-${entry.version}.module.mjs`;

@@ -116,7 +116,8 @@ export class ErrorSentinel {
     const agentVersion = this.#agents.find((one) => one.id === target)?.version ?? null;
     // Known or not, the author hears of it (2026-10-28): how often each known condition happens is
     // as useful as the conditions nobody catalogued.
-    try { this.#told({ kind: 'agent', code: known[0]?.code ?? null, agent: target ?? null, agentVersion, message: error }); } catch { /* never in the way */ }
+    // A known one goes by its code alone: the agent's own words can repeat what the person wrote.
+    try { this.#told({ kind: 'agent', code: known[0]?.code ?? null, agent: target ?? null, agentVersion, message: known.length ? '' : error }); } catch { /* never in the way */ }
     if (known.length) return null;
     return this.record({ kind: 'unknown', agent: target ?? null, error, at: event.timestamp });
   }

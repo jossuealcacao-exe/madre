@@ -29,6 +29,33 @@ test('reminders: the when is read from the person\'s own words, in Spanish and i
   assert.equal(nextOccurrence(friday, 'weekdays', friday).getDay(), 1);
 });
 
+// PENDIENTES-1.0.6, REC-1 and REC-7 (fixed for 1.1.0).
+test('reminders: «hoy» is never born overdue, the part of the day decides the hour, and «at 3 files» is no hour', () => {
+  const late = new Date('2026-10-20T23:02:00');
+  assert.deepEqual(hm(parseWhen('llamar a Sofía hoy a las 8', late).due), [21, 8, 0]);
+  assert.deepEqual(hm(parseWhen('esta noche a las 9', NOW).due), [20, 21, 0]);
+  assert.deepEqual(hm(parseWhen('tonight at 8', NOW).due), [20, 20, 0]);
+  assert.deepEqual(hm(parseWhen('en la mañana a las 5', NOW).due), [21, 5, 0]);
+  assert.deepEqual(hm(parseWhen('esta tarde a las 17:30', NOW).due), [20, 17, 30]);
+  assert.deepEqual(hm(parseWhen('look at 3 files tomorrow', NOW).due), [21, 9, 0]);
+  assert.deepEqual(hm(parseWhen('remind me at 5 tomorrow', NOW).due), [21, 17, 0]);
+});
+
+// REC-3 and REC-4: «Done» before the hour counts for today; «Later» moves this time, not the series.
+test('reminders: a repeating one done early moves on, and one put off keeps the hour of its series', async () => {
+  const state = await mkdtemp(join(tmpdir(), 'madre-reminders-'));
+  const nine = new Date('2026-10-20T09:00:00');
+  const { reminder } = await addReminder(state, { text: 'Tomar agua', due: nine.toISOString(), repeat: 'daily' }, NOW);
+  await doneReminder(state, reminder.id, new Date('2026-10-20T08:00:00'));
+  assert.deepEqual(hm(new Date((await readReminders(state))[0].due)), [21, 9, 0]);
+  await snoozeReminder(state, reminder.id, new Date('2026-10-21T10:05:00').toISOString());
+  assert.deepEqual(hm(new Date((await readReminders(state))[0].due)), [21, 10, 5]);
+  await doneReminder(state, reminder.id, new Date('2026-10-21T10:06:00'));
+  const [after] = await readReminders(state);
+  assert.deepEqual(hm(new Date(after.due)), [22, 9, 0]);
+  assert.equal(after.series, null);
+});
+
 test('reminders: pending words are noticed, the task is said without the cue, and short chatter is not', () => {
   assert.equal(pendingIn('Recuérdame mañana revisar el PR de Daniel').why, 'asked');
   assert.equal(taskFromWords('Recuérdame mañana revisar el PR de Daniel.'), 'Revisar el PR de Daniel');

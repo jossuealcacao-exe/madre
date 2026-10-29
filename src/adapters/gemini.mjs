@@ -40,7 +40,9 @@ export const geminiCredentialFiles = ['oauth_creds.json', 'google_accounts.json'
 // block every write regardless of policy, so a lease uses approval "default":
 // headless Gemini cannot prompt, so anything the policy does not allow fails.
 export function geminiLeasePolicy(outDir, { control = false, create = false, airlock = false, alsoAt = null } = {}) {
-  const quote = (path) => path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // An apostrophe («Ana's site») would end the TOML literal string the pattern is written in: the
+  // regular expression says it as \x27, the same character, so the policy still reads.
+  const quote = (path) => path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, '\\x27');
   // Every spelling of the same directory. When the path MADRE was given goes through a symlink,
   // an agent that resolves before writing asks for a path that does not start with the one these
   // rules were built from: the allow rule misses and the write dies in silence. Both go in the

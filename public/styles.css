@@ -10718,6 +10718,8 @@ html.chat-shell .shell > .tree.chats.split {
   font-family: var(--read);
 }
 html.chat-shell #chats > :is(.tree-head, .chats-new, .chats-foot) { display: none !important; }
+/* A window too narrow for both: the sidebar opens over the conversation (app.js, chatsOver). */
+html.chat-shell.chats-over .shell > .tree.chats.split { box-shadow: inset -1px 0 0 var(--cs-line), 0 18px 48px rgb(0 0 0 / .28); }
 .side-head { flex: none; height: 48px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 10px; }
 .side-grow { flex: 1; }
 .side-brand { display: inline-flex; align-items: center; margin-left: 6px; color: var(--text); }
@@ -11287,6 +11289,7 @@ html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chi
 html.chat-shell .composer #pick-options :is(.mode-chip, .model-chip, .effort-chip) > .word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* When their words do not fit whole, each says the least that still tells it apart: the mode its
    number, the model its nickname (opus, sol), the effort its bars (public/app.js, composerFit). */
+.model-chip > .nick { display: none; }
 html.chat-shell .composer #pick-options .model-chip > .nick { display: none; }
 html.chat-shell .composer.tight #pick-options :is(.effort-chip, .mode-chip, .model-chip) > .word { display: none; }
 html.chat-shell .composer.tight #pick-options .model-chip > .nick { display: inline; white-space: nowrap; }

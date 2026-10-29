@@ -1898,6 +1898,7 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-eyebrow { font-size: 12.5px; color: var(--text-3); }
 .wl-eyebrow.wl-gap { margin-top: 8px; }
 .wl-title { margin: -6px 0 0; padding-right: 40px; font: 600 22px/1.25 var(--read); letter-spacing: -.01em; }
+.wl-title:focus { outline: none; }
 .wl-lead { max-width: 62ch; font-size: 14px; color: var(--text-2); }
 .wl-muted { margin: 0; font-size: 13px; color: var(--text-2); }
 .wl-tiny { font-size: 12px; color: var(--text-3); }
@@ -2092,7 +2093,7 @@ html.home-shell dialog.sm-sheet .lw-eyebrow { font: 450 12.5px var(--read); colo
 .sm-sheet .sm-link-option { display: flex; font: inherit; letter-spacing: 0; text-transform: none; color: var(--text); }
 .sm-link-pair { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .sm-link-end-box { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-.sm-link-end { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--pc, var(--s-acc)); color: #fff; font: 650 13px var(--read); box-shadow: 0 0 0 2px var(--cs-canvas, var(--panel)), 0 0 0 3px color-mix(in srgb, var(--pc, var(--s-acc)) 40%, transparent); }
+.sm-link-end { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--pc, var(--s-acc)); color: var(--s-acc-ink, #0b0d0b); font: 650 13px var(--read); box-shadow: 0 0 0 2px var(--cs-canvas, var(--panel)), 0 0 0 3px color-mix(in srgb, var(--pc, var(--s-acc)) 40%, transparent); }
 .sm-link-end.hub { background: none; box-shadow: none; }
 .sm-link-end i { font-style: normal; }
 .sm-link-end-words b { font: 600 14px var(--read); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2160,16 +2161,21 @@ html.home-shell dialog.sm-add-framed .sm-sheet-head .surface-modes { position: a
 .w-agenda .sm-w-body { display: flex; flex-direction: column; min-height: 0; }
 
 /* MADRE errors (the author's widget, 2026-10-28): one line per failure, opened for its details. */
-.sm-errors { display: grid; gap: 6px; margin-top: 10px; }
-.sm-error { border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
-.sm-error > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 8px 10px; cursor: pointer; list-style: none; }
-.sm-error > summary::-webkit-details-marker { display: none; }
-.sm-error-what { font: 600 12px var(--read); color: var(--text); white-space: nowrap; }
-.sm-error-said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 450 12.5px var(--read); color: var(--text-2); }
-.sm-error > summary small { font: 500 11.5px var(--read); font-variant-numeric: tabular-nums; color: var(--text-3); white-space: nowrap; }
-.sm-error.is-new .sm-error-what::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--danger, #e5484d); vertical-align: 1px; }
-.sm-error.is-fixed, .sm-error.is-ignored { opacity: .6; }
-.sm-error > :not(summary) { margin: 0 10px 8px; }
-.sm-error-frames { display: block; white-space: pre; font: 450 11.5px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); }
-.sm-error-keys { display: flex; gap: 6px; }
-.sm-error-keys .sm-btn.on { background: var(--s-acc, var(--phosphor)); color: var(--s-acc-ink, #0a1405); }
+.sm-fails { display: grid; gap: 6px; margin-top: 10px; }
+.sm-fail { border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.sm-fail > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 8px 10px; cursor: pointer; list-style: none; }
+.sm-fail > summary::-webkit-details-marker { display: none; }
+.sm-fail-what { font: 600 12px var(--read); color: var(--text); white-space: nowrap; }
+.sm-fail-said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 450 12.5px var(--read); color: var(--text-2); }
+.sm-fail > summary small { font: 500 11.5px var(--read); font-variant-numeric: tabular-nums; color: var(--text-3); white-space: nowrap; }
+.sm-fail.is-new .sm-fail-what::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--danger, #e5484d); vertical-align: 1px; }
+.sm-fail.is-fixed, .sm-fail.is-ignored { opacity: .6; }
+.sm-fail > :not(summary) { margin: 0 10px 8px; }
+.sm-fail-frames { display: block; white-space: pre; font: 450 11.5px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); }
+.sm-fail-keys { display: flex; gap: 6px; }
+.sm-fail-keys .sm-btn.on { background: var(--s-acc, var(--phosphor)); color: var(--s-acc-ink, #0a1405); }
+
+/* What is new, on Home (2026-10-28, salas-mac.js homeNews): each card says its whole line — they are
+   short, and a cut sentence read as a missing one. */
+dialog.home-news .wn-card { cursor: default; }
+dialog.home-news .wn-card-line { display: block; -webkit-line-clamp: unset; overflow: visible; }

@@ -17,6 +17,9 @@ test('environment · a Mac, WSL, a virtual machine, a container and SSH are each
   assert.equal(wsl.place, 'wsl');
   // Windows, as WSL 2 reaches it: the welcome offers it as the address of Windows' own Ollama.
   assert.deepEqual(wsl.wsl, { distro: 'Ubuntu', version: 2, windowsHost: '172.28.80.1' });
+  // With DNS tunneling (WSL 2.2) the nameserver is not Windows: the way out of the network is.
+  const tunnelled = await detectEnvironment({ platform: 'linux', env: { WSL_DISTRO_NAME: 'Ubuntu' }, read: files({ '/proc/version': 'Linux version 5.15.153.1-microsoft-standard-WSL2', '/proc/net/route': 'Iface\tDestination\tGateway \tFlags\neth0\t00000000\t01E01AAC\t0003\neth0\t00E01AAC\t00000000\t0001\n', '/etc/resolv.conf': 'nameserver 10.255.255.254\n' }), run: none, has: async () => false, space });
+  assert.equal(tunnelled.wsl.windowsHost, '172.26.224.1');
   assert.equal(wsl.name, 'Ubuntu 24.04.1 LTS', 'the system says its own name');
   assert.equal(wsl.vm, null, 'WSL is not counted as a virtual machine');
   assert.equal(wsl.display, true, 'WSL opens Windows\' own browser');
@@ -46,6 +49,14 @@ test('environment · the browser opens the way each place allows, and over SSH t
   const opened = await openBrowser('http://127.0.0.1:5317/salas', { place: 'wsl', wsl: {}, display: true }, { platform: 'linux', run: (command, args, options, done) => { tried.push(command); done(command === 'wslview' ? Object.assign(new Error('missing'), { code: 'ENOENT' }) : null); } });
   assert.equal(opened, true);
   assert.deepEqual(tried, ['wslview', 'cmd.exe']);
+  // A folder goes to Windows by its Windows name; wslview, which converts it itself, gets it as it is.
+  const handed = [];
+  await openBrowser('/home/ana/madre/out', { place: 'wsl', wsl: {}, display: true }, { platform: 'linux', run: (command, args, options, done) => {
+    if (command === 'wslpath') { done(null, '\\\\wsl.localhost\\Ubuntu\\home\\ana\\madre\\out\n'); return; }
+    handed.push([command, args.at(-1)]);
+    done(command === 'wslview' ? Object.assign(new Error('missing'), { code: 'ENOENT' }) : null);
+  } });
+  assert.deepEqual(handed, [['wslview', '/home/ana/madre/out'], ['cmd.exe', '\\\\wsl.localhost\\Ubuntu\\home\\ana\\madre\\out']]);
   assert.equal(await openBrowser('http://127.0.0.1:5317/salas', { place: 'ssh', display: false }, { platform: 'linux', run: () => assert.fail('nothing is run over SSH') }), false);
 
   const ssh = { place: 'ssh', ssh: { user: 'carlos', host: '192.168.1.50' } };

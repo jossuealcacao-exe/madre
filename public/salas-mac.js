@@ -2115,10 +2115,10 @@ const WIDGET_PAINT = {
     body.append(lines);
     const list = el('div', 'sm-errors');
     for (const one of reading.errors.slice(0, 12)) {
-      const row = el('details', `sm-error is-${one.status}`);
+      const row = el('details', `sm-fail is-${one.status}`);
       const head = el('summary');
       const what = one.code ? one.code : { agent: t('Agent'), crash: t('Crash'), route: t('Route'), page: t('Page'), install: t('Install'), model: t('Model'), startup: t('Start'), other: t('Other') }[one.kind] ?? one.kind;
-      head.append(el('span', 'sm-error-what', `${what}${one.agent ? ` · @${one.agent}` : ''}`), el('span', 'sm-error-said', one.message), el('small', null, t('{copies} copies · {hits} times', { copies: one.copies, hits: one.hits })));
+      head.append(el('span', 'sm-fail-what', `${what}${one.agent ? ` · @${one.agent}` : ''}`), el('span', 'sm-fail-said', one.message), el('small', null, t('{copies} copies · {hits} times', { copies: one.copies, hits: one.hits })));
       row.append(head);
       const systems = one.systems.map((name) => { const word = OS_WORDS[name] ?? name; return typeof word === 'function' ? word() : word; }).join(', ');
       const facts = el('p', 'sm-hint', [one.versions.map((v) => `v${v}`).join(', '), `${systems}${one.wsl ? ' · WSL' : ''}`, t('last {when}', { when: new Date(one.last_seen).toLocaleString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) })].filter(Boolean).join(' · '));
@@ -2858,12 +2858,13 @@ async function refresh({ polled = false } = {}) {
   // A project that came up after Home stopped waiting is open: its card no longer says it did not.
   for (const room of answer.rooms ?? []) if (room.open) failed.delete(room.id);
   ui.foot.textContent = t('Every project runs on this Mac, on its own, with its own memory.');
-  // The room's corner (app.js, #colophon): the version this Home runs, and NOTICE's own line.
-  if (answer.version) { drawAttribution(ui.colophon, answer.version); void drawColophonKeys(ui.colophon); }
   const said = JSON.stringify(answer, (key, value) => (key === 'at' ? undefined : value));
   if (polled && said === drawnRooms && Date.now() - drawnRoomsAt < 60000) return;
   drawnRooms = said;
   drawnRoomsAt = Date.now();
+  // The room's corner (app.js, #colophon): the version this Home runs, and NOTICE's own line —
+  // drawn when the answer changed, not on every poll.
+  if (answer.version) { drawAttribution(ui.colophon, answer.version); void drawColophonKeys(ui.colophon); }
   draw();
   if (!newsAsked) { newsAsked = true; setTimeout(() => void homeNews(), 1200); }
 }
@@ -2873,9 +2874,11 @@ async function refresh({ polled = false } = {}) {
 // showWhatsNew), shorter: a card each, and «Start». Once per version, per person (the server
 // remembers it); never over the welcome, a sheet or a window, nor on a first install.
 let newsAsked = false;
-async function homeNews() {
+async function homeNews(tries = 0) {
   const news = await fetch('/api/whats-new', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
-  if (!news?.show || !news.notes || welcomeOpen() || document.querySelector('dialog[open]')) return;
+  if (!news?.show || !news.notes) return;
+  // The welcome or another window first: the board waits for them to close (a few minutes at most).
+  if (welcomeOpen() || document.querySelector('dialog[open]')) { if (tries < 120) setTimeout(() => void homeNews(tries + 1), 3000); return; }
   const pick = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value[language] ?? value.es ?? value.en : value);
   const notes = news.notes;
   const dialog = el('dialog', 'whats-new home-news');
@@ -2914,12 +2917,14 @@ async function homeNews() {
     link.href = changes; link.target = '_blank'; link.rel = 'noopener noreferrer';
     foot.append(link);
   }
-  foot.append(button('wn-start', t('Start'), () => dialog.close()));
+  const start = button('wn-start', t('Start'), () => dialog.close());
+  foot.append(start);
   sheet.append(head, body, foot);
   dialog.append(sheet);
   dialog.addEventListener('close', () => dialog.remove());
   document.body.append(dialog);
   dialog.showModal();
+  start.focus({ preventScroll: true });
   // Seen once shown, as in a project: a board left open and the page closed is not owed again.
   void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
 }
@@ -5142,7 +5147,7 @@ async function loadLocal({ probe = false } = {}) {
   if (ollama?.ollama) localOllama = ollama;
   if (answer) localSeen = answer;
   localFailed = !answer;
-  settingsSheet?.sync({ detail: true });
+  settingsSheet?.sync({ detail: true, only: 'local' });
   return answer;
 }
 async function saveLocal(patch) {
@@ -5150,7 +5155,7 @@ async function saveLocal(patch) {
   if (!answer.ok) { toast(answer.body?.error ?? t('Home did not answer.')); return; }
   localSeen = answer.body;
   if (localSeen.later?.length) toast(t('{names} will use it when restarted: it was started before this setting existed.', { names: localSeen.later.join(', ') }));
-  settingsSheet?.sync({ detail: true });
+  settingsSheet?.sync({ detail: true, only: 'local' });
 }
 // The rail every settings sheet uses (app.js, sxSeg; styles.css, .sx-seg): the mark moves when chosen.
 function sxSeg(options, current, pick, { label = null } = {}) {
@@ -5333,13 +5338,15 @@ function drawLocalModel(host) {
   const more = sxBlock(host, t('More models for your computer'), t('Only the ones that fit in its memory. Each downloads once and stays in Ollama.'));
   for (const one of localAllModels ? runs : runs.slice(0, 5)) {
     const hint = [one.maker, t(one.note), one.run === 'slow' ? t('Slow without a graphics card') : null].filter(Boolean).join(' · ');
-    const get = sxButton(t('Download'), async () => {
+    const get = sxButton(pulling.has(one.ollama) ? t('Downloading…') : t('Download'), async () => {
       get.disabled = true;
       const answer = await post('/api/ollama/pull', { model: one.ollama });
-      if (!answer.ok) { toast(answer.body?.error ?? t('Home did not answer.')); get.disabled = false; return; }
+      if (!answer.ok) { toast(answer.status === 409 ? t('Another download is running. When it ends, try this one.') : answer.body?.error ?? t('Home did not answer.')); get.disabled = false; return; }
       get.textContent = t('Downloading…');
       watchPull(one.ollama);
     }, { tone: one.recommended ? 'primary' : null });
+    // Redrawn while it downloads: it stays «Downloading…», not a second «Download».
+    if (pulling.has(one.ollama)) get.disabled = true;
     const row = sxRow(more, one.label, hint, get);
     if (one.recommended) row.querySelector('.sx-words b')?.after(recommendedChip());
   }
@@ -5597,8 +5604,11 @@ function openSettings(section = null) {
   // What the lobby learns while the window is open (an agent signs in, a version is found, a
   // project opens) reaches the cards and the sheet's line; a card that says the same is left alone,
   // so nothing under the pointer or the keyboard is drawn again for nothing.
-  const sync = ({ detail: again = false } = {}) => {
+  // `only`: draw the open category again only when it is that one (a model downloading reloads Local
+  // AI every few seconds, and redrew whatever was open — a key half pasted in Agents was lost).
+  const sync = ({ detail: again = false, only = null } = {}) => {
     if (state.query.trim()) return;
+    if (only && state.open !== only) again = false;
     for (const old of body.querySelectorAll('.settings-card')) {
       const fresh = card(old.dataset.cat);
       if (fresh.outerHTML !== old.outerHTML) old.replaceWith(fresh);
@@ -5633,6 +5643,9 @@ function translateStatic() {
   ui.add.textContent = t('Add a project');
   ui.bar.crumb.textContent = t('Home');
   ui.bar.open.setAttribute('aria-label', t('Projects on the bar'));
+  document.querySelector('.sm-topbar:not(.sm-tb-home)')?.setAttribute('aria-label', t('Home'));
+  document.querySelector('.sm-tb-home')?.setAttribute('aria-label', t('Reload and settings'));
+  ui.colophon.setAttribute('aria-label', t('MADRE version'));
   ui.bar.agents.setAttribute('aria-label', t('Agents'));
   ui.bar.links.querySelector('span').textContent = t('Connections');
   document.querySelector('#sm-tb-market span')?.replaceChildren(t('Market'));

@@ -32,9 +32,17 @@ export async function detectEnvironment({ platform = process.platform, env = pro
   if (platform === 'linux') {
     const kernel = await read('/proc/version').catch(() => '');
     if (env.WSL_DISTRO_NAME || /microsoft/i.test(kernel)) wsl = { distro: env.WSL_DISTRO_NAME || null, version: /wsl2|microsoft-standard/i.test(kernel) ? 2 : 1 };
-    // Where Windows answers from inside WSL 2: the nameserver WSL writes for itself is Windows. The
-    // welcome offers it as the address of an Ollama installed in Windows.
-    if (wsl) wsl.windowsHost = String(await read('/etc/resolv.conf').catch(() => '')).match(/^nameserver\s+(\d+\.\d+\.\d+\.\d+)\s*$/m)?.[1] ?? null;
+    // Where Windows answers from inside WSL 2 (NAT, the default): the way out of the virtual network,
+    // read from the routing table. The nameserver WSL writes was the same address until DNS tunneling
+    // (WSL 2.2) made it 10.255.255.254, which is not Windows; it is only the fallback now. The welcome
+    // offers this as the address of an Ollama installed in Windows.
+    if (wsl) {
+      const route = String(await read('/proc/net/route').catch(() => ''));
+      const hex = route.split('\n').map((line) => line.trim().split(/\s+/)).find((cols) => cols[1] === '00000000' && /^[0-9A-F]{8}$/i.test(cols[2] ?? '') && cols[2] !== '00000000')?.[2];
+      const gateway = hex ? hex.match(/../g).reverse().map((byte) => parseInt(byte, 16)).join('.') : null;
+      const nameserver = String(await read('/etc/resolv.conf').catch(() => '')).match(/^nameserver\s+(\d+\.\d+\.\d+\.\d+)\s*$/m)?.[1] ?? null;
+      wsl.windowsHost = gateway ?? (nameserver && nameserver !== '10.255.255.254' ? nameserver : null);
+    }
   }
   // The system's own name for itself, as a person would read it: «Ubuntu 24.04.1 LTS», «macOS 26.0».
   let name = null;
@@ -86,8 +94,8 @@ export function browserWays(environment, { platform = process.platform } = {}) {
   if (platform === 'win32') return [{ command: 'cmd', args: (url) => ['/c', 'start', '', url] }];
   if (environment?.wsl) return [
     { command: 'wslview', args: (url) => [url] },
-    { command: 'cmd.exe', args: (url) => ['/c', 'start', '', url], cwd: '/mnt/c' },
-    { command: 'explorer.exe', args: (url) => [url], anyExit: true },
+    { command: 'cmd.exe', args: (url) => ['/c', 'start', '', url], cwd: '/mnt/c', windows: true },
+    { command: 'explorer.exe', args: (url) => [url], anyExit: true, windows: true },
   ];
   if (environment && !environment.display) return [];
   return [{ command: 'xdg-open', args: (url) => [url] }];
@@ -96,10 +104,21 @@ export function browserWays(environment, { platform = process.platform } = {}) {
 // Opens the page, trying each way in turn. Answers whether one of them did: a missing program or one
 // that failed moves on to the next, and none left is said by the caller, in the terminal.
 export async function openBrowser(url, environment, { run = execFile, platform = process.platform } = {}) {
+  // A folder, not a page, handed to Windows from WSL goes by its Windows name (\\wsl.localhost\…):
+  // its Linux path meant nothing to cmd.exe or explorer.exe. wslpath says it; wslview needs no help.
+  let windowsName = null;
+  const asWindows = async () => {
+    if (windowsName !== null || /^[a-z][a-z0-9+.-]*:\/\//i.test(url)) return windowsName ?? url;
+    windowsName = await new Promise((resolve) => {
+      try { run('wslpath', ['-w', url], { timeout: 3000 }, (error, stdout) => resolve(error ? url : String(stdout ?? '').trim() || url)); } catch { resolve(url); }
+    });
+    return windowsName;
+  };
   for (const way of browserWays(environment, { platform })) {
+    const target = way.windows ? await asWindows() : url;
     const opened = await new Promise((resolve) => {
       try {
-        run(way.command, way.args(url), { timeout: 8000, windowsHide: true, ...(way.cwd ? { cwd: way.cwd } : {}) }, (error) => resolve(!error || (way.anyExit && error.code !== 'ENOENT')));
+        run(way.command, way.args(target), { timeout: 8000, windowsHide: true, ...(way.cwd ? { cwd: way.cwd } : {}) }, (error) => resolve(!error || (way.anyExit && error.code !== 'ENOENT')));
       } catch { resolve(false); }
     });
     if (opened) return true;

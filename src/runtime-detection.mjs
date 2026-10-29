@@ -117,6 +117,11 @@ const extensions = (env = process.env) => (process.platform === 'win32'
   ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean).map((extension) => extension.toLowerCase())
   : ['']);
 
+// Inside WSL the PATH also carries Windows' own folders (/mnt/c/…/AppData/Roaming/npm): every file
+// there looks runnable, so a CLI installed on Windows counted as installed here, «install» said it
+// already was, and every turn failed for want of the Linux one. Those folders are Windows', not WSL's.
+const windowsSide = (directory, env) => process.platform === 'linux' && Boolean(env.WSL_DISTRO_NAME || env.WSL_INTEROP) && /^\/mnt\/[a-z]\//i.test(directory);
+
 export async function findExecutable(candidates, envPath = process.env.PATH ?? '', env = process.env) {
   const suffixes = extensions(env);
   const runnable = async (path) => (process.platform === 'win32' ? access(path).then(() => true, () => false) : executable(path));
@@ -126,6 +131,7 @@ export async function findExecutable(candidates, envPath = process.env.PATH ?? '
       continue;
     }
     for (const directory of envPath.split(delimiter).filter(Boolean)) {
+      if (windowsSide(directory, env)) continue;
       for (const suffix of suffixes) {
         const path = join(directory, `${candidate}${suffix}`);
         if (await runnable(path)) return path;

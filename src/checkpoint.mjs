@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { execFile } from 'node:child_process';
-import { access, mkdir, mkdtemp, readFile, readdir, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
+import { access, chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -38,10 +39,25 @@ export async function isGitRepo(root) {
 // repository of its own outside the project (one per project path) and runs git with the
 // project as work tree. Nothing appears inside the project; UNDO and diffs work the same.
 const shadows = new Map();
+// The shadows hold a copy of the project, .env included: on Linux the temporary folder is shared by
+// every user of the computer (a lent server, a VM), so they live in a folder only this user can open
+// (0700, theirs, not a link). One that someone else made first is never used: a fresh one is.
+let shadowBase = null;
+async function shadowHome() {
+  if (shadowBase) return shadowBase;
+  const uid = process.getuid?.();
+  const base = join(tmpdir(), uid === undefined ? 'madre-shadow' : `madre-shadow-${uid}`);
+  await mkdir(base, { recursive: true, mode: 0o700 });
+  const found = await lstat(base).catch(() => null);
+  const ours = found?.isDirectory() && !found.isSymbolicLink() && (uid === undefined || found.uid === uid);
+  if (ours && (found.mode & 0o077)) await chmod(base, 0o700).catch(() => null);
+  shadowBase = ours ? base : await mkdtemp(join(tmpdir(), 'madre-shadow-'));
+  return shadowBase;
+}
 async function shadowFor(root) {
   const canonical = resolve(root);
   if (!shadows.has(canonical)) {
-    const dir = join(tmpdir(), 'madre-shadow', createHash('sha1').update(canonical).digest('hex').slice(0, 16));
+    const dir = join(await shadowHome(), createHash('sha1').update(canonical).digest('hex').slice(0, 16));
     await mkdir(dir, { recursive: true });
     const isRepo = await access(join(dir, 'HEAD')).then(() => true, () => false);
     if (!isRepo) await execFileAsync('git', ['init', '-q', '--bare', dir]);
@@ -69,8 +85,9 @@ async function gitArgs(root, via) {
 // next time MADRE photographed the project. Hooks, external diffs and text conversions are named
 // the same way; none of them is needed to take or compare a photograph.
 const SAFE = ['-c', 'core.quotepath=off', '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-c', 'diff.external='];
+// Paths are paths, never patterns: restoring «app/[id]/page.tsx» restored «app/i/page.tsx» too.
 async function git(root, args, { env = {}, via } = {}) {
-  const { stdout } = await execFileAsync('git', [...SAFE, ...(await gitArgs(root, via)), ...args], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 16 * 1024 * 1024 });
+  const { stdout } = await execFileAsync('git', [...SAFE, ...(await gitArgs(root, via)), ...args], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', GIT_LITERAL_PATHSPECS: '1', ...env }, maxBuffer: 16 * 1024 * 1024 });
   return stdout;
 }
 
@@ -137,12 +154,15 @@ export async function worktreeTree(root, { exclude = [], via } = {}) {
       // --remove: a file that vanished since the listing is dropped instead of aborting the photograph.
       const index_ = (list) => new Promise((resolvePromise, reject) => {
         const child = execFile('git', [...SAFE, ...extra, 'update-index', '--add', '--remove', '-z', '--stdin'], { cwd: root, env: { ...process.env, GIT_PAGER: 'cat', ...env }, maxBuffer: 64 * 1024 * 1024 }, (error) => (error ? reject(error) : resolvePromise()));
+        // git may stop reading before the list ends (a path it refuses): that is its error, not a crash.
+        child.stdin.on('error', () => {});
         child.stdin.end(list.join('\0') + '\0');
       });
       try { await index_(files); } catch {
-        // Something still raced us: photograph what exists right now.
+        // Something still raced us, or a file cannot be read by this user (one a container left owned
+        // by root): photograph what exists and can be read right now.
         const alive = [];
-        for (const path of files) if (await access(join(root, path)).then(() => true, () => false)) alive.push(path);
+        for (const path of files) if (await access(join(root, path), fsConstants.R_OK).then(() => true, () => false)) alive.push(path);
         if (alive.length) await index_(alive);
       }
     }

@@ -109,11 +109,19 @@ export const DEFAULT_HOUR = 9;
 const at = (base, hour, minute = 0) => { const next = new Date(base); next.setHours(hour, minute, 0, 0); return next; };
 const plusDays = (base, days) => { const next = new Date(base); next.setDate(next.getDate() + days); return next; };
 
-// The hour said, if any: «a las 5», «a las 17:30», «at 9am», «5 pm», «10:15».
+// The hour said, if any: «a las 5», «a las 17:30», «at 9am», «5 pm», «10:15». `tagged`: whether it
+// said which half of the day (am, pm, «de la tarde»…), so the part of the day may still decide it.
+// In English «at 3» is an hour only when nothing but the time follows it: «look at 3 files» is not.
+const AT_FOLLOWS = /^\s*($|[,.;:!?)]|(?:tomorrow|today|tonight|to|on|in|every|and|then|sharp|o'?clock)\b)/;
 function hourSaid(text) {
-  const match = text.match(/\b(?:a las|a la|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|de la manana|de la tarde|de la noche|hrs|h)?\b/)
-    ?? text.match(/\b(\d{1,2}):(\d{2})\s*(am|pm|a\.m\.|p\.m\.)?/)
-    ?? text.match(/\b(\d{1,2})()\s*(am|pm|a\.m\.|p\.m\.)(?![a-z])/);
+  let match = null;
+  for (const one of text.matchAll(/\b(a las|a la|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|de la manana|de la tarde|de la noche|hrs|h)?\b/g)) {
+    if (one[1] === 'at' && !one[3] && !one[4] && !AT_FOLLOWS.test(text.slice(one.index + one[0].length))) continue;
+    match = one.slice(1);
+    break;
+  }
+  match ??= text.match(/\b()(\d{1,2}):(\d{2})\s*(am|pm|a\.m\.|p\.m\.)?/)?.slice(1)
+    ?? text.match(/\b()(\d{1,2})()\s*(am|pm|a\.m\.|p\.m\.)(?![a-z])/)?.slice(1);
   if (!match) return null;
   let hour = Number(match[1]);
   const minute = Number(match[2] || 0);
@@ -123,7 +131,8 @@ function hourSaid(text) {
   else if (/am|a\.m\.|manana/.test(tag) && hour === 12) hour = 0;
   // «a las 5» with nothing else: a person at work means the afternoon, not dawn.
   else if (!tag && hour >= 1 && hour <= 7) hour += 12;
-  return { hour, minute };
+  // A 24-hour clock («a las 17», «9 hrs») or a half said (pm, «de la tarde») is not the part of the day's to change.
+  return { hour, minute, tagged: Number(match[1]) > 12 || Boolean(tag) };
 }
 
 // The part of the day said in words, when no hour was.
@@ -165,7 +174,15 @@ export function parseWhen(words, now = new Date(), { hour: dayHour = DEFAULT_HOU
   const text = fold(words);
   const base = new Date(now);
   const repeated = repeatOf(text);
-  const hour = hourSaid(text) ?? partOfDay(text);
+  // The part of the day decides an hour that did not say its half: «esta noche a las 9» is 21:00,
+  // «en la mañana a las 5» is 5:00.
+  const clock = hourSaid(text);
+  const part = partOfDay(text);
+  let hour = clock ?? part;
+  if (clock && !clock.tagged && part) {
+    if (part.hour >= 17 && clock.hour < 12) hour = { ...clock, hour: clock.hour + 12 };
+    else if (part.hour === 9 && clock.hour > 12) hour = { ...clock, hour: clock.hour - 12 };
+  }
   const said = [];
 
   // «en 2 horas», «en media hora», «in 20 minutes»: a moment from now, the hour does not apply.
@@ -201,7 +218,11 @@ export function parseWhen(words, now = new Date(), { hour: dayHour = DEFAULT_HOU
     const due = first > base ? first : nextOccurrence(first, repeated.repeat, base);
     return { due, repeat: repeated.repeat, said: 'repeat' };
   }
-  if (day) return { due: at(day, hour?.hour ?? dayHour, hour?.minute ?? 0), repeat: null, said: said.join(' ') };
+  if (day) {
+    const due = at(day, hour?.hour ?? dayHour, hour?.minute ?? 0);
+    // «hoy a las 8» written at 23:00: never born overdue — the same hour, tomorrow.
+    return { due: due > base ? due : plusDays(due, 1), repeat: null, said: said.join(' ') };
+  }
   if (hour) {
     const today = at(base, hour.hour, hour.minute);
     return { due: today > base ? today : plusDays(today, 1), repeat: null, said: 'hour' };
@@ -236,6 +257,8 @@ function reminderOf(raw) {
     chat: typeof raw.chat === 'string' && raw.chat.length <= 120 ? raw.chat : null,
     why: ['pending', 'frequent', 'asked', 'manual'].includes(raw.why) ? raw.why : 'manual',
     done: iso(raw.done),
+    // A repeating one put off: the time of its series, which «Done» goes on from.
+    series: REPEATS.includes(raw.repeat) ? iso(raw.series) : null,
     at: iso(raw.at) ?? new Date(0).toISOString(),
   };
 }
@@ -264,20 +287,27 @@ export function addReminder(stateRoot, { text, due, repeat = null, room = null, 
     return { reminder: made };
   });
 }
-// Done: a repeating one moves to its next time; any other is kept as done.
+// Done: a repeating one moves to its next time — also when it is marked before its hour today, which
+// counts for today — from the hour of its series, not from where a snooze had moved it; any other is
+// kept as done.
 export function doneReminder(stateRoot, id, now = new Date()) {
   return change(stateRoot, (reminders) => {
     const one = reminders.find((item) => item.id === id);
     if (!one) return { error: 'unknown', write: false };
-    if (one.repeat) one.due = nextOccurrence(one.due, one.repeat, now).toISOString();
-    else one.done = new Date(now).toISOString();
+    if (one.repeat) {
+      const after = new Date(Math.max(new Date(now).getTime(), new Date(one.due).getTime()));
+      one.due = nextOccurrence(one.series ?? one.due, one.repeat, after).toISOString();
+      one.series = null;
+    } else one.done = new Date(now).toISOString();
     return { reminder: one };
   });
 }
+// Later: this time only. A repeating one keeps the hour of its series (`series`) to come back to.
 export function snoozeReminder(stateRoot, id, until) {
   return change(stateRoot, (reminders) => {
     const one = reminders.find((item) => item.id === id);
     if (!one || !iso(until)) return { error: 'unknown', write: false };
+    if (one.repeat) one.series ??= one.due;
     one.due = iso(until);
     one.done = null;
     return { reminder: one };

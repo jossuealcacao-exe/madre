@@ -321,9 +321,15 @@ test('room: the conversation never gives way, and what stands beside it does, ol
   assert.match(app, /const card = document\.querySelector\('\.hint-card'\);\n    if \(!card\) \{ say\(\); return; \}/);
   assert.match(app, /members\.reduce\(\(sum, one\) => sum \+ one\.floor, COLUMN_MIN\) <= window\.innerWidth/);
   assert.match(app, /const oldest = \[\.\.\.candidates\]\.sort\(\(a, b\) => rank\(a\) - rank\(b\)\)\[0\];/);
-  // In the chat shell (2026-10-26) the sidebar never floats: the tools give way, and then it shuts.
+  // In the chat shell (2026-10-26) the sidebar never floats: the tools give way. When it alone does
+  // not fit beside the conversation (1.1.0), it opens over it instead of shutting itself at once:
+  // Home, the Market and the conversations are only there.
   assert.match(app, /const candidates = shelled \? members\.filter\(\(one\) => one\.key !== 'chats'\) : members;/);
-  assert.match(app, /if \(shelled && !candidates\.length\) \{ setChats\(false\); return true; \}/);
+  assert.match(app, /if \(shelled && !candidates\.length\) \{ chatsOver = true; return false; \}/);
+  assert.match(app, /const sideLeft = width\.left && !chatsOver \?/);
+  // Files closed from the strip of tabs goes through the viewer's own ✕, which keeps unsaved changes.
+  assert.match(app, /key: 'viewer',[^\n]*close: \(\) => document\.querySelector\('#viewer-close'\)\?\.click\(\) \}/);
+  assert.match(app, /threadBox\?\.addEventListener\('pointerdown', \(\) => \{ if \(chatsOver && chats\.open\) setChats\(false\); \}\);/);
   assert.match(app, /if \(surface\.key === 'chats' && next !== 'split' && chatShellOn\(\)\) return;/);
   assert.match(app, /if \(oldest\.kind === 'side'\) setSurfaceMode\(oldest\.surface, 'window', \{ animate: false \}\);/);
   // A side split may not take the floors of the dock and the second conversation either, and the
@@ -686,7 +692,8 @@ test('chat shell: Code shows the text, both or what it makes; the preview is siz
   // Reading asks to understand and offers to cite or edit; editing asks to change.
   assert.match(app, /actions: !shell \? CODE_ACTIONS : reading \? CODE_READ_ACTIONS : CODE_EDIT_ACTIONS,/);
   assert.match(app, /askAboutCode\(\{ runs, text, anchor, dirty: false, reading: true \}\);/);
-  assert.match(app, /tools\.push\(\[t\('Copy reference'\), \(\) => \{/);
+  // «Reference copied» only once it is on the clipboard.
+  assert.match(app, /tools\.push\(\[t\('Copy reference'\), async \(\) => \{[\s\S]{0,260}await navigator\.clipboard\.writeText/);
   assert.match(css, /html\.chat-shell \.ask-card \{ gap: 8px;/);
   // The key wears </> again.
   assert.doesNotMatch(app, /files-key/);

@@ -151,9 +151,9 @@ export async function askPowerOff() {
     try {
       const response = await fetch('/api/madre/shutdown', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
       answer = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(answer.error ?? `HTTP ${response.status}`);
+      if (!response.ok) throw new Error(answer.error ? t(answer.error) : t('MADRE did not answer. Check that it is still open.'));
     } catch (error) {
-      reply.textContent = error.message;
+      reply.textContent = error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message;
       go.disabled = false;
       cancel.disabled = false;
       go.textContent = t('Turn off');
@@ -203,9 +203,9 @@ export async function askRestart() {
     try {
       const response = await fetch('/api/madre/restart', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
       const answer = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(answer.error ?? `HTTP ${response.status}`);
+      if (!response.ok) throw new Error(answer.error ? t(answer.error) : t('MADRE did not answer. Check that it is still open.'));
     } catch (error) {
-      reply.textContent = error.message;
+      reply.textContent = error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message;
       go.disabled = false;
       cancel.disabled = false;
       go.textContent = t('Restart');
@@ -287,9 +287,9 @@ export async function askCloseProject() {
     go.textContent = t('Closing…');
     try {
       const response = await fetch('/api/room/close', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw new Error(t('MADRE did not answer. Check that it is still open.'));
     } catch (error) {
-      reply.textContent = error.message;
+      reply.textContent = error.name === 'TypeError' ? t('MADRE did not answer. Check that it is still open.') : error.message;
       go.disabled = false;
       cancel.disabled = false;
       go.textContent = t('Close');

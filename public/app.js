@@ -1432,10 +1432,13 @@ function askAboutCode({ from, to, runs = [[from, to]], text, anchor, dirty, read
   const tools = [];
   if (shell && reading && viewerUI.path) {
     const path = viewerUI.path;
-    tools.push([t('Copy reference'), () => {
+    tools.push([t('Copy reference'), async () => {
       const where = runs.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(',');
-      void navigator.clipboard?.writeText(`!${path}:${where}`);
-      toast(t('Reference copied.'), { tone: 'done' });
+      try {
+        if (!navigator.clipboard) throw new Error('none');
+        await navigator.clipboard.writeText(`!${path}:${where}`);
+        toast(t('Reference copied.'), { tone: 'done' });
+      } catch { toast(t('The clipboard is not available here.')); }
     }]);
     if (viewerMode.editable) tools.push([t('Edit these lines'), () => openEditor(lo)]);
   }
@@ -3006,11 +3009,16 @@ browserGrip?.addEventListener('pointerdown', (event) => {
       layoutPanels();
     };
     browserGrip.addEventListener('pointermove', sized);
-    browserGrip.addEventListener('pointerup', () => {
+    // A cancelled pointer ends the drag too, or the page under the dock stayed unclickable.
+    const drop = () => {
       browserGrip.removeEventListener('pointermove', sized);
+      browserGrip.removeEventListener('pointerup', drop);
+      browserGrip.removeEventListener('pointercancel', drop);
       shell.classList.remove('dragging-dock');
       rememberSides();
-    }, { once: true });
+    };
+    browserGrip.addEventListener('pointerup', drop);
+    browserGrip.addEventListener('pointercancel', drop);
     return;
   }
   const move = (moving) => {
@@ -4114,6 +4122,8 @@ function effortList(id, info, anchor) {
   const height = effortMenu.offsetHeight || 300;
   effortMenu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))}px`;
   effortMenu.style.top = `${Math.max(12, rect.top - height - 10)}px`;
+  // From the keyboard the list is where the person is now: on the level chosen, or the first.
+  (list.querySelector('.effort-option.current') ?? list.querySelector('.effort-option'))?.focus({ preventScroll: true });
 }
 function closeEffortMenu() { effortMenu.hidden = true; effortMenuFor = null; effortMenu.classList.remove('effort-listed'); }
 // Placed against its chip when it opened; a window that changes size leaves it pointing nowhere.
@@ -4473,6 +4483,8 @@ function askOverrideKey(stage, { again = false } = {}) {
   // The label says what to type; the field stays empty, so nothing has to be cleared first.
   override.form.querySelector('.k').textContent = again ? t('Type your phrase again') : t('Type your phrase');
   override.input.placeholder = '';
+  // Back at the first ask (a new key, or one the project turned down), the key says it again.
+  if (!again && override.arm) override.arm.textContent = override.copilot ? t('Turn on') : override.mode === 4 ? t('Open') : t('Unlock');
 }
 function openOverride(id, { raise = false, mode = 3, then = null, cancelled = null, preserveComposer = false, forceKey = false, minutes = 0, copilot = 0 } = {}) {
   if (!override.dialog) return;
@@ -8027,6 +8039,9 @@ function readLook(name) {
 function applyLook(name, value) {
   const rootElement = document.documentElement;
   if (!rootElement) return;
+  // The chat shell has no wallpaper and no way to choose one: a picture kept from 1.0 stays kept,
+  // but it no longer tints the room, where nothing could take it off.
+  if (name === 'wallpaper' && rootElement.classList?.contains('chat-shell')) value = LOOKS.wallpaper.values[0];
   if (value === LOOKS[name].values[0]) delete rootElement.dataset[name]; else rootElement.dataset[name] = value;
 }
 // The person's picture as this browser last knew it, before the first look is painted.
@@ -9654,7 +9669,8 @@ const byId = (id) => () => document.querySelector(id);
 const surfaces = [
   { key: 'chats', kind: 'panel', side: 'left', prop: '--chats-w', node: () => els.chats, head: '.tree-head', before: '.tree-close', close: () => setChats(false) },
   { key: 'tree', kind: 'panel', side: 'right', prop: '--tree-w', node: () => els.tree, head: '.tree-head', before: '.tree-close', close: () => setTree(false) },
-  { key: 'viewer', kind: 'dialog', side: 'right', node: byId('#viewer'), head: '.viewer-head', before: '#viewer-close', close: () => document.querySelector('#viewer')?.close() },
+  // The viewer's own ✕: a file with unsaved changes keeps them in its tab instead of losing them.
+  { key: 'viewer', kind: 'dialog', side: 'right', node: byId('#viewer'), head: '.viewer-head', before: '#viewer-close', close: () => document.querySelector('#viewer-close')?.click() },
 ];
 const panelSides = surfaces.filter((one) => one.kind === 'panel');
 const surfaceOrder = [];
@@ -9818,6 +9834,10 @@ function sayWhenQuiet(say) {
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(go)); else go();
 }
 let givingWay = false;
+// In a window too narrow for the sidebar beside the conversation (under about 860 px), the sidebar
+// opens over it instead of closing itself again: Home, the Market and the conversations live only
+// there. A press on the conversation puts it away.
+let chatsOver = false;
 function giveWay() {
   if (givingWay) return false;
   const members = besideNow();
@@ -9830,7 +9850,7 @@ function giveWay() {
   // window — shut, still a sidebar, one key away.
   const shelled = chatShellOn();
   const candidates = shelled ? members.filter((one) => one.key !== 'chats') : members;
-  if (shelled && !candidates.length) { setChats(false); return true; }
+  if (shelled && !candidates.length) { chatsOver = true; return false; }
   const oldest = [...candidates].sort((a, b) => rank(a) - rank(b))[0];
   givingWay = true;
   try {
@@ -9876,6 +9896,7 @@ function fitGridBeside() {
 const glides = new WeakMap();
 function layoutPanels() {
   if (!shellBox || !threadBox || SPLIT_CHAT) return;
+  chatsOver = false;
   for (let tries = 0; tries < 3 && giveWay(); tries += 1) { /* one at a time, oldest first */ }
   // The sides first: they change how wide the room is.
   const width = { left: 0, right: 0 };
@@ -9924,7 +9945,8 @@ function layoutPanels() {
       edge = side === 'left' ? x + w + GAP : x - GAP;
     });
   }
-  const sideLeft = width.left ? `${width.left + 2 * GAP}px` : '';
+  document.documentElement.classList.toggle('chats-over', chatsOver);
+  const sideLeft = width.left && !chatsOver ? `${width.left + 2 * GAP}px` : '';
   const sideRight = width.right ? `${width.right + 2 * GAP}px` : '';
   paintToolTabs(tools, width.right);
 
@@ -11276,6 +11298,7 @@ function setChats(open) {
   if (open) void loadChats();
 }
 els.chatsButton?.addEventListener('click', () => setChats(!chats.open));
+threadBox?.addEventListener('pointerdown', () => { if (chatsOver && chats.open) setChats(false); });
 // The handle can be carried. Hold it a moment and it lifts; then it goes wherever the pointer takes
 // it, anywhere on the room below the bar, and stays there next time. A short press still opens the
 // conversations, and moving before it lifts is not a carry: nothing happens.
@@ -12167,6 +12190,9 @@ function boot() {
   // who lives there instead. Its key (projectDesignation) is still the folder's name.
   els.project.textContent = state.salas ? t('Coordinator') : (initial.projectRoot.split('/').filter(Boolean).at(-1) || initial.projectRoot);
   els.project.title = initial.projectRoot;
+  // The sidebar's «this project» row was drawn before the name was known: it says it now.
+  const hereRow = shellUI.projects?.querySelector('.side-project.here .side-project-name');
+  if (hereRow) hereRow.textContent = els.project.textContent;
   // Which conversation this page is looking at, beside the project it belongs to — but only once
   // there is more than one, because a name for the only thing there is is noise.
   if (initial.chats?.chats?.length > 1) {
@@ -14987,6 +15013,8 @@ async function sendToMarket(host, item, opener) {
       said.append(el('b', null, t('To fix first')), list);
     }
     for (const one of result.undeclared ?? []) said.append(el('p', 'mods-submit-warn', one));
+    // A check that never ran (MADRE did not answer, the server failed) says so instead of nothing.
+    if (!result.ok && result.error && !plain.length && !rest.length) said.append(el('p', 'mods-submit-warn', t(result.error)));
     if (result.ok && !result.folder) said.append(el('p', 'mods-submit-ok', t('Ready: prepare the files.')));
     if (!result.folder) return;
     const ready = el('div', 'mods-submit-ready');
@@ -16816,8 +16844,11 @@ function remindersBlock(host, item) {
   // What is coming, by day (2026-10-27): what is already due, today, tomorrow and after, each under
   // its name; a row is its hour on the left, what to do beside it, and its keys quiet at the right.
   const day = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const today = day(new Date());
-  const groupOf = (due) => (due.getTime() <= Date.now() ? 'late' : day(due) === today ? 'today' : day(due) === today + 86400000 ? 'tomorrow' : 'later');
+  const now = new Date();
+  const today = day(now);
+  // Tomorrow by the calendar, not today plus 24 hours: the day the clock changes lasts 23 or 25.
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+  const groupOf = (due) => (due.getTime() <= Date.now() ? 'late' : day(due) === today ? 'today' : day(due) === tomorrow ? 'tomorrow' : 'later');
   const GROUP_WORDS = { late: () => t('Overdue'), today: () => t('Today'), tomorrow: () => t('Tomorrow'), later: () => t('Later') };
   const sorted = [...remindersKit.list].sort((x, y) => Date.parse(x.due) - Date.parse(y.due));
   let group = null;
@@ -21676,13 +21707,15 @@ function drawDiagnostics(section) {
   const block = sxBlock(section, t('Anonymous diagnostics'), t('So the author learns what fails and what gets used, without asking you anything: errors with private details removed, and how many turns, modes and features were used. Never what you write, your projects or your files.'));
   const holder = el('div');
   block.append(holder);
-  void fetch('/api/telemetry').then((response) => response.json()).then((reading) => {
-    if (!holder.isConnected) return;
+  void fetch('/api/telemetry').then((response) => (response.ok ? response.json() : null)).catch(() => null).then((reading) => {
+    if (!holder.isConnected || !reading) return;
     const fixed = Boolean(reading.env);
     sxRow(holder, t('Send anonymous diagnostics'), fixed ? t('Off: MADRE was started with PULSE_TELEMETRY=0.') : t('Once a day, and soon after an error never seen before, to madre.run. Turning it off deletes what was waiting.'), sxSwitch(reading.on, async (on, box) => {
       box.disabled = true;
       try {
-        const answer = await fetch('/api/telemetry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }) }).then((response) => response.json());
+        const response = await fetch('/api/telemetry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }) });
+        const answer = await response.json().catch(() => ({}));
+        if (!response.ok || typeof answer.on !== 'boolean') throw new Error(answer.error ? t(answer.error) : t('MADRE did not answer. Check that it is still open.'));
         toast(answer.on ? t('Anonymous diagnostics on.') : t('Anonymous diagnostics off. What was waiting was deleted.'), { tone: 'done' });
       } catch (error) { box.checked = !on; toast(t('It could not be saved: {error}', { error: error.message })); }
       finally { box.disabled = false; }
@@ -22502,7 +22535,7 @@ function paintToolTabs(tools, width) {
       const front = frontOf(rightTools()) ?? tools.front;
       if (front === BROWSER_TOOL) setBrowserFloating(true); else setSurfaceMode(front, 'window');
     }),
-    shellKey(SIDEBAR_ICON.replace('M7.6 3.9v12.2', 'M12.4 3.9v12.2'), t('Close'), () => { for (const one of rightTools()) one.close(); }));
+    shellKey(SIDEBAR_ICON.replace('M7.8 3.8v12.4', 'M12.2 3.8v12.4'), t('Close'), () => { for (const one of rightTools()) one.close(); }));
 }
 
 function leaveTo(url) {

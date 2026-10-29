@@ -34,8 +34,10 @@ const button = (className, text, onClick) => {
 const post = async (url, payload = {}) => {
   try {
     const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-    return { ok: response.ok, body: await response.json().catch(() => ({})) };
-  } catch (error) { return { ok: false, body: { error: error.message } }; }
+    const body = await response.json().catch(() => ({}));
+    if (typeof body.error === 'string') body.error = t(body.error);
+    return { ok: response.ok, body };
+  } catch { return { ok: false, body: { error: t('MADRE did not answer. Check that it is still open.') } }; }
 };
 const getJson = (url) => fetch(url, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
 

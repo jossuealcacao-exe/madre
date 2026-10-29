@@ -4518,7 +4518,7 @@ export const ES = {
   'Projects on the bar': 'Proyectos en la barra',
   'Its agent and its mode are chosen in its own project.': 'El agente y el modo del Coordinador se eligen dentro de su propio proyecto.',
   'See the welcome again': 'Ver la bienvenida otra vez',
-  'Waiting on you': 'Te esperan',
+  'Waiting on you': 'Te espera',
   // The lobby, second round (2026-10-10): MADRE's summary, recent decisions, what needs you.
   'Recent summary': 'Resumen reciente',
   'Summarize again': 'Resumir de nuevo',
@@ -4951,6 +4951,9 @@ export const ES = {
   'Every project uses it, new ones too.': 'Todos los proyectos la usan, también los nuevos.',
   'Only the projects you switch on below. New projects start without it.': 'Solo los proyectos que enciendas abajo. Los proyectos nuevos empiezan sin ella.',
   'Home did not answer.': 'Inicio no respondió.',
+  'Another download is running. When it ends, try this one.': 'Hay otra descarga en curso. Cuando termine, prueba esta.',
+  'MADRE did not answer. Check that it is still open.': 'MADRE no respondió. Revisa que siga abierto.',
+  'Reload and settings': 'Recargar y ajustes',
   '{names} will use it when restarted: it was started before this setting existed.': '{names} tomará el cambio al reiniciarse: se abrió antes de que existiera este ajuste.',
   'Ollama runs local AI: it searches and sums up each project\'s memory and answers as @madre, free and private. Choose which projects use it.': 'Ollama corre IA local: busca y resume la memoria de cada proyecto y contesta como @madre, gratis y privado. Elige qué proyectos la usan.',
   'Which projects': 'Qué proyectos',
