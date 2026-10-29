@@ -1859,7 +1859,19 @@ async function openHomeAdd() {
   // A window of Home, as Settings and the Market are (2026-10-28): carried by its head, sized by its
   // sides, its place kept. On a phone it stays the sheet it was.
   const sheetNow = homeAddSheet;
-  const framed = homeWindow({ root: sheetNow, bar: head, close: () => sheetNow.close(), key: 'pulse.homeAddWindow', minW: 420, minH: 360, keys: false, size: { w: 560, h: 640 } });
+  const framed = homeWindow({ root: sheetNow, bar: head, close: () => sheetNow.close(), key: 'pulse.homeAddWindow', minW: 420, minH: 240, keys: false, size: { w: 560, h: 640 } });
+  // As tall as its list, unless the person gave it a size of their own (2026-10-28): with two widgets
+  // a window of 640 px was mostly empty.
+  const fit = () => {
+    if (!framed || !sheetNow.isConnected) return;
+    let sized = null;
+    try { sized = localStorage.getItem('pulse.homeAddWindow'); } catch { /* no storage: fit it */ }
+    if (sized) return;
+    // Down to the foot of its list: scrollHeight never says less than the window already is.
+    const below = getComputedStyle(body);
+    const need = Math.ceil(list.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop + Number.parseFloat(below.paddingBottom) + Number.parseFloat(below.borderBottomWidth));
+    if (need < sheetNow.getBoundingClientRect().height) framed.resize({ h: Math.max(240, need) });
+  };
   sheetNow.addEventListener('close', () => { framed?.drop(); sheetNow.remove(); if (homeAddSheet === sheetNow) homeAddSheet = null; key?.classList.remove('filled'); });
   if (framed) {
     sheetNow.classList.add('sm-add-framed');
@@ -1878,7 +1890,7 @@ async function openHomeAdd() {
     ...Object.entries(HOME_TILES).filter(([id]) => !placed(id)).map(([id, spec]) => ({ id, spec, ready: true })),
     ...Object.entries(WIDGETS).filter(([id, spec]) => !placed(id) && (!spec.owner || ownerOk.has(id))).map(([id, spec]) => ({ id, spec, ready: null })),
   ];
-  if (!entries.length) { list.append(el('p', 'sm-hint', t('Everything is already on Home.'))); return; }
+  if (!entries.length) { list.append(el('p', 'sm-hint', t('Everything is already on Home.'))); fit(); return; }
   for (const entry of entries) {
     const row = el('div', 'sm-add-row');
     row.append(tileIcon(entry.id));
@@ -1904,6 +1916,7 @@ async function openHomeAdd() {
       said.textContent = ok ? '' : reading.failed === 404 ? t('This page is served by a project started before widgets existed: open Home from its own address, or restart that project.') : reading.failed ? t('It could not be read just now.') : (entry.spec.needs?.() ?? t('Nothing feeds it on this Mac yet.'));
     }
   }
+  fit();
 }
 
 // ---- The widgets. Each is a tile that reads its own route every 20 s while Home is in view.
@@ -2818,11 +2831,18 @@ let refreshPending = null;
 // 4 s replaced the button under the pointer and the click went nowhere (2026-10-19).
 let drawnRooms = '';
 let drawnRoomsAt = 0;
+// MADRE's pulse says how Home stands with its server (2026-10-28): the dot at its end green while it
+// answers, red when it does not, amber while an answer is slow to come (styles.css, data-link).
+const setLink = (state) => { root.dataset.link = state; };
+setLink('waiting');
 async function refresh({ polled = false } = {}) {
   if (refreshPending) return refreshPending;
   refreshPending = fetch('/api/salas', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  const slow = setTimeout(() => setLink('waiting'), 2500);
   const answer = await refreshPending;
+  clearTimeout(slow);
   refreshPending = null;
+  setLink(answer ? 'live' : 'lost');
   if (!answer) { ui.foot.textContent = t('This project did not answer. It may have closed.'); ui.bar.live.classList.add('is-off'); ui.bar.live.lastChild.textContent = t('Not answering right now'); return; }
   // Home is the first screen of `npx madre`: a MADRE nobody has set takes this browser's language
   // here, once, and every project follows (public/i18n.js, browserLanguage).
@@ -5845,6 +5865,8 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360, keys = true
   homeWindowForward(root);
   return {
     raise: () => homeWindowForward(root),
+    // Another size for now, not kept: a window fitted to what it shows (openHomeAdd).
+    resize: (next) => { if (framed) place({ ...want, ...next }); },
     drop: () => {
       window.removeEventListener('resize', refit);
       const at = homeWindows.indexOf(root);

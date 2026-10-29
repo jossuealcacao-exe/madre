@@ -534,6 +534,9 @@ function placeToast() {
   if (!rect || !document.documentElement?.style) return;
   if (Number.isFinite(rect.top) && rect.top > 0) document.documentElement.style.setProperty('--composer-top', `${Math.round(rect.top)}px`);
   if (Number.isFinite(rect.left) && rect.width > 0) document.documentElement.style.setProperty('--composer-center', `${Math.round(rect.left + rect.width / 2)}px`);
+  // No wider than the box it sits over (2026-10-28): split in three, a conversation is narrower than a
+  // notice, which ran past its part of the window and under the sidebar.
+  if (rect.width > 0) document.documentElement.style.setProperty('--composer-width', `${Math.round(rect.width)}px`);
 }
 // A notice is a pill over the composer, one line, and its colour is only a dot: green for done,
 // amber for worth a look, red only for what went wrong. Most callers do not say which, so the words
@@ -12317,7 +12320,11 @@ async function refreshBudgetWindow() {
 if (!els.target.options.length) els.target.add(new Option(t('No agent ready'), ''));
 /* ---------- live stream ---------- */
 
+// MADRE's pulse says it too (2026-10-28): the dot at its end green while the room is live, red when
+// the connection is lost, amber in between — opening, before the stream is up (styles.css, data-link).
+document.documentElement.dataset.link = 'waiting';
 function setConnection(value) {
+  document.documentElement.dataset.link = value === 'live' ? 'live' : value === 'reconnecting' ? 'lost' : 'waiting';
   els.connection.dataset.state = value;
   // The state stays English in the DOM, because CSS and tests read it; the word does not.
   els.connection.querySelector('.connection-label').textContent = t(value);

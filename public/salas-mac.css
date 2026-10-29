@@ -497,6 +497,10 @@ body.sm-in-macro { overflow: hidden; }
 .sm-sheet.sm-wide { --sm-sheet-w: 780px; }
 #sm-links-sheet .sm-sheet-body { padding: 24px 26px; gap: 18px; }
 .sm-sheet-body { display: grid; gap: 14px; padding: 20px 24px 20px; }
+/* The sheet is its own window: its bar keeps clear of the rounded corners (styles.css, scrollbars inside
+   a window); the padding gives back what the transparent border takes. */
+dialog.sm-sheet > .sm-sheet-body { border: 0 solid transparent; border-width: 8px 5px 8px 0; padding: 12px 19px 12px 24px; }
+#sm-links-sheet .sm-sheet-body.sm-sheet-body { padding: 16px 21px 16px 26px; }
 .sm-sheet-body > h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.015em; }
 .sm-sheet-body .hint, .sm-picker .hint { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
 .sm-sheet-body .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
@@ -1860,6 +1864,35 @@ dialog.wl::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: b
 .wl-rail { display: flex; flex-direction: column; gap: 2px; min-height: 0; padding: 16px 10px; background: var(--wl-side); box-shadow: inset -1px 0 0 var(--wl-line); }
 .wl-brand { display: flex; align-items: center; padding: 4px 10px 16px; }
 .wl-brand .brand-logo { height: 14px; }
+.wl-rail-body { display: contents; }
+/* After the opening the rail's logo is already drawn: it stays still. */
+.wl-brand.still .brand-logo .beat { animation: none; stroke-dashoffset: 0; }
+.wl-brand.still .brand-logo :is(.beat-dot, .word) { animation: none; opacity: 1; }
+
+/* THE OPENING (2026-10-28, welcome.js, playIntro): a stage of its own over everything, dark or light
+   as MADRE is, where the AIs become MADRE's pulse; then the welcome rises in under it. */
+dialog.wl { --wl-stage: #050605; --wl-stage-glow: rgba(155, 255, 102, .05); }
+:root[data-scheme="light"] dialog.wl { --wl-stage: #f5f6f2; --wl-stage-glow: rgba(47, 138, 28, .06); }
+dialog.wl.waiting .wl-window, dialog.wl.intro .wl-window { opacity: 0; }
+dialog.wl.intro::backdrop, dialog.wl.waiting::backdrop { background: var(--wl-stage); }
+dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-scale, 1)) cubic-bezier(.2, .7, .2, 1) .18s both; }
+@keyframes wl-arrive { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+.wl-intro { position: fixed; inset: 0; z-index: 5; overflow: hidden; background: radial-gradient(60% 46% at 50% 48%, var(--wl-stage-glow), transparent 72%), var(--wl-stage); cursor: default; }
+.wl-intro.leaving { animation: wl-intro-out .65s cubic-bezier(.4, 0, .2, 1) forwards; pointer-events: none; }
+.wl-intro.leaving.fast { animation-duration: .28s; }
+.wl-intro.leaving .wl-intro-mark { transition: scale .5s cubic-bezier(.4, 0, .2, 1), opacity .3s ease; scale: .96; opacity: 0; }
+@keyframes wl-intro-out { to { opacity: 0; } }
+.wl-intro-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wl-intro-mark { position: absolute; left: 50%; top: 48%; width: min(500px, 70vw); transform: translate(-50%, -50%); will-change: transform; }
+.wl-intro-logo { display: block; width: 100%; height: auto; overflow: visible; }
+.wl-intro-logo .pulse { stroke: var(--brand-pulse); }
+.wl-intro-logo .beat { stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-pulse) 35%, transparent)); }
+.wl-intro-logo .beat-dot { fill: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; }
+.wl-intro-logo .word { stroke: var(--brand-word); opacity: 0; }
+:root[data-scheme="light"] .wl-intro-logo .beat { filter: none; }
+.wl-intro-skip { position: absolute; right: 26px; bottom: 22px; padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: 500 12.5px var(--read); letter-spacing: .01em; opacity: 0; cursor: pointer; animation: wl-skip-in .6s ease 1.4s forwards; }
+.wl-intro-skip:is(:hover, :focus-visible) { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); outline: none; }
+@keyframes wl-skip-in { to { opacity: 1; } }
 .wl-steps { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .wl-step { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 450 13.5px var(--read); text-align: left; cursor: pointer; }
 .wl-step:hover { background: var(--wl-hover); color: var(--text); }
@@ -1875,7 +1908,7 @@ dialog.wl::backdrop { background: rgba(0, 0, 0, .45); -webkit-backdrop-filter: b
 /* Solid: the step scrolls under it, and a see-through key showed the text through itself. */
 .wl-close.surface-modes, .wl-close { border-radius: 10px; background: var(--wl-canvas) !important; box-shadow: 0 0 0 1px var(--wl-line), 0 2px 8px -2px rgba(0, 0, 0, .18) !important; }
 .wl-close .surface-mode { background: var(--wl-canvas); }
-.wl-content { display: grid; align-content: start; gap: 12px; min-height: 0; padding: 30px 34px 18px; overflow: auto; overscroll-behavior: contain; }
+.wl-content { display: grid; align-content: start; gap: 12px; min-height: 0; padding: 22px 29px 18px 34px; border: 0 solid transparent; border-width: 8px 5px 0 0; overflow: auto; overscroll-behavior: contain; }
 .wl-content > * { margin: 0; }
 .wl-eyebrow { font-size: 12.5px; color: var(--text-3); }
 .wl-eyebrow.wl-gap { margin-top: 8px; }
@@ -2108,6 +2141,13 @@ html.home-shell dialog.sm-add-framed > .sm-sheet-body { flex: 1; width: 100%; he
 html.home-shell dialog.sm-add-framed .sm-sheet-head { cursor: grab; }
 html.home-shell dialog.sm-add-framed .sm-sheet-head button { cursor: pointer; }
 html.home-shell dialog.sm-add-sheet .sm-add-row { padding: 12px 14px; }
+/* Fitted to what it lists (2026-10-28): with two widgets the rows were stretched to the window's height
+   and a gap opened under the words; they sit at the top now, and the window is only as tall as its
+   list (salas-mac.js, openHomeAdd). Its ✕ in the window's corner, on the title's line, as the other
+   windows of Home keep theirs, and in reach while the list scrolls. */
+html.home-shell dialog.sm-add-framed > .sm-sheet-body { align-content: start; padding-top: 4px; }
+html.home-shell dialog.sm-add-framed .sm-sheet-head { min-height: 28px; padding-right: 40px; }
+html.home-shell dialog.sm-add-framed .sm-sheet-head .surface-modes { position: absolute; top: 14px; right: 14px; z-index: 2; }
 
 /* The agenda (2026-10-28): reminders by day, a line each with its ✓ and «Later», and a box below for
    a new one written as you would say it. */

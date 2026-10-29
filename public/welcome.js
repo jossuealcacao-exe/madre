@@ -71,6 +71,203 @@ const TROUBLE_CARD = { network: 'install-offline', disk: 'disk-full', permission
 // first piece is the model itself, by far the heaviest: its share is the download's.
 const PULL_LINE = /^pulling ([0-9a-f]{6,})\b.*?(\d{1,3})%\s*$/;
 
+// THE OPENING (2026-10-28): before the first step, what MADRE is, said without words. The AIs a
+// person already uses come in as points of light, each in its own color, find each other with fine
+// lines and come together on one line that becomes MADRE's pulse: the beat, then the name. About five
+// seconds; a click or any key goes straight to the welcome, and a computer that asked for less motion
+// goes there without it. Drawn on a canvas, the points; the logo is MADRE's own drawing (loader.js),
+// moved by hand so the line passes each point at the moment it takes it in.
+const INTRO_HUES = {
+  dark: ['#7fe3b6', '#f2a37c', '#93acff', '#ecece6', '#c8b5ff'],
+  light: ['#1d9a68', '#cf6c40', '#4864d2', '#575a52', '#7a5ed2'],
+};
+const INTRO = { appear: 250, lines: 900, gather: 2300, gathered: 3300, draw: 2650, drawn: 3600, beat: 3550, word: 3850, hold: 5700, out: 650 };
+// The pulse is drawn at the centre, alone; when the name comes it glides left to make room for it.
+// The share of the logo's width between the pulse's centre and the whole logo's (loader.js viewBox).
+const PULSE_OFF_CENTRE = (183.75 - 80) / 377.1;
+const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - ((-2 * x + 2) ** 3) / 2);
+const easeOut = (x) => 1 - (1 - x) ** 3;
+const span = (now, from, to) => Math.max(0, Math.min(1, (now - from) / (to - from)));
+
+function playIntro(dialog) {
+  if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const light = document.documentElement.dataset.scheme === 'light';
+    const hues = INTRO_HUES[light ? 'light' : 'dark'];
+    const stage = el('div', 'wl-intro');
+    stage.setAttribute('aria-hidden', 'true');
+    const sky = el('canvas', 'wl-intro-sky');
+    const mark = el('div', 'wl-intro-mark');
+    mark.innerHTML = BRAND_LOGO.replace('class="brand-logo"', 'class="wl-intro-logo"'); // trusted: our own SVG string
+    const skip = button('wl-intro-skip', t('Skip'), () => end(true));
+    stage.append(sky, mark, skip);
+    dialog.append(stage);
+    dialog.classList.add('intro');
+    const beat = mark.querySelector('.beat');
+    const dot = mark.querySelector('.beat-dot');
+    const word = mark.querySelector('.word');
+    const pen = sky.getContext('2d');
+    let width = 0;
+    let height = 0;
+    const fit = () => {
+      const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
+      width = stage.clientWidth;
+      height = stage.clientHeight;
+      sky.width = Math.round(width * ratio);
+      sky.height = Math.round(height * ratio);
+      pen.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    fit();
+    // Where on the pulse each AI lands, as a share of its line: before the rise, the peak, the
+    // valley, the small step and the end.
+    const lands = [0.06, 0.4, 0.55, 0.74, 0.96];
+    const length = beat.getTotalLength();
+    const landing = () => lands.map((share) => {
+      const point = beat.getPointAtLength(share * length);
+      const matrix = beat.getScreenCTM();
+      const box = stage.getBoundingClientRect();
+      return { x: matrix.a * point.x + matrix.c * point.y + matrix.e - box.left, y: matrix.b * point.x + matrix.d * point.y + matrix.f - box.top };
+    });
+    // The five AIs, each at its own depth on a slow orbit, and a fine dust that gives the dark depth.
+    const agents = hues.map((hue, index) => ({ hue, angle: (index / hues.length) * Math.PI * 2 + 0.35 * Math.sin(index * 2.1), reach: 0.62 + 0.38 * ((index * 37) % 5) / 4, depth: 0.75 + ((index * 3) % 5) * 0.1 }));
+    const dust = Array.from({ length: 46 }, (_, index) => ({ x: ((index * 73) % 97) / 97, y: ((index * 41) % 89) / 89, r: 0.4 + ((index * 7) % 5) * 0.18, a: 0.05 + ((index * 11) % 7) * 0.016, drift: 0.004 + ((index * 5) % 9) * 0.0012 }));
+    const edges = [];
+    for (let a = 0; a < agents.length; a += 1) for (let b = a + 1; b < agents.length; b += 1) edges.push([a, b]);
+    const ink = (hex, alpha) => {
+      const value = Number.parseInt(hex.slice(1), 16);
+      return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+    };
+    // Where the mark stands: the pulse alone at the centre, then the whole logo as the name comes in.
+    const place = (time) => {
+      const settle = easeInOut(span(time, INTRO.word - 300, INTRO.word + 900));
+      const scale = 1.035 - 0.035 * easeOut(span(time, INTRO.gathered, INTRO.word + 900));
+      mark.style.transform = `translate(calc(-50% + ${(PULSE_OFF_CENTRE * mark.clientWidth * (1 - settle)).toFixed(2)}px), -50%) scale(${scale.toFixed(4)})`;
+    };
+    place(0);
+    let targets = landing();
+    let started = 0;
+    let frame = 0;
+    let done = false;
+    const onResize = () => { fit(); targets = landing(); };
+    globalThis.addEventListener('resize', onResize);
+
+    function paint(now) {
+      if (!started) started = now;
+      const time = now - started;
+      pen.clearRect(0, 0, width, height);
+      const cx = width / 2;
+      const cy = height * 0.48;
+      const radius = Math.min(width, height) * 0.2;
+      const gather = easeInOut(span(time, INTRO.gather, INTRO.gathered));
+      const drawn = easeOut(span(time, INTRO.draw, INTRO.drawn));
+      place(time);
+      if (time < INTRO.drawn) targets = landing();
+      // The dust drifts up, and goes when the AIs come together.
+      const dustFade = 1 - span(time, INTRO.gather, INTRO.gather + 700);
+      for (const speck of dust) {
+        const y = ((speck.y - time * speck.drift * 0.001) % 1 + 1) % 1;
+        pen.fillStyle = light ? `rgba(20, 24, 20, ${speck.a * 0.8 * dustFade})` : `rgba(235, 240, 230, ${speck.a * dustFade})`;
+        pen.beginPath();
+        pen.arc(speck.x * width, y * height, speck.r, 0, Math.PI * 2);
+        pen.fill();
+      }
+      // Where each AI is: on its orbit, turning slowly, until it glides to its place on the pulse.
+      const turn = time * 0.00011;
+      const at = agents.map((agent, index) => {
+        const angle = agent.angle + turn * agent.depth;
+        const free = { x: cx + Math.cos(angle) * radius * agent.reach * 1.35, y: cy + Math.sin(angle) * radius * agent.reach * 0.82 };
+        const target = targets[index];
+        return { x: free.x + (target.x - free.x) * gather, y: free.y + (target.y - free.y) * gather };
+      });
+      // The lines between them: drawn one after another, gone as they come together.
+      const linesFade = 1 - span(time, INTRO.gather, INTRO.gather + 500);
+      edges.forEach(([a, b], index) => {
+        const grow = easeOut(span(time, INTRO.lines + index * 70, INTRO.lines + index * 70 + 700));
+        if (!grow || !linesFade) return;
+        const from = at[a];
+        const to = at[b];
+        const gradient = pen.createLinearGradient(from.x, from.y, to.x, to.y);
+        gradient.addColorStop(0, ink(agents[a].hue, (light ? 0.3 : 0.22) * linesFade));
+        gradient.addColorStop(1, ink(agents[b].hue, (light ? 0.3 : 0.22) * linesFade));
+        pen.strokeStyle = gradient;
+        pen.lineWidth = 0.8;
+        pen.beginPath();
+        pen.moveTo(from.x, from.y);
+        pen.lineTo(from.x + (to.x - from.x) * grow, from.y + (to.y - from.y) * grow);
+        pen.stroke();
+      });
+      // The AIs: each comes in on its own, and goes into the line when the line reaches it.
+      agents.forEach((agent, index) => {
+        const shown = easeOut(span(time, INTRO.appear + index * 160, INTRO.appear + index * 160 + 600));
+        const taken = drawn >= lands[index] ? span(time, INTRO.draw + lands[index] * (INTRO.drawn - INTRO.draw) * 0.7, INTRO.draw + lands[index] * (INTRO.drawn - INTRO.draw) * 0.7 + 260) : 0;
+        const alpha = shown * (1 - taken);
+        if (!alpha) return;
+        const { x, y } = at[index];
+        const size = (2.8 - 0.8 * gather) * (1 + 0.5 * taken);
+        if (!light) {
+          const glow = pen.createRadialGradient(x, y, 0, x, y, size * 9);
+          glow.addColorStop(0, ink(agent.hue, 0.42 * alpha));
+          glow.addColorStop(1, ink(agent.hue, 0));
+          pen.fillStyle = glow;
+          pen.beginPath();
+          pen.arc(x, y, size * 9, 0, Math.PI * 2);
+          pen.fill();
+        }
+        pen.fillStyle = ink(agent.hue, alpha);
+        pen.beginPath();
+        pen.arc(x, y, size, 0, Math.PI * 2);
+        pen.fill();
+      });
+      // The pulse draws itself through them; then the beat, with one ring, and the name.
+      beat.style.strokeDashoffset = String(100 - 100 * drawn);
+      const beatIn = easeOut(span(time, INTRO.beat, INTRO.beat + 420));
+      dot.style.opacity = String(beatIn);
+      dot.style.transform = `scale(${0.4 + 0.6 * beatIn})`;
+      const ring = span(time, INTRO.beat + 60, INTRO.beat + 1000);
+      if (ring > 0 && ring < 1) {
+        const box = dot.getBoundingClientRect();
+        const stageBox = stage.getBoundingClientRect();
+        const rx = box.left + box.width / 2 - stageBox.left;
+        const ry = box.top + box.height / 2 - stageBox.top;
+        pen.strokeStyle = ink(light ? '#2f8a1c' : '#9bff66', 0.42 * (1 - easeOut(ring)));
+        pen.lineWidth = 1.2;
+        pen.beginPath();
+        pen.arc(rx, ry, box.width / 2 + easeOut(ring) * 46, 0, Math.PI * 2);
+        pen.stroke();
+      }
+      const wordIn = easeOut(span(time, INTRO.word, INTRO.word + 800));
+      word.style.opacity = String(wordIn);
+      word.style.transform = `translate(${193.5 + 10 * (1 - wordIn)}px, 7px)`;
+      if (time >= INTRO.hold) return end(false);
+      frame = requestAnimationFrame(paint);
+    }
+    // Any key or click goes straight on; Esc too, without closing the welcome under it.
+    const onKey = (event) => { event.preventDefault(); end(true); };
+    const onCancel = (event) => { event.preventDefault(); end(true); };
+    function end(early) {
+      if (done) return;
+      done = true;
+      cancelAnimationFrame(frame);
+      globalThis.removeEventListener('resize', onResize);
+      dialog.removeEventListener('keydown', onKey, true);
+      dialog.removeEventListener('cancel', onCancel);
+      stage.removeEventListener('click', onClick);
+      stage.classList.add(early ? 'leaving fast' : 'leaving');
+      dialog.classList.remove('intro');
+      dialog.classList.add('arriving');
+      setTimeout(() => stage.remove(), early ? 280 : INTRO.out);
+      // The welcome's own rise lasts a little longer than the stage takes to go.
+      setTimeout(() => dialog.classList.remove('arriving'), 1000);
+      resolve(true);
+    }
+    const onClick = () => end(true);
+    dialog.addEventListener('keydown', onKey, true);
+    dialog.addEventListener('cancel', onCancel);
+    stage.addEventListener('click', onClick);
+    frame = requestAnimationFrame(paint);
+  });
+}
+
 let current = null;
 export const welcomeOpen = () => Boolean(current);
 
@@ -158,10 +355,13 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
   const roomFor = (gb) => (s.env?.disk?.freeGb == null ? true : s.env.disk.freeGb >= gb + 2);
 
   // ---- The rail: the seven steps, where the person is, what is done and what was left for later.
-  // The logo draws itself in once, when the welcome opens: made here once, not with each repaint.
+  // The logo draws itself in once, when the welcome opens, and stays in the rail from then on: the
+  // steps are repainted under it, never the logo, or its drawing started over with every step.
   const brand = el('div', 'wl-brand');
   brand.setAttribute('aria-label', 'MADRE');
   brand.innerHTML = BRAND_LOGO; // trusted: our own SVG string
+  const railBody = el('div', 'wl-rail-body');
+  rail.append(brand, railBody);
   function paintRail() {
     const list = el('ol', 'wl-steps');
     WELCOME_STEPS.forEach((id, index) => {
@@ -178,7 +378,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       item.append(key);
       list.append(item);
     });
-    rail.replaceChildren(brand, list, el('p', 'wl-rail-foot', t('Anything you leave for later can be done afterwards in Settings.')));
+    railBody.replaceChildren(list, el('p', 'wl-rail-foot', t('Anything you leave for later can be done afterwards in Settings.')));
   }
 
   // ---- The parts every step is made of.
@@ -864,6 +1064,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     dialog.remove();
     host.closed?.();
   });
+  // Hidden until it is known where the person is: the first step opens with the opening (playIntro),
+  // any other straight away.
+  dialog.classList.add('waiting');
   dialog.showModal();
   content.append(el('p', 'wl-muted', t('Reading…')));
 
@@ -880,6 +1083,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     listen();
     show();
     if (!s.progress.at) void save({ at: WELCOME_STEPS[s.step] });
+    // The opening plays on the first step; after it the rail's logo is already drawn, and stays still.
+    dialog.classList.remove('waiting');
+    if (WELCOME_STEPS[s.step] === 'hello') void playIntro(dialog).then((played) => { if (played) brand.classList.add('still'); });
   });
   return current;
 }

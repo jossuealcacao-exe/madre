@@ -558,13 +558,19 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     const card = el('section', `tour-hint${inside ? ' inline' : ''}`);
     card.setAttribute('role', 'note');
     const walking = step > 0 && of > 1;
-    card.append(el('span', 'tour-hint-eyebrow', walking ? t('{n} of {total}', { n: step, total: of }) : t('The first time')), el('b', null, title), el('p', null, text));
+    const eyebrow = el('span', 'tour-hint-eyebrow', walking ? t('{n} of {total}', { n: step, total: of }) : t('The first time'));
+    // Inside a window its words go together, so its key can sit beside them or, where the window is
+    // narrow, under them — never squeezing the words into a column (2026-10-28, #4's key).
+    if (inside) { const words = el('div', 'tour-hint-words'); words.append(eyebrow, el('b', null, title), el('p', null, text)); card.append(words); }
+    else card.append(eyebrow, el('b', null, title), el('p', null, text));
     let spot = null;
     let away = null;
     let follow = null;
     let skipped = false;
+    let coverTimer = 0;
     const done = () => {
       if (!hintNode) return;
+      clearInterval(coverTimer);
       spot?.remove();
       card.remove();
       away?.remove();
@@ -609,6 +615,25 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
       away.append(el('b', null, title), el('span', null, up ? t('Scroll up to see it') : t('Scroll down to see it')));
       away.setAttribute('aria-label', `${title} · ${up ? t('Scroll up to see it') : t('Scroll down to see it')}`);
     };
+    // Under a window (2026-10-28): a window opened over the page covers what the hint speaks of — the
+    // Market over Home's cards — and the hint, in the top layer, was drawn over that window pointing
+    // at nothing anyone could see. While its place is covered, the hint and its ring wait out of
+    // sight, and come back when the window closes.
+    const covered = () => {
+      const at = anchor.getBoundingClientRect();
+      const x = at.left + at.width / 2;
+      const y = at.top + Math.min(at.height / 2, 24);
+      // Out of view is said by the key at the edge (place), and a place that lets clicks through
+      // cannot be asked what covers it.
+      if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight || getComputedStyle(anchor).pointerEvents === 'none') return false;
+      const top = document.elementsFromPoint(x, y).find((node) => !card.contains(node) && !away.contains(node) && node !== spot?.node);
+      return Boolean(top) && top !== anchor && !anchor.contains(top) && !top.contains(anchor);
+    };
+    const watchCover = () => {
+      if (!anchor.isConnected) return;
+      const hide = covered();
+      for (const node of [card, away, spot?.node]) node?.toggleAttribute('data-covered', hide);
+    };
     const place = () => {
       if (!anchor.isConnected) { done(); return; }
       const at = anchor.getBoundingClientRect();
@@ -633,6 +658,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     window.addEventListener('scroll', follow, true);
     window.addEventListener('resize', follow);
     place();
+    watchCover();
+    coverTimer = setInterval(watchCover, 350);
     // Where it points: on the page, or on a layer over it (Home's Project map). A layer opened over
     // the page hides the hints that point under it, and they come back when it closes (salas-mac.css).
     const layer = anchor.closest?.('.mv') ? 'map' : 'page';
