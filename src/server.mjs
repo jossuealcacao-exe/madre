@@ -2293,6 +2293,17 @@ export async function createPulseServer({
         return sendJson(response, 403, { error: t('This is done on the Mac.') });
       }
       if (request.method === 'GET' && url.pathname === '/salas') {
+        // Home is one place (2026-10-28): a project asked for it sends the page to Home's own address
+        // when Home is open, so closing that project from there never takes Home's page with it.
+        const homeId = salasRoomId(root);
+        const host = String(request.headers.host ?? '');
+        if (basename(roomDir) !== homeId && /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) {
+          const home = (await knownRooms(root).catch(() => [])).find((one) => one.id === homeId && one.open?.port);
+          if (home && String(home.open.port) !== String(request.socket.localPort)) {
+            response.writeHead(302, { location: `http://${host.replace(/:\d+$/, '')}:${home.open.port}/salas${url.search}${url.hash ?? ''}`, 'cache-control': 'no-store' });
+            return response.end();
+          }
+        }
         const html = withHost(await readFile(join(publicDirectory, 'salas-mac.html'), 'utf8'));
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', ...PAGE_GUARDS });
         return response.end(html);

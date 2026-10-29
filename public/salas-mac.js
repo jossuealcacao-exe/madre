@@ -2952,6 +2952,13 @@ async function closeRoom(room) {
   const answer = await fetch('/api/salas/close', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room: room.id }) })
     .then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
   if (answer.body.here) {
+    // Home as a project serves it (2026-10-28): closing that project took this page with it and it
+    // read as all of MADRE off. When Home itself is open on its own address, the page goes there.
+    const home = data?.rooms.find((one) => one.id === data.salas && one.open?.port);
+    if (home && home.id !== room.id && String(home.open.port) !== location.port) {
+      setTimeout(() => { location.href = `${location.protocol}//${location.hostname}:${home.open.port}/salas`; }, 900);
+      return;
+    }
     // This page goes with the room that serves it: it says so, and stops asking.
     clearInterval(timer);
     document.body.classList.add('sm-gone');
