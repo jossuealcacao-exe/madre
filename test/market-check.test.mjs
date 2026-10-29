@@ -113,5 +113,8 @@ test('market check · `madre check-module` prints the summary and fails when som
     assert.equal(JSON.parse(good.stdout).ok, true);
     await writeFile(join(dir, 'entrada.json'), JSON.stringify({ ...ENTRY, spdx: 'nada' }));
     await assert.rejects(run(process.execPath, [bin, 'check-module', '--file', join(dir, 'saludo.module.mjs'), '--entry', join(dir, 'entrada.json')]), (error) => error.code === 1 && /spdx/.test(error.stdout));
+    // In English unless asked: the Market's repository asks for Spanish.
+    const spanish = await run(process.execPath, [bin, 'check-module', '--file', join(dir, 'saludo.module.mjs'), '--lang', 'es']).catch((error) => error);
+    assert.match(spanish.stdout, /Por corregir antes de revisarlo/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
