@@ -1253,8 +1253,11 @@ test('the manual starts with «Start here»: the way in for each system, then th
     assert.equal(first.title, title);
     assert.equal(first.systems.length, 4, `${lang}: Mac, Linux, Windows with WSL, SSH or a virtual machine`);
     for (const system of first.systems) assert.deepEqual(system.code, ['npx @jossuealcala/madre']);
-    // Windows says what docs/WINDOWS.md says: from 1.1.0, inside WSL2, not on Windows directly.
-    assert.match(first.systems[2].note, lang === 'es' ? /dentro de WSL2.*No corre directo en Windows/ : /inside WSL2.*does not run on Windows directly/);
+    // Windows says what docs/WINDOWS.md says: from 1.1.0, inside WSL2; opened on Windows itself it
+    // explains the way there and stops (bin/madre.mjs). Its card is #windows, where that message and
+    // the mail to the waiting list point.
+    assert.match(first.systems[2].note, lang === 'es' ? /dentro de WSL2.*directo en Windows, te explica estos pasos y se detiene/ : /inside WSL2.*on Windows itself, it explains these steps and stops/);
+    assert.equal(first.systems[2].id, 'windows');
     assert.ok(first.systems[2].steps.some((step) => step.includes('`wsl --install`')));
     // The intro points to it by its new name.
     assert.ok(MANUAL[lang].intro.some((line) => line.includes(`«${title}»`)));
@@ -1263,6 +1266,29 @@ test('the manual starts with «Start here»: the way in for each system, then th
   const shape = (copy) => copy.sections.map((one) => [one.id, one.systems?.map((system) => system.steps.length) ?? null, one.steps?.length ?? 0, one.problems?.length ?? 0]);
   assert.deepEqual(shape(MANUAL.es), shape(MANUAL.en));
   assert.match(manualJs, /if \(section\.systems\?\.length\) \{/);
+  assert.match(manualJs, /if \(system\.id\) card\.id = system\.id;/);
+});
+
+// The manual of 1.1.0 (2026-10-28): each section with a picture has it in both languages, with one
+// mark per step (null where a step has nothing to point at), every picture on disk, and no picture
+// left over from a layout that is gone.
+test('the manual\'s pictures: one per section and language, a mark per step, none left over', async () => {
+  const { MANUAL } = await import('../public/manual-content.js');
+  const { SHOTS } = await import('../public/manual-shots.js');
+  const { readdirSync } = await import('node:fs');
+  const used = new Set();
+  for (const lang of ['es', 'en']) {
+    for (const section of MANUAL[lang].sections.filter((one) => one.shot)) {
+      const shot = SHOTS[lang][section.shot];
+      assert.ok(shot, `${lang}: «${section.title}» has no picture (${section.shot})`);
+      assert.equal(shot.marks.length, section.steps.length, `${lang}: «${section.title}» has ${section.steps.length} steps and ${shot.marks.length} marks`);
+      used.add(`${lang}-${section.shot}.webp`);
+    }
+    for (const id of ['bienvenida', 'chats', 'modulos', 'licencia']) assert.ok(MANUAL[lang].sections.some((one) => one.id === id), `${lang}: no «${id}»`);
+  }
+  const files = readdirSync(new URL('../public/assets/manual/shots/', import.meta.url)).filter((name) => name.endsWith('.webp'));
+  assert.deepEqual(files.filter((name) => !used.has(name)), [], 'pictures no section shows');
+  assert.deepEqual([...used].filter((name) => !files.includes(name)), [], 'pictures a section shows and nobody took');
 });
 
 test('review of 2026-10-28: a download can be stopped, «try it» is a talk, Appearance opens from the side, text a touch firmer', async () => {

@@ -38,6 +38,10 @@ const ICONS = {
   warning: trazoDrawing('warning'),
   keys: trazoDrawing('keyboard'),
   help: trazoDrawing('help'),
+  list: trazoDrawing('list'),
+  market: trazoDrawing('market'),
+  book: trazoDrawing('book'),
+  check: trazoDrawing('check'),
 };
 const icon = (name) => `<svg viewBox="0 0 20 20" aria-hidden="true">${ICONS[name] ?? ICONS.help}</svg>`;
 
@@ -323,6 +327,8 @@ function draw(lang, madre) {
       const systems = el('div', 'manual-systems');
       for (const system of section.systems) {
         const card = el('article', 'manual-system');
+        // A system with an anchor of its own (#windows: bin/madre.mjs and the mail point there).
+        if (system.id) card.id = system.id;
         card.append(el('h3', null, plain(system.name)));
         if (system.note) card.append(el('p', 'manual-system-note', plain(system.note)));
         if (system.steps?.length) {
