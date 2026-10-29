@@ -20,6 +20,11 @@
 // well (~/.madre/fabrica/ed25519.pem, scripts/market-key.mjs --fabrica; --factory-key <pem>), and
 // every MADRE that understands its contract runs it instead of its own (src/builtin-updates.mjs).
 // `revoked` takes a module, or one version of it, back: `{ id, version?, why }`.
+//
+// THE COMMUNITY'S MODULES (2026-10-28) come from the public `madre-mercado` repository (--community
+// <folder>, by default ~/Pangea OS/madre-mercado when it is there): every `modulos/<id>/` merged there
+// was read by the author first. Each is checked again here as its pull request was
+// (src/market-check.mjs), and joins the catalog with `community: true`, its author and its license.
 
 import { createPrivateKey, sign } from 'node:crypto';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -27,6 +32,9 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readCatalog, sha256, verifySigned } from '../src/market-remote.mjs';
 import { verifyBuiltinText, verifyModuleText } from '../src/modules/index.mjs';
+import { existsSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
+import { checkSubmission } from '../src/market-check.mjs';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const fallbackLanding = join(homedir(), 'Pangea OS', 'madre-landing');
@@ -51,6 +59,24 @@ for (const entry of source.modules ?? []) {
   const name = `${entry.id}-${entry.version}.module.mjs`;
   await copyFile(join(src, entry.file), join(out, 'modulos', name));
   modules.push({ ...entry, file: { url: `${base}/modulos/${name}`, sha256: sha256(bytes), size: bytes.length } });
+}
+const fallbackCommunity = join(homedir(), 'Pangea OS', 'madre-mercado');
+const community = arg('community', existsSync(join(fallbackCommunity, 'modulos')) ? fallbackCommunity : null);
+if (community) {
+  const ids = (await readdir(join(community, 'modulos'), { withFileTypes: true })).filter((one) => one.isDirectory() && !one.name.startsWith('.')).map((one) => one.name).sort();
+  for (const id of ids) {
+    if (modules.some((one) => one.id === id)) throw new Error(`${id}: the community's module has the id of one already in the Market.`);
+    const file = join(community, 'modulos', id, `${id}.module.mjs`);
+    const text = await readFile(file, 'utf8');
+    const entry = JSON.parse(await readFile(join(community, 'modulos', id, 'entrada.json'), 'utf8'));
+    const checked = await checkSubmission({ text, entry, name: `${id}.mjs` });
+    if (!checked.ok) throw new Error(`${id} does not pass the community's check:\n- ${checked.problems.join('\n- ')}`);
+    const bytes = Buffer.from(text);
+    const name = `${id}-${entry.version}.module.mjs`;
+    await copyFile(file, join(out, 'modulos', name));
+    const { author, spdx, shelf, minMadre, version, name: title, line, summary, changes, hue, icon } = entry;
+    modules.push({ id, community: true, author, spdx, shelf, scope: 'everywhere', price: 0, minMadre, version, name: title, line, summary, changes: changes ?? null, hue: hue ?? null, icon: icon ?? null, file: { url: `${base}/modulos/${name}`, sha256: sha256(bytes), size: bytes.length } });
+  }
 }
 const builtins = [];
 if ((source.builtins ?? []).length) {
@@ -78,5 +104,5 @@ const { FACTORY_PUBLIC_KEY } = await import('../src/market-key.mjs');
 for (const one of builtins) if (!FACTORY_PUBLIC_KEY || !verifySigned(await readFile(join(out, 'modulos', `${one.id}-${one.version}.builtin.mjs`)), one.file.factory, FACTORY_PUBLIC_KEY)) throw new Error(`${one.id}: the factory signature does not verify with the key in src/market-key.mjs.`);
 const lost = [...catalog.modules.filter((one) => !read.modules.some((kept) => kept.id === one.id)), ...builtins.filter((one) => !read.builtins.some((kept) => kept.id === one.id))].map((one) => one.id);
 if (lost.length) throw new Error(`MADRE would leave out: ${lost.join(', ')}.`);
-console.log(`✓ ${out}/catalogo.json · ${read.modules.length} modules (${read.modules.filter((one) => one.file).length} with a file) · ${read.builtins.length} newer of MADRE's own · ${read.revoked.length} taken back · issued ${catalog.issued}`);
+console.log(`✓ ${out}/catalogo.json · ${read.modules.length} modules (${read.modules.filter((one) => one.file).length} with a file, ${read.modules.filter((one) => one.community).length} of the community) · ${read.builtins.length} newer of MADRE's own · ${read.revoked.length} taken back · issued ${catalog.issued}`);
 console.log('  Signed and verified. Publish madre.run as usual to put it online.');

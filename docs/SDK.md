@@ -238,6 +238,19 @@ La ficha de un módulo tuyo trae **GET A NEWER FILE**: MADRE va por el archivo �
 
 Y en la cabecera de MODULES hay **+ ADD A MODULE** para instalar el `.mjs` de alguien más. Pasa por la misma puerta que todo lo demás. Dicho claro, porque es lo que es: un módulo corre **dentro de MADRE, con los permisos de quien la abre**. MADRE comprueba que cargue y que no se salga de su corral —id propio, rutas solo bajo `/api/x/<id>/`, jamás encima de un módulo de MADRE—; lo que el código *pretende* no lo puede comprobar nadie más que tú.
 
+### En el Mercado, para todos
+
+Un módulo tuyo puede estar en el Mercado de MADRE, gratis, con tu nombre. Es curado: el autor de MADRE lee el código, lo firma y lo publica; nada llega al Mercado sin que una persona lo lea.
+
+1. En la ficha de tu módulo, **Enviar al Mercado › Preparar**. Escribe lo que mostrará el Mercado —nombre, una línea y qué hace, en español y en inglés—, el estante, tu nombre y tu usuario de GitHub, y la licencia de tu código.
+2. **Revisar** lo comprueba igual que lo comprobará el Mercado: que cargue como carga cualquier módulo, que la entrada diga el mismo id y la misma versión, y qué alcanza su código (comandos, la red, archivos, variables de entorno). Si habla con la red, declara `reaches`.
+3. **Preparar los archivos** deja los dos que pide el repositorio, `<id>.module.mjs` y `entrada.json`, en una carpeta propia, y te la muestra.
+4. **Abrir GitHub** lleva a la carpeta `modulos/<id>/` del repositorio público `madre-mercado`. Arrastra los dos archivos y pulsa *Propose changes*: GitHub hace la copia y el *pull request* por ti, sin terminal.
+
+En el *pull request* corre la misma revisión y deja el resumen para quien lo lee. Ya firmado, aparece en el Mercado con la etiqueta **Comunidad** y **Desarrollado por** tu nombre; quien lo instala lee antes lo que declara. Para una versión nueva, sube `version` en el módulo y envíalo otra vez.
+
+Desde la terminal, la misma revisión: `npx @jossuealcala/madre check-module --file <id>.module.mjs --entry entrada.json`.
+
 ## La ficha
 
 No dibujas nada: declaras, y MADRE arma tu módulo igual que los suyos. En MÓDULOS cada módulo es una tarjeta del tablero y, al tocarla, una ficha con los mismos bloques que AJUSTES. Por eso el tuyo se lee igual que los que trae MADRE.

@@ -112,6 +112,13 @@ export function readCatalog(text, { url = MARKET_URL } = {}) {
       // Where a paid module is bought (an https page) and whose license opens it (market-license.mjs).
       checkout: null,
       license: null,
+      // A module of the community (2026-10-28, scripts/market-publish.mjs --community): who made it,
+      // and the license of its code. Signed like every entry: the author of MADRE read it first.
+      community: raw.community === true,
+      author: raw.author && typeof raw.author === 'object' && typeof raw.author.name === 'string' && raw.author.name.trim()
+        ? { name: raw.author.name.trim().slice(0, 60), github: /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(raw.author.github ?? '') ? raw.author.github : null }
+        : null,
+      spdx: typeof raw.spdx === 'string' && /^[A-Za-z0-9.+-]{2,40}$/.test(raw.spdx) ? raw.spdx : null,
     };
     if (entry.price > 0) {
       try { const page = new URL(raw.checkout); if (page.protocol === 'https:') entry.checkout = page.href; } catch { /* no page to buy it */ }

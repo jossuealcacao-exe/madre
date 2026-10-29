@@ -121,6 +121,7 @@ import { readHandoff, writeHandoff } from './bridge/handoff.mjs';
 import { changeHome, changeLooks, readHome, readLooks, changeRoomLook, roomLooks, WALLPAPER_BYTES, dropWallpaper, frameWallpaper, readWallpaper, saveWallpaper, wallpaperBytes } from './looks.mjs';
 import { localAiConfig, localAiFor, localAiPatch } from './local-ai.mjs';
 import { moduleOnIn, scopeView, settingsIn } from './module-scope.mjs';
+import { COMMUNITY_LICENSES, COMMUNITY_SHELVES, MARKET_REPO, checkSubmission, submissionDraft, writeSubmission } from './market-check.mjs';
 import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, marketAnnounced, marketAnnouncements, marketNews, marketNewsSeen, refreshCatalog, updateFromMarket } from './market-remote.mjs';
 // Not moved project by project: the Coordinator is Home's, Git has no switch, and Local AI keeps
 // its own list of projects (local-ai.mjs).
@@ -4459,6 +4460,27 @@ export async function createPulseServer({
           }
           return sendJson(response, 200, { installed: done, extensions: await describeModules(await moduleContext()) });
         } catch (error) { return sendJson(response, error.code === 'REVIEW_FIRST' ? 409 : 422, { error: error.message, review: error.code === 'REVIEW_FIRST' }); }
+      }
+      // SENDING ONE'S OWN MODULE TO THE MARKET (2026-10-28, src/market-check.mjs): its entry, drafted
+      // from the module and from what the person wrote before, checked as the repository's CI checks
+      // it; ready, the two files in a folder of their own, shown in the computer's file browser, and
+      // GitHub's page to add them. Nothing leaves this computer from here.
+      if (request.method === 'POST' && url.pathname === '/api/market/submission') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is done on the Mac.') });
+        const payload = await body(request).catch(() => ({}));
+        const module = moduleById(String(payload.id ?? ''));
+        if (!module?.external) return sendJson(response, 404, { error: t('Only a module you made can be sent to the Market.') });
+        if ((await installedFromMarket(root))[module.id]) return sendJson(response, 409, { error: t('{name} came from the Market: its author sends its new versions.', { name: module.name }) });
+        const text = await readFile(module.file, 'utf8').catch(() => null);
+        if (text === null) return sendJson(response, 410, { error: t('The file of {name} is no longer where it was.', { name: module.name }) });
+        const entry = await submissionDraft({ stateRoot: root, module, text, madre: PACKAGE.version, entry: payload.entry && typeof payload.entry === 'object' ? payload.entry : null });
+        const check = await checkSubmission({ text, entry, name: `${module.id}.mjs` });
+        const answer = { entry, ok: check.ok, problems: check.problems, faults: check.faults, fields: check.fields, undeclared: check.undeclared, reaches: check.reaches, shelves: COMMUNITY_SHELVES, licenses: COMMUNITY_LICENSES, repo: MARKET_REPO };
+        if (payload.write !== true) return sendJson(response, 200, answer);
+        if (!check.ok) return sendJson(response, 422, { ...answer, error: t('Fix what is marked first.') });
+        const written = await writeSubmission({ stateRoot: root, text, entry });
+        const shown = payload.reveal === true ? await openInBrowser(written.folder, await environmentOnce().catch(() => null)).catch(() => false) : false;
+        return sendJson(response, 200, { ...answer, ...written, shown });
       }
       // A paid module's license (src/market-license.mjs): checked once with Lemon Squeezy when the
       // person activates it, kept here, and given back when they release it. Only from this Mac.

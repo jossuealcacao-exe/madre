@@ -174,7 +174,7 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
       }
       throw error;
     }
-    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', updates: module.updates ?? null, unknown: module.unknown ?? [], declares: declaredBy(module) };
+    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', words: module.words ?? null, credit: module.credit ?? null, updates: module.updates ?? null, unknown: module.unknown ?? [], declares: declaredBy(module) };
   } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 }
 

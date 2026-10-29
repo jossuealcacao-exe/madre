@@ -221,6 +221,22 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
     process.exit(0);
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen, openPath });
+} else if (command === 'check-module') {
+  // The community Market's check (src/market-check.mjs): what the madre-mercado repository's CI runs on
+  // every pull request, and what anyone can run before sending one.
+  const file = option('--file', null);
+  const entryFile = option('--entry', null);
+  if (!file) { console.error('Usage: madre check-module --file <module.mjs> [--entry <entrada.json>] [--json]'); process.exit(2); }
+  // In English, as every terminal line of MADRE is (docs/REFERENCE.md): it is what lands in the pull request.
+  (await import('../src/i18n.mjs')).setLanguage('en');
+  const { checkSubmission } = await import('../src/market-check.mjs');
+  const text = await readFile(file, 'utf8');
+  const entry = entryFile ? JSON.parse(await readFile(entryFile, 'utf8')) : null;
+  const { basename: fileName } = await import('node:path');
+  const result = await checkSubmission({ text, entry, name: fileName(file) });
+  if (has('--json')) console.log(JSON.stringify({ ...result, markdown: undefined }, null, 2));
+  else console.log(result.markdown);
+  process.exitCode = result.ok ? 0 : 1;
 } else if (command === 'help') {
   console.log(`MADRE
 
@@ -232,6 +248,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)
   madre setup [--project PATH] [--port 4317] [--no-open]
   madre doctor [--project PATH] [--json]
+  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json]
 
   (none)  Opens Home. From there you add projects, connect the agents
           and enter any project. The Coordinator lives there.

@@ -15,7 +15,7 @@
 // `openProject(projectId, item)` (Home), `toast(text)` and `changed()`.
 
 import { t, language } from './i18n.js';
-import { appIcon, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
+import { appIcon, communityOf, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
 import { trazo } from './icons.js';
 
@@ -51,6 +51,9 @@ const glyph = (node, name) => { node.insertAdjacentHTML('afterbegin', GLYPH[name
 const nameOf = (item) => moduleFace(item).name ?? t(item.name ?? item.id);
 const summaryOf = (item) => (moduleFace(item).summary ? t(moduleFace(item).summary) : t(item.summary ?? ''));
 const lineOf = (item) => (moduleFace(item).line ? t(moduleFace(item).line) : t(item.summary ?? ''));
+// Who made it: a community module's author (its catalog entry) or what a module says of itself.
+const makerOf = (item) => communityOf(item.id)?.author.name ?? item.credit ?? null;
+const communityTag = () => el('span', 'mk-community', t('Community'));
 const priceOf = (item) => (marketEntry(item.id).price ? `$${marketEntry(item.id).price}` : t('Free'));
 const shelfOf = (item) => marketShelves().find((shelf) => shelf.id === marketEntry(item.id).shelf) ?? null;
 // What its key does: a switch MADRE flips, a folder it writes into, or Local AI's own settings. A
@@ -174,7 +177,8 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const no = button('mk-get big quiet', t('Not now'), () => done(false));
     const yes = button('mk-get big', t('Install'), () => done(true));
     keys.append(no, yes);
-    card.append(head, el('p', 'mk-review-version', t('Version {version}', { version: review.version ?? '?' })), list, warn, keys);
+    const made = communityOf(item.id) ? t('Version {version} · made by {name}, from the community; the author of MADRE read it and signed it.', { version: review.version ?? '?', name: communityOf(item.id).author.name }) : t('Version {version}', { version: review.version ?? '?' });
+    card.append(head, el('p', 'mk-review-version', made), list, warn, keys);
     sheet.append(card);
     sheet.addEventListener('click', (event) => { if (event.target === sheet) done(false); });
     reviewing = () => done(false);
@@ -297,7 +301,9 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const line = el('div', 'mk-row');
     const open = button('mk-row-open', null, () => go({ tab: 'shop', focus: item.id }));
     const words = el('span', 'mk-row-words');
-    words.append(el('b', null, nameOf(item)), el('span', null, lineOf(item)));
+    const title = el('b', null, nameOf(item));
+    if (communityOf(item.id)) title.append(communityTag());
+    words.append(title, el('span', null, lineOf(item)));
     open.append(appIcon(item, 58), words);
     const side = el('span', 'mk-row-side');
     side.append(getKey(item), el('small', null, isOn(item) ? '' : priceOf(item)));
@@ -406,7 +412,11 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const words = el('div', 'mk-product-words');
     words.append(el('h1', null, nameOf(item)), el('p', null, lineOf(item)));
     // Who made it, under its name, when it is someone from the community (Reminders: Daniel Castillo).
-    if (item.credit) words.append(el('small', 'mk-maker', t('Developed by {name}', { name: item.credit })));
+    if (makerOf(item)) {
+      const maker = el('small', 'mk-maker', t('Developed by {name}', { name: makerOf(item) }));
+      if (communityOf(item.id)) maker.prepend(communityTag(), ' ');
+      words.append(maker);
+    }
     const keys = el('div', 'mk-keys');
     const line = el('p', 'mk-said');
     words.append(keys, line);
@@ -439,7 +449,11 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     // MADRE's own modules have no version of their own: they are the version of MADRE they come with.
     fact(t('Version'), item.version ? `v${String(item.version).replace(/^v/, '')}` : madre ? t('Comes with MADRE {version}', { version: madre }) : t('Comes with MADRE'));
     // Who developed it, when a module says (Reminders, 2026-10-20).
-    if (item.credit) fact(t('Developer'), item.credit);
+    if (makerOf(item)) fact(t('Developer'), makerOf(item));
+    // A community module's author, and where to find them: their GitHub user, under their name.
+    const github = communityOf(item.id)?.author.github;
+    if (github) facts.lastChild.lastChild.append(el('small', 'mk-handle', `@${github}`));
+    if (communityOf(item.id)?.spdx) fact(t('Code license'), communityOf(item.id).spdx);
     page.append(facts);
 
     // Three pictures (1.0.5), side by side and swiped like a store's: what it does, the module at

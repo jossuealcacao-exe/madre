@@ -16,7 +16,7 @@ import { startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
-import { MODULE_ANY, MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
+import { MARKET_SHELVES, MODULE_ANY, MODULE_FACES, appIcon, loadMarket, marketEntry, marketOffer, moduleFace } from './market.js';
 import { openMarket } from './market-view.js';
 import { CATALOG_CHECKED, MCP_CATALOG, MCP_GROUPS, initials as mcpInitials } from './mcp-catalog.js';
 // Where nothing can hover (a phone), a tapped key does not stay lit (public/touch.js).
@@ -14890,6 +14890,115 @@ modules.file?.addEventListener('change', async () => {
 
 // A newer copy of a module somebody wrote, from where they publish it or from the file it came
 // from. Asked for, never automatic: fetching a module means running what comes back.
+// SENDING ONE'S OWN MODULE TO THE MARKET (2026-10-28, src/market-check.mjs): what the Market will
+// show, drafted from the module and checked here as the Market's repository checks it; ready, its two
+// files in a folder and GitHub's own page to add them, which makes the fork and the pull request.
+const MARKET_FIELDS = {
+  name: 'Write its name in Spanish and in English.',
+  line: 'Say what it does in one line, in Spanish and in English.',
+  summary: 'Say what it does and when to use it, in Spanish and in English.',
+  shelf: 'Choose its shelf.',
+  author: 'Write your name and your GitHub user.',
+  spdx: 'Choose the license of your code.',
+  minMadre: 'Write the oldest MADRE it works with, like 1.0.6.',
+};
+async function sendToMarket(host, item, opener) {
+  const ask = async (payload) => {
+    const response = await reach('/api/market/submission', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: item.id, ...payload }) });
+    return { ok: response.ok, result: await response.json().catch(() => ({})) };
+  };
+  const first = await ask({});
+  opener.disabled = false;
+  if (!first.ok) { toast(first.result.error ?? t('{name} could not be checked.', { name: item.name })); return; }
+  host.querySelector('.mods-submit')?.remove();
+  const block = sxBlock(host, t('Send to the Market'), t('What the Market will show, in Spanish and English. MADRE checks it as the Market does; then the author of MADRE reads the code and signs it.'), { className: 'mods-submit' });
+  const entry = first.result.entry;
+  const input = (value, label, { area = false } = {}) => {
+    const node = el(area ? 'textarea' : 'input', 'sx-input');
+    node.value = value ?? '';
+    node.placeholder = label;
+    node.setAttribute('aria-label', label);
+    if (area) node.rows = 3;
+    return node;
+  };
+  const pair = (key, { area = false } = {}) => {
+    const box = el('div', 'sx-field mods-pair');
+    const es = input(entry[key]?.es, t('Spanish'), { area });
+    const en = input(entry[key]?.en, t('English'), { area });
+    box.append(es, en);
+    return { box, read: () => ({ es: es.value.trim(), en: en.value.trim() }) };
+  };
+  const name = pair('name');
+  const line = pair('line');
+  const summary = pair('summary', { area: true });
+  // Each field's row, so what the check finds marks the field it is about.
+  const rows = {};
+  rows.name = sxRow(block, t('Name'), null, name.box, { stack: true });
+  rows.line = sxRow(block, t('In one line'), null, line.box, { stack: true });
+  rows.summary = sxRow(block, t('What it does and when to use it'), null, summary.box, { stack: true });
+  const shelf = sxSelect([['', t('Choose…')], ...first.result.shelves.map((id) => [id, t(MARKET_SHELVES.find((one) => one.id === id)?.title ?? id)])], entry.shelf ?? '', () => {}, t('Shelf'));
+  rows.shelf = sxRow(block, t('Shelf'), t('Where it sits in the Market.'), shelf);
+  const who = el('div', 'sx-field mods-pair');
+  const author = input(entry.author?.name, t('Your name'));
+  const github = input(entry.author?.github, t('Your GitHub user'));
+  who.append(author, github);
+  rows.author = sxRow(block, t('Who made it'), t('Your name is shown in the Market; your GitHub user is who sends it.'), who, { stack: true });
+  const license = sxSelect([['', t('Choose…')], ...first.result.licenses.map((id) => [id, id])], entry.spdx ?? '', () => {}, t('License of your code'));
+  rows.spdx = sxRow(block, t('License of your code'), t('Under which others may read and reuse it.'), license);
+  const oldest = input(entry.minMadre, '1.0.6');
+  oldest.classList.add('mono');
+  rows.minMadre = sxRow(block, t('Oldest MADRE it works with'), null, oldest);
+  const read = () => ({ ...entry, name: name.read(), line: line.read(), summary: summary.read(), shelf: shelf.value, author: { name: author.value.trim(), github: github.value.trim().replace(/^@/, '') }, spdx: license.value, minMadre: oldest.value.trim() });
+  const said = el('div', 'mods-submit-said');
+  const show = (result) => {
+    said.replaceChildren();
+    // What is wrong in a field of the form is said plainly and marks that field; anything else (the
+    // module that does not load, an id or version that do not match) is said as the check says it.
+    const fields = new Set(result.fields ?? []);
+    for (const [field, row] of Object.entries(rows)) row.classList.toggle('wrong', fields.has(field));
+    const plain = Object.entries(MARKET_FIELDS).filter(([field]) => fields.has(field)).map(([, words]) => t(words));
+    const rest = (result.faults ?? []).filter((one) => !rows[one.field]).map((one) => one.words);
+    if (plain.length || rest.length) {
+      const list = el('ul', 'mods-submit-problems');
+      for (const one of [...plain, ...rest]) list.append(el('li', null, one));
+      said.append(el('b', null, t('To fix first')), list);
+    }
+    for (const one of result.undeclared ?? []) said.append(el('p', 'mods-submit-warn', one));
+    if (result.ok && !result.folder) said.append(el('p', 'mods-submit-ok', t('Ready: prepare the files.')));
+    if (!result.folder) return;
+    const ready = el('div', 'mods-submit-ready');
+    ready.append(el('b', null, t('The two files are ready')), el('code', null, result.folder));
+    if (!result.shown) ready.append(el('p', 'sx-hint', t('Open that folder from your file browser.')));
+    const steps = el('ol', 'mods-submit-steps');
+    for (const step of [t('Open GitHub: it asks you to sign in if you are not.'), t('Drag the two files of the folder onto the page.'), t('Say in one line what your module does and press «Propose changes».'), t('The author of MADRE reads it; once signed, it is in the Market for everyone.')]) steps.append(el('li', null, step));
+    const go = el('a', 'sx-btn primary', t('Open GitHub'));
+    go.href = result.upload;
+    go.target = '_blank';
+    go.rel = 'noopener';
+    const again = sxButton(t('Show the folder'), () => void ask({ entry: read(), write: true, reveal: true }));
+    const keys = el('div', 'mods-submit-keys');
+    keys.append(again, go);
+    ready.append(steps, keys);
+    said.append(ready);
+  };
+  const check = sxButton(t('Check'), async () => {
+    check.disabled = true;
+    const answer = await ask({ entry: read() });
+    check.disabled = false;
+    show(answer.result);
+  });
+  const prepare = sxButton(t('Prepare the files'), async () => {
+    prepare.disabled = true;
+    const answer = await ask({ entry: read(), write: true, reveal: true });
+    prepare.disabled = false;
+    show(answer.result);
+  }, { tone: 'primary' });
+  const keys = el('div', 'mods-submit-keys');
+  keys.append(check, prepare);
+  block.append(said, keys);
+  block.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
 async function refreshModuleFile(item, button) {
   button.disabled = true;
   const ask = async (confirm) => {
@@ -16095,6 +16204,8 @@ function moduleRest(host, item, { inSettings = false, about = null } = {}) {
     const fresh = sxButton(t('Get a newer file'), () => void refreshModuleFile(item, fresh), { title: item.updates?.url ? t('From {url}', { url: item.updates.url }) : t('From the file this module was installed from') });
     sxRow(yours, t('Newer file'), item.updates?.url ?? null, fresh);
     sxRow(yours, t('Remove'), t('It stops loading. The file stays where it is.'), removeModuleButton(item, { className: 'sx-btn danger', text: t('Remove') }));
+    const send = sxButton(t('Prepare'), () => { send.disabled = true; void sendToMarket(host, item, send); });
+    sxRow(yours, t('Send to the Market'), t('For anyone to find it. MADRE checks it here; the author of MADRE reads it and signs it.'), send);
   }
 }
 

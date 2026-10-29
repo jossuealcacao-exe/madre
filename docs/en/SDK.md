@@ -238,6 +238,19 @@ The page of a module of yours has **GET A NEWER FILE**: MADRE fetches the file �
 
 And in the MODULES header there is **+ ADD A MODULE** to install someone else's `.mjs`. It goes through the same door as everything else. Said plainly, because it is what it is: a module runs **inside MADRE, with the permissions of whoever opens it**. MADRE checks that it loads and that it doesn't leave its pen —its own id, routes only under `/api/x/<id>/`, never on top of a MADRE module—; what the code *intends* is something nobody but you can check.
 
+### In the Market, for everyone
+
+A module of yours can be in MADRE's Market, free, with your name on it. It is curated: the author of MADRE reads the code, signs it and publishes it; nothing reaches the Market without a person reading it.
+
+1. On your module's page, **Send to the Market › Prepare**. Write what the Market will show —name, one line and what it does, in Spanish and English—, the shelf, your name and GitHub user, and the license of your code.
+2. **Check** checks it the way the Market will: that it loads as any module loads, that the entry says the same id and version, and what its code reaches for (commands, the network, files, environment variables). If it talks to the network, declare `reaches`.
+3. **Prepare the files** leaves the two the repository asks for, `<id>.module.mjs` and `entrada.json`, in a folder of their own, and shows it to you.
+4. **Open GitHub** takes you to the `modulos/<id>/` folder of the public `madre-mercado` repository. Drag both files in and press *Propose changes*: GitHub makes the fork and the pull request for you, no terminal.
+
+The same check runs on the pull request and leaves its summary for whoever reads it. Once signed, it shows in the Market tagged **Community** and **Developed by** your name; whoever installs it reads what it declares first. For a new version, raise `version` in the module and send it again.
+
+From the terminal, the same check: `npx @jossuealcala/madre check-module --file <id>.module.mjs --entry entrada.json`.
+
 ## The module page
 
 You don't draw anything: you declare, and MADRE builds your module the same way as its own. In MODULES each module is a card on the board and, when you tap it, a page with the same blocks as SETTINGS. That's why yours reads the same as the ones MADRE ships.

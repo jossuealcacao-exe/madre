@@ -215,6 +215,8 @@ export const remoteEntry = (id) => remote?.byId.get(id) ?? null;
 let bought = {};
 export const setMarketLicensed = (licensed) => { bought = licensed && typeof licensed === 'object' ? licensed : {}; };
 export const isBought = (id) => Boolean(bought[id]);
+// A module of the community (2026-10-28): someone else made it; the author of MADRE read it and signed it.
+export const communityOf = (id) => { const entry = remoteEntry(id); return entry?.community && entry.author?.name ? entry : null; };
 export const forSale = (id) => { const entry = remoteEntry(id); return entry?.price > 0 && entry.checkout && entry.license ? entry : null; };
 // The catalog's modules this MADRE does not have yet, as the Market lists them: to get.
 export function marketExtras(items = []) {

@@ -6121,6 +6121,21 @@ select.sx-input { width: auto; max-width: 100%; padding-right: 8px; cursor: poin
 .sx-pick[aria-pressed="true"] { background: color-mix(in srgb, var(--phosphor) 16%, transparent); color: var(--text); font-weight: 550; }
 .sx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sx-field { display: flex; gap: 8px; }
+/* Sending one's own module to the Market (2026-10-28): Spanish and English side by side, what to fix, then the steps. */
+.mods-pair > .sx-input { flex: 1 1 0; }
+.mods-submit-said { display: grid; gap: 8px; padding: 0 16px; font-size: 13px; color: var(--text-2); }
+.mods-submit-said:empty { display: none; }
+.mods-submit-problems, .mods-submit-steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.mods-submit-problems { color: var(--danger); }
+.mods-submit .sx-row.wrong .sx-words > b { color: var(--danger); }
+.mods-submit .sx-row.wrong :is(.sx-input) { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .16), 0 0 0 1.5px color-mix(in srgb, var(--danger) 55%, transparent); }
+.mods-submit-warn { margin: 0; color: var(--amber, var(--text)); }
+.mods-submit-ok { margin: 0; color: var(--madre-green, var(--phosphor)); }
+.mods-submit-ready { display: grid; gap: 8px; }
+.mods-submit-ready code { font: 12px var(--mono); word-break: break-all; color: var(--text); }
+.mods-submit-keys { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 10px 16px 14px; }
+.mods-submit-ready .mods-submit-keys { padding: 4px 0 0; justify-content: flex-start; }
+.mods-submit-keys a.sx-btn { display: inline-flex; align-items: center; text-decoration: none; }
 .sx-field .sx-input { flex: 1; }
 /* Settings › Connect MCP (2026-10-14): a row per server — what it is and where, how it stands,
    the one thing to do, and from which mode its tools that act travel. */
@@ -10179,6 +10194,11 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-row-open { flex: 1; display: flex; align-items: center; gap: 14px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .mk-row-words { display: grid; gap: 3px; min-width: 0; }
 .mk-row-words b { font-size: 15px; font-weight: 650; }
+/* A module of the community (2026-10-28): a small tag beside its name, quieter than its name. */
+.mk-community { display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: 99px; vertical-align: 2px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-2); font: 500 10.5px var(--read, inherit); letter-spacing: .01em; }
+.mk-maker .mk-community { margin-left: 0; }
+.mk-facts .mk-handle { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 400; color: var(--text-3, var(--text-2)); white-space: nowrap; }
+.mk-row-words b > .mk-community, .mk.flat .mk-row-words b > .mk-community { display: inline-block; overflow: visible; font: 500 10.5px var(--read, inherit); color: var(--text-2); }
 .mk-row-words span { display: -webkit-box; overflow: hidden; color: var(--text-2); font-size: 13px; line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .mk-row-side { display: grid; justify-items: center; gap: 3px; }
 .mk-row-side small { color: var(--text-3); font-size: 10.5px; }
