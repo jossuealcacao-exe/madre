@@ -1643,25 +1643,25 @@ export class Room {
     const scopes = this.scopesFor(agent.id);
     const ceiling = Math.min(mode, scopes.maxMode ?? 0);
     const mcpServers = this.#toolsForTurn ? await this.#toolsForTurn({ agent: agent.id, mode: ceiling, lease: null, scratchDir: null }).catch(() => []) : [];
-    const prompt = '<the briefing above>';
+    const prompt = t('<the briefing above>');
     const shared = { projectRoot: this.#projectRoot, prompt, model: null, attachments: [], lease: null, scopes: { web: scopes.web.enabled && scopes.web.wired, imageGen: scopes.imageGen.enabled && scopes.imageGen.wired }, memoryServer: this.#memoryServer, mcpServers };
     const args = agent.id === 'codex' ? buildCodexArgs(shared)
       : agent.id === 'claude' ? buildClaudeArgs({ ...shared, attachmentsDir: null, imageStudio: null })
-        : agent.id === 'gemini' ? buildGeminiArgs({ ...shared, policyPath: '<written for this turn, deleted after it>', attachmentsDir: null })
+        : agent.id === 'gemini' ? buildGeminiArgs({ ...shared, policyPath: t('<written for this turn, deleted after it>'), attachmentsDir: null })
           : agent.id === 'opencode' ? buildOpenCodeArgs(shared)
             : agent.id === 'cursor' ? buildCursorArgs(shared)
               : null;
-    if (!args) return { agent: agent.id, label: agent.label, local: false, says: `MADRE has no adapter for @${agent.id}.`, mcpServers: [], env: [], isolation: [] };
+    if (!args) return { agent: agent.id, label: agent.label, local: false, says: t('MADRE has no adapter for @{agent}.', { agent: agent.id }), mcpServers: [], env: [], isolation: [] };
     const isolation = {
-      codex: ['--ephemeral: the run keeps no session of its own, so nothing said here reaches another project.'],
-      claude: ['--no-session-persistence: the run keeps no session of its own.', 'Only the project\'s own CLAUDE.md and MADRE\'s briefing are read; hooks, plugins and outside MCP servers are not.'],
-      gemini: ['GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.', 'GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.'],
-      opencode: ['The run is given the model you chose and nothing else of your session.'],
-      cursor: ['#0 and #1: --mode ask, Cursor\'s read-only mode, whatever its own settings say; no edits and no commands. #2 and #3: its agent mode with --force, writing allowed and every command denied. #4: commands allowed too. The places nobody writes stay denied at every mode, and MADRE locks and puts them back itself.', 'CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it, with only what the mode you chose allows. The sign-in stays in the system keychain.'],
+      codex: [t('--ephemeral: the run keeps no session of its own, so nothing said here reaches another project.')],
+      claude: [t('--no-session-persistence: the run keeps no session of its own.'), t('Only the project\'s own CLAUDE.md and MADRE\'s briefing are read; hooks, plugins and outside MCP servers are not.')],
+      gemini: [t('GEMINI_CLI_HOME points at a temporary home made for this turn and removed after it, so settings, hooks and extensions come from there and not from yours.'), t('GEMINI_CLI_NO_RELAUNCH keeps the launcher from spawning a second process MADRE could not stop.')],
+      opencode: [t('The run is given the model you chose and nothing else of your session.')],
+      cursor: [t('#0 and #1: --mode ask, Cursor\'s read-only mode, whatever its own settings say; no edits and no commands. #2 and #3: its agent mode with --force, writing allowed and every command denied. #4: commands allowed too. The places nobody writes stay denied at every mode, and MADRE locks and puts them back itself.'), t('CURSOR_CONFIG_DIR points at a configuration made for this turn and removed after it, with only what the mode you chose allows. The sign-in stays in the system keychain.')],
     }[agent.id] ?? [];
     const env = {
-      gemini: [{ name: 'GEMINI_CLI_HOME', note: 'the temporary home for this turn' }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: 'so the launcher stays killable' }],
-      cursor: [{ name: 'CURSOR_CONFIG_DIR', note: 'the configuration for this turn, from the mode you chose' }, { name: 'NO_OPEN_BROWSER', note: 'a turn never opens a page' }],
+      gemini: [{ name: 'GEMINI_CLI_HOME', note: t('the temporary home for this turn') }, { name: 'GEMINI_CLI_NO_RELAUNCH', note: t('so the launcher stays killable') }],
+      cursor: [{ name: 'CURSOR_CONFIG_DIR', note: t('the configuration for this turn, from the mode you chose') }, { name: 'NO_OPEN_BROWSER', note: t('a turn never opens a page') }],
     }[agent.id] ?? [];
     return {
       agent: agent.id, label: agent.label, local: false,
@@ -1705,6 +1705,16 @@ export class Room {
     });
   }
 
+  // The photograph before writing could not be taken (2026-10-28: a project with a broken .git
+  // folder). Nothing was written: the turn says so and ends, instead of waiting forever above the
+  // try that reports failures, with the room showing «writing…» until MADRE was closed.
+  async #couldNotSeat({ messageId, agent, planId, error }) {
+    const said = String(error?.message ?? error ?? '').split('\n').filter(Boolean).slice(0, 2).join(' ').slice(0, 300);
+    const text = t('MADRE could not take the restore point before @{agent} writes, so nothing was changed: {error}', { agent: agent.id, error: said });
+    await this.#emit('message.failed', { messageId, target: agent.id, planId, error: this.#privacy ? this.#privacy.redact(text).text : text });
+    return null;
+  }
+
   async #runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall = null, memories = null, handoffId, signal, model = null, effort = null, attachments = [], references = [], lease: sharedLease = null, ash = false, mode = 1, escalation = null, returned = null, copilot = false }) {
     // The lease is the human's; what each agent may do inside it is that
     // agent's own enabled scopes. A delegate without file creation runs
@@ -1728,8 +1738,9 @@ export class Room {
         await this.#alert('control-busy', `@${this.#controlDesk.holder.agent} still holds EDIT; @${agent.id} answers read-only this turn.`, `control-busy:${agent.id}`);
       } else {
         await this.#sayWaitingToWrite({ messageId, agent });
-        const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode, signal }).catch((error) => (error?.code === 'ABORT_ERR' ? null : Promise.reject(error)));
+        const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode, signal }).catch((error) => (error?.code === 'ABORT_ERR' ? null : { failed: error }));
         if (!seat) { await this.#emit('message.failed', { messageId, target: agent.id, planId, error: `Stopped while waiting for the project: another turn was writing in it.`, stopped: true }); return null; }
+        if (seat.failed) return this.#couldNotSeat({ messageId, agent, planId, error: seat.failed });
         controlRun = seat.run;
         // A copilot does not delete: what it removes is put back when the turn settles.
         if (asCopilot) controlRun.noDeletes = true;
@@ -1763,8 +1774,9 @@ export class Room {
       // CREATE: photograph the project now; after the turn only what appeared stays. Another turn
       // writing in the project, in this conversation or another, is waited for first.
       await this.#sayWaitingToWrite({ messageId, agent });
-      const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode: 2, signal }).catch((error) => (error?.code === 'ABORT_ERR' ? null : Promise.reject(error)));
+      const seat = await this.#controlDesk.begin({ agent, messageId, enabledScopes: enabled, mode: 2, signal }).catch((error) => (error?.code === 'ABORT_ERR' ? null : { failed: error }));
       if (!seat) { await this.#emit('message.failed', { messageId, target: agent.id, planId, error: `Stopped while waiting for the project: another turn was writing in it.`, stopped: true }); return null; }
+      if (seat.failed) return this.#couldNotSeat({ messageId, agent, planId, error: seat.failed });
       createRun = seat.run;
       // The folder this turn was told to draft in, so settling it does not undo what it was
       // invited to write. Only this turn's own folder; every other `.pulse` path stays forbidden.

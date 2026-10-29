@@ -31,8 +31,14 @@ export const FORBIDDEN = [
 ];
 export const isForbidden = (path) => FORBIDDEN.some((pattern) => pattern.test(path));
 
+// A repository is a `.git` file (a worktree, a submodule) or a `.git` folder with its HEAD. A
+// `.git` folder left half-made (2026-10-28, a copied project: hooks, objects and no HEAD) is not
+// one: git refuses it, so the project is photographed with a shadow like any other.
 export async function isGitRepo(root) {
-  return access(join(root, '.git')).then(() => true, () => false);
+  const found = await stat(join(root, '.git')).catch(() => null);
+  if (!found) return false;
+  if (found.isFile()) return true;
+  return access(join(root, '.git', 'HEAD')).then(() => true, () => false);
 }
 
 // A project that is not a git repository still gets photographs: MADRE keeps a shadow
