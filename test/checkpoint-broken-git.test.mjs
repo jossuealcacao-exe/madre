@@ -37,3 +37,12 @@ test('room · a folder that cannot be prepared for writing fails the message in 
   const room = await readFile(new URL('../src/room.mjs', import.meta.url), 'utf8');
   assert.match(room, /try \{\n\s*lease = draft === true && create === true\n[\s\S]{0,200}\} catch \(error\) \{[\s\S]{0,400}this\.#emit\('message\.failed', \{ messageId, target: parsed\.target/);
 });
+
+// 2026-10-29: OpenCode may read only its project, and `/module` pointed it at MADRE's own SDK guide;
+// it refused to write a module it could not read the guide for. The guide is copied into the project.
+test('room · /module hands the agent the SDK guide inside the project', async () => {
+  const room = await readFile(new URL('../src/room.mjs', import.meta.url), 'utf8');
+  assert.match(room, /if \(draft === true \|\| wantsModule\(text2\)\) lease\.sdk = await this\.#sdkInProject\(\);/);
+  assert.match(room, /joinPath\(this\.#projectRoot, '\.pulse', 'sdk'\)/);
+  assert.match(room, /sdk: input\.lease\?\.sdk \?\? sdkPaths\(\),/);
+});

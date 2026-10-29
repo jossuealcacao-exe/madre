@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { homedir } from 'node:os';
 import { UsageSentinel } from './usage-sentinel.mjs';
-import { BLOCK_SOURCES, buildPrompt, promptParts, sparedChars } from './room/prompt.mjs';
+import { BLOCK_SOURCES, buildPrompt, promptParts, sparedChars, wantsModule } from './room/prompt.mjs';
 import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
 import { VERDICTS, travels } from './memory.mjs';
@@ -35,7 +35,7 @@ import { isValidModelName, isValidEffort, belongsElsewhere, MODEL_NOT_FOUND, cod
 import { withListPrice } from './prices.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
 import { createLease, diffSnapshots, namedPaths, snapshot } from './lease.mjs';
-import { stat as statFile, readdir, copyFile, readFile as readFileBytes } from 'node:fs/promises';
+import { stat as statFile, readdir, copyFile, mkdir as mkdirPath, readFile as readFileBytes } from 'node:fs/promises';
 import { basename as baseName, join as joinPath } from 'node:path';
 import { declaredTypeFor, filesChangedSince } from './files.mjs';
 import { isModuleFile, sdkPaths } from './modules/index.mjs';
@@ -1292,6 +1292,9 @@ export class Room {
           await this.#emit('message.failed', { messageId, target: parsed.target, error: this.#privacy ? this.#privacy.redact(text).text : text });
           return { messageId, responseMessageId: null };
         }
+        // A module asked for, with any #2 lease (the draft folder or the project): the guide goes
+        // inside the project for the agent to read.
+        if (draft === true || wantsModule(text2)) lease.sdk = await this.#sdkInProject();
         // CREATE authorizes the plan to use each delegate's enabled creation
         // scopes; a default-#2 lease authorizes files only.
         lease.scopeCeiling = { write: true, imageGen: !standing, web: true };
@@ -1344,6 +1347,23 @@ export class Room {
   async #draftLease({ leaseId, messageId }) {
     const draft = await createLease({ projectRoot: this.#projectRoot, leaseId });
     return { ...draft, messageId, draft: true };
+  }
+  // The SDK guide `/module` asks the agent to read, copied inside the project (.pulse/sdk/): a CLI
+  // that may read only its project — OpenCode denies any other directory — refused to write a module
+  // it could not read the guide for (2026-10-29). MADRE's own copy is the fallback.
+  async #sdkInProject() {
+    const from = sdkPaths();
+    const dir = joinPath(this.#projectRoot, '.pulse', 'sdk');
+    try {
+      await mkdirPath(dir, { recursive: true });
+      const copied = {};
+      for (const [key, path] of Object.entries(from)) {
+        const target = joinPath(dir, baseName(path));
+        await copyFile(path, target);
+        copied[key] = target;
+      }
+      return copied;
+    } catch { return from; }
   }
 
   // Artifacts from a #2 turn: the files the checkpoint saw appear, as the room shows them.
@@ -1709,7 +1729,7 @@ export class Room {
       memoryServer: this.#memoryServer,
       controlHolder: this.#controlDesk.holder?.agent ?? null,
       privacyMarker: this.#privacy?.marker ?? '[ENTIDAD-ORG]',
-      sdk: sdkPaths(),
+      sdk: input.lease?.sdk ?? sdkPaths(),
       madreModel: this.#agents.find((agent) => agent.id === 'madre' && agent.ready)?.version ?? null,
     });
   }
