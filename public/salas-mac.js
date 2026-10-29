@@ -2902,7 +2902,7 @@ async function homeNews(tries = 0) {
       image.decoding = 'async';
       image.addEventListener('error', () => { shot.classList.add('missing'); image.remove(); });
       image.addEventListener('load', () => shot.classList.add('loaded'));
-      image.src = item.image;
+      image.src = pick(item.image);
       shot.append(image);
     } else shot.classList.add('missing');
     card.append(shot, el('b', 'wn-card-title', pick(item.title)), el('span', 'wn-card-line', pick(item.body)));

@@ -10,6 +10,7 @@ import { compareVersions } from '../src/updates.mjs';
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
 const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+const home = await readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
 
 test('whats new: shown once to whoever came from an older version, never on a first install', () => {
   assert.equal(shouldShow({ version: '0.7.0', seen: '0.6.0' }), true);
@@ -105,6 +106,9 @@ test('whats new: from 1.0 a sheet is a board — each thing has its picture, and
       assert.ok(item.action === null || NEWS_ACTIONS.includes(item.action), `${version} · "${item.id}" takes you somewhere the room does not know: ${item.action}`);
     }
   }
+  // Home draws its own board (salas-mac.js, homeNews) with its own pick: a picture per language is
+  // picked there too, or Home showed seven empty frames (1.1.0, 2026-10-28).
+  assert.match(home, /image\.src = pick\(item\.image\);/);
   // A copy whose own version has no board can still look at the newest one.
   assert.equal(newestNotes(), Object.keys(NOTES).sort(compareVersions).at(-1));
 });
