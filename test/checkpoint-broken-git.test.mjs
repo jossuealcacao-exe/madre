@@ -30,3 +30,10 @@ test('room · a restore point that cannot be taken ends the turn with a message,
   assert.doesNotMatch(room, /controlDesk\.begin\([^\n]*Promise\.reject\(error\)/);
   assert.match(room, /async #couldNotSeat\(\{ messageId, agent, planId, error \}\) \{[\s\S]{0,400}this\.#emit\('message\.failed'/);
 });
+
+// The same day: `/module` in a project whose .pulse/ was left read-only was accepted (202) and then
+// answered by nothing — the draft folder could not be made and the error went to the terminal only.
+test('room · a folder that cannot be prepared for writing fails the message in the chat', async () => {
+  const room = await readFile(new URL('../src/room.mjs', import.meta.url), 'utf8');
+  assert.match(room, /try \{\n\s*lease = draft === true && create === true\n[\s\S]{0,200}\} catch \(error\) \{[\s\S]{0,400}this\.#emit\('message\.failed', \{ messageId, target: parsed\.target/);
+});

@@ -1280,9 +1280,18 @@ export class Room {
       } else {
         // `/module` asks for less than #2: one file in its own draft folder. Only a #2 message can
         // narrow itself this way; a default-#2 lease stays what it is.
-        lease = draft === true && create === true
-          ? await this.#draftLease({ leaseId: randomUUID(), messageId })
-          : await this.#projectLease({ leaseId: randomUUID(), messageId });
+        // The folder it writes in could not be made (a project folder left read-only, a full disk):
+        // the message says so, instead of being accepted and then answered by nothing (2026-10-28).
+        try {
+          lease = draft === true && create === true
+            ? await this.#draftLease({ leaseId: randomUUID(), messageId })
+            : await this.#projectLease({ leaseId: randomUUID(), messageId });
+        } catch (error) {
+          const said = String(error?.message ?? error ?? '').split('\n')[0].slice(0, 300);
+          const text = t('MADRE could not prepare the folder where @{agent} writes, so nothing was started: {error}', { agent: parsed.target, error: said });
+          await this.#emit('message.failed', { messageId, target: parsed.target, error: this.#privacy ? this.#privacy.redact(text).text : text });
+          return { messageId, responseMessageId: null };
+        }
         // CREATE authorizes the plan to use each delegate's enabled creation
         // scopes; a default-#2 lease authorizes files only.
         lease.scopeCeiling = { write: true, imageGen: !standing, web: true };

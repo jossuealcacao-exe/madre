@@ -4953,6 +4953,7 @@ export const ES = {
   'Home did not answer.': 'Inicio no respondió.',
   'Another download is running. When it ends, try this one.': 'Hay otra descarga en curso. Cuando termine, prueba esta.',
   'MADRE did not answer. Check that it is still open.': 'MADRE no respondió. Revisa que siga abierto.',
+  'MADRE could not prepare the folder where @{agent} writes, so nothing was started: {error}': 'MADRE no pudo preparar la carpeta donde escribe @{agent}, así que no se empezó nada: {error}',
   '<the briefing above>': '<el documento de arriba>',
   '<written for this turn, deleted after it>': '<escrita para este turno, borrada después>',
   'MADRE has no adapter for @{agent}.': 'MADRE no tiene adaptador para @{agent}.',
