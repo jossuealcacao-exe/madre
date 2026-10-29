@@ -14,6 +14,7 @@
     <!-- The chat shell's look (2026-10-26): Home in the same plain ground as a project — no picture,
          flat cards with a hairline — from the first frame, on the Mac (salas-mac.css, styles.css). -->
     <script>try { if (location.port !== '4316') document.documentElement.classList.add('chat-shell'); } catch {}</script>
+    <script>/* The theme from the first frame, as salas-mac.js applyLooks will set it: without it a dark system drew a white Home until the modules had loaded. */ try { var mode = localStorage.getItem('pulse.theme'); var root = document.documentElement; if (mode === 'light' || mode === 'dark') root.dataset.theme = mode; root.dataset.scheme = mode === 'light' || mode === 'dark' ? mode : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); } catch (e) {}</script>
   </head>
   <body class="salas-mac">
     <!-- Arriving from RELOAD: the curtain is put back before the first frame with its loader (the
