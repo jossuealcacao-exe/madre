@@ -6137,7 +6137,7 @@ export const ES = {
   '# on the computer that has Ollama:': '# en la computadora que tiene Ollama:',
   '# from here, check that it answers:': '# desde aquí, revisa que conteste:',
   '# in Windows: the Ollama app → Settings → Expose Ollama to the network': '# en Windows: la app de Ollama → Settings → Expose Ollama to the network',
-  '# from Ubuntu, Windows is the nameserver WSL writes:': '# desde Ubuntu, Windows es el nameserver que escribe WSL:',
+  '# from Ubuntu, Windows is where WSL\'s network goes out (the address after «via»):': '# desde Ubuntu, Windows es la salida de la red de WSL (la dirección después de «via»):',
   'A project in a Windows folder (/mnt/c)': 'Un proyecto en una carpeta de Windows (/mnt/c)',
   'Inside WSL, the Windows disk shows up as /mnt/c. It works, but every file goes through a bridge between the two systems: MADRE reads slower there, and the protections Linux gives a project (which agent may write where) do not hold on Windows files.': 'Dentro de WSL, el disco de Windows aparece como /mnt/c. Funciona, pero cada archivo pasa por un puente entre los dos sistemas: ahí MADRE lee más lento, y las protecciones que Linux le da a un proyecto (qué agente puede escribir dónde) no aplican en archivos de Windows.',
   'Keep projects inside Linux, in your folder in /home. Copy the project once and add the copy in Home.': 'Guarda los proyectos dentro de Linux, en tu carpeta de /home. Copia el proyecto una vez y agrega la copia en Inicio.',

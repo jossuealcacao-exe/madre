@@ -827,7 +827,7 @@ export const CONDITIONS = [
     fixes: {
       darwin: ['# on the computer that has Ollama:', 'OLLAMA_HOST=0.0.0.0 ollama serve', '# from here, check that it answers:', 'curl http://192.168.1.40:11434/api/version'],
       linux: ['# on the computer that has Ollama:', 'OLLAMA_HOST=0.0.0.0 ollama serve', '# from here, check that it answers:', 'curl http://192.168.1.40:11434/api/version'],
-      wsl: ['# in Windows: the Ollama app → Settings → Expose Ollama to the network', '# from Ubuntu, Windows is the nameserver WSL writes:', 'grep nameserver /etc/resolv.conf', 'curl http://172.28.80.1:11434/api/version   # with that address'],
+      wsl: ['# in Windows: the Ollama app → Settings → Expose Ollama to the network', '# from Ubuntu, Windows is where WSL\'s network goes out (the address after «via»):', 'ip route show default', 'curl http://172.28.80.1:11434/api/version   # with that address'],
     },
   },
   {
