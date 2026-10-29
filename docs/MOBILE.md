@@ -233,8 +233,8 @@ D-M01, D-M02 y D-M03 resueltas el 2026-10-07.
 
 Requiere D-M04 y D-M05.
 
-La versión de cada fase se decide al cerrarla (D-M06). El puerto a Windows apunta a `1.1.0`
-(`docs/WINDOWS.md`, D-003).
+La versión de cada fase se decide al cerrarla (D-M06). Windows llegó en `1.1.0`, dentro de WSL2
+(`docs/WINDOWS.md`, D-001 y D-003).
 
 ## 6 · Trazabilidad
 

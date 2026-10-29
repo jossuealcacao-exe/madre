@@ -2,27 +2,26 @@
 
 [Español](TRADEMARKS.md) · **English**
 
-MADRE's code is free software under the [GNU AGPL v3](LICENSE), with
-[additional terms](ADDITIONAL-TERMS.md) under its Section 7: you can use it, study it, modify it,
-fork it and distribute your forks, commercially too, as long as your version stays open under the
-same license and keeps the authorship visible. **The name is not included.** "MADRE", its logo
-and madre.run are trademarks of Jossue Alcalá, and the License grants no rights to use them
-(Section 7(e)). This page says what is allowed and what isn't. Versions 1.0.1 and earlier remain
-under the Apache License 2.0 they were published with.
+MADRE's code is public and, from 1.1.0, licensed under the
+[Business Source License 1.1](LICENSE): you can read it, use it, modify it and fork it; in production
+it is free for individuals and for organizations of up to 10 people, also to provide services to
+others, and each version becomes GNU AGPL v3 four years after it is published. **The name is not
+included.** "MADRE", its logo and madre.run are trademarks of Jossue Alcalá, and the License grants
+no rights to use them. This page says what is allowed and what isn't. Versions 1.0.2 to 1.0.5
+remain under the GNU AGPL v3 with their [additional terms](ADDITIONAL-TERMS.md), and 1.0.1 and
+earlier under the Apache License 2.0 they were published with.
 
 ## What every fork must always do
 
 - **Keep the authorship visible.** In the corner of every project and of Home,
   «MADRE <version> · © 2026 Jossue Alcalá» linked to https://jossuealcala.com or, under another
   name, «Built with MADRE by Jossue Alcalá» with the same link; and the same attribution in its
-  legal notices. The additional terms require it (Section 7(b)).
-- **Say where it comes from.** Keep [`NOTICE`](NOTICE), [`LICENSE`](LICENSE) and
-  [`ADDITIONAL-TERMS.md`](ADDITIONAL-TERMS.md), with the line
+  legal notices. It is what [`NOTICE`](NOTICE) asks and what the trademark protects.
+- **Say where it comes from.** Keep [`NOTICE`](NOTICE) and [`LICENSE`](LICENSE), with the line
   `Based on MADRE by Jossue Alcalá — https://madre.run`.
-- **Stay open.** Your version is licensed under the GNU AGPL v3 with these terms too, and if you
-  offer it over a network, you offer its source code as well (Section 13).
-- **Mark that you changed it** and do not present it as MADRE or as made by Jossue Alcalá
-  (Sections 5(a) and 7(c)).
+- **Stay under the same license.** Your version is licensed under the Business Source License 1.1
+  too, with the same free-use limits.
+- **Mark that you changed it** and do not present it as MADRE or as made by Jossue Alcalá.
 
 We also ask that the phrase "Based on MADRE" appears wherever your project says who made it:
 the README, the "About" screen or the footer.

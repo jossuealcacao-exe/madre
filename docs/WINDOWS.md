@@ -1,4 +1,4 @@
-# MADRE · PUERTO A WINDOWS · 1.1
+# MADRE · WINDOWS · WSL2 desde 1.1.0; nativo, pendiente
 
 Documento único del puerto. Todo lo que se decida, se arregle o se descarte sobre
 Windows se anota aquí y en ningún otro lado. Los archivos de contexto de los agentes
@@ -6,11 +6,11 @@ Windows se anota aquí y en ningún otro lado. Los archivos de contexto de los a
 
 | | |
 |---|---|
-| Estado | **Fase 0 · sin empezar** |
-| Versión objetivo | `1.1.0` |
+| Estado | **WSL2, publicado en 1.1.0** (2026-10-28). Puerto nativo: Fase 0, sin empezar y solo si hay demanda |
+| Versión objetivo | WSL2: `1.1.0`. Nativo: sin versión |
 | Rama | `windows/1.0` (ver §6; conserva su nombre aunque la versión objetivo pasó a 1.1.0) |
 | Origen | Auditoría de código del 2026-09-29 sobre `main` @ `fca8894` (0.5.2) |
-| Regla en vigor | Desde 2026-10-21 se anuncia **«Windows llega en la versión 1.1»** (madre.run y su manual); nada dice que ya funciona antes de que salga |
+| Regla en vigor | Desde 1.1.0 (2026-10-28) se dice **«MADRE funciona en Windows dentro de WSL2»**; nada promete Windows nativo. Abierta en Windows nativo, `bin/madre.mjs` explica cómo llegar a WSL2 y se detiene |
 
 ---
 
@@ -119,9 +119,9 @@ Ninguna se toma sin el usuario. Hasta que se cierren, las fases posteriores no a
 
 | ID | Decisión | Bloquea | Estado |
 |---|---|---|---|
-| **D-001** | ¿Windows nativo, o WSL2 declarado como el camino soportado? WSL2 elimina casi toda la sección P1 a cambio de fricción de instalación. | Fase 1 completa | **RESUELTA · WSL2** (2026-10-28). En Windows, MADRE corre dentro de WSL2: hoy por `npx` dentro de WSL y, en la 1.1.0, bajo la app de Tauri (ventana en Windows, núcleo en WSL). Windows nativo queda para después y solo si hay demanda real. Motivo: conserva el confinamiento de Linux sin reinventarlo (sección P1) y una sola persona mantiene un solo núcleo. La bienvenida guía la instalación de WSL (`docs/private/BIENVENIDA-1.0.6.md`). |
+| **D-001** | ¿Windows nativo, o WSL2 declarado como el camino soportado? WSL2 elimina casi toda la sección P1 a cambio de fricción de instalación. | Fase 1 completa | **RESUELTA · WSL2** (2026-10-28). En Windows, MADRE corre dentro de WSL2: por `npx` dentro de WSL2 desde la 1.1.0 y, más adelante, bajo la app de Tauri (1.2.0: ventana en Windows, núcleo en WSL). Windows nativo queda para después y solo si hay demanda real. Motivo: conserva el confinamiento de Linux sin reinventarlo (sección P1) y una sola persona mantiene un solo núcleo. La bienvenida guía la instalación de WSL (`docs/private/BIENVENIDA-1.0.6.md`). |
 | **D-002** | Si en Fase 2 resulta que Codex no se puede confinar en Windows nativo: ¿CONTROL degradado y avisado, o Codex fuera de Windows? | Fase 2 → 3 | **ABIERTA** |
-| **D-003** | Versión del puerto. Se resolvió como `1.0.0` (excepción consciente: declarar una plataforma nueva es mayor a nivel de producto). El 2026-10-07 cambió: la `1.0.0` se libera con el rediseño de la interfaz, sin declarar soporte ni no-soporte de Windows, y el puerto pasa a `1.1.0`, una menor, porque no rompe el ledger ni la memoria. | Fase 4 | **RESUELTA · 1.1.0** |
+| **D-003** | Versión del puerto. Se resolvió como `1.0.0` (excepción consciente: declarar una plataforma nueva es mayor a nivel de producto). El 2026-10-07 cambió: la `1.0.0` se libera con el rediseño de la interfaz, sin declarar soporte ni no-soporte de Windows, y el puerto pasa a `1.1.0`, una menor, porque no rompe el ledger ni la memoria. | Fase 4 | **RESUELTA · 1.1.0** (2026-10-28: la 1.1.0 sale con WSL2; el puerto nativo queda sin versión) |
 | **D-004** | ¿`.ahp/` en este repo? `project_state` lo leería y todos los agentes de la sala verían el estado verificado. Requiere el CLI de AHP+ (gestiona instance ids, locks y eventos); no se escribe a mano. | Nada · mejora la difusión | **ABIERTA** |
 
 ---
@@ -207,3 +207,4 @@ Una línea por cambio de estado. Se añade al final, nunca se reescribe.
 - `2026-10-28` · **D-001 resuelta: WSL2.** Dos casos reales: Juan (Windows nativo, no pudo crear proyectos y terminó en WSL) y Carlos (Linux en una máquina virtual por SSH). La 1.1.0 lleva WSL2 bajo la app de Tauri; Windows nativo, después y solo si hay demanda. Se abre WIN-028 (Inicio no agrega ni crea proyectos: `inside()` en `src/salas.mjs` compara con `/`).
 - `2026-10-28` · WIN-028 arreglado en `ux/refresh` (`insideFolder` con `path.relative`; prueba con `path.win32`). Falta verificarlo en un Windows real.
 - `2026-10-28` · Diagnóstico con columnas WSL y Windows y doce tarjetas nuevas de la bienvenida (MU-061..072) en `ux/refresh`; un proyecto dentro de WSL lee la columna de WSL. WIN-026 avanza, sigue abierto.
+- `2026-10-28` · **1.1.0 publicada con Windows por WSL2** (R-17, R-19). La app de Tauri pasa a la 1.2.0. Abierta en Windows nativo, MADRE explica cómo llegar a WSL2 y se detiene (`bin/madre.mjs`, `test/windows-guard.test.mjs`). La lista de espera recibe un solo correo (madre-landing, `src/waitlist-mail.mjs`).

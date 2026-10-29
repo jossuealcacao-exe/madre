@@ -9,8 +9,8 @@
 // works offline from then on. «Release» gives the activation back, to use the key elsewhere.
 //
 // What travels: the key and a name for this computer made from MADRE's random install id
-// («MADRE 1a2b3c4d»), never the computer's own name. The module's code is AGPL like MADRE: what is
-// paid for is installing it from the Market, its updates and its support, not a lock on the code.
+// («MADRE 1a2b3c4d»), never the computer's own name. The module's code stays readable: what is paid
+// for is installing it from the Market, its updates and its support, not a lock on the code.
 
 import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';

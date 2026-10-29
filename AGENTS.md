@@ -26,17 +26,22 @@ destilador, lee `docs/ZONAS.md`.**
 - Las reacciones **nunca entran en un prompt**. Ponderan el corpus; no se le cuentan al modelo.
 - Hay decisiones abiertas (`D-002`…`D-006`). **No las cierres por tu cuenta**: anótalas.
 
-## Trabajo en curso · puerto a Windows (1.1)
+## Windows y licencia (desde 1.1.0)
 
-**Se está preparando el puerto a Windows. Antes de tocar cualquier cosa que ejecute
-procesos, resuelva rutas o aplique permisos, lee `docs/WINDOWS.md`.**
+**En Windows, MADRE funciona dentro de WSL2.** Abierta en Windows nativo, explica en tres pasos cómo
+llegar a WSL2 y se detiene (`bin/madre.mjs`, `PULSE_WINDOWS_NATIVE=1` solo para desarrollo).
+**Antes de tocar cualquier cosa que ejecute procesos, resuelva rutas o aplique permisos, lee
+`docs/WINDOWS.md`.**
 
 Lo que hay que saber sin abrir el documento:
 
-- **Desde 2026-10-21 el anuncio es uno solo: Windows llega en la versión 1.1.** Lo dicen
-  madre.run y su manual. Ninguna copia (producto, README, sitio, interfaz) dice que MADRE
-  ya funciona en Windows antes de que salga 1.1.
-- El puerto va en la rama `windows/1.0` (la rama conserva su nombre; la versión objetivo es 1.1.0, ver D-003 en `docs/WINDOWS.md`). `main` sigue recibiendo los arreglos de 0.5.x.
+- **Desde 1.1.0 (2026-10-28) se dice que MADRE funciona en Windows con WSL2.** Ninguna copia
+  (producto, README, sitio, interfaz) promete Windows nativo.
+- **Licencia:** desde 1.1.0, Business Source License 1.1 (`LICENSE`). Cada archivo fuente lleva
+  `SPDX-License-Identifier: BUSL-1.1` en su cabecera (`test/attribution.test.mjs` lo exige). Las
+  versiones 1.0.2–1.0.5 siguen en AGPL v3 con `ADDITIONAL-TERMS.md`.
+- El puerto nativo, si llega, va en la rama `windows/1.0` (conserva su nombre). La app de escritorio
+  (Tauri) pasa a la 1.2.0.
 - Un arreglo que sirve en las tres plataformas va en `main`; solo lo específico de
   Windows va en la rama.
 - Cada hallazgo tiene id permanente (`WIN-001`…). Si encuentras uno nuevo, **añádelo a

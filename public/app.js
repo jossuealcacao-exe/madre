@@ -14923,7 +14923,7 @@ const MARKET_FIELDS = {
   shelf: 'Choose its shelf.',
   author: 'Write your name and your GitHub user.',
   spdx: 'Choose the license of your code.',
-  minMadre: 'Write the oldest MADRE it works with, like 1.0.6.',
+  minMadre: 'Write the oldest MADRE it works with, like 1.1.0.',
 };
 async function sendToMarket(host, item, opener) {
   const ask = async (payload) => {
@@ -14968,7 +14968,7 @@ async function sendToMarket(host, item, opener) {
   rows.author = sxRow(block, t('Who made it'), t('Your name is shown in the Market; your GitHub user is who sends it.'), who, { stack: true });
   const license = sxSelect([['', t('Choose…')], ...first.result.licenses.map((id) => [id, id])], entry.spdx ?? '', () => {}, t('License of your code'));
   rows.spdx = sxRow(block, t('License of your code'), t('Under which others may read and reuse it.'), license);
-  const oldest = input(entry.minMadre, '1.0.6');
+  const oldest = input(entry.minMadre, '1.1.0');
   oldest.classList.add('mono');
   rows.minMadre = sxRow(block, t('Oldest MADRE it works with'), null, oldest);
   const read = () => ({ ...entry, name: name.read(), line: line.read(), summary: summary.read(), shelf: shelf.value, author: { name: author.value.trim(), github: github.value.trim().replace(/^@/, '') }, spdx: license.value, minMadre: oldest.value.trim() });

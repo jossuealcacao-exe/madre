@@ -31,7 +31,7 @@ const GITHUB = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const COLOR = /^#[0-9a-f]{6}$/i;
 // The shelves of the Market (public/market.js, MARKET_SHELVES).
 export const COMMUNITY_SHELVES = ['no-terminal', 'create', 'local-ai', 'connect'];
-// Licenses a community module's code may carry: ones whose code can live beside MADRE's (AGPL v3).
+// Licenses a community module's code may carry: open ones a person can read, share and reuse.
 // The author of MADRE decides this list with the terms for whoever publishes (D-M3, a draft).
 export const COMMUNITY_LICENSES = ['AGPL-3.0-only', 'AGPL-3.0-or-later', 'GPL-3.0-only', 'GPL-3.0-or-later', 'MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'MPL-2.0'];
 
@@ -67,7 +67,7 @@ export function entryFaults(entry, module = null) {
   if (!both(entry.summary, 1200)) say('summary', t('summary: what it does and when to use it, in Spanish and English, up to 1200 characters.'));
   if (!COMMUNITY_SHELVES.includes(entry.shelf)) say('shelf', t('shelf: one of {list}.', { list: COMMUNITY_SHELVES.join(', ') }));
   if (entry.price !== undefined && entry.price !== 0) say('price', t('price: community modules are free for now (0).'));
-  if (!SEMVER.test(entry.minMadre ?? '')) say('minMadre', t('minMadre: the oldest MADRE it works with, like 1.0.6.'));
+  if (!SEMVER.test(entry.minMadre ?? '')) say('minMadre', t('minMadre: the oldest MADRE it works with, like 1.1.0.'));
   if (!words(entry.author?.name, 60) || !GITHUB.test(entry.author?.github ?? '')) say('author', t('author: { "name": your name, "github": your GitHub user }.'));
   if (!COMMUNITY_LICENSES.includes(entry.spdx)) say('spdx', t('spdx: the license of its code, one of {list}.', { list: COMMUNITY_LICENSES.join(', ') }));
   if (entry.changes !== undefined && !both(entry.changes, 400)) say('changes', t('changes: what changed in this version, in Spanish and English, up to 400 characters.'));

@@ -10,8 +10,8 @@ import { t } from './i18n.js';
 // The two MADRE is tested on. Every remedy below is a command written for one of these two
 // shells; a third set that nobody has ever run would be worse than none. Since 2026-10-28 (D-001,
 // docs/WINDOWS.md) two more columns are read from those: WSL is Linux inside Windows, so it reads
-// Linux's unless a card has a line of its own; and Windows says one thing — MADRE for Windows
-// arrives in 1.1, and until then it runs inside WSL — before Linux's commands (fixesFor).
+// Linux's unless a card has a line of its own; and Windows says one thing — on Windows MADRE runs
+// inside WSL2 (1.1.0) — before Linux's commands (fixesFor).
 export const PLATFORMS = {
   darwin: { label: 'macOS', shell: 'zsh' },
   linux: { label: 'Linux', shell: 'bash' },
@@ -849,7 +849,7 @@ export const CONDITIONS = [
     severity: 'informational',
     title: 'MADRE on Windows',
     match: /\bwin32\b|native Windows|Windows nativo|wsl --install/i,
-    diagnosis: 'The version of MADRE for Windows arrives in 1.1. Until then MADRE runs on Linux, and Windows 10 and 11 bring Linux with them: WSL (Windows Subsystem for Linux). Inside it MADRE works as on any Linux, and opens in your Windows browser.',
+    diagnosis: 'On Windows, MADRE runs inside WSL2 (Windows Subsystem for Linux), the Linux that comes with Windows 10 and 11. Inside it MADRE works as on any Linux, and opens in your Windows browser. It does not run on Windows directly.',
     remedy: 'Install WSL once (it asks for an administrator and a restart), open Ubuntu from the Start menu, and start MADRE there. Keep your projects inside Linux, not in /mnt/c.',
     fixes: {
       darwin: ['# this is for Windows'],
@@ -1024,7 +1024,7 @@ export function findConditions(query) {
 // there; macOS's only when nothing else was written.
 const columnFor = (fixes, platform) => fixes?.[platform] ?? (platform === 'wsl' || platform === 'win32' ? fixes?.linux : null) ?? fixes?.darwin ?? null;
 // On Windows a card that has no line of its own says first where those commands run (D-001).
-export const WINDOWS_FIRST = ['# MADRE for Windows arrives in version 1.1. Until then it runs inside WSL, Linux inside Windows: see «MADRE on Windows».', '# in Ubuntu (WSL):'];
+export const WINDOWS_FIRST = ['# On Windows, MADRE runs inside WSL2, Linux inside Windows: see «MADRE on Windows».', '# in Ubuntu (WSL):'];
 export function fixesFor(condition, platform, agent = null) {
   const base = columnFor(condition.fixes, platform) ?? [];
   const perAgent = condition.perAgent?.[agent] ? columnFor(condition.perAgent[agent], platform) : null;

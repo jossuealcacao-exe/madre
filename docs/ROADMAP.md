@@ -55,11 +55,11 @@ defineModule({
 
 Con eso RIPLEY, Git Pulse, Image Studio, Ash, el sentinel y el futuro Ollama se vuelven archivos en `src/modules/`, y la sala no cambia cuando llega uno nuevo.
 
-## 4 · Windows (1.0)
+## 4 · Windows (WSL2 desde 1.1.0)
 
 MADRE nació en POSIX y su promesa central —«leen por defecto, escriben cuando tú lo dices»— descansa hoy en tres mecanismos que Windows no tiene iguales: el bit de escritura del sistema de archivos, los grupos de proceso y el sandbox que cada CLI monta sobre seatbelt o Landlock. El puerto no es una compatibilidad de rutas: es averiguar si ese techo de permisos se sostiene en Windows, y declarar con razones lo que se sostiene y lo que no.
 
-Cuatro fases —medir, que arranque, que confine, que se explique— con trazabilidad por id, en la rama `windows/1.0`. **Desde 2026-10-21 se anuncia que Windows llega en la versión 1.1; nada dice que ya funciona hasta que la fase 4 cierre y salga 1.1.**
+Cuatro fases —medir, que arranque, que confine, que se explique— con trazabilidad por id, en la rama `windows/1.0`. **Desde 1.1.0 (2026-10-28) MADRE funciona en Windows dentro de WSL2.** Windows nativo, después y solo si hay demanda; nada lo promete antes.
 
 El documento único es **`docs/WINDOWS.md`**: hallazgos con id permanente, decisiones abiertas, fases, versiones y bitácora. Nada sobre Windows se decide fuera de ahí.
 

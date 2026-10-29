@@ -13,8 +13,8 @@
 //
 // «Start here» (2026-10-28, docs/private/BIENVENIDA-1.0.6.md, F8): the first section is the way in
 // for each system — a Mac, Linux, Windows with WSL, and a computer reached over SSH or a virtual
-// machine — then the welcome, which leaves MADRE ready. Windows says what docs/WINDOWS.md says: its
-// version arrives in 1.1, and until then MADRE runs inside WSL.
+// machine — then the welcome, which leaves MADRE ready. Windows says what docs/WINDOWS.md says: from
+// 1.1.0 MADRE runs inside WSL2, not on Windows directly.
 
 export const MANUAL = {
   es: {
@@ -68,8 +68,8 @@ export const MANUAL = {
             tip: 'Para instalar Ollama, Linux pide tu contraseña. La bienvenida te da la línea para copiarla: MADRE nunca pide ni guarda contraseñas.',
           },
           {
-            name: 'Windows, con WSL',
-            note: 'La versión de MADRE para Windows llega en la 1.1. Mientras tanto corre dentro de WSL, el Linux que traen Windows 10 y 11.',
+            name: 'Windows, con WSL2',
+            note: 'En Windows, MADRE funciona dentro de WSL2, el Linux que traen Windows 10 y 11. No corre directo en Windows.',
             steps: [
               'Una vez, en PowerShell como administrador, escribe `wsl --install` y reinicia.',
               'Abre «Ubuntu» desde el menú Inicio e instala Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` y luego `sudo apt install -y nodejs`.',
@@ -432,8 +432,8 @@ export const MANUAL = {
             tip: 'To install Ollama, Linux asks for your password. The welcome gives you the line to copy: MADRE never asks for passwords or keeps them.',
           },
           {
-            name: 'Windows, with WSL',
-            note: 'The version of MADRE for Windows arrives in 1.1. Until then it runs inside WSL, the Linux that comes with Windows 10 and 11.',
+            name: 'Windows, with WSL2',
+            note: 'On Windows, MADRE runs inside WSL2, the Linux that comes with Windows 10 and 11. It does not run on Windows directly.',
             steps: [
               'Once, in PowerShell as administrator, type `wsl --install` and restart.',
               'Open «Ubuntu» from the Start menu and install Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` and then `sudo apt install -y nodejs`.',

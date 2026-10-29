@@ -1225,8 +1225,8 @@ test('Diagnostics for the welcome (F7): each way it goes wrong has its card, for
     assert.ok(card, `no card for ${id}`);
     for (const platform of Object.keys(PLATFORMS)) assert.ok(fixesFor(card, platform).length, `${id} says nothing on ${platform}`);
   }
-  // Windows: its version arrives in 1.1 (docs/WINDOWS.md); until then WSL. No card says MADRE runs on Windows itself.
-  assert.match(CONDITIONS.find((one) => one.id === 'windows-use-wsl').diagnosis, /The version of MADRE for Windows arrives in 1\.1/);
+  // Windows (1.1.0, docs/WINDOWS.md): MADRE runs inside WSL2. No card says MADRE runs on Windows itself.
+  assert.match(CONDITIONS.find((one) => one.id === 'windows-use-wsl').diagnosis, /On Windows, MADRE runs inside WSL2.*It does not run on Windows directly\./);
   assert.doesNotMatch(welcome, /that is how MADRE runs on Windows/);
   // A project in WSL reads WSL's column; the card opens from the welcome and from an agent's failure.
   assert.match(server, /platform: await environmentOnce\(\)\.then\(\(one\) => \(one\?\.wsl \? 'wsl' : process\.platform\)/);
@@ -1246,8 +1246,8 @@ test('the manual starts with «Start here»: the way in for each system, then th
     assert.equal(first.title, title);
     assert.equal(first.systems.length, 4, `${lang}: Mac, Linux, Windows with WSL, SSH or a virtual machine`);
     for (const system of first.systems) assert.deepEqual(system.code, ['npx @jossuealcala/madre']);
-    // Windows says what docs/WINDOWS.md says: its version arrives in 1.1; until then, WSL.
-    assert.match(first.systems[2].note, lang === 'es' ? /llega en la 1\.1/ : /arrives in 1\.1/);
+    // Windows says what docs/WINDOWS.md says: from 1.1.0, inside WSL2, not on Windows directly.
+    assert.match(first.systems[2].note, lang === 'es' ? /dentro de WSL2.*No corre directo en Windows/ : /inside WSL2.*does not run on Windows directly/);
     assert.ok(first.systems[2].steps.some((step) => step.includes('`wsl --install`')));
     // The intro points to it by its new name.
     assert.ok(MANUAL[lang].intro.some((line) => line.includes(`«${title}»`)));

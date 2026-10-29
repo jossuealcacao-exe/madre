@@ -8,7 +8,7 @@ Copyright © 2026 Jossue Alcalá — https://jossuealcala.com
 > la 1.1.0, MADRE usa la Business Source License 1.1.*
 
 MADRE, from version 1.0.2 on, is licensed under the GNU Affero General Public License, version 3
-only (the «License», in [`LICENSE`](LICENSE)), supplemented by the following additional terms, as
+only (the «License», in [`LICENSE` of version 1.0.5](https://github.com/jossuealcacao-exe/madre/blob/v1.0.5/LICENSE)), supplemented by the following additional terms, as
 Section 7 of the License allows. They apply to every file of MADRE and to every work based on it.
 Versions 1.0.1 and earlier remain available under the license they were published with.
 
@@ -56,7 +56,7 @@ with these additional terms. Whoever conveys MADRE or a work based on it must ke
 Copyright © 2026 Jossue Alcalá — https://jossuealcala.com
 
 MADRE, desde la versión 1.0.2, se licencia bajo la GNU Affero General Public License, versión 3
-únicamente (la «Licencia», en [`LICENSE`](LICENSE)), complementada por los siguientes términos
+únicamente (la «Licencia», en el [`LICENSE` de la versión 1.0.5](https://github.com/jossuealcacao-exe/madre/blob/v1.0.5/LICENSE)), complementada por los siguientes términos
 adicionales, como permite la sección 7 de la Licencia. Aplican a cada archivo de MADRE y a toda
 obra basada en él. Las versiones 1.0.1 y anteriores siguen disponibles bajo la licencia con la que
 se publicaron.

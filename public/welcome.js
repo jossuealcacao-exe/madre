@@ -312,8 +312,8 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     else if (carry === 'slow') notes.push(note('warn', t('Your computer can run a small AI, but slowly: it has no graphics card the AI can use.')));
     else notes.push(note('warn', t('This computer does not have enough memory for an AI of its own. MADRE works just the same with your agents.')));
     if (env.place === 'wsl') notes.push(note('', t('MADRE runs here on Linux, inside Windows (WSL). Your Windows browser opens it directly.')));
-    // On Windows itself: its version arrives in 1.1 (docs/WINDOWS.md, D-001); until then, WSL.
-    if (env.os === 'windows') notes.push(note('warn', t('The version of MADRE for Windows arrives in 1.1. Until then it runs inside WSL, Linux inside Windows.'), fix('windows-use-wsl')));
+    // On Windows itself (docs/WINDOWS.md, D-001): from 1.1.0 MADRE runs inside WSL2, not on Windows directly.
+    if (env.os === 'windows') notes.push(note('warn', t('On Windows, MADRE runs inside WSL2, the Linux that comes with Windows 10 and 11. It does not run on Windows directly.'), fix('windows-use-wsl')));
     // A virtual machine reached over SSH is both (Carlos, 2026-10-28): each is said.
     if (env.vm && env.vm !== 'macOS') notes.push(note('warn', t('MADRE runs in a virtual machine: an AI here runs slower than on the computer itself. If that computer runs Windows, MADRE works better in WSL.')));
     if (env.place === 'ssh') notes.push(note('', t('You\'re connected from another computer. Some agents connect with a code instead of opening a page; each one says so.'), fix('ssh-tunnel')));
