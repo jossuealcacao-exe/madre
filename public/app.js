@@ -5132,6 +5132,7 @@ export function relayedOf(payload) {
   return { kind: 'other', body: other ? text.slice(other[0].length) : text };
 }
 
+const togetherShown = new Map();   // together id -> the bubble that says the question once
 function renderUserMessage(event) {
   const { messageId, target, text: said, ash, model, effort, attachments = [], create, mode } = event.payload;
   const relayed = relayedOf(event.payload);
@@ -5142,6 +5143,16 @@ function renderUserMessage(event) {
   const text = relayed ? relayed.body : said;
   state.userMessages.set(messageId, { text, target, model, mode: event.payload.mode ?? 1 });
   settleModeAsksFor(target, event.payload.mode ?? 1);
+  // The same question to several agents (room.mjs, `together`): said once, with every agent it
+  // went to after the arrow; each answer still points back to it.
+  const batch = event.payload.together;
+  const first = batch ? togetherShown.get(batch) : null;
+  if (first?.isConnected) {
+    state.userMessages.set(messageId, { ...state.userMessages.get(messageId), text: withoutCrew(text) });
+    const to = first.querySelector('.stamp .to');
+    if (to && !to.textContent.includes(`@${target}`)) to.textContent = to.textContent.replace(/^(→ (?:@[a-z0-9_-]+(?: · @[a-z0-9_-]+)*))/i, `$1 · @${target}`);
+    return null;
+  }
   const reviewed = state.expendable;
   const node = row('user');
   if (event.ghost || mode === 0) node.classList.add('ghost');
@@ -5174,7 +5185,9 @@ function renderUserMessage(event) {
   if (ash?.active) who.append(el('span', 'badge ash', t('Token saver')));
   if (event.payload.copilot) who.append(el('span', 'badge copilot', t('COPILOT')));
   col.append(who);
-  const bubble = el('div', 'bubble', text);
+  // Sent to several at once, the names at its start are already said after the arrow.
+  const bubble = el('div', 'bubble', batch ? withoutCrew(text) : text);
+  if (batch) { togetherShown.set(batch, node); state.userMessages.set(messageId, { ...state.userMessages.get(messageId), text: withoutCrew(text) }); }
   if (attachments.length) bubble.append(fileTiles(attachments));
   col.append(bubble);
   const stamp = paint(el('div', 'stamp'), target);
@@ -5201,12 +5214,16 @@ function renderAssistantMessage(event) {
     const who = el('div', 'who');
     who.append(el('span', null, label(sender)));
     if (delegated) {
-      const to = paint(el('span', 'to-agent'), target);
-      to.append(`→ @${target}`);
-      who.append(to);
+      // The plan's own author closing it is not a message to itself: no «→ @itself» (2026-10-29).
+      if (target !== sender) {
+        const to = paint(el('span', 'to-agent'), target);
+        to.append(`→ @${target}`);
+        who.append(to);
+      }
       who.append(el('span', 'badge', target === sender ? t('closing turn') : t('step {n}/{total}', { n: step, total: totalSteps })));
     } else if (target && target !== 'you') {
-      who.append(el('span', 'badge', t('answering @{agent}', { agent: target })));
+      // And its closing answer says so, not «answering @itself».
+      who.append(el('span', 'badge', target === sender ? t('closing turn') : t('answering @{agent}', { agent: target })));
     }
     if (status === 'handoff') who.append(el('span', 'badge', t('handoff note')));
     if (model) who.append(el('span', 'badge model', model));
@@ -11386,7 +11403,9 @@ function phoneChatAddress(id, extra = '') {
 let chatSwitch = 0;
 // The conversations put themselves away once one is chosen where they lie over the room (a phone,
 // the old layout); in the chat shell they are its left column and stay open (2026-10-28).
-const chatsStay = () => chatShellOn();
+// In the chat shell the sidebar stays beside the conversation, as in those apps; on a narrow window,
+// where it lies over the conversation (chatsOver), choosing a chat puts it away (2026-10-29).
+const chatsStay = () => chatShellOn() && !chatsOver;
 async function openChat(id, { beside = null } = {}) {
   if (id === chats.active) { if (!chatsStay()) setChats(false); return; }
   const mine = ++chatSwitch;
@@ -11989,6 +12008,9 @@ function measureDock() {
   // (2026-10-29; a fixed 84 px left room for one row of them, and two rows covered the last line).
   const openRect = els.openq && !els.openq.hidden && els.openq.childElementCount ? els.openq.getBoundingClientRect() : null;
   let top = openRect && openRect.height > 0 && openRect.bottom <= box.top + 1 ? Math.min(box.top, openRect.top - 10) : box.top;
+  // How tall the strip at the foot is, box and questions: a reminder that came due stands above
+  // it, not over the questions (styles.css, .reminder-due). Set before the reminder is measured.
+  if (!pageScrolls()) document.documentElement.style?.setProperty?.('--strip-h', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - top))}px`);
   // A reminder that came due waits over the end of the conversation, by the box, until it is
   // answered (drawDueReminder): the last line rises above it too, never under it.
   const dueCard = document.querySelector?.('aside.reminder-due');
@@ -12010,7 +12032,10 @@ function measureDock() {
   // of its own: the box is the composer itself.
   const fieldBox = els.composer.querySelector?.('.field')?.getBoundingClientRect?.();
   const field = fieldBox && fieldBox.height > 0 ? fieldBox : box;
-  if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - field.top))}px`);
+  // With the open questions standing over the box, the conversation fades out above them instead of
+  // running behind their pills (2026-10-29); a reminder is a card of its own and keeps its place.
+  const fadeAt = openRect && openRect.height > 0 && openRect.bottom <= box.top + 1 ? Math.min(field.top, openRect.top - 4) : field.top;
+  if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - fadeAt))}px`);
   if (height === measureDock.last && over === measureDock.over) return;
   measureDock.last = height;
   measureDock.over = over;
@@ -13594,7 +13619,23 @@ els.composer.addEventListener('submit', async (event) => {
   // Who this message is for: a leading @agent wins over the chip, as it does in the room. The model
   // and the effort are the ones chosen for THAT agent; the chip's would be another agent's.
   const mention = outgoing.match(/^@([a-z0-9_-]+)\b/i)?.[1]?.toLowerCase();
-  const addressed = mention && state.agents.has(mention) ? mention : target;
+  let addressed = mention && state.agents.has(mention) ? mention : target;
+  // Several agents named at the start («@opencode @madre ¿…?», 2026-10-29): the same question goes
+  // to each one that can answer, each in a turn of its own, and the conversation shows it once with
+  // every agent it went to (room.mjs, `together`). It used to reach the first one only, with the
+  // others' names left in the text — and that one answered that the message was not for it. Up to
+  // #2: #3 and #4 are opened for one agent at a time.
+  const crew = leadingCrew(outgoing);
+  let sendTo = null;
+  let skipped = [];
+  if (crew.length > 1 && state.mode <= 2 && !draft) {
+    const able = crew.filter((agent) => canAnswer(state.agents.get(agent)));
+    if (able.length > 1) {
+      sendTo = able;
+      skipped = crew.filter((agent) => !able.includes(agent));
+      addressed = able[0];
+    }
+  }
   // An agent that is switched off (no session, or nothing MADRE can run) is not written to: the
   // message stays in the box and Settings opens on that agent, where it is connected.
   if (addressed && state.agents.has(addressed) && !canAnswer(state.agents.get(addressed))) {
@@ -13618,11 +13659,29 @@ els.composer.addEventListener('submit', async (event) => {
   // A try taken from Intenciones runs this message, and only this one, at its rung.
   const once = state.effortOnce?.agent === addressed ? state.effortOnce : null;
   try {
-    const response = await fetch('/api/messages', {
+    const post = (agent, words, together) => fetch('/api/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: outgoing, target: addressed || null, model: state.chosenModel[addressed] ?? null, effort: once?.effort ?? state.chosenEffort[addressed] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ash: state.ashInstalled && state.ash, draft: draft || undefined, copilot: piloted || undefined, key: state.mode >= 3 && !piloted ? overridePass(state.mode, addressed) : undefined }),
+      body: JSON.stringify({ text: words, target: agent || null, model: state.chosenModel[agent] ?? null, effort: (agent === addressed ? once?.effort : null) ?? state.chosenEffort[agent] ?? null, attachments: ready.map((item) => item.id), create: state.create, mode: state.mode, ash: state.ashInstalled && state.ash, draft: draft || undefined, copilot: piloted || undefined, key: state.mode >= 3 && !piloted ? overridePass(state.mode, agent) : undefined, together }),
     });
+    let response;
+    const missed = [];
+    if (sendTo) {
+      // One after another, so the question lands once and each turn follows it in order.
+      const together = (crypto.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24);
+      const body = withoutCrew(outgoing);
+      let reached = null;
+      for (const agent of sendTo) {
+        const one = await post(agent, `@${agent} ${body}`, together);
+        if (one.ok) reached ??= one;
+        else missed.push({ agent, error: (await one.json().catch(() => ({}))).error ?? null, first: one });
+      }
+      response = reached ?? missed[0].first;
+      if (reached && missed.length) toast(`${t('Diagnostics › ')}${missed.map((one) => t('It did not reach @{agent}: {error}', { agent: one.agent, error: one.error ? resay(one.error) : t('the project rejected it') })).join(' ')}`);
+      if (skipped.length) toast(t('{who} is not signed in, so the question went to {to}.', { who: skipped.map((agent) => `@${agent}`).join(', '), to: sendTo.map((agent) => `@${agent}`).join(', ') }), { tone: 'note' });
+    } else {
+      response = await post(addressed, outgoing);
+    }
     const sentMode = state.mode;
     if (sentMode >= 3 && !overrideGraceLeft(sentMode, addressed)) overridePasses.delete(`${sentMode}:${addressed}`);
     if (!response.ok) {
@@ -13659,6 +13718,14 @@ els.composer.addEventListener('submit', async (event) => {
     els.input.focus();
   }
 });
+
+// The agents a message names at its very start, in order and once each: «@opencode @madre, ¿…?».
+function leadingCrew(text) {
+  const head = String(text ?? '').match(/^(?:@[a-z0-9_-]+\b[\s,:;]*)+/i)?.[0] ?? '';
+  const named = [...head.matchAll(/@([a-z0-9_-]+)/gi)].map((match) => match[1].toLowerCase()).filter((agent) => state.agents.has(agent));
+  return [...new Set(named)];
+}
+const withoutCrew = (text) => String(text ?? '').replace(/^(?:@[a-z0-9_-]+\b[\s,:;]*)+/i, '').trim();
 
 /* ---------- MU/TH/UR: troubleshooting ---------- */
 

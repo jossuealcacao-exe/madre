@@ -131,6 +131,10 @@ Desde 1.1.0, de **#1 a #3**, Claude, OpenCode y Codex pueden repartir su trabajo
 
 Probado con las IAs reales (Claude 2.1.267, OpenCode 1.18.4, Codex 0.161): en #1 el subagente lee y no escribe; en #3 escribe en el proyecto, `.pulse/` lo rechaza y no hay comandos; en #4 Codex responde «agent thread limit reached».
 
+**Cómo se ven.** Mientras trabajan, un chip por subagente bajo «trabajando…» (en vivo, `turn.subagents`, nunca en el registro); al responder, «Ayudaron N subagentes» plegado bajo la respuesta, con el encargo, lo que leyó, buscó o cambió y lo que reportó, guardado en `message.created.subagents` tras el filtro de privacidad (`src/adapters/subagents.mjs`). Claude lo dice todo (salida `stream-json`: inicio, cada herramienta, fin y resumen; sus tokens se suman de sus dos respuestas cuando un subagente corrió en segundo plano). OpenCode dice cada uno al terminar. Codex solo dice que trabajó con subagentes.
+
+**Una pregunta a varias IAs.** Un mensaje que empieza con varias (`@opencode @madre ¿…?`) va a cada una que tenga sesión, en un turno propio, hasta #2; el registro los liga con `together` y la página muestra la pregunta una vez, con todas las IAs tras la flecha.
+
 ---
 
 ## PLANES

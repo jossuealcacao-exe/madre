@@ -1177,7 +1177,7 @@ export class Room {
     return { messageId: accepted?.messageId ?? null, responseMessageId: accepted?.responseMessageId ?? null, text: reply?.text ?? null, error: reply ? null : failed?.error ?? 'The turn ended without a reply.' };
   }
 
-  async #accept({ text, target, model = null, effort = null, attachments = [], create = false, ash = false, mode = undefined, draft = false, via = null, followUp = null, copilot = false }, order) {
+  async #accept({ text, target, model = null, effort = null, attachments = [], create = false, ash = false, mode = undefined, draft = false, via = null, followUp = null, copilot = false, together = null }, order) {
     const parsed = parseMessage(text, target);
     const requestedMode = normalizeMode(mode, create === true ? 2 : 1);
     // This is the decision the human made when pressing Send. Capture it before modeCheck() —
@@ -1250,6 +1250,9 @@ export class Room {
       auto: followUp?.kind ?? undefined,
       returns: followUp?.returns ?? undefined,
       copilot: asCopilot || undefined,
+      // One question to several agents at once (2026-10-29): each gets its own turn, and the page
+      // shows the question once, with every agent it went to (app.js, renderUserMessage).
+      together: typeof together === 'string' && /^[A-Za-z0-9_-]{6,40}$/.test(together) ? together : undefined,
     });
     // The human may say what they like; the room only says so, because every agent will read it.
     const exposed = this.#privacy?.hits(text2) ?? 0;

@@ -1372,7 +1372,8 @@ test('the maps say once that they can be planets or neurons, under the key that 
 
 test('chat shell: choosing another conversation leaves the conversations open, their column does not go away', async () => {
   const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
-  assert.match(app, /const chatsStay = \(\) => chatShellOn\(\);/);
+  // Beside the conversation it stays; lying over it on a narrow window, it goes (2026-10-29).
+  assert.match(app, /const chatsStay = \(\) => chatShellOn\(\) && !chatsOver;/);
   assert.match(app, /if \(id === chats\.active\) \{ if \(!chatsStay\(\)\) setChats\(false\); return; \}/);
   assert.match(app, /if \(beside\) openSplit\(beside, \{ animate: false \}\);\n  \}\);\n  if \(!chatsStay\(\)\) setChats\(false\);\n\}/);
 });

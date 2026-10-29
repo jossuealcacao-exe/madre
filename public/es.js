@@ -6338,4 +6338,7 @@ export const ES = {
   'Open {file}': 'Abrir {file}',
   'See all': 'Ver todo',
   'See less': 'Ver menos',
+  'It did not reach @{agent}: {error}': 'No le llegó a @{agent}: {error}',
+  'the project rejected it': 'el proyecto lo rechazó',
+  '{who} is not signed in, so the question went to {to}.': '{who} no tiene sesión, así que la pregunta fue a {to}.',
 };

@@ -10470,7 +10470,7 @@ dialog.note-window .surface-modes .note-delete.note-delete:not(.note-x):is(:hove
    is the Market's offer card; a settled one goes quiet. A due one waits bottom right, one at a time. */
 #messages .system.reminder-offer.settled { box-shadow: 0 0 0 1px var(--line); }
 #messages .system.reminder-offer.settled .market-offer-acts { display: none; }
-.reminder-due { position: fixed; right: 20px; bottom: 132px; z-index: 60; width: min(340px, calc(100vw - 32px)); display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; color: var(--text); background: var(--plane-solid, var(--panel)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc, var(--phosphor)) 34%, transparent), 0 14px 34px -14px rgba(0, 0, 0, .5); animation: window-in calc(440ms * var(--motion-scale)) var(--ease-glide); }
+.reminder-due { position: fixed; right: 20px; bottom: calc(var(--strip-h, 118px) + 14px); z-index: 60; width: min(340px, calc(100vw - 32px)); display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; color: var(--text); background: var(--plane-solid, var(--panel)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc, var(--phosphor)) 34%, transparent), 0 14px 34px -14px rgba(0, 0, 0, .5); animation: window-in calc(440ms * var(--motion-scale)) var(--ease-glide); }
 .reminder-due-head { display: flex; align-items: center; gap: 8px; }
 .reminder-due-head b { flex: 1; font-size: 12.5px; font-weight: 650; letter-spacing: .02em; color: var(--text-2); }
 .reminder-due-next { border: 0; background: none; color: var(--text-3); font: inherit; font-size: 12px; cursor: pointer; }

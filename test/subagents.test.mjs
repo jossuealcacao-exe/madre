@@ -141,3 +141,47 @@ test('subagents · the room keeps a bounded list, each text through its privacy 
   assert.equal(keptSubagents([]), undefined);
   assert.equal(keptSubagents(undefined), undefined);
 });
+
+test('one question to several agents: each gets its own turn, and the record ties them together', async () => {
+  const { mkdtemp } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { EventStore } = await import('../src/event-store.mjs');
+  const { Room } = await import('../src/room.mjs');
+  const root = await mkdtemp(joinPath(tmpdir(), 'madre-together-'));
+  const store = await new EventStore(joinPath(root, 'events.jsonl')).initialize();
+  const agents = [
+    { id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' },
+    { id: 'opencode', label: 'OpenCode', detected: true, ready: true, adapter: 'opencode-readonly', path: '/fake', version: 'test' },
+  ];
+  const helped = [{ id: 't1', kind: 'explore', task: 'Find the price', status: 'done', seconds: 4, reads: null, searches: null, changed: [], report: '## Found\n- precios.md' }];
+  const room = new Room({ store, agents, projectRoot: root, invokers: {
+    'codex-readonly': async () => ({ text: 'Codex answers.', usage: null }),
+    'opencode-readonly': async ({ onProgress }) => { onProgress?.({ chars: 3, subagents: helped }); return { text: 'OpenCode answers.', usage: null, subagents: helped }; },
+  } });
+  const live = [];
+  room.subscribeLive((event) => live.push(event));
+  await room.send({ text: '@codex ¿qué hace?', target: 'codex', together: 'batch-123456' });
+  await room.send({ text: '@opencode ¿qué hace?', target: 'opencode', together: 'batch-123456' });
+  await room.send({ text: '@codex otra', target: 'codex', together: 'no ok!' });
+  const said = (await store.readAll()).filter((event) => event.type === 'message.created');
+  const asked = said.filter((event) => event.payload.role === 'user');
+  assert.deepEqual(asked.map((event) => [event.payload.target, event.payload.text, event.payload.together]), [['codex', '¿qué hace?', 'batch-123456'], ['opencode', '¿qué hace?', 'batch-123456'], ['codex', 'otra', undefined]]);
+  // Each answer points back to its own question, and the one helped by a subagent keeps who helped.
+  const answers = said.filter((event) => event.payload.role === 'assistant');
+  assert.equal(answers.length, 3);
+  assert.equal(answers.find((event) => event.payload.sender === 'opencode').payload.subagents[0].report, '## Found\n- precios.md');
+  assert.equal(answers.find((event) => event.payload.sender === 'codex').payload.subagents, undefined);
+  // And while it worked, the chips were said live, never written.
+  assert.deepEqual(live.filter((event) => event.type === 'turn.subagents').map((event) => event.payload.subagents[0].kind), ['explore']);
+  assert.equal(said.some((event) => event.type === 'turn.subagents'), false);
+});
+
+test('the page sends one question to every agent named at its start, and shows it once', async () => {
+  const app = readFileSync(joinPath(import.meta.dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(app, /function leadingCrew\(text\)/);
+  assert.match(app, /if \(crew\.length > 1 && state\.mode <= 2 && !draft\)/);
+  assert.match(app, /const first = batch \? togetherShown\.get\(batch\) : null;/);
+  // The chips and the fold are drawn from what the room said.
+  assert.match(app, /case 'turn\.subagents': showHelpers\(event\); return;/);
+  assert.match(app, /if \(event\.payload\.subagents\?\.length\) bubble\.append\(subagentFold\(event\.payload\.subagents, mode\)\);/);
+});

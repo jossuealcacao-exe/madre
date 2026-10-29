@@ -164,7 +164,7 @@ export const MANUAL = {
           'La etiqueta con # es el permiso. Con #1 el agente lee y te contesta, pero no cambia nada.',
           'A un lado eliges el modelo y, en algunos agentes, cuánto piensa. Si no sabes cuál, déjalo así.',
         ],
-        expert: '@ llama a un agente, # cambia el permiso, ! cita un archivo y / abre los comandos. ⌥ ↵ hace un salto de línea y ⌘ V pega una imagen.',
+        expert: '@ llama a un agente; con varios al principio («@opencode @madre ¿…?») la pregunta va a cada uno y cada uno contesta aparte. # cambia el permiso, ! cita un archivo y / abre los comandos. ⌥ ↵ hace un salto de línea y ⌘ V pega una imagen.',
       },
       {
         id: 'chats',
@@ -587,7 +587,7 @@ export const MANUAL = {
           'The tag with # is the permission. With #1 the agent reads and answers you, but changes nothing.',
           'Beside it you choose the model and, for some agents, how much it thinks. If you are not sure, leave it.',
         ],
-        expert: '@ calls an agent, # changes the permission, ! quotes a file and / opens the commands. ⌥ ↵ adds a line break and ⌘ V pastes an image.',
+        expert: '@ calls an agent; with several at the start («@opencode @madre …?») the question goes to each one and each answers on its own. # changes the permission, ! quotes a file and / opens the commands. ⌥ ↵ adds a line break and ⌘ V pastes an image.',
       },
       {
         id: 'chats',

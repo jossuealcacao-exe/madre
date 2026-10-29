@@ -131,6 +131,10 @@ Since 1.1.0, from **#1 to #3**, Claude, OpenCode and Codex may split their work 
 
 Tried with the real AIs (Claude 2.1.267, OpenCode 1.18.4, Codex 0.161): in #1 the subagent reads and does not write; in #3 it writes in the project, `.pulse/` refuses it and there are no commands; in #4 Codex answers «agent thread limit reached».
 
+**How they show.** While they work, a chip for each subagent under «working…» (live, `turn.subagents`, never in the record); once it answers, «Helped by N subagents» folded under the reply, with each one's task, what it read, searched or changed and what it reported, kept in `message.created.subagents` after the privacy guard (`src/adapters/subagents.mjs`). Claude says everything (`stream-json` output: start, each tool, end and summary; its tokens are summed over both answers when a subagent ran in the background). OpenCode says each one when it ends. Codex only says it worked with subagents.
+
+**One question to several AIs.** A message that starts with several (`@opencode @madre …?`) goes to each one that is signed in, in a turn of its own, up to #2; the record ties them with `together` and the page shows the question once, with every AI after the arrow.
+
 ---
 
 ## PLANS
