@@ -27,7 +27,7 @@ dropStickyHover();
 let roomTourKept = null;
 let welcomeKept;
 const welcomeDone = () => welcomeKept !== undefined && (welcomeKept === null || Boolean(welcomeKept.finished));
-import { LOADER_MARK, creep, finishLoader, makeLoader, setLoader, showCurtain } from './loader.js';
+import { LOADER_MARK, creep, finishLoader, makeLoader, playOpening, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
@@ -12198,6 +12198,21 @@ function boot() {
       }
     }
   } catch { /* no storage: it draws on every load, as before */ }
+  // MADRE's opening (loader.js), each time the project opens again after it was closed: once per start
+  // of its server, not on a reload nor in a second tab, nor in the half on the right or on a phone.
+  try {
+    if (initial.boot && !SPLIT_CHAT && !state.device && localStorage.getItem('madre.opening') !== initial.boot) {
+      localStorage.setItem('madre.opening', initial.boot);
+      const stage = el('dialog', 'madre-opening');
+      stage.setAttribute('aria-label', 'MADRE');
+      document.body.append(stage);
+      stage.showModal();
+      void playOpening(stage, { skipLabel: t('Skip') }).then((played) => {
+        if (!played) { stage.close(); stage.remove(); return; }
+        setTimeout(() => { stage.close(); stage.remove(); }, 700);
+      });
+    }
+  } catch { /* no storage: the room opens as it always did */ }
   (() => {
     const curtain = document.getElementById('reload-curtain');
     if (!curtain) return;

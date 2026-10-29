@@ -12226,3 +12226,29 @@ dialog.intents-window .custom-head .surface-modes { grid-column: 2; grid-row: 1 
 
 /* What the anonymous diagnostics would send, as it would go (2026-10-28). */
 .sx-code { max-height: 280px; overflow: auto; margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--text) 5%, transparent); font: 450 11.5px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); white-space: pre; }
+
+/* THE OPENING (2026-10-28, loader.js, playOpening): MADRE's own stage, dark or light as MADRE is, where the AIs
+   become its pulse — before the welcome's first step and when a project opens again after it was
+   closed. In a project it plays in a window of its own, over everything, and the room shows under it
+   as it goes. */
+:root { --wl-stage: #050605; --wl-stage-glow: rgba(155, 255, 102, .05); }
+:root[data-scheme="light"] { --wl-stage: #f5f6f2; --wl-stage-glow: rgba(47, 138, 28, .06); }
+dialog.madre-opening { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; }
+dialog.madre-opening.intro::backdrop { background: var(--wl-stage); }
+dialog.madre-opening::backdrop { background: transparent; }
+.wl-intro { position: fixed; inset: 0; z-index: 5; overflow: hidden; background: radial-gradient(60% 46% at 50% 48%, var(--wl-stage-glow), transparent 72%), var(--wl-stage); cursor: default; }
+.wl-intro.leaving { animation: wl-intro-out .65s cubic-bezier(.4, 0, .2, 1) forwards; pointer-events: none; }
+.wl-intro.leaving.fast { animation-duration: .28s; }
+.wl-intro.leaving .wl-intro-mark { transition: scale .5s cubic-bezier(.4, 0, .2, 1), opacity .3s ease; scale: .96; opacity: 0; }
+@keyframes wl-intro-out { to { opacity: 0; } }
+.wl-intro-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wl-intro-mark { position: absolute; left: 50%; top: 48%; width: min(500px, 70vw); transform: translate(-50%, -50%); will-change: transform; }
+.wl-intro-logo { display: block; width: 100%; height: auto; overflow: visible; }
+.wl-intro-logo .pulse { stroke: var(--brand-pulse); }
+.wl-intro-logo .beat { stroke-dasharray: 100; stroke-dashoffset: 100; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-pulse) 35%, transparent)); }
+.wl-intro-logo .beat-dot { fill: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; }
+.wl-intro-logo .word { stroke: var(--brand-word); opacity: 0; }
+:root[data-scheme="light"] .wl-intro-logo .beat { filter: none; }
+.wl-intro-skip { position: absolute; right: 26px; bottom: 22px; padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: 500 12.5px var(--read); letter-spacing: .01em; opacity: 0; cursor: pointer; animation: wl-skip-in .6s ease 1.4s forwards; }
+.wl-intro-skip:is(:hover, :focus-visible) { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); outline: none; }
+@keyframes wl-skip-in { to { opacity: 1; } }
