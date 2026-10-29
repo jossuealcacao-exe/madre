@@ -5,11 +5,16 @@ import { runReadonlyProcess } from './process.mjs';
 // dontAsk denies any tool use that is not pre-approved, so under a lease the
 // Write/Edit tools exist but only paths inside the lease directory are
 // allowed; everything else in the project is refused without a prompt.
+// Claude's own subagents (the Agent tool), from #1 to #3 (2026-10-29): a subagent gets exactly the
+// tools of this run and answers to the same allow and deny rules (verified with the real CLI: in
+// #1 the subagent read and could not write). In #4 only the agent itself works.
+export const claudeSubagents = (lease = null) => !lease?.airlock;
 export function claudeTools({ lease = null, scopes = null } = {}) {
   const tools = ['Read', 'Glob', 'Grep'];
   if (lease) tools.push('Write', 'Edit');
   if (lease?.airlock) tools.push('Bash');   // AIRLOCK (#4): commands, git, deploy CLIs
   if (scopes?.web) tools.push('WebFetch', 'WebSearch');
+  if (claudeSubagents(lease)) tools.push('Agent');
   return tools;
 }
 
@@ -43,6 +48,7 @@ export function buildClaudeArgs({ prompt, model = null, effort = null, attachmen
     ...(lease ? leaseRoots(lease).flatMap((root) => [`Write(//${root}/**)`, `Edit(//${root}/**)`]) : []),
     ...(lease?.airlock ? ['Bash'] : []),
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
+    ...(claudeSubagents(lease) ? ['Agent'] : []),
     ...mcpTools,
   ];
   // Only MADRE's own MCP servers ever reach Claude here; --strict-mcp-config

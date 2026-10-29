@@ -118,6 +118,19 @@ Every message goes out with a mode. Your mode is the ceiling of any plan that me
 
 Web access is a permanent per-agent permission, off by default, turned on in Settings → Agents, with Web access.
 
+### Each AI's subagents
+
+Since 1.1.0, from **#1 to #3**, Claude, OpenCode and Codex may split their work among their own subagents. Each subagent works with **exactly the turn's permission**: in #1 it only reads, in #2 it creates, in #3 it edits, it never touches `.git`, `.pulse`, `.madre` or `.env`, and what it changes is in the same restore point and undone with **Undo**. In **#4** only the main AI works.
+
+| | From #1 to #3 | In #4 |
+|---|---|---|
+| **Claude** | The `Agent` tool: the subagent inherits the same tools and rules (`--tools`, `--allowedTools`, `dontAsk`) | No `Agent` |
+| **OpenCode** | Only `explore` and `general`, each with the turn's permissions and unable to call another (OpenCode's own write and run commands) | `task` denied |
+| **Codex** | Its subagents stay inside the same sandbox | A one-thread limit: `features.multi_agent_v2.max_concurrent_threads_per_session=1` |
+| **Gemini** · **Cursor** | No | No |
+
+Tried with the real AIs (Claude 2.1.267, OpenCode 1.18.4, Codex 0.161): in #1 the subagent reads and does not write; in #3 it writes in the project, `.pulse/` refuses it and there are no commands; in #4 Codex answers «agent thread limit reached».
+
 ---
 
 ## PLANS

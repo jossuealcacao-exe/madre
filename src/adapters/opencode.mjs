@@ -113,7 +113,32 @@ export function openCodeConfig({ lease = null, scopes = null, imageStudio = null
       },
     };
   }
-  return config;
+  return withSubagents(config, lease);
+}
+
+// OpenCode's own subagents, from #1 to #3 (2026-10-29). A subagent does not inherit the permissions
+// of the agent that calls it: it has its own, and OpenCode's `general` writes and runs commands out
+// of the box (verified with the real CLI: told it was allowed, it wrote a file in #1). So only
+// `explore` and `general` may be called, each with exactly the permissions of this run, and neither
+// may call another. In #4 only the agent itself works.
+export const SUBAGENTS = ['explore', 'general'];
+const SUBAGENT_LINE = 'launch subagents other than explore and general, which work with exactly your permissions';
+export function withSubagents(config, lease = null) {
+  if (lease?.airlock) return config;
+  const main = config.agent['pulse-readonly'];
+  const own = { ...main.permission, task: 'deny' };
+  return {
+    ...config,
+    agent: {
+      ...config.agent,
+      'pulse-readonly': {
+        ...main,
+        prompt: main.prompt.replace('launch subagents', SUBAGENT_LINE),
+        permission: { ...main.permission, task: { '*': 'deny', ...Object.fromEntries(SUBAGENTS.map((name) => [name, 'allow'])) } },
+      },
+      ...Object.fromEntries(SUBAGENTS.map((name) => [name, { permission: own }])),
+    },
+  };
 }
 
 export function openCodeEnvironment(environment = process.env, { lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [] } = {}) {

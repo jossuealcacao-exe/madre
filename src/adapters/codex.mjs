@@ -49,6 +49,11 @@ export function buildCodexArgs({ projectRoot, prompt, model = null, effort = nul
     // Image generation is a Codex feature; the human's scope decides per turn.
     ...(effort ? ['-c', `model_reasoning_effort=${tomlValue(effort)}`] : []),
     ...(lease && (scopes?.imageGen === false || lease.scopes?.imageGen === false) ? ['-c', 'features.image_generation=false'] : []),
+    // Codex's own subagents (on by default since 0.16x) inherit its sandbox, so from #1 to #3 they
+    // stay inside it. In #4 the sandbox is off and only the agent itself works (2026-10-29). With
+    // Codex 0.161 no feature switch takes `spawn_agent` away; a limit of one thread — the agent's
+    // own — does: «collab spawn failed: agent thread limit reached» (verified with the real CLI).
+    ...(lease?.airlock ? ['-c', 'features.multi_agent_v2.max_concurrent_threads_per_session=1'] : []),
     'exec',
     // Codex refuses to run outside a git repository it has not been told to trust, and a new
     // project is often a bare folder. The sandbox above is MADRE's to decide, not this check's.

@@ -99,6 +99,12 @@ export function diffSnapshots(before, after, { relativeDir }) {
   return artifacts.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+// Which agents may use their own CLI's subagents in a turn that writes (2026-10-29): from #1 to #3,
+// the ones whose adapter hands a subagent exactly the turn's permissions (src/adapters/claude.mjs,
+// opencode.mjs; Codex's subagents inherit its sandbox). Never in #4.
+export const SUBAGENT_AGENTS = new Set(['claude', 'opencode', 'codex']);
+export const subagentsAllowed = (agentId, { airlock = false } = {}) => !airlock && SUBAGENT_AGENTS.has(agentId);
+
 export function leaseInstructions({ outDir, agentId, scopes = { write: true, imageGen: agentId === 'codex' }, capable = null, imageStudio = null, control = false, create = false, airlock = false, scratchDir = null }) {
   const canImage = Boolean(scopes.imageGen);
   const couldImage = capable ? Boolean(capable.imageGen?.capable) : canImage;
@@ -122,8 +128,13 @@ export function leaseInstructions({ outDir, agentId, scopes = { write: true, ima
       : couldImage ? 'Image generation is switched off for this request; if asked for an image, say so and do not attempt it.'
         : 'You cannot generate images from this CLI; if asked for one, say so plainly instead of attempting it.',
     // «Do not hand it to another agent» read as «do not plan»: with a lease, agents stopped proposing
-    // pulse plans altogether (2026-10-14). What is barred is the CLI's own subagents, not the room's.
-    'Do this work yourself rather than through your CLI\'s own subagents or spawned agents: a subagent writes outside this lease, so nothing it did would be checked, shown to the human or undoable — and the tools for it are blocked, which can leave you waiting instead of answering. A pulse plan that puts the room\'s other agents to work is different and still allowed.',
+    // pulse plans altogether (2026-10-14). What this line is about is the CLI's own subagents, not
+    // the room's. From #1 to #3 (2026-10-29) Claude, OpenCode and Codex may use theirs: each adapter
+    // gives them exactly this turn's permissions, and what they change is in the same checkpoint. In
+    // #4, and for the others, only the agent itself works.
+    subagentsAllowed(agentId, { airlock })
+      ? 'Your CLI\'s own subagents may help with this: they work with exactly this permission, and whatever they change is in the same checkpoint, listed to the human and undoable. Say in your answer what you handed to each one. A pulse plan that puts the room\'s other agents to work is different and still allowed.'
+      : `Do this work yourself rather than through your CLI's own subagents or spawned agents: ${airlock ? 'in AIRLOCK (#4) only you work, because what leaves the machine does not come back' : 'a subagent would work outside the permission MADRE controls'}, and the tools for it are blocked, which can leave you waiting instead of answering. A pulse plan that puts the room's other agents to work is different and still allowed.`,
     'List the files you created (or "none") before any plan block; nothing may follow a plan block.',
   ].filter(Boolean).join('\n');
 }

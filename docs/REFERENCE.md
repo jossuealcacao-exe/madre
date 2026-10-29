@@ -118,6 +118,19 @@ Cada mensaje sale con un modo. Tu modo es el techo de cualquier plan que ese men
 
 El acceso web es un permiso permanente por agente, apagado por defecto, que se enciende en Ajustes → Agentes, con Acceso a la web.
 
+### Subagentes de cada IA
+
+Desde 1.1.0, de **#1 a #3**, Claude, OpenCode y Codex pueden repartir su trabajo entre sus propios subagentes. Cada subagente trabaja con **exactamente el permiso del turno**: en #1 solo lee, en #2 crea, en #3 edita, nunca toca `.git`, `.pulse`, `.madre` ni `.env`, y lo que cambia entra en el mismo punto de restauración y se deshace con **Deshacer**. En **#4** solo trabaja la IA principal.
+
+| | De #1 a #3 | En #4 |
+|---|---|---|
+| **Claude** | Herramienta `Agent`: el subagente hereda las mismas herramientas y reglas (`--tools`, `--allowedTools`, `dontAsk`) | Sin `Agent` |
+| **OpenCode** | Solo `explore` y `general`, cada uno con los permisos del turno y sin poder llamar a otro (los de fábrica de OpenCode escriben y corren comandos) | `task` negado |
+| **Codex** | Sus subagentes quedan dentro de la misma caja de arena | Límite de un hilo: `features.multi_agent_v2.max_concurrent_threads_per_session=1` |
+| **Gemini** · **Cursor** | No | No |
+
+Probado con las IAs reales (Claude 2.1.267, OpenCode 1.18.4, Codex 0.161): en #1 el subagente lee y no escribe; en #3 escribe en el proyecto, `.pulse/` lo rechaza y no hay comandos; en #4 Codex responde «agent thread limit reached».
+
 ---
 
 ## PLANES

@@ -190,7 +190,7 @@ test('runs Claude with only local read tools and no persistent session', () => {
   assert.deepEqual(args.slice(-2), ['--', 'hello']);
   assert.equal(args.indexOf('--mcp-config') + 2, args.indexOf('--'), 'prompt must not follow a variadic option directly');
   assert.deepEqual(args.slice(args.indexOf('--tools'), args.indexOf('--tools') + 2), [
-    '--tools', 'Read,Glob,Grep',
+    '--tools', 'Read,Glob,Grep,Agent',
   ]);
   assert.ok(args.includes('--safe-mode'));
   assert.ok(args.includes('--no-session-persistence'));
@@ -2017,9 +2017,9 @@ test('creation lease: a fresh directory under .pulse/out, artifacts detected by 
     // A project that is a bare folder, not a git repository: without the flag Codex exits 1 before the turn.
     assert.ok(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--skip-git-repo-check'));
     const claude = buildClaudeArgs({ prompt: 'q', lease: scope });
-    assert.equal(claude[claude.indexOf('--tools') + 1], 'Read,Glob,Grep,Write,Edit');
+    assert.equal(claude[claude.indexOf('--tools') + 1], 'Read,Glob,Grep,Write,Edit,Agent');
     // Double slash: Claude Code reads a single leading slash as project-relative and would deny every write.
-    assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,Write(///p/.pulse/out/x/**),Edit(///p/.pulse/out/x/**)');
+    assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,Write(///p/.pulse/out/x/**),Edit(///p/.pulse/out/x/**),Agent');
     assert.equal(claude.includes('--allowedTools'), true);
     assert.equal(buildClaudeArgs({ prompt: 'q' }).includes('--allowedTools'), false);
     const gemini = buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', lease: scope });
@@ -2213,10 +2213,10 @@ test('web scope: wired into every CLI, standing per agent, off by default', asyn
   const web = { web: true, imageGen: true };
   assert.ok(buildCodexArgs({ projectRoot: '/p', prompt: 'q', scopes: web }).indexOf('--search') < buildCodexArgs({ projectRoot: '/p', prompt: 'q', scopes: web }).indexOf('exec'), 'Codex --search is a global flag before exec');
   assert.equal(buildCodexArgs({ projectRoot: '/p', prompt: 'q' }).includes('--search'), false);
-  assert.deepEqual(claudeTools({ scopes: web }), ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch']);
-  assert.deepEqual(claudeTools({ lease: { outDir: '/o' }, scopes: web }), ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'WebFetch', 'WebSearch']);
+  assert.deepEqual(claudeTools({ scopes: web }), ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Agent']);
+  assert.deepEqual(claudeTools({ lease: { outDir: '/o' }, scopes: web }), ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'WebFetch', 'WebSearch', 'Agent']);
   const claude = buildClaudeArgs({ prompt: 'q', scopes: web });
-  assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,WebFetch,WebSearch');
+  assert.equal(claude[claude.indexOf('--allowedTools') + 1], 'Read,Glob,Grep,WebFetch,WebSearch,Agent');
   assert.equal(buildClaudeArgs({ prompt: 'q' }).includes('WebFetch'), false);
   assert.match(geminiPolicy({ scopes: web }), /toolName = \["google_web_search", "web_fetch"\]\ndecision = "allow"/);
   assert.doesNotMatch(geminiPolicy({}), /google_web_search/);
