@@ -3897,7 +3897,7 @@ export const ES = {
   'Touch again to stop': 'Toca otra vez para detener todo',
   'Stop all': 'Detener todo',
   // SALAS on the Mac (salas-mac.js, src/salas.mjs).
-  'Asleep': 'Dormidos',
+  'Asleep': 'Dormido',
   'Asleep · last open {when}': 'Dormido · última vez {when}',
   'Wake': 'Encender',
   'Waking…': 'Despertando…',

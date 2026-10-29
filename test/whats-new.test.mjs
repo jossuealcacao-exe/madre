@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NEWS_ACTIONS, NOTES, bootWhatsNew, markSeen, newestNotes, notesFor, readSeen, shouldShow, whatsNew } from '../src/whats-new.mjs';
@@ -93,10 +94,14 @@ test('whats new: from 1.0 a sheet is a board — each thing has its picture, and
     assert.equal(new Set(ids).size, ids.length, `${version} gives two things the same id`);
     for (const item of notes.items) {
       assert.match(item.id ?? '', /^[a-z]+$/, `${version} · "${item.title.en}" has no id`);
-      assert.ok(item.image?.startsWith(folder), `${version} · "${item.id}" keeps its picture outside ${folder}: ${item.image}`);
-      assert.ok(item.image.endsWith('.webp'), `${version} · "${item.id}" is not a webp`);
-      // A picture the server does not list is a 404 in the board.
-      assert.ok(server.includes(`['${item.image}', 'image/webp']`), `${version} · ${item.image} is not served (brandAssets in src/server.mjs)`);
+      // One picture, or one per language ({ es, en }, 1.1): each a webp in the version's folder,
+      // listed by the server and present in public/ — a missing one is a hole in the board.
+      for (const image of typeof item.image === 'string' ? [item.image] : [item.image?.es, item.image?.en]) {
+        assert.ok(image?.startsWith(folder), `${version} · "${item.id}" keeps its picture outside ${folder}: ${image}`);
+        assert.ok(image.endsWith('.webp'), `${version} · "${item.id}" is not a webp`);
+        assert.ok(server.includes(`['${image}', 'image/webp']`), `${version} · ${image} is not served (brandAssets in src/server.mjs)`);
+        assert.ok(existsSync(join(import.meta.dirname, '..', 'public', image)), `${version} · ${image} is not in public/`);
+      }
       assert.ok(item.action === null || NEWS_ACTIONS.includes(item.action), `${version} · "${item.id}" takes you somewhere the room does not know: ${item.action}`);
     }
   }

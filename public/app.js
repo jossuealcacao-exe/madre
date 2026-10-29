@@ -21356,6 +21356,8 @@ async function openWhatsNew(version = null) {
 // src/whats-new.mjs; a test keeps the two lists the same). The board is closed first.
 const NEWS_GO = {
   settings: () => openSettings(true),
+  // Anonymous diagnostics: its switch is in Settings › Updates and errors.
+  errors: () => openSettingsOn('release'),
   mother: () => openMother(),
   intents: () => {
     if (modules.items.some((item) => item.id === 'intents')) floatModule('intents');

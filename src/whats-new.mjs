@@ -28,7 +28,7 @@ const FILE = 'whats-new.json';
 // From 1.0 a sheet is a board: each item also has an `id`, a picture (`image`, under
 // /assets/news/<major.minor>/, whitelisted in server.mjs) and an `action`, the place «Take me
 // there» opens, or null when there is nowhere to go. The page knows exactly these places.
-export const NEWS_ACTIONS = ['settings', 'mother', 'intents', 'permissions', 'github', 'bar', 'modules', 'nostromo', 'room', 'looks', 'finder'];
+export const NEWS_ACTIONS = ['settings', 'errors', 'mother', 'intents', 'permissions', 'github', 'bar', 'modules', 'nostromo', 'room', 'looks', 'finder'];
 
 export const NOTES = {
   // 1.1 (2026-10-28): said to whoever comes from 1.0.x, on Home — the first screen of `npx madre` —
@@ -42,7 +42,7 @@ export const NOTES = {
       {
         id: 'home',
         icon: 'home',
-        image: '/assets/news/1.1/home.webp',
+        image: { es: '/assets/news/1.1/es/home.webp', en: '/assets/news/1.1/en/home.webp' },
         title: { es: 'Inicio: todo en un lugar', en: 'Home: everything in one place' },
         body: {
           es: 'Al abrir MADRE llegas a Inicio: tus proyectos, el Coordinador y lo que te espera. A la izquierda tienes tus chats y tus proyectos, como en las apps de chat.',
@@ -54,7 +54,7 @@ export const NOTES = {
       {
         id: 'chats',
         icon: 'list',
-        image: '/assets/news/1.1/chats.webp',
+        image: { es: '/assets/news/1.1/es/chats.webp', en: '/assets/news/1.1/en/chats.webp' },
         title: { es: 'Tus conversaciones, a un lado', en: 'Your conversations, to one side' },
         body: {
           es: 'Cada proyecto guarda sus chats en la columna de la izquierda. Puedes abrir dos lado a lado, o uno en su propia ventana.',
@@ -66,7 +66,7 @@ export const NOTES = {
       {
         id: 'market',
         icon: 'grid',
-        image: '/assets/news/1.1/market.webp',
+        image: { es: '/assets/news/1.1/es/market.webp', en: '/assets/news/1.1/en/market.webp' },
         title: { es: 'El Mercado', en: 'The Market' },
         body: {
           es: 'Suma funciones con un clic: Notas, Recordatorios, Vista previa, Antes de subir y más. Cada módulo te dice qué hace antes de instalarlo.',
@@ -78,7 +78,7 @@ export const NOTES = {
       {
         id: 'welcome',
         icon: 'check',
-        image: '/assets/news/1.1/welcome.webp',
+        image: { es: '/assets/news/1.1/es/welcome.webp', en: '/assets/news/1.1/en/welcome.webp' },
         title: { es: 'Una bienvenida paso a paso', en: 'A step-by-step welcome' },
         body: {
           es: 'Conecta tus agentes, pon una IA gratis en tu computadora y prepara la memoria, sin usar la terminal. Puedes volver a verla cuando quieras.',
@@ -90,7 +90,7 @@ export const NOTES = {
       {
         id: 'permissions',
         icon: 'lock',
-        image: '/assets/news/1.1/permissions.webp',
+        image: { es: '/assets/news/1.1/es/permissions.webp', en: '/assets/news/1.1/en/permissions.webp' },
         title: { es: 'Permisos más simples', en: 'Simpler permissions' },
         body: {
           es: '#3 Editar te pide confirmar y #4 Acceso total, confirmar dos veces. También puedes dejarlos abiertos más tiempo, para trabajar sin interrupciones.',
@@ -102,7 +102,7 @@ export const NOTES = {
       {
         id: 'maps',
         icon: 'orbit',
-        image: '/assets/news/1.1/maps.webp',
+        image: { es: '/assets/news/1.1/es/maps.webp', en: '/assets/news/1.1/en/maps.webp' },
         title: { es: 'Mapas que crecen con lo que saben', en: 'Maps that grow with what they know' },
         body: {
           es: 'Tus proyectos y tus memorias se ven como planetas o como neuronas, y crecen mientras más saben.',
@@ -114,14 +114,14 @@ export const NOTES = {
       {
         id: 'privacy',
         icon: 'bell',
-        image: '/assets/news/1.1/privacy.webp',
+        image: { es: '/assets/news/1.1/es/privacy.webp', en: '/assets/news/1.1/en/privacy.webp' },
         title: { es: 'Errores anónimos para mejorar MADRE', en: 'Anonymous errors to improve MADRE' },
         body: {
           es: 'MADRE manda cada día qué falló y cuánto se usa, sin nada de lo que escribes ni de tus proyectos. Lo apagas cuando quieras.',
           en: 'Once a day MADRE sends what failed and how much it is used, with nothing you write and nothing from your projects. Turn it off whenever you like.',
         },
-        where: { es: 'Ajustes › Privacidad', en: 'Settings › Privacy' },
-        action: 'settings',
+        where: { es: 'Ajustes › Actualizaciones y errores', en: 'Settings › Updates and errors' },
+        action: 'errors',
       },
     ],
   },
