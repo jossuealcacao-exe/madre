@@ -5390,12 +5390,12 @@ function fillRelease(host) {
   }) : null;
   sxRow(block, `MADRE ${info?.current ?? ''}`.trim(), info ? (info.available ? t('{version} available', { version: info.latest }) : info.enabled === false ? t('not checked') : t('up to date')) : t('Reading…'), check);
   // The one thing the daily usage notice says about this copy (src/heartbeat.mjs), in sight.
-  if (info?.install) {
+  if (info?.copyId) {
     const copy = sxButton(t('Copy'), async () => {
-      try { await navigator.clipboard.writeText(info.install); copy.textContent = t('Copied'); setTimeout(() => { copy.textContent = t('Copy'); }, 1400); } catch { toast(t('Select it and copy it.'), 'error'); }
+      try { await navigator.clipboard.writeText(info.copyId); copy.textContent = t('Copied'); setTimeout(() => { copy.textContent = t('Copy'); }, 1400); } catch { toast(t('Select it and copy it.'), 'error'); }
     });
     const row = sxRow(block, t('This copy\'s identifier'), t('Random and unique: this copy made it for itself. It lets the author tell one copy\'s errors from another\'s and find the fix for yours, without knowing who you are: no name, no projects.'), copy);
-    row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.install));
+    row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.copyId));
   }
   if (info?.available) {
     const notes = el('a', 'sx-btn', t('What it brings'));

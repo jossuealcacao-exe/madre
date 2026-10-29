@@ -42,6 +42,7 @@ const ICONS = {
   market: trazoDrawing('market'),
   book: trazoDrawing('book'),
   check: trazoDrawing('check'),
+  trash: trazoDrawing('trash'),
 };
 const icon = (name) => `<svg viewBox="0 0 20 20" aria-hidden="true">${ICONS[name] ?? ICONS.help}</svg>`;
 

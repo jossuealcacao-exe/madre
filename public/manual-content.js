@@ -416,6 +416,19 @@ export const MANUAL = {
         expert: 'Diagnóstico también funciona desde la Terminal: `npx @jossuealcala/madre doctor`.',
       },
       {
+        id: 'desinstalar',
+        part: 'help',
+        icon: 'trash',
+        title: 'Desinstalar MADRE',
+        lead: 'Si ya no la quieres, MADRE se quita sola desde Inicio, y antes te dice qué borra.',
+        steps: [
+          'En Inicio, abre Ajustes › Versión y pulsa «Desinstalar…».',
+          'Lee la lista de lo que se borra y lo que se queda. Tus proyectos y tus IAs se quedan siempre.',
+          'Pulsa Desinstalar. MADRE cierra todo y borra sus conversaciones, su memoria, sus ajustes y su carpeta .pulse en cada proyecto.',
+        ],
+        expert: 'Lo que crearon las IAs en .pulse/out se queda, salvo que marques la casilla. Si instalaste MADRE con npm -g, al final te da el comando para quitar el programa: `npm uninstall -g @jossuealcala/madre`.',
+      },
+      {
         id: 'licencia',
         part: 'help',
         icon: 'book',
@@ -824,6 +837,19 @@ export const MANUAL = {
           ['An answer stopped because MADRE restarted.', 'Ask again. The chat was not lost.'],
         ],
         expert: 'Diagnostics works from the Terminal too: `npx @jossuealcala/madre doctor`.',
+      },
+      {
+        id: 'desinstalar',
+        part: 'help',
+        icon: 'trash',
+        title: 'Uninstall MADRE',
+        lead: 'If you no longer want it, MADRE removes itself from Home, and tells you first what it takes away.',
+        steps: [
+          'In Home, open Settings › Version and press «Uninstall…».',
+          'Read the list of what goes and what stays. Your projects and your AIs always stay.',
+          'Press Uninstall. MADRE closes everything and takes away its conversations, its memory, its settings and its .pulse folder in each project.',
+        ],
+        expert: 'What the AIs created in .pulse/out stays, unless you tick the box. If you installed MADRE with npm -g, at the end it gives you the command to remove the program: `npm uninstall -g @jossuealcala/madre`.',
       },
       {
         id: 'licencia',

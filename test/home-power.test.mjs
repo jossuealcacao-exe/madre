@@ -82,3 +82,19 @@ test('power · MADRE turns off only from its own page, and closes every open pro
     await close(b.server).catch(() => {});
   }
 });
+
+test('version · how this copy was installed and its identifier travel apart', async () => {
+  // Under one name, the identifier hid how the copy runs, and one run from source was offered a
+  // restart into a new version it cannot take (2026-10-29).
+  const state = await scratch('madre-version-');
+  const root = await realpath(await scratch('madre-version-project-'));
+  const { server } = await createPulseServer({ projectRoot: root, stateRoot: state, agents: roster, invokers: {} });
+  const port = await listen(server);
+  try {
+    const info = await (await fetch(`http://127.0.0.1:${port}/api/version`)).json();
+    assert.ok(['npx', 'project', 'global', 'source'].includes(info.install), `install is «${info.install}»`);
+    assert.match(String(info.copyId), /^[0-9a-f-]{36}$/);
+  } finally {
+    await close(server).catch(() => {});
+  }
+});

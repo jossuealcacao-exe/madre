@@ -3919,7 +3919,9 @@ export async function createPulseServer({
       if (request.method === 'GET' && url.pathname === '/api/version') {
         // With the one thing the daily notice says about this copy: its random identifier, shown so the
         // person can see it, and so the author can leave out a copy of his own (the usage widget).
-        return sendJson(response, 200, { ...(await versionView({ force: url.searchParams.get('force') === '1' })), install: await installId(root).catch(() => null) });
+        // Its own field: under `install` it hid how this copy was installed, and a copy run from
+        // source was offered a restart into a new version it cannot take (2026-10-29).
+        return sendJson(response, 200, { ...(await versionView({ force: url.searchParams.get('force') === '1' })), copyId: await installId(root).catch(() => null) });
       }
       // One click: install the newer version and come back on the same port. The room records it,
       // closes its listener so the port is free, hands the command to a detached shell and exits.
