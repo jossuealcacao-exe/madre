@@ -10,6 +10,8 @@ process.env.PULSE_GH ??= '0';
 process.env.PULSE_HEARTBEAT_URL ??= 'http://127.0.0.1:9/ping';
 // Nor does it ask madre.run for the Market's catalog (src/market-remote.mjs): the same dead port.
 process.env.PULSE_MARKET_URL ??= 'http://127.0.0.1:9/mercado/catalogo.json';
+// Nor does it send the anonymous diagnostics (src/telemetry.mjs) anywhere but that same dead port.
+process.env.PULSE_TELEMETRY_URL ??= 'http://127.0.0.1:9/api/telemetry';
 
 // And the suite reads MADRE in the language it is WRITTEN in. The product speaks Spanish by
 // default; its tests assert what a module is, what a room does and what a reading means — not

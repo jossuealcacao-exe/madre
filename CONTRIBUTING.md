@@ -20,7 +20,7 @@ Every commit carries a `Signed-off-by:` line (`git commit -s`). It is the [Devel
 
 - One idea per commit, in the imperative voice the log already speaks.
 - A test for every behaviour you touch: `test/pulse.test.mjs` for the room and adapters, `test/memory.test.mjs` for memory, NOSTROMO and MOTHER, `test/sentinel.test.mjs` for the sentinel. No test may call a real model.
-- Nothing leaves the machine without the human's say-so. If your change sends anything anywhere, it needs a switch, off by default, and a line in the threat model. The one exception is the author's daily «still in use» notice (`src/heartbeat.mjs`), declared in `docs/REFERENCE.md`; nothing may be added to what it carries.
+- Nothing leaves the machine without the human's say-so. If your change sends anything anywhere, it needs a switch, off by default, and a line in the threat model. There are two exceptions, both declared in `docs/REFERENCE.md`: the author's daily «still in use» notice (`src/heartbeat.mjs`), always on, to which nothing may be added; and the anonymous diagnostics (`src/telemetry.mjs`, 2026-10-28), on unless the person turns it off, whose batch is validated field by field on both ends (`readBatch` on madre.run) — a new field there needs a change on both sides and a line in REFERENCE.md.
 - Agents never write outside their lease. If you widen what an agent may do, the permission modes and MU/TH/UR's catalog must say so.
 - MU/TH/UR speaks in uppercase and in short sentences; the room speaks like a person. Keep both voices.
 

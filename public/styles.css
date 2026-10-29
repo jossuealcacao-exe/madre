@@ -12174,3 +12174,6 @@ dialog.intents-window .custom-head .surface-modes { grid-column: 2; grid-row: 1 
 /* The Market's shelves (2026-10-28): what each shelf is, under its name, not beside it. */
 .mk-shelf > header { display: grid; justify-items: start; gap: 3px; }
 .mk.flat .mk-shelf > header p { line-height: 1.45; }
+
+/* What the anonymous diagnostics would send, as it would go (2026-10-28). */
+.sx-code { max-height: 280px; overflow: auto; margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--text) 5%, transparent); font: 450 11.5px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); white-space: pre; }

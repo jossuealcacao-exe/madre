@@ -97,6 +97,14 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // Anonymous diagnostics (src/telemetry.mjs, 2026-10-28): on unless turned off.
+    id: 'diagnostics', host: 'madre.run', match: (url) => url.pathname === '/api/telemetry', to: 'madre.run · anonymous diagnostics',
+    what: 'Errors with private details removed (no paths, names, keys or emails) and counts of turns, modes and features, with this copy\'s random identifier, version and system. Never what you write, your projects or your files.',
+    when: 'once a day, and soon after an error never seen before',
+    where: 'Settings › Version and reports › Send anonymous diagnostics · or PULSE_TELEMETRY=0',
+    inside: true,
+  },
+  {
     // The Market (src/market-remote.mjs): a signed catalog, and the file of a module you get from it.
     id: 'market', host: 'madre.run', match: (url) => url.pathname.startsWith('/mercado/'), to: "madre.run · the Market",
     what: 'Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author\'s signature before it is used.',

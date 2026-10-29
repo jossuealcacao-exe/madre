@@ -26,6 +26,9 @@ import { openWelcome, welcomeOpen, WELCOME_STEPS } from './welcome.js';
 import { remedyKey } from './remedy.js';
 import { loadMarket } from './market.js';
 import { trazo, trazoDrawing } from './icons.js';
+import { tellFailures } from './page-errors.js';
+// A failure of Home's page is told to MADRE's anonymous diagnostics (src/telemetry.mjs).
+tellFailures('home');
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -1488,6 +1491,9 @@ const WIDGETS = {
   // Only for MADRE's author, in a copy run from source with the author's token (src/server.mjs, homeWidget):
   // anywhere else the server has no such widget and Home never offers it.
   'w-usage': { kind: 'usage', owner: true, name: () => t('MADRE usage'), about: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'), size: 8, rows: 5 },
+  // What fails in every copy (src/telemetry.mjs, madre.run's /api/telemetry, 2026-10-28): the author's
+  // too, with the same token, and nowhere else.
+  'w-errors': { kind: 'errors', owner: true, name: () => t('MADRE errors'), about: () => t('What fails in every copy of MADRE, by how many copies it reaches: the ones Diagnostics knows and the ones nobody catalogued. Only you see this.'), size: 8, rows: 5 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -1515,6 +1521,7 @@ const TILE_ICONS = {
   'w-models': trazo('cube'),
   'w-agenda': trazo('calendar'),
   'w-usage': trazo('bars'),
+  'w-errors': trazo('warning'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -2068,6 +2075,58 @@ const WIDGET_PAINT = {
     foot.append(form);
     body.append(foot);
   },
+  // What fails in every copy, the widest first (2026-10-28). Each with what it is (its MU code when
+  // Diagnostics knows it), how many copies and times, which versions and systems, MADRE's own lines
+  // it went through, and the author's word on it.
+  errors(body, reading, { again } = {}) {
+    if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
+    const open = reading.errors.filter((one) => one.status !== 'ignored' && one.status !== 'fixed');
+    const fresh = open.filter((one) => one.status === 'new').length;
+    const lead = el('div', 'sm-usage-lead');
+    lead.append(el('b', 'sm-w-big', String(open.length)), el('span', null, t('failures in the last 30 days')), el('small', `sm-usage-trend${fresh ? ' down' : ''}`, fresh ? t('{n} not looked at yet', { n: fresh }) : t('all looked at')));
+    body.append(lead);
+    // How much MADRE was used in the same days, so a failure reads against the work it interrupted.
+    const turns = Object.entries(reading.usage?.totals ?? {}).filter(([key]) => /^turn\.[a-z]/.test(key) && !['turn.attachments', 'turn.ash'].includes(key));
+    const modes = Object.entries(reading.usage?.totals ?? {}).filter(([key]) => /^mode\.\d$/.test(key));
+    const all = (list) => list.reduce((sum, [, n]) => sum + n, 0);
+    const lines = el('div', 'sm-usage-lines');
+    for (const [label, said] of [
+      [t('Copies'), t('{n} sent diagnostics', { n: reading.copies })],
+      [t('Turns'), turns.length ? turns.sort((a, b) => b[1] - a[1]).slice(0, 5).map(([key, n]) => `@${key.slice(5)} ${Math.round((n / all(turns)) * 100)}%`).join(' · ') : '—'],
+      [t('Modes'), modes.length ? modes.sort((a, b) => a[0].localeCompare(b[0])).map(([key, n]) => `#${key.slice(5)} ${Math.round((n / all(modes)) * 100)}%`).join(' · ') : '—'],
+    ]) {
+      const row = el('div', 'sm-w-line');
+      row.append(el('b', null, label), el('small', null, said));
+      lines.append(row);
+    }
+    body.append(lines);
+    const list = el('div', 'sm-errors');
+    for (const one of reading.errors.slice(0, 12)) {
+      const row = el('details', `sm-error is-${one.status}`);
+      const head = el('summary');
+      const what = one.code ? one.code : { agent: t('Agent'), crash: t('Crash'), route: t('Route'), page: t('Page'), install: t('Install'), model: t('Model'), startup: t('Start'), other: t('Other') }[one.kind] ?? one.kind;
+      head.append(el('span', 'sm-error-what', `${what}${one.agent ? ` · @${one.agent}` : ''}`), el('span', 'sm-error-said', one.message), el('small', null, t('{copies} copies · {hits} times', { copies: one.copies, hits: one.hits })));
+      row.append(head);
+      const systems = one.systems.map((name) => { const word = OS_WORDS[name] ?? name; return typeof word === 'function' ? word() : word; }).join(', ');
+      const facts = el('p', 'sm-hint', [one.versions.map((v) => `v${v}`).join(', '), `${systems}${one.wsl ? ' · WSL' : ''}`, t('last {when}', { when: new Date(one.last_seen).toLocaleString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) })].filter(Boolean).join(' · '));
+      row.append(facts);
+      if (one.frames.length) { const code = el('code', 'sm-error-frames', one.frames.join('\n')); row.append(code); }
+      const keys = el('div', 'sm-error-keys');
+      for (const [status, words] of [['known', t('Known')], ['fixed', t('Fixed')], ['ignored', t('Ignore')]]) {
+        const key = button(`sm-btn small${one.status === status ? ' on' : ''}`, words, async () => {
+          key.disabled = true;
+          const answer = await post('/api/salas/errors/status', { fp: one.fp, status: one.status === status ? 'new' : status });
+          if (!answer.ok) { key.disabled = false; toast(t('madre.run could not be reached.'), 'error'); return; }
+          again?.();
+        });
+        keys.append(key);
+      }
+      row.append(keys);
+      list.append(row);
+    }
+    if (!reading.errors.length) list.append(el('p', 'sm-hint', t('No failures in the last 30 days.')));
+    body.append(list);
+  },
   system(body, reading) {
     const cpu = el('div', 'sm-w-metric');
     cpu.append(el('span', 'sm-w-label', t('Processor')), el('b', 'sm-w-big', pct(reading.cpu.busy)), meter(reading.cpu.busy, toneFor(reading.cpu.busy ?? 0)), el('small', null, t('{n} cores · load {load}', { n: reading.cpu.cores, load: reading.cpu.load[0] })));
@@ -2235,6 +2294,7 @@ const WIDGET_GUIDE = {
   coordinator: () => t('How far the Coordinator\'s own record is from training a model of its own.'),
   models: () => t('Ollama and its models, and how many examples each project has toward a model of its own (8/300 is 8 of 300). «Choose projects» sets which ones use the local AI.'),
   usage: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'),
+  errors: () => t('What fails in every copy of MADRE, by how many copies it reaches. Mark each one known, fixed or ignored; a fixed one that happens again comes back as new.'),
   agenda: () => t('Your reminders from every project, by day. ✓ settles one, «Later» moves it, and the box below sets a new one as you would say it.'),
 };
 function guideWidget(node, kind) {

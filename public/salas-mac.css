@@ -2133,3 +2133,18 @@ html.home-shell dialog.sm-add-sheet .sm-add-row { padding: 12px 14px; }
 .sm-agenda-said { grid-column: 1 / -1; font: 450 12px var(--read); color: var(--terror, #e5484d); }
 .sm-agenda-said:empty { display: none; }
 .w-agenda .sm-w-body { display: flex; flex-direction: column; min-height: 0; }
+
+/* MADRE errors (the author's widget, 2026-10-28): one line per failure, opened for its details. */
+.sm-errors { display: grid; gap: 6px; margin-top: 10px; }
+.sm-error { border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.sm-error > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 8px 10px; cursor: pointer; list-style: none; }
+.sm-error > summary::-webkit-details-marker { display: none; }
+.sm-error-what { font: 600 12px var(--read); color: var(--text); white-space: nowrap; }
+.sm-error-said { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 450 12.5px var(--read); color: var(--text-2); }
+.sm-error > summary small { font: 500 11.5px var(--read); font-variant-numeric: tabular-nums; color: var(--text-3); white-space: nowrap; }
+.sm-error.is-new .sm-error-what::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--danger, #e5484d); vertical-align: 1px; }
+.sm-error.is-fixed, .sm-error.is-ignored { opacity: .6; }
+.sm-error > :not(summary) { margin: 0 10px 8px; }
+.sm-error-frames { display: block; white-space: pre; font: 450 11.5px/1.5 var(--mono, ui-monospace, monospace); color: var(--text-2); }
+.sm-error-keys { display: flex; gap: 6px; }
+.sm-error-keys .sm-btn.on { background: var(--s-acc, var(--phosphor)); color: var(--s-acc-ink, #0a1405); }

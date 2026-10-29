@@ -32,6 +32,9 @@ import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
 import { trazo, trazoDrawing } from './icons.js';
+import { tellFailures } from './page-errors.js';
+// A failure of this page is told to MADRE's anonymous diagnostics (src/telemetry.mjs).
+tellFailures('room');
 
 // The window split in two. The right half is this same page loaded with `?pane=split&chat=<id>`:
 // a second conversation with its transcript and its composer, and nothing of the bar. Everything
@@ -21533,10 +21536,38 @@ function renderMotherSentinel() {
   if (sentinelTarget?.isConnected) { sentinelTarget.replaceChildren(); drawSentinel(sentinelTarget); }
   syncSettingsCards();
 }
+// ANONYMOUS DIAGNOSTICS (src/telemetry.mjs, 2026-10-28): on unless turned off here, and what goes,
+// readable as it goes: the next batch, exactly as madre.run would get it.
+function drawDiagnostics(section) {
+  const block = sxBlock(section, t('Anonymous diagnostics'), t('So the author learns what fails and what gets used, without asking you anything: errors with private details removed, and how many turns, modes and features were used. Never what you write, your projects or your files.'));
+  const holder = el('div');
+  block.append(holder);
+  void fetch('/api/telemetry').then((response) => response.json()).then((reading) => {
+    if (!holder.isConnected) return;
+    const fixed = Boolean(reading.env);
+    sxRow(holder, t('Send anonymous diagnostics'), fixed ? t('Off: MADRE was started with PULSE_TELEMETRY=0.') : t('Once a day, and soon after an error never seen before, to madre.run. Turning it off deletes what was waiting.'), sxSwitch(reading.on, async (on, box) => {
+      box.disabled = true;
+      try {
+        const answer = await fetch('/api/telemetry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }) }).then((response) => response.json());
+        toast(answer.on ? t('Anonymous diagnostics on.') : t('Anonymous diagnostics off. What was waiting was deleted.'), { tone: 'done' });
+      } catch (error) { box.checked = !on; toast(t('It could not be saved: {error}', { error: error.message })); }
+      finally { box.disabled = false; }
+    }, { disabled: fixed, label: t('Send anonymous diagnostics') }), { off: fixed });
+    const look = el('details', 'sx-more');
+    look.append(el('summary', null, t('See what would be sent')));
+    const next = reading.next ?? {};
+    const sums = el('p', 'sx-hint', t('{days} day(s) of counts and {errors} error(s) waiting, with this copy\'s random id, its version and its system.', { days: next.days?.length ?? 0, errors: next.errors?.length ?? 0 }));
+    const code = el('pre', 'sx-code');
+    code.textContent = JSON.stringify(next, null, 2);
+    look.append(sums, code);
+    holder.append(look);
+  }).catch(() => { if (holder.isConnected) holder.append(el('p', 'sx-hint', t('Could not read the diagnostics of this copy.'))); });
+}
 function drawSentinel(section) {
   const reports = [...state.reports.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
   const unsent = reports.filter((report) => !report.sent?.ok).length;
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
+  drawDiagnostics(section);
   const block = sxBlock(section, t('Error reports'), t('Keeps errors MADRE can\'t explain, with private details removed. Nothing leaves this computer unless you send it.'), {
     aside: reports.length ? sxChip(t('{n} reports · {unsent} not sent', { n: reports.length, unsent }), unsent ? 'warn' : '') : sxChip(t('Nothing to report'), 'on'),
   });

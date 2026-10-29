@@ -32,6 +32,7 @@ import { updateBuiltins } from './builtin-updates.mjs';
 import { madreAgent, madreInvoker, MADRE_AGENT_ID, MADRE_ADAPTER } from './adapters/madre.mjs';
 import { exportDataset, forgetCorpus, keepCorpus, keptCorpus, pruneCorpora, readiness as datasetReadiness } from './dataset.mjs';
 import { OutboundLog, outboundView, DEFAULT_REPORT_URL } from './outbound.mjs';
+import { Telemetry, telemetryOn } from './telemetry.mjs';
 import { hostFacts, inRoomLanguage, language as roomLanguage, say, setLanguage as setRoomLanguage, t } from './i18n.mjs';
 
 // One per start of this process: a restart is a new one, a reload of the page is not.
@@ -569,7 +570,7 @@ export async function createPulseServer({
   async function homeWidget(kind) {
     const kept = widgetReadings.get(kind);
     // madre.run's count moves once a day: the author's reading is kept ten minutes, the Mac's thirty seconds.
-    if (kept && Date.now() - kept.at < (kind === 'usage' ? 600000 : 30000)) return kept.reading;
+    if (kept && Date.now() - kept.at < (kind === 'usage' || kind === 'errors' ? 600000 : 30000)) return kept.reading;
     let reading;
     if (kind === 'system') {
       const total = totalmem();
@@ -605,6 +606,14 @@ export async function createPulseServer({
       const answer = await reportFetch(process.env.PULSE_USAGE_URL ?? 'https://madre.run/api/usage', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
       const body = answer?.ok ? await answer.json().catch(() => null) : null;
       reading = body?.ok ? { available: true, ...body, mine } : { available: false, status: answer?.status ?? 0 };
+    } else if (kind === 'errors') {
+      // The author's own reading of what fails in every copy (src/telemetry.mjs, madre.run's
+      // /api/telemetry): the same token as the usage, the same copy run from source.
+      const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+      if (!token) return null;
+      const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+      const body = answer?.ok ? await answer.json().catch(() => null) : null;
+      reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
@@ -877,6 +886,7 @@ export async function createPulseServer({
   // a restart take them all back. Wrong keys are counted: a program trying words is slowed down.
   const passes = new Map();          // token -> { agent, mode, until, once }
   const keyMisses = [];              // when the last wrong keys were typed
+  const pageErrors = [];             // when the page last told of a failure of its own (/api/telemetry/page-error)
   // A key that is only pressed (2026-10-28) is pressed on MADRE's own page: a web page elsewhere
   // cannot send it. (A program on the Mac could, as it could read a folder's name before; the
   // phrase is the key for whoever wants one a program cannot know.)
@@ -1369,10 +1379,17 @@ export async function createPulseServer({
   const broadcastPending = () => pump(mainFeed);
   let unsubscribe = () => {};
 
+  // ANONYMOUS DIAGNOSTICS (src/telemetry.mjs, 2026-10-28): every failure, known or not, and how much
+  // of MADRE is used, kept in ~/.pulse/telemetry and told to madre.run once a day, unless the person
+  // turned it off. Read once here and kept current by its own setting.
+  const telemetry = (await readConfig(root)).telemetry ?? {};
+  let diagnosticsOn = telemetryOn({ telemetry });
+  const diagnostics = new Telemetry({ root, version: PACKAGE.version, enabled: () => diagnosticsOn });
+  diagnostics.onSoon(() => diagnostics.flush({ fetchImpl: reportFetch }));
   // The error sentinel: failures MU/TH/UR cannot classify, and crashes, become
   // redacted reports in the ledger. Sending them anywhere is the human's call.
-  const telemetry = (await readConfig(root)).telemetry ?? {};
   const sentinel = new ErrorSentinel({
+    told: (input) => diagnostics.error(input),
     pkg: PACKAGE,
     agents,
     settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || Boolean(telemetry.autoReport), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? DEFAULT_REPORT_URL },
@@ -1494,11 +1511,32 @@ export async function createPulseServer({
     });
   }
   let unsubscribeModules = () => {};
+  // What the anonymous diagnostics count of a room (src/telemetry.mjs): which agent got a turn and at
+  // which mode, what ran, what failed to install. Names of MADRE's own parts and numbers, never words.
+  function countForDiagnostics(event) {
+    const said = event?.payload ?? {};
+    if (event?.ghost) return;
+    if (event?.type === 'message.created' && said.role === 'user' && !said.auto) {
+      if (said.target) diagnostics.count(`turn.${said.target}`);
+      if (Number.isInteger(said.mode)) diagnostics.count(`mode.${said.mode}`);
+      if (said.via) diagnostics.count(`via.${said.via}`);
+      if (said.attachments?.length) diagnostics.count('turn.attachments');
+      if (said.ash?.active) diagnostics.count('turn.ash');
+    } else if (event?.type === 'message.created' && said.role === 'assistant' && said.sender) {
+      diagnostics.count(`answer.${said.sender}`);
+      if (said.recalled?.length) diagnostics.count('answer.recalled');
+    } else if (event?.type === 'plan.completed') diagnostics.count('plan.done');
+    else if (event?.type === 'copilot.started') diagnostics.count('copilot.on');
+    else if (event?.type === 'extension.install.finished') {
+      if (said.ok) diagnostics.count(`install.${said.id ?? 'module'}`);
+      else if (!said.cancelled) diagnostics.error({ kind: said.model ? 'model' : 'install', where: [said.id, said.trouble].filter(Boolean).join(' · ') || null, message: said.detail ?? 'install failed' });
+    }
+  }
   function wireRoom() {
     unsubscribe = room.subscribe(() => { void broadcastPending(); });
     unsubscribeModules = wireModules(room, chatId);
     unsubscribeAsks = trackAsks(room, historicalEvents);
-    unsubscribeSentinel = room.subscribe((event) => { void sentinel.observe(event).catch(() => null); });
+    unsubscribeSentinel = room.subscribe((event) => { void sentinel.observe(event).catch(() => null); countForDiagnostics(event); });
     unsubscribeEyecat = room.subscribe((event) => { void eyecat.observe(event).catch(() => null); });
     unsubscribeGhost = room.subscribeGhost((event) => { for (const client of clients.keys()) writeEvent(client, event); });
     unsubscribeLive = room.subscribeLive((event) => { for (const client of clients.keys()) writeEvent(client, event); });
@@ -1567,7 +1605,14 @@ export async function createPulseServer({
   // every few hours; the day it was already said, nothing goes.
   // The author's own copies say nothing (2026-10-20): a copy that holds the author's usage key is
   // one of his, and it would only count him in his own figures.
-  const sayAlive = () => { void readSecret(root, OWNER_VAULT, 'usage').catch(() => null).then((owner) => (owner ? null : heartbeat({ root, version: PACKAGE.version, fetchImpl: reportFetch }))); };
+  // And with it, what the anonymous diagnostics kept (src/telemetry.mjs): the author's copies too,
+  // their failures are failures; madre.run leaves them out of the figures of use.
+  const sayAlive = () => {
+    void readSecret(root, OWNER_VAULT, 'usage').catch(() => null).then((owner) => (owner ? null : heartbeat({ root, version: PACKAGE.version, fetchImpl: reportFetch })));
+    diagnostics.gauge('agents.ready', agents.filter((one) => one.ready).length);
+    for (const one of agents.filter((agent) => agent.detected)) diagnostics.gauge(`agent.${one.id}`, 1);
+    void diagnostics.flush({ fetchImpl: reportFetch });
+  };
   const aliveTimers = testMode ? [] : [setTimeout(sayAlive, 20_000), setInterval(sayAlive, 6 * 60 * 60 * 1000)];
   for (const timer of aliveTimers) timer.unref?.();
   const endClients = (feed) => { for (const client of [...feed.clients.keys()]) { feed.clients.delete(client); try { client.end(); } catch { /* already gone */ } } };
@@ -2074,7 +2119,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -2268,6 +2313,17 @@ export async function createPulseServer({
         if (!result?.ok) return sendJson(response, 502, { error: t('madre.run did not answer. Try again in a moment.') });
         widgetReadings.delete('usage');
         return sendJson(response, 200, { ok: true });
+      }
+      // The author marks a failure as known, fixed or not worth it (the «MADRE errors» widget): the
+      // same token, from this Mac's own page only.
+      if (request.method === 'POST' && url.pathname === '/api/salas/errors/status') {
+        const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+        const site = request.headers['sec-fetch-site'];
+        if (!token || viaPhone || (site !== undefined && site !== 'same-origin')) return sendJson(response, 404, { error: t('Not found.') });
+        const payload = await body(request).catch(() => ({}));
+        const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ fp: payload.fp, status: payload.status }), signal: AbortSignal.timeout(8000) }).catch(() => null);
+        widgetReadings.delete('errors');
+        return sendJson(response, answer?.ok ? 200 : 502, { ok: Boolean(answer?.ok) });
       }
       if (request.method === 'GET' && url.pathname === '/api/salas/widget') {
         const reading = await homeWidget(String(url.searchParams.get('kind') ?? ''));
@@ -3398,6 +3454,35 @@ export async function createPulseServer({
           }
         }
         return sendJson(response, 200, { settings: await applySettings(patch) });
+      }
+      // ANONYMOUS DIAGNOSTICS (src/telemetry.mjs): whether it is on, and the exact batch that would go
+      // next, for Settings › Version and reports to show as it is. Turning it off forgets what waits.
+      if (url.pathname === '/api/telemetry' && request.method === 'GET') {
+        return sendJson(response, 200, { on: diagnosticsOn, env: process.env.PULSE_TELEMETRY === '0', next: await diagnostics.preview() });
+      }
+      if (url.pathname === '/api/telemetry' && request.method === 'POST') {
+        if (viaPhone) return sendJson(response, 403, { error: t('This is changed on the computer.') });
+        const payload = await body(request).catch(() => ({}));
+        if (typeof payload.on !== 'boolean') return sendJson(response, 400, { error: t('Say on or off.') });
+        const current = (await readConfig(root)).telemetry ?? {};
+        await updateConfig(root, { telemetry: { ...current, diagnostics: payload.on } });
+        diagnosticsOn = payload.on && process.env.PULSE_TELEMETRY !== '0';
+        if (!payload.on) await diagnostics.forget();
+        return sendJson(response, 200, { on: diagnosticsOn });
+      }
+      // A failure of the page itself (public/app.js and salas-mac.js listen for them): from MADRE's own
+      // page only, a few a minute at most, and kept as a failure like any other.
+      if (url.pathname === '/api/telemetry/page-error' && request.method === 'POST') {
+        const site = request.headers['sec-fetch-site'];
+        if (site !== undefined && site !== 'same-origin') return sendJson(response, 403, { error: 'origin' });
+        const now = Date.now();
+        while (pageErrors.length && pageErrors[0] < now - 60_000) pageErrors.shift();
+        if (pageErrors.length >= 20) return sendJson(response, 429, { error: 'later' });
+        pageErrors.push(now);
+        const payload = await body(request).catch(() => ({}));
+        const page = ['room', 'home', 'manual', 'phone'].includes(payload.page) ? payload.page : 'room';
+        diagnostics.error({ kind: 'page', where: page, message: String(payload.message ?? '').slice(0, 2000), stack: String(payload.stack ?? '').slice(0, 4000) });
+        return sendJson(response, 202, { kept: true });
       }
       // NOSTROMO: the archive is behind the project designation, like CONTROL.
       // Sentinel: reports, settings, the manual road (a prefilled issue) and the automatic one.
@@ -4575,6 +4660,13 @@ export async function createPulseServer({
       }
       sendJson(response, 404, { error: t('Not found.') });
     } catch (error) {
+      // A route that broke is a failure of MADRE's, not of the request: told, with the route's shape
+      // (its ids taken out) and MADRE's own lines it went through. A body that was not JSON is the
+      // request's.
+      if (!(error instanceof SyntaxError)) {
+        const shape = url.pathname.replace(/\/[0-9a-f]{6,}(?=\/|$)/gi, '/:id').replace(/\/\d+(?=\/|$)/g, '/:n');
+        diagnostics.error({ kind: 'route', where: `${request.method} ${shape}`, message: error?.message ?? String(error), stack: error?.stack ?? null });
+      }
       sendJson(response, 400, { error: error.message });
     }
   });
