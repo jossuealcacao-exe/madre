@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The QR a phone scans to pair with this Mac: text in, a grid of dark and light modules out, and
 // an SVG of that grid the room sizes and colours with CSS.
 //

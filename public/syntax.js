@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The names below are the names of formats — JavaScript, JSON, CSS, Markdown — and a format is
 // called the same in every language, so they never pass through the catalogue.
 //

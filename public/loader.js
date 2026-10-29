@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // MADRE loading (2026-10-10): the pulse of the logo beating, a thin bar that fills and the share
 // done under it, as a Mac starts. One loader for every wait that takes time — a RELOAD, the room
 // or Home coming back after an update, a project waking, an agent installing — so a wait always

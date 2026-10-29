@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Where MADRE runs (2026-10-28, docs/private/BIENVENIDA-1.0.6.md). `process.platform` was all MADRE
 // knew of its place, and three real places were not what it assumed: Linux inside Windows (WSL), a
 // virtual machine, and a computer reached from another one over SSH. In each, the browser did not

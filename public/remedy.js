@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // «See how to fix it» (2026-10-28, docs/private/BIENVENIDA-1.0.6.md, F7): one card of Diagnostics
 // (public/troubleshooting.js), opened over the place where something went wrong — the welcome, or
 // an agent's card in Home. Diagnostics lives inside each project, and a person who is setting MADRE

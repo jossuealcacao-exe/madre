@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The user manual's page (/manual, 1.0.5): the text of public/manual-content.js drawn with MADRE's
 // look, in the room's language or the one asked for (?lang=es|en). Each section shows MADRE itself
 // (public/manual-shots.js, scripts/manual-shots.mjs) with a numbered mark on what each step presses;

@@ -3,37 +3,42 @@ Copyright © 2026 Jossue Alcalá — https://jossuealcala.com
 
 This product is MADRE, created by Jossue Alcalá.
 
-From version 1.0.2 on, MADRE is licensed under the GNU Affero General Public
-License, version 3 only (see LICENSE), with additional terms under its
-Section 7 (see ADDITIONAL-TERMS.md). Versions 1.0.1 and earlier remain
-available under the Apache License 2.0 they were published with.
+From version 1.1.0 on, MADRE is licensed under the Business Source License 1.1
+(see LICENSE): free for individuals and for organizations of up to ten people,
+including to provide services to others; each version becomes available under
+the GNU Affero General Public License, version 3 only, four years after it is
+first published. Versions 1.0.2 to 1.0.5 remain under the GNU AGPL v3 only with
+the additional terms in ADDITIONAL-TERMS.md, and versions 1.0.1 and earlier
+under the Apache License 2.0 they were published with.
 
-Author attribution (Section 7(b)). Every copy of MADRE and every work based on
-it must keep displaying, in the corner of every project and of Home, the
-attribution «MADRE <version> · © 2026 Jossue Alcalá» linked to
-https://jossuealcala.com — or, under another name, «Built with MADRE by Jossue
-Alcalá» with the same link — and the same attribution in its Appropriate Legal
-Notices. Keep this file, LICENSE and ADDITIONAL-TERMS.md in every distribution,
-with the following line, unchanged:
+Author attribution. MADRE shows, in the corner of every project and of Home,
+the attribution «MADRE <version> · © 2026 Jossue Alcalá» linked to
+https://jossuealcala.com. Please keep it in every copy and in every work based
+on MADRE — or, under another name, «Built with MADRE by Jossue Alcalá» with the
+same link — together with this file, LICENSE and the following line,
+unchanged:
 
     Based on MADRE by Jossue Alcalá — https://madre.run
 
 "MADRE", the MADRE logo and madre.run are trademarks of Jossue Alcalá. The
-License grants no rights to use them (Section 7(e)). A modified version must be
-distributed under a different name and logo. See TRADEMARKS.md.
+License grants no rights to use them. A modified version must be distributed
+under a different name and logo. See TRADEMARKS.md.
 
 ---
 
-MADRE es de Jossue Alcalá. Desde la versión 1.0.2 se licencia bajo la GNU AGPL
-v3 únicamente, con términos adicionales según su sección 7 (ADDITIONAL-TERMS.md).
-Toda copia y toda versión basada en MADRE debe seguir mostrando, en la esquina
-de cada proyecto y de Inicio, «MADRE <versión> · © 2026 Jossue Alcalá» con
-enlace a https://jossuealcala.com —o, con otro nombre, «Desarrollado con MADRE
-de Jossue Alcalá» con el mismo enlace— y la misma atribución en sus avisos
-legales. Conserva este archivo, LICENSE, ADDITIONAL-TERMS.md y la línea «Based
-on MADRE by Jossue Alcalá — https://madre.run». El nombre MADRE, su logo y
-madre.run son marcas de Jossue Alcalá: una versión modificada lleva otro nombre.
-Ver TRADEMARKS.md.
+MADRE es de Jossue Alcalá. Desde la versión 1.1.0 se licencia bajo la Business
+Source License 1.1 (LICENSE): gratis para personas y para organizaciones de
+hasta diez personas, también para dar servicios a otros; cada versión pasa a la
+GNU AGPL v3 a los cuatro años de publicarse. Las versiones 1.0.2 a 1.0.5 siguen
+bajo la GNU AGPL v3 con los términos de ADDITIONAL-TERMS.md, y las 1.0.1 y
+anteriores bajo la Apache 2.0. MADRE muestra en la esquina de cada proyecto y de
+Inicio «MADRE <versión> · © 2026 Jossue Alcalá» con enlace a
+https://jossuealcala.com; pedimos conservarla en toda copia y versión basada en
+MADRE —o, con otro nombre, «Desarrollado con MADRE de Jossue Alcalá» con el
+mismo enlace— junto con este archivo, LICENSE y la línea «Based on MADRE by
+Jossue Alcalá — https://madre.run». El nombre MADRE, su logo y madre.run son
+marcas de Jossue Alcalá: una versión modificada lleva otro nombre. Ver
+TRADEMARKS.md.
 
 ---
 

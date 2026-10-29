@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Your own wallpaper (1.0.3): a picture of yours behind MADRE, fitted to the screen like the ones
 // that ship. The page does here what was done by hand for each of those (wallpapers/ →
 // public/assets/wallpapers, and their colours in styles.css): it reads the picture, keeps its

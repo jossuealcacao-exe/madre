@@ -2,6 +2,11 @@
 
 Copyright © 2026 Jossue Alcalá — https://jossuealcala.com
 
+> **These terms apply to MADRE versions 1.0.2 to 1.0.5**, published under the GNU AGPL v3. From
+> version 1.1.0 on, MADRE is licensed under the Business Source License 1.1 (see [`LICENSE`](LICENSE))
+> and these terms do not apply to it. *Estos términos aplican a las versiones 1.0.2 a 1.0.5; desde
+> la 1.1.0, MADRE usa la Business Source License 1.1.*
+
 MADRE, from version 1.0.2 on, is licensed under the GNU Affero General Public License, version 3
 only (the «License», in [`LICENSE`](LICENSE)), supplemented by the following additional terms, as
 Section 7 of the License allows. They apply to every file of MADRE and to every work based on it.

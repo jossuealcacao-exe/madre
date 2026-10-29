@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The user manual (1.0.5): how to use MADRE, for someone who has never used an AI and for someone
 // who uses one every day. Read in MADRE (public/manual.js, /manual) and printed to the PDF
 // (scripts/manual-pdf.mjs). Every sentence is something the product does today; the phone, hidden
@@ -377,7 +377,7 @@ export const MANUAL = {
         expert: 'Diagnóstico también funciona desde la Terminal: `npx @jossuealcala/madre doctor`.',
       },
     ],
-    closing: 'MADRE es software libre (AGPL v3). Ayuda y novedades en madre.run.',
+    closing: 'MADRE es gratis para personas y equipos de hasta 10 (licencia BSL 1.1). Ayuda y novedades en madre.run.',
     pdf: 'Descargar en PDF',
     language: 'English',
   },
@@ -741,7 +741,7 @@ export const MANUAL = {
         expert: 'Diagnostics works from the Terminal too: `npx @jossuealcala/madre doctor`.',
       },
     ],
-    closing: 'MADRE is free software (AGPL v3). Help and news at madre.run.',
+    closing: 'MADRE is free for individuals and teams of up to 10 (BSL 1.1 license). Help and news at madre.run.',
     pdf: 'Download as PDF',
     language: 'Español',
   },

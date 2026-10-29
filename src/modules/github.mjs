@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // GITHUB: the GitHub side of this project, in the room. /gh reads the open pull requests, the CI of
 // the branch you are on and the open issues as a card everyone reads, agents included; and it
 // opens a pull request, an issue or a comment the way /git push sends commits — the first call

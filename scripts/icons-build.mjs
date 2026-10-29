@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Trazo MADRE (2026-10-28): writes public/icons.js. Every drawing on a 20 grid inside 2..18, one
 // stroke (1.6, set on the <svg>), round caps and joins, no sharp corner, no line crossing another.
 // The classes inside the drawings are the hooks the CSS animates (ic-f fills, ic-k knocks out,
@@ -246,8 +246,8 @@ export const ICONS = {
   'mod-mcp': '<path d="M7.4 3v3.4M12.6 3v3.4"/><path class="ic-f" d="M5.2 6.4h9.6v2.8a4.8 4.8 0 0 1-9.6 0z" fill="currentColor" fill-opacity=".28"/><path d="M10 14v3"/>',
 };
 
-const head = `// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+const head = `// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // TRAZO MADRE (2026-10-28): every icon of MADRE, drawn once. A 20 grid with its drawing inside
 // 2..18, one stroke (1.6, the --icon-stroke the CSS thickens on hover), round ends and joins, no
 // sharp corner and no line crossing another. The classes inside a drawing are the parts the CSS

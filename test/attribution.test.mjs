@@ -46,20 +46,25 @@ test('attribution · drawn, it is one link to the author with the version and th
   } finally { delete globalThis.document; }
 });
 
-// From 1.0.2 MADRE is under the GNU AGPL v3 only, with additional terms under its Section 7 that
-// keep the author's attribution on screen; every source file says where those terms are.
-test('attribution · the license is the AGPL v3, the additional terms travel with it, and every source file says so', async () => {
+// From 1.1.0 MADRE is under the Business Source License 1.1 (2026-10-28): free for individuals and
+// organizations of up to ten people, each version AGPL v3 four years after it is published; 1.0.2 to
+// 1.0.5 stay AGPL with their additional terms. Every source file says which license it is under.
+test('attribution · the license is the BSL 1.1 with its parameters, older versions keep theirs, and every source file says so', async () => {
   const [license, pkg, terms, notice] = await Promise.all([read('LICENSE'), read('package.json').then(JSON.parse), read('ADDITIONAL-TERMS.md'), read('NOTICE')]);
-  assert.match(license, /^\s+GNU AFFERO GENERAL PUBLIC LICENSE\n\s+Version 3, 19 November 2007/);
-  assert.match(license, /END OF TERMS AND CONDITIONS/);
-  assert.equal(pkg.license, 'AGPL-3.0-only');
-  for (const file of ['LICENSE', 'NOTICE', 'ADDITIONAL-TERMS.md']) assert.ok(file === 'LICENSE' || pkg.files.includes(file) || file === 'NOTICE', `${file} is not shipped`);
-  assert.ok(pkg.files.includes('ADDITIONAL-TERMS.md') && pkg.files.includes('NOTICE'));
-  for (const section of ['7(b)', '7(c)', '7(e)']) assert.ok(terms.includes(section), `the terms do not say ${section}`);
-  assert.match(notice, /GNU Affero General Public\nLicense, version 3 only/);
+  assert.match(license, /^Business Source License 1\.1\n/);
+  assert.match(license, /Licensor: +Jossue Alcalá/);
+  assert.match(license, /Licensed Work: +MADRE, version 1\.1\.0 and later versions\./);
+  assert.match(license, /ten \(10\) or fewer\s+people working for it/);
+  assert.match(license, /Change License: +GNU Affero General Public License, version 3 only/);
+  assert.match(license, /Covenants of Licensor/);
+  assert.equal(pkg.license, 'BUSL-1.1');
+  for (const file of ['NOTICE', 'ADDITIONAL-TERMS.md']) assert.ok(pkg.files.includes(file), `${file} is not shipped`);
+  assert.match(terms, /apply to MADRE versions 1\.0\.2 to 1\.0\.5/);
+  assert.match(notice, /Business Source License 1\.1/);
+  assert.match(notice, /Versions 1\.0\.2 to 1\.0\.5 remain under the GNU AGPL v3/);
   const { execFileSync } = await import('node:child_process');
   const files = execFileSync('git', ['ls-files', 'bin', 'src', 'public', 'scripts'], { cwd: join(import.meta.dirname, '..'), encoding: 'utf8' }).split('\n').filter((file) => /\.(mjs|js|css|html)$/.test(file));
   const bare = [];
-  for (const file of files) if (!(await read(file)).slice(0, 400).includes('SPDX-License-Identifier: AGPL-3.0-only')) bare.push(file);
+  for (const file of files) if (!(await read(file)).slice(0, 400).includes('SPDX-License-Identifier: BUSL-1.1')) bare.push(file);
   assert.deepEqual(bare, [], 'source files without the license line');
 });

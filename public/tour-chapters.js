@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // What the welcome of MADRE 1.0 says (2026-10-11): twelve chapters and the sheet of gestures, in
 // both languages side by side, as the cards of What's new are (src/whats-new.mjs). Each chapter
 // fits on one view: a short scene, a line, three sentences, its gestures and «Take me there».

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The registry. Order is the order MODULES shows. MADRE's own modules first; then the
 // human's, loaded from ~/.pulse/modules/*.mjs (every project) and <project>/.madre/modules/*.mjs
 // (this project). An external module is a file whose default export is a plain spec object

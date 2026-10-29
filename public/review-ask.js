@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Asking for a star or a review (2026-10-10), in the room and in Home: the server keeps when to
 // ask (src/review-ask.mjs); this page says once a minute that it is in view, and when a moment is
 // due it asks — only when nothing is going on: no turn running, nothing half written, no other

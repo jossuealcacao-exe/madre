@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The Market's key (2026-10-18). Makes the author's Ed25519 pair once: the private half stays on
 // this Mac, outside every repository (~/.madre/mercado/ed25519.pem, readable only by its owner);
 // the public half is written into src/market-key.mjs, which every copy of MADRE carries and checks

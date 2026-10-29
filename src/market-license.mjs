@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // THE MARKET'S PAID MODULES (2026-10-19). A paid module is bought at its checkout (Lemon Squeezy,
 // the seller of record, which charges and handles each country's taxes), and the key the buyer
 // gets by email is pasted in MADRE once. MADRE asks Lemon Squeezy, that one time and because the

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Vectors are filled shortly after indexing, one batch at a time, never on a
 // turn's critical path. A backlog drains batch by batch; a failing embedder
 // pauses and tries again later. The room does not depend on vectors.

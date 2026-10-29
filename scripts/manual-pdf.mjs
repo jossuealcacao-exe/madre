@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The user manual in PDF (1.0.5): the manual's own page (public/manual.html), printed light with its
 // cover, in both languages, to public/assets/manual/madre-manual-{es,en}.pdf. A tool for whoever
 // releases MADRE: it needs Playwright with its Chromium; MADRE itself never does. Run it whenever

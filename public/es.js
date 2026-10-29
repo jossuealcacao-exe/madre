@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // MADRE en español.
 //
 // La clave es la frase en inglés tal como está escrita en el código; el valor es lo que dice
@@ -4493,6 +4493,10 @@ export const ES = {
   '«{name}» is asleep': '«{name}» está dormido',
   'This project is asleep': 'Este proyecto está dormido',
   'Open MADRE the way you always do to come back to Home.': 'Abre MADRE como siempre para volver a Inicio.',
+  '© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.': '© {year} {author}. El código de MADRE es público. Con la {license} es gratis para personas y para organizaciones de hasta 10 personas, también para dar servicios a otros; las organizaciones más grandes, o quien la ofrezca a otros como servicio, necesitan una licencia comercial. Cada versión pasa a la GNU AGPL v3 a los cuatro años de publicarse. No trae garantía de ningún tipo.',
+  'MADRE shows its author in the corner. Please keep it in every copy.': 'MADRE muestra a su autor en la esquina. Pedimos conservarlo en toda copia.',
+  '{license} · free for individuals and teams of up to 10': '{license} · gratis para personas y equipos de hasta 10',
+  'On GitHub, to read and to change.': 'En GitHub, para leerlo y cambiarlo.',
   'Restart or turn off MADRE': 'Reiniciar o apagar MADRE',
   'Home and every open project start again': 'Inicio y los proyectos abiertos arrancan de nuevo',
   'Restart MADRE?': '¿Reiniciar MADRE?',
@@ -5160,15 +5164,10 @@ export const ES = {
   '@madre left the project: Ollama has no chat model running': '@madre salió del proyecto: Ollama no tiene un modelo de chat corriendo',
   // Licencia y autoría (public/attribution.js, 2026-10-15).
   'License and authorship': 'Licencia y autoría',
-  "© {year} {author}. MADRE is free software: you can share it and change it under the {license}, with additional terms that keep its author's attribution visible. It comes with no warranty of any kind.": '© {year} {author}. MADRE es software libre: puedes compartirlo y modificarlo bajo la {license}, con términos adicionales que mantienen visible la atribución de su autor. Se ofrece sin ninguna garantía.',
   'Made by {author}': 'Hecho por {author}',
-  'Every copy and every version based on MADRE keeps this attribution visible.': 'Toda copia y toda versión basada en MADRE mantiene visible esta atribución.',
   'The license': 'La licencia',
   'Read': 'Leer',
-  'The additional terms': 'Los términos adicionales',
-  'Author attribution, origin and trademarks (Section 7).': 'Atribución del autor, origen y marcas (sección 7).',
   'The source code': 'El código fuente',
-  'Whoever offers a modified MADRE must offer its source code too.': 'Quien ofrezca un MADRE modificado debe ofrecer también su código fuente.',
   'New: Copilot': 'Nuevo: Copiloto',
   'Let an agent work on its own for a while. Press the robot, choose how long, and the agent you write to can change files, make plans and run safe commands without asking you each time. It asks for your permission only once.': 'Deja que un agente trabaje solo por un rato. Presiona el robot, elige cuánto tiempo, y el agente al que le escribes podrá cambiar archivos, armar planes y correr comandos seguros sin preguntarte cada vez. Te pide permiso una sola vez.',
   'New: Outside tools (MCP)': 'Nuevo: Conectores (MCP)',

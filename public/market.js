@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The Market (2026-10-18): every module MADRE can turn on or install, shown as a shop in Home and
 // in each project (market-view.js), and offered in the conversation the moment one would help
 // (app.js, offerModule). What a module looks like — its line and its drawing — lives here once, for the

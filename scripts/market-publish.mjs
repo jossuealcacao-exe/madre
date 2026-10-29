@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Publishing the Market (2026-10-18). Reads the catalog's source — catalogo.json and the module
 // files beside it — and writes what madre.run serves: the catalog with every file pinned by its
 // sha256 and size, each file under a name that carries its version (a published file never

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -23,6 +23,43 @@ forgetNpxLaunch(process.env);
 
 const cli = parseArgs(process.argv.slice(2));
 const { command } = cli;
+
+// WINDOWS (1.1.0, docs/WINDOWS.md D-001): on Windows, MADRE runs inside WSL2, not on Windows itself —
+// what it promises about permissions (the write bit, process groups, each agent's sandbox) does not
+// exist there the same way, and a start halfway is worse than none. A native start says how to get
+// there, in three steps and in the person's language, and stops. PULSE_WINDOWS_NATIVE=1 lets a
+// developer go on anyway.
+if (process.platform === 'win32' && process.env.PULSE_WINDOWS_NATIVE !== '1' && command !== 'help') {
+  const spanish = /^es\b/i.test(Intl.DateTimeFormat().resolvedOptions().locale ?? '');
+  console.log(spanish ? `
+MADRE en Windows funciona dentro de WSL2 (un Linux que viene con Windows). Son tres pasos, una sola vez:
+
+  1. Abre PowerShell como administrador, escribe esto y reinicia la computadora:
+       wsl --install
+  2. Abre «Ubuntu» desde el menú Inicio y crea tu usuario.
+  3. Dentro de Ubuntu, instala Node.js y abre MADRE:
+       curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+       sudo apt install -y nodejs
+       npx @jossuealcala/madre
+
+MADRE se abre en tu navegador de Windows, como cualquier página.
+Guía con imágenes: https://madre.run/manual/#windows
+` : `
+On Windows, MADRE runs inside WSL2 (a Linux that comes with Windows). Three steps, once:
+
+  1. Open PowerShell as administrator, type this and restart the computer:
+       wsl --install
+  2. Open «Ubuntu» from the Start menu and create your user.
+  3. Inside Ubuntu, install Node.js and open MADRE:
+       curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+       sudo apt install -y nodejs
+       npx @jossuealcala/madre
+
+MADRE opens in your Windows browser, like any page.
+Guide with pictures: https://madre.run/en/manual/#windows
+`);
+  process.exit(1);
+}
 const option = (name, fallback) => cli.option(name.replace(/^--/, ''), fallback);
 
 // Is a MADRE already serving this very project nearby? `start` walks ports, so look along the

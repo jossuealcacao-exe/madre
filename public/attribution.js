@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 
-// Who made MADRE (2026-10-15). This file is what term 1 of ADDITIONAL-TERMS.md asks every copy and
+// Who made MADRE (2026-10-15). This file is what NOTICE asks every copy and
 // every work based on MADRE to keep showing: the corner of every project and of Home, «MADRE
 // <version> · © 2026 Jossue Alcalá» linked to its author, and the same attribution in the
 // Appropriate Legal Notices (Settings › Updates and errors › License and authorship). One source
@@ -13,11 +13,10 @@ import { trazoDrawing } from './icons.js';
 export const AUTHOR = 'Jossue Alcalá';
 export const AUTHOR_URL = 'https://jossuealcala.com';
 export const YEAR = 2026;
-export const LICENSE_NAME = 'GNU AGPL v3';
+export const LICENSE_NAME = 'Business Source License 1.1';
 const REPO = 'https://github.com/jossuealcacao-exe/madre';
 export const LEGAL_LINKS = {
   license: `${REPO}/blob/main/LICENSE`,
-  terms: `${REPO}/blob/main/ADDITIONAL-TERMS.md`,
   source: REPO,
 };
 
@@ -79,16 +78,16 @@ export async function drawColophonKeys(host) {
   return box;
 }
 
-// The Appropriate Legal Notices (AGPL v3, section 0 and 5(d)): the copyright, that there is no
-// warranty, that it may be shared under the License, how to read it — and, by term 1(b) of the
-// additional terms, the author's attribution. Built with the Settings blocks both pages share.
+// The legal notices (1.1.0, Business Source License 1.1): the copyright, who may use MADRE for free,
+// that there is no warranty, how to read the license and where the code is — and the author's
+// attribution, which NOTICE asks every copy to keep. Built with the Settings blocks both pages share.
 export function drawLegal(host) {
   if (!host) return null;
   const make = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
   const block = make('section', 'sx-block sx-legal');
   const head = make('header', 'sx-head');
   const words = make('div', 'sx-words');
-  words.append(make('h3', null, t('License and authorship')), make('p', null, t('© {year} {author}. MADRE is free software: you can share it and change it under the {license}, with additional terms that keep its author\'s attribution visible. It comes with no warranty of any kind.', { year: YEAR, author: AUTHOR, license: LICENSE_NAME })));
+  words.append(make('h3', null, t('License and authorship')), make('p', null, t('© {year} {author}. MADRE\'s code is public. Under the {license} it is free for individuals and for organizations of up to 10 people, also to provide services to others; larger organizations, or offering it to others as a service, need a commercial license. Each version becomes GNU AGPL v3 four years after it is published. It comes with no warranty of any kind.', { year: YEAR, author: AUTHOR, license: LICENSE_NAME })));
   head.append(words);
   const rows = make('div', 'sx-rows');
   const row = (label, hint, url, words) => {
@@ -105,10 +104,9 @@ export function drawLegal(host) {
     line.append(text, box);
     rows.append(line);
   };
-  row(t('Made by {author}', { author: AUTHOR }), t('Every copy and every version based on MADRE keeps this attribution visible.'), AUTHOR_URL, 'jossuealcala.com');
-  row(t('The license'), LICENSE_NAME, LEGAL_LINKS.license, t('Read'));
-  row(t('The additional terms'), t('Author attribution, origin and trademarks (Section 7).'), LEGAL_LINKS.terms, t('Read'));
-  row(t('The source code'), t('Whoever offers a modified MADRE must offer its source code too.'), LEGAL_LINKS.source, 'GitHub');
+  row(t('Made by {author}', { author: AUTHOR }), t('MADRE shows its author in the corner. Please keep it in every copy.'), AUTHOR_URL, 'jossuealcala.com');
+  row(t('The license'), t('{license} · free for individuals and teams of up to 10', { license: LICENSE_NAME }), LEGAL_LINKS.license, t('Read'));
+  row(t('The source code'), t('On GitHub, to read and to change.'), LEGAL_LINKS.source, 'GitHub');
   block.append(head, rows);
   host.append(block);
   return block;

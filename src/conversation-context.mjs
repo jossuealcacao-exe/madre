@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // What a command's output may weigh in the shared window, and which part of it. It used to be the
 // first 6000 characters: five outputs filled the 16 000 of the window, the request that asked for
 // them went out of it, and the agent lost the thread (2026-10-14). Now it is the start and the end

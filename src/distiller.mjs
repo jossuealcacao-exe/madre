@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The archivist's turn: every so often the cheapest agent in the room reads
 // the exchanges nobody has distilled yet and writes the few notes worth
 // keeping for every later turn. Pure functions here; the room schedules and

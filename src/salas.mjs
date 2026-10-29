@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Salas on the Mac (docs/MACROVERSO.md, phase 1): every room this Mac knows, open or asleep, and
 // what one room may ask of another — to open, to close. The list is read from what each room
 // leaves beside its record; nothing here touches a room's ledger or its memory.

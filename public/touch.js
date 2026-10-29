@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // A tap is not a hover (2026-10-11). On a screen with no pointer (a phone, a tablet without a
 // trackpad), the browser gives :hover to whatever was tapped and keeps it until the next tap lands
 // somewhere else: a button looked pressed after it was let go. So, where nothing can hover, the

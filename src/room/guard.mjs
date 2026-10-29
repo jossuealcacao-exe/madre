@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Prevention before restoration: while an agent holds CONTROL, the forbidden
 // zones that can be made read-only are made read-only. .env files and MADRE's
 // own folders lose their write bits for the turn and get them back after;

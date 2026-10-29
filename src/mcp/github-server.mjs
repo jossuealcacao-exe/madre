@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // MADRE GITHUB: a small MCP server (stdio, JSON-RPC 2.0) that lets an agent read the GitHub side
 // of this project — pull requests, issues, checks — and, in #4 AIRLOCK only, open a pull request,
 // open an issue or leave a comment. There is no MADRE in the middle: this process asks gh, or

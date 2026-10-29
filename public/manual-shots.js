@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Written by scripts/manual-shots.mjs: the size of each picture of the manual and where its marks
 // stand — [left, top, width, height] in hundredths of the picture, one per step. Not edited by hand.
 

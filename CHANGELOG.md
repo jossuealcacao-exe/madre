@@ -4,7 +4,7 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.0.6 · Sin publicar
+## 1.1.0 · Sin publicar
 
 - **MADRE se ve como un chat con IA.** A la izquierda, una barra lateral con tus chats y tus proyectos, que se muestra y se oculta con su ícono, como en Claude o ChatGPT. Al centro, la conversación, con tus mensajes en una burbuja suave y la caja de texto con el agente, el modo y el modelo adentro. A la derecha, la herramienta que abras: Código, Archivos o el Navegador, cada una en su pestaña. Sin fondo de pantalla ni tarjetas flotando: tres columnas limpias. Inicio, Módulos, Diagnóstico y Ajustes hablan el mismo idioma. Las ventanas flotantes siguen ahí para quien las prefiera.
 - **Notas y Recordatorios se actualizan sin esperar a una MADRE nueva.** Siguen viniendo con MADRE y funcionan sin internet. Cuando sale un arreglo para alguno de los dos, llega por el Mercado y MADRE te avisa una vez («Recordatorios se actualizó solo a la versión…»). Cada archivo viene firmado con una llave aparte de la del Mercado. Si algo no cuadra, MADRE usa el que trajo de fábrica. Con «Buscar versiones nuevas» apagado, siempre usa el de fábrica.

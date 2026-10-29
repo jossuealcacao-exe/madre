@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The icons written into the HTML pages are copies of public/icons.js (Trazo MADRE): a page draws its
 // keys before any script runs, so it carries them in its own text. Each copy says which drawing it is
 // (data-icon); this keeps it equal to the drawing. `node scripts/icons.mjs` lists what differs,

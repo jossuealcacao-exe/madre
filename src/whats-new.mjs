@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // What a version brings, said to the person who just got it.
 //
 // After an update the room opens once on a sheet of what is new: a few things, each said plainly,
@@ -31,6 +31,100 @@ const FILE = 'whats-new.json';
 export const NEWS_ACTIONS = ['settings', 'mother', 'intents', 'permissions', 'github', 'bar', 'modules', 'nostromo', 'room', 'looks', 'finder'];
 
 export const NOTES = {
+  // 1.1 (2026-10-28): said to whoever comes from 1.0.x, on Home — the first screen of `npx madre` —
+  // and in a project if Home was not opened first. Few things, the ones that change how MADRE looks.
+  '1.1.0': {
+    intro: {
+      es: 'MADRE 1.1 se ordena como una app de chat: Inicio para todo, tus conversaciones a un lado y un Mercado para sumar funciones. Desde esta versión usa la licencia BSL: sigue gratis para personas y equipos de hasta 10.',
+      en: 'MADRE 1.1 is laid out like a chat app: Home for everything, your conversations to one side and a Market to add features. From this version it uses the BSL license: still free for individuals and teams of up to 10.',
+    },
+    items: [
+      {
+        id: 'home',
+        icon: 'home',
+        image: '/assets/news/1.1/home.webp',
+        title: { es: 'Inicio: todo en un lugar', en: 'Home: everything in one place' },
+        body: {
+          es: 'Al abrir MADRE llegas a Inicio: tus proyectos, el Coordinador y lo que te espera. A la izquierda tienes tus chats y tus proyectos, como en las apps de chat.',
+          en: 'Opening MADRE takes you to Home: your projects, the Coordinator and what is waiting for you. Your chats and projects are on the left, like in chat apps.',
+        },
+        where: { es: 'Lo primero que ves al abrir MADRE', en: 'The first thing you see when you open MADRE' },
+        action: null,
+      },
+      {
+        id: 'chats',
+        icon: 'list',
+        image: '/assets/news/1.1/chats.webp',
+        title: { es: 'Tus conversaciones, a un lado', en: 'Your conversations, to one side' },
+        body: {
+          es: 'Cada proyecto guarda sus chats en la columna de la izquierda. Puedes abrir dos lado a lado, o uno en su propia ventana.',
+          en: 'Each project keeps its chats in the column on the left. You can open two side by side, or one in its own window.',
+        },
+        where: { es: 'La columna de la izquierda de cada proyecto', en: 'The left column of every project' },
+        action: null,
+      },
+      {
+        id: 'market',
+        icon: 'grid',
+        image: '/assets/news/1.1/market.webp',
+        title: { es: 'El Mercado', en: 'The Market' },
+        body: {
+          es: 'Suma funciones con un clic: Notas, Recordatorios, Vista previa, Antes de subir y más. Cada módulo te dice qué hace antes de instalarlo.',
+          en: 'Add features in one click: Notes, Reminders, Preview, Before you push and more. Every module tells you what it does before you install it.',
+        },
+        where: { es: 'Mercado, en la columna de la izquierda', en: 'Market, in the left column' },
+        action: 'modules',
+      },
+      {
+        id: 'welcome',
+        icon: 'check',
+        image: '/assets/news/1.1/welcome.webp',
+        title: { es: 'Una bienvenida paso a paso', en: 'A step-by-step welcome' },
+        body: {
+          es: 'Conecta tus agentes, pon una IA gratis en tu computadora y prepara la memoria, sin usar la terminal. Puedes volver a verla cuando quieras.',
+          en: 'Connect your agents, put a free AI on your computer and get the memory ready, without the terminal. You can see it again whenever you like.',
+        },
+        where: { es: 'Ajustes de Inicio › Ver la bienvenida otra vez', en: 'Home settings › See the welcome again' },
+        action: null,
+      },
+      {
+        id: 'permissions',
+        icon: 'lock',
+        image: '/assets/news/1.1/permissions.webp',
+        title: { es: 'Permisos más simples', en: 'Simpler permissions' },
+        body: {
+          es: '#3 Editar te pide confirmar y #4 Acceso total, confirmar dos veces. También puedes dejarlos abiertos más tiempo, para trabajar sin interrupciones.',
+          en: '#3 Edit asks you to confirm and #4 Full access, to confirm twice. You can also leave them open for longer, to work without interruptions.',
+        },
+        where: { es: 'El botón de permiso, junto a la caja donde escribes', en: 'The permission button, next to the box you type in' },
+        action: 'permissions',
+      },
+      {
+        id: 'maps',
+        icon: 'orbit',
+        image: '/assets/news/1.1/maps.webp',
+        title: { es: 'Mapas que crecen con lo que saben', en: 'Maps that grow with what they know' },
+        body: {
+          es: 'Tus proyectos y tus memorias se ven como planetas o como neuronas, y crecen mientras más saben.',
+          en: 'Your projects and memories show as planets or as neurons, and grow the more they know.',
+        },
+        where: { es: 'Mapa de memoria y Mapa de proyectos', en: 'Memory map and Project map' },
+        action: 'nostromo',
+      },
+      {
+        id: 'privacy',
+        icon: 'bell',
+        image: '/assets/news/1.1/privacy.webp',
+        title: { es: 'Errores anónimos para mejorar MADRE', en: 'Anonymous errors to improve MADRE' },
+        body: {
+          es: 'MADRE manda cada día qué falló y cuánto se usa, sin nada de lo que escribes ni de tus proyectos. Lo apagas cuando quieras.',
+          en: 'Once a day MADRE sends what failed and how much it is used, with nothing you write and nothing from your projects. Turn it off whenever you like.',
+        },
+        where: { es: 'Ajustes › Privacidad', en: 'Settings › Privacy' },
+        action: 'settings',
+      },
+    ],
+  },
   '1.0.0': {
     intro: {
       es: 'MADRE 1.0 se ve y se usa como un producto: todo lo que configuras en un solo lugar, ayudas que aprenden de cómo trabajas y un proyecto que acomodas a tu gusto.',

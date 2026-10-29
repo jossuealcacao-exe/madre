@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: AGPL-3.0-only
-   MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md */
+/* SPDX-License-Identifier: BUSL-1.1
+   MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE */
 /* SALAS on the Mac (salas-mac.html). The tokens are the room's (styles.css, loaded first): the same
    ground, panels, bevel and accent, so leaving a room for SALAS is not leaving MADRE. The sky is
    painted once, in CSS: three glows and two layers of fixed stars, nothing that moves. */
@@ -1890,7 +1890,9 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-close { position: absolute; top: 12px; right: 12px; z-index: 2; }
 /* Solid: the step scrolls under it, and a see-through key showed the text through itself. */
 .wl-close.surface-modes, .wl-close { border-radius: 10px; background: var(--wl-canvas) !important; box-shadow: 0 0 0 1px var(--wl-line), 0 2px 8px -2px rgba(0, 0, 0, .18) !important; }
-.wl-close .surface-mode { background: var(--wl-canvas); }
+.wl-close .surface-mode:not(:hover, :focus-visible) { background: var(--wl-canvas); }
+/* Under the pointer it answers as every ✕ of MADRE does (styles.css, .x-close): it turns, and goes red on a red tint. */
+.wl-close .surface-mode.x-close:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--danger) 12%, var(--wl-canvas)); color: var(--danger); }
 .wl-content { display: grid; align-content: start; gap: 12px; min-height: 0; padding: 22px 29px 18px 34px; border: 0 solid transparent; border-width: 8px 5px 0 0; overflow: auto; overscroll-behavior: contain; }
 .wl-content > * { margin: 0; }
 .wl-eyebrow { font-size: 12.5px; color: var(--text-3); }

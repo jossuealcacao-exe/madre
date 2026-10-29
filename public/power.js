@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Turning MADRE off from the page (2026-10-16): one key in the top bar of Home and of every
 // project, a question before anything happens, and then the server closes every open project and
 // itself the clean way (src/server.mjs, /api/madre/shutdown). What is left on screen says MADRE is

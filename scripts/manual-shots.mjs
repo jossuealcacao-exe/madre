@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The pictures of the user manual (1.0.5, 2026-10-21): MADRE itself, photographed, with where each
 // step of a section is pressed. A tool for whoever releases MADRE, like scripts/manual-pdf.mjs: it
 // needs Playwright with its Chromium and cwebp; MADRE itself never does.
@@ -328,8 +328,8 @@ try {
 }
 
 const ordered = Object.fromEntries(['es', 'en'].filter((one) => known[one]).map((one) => [one, Object.fromEntries(Object.keys(SHOTS).filter((id) => known[one][id]).map((id) => [id, known[one][id]]))]));
-writeFileSync(indexFile, `// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+writeFileSync(indexFile, `// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Written by scripts/manual-shots.mjs: the size of each picture of the manual and where its marks
 // stand — [left, top, width, height] in hundredths of the picture, one per step. Not edited by hand.
 

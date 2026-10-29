@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Closes a version, the only way a number gets used: clean tree, suite and
 // pack:check green, the changelog's "Sin publicar" section dated, package.json
 // bumped, one commit, one tag, pushed, one GitHub release. Then it prints the

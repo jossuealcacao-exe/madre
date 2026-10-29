@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // «Your computer» (2026-10-16), the same block in a project (Modules and Settings › Local AI) and in
 // Home (Settings › Local AI). Each page hands in its own row builders, so it reads like the rest.
 import { t } from './i18n.js';

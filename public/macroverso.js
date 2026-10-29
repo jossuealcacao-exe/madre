@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // THE MACROVERSE: every room on this Mac as a NOSTROMO in open space (docs/MACROVERSO.md, phase 3a).
 // It is entered from SALAS and only on a large screen; on a phone SALAS is the list and nothing more.
 //

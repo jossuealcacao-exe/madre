@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // What OpenCode can answer with on this computer (2026-10-19). OpenCode sends each turn to the
 // provider of its model, and a provider can stop answering on its own: an API key with no credit
 // left, or one that is no longer valid. A person met it as a red card in English on every turn,

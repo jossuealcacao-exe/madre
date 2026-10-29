@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // A failure of the page itself — a script that threw, a promise nobody caught — told to the MADRE
 // that serves it (src/telemetry.mjs, /api/telemetry/page-error, 2026-10-28), which keeps it with the
 // rest of its anonymous diagnostics. Once per message per page, a few at most, and nothing of what

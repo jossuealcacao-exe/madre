@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // THE COMMUNITY MARKET'S CHECK (2026-10-28, docs/private/MODULOS-MERCADO-1.0.6.md, stage 3). A module
 // somebody sends to the Market — a pull request to the public `madre-mercado` repository, curated: the
 // author of MADRE reads it, signs it and publishes it — is checked here first, the same way on the

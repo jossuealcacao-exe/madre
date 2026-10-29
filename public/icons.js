@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // TRAZO MADRE (2026-10-28): every icon of MADRE, drawn once. A 20 grid with its drawing inside
 // 2..18, one stroke (1.6, the --icon-stroke the CSS thickens on hover), round ends and joins, no
 // sharp corner and no line crossing another. The classes inside a drawing are the parts the CSS

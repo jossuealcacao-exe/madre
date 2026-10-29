@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The welcome of MADRE 1.0 (2026-10-11): one bonjour per person and per major version, then the
 // chapters that tell everything new, at the person's own pace (docs: the «Recorrido de MADRE 1.0»
 // decision, option B with two pieces of C — the one-line hints and the sheet of gestures).

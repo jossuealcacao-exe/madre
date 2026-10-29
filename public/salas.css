@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: AGPL-3.0-only
-   MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md */
+/* SPDX-License-Identifier: BUSL-1.1
+   MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE */
 /* ROOMS, on the phone (salas.html). The tokens are the room's (styles.css, loaded first); this only
    lays out one column for a thumb: the rooms as AJUSTES-style blocks, the one that asks for you in
    the accent, and the edges of the screen kept clear of the notch and the home bar. */

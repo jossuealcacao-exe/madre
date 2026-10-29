@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // What this computer can do with a local AI, measured and not assumed (2026-10-16).
 //
 // The local AI was sized for one machine: a 16 GB Mac ran a 3B model and trained a 1.5B one, and

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The English the screen shows where the source words are not the ones people use (2026-10-21):
 // the source stays as written in the code; this catalogue says it better, as es.js says it in
 // Spanish, so a word can be changed without touching the code that uses it. «Chats», not

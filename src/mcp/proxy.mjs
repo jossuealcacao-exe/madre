@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The one MCP server every CLI starts for a server a person connected (src/mcp/connect.mjs).
 //
 //   node proxy.mjs --state <stateRoot> --project <projectRoot> --server <id> [--allow a,b,c]

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // What a turn would cost at the provider's API list price, for the CLIs that do not say it
 // themselves. Claude Code reports its own figure (`total_cost_usd`); Codex and Gemini report only
 // tokens, and OpenCode reports 0 when the model runs on a subscription. So the room prices those

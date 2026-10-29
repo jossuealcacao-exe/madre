@@ -4,7 +4,7 @@ Every published version of `@jossuealcala/madre`. Dates in ISO format.
 
 A version closes when it is on npm: until then its section is called **Unreleased** and it can keep growing. Each published version has exactly one `vX.Y.Z` tag, one GitHub release and one section here; the patch number can reach two digits (`0.2.10`) before the minor goes up. See `docs/ROADMAP.md` for the criteria on what bumps each number. This is the English translation of [CHANGELOG.md](CHANGELOG.md); the Spanish file is the original.
 
-## 1.0.6 · Unreleased
+## 1.1.0 · Unreleased
 
 - **MADRE looks like a chat with an AI.** At the left, a sidebar with your chats and your projects, shown and hidden by its icon, as in Claude or ChatGPT. In the middle, the conversation, your messages in a soft bubble and the box you write in holding the agent, the mode and the model. At the right, the tool you open: Code, Files or the Browser, each in its tab. No wallpaper and no floating cards: three clean columns. Home, Modules, Diagnostics and Settings speak the same language. Floating windows are still there for whoever prefers them.
 - **Notes and Reminders update without waiting for a new MADRE.** They still come with MADRE and work without internet. When a fix comes out for either one, it arrives through the Market and MADRE tells you once («Reminders updated itself to version…»). Each file comes signed with a key kept apart from the Market's. If anything does not match, MADRE uses the one it came with. With «Look for new versions» off, it always does.

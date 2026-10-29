@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // MADRE memory: a tiny MCP server (stdio, JSON-RPC 2.0) that lets the agent in
 // a turn consult the room's memory itself: everything said outside GHOST,
 // the distilled notes, exact stretches of the ledger, and AHP+'s project

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import http from 'node:http';
 import { readFile, realpath, writeFile, mkdir, mkdtemp, cp, rename, access, rm, stat } from 'node:fs/promises';
 import { existsSync, openSync, rmSync } from 'node:fs';
@@ -2184,6 +2184,13 @@ export async function createPulseServer({
         ['/assets/wallpapers/tradicion.webp', 'image/webp'],
         ['/assets/wallpapers/urbania.webp', 'image/webp'],
         // The pictures of the «what's new» board, one per thing it tells (src/whats-new.mjs).
+        ['/assets/news/1.1/home.webp', 'image/webp'],
+        ['/assets/news/1.1/chats.webp', 'image/webp'],
+        ['/assets/news/1.1/market.webp', 'image/webp'],
+        ['/assets/news/1.1/welcome.webp', 'image/webp'],
+        ['/assets/news/1.1/permissions.webp', 'image/webp'],
+        ['/assets/news/1.1/maps.webp', 'image/webp'],
+        ['/assets/news/1.1/privacy.webp', 'image/webp'],
         ['/assets/news/1.0/settings.webp', 'image/webp'],
         ['/assets/news/1.0/mother.webp', 'image/webp'],
         ['/assets/news/1.0/intents.webp', 'image/webp'],

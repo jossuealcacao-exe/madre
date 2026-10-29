@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // COPILOT: the human hands one project to whichever agent they write to, for a while (2026-10-14).
 //
 // Turned on with the #3 key, once, for up to 24 hours. While it lasts, a message sent at #3 needs no

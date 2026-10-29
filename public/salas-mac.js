@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // SALAS on the Mac: every room this Mac knows, open or asleep, in one place (docs/MACROVERSO.md,
 // phase 1). The room that serves this page answers for all of them (src/salas.mjs): it lists
 // them, opens one that is asleep, asks one to close, and stops every agent in every room. A room
@@ -2865,6 +2865,63 @@ async function refresh({ polled = false } = {}) {
   drawnRooms = said;
   drawnRoomsAt = Date.now();
   draw();
+  if (!newsAsked) { newsAsked = true; setTimeout(() => void homeNews(), 1200); }
+}
+
+// WHAT IS NEW, ON HOME (1.1, 2026-10-28): whoever comes from an older MADRE lands here first now, so
+// Home says what changed — the same notes and the same board as a project (src/whats-new.mjs, app.js
+// showWhatsNew), shorter: a card each, and «Start». Once per version, per person (the server
+// remembers it); never over the welcome, a sheet or a window, nor on a first install.
+let newsAsked = false;
+async function homeNews() {
+  const news = await fetch('/api/whats-new', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+  if (!news?.show || !news.notes || welcomeOpen() || document.querySelector('dialog[open]')) return;
+  const pick = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value[language] ?? value.es ?? value.en : value);
+  const notes = news.notes;
+  const dialog = el('dialog', 'whats-new home-news');
+  dialog.setAttribute('aria-label', t("What's new in MADRE {version}", { version: news.version }));
+  const sheet = el('div', 'wn-sheet');
+  const head = el('header', 'wn-head');
+  const words = el('div', 'wn-headline');
+  const logo = document.querySelector('.side-brand .brand-logo, #sm-back .brand-logo')?.cloneNode?.(true);
+  if (logo) { logo.setAttribute('class', 'brand-logo wn-logo'); words.append(logo); }
+  words.append(el('span', 'wn-eyebrow', t("What's new")), el('h2', null, t('You now have {version}', { version: String(news.version).replace(/\.0$/, '') })));
+  if (notes.intro) words.append(el('p', 'wn-intro', pick(notes.intro)));
+  head.append(words, closeKey(() => dialog.close()));
+  const grid = el('div', 'wn-board');
+  for (const item of notes.items ?? []) {
+    const card = el('div', 'wn-card');
+    const shot = el('span', 'wn-shot wn-card-shot');
+    if (item.image) {
+      const image = el('img');
+      image.alt = pick(item.title) ?? '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.addEventListener('error', () => { shot.classList.add('missing'); image.remove(); });
+      image.addEventListener('load', () => shot.classList.add('loaded'));
+      image.src = item.image;
+      shot.append(image);
+    } else shot.classList.add('missing');
+    card.append(shot, el('b', 'wn-card-title', pick(item.title)), el('span', 'wn-card-line', pick(item.body)));
+    grid.append(card);
+  }
+  const body = el('div', 'wn-body');
+  body.append(grid);
+  const foot = el('footer', 'wn-foot');
+  const changes = news.changes?.[language] ?? news.changes?.es;
+  if (changes) {
+    const link = el('a', 'wn-changes', t('See every change ↗'));
+    link.href = changes; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    foot.append(link);
+  }
+  foot.append(button('wn-start', t('Start'), () => dialog.close()));
+  sheet.append(head, body, foot);
+  dialog.append(sheet);
+  dialog.addEventListener('close', () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+  // Seen once shown, as in a project: a board left open and the page closed is not owed again.
+  void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
 }
 
 // Home in another language, without a reload: what it says now, and every widget and the tour's pill.

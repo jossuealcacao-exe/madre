@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // The Market's pictures (2026-10-18): drawn here, in code, not photographed. One scene for each
 // module the carousel features — what it does, shown the way a person would see it happen — and a
 // poster made from the icon for every other module. No words inside the drawings, so they read the

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Why an install or a sign-in went wrong, in one word (2026-10-28, docs/private/BIENVENIDA-1.0.6.md).
 // Home threw these failures away: the person pressed Install, nothing happened, and no screen said
 // why. The word is read from what the program itself printed; the page turns it into plain words and

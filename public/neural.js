@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Neural mode (1.0.3): the Memory map and the Projects map drawn as the neurons of a brain
 // (nostromo-engine.js, drawNeural; macroverso.js). What both maps share lives here: the key's
 // drawing, the watch over whether this machine is giving the map the frames it needs, and the

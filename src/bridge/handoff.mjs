@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// MADRE · © 2026 Jossue Alcalá · GNU AGPL v3 with additional terms (Section 7): ADDITIONAL-TERMS.md
+// SPDX-License-Identifier: BUSL-1.1
+// MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 // Where the person was, on the Mac and on the phone (docs/MOBILE.md, MOV-005).
 //
 // One small file for the whole Mac, `~/.pulse/handoff.json`, owner-only: the last place each side
