@@ -4,6 +4,7 @@ import { readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { runReadonlyProcess } from './process.mjs';
+import { codexSubagents, jsonLines } from './subagents.mjs';
 
 // With a lease, the working root is the lease directory (the only writable
 // place) and the sandbox allows workspace writes; the project stays readable.
@@ -111,7 +112,9 @@ export function parseCodexOutput(output) {
       // Ignore CLI diagnostics that are not JSON events.
     }
   }
-  return { text: text.trim(), usage, ...(threadId ? { threadId } : {}), ...(error ? { error } : {}) };
+  // Whether it worked with its own subagents (src/adapters/subagents.mjs): Codex says no more.
+  const subagents = codexSubagents(jsonLines(output));
+  return { text: text.trim(), usage, ...(threadId ? { threadId } : {}), ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
 }
 
 // Where Codex keeps the images its own tool made in a thread: ~/.codex/generated_images/<thread>.
@@ -124,11 +127,16 @@ export async function codexGeneratedImages(threadId, { home = process.env.CODEX_
   return names.filter((name) => /\.(png|jpe?g|webp|gif)$/i.test(name)).sort().map((name) => join(dir, name));
 }
 
+// MADRE runs Codex with --ephemeral (it keeps no conversation of its own in ~/.codex), and a
+// subagent asked to inherit the conversation finds nothing to inherit: «collab spawn failed … no
+// rollout found». Codex then tries again without it, a step wasted every time (seen with 0.161).
+// Said up front, the first subagent starts.
+export const CODEX_SUBAGENT_NOTE = 'If you start a subagent: this run keeps no conversation history, so never ask the subagent to inherit or fork this conversation. Give it the whole task in its own message.';
 export async function invokeCodex({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   const result = await runReadonlyProcess({
-    onProgress: onProgress ? (out) => onProgress({ chars: parseCodexOutput(out).text.length }) : null,
+    onProgress: onProgress ? (out) => { const said = parseCodexOutput(out); onProgress({ chars: said.text.length, subagents: said.subagents ?? [] }); } : null,
     executable,
-    args: buildCodexArgs({ projectRoot, prompt, model, effort, attachments, lease, scopes, memoryServer, mcpServers }),
+    args: buildCodexArgs({ projectRoot, prompt: lease?.airlock ? prompt : `${prompt}\n\n${CODEX_SUBAGENT_NOTE}`, model, effort, attachments, lease, scopes, memoryServer, mcpServers }),
     cwd: lease ? lease.outDir : projectRoot,
     env: process.env,
     timeoutMs,

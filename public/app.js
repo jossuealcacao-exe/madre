@@ -4972,6 +4972,137 @@ function removeEmpty() {
 
 // Every clock a «working» row runs, so a switch of conversation stops them all at once.
 const thinkingClocks = new Set();
+// THE SUBAGENTS OF A TURN (2026-10-29). From #1 to #3 an agent may hand part of its work to its
+// own CLI's subagents (src/lease.mjs). While it works, one chip each under «working…»; touched, a
+// chip says its task, what it did and what it reported. Once it answers, the same list folds under
+// the answer: «Helped by 2 subagents». What a CLI does not say stays unsaid (src/adapters/subagents.mjs):
+// Codex names neither task nor report, OpenCode says each one only when it is over.
+const SUB_DONE = trazo('check');
+const SUB_FAILED = trazo('close');
+const SUB_CARET = trazo('chevron');
+const subClock = (seconds) => (Number.isFinite(seconds) ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : '');
+const subName = (one) => one.kind ?? (one.count ? t('{n} subagents', { n: one.count }) : t('subagents'));
+const subTask = (one) => one.task ?? (one.kind ? '' : t('working with its own subagents'));
+function subDid(one) {
+  const did = [];
+  if (one.reads) did.push(one.reads === 1 ? t('Read 1 file') : t('Read {n} files', { n: one.reads }));
+  if (one.searches) did.push(one.searches === 1 ? t('Searched once') : t('Searched {n} times', { n: one.searches }));
+  if (one.changed?.length) did.push(one.changed.length === 1 ? t('Changed 1 file') : t('Changed {n} files', { n: one.changed.length }));
+  return did;
+}
+const subMark = (one) => {
+  const mark = el('span', `sub-mark ${one.status}`);
+  if (one.status === 'running') mark.append(el('i'));
+  else mark.innerHTML = one.status === 'failed' ? SUB_FAILED : SUB_DONE; // trusted: our own SVG strings
+  return mark;
+};
+const subMode = (mode) => (Number.isInteger(mode) && MODES[mode] ? sentence(`#${mode} ${MODES[mode].label}`) : '');
+// What one subagent did, in full: its task, what it did, what it reported, the files it changed.
+function subDetail(one, mode) {
+  const item = el('div', 'sub-item');
+  const head = el('div', 'sub-item-head');
+  head.append(subMark(one), el('span', 'sub-kind', subName(one)));
+  if (mode !== undefined && subMode(mode)) head.append(el('span', 'sub-mode', t('with your permission {mode}', { mode: subMode(mode) })));
+  if (Number.isFinite(one.seconds)) head.append(el('span', 'sub-time', subClock(one.seconds)));
+  item.append(head);
+  const line = (label, text, className = '') => {
+    if (!text) return;
+    const said = el('p', className);
+    said.append(el('span', 'sub-label', label), text);
+    item.append(said);
+  };
+  line(t('Task'), subTask(one));
+  // What it reported is markdown, as an answer is: shown as one, a few lines of it until asked.
+  if (one.report) {
+    const said = el('div', 'sub-told');
+    said.append(el('span', 'sub-label', one.status === 'failed' ? t('What went wrong') : t('Reported')));
+    const body = el('div', 'sub-report');
+    body.append(renderMarkdown(one.report));
+    said.append(body);
+    // A long one shows its first lines and offers the rest. Decided by its length, not by its
+    // height: inside a fold still closed, nothing has a height yet.
+    const long = one.report.length > 420 || one.report.split('\n').length > 7;
+    if (!long) body.classList.add('full');
+    const more = el('button', 'sub-more', t('See all'));
+    more.type = 'button';
+    more.hidden = !long;
+    more.addEventListener('click', () => {
+      const full = body.classList.toggle('full');
+      more.textContent = full ? t('See less') : t('See all');
+    });
+    said.append(more);
+    item.append(said);
+  }
+  if (!one.report && one.status === 'running') line(t('Now'), t('still working'));
+  if (!one.report && !one.kind && one.status !== 'running') line(t('Reported'), t('Codex does not say what its subagents reported; its answer above does.'));
+  const did = subDid(one);
+  if (did.length || one.changed?.length) {
+    const box = el('div', 'sub-did');
+    for (const words of did) box.append(el('span', null, words));
+    for (const file of one.changed ?? []) {
+      const chip = el('button', 'sub-changed', `✎ ${file}`);
+      chip.type = 'button';
+      chip.title = t('Open {file}', { file });
+      chip.addEventListener('click', () => { void openViewer({ root: 'project', path: file, label: `/${file}` }); });
+      box.append(chip);
+    }
+    item.append(box);
+  }
+  return item;
+}
+// The chips under «working…»: drawn again each time the CLI says something new about them.
+function showHelpers(event) {
+  const { messageId, subagents = [], mode } = event.payload ?? {};
+  const node = document.getElementById(`working-${messageId}`);
+  if (!node || !subagents.length) return;
+  let strip = node.querySelector(':scope > .helpers');
+  const open = strip?.dataset.open ?? '';
+  if (!strip) { strip = el('div', 'helpers'); node.append(strip); }
+  const head = el('div', 'helpers-head');
+  head.append(el('b', null, subagents.length === 1 && !subagents[0].count ? t('1 subagent') : subagents.length === 1 && subagents[0].count ? t('{n} subagents', { n: subagents[0].count }) : t('{n} subagents', { n: subagents.length })));
+  if (subMode(mode)) head.append(` · ${t('with your permission {mode}', { mode: subMode(mode) })}`);
+  const chips = el('div', 'helpers-chips');
+  for (const one of subagents) {
+    const chip = el('button', `helper-chip ${one.status}`);
+    chip.type = 'button';
+    chip.dataset.id = one.id;
+    chip.setAttribute('aria-expanded', String(open === one.id));
+    chip.append(subMark(one), el('span', 'sub-kind', subName(one)));
+    const task = subTask(one);
+    if (task) chip.append(el('span', 'sub-task', task));
+    if (Number.isFinite(one.seconds)) chip.append(el('span', 'sub-time', subClock(one.seconds)));
+    chip.title = task || subName(one);
+    chip.addEventListener('click', () => {
+      strip.dataset.open = strip.dataset.open === one.id ? '' : one.id;
+      showHelpers(event);
+    });
+    chips.append(chip);
+  }
+  const picked = subagents.find((one) => one.id === open);
+  strip.replaceChildren(head, chips, ...(picked ? [subDetail(picked, mode)] : []));
+  if (!picked) delete strip.dataset.open;
+}
+// Folded under the answer once it is in: who helped, and each one's part when opened.
+function subagentFold(subagents, mode) {
+  const fold = el('details', 'helpers-fold');
+  const summary = el('summary');
+  const caret = el('span', 'sub-caret');
+  caret.innerHTML = SUB_CARET; // trusted: our own SVG string
+  const dots = el('span', 'sub-dots');
+  for (const one of subagents.slice(0, 4)) dots.append(el('i', one.status));
+  const codexOnly = subagents.length === 1 && !subagents[0].kind;
+  const count = codexOnly ? subagents[0].count : subagents.length;
+  const words = codexOnly && !count ? t('Worked with its own subagents') : count === 1 ? t('Helped by 1 subagent') : t('Helped by {n} subagents', { n: count });
+  const longest = Math.max(...subagents.map((one) => one.seconds ?? 0));
+  const meta = [subagents.map((one) => one.kind).filter(Boolean).join(' · '), longest ? subClock(longest) : ''].filter(Boolean).join(' · ');
+  summary.append(caret, dots, el('span', 'sub-sum', words));
+  if (meta) summary.append(el('span', 'sub-meta', meta));
+  const list = el('div', 'sub-list');
+  for (const one of subagents) list.append(subDetail(one, mode));
+  fold.append(summary, list);
+  return fold;
+}
+
 function removeThinking(messageId) {
   document.getElementById(`working-${messageId}`)?.remove();
 }
@@ -5102,6 +5233,7 @@ function renderAssistantMessage(event) {
     badge.setAttribute('aria-label', badge.title);
     node.querySelector(':scope > .avatar')?.append(badge);
   }
+  if (event.payload.subagents?.length) bubble.append(subagentFold(event.payload.subagents, mode));
   if (event.payload.artifacts?.length) bubble.append(artifactTiles(event.payload.artifacts));
   // What the reply recalled, what it cost and what can be done with it travel inside it, on a
   // foot of its own: the memory as dots on the left; rate, copy and reply (shown under the pointer)
@@ -7587,6 +7719,7 @@ function renderEventNode(event) {
       break;
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
     case 'turn.reading': showReading(event); return;
+    case 'turn.subagents': showHelpers(event); return;
     case 'turn.cost': {
       settleReading(event);
       // The card, if the human happens to be looking at it, follows the room instead of the
@@ -11851,11 +11984,26 @@ function measureDock() {
   const shell = document.querySelector('.shell');
   if (!shell?.style?.setProperty || !els.composer?.getBoundingClientRect) return;
   const box = els.composer.getBoundingClientRect();
+  // What is still open stands over the box, outside it (styles.css, «WHAT IS STILL OPEN STANDS ON THE
+  // CANVAS»): the strip begins where those questions begin, or the last answer's foot lay under them
+  // (2026-10-29; a fixed 84 px left room for one row of them, and two rows covered the last line).
+  const openRect = els.openq && !els.openq.hidden && els.openq.childElementCount ? els.openq.getBoundingClientRect() : null;
+  let top = openRect && openRect.height > 0 && openRect.bottom <= box.top + 1 ? Math.min(box.top, openRect.top - 10) : box.top;
+  // A reminder that came due waits over the end of the conversation, by the box, until it is
+  // answered (drawDueReminder): the last line rises above it too, never under it.
+  const dueCard = document.querySelector?.('aside.reminder-due');
+  const dueRect = dueCard?.isConnected ? dueCard.getBoundingClientRect() : null;
+  const lane = els.thread?.getBoundingClientRect?.();
+  if (dueRect && dueRect.height > 0 && dueRect.bottom <= box.top + 1 && (!lane || dueRect.left < lane.right)) top = Math.min(top, dueRect.top - 10);
   // On a phone the box is fixed to the bottom of the screen and lifted over the keyboard: the strip
   // is the box and the lift, wherever the page has scrolled. Measured from the screen's edge it
   // depended on where the box stood at that instant, and Safari once left 906px of nothing.
   const lift = pageScrolls() && typeof getComputedStyle === 'function' ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kb')) || 0 : 0;
   const height = Math.max(0, Math.ceil(pageScrolls() ? box.height + lift : shell.getBoundingClientRect().bottom - box.top));
+  // The questions' own room, apart: the thread runs under the box by --dock-h, and only its last line
+  // has to clear them (styles.css, .thread-inner padding).
+  const over = Math.max(0, Math.ceil(box.top - top));
+  shell.style.setProperty('--dock-over', `${over}px`);
   // Where the type box itself begins (the strip above it — open questions, offers — is not it):
   // the thread fades out in the last few pixels before that edge (styles.css, --type-gap).
   // In the chat shell the field is only a way to group its keys (display: contents) and has no box
@@ -11863,15 +12011,26 @@ function measureDock() {
   const fieldBox = els.composer.querySelector?.('.field')?.getBoundingClientRect?.();
   const field = fieldBox && fieldBox.height > 0 ? fieldBox : box;
   if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - field.top))}px`);
-  if (height === measureDock.last) return;
+  if (height === measureDock.last && over === measureDock.over) return;
   measureDock.last = height;
+  measureDock.over = over;
   shell.style.setProperty('--dock-h', `${height}px`);
   placeToast();
-  keepPinned();
+  // The room at the foot grows with an easing (styles.css, .thread-inner, 280 ms): a reader at the
+  // end is kept there through all of it, not only at its first frame (as roomForToast does).
+  const until = performance.now() + 340;
+  const follow = () => { keepPinned(); if (performance.now() < until) requestAnimationFrame(follow); };
+  follow();
 }
 if (document.querySelector('.shell') && els.composer?.getBoundingClientRect) {
   measureDock();
-  if (typeof ResizeObserver === 'function') new ResizeObserver(() => measureDock()).observe(els.composer);
+  if (typeof ResizeObserver === 'function') {
+    const watch = new ResizeObserver(() => measureDock());
+    watch.observe(els.composer);
+    // The open questions float outside the box, so the box does not grow with them: watched apart.
+    if (els.openq) watch.observe(els.openq);
+  }
+  if (els.openq && typeof MutationObserver === 'function') new MutationObserver(() => measureDock()).observe(els.openq, { attributes: true, attributeFilter: ['hidden'] });
   window.addEventListener?.('resize', () => measureDock());
 }
 
@@ -16793,7 +16952,7 @@ async function actOnReminder(path, payload) {
 }
 function drawDueReminder() {
   const due = remindersKit.list.filter((one) => Date.parse(one.due) <= Date.now());
-  if (!due.length) { remindersKit.card?.remove(); remindersKit.card = null; return; }
+  if (!due.length) { const had = Boolean(remindersKit.card); remindersKit.card?.remove(); remindersKit.card = null; if (had) measureDock(); return; }
   remindersKit.at = Math.min(remindersKit.at, due.length - 1);
   const one = due[remindersKit.at];
   const card = remindersKit.card ?? el('aside', 'reminder-due');
@@ -16814,6 +16973,8 @@ function drawDueReminder() {
   key(t('Tomorrow'), null, () => actOnReminder('/api/reminders/snooze', { id: one.id, until: tomorrowAt(remindersKit.prefs.hour).toISOString() }));
   card.append(head, el('p', 'reminder-due-text', one.text), el('small', null, whenLine(one.due, one.repeat)), acts);
   if (!remindersKit.card) { document.body.append(card); remindersKit.card = card; }
+  // The conversation makes room for it (measureDock), and gets it back once it is answered.
+  requestAnimationFrame(() => measureDock());
 }
 // Unref'd, as the budget's ticker: under Node (the UI smoke test) a page's clock must not keep it alive.
 if (!state.device) { const ticker = setInterval(() => { if (!document.hidden) void loadReminders(); }, 60000); ticker.unref?.(); }

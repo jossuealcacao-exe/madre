@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { runReadonlyProcess } from './process.mjs';
+import { claudeSubagents, jsonLines } from './subagents.mjs';
 
 // dontAsk denies any tool use that is not pre-approved, so under a lease the
 // Write/Edit tools exist but only paths inside the lease directory are
@@ -8,13 +9,13 @@ import { runReadonlyProcess } from './process.mjs';
 // Claude's own subagents (the Agent tool), from #1 to #3 (2026-10-29): a subagent gets exactly the
 // tools of this run and answers to the same allow and deny rules (verified with the real CLI: in
 // #1 the subagent read and could not write). In #4 only the agent itself works.
-export const claudeSubagents = (lease = null) => !lease?.airlock;
+export const claudeMaySpawn = (lease = null) => !lease?.airlock;
 export function claudeTools({ lease = null, scopes = null } = {}) {
   const tools = ['Read', 'Glob', 'Grep'];
   if (lease) tools.push('Write', 'Edit');
   if (lease?.airlock) tools.push('Bash');   // AIRLOCK (#4): commands, git, deploy CLIs
   if (scopes?.web) tools.push('WebFetch', 'WebSearch');
-  if (claudeSubagents(lease)) tools.push('Agent');
+  if (claudeMaySpawn(lease)) tools.push('Agent');
   return tools;
 }
 
@@ -48,7 +49,7 @@ export function buildClaudeArgs({ prompt, model = null, effort = null, attachmen
     ...(lease ? leaseRoots(lease).flatMap((root) => [`Write(//${root}/**)`, `Edit(//${root}/**)`]) : []),
     ...(lease?.airlock ? ['Bash'] : []),
     ...(scopes?.web ? ['WebFetch', 'WebSearch'] : []),
-    ...(claudeSubagents(lease) ? ['Agent'] : []),
+    ...(claudeMaySpawn(lease) ? ['Agent'] : []),
     ...mcpTools,
   ];
   // Only MADRE's own MCP servers ever reach Claude here; --strict-mcp-config
@@ -61,7 +62,9 @@ export function buildClaudeArgs({ prompt, model = null, effort = null, attachmen
     ...(effort ? ['--effort', effort] : []),
     // Attachments live outside the project; Read needs the folder allowed.
     ...(attachmentsDir ? ['--add-dir', attachmentsDir] : []),
-    '--output-format', 'json',
+    // One event per line (2026-10-29): the answer as it is written, and what each subagent does
+    // while it does it (src/adapters/subagents.mjs). --verbose is what -p asks for to stream.
+    '--output-format', 'stream-json', '--verbose',
     '--permission-mode', 'dontAsk',
     '--tools', tools.join(','),
     ...(lease || scopes?.web || anyMcp ? ['--allowedTools', allowed.join(',')] : []),
@@ -82,41 +85,57 @@ export function buildClaudeArgs({ prompt, model = null, effort = null, attachmen
   ];
 }
 
-export function parseClaudeOutput(output) {
-  try {
-    const result = JSON.parse(output.trim());
-    if (result.is_error) {
-      return {
-        text: '',
-        usage: null,
-        error: typeof result.result === 'string' ? result.result : 'Claude returned an error.',
-      };
-    }
-    const tokens = result.usage;
-    const usage = tokens
-      ? {
-          inputTokens: tokens.input_tokens ?? 0,
-          cacheCreationInputTokens: tokens.cache_creation_input_tokens ?? 0,
-          cachedInputTokens: tokens.cache_read_input_tokens ?? 0,
-          outputTokens: tokens.output_tokens ?? 0,
-          reasoningTokens: 0,
-          totalTokens: (tokens.input_tokens ?? 0)
-            + (tokens.cache_creation_input_tokens ?? 0)
-            + (tokens.cache_read_input_tokens ?? 0)
-            + (tokens.output_tokens ?? 0),
-          costUsd: result.total_cost_usd ?? null,
-          source: 'claude-json',
-        }
-      : null;
-    return { text: typeof result.result === 'string' ? result.result.trim() : '', usage };
-  } catch {
-    return { text: '', usage: null };
+// What Claude answered: one JSON object (the old --output-format json, still read) or its stream.
+// A turn whose subagents ran in the background ends twice — a first answer while they work, and
+// the last one once they are done (seen with Claude 2.1.267) — so the text is the last answer's,
+// the cost is the last one's (Claude counts it whole), and the tokens are every answer's, summed.
+export function parseClaudeOutput(output, { root = null } = {}) {
+  const events = jsonLines(output);
+  const results = events.filter((event) => event?.type === 'result');
+  if (!results.length) {
+    // The old format: the whole output is the one result.
+    try { const single = JSON.parse(String(output).trim()); if (single && typeof single === 'object' && !Array.isArray(single) && single.type !== 'assistant' && single.type !== 'system') results.push(single); } catch { /* nothing to read */ }
   }
+  const subagents = claudeSubagents(events, { root });
+  const last = results.at(-1);
+  if (!last) return { text: '', usage: null, ...(subagents.length ? { subagents } : {}) };
+  if (last.is_error) {
+    return {
+      text: '',
+      usage: null,
+      error: typeof last.result === 'string' ? last.result : 'Claude returned an error.',
+    };
+  }
+  const sum = (key) => results.reduce((total, one) => total + (one.usage?.[key] ?? 0), 0);
+  const usage = results.some((one) => one.usage)
+    ? {
+        inputTokens: sum('input_tokens'),
+        cacheCreationInputTokens: sum('cache_creation_input_tokens'),
+        cachedInputTokens: sum('cache_read_input_tokens'),
+        outputTokens: sum('output_tokens'),
+        reasoningTokens: 0,
+        totalTokens: sum('input_tokens') + sum('cache_creation_input_tokens') + sum('cache_read_input_tokens') + sum('output_tokens'),
+        costUsd: last.total_cost_usd ?? null,
+        source: 'claude-json',
+      }
+    : null;
+  return { text: typeof last.result === 'string' ? last.result.trim() : '', usage, ...(subagents.length ? { subagents } : {}) };
+}
+
+// While it runs: what the agent itself has written so far, and its subagents.
+export function claudeProgress(output, { root = null } = {}) {
+  const events = jsonLines(output);
+  let chars = 0;
+  for (const event of events) {
+    if (event?.type !== 'assistant' || event.parent_tool_use_id) continue;
+    for (const part of event.message?.content ?? []) if (part?.type === 'text') chars += String(part.text ?? '').length;
+  }
+  return { chars, subagents: claudeSubagents(events, { root }) };
 }
 
 export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
-    onProgress: onProgress ? (out) => onProgress({ chars: (() => { try { return String(JSON.parse(out)?.result ?? '').length; } catch { return 0; } })() }) : null,
+    onProgress: onProgress ? (out) => onProgress(claudeProgress(out, { root: projectRoot })) : null,
     executable,
     args: buildClaudeArgs({ prompt, model, effort, attachmentsDir: attachments[0]?.dir ?? null, lease, scopes, imageStudio, memoryServer, mcpServers }),
     cwd: projectRoot,
@@ -124,6 +143,6 @@ export function invokeClaude({ executable, projectRoot, prompt, timeoutMs = 1200
     timeoutMs,
     signal,
     label: 'Claude',
-    parse: parseClaudeOutput,
+    parse: (out) => parseClaudeOutput(out, { root: projectRoot }),
   });
 }

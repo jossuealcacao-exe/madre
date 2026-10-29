@@ -3,6 +3,7 @@
 import { invokeCodex, buildCodexArgs } from './adapters/codex.mjs';
 import { t } from './i18n.mjs';
 import { invokeClaude, buildClaudeArgs } from './adapters/claude.mjs';
+import { keptSubagents } from './adapters/subagents.mjs';
 import { invokeGemini, buildGeminiArgs } from './adapters/gemini.mjs';
 import { invokeOpenCode, buildOpenCodeArgs } from './adapters/opencode.mjs';
 import { invokeCursor, buildCursorArgs } from './adapters/cursor.mjs';
@@ -1866,7 +1867,16 @@ export class Room {
       // around it, so a CLI that hands over one blob at the end honestly reports nothing until
       // then rather than a number that means the shape of its own output format.
       let told = 0;
-      const onProgress = ({ chars }) => {
+      // And its own subagents, as the CLI reports them (src/adapters/subagents.mjs): said again only
+      // when what they are doing changes, through the same privacy guard as the answer.
+      let helpersSaid = '';
+      const keepHelpers = (list) => keptSubagents(list, { redact: (said) => (this.#privacy ? this.#privacy.redact(said).text : said) });
+      const onProgress = ({ chars, subagents }) => {
+        if (Array.isArray(subagents) && subagents.length) {
+          const kept = keepHelpers(subagents);
+          const key = JSON.stringify(kept);
+          if (key !== helpersSaid) { helpersSaid = key; this.#say('turn.subagents', { messageId, agent: agent.id, mode: turnMode, subagents: kept }); }
+        }
         if (!Number.isFinite(chars) || chars <= told) return;
         told = chars;
         this.#say('turn.reading', { messageId, agent: agent.id, ...reading, out: chars, outTokens: this.#rate ? Math.round(chars / this.#rate) : null });
@@ -1984,6 +1994,8 @@ export class Room {
         leaseId: lease?.leaseId,
         artifacts: artifacts.length ? artifacts : undefined,
         delegates: directives.steps.length ? directives.steps.map((step) => step.agent) : undefined,
+        // Who helped, from the CLI's own subagents: folded under the answer («Helped by…»).
+        subagents: keepHelpers(result.subagents),
       });
       if (ash && turnMode !== 0) {
         const validation = validateAshReply({ request: text, response: result.text });

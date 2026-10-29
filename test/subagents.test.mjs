@@ -81,3 +81,63 @@ test('subagents · what each agent is told in a turn that writes', () => {
     assert.match(leaseInstructions({ agentId, ...MODES[3] }), /Do this work yourself/);
   }
 });
+
+// What each CLI said, recorded from the real ones (Claude 2.1.267 stream-json, OpenCode 1.18.4,
+// Codex 0.161 exec --json), with the project's path written /p.
+import { readFileSync } from 'node:fs';
+import { join as joinPath } from 'node:path';
+import { claudeProgress, parseClaudeOutput } from '../src/adapters/claude.mjs';
+import { parseOpenCodeOutput } from '../src/adapters/opencode.mjs';
+import { CODEX_SUBAGENT_NOTE, parseCodexOutput } from '../src/adapters/codex.mjs';
+import { keptSubagents } from '../src/adapters/subagents.mjs';
+const recorded = (name) => readFileSync(joinPath(import.meta.dirname, 'fixtures', 'subagents', name), 'utf8');
+
+test('subagents · Claude streams its answer, its subagents, and two answers when they ran in the background', () => {
+  const output = recorded('claude-stream.jsonl');
+  const said = parseClaudeOutput(output, { root: '/p' });
+  // The last answer, not the one written while the subagent was still working.
+  assert.equal(said.text, 'The Pro price of 499 pesos is defined in `precios.md`.');
+  // Every answer's tokens, summed; the cost as Claude counts it, once.
+  assert.equal(said.usage.outputTokens, 309 + 72);
+  assert.equal(said.usage.cachedInputTokens, 10206 + 10805);
+  assert.equal(said.usage.costUsd, 0.042633700000000004);
+  assert.equal(said.usage.source, 'claude-json');
+  assert.equal(said.subagents.length, 1);
+  const [one] = said.subagents;
+  assert.deepEqual([one.kind, one.task, one.status, one.reads, one.searches, one.changed], ['Explore', 'Find Pro price location and value', 'done', 1, 9, []]);
+  assert.ok(one.seconds > 0);
+  assert.match(one.report, /499 pesos/);
+  // The project's paths, said from the project.
+  assert.doesNotMatch(one.report, /\/p\//);
+  assert.match(one.report, /`precios\.md`/);
+  // While it runs: a chip as soon as the subagent is asked for, before it says anything.
+  const early = output.split('\n').slice(0, 6).join('\n');
+  assert.deepEqual(claudeProgress(early).subagents.map((each) => each.status), ['running']);
+  // The old single object is still read.
+  assert.equal(parseClaudeOutput(JSON.stringify({ result: 'hi', usage: { input_tokens: 1, output_tokens: 2 } })).text, 'hi');
+});
+
+test('subagents · OpenCode says each subagent once, when it is over; Codex only that it worked with them', () => {
+  const open = parseOpenCodeOutput(recorded('opencode.jsonl'), { root: '/p' });
+  assert.match(open.text, /499 pesos/);
+  assert.equal(open.subagents.length, 1);
+  assert.deepEqual([open.subagents[0].kind, open.subagents[0].task, open.subagents[0].status, open.subagents[0].reads], ['explore', 'Find Pro price', 'done', null]);
+  assert.match(open.subagents[0].report, /499 pesos/);
+  assert.doesNotMatch(open.subagents[0].report, /<task|task_result|\/p\//);
+  const codex = parseCodexOutput(recorded('codex.jsonl'));
+  assert.equal(codex.subagents.length, 1);
+  assert.deepEqual([codex.subagents[0].kind, codex.subagents[0].task, codex.subagents[0].status], [null, null, 'done']);
+  // And a turn with none says none.
+  assert.equal(parseCodexOutput('{"type":"item.completed","item":{"type":"agent_message","text":"hola"}}').subagents, undefined);
+  assert.match(CODEX_SUBAGENT_NOTE, /never ask the subagent to inherit or fork/);
+});
+
+test('subagents · the room keeps a bounded list, each text through its privacy guard', () => {
+  const kept = keptSubagents([{ id: 'x', kind: 'explore', task: 'secreto-123 en .env', status: 'weird', seconds: 3, reads: 2, searches: null, changed: Array.from({ length: 30 }, (_, i) => `f${i}.js`), report: 'r'.repeat(2000) }], { redact: (text) => text.replace(/secreto-\d+/g, '[REDACTED]') });
+  assert.equal(kept[0].task, '[REDACTED] en .env');
+  assert.equal(kept[0].status, 'done');
+  assert.equal(kept[0].changed.length, 20);
+  assert.ok(kept[0].report.length <= 2400);
+  assert.equal(keptSubagents([]), undefined);
+  assert.equal(keptSubagents(undefined), undefined);
+});

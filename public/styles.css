@@ -5269,7 +5269,7 @@ dialog.custom-window::backdrop { display: none; }
    No cut where the composer begins and no glass: the thread reaches down beneath the composer by a
    negative margin as tall as the strip, and its last line can still scroll up above the box. */
 .shell > .thread { margin-bottom: calc(-1 * var(--dock-h, 0px)); }
-.thread-inner { padding-bottom: calc(var(--dock-h, 0px) + 28px); }
+.thread-inner { padding-bottom: calc(var(--dock-h, 0px) + var(--dock-over, 0px) + 28px); }
 .shell > :is(.composer, .safety, .colophon) { position: relative; z-index: 4; }
 
 /* ---------- The provider's name, out of the sphere ----------
@@ -9748,7 +9748,7 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 }
 :root[data-scheme="light"] .toast:not([hidden]) { box-shadow: 0 0 0 .5px rgba(20, 30, 20, .08), 0 2px 4px rgba(20, 30, 20, .1), 0 12px 28px -6px rgba(20, 30, 20, .22), 0 28px 60px -18px rgba(20, 30, 20, .2), 0 0 0 10px rgb(255 255 255 / .22), 0 24px 70px 6px rgba(20, 30, 20, .08); }
 #messages .thread-inner { transition: padding-bottom calc(280ms * var(--motion-scale)) var(--ease-out, ease); }
-:root.toast-room #messages .thread-inner { padding-bottom: calc(var(--dock-h, 0px) + 28px + var(--toast-h, 38px) + 18px); }
+:root.toast-room #messages .thread-inner { padding-bottom: calc(var(--dock-h, 0px) + var(--dock-over, 0px) + 28px + var(--toast-h, 38px) + 18px); }
 @media (prefers-reduced-motion: reduce) {
   .toast:not([hidden]), .toast:not([hidden])::before, .toast:not([hidden]) > *, .toast.leaving:not([hidden]), .toast.leaving:not([hidden])::before { animation-duration: 1ms; }
   .to-end, .to-end.leaving { animation: none; }
@@ -10875,6 +10875,11 @@ html.chat-shell #messages#messages .row.assistant:not(.delegated) .bubble, html.
   background: none !important; box-shadow: none !important; padding: 2px 0 0 !important; border-radius: 0 !important;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
+/* The foot of an agent's answer (its time, what it spent) is a line as tall as the avatar that sits
+   at its left, with air above it (2026-10-29): the avatar is aligned to the foot, and with a foot
+   lower than the avatar it rose into whatever closed the answer — a file card, a code block, a
+   table — and touched its corner. */
+html.chat-shell #messages#messages .row.assistant .bubble > .bubble-foot { margin-top: 12px; min-height: 30px; align-items: center; }
 html.chat-shell #messages#messages .row.user .bubble { background: var(--cs-bubble) !important; color: var(--text) !important; box-shadow: none !important; border-radius: 18px !important; }
 html.chat-shell #messages#messages .thread-inner > .system, html.chat-shell #messages#messages :is(.command-card, .choice) {
   background: var(--cs-side) !important; box-shadow: 0 0 0 1px var(--cs-line) !important;
@@ -12184,7 +12189,7 @@ html.chat-shell .tour-btn.quiet { box-shadow: none; }
    box keeps only what you write and its choices; the conversation leaves room for them at its foot. */
 html.chat-shell .shell > .composer { position: relative; }
 html.chat-shell .shell > .composer > .openq { position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); margin: 0; padding: 0 8px; z-index: 2; }
-html.chat-shell:has(.shell > .composer > .openq:not([hidden])) #messages { padding-bottom: 84px; }
+/* The conversation leaves room for them by measure (app.js, measureDock: --dock-h starts where they start). */
 
 /* WHAT TO ASK NOW IN THE NEW LOOK (2026-10-28): the Memory map stays dark in either theme, so the
    panel is its own glass; each question a soft card, why it is worth asking in a quiet sentence with
@@ -12282,3 +12287,60 @@ dialog.madre-opening::backdrop { background: transparent; }
 @keyframes po-ring { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(5.5); } }
 @keyframes po-name { from { opacity: 0; transform: translateX(-8px); letter-spacing: .04em; } to { opacity: 1; transform: none; letter-spacing: -.01em; } }
 @media (max-width: 560px) { .po-pulse svg { width: 96px; } .po-name { font-size: 22px; } }
+
+/* THE SUBAGENTS OF A TURN (app.js, showHelpers and subagentFold; 2026-10-29). Under «working…», a
+   chip each in the agent's colour; folded under the answer, «Helped by N subagents». */
+#messages .row.thinking > .helpers { grid-column: 2; display: grid; gap: 6px; margin-top: 6px; min-width: 0; }
+#messages .row.thinking > .avatar { grid-row: 1; }
+.helpers-head { font: 500 11px/1.4 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); }
+.helpers-head b { font-weight: 600; color: var(--text-2); }
+.helpers-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.helper-chip { display: inline-flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; height: 28px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--agent, var(--text-3)) 30%, transparent); background: color-mix(in srgb, var(--agent, var(--text-3)) 9%, transparent); color: var(--text); font: 500 12.5px/1 var(--read, inherit); cursor: pointer; transition: background calc(150ms * var(--motion-scale, 1)); }
+.helper-chip:hover, .helper-chip[aria-expanded="true"] { background: color-mix(in srgb, var(--agent, var(--text-3)) 17%, transparent); }
+.helper-chip:focus-visible { outline: 2px solid color-mix(in srgb, var(--agent, var(--phosphor)) 60%, transparent); outline-offset: 2px; }
+.helper-chip .sub-task { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; color: var(--text-2); }
+.sub-kind { flex: none; font: 600 10.5px/1 var(--mono); letter-spacing: .05em; color: color-mix(in srgb, var(--agent, var(--text-2)) 85%, var(--text)); }
+.sub-time { flex: none; font: 10.5px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--text-3); }
+.sub-mark { flex: none; display: inline-grid; place-items: center; width: 14px; height: 14px; color: color-mix(in srgb, var(--agent, var(--text-2)) 85%, var(--text)); }
+.sub-mark svg { width: 14px; height: 14px; }
+.sub-mark.failed { color: var(--crit, #d9534f); }
+.sub-mark.running i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--agent, var(--text-2)) 25%, transparent); border-top-color: var(--agent, var(--text-2)); animation: sub-spin calc(800ms / var(--motion-scale, 1)) linear infinite; }
+@keyframes sub-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sub-mark.running i { animation: none; border-top-color: color-mix(in srgb, var(--agent, var(--text-2)) 60%, transparent); } }
+.helpers > .sub-item { max-width: 560px; border-radius: 12px; box-shadow: 0 0 0 1px var(--cs-line, var(--line)); background: var(--cs-side, var(--panel)); }
+
+.helpers-fold { margin: 12px 0 0; max-width: 640px; border-radius: 12px; box-shadow: 0 0 0 1px var(--cs-line, var(--line)); background: color-mix(in srgb, var(--text) 2.5%, transparent); overflow: hidden; }
+.helpers-fold > summary { list-style: none; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px 12px; cursor: pointer; font: 500 13px/1.3 var(--read, inherit); color: var(--text-2); }
+.helpers-fold > summary::-webkit-details-marker { display: none; }
+.helpers-fold > summary:hover { color: var(--text); }
+.helpers-fold > summary:focus-visible { outline: 2px solid color-mix(in srgb, var(--agent, var(--phosphor)) 60%, transparent); outline-offset: -2px; border-radius: 12px; }
+.sub-caret { flex: none; display: inline-grid; width: 14px; height: 14px; color: var(--text-3); transition: transform calc(180ms * var(--motion-scale, 1)); }
+.sub-caret svg { width: 14px; height: 14px; }
+.sub-caret { transform: rotate(-90deg); }
+.helpers-fold[open] .sub-caret { transform: none; }
+.sub-dots { flex: none; display: inline-flex; gap: 3px; }
+.sub-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--agent, var(--text-3)); opacity: .75; }
+.sub-dots i.failed { background: var(--crit, #d9534f); }
+.sub-sum { flex: none; }
+.sub-meta { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10.5px/1 var(--mono); letter-spacing: .04em; color: var(--text-3); }
+.sub-list { display: grid; border-top: 1px solid var(--cs-line, var(--line)); }
+.sub-list > .sub-item + .sub-item { border-top: 1px solid var(--cs-line, var(--line)); }
+.sub-item { display: grid; gap: 6px; padding: 11px 14px 12px; min-width: 0; }
+.sub-item-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sub-item-head .sub-time { margin-left: auto; }
+.sub-mode { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 10.5px/1 var(--mono); letter-spacing: .03em; padding: 4px 7px; border-radius: 6px; color: var(--text-3); background: color-mix(in srgb, var(--text) 6%, transparent); }
+.sub-item p { margin: 0; font: 13.5px/1.5 var(--read, inherit); color: var(--text-2); overflow-wrap: anywhere; }
+.sub-told { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.sub-report { max-height: 9.6em; overflow: hidden; min-width: 0; width: 100%; font: 13.5px/1.55 var(--read, inherit); color: var(--text); -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+.sub-report.full { max-height: none; -webkit-mask-image: none; mask-image: none; }
+.sub-report > :first-child { margin-top: 0; }
+.sub-report > :last-child { margin-bottom: 0; }
+.sub-report :is(h1, h2, h3, h4) { margin: 8px 0 4px; font-size: 13.5px; font-weight: 650; }
+.sub-report :is(p, ul, ol) { margin: 0 0 6px; }
+.sub-report :is(ul, ol) { padding-left: 18px; }
+.sub-more { border: 0; background: none; padding: 2px 0; font: 600 12px/1.3 var(--read, inherit); color: color-mix(in srgb, var(--agent, var(--text-2)) 80%, var(--text)); cursor: pointer; }
+.sub-more:hover { text-decoration: underline; }
+.sub-label { margin-right: 6px; font: 600 10.5px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.sub-did { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.sub-did span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px/1 var(--mono); padding: 5px 8px; border-radius: 7px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text-2); }
+.sub-did .sub-changed { border: 0; font: 11px/1 var(--mono); padding: 5px 8px; border-radius: 7px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: color-mix(in srgb, var(--agent, var(--text-3)) 14%, transparent); color: var(--text); cursor: pointer; }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { runReadonlyProcess } from './process.mjs';
+import { jsonLines, openCodeSubagents } from './subagents.mjs';
 
 const readonlyConfig = {
   share: 'disabled',
@@ -150,7 +151,7 @@ export function openCodeEnvironment(environment = process.env, { lease = null, s
   };
 }
 
-export function parseOpenCodeOutput(output) {
+export function parseOpenCodeOutput(output, { root = null } = {}) {
   const text = [];
   let usage = null;
   let error = null;
@@ -180,12 +181,15 @@ export function parseOpenCodeOutput(output) {
       // Ignore non-event diagnostic lines; stderr is reported when the process fails.
     }
   }
-  return { text: text.join('').trim(), usage, ...(error ? { error } : {}) };
+  // What its subagents did (src/adapters/subagents.mjs): each `task` call, said once it is over.
+  const subagents = openCodeSubagents(jsonLines(output), { root });
+  return { text: text.join('').trim(), usage, ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
 }
 
 export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
-    onProgress: onProgress ? (out) => onProgress({ chars: out.length }) : null,
+    // The answer written so far and its subagents, not the length of the protocol around them.
+    onProgress: onProgress ? (out) => { const said = parseOpenCodeOutput(out, { root: projectRoot }); onProgress({ chars: said.text.length, subagents: said.subagents ?? [] }); } : null,
     executable,
     args: buildOpenCodeArgs({ projectRoot, prompt, attachments, effort, ...(model ? { model } : {}) }),
     cwd: projectRoot,
@@ -193,6 +197,6 @@ export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 12
     timeoutMs,
     signal,
     label: 'OpenCode',
-    parse: parseOpenCodeOutput,
+    parse: (out) => parseOpenCodeOutput(out, { root: projectRoot }),
   });
 }
