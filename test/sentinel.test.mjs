@@ -85,9 +85,11 @@ test('sentinel: the server records unknown failures, serves the issue link, send
   try {
     const initial = await fetch(`${base}/api/sentinel`).then((response) => response.json());
     assert.deepEqual(initial.reports, []);
-    assert.equal(initial.settings.autoReport, false);
+    // On by default since 1.1.0, with the anonymous diagnostics (src/server.mjs).
+    assert.equal(initial.settings.autoReport, true);
     assert.equal(initial.settings.canSend, true, 'the author\'s collector is the default');
-    assert.match(initial.settings.reportUrl, /^https:\/\/madre\.run\/v1\/reports$/);
+    // The author's collector, or in this suite the dead port test/setup.mjs points it to.
+    assert.match(initial.settings.reportUrl, /^(https:\/\/madre\.run|http:\/\/127\.0\.0\.1:9)\/v1\/reports$/);
     // An empty URL switches the collector off entirely.
     const off = await fetch(`${base}/api/sentinel/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reportUrl: '' }) }).then((response) => response.json());
     assert.equal(off.settings.canSend, false);

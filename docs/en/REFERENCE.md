@@ -191,7 +191,7 @@ The button in the bar opens the diagnostics screen. Type a symptom, an agent or 
 | In the header | What it does |
 |---|---|
 | Memory map (brain) | The memory as a map. It is also in the top bar |
-| Settings (gear) | Opens Settings › Version and reports, where the sentinel lives: the failures no condition explains and the process crashes, with paths, users, emails and keys removed. Each report is read before it is sent; auto-reporting comes turned off |
+| Settings (gear) | Opens Settings › Version and reports, where the sentinel lives: the failures no condition explains and the process crashes, with paths, users, emails and keys removed. Auto-reporting comes on since 1.1.0, with the anonymous diagnostics, and is turned off right there |
 | Not fixed? | At the foot of each remedy: reports that it did not work, with the condition's code |
 | `?` | The five-stop tour, the same one that opens the first time. If you left the First steps list half done and hid it, it also brings it back |
 
@@ -312,7 +312,7 @@ Plans live in `bishop-plans.json` next to the record of the Coordinator's projec
 - **No cloud, no account.** MADRE has no account and no backend that stores your things. It does not store provider credentials.
 - **What an agent reads travels to its provider.** Codex to OpenAI, Claude Code to Anthropic, Gemini CLI to Google, OpenCode to whatever it is configured with. If `OPENAI_BASE_URL` or `ANTHROPIC_BASE_URL` changes that destination, MADRE shows only the hostname and blocks the turn before building the briefing; a verified gateway is authorized per agent with `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS`. The account, limits and terms of the effective destination apply. `@madre` and the archivist with Ollama do not leave the machine.
 - **A daily notice that it is still in use, always on.** Once a day each copy tells madre.run that it is in use: a random identifier the copy created for itself (`~/.pulse/install-id`), the MADRE version, the operating system and the Node major version. Nothing else: no name, no email, no project, no paths, no agents, nothing of what is said in a project; madre.run does not keep the IP. It is how the author knows how many people use MADRE, which versions are running and whether they come back. It goes out through the same record as everything else, so it appears in "What is sent". Without a network, it fails silently. (`src/heartbeat.mjs`)
-- **Two sends of its own under your switch.** The sentinel, off by default, sends redacted reports to the project's collector. The release channel, on by default, asks npm for the latest version: only the package name travels, the same request `npx` makes. `PULSE_UPDATE_CHECK=0` turns it off.
+- **Sends of its own under your switch.** The sentinel, on by default since 1.1.0 (and off if you turn the anonymous diagnostics off), sends redacted reports to the project's collector. The release channel, on by default, asks npm for the latest version: only the package name travels, the same request `npx` makes. `PULSE_UPDATE_CHECK=0` turns it off.
 - **Writing.** In `#1` no one writes. In `#2` things are only added: what existed is restored when the turn ends. In `#3` the whole project except the forbidden zones, with a restore point and `UNDO`. In a project without git, MADRE keeps its snapshots in a shadow repository outside the project. A command an agent asks for is run by you, with a restore point before and `UNDO` after.
 - **Memory.** Everything said outside INCOGNITO stays in `~/.pulse/rooms/<sala>/` and comes back into the prompts of all the agents in that project. INCOGNITO is the way out for what must not be remembered; PRIVACY, for names that must never appear.
 
@@ -350,7 +350,7 @@ Plans live in `bishop-plans.json` next to the record of the Coordinator's projec
 | `PULSE_PRIVATE_TERMS` · `PULSE_PRIVATE_MARKER` | — · `[ENTIDAD-ORG]` | Extra hidden data and its marker |
 | `PULSE_UPDATE_CHECK` | `1` | `0` turns off the daily npm check |
 | `PULSE_GH` | `1` | `0` makes the GitHub module ignore the `gh` session and sign in only with the token you pasted |
-| `PULSE_REPORT_URL` · `PULSE_AUTO_REPORT` | the project's collector · `0` | Sentinel |
+| `PULSE_REPORT_URL` · `PULSE_AUTO_REPORT` | the project's collector · as the anonymous diagnostics (`0` turns it off) | Sentinel |
 | `PULSE_AGENT_TIMEOUT_MS` · `PULSE_<AGENTE>_TIMEOUT_MS` | `180000` · — | Timeouts |
 | `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS` | — | Comma-separated list (`codex`, `claude`) of gateways the human verified and allows; without it, an unofficial base address is blocked |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Maximum size of a message |

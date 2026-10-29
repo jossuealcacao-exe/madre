@@ -21737,7 +21737,7 @@ function drawSentinel(section) {
   const unsent = reports.filter((report) => !report.sent?.ok).length;
   const settings = sentinelUI.settings ?? { autoReport: false, canSend: false, repo: null };
   drawDiagnostics(section);
-  const block = sxBlock(section, t('Error reports'), t('Keeps errors MADRE can\'t explain, with private details removed. Nothing leaves this computer unless you send it.'), {
+  const block = sxBlock(section, t('Error reports'), t('Keeps errors MADRE can\'t explain, with private details removed. New ones reach MADRE\'s author on their own, to fix them; you can turn that off here.'), {
     aside: reports.length ? sxChip(t('{n} reports · {unsent} not sent', { n: reports.length, unsent }), unsent ? 'warn' : '') : sxChip(t('Nothing to report'), 'on'),
   });
   sxRow(block, t('Send reports automatically'), settings.canSend ? t("New errors go to MADRE's author, with private details removed.") : t('Sending isn\'t set up in this copy of MADRE.'), sxSwitch(settings.autoReport, async (on, box) => {

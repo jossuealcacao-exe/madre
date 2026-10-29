@@ -1408,7 +1408,9 @@ export async function createPulseServer({
     told: (input) => diagnostics.error(input),
     pkg: PACKAGE,
     agents,
-    settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || Boolean(telemetry.autoReport), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? DEFAULT_REPORT_URL },
+    // On by default since 1.1.0, with the anonymous diagnostics (2026-10-28, the author's call): a new
+    // error reaches the author with private details removed, unless the person turned either off.
+    settings: { autoReport: process.env.PULSE_AUTO_REPORT === '1' || (process.env.PULSE_AUTO_REPORT !== '0' && (typeof telemetry.autoReport === 'boolean' ? telemetry.autoReport : diagnosticsOn)), reportUrl: process.env.PULSE_REPORT_URL ?? telemetry.reportUrl ?? DEFAULT_REPORT_URL },
     fetchImpl: reportFetch,
     emit: (type, payload) => writeFromOutside(room, type, payload),
     save: async (settings) => { const current = await readConfig(root); await updateConfig(root, { telemetry: { ...(current.telemetry ?? {}), ...settings } }); },

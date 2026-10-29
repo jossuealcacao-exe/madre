@@ -1817,8 +1817,11 @@ html.home-shell dialog.sm-sheet.sm-settings.sm-settings-framed { inset: auto; di
 html.home-shell dialog.sm-sheet.sm-settings.sm-settings-framed > .sm-sheet-body {
   flex: 1; width: 100%; height: 100%; max-height: none; margin: 0; border-radius: 0;
   background: var(--cs-canvas); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none;
+  /* The same window as a project's Settings (app.js, settingsWindow): edge to edge, no inset of its
+     own, and the room's letter size. */
+  padding: 0; border: 0; font-size: 16px;
 }
-html.home-shell dialog.sm-settings-framed .sm-settings-window > .settings-head { background: var(--cs-canvas); box-shadow: inset 0 -1px 0 var(--cs-line); cursor: grab; }
+html.home-shell dialog.sm-settings-framed .sm-settings-window > .settings-head { background: var(--cs-canvas); box-shadow: none; cursor: grab; }
 html.home-shell dialog.sm-settings-framed .sm-settings-window > .settings-head :is(input, button, label) { cursor: auto; }
 html.home-shell dialog.sm-settings-framed .sm-settings-window > .settings-head button { cursor: pointer; }
 

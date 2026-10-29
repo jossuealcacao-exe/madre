@@ -6,7 +6,7 @@
 // no user names, no keys, no emails), the versions involved, the platform.
 // Reports stay in the room ledger (sentinel.report) and can be sent two ways:
 // by hand as a prefilled GitHub issue, or automatically to a collector the
-// author runs, only when the human switched AUTO-REPORT on. Off by default.
+// author runs, while AUTO-REPORT is on: on by default since 1.1.0, with the anonymous diagnostics, and the human turns it off.
 // Nothing leaves the machine otherwise.
 
 import { createHash } from 'node:crypto';

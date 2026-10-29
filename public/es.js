@@ -3442,7 +3442,7 @@ export const ES = {
   'Turn on': 'Encender',
   'Notifications': 'Notificaciones',
   'Always: only one conversation at a time may hold EDIT or FULL ACCESS of the project.': 'Siempre: solo una conversación a la vez puede tener «Editar» o «Acceso total» del proyecto.',
-  'Keeps errors MADRE can\'t explain, with private details removed. Nothing leaves this computer unless you send it.': 'Guarda los errores que MADRE no sabe explicar, sin datos privados. Nada sale de esta computadora a menos que tú lo envíes.',
+  'Keeps errors MADRE can\'t explain, with private details removed. New ones reach MADRE\'s author on their own, to fix them; you can turn that off here.': 'Guarda los errores que MADRE no sabe explicar, sin datos privados. Los nuevos le llegan solos al autor de MADRE, para arreglarlos; puedes apagarlo aquí.',
   '{n} reports · {unsent} not sent': '{n} reportes · {unsent} sin enviar',
   'Nothing to report': 'Nada que reportar',
   'Send reports automatically': 'Enviar reportes automáticamente',
@@ -5905,7 +5905,7 @@ export const ES = {
   'That copy no longer counts. The figures update in a moment.': 'Esa copia ya no cuenta. Los números se actualizan en un momento.',
   'Select it and copy it.': 'Selecciónalo y cópialo.',
   'This copy\'s identifier': 'Identificador de esta copia',
-  'Random, made by this copy. It is all the daily usage notice says about it: no name, no projects.': 'Al azar, lo creó esta copia. Es todo lo que el aviso diario de uso dice de ella: sin nombre ni proyectos.',
+  'Random and unique: this copy made it for itself. It lets the author tell one copy\'s errors from another\'s and find the fix for yours, without knowing who you are: no name, no projects.': 'Al azar y único: lo creó esta copia para sí misma. Le sirve al autor para distinguir los errores de una copia de los de otra y encontrar la solución a los tuyos, sin saber quién eres: sin nombre ni proyectos.',
   'That is not a copy\'s identifier. Copy it from Settings › Version on that copy.': 'Eso no es el identificador de una copia. Cópialo de Ajustes › Versión en esa copia.',
   'madre.run did not answer. Try again in a moment.': 'madre.run no contestó. Inténtalo de nuevo en un momento.',
   // The short walks of 1.0.5 (2026-10-21): Home's, a project's, and their keys.

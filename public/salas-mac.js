@@ -5394,7 +5394,7 @@ function fillRelease(host) {
     const copy = sxButton(t('Copy'), async () => {
       try { await navigator.clipboard.writeText(info.install); copy.textContent = t('Copied'); setTimeout(() => { copy.textContent = t('Copy'); }, 1400); } catch { toast(t('Select it and copy it.'), 'error'); }
     });
-    const row = sxRow(block, t('This copy\'s identifier'), t('Random, made by this copy. It is all the daily usage notice says about it: no name, no projects.'), copy);
+    const row = sxRow(block, t('This copy\'s identifier'), t('Random and unique: this copy made it for itself. It lets the author tell one copy\'s errors from another\'s and find the fix for yours, without knowing who you are: no name, no projects.'), copy);
     row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.install));
   }
   if (info?.available) {
