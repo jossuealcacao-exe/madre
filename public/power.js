@@ -17,17 +17,34 @@ const node = (tag, className, text) => {
 };
 
 export const RESTART_ICON = trazo('refresh');
+const SLEEP_ICON = trazo('out');
 
 // The key itself, in the classes of the bar it sits in. Since 2026-10-28 it holds restarting too: a
 // press opens two choices, restart and turn off, and the bar has no reload key of its own.
-export function powerKey(className) {
+// In a project (`project: true`) it also holds closing that project alone (2026-10-28): it sleeps, Home
+// and the other projects stay. Not in the Coordinator, which lives in Home's own process.
+export function powerKey(className, { project = false } = {}) {
   const key = node('button', `${className} power-key`);
   key.type = 'button';
   key.innerHTML = POWER_ICON; // trusted: our own SVG string
   labelPowerKey(key);
   key.setAttribute('aria-haspopup', 'menu');
   key.addEventListener('click', () => openPowerMenu(key));
+  if (project) asProjectKey(key);
   return key;
+}
+// A key that opens these choices in a project's page offers closing that project too.
+export function asProjectKey(key) {
+  void whereAmI().then((place) => { if (place?.here && place.here.id !== place.home?.id) key.dataset.project = '1'; });
+  return key;
+}
+// This page's project and Home, as Home knows them (/api/salas): the address to go back to.
+async function whereAmI() {
+  try {
+    const data = await fetch('/api/salas', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null));
+    if (!data) return null;
+    return { here: (data.rooms ?? []).find((room) => room.here) ?? null, home: (data.rooms ?? []).find((room) => room.id === data.salas) ?? null };
+  } catch { return null; }
 }
 export function labelPowerKey(key) {
   key.title = t('Restart or turn off MADRE');
@@ -63,8 +80,9 @@ export function openPowerMenu(anchor) {
     return one;
   };
   const items = [
-    item(RESTART_ICON, t('Restart'), t('Home and every open project start again'), () => void askRestart()),
-    item(POWER_ICON, t('Turn off'), t('Home and every open project close'), () => void askPowerOff(), true),
+    ...(anchor?.dataset?.project === '1' ? [item(SLEEP_ICON, t('Close this project'), t('It sleeps; Home and your other projects stay open'), () => void askCloseProject())] : []),
+    item(RESTART_ICON, t('Restart MADRE'), t('Home and every open project start again'), () => void askRestart()),
+    item(POWER_ICON, t('Turn MADRE off'), t('Home and every open project close'), () => void askPowerOff(), true),
   ];
   card.append(...items);
   document.body.append(card);
@@ -232,4 +250,62 @@ function showOff(stuck) {
   if (stuck.length) screen.append(node('p', 'madre-off-stuck', t('These projects did not answer and may still be open: {list}. Open MADRE again and close them from Home.', { list: stuck.join(', ') })));
   document.body.append(screen);
   document.documentElement.classList.add('madre-is-off');
+}
+
+// Closing this project alone (2026-10-28): it sleeps the way Home's «Close» puts it to sleep — what
+// runs stops, its memory is put away — and the page goes back to Home. Home and the other projects
+// are not touched. If Home is not open, the page says how to come back.
+export async function askCloseProject() {
+  if (document.querySelector('dialog.power-ask')) return;
+  const place = await whereAmI();
+  const name = place?.here?.name ?? '';
+  const dialog = node('dialog', 'room-ask power-ask');
+  dialog.setAttribute('aria-labelledby', 'close-project-title');
+  const card = node('div', 'room-ask-card');
+  const icon = node('span', 'room-ask-icon');
+  icon.innerHTML = SLEEP_ICON; // trusted: our own SVG string
+  const title = node('h2', 'room-ask-title', name ? t('Close «{name}»?', { name }) : t('Close this project?'));
+  title.id = 'close-project-title';
+  const body = node('p', 'room-ask-body', t('Only this project sleeps: Home and your other projects stay open. If an agent is working, it stops and the conversation says so.'));
+  const again = node('p', 'key-safe', t('You open it again from Home, as it was.'));
+  const reply = node('p', 'key-reply');
+  reply.setAttribute('aria-live', 'polite');
+  const actions = node('div', 'room-ask-actions');
+  const cancel = node('button', 'room-ask-choice', t('Cancel'));
+  cancel.type = 'button';
+  const go = node('button', 'room-ask-choice primary', t('Close'));
+  go.type = 'button';
+  actions.append(cancel, go);
+  card.append(icon, title, body, again, reply, actions);
+  dialog.append(card);
+  document.body.append(dialog);
+  dialog.addEventListener('close', () => dialog.remove());
+  cancel.addEventListener('click', () => dialog.close());
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    cancel.disabled = true;
+    go.textContent = t('Closing…');
+    try {
+      const response = await fetch('/api/room/close', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      reply.textContent = error.message;
+      go.disabled = false;
+      cancel.disabled = false;
+      go.textContent = t('Close');
+      return;
+    }
+    dialog.close();
+    const port = place?.home?.open?.port;
+    if (port) { location.href = `${location.protocol}//${location.hostname}:${port}/salas`; return; }
+    const screen = node('div', 'madre-off');
+    screen.setAttribute('role', 'status');
+    const mark = node('span', 'madre-off-mark');
+    mark.innerHTML = SLEEP_ICON; // trusted: our own SVG string
+    screen.append(mark, node('h1', null, name ? t('«{name}» is asleep', { name }) : t('This project is asleep')), node('p', null, t('Open MADRE the way you always do to come back to Home.')));
+    document.body.append(screen);
+    document.documentElement.classList.add('madre-is-off');
+  });
+  dialog.showModal();
+  go.focus();
 }

@@ -12252,3 +12252,21 @@ dialog.madre-opening::backdrop { background: transparent; }
 .wl-intro-skip { position: absolute; right: 26px; bottom: 22px; padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: 500 12.5px var(--read); letter-spacing: .01em; opacity: 0; cursor: pointer; animation: wl-skip-in .6s ease 1.4s forwards; }
 .wl-intro-skip:is(:hover, :focus-visible) { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); outline: none; }
 @keyframes wl-skip-in { to { opacity: 1; } }
+
+/* A project opens again (2026-10-28, loader.js, playProjectOpening): the pulse in one stroke, one beat
+   with a ring, the project's name where MADRE's would be; then closer, and gone. */
+.po-stage { display: grid; place-items: center; }
+.po-mark { display: flex; align-items: center; gap: 18px; max-width: calc(100vw - 48px); }
+.po-pulse svg { display: block; width: 132px; height: auto; overflow: visible; }
+.po-beat { stroke: var(--brand-pulse); stroke-dasharray: 100; stroke-dashoffset: 100; animation: po-trace .62s cubic-bezier(.65, 0, .35, 1) .08s forwards; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand-pulse) 35%, transparent)); }
+:root[data-scheme="light"] .po-beat { filter: none; }
+.po-dot { fill: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; animation: po-beat .42s cubic-bezier(.2, .9, .3, 1.4) .62s forwards; }
+.po-ring { stroke: var(--brand-pulse); opacity: 0; transform-box: fill-box; transform-origin: center; animation: po-ring .8s cubic-bezier(.2, .7, .2, 1) .7s forwards; }
+.po-name { min-width: 0; overflow: hidden; color: var(--brand-word); font: 500 30px/1.15 var(--read); letter-spacing: -.01em; white-space: nowrap; text-overflow: ellipsis; opacity: 0; animation: po-name .5s cubic-bezier(.2, .7, .2, 1) .7s forwards; }
+.po-stage.po-leaving { animation: wl-intro-out .5s cubic-bezier(.4, 0, .2, 1) forwards; pointer-events: none; }
+.po-stage.po-leaving .po-mark { transition: scale .5s cubic-bezier(.4, 0, .2, 1), opacity .35s ease; scale: 1.06; opacity: 0; }
+@keyframes po-trace { to { stroke-dashoffset: 0; } }
+@keyframes po-beat { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+@keyframes po-ring { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(5.5); } }
+@keyframes po-name { from { opacity: 0; transform: translateX(-8px); letter-spacing: .04em; } to { opacity: 1; transform: none; letter-spacing: -.01em; } }
+@media (max-width: 560px) { .po-pulse svg { width: 96px; } .po-name { font-size: 22px; } }

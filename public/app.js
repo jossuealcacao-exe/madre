@@ -7,7 +7,7 @@ import { allConditions, detectPlatform, diagnose, findConditions, fixesFor, PLAT
 import { answerFor, INQUIRIES, STRIKES } from './inquiry.js';
 import { DEFAULT_LANGUAGE, LANGUAGES, browserLanguage, isLanguage, language, pick, sessionDetail, setLanguage, t, fill } from './i18n.js';
 import { createEditor } from './editor.js';
-import { POWER_ICON, labelPowerKey, openPowerMenu, powerKey } from './power.js';
+import { POWER_ICON, asProjectKey, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware, hardwareLine } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural, tellViews } from './neural.js';
@@ -27,7 +27,7 @@ dropStickyHover();
 let roomTourKept = null;
 let welcomeKept;
 const welcomeDone = () => welcomeKept !== undefined && (welcomeKept === null || Boolean(welcomeKept.finished));
-import { LOADER_MARK, creep, finishLoader, makeLoader, playOpening, setLoader, showCurtain } from './loader.js';
+import { LOADER_MARK, creep, finishLoader, makeLoader, playProjectOpening, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
@@ -12198,7 +12198,7 @@ function boot() {
       }
     }
   } catch { /* no storage: it draws on every load, as before */ }
-  // MADRE's opening (loader.js), each time the project opens again after it was closed: once per start
+  // A project's opening (loader.js, playProjectOpening), each time it opens again after it was closed: once per start
   // of its server, not on a reload nor in a second tab, nor in the half on the right or on a phone.
   try {
     if (initial.boot && !SPLIT_CHAT && !state.device && localStorage.getItem('madre.opening') !== initial.boot) {
@@ -12207,9 +12207,10 @@ function boot() {
       stage.setAttribute('aria-label', 'MADRE');
       document.body.append(stage);
       stage.showModal();
-      void playOpening(stage, { skipLabel: t('Skip') }).then((played) => {
-        if (!played) { stage.close(); stage.remove(); return; }
-        setTimeout(() => { stage.close(); stage.remove(); }, 700);
+      // The project's own opening, shorter than the welcome's: its name where MADRE's would be.
+      const name = initial.projectName === 'salas' ? t('Coordinator') : initial.projectName ?? '';
+      void playProjectOpening(stage, { name, skipLabel: t('Skip') }).then((played) => {
+        setTimeout(() => { stage.close(); stage.remove(); }, played ? 520 : 0);
       });
     }
   } catch { /* no storage: the room opens as it always did */ }
@@ -22075,7 +22076,7 @@ function homeBar() {
     if (key.parentNode !== home) home.append(key);
   }
   // Last, after the settings: turning MADRE off (public/power.js). On the Mac only.
-  if (!homePower) { homePower = powerKey('tree-button'); homePower.id = 'power-button'; }
+  if (!homePower) { homePower = powerKey('tree-button', { project: true }); homePower.id = 'power-button'; }
   labelPowerKey(homePower);
   if (homePower.parentNode !== home || (home.lastElementChild && home.lastElementChild !== homePower)) home.append(homePower);
   home.hidden = false;
@@ -22369,7 +22370,7 @@ function chatShell() {
   who.append(copy);
   shellUI.foot.append(who,
     shellKey(document.querySelector('#custom-button')?.innerHTML ?? '', t('Settings'), () => document.querySelector('#custom-button')?.click()),
-    (() => { const off = shellKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(off)); off.setAttribute('aria-haspopup', 'menu'); return off; })());
+    (() => { const off = shellKey(POWER_ICON, t('Restart or turn off MADRE'), () => openPowerMenu(off)); off.setAttribute('aria-haspopup', 'menu'); return asProjectKey(off); })());
 
   side.prepend(head, nav, scroll);
   side.append(shellUI.foot);

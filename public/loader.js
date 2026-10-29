@@ -291,3 +291,41 @@ export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
     frame = requestAnimationFrame(paint);
   });
 }
+
+// A PROJECT OPENS AGAIN (2026-10-28): its own opening, shorter than the welcome's and not the same — the
+// pulse is traced in one stroke, its dot beats once with a ring, and where the welcome writes MADRE the
+// project writes its own name; then everything comes closer and fades, and the room is under it. About
+// a second and a half; a click or any key goes straight on, and less motion skips it (app.js).
+export function playProjectOpening(dialog, { name = '', skipLabel = 'Skip' } = {}) {
+  if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const stage = make('div', 'wl-intro po-stage');
+    stage.setAttribute('aria-hidden', 'true');
+    const mark = make('div', 'po-mark');
+    const pulse = make('span', 'po-pulse');
+    pulse.innerHTML = '<svg viewBox="-2 -12 76 44" aria-hidden="true"><path class="po-beat" d="M1 10H16L20 10L23.5 2L28 18L32 10L35 10L37 6L39 10H52" pathLength="100" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle class="po-ring" cx="60" cy="10" r="3" fill="none" stroke-width="1"/><circle class="po-dot" cx="60" cy="10" r="3"/></svg>'; // trusted: our own SVG string
+    mark.append(pulse, make('span', 'po-name', name));
+    const skip = make('button', 'wl-intro-skip', skipLabel);
+    skip.type = 'button';
+    stage.append(mark, skip);
+    dialog.append(stage);
+    dialog.classList.add('intro');
+    let done = false;
+    const end = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      dialog.removeEventListener('keydown', onKey, true);
+      dialog.removeEventListener('cancel', onKey);
+      stage.classList.add('po-leaving');
+      dialog.classList.remove('intro');
+      setTimeout(() => stage.remove(), 520);
+      resolve(true);
+    };
+    const onKey = (event) => { event.preventDefault(); end(); };
+    const timer = setTimeout(end, 1500);
+    dialog.addEventListener('keydown', onKey, true);
+    dialog.addEventListener('cancel', onKey);
+    stage.addEventListener('click', end);
+  });
+}

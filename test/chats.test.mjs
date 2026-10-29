@@ -1117,9 +1117,12 @@ test('Local AI and connectors are MADRE\'s own; restart lives in the power key; 
   // Restart and turn off, two choices of one key; no reload key on either bar.
   assert.match(power, /export function openPowerMenu\(anchor\) \{/);
   assert.match(power, /key\.addEventListener\('click', \(\) => openPowerMenu\(key\)\);/);
-  assert.match(power, /item\(RESTART_ICON, t\('Restart'\), t\('Home and every open project start again'\), \(\) => void askRestart\(\)\),/);
+  assert.match(power, /item\(RESTART_ICON, t\('Restart MADRE'\), t\('Home and every open project start again'\), \(\) => void askRestart\(\)\),/);
+  // In a project, closing that project alone comes first; turning off and restarting are MADRE's (2026-10-28).
+  assert.match(power, /item\(SLEEP_ICON, t\('Close this project'\), t\('It sleeps; Home and your other projects stay open'\), \(\) => void askCloseProject\(\)\)/);
+  assert.match(power, /fetch\('\/api\/room\/close'/);
   assert.match(power, /const response = await fetch\('\/api\/madre\/restart',/);
-  assert.match(app, /homePower = powerKey\('tree-button'\);/);
+  assert.match(app, /homePower = powerKey\('tree-button', \{ project: true \}\);/);
   assert.match(home, /const powerButton = powerKey\('sm-icon-key bar'\);/);
   const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
   assert.match(server, /if \(request\.method === 'POST' && url\.pathname === '\/api\/madre\/restart'\) \{/);
