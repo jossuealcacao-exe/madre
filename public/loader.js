@@ -111,8 +111,13 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - ((-2 * x + 2) ** 3) / 2)
 const easeOut = (x) => 1 - (1 - x) ** 3;
 const span = (now, from, to) => Math.max(0, Math.min(1, (now - from) / (to - from)));
 
+// Whether this page already played MADRE's opening: it is played once per page, never twice in a row.
+let openingDone = false;
+export const openingPlayed = () => openingDone;
+
 export function playOpening(dialog, { skipLabel = 'Skip' } = {}) {
   if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return Promise.resolve(false);
+  openingDone = true;
   return new Promise((resolve) => {
     const light = document.documentElement.dataset.scheme === 'light';
     const hues = INTRO_HUES[light ? 'light' : 'dark'];

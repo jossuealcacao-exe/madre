@@ -10,7 +10,7 @@
 // app.js and salas-mac.js wait on it before anything else is drawn (`await ensureTerms()`).
 
 import { browserLanguage, language, setLanguage, t } from './i18n.js';
-import { MADRE_LOGO } from './loader.js';
+import { MADRE_LOGO, playOpening } from './loader.js';
 
 const el = (tag, className = null, text = null) => {
   const node = document.createElement(tag);
@@ -107,6 +107,9 @@ function askTerms(answer, done) {
       error.textContent = '';
       const saved = await fetch('/api/terms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accept: true, diagnostics }) }).then((response) => response.ok).catch(() => false);
       if (!saved) { yes.disabled = false; no.disabled = false; error.textContent = t('It could not be saved. Try again.'); return; }
+      // Whoever updated meets MADRE's opening here, before Home is drawn behind it (2026-10-30): drawn
+      // first and the opening over it, it looked like a jump. Someone new meets it in the welcome.
+      if (returning) { card.style.visibility = 'hidden'; await playOpening(dialog, { skipLabel: t('Skip') }); }
       dialog.classList.add('leaving');
       setTimeout(() => { dialog.close(); dialog.remove(); done(); }, 260);
     });

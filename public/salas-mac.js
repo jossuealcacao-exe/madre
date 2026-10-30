@@ -16,7 +16,7 @@ import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal 
 
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
-import { creep, finishLoader, makeLoader, playOpening, setLoader, showCurtain } from './loader.js';
+import { creep, finishLoader, makeLoader, openingPlayed, playOpening, setLoader, showCurtain } from './loader.js';
 import { POWER_ICON, askUninstall, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
@@ -3068,8 +3068,10 @@ async function homeNews(tries = 0) {
   document.body.append(dialog);
   dialog.showModal();
   // Whoever comes from an older MADRE meets MADRE's opening first (2026-10-30), as a new person does in
-  // the welcome (loader.js, playOpening), and the board comes after it.
-  void playOpening(dialog, { skipLabel: t('Skip') }).then(() => start.focus({ preventScroll: true }));
+  // the welcome (loader.js, playOpening), and the board comes after it — unless this page just played it
+  // (public/terms.js, after the new license was accepted).
+  if (openingPlayed()) start.focus({ preventScroll: true });
+  else void playOpening(dialog, { skipLabel: t('Skip') }).then(() => start.focus({ preventScroll: true }));
   // Seen once shown, as in a project: a board left open and the page closed is not owed again.
   void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
 }

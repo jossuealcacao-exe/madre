@@ -8704,7 +8704,12 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
 /* The chapter's way on stays in view at the foot of the card (QA 1.1.0, NUE-10): on a laptop the
    page scrolled and «Next chapter» sat half under the card's edge. */
-.tour-main .tour-acts { position: sticky; bottom: -20px; z-index: 1; margin-inline: -22px; padding: 12px 22px 20px; background: linear-gradient(to bottom, transparent, var(--bg-2) 14px); }
+/* In the card's own tone, never a band of another (2026-10-30): the strip in --bg-2 under a white page
+   cut it in two. It stays in view (NUE-10) and fades into the page above it; where it is said what to
+   try sits at the keys' left. */
+.tour-main .tour-acts { position: sticky; bottom: -20px; z-index: 1; margin-inline: -22px; padding: 12px 22px 20px; background: linear-gradient(to bottom, color-mix(in srgb, var(--tour-surface, var(--bg-2)) 0%, transparent), var(--tour-surface, var(--bg-2)) 16px); }
+html.chat-shell dialog.tour-window { --tour-surface: var(--cs-canvas); }
+.tour-main .tour-acts .tour-where { flex: 1 1 220px; min-width: 0; line-height: 1.4; }
 .tour-gap { flex: 1; }
 .tour-where { font-size: 12.5px; color: var(--text-3); }
 .tour-gestures { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; margin-top: 6px; }
@@ -12584,4 +12589,6 @@ dialog.terms-gate.leaving { animation: terms-out calc(260ms * var(--motion-scale
 .terms-btn:focus { outline: none; }
 .terms-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--phosphor) 35%, transparent); }
 .terms-card:focus, dialog.terms-gate:focus { outline: none; }
+/* MADRE's opening over the gate (loader.js, playOpening): the card waits under the stage. */
+dialog.terms-gate.intro .terms-card { opacity: 0; }
 @media (max-width: 520px) { .terms-actions { flex-direction: column-reverse; } .terms-btn { width: 100%; } .terms-title { font-size: 23px; } }
