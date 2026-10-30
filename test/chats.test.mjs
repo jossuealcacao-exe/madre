@@ -953,7 +953,8 @@ test('chat shell: Diagnostics in two rows of filters, the memory map head in the
   assert.match(app, /if \(count\) chip\(`agent:\$\{agent\}`, `@\$\{agent\}`, count, byAgent\);/);
   assert.match(css, /html\.chat-shell #mother \.remedy-scope \{ display: flex;/);
   assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-head > \.mother-title \{ font: 600 14px var\(--read\);/);
-  assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: rgb\(255 255 255 \/ \.08\) !important; color: var\(--phosphor\) !important; \}/);
+  // Pressed, white words on a tone of the accent mixed with the map's black: any accent reads (2026-10-30).
+  assert.match(css, /html\.chat-shell :is\(#nostromo, \.mv\) \.nostromo-actions \.mother-close\[aria-pressed="true"\] \{ background: color-mix\(in srgb, var\(--acc, var\(--phosphor\)\) 38%, #15171c\) !important; color: #fff !important;/);
   assert.match(app, /\{ id: 'egress', label: t\('Where it connects'\) \},/);
   assert.match(app, /head\.append\(el\('b', null, coreBlockName\(part\.id\)\)\);/);
   assert.match(es, /'What the agent reads': 'Lo que lee el agente',/);
@@ -1069,7 +1070,7 @@ test('Home: the sidebar in Settings, the bar by families, the Market and Modules
   assert.match(home, /const line = el\('span', 'sm-family'\);/);
   assert.match(homeCss, /html\.home-shell \.sm-top \.sm-family \{ display: block;/);
   // The Market and Modules open as a window: carried, sized, kept, over the sidebar.
-  assert.match(home, /window: \(parts\) => homeWindow\(\{ \.\.\.parts, key: 'pulse\.homeMarketWindow' \}\),/);
+  assert.match(home, /window: \(parts\) => homeWindow\(\{ \.\.\.parts, key: 'pulse\.homeMarketWindow\.wide', size: \{ w: 1920, h: 1400 \} \}\),/);
   assert.match(home, /const HOME_WINDOW_LAYER = 44;/);
   assert.match(home, /for \(const side of \['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'\]\) \{/);
   assert.match(homeCss, /html\.home-shell \.mk\.flat \.mk-mine \.mk-section \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(210px, 1fr\)\); gap: 10px; \}/);

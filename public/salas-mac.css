@@ -1710,12 +1710,15 @@ html.home-shell body.salas-mac .sm-top > .sm-tb-home::before { top: 16px; bottom
 html.home-shell .sm-top .sm-pill { height: 28px; font: 500 12.5px var(--read); }
 
 /* The canvas and its widgets: flat, a hairline round each, 12 px corners, the room's letter. */
-html.home-shell .sm-main { max-width: 1180px; padding: 28px 32px 56px; }
+/* The width of the window, not a box in the middle (2026-10-30); a very wide screen keeps a margin. */
+html.home-shell .sm-main { max-width: 1920px; padding: 28px clamp(16px, 3vw, 40px) 56px; }
 html.home-shell .sm-bento { gap: 12px; }
 html.home-shell .sm-bento + .sm-bento, html.home-shell .sm-none + .sm-bento, html.home-shell .sm-bento + .sm-none { margin-top: 12px; }
 /* A whisper of depth (2026-10-28): the hairline, and a shadow so faint it only lifts the card off the page. */
 html.home-shell .sm-tile { gap: 12px; padding: 16px 18px; border-radius: 12px; background: var(--cs-canvas) !important; box-shadow: 0 0 0 1px var(--cs-line), 0 1px 2px rgba(20, 30, 20, .035), 0 6px 18px -10px rgba(20, 30, 20, .08) !important; }
-html.home-shell[data-scheme="dark"] .sm-tile { box-shadow: 0 0 0 1px var(--cs-line), 0 1px 2px rgba(0, 0, 0, .18), 0 8px 20px -12px rgba(0, 0, 0, .35) !important; }
+/* In the dark the widgets stand a tone above the page (2026-10-30): the same black as the page, only
+   their hairline told them apart. */
+html.home-shell[data-scheme="dark"] .sm-tile { background: #242724 !important; box-shadow: 0 0 0 1px var(--cs-line), 0 1px 2px rgba(0, 0, 0, .18), 0 8px 20px -12px rgba(0, 0, 0, .35) !important; }
 html.home-shell .sm-tools { padding: 0; border-radius: 0; background: none !important; box-shadow: none !important; }
 html.home-shell .sm-tile-head { min-height: 30px; }
 html.home-shell .sm-tile-head h2, html.home-shell #sm-bishop-name { margin: 0; font: 600 14px/1.3 var(--read); letter-spacing: -.005em; color: var(--text); }
@@ -1790,6 +1793,9 @@ html.home-shell .mk.flat .mk-mine .mk-all > span { display: none; }
 html.home-shell .mk.flat .mk-mine .mk-card-head .mk-get { height: 26px; padding: 0 10px; font: 500 12px var(--read); }
 html.home-shell .mk.flat .mk-mine .mk-chips { gap: 6px; padding: 0; }
 html.home-shell .mk.flat .mk-mine .mk-chip { height: 24px; padding: 0 9px; font: 500 12px var(--read); }
+html.home-shell .mk.flat .mk-mine .mk-card-foot { gap: 6px; min-width: 0; padding-left: 0; }
+html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-chips:empty { display: none; }
+html.home-shell .mk.flat .mk-mine .mk-card-foot > .mk-get { height: 24px; margin-left: auto; padding: 0 10px; font: 500 12px var(--read); }
 html.home-shell .mk.flat .mk-mine .mk-said:empty { display: none; }
 
 /* The Coordinator's summary before there is one (2026-10-28): what will come there, in the middle of

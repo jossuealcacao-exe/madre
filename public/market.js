@@ -132,7 +132,10 @@ export function appIcon(item, size = 56) {
 export const MARKET_SHELVES = [
   { id: 'no-terminal', title: 'Without the terminal', about: 'What used to take a command, in one press.' },
   { id: 'create', title: 'To create', about: 'Images, previews and decisions as buttons.' },
-  { id: 'local-ai', title: 'AI on your computer', about: 'Free, private, and lighter on your plans.' },
+  // Shelves by what a person wants done (2026-10-30): notes and reminders are not creating, and the
+  // token saver is not an AI on your computer (that one comes with MADRE, in Settings).
+  { id: 'organize', title: 'To get organized', about: 'What you have pending, at hand and remembered.' },
+  { id: 'save', title: 'Spend less', about: 'Make your plans last longer.' },
   { id: 'connect', title: 'Connect it', about: 'Your other projects and the apps you already use.' },
 ];
 
@@ -147,11 +150,11 @@ export const MARKET = {
   'image-studio': { shelf: 'create', scope: 'everywhere', price: 0, featured: 3, pitch: 'Ask for a logo, a banner or an illustration, and the agents make it with your own key.' },
   ripley: { shelf: 'create', scope: 'everywhere', price: 0 },
   choices: { shelf: 'create', scope: 'everywhere', price: 0 },
-  notes: { shelf: 'create', scope: 'everywhere', price: 0 },
-  reminders: { shelf: 'create', scope: 'everywhere', price: 0 },
-  ollama: { shelf: 'local-ai', scope: 'everywhere', price: 0, featured: 4, pitch: 'A memory that searches by meaning, and @madre, on your own computer: free and private.' },
-  intents: { shelf: 'local-ai', scope: 'everywhere', price: 0 },
-  ash: { shelf: 'local-ai', scope: 'everywhere', price: 0 },
+  notes: { shelf: 'organize', scope: 'everywhere', price: 0 },
+  reminders: { shelf: 'organize', scope: 'everywhere', price: 0 },
+  ollama: { shelf: 'save', scope: 'everywhere', price: 0, featured: 4, pitch: 'A memory that searches by meaning, and @madre, on your own computer: free and private.' },
+  intents: { shelf: 'save', scope: 'everywhere', price: 0 },
+  ash: { shelf: 'save', scope: 'everywhere', price: 0 },
   enlaces: { shelf: 'connect', scope: 'everywhere', price: 0 },
   mcp: { shelf: 'connect', scope: 'everywhere', price: 0 },
 };
@@ -163,7 +166,17 @@ export const marketEntry = (id) => {
   return { ...base, ...(entry ? { shelf: entry.shelf ?? base.shelf, scope: entry.scope ?? base.scope, price: entry.price ?? base.price, pitch: pick(entry.pitch) ?? base.pitch, minMadre: entry.minMadre ?? null } : {}), featured: featured || 0 };
 };
 // The shelves, the catalog's when it names them.
-export const marketShelves = () => (remote?.shelves?.length ? remote.shelves.map((shelf) => ({ id: shelf.id, title: pick(shelf.title) ?? shelf.id, about: pick(shelf.about) ?? '' })) : MARKET_SHELVES);
+// A shelf this MADRE knows and the catalog does not yet name still shows, after the one it follows here.
+export const marketShelves = () => {
+  if (!remote?.shelves?.length) return MARKET_SHELVES;
+  const out = remote.shelves.map((shelf) => ({ id: shelf.id, title: pick(shelf.title) ?? shelf.id, about: pick(shelf.about) ?? '' }));
+  MARKET_SHELVES.forEach((shelf, index) => {
+    if (out.some((one) => one.id === shelf.id)) return;
+    const after = out.findIndex((one) => one.id === MARKET_SHELVES[index - 1]?.id);
+    out.splice(after < 0 ? out.length : after + 1, 0, shelf);
+  });
+  return out;
+};
 // What the shop shows: every module that can be turned on or installed. One that is always there
 // (Git) is part of MADRE, not something to get, and so is the Coordinator, which is Home itself.
 // Part of MADRE, not modules (2026-10-27): suggested effort, options, commands and connections between

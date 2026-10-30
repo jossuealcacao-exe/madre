@@ -884,10 +884,10 @@ textarea::placeholder { color: var(--text-3); }
 @media (max-width: 720px) { .colophon { display: none; } }
 
 /* toast */
-/* A conversation that finished elsewhere: a card on the left, beside the conversations button and
-   never over it. The brand's quiet card: graphite, a hairline, a mono label with its dot, the
+/* A conversation that finished elsewhere: a card at the foot of the conversations' side (app.js,
+   placeNotices), never over the conversation. The brand's quiet card: graphite, a hairline, a mono label with its dot, the
    conversation's name as the thing to read, and phosphor only on the way there. No glow. */
-.notices { position: fixed; top: var(--notice-top, 72px); left: var(--notice-left, 72px); z-index: 60; display: grid; gap: 10px; width: min(330px, calc(100vw - var(--notice-left, 72px) - 16px)); pointer-events: none; }
+.notices { position: fixed; bottom: var(--notice-bottom, 16px); left: var(--notice-left, 16px); z-index: 60; display: grid; gap: 10px; width: min(var(--notice-width, 320px), calc(100vw - 32px)); pointer-events: none; }
 .notice { position: relative; pointer-events: auto; display: grid; gap: 8px; padding: 12px 14px 13px; border: 1px solid var(--line-2); border-radius: 16px; background: var(--panel-2, var(--panel)); box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55); cursor: pointer; overflow: hidden; animation: notice-in calc(300ms * var(--motion-scale)) cubic-bezier(.2, .8, .2, 1); transition: border-color calc(150ms * var(--motion-scale)); }
 .notice:hover { border-color: color-mix(in srgb, var(--phosphor) 35%, var(--line-2)); }
 .notice.leaving { animation: notice-out calc(220ms * var(--motion-scale)) ease forwards; }
@@ -911,10 +911,9 @@ textarea::placeholder { color: var(--text-3); }
 .notice.failed .notice-life { background: color-mix(in srgb, var(--danger) 55%, transparent); }
 .notice.held .notice-life { animation-play-state: paused; }
 @keyframes notice-life { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-@keyframes notice-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
-@keyframes notice-out { to { opacity: 0; transform: translateX(-10px); } }
+@keyframes notice-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes notice-out { to { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .notice, .notice.leaving { animation: none; } .notice-life { display: none; } }
-@media (max-width: 560px) { .notices { left: 16px; top: auto; bottom: 120px; width: calc(100vw - 32px); } }
 .toast { position: fixed; left: var(--composer-center, 50%); bottom: calc(100vh - var(--composer-top, 70vh) + 22px); transform: translateX(-50%); text-align: center; padding: 9px 14px; animation: toast-in calc(220ms * var(--motion-scale)) ease; z-index: 40; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: var(--panel); color: var(--danger); font-size: 13px; box-shadow: var(--shadow); max-width: min(560px, calc(100% - 32px)); overflow-wrap: anywhere; }
 
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -4218,6 +4217,12 @@ dialog.custom-window::backdrop { display: none; }
 :is(:root[data-bubbles="fitted"] #messages, .look-preview[data-bubbles="fitted"]) .row:not(.thinking) .bubble { padding: 10px 18px; border-radius: 18px; line-height: 1.58; }
 :is(:root:is([data-bubbles="large"], [data-bubbles="compact"], [data-bubbles="fitted"]) #messages, .look-preview:is([data-bubbles="large"], [data-bubbles="compact"], [data-bubbles="fitted"])) .assistant .bubble { border-bottom-left-radius: 6px; }
 :is(:root:is([data-bubbles="large"], [data-bubbles="compact"], [data-bubbles="fitted"]) #messages, .look-preview:is([data-bubbles="large"], [data-bubbles="compact"], [data-bubbles="fitted"])) .user .bubble { border-bottom-right-radius: 6px; }
+/* An agent's answer reads in a wide column whatever size the bubbles are (2026-10-30): a long answer
+   in a narrow bubble is a wall to scroll. It is a share of the conversation, so beside a panel or in
+   split view it narrows with it, and in a narrow one it takes the whole width. */
+:root #messages .row.assistant:not(.thinking) { max-width: min(94%, 920px); }
+:root[data-bubbles="large"] #messages .row.assistant:not(.thinking) { max-width: min(96%, 980px); }
+@container thread (max-width: 640px) { :root #messages .row.assistant:not(.thinking) { max-width: 100%; } }
 
 /* The text read in the bubbles, the human's and the crew's. Comfortable is 15 px at 300. */
 :is(:root[data-text="larger"] #messages, .look-preview[data-text="larger"]) .bubble { font-size: 17px; line-height: 1.55; }
@@ -9706,9 +9711,10 @@ dialog.tour-bonjour:focus, dialog.tour-bonjour:focus-visible, dialog.whats-new:f
 #messages .sys-dots { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--bg) 80%, transparent); }
 #messages .sys-dots:hover, #messages .sys-dots:focus-visible { background: color-mix(in srgb, var(--bg) 90%, transparent); }
 /* 10 · Abajo terminó algo: un botón redondo y ligero sobre la caja, con un punto del color de quien
-   contestó. Lleva al final y se va solo al llegar. */
+   contestó. Lleva al final y se va solo al llegar. Vive en la conversación (2026-10-30): por debajo de
+   las ventanas (Mercado, Ajustes, 35), de la barra de chats (21) y de las pestañas (19), nunca encima. */
 .to-end {
-  position: fixed; z-index: 39; left: var(--composer-center, 50%); bottom: calc(100vh - var(--composer-top, 70vh) + 14px); translate: -50% 0;
+  position: fixed; z-index: 18; left: var(--composer-center, 50%); bottom: calc(100vh - var(--composer-top, 70vh) + 14px); translate: -50% 0;
   display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   color: var(--text); background: color-mix(in srgb, var(--surface, var(--panel)) 86%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5);
@@ -10239,7 +10245,7 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-row-words b { font-size: 15px; font-weight: 650; }
 /* A module of the community (2026-10-28): a small tag beside its name, quieter than its name. */
 .mk-community { display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: 99px; vertical-align: 2px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-2); font: 500 10.5px var(--read, inherit); letter-spacing: .01em; }
-.mk-maker .mk-community { margin-left: 0; }
+.mk-facts dd > .mk-community { margin: 0 6px 0 0; vertical-align: 1px; }
 .mk-facts .mk-handle { display: block; margin-top: 2px; font-size: 11.5px; font-weight: 400; color: var(--text-3, var(--text-2)); white-space: nowrap; }
 .mk-row-words b > .mk-community, .mk.flat .mk-row-words b > .mk-community { display: inline-block; overflow: visible; font: 500 10.5px var(--read, inherit); color: var(--text-2); }
 .mk-row-words span { display: -webkit-box; overflow: hidden; color: var(--text-2); font-size: 13px; line-height: 1.35; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -10254,7 +10260,6 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-product-top { display: flex; align-items: center; gap: 28px; }
 .mk-product-words { display: grid; gap: 8px; min-width: 0; }
 .mk-product-words h1 { margin: 0; font-size: clamp(26px, 3.4vw, 36px); font-weight: 760; letter-spacing: -.02em; line-height: 1.08; }
-.mk-product-words .mk-maker { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--acc, var(--phosphor)); }
 .mk-product-words > p:not(.mk-said) { margin: 0; color: var(--text-2); font-size: 16px; }
 .mk-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; margin-top: 8px; }
 .mk-state { color: var(--text-2); font-size: 13.5px; }
@@ -10325,6 +10330,10 @@ html.mk-open :is(.tour-hint, .tour-hint-away, .hint-spot) { visibility: hidden !
 .mk-switch.on .mk-knob { transform: translateX(18px); }
 .mk-switch:disabled, .mk-chip:disabled { opacity: .55; cursor: progress; }
 .mk-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 58px; }
+/* Where a module is installed and the key to install it in another, on one line (market-view.js). */
+.mk-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-left: 58px; }
+.mk-card-foot > .mk-chips { padding-left: 0; }
+.mk-card-foot > .mk-get { margin-left: auto; }
 .mk-chip { padding: 6px 12px; border: 0; border-radius: 99px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text-2); font-size: 13px; cursor: pointer; }
 span.mk-chip { cursor: default; }
 .mk-chip.on { background: color-mix(in srgb, var(--madre-green) 16%, transparent); color: var(--madre-green); font-weight: 600; }
@@ -10352,7 +10361,7 @@ html.mk-open .toast { z-index: 2147482995 !important; left: 50% !important; righ
   .mk-facts > div:nth-child(odd) { border-left: 0; }
   .mk-facts > div:nth-child(n + 3) { border-top: 1px solid var(--line); }
   .mk-touch { grid-template-columns: 1fr; gap: 2px; }
-  .mk-chips { padding-left: 0; }
+  .mk-chips, .mk-card-foot { padding-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .mk, .mk-dot, .mk-knob { transition: none; } }
 
@@ -10533,7 +10542,8 @@ svg .ic-ring { transition: opacity calc(200ms * var(--motion-scale)) ease; opaci
 .mcp-card-top .sx-chip { font-size: 11px; padding: 2px 8px; }
 .mcp-card-about { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
 .mcp-card-words small { font-size: 11.5px; color: var(--text-3); }
-.mcp-card-keys { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* Its keys at the right of the card (2026-10-30), where the eye ends reading it. */
+.mcp-card-keys { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .mcp-card-keys .sx-input { flex: 1 1 160px; min-width: 0; }
 .mcp-card-state { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .mcp-card-state.ok { color: var(--acc, var(--phosphor)); }
@@ -11730,7 +11740,9 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
 /* The search is every other search of the room (.settings-search): nothing of its own here. */
 .mk.flat .mk-search { width: min(280px, 100%); }
 /* The page: a large title, as the store's, and the rest under it. */
-.mk.flat .mk-page { width: min(1040px, 100%); padding: 26px 32px calc(64px + env(safe-area-inset-bottom, 0px)); gap: 34px; }
+/* The width of the window, not a box in the middle of it (2026-10-30), in Home and in a project alike;
+   only a very wide screen keeps a margin, so a line is never read across all of it. */
+.mk.flat .mk-page { width: 100%; max-width: 1920px; padding: 26px clamp(16px, 3.2vw, 48px) calc(64px + env(safe-area-inset-bottom, 0px)); gap: 34px; }
 .mk.flat .mk-head h1 { font: 700 32px/1.1 var(--read); letter-spacing: -.02em; }
 .mk.flat .mk-head p { margin-top: 6px; font: 400 14px/1.5 var(--read); color: var(--text-3); }
 .mk.flat .mk-empty { font: 400 14px var(--read); color: var(--text-3); }
@@ -11788,6 +11800,19 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
   overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
 }
 .mk.flat .mk-shelf .mk-list::-webkit-scrollbar { display: none; }
+/* Wide, a shelf lays its modules across, three to a row and four on a very wide screen, instead of
+   three deep in a column that leaves the right of the window empty; the hairline is under every
+   row but the last. */
+@container mk (min-width: 1180px) {
+  .mk.flat .mk-shelf .mk-list { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: none; grid-auto-flow: row; grid-auto-columns: auto; overflow: visible; }
+  .mk.flat .mk-shelf .mk-row:nth-child(3n)::after { content: ''; }
+  .mk.flat .mk-shelf .mk-row:nth-last-child(-n+3):nth-child(3n+1)::after, .mk.flat .mk-shelf .mk-row:nth-last-child(-n+3):nth-child(3n+1) ~ .mk-row::after { content: none; }
+}
+@container mk (min-width: 1680px) {
+  .mk.flat .mk-shelf .mk-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mk.flat .mk-shelf .mk-row:nth-last-child(-n+3):nth-child(3n+1)::after, .mk.flat .mk-shelf .mk-row:nth-last-child(-n+3):nth-child(3n+1) ~ .mk-row::after { content: ''; }
+  .mk.flat .mk-shelf .mk-row:nth-last-child(-n+4):nth-child(4n+1)::after, .mk.flat .mk-shelf .mk-row:nth-last-child(-n+4):nth-child(4n+1) ~ .mk-row::after { content: none; }
+}
 .mk.flat .mk-list:not(.mk-shelf .mk-list) { column-gap: 28px; }
 .mk.flat .mk-row { position: relative; gap: 12px; padding: 10px 0; border-bottom: 0; scroll-snap-align: start; }
 .mk.flat .mk-row::after { content: ''; position: absolute; left: 64px; right: 0; bottom: 0; height: 1px; background: var(--mk-line); }
@@ -11808,7 +11833,6 @@ html.chat-shell .slash-menu .hint.keys kbd { padding: 1px 5px; border: 0; border
 .mk.flat .mk-product-words { gap: 4px; }
 .mk.flat .mk-product-words h1 { font: 700 clamp(24px, 3vw, 30px)/1.1 var(--read); letter-spacing: -.02em; }
 .mk.flat .mk-product-words > p:not(.mk-said) { font: 400 15px var(--read); color: var(--text-3); }
-.mk.flat .mk-product-words .mk-maker { font: 500 12.5px var(--read); color: var(--madre-green); }
 .mk.flat .mk-keys { margin-top: 10px; }
 .mk.flat .mk-said { font: 400 13px/1.45 var(--read); color: var(--text-3); }
 .mk.flat .mk-where-title { font: 600 13.5px var(--read); }
@@ -11916,7 +11940,7 @@ html.chat-shell[data-scheme="dark"] .shell > .composer > :is(.free-offer, .inten
   .mk.flat .mk-facts > div:nth-child(n + 3) { border-top: 1px solid var(--mk-line); }
   .mk.flat .mk-shot { flex-basis: calc(100% - 28px); }
   .mk.flat .mk-touch { grid-template-columns: 1fr; gap: 2px; }
-  .mk.flat .mk-chips { padding-left: 0; }
+  .mk.flat :is(.mk-chips, .mk-card-foot) { padding-left: 0; }
 }
 @container mk (max-width: 460px) {
   .mk.flat .mk-head p { display: none; }
@@ -12050,7 +12074,11 @@ html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close:is(*, :hover
   background: none !important; color: rgb(242 241 238 / .72); font: 500 12.5px var(--read); letter-spacing: 0;
 }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close:is(:hover, :focus-visible) { background: rgb(255 255 255 / .07) !important; color: #fff; }
-html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close[aria-pressed="true"] { background: rgb(255 255 255 / .08) !important; color: var(--phosphor) !important; }
+/* A pressed key (Ask · 2, Neural) says so with a tone of the accent under white words, never with the
+   accent as the words (2026-10-30): the map is always dark, and a dark accent read as text on it was
+   lost. Mixed with the map's own black, any accent leaves white readable on top. */
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close[aria-pressed="true"] { background: color-mix(in srgb, var(--acc, var(--phosphor)) 38%, #15171c) !important; color: #fff !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc, var(--phosphor)) 60%, rgb(255 255 255 / .35)) !important; }
+html.chat-shell :is(#nostromo, .mv) .nostromo-actions .mother-close[aria-pressed="true"]:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--acc, var(--phosphor)) 48%, #15171c) !important; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions .neural-key svg { width: 15px; height: 15px; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes { margin-left: 4px; padding: 0 0 0 6px; border: 0; border-radius: 0; background: none !important; box-shadow: inset 1px 0 0 rgb(255 255 255 / .1) !important; }
 html.chat-shell :is(#nostromo, .mv) .nostromo-actions > .surface-modes .surface-mode.close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0 !important; border-radius: 8px; background: none !important; box-shadow: none !important; }
@@ -12234,6 +12262,12 @@ html.chat-shell .tour-btn.quiet { box-shadow: none; }
 html.chat-shell .shell > .composer { position: relative; }
 html.chat-shell .shell > .composer > .openq { position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); margin: 0; padding: 0 8px; z-index: 2; }
 /* The conversation leaves room for them by measure (app.js, measureDock: --dock-h starts where they start). */
+/* Scrolled, the conversation runs on under them (2026-10-30: no band cut across it): each pill and
+   the line over them carry a soft halo of the canvas a few pixels around their edge, so the words
+   behind fade there and nowhere else. */
+html.chat-shell .shell > .composer > .openq .openq-ask { box-shadow: var(--bevel), var(--float-sm), 0 0 10px 5px color-mix(in srgb, var(--cs-canvas, var(--bg)) 86%, transparent); }
+html.chat-shell .shell > .composer > .openq .openq-head { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--cs-canvas, var(--bg)) 82%, transparent); box-shadow: 0 0 10px 5px color-mix(in srgb, var(--cs-canvas, var(--bg)) 82%, transparent); }
+html.chat-shell .shell > .composer > .openq .openq-rail { padding: 12px 14px; margin: -12px -14px; }
 
 /* WHAT TO ASK NOW IN THE NEW LOOK (2026-10-28): the Memory map stays dark in either theme, so the
    panel is its own glass; each question a soft card, why it is worth asking in a quiet sentence with

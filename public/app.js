@@ -11534,23 +11534,38 @@ function onChatActivity({ chatId, working, finished } = {}) {
   }
   renderChats();
 }
-// A conversation finished somewhere you are not looking. A card on the left, beside the button
-// that opens the conversations (never over it): what happened, which conversation, who answered,
-// and the way there. A thin line runs down while it waits; the pointer over it holds it.
+// A conversation finished somewhere you are not looking. A card at the foot of the conversations'
+// side, inside it and above its foot (2026-10-30: never over the conversation, the bar or the map):
+// what happened, which conversation, who answered, and the way there. With the side closed it waits
+// in the bottom corner, beside the box you write in or, when there is no room there, just above it.
+// A thin line runs down while it waits; the pointer over it holds it.
 const NOTICE_MS = 9000;
 const noticesBox = el('div', 'notices');
 noticesBox.setAttribute('role', 'status');
 noticesBox.setAttribute('aria-live', 'polite');
 document.body.append(noticesBox);
-// Beside whatever is on the left: the open list of conversations, or the button that opens it.
 function placeNotices() {
-  const anchor = (!els.chats?.hidden && els.chats) || els.chatsButton;
-  const rect = anchor?.getBoundingClientRect?.();
-  if (!rect || !rect.width) { noticesBox.style.removeProperty('--notice-left'); noticesBox.style.removeProperty('--notice-top'); return; }
-  noticesBox.style.setProperty('--notice-left', `${Math.round(rect.right + 12)}px`);
-  noticesBox.style.setProperty('--notice-top', `${Math.round(rect.top)}px`);
+  const set = (left, width, bottom) => {
+    noticesBox.style.setProperty('--notice-left', `${Math.round(left)}px`);
+    noticesBox.style.setProperty('--notice-width', `${Math.round(width)}px`);
+    noticesBox.style.setProperty('--notice-bottom', `${Math.round(bottom)}px`);
+  };
+  const high = window.innerHeight || document.documentElement.clientHeight || 0;
+  const side = els.chats && !els.chats.hidden ? els.chats.getBoundingClientRect?.() : null;
+  if (side?.width > 200) {
+    const foot = els.chats.querySelector('.side-foot')?.getBoundingClientRect?.();
+    const floor = foot?.height ? foot.top : side.bottom;
+    set(side.left + 8, side.width - 16, high - floor + 8);
+    return;
+  }
+  const box = els.composer?.getBoundingClientRect?.();
+  const width = Math.min(320, (window.innerWidth || 360) - 32);
+  if (!box?.width || box.left >= 16 + width + 12) set(16, width, 16);
+  else set(16, width, high - box.top + 10);
 }
 window.addEventListener?.('resize', placeNotices);
+// The side opening, closing or being dragged wider moves a card already showing with it.
+if (typeof ResizeObserver === 'function' && els.chats) new ResizeObserver(() => { if (noticesBox.children.length) placeNotices(); }).observe(els.chats);
 function showNotice({ agent, ok, chatId, chat }) {
   placeNotices();
   const who = agent ?? 'madre';
@@ -11582,8 +11597,8 @@ function showNotice({ agent, ok, chatId, chat }) {
   const open = () => { leave(); if (chatId !== chats.active) void openChat(chatId); };
   go.addEventListener('click', (event) => { event.stopPropagation(); open(); });
   card.addEventListener('click', open);
-  noticesBox.prepend(card);
-  for (const extra of [...noticesBox.children].slice(3)) extra.remove();
+  noticesBox.append(card);
+  for (const extra of [...noticesBox.children].slice(0, -3)) extra.remove();
   arm();
 }
 
@@ -12270,10 +12285,10 @@ function measureDock() {
   // of its own: the box is the composer itself.
   const fieldBox = els.composer.querySelector?.('.field')?.getBoundingClientRect?.();
   const field = fieldBox && fieldBox.height > 0 ? fieldBox : box;
-  // With the open questions standing over the box, the conversation fades out above them instead of
-  // running behind their pills (2026-10-29); a reminder is a card of its own and keeps its place.
-  const fadeAt = openRect && openRect.height > 0 && openRect.bottom <= box.top + 1 ? Math.min(field.top, openRect.top - 4) : field.top;
-  if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - fadeAt))}px`);
+  // The open questions standing over the box do not cut the conversation off above them: a cut there
+  // was a band across the whole conversation (2026-10-30). It runs on under them, and each of them
+  // carries a soft halo of the canvas a few pixels around its edge (styles.css, .openq).
+  if (field && !pageScrolls()) shell.style.setProperty('--type-gap', `${Math.max(0, Math.ceil(shell.getBoundingClientRect().bottom - field.top))}px`);
   if (height === measureDock.last && over === measureDock.over) return;
   measureDock.last = height;
   measureDock.over = over;

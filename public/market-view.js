@@ -15,7 +15,7 @@
 // `openProject(projectId, item)` (Home), `toast(text)` and `changed()`.
 
 import { t, language } from './i18n.js';
-import { appIcon, communityOf, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace } from './market.js';
+import { appIcon, communityOf, forSale, inMarket, isBought, loadMarket, marketEntry, marketExtras, marketFeatured, marketShelves, moduleFace, remoteEntry } from './market.js';
 import { marketArt, marketGallery } from './market-art.js';
 import { trazo } from './icons.js';
 
@@ -53,8 +53,9 @@ const glyph = (node, name) => { node.insertAdjacentHTML('afterbegin', GLYPH[name
 const nameOf = (item) => moduleFace(item).name ?? t(item.name ?? item.id);
 const summaryOf = (item) => (moduleFace(item).summary ? t(moduleFace(item).summary) : t(item.summary ?? ''));
 const lineOf = (item) => (moduleFace(item).line ? t(moduleFace(item).line) : t(item.summary ?? ''));
-// Who made it: a community module's author (its catalog entry) or what a module says of itself.
-const makerOf = (item) => communityOf(item.id)?.author.name ?? item.credit ?? null;
+// Who made it: the catalog entry's author (a community module's, or one of the author's own, like
+// Antes de subir, by Claude) or what a module says of itself.
+const makerOf = (item) => remoteEntry(item.id)?.author?.name ?? item.credit ?? null;
 const communityTag = () => el('span', 'mk-community', t('Community'));
 const priceOf = (item) => (marketEntry(item.id).price ? `$${marketEntry(item.id).price}` : t('Free'));
 const shelfOf = (item) => marketShelves().find((shelf) => shelf.id === marketEntry(item.id).shelf) ?? null;
@@ -413,12 +414,6 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     const top = el('section', 'mk-product-top');
     const words = el('div', 'mk-product-words');
     words.append(el('h1', null, nameOf(item)), el('p', null, lineOf(item)));
-    // Who made it, under its name, when it is someone from the community (Reminders: Daniel Castillo).
-    if (makerOf(item)) {
-      const maker = el('small', 'mk-maker', t('Developed by {name}', { name: makerOf(item) }));
-      if (communityOf(item.id)) maker.prepend(communityTag(), ' ');
-      words.append(maker);
-    }
     const keys = el('div', 'mk-keys');
     const line = el('p', 'mk-said');
     words.append(keys, line);
@@ -450,8 +445,12 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (shelfOf(item)) fact(t('Shelf'), t(shelfOf(item).title));
     // MADRE's own modules have no version of their own: they are the version of MADRE they come with.
     fact(t('Version'), item.version ? `v${String(item.version).replace(/^v/, '')}` : madre ? t('Comes with MADRE {version}', { version: madre }) : t('Comes with MADRE'));
-    // Who developed it, when a module says (Reminders, 2026-10-20).
-    if (makerOf(item)) fact(t('Developer'), makerOf(item));
+    // Who developed it, when a module or its catalog entry says (Reminders, 2026-10-20), only here: not
+    // again under its name (2026-10-30).
+    if (makerOf(item)) {
+      fact(t('Developer'), makerOf(item));
+      if (communityOf(item.id)) facts.lastChild.lastChild.prepend(communityTag(), ' ');
+    }
     // A community module's author, and where to find them: their GitHub user, under their name.
     const github = communityOf(item.id)?.author.github;
     if (github) facts.lastChild.lastChild.append(el('small', 'mk-handle', `@${github}`));
@@ -649,13 +648,13 @@ export function openMarket({ where = 'home', tab = 'shop', focus = null, project
     if (kind === 'local') {
       head.append(button('mk-get', t('Local AI settings'), () => { close(); host.localAi?.(); }));
     } else if (kind === 'install') {
-      head.append(button('mk-get', t('Install in another'), () => go({ tab: 'shop', focus: item.id })));
-      const on = scopeOf(item)?.on ?? [];
-      if (on.length) {
-        const chips = el('div', 'mk-chips');
-        for (const id of on) chips.append(el('span', 'mk-chip on', projectName(id)));
-        box.append(chips);
-      }
+      // The projects it is in and the key to put it in another, on one line (2026-10-30): stacked, the
+      // key and the project read as two keys of different sizes, one under the other.
+      const foot = el('div', 'mk-card-foot');
+      const chips = el('div', 'mk-chips');
+      for (const id of scopeOf(item)?.on ?? []) chips.append(el('span', 'mk-chip on', projectName(id)));
+      foot.append(chips, button('mk-get', t('Install in another'), () => go({ tab: 'shop', focus: item.id })));
+      box.append(foot);
     } else {
       const mineScope = scopeOf(item) ?? { all: false, on: [], everywhere: false };
       const allOn = mineScope.everywhere || (mineScope.all && !scope.projects.length);

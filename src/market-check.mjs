@@ -30,7 +30,7 @@ const SEMVER = /^\d+\.\d+\.\d+$/;
 const GITHUB = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const COLOR = /^#[0-9a-f]{6}$/i;
 // The shelves of the Market (public/market.js, MARKET_SHELVES).
-export const COMMUNITY_SHELVES = ['no-terminal', 'create', 'local-ai', 'connect'];
+export const COMMUNITY_SHELVES = ['no-terminal', 'create', 'organize', 'save', 'connect'];
 // Licenses a community module's code may carry: open ones a person can read, share and reuse.
 // The author of MADRE decides this list with the terms for whoever publishes (D-M3, a draft).
 export const COMMUNITY_LICENSES = ['AGPL-3.0-only', 'AGPL-3.0-or-later', 'GPL-3.0-only', 'GPL-3.0-or-later', 'MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'MPL-2.0'];

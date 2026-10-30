@@ -4242,7 +4242,9 @@ const openHomeMarket = (tab = 'shop', focus = null) => openMarket({
   focus,
   host: {
     // In the chat shell the Market is a window, as in a project (homeWindow); on a phone, the screen.
-    window: (parts) => homeWindow({ ...parts, key: 'pulse.homeMarketWindow' }),
+    // It opens as wide as the screen allows (2026-10-30: a box in the middle read cramped); the size
+    // a person gives it is kept under a new name, so the old narrow one is not brought back.
+    window: (parts) => homeWindow({ ...parts, key: 'pulse.homeMarketWindow.wide', size: { w: 1920, h: 1400 } }),
     localAi: () => openSettings('local'),
     toast: (words) => toast(words),
     changed: () => drawColophonKeys(ui.colophon),
