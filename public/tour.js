@@ -250,6 +250,12 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     if (heldElsewhere(fresh.state)) { elsewhere(); return false; }
     // Someone new in Home meets the welcome itself (2026-10-28, public/welcome.js), with no bonjour
     // before it to put off: it is what leaves MADRE ready, and its last step leads to the chapters.
+    // Whoever updated from a MADRE before 1.1.0 is not new (2026-10-30): the board of news, with
+    // MADRE's opening, is their way in (salas-mac.js, homeNews); no welcome, no bonjour on top of it.
+    if (info?.upgraded) {
+      await keep({ path: path() === 'new' ? 'back' : path(), bonjour: true });
+      return false;
+    }
     if (page === 'home' && path() === 'new' && welcome?.instead) {
       await keep({ path: 'new', bonjour: true });
       void fetch('/api/whats-new/seen', { method: 'POST' }).catch(() => null);
@@ -699,6 +705,8 @@ export function startTour({ page, go = {}, ready = () => true, phone = false, de
     hint,
     returning,
     newcomer,
+    // Updated from a MADRE before 1.1.0 (src/terms.mjs): never the welcome of someone new.
+    upgraded: () => Boolean(info?.upgraded),
     // A card the page shows itself (app.js: first touches and news) is kept as seen here, per person.
     seen: (id) => keep({ hint: id }),
     state: () => state,

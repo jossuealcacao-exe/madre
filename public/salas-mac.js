@@ -505,7 +505,8 @@ function draw() {
   drawProjects(all);
   // An empty Home opens the welcome where it was left, or at the project when it was finished
   // without one; someone new meets it in place of the bonjour (public/tour.js).
-  if (!all.length && !welcomed) { welcomed = true; void homeTour.loaded.then((answer) => { if (!answer?.owed) openHomeWelcome({ at: answer?.state?.welcome?.finished ? 'project' : null }); }); }
+  // Not for whoever updated from before 1.1.0: they meet the news, and «Add project» is on Home (2026-10-30).
+  if (!all.length && !welcomed) { welcomed = true; void homeTour.loaded.then((answer) => { if (!answer?.owed && !answer?.upgraded) openHomeWelcome({ at: answer?.state?.welcome?.finished ? 'project' : null }); }); }
   welcomeHome();
   const working = open.some((room) => room.glance?.working?.length);
   ui.stop.hidden = !working;
