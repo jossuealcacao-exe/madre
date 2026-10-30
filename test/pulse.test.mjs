@@ -474,12 +474,13 @@ test('a process that talked while MADRE was busy is not stopped as silent', asyn
 });
 
 test('runs OpenCode with an ephemeral restricted agent', () => {
-  assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: 'openai/gpt-5.6-sol' }).slice(6, 8), ['--model', 'openai/gpt-5.6-sol']);
+  assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: 'openai/gpt-5.6-sol' }).slice(9, 11), ['--model', 'openai/gpt-5.6-sol']);
   const args = buildOpenCodeArgs({ projectRoot: '/project', prompt: 'hello', model: undefined });
   assert.deepEqual(args, [
     '--pure',
     'run',
     '--format', 'json',
+    '--print-logs', '--log-level', 'ERROR',
     '--agent', 'pulse-readonly',
     '--dir', '/project',
     'hello',
@@ -1192,7 +1193,7 @@ test('MU/TH/UR matches recorded failures to known conditions with per-OS fixes',
   assert.ok(ids('npm ERR! EACCES: permission denied, access \'/usr/local/lib/node_modules\'').includes('module-update'));
   assert.deepEqual(ids('the id "ash" is already taken'), ['module-add']);
   assert.deepEqual(ids('Failed to authenticate. API Error: 403 Subscribe to the Telegram channels @conduitapi to keep FREE access.'), ['custom-agent-endpoint']);
-  assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.remedy} ${c.agent}`)), 'the search reads the remedy too');
+  assert.ok(searchConditions('gemini').every((c) => /gemini/i.test(`${c.id} ${c.title} ${c.diagnosis} ${c.remedy} ${c.agent} ${JSON.stringify(c.fixes ?? '')}`)), 'the search reads the remedy and the fixes too');
   assert.equal(searchConditions('').length, CONDITIONS.length);
 });
 
@@ -1755,7 +1756,7 @@ test('models: discovered locally, validated, and passed to every CLI as --model'
   assert.deepEqual(buildClaudeArgs({ prompt: 'q', model: 'fable' }).slice(1, 3), ['--model', 'fable']);
   assert.deepEqual(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', model: 'gemini-3-pro-preview' }).slice(0, 2), ['--model', 'gemini-3-pro-preview']);
   assert.equal(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', model: 'auto' }).includes('--model'), false, '"auto" means no flag');
-  assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: 'openai/gpt-5.6-terra' }).slice(6, 8), ['--model', 'openai/gpt-5.6-terra']);
+  assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: 'openai/gpt-5.6-terra' }).slice(9, 11), ['--model', 'openai/gpt-5.6-terra']);
 });
 
 test('the chosen model travels with the human turn and is recorded on both messages', async () => {
@@ -1979,7 +1980,7 @@ test('attachments: uploaded to the room folder, served back, handed to every CLI
     assert.equal(withImage[withImage.indexOf('--image') + 1], '/att/a.png');
     assert.deepEqual(buildClaudeArgs({ prompt: 'q', attachmentsDir: '/att' }).slice(1, 3), ['--add-dir', '/att']);
     assert.ok(buildGeminiArgs({ projectRoot: '/p', prompt: 'q', policyPath: '/t', attachmentsDir: '/att' }).includes('/p,/att'));
-    assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: undefined, attachments: [file] }).slice(6, 8), ['--file', '/att/a.png']);
+    assert.deepEqual(buildOpenCodeArgs({ projectRoot: '/p', prompt: 'q', model: undefined, attachments: [file] }).slice(9, 11), ['--file', '/att/a.png']);
     const state = await fetch(`${base}/api/state`).then((response) => response.json());
     assert.equal(state.capabilities.codex.imageGen, true);
   } finally {

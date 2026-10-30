@@ -98,7 +98,7 @@ const cursorModels = { at: 0, ids: [] };
 const geminiModels = { at: 0, ids: [] };
 import { observable } from './modules/intents-observe.mjs';
 import { summarizeHistory } from './history.mjs';
-import { noteOpenCodeTurn, openCodeHealth, suggestOpenCodeModel } from './opencode-health.mjs';
+import { migrateOpenCodeHealth, noteOpenCodeTurn, openCodeHealth, suggestOpenCodeModel } from './opencode-health.mjs';
 import { normalizeMode, setImageModule } from './capabilities.mjs';
 import { resolveGeminiKey } from './image-studio.mjs';
 import { commandByName, listCommands, parseCommand } from './commands.mjs';
@@ -986,11 +986,30 @@ export async function createPulseServer({
   // Session state per agent, refreshed on demand from the connections panel.
   let sessions = {};
   let sessionsAt = null;
-  async function refreshSessions() {
-    sessions = await probe(agents);
+  // The page drew its crew before this came back and kept the first agent installed, signed in or
+  // not: a newcomer's first message went to a Codex without a session (QA 1.1.0, NUE-11). The
+  // answer is now said to whoever is watching, and an agent that did not answer in time is asked
+  // again a little later instead of staying «signed out» until a restart (ACT-08).
+  let reprobe = null;
+  let reprobes = 0;
+  async function refreshSessions({ only = null } = {}) {
+    const asked = only ? agents.filter((agent) => only.includes(agent.id)) : agents;
+    const found = await probe(asked);
+    sessions = only ? { ...sessions, ...found } : found;
     sessionsAt = new Date().toISOString();
+    room?.announce?.('sessions.updated', { sessions, sessionsAt });
+    const late = Object.entries(sessions).filter(([, one]) => one?.timedOut).map(([id]) => id);
+    clearTimeout(reprobe);
+    if (late.length && reprobes < 3) {
+      reprobes += 1;
+      reprobe = setTimeout(() => void refreshSessions({ only: late }).catch(() => {}), 10000 * 3 ** (reprobes - 1));
+      reprobe.unref?.();
+    } else if (!late.length) reprobes = 0;
     return sessions;
   }
+  // Before any OpenCode runs here: MADRE's notes about OpenCode no longer go by a name OpenCode
+  // reads as its own configuration (ACT-01).
+  await migrateOpenCodeHealth(root).catch(() => {});
   void refreshSessions().catch((error) => console.error(`MADRE session probe failed: ${error.message}`));
 
   // Effective settings = environment + config file + live changes; the file
@@ -4799,6 +4818,7 @@ export async function createPulseServer({
     return server;
   };
   server.on('close', () => quotaMonitor.stop());
+  server.on('close', () => clearTimeout(reprobe));
   server.on('close', () => { for (const timer of aliveTimers) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });

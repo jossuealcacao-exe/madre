@@ -35,7 +35,7 @@ import { parseDirectives } from './directives.mjs';
 import { isValidModelName, isValidEffort, belongsElsewhere, MODEL_NOT_FOUND, codexTakes, readCodexEfforts } from './models.mjs';
 import { withListPrice } from './prices.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
-import { createLease, diffSnapshots, namedPaths, snapshot } from './lease.mjs';
+import { createLease, diffSnapshots, namedPaths, snapshot, subagentsAllowed } from './lease.mjs';
 import { stat as statFile, readdir, copyFile, mkdir as mkdirPath, readFile as readFileBytes } from 'node:fs/promises';
 import { basename as baseName, join as joinPath } from 'node:path';
 import { declaredTypeFor, filesChangedSince } from './files.mjs';
@@ -350,6 +350,13 @@ export class Room {
     const event = { id: `live-${randomUUID()}`, sequence: null, live: true, timestamp: new Date().toISOString(), type, payload };
     for (const listener of this.#liveListeners) listener(event);
     return event;
+  }
+
+  // What the server learns outside a turn and the page must hear now, never written down: which
+  // agents have a session, once the probe that runs at start comes back (QA 1.1.0, NUE-11).
+  announce(type, payload) {
+    if (!['sessions.updated'].includes(type)) throw new Error(`Not a live announcement: ${type}`);
+    return this.#say(type, payload);
   }
 
   // Whoever is watching the room right now. Separate from the ghost channel, which carries turns
@@ -1560,7 +1567,7 @@ export class Room {
     }
     // The limit this turn will be held to, said with its start so the room counts down from the
     // real number and not from a default it guessed.
-    await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId, timeoutMs: this.timeoutFor(agent.id, { writing: Number(mode) >= 2 || Boolean(lease) }) });
+    await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId, timeoutMs: this.timeoutFor(agent.id, { writing: Number(mode) >= 2 || Boolean(lease) || subagentsAllowed(agent.id, { airlock: Number(mode) === 4 }) }) });
     const controller = new AbortController();
     const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
     turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, effort, attachments, references, lease, ash, mode, escalation, returned, copilot });
@@ -1838,6 +1845,11 @@ export class Room {
       : null;
     // The turn's effective mode: #0 for ghosts, #3 in control, #2 only while it holds a lease.
     const turnMode = mode === 0 ? 0 : controlRun ? controlRun.mode : lease ? 2 : 1;
+    // A turn whose agent may hand work to its own subagents gets the longer clock (QA 1.1.0,
+    // NUE-23): OpenCode on its free models with two subagents took three minutes in #1 and was cut
+    // at 180 s with nothing kept. What the subagents reported is kept for the failure too.
+    const helperClock = Boolean(lease) || subagentsAllowed(agent.id, { airlock: Number(turnMode) === 4 });
+    let helpersSeen = null;
     try {
       const invoke = this.#invokers[agent.adapter];
       if (!invoke) throw new Error(`${agent.label} does not have a supported MADRE adapter.`);
@@ -1878,7 +1890,7 @@ export class Room {
         if (Array.isArray(subagents) && subagents.length) {
           const kept = keepHelpers(subagents);
           const key = JSON.stringify(kept);
-          if (key !== helpersSaid) { helpersSaid = key; this.#say('turn.subagents', { messageId, agent: agent.id, mode: turnMode, subagents: kept }); }
+          if (key !== helpersSaid) { helpersSaid = key; helpersSeen = kept; this.#say('turn.subagents', { messageId, agent: agent.id, mode: turnMode, subagents: kept }); }
         }
         if (!Number.isFinite(chars) || chars <= told) return;
         told = chars;
@@ -1890,7 +1902,7 @@ export class Room {
         projectRoot: this.#projectRoot,
         text,
         prompt: shaped.text,
-        timeoutMs: this.timeoutFor(agent.id, { writing: Boolean(lease) }),
+        timeoutMs: this.timeoutFor(agent.id, { writing: helperClock }),
         signal,
         model,
         effort,
@@ -2086,8 +2098,9 @@ export class Room {
         ...(this.#turns.get(messageId)?.stoppedByHuman ? { stopped: true } : {}),
         // Cut because MADRE is closing: nothing went wrong in the turn, so nobody files it as a fault.
         ...(this.#shuttingDown ? { closing: true } : {}),
-        ...(cutByClock ? { timeout: { ms: this.timeoutFor(agent.id, { writing: Boolean(lease) }), writing: Boolean(lease), idle: error.code === 'IDLE' } } : {}),
+        ...(cutByClock ? { timeout: { ms: this.timeoutFor(agent.id, { writing: helperClock }), writing: Boolean(lease), idle: error.code === 'IDLE' } } : {}),
         ...(partial ? { partial } : {}),
+        ...(helpersSeen?.length ? { subagents: helpersSeen } : {}),
       });
       return null;
     } finally {

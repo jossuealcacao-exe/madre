@@ -19,7 +19,9 @@ import { readFileSync } from 'node:fs';
 import { chmod, lstat, readdir, readFile, rm, rmdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { shadowFolderFor } from './checkpoint.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { CHECKPOINT_REF, isGitRepo, legacyShadowFolderFor, shadowFolderFor } from './checkpoint.mjs';
 import { insideFolder, isSalasRoom, knownRooms } from './salas.mjs';
 
 const KEEP_INSIDE = 'out';
@@ -74,6 +76,34 @@ export async function npxFolders({ script = process.argv[1] ?? '', name }) {
   return out;
 }
 
+const execFileAsync = promisify(execFile);
+// The repositories of a project that keep MADRE's restore points (QA 1.1.0, ACT-03). A turn in a
+// git project photographs it under refs/madre/checkpoints/<id> inside its own .git, .env included,
+// and those stayed after uninstalling: a `git push --mirror` would have published them. The
+// project and the repositories nested in it (a few levels down; dependencies are not looked into).
+const NOT_INTO = new Set(['node_modules', '.git', '.pulse', '.madre', 'vendor', 'dist', 'build', '.venv', 'venv', 'target']);
+async function restoreRefs(root, depth = 0) {
+  const found = [];
+  if (await isGitRepo(root)) {
+    const listed = await execFileAsync('git', ['-C', root, 'for-each-ref', '--format=%(refname)', `${CHECKPOINT_REF}/`], { timeout: 10000 }).catch(() => ({ stdout: '' }));
+    const refs = String(listed.stdout).split('\n').map((line) => line.trim()).filter((line) => line.startsWith(`${CHECKPOINT_REF}/`));
+    if (refs.length) found.push({ repo: root, refs });
+  }
+  if (depth >= 3) return found;
+  for (const entry of await readdir(root, { withFileTypes: true }).catch(() => [])) {
+    if (!entry.isDirectory() || entry.isSymbolicLink() || NOT_INTO.has(entry.name)) continue;
+    found.push(...await restoreRefs(join(root, entry.name), depth + 1));
+  }
+  return found;
+}
+// A shadow folder from before 1.1.0 (madre-shadow/<hash>, shared /tmp on Linux): this user's only.
+async function oursAt(path) {
+  const found = await lstat(path).catch(() => null);
+  if (!found?.isDirectory() || found.isSymbolicLink()) return false;
+  const uid = process.getuid?.();
+  return uid === undefined || found.uid === uid;
+}
+
 // What uninstalling would do, said before anything is done. Paths are this computer's own and only
 // travel to a page of this computer.
 export async function uninstallPlan({ stateRoot, install = 'npx', script = process.argv[1] ?? '', name = packageName(), home = homedir(), toolsBin = join(stateRoot, 'tools', 'bin') }) {
@@ -85,12 +115,17 @@ export async function uninstallPlan({ stateRoot, install = 'npx', script = proce
     const pulse = join(room.root, '.pulse');
     const there = await folderAt(pulse);
     const shadow = shadowFolderFor(room.root);
+    const legacy = legacyShadowFolderFor(room.root);
+    const refs = await restoreRefs(room.root);
     projects.push({
       name: room.name,
       root: room.root,
       pulse: there ? pulse : null,
       made: there ? await countFiles(join(pulse, KEEP_INSIDE)) : 0,
       shadow: (await folderAt(shadow)) ? shadow : null,
+      legacyShadow: legacy && (await oursAt(legacy)) ? legacy : null,
+      refs,
+      restorePoints: refs.reduce((sum, one) => sum + one.refs.length, 0),
       modules: await folderAt(join(room.root, '.madre')),
     });
   }
@@ -152,6 +187,16 @@ export async function removeMadre(plan, { made = false } = {}) {
       else for (const name of await readdir(project.pulse).catch(() => [])) if (name !== KEEP_INSIDE) await take(join(project.pulse, name));
     }
     if (project.shadow) await take(project.shadow);
+    if (project.legacyShadow) await take(project.legacyShadow);
+    // The restore points inside the project's own git: the references go, the project's history
+    // and branches are not touched. What they pointed at is left unreachable for git to collect.
+    for (const { repo, refs } of project.refs ?? []) {
+      let gone = 0;
+      for (const ref of refs) {
+        try { await execFileAsync('git', ['-C', repo, 'update-ref', '-d', ref], { timeout: 10000 }); gone += 1; } catch (error) { failed.push({ path: `${repo} ${ref}`, error: String(error?.message ?? error).slice(0, 200) }); }
+      }
+      if (gone) removed.push(`${repo} (${gone} restore points)`);
+    }
   }
   // The shadows' own folder, once nothing of anyone else's is in it.
   const shadows = plan.projects.map((one) => one.shadow).filter(Boolean);
@@ -168,7 +213,8 @@ export function planView(plan, { home = homedir() } = {}) {
   return {
     ok: true,
     stateRoot: tilde(plan.stateRoot),
-    projects: plan.projects.map((one) => ({ name: one.name, root: tilde(one.root), pulse: Boolean(one.pulse), made: one.made, shadow: Boolean(one.shadow) })),
+    projects: plan.projects.map((one) => ({ name: one.name, root: tilde(one.root), pulse: Boolean(one.pulse), made: one.made, shadow: Boolean(one.shadow || one.legacyShadow), restorePoints: one.restorePoints ?? 0 })),
+    restorePoints: plan.projects.reduce((sum, one) => sum + (one.restorePoints ?? 0), 0),
     made: plan.made,
     tools: plan.tools,
     npx: plan.npx.length > 0,

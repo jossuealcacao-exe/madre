@@ -9,6 +9,7 @@ import { createPulseServer } from '../src/server.mjs';
 import { chatLedger } from '../src/chats.mjs';
 
 const codex = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/x', version: '1' }];
+const gemini = [{ id: 'gemini', label: 'Gemini', detected: true, ready: true, adapter: 'gemini-readonly', path: '/x', version: '1' }];
 
 test('turn limits: a turn that writes gets longer by default, and what the human set always wins', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pulse-limits-'));
@@ -23,11 +24,17 @@ test('turn limits: a turn that writes gets longer by default, and what the human
     const one = new Room({ store, agents: codex, projectRoot: root, agentTimeouts: { codex: 900000, default: 300000 }, invokers: {} });
     assert.equal(one.timeoutFor('codex'), 900000);
 
-    // The limit is said with the turn's start, so the room counts down from the real number.
+    // The limit is said with the turn's start, so the room counts down from the real number. An
+    // agent that may hand work to its own subagents gets the longer clock even reading (QA 1.1.0,
+    // NUE-23); one that cannot keeps the short one.
     await room.send({ text: 'read it', target: 'codex' });
     await room.send({ text: 'write it', target: 'codex', create: true });
     const started = (await store.readAll()).filter((event) => event.type === 'agent.started').map((event) => event.payload.timeoutMs);
-    assert.deepEqual(started, [READING_TIMEOUT_MS, WRITING_TIMEOUT_MS]);
+    assert.deepEqual(started, [WRITING_TIMEOUT_MS, WRITING_TIMEOUT_MS]);
+    const alone = await new EventStore(join(root, 'alone.jsonl')).initialize();
+    const reader = new Room({ store: alone, agents: gemini, projectRoot: root, invokers: { 'gemini-readonly': async () => ({ text: 'ok', usage: null }) } });
+    await reader.send({ text: 'read it', target: 'gemini' });
+    assert.deepEqual((await alone.readAll()).filter((event) => event.type === 'agent.started').map((event) => event.payload.timeoutMs), [READING_TIMEOUT_MS]);
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }

@@ -3438,6 +3438,14 @@ dialog.surface.no-intro .mother-frame { animation: none; }
 }
 .ed-bar { display: flex; align-items: center; gap: 4px; padding: 7px 10px; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; scrollbar-width: none; }
 .ed-bar::-webkit-scrollbar { display: none; }
+/* Each strip in its own row (QA 1.1.0, NUE-26): find and go-to are hidden most of the time, and a
+   hidden item leaves the grid, so the page fell into the second row (auto) and showed two lines
+   while the flexible row stayed empty. */
+.code-editor > .ed-bar { grid-row: 1; }
+.code-editor > .ed-find { grid-row: 2; }
+.code-editor > .ed-goto { grid-row: 3; }
+.code-editor > .ed-main { grid-row: 4; }
+.code-editor > .ed-status { grid-row: 5; }
 .ed-btn { display: inline-flex; align-items: center; gap: 7px; flex: none; height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-2); font-family: var(--sans); font-size: 12px; letter-spacing: 0; cursor: pointer; transition: color var(--motion) var(--ease-out), background-color var(--motion) var(--ease-out), border-color var(--motion) var(--ease-out); }
 .ed-btn:hover, .ed-btn:focus-visible { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); outline: 0; }
 .ed-btn:disabled { opacity: .35; cursor: default; }
@@ -11472,6 +11480,12 @@ html.chat-shell #messages .system.fail .label { display: flex; align-items: cent
 html.chat-shell #messages .system.fail:not(.folded) .label::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
 html.chat-shell #messages .system.fail .fail-said { display: block; font: 450 12px/1.5 var(--read); color: var(--text-3); overflow-wrap: anywhere; }
 html.chat-shell #messages .system.fail .fail-known { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cs-line); font: 450 13px/1.5 var(--read); color: var(--text); }
+/* What the CLI printed, folded under the explanation when MADRE knows the failure (QA 1.1.0, NUE-12). */
+.system.fail .fail-detail { margin-top: 8px; text-align: left; }
+.system.fail .fail-detail > summary { cursor: pointer; width: max-content; margin: 0 auto; color: var(--text-3); font: 450 11.5px/1.4 var(--read, inherit); letter-spacing: 0; text-transform: none; list-style: none; }
+.system.fail .fail-detail > summary::-webkit-details-marker { display: none; }
+.system.fail .fail-detail > summary:hover { color: var(--text-2); }
+.system.fail .fail-detail[open] > summary { margin-bottom: 6px; }
 html.chat-shell #messages .system.fail :is(.fail-actions, .partial .artifacts) { justify-content: flex-start; justify-items: start; }
 html.chat-shell #messages .sys-dots.open > .system.fail.folded .label { display: inline; margin-right: 6px; }
 

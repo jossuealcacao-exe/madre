@@ -78,9 +78,12 @@ async function run(path, args, timeout = 6000) {
     const { stdout, stderr } = await execFileAsync(path, args, { timeout, env: { ...process.env, NO_COLOR: '1' } });
     return { stdout, stderr, code: 0 };
   } catch (error) {
-    return { stdout: error.stdout ?? '', stderr: error.stderr ?? error.message, code: error.code ?? 1 };
+    // A CLI that did not answer in time is not a CLI without a session (QA 1.1.0, ACT-08): with
+    // several projects starting at once `opencode models` took 5 to 22 s and was read as signed out.
+    return { stdout: error.stdout ?? '', stderr: error.stderr ?? error.message, code: error.code ?? 1, timedOut: Boolean(error.killed) };
   }
 }
+const UNANSWERED = { state: 'unknown', detail: 'no answer in time', timedOut: true };
 
 const exists = (path) => access(path).then(() => true, () => false);
 
@@ -364,18 +367,23 @@ export function geminiSignIn({ env = process.env, verifyMs = 30000 } = {}) {
 export async function probeAgentAuth(agent) {
   if (agent.id === 'madre') return agent.ready ? { state: 'signed-in', detail: `local · ${agent.version ?? 'Ollama'}` } : { state: 'signed-out', detail: 'Ollama is not running or has no chat model' };
   if (!agent.detected || !agent.path) return { state: 'not-installed', detail: 'not found on this computer' };
+  const answered = (result, read) => (result.timedOut ? UNANSWERED : read(result));
   switch (agent.id) {
-    case 'codex': return parseCodexLoginStatus(await run(agent.path, ['login', 'status']));
-    case 'claude': return parseClaudeAuthStatus(await run(agent.path, ['auth', 'status', '--json']));
+    case 'codex': return answered(await run(agent.path, ['login', 'status']), parseCodexLoginStatus);
+    case 'claude': return answered(await run(agent.path, ['auth', 'status', '--json']), parseClaudeAuthStatus);
     case 'opencode': {
-      const listed = parseOpenCodeAuthList(await run(agent.path, ['auth', 'list']));
+      const asked = await run(agent.path, ['auth', 'list']);
+      if (asked.timedOut) return UNANSWERED;
+      const listed = parseOpenCodeAuthList(asked);
       if (listed.state === 'signed-in') return listed;
       // No provider of its own, and still it answers: OpenCode brings free models that need no account
       // (opencode/big-pickle by default). Called signed out, the one agent a newcomer could use
       // without signing in anywhere was the one MADRE would not let them write to (2026-10-19).
-      return openCodeOwnModels(await run(agent.path, ['models', 'opencode'], 15000)) ?? listed;
+      const own = await run(agent.path, ['models', 'opencode'], 15000);
+      if (own.timedOut) return UNANSWERED;
+      return openCodeOwnModels(own) ?? listed;
     }
-    case 'cursor': return parseCursorStatus(await run(agent.path, ['status']));
+    case 'cursor': return answered(await run(agent.path, ['status']), parseCursorStatus);
     case 'gemini': return probeGemini();
     default: return { state: 'unknown', detail: 'no probe for this agent' };
   }

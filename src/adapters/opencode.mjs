@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
+import { t } from '../i18n.mjs';
 import { runReadonlyProcess } from './process.mjs';
 import { jsonLines, openCodeSubagents } from './subagents.mjs';
 
@@ -29,6 +30,10 @@ export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PUL
     '--pure',
     'run',
     '--format', 'json',
+    // Its errors on stderr (QA 1.1.0, ACT-02): when the free models' limit is reached OpenCode
+    // retries in silence and writes nothing on stdout, so MADRE waited the whole clock to say «did
+    // not respond». The log line says why at once (see watchOpenCodeErrors).
+    '--print-logs', '--log-level', 'ERROR',
     '--agent', 'pulse-readonly',
     ...(model ? ['--model', model] : []),
     // The model's reasoning rung, as OpenCode names it (`--variant`, 1.18).
@@ -186,6 +191,17 @@ export function parseOpenCodeOutput(output, { root = null } = {}) {
   return { text: text.join('').trim(), usage, ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
 }
 
+// What in OpenCode's error log ends a turn that will never answer. Only a limit that does not pass
+// by retrying: a rate limit of a few seconds OpenCode rides out on its own and still answers.
+export function watchOpenCodeErrors(stderr) {
+  if (/Free usage limit reached/i.test(String(stderr ?? ''))) {
+    const error = new Error(t('The free use of OpenCode ran out for now: its own free models have a limit and OpenCode stopped answering. Connect a provider of yours in Settings › Agents › OpenCode, or ask @madre or another agent.'));
+    error.code = 'FREE_LIMIT';
+    return error;
+  }
+  return null;
+}
+
 export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 120000, signal, model = null, effort = null, attachments = [], lease = null, scopes = null, imageStudio = null, memoryServer = null, mcpServers = [], onProgress = null }) {
   return runReadonlyProcess({
     // The answer written so far and its subagents, not the length of the protocol around them.
@@ -197,6 +213,7 @@ export function invokeOpenCode({ executable, projectRoot, prompt, timeoutMs = 12
     timeoutMs,
     signal,
     label: 'OpenCode',
+    watchStderr: watchOpenCodeErrors,
     parse: (out) => parseOpenCodeOutput(out, { root: projectRoot }),
   });
 }

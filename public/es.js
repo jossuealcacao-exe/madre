@@ -1500,6 +1500,10 @@ export const ES = {
   'before it stopped it left {n} {files} in the project': 'antes de detenerse dejó {n} {files} en el proyecto',
   '{n} changes to existing files were put back: CREATE only adds.': '{n} cambios a archivos que ya existían se deshicieron: «Crear» solo agrega archivos nuevos.',
   'RETRY WITH MORE TIME · {n}s': 'Reintentar con más tiempo · {n}s',
+  'See detail': 'Ver detalle',
+  'CONNECT {agent}': 'Conectar {agent}',
+  'ASK {agent}': 'Preguntarle a {agent}',
+  'SENT TO {agent}': 'Enviado a {agent}',
   'You were cut off by the time limit. These files already exist: {files}. Finish what is missing; do not start over.': 'Te cortó el tiempo límite. Estos archivos ya existen: {files}. Termina lo que falta; no empieces de nuevo.',
   'Diagnostics › #{n} needs you to confirm again: choose it in the mode selector before sending.': 'Diagnóstico › #{n} necesita que confirmes otra vez: elígelo en el selector de modo antes de enviar.',
   'IN THE BOX · SEND IT WHEN READY': 'En la caja · envíalo cuando quieras',
@@ -1843,8 +1847,7 @@ export const ES = {
   'Agent installed but signed out': 'El agente está instalado pero sin sesión',
   'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.':
     'La app del agente está en esta computadora, pero no tiene sesión iniciada con su proveedor. MADRE nunca guarda credenciales; cada agente guarda las suyas.',
-  "Press Sign in on the agent: at first the project opens on the Connect your agents screen, with the button on each card, and later it lives in Settings → Agents, which the row below opens. Codex and Claude sign in with a browser flow MADRE runs for you; Gemini and OpenCode hand you their command. `madre setup` does the same from a terminal.":
-    'Pulsa Iniciar sesión en el agente: al principio el proyecto abre en la pantalla Conecta tus agentes, con el botón en cada ficha, y después está en Ajustes → Agentes, que se abre desde la fila de abajo. Codex y Claude inician sesión con un flujo de navegador que MADRE corre por ti; Gemini y OpenCode te entregan su comando. `madre setup` hace lo mismo desde una terminal.',
+  'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.': 'Este agente todavía no tiene sesión. Conéctalo una vez en Ajustes › Agentes (MADRE corre su inicio de sesión por ti, sin escribir nada en una terminal), o pregúntale lo mismo a un agente que sí esté conectado.',
 
   'Agent not found on this computer': 'El agente no está en esta computadora',
   'MADRE looks for `codex`, `claude`, `gemini` and `opencode` on PATH plus a few known locations. Nothing answered.':
@@ -5541,6 +5544,12 @@ export const ES = {
   'The API account behind this agent has no credit left': 'La cuenta de API de este agente se quedó sin saldo',
   'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.': 'El proveedor rechazó el turno porque la llave de API con la que se mandó ya no tiene saldo. Una llave de API se cobra aparte de una suscripción: un plan Claude Pro o Max, o ChatGPT, no la paga. En OpenCode es el proveedor del modelo que pidió el turno, y un turno que no pidió ninguno corrió con el modelo predeterminado de Ajustes › Agentes › OpenCode.',
   'Top up that API account, or give OpenCode a model whose provider has a session that works: your ChatGPT account (openai/…), GitHub Copilot, or OpenCode\'s own free models (opencode/…). Change the default in Settings › Agents › OpenCode, or pick another model in the Write box for one turn.': 'Recarga esa cuenta de API, o dale a OpenCode un modelo cuyo proveedor tenga una sesión que funcione: tu cuenta de ChatGPT (openai/…), GitHub Copilot o los modelos gratuitos de OpenCode (opencode/…). Cambia el predeterminado en Ajustes › Agentes › OpenCode, o elige otro modelo en la caja de texto para un solo turno.',
+  'OpenCode\'s free models have run out for now': 'Se terminó por ahora el uso gratis de OpenCode',
+  'OpenCode\'s own free models (opencode/…) answer without an account, but only up to a limit; when it is reached OpenCode retries in silence and never answers. MADRE now stops the turn as soon as OpenCode says so, instead of waiting for the clock. Nothing in the project is wrong.': 'Los modelos gratis de OpenCode (opencode/…) contestan sin cuenta, pero solo hasta un límite; al llegar a él, OpenCode reintenta en silencio y nunca contesta. MADRE ahora corta el turno en cuanto OpenCode lo dice, en vez de esperar al reloj. En el proyecto no hay nada mal.',
+  'Connect a provider of yours to OpenCode in Settings › Agents › OpenCode (your ChatGPT account, GitHub Copilot or an API key), ask another agent, or ask @madre, which runs on this computer. The free use comes back after a while.': 'Conecta a OpenCode un proveedor tuyo en Ajustes › Agentes › OpenCode (tu cuenta de ChatGPT, GitHub Copilot o una llave de API), pregúntale a otro agente, o a @madre, que corre en esta computadora. El uso gratis vuelve después de un rato.',
+  '# the providers OpenCode can use:': '# los proveedores que OpenCode puede usar:',
+  '# subscription for more free use: https://opencode.ai/go': '# suscripción para más uso gratis: https://opencode.ai/go',
+  'The free use of OpenCode ran out for now: its own free models have a limit and OpenCode stopped answering. Connect a provider of yours in Settings › Agents › OpenCode, or ask @madre or another agent.': 'Se terminó por ahora el uso gratis de OpenCode: sus modelos gratis tienen un límite y OpenCode dejó de contestar. Conecta un proveedor tuyo en Ajustes › Agentes › OpenCode, o pregúntale a @madre o a otro agente.',
   'Cursor\'s plan has reached its usage limit': 'El plan de Cursor llegó a su límite de uso',
   'Your Cursor account has used up the agent usage its plan gives for this period, and Cursor refuses every turn until it renews or the plan changes. It is Cursor\'s limit, not MADRE\'s: nothing in the project is wrong.': 'Tu cuenta de Cursor ya usó todo lo que su plan da de agente en este periodo, y Cursor rechaza cada turno hasta que se renueve o cambie el plan. Es un límite de Cursor, no de MADRE: no hay nada mal en el proyecto.',
   'Wait for the usage to renew, change the Cursor plan, or ask another agent in the meantime.': 'Espera a que se renueve el uso, cambia el plan de Cursor o pregúntale a otro agente mientras tanto.',
@@ -6290,6 +6299,8 @@ export const ES = {
   'Home and every open project close, and MADRE takes away what it put on this computer. It cannot be undone.': 'Inicio y todos los proyectos abiertos se cierran, y MADRE borra lo que puso en esta computadora. No se puede deshacer.',
   'Your conversations, memory and settings in MADRE ({path})': 'Tus conversaciones, memoria y ajustes de MADRE ({path})',
   'MADRE\'s folder inside your projects (.pulse) and their restore points: {list}': 'La carpeta de MADRE dentro de tus proyectos (.pulse) y sus puntos de restauración: {list}',
+  'The restore points MADRE kept inside the projects\' git ({n}), without touching your history or your branches': 'Los puntos de restauración que MADRE guardó dentro del git de tus proyectos ({n}), sin tocar tu historial ni tus ramas',
+  'The sign-ins of your AIs (installed again, they are still connected), the AIs you installed yourself, and Ollama with its models': 'Las sesiones de tus IAs (si las vuelves a instalar, siguen conectadas), las IAs que instalaste por tu cuenta y Ollama con sus modelos',
   'The AIs MADRE installed in its own folder: {list}': 'Las IAs que MADRE instaló en su propia carpeta: {list}',
   'The copy of MADRE that npx downloaded': 'La copia de MADRE que descargó npx',
   'Your projects and their files': 'Tus proyectos y sus archivos',

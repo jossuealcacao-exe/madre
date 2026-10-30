@@ -2,7 +2,7 @@
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { execFile } from 'node:child_process';
 import { constants as fsConstants } from 'node:fs';
-import { access, chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { access, chmod, cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -66,10 +66,30 @@ export function shadowFolderFor(root) {
   const uid = process.getuid?.();
   return join(tmpdir(), uid === undefined ? 'madre-shadow' : `madre-shadow-${uid}`, createHash('sha1').update(resolve(root)).digest('hex').slice(0, 16));
 }
+// Where 1.0.x kept it (QA 1.1.0, ACT-04): one folder for everyone, madre-shadow/<hash>. Read so an
+// update keeps the restore points made before it, and so uninstalling takes it away too.
+export function legacyShadowFolderFor(root) {
+  if (process.getuid?.() === undefined) return null;
+  return join(tmpdir(), 'madre-shadow', createHash('sha1').update(resolve(root)).digest('hex').slice(0, 16));
+}
+// The first time a project is photographed after the update, its old shadow moves into this user's
+// own folder, if it is this user's and nothing is there yet; the old one, a copy of the project
+// with its .env in a folder others can open, does not stay behind.
+async function adoptLegacyShadow(root, dir) {
+  const old = legacyShadowFolderFor(root);
+  if (!old || resolve(old) === resolve(dir)) return;
+  const found = await lstat(old).catch(() => null);
+  if (!found?.isDirectory() || found.isSymbolicLink() || found.uid !== process.getuid?.()) return;
+  if (await access(join(dir, 'HEAD')).then(() => true, () => false)) return;
+  await rm(dir, { recursive: true, force: true }).catch(() => {});
+  await rename(old, dir).catch(async () => { await cp(old, dir, { recursive: true }); await rm(old, { recursive: true, force: true }); });
+  await chmod(dir, 0o700).catch(() => null);
+}
 async function shadowFor(root) {
   const canonical = resolve(root);
   if (!shadows.has(canonical)) {
     const dir = join(await shadowHome(), createHash('sha1').update(canonical).digest('hex').slice(0, 16));
+    await adoptLegacyShadow(canonical, dir).catch(() => {});
     await mkdir(dir, { recursive: true });
     const isRepo = await access(join(dir, 'HEAD')).then(() => true, () => false);
     if (!isRepo) await execFileAsync('git', ['init', '-q', '--bare', dir]);

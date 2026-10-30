@@ -4,16 +4,36 @@
 // provider of its model, and a provider can stop answering on its own: an API key with no credit
 // left, or one that is no longer valid. A person met it as a red card in English on every turn,
 // and had to find out alone which model would work and where to change it. MADRE now remembers,
-// per person (~/.pulse/opencode.json), the last model that answered and the providers that failed
+// per person (~/.pulse/opencode-health.json), the last model that answered and the providers that failed
 // and why, so the failure itself can offer the way out: retry on a model that works, or keep it.
 // A provider's mark goes away the next time a turn on it answers.
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { diagnose } from '../public/troubleshooting.js';
 
-const file = (stateRoot) => join(stateRoot, 'opencode.json');
-const read = async (stateRoot) => { try { return JSON.parse(await readFile(file(stateRoot), 'utf8')) ?? {}; } catch { return {}; } };
+// Not `opencode.json` (QA 1.1.0, ACT-01): OpenCode reads a file by that name in the folder it runs
+// in and every folder above it as its own configuration. Home runs in ~/.pulse/salas, so OpenCode
+// found MADRE's notes, refused them («Unrecognized key: problems») and would not start: the
+// Coordinator failed every turn and Home called a free-model OpenCode signed out.
+const file = (stateRoot) => join(stateRoot, 'opencode-health.json');
+const LEGACY = (stateRoot) => join(stateRoot, 'opencode.json');
+const OURS = new Set(['problems', 'worked']);
+// What 1.0.5 to 1.1.0 wrote under the old name moves to the new one, and the old file goes, but only
+// when it is MADRE's (nothing in it but its two keys): an opencode.json someone put there is theirs.
+async function migrate(stateRoot) {
+  let old;
+  try { old = JSON.parse(await readFile(LEGACY(stateRoot), 'utf8')); } catch { return null; }
+  if (!old || typeof old !== 'object' || Array.isArray(old) || !Object.keys(old).every((key) => OURS.has(key))) return null;
+  try { await readFile(file(stateRoot), 'utf8'); } catch { await keep(stateRoot, old); }
+  await unlink(LEGACY(stateRoot)).catch(() => {});
+  return old;
+}
+export const migrateOpenCodeHealth = migrate;
+const read = async (stateRoot) => {
+  try { return JSON.parse(await readFile(file(stateRoot), 'utf8')) ?? {}; } catch { /* first time, or still under the old name */ }
+  return (await migrate(stateRoot)) ?? {};
+};
 async function keep(stateRoot, data) {
   await mkdir(stateRoot, { recursive: true });
   const temp = `${file(stateRoot)}.${process.pid}.${Date.now()}.tmp`;

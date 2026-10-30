@@ -354,9 +354,15 @@ export async function askUninstall() {
     const names = plan.projects.map((one) => one.name);
     const goes = [t('Your conversations, memory and settings in MADRE ({path})', { path: plan.stateRoot })];
     if (names.length) goes.push(t('MADRE\'s folder inside your projects (.pulse) and their restore points: {list}', { list: names.join(', ') }));
+    // The restore points kept inside a project's own git, .env included (QA 1.1.0, ACT-03).
+    if (plan.restorePoints) goes.push(t('The restore points MADRE kept inside the projects\' git ({n}), without touching your history or your branches', { n: plan.restorePoints }));
     if (plan.tools.length) goes.push(t('The AIs MADRE installed in its own folder: {list}', { list: plan.tools.join(', ') }));
     if (plan.npx) goes.push(t('The copy of MADRE that npx downloaded'));
-    const stays = [t('Your projects and their files'), t('Your AIs and their sign-ins, and Ollama with its models')];
+    // Said apart when MADRE installed the AIs itself: «your AIs stay» beside «the AIs go» read as a
+    // contradiction to whoever installed all of them from MADRE (NUE-33).
+    const stays = [t('Your projects and their files'), plan.tools.length
+      ? t('The sign-ins of your AIs (installed again, they are still connected), the AIs you installed yourself, and Ollama with its models')
+      : t('Your AIs and their sign-ins, and Ollama with its models')];
     if (plan.made) stays.push(t('What the AIs created in your projects (.pulse/out, {files}), unless you tick the box below', { files: filesSaid(plan.made) }));
     if (plan.modules.length) stays.push(t('The modules you wrote inside a project (.madre): {list}', { list: plan.modules.join(', ') }));
     if (plan.program.command) stays.push(t('MADRE itself: npm takes it away with the command you will see at the end'));

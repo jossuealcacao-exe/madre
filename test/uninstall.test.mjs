@@ -136,3 +136,26 @@ test('uninstall · only from Home, from a page of this computer, once every proj
     await close(room.server).catch(() => {});
   }
 });
+
+// QA 1.1.0, ACT-03: the restore points a turn kept inside the project's own git (.env included)
+// go with MADRE, and the project's history and branches stay.
+test('uninstall · the restore points inside the project\'s git go, its history stays', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const state = await realpath(await scratch('madre-uninstall-refs-state-'));
+  const project = await realpath(await scratch('madre-uninstall-refs-project-'));
+  await writeFile(join(state, 'install-id'), 'id\n');
+  await markProject(join(state, 'rooms', projectRoomId(project)), project);
+  const git = (...args) => execFileSync('git', ['-C', project, ...args], { encoding: 'utf8' }).trim();
+  git('init', '-q');
+  git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'mine');
+  await writeFile(join(project, '.env'), 'KEY=secret\n');
+  const tree = git('write-tree');
+  const photo = git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit-tree', tree, '-m', 'checkpoint');
+  git('update-ref', 'refs/madre/checkpoints/20261029-a', photo);
+  git('update-ref', 'refs/madre/checkpoints/20261029-b', photo);
+  const plan = await uninstallPlan({ stateRoot: state, install: 'source', script: '/src/bin/madre.mjs' });
+  assert.equal(planView(plan).restorePoints, 2);
+  await removeMadre(plan);
+  assert.equal(git('for-each-ref', 'refs/madre/'), '', 'no restore point is left in the project\'s git');
+  assert.match(git('log', '--format=%s'), /mine/, 'the history is the person\'s and stays');
+});

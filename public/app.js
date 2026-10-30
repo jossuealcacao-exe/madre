@@ -131,7 +131,12 @@ if (document.documentElement) document.documentElement.lang = language();
 // every project, as if it had been chosen in Settings.
 async function adoptLanguage(fromMachine, chosenOnMachine = true) {
   // The half on the right never writes the choice, so it would reload for ever; the left decides.
-  if (SPLIT_CHAT || chosenLanguage) return;
+  if (SPLIT_CHAT) return;
+  // What this browser kept is kept per address, and every project has its own port: a language
+  // changed in Settings never reached a project opened before on another port, and a port reused by
+  // another MADRE kept that one's language (QA 1.1.0). What the machine chose wins; what the
+  // browser kept only stands while the machine has chosen nothing.
+  if (chosenLanguage && !(chosenOnMachine !== false && isLanguage(fromMachine) && fromMachine !== chosenLanguage)) return;
   if (chosenOnMachine === false && !state.device) {
     const mine = browserLanguage();
     const saved = await fetch('/api/language', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ language: mine }) }).then((response) => response.ok).catch(() => false);
@@ -7452,26 +7457,76 @@ function renderPlanEvent(event) {
 }
 
 function renderFailure(event) {
-  const { messageId, target, error, recovered, partial = null, timeout = null } = event.payload;
+  const { messageId, target, error, recovered, partial = null, timeout = null, subagents = null } = event.payload;
   recordFailure({ time: event.timestamp, agent: target, error, recovered });
   removeThinking(messageId);
   const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
   node.append(el('span', 'label', recovered ? t('{label} · turn recovered after restart', { label: label(target) }) : t('{label} could not answer', { label: label(target) })));
-  node.append(el('span', 'fail-said', resay(error)));
-  // What the CLI printed stays as it printed it (resay.js), and when MADRE knows that failure the
-  // card says, in the room's language, what it is and what to do (troubleshooting.js): a provider's
-  // English sentence alone left the person guessing whether MADRE was broken (2026-10-19).
+  // When MADRE knows the failure, the card says first, in the room's language, what it is and what
+  // to do (troubleshooting.js), and what the CLI printed waits folded under «See detail» (QA 1.1.0,
+  // NUE-12): a raw «401 Unauthorized: Missing bearer…» in English used to come first. Unknown, the
+  // CLI's own words are all there is, and they stay in view.
   const known = recovered ? null : diagnose(error, target).find((condition) => condition.severity === 'blocking');
-  if (known) node.append(el('div', 'fail-known', `${known.title}. ${known.remedy}`));
+  if (known) {
+    node.append(el('div', 'fail-known', `${known.title}. ${known.remedy}`));
+    const detail = el('details', 'fail-detail');
+    detail.append(el('summary', null, t('See detail')), el('span', 'fail-said', resay(error)));
+    node.append(detail);
+  } else node.append(el('span', 'fail-said', resay(error)));
   // OpenCode's provider refused (no credit, a dead key): the way out in one press, not in Settings.
   if (known && target === 'opencode' && OPENCODE_WAY_OUT.has(known.id) && state.agents.has('opencode')) node.append(openCodeWayOut({ messageId, failed: event.payload.ranOn ?? null }));
+  // No session, or OpenCode's free use ran out: connect it, or ask the same of one that answers.
+  else if (known && ['not-signed-in', 'opencode-free-limit'].includes(known.id) && state.userMessages.has(messageId)) node.append(failWayOut({ messageId, target, connect: known.id === 'not-signed-in' }));
   // What the turn left before it was cut short, listed like any turn's and with its way back.
   if (partial) node.append(partialWork(partial));
-  // Cut by the clock: one press raises this agent's limit and puts the request back in the box,
-  // told what already exists. Sending it again is the human's.
+  // What its subagents reported before the turn was cut is the turn's too (NUE-23).
+  if (Array.isArray(subagents) && subagents.length) node.append(subagentFold(subagents, null));
+  // Cut by the clock: one press raises this agent's limit and asks again, told what already exists.
   if (timeout && state.agents.has(target)) node.append(retryLonger({ messageId, target, timeout, partial }));
   state.lastSender = null;
   return node;
+}
+
+// The way out of a failure that is not the project's (NUE-12): connect the agent once, or send the
+// same request to one that can answer now. Both are a press; the card stays open while they are live.
+function failWayOut({ messageId, target, connect }) {
+  const box = el('div', 'fail-actions');
+  if (connect && state.agents.has(target)) {
+    const go = el('button', 'retry-longer', t('CONNECT {agent}', { agent: label(target) }));
+    go.type = 'button';
+    go.addEventListener('click', () => { go.disabled = true; openSettingsOn('agents', { agent: target }); });
+    box.append(go);
+  }
+  const other = [...state.agents.values()].find((agent) => agent.id !== target && canAnswer(agent) && agent.id !== 'madre')
+    ?? (state.agents.get('madre') && canAnswer(state.agents.get('madre')) && target !== 'madre' ? state.agents.get('madre') : null);
+  if (other) {
+    const ask = el('button', 'retry-longer quiet', t('ASK {agent}', { agent: label(other.id) }));
+    ask.type = 'button';
+    ask.addEventListener('click', () => {
+      ask.disabled = true;
+      sendAgain({ messageId, to: other.id, button: ask });
+    });
+    box.append(ask);
+  }
+  return box;
+}
+
+// The person's request, sent again to `to` as they sent it. #1 and #2 go at once; #3 and #4 ask for
+// their keys again from the chip, as everywhere.
+function sendAgain({ messageId, to, button, note = '' }) {
+  const asked = state.userMessages.get(messageId);
+  if (els.target.value !== to) { els.target.value = to; renderPicker(); }
+  els.input.value = [asked?.text ?? '', note].filter(Boolean).join('\n\n');
+  autosize();
+  if ((asked?.mode ?? 1) >= 3) {
+    toast(t('Diagnostics › #{n} needs you to confirm again: choose it in the mode selector before sending.', { n: asked.mode }));
+    els.input.focus();
+    if (button) button.textContent = t('IN THE BOX · SEND IT WHEN READY');
+    return;
+  }
+  if ((asked?.mode ?? 1) === 2) setMode(2);
+  if (els.input.value.trim()) els.composer.requestSubmit(); else els.input.focus();
+  if (button) button.textContent = t('SENT TO {agent}', { agent: label(to) });
 }
 
 function partialWork(partial) {
@@ -7563,17 +7618,11 @@ function retryLonger({ messageId, target, timeout, partial }) {
     retry.disabled = true;
     try { await saveSettingNow({ timeouts: { [target]: seconds * 1000 } }, t('@{agent} timeout is now {n}s.', { agent: target, n: seconds })); }
     catch (error) { toast(t('The setting was not saved: {error}', { error: error.message })); retry.disabled = false; return; }
-    const asked = state.userMessages.get(messageId);
     const exist = [...(partial?.created ?? []), ...(partial?.files ?? []).filter((file) => file.status === 'M')].map((file) => file.path);
     const note = exist.length ? t('You were cut off by the time limit. These files already exist: {files}. Finish what is missing; do not start over.', { files: [...new Set(exist)].join(', ') }) : '';
-    if (els.target.value !== target) { els.target.value = target; renderPicker(); }
-    els.input.value = [asked?.text ?? '', note].filter(Boolean).join('\n\n');
-    // CREATE comes back by itself; CONTROL and AIRLOCK ask for their keys again, from the chip.
-    if ((asked?.mode ?? 1) === 2) setMode(2);
-    else if ((asked?.mode ?? 1) >= 3) toast(t('Diagnostics › #{n} needs you to confirm again: choose it in the mode selector before sending.', { n: asked.mode }));
-    autosize();
-    els.input.focus();
-    retry.textContent = t('IN THE BOX · SEND IT WHEN READY');
+    // It asks again at once (QA 1.1.0, NUE-24): it used to only put the text back in the box, and a
+    // button called «retry» that waits for Enter reads as one that did nothing.
+    sendAgain({ messageId, to: target, button: retry, note });
   });
   return retry;
 }
@@ -7737,6 +7786,16 @@ function renderEventNode(event) {
     case 'agent.started': state.running.set(event.payload.messageId, event.payload.agent); updateStopAll(); node = renderThinking(event); break;
     case 'turn.reading': showReading(event); return;
     case 'turn.subagents': showHelpers(event); return;
+    // Who has a session, once the probe that runs when the project starts comes back: the crew is
+    // drawn again, so a first message never goes to an agent without one (QA 1.1.0, NUE-11).
+    case 'sessions.updated': {
+      if (replaying) return;
+      state.sessions = event.payload.sessions ?? state.sessions;
+      if (settingsUI.data) settingsUI.data.sessions = state.sessions;
+      renderAgents(); renderPicker(); renderOnboarding();
+      if (state.settingsOpen) renderSettings();
+      return;
+    }
     case 'turn.cost': {
       settleReading(event);
       // The card, if the human happens to be looking at it, follows the room instead of the
