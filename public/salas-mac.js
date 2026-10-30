@@ -5884,7 +5884,8 @@ function translateStatic() {
 const SIDE_KEY = 'pulse.homeSide';
 const SIDEBAR_GLYPH = trazo('sidebar');
 const HOME_GLYPH = trazo('home');
-const MARKET_GLYPH = trazo('market');
+// The Market drawn one way everywhere (2026-10-30): the basket with the modules inside; only the top bar's key moves on hover.
+const MARKET_GLYPH = trazo('market-key');
 const COORDINATOR_GLYPH = trazo('coordinator');
 const ALL_GLYPH = trazo('list');
 const homeShell = { side: null, list: null, said: '', open: false };

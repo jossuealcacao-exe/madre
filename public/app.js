@@ -4738,14 +4738,15 @@ function renderAhpSuggestion() {
     const box = el('aside', 'empty-suggest');
     box.setAttribute('aria-label', t('Suggestion'));
     const head = el('div', 'empty-suggest-head');
-    head.append(el('span', 'empty-suggest-eyebrow', t('Suggestion')), el('b', null, t('Continuity (AHP+) for this project')));
+    head.append(el('span', 'empty-suggest-eyebrow', t('Suggestion')), el('b', null, t('Continuity: no agent starts from scratch')));
     const gains = el('ul', 'empty-suggest-gains');
     for (const words of [
-      t('It keeps the project\'s state, decisions, evidence, checkpoints and handoffs in the repository itself, in .ahp/.'),
-      t('If the agent, the editor, the account or the computer changes, the next session starts from what was recorded, not from scratch.'),
-      t('Claude Code, Codex and OpenCode read it through their own files, in MADRE and outside it.'),
+      // Said as what the person gains (2026-10-30), not as what it stores.
+      t('Your project remembers where it left off: what was decided, what is pending and what was already tried, kept beside your code.'),
+      t('Change agent, editor or computer, and the next one picks up the thread on its own, without you explaining everything again.'),
+      t('It works in MADRE and outside it: Claude Code, Codex and OpenCode read it on their own.'),
     ]) gains.append(el('li', null, words));
-    const note = el('p', 'empty-suggest-note', t('It writes into the project and needs a git repository with at least one commit. Modules shows you everything it writes before you install it.'));
+    const note = el('p', 'empty-suggest-note', t('It needs a project with git and at least one saved version. Before you install it, Modules shows you everything it writes.'));
     const acts = el('div', 'empty-suggest-acts');
     const open = el('button', 'empty-suggest-open', t('See it in Modules'));
     open.type = 'button';
@@ -22873,7 +22874,8 @@ function switchDraw() {
 const SIDEBAR_ICON = trazo('sidebar');
 const NEW_CHAT_ICON = trazo('compose');
 const PLUS_ICON = trazo('add');
-const MARKET_ICON = trazo('market');
+// The Market drawn one way everywhere (2026-10-30): the basket with the modules inside; only the top bar's key moves on hover.
+const MARKET_ICON = trazo('market-key');
 const FLOAT_TOOL_ICON = trazo('window');
 // Named as their keys on the bar: Files holds the code (adoptFinder).
 const TOOL_NAMES = { viewer: () => t('Files'), tree: () => t('Files'), browser: () => t('Your servers') };

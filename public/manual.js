@@ -39,7 +39,7 @@ const ICONS = {
   keys: trazoDrawing('keyboard'),
   help: trazoDrawing('help'),
   list: trazoDrawing('list'),
-  market: trazoDrawing('market'),
+  market: trazoDrawing('market-key'),
   book: trazoDrawing('book'),
   check: trazoDrawing('check'),
   trash: trazoDrawing('trash'),
