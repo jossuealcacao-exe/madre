@@ -5905,6 +5905,27 @@ function homeWindowForward(node) {
   homeWindows.push(node);
   homeWindows.forEach((one, index) => { one.style.zIndex = String(HOME_WINDOW_LAYER + index); one.classList.toggle('front', index === homeWindows.length - 1); });
 }
+// Depth of field in Home (2026-10-30), as in a project (app.js, paintDepth): while windows float
+// over Home, the page behind them — its bar and its widgets — recedes under one veil, a little more
+// for each window up to three, and clears the moment the last one closes. The sidebar stands over
+// the veil and stays sharp, as a project's does. One veil, not a filter on each piece, so the glass
+// of what is behind keeps working.
+const homeVeil = el('div', 'desk-veil');
+homeVeil.setAttribute('aria-hidden', 'true');
+document.body.append(homeVeil);
+function paintHomeDepth() {
+  const open = [...document.querySelectorAll('.home-window')].filter((one) => one.isConnected && !one.hidden && (one.tagName !== 'DIALOG' || one.open) && one.getClientRects().length && !one.classList.contains('leaving'));
+  const depth = Math.min(3, open.length);
+  if (depth) homeVeil.style.setProperty('--desk-depth', String(depth)); else homeVeil.style.removeProperty('--desk-depth');
+  root.classList.toggle('desk-behind', depth > 0);
+}
+let homeDepthFrame = 0;
+const scheduleHomeDepth = () => { cancelAnimationFrame(homeDepthFrame); homeDepthFrame = requestAnimationFrame(paintHomeDepth); };
+if (typeof MutationObserver === 'function') {
+  // A window opened, closed, shown or put away, by whatever road.
+  new MutationObserver(scheduleHomeDepth).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden', 'open'] });
+  document.addEventListener?.('close', scheduleHomeDepth, true);
+}
 function homeWindowBox(box, { minW, minH }) {
   const w = Math.round(Math.max(minW, Math.min(box.w, window.innerWidth - 2 * HOME_WINDOW_INSET)));
   const h = Math.round(Math.max(minH, Math.min(box.h, window.innerHeight - 2 * HOME_WINDOW_INSET)));
@@ -5917,6 +5938,7 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360, keys = true
   if (!homeShellOn()) return null;
   let framed = true;
   root.classList.add('surface', 'window', 'home-window');
+  scheduleHomeDepth();
   let kept = null;
   try { kept = JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { /* no storage */ }
   const fresh = () => {
@@ -6002,6 +6024,7 @@ function homeWindow({ root, bar, close, key, minW = 360, minH = 360, keys = true
       if (at >= 0) homeWindows.splice(at, 1);
       for (const side of ['left', 'top', 'width', 'height', 'z-index']) root.style.removeProperty(side);
       root.classList.remove('surface', 'window', 'home-window', 'front');
+      scheduleHomeDepth();
       for (const edge of root.querySelectorAll(':scope > .win-edge')) edge.remove();
       group.remove();
     },

@@ -1072,6 +1072,9 @@ test('Home: the sidebar in Settings, the bar by families, the Market and Modules
   // The Market and Modules open as a window: carried, sized, kept, over the sidebar.
   assert.match(home, /window: \(parts\) => homeWindow\(\{ \.\.\.parts, key: 'pulse\.homeMarketWindow\.wide', size: \{ w: 1920, h: 1400 \} \}\),/);
   assert.match(home, /const HOME_WINDOW_LAYER = 44;/);
+  // Home recedes behind its windows as a project does (2026-10-30): one veil, deeper per window, the sidebar over it.
+  assert.match(home, /const homeVeil = el\('div', 'desk-veil'\);/);
+  assert.match(home, /root\.classList\.toggle\('desk-behind', depth > 0\);/);
   assert.match(home, /for \(const side of \['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'\]\) \{/);
   assert.match(homeCss, /html\.home-shell \.mk\.flat \.mk-mine \.mk-section \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(210px, 1fr\)\); gap: 10px; \}/);
   // The Project map covers the sidebar, wears the Memory map's head, and its legend is neurons.
