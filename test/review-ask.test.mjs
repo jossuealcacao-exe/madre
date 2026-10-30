@@ -53,7 +53,7 @@ test('review ask · a later moment takes the earlier ones with it, never twice w
   // Asked a few hours ago: not again today, whatever is due.
   assert.equal(dueMoment(state({ shown: { m20: '2026-10-20T04:00:00Z' } }), now), null);
   // Answered: never again.
-  for (const answer of ['star', 'review', 'never']) assert.equal(dueMoment(state({ answer }), now), null, `${answer} did not end the asking`);
+  for (const answer of ['star', 'review', 'donate', 'never']) assert.equal(dueMoment(state({ answer }), now), null, `${answer} did not end the asking`);
 });
 
 test('review ask · answering a later moment marks the earlier ones; a wrong answer is refused', async () => {

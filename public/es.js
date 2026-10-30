@@ -4771,11 +4771,16 @@ export const ES = {
   'The other project': 'El otro proyecto',
   // La invitación a dejar una estrella o una reseña (2026-10-10).
   'Are you enjoying MADRE?': '¿Te está gustando MADRE?',
-  'If MADRE saves you work, a star on GitHub or a few words about it help more people find it. It takes a minute.': 'Si MADRE te ahorra trabajo, una estrella en GitHub o una reseña ayudan a que llegue a más gente. Toma un minuto.',
+  'If MADRE saves you work, a star on GitHub or a few words about it help more people find it. And if you can, a donation keeps it going: MADRE is made by one person.': 'Si MADRE te ahorra trabajo, una estrella en GitHub o una reseña ayudan a que llegue a más gente. Y si puedes, una donación la mantiene viva: MADRE la hace una sola persona.',
+  'Donate on GitHub': 'Donar en GitHub',
+  'Support MADRE': 'Apoya a MADRE',
+  'MADRE is free and made by one person. A donation helps keep it going and growing.': 'MADRE es gratis y la hace una sola persona. Una donación ayuda a que siga y crezca.',
+  'Donate': 'Donar',
+  'Once or every month, the amount you choose. GitHub keeps no commission.': 'Una vez o cada mes, la cantidad que elijas. GitHub no cobra comisión.',
   'Give it a star on GitHub': 'Darle una estrella en GitHub',
   'Write a review': 'Escribir una reseña',
   'Don\'t ask again': 'No volver a preguntar',
-  'Both open in your browser. MADRE sends nothing.': 'Los dos se abren en tu navegador. MADRE no envía nada.',
+  'They open in your browser. MADRE sends nothing.': 'Se abren en tu navegador. MADRE no envía nada.',
   'That is not an answer to this question.': 'Esa no es una respuesta a esta pregunta.',
   // La carga de MADRE: el pulso y la barra (2026-10-10).
   'Downloading MADRE {version}…': 'Descargando MADRE {version}…',

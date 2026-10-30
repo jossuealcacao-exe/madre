@@ -4,13 +4,16 @@
 // ask (src/review-ask.mjs); this page says once a minute that it is in view, and when a moment is
 // due it asks — only when nothing is going on: no turn running, nothing half written, no other
 // window open. Otherwise it waits for the next minute. The sheet is the room's question
-// (styles.css, dialog.room-ask): a star on GitHub, a review on madre.run, not now, or never again.
-// Both links open in the person's browser; MADRE itself sends nothing.
+// (styles.css, dialog.room-ask): a star on GitHub, a review on madre.run, a donation on GitHub
+// Sponsors (2026-10-30), not now, or never again. The links open in the person's browser; MADRE
+// itself sends nothing.
 
 import { language, t } from './i18n.js';
 import { trazo } from './icons.js';
 
 export const STAR_URL = 'https://github.com/jossuealcacao-exe/madre';
+// GitHub keeps no commission on Sponsors (.github/FUNDING.yml); Settings › Version links it too.
+export const SPONSORS_URL = 'https://github.com/sponsors/jossuealcacao-exe';
 export const REVIEW_URLS = { es: 'https://madre.run/resenas/', en: 'https://madre.run/en/reviews/' };
 const TICK_MS = 60 * 1000;
 const STAR = trazo('star');
@@ -44,7 +47,7 @@ export function startReviewAsk({ busy = () => false } = {}) {
     title.textContent = t('Are you enjoying MADRE?');
     const body = document.createElement('p');
     body.className = 'room-ask-body';
-    body.textContent = t('If MADRE saves you work, a star on GitHub or a few words about it help more people find it. It takes a minute.');
+    body.textContent = t('If MADRE saves you work, a star on GitHub or a few words about it help more people find it. And if you can, a donation keeps it going: MADRE is made by one person.');
     const actions = document.createElement('div');
     actions.className = 'room-ask-actions review-ask-actions';
     const choice = (words, tone, answer, href = null) => {
@@ -61,10 +64,11 @@ export function startReviewAsk({ busy = () => false } = {}) {
     actions.append(
       choice(t('Write a review'), null, 'review', REVIEW_URLS[language()] ?? REVIEW_URLS.es),
       choice(t('Give it a star on GitHub'), 'primary', 'star', STAR_URL),
+      choice(t('Donate on GitHub'), 'give', 'donate', SPONSORS_URL),
     );
     const note = document.createElement('p');
     note.className = 'review-ask-note';
-    note.textContent = t('Both open in your browser. MADRE sends nothing.');
+    note.textContent = t('They open in your browser. MADRE sends nothing.');
     card.append(icon, title, body, actions, quiet, note);
     dialog.append(card);
     let settled = false;

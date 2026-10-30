@@ -6094,6 +6094,8 @@ dialog.settings-window.rail .settings-body { display: grid; grid-template-column
 .sx-btn:hover { background: color-mix(in srgb, var(--text) 13%, transparent); }
 .sx-btn:active { transform: translateY(1px); }
 .sx-btn.primary { background: var(--phosphor); color: var(--phosphor-ink); }
+/* A key that is a link (Donate, What it brings) reads as a key, never underlined. */
+a.sx-btn, a.sx-btn:hover { text-decoration: none; }
 .sx-btn.primary:hover { background: color-mix(in srgb, var(--phosphor) 88%, var(--text)); }
 .sx-btn.danger { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
 .sx-btn.danger:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); }
@@ -8550,6 +8552,8 @@ a.room-ask-choice { display: inline-flex; align-items: center; justify-content: 
 dialog.room-ask.review-ask:not(.console) .review-ask-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 2px; }
 dialog.room-ask.review-ask:not(.console) .review-ask-actions .room-ask-choice { width: 100%; height: 40px; white-space: nowrap; }
 dialog.room-ask.review-ask:not(.console) .review-ask-actions .primary { order: -1; }
+/* The donation (2026-10-30), with the heart's color of Donate, quieter than the star. */
+dialog.room-ask.review-ask:not(.console) .review-ask-actions .give { color: color-mix(in srgb, #e11d48 78%, var(--text)); }
 dialog.room-ask.review-ask:not(.console) .review-ask-quiet { display: flex; justify-content: center; gap: 4px; margin-top: -2px; }
 dialog.room-ask.review-ask:not(.console) .room-ask-choice.quiet { height: 30px; padding: 0 10px; border: 0; background: transparent; box-shadow: none; color: var(--text-2); font-family: var(--read); font-size: 12.5px; font-weight: 450; letter-spacing: 0; text-transform: none; }
 dialog.room-ask.review-ask:not(.console) .room-ask-choice.quiet:hover, dialog.room-ask.review-ask:not(.console) .room-ask-choice.quiet:focus-visible { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); outline: none; }

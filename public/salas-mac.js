@@ -9,7 +9,7 @@
 
 import { browserLanguage, sessionDetail, setLanguage, t } from './i18n.js';
 import { brandOf, monogram } from './brands.js';
-import { startReviewAsk } from './review-ask.js';
+import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
 import { startTour } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
@@ -5426,6 +5426,7 @@ function fillRelease(host) {
     const row = sxRow(block, t('This copy\'s identifier'), t('Random and unique: this copy made it for itself. It lets the author tell one copy\'s errors from another\'s and find the fix for yours, without knowing who you are: no name, no projects.'), copy);
     row.querySelector('.sx-words')?.append(el('code', 'sm-install-id', info.copyId));
   }
+  drawDonate(host);
   if (info?.available) {
     const notes = el('a', 'sx-btn', t('What it brings'));
     notes.href = info.release ?? 'https://madre.run';
@@ -5455,6 +5456,16 @@ function fillRelease(host) {
   const leave = sxBlock(host, t('Uninstall MADRE'), t('Takes away what MADRE put on this computer: its conversations, memory and settings, and its folder inside your projects. Your projects and your AIs stay.'));
   sxRow(leave, t('Remove MADRE from this computer'), t('You will see the whole list before anything is removed.'), sxButton(t('Uninstall…'), () => void askUninstall(), { tone: 'danger' }));
   drawLegal(host);
+}
+// Supporting MADRE (2026-10-30): a donation on GitHub Sponsors, in the person's browser, under the
+// version and this copy's identifier, as a project's Settings › Version has it (app.js).
+function drawDonate(host) {
+  const give = sxBlock(host, t('Support MADRE'), t('MADRE is free and made by one person. A donation helps keep it going and growing.'));
+  const go = el('a', 'sx-btn primary', t('Donate'));
+  go.href = SPONSORS_URL;
+  go.target = '_blank';
+  go.rel = 'noopener';
+  sxRow(give, t('Donate on GitHub'), t('Once or every month, the amount you choose. GitHub keeps no commission.'), go);
 }
 async function updateHome(info, key, said) {
   key.disabled = true;

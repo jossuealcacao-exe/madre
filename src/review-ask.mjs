@@ -25,7 +25,8 @@ export const ASK_MOMENTS = [
   { id: 'd2', reached: (state, now) => now - Date.parse(state.first) >= 2 * DAY },
   { id: 'd7', reached: (state, now) => now - Date.parse(state.first) >= 7 * DAY },
 ];
-export const ASK_ANSWERS = ['later', 'star', 'review', 'never'];
+// A donation on GitHub Sponsors is an answer too (2026-10-30): whoever gave is not asked again.
+export const ASK_ANSWERS = ['later', 'star', 'review', 'donate', 'never'];
 // One minute of use is counted at most once a minute, whichever page says it.
 const TICK_MS = 55 * 1000;
 // Never asked twice within this long, whatever moments have come.

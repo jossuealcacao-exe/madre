@@ -12,7 +12,7 @@ import { drawHardware, hardwareLine } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
 import { createStrain, inviteNeural, mapKeys, neuralChosen, neuralKey, paintNeuralKey, rememberNeural, tellViews } from './neural.js';
 import { resay } from './resay.js';
-import { startReviewAsk } from './review-ask.js';
+import { SPONSORS_URL, startReviewAsk } from './review-ask.js';
 import { spotlight, startTour as startWelcome } from './tour.js';
 import { dropStickyHover } from './touch.js';
 import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal } from './attribution.js';
@@ -22110,6 +22110,16 @@ function drawRelease(section, info) {
   }, { disabled: Boolean(info.envWins), label: t('Look for new versions') });
   sxRow(block, t('Look for new versions'), t('Once a day MADRE checks whether there\'s a new version. Only the app\'s name is sent.') + (info.envWins ? ` ${t('Set by PULSE_UPDATE_CHECK.')}` : ''), check);
   if (info.enabled) sxRow(block, t('Last check'), when ?? t('Not yet.'), sxButton(t('Check now'), () => void loadVersion({ force: true })));
+  // Supporting MADRE (2026-10-30): a donation on GitHub Sponsors, in the person's browser, as Home's
+  // Settings › Version has it under this copy's identifier (salas-mac.js, drawDonate). Not from a phone.
+  if (!state.device) {
+    const give = sxBlock(section, t('Support MADRE'), t('MADRE is free and made by one person. A donation helps keep it going and growing.'));
+    const go = el('a', 'sx-btn primary', t('Donate'));
+    go.href = SPONSORS_URL;
+    go.target = '_blank';
+    go.rel = 'noopener';
+    sxRow(give, t('Donate on GitHub'), t('Once or every month, the amount you choose. GitHub keeps no commission.'), go);
+  }
   drawLegal(section);
 
   if (!info.available) return;
