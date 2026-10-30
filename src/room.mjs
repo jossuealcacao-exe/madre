@@ -626,7 +626,7 @@ export class Room {
     }
     if (which === 'match') {
       const invoke = this.#invokers[MADRE_ADAPTER];
-      if (!invoke) return { error: 'The local model is not running. Start Ollama, or open Ollama in Modules.' };
+      if (!invoke) return { error: 'The local model is not running. Start Ollama, or set up Local AI in Settings.' };
       this.#examRunning = 'match';
       this.#examProgress = { done: 0, total: 0 };
       // Answered in the background: the human keeps the room while it runs.
@@ -1529,7 +1529,7 @@ export class Room {
       // @madre is not a CLI to install: it is the room's local agent, here while Ollama runs with a
       // chat model. Saying "not installed" sent people to install something that does not exist.
       const error = agent?.local || targetId === 'madre'
-        ? `@${targetId} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.`
+        ? `@${targetId} left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.`
         : `${targetId} is not installed on this computer.`;
       await this.#emit('message.failed', { messageId, target: targetId, planId, error });
       return null;

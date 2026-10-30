@@ -79,4 +79,20 @@ test('«En marcha» is on the bar of a project and of Home, served, and stops fr
   assert.match(panel, /fetch\('\/api\/activity\?everywhere=1'/);
   assert.match(panel, /document\.visibilityState === 'hidden'/, 'it does not ask while the page is out of sight');
   assert.match(css, /@media \(max-width: 640px\) \{\s*\.activity-panel \{/, 'a sheet from the bottom on a narrow screen');
+  assert.match(css, /#activity-button \{ order: 20; \}/, 'at the left of the memory map');
+  assert.match(css, /\.activity-button:is\(:hover, :focus-visible\) svg \.ic-l2 \{ animation-delay/, 'the list writes itself under the pointer');
+});
+
+test('Local AI came with MADRE: the card in the conversation sends to Settings, never to the Market (2026-10-30)', async () => {
+  const { marketOffer } = await import('../public/market.js');
+  const offer = marketOffer('@madre ¿qué decidimos?', [{ id: 'ollama', kind: 'builtin', name: 'Local AI', status: { installed: false } }]);
+  assert.equal(offer.item.id, 'ollama');
+  assert.match(offer.says, /comes with MADRE\. Set it up in Settings/);
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(app, /const ownPlace = IN_SETTINGS\[item\.id\] \?\? null;/);
+  assert.match(app, /if \(ownPlace\) \{ openSettingsOn\(ownPlace\); return; \}/);
+  assert.match(app, /acts\.append\(\.\.\.\(ownPlace \? \[on, no\] : \[on, more, no\]\)\);/);
+  for (const file of ['../src/room.mjs', '../src/adapters/madre.mjs', '../public/troubleshooting.js']) {
+    assert.doesNotMatch(await readFile(new URL(file, import.meta.url), 'utf8'), /Local AI in Modules|Ollama in Modules/, `${file} still sends Local AI to Modules`);
+  }
 });

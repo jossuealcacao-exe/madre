@@ -17508,10 +17508,14 @@ function offerModule(text) {
     const words = el('div', 'market-offer-words');
     words.append(el('b', null, t(item.name)), el('span', null, t(says)));
     const acts = el('div', 'market-offer-acts');
-    const switchable = moduleSwitches(item) && marketEntry(item.id).scope !== 'project';
-    const on = el('button', 'primary', switchable ? t('Turn on') : t('Install'));
+    // What came with MADRE (Local AI) is set up in its place in Settings: it is not installed from
+    // the Market, and the card never sends there (2026-10-30).
+    const ownPlace = IN_SETTINGS[item.id] ?? null;
+    const switchable = !ownPlace && moduleSwitches(item) && marketEntry(item.id).scope !== 'project';
+    const on = el('button', 'primary', ownPlace ? t('Set it up') : switchable ? t('Turn on') : t('Install'));
     on.type = 'button';
     on.addEventListener('click', async () => {
+      if (ownPlace) { openSettingsOn(ownPlace); return; }
       if (!switchable) { openModules(); await refreshModules(); renderModules(); openModuleSheet(item.id); return; }
       on.disabled = true;
       try {
@@ -17529,7 +17533,7 @@ function offerModule(text) {
       try { localStorage.setItem(MARKET_DECLINED, JSON.stringify([...new Set([...marketDeclined(), item.id])])); } catch { /* asked again next page */ }
       card.remove();
     });
-    acts.append(on, more, no);
+    acts.append(...(ownPlace ? [on, no] : [on, more, no]));
     card.append(mark, words, acts);
     document.querySelector('#thread-inner')?.append(card);
     card.scrollIntoView?.({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });

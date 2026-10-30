@@ -549,7 +549,7 @@ export const CONDITIONS = [
     // Older rooms recorded @madre leaving as "madre is not installed": it is this condition, not MU-009.
     match: /@madre|madre-local|needs Ollama running with a chat model|\bmadre is not installed on this computer|@madre left the (room|project)/i,
     diagnosis: 'When Ollama runs with a chat model, a fifth agent joins the project: @madre. It answers from the whole archive (distilled notes and exact quotes, cited as [#n]) and from what the message carries, locally, for free. It never writes, draws, browses or makes plans; when the project never discussed something it says so. Other agents may give it a plan step to check what was decided. It leaves the project when Ollama stops, and Diagnostics says so.',
-    remedy: 'Start Ollama and download a chat model from Local AI in Modules; its @madre in the project switch turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".',
+    remedy: 'Start Ollama and download a chat model in Settings › Local AI; its @madre switch there turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".',
     fixes: same(['ollama serve', 'ollama pull qwen2.5:3b', '@madre what did we decide about the webhook?']),
   },
   {
@@ -559,8 +559,8 @@ export const CONDITIONS = [
     severity: 'informational',
     title: 'Ollama: local smart search and a local archivist',
     match: /ollama|11434|local model|nomic-embed|qwen|llama3/i,
-    diagnosis: 'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. The Local AI module, in Modules, shows what Ollama has, downloads the recommended models, and switches each role.',
-    remedy: 'Install Ollama (ollama.com), start it, then open Local AI in Modules, press RECHECK and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.',
+    diagnosis: 'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. Local AI, in Settings, shows what Ollama has, downloads the recommended models, and switches each role.',
+    remedy: 'Install Ollama (ollama.com), start it, then open Settings › Local AI and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.',
     fixes: {
       darwin: ['# the official app, which opens by itself with the Mac: https://ollama.com/download', '# or with Homebrew:', 'brew install ollama', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b'],
       linux: ['curl -fsSL https://ollama.com/install.sh | sh', 'ollama serve', 'ollama pull nomic-embed-text', 'ollama pull qwen2.5:3b']

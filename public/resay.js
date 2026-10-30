@@ -59,6 +59,7 @@ const SAID = [
   '@{agent} is capped at #{n} {label}; raise its MAX MODE to #{wanted} in CONNECTIONS to arm {mode}.',
   '@{agent} already holds {mode} of this project; one holder at a time. STOPALL revokes it.',
   '@{agent} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.',
+  '@{agent} left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.',
   '@madre is in the project · {version}',
   '{agent} is not installed on this computer.',
   '@madre left the project: Ollama has no chat model running',

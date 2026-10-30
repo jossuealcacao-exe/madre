@@ -438,7 +438,7 @@ test('bar: right-click opens it for editing, AJUSTES stays last, and the choice 
 test('@madre gone is not a missing install: the room says Ollama, MU/TH/UR opens Ollama, and every icon wears the accent', async () => {
   const { diagnose } = await import('../public/troubleshooting.js');
   const [room, app] = await Promise.all([readFile(join(import.meta.dirname, '..', 'src', 'room.mjs'), 'utf8'), read('app.js')]);
-  assert.match(room, /@\$\{targetId\} left the project: Ollama is not running\. Start Ollama, or open Local AI in Modules\./);
+  assert.match(room, /@\$\{targetId\} left the project: Ollama is not running\. Start Ollama, or set up Local AI in Settings\./);
   assert.equal(diagnose('@madre left the room: Ollama is not running. Start Ollama, or open Ollama in Modules.')[0].id, 'madre-agent');
   // Rooms that recorded the old sentence get the right remedy too, and never the install one.
   assert.deepEqual(diagnose('madre is not installed on this computer.').map((one) => one.id), ['madre-agent']);

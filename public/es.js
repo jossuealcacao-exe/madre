@@ -2027,16 +2027,16 @@ export const ES = {
     'Enciende Vista previa en Módulos. Si una página se ve rota en «Vista previa», casi siempre es porque pide algo de internet o de otro servidor, cosa que el marco prohíbe a propósito: ábrela con «Abrir sin formato» en una pestaña normal si confías en ella.',
 
   'Ollama: local smart search and a local archivist': 'Ollama: búsqueda por significado y resúmenes de memoria, en esta Mac',
-  'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. The Local AI module, in Modules, shows what Ollama has, downloads the recommended models, and switches each role.':
-    'Cuando Ollama corre en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y hace las notas resumidas con el modelo local primero, antes que con Gemini y los demás. Para recordar no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a los proveedores. El módulo IA local, en Módulos, muestra qué tiene Ollama, te deja descargar los modelos recomendados y encender o apagar cada función.',
-  'Install Ollama (ollama.com), start it, then open Local AI in Modules, press RECHECK and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.':
-    'Instala Ollama (ollama.com), enciéndelo, luego abre IA local en Módulos, pulsa «Revisar otra vez» y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté corriendo.',
+  'When Ollama runs on this machine with an embedding model and a chat model, MADRE embeds the memory locally (recall by meaning without any key) and distils memories with the local model first, before Gemini and the others. Nothing leaves the machine for remembering. Off or absent, everything falls back to the providers. Local AI, in Settings, shows what Ollama has, downloads the recommended models, and switches each role.':
+    'Cuando Ollama corre en esta computadora con un modelo de búsqueda por significado y uno de chat, MADRE hace la búsqueda por significado aquí mismo (sin ninguna llave de API) y hace las notas resumidas con el modelo local primero, antes que con Gemini y los demás. Para recordar no sale nada de tu computadora. Si Ollama está apagado o no está instalado, todo vuelve a los proveedores. IA local, en Ajustes, muestra qué tiene Ollama, te deja descargar los modelos recomendados y encender o apagar cada función.',
+  'Install Ollama (ollama.com), start it, then open Settings › Local AI and download the models it suggests. Set PULSE_OLLAMA_MODEL or PULSE_OLLAMA_EMBED_MODEL to prefer others; PULSE_EMBED_PROVIDER=gemini keeps embeddings on Gemini even with Ollama running.':
+    'Instala Ollama (ollama.com), enciéndelo, luego abre Ajustes › IA local y descarga los modelos que sugiere. Pon PULSE_OLLAMA_MODEL o PULSE_OLLAMA_EMBED_MODEL para preferir otros; PULSE_EMBED_PROVIDER=gemini deja la búsqueda por significado en Gemini aunque Ollama esté corriendo.',
 
   "@madre: the project's own memory, as an agent": '@madre: la memoria del proyecto, como agente',
   'When Ollama runs with a chat model, a fifth agent joins the project: @madre. It answers from the whole archive (distilled notes and exact quotes, cited as [#n]) and from what the message carries, locally, for free. It never writes, draws, browses or makes plans; when the project never discussed something it says so. Other agents may give it a plan step to check what was decided. It leaves the project when Ollama stops, and Diagnostics says so.':
     'Cuando Ollama corre con un modelo de chat, se suma un quinto agente al proyecto: @madre. Contesta desde toda la memoria del proyecto (notas resumidas y citas exactas, citadas como [#n]) y desde lo que traiga el mensaje, en local y gratis. Nunca escribe, ni dibuja, ni navega, ni hace planes; si el proyecto nunca habló de algo, lo dice. Otros agentes pueden darle un paso del plan para comprobar qué se decidió. Sale del proyecto cuando Ollama se apaga, y Diagnóstico lo avisa.',
-  'Start Ollama and download a chat model from Local AI in Modules; its @madre in the project switch turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".':
-    'Enciende Ollama y descarga un modelo de chat desde IA local, en Módulos; su interruptor @madre en el proyecto apaga al agente si no lo quieres. Pregúntale «¿qué decidimos sobre…?» o «¿alguna vez hablamos de…?».',
+  'Start Ollama and download a chat model in Settings › Local AI; its @madre switch there turns the agent off if you do not want it. Ask it "what did we decide about …" or "did we ever discuss …".':
+    'Enciende Ollama y descarga un modelo de chat en Ajustes › IA local; su interruptor @madre, ahí mismo, apaga al agente si no lo quieres. Pregúntale «¿qué decidimos sobre…?» o «¿alguna vez hablamos de…?».',
 
   'Installing a CLI: npm cannot write to the system folder': 'Instalar la app de un agente: npm no puede escribir en la carpeta del sistema',
   'A global npm install writes into a folder that belongs to the system. With Node installed from its own installer that folder needs an administrator, so npm stops with a permission error. MADRE does not ask for your password: when it sees that wall it installs the CLI into a folder of its own, ~/.pulse/tools, and looks there as well as along PATH. The agent works the same; only the file lives somewhere else.':
@@ -3698,7 +3698,8 @@ export const ES = {
   'Enter': 'Entrar',
   'Open Ollama': 'Abrir Ollama',
   'Start it, download its models and choose what it does in this project.': 'Enciéndelo, descarga sus modelos y elige qué hace en este proyecto.',
-  '@{agent} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o abre IA local en Módulos.',
+  '@{agent} left the project: Ollama is not running. Start Ollama, or open Local AI in Modules.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
+  '@{agent} left the project: Ollama is not running. Start Ollama, or set up Local AI in Settings.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
   'Hide': 'Ocultar',
   'Updating {name}': 'Actualizando {name}',
   'Installing {name}': 'Instalando {name}',
@@ -4227,7 +4228,7 @@ export const ES = {
   'To make images, the agents need Images.': 'Para crear imágenes, los agentes necesitan Imágenes.',
   'To read your pull requests, issues and CI, the agents need GitHub.': 'Para leer tus pull requests, issues y CI, los agentes necesitan GitHub.',
   'To keep the project\'s state and hand work between agents and editors, install Continuity.': 'Para guardar el estado del proyecto y pasar el trabajo entre agentes y editores, instala Continuidad.',
-  'For @madre and a memory that searches by meaning, turn on Local AI.': 'Para @madre y una memoria que busca por significado, enciende IA local.',
+  'Local AI comes with MADRE. Set it up in Settings and @madre answers here, and the memory searches by meaning.': 'La IA local ya viene con MADRE. Prepárala en Ajustes y @madre contestará aquí, y la memoria buscará por significado.',
   'To have every agent answer shorter and spend less, turn on Token saver.': 'Para que cada agente conteste más corto y gaste menos, enciende Ahorro de tokens.',
   'Turned on. Ask again and the agents can use it.': 'Encendido. Vuelve a pedirlo y los agentes ya lo pueden usar.',
   'See it in the Market': 'Verlo en el Mercado',
@@ -4717,7 +4718,7 @@ export const ES = {
   ' STOPALL if the room drifts.': ' STOPALL si el proyecto se desvía.',
   '@{agent} is capped at #{n} {label}; raise its max mode to #{wanted} in Settings › Permissions to arm {mode}.': '@{agent} tiene como límite #{n} {label}; sube su permiso máximo a #{wanted} en Ajustes › Permisos para desbloquear {mode}.',
   '@{agent} is capped at #{n} {label}; raise its MAX MODE to #{wanted} in CONNECTIONS to arm {mode}.': '@{agent} tiene como límite #{n} {label}; sube su permiso máximo a #{wanted} en Ajustes › Permisos para desbloquear {mode}.',
-  '@{agent} left the room: Ollama is not running. Start Ollama, or open Ollama in Modules.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o abre IA local en Módulos.',
+  '@{agent} left the room: Ollama is not running. Start Ollama, or open Ollama in Modules.': '@{agent} salió del proyecto: Ollama no está corriendo. Enciende Ollama o prepara la IA local en Ajustes.',
   // La segunda llave de #4: la misma, otra vez (2026-10-10).
   'Phrase, twice': 'Frase, dos veces',
   'Type your phrase again': 'Escribe tu frase otra vez',

@@ -122,7 +122,7 @@ export const ICONS = {
   database: '<ellipse cx="10" cy="5.6" rx="5.6" ry="2.2"/><path d="M4.4 5.6v8.8c0 1.2 2.5 2.2 5.6 2.2s5.6-1 5.6-2.2V5.6M4.4 10c0 1.2 2.5 2.2 5.6 2.2s5.6-1 5.6-2.2"/>',
   chip: '<rect x="5.4" y="5.4" width="9.2" height="9.2" rx="2.2"/><rect x="8.2" y="8.2" width="3.6" height="3.6" rx="1"/><path class="ic-pins" d="M8 2.8v2.6M12 2.8v2.6M8 14.6v2.6M12 14.6v2.6M2.8 8h2.6M2.8 12h2.6M14.6 8h2.6M14.6 12h2.6"/>',
   server: '<rect x="3.4" y="3.6" width="13.2" height="5.2" rx="2"/><rect x="3.4" y="11.2" width="13.2" height="5.2" rx="2"/><path d="M6.4 6.2h.01"/><path d="M6.4 13.8h.01"/><path d="M10 6.2h3.6M10 13.8h3.6"/>',
-  running: '<path d="M2.6 10.6h3.3l2.2-5.2 3.8 9.4 2.2-4.2h3.3"/>',
+  running: '<rect x="2.8" y="4" width="14.4" height="12" rx="3.2"/><path class="ic-d1" d="M6.6 8.2h.01"/><path class="ic-l1" pathLength="1" d="M9.4 8.2h4"/><path class="ic-d2" d="M6.6 11.8h.01"/><path class="ic-l2" pathLength="1" d="M9.4 11.8h4"/>',
   gauge: '<path d="M3.6 13.6a6.4 6.4 0 1 1 12.8 0"/><path d="M10 13.6l3-4"/><path d="M10 13.6h.01"/>',
   trending: '<path d="M3.4 16.6h13.2"/><path d="M5 13.4l3.2-3.2 2.6 2.4 4.2-5.2"/><path d="M12.4 7.4H15V10"/>',
   cube: '<path d="M8.78 3.69Q10 3 11.22 3.69L14.98 5.81Q16.2 6.5 16.2 7.9L16.2 12.1Q16.2 13.5 14.98 14.19L11.22 16.31Q10 17 8.78 16.31L5.02 14.19Q3.8 13.5 3.8 12.1L3.8 7.9Q3.8 6.5 5.02 5.81Z"/><path d="M4.2 6.8 10 10l5.8-3.2M10 10v6.6"/>',

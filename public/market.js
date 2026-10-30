@@ -185,7 +185,8 @@ export const MARKET_OFFERS = [
   { id: 'image-studio', when: /\b(genera|gener[aá]|crea|haz|dibuja|make|generate|draw)\w*\s+(me\s+)?(una?\s+|an?\s+)?(imagen|ilustraci[oó]n|logo|foto|banner|icono|image|illustration|picture|icon)/i, says: 'To make images, the agents need Images.' },
   { id: 'github', when: /\bgithub\b|pull request|\bPRs?\b|\bissues?\b|\bCI\b/i, says: 'To read your pull requests, issues and CI, the agents need GitHub.' },
   { id: 'ahp', when: /traspaso|handoff|continuidad|continuity|retom(a|ar) donde|pick up where|estado del proyecto|project state/i, says: 'To keep the project\'s state and hand work between agents and editors, install Continuity.' },
-  { id: 'ollama', when: /@madre\b|sin internet|offline|ia local|local ai/i, says: 'For @madre and a memory that searches by meaning, turn on Local AI.' },
+  // Local AI comes with MADRE (2026-10-28): it is set up in Settings, never got from the Market.
+  { id: 'ollama', when: /@madre\b|sin internet|offline|ia local|local ai/i, says: 'Local AI comes with MADRE. Set it up in Settings and @madre answers here, and the memory searches by meaning.' },
   { id: 'ash', when: /gast(ar|e|o) menos|ahorr(a|ar|o) tokens|demasiados tokens|too many tokens|save tokens/i, says: 'To have every agent answer shorter and spend less, turn on Token saver.' },
 ];
 export function marketOffer(text, items = [], { declined = [], shown = [] } = {}) {

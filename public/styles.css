@@ -12397,10 +12397,17 @@ dialog.madre-opening::backdrop { background: transparent; }
    public/activity.js. Drawn in the chat shell's own hand: the canvas, its hairlines, the soft hover.
    Under its key on a wide window; from 640 px down, a sheet from the bottom, the width of the screen. */
 .activity-button { position: relative; }
-html.chat-shell .shell > .bar:not(.bar-home) > #activity-button { order: 5; }
-.activity-button.working svg path { stroke-dasharray: 26 6; animation: ap-beat 1.6s linear infinite; }
+/* In MADRE's family, at the left of the memory map (2026-10-30). */
+html.chat-shell .shell > .bar:not(.bar-home) > #activity-button { order: 20; }
 .activity-button.working { color: var(--phosphor) !important; }
-@keyframes ap-beat { to { stroke-dashoffset: -32; } }
+/* Under the pointer the list writes itself: each dot, then its line, one after the other. */
+.activity-button:is(:hover, :focus-visible) svg :is(.ic-d1, .ic-d2) { animation: ap-dot calc(220ms * var(--motion-scale, 1)) var(--ease-out, ease-out) backwards; }
+.activity-button:is(:hover, :focus-visible) svg :is(.ic-l1, .ic-l2) { stroke-dasharray: 1 1; animation: ap-line calc(260ms * var(--motion-scale, 1)) var(--ease-out, ease-out) backwards; }
+.activity-button:is(:hover, :focus-visible) svg .ic-l1 { animation-delay: calc(110ms * var(--motion-scale, 1)); }
+.activity-button:is(:hover, :focus-visible) svg .ic-d2 { animation-delay: calc(260ms * var(--motion-scale, 1)); }
+.activity-button:is(:hover, :focus-visible) svg .ic-l2 { animation-delay: calc(370ms * var(--motion-scale, 1)); }
+@keyframes ap-dot { from { opacity: 0; } }
+@keyframes ap-line { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .activity-panel {
   position: fixed; top: var(--ap-top, 56px); right: var(--ap-right, 16px); z-index: 900;
   width: min(440px, calc(100vw - 24px)); max-height: min(76vh, 720px); display: flex; flex-direction: column;
@@ -12487,6 +12494,6 @@ html.chat-shell .shell > .bar:not(.bar-home) > #activity-button { order: 5; }
   .ap-acts button, .ap-foot button { height: 36px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .activity-button.working svg path, .ap-av.busy::after, .ap-sub.running i { animation: none; }
+  .activity-button svg :is(.ic-d1, .ic-d2, .ic-l1, .ic-l2), .ap-av.busy::after, .ap-sub.running i { animation: none !important; }
   .activity-panel { transition: none; }
 }
