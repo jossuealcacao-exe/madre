@@ -12535,3 +12535,45 @@ html.chat-shell .shell > .bar:not(.bar-home) > #activity-button { order: 20; }
   .activity-button svg :is(.ic-d1, .ic-d2, .ic-l1, .ic-l2), .ap-av.busy::after, .ap-sub.running i { animation: none !important; }
   .activity-panel { transition: none; }
 }
+
+/* BEFORE YOU START (2026-10-30, public/terms.js): MADRE's license and privacy notice, accepted once
+   before anything else. The whole window, MADRE's ground behind a card read in a minute: the logo,
+   one line that says it is free, the license in short, the help MADRE asks for with its switch on,
+   and one key. */
+dialog.terms-gate { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 24px 16px; border: 0; display: grid; place-items: center; overflow: auto; background: var(--bg, #0b0d0b); color: var(--text); font-family: var(--read, inherit); animation: terms-in calc(320ms * var(--motion-scale, 1)) var(--ease-out, ease) both; }
+dialog.terms-gate::backdrop { background: var(--bg, #0b0d0b); }
+dialog.terms-gate.leaving { animation: terms-out calc(260ms * var(--motion-scale, 1)) ease both; }
+@keyframes terms-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes terms-out { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { dialog.terms-gate, dialog.terms-gate.leaving { animation: none; } }
+.terms-card { display: grid; gap: 14px; width: min(540px, 100%); }
+.terms-logo { height: 26px; color: var(--text); }
+.terms-logo svg { height: 100%; width: auto; display: block; }
+.terms-title { margin: 6px 0 0; font: 650 26px/1.15 var(--read, inherit); letter-spacing: -.02em; }
+.terms-lead { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--text-2); }
+.terms-block { display: grid; gap: 6px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.terms-block h2 { margin: 0; font: 600 14.5px/1.3 var(--read, inherit); }
+.terms-block p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+.terms-help { background: color-mix(in srgb, var(--phosphor) 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phosphor) 30%, var(--line)); }
+.terms-help-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 14px; }
+.terms-help-head > div { display: grid; gap: 6px; }
+.terms-said { font-size: 12.5px !important; color: var(--text-3) !important; }
+.terms-link { color: var(--phosphor); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+:root[data-scheme="light"] .terms-link { color: color-mix(in srgb, var(--phosphor) 62%, #000); }
+.terms-switch { position: relative; flex: none; width: 42px; height: 24px; margin-top: 2px; padding: 0; border: 0; border-radius: 99px; background: color-mix(in srgb, var(--text) 18%, transparent); cursor: pointer; transition: background-color calc(160ms * var(--motion-scale, 1)) ease; }
+.terms-switch[aria-checked="true"] { background: var(--phosphor); }
+.terms-switch:disabled { opacity: .5; cursor: default; }
+.terms-switch:focus-visible { outline: 2px solid color-mix(in srgb, var(--phosphor) 60%, transparent); outline-offset: 2px; }
+.terms-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform calc(160ms * var(--motion-scale, 1)) var(--ease-out, ease); }
+.terms-switch[aria-checked="true"] .terms-knob { transform: translateX(18px); }
+.terms-foot { margin: 2px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); }
+.terms-error { margin: 0; min-height: 0; font-size: 13px; color: var(--danger, #e5484d); }
+.terms-error:empty { display: none; }
+.terms-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.terms-btn { height: 40px; padding: 0 18px; border: 0; border-radius: 12px; font: 600 14px var(--read, inherit); cursor: pointer; }
+.terms-btn.primary { background: var(--phosphor); color: var(--phosphor-ink, #041004); }
+.terms-btn.primary:hover { background: color-mix(in srgb, var(--phosphor) 88%, var(--text)); }
+.terms-btn.quiet { background: transparent; color: var(--text-2); }
+.terms-btn.quiet:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.terms-btn:disabled { opacity: .55; cursor: default; }
+@media (max-width: 520px) { .terms-actions { flex-direction: column-reverse; } .terms-btn { width: 100%; } .terms-title { font-size: 23px; } }

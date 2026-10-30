@@ -47,7 +47,7 @@ try {
   const stateRoot = join(workspace, 'state');
   const port = 40000 + Math.floor(Math.random() * 20000);
   const server = spawn(cli, ['start', '--no-open', '--project', projectRoot, '--port', String(port)], {
-    env: { ...process.env, PULSE_HOME: stateRoot, PULSE_HEARTBEAT_URL: 'http://127.0.0.1:9/ping' },
+    env: { ...process.env, PULSE_HOME: stateRoot, PULSE_HEARTBEAT_URL: 'http://127.0.0.1:9/ping', PULSE_TELEMETRY_URL: 'http://127.0.0.1:9/api/telemetry', PULSE_TERMS: 'accepted' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let ready = false;

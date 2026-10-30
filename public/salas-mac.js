@@ -28,6 +28,11 @@ import { loadMarket } from './market.js';
 import { trazo, trazoDrawing } from './icons.js';
 import { tellFailures } from './page-errors.js';
 import { mountActivity } from './activity.js';
+import { ensureTerms } from './terms.js';
+
+// Nothing of MADRE starts before its license and privacy notice are accepted on this computer
+// (public/terms.js, src/terms.mjs): the page waits here.
+await ensureTerms();
 // A failure of Home's page is told to MADRE's anonymous diagnostics (src/telemetry.mjs).
 tellFailures('home');
 

@@ -74,7 +74,9 @@ export async function noteLifecycle({ root, version, hadId, now = new Date() }) 
   if (!kept?.version) event = hadId ? 'update' : 'install';
   else if (kept.version !== version && compareVersions(version, kept.version) > 0) event = 'update';
   if (!kept?.version || kept.version !== version) {
-    await writeFile(file, `${JSON.stringify({ first: kept?.first ?? now.toISOString(), version, at: now.toISOString() })}\n`).catch(() => null);
+    // `before`: this copy was in use before 1.1.0 (src/terms.mjs tells it what changed).
+    const before = kept ? kept.before === true : Boolean(hadId);
+    await writeFile(file, `${JSON.stringify({ first: kept?.first ?? now.toISOString(), version, at: now.toISOString(), ...(before ? { before: true } : {}) })}\n`).catch(() => null);
   }
   return { event, first: kept?.first ?? now.toISOString() };
 }

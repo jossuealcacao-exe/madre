@@ -397,6 +397,7 @@ MADRE's folder is only taken away whole when it is MADRE's beyond doubt: an abso
 | `PULSE_UPDATE_CHECK` | `1` | `0` turns off the daily npm check |
 | `PULSE_GH` | `1` | `0` makes the GitHub module ignore the `gh` session and sign in only with the token you pasted |
 | `PULSE_REPORT_URL` · `PULSE_AUTO_REPORT` | the project's collector · as the anonymous diagnostics (`0` turns it off) | Sentinel |
+| `PULSE_TERMS` | `accepted` takes the license as accepted (tests, screenshots and QA houses; `src/terms.mjs`) | License |
 | `PULSE_AGENT_TIMEOUT_MS` · `PULSE_<AGENTE>_TIMEOUT_MS` | `180000` · — | Timeouts |
 | `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS` | — | Comma-separated list (`codex`, `claude`) of gateways the human verified and allows; without it, an unofficial base address is blocked |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Maximum size of a message |

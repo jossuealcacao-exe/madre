@@ -14,6 +14,8 @@ process.env.PULSE_MARKET_URL ??= 'http://127.0.0.1:9/mercado/catalogo.json';
 process.env.PULSE_TELEMETRY_URL ??= 'http://127.0.0.1:9/api/telemetry';
 // Nor the error reports, which go out on their own by default since 1.1.0 (src/sentinel-errors.mjs).
 process.env.PULSE_REPORT_URL ??= 'http://127.0.0.1:9/v1/reports';
+// MADRE's license is accepted for the suite (src/terms.mjs); test/terms.test.mjs checks the gate itself.
+process.env.PULSE_TERMS ??= 'accepted';
 
 // And the suite reads MADRE in the language it is WRITTEN in. The product speaks Spanish by
 // default; its tests assert what a module is, what a room does and what a reading means — not

@@ -397,6 +397,7 @@ La carpeta de MADRE se borra entera solo si es suya sin duda: ruta absoluta, nun
 | `PULSE_UPDATE_CHECK` | `1` | `0` apaga la consulta diaria a npm |
 | `PULSE_GH` | `1` | `0` hace que el módulo GitHub ignore la sesión de `gh` y entre solo con el token que pegaste |
 | `PULSE_REPORT_URL` · `PULSE_AUTO_REPORT` | colector del proyecto · como el diagnóstico anónimo (`0` lo apaga) | Sentinel |
+| `PULSE_TERMS` | `accepted` da la licencia por aceptada (pruebas, capturas y casas de QA; `src/terms.mjs`) | Licencia |
 | `PULSE_AGENT_TIMEOUT_MS` · `PULSE_<AGENTE>_TIMEOUT_MS` | `180000` · — | Timeouts |
 | `PULSE_ALLOW_CUSTOM_AGENT_ENDPOINTS` | — | Lista separada por comas (`codex`, `claude`) de gateways que el humano verificó y permite; sin ella, una dirección base no oficial se bloquea |
 | `PULSE_MAX_MESSAGE_CHARS` | `20000` | Tamaño máximo de un mensaje |

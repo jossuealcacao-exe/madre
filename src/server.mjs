@@ -134,6 +134,7 @@ import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, 
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
 import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
+import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
@@ -2238,7 +2239,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/terms.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -3635,6 +3636,29 @@ export async function createPulseServer({
         }
         return sendJson(response, 200, { settings: await applySettings(patch) });
       }
+      // MADRE'S LICENSE AND PRIVACY NOTICE (src/terms.mjs, 2026-10-30): whether they were accepted on
+      // this computer, and accepting them, from MADRE's own page only, with the diagnostics' switch as
+      // the person left it. A phone paired to a Mac that accepted is never asked.
+      if (url.pathname === '/api/terms' && request.method === 'GET') {
+        const terms = viaPhone ? { accepted: true, version: null } : await readTerms(root);
+        const before = !terms.accepted && ((await cameFromBefore(root)) || (hadInstallId && !existsSync(join(root, 'lifecycle.json'))));
+        return sendJson(response, 200, { ...terms, before, language: roomLanguage(), languageChosen, diagnostics: await diagnosticsNow(), diagnosticsFixed: process.env.PULSE_TELEMETRY === '0', links: TERMS_LINKS });
+      }
+      if (url.pathname === '/api/terms' && request.method === 'POST') {
+        const site = request.headers['sec-fetch-site'];
+        if (viaPhone || (site !== undefined && site !== 'same-origin')) return sendJson(response, 403, { error: t('This is done on the computer.') });
+        const payload = await body(request).catch(() => ({}));
+        if (payload.accept !== true) return sendJson(response, 400, { error: t('MADRE needs its license accepted to work.') });
+        const kept = await acceptTerms(root);
+        if (typeof payload.diagnostics === 'boolean') {
+          const current = (await readConfig(root)).telemetry ?? {};
+          await updateConfig(root, { telemetry: { ...current, diagnostics: payload.diagnostics } });
+          diagnosticsOn = payload.diagnostics && process.env.PULSE_TELEMETRY !== '0';
+          diagnosticsReadAt = Date.now();
+          if (!payload.diagnostics) await diagnostics.forget();
+        }
+        return sendJson(response, 200, { ...kept, diagnostics: await diagnosticsNow() });
+      }
       // ANONYMOUS DIAGNOSTICS (src/telemetry.mjs): whether it is on, and the exact batch that would go
       // next, for Settings › Version and reports to show as it is. Turning it off forgets what waits.
       if (url.pathname === '/api/telemetry' && request.method === 'GET') {
@@ -4861,6 +4885,9 @@ export async function createPulseServer({
         return sendJson(response, result.ok ? 200 : 409, result);
       }
       if (request.method === 'POST' && url.pathname === '/api/messages') {
+        // No turn before MADRE's license is accepted on this computer (src/terms.mjs): a page left open
+        // from before, or a script, is told where to accept it.
+        if (!viaPhone && !(await readTerms(root)).accepted) return sendJson(response, 403, { error: t('Accept MADRE\'s license in Home to start.'), terms: true });
         const payload = await body(request);
         // A phone asks up to #2. The bridge already said so; the room says it again, and records
         // where the message came from. Only the bridge's word counts for that, never the body's.
