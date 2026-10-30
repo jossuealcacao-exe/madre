@@ -10756,6 +10756,32 @@ html.chat-shell.chats-over .shell > .tree.chats.split { box-shadow: inset -1px 0
 .side-row:hover { background: var(--cs-hover); }
 .side-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; overscroll-behavior: contain; }
 .side-label { margin: 14px 10px 4px; font: 500 12px var(--read); color: var(--text-3); }
+/* SEARCH IN THE CONVERSATIONS (2026-10-30): a magnifier at the end of «Chats», a field under it, and
+   results that read as the list does, with what was looked for lit. */
+.side-label.side-chats { display: flex; align-items: center; gap: 6px; }
+.chats-search-key { margin-left: auto; display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--text-3); cursor: pointer; }
+.chats-search-key svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+.chats-search-key:hover, .chats-search-key.on { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.tree-title .chats-search-key { margin-left: 8px; vertical-align: middle; }
+.chats-search { padding: 2px 8px 6px; }
+.chats-search[hidden] { display: none; }
+.chats-search input { width: 100%; box-sizing: border-box; height: 32px; padding: 0 10px; border: 1px solid var(--line-2, color-mix(in srgb, var(--text) 14%, transparent)); border-radius: 9px; background: var(--bg); color: var(--text); font: 450 13px var(--read, inherit); outline: 0; }
+.chats-search input:focus { border-color: color-mix(in srgb, var(--phosphor) 55%, var(--line-2, transparent)); }
+.chats-found-note { margin: 6px 10px 8px; font: 450 12px/1.4 var(--read, inherit); color: var(--text-3); }
+.chat-found { display: grid; gap: 1px; margin: 0 4px 6px; }
+.chat-found button { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; cursor: pointer; font: 450 13px/1.4 var(--read, inherit); }
+.chat-found button:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.chat-found-title { font-weight: 550 !important; }
+.chat-found-title.on { background: color-mix(in srgb, var(--text) 7%, transparent); }
+.chat-found-title .found-words { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-found-title .when { font-size: 11px; color: var(--text-3); font-weight: 400; }
+.chat-found-hit { padding-left: 16px !important; color: var(--text-2) !important; font-size: 12.5px !important; }
+.chat-found-hit b { flex: none; font-weight: 500; color: var(--text-3); }
+.chat-found-hit .found-words { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chat-found mark { background: color-mix(in srgb, var(--phosphor) 32%, transparent); color: var(--text); border-radius: 3px; padding: 0 1px; }
+#messages .found-here { animation: found-here 2.4s ease-out; }
+@keyframes found-here { 0%, 30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--phosphor) 55%, transparent); border-radius: 14px; } 100% { box-shadow: 0 0 0 3px transparent; } }
+@media (prefers-reduced-motion: reduce) { #messages .found-here { animation: none; outline: 2px solid color-mix(in srgb, var(--phosphor) 55%, transparent); } }
 /* The conversations, as a list of titles. */
 html.chat-shell #chats .side-scroll > .chats-body { overflow: visible; padding: 0; max-height: none; }
 html.chat-shell #chats .chat-row { border-radius: 8px; }

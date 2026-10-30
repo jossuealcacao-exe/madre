@@ -86,7 +86,7 @@ import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, cameBefore, changeTour, read
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
 import { moduleUpdate } from './modules/updates.mjs';
-import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, projectFloor, renameChat, touchChat } from './chats.mjs';
+import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
 import { discoverModels, groupOpenCode, openCodeHidden, parseCursorModels, parseGeminiModels, parseOpenCodeVerbose, providerLabel, OPENCODE_OWN } from './models.mjs';
@@ -4067,6 +4067,10 @@ export async function createPulseServer({
       // The conversations of this project. One memory, one crew, one numbering; many records.
       if (request.method === 'GET' && url.pathname === '/api/chats') {
         return sendJson(response, 200, await chatsView());
+      }
+      // Search in the conversations (2026-10-30): by name and by what was said.
+      if (request.method === 'GET' && url.pathname === '/api/chats/search') {
+        return sendJson(response, 200, await searchChats(roomDir, String(url.searchParams.get('q') ?? '').slice(0, 200)));
       }
       if (request.method === 'POST' && url.pathname === '/api/chats') {
         if (room.busy() && !(await turnsPolicy()).enabled) return sendJson(response, 409, { error: t('A turn is running in this conversation. Let it finish, or STOP ALL, and try again.') });

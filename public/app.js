@@ -11281,7 +11281,7 @@ try { if (!SPLIT_CHAT && !chatShellOn() && localStorage.getItem('pulse.tree') ==
 // other edge of the canvas: one shape to learn, and the handle sits where the conversation it
 // opens begins. Opening one is a reload, because a conversation is a different record of the
 // same room and the page is built from a record.
-const chats = { open: false, list: [], active: null, working: false, unread: new Set() };
+const chats = { open: false, list: [], active: null, working: false, unread: new Set(), query: '', found: null };
 // Conversations open as windows over the room, by id. Declared beside the list because the list
 // draws the buttons that open them, and it can be drawn before either is used.
 const convWindows = new Map();
@@ -11306,8 +11306,114 @@ const CHAT_GLYPH = trazo('chat');
 // What the list shows, as one string: the same string twice is the same list, and drawing it again
 // would only restart the rows' arrival under the human's eyes.
 let chatsDrawn = '';
+// SEARCH IN THE CONVERSATIONS (2026-10-30): a magnifier over the list; what is typed looks in every
+// conversation of this project, by its name and by what was said in it (src/chats.mjs searchChats),
+// and a result opens that conversation at the message, lit for a moment.
+let chatSearchTimer = 0;
+let chatSearchAsked = 0;
+const chatSearch = { box: null, input: null, key: null };
+function buildChatSearch() {
+  if (chatSearch.box || typeof els.chatsBody?.before !== 'function') return;
+  const key = el('button', 'chats-search-key');
+  key.type = 'button';
+  key.innerHTML = trazo('search'); // trusted: our own SVG string
+  key.setAttribute('aria-label', t('Search your chats'));
+  key.title = t('Search your chats');
+  const box = el('div', 'chats-search');
+  box.hidden = true;
+  const input = el('input');
+  input.type = 'search';
+  input.placeholder = t('Search your chats');
+  input.setAttribute('aria-label', t('Search your chats'));
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  box.append(input);
+  els.chatsBody.before(box);
+  const place = document.querySelector('.side-label.side-chats') ?? els.chats?.querySelector('.tree-head .tree-title');
+  if (place) place.append(key); else box.before(key);
+  const close = () => { box.hidden = true; key.classList.remove('on'); input.value = ''; chats.query = ''; chats.found = null; chatsDrawn = ''; renderChats(); };
+  key.addEventListener('click', () => {
+    if (!box.hidden) { close(); return; }
+    box.hidden = false;
+    key.classList.add('on');
+    if (!chats.open) setChats(true);
+    input.focus();
+  });
+  input.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); close(); } });
+  input.addEventListener('input', () => {
+    chats.query = input.value;
+    clearTimeout(chatSearchTimer);
+    if (chats.query.trim().length < 2) { chats.found = null; chatsDrawn = ''; renderChats(); return; }
+    renderChatResults();
+    chatSearchTimer = setTimeout(async () => {
+      const mine = ++chatSearchAsked;
+      const answer = await fetch(`/api/chats/search?q=${encodeURIComponent(chats.query.trim())}`).then((response) => (response.ok ? response.json() : null)).catch(() => null);
+      if (mine !== chatSearchAsked) return;
+      chats.found = answer;
+      renderChatResults();
+    }, 180);
+  });
+  Object.assign(chatSearch, { box, input, key });
+}
+// The words of a result with what was looked for lit: built as text, never as markup.
+function markedWords(text, [from, length] = [0, 0]) {
+  const span = el('span', 'found-words');
+  if (!length) { span.append(text); return span; }
+  span.append(text.slice(0, from), el('mark', null, text.slice(from, from + length)), text.slice(from + length));
+  return span;
+}
+function renderChatResults() {
+  if (!els.chatsBody) return;
+  chatsDrawn = '';
+  els.chatsBody.replaceChildren();
+  const asked = chats.query.trim();
+  const found = chats.found?.query?.trim() === asked ? chats.found.results : null;
+  if (!found) { els.chatsBody.append(el('p', 'chats-found-note', t('Looking in your chats…'))); return; }
+  if (!found.length) { els.chatsBody.append(el('p', 'chats-found-note', t('Nothing with «{words}» in this project\'s chats.', { words: asked }))); return; }
+  els.chatsBody.append(el('p', 'chats-found-note', found.length === 1 ? t('1 chat with «{words}»', { words: asked }) : t('{n} chats with «{words}»', { n: found.length, words: asked })));
+  const wanted = asked.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  for (const result of found) {
+    const row = el('div', 'chat-found');
+    const title = chatTitle(result.title);
+    const head = el('button', `chat-found-title${result.id === chats.active ? ' on' : ''}`);
+    head.type = 'button';
+    const at = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().indexOf(wanted);
+    head.append(markedWords(title, at >= 0 ? [at, asked.length] : [0, 0]), el('span', 'when', whenWords(result.updatedAt)));
+    head.addEventListener('click', () => void openChatAt(result.id, null));
+    row.append(head);
+    for (const hit of result.hits.slice(0, 2)) {
+      const line = el('button', 'chat-found-hit');
+      line.type = 'button';
+      line.append(el('b', null, hit.who === 'you' ? t('You') : `@${hit.who}`), markedWords(hit.text, hit.mark));
+      line.addEventListener('click', () => void openChatAt(result.id, hit.messageId));
+      row.append(line);
+    }
+    els.chatsBody.append(row);
+  }
+}
+// Opens a conversation and, when a message was found in it, takes the reader there and lights it.
+async function openChatAt(id, messageId) {
+  if (id !== chats.active) await openChat(id);
+  if (!messageId) return;
+  for (let tries = 0; tries < 20; tries += 1) {
+    const node = document.getElementById(`msg-${messageId}`);
+    if (node) {
+      setPinned(false);
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      node.classList.remove('found-here');
+      void node.offsetWidth;
+      node.classList.add('found-here');
+      setTimeout(() => node.classList.remove('found-here'), 2400);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 function renderChats() {
   if (!els.chatsBody) return;
+  // Searching, the list shows results; the title and the keys still follow the conversation open.
+  if (chats.query.trim().length >= 2) { renderChatResults(); paintChatsButton(); paintTitle(); paintConvWindows(); return; }
   const drawing = JSON.stringify([
     document.documentElement.lang, chats.active, split.chat, [...convWindows.keys()], [...chats.unread],
     chats.list.map((chat) => [chat.id, chat.title, chat.working, chat.messages, whenWords(chat.updatedAt)]),
@@ -12459,6 +12565,7 @@ function boot() {
     }
   }
   chatShell();
+  buildChatSearch();
   if (state.device) {
     phoneSheets();
     phoneKeyboard();
@@ -22752,7 +22859,7 @@ function chatShell() {
   );
 
   const scroll = el('div', 'side-scroll');
-  const chatsLabel = el('div', 'side-label', t('Chats'));
+  const chatsLabel = el('div', 'side-label side-chats', t('Chats'));
   shellUI.projects = el('div', 'side-projects');
   scroll.append(chatsLabel, els.chatsBody, el('div', 'side-label', t('Projects')), shellUI.projects);
 

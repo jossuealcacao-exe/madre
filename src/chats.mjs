@@ -230,3 +230,51 @@ export async function projectFloor(roomDir, { except = null } = {}) {
   }
   return floor;
 }
+
+// SEARCH (2026-10-30): the conversations of a project, by their name and by what was said in them,
+// without regard to accents or capitals, so «envio» finds «Envío». Each record is read from its
+// end, a few megabytes at most: what a person looks for is almost always recent.
+const SEARCH_READ = 4 * 1024 * 1024;
+export const searchWords = (text) => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+async function tailOf(file) {
+  const found = await stat(file).catch(() => null);
+  if (!found?.isFile()) return '';
+  const start = Math.max(0, found.size - SEARCH_READ);
+  const handle = await open(file, 'r');
+  try {
+    const buffer = Buffer.alloc(found.size - start);
+    await handle.read(buffer, 0, buffer.length, start);
+    const text = buffer.toString('utf8');
+    return start ? text.slice(text.indexOf('\n') + 1) : text;
+  } finally { await handle.close(); }
+}
+function snippetAround(text, at, length) {
+  const from = Math.max(0, at - 50);
+  const to = Math.min(text.length, at + length + 90);
+  return { text: `${from ? '…' : ''}${text.slice(from, to).replace(/\s+/g, ' ')}${to < text.length ? '…' : ''}`, mark: [at - from + (from ? 1 : 0), length] };
+}
+export async function searchChats(roomDir, query, { limit = 40, perChat = 3 } = {}) {
+  const wanted = searchWords(query).trim();
+  if (wanted.length < 2) return { query: String(query ?? ''), results: [] };
+  const { chats } = await listChats(roomDir);
+  const results = [];
+  for (const chat of chats) {
+    const hits = [];
+    const titleAt = searchWords(chat.title).indexOf(wanted);
+    for (const line of (await tailOf(chatLedger(roomDir, chat.id))).split('\n').reverse()) {
+      if (hits.length >= perChat) break;
+      if (!line.includes('"message.created"')) continue;
+      let event;
+      try { event = JSON.parse(line); } catch { continue; }
+      const payload = event?.payload ?? {};
+      const said = typeof payload.text === 'string' ? payload.text : '';
+      const at = searchWords(said).indexOf(wanted);
+      if (at < 0) continue;
+      hits.push({ messageId: payload.messageId ?? null, sequence: event.sequence ?? null, who: payload.role === 'user' ? 'you' : String(payload.sender ?? ''), at: event.timestamp ?? null, ...snippetAround(said, at, wanted.length) });
+    }
+    if (titleAt < 0 && !hits.length) continue;
+    results.push({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt ?? null, titleMatch: titleAt >= 0, hits });
+    if (results.length >= limit) break;
+  }
+  return { query: String(query ?? ''), results };
+}

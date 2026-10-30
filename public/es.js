@@ -724,6 +724,11 @@ export const ES = {
 
   // AJUSTES: una sola ventana para todos los ajustes.
   'Search any setting': 'Busca cualquier ajuste',
+  'Search your chats': 'Buscar en tus chats',
+  'Looking in your chats…': 'Buscando en tus chats…',
+  'Nothing with «{words}» in this project\'s chats.': 'Nada con «{words}» en los chats de este proyecto.',
+  '1 chat with «{words}»': '1 chat con «{words}»',
+  '{n} chats with «{words}»': '{n} chats con «{words}»',
   'You': 'Tú',
   'How it looks, how it works and your files': 'Cómo se ve, cómo trabaja y tus archivos',
   'The agents': 'Los agentes',

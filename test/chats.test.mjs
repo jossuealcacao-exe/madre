@@ -1377,3 +1377,28 @@ test('chat shell: choosing another conversation leaves the conversations open, t
   assert.match(app, /if \(id === chats\.active\) \{ if \(!chatsStay\(\)\) setChats\(false\); return; \}/);
   assert.match(app, /if \(beside\) openSplit\(beside, \{ animate: false \}\);\n  \}\);\n  if \(!chatsStay\(\)\) setChats\(false\);\n\}/);
 });
+
+// Search in the conversations (2026-10-30): by name and by what was said, without regard to
+// accents or capitals, newest first, with where the words are for the page to light them.
+test('chats: search finds a conversation by its name and by what was said, accents aside', async () => {
+  const { searchChats } = await import('../src/chats.mjs');
+  const dir = await mkdtemp(join(tmpdir(), 'pulse-chat-search-'));
+  try {
+    const main = await new EventStore(chatLedger(dir, MAIN_CHAT)).initialize();
+    await main.append('message.created', { messageId: 'm1', role: 'user', sender: 'you', text: '¿Cómo calculamos el ENVÍO gratis?' });
+    const other = await createChat(dir, { title: 'Envío y cupones' });
+    const store = await new EventStore(chatLedger(dir, other.id)).initialize();
+    await store.append('message.created', { messageId: 'm2', role: 'assistant', sender: 'opencode', text: 'El cupón VERANO no cubre envíos internacionales.' });
+    const found = await searchChats(dir, 'envio');
+    assert.equal(found.results.length, 2);
+    const named = found.results.find((one) => one.id === other.id);
+    assert.equal(named.titleMatch, true);
+    assert.equal(named.hits[0].who, 'opencode');
+    const hit = named.hits[0];
+    assert.equal(hit.text.slice(hit.mark[0], hit.mark[0] + hit.mark[1]).toLowerCase(), 'envío');
+    assert.deepEqual((await searchChats(dir, 'x')).results, [], 'one letter is not a search');
+    assert.deepEqual((await searchChats(dir, 'pagos')).results, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
