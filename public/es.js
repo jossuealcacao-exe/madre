@@ -6437,6 +6437,8 @@ export const ES = {
   '{now} of {limit}': '{now} de {limit}',
   '{n} now': '{n} ahora',
   '{n} subagents at work': '{n} subagentes trabajando',
+  '{agent} is answering': '{agent} está respondiendo',
+  'reads the answers and closes the plan': 'lee las respuestas y cierra el plan',
   'Other projects are stopped from this computer.': 'Los demás proyectos se detienen desde esta computadora.',
   'That project is not open any more.': 'Ese proyecto ya no está abierto.',
   'That is not running any more.': 'Eso ya no está en marcha.',

@@ -189,6 +189,18 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
   const skew = () => (state.data?.at ? Date.parse(state.data.at) - (state.data.received ?? Date.now()) : 0);
   const since = (at) => () => Date.now() + skew() - at;
 
+  // An AI's own subagents, one chip each: what it was given, and whether it is still at it.
+  function subChips(helpers) {
+    const chips = el('div', 'ap-subs');
+    for (const one of helpers) {
+      const chip = el('span', `ap-sub ${one.status}`);
+      chip.append(el('i'), el('b', null, one.kind ?? t('subagent')), document.createTextNode(` ${one.task ?? ''}`));
+      if (Number.isFinite(one.seconds)) chip.append(el('em', null, clock(one.seconds * 1000)));
+      chips.append(chip);
+    }
+    return chips;
+  }
+
   function nowRow(project, item, steps) {
     const where = [whereOf(project), item.chatTitle].filter(Boolean).join(' · ');
     const uid = `${project.room}:${item.kind}:${item.messageId ?? item.planId ?? item.id ?? item.what}`;
@@ -203,16 +215,7 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
         time: item.timeoutMs ? () => t('{now} of {limit}', { now: clock(since(item.startedAt)()), limit: clock(item.timeoutMs) }) : () => clock(since(item.startedAt)()),
         progress: item.timeoutMs ? () => since(item.startedAt)() / item.timeoutMs : null,
         more: (inside) => {
-          if (helpers.length) {
-            const chips = el('div', 'ap-subs');
-            for (const one of helpers) {
-              const chip = el('span', `ap-sub ${one.status}`);
-              chip.append(el('i'), el('b', null, one.kind ?? t('subagent')), document.createTextNode(` ${one.task ?? ''}`));
-              if (Number.isFinite(one.seconds)) chip.append(el('em', null, clock(one.seconds * 1000)));
-              chips.append(chip);
-            }
-            inside.append(chips);
-          }
+          if (helpers.length) inside.append(subChips(helpers));
           inside.append(el('p', 'ap-meta', item.timeoutMs ? t('With your permission #{mode} · the limit counts from when it started', { mode: item.mode ?? 1 }) : t('With your permission #{mode}', { mode: item.mode ?? 1 })));
           inside.append(actions([t('Go to the chat'), 'go', () => goTo(project, item.chat, item.messageId)], [t('Stop'), 'stop', () => stop(project, item)]));
         },
@@ -222,7 +225,7 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
       return row({
         id: uid, face: avatar(item.orchestrator, { busy: true }), tint: brandOf(item.orchestrator).color,
         title: t('Plan by {agent} · {n} steps', { agent: brandOf(item.orchestrator).label, n: item.total }),
-        sub: `${where} · ${t('Step {step} of {total}', { step: Math.max(1, item.step), total: item.total })}`,
+        sub: `${where} · ${t('Step {step} of {total}', { step: Math.max(1, item.step), total: item.total })}${steps.length ? ` · ${t('{agent} is answering', { agent: brandOf(steps[0].agent).label })}` : ''}`,
         time: () => clock(since(item.startedAt)()),
         progress: () => Math.max(0, item.step - 1) / Math.max(1, item.total),
         more: (inside) => {
@@ -232,8 +235,20 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
             li.append(el('b', null, brandOf(step.agent).label), document.createTextNode(` ${step.text}`));
             list.append(li);
           });
+          // The last step is the one who made the plan reading the answers: counted, so it is listed.
+          const listed = item.steps?.length ?? 0;
+          if (item.total > listed) {
+            const li = el('li', item.step > listed ? 'now' : '');
+            li.append(el('b', null, brandOf(item.orchestrator).label), document.createTextNode(` ${t('reads the answers and closes the plan')}`));
+            list.append(li);
+          }
           inside.append(list);
-          for (const turn of steps) inside.append(el('p', 'ap-meta', t('{agent} is answering step {step} · {time}', { agent: brandOf(turn.agent).label, step: item.step, time: clock(since(turn.startedAt)()) })));
+          for (const turn of steps) {
+            const said = el('p', 'ap-meta', t('{agent} is answering step {step} · {time}', { agent: brandOf(turn.agent).label, step: item.step, time: clock(since(turn.startedAt)()) }));
+            state.tickers.push(() => { said.textContent = t('{agent} is answering step {step} · {time}', { agent: brandOf(turn.agent).label, step: item.step, time: clock(since(turn.startedAt)()) }); });
+            inside.append(said);
+            if (turn.subagents?.length) inside.append(subChips(turn.subagents));
+          }
           inside.append(actions([t('Go to the chat'), 'go', () => goTo(project, item.chat)], [t('Stop the plan'), 'stop', () => stop(project, item)]));
         },
       });
