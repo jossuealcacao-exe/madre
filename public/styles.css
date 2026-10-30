@@ -12388,3 +12388,7 @@ dialog.madre-opening::backdrop { background: transparent; }
 .sub-did { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .sub-did span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px/1 var(--mono); padding: 5px 8px; border-radius: 7px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text-2); }
 .sub-did .sub-changed { border: 0; font: 11px/1 var(--mono); padding: 5px 8px; border-radius: 7px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: color-mix(in srgb, var(--agent, var(--text-3)) 14%, transparent); color: var(--text); cursor: pointer; }
+
+/* A panel dragged by its edge past its narrowest closes when let go (2026-10-30): meanwhile it fades,
+   so the person sees it is about to go. */
+.closing-by-edge { opacity: .45; transition: opacity .12s ease-out; }

@@ -304,7 +304,7 @@ test('surfaces: every one carries split and window in its header, and a dialog i
   assert.match(app, /const SIDE_STACK = \{ left: \['chats'\], right: \['viewer', 'tree'\] \};/);
   assert.doesNotMatch(app, /other\.side === surface\.side && isSplit\(other\)\) setSurfaceMode\(other, 'window'/);
   // Each one's grip moves its own inner edge, measured from where it stands.
-  assert.match(app, /sideWidths\[surface\.key\] = Math\.round\(surface\.side === 'left' \? moving\.clientX - box\.x : box\.x \+ box\.w - moving\.clientX\);/);
+  assert.match(app, /const wanted = Math\.round\(surface\.side === 'left' \? moving\.clientX - box\.x : box\.x \+ box\.w - moving\.clientX\);/);
 });
 
 test('room: the conversation never gives way, and what stands beside it does, oldest first', async () => {
@@ -1401,4 +1401,14 @@ test('chats: search finds a conversation by its name and by what was said, accen
   } finally {
     await rm(dir, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
+});
+
+test('a sidebar dragged by its edge well past its narrowest closes when let go, keeping its width', async () => {
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
+  assert.match(app, /const SIDE_CLOSE_PAST = \d+;/);
+  assert.match(app, /closing = wanted < SIDE_MIN - SIDE_CLOSE_PAST;/);
+  assert.match(app, /sideWidths\[surface\.key\] = Math\.max\(SIDE_MIN, wanted\);/);
+  assert.match(app, /if \(closing\) \{\s*if \(before === undefined\) delete sideWidths\[surface\.key\]; else sideWidths\[surface\.key\] = before;\s*surface\.close\?\.\(\);/);
+  assert.match(css, /\.closing-by-edge \{ opacity: \.45;/);
 });

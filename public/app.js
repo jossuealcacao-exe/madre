@@ -10014,6 +10014,8 @@ const BROWSER_TOOL = { key: 'browser', side: 'right', kind: 'dock', node: () => 
 const browserDocked = () => Boolean(browser.dialog && !browser.dialog.hidden && !browserFloating() && !browser.dialog.classList.contains('leaving'));
 const rightTools = () => [...splitsOn('right'), ...(browserDocked() ? [BROWSER_TOOL] : [])];
 const SIDE_MIN = 300;
+// How far past its narrowest a panel's edge is dragged before letting go closes it.
+const SIDE_CLOSE_PAST = 110;
 const sideWidths = (() => { try { return JSON.parse(localStorage.getItem('pulse.sides') ?? '{}') ?? {}; } catch { return {}; } })();
 function rememberSides() { try { localStorage.setItem('pulse.sides', JSON.stringify(sideWidths)); } catch { /* no storage */ } }
 function sideWidthFor(surface) {
@@ -10311,17 +10313,30 @@ function sideGrip(surface) {
     try { grip.setPointerCapture(event.pointerId); } catch { /* a pointer the page no longer holds */ }
     shellBox.classList.add('resizing-panel');
     let frame = 0;
+    // Dragged well past its narrowest, the panel closes when let go, as a sidebar does in the apps
+    // people know (2026-10-30): the edge used to stop at the minimum and spring back, and a person
+    // trying to put the conversations away with it could not. While it is past, it says so.
+    const before = sideWidths[surface.key];
+    let closing = false;
     const move = (moving) => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         // From its own outer edge, which is the window's only for the one docked against it.
         const box = sideBoxes[surface.key] ?? { x: surface.side === 'left' ? SIDE_GAP : window.innerWidth - SIDE_GAP, w: 0 };
-        sideWidths[surface.key] = Math.round(surface.side === 'left' ? moving.clientX - box.x : box.x + box.w - moving.clientX);
+        const wanted = Math.round(surface.side === 'left' ? moving.clientX - box.x : box.x + box.w - moving.clientX);
+        closing = wanted < SIDE_MIN - SIDE_CLOSE_PAST;
+        node.classList.toggle('closing-by-edge', closing);
+        sideWidths[surface.key] = Math.max(SIDE_MIN, wanted);
         layoutPanels();
       });
     };
     const done = () => {
       cancelAnimationFrame(frame);
+      node.classList.remove('closing-by-edge');
+      if (closing) {
+        if (before === undefined) delete sideWidths[surface.key]; else sideWidths[surface.key] = before;
+        surface.close?.();
+      }
       grip.removeEventListener('pointermove', move);
       grip.removeEventListener('pointerup', done);
       grip.removeEventListener('pointercancel', done);
