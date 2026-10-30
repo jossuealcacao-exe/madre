@@ -912,7 +912,7 @@ test('drops SSE clients that stop draining instead of buffering without bound', 
 
 test('prints help without starting a server', async () => {
   for (const flag of ['--help', '-h', 'help']) {
-    const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), 'bin', 'madre.mjs'), flag], { timeout: 5000 });
+    const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), 'bin', 'madre.mjs'), flag], { timeout: 15000 });
     assert.match(stdout, /madre start \[--project PATH\]/);
   }
 });

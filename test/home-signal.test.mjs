@@ -12,12 +12,25 @@ import { associateProject, knownRooms } from '../src/salas.mjs';
 // from the project that opened it, not from Home, and before this it was left running on its port.
 const scratch = (prefix) => mkdtemp(join(tmpdir(), prefix));
 const freePort = () => new Promise((resolve) => { const probe = createServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); }); });
+// Anything still running from this test's own folders, whatever the state file says (QA 1.1.0,
+// GEN-01): a failed run left `madre.mjs start --project …/alfa` alive, holding ports, for hours.
+function sweep(...folders) {
+  if (process.platform === 'win32') return;
+  let listed = '';
+  try { listed = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' }); } catch { return; }
+  for (const line of listed.split('\n')) {
+    const [pid, ...rest] = line.trim().split(/\s+/);
+    const command = rest.join(' ');
+    if (!/madre\.mjs/.test(command) || !folders.some((folder) => command.includes(folder))) continue;
+    try { if (Number(pid) !== process.pid) process.kill(Number(pid), 'SIGKILL'); } catch { /* already gone */ }
+  }
+}
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
 
 test('home · closed by a signal, it closes every open project, also one opened from another project', { skip: process.platform === 'win32', timeout: 120000 }, async () => {
   const state = await scratch('madre-signal-state-');
   const home = await realpath(await scratch('madre-signal-home-'));
-  const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0' };
+  const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0', PULSE_PORT_BASE: String(20000 + Math.floor(Math.random() * 20000)) };
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
   const ids = {};
   for (const name of ['alfa', 'beta']) {
@@ -52,5 +65,6 @@ test('home · closed by a signal, it closes every open project, also one opened 
     // Only what this test opened: the rooms marked open in its own state folder, and Home.
     for (const one of await knownRooms(state)) if (one.open) { try { process.kill(one.open.pid, 'SIGKILL'); } catch { /* already gone */ } }
     if (lobby.exitCode === null) lobby.kill('SIGKILL');
+    sweep(home, state);
   }
 });

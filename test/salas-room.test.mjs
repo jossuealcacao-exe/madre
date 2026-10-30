@@ -186,7 +186,7 @@ test('sala de salas · the room says it is the room of Salas, is listed with the
 test('sala de salas · `madre salas` opens and closes as `madre start` would, a second one finds it, and `madre` from home opens the same room', async () => {
   const state = await scratch('madre-salas-cli-state-');
   const home = await scratch('madre-salas-cli-home-');
-  const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0' };
+  const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0', PULSE_PORT_BASE: String(20000 + Math.floor(Math.random() * 20000)) };
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
   const bin = join(process.cwd(), 'bin', 'madre.mjs');
   const children = [];

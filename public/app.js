@@ -12703,6 +12703,7 @@ function forgetConversation() {
 // The new conversation, painted where the old one was. The room, the crew and the archive do not
 // change between conversations — only the transcript does.
 async function paintConversation(payload) {
+  setTimeout(keepNotesInView, 0);
   replaying = true;
   forgetConversation();
   chats.list = namedChats(payload.chats?.chats) ?? chats.list;
@@ -16981,6 +16982,21 @@ function openNoteWindow(id) {
   }
   bringWindowForward(node);
 }
+// The window changes size, or another conversation is painted: an open note comes back whole and
+// inside the screen, where it was if it fits (QA 1.1.0, ACT-12 and NUE-30). A narrow window used to
+// leave it over the sidebar, or half past the right edge.
+function keepNotesInView() {
+  for (const entry of notesKit.windows.values()) {
+    if (!entry.node?.open || !entry.box) continue;
+    const box = { ...entry.box, w: Math.min(entry.box.w, window.innerWidth - 32), h: Math.min(entry.box.h, window.innerHeight - 96) };
+    box.x = Math.min(Math.max(16, box.x), Math.max(16, window.innerWidth - box.w - 16));
+    box.y = Math.min(Math.max(16, box.y), Math.max(16, window.innerHeight - box.h - 16));
+    if (box.x !== entry.box.x || box.y !== entry.box.y || box.w !== entry.box.w || box.h !== entry.box.h) entry.place(box);
+  }
+}
+let notesFit = null;
+window.addEventListener?.('resize', () => { clearTimeout(notesFit); notesFit = setTimeout(keepNotesInView, 150); });
+
 function closeNoteWindow(id) {
   const entry = notesKit.windows.get(id);
   if (!entry?.node.open) return;
@@ -22783,6 +22799,15 @@ function chatShell() {
   try { kept = localStorage.getItem('pulse.chats'); } catch { /* no storage */ }
   if (kept === null && window.innerWidth >= 1100) setChats(true);
   layoutPanels();
+  // Open on a wide screen and remembered so, the panel came back lying over the whole conversation
+  // on a narrow one (QA 1.1.0, NUE-30): there it starts shut, one key away, and what was kept for a
+  // wide screen stays kept.
+  if (chatsOver && chats.open) {
+    chats.open = false;
+    showPanel('chats', false);
+    if (els.chatsButton) { els.chatsButton.hidden = false; els.chatsButton.setAttribute('aria-pressed', 'false'); }
+    layoutPanels();
+  }
 }
 
 function paintShellTitle() {

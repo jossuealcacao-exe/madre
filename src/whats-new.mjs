@@ -35,8 +35,8 @@ export const NOTES = {
   // and in a project if Home was not opened first. Few things, the ones that change how MADRE looks.
   '1.1.0': {
     intro: {
-      es: 'MADRE 1.1 se ordena como una app de chat: Inicio para todo, tus conversaciones a un lado y un Mercado para sumar funciones. Desde esta versión usa la licencia BSL: sigue gratis para personas y equipos de hasta 10.',
-      en: 'MADRE 1.1 is laid out like a chat app: Home for everything, your conversations to one side and a Market to add features. From this version it uses the BSL license: still free for individuals and teams of up to 10.',
+      es: 'MADRE 1.1 se ordena como una app de chat: Inicio para todo, tus conversaciones a un lado y un Mercado para sumar funciones. Desde esta versión usa la licencia BSL: sigue gratis para personas y equipos de hasta 10. El diseño nuevo no lleva fondo: el que elegiste se queda guardado.',
+      en: 'MADRE 1.1 is laid out like a chat app: Home for everything, your conversations to one side and a Market to add features. From this version it uses the BSL license: still free for individuals and teams of up to 10. The new design has no wallpaper: the one you chose stays saved.',
     },
     items: [
       {

@@ -87,6 +87,10 @@ const has = (name) => cli.has(name.replace(/^--/, ''));
 // means finding the agents, opening the archive and waking the memory, and doing all of that only
 // to then refuse is a wait nobody needed. The real bind below stays the authority: this only
 // saves the waiting.
+// Where a room without --port starts looking (QA 1.1.0, GEN-02): 4317, or PULSE_PORT_BASE for the
+// test suite and for whoever keeps another program on 4317.
+const DEFAULT_PORT = /^\d{2,5}$/.test(String(process.env.PULSE_PORT_BASE ?? '')) ? String(process.env.PULSE_PORT_BASE) : '4317';
+
 function portTaken(port, host = '127.0.0.1') {
   return new Promise((resolve) => {
     const probe = createServer();
@@ -234,14 +238,14 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
 } else if (command === 'setup') {
   const { action, online } = await runSetup({ projectRoot, stateRoot });
   if (action === 'start') {
-    await openRoom({ port: Number(option('--port', '4317')), projectRoot, openBrowser: !has('--no-open'), openPath });
+    await openRoom({ port: Number(option('--port', DEFAULT_PORT)), projectRoot, openBrowser: !has('--no-open'), openPath });
   } else {
     process.exitCode = action === 'report' && !online ? 1 : 0;
   }
 } else if (command === 'start' || command === 'salas' || command === 'lobby') {
   // `madre salas` is `madre start` on the notebook of Salas (projectRoot, above): the same look
   // for a room already open, the same walk up the ports, the same browser unless --no-open.
-  const port = Number(option('--port', '4317'));
+  const port = Number(option('--port', DEFAULT_PORT));
   const noOpen = has('--no-open');
   // First contact happens in the room, not here: MADRE opens even with nobody online and the
   // bridge walks the human through installing and signing in. `madre setup` keeps the terminal

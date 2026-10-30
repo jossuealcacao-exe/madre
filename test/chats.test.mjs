@@ -1161,7 +1161,7 @@ test('Home says why an install or a sign-in failed, in plain words, where it hap
   assert.match(server, /trouble: found\?\.detected \? null : installTrouble\(/);
   assert.match(server, /const trouble = code === 0 && !error \? null : loginTrouble\(/);
   assert.match(home, /if \(event\.type === 'connection\.install\.finished' \|\| event\.type === 'connection\.login\.finished'\) \{/);
-  assert.match(home, /if \(!answer\.ok\) trouble\.set\(agent\.id, \{ kind: 'install', words: answer\.body\?\.error \?\? t\('It did not install\.'\) \}\);/);
+  assert.match(home, /if \(!answer\.ok\) \{ installing\.delete\(agent\.id\); trouble\.set\(agent\.id, \{ kind: 'install', words: answer\.body\?\.error \?\? t\('It did not install\.'\) \}\); \}/);
   assert.match(home, /const box = el\('div', `sm-agent-trouble/);
   // Said in Spanish, never the server's English.
   assert.match(es, /'Another install is running\. Wait for it to finish and try again\.': 'Ya hay otra instalación en curso/);

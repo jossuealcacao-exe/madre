@@ -2560,6 +2560,10 @@ export async function createPulseServer({
           const settings = await ollamaSettings();
           const model = ollama.madreModel ?? ollama.chatModel;
           if (!ollama.running || !model || !settings.enabled || settings.agent === false) return sendJson(response, 200, { state: 'unavailable', sources, bullets: lobbyWork.bullets, at: lobbyWork.at || null, model: lobbyWork.model });
+          // A small local model (under 14B) wrote summaries that said what nobody decided: «Se decidió
+          // revisar el archivo /recordatorios…» (QA 1.1.0, NUE-32). It leaves them as they are.
+          const billions = Number(/[:\-_](\d+(?:\.\d+)?)b\b/i.exec(String(model))?.[1]);
+          if (Number.isFinite(billions) && billions < 14) return sendJson(response, 200, { state: 'plain', sources, bullets: null, at: null, model });
           const key = createHash('sha256').update(items.map((item) => `${item.room}:${item.chat}:${item.at}:${item.messages}`).join('|')).digest('hex').slice(0, 16);
           const asked = request.method === 'POST';
           const due = !lobbyWork.bullets || (lobbyWork.key !== key && Date.now() - lobbyWork.tried > 5 * 60 * 1000);
@@ -3462,6 +3466,9 @@ export async function createPulseServer({
       // A first talk with the local AI (the welcome's «try it», 2026-10-28): the model in use answers as
       // it writes, word by word, and remembers the last few turns — so it reads as talking to it, not
       // as a form that comes back. Plain text streamed as Ollama hands it over.
+      // What @madre knows about where it lives (QA 1.1.0, NUE-06): asked «what is MADRE» in the
+      // welcome, it answered «a system that lets me talk to you naturally», which says nothing.
+      const LOCAL_TRY_SYSTEM = 'You are @madre, the AI that runs on this computer inside MADRE. MADRE is a place where several AIs (Claude, Codex, Gemini, OpenCode, Cursor and you) work on the person\'s projects: each project is a folder with its own conversations and memory, the AIs read and write in it only with the permission the person gives (#1 chat only, #2 create, #3 edit, #4 full access), every change has a restore point, and MADRE remembers what was decided. You answer for free and in private, from this computer or one of its network. Answer in one or two short, friendly sentences, in the language the person writes in.';
       if (request.method === 'POST' && url.pathname === '/api/local-ai/try') {
         if (!ownPage()) return sendJson(response, 403, { error: t('This is done from MADRE\'s own page, on this computer.') });
         if (!ollama.running || !ollama.chatModel) return sendJson(response, 412, { error: t('The local AI has no model to answer with yet.') });
@@ -3479,7 +3486,7 @@ export async function createPulseServer({
           upstream = await reportFetch(`${ollama.host}/api/chat`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ model: ollama.chatModel, stream: true, options: { temperature: 0.5, num_ctx: 4096 }, messages: [{ role: 'system', content: t('You are @madre, the AI that runs on this computer inside MADRE. Answer in one or two short, friendly sentences, in the language the person writes in.') }, ...turns] }),
+            body: JSON.stringify({ model: ollama.chatModel, stream: true, options: { temperature: 0.5, num_ctx: 4096 }, messages: [{ role: 'system', content: LOCAL_TRY_SYSTEM }, ...turns] }),
             signal: AbortSignal.any([stop.signal, AbortSignal.timeout(120000)]),
           });
         } catch (error) {

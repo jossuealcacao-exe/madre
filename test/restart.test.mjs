@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -12,12 +13,25 @@ import { associateProject, knownRooms } from '../src/salas.mjs';
 // them finds them again. Asked from a page of this computer only.
 const scratch = (prefix) => mkdtemp(join(tmpdir(), prefix));
 const freePort = () => new Promise((resolve) => { const probe = createServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); }); });
+// Anything still running from this test's own folders, whatever the state file says (QA 1.1.0,
+// GEN-01): a failed run left `madre.mjs start --project …/alfa` alive, holding ports, for hours.
+function sweep(...folders) {
+  if (process.platform === 'win32') return;
+  let listed = '';
+  try { listed = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' }); } catch { return; }
+  for (const line of listed.split('\n')) {
+    const [pid, ...rest] = line.trim().split(/\s+/);
+    const command = rest.join(' ');
+    if (!/madre\.mjs/.test(command) || !folders.some((folder) => command.includes(folder))) continue;
+    try { if (Number(pid) !== process.pid) process.kill(Number(pid), 'SIGKILL'); } catch { /* already gone */ }
+  }
+}
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 test('restart · Home and every open project come back as new processes on the same ports', { skip: process.platform === 'win32', timeout: 150000 }, async () => {
   const state = await scratch('madre-restart-state-');
   const home = await realpath(await scratch('madre-restart-home-'));
-  const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0' };
+  const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0', PULSE_PORT_BASE: String(20000 + Math.floor(Math.random() * 20000)) };
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
   await mkdir(join(home, 'alfa'));
   const alfaId = (await associateProject({ root: join(home, 'alfa'), home, stateRoot: state })).id;
@@ -61,5 +75,6 @@ test('restart · Home and every open project come back as new processes on the s
       for (const one of await knownRooms(state)) if (one.open) { try { process.kill(one.open.pid, 'SIGKILL'); } catch { /* already gone */ } }
       await pause(500);
     }
+    sweep(home, state);
   }
 });

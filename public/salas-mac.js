@@ -325,6 +325,9 @@ function stateOf(room) {
   const glance = room.glance ?? {};
   if (!room.open) return { key: 'asleep', words: room.lastOpened ? t('Asleep · last open {when}', { when: ago(room.lastOpened) }) : t('Asleep') };
   if (glance.outdated) return { key: 'outdated', words: t('Update MADRE in this project to see it here.') };
+  // Still on the MADRE it was opened with, after Home updated (QA 1.1.0, ACT-05): its card said
+  // «Active» and a press took the person into the old version without a word.
+  if (room.open?.version && data?.version && !room.here && olderVersion(room.open.version, data.version)) return { key: 'outdated', words: t('On MADRE {version} · restart it to bring it to {latest}', { version: room.open.version, latest: data.version }) };
   if (glance.unreachable) return { key: 'quiet', words: t('Not answering right now') };
   if (glance.delayed) return { key: 'quiet', words: t('Responding slowly · last known state') };
   if (glance.waitingCount) return { key: 'waiting', words: t('Waiting for you · {n}', { n: glance.waitingCount }) };
@@ -876,7 +879,7 @@ function drawWork() {
   queueMicrotask(() => { if (typeof fitTiles === 'function' && layout) fitTiles(); });
   const state = work?.state ?? 'loading';
   w.box.classList.toggle('is-working', state === 'working');
-  w.again.hidden = !work || state === 'empty' || state === 'unavailable';
+  w.again.hidden = !work || state === 'empty' || state === 'unavailable' || state === 'plain';
   w.again.disabled = state === 'working';
   if (!work) { w.by.textContent = ''; w.note.textContent = t('Reading your conversations…'); return; }
   if (state === 'empty') { w.by.textContent = ''; w.note.textContent = t('No conversations in the last two weeks. What you work on in any project shows here, summarised by MADRE.'); return; }
@@ -902,6 +905,7 @@ function drawWork() {
   w.note.textContent = state === 'working' ? t('MADRE is summarising your latest conversations…')
     : state === 'unavailable' ? (bullets.length ? t('MADRE\'s local model is off: this is the last summary it wrote.') : t('MADRE\'s local model is off: these are your latest conversations, as they are.'))
     : state === 'failed' ? t('MADRE could not summarise them this time: these are your latest conversations, as they are.')
+    : state === 'plain' ? t('The AI on this computer is small to summarise them well: these are your latest conversations, as they are.')
     : work.stale ? t('There is newer work than this summary: it updates itself in a few minutes, or now if you press Summarize again.')
     : t('Written by MADRE on this Mac from your latest conversations.');
   if (typeof fitTiles === 'function') fitTiles();
@@ -4396,6 +4400,9 @@ const troubleCard = (agent, kind, cause) => (kind === 'login' && cause === 'refu
 function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
   const list = el('div', 'sm-agents');
   const lastLine = new Map();   // agent → what its install or sign-in said last
+  // Installing right now, from a press here (QA 1.1.0, NUE-03): the key says so and waits, instead
+  // of offering «Install» again while npm works; the installer's own last line goes when it ends.
+  const installing = new Set();
   const trouble = new Map();    // agent → what went wrong last, said in plain words, until it works
   const openMore = new Set();   // agents whose connection detail is unfolded
   const foldedMore = new Set(); // agents the person folded, even one that would open by itself
@@ -4544,6 +4551,8 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
       const said = agent.detected ? sessionDetail(answer.sessions?.[agent.id]) : null;
       if (said) facts.append(el('small', 'sm-agent-line', said));
       if (agent.account) facts.append(el('small', 'sm-agent-note', agent.account));
+      // Installed, the installer's last line («added 2 packages in 4s») has nothing left to say.
+      if (agent.detected && !installing.has(agent.id) && !state.busyNow && !answer.loggingIn) lastLine.delete(agent.id);
       if (lastLine.has(agent.id) && !state.ok && !trouble.has(agent.id)) {
         const said = lastLine.get(agent.id);
         const line = el('small', 'sm-agent-line', said.line);
@@ -4598,11 +4607,18 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
       if (keyFirst) body.append(keyForm(agent));
       const acts = el('div', 'sm-agent-acts');
       if (!state.busyNow) {
-        if (!agent.detected && agent.install?.command) acts.append(button('sm-btn primary small', wrongAt(agent.id, 'install') ? t('Try again') : t('Install'), async (event) => {
+        if (!agent.detected && installing.has(agent.id)) {
+          const wait = button('sm-btn primary small is-busy', t('Installing…'), () => {});
+          wait.disabled = true;
+          wait.setAttribute('aria-busy', 'true');
+          acts.append(wait);
+        } else if (!agent.detected && agent.install?.command) acts.append(button('sm-btn primary small', wrongAt(agent.id, 'install') ? t('Try again') : t('Install'), async (event) => {
           event.currentTarget.disabled = true;
+          event.currentTarget.textContent = t('Installing…');
           trouble.delete(agent.id);
+          installing.add(agent.id);
           const answer = await post(`/api/agents/${agent.id}/install`);
-          if (!answer.ok) trouble.set(agent.id, { kind: 'install', words: answer.body?.error ?? t('It did not install.') });
+          if (!answer.ok) { installing.delete(agent.id); trouble.set(agent.id, { kind: 'install', words: answer.body?.error ?? t('It did not install.') }); }
           void paint();
         }));
         else if (agent.detected && agent.login?.headless) for (const key of doorKeys()) acts.append(key);
@@ -4641,6 +4657,7 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
           if (event.type === 'connection.install.finished' || event.type === 'connection.login.finished') {
             const { agent, trouble: cause, error, tail } = event.payload ?? {};
             const kind = event.type === 'connection.install.finished' ? 'install' : 'login';
+            if (kind === 'install') { installing.delete(agent); if (!cause) lastLine.delete(agent); }
             if (cause) {
               const words = TROUBLE_WORDS[kind][cause]?.() ?? error ?? TROUBLE_WORDS[kind].unknown();
               trouble.set(agent, { kind, words: cause === 'refused-account' ? error : words, tone: cause === 'cancelled' ? 'quiet' : null, detail: (tail ?? []).slice(-3).join('\n') || error || null, card: troubleCard(agent, kind, cause) });
@@ -4826,7 +4843,11 @@ function openManual() { window.open(`/manual?lang=${language}`, '_blank', 'noope
 function setStatus(id) {
   if (id === 'manual') return { line: t('With pictures, step by step. Also as a PDF.') };
   const looks = readLooks();
-  if (id === 'look') return { line: `${THEME_WORDS[looks.theme]()} · ${WALLPAPER_WORDS[looks.wallpaper]()} · ${ACCENT_WORDS[looks.accent]()}` };
+  // The new design shows no wallpaper (salas-mac.css, .sm-sky), so the summary no longer names one
+  // that is nowhere to be seen (QA 1.1.0, ACT-06).
+  if (id === 'look') return { line: document.documentElement.classList.contains('chat-shell')
+    ? `${THEME_WORDS[looks.theme]()} · ${ACCENT_WORDS[looks.accent]()}`
+    : `${THEME_WORDS[looks.theme]()} · ${WALLPAPER_WORDS[looks.wallpaper]()} · ${ACCENT_WORDS[looks.accent]()}` };
   if (id === 'bar') {
     if (!pinsStored()) return { line: t('The open projects, as they open') };
     const count = pinsShown().length;

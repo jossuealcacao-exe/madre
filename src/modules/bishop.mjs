@@ -643,7 +643,13 @@ export function formatBishop({ rooms, glances = new Map(), contracts = [], links
       `Órdenes: hasta 4, «@sala/agente #0-#2: tarea», solo a salas con órdenes${crew.length ? `; agentes: ${crew.join(', ')}` : ''}. Enlaces: hasta 2, «enlace A → B: tipos» (A entrega, B lee; ↔ las dos; «; órdenes #1» solo con salas). Si una pregunta necesita una sala sin enlace, propón el enlace. ${signer === 'bishop' ? 'Un enlace de solo lectura lo firmas tú al proponerlo (7 días como máximo); uno con órdenes lo firma el humano.' : 'Todo enlace lo firma el humano.'} Las órdenes son botones del humano salvo lo que su modo deja salir. #3/#4 solo como propuesta. ${never}`,
     ].join('\n');
   }
-  const lines = [lead, 'Contratos vigentes:'];
+  // Said to the person in their words, and honest about what it cannot read (QA 1.1.0, NUE-32): with
+  // nothing linked, @madre answered «no se discutió ningún proyecto… no hay contratos vigentes»
+  // while the census counted two decisions.
+  const lines = [lead,
+    'A la persona: «proyecto», no «sala»; «conexión», no «contrato».',
+    'No niegues lo que no lees: si el censo cuenta decisiones de un proyecto sin conexión, dilo y propón conectarlo.',
+    'Contratos vigentes:'];
   for (const contract of contracts) {
     const a = names.get(contract.rooms.a) ?? clean(contract.rooms.a, 40);
     const b = names.get(contract.rooms.b) ?? clean(contract.rooms.b, 40);
