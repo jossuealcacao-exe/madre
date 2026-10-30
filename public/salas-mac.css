@@ -1580,6 +1580,27 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 .sm-usage-exclude { display: flex; gap: 6px; }
 .sm-usage-exclude input { flex: 1; min-width: 0; height: 28px; padding: 0 9px; border-radius: 8px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font-family: var(--mono); font-size: 11.5px; }
 .sm-install-id { display: block; margin-top: 4px; font-family: var(--mono); font-size: 11.5px; color: var(--text-2); user-select: all; overflow-wrap: anywhere; }
+/* The author's board (2026-10-30): on now with a breathing dot; installs above a line and
+   uninstalls under it, each day; environments as lines, and projects per copy as bars. */
+.sm-live-lead { align-items: center; }
+.sm-live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-3); align-self: center; }
+.sm-live-dot.on { background: var(--s-acc, var(--phosphor)); box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-acc, var(--phosphor)) 50%, transparent); animation: sm-live-breathe calc(2200ms * var(--motion-scale, 1)) ease-out infinite; }
+@keyframes sm-live-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-acc, var(--phosphor)) 50%, transparent); } 70%, 100% { box-shadow: 0 0 0 8px transparent; } }
+@media (prefers-reduced-motion: reduce) { .sm-live-dot.on { animation: none; } }
+.sm-life-days { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 3px; height: 76px; }
+.sm-life-days > span { display: grid; grid-template-rows: 1fr 1px 22px; align-items: end; min-width: 0; }
+.sm-life-days > span::after { content: ''; grid-row: 2; height: 1px; background: var(--line); }
+.sm-life-days i.up { grid-row: 1; height: calc(var(--h) * 52px); min-height: 0; border-radius: 3px 3px 0 0; background: linear-gradient(to top, var(--s-acc, var(--phosphor)) calc(var(--part) * 100%), color-mix(in srgb, var(--s-acc, var(--phosphor)) 38%, transparent) 0); }
+.sm-life-days i.down { grid-row: 3; align-self: start; height: calc(var(--h) * 22px); border-radius: 0 0 3px 3px; background: var(--danger, #e5484d); }
+.sm-usage-legend i.is-down { background: var(--danger, #e5484d); margin-left: 6px; }
+.sm-usage-legend i.is-new + i.is-on { margin-left: 6px; }
+.sm-life-up .sm-w-big { color: var(--s-acc, var(--phosphor)); }
+.sm-life-down .sm-w-big { color: var(--danger, #e5484d); }
+.sm-env-lines .sm-w-line b { min-width: 118px; }
+.sm-env-projects { display: grid; gap: 5px; padding-top: 8px; border-top: 1px solid var(--line); }
+.sm-env-projects > b { font-size: 12.5px; font-weight: 600; }
+.sm-env-range { display: grid; grid-template-columns: 54px minmax(0, 1fr) 72px; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.sm-env-range small { text-align: right; color: var(--text-3); }
 
 /* THE BAR FROM EDGE TO EDGE (2026-10-25, route A of R-12), as a project's (styles.css): one solid
    band across the top, a hairline under it, the keys inside the same 1440 px as before. The bar

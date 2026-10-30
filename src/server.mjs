@@ -42,6 +42,9 @@ const PACKAGE = JSON.parse(await readFile(new URL('../package.json', import.meta
 // run from its source, where the repository's `.git` sits beside `src/`. What npm installs never
 // carries a `.git` (`files` in package.json), so there no setting and no variable opens it.
 const FROM_SOURCE = existsSync(new URL('../.git', import.meta.url));
+// MADRE's own modules, read before any module of the person's is loaded: only these are named in the
+// anonymous diagnostics (src/install-metrics.mjs); one the person wrote counts as «another».
+const OWN_MODULE_IDS = new Set(MODULES.map((one) => one.id));
 // Where the author's token for the usage widget is kept: a vault name no module can take (module
 // ids are kebab-case, src/modules/sdk.mjs), so no module ever reads it.
 export const OWNER_VAULT = 'madre_owner';
@@ -130,6 +133,7 @@ import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, 
 // its own list of projects (local-ai.mjs).
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
+import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
@@ -277,6 +281,9 @@ export async function createPulseServer({
   ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
+  // Whether this copy had its random identifier before this run: without one it is a new install
+  // (src/install-metrics.mjs, noteLifecycle).
+  const hadInstallId = existsSync(join(root, 'install-id'));
   // Read before this run creates anything: whether this person used MADRE before decides whether
   // an update has news to show them, or this is a first install with nothing to catch up on.
   const novelty = await bootWhatsNew({ root, version: PACKAGE.version }).catch(() => ({ returning: false }));
@@ -618,6 +625,19 @@ export async function createPulseServer({
       const answer = await reportFetch(process.env.PULSE_TELEMETRY_READ_URL ?? 'https://madre.run/api/telemetry', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
       const body = answer?.ok ? await answer.json().catch(() => null) : null;
       reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
+    } else if (kind === 'live' || kind === 'installs' || kind === 'environments') {
+      // The author's board (madre.run's /api/metrics, 2026-10-30): copies on now and off, installs,
+      // updates and uninstalls by day, and where they run. One reading for the three widgets, kept a
+      // minute: «on now» is worth reading often.
+      const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+      if (!token) return null;
+      const shared = widgetReadings.get('metrics');
+      if (shared && Date.now() - shared.at < 60000) return shared.reading;
+      const answer = await reportFetch(process.env.PULSE_METRICS_URL ?? 'https://madre.run/api/metrics', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+      const body = answer?.ok ? await answer.json().catch(() => null) : null;
+      reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
+      widgetReadings.set('metrics', { at: Date.now(), reading });
+      return reading;
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
@@ -1426,6 +1446,12 @@ export async function createPulseServer({
   };
   const diagnostics = new Telemetry({ root, version: PACKAGE.version, enabled: diagnosticsNow });
   diagnostics.onSoon(() => diagnostics.flush({ fetchImpl: reportFetch }));
+  // Installed, updated, Home started (src/install-metrics.mjs): counted once each, with the diagnostics.
+  let lifeFirst = null;
+  if (!testMode) {
+    void noteLifecycle({ root, version: PACKAGE.version, hadId: hadInstallId }).then(({ event, first }) => { lifeFirst = first; if (event) diagnostics.count(`life.${event}`); }).catch(() => null);
+    if (salasRoom) diagnostics.count('life.start');
+  }
   // The error sentinel: failures MU/TH/UR cannot classify, and crashes, become
   // redacted reports in the ledger. Sending them anywhere is the human's call.
   const sentinel = new ErrorSentinel({
@@ -1675,14 +1701,37 @@ export async function createPulseServer({
   // one of his, and it would only count him in his own figures.
   // And with it, what the anonymous diagnostics kept (src/telemetry.mjs): the author's copies too,
   // their failures are failures; madre.run leaves them out of the figures of use.
+  // And how this copy runs (src/install-metrics.mjs): numbers and names of MADRE's own parts, never a
+  // path, a project's name or anything a person wrote.
+  const gaugeEnvironment = async () => {
+    const config = await readConfig(root).catch(() => ({}));
+    const rooms = await knownRooms(root).catch(() => []);
+    const projects = rooms.filter((one) => one.id !== salasRoomId(root));
+    const modulesOn = MODULES.filter((module) => { try { return Boolean(module.settingsFrom(config).enabled); } catch { return false; } }).map((module) => module.id);
+    const gauges = environmentGauges({
+      cores: cpus().length, ramBytes: totalmem(), language: roomLanguage(), install, shell: process.env.SHELL ?? process.env.ComSpec ?? '',
+      ollama: { running: Boolean(ollama.running), models: (ollama.models ?? []).length },
+      agents, projects: { total: projects.length, open: projects.filter((one) => one.open).length },
+      modules: modulesOn, ownModules: OWN_MODULE_IDS,
+      ageDays: lifeFirst ? (Date.now() - Date.parse(lifeFirst)) / 86_400_000 : null,
+    });
+    for (const [key, value] of Object.entries(gauges)) diagnostics.gauge(key, value);
+  };
   const sayAlive = () => {
     void readSecret(root, OWNER_VAULT, 'usage').catch(() => null).then((owner) => (owner ? null : heartbeat({ root, version: PACKAGE.version, fetchImpl: reportFetch })));
-    diagnostics.gauge('agents.ready', agents.filter((one) => one.ready).length);
-    for (const one of agents.filter((agent) => agent.detected)) diagnostics.gauge(`agent.${one.id}`, 1);
-    void diagnostics.flush({ fetchImpl: reportFetch });
+    void gaugeEnvironment().catch(() => null).then(() => diagnostics.flush({ fetchImpl: reportFetch }));
   };
   const aliveTimers = testMode ? [] : [setTimeout(sayAlive, 20_000), setInterval(sayAlive, 6 * 60 * 60 * 1000)];
   for (const timer of aliveTimers) timer.unref?.();
+  // On right now (src/install-metrics.mjs): every few minutes while MADRE is open, with the diagnostics
+  // and never from the author's own copies, as the daily notice.
+  const sayHere = async () => {
+    if (!(await diagnosticsNow())) return;
+    if (await readSecret(root, OWNER_VAULT, 'usage').catch(() => null)) return;
+    await sayPresent({ root, version: PACKAGE.version, fetchImpl: reportFetch }).catch(() => null);
+  };
+  const hereTimers = testMode ? [] : [setTimeout(() => void sayHere(), 15_000), setInterval(() => void sayHere(), PRESENCE_EVERY_MS)];
+  for (const timer of hereTimers) timer.unref?.();
   const endClients = (feed) => { for (const client of [...feed.clients.keys()]) { feed.clients.delete(client); try { client.end(); } catch { /* already gone */ } } };
   async function closeHeld(id) {
     const held = parked.get(id);
@@ -4918,7 +4967,7 @@ export async function createPulseServer({
   };
   server.on('close', () => quotaMonitor.stop());
   server.on('close', () => clearTimeout(reprobe));
-  server.on('close', () => { for (const timer of aliveTimers) clearTimeout(timer); });
+  server.on('close', () => { for (const timer of [...aliveTimers, ...hereTimers]) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });
   return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms };
@@ -4962,6 +5011,11 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   // the memory file closed — and only then is what the plan named taken away, last thing before the
   // process ends, so nothing of MADRE's writes it back.
   server.once('madre:uninstall', ({ plan, made }) => server.close(async () => {
+    // Said before anything goes (src/install-metrics.mjs): a copy uninstalled, with the diagnostics.
+    if (!testMode && await diagnosticsNow().catch(() => false)) {
+      diagnostics.count('life.uninstall');
+      await diagnostics.flush({ fetchImpl: reportFetch }).catch(() => null);
+    }
     const done = await removeMadre(plan, { made }).catch((error) => ({ removed: [], failed: [{ path: null, error: error.message }] }));
     console.log(done.failed.length ? `\nMADRE was uninstalled, except:\n${done.failed.map((one) => `  ${one.path ?? ''} ${one.error}`).join('\n')}\n` : '\nMADRE was uninstalled.\n');
     process.exit(0);

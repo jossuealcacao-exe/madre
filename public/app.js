@@ -22232,7 +22232,7 @@ function renderMotherSentinel() {
 // ANONYMOUS DIAGNOSTICS (src/telemetry.mjs, 2026-10-28): on unless turned off here, and what goes,
 // readable as it goes: the next batch, exactly as madre.run would get it.
 function drawDiagnostics(section) {
-  const block = sxBlock(section, t('Anonymous diagnostics'), t('So the author learns what fails and what gets used, without asking you anything: errors with private details removed, and how many turns, modes and features were used. Never what you write, your projects or your files.'));
+  const block = sxBlock(section, t('Anonymous diagnostics'), t('So the author learns what fails and what gets used, without asking you anything: errors with private details removed; how many turns, modes and features were used; how this copy runs (system, memory, agents, how many projects, MADRE\'s modules) and whether it was installed, updated or uninstalled; and, while MADRE is open, every five minutes, that it is on. Never what you write, your projects or your files.'));
   const holder = el('div');
   block.append(holder);
   void fetch('/api/telemetry').then((response) => (response.ok ? response.json() : null)).catch(() => null).then((reading) => {

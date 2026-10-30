@@ -1501,6 +1501,11 @@ const WIDGETS = {
   // What fails in every copy (src/telemetry.mjs, madre.run's /api/telemetry, 2026-10-28): the author's
   // too, with the same token, and nowhere else.
   'w-errors': { kind: 'errors', owner: true, name: () => t('MADRE errors'), about: () => t('What fails in every copy of MADRE, by how many copies it reaches: the ones Diagnostics knows and the ones nobody catalogued. Only you see this.'), size: 8, rows: 5 },
+  // The author's board (2026-10-30, madre.run's /api/metrics): copies on right now and off, installs,
+  // updates and uninstalls by day, and where MADRE runs. Only in the author's copy run from source.
+  'w-live': { kind: 'live', owner: true, name: () => t('MADRE live'), about: () => t('How many copies of MADRE are on right now, and how many of this month\'s are off. Only you see this.'), size: 4, rows: 3 },
+  'w-installs': { kind: 'installs', owner: true, name: () => t('Installs'), about: () => t('Installs, updates and uninstalls of MADRE by day, the last 30 days. Only you see this.'), size: 8, rows: 3 },
+  'w-environments': { kind: 'environments', owner: true, name: () => t('Where MADRE runs'), about: () => t('The systems, memory, agents, projects per copy and modules of the copies this month. Only you see this.'), size: 8, rows: 5 },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -1529,6 +1534,9 @@ const TILE_ICONS = {
   'w-agenda': trazo('calendar'),
   'w-usage': trazo('bars'),
   'w-errors': trazo('warning'),
+  'w-live': trazo('broadcast'),
+  'w-installs': trazo('download'),
+  'w-environments': trazo('globe'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -1938,6 +1946,7 @@ function meter(value, tone = null) {
 }
 const toneFor = (share) => (share >= 0.85 ? 'hot' : share >= 0.6 ? 'warm' : null);
 const OS_WORDS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows', other: () => t('other') };
+const osWord = (name) => { const word = OS_WORDS[name] ?? name; return typeof word === 'function' ? word() : word; };
 const WIDGET_PAINT = {
   // The agenda: what is late and what is today first, then tomorrow, this week and later; a line per
   // reminder with its project and its keys; and a box for a new one, in the person's own words.
@@ -2009,6 +2018,123 @@ const WIDGET_PAINT = {
       void loadReminders();
     });
     body.append(box, form);
+  },
+  // The author's board (2026-10-30): one reading of madre.run's /api/metrics for the three.
+  live(body, reading) {
+    if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
+    const live = reading.live ?? {};
+    const lead = el('div', 'sm-usage-lead sm-live-lead');
+    lead.append(el('i', `sm-live-dot${live.on ? ' on' : ''}`), el('b', 'sm-w-big', Number(live.on ?? 0).toLocaleString()), el('span', null, t('on right now')));
+    body.append(lead);
+    const grid = el('div', 'sm-w-grid sm-usage-figures');
+    for (const [label, value, line] of [
+      [t('Off now'), live.off, t('used this month, not on now')],
+      [t('Last hour'), live.hour, t('on at some moment')],
+    ]) {
+      const cell = el('div', 'sm-w-metric');
+      cell.append(el('span', 'sm-w-label', label), el('b', 'sm-w-big', Number(value ?? 0).toLocaleString()), el('small', null, line));
+      grid.append(cell);
+    }
+    body.append(grid);
+    const shares = (list, word = (name) => name) => {
+      const total = list.reduce((sum, one) => sum + one.n, 0);
+      return list.slice(0, 4).map((one) => `${word(one.name)} ${total ? Math.round((one.n / total) * 100) : 0}%`).join(' · ') || '—';
+    };
+    const lines = el('div', 'sm-usage-lines');
+    for (const [label, said] of [[t('Versions'), shares(live.versions ?? [])], [t('Systems'), shares(live.os ?? [], osWord)]]) {
+      const row = el('div', 'sm-w-line');
+      row.append(el('b', null, label), el('small', null, said));
+      lines.append(row);
+    }
+    body.append(lines);
+  },
+  installs(body, reading) {
+    if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
+    const life = reading.lifecycle ?? { days: [], totals: {} };
+    const totals = life.totals ?? {};
+    const grid = el('div', 'sm-w-grid sm-usage-figures');
+    for (const [label, value, line, tone] of [
+      [t('Installs'), totals.installs, t('new copies, 30 days'), 'up'],
+      [t('Updates'), totals.updates, t('a new version opened'), null],
+      [t('Uninstalls'), totals.uninstalls, t('from Settings'), 'down'],
+      [t('Home opened'), totals.starts, t('times, every copy'), null],
+    ]) {
+      const cell = el('div', `sm-w-metric${tone ? ` sm-life-${tone}` : ''}`);
+      cell.append(el('span', 'sm-w-label', label), el('b', 'sm-w-big', Number(value ?? 0).toLocaleString()), el('small', null, line));
+      grid.append(cell);
+    }
+    body.append(grid);
+    // Each day: installs up from the line, uninstalls down from it, updates as a quieter part of the bar.
+    const days = life.days ?? [];
+    const top = Math.max(1, ...days.map((one) => one.installs + one.updates), ...days.map((one) => one.uninstalls));
+    const chart = el('div', 'sm-usage-chart');
+    const bars = el('div', 'sm-life-days');
+    bars.setAttribute('role', 'img');
+    bars.setAttribute('aria-label', t('Installs, updates and uninstalls on each day, last 30 days'));
+    const shortDay = (day) => new Date(`${day}T12:00:00Z`).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short' });
+    for (const one of days) {
+      const day = el('span');
+      const up = el('i', 'up');
+      up.style.setProperty('--h', String((one.installs + one.updates) / top));
+      up.style.setProperty('--part', String(one.installs + one.updates ? one.installs / (one.installs + one.updates) : 0));
+      const down = el('i', 'down');
+      down.style.setProperty('--h', String(one.uninstalls / top));
+      day.append(up, down);
+      day.title = t('{day}: {installs} installed · {updates} updated · {uninstalls} uninstalled', { day: shortDay(one.day), installs: one.installs, updates: one.updates, uninstalls: one.uninstalls });
+      bars.append(day);
+    }
+    const axis = el('div', 'sm-usage-axis');
+    axis.append(el('small', null, shortDay(days[0]?.day ?? reading.today)), el('small', 'sm-usage-legend', ''), el('small', null, t('today')));
+    axis.children[1].append(el('i', 'is-new'), t('installed'), el('i', 'is-on'), t('updated'), el('i', 'is-down'), t('uninstalled'));
+    chart.append(bars, axis);
+    body.append(chart);
+    body.append(el('p', 'sm-hint', t('{n} copies were heard for the first time in these 30 days, those from before 1.1.0 included.', { n: Number(totals.firstSeen ?? 0).toLocaleString() })));
+  },
+  environments(body, reading) {
+    if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
+    const env = reading.env ?? {};
+    const copies = Number(env.copies ?? 0);
+    body.append(el('p', 'sm-hint', copies ? t('{n} copies this month, each by what it said last. Copies from before 1.1.0 say less: «?» is what they did not say.', { n: copies.toLocaleString() }) : t('No copy has said its environment yet: it starts with 1.1.0.')));
+    if (!copies) return;
+    const share = (n) => `${Math.round((n / copies) * 100)}%`;
+    const SYSTEMS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows', wsl: 'WSL', other: t('other') };
+    const CHANNELS = { npx: 'npx', global: t('installed (npm -g)'), project: t('inside a project'), source: t('from source') };
+    const LANGS = { es: t('Spanish'), en: t('English') };
+    const AGENT_NAMES = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini', opencode: 'OpenCode', cursor: 'Cursor' };
+    const said = (list, words = {}) => (list ?? []).filter((one) => one.name !== '?').slice(0, 5).map((one) => `${words[one.name] ?? one.name} ${share(one.n)}`).join(' · ') || '—';
+    const lines = el('div', 'sm-usage-lines sm-env-lines');
+    for (const [label, text] of [
+      [t('Systems'), said(env.systems, SYSTEMS)],
+      [t('Chip'), said(env.arch, { arm64: 'Apple / ARM', x64: 'x64' })],
+      [t('Memory'), said(env.ram)],
+      [t('Cores'), said(env.cores)],
+      [t('Installed with'), said(env.channel, CHANNELS)],
+      [t('Language'), said(env.language, LANGS)],
+      [t('Shell'), said(env.shell)],
+      [t('Node'), said(env.node, Object.fromEntries((env.node ?? []).map((one) => [one.name, `Node ${one.name}`])))],
+      [t('Agents installed'), said(env.agents, AGENT_NAMES)],
+      [t('Agents ready'), said(env.agentsReady, AGENT_NAMES)],
+      [t('Local AI'), t('installed {a} · on {b}', { a: share(env.localAi?.installed ?? 0), b: share(env.localAi?.running ?? 0) })],
+      [t('Modules on'), said(env.modules)],
+    ]) {
+      const row = el('div', 'sm-w-line');
+      row.append(el('b', null, label), el('small', null, text));
+      lines.append(row);
+    }
+    body.append(lines);
+    // Projects per copy, the figure that sets the free limit of 1.1.1: a bar for each range.
+    const ranges = ['0', '1', '2–5', '6–10', '11–20', '> 20'];
+    const counts = new Map((env.projects ?? []).map((one) => [one.name, one.n]));
+    const known = ranges.reduce((sum, name) => sum + (counts.get(name) ?? 0), 0);
+    const box = el('div', 'sm-env-projects');
+    box.append(el('b', null, t('Projects per copy')));
+    for (const name of ranges) {
+      const n = counts.get(name) ?? 0;
+      const row = el('div', 'sm-env-range');
+      row.append(el('span', null, name), meter(known ? n / known : 0), el('small', null, known ? `${n} · ${Math.round((n / known) * 100)}%` : '—'));
+      box.append(row);
+    }
+    body.append(box);
   },
   usage(body, reading) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
@@ -2315,6 +2441,9 @@ const WIDGET_GUIDE = {
   models: () => t('Ollama and its models, and how many examples each project has toward a model of its own (8/300 is 8 of 300). «Choose projects» sets which ones use the local AI.'),
   usage: () => t('How many copies of MADRE are on, which versions and whether people come back. Only you see this.'),
   errors: () => t('What fails in every copy of MADRE, by how many copies it reaches. Mark each one known, fixed or ignored; a fixed one that happens again comes back as new.'),
+  live: () => t('Copies on right now: a copy is on when it said so in the last ten minutes. Off are the ones used this month that are not on now. It reads again every minute.'),
+  installs: () => t('Installs, updates and uninstalls by day. An uninstall counts only when made from Settings; whoever simply stops using MADRE shows as off.'),
+  environments: () => t('Each copy once, by what it said last this month: its system, memory, agents, how many projects and which modules. Copies from before 1.1.0 say less.'),
   agenda: () => t('Your reminders from every project, by day. ✓ settles one, «Later» moves it, and the box below sets a new one as you would say it.'),
 };
 function guideWidget(node, kind) {
