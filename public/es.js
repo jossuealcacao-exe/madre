@@ -6219,7 +6219,6 @@ export const ES = {
   'About {gb} GB free while it trains': 'Unos {gb} GB libres mientras entrena',
   'This computer cannot train. It takes a Mac with an Apple chip and 12 GB of memory, or an NVIDIA card with 9 GB or more.': 'Esta computadora no puede entrenar. Hace falta una Mac con chip Apple y 12 GB de memoria, o una tarjeta NVIDIA con 9 GB o más.',
   'Get to know MADRE': 'Conocer MADRE',
-  'Go to my project': 'Ir a mi proyecto',
   'Go to Home': 'Ir a Inicio',
   // The keys handed to each agent's own CLI (src/credentials.mjs), said in the person's language.
   'Paste the key first.': 'Primero pega la llave.',

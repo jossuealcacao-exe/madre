@@ -41,6 +41,9 @@ function askTerms(answer, done) {
   const dialog = el('dialog', 'terms-gate');
   dialog.setAttribute('aria-labelledby', 'terms-title');
   const card = el('div', 'terms-card');
+  // The dialog's first focus goes to the card, never to a link or a key with the browser's ring on it.
+  card.tabIndex = -1;
+  card.setAttribute('autofocus', '');
   dialog.append(card);
   // Esc is no answer here: without accepting, MADRE does not start.
   dialog.addEventListener('cancel', (event) => event.preventDefault());
@@ -109,7 +112,7 @@ function askTerms(answer, done) {
     });
     actions.append(no, yes);
     card.append(logo, title, lead, license, help, foot, error, actions);
-    setTimeout(() => yes.focus(), 0);
+    setTimeout(() => card.focus({ preventScroll: true }), 0);
   };
 
   const paintDeclined = () => {
@@ -137,7 +140,7 @@ function askTerms(answer, done) {
     });
     actions.append(shut, back);
     card.append(logo, title, lead, said, actions);
-    setTimeout(() => back.focus(), 0);
+    setTimeout(() => card.focus({ preventScroll: true }), 0);
   };
 
   paintAsk();

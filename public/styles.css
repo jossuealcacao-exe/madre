@@ -2846,6 +2846,10 @@ dialog.intents-window { width: 760px; height: 640px; }
 dialog.whats-new { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 24px 16px; box-sizing: border-box; background: transparent; color: var(--text); overflow: hidden; }
 dialog.whats-new[open] { display: flex; align-items: center; justify-content: center; }
 dialog.whats-new::backdrop { background: rgba(0, 0, 0, .45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+/* MADRE's opening before the board (salas-mac.js, homeNews): the sheet waits under the stage. */
+dialog.whats-new.intro .wn-sheet { opacity: 0; }
+dialog.whats-new.intro::backdrop { background: var(--wl-stage); }
+dialog.whats-new.arriving .wn-sheet { animation: terms-in calc(420ms * var(--motion-scale, 1)) var(--ease-out, ease) both; }
 .wn-sheet {
   display: flex; flex-direction: column; width: min(980px, 100%); height: min(720px, 100%); box-sizing: border-box; overflow: hidden;
   border-radius: 16px; font-family: var(--read); color: var(--text);
@@ -2862,7 +2866,7 @@ dialog.whats-new::backdrop { background: rgba(0, 0, 0, .45); backdrop-filter: bl
 .wn-head .wn-logo { display: block !important; height: 17px; width: auto; margin-bottom: 8px; }
 .wn-eyebrow { font-size: 12.5px; font-weight: 500; color: var(--text-2); }
 .wn-head h2 { margin: 0; font-size: clamp(24px, 3.4vw, 32px); font-weight: 650; letter-spacing: -.015em; line-height: 1.12; }
-.wn-intro { margin: 2px 0 0; max-width: 64ch; font-size: 14.5px; line-height: 1.55; color: var(--text-2); }
+.wn-intro { margin: 2px 0 0; max-width: none; font-size: 14.5px; line-height: 1.55; color: var(--text-2); }
 .wn-keys { align-self: start; }
 
 .wn-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 24px 22px; }
@@ -12576,4 +12580,8 @@ dialog.terms-gate.leaving { animation: terms-out calc(260ms * var(--motion-scale
 .terms-btn.quiet { background: transparent; color: var(--text-2); }
 .terms-btn.quiet:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .terms-btn:disabled { opacity: .55; cursor: default; }
+/* No ring of the browser's on a key the page focused itself; a keyboard sees the accent's, quiet. */
+.terms-btn:focus { outline: none; }
+.terms-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--phosphor) 35%, transparent); }
+.terms-card:focus, dialog.terms-gate:focus { outline: none; }
 @media (max-width: 520px) { .terms-actions { flex-direction: column-reverse; } .terms-btn { width: 100%; } .terms-title { font-size: 23px; } }

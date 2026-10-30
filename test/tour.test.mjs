@@ -296,3 +296,12 @@ test('tour · the bonjour writes the version a person met MADRE with, so the new
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('tour: every first-time card Home shows for a widget is one the server keeps as seen, so it never comes back after a restart', async () => {
+  const { HINTS } = await import('../src/tour.mjs');
+  const home = await (await import('node:fs/promises')).readFile(new URL('../public/salas-mac.js', import.meta.url), 'utf8');
+  const start = home.indexOf('const WIDGET_GUIDE = {');
+  const kinds = [...home.slice(start, home.indexOf('\n};', start)).matchAll(/^\s{2}([a-z]+): \(\) =>/gm)].map((match) => `w-${match[1]}`);
+  assert.ok(kinds.length >= 10);
+  assert.deepEqual(kinds.filter((id) => !HINTS.includes(id)), []);
+});

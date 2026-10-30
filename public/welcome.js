@@ -815,9 +815,11 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     }
     content.replaceChildren(...head(t('MADRE is ready'), t('Here is what is ready. Anything you left for later has its button.')), summary, el('p', 'wl-eyebrow wl-gap', t('What comes next')), nextCards, trainCard);
     const learn = button('wl-btn', t('Get to know MADRE'), () => { const after = then ?? host.chapters; finish(); after?.(); });
+    // Home first (2026-10-30): its first-time cards walk the person to their project; the project's
+    // own cards come when they open it. Going straight into the project skipped Home's.
     footer({
-      next: room ? t('Go to my project') : t('Go to Home'),
-      onNext: async () => { finish(); if (room) await host.openProject?.(room); },
+      next: t('Go to Home'),
+      onNext: () => finish(),
       extra: learn,
     });
   }
