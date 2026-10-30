@@ -55,7 +55,7 @@ Then open `http://127.0.0.1:4317/salas` in your computer's browser. The agents a
 | `@codex`, `@claude`, `@gemini`, `@opencode`, `@madre` | Mentions an agent; `@` opens the list |
 | `!src/room.mjs:12-20` | Attaches a project file, with lines if you give them; `!` searches the files |
 | `#0` to `#4` | Sets that message's permission mode. `#3` and `#4` open the unlock, just like the chip: a mode that asks for two keys with the mouse does not come free by typing it |
-| `/image …`, `/stopall`, `/git …`, `/ahp …` | Commands; `/` opens the menu. `/git push` shows what would go out; only `/git push confirm` sends it |
+| `/image …`, `/stopall`, `/coordinator` (or `/bishop`), `/git …`, `/ahp …` | Commands; `/` opens the menu. `/git push` shows what would go out; only `/git push confirm` sends it |
 | `STOPALL` | Master brake |
 | Clip, drag or paste an image | Attachment for the project, never inside its folder |
 | `@madre, pregúntale a los agentes …` | Ask everyone: one step per online agent, with a cited wrap-up |
@@ -70,7 +70,7 @@ A second click on the chosen sphere, or the `default model ▾` chip, picks the 
 
 **Language.** The project speaks **Spanish** by default. The `EN` button in the bar switches it to English and the browser remembers it; `PULSE_LANGUAGE=en` overrides the config on the next start. A language is only how things read: what was written in the ledger keeps the words it was written with, and when shown it is said again in the project's language.
 
-The **terminal stays in English on purpose**: `madre doctor` and the startup print what people paste into an issue or search for in a search engine, and in English it can be found. What a CLI prints on its own is never touched either.
+Since 1.1.0 the **terminal speaks the language you chose** (Spanish until you choose another; `PULSE_LANGUAGE` wins): the startup, `madre --help` and `madre doctor`. `madre doctor --json` and `madre check-module`, which other programs read, stay in English. What a CLI prints on its own is never touched.
 
 ---
 

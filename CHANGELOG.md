@@ -32,6 +32,17 @@ MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en 
 - **Para quien hace módulos: contrato `sdk: 2`.** Un módulo dice para qué contrato del SDK está escrito, en lugar de la versión de MADRE que necesita. Con `sdk: 2` el módulo puede ser un solo archivo que no importa nada de MADRE: `ctx.t` le da sus palabras en el idioma de la sala, `ctx.services.ollama.generate` le da la IA local, y sus rutas reciben sus propios ajustes.
 - **Subagentes de cada IA, de #1 a #3.** Claude, OpenCode y Codex pueden repartir su trabajo entre sus propios subagentes, con exactamente el permiso del turno: en #1 solo leen, nunca tocan `.git`, `.pulse` ni `.env`, y lo que cambian se deshace con Deshacer. En #4 solo trabaja la IA principal. Mientras trabajan ves un chip por subagente con lo que hace, y al terminar la respuesta dice «Ayudaron 2 subagentes»: ábrelo para ver el encargo, lo que leyó o cambió y lo que reportó cada uno. Gemini sigue sin subagentes.
 - **Una pregunta a varias IAs.** Empieza con varias, «@opencode @madre ¿…?», y la pregunta va a cada una: se ve una sola vez y cada IA contesta aparte. La conversación ya no queda debajo de las pastillas de pendientes ni del recordatorio, el avatar ya no toca lo que cierra una respuesta, y en pantallas angostas la barra de chats se guarda al elegir uno.
+- **Probada como la recibe la gente.** Antes de publicarla, 1.1.0 se instaló con `npx` en un Linux limpio y en una Mac sin sesiones, y se actualizó desde 1.0.5 con el botón. Lo que se encontró quedó arreglado:
+  - El primer mensaje ya no va a una IA sin sesión: el proyecto se entera de quién tiene sesión en cuanto termina de revisarlo, y un agente que tarda en contestar se vuelve a preguntar en vez de quedar «sin sesión».
+  - OpenCode vuelve a contestar en Inicio y en el Coordinador. Cuando se acaba su uso gratis, MADRE lo dice al instante en vez de esperar tres minutos.
+  - Desinstalar borra también los puntos de restauración guardados en el git de cada proyecto, y los de las versiones 1.0.x.
+  - El editor de Archivos ya no se encoge a dos líneas.
+  - Con subagentes, un turno tiene más tiempo y, si se corta, conserva lo que reportaron.
+  - Cuando un agente falla, la tarjeta dice primero qué pasó y qué hacer, con «Conectar» y «Preguntarle a…». «Reintentar con más tiempo» vuelve a preguntar de una vez.
+  - Los subagentes reportan en tu idioma. OpenCode ya no pega su frase en inglés al principio de la respuesta, y la hora de un recordatorio se dice en tu hora.
+  - `.env.example` y las demás plantillas se pueden escribir; los `.env` con secretos siguen protegidos.
+  - La terminal habla tu idioma, y el paquete pesa la mitad: 9,9 MB.
+  - Los nombres de los comandos: `/coordinador` y `/detener` (los viejos siguen sirviendo).
 - **Revisión antes de publicar.** Archivos guarda lo que no guardaste aunque lo cierres desde su pestaña. La barra lateral se abre encima de la conversación en ventanas angostas, en vez de cerrarse sola. Apagar el diagnóstico anónimo lo apaga en Inicio y en todos los proyectos. Recordatorios entiende «hoy a las 8» de noche, «esta noche a las 9» y «look at 3 files»; «Hecho» antes de la hora sí cuenta para hoy, y «Más tarde» mueve solo esa vez. Las copias de los proyectos sin git viven en una carpeta que solo tú puedes abrir. Rutas con corchetes, como `app/[id]`, se restauran bien. Gemini acepta carpetas con apóstrofo. Los errores de red se dicen en tu idioma.
 
 </details>

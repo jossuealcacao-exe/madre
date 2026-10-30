@@ -55,7 +55,7 @@ Luego abre `http://127.0.0.1:4317/salas` en el navegador de tu computadora. Los 
 | `@codex`, `@claude`, `@gemini`, `@opencode`, `@madre` | Menciona a un agente; `@` abre la lista |
 | `!src/room.mjs:12-20` | Adjunta un archivo del proyecto, con líneas si las das; `!` busca entre los archivos |
 | `#0` a `#4` | Fija el modo de permiso de ese mensaje. `#3` y `#4` abren el desbloqueo, igual que el chip: un modo que pide dos llaves con el ratón no sale gratis por teclearlo |
-| `/image …`, `/stopall`, `/git …`, `/ahp …` | Comandos; `/` abre el menú. `/git push` muestra qué saldría; solo `/git push confirm` lo envía |
+| `/image …`, `/detener` (o `/stopall`), `/coordinador` (o `/bishop`), `/git …`, `/ahp …` | Comandos; `/` abre el menú. `/git push` muestra qué saldría; solo `/git push confirm` lo envía |
 | `STOPALL` | Freno maestro |
 | Clip, arrastrar o pegar una imagen | Adjunto para el proyecto, nunca dentro de su carpeta |
 | `@madre, pregúntale a los agentes …` | Preguntar a todos: un paso por agente en línea, cierre citado |
@@ -70,7 +70,7 @@ Un segundo clic en la esfera elegida, o el chip `default model ▾`, elige el mo
 
 **Idioma.** El proyecto habla **español** por defecto. El botón `EN` de la barra lo pasa a inglés y el navegador lo recuerda; `PULSE_LANGUAGE=en` manda sobre el config en el siguiente arranque. Un idioma es solo cómo se lee: lo que quedó escrito en el ledger conserva las palabras con que se escribió, y al mostrarse se vuelve a decir en el idioma del proyecto.
 
-La **terminal sigue en inglés a propósito**: `madre doctor` y el arranque imprimen lo que la gente pega en un issue o busca en un motor, y en inglés se encuentra. Lo que imprime un CLI por su cuenta tampoco se toca nunca.
+Desde 1.1.0 la **terminal habla el idioma que elegiste** (español mientras no elijas otro; `PULSE_LANGUAGE` manda): el arranque, `madre --help` y `madre doctor`. Siguen en inglés `madre doctor --json` y `madre check-module`, que leen otros programas. Lo que imprime un CLI por su cuenta nunca se toca.
 
 ---
 

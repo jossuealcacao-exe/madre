@@ -32,6 +32,17 @@ MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) 
 - **For module makers: contract `sdk: 2`.** A module says which SDK contract it was written for, instead of the MADRE version it needs. With `sdk: 2` a module can be one file that imports nothing from MADRE: `ctx.t` gives it its words in the room's language, `ctx.services.ollama.generate` gives it the local AI, and its routes get its own settings.
 - **Each AI's subagents, from #1 to #3.** Claude, OpenCode and Codex may split their work among their own subagents, with exactly the turn's permission: in #1 they only read, they never touch `.git`, `.pulse` or `.env`, and what they change is undone with Undo. In #4 only the main AI works. While they work you see a chip for each subagent and what it is doing, and when it answers the reply says «Helped by 2 subagents»: open it to see each one's task, what it read or changed and what it reported. Gemini still has no subagents.
 - **One question to several AIs.** Start with several, «@opencode @madre …?», and the question goes to each one: it shows once and each AI answers on its own. The conversation no longer ends under the open questions or a reminder, the avatar no longer touches what closes an answer, and on narrow screens the chats sidebar puts itself away when you choose one.
+- **Tested the way people get it.** Before release, 1.1.0 was installed with `npx` on a clean Linux and on a Mac with no sessions, and updated from 1.0.5 with the button. What turned up is fixed:
+  - The first message no longer goes to an AI without a session: the project learns who has one as soon as it has checked, and an agent slow to answer is asked again instead of staying «signed out».
+  - OpenCode answers again in Home and in the Coordinator. When its free use runs out, MADRE says so at once instead of waiting three minutes.
+  - Uninstalling also removes the restore points kept in each project's git, and those of the 1.0.x versions.
+  - The Files editor no longer shrinks to two lines.
+  - With subagents a turn gets more time and, if it is cut, keeps what they reported.
+  - When an agent fails, the card says first what happened and what to do, with «Connect» and «Ask…». «Retry with more time» asks again at once.
+  - Subagents report in your language. OpenCode no longer glues its English opening line to the answer, and a reminder's time is said in your time.
+  - `.env.example` and the other templates can be written; `.env` files with secrets stay protected.
+  - The terminal speaks your language, and the package weighs half as much: 9.9 MB.
+  - Command names: `/coordinator` and `/stopall` (the old ones still work).
 - **Reviewed before release.** Files keeps what you had not saved even when closed from its tab. On a narrow window the sidebar opens over the conversation instead of closing itself. Turning anonymous diagnostics off turns it off in Home and every project. Reminders understands «today at 8» at night, «tonight at 9» and «look at 3 files»; «Done» before the hour counts for today, and «Later» moves only that time. Copies of projects without git live in a folder only you can open. Paths with brackets, like `app/[id]`, restore correctly. Gemini accepts folders with an apostrophe. Network errors are said in your language.
 
 </details>
