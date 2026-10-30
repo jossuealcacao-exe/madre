@@ -2035,6 +2035,7 @@ const WIDGET_PAINT = {
     for (const [label, value, line] of [
       [t('Off now'), live.off, t('used this month, not on now')],
       [t('Last hour'), live.hour, t('on at some moment')],
+      [t('Silent'), live.silent, t('diagnostics off or a MADRE before 1.1.0')],
     ]) {
       const cell = el('div', 'sm-w-metric');
       cell.append(el('span', 'sm-w-label', label), el('b', 'sm-w-big', Number(value ?? 0).toLocaleString()), el('small', null, line));

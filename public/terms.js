@@ -60,7 +60,7 @@ function askTerms(answer, done) {
     const license = el('section', 'terms-block');
     license.append(
       el('h2', null, t('Personal license')),
-      el('p', null, t('MADRE is developed by one person. You can use it, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
+      el('p', null, t('You can use MADRE, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
       link(pick(answer.links?.license), t('Read the license')),
     );
 
