@@ -96,3 +96,25 @@ test('Local AI came with MADRE: the card in the conversation sends to Settings, 
     assert.doesNotMatch(await readFile(new URL(file, import.meta.url), 'utf8'), /Local AI in Modules|Ollama in Modules/, `${file} still sends Local AI to Modules`);
   }
 });
+
+test('what ended names a plan\'s steps by what they were asked, and its closing in plain words; long texts end in «…»', async () => {
+  const { clip } = await import('../src/activity.mjs');
+  const at = (s) => new Date(Date.now() - 60000 + s * 1000).toISOString();
+  const line = (type, payload, s) => JSON.stringify({ type, timestamp: at(s), payload });
+  const plan = 'p-1';
+  const text = [
+    line('message.created', { messageId: 'u1', role: 'user', sender: 'you', text: 'Arma un plan' }, 0),
+    line('agent.started', { messageId: 'u1', agent: 'claude' }, 1),
+    line('agent.completed', { messageId: 'u1', agent: 'claude' }, 5),
+    line('message.created', { messageId: 's1', role: 'assistant', sender: 'claude', target: 'codex', planId: plan, text: 'Revisa los archivos del proyecto' }, 6),
+    line('agent.started', { messageId: 's1', agent: 'codex', planId: plan }, 6),
+    line('agent.completed', { messageId: 's1', agent: 'codex', planId: plan }, 20),
+    line('message.created', { messageId: 's2', role: 'assistant', sender: 'claude', target: 'claude', planId: plan, text: 'Review the delegated answers and the work completed.' }, 21),
+    line('agent.started', { messageId: 's2', agent: 'claude', planId: plan }, 21),
+    line('agent.completed', { messageId: 's2', agent: 'claude', planId: plan }, 30),
+  ].join('\n');
+  const ended = recentFromLines(text, { since: Date.now() - RECENT_MS });
+  assert.deepEqual(ended.map((one) => [one.agent, one.text, Boolean(one.closing)]), [['claude', '', true], ['codex', 'Revisa los archivos del proyecto', false], ['claude', 'Arma un plan', false]]);
+  assert.equal(clip('Resume el proyecto en exactamente tres puntos: qué es, cómo está', 40), 'Resume el proyecto en exactamente tres…');
+  assert.equal(clip('corto', 40), 'corto');
+});

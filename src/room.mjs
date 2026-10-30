@@ -35,6 +35,7 @@ import { parseDirectives } from './directives.mjs';
 import { isValidModelName, isValidEffort, belongsElsewhere, MODEL_NOT_FOUND, codexTakes, readCodexEfforts } from './models.mjs';
 import { withListPrice } from './prices.mjs';
 import { MODES, SCOPES, SCOPE_LABELS, capabilitySummary, normalizeMode, resolveScopes } from './capabilities.mjs';
+import { clip } from './activity.mjs';
 import { createLease, diffSnapshots, namedPaths, snapshot, subagentsAllowed } from './lease.mjs';
 import { stat as statFile, readdir, copyFile, mkdir as mkdirPath, readFile as readFileBytes } from 'node:fs/promises';
 import { basename as baseName, join as joinPath } from 'node:path';
@@ -1456,7 +1457,7 @@ export class Room {
     }));
     const plans = [...this.#plans.values()].map((plan) => ({
       kind: 'plan', planId: plan.planId, orchestrator: plan.orchestrator, step: plan.step, total: plan.steps.length + (plan.closing ? 1 : 0),
-      startedAt: plan.startedAt, steps: plan.steps.map((one) => ({ agent: one.agent, text: String(one.text ?? '').slice(0, 160) })),
+      startedAt: plan.startedAt, steps: plan.steps.map((one) => ({ agent: one.agent, text: clip(one.text, 160) })),
     }));
     const runs = this.#runDesk.live().map((one) => ({ kind: 'run', ...one }));
     return [...plans, ...turns, ...runs];
@@ -1587,7 +1588,7 @@ export class Room {
     await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId, timeoutMs });
     const controller = new AbortController();
     // What it was asked and its limit ride with it, for «En marcha» (activity, below).
-    const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now(), timeoutMs, text: String(text ?? '').slice(0, 200), mode: Number(mode), subagents: [] };
+    const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now(), timeoutMs, text: clip(text, 200), mode: Number(mode), subagents: [] };
     // Held before it starts: with nothing to wait for, a turn reaches its CLI before this line runs
     // again, and what the CLI reports at once (its subagents) found no turn to ride on.
     this.#turns.set(messageId, turn);

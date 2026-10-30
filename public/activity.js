@@ -293,7 +293,7 @@ export function mountActivity({ key, badge, openChat, toast = () => {} }) {
     face.classList.add('still');
     return row({
       id: `${project.room}:done:${item.messageId}:${item.at}`, face,
-      title: item.text || t('A turn of {agent}', { agent: brandOf(item.agent).label }),
+      title: item.closing ? `${brandOf(item.agent).label} ${t('reads the answers and closes the plan')}` : item.text || t('A turn of {agent}', { agent: brandOf(item.agent).label }),
       sub: `${where} · ${said}`,
       time: `${mark} ${ago(item.at)}`,
       timeTone: item.state === 'ok' ? 'ok' : item.state === 'failed' ? 'fail' : '',
