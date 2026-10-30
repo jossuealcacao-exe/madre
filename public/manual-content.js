@@ -344,7 +344,7 @@ export const MANUAL = {
           'En Inicio, pulsa «Hablar con el Coordinador».',
           'Pulsa «Conectar proyectos» y elige dos. Tú decides qué puede consultar y hasta cuándo.',
         ],
-        expert: 'Desde cualquier proyecto le preguntas con /bishop. Por una conexión viajan notas de memoria, nunca tus archivos ni tus chats.',
+        expert: 'Desde cualquier proyecto le preguntas con /coordinador. Por una conexión viajan notas de memoria, nunca tus archivos ni tus chats.',
       },
       {
         id: 'ventanas',
@@ -767,7 +767,7 @@ export const MANUAL = {
           'In Home, press «Talk to the Coordinator».',
           'Press «Connect projects» and choose two. You decide what it may look up and until when.',
         ],
-        expert: 'From any project you ask it with /bishop. Memory notes travel through a connection, never your files or your chats.',
+        expert: 'From any project you ask it with /coordinator. Memory notes travel through a connection, never your files or your chats.',
       },
       {
         id: 'ventanas',
