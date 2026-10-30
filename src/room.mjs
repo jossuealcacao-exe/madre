@@ -933,7 +933,7 @@ export class Room {
     // answers the press at once and keeps running; its output card comes when it is stopped.
     let opened = () => {};
     const serving = new Promise((resolve) => { opened = resolve; });
-    const finished = this.#runDesk.run({ id: `${responseMessageId}:${index}`, argv: expandHome(command), cwd: this.#projectRoot, onServing: (where) => opened(where) })
+    const finished = this.#runDesk.run({ id: `${responseMessageId}:${index}`, argv: expandHome(command), cwd: this.#projectRoot, onServing: (where) => opened(where), meta: { line: command.line, agent: request.agent, responseMessageId, index } })
       .then(async (result) => {
         const changes = checkpoint ? await this.#controlDesk.changesSince(checkpoint).catch(() => null) : null;
         // What git cannot see — a folder the project ignores — found by its time on disk.
@@ -1446,6 +1446,22 @@ export class Room {
     return [...this.#turns.entries()].map(([messageId, turn]) => ({ messageId, agent: turn.agent, planId: turn.planId, startedAt: turn.startedAt }));
   }
 
+  // What this room is doing now, for «En marcha» (2026-10-30): each turn with what it was asked,
+  // its limit and its subagents; each plan with its steps; each command it keeps alive. Read only.
+  activity() {
+    const turns = [...this.#turns.entries()].map(([messageId, turn]) => ({
+      kind: 'turn', messageId, agent: turn.agent, planId: turn.planId ?? null, startedAt: turn.startedAt,
+      timeoutMs: turn.timeoutMs ?? null, text: turn.text ?? '', mode: turn.mode ?? null,
+      subagents: (turn.subagents ?? []).map(({ kind, task, status, seconds }) => ({ kind, task, status, seconds })),
+    }));
+    const plans = [...this.#plans.values()].map((plan) => ({
+      kind: 'plan', planId: plan.planId, orchestrator: plan.orchestrator, step: plan.step, total: plan.steps.length + (plan.closing ? 1 : 0),
+      startedAt: plan.startedAt, steps: plan.steps.map((one) => ({ agent: one.agent, text: String(one.text ?? '').slice(0, 160) })),
+    }));
+    const runs = this.#runDesk.live().map((one) => ({ kind: 'run', ...one }));
+    return [...plans, ...turns, ...runs];
+  }
+
   // Master brake: every plan and every in-flight turn, recorded as one event.
   async stopAll(reason = t('STOPALL by the human')) {
     const plans = this.#plans.size;
@@ -1567,11 +1583,15 @@ export class Room {
     }
     // The limit this turn will be held to, said with its start so the room counts down from the
     // real number and not from a default it guessed.
-    await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId, timeoutMs: this.timeoutFor(agent.id, { writing: Number(mode) >= 2 || Boolean(lease) || subagentsAllowed(agent.id, { airlock: Number(mode) === 4 }) }) });
+    const timeoutMs = this.timeoutFor(agent.id, { writing: Number(mode) >= 2 || Boolean(lease) || subagentsAllowed(agent.id, { airlock: Number(mode) === 4 }) });
+    await this.#emit('agent.started', { messageId, agent: agent.id, handoffId, planId, timeoutMs });
     const controller = new AbortController();
-    const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now() };
-    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, effort, attachments, references, lease, ash, mode, escalation, returned, copilot });
+    // What it was asked and its limit ride with it, for «En marcha» (activity, below).
+    const turn = { controller, promise: null, planId, agent: agent.id, startedAt: Date.now(), timeoutMs, text: String(text ?? '').slice(0, 200), mode: Number(mode), subagents: [] };
+    // Held before it starts: with nothing to wait for, a turn reaches its CLI before this line runs
+    // again, and what the CLI reports at once (its subagents) found no turn to ride on.
     this.#turns.set(messageId, turn);
+    turn.promise = this.#runTurn({ messageId, agent, text, requester, depth, planId, allowDelegation, context, recall, memories, handoffId, signal: controller.signal, model, effort, attachments, references, lease, ash, mode, escalation, returned, copilot });
     let outcome = null;
     try {
       outcome = await turn.promise;
@@ -1890,7 +1910,13 @@ export class Room {
         if (Array.isArray(subagents) && subagents.length) {
           const kept = keepHelpers(subagents);
           const key = JSON.stringify(kept);
-          if (key !== helpersSaid) { helpersSaid = key; helpersSeen = kept; this.#say('turn.subagents', { messageId, agent: agent.id, mode: turnMode, subagents: kept }); }
+          if (key !== helpersSaid) {
+            helpersSaid = key;
+            helpersSeen = kept;
+            const held = this.#turns.get(messageId);
+            if (held) held.subagents = kept;
+            this.#say('turn.subagents', { messageId, agent: agent.id, mode: turnMode, subagents: kept });
+          }
         }
         if (!Number.isFinite(chars) || chars <= told) return;
         told = chars;

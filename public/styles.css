@@ -12392,3 +12392,101 @@ dialog.madre-opening::backdrop { background: transparent; }
 /* A panel dragged by its edge past its narrowest closes when let go (2026-10-30): meanwhile it fades,
    so the person sees it is about to go. */
 .closing-by-edge { opacity: .45; transition: opacity .12s ease-out; }
+
+/* ---- «En marcha» (2026-10-30): the key with how many things run, and its panel ----
+   public/activity.js. Drawn in the chat shell's own hand: the canvas, its hairlines, the soft hover.
+   Under its key on a wide window; from 640 px down, a sheet from the bottom, the width of the screen. */
+.activity-button { position: relative; }
+html.chat-shell .shell > .bar:not(.bar-home) > #activity-button { order: 5; }
+.activity-button.working svg path { stroke-dasharray: 26 6; animation: ap-beat 1.6s linear infinite; }
+.activity-button.working { color: var(--phosphor) !important; }
+@keyframes ap-beat { to { stroke-dashoffset: -32; } }
+.activity-panel {
+  position: fixed; top: var(--ap-top, 56px); right: var(--ap-right, 16px); z-index: 900;
+  width: min(440px, calc(100vw - 24px)); max-height: min(76vh, 720px); display: flex; flex-direction: column;
+  border-radius: 14px; background: var(--cs-canvas, var(--bg-2)); color: var(--text);
+  box-shadow: 0 0 0 1px var(--cs-line, var(--line-2)), 0 22px 56px -18px rgb(0 0 0 / .38);
+  font: var(--read-weight, 450) 13px/1.45 var(--read, inherit); overflow: hidden;
+  opacity: 0; transform: translateY(-4px); transition: opacity .14s ease-out, transform .14s ease-out;
+}
+.activity-panel.shown { opacity: 1; transform: none; }
+.activity-panel[hidden] { display: none; }
+.ap-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px 16px; }
+.ap-head h3 { margin: 0; font: 600 15px/1.2 var(--read, inherit); }
+.ap-head small { color: var(--text-3); font-size: 12px; }
+.ap-grow { flex: 1; }
+.ap-x { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer; }
+.ap-x:hover { background: var(--cs-hover, color-mix(in srgb, var(--text) 6%, transparent)); color: var(--text); }
+.ap-x svg { width: 16px; height: 16px; }
+.ap-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 12px; }
+.ap-sec h4 { margin: 0; padding: 10px 8px 6px; font: 500 11.5px/1 var(--read, inherit); color: var(--text-3); }
+.ap-row { border-radius: 10px; }
+.ap-row + .ap-row { margin-top: 2px; }
+.ap-line { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 14px; align-items: center; gap: 4px 10px; width: 100%; padding: 8px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ap-line:hover, .ap-row.open .ap-line { background: var(--cs-hover, color-mix(in srgb, var(--text) 5%, transparent)); }
+.ap-line:focus-visible { outline: 2px solid var(--phosphor); outline-offset: -2px; }
+.ap-av { position: relative; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ap-c, var(--text-3)); }
+.ap-av svg { width: 16px; height: 16px; }
+.ap-av.still { opacity: .7; }
+.ap-av.sys { background: var(--cs-sel, color-mix(in srgb, var(--text) 10%, transparent)); color: var(--text-2); }
+.ap-av.busy::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--ap-c, var(--phosphor)) 22%, transparent); border-top-color: var(--ap-c, var(--phosphor)); animation: ap-spin .9s linear infinite; }
+@keyframes ap-spin { to { transform: rotate(360deg); } }
+.ap-words { min-width: 0; }
+.ap-words b, .ap-words span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ap-words b { font-weight: 500; font-size: 13.5px; }
+.ap-words span { font-size: 12px; color: var(--text-3); }
+.ap-time { font: 11.5px/1 var(--mono); color: var(--text-3); white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.ap-time.ok { color: var(--phosphor); }
+.ap-time.fail { color: var(--danger, #e5484d); }
+.ap-chev { display: inline-grid; color: var(--text-3); transition: transform .15s ease-out; }
+.ap-chev svg { width: 14px; height: 14px; }
+.ap-row.open .ap-chev { transform: rotate(90deg); }
+.ap-bar { grid-column: 2 / 4; height: 3px; border-radius: 3px; background: var(--cs-sel, color-mix(in srgb, var(--text) 8%, transparent)); overflow: hidden; }
+.ap-bar i { display: block; height: 100%; border-radius: 3px; background: var(--ap-c, var(--phosphor)); transition: width .9s linear; }
+.ap-more { display: grid; gap: 8px; padding: 4px 8px 12px 46px; }
+.ap-meta { margin: 0; font: 11.5px/1.45 var(--read, inherit); color: var(--text-3); }
+.ap-old { padding: 6px 8px; }
+.ap-out { margin: 0; max-height: 180px; overflow: auto; padding: 10px 12px; border-radius: 10px; background: var(--cs-bubble, color-mix(in srgb, var(--text) 5%, transparent)); font: 11.5px/1.55 var(--mono); color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ap-subs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ap-sub { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 26px; padding: 2px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ap-c, var(--text-3)) 28%, transparent); background: color-mix(in srgb, var(--ap-c, var(--text-3)) 8%, transparent); font-size: 12px; color: var(--text-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ap-sub b { font: 600 10.5px/1 var(--mono); color: var(--ap-c, var(--text)); }
+.ap-sub em { font: normal 10.5px/1 var(--mono); color: var(--text-3); }
+.ap-sub i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--phosphor); }
+.ap-sub.running i { background: none; border: 2px solid color-mix(in srgb, var(--ap-c, var(--phosphor)) 25%, transparent); border-top-color: var(--ap-c, var(--phosphor)); animation: ap-spin .8s linear infinite; }
+.ap-sub.failed i { background: var(--danger, #e5484d); }
+.ap-steps { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 12.5px; color: var(--text-2); }
+.ap-steps li.done { color: var(--text-3); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-3) 50%, transparent); }
+.ap-steps li.now { color: var(--text); }
+.ap-steps b { font-weight: 600; }
+.ap-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.ap-acts button, .ap-foot button { height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--cs-line, var(--line-2)); background: none; color: var(--text); font: 500 12.5px/1 var(--read, inherit); cursor: pointer; }
+.ap-acts button:hover, .ap-foot button:hover { background: var(--cs-hover, color-mix(in srgb, var(--text) 6%, transparent)); }
+.ap-acts button.go { border-color: transparent; background: var(--phosphor); color: var(--phosphor-ink); }
+.ap-acts button.go:hover { background: color-mix(in srgb, var(--phosphor) 88%, var(--text)); }
+:is(.ap-acts, .ap-foot) button.stop { color: var(--danger, #e5484d); border-color: color-mix(in srgb, var(--danger, #e5484d) 38%, transparent); }
+.ap-acts button:disabled { opacity: .5; cursor: default; }
+.ap-calm { display: grid; justify-items: center; gap: 6px; padding: 26px 18px 22px; text-align: center; color: var(--text-3); }
+.ap-calm svg { width: 28px; height: 28px; color: var(--phosphor); }
+.ap-calm b { color: var(--text); font-weight: 500; font-size: 14px; }
+.ap-wait { margin: 0; padding: 22px 16px; color: var(--text-3); text-align: center; }
+.ap-foot { display: flex; align-items: center; gap: 10px; padding: 10px 12px 12px 16px; border-top: 1px solid var(--cs-line, var(--line-2)); font-size: 12px; color: var(--text-3); }
+.ap-foot button { margin-left: auto; }
+@media (max-width: 640px) {
+  .activity-panel {
+    top: auto; right: 0; bottom: 0; left: 0; width: 100%; max-height: 82vh; max-height: 82dvh;
+    border-radius: 16px 16px 0 0; transform: translateY(16px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .activity-panel.shown { transform: none; }
+  .ap-head::before { content: ''; position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; margin-left: -18px; border-radius: 4px; background: var(--cs-sel, var(--line-2)); }
+  .ap-head { position: relative; padding-top: 18px; }
+  .ap-line { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .ap-chev { display: none; }
+  .ap-bar { grid-column: 2 / 4; }
+  .ap-more { padding-left: 8px; }
+  .ap-acts button, .ap-foot button { height: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .activity-button.working svg path, .ap-av.busy::after, .ap-sub.running i { animation: none; }
+  .activity-panel { transition: none; }
+}

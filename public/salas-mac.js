@@ -27,6 +27,7 @@ import { remedyKey } from './remedy.js';
 import { loadMarket } from './market.js';
 import { trazo, trazoDrawing } from './icons.js';
 import { tellFailures } from './page-errors.js';
+import { mountActivity } from './activity.js';
 // A failure of Home's page is told to MADRE's anonymous diagnostics (src/telemetry.mjs).
 tellFailures('home');
 
@@ -6012,6 +6013,14 @@ function arrangeHomeBar() {
 const MODULES_GLYPH = trazo('puzzle');
 
 buildHomeShell();
+// «En marcha» (2026-10-30): the same key and panel as in a project (public/activity.js). Home's own
+// conversations are the Coordinator's, on this room's page.
+{
+  const key = $('sm-tb-activity');
+  const words = key?.querySelector(':scope > span');
+  if (words) words.textContent = t('Running now');
+  if (key) mountActivity({ key, badge: $('sm-tb-activity-count'), openChat: ({ chat, messageId }) => { location.href = `/#chat=${encodeURIComponent(chat)}${messageId ? `:${encodeURIComponent(messageId)}` : ''}`; }, toast: (said) => toast(said) });
+}
 
 translateStatic();
 drawWork();

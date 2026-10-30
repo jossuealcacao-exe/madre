@@ -236,10 +236,11 @@ export async function projectFloor(roomDir, { except = null } = {}) {
 // end, a few megabytes at most: what a person looks for is almost always recent.
 const SEARCH_READ = 4 * 1024 * 1024;
 export const searchWords = (text) => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-async function tailOf(file) {
+// The end of one record, `bytes` at most, from a whole line on (also «En marcha», src/activity.mjs).
+export async function tailOf(file, bytes = SEARCH_READ) {
   const found = await stat(file).catch(() => null);
   if (!found?.isFile()) return '';
-  const start = Math.max(0, found.size - SEARCH_READ);
+  const start = Math.max(0, found.size - bytes);
   const handle = await open(file, 'r');
   try {
     const buffer = Buffer.alloc(found.size - start);

@@ -86,6 +86,8 @@ import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, cameBefore, changeTour, read
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
 import { moduleUpdate } from './modules/updates.mjs';
+import { ACTIVITY_SOON_MS, recentInProject } from './activity.mjs';
+import { readReminders } from './modules/reminders.mjs';
 import { adoptStrays, chatIndex, chatLedger, createChat, deleteChat, isChatId, listChats, openChat as openChatIndex, searchChats, projectFloor, renameChat, touchChat } from './chats.mjs';
 import { spawn } from 'node:child_process';
 import { cpus, freemem, loadavg, totalmem } from 'node:os';
@@ -1292,7 +1294,7 @@ export async function createPulseServer({
     if (!plan) return { status: 404, body: { error: t('MADRE does not know how to install {id}.', { id }) } };
     if (!plan.command) return { status: 409, body: { error: t('{label} installs with its own installer: copy the command into a terminal, then check again.', { label: agent.label }) } };
     if (installing) return { status: 409, body: { error: t('Another install is running. Wait for it to finish and try again.') } };
-    installing = `agent:${id}`;
+    installing = `agent:${id}`; installingSince = Date.now();
     await room.record('connection.install.started', { agent: id, label: agent.label, command: plan.display });
     void (async () => {
       const lines = [];
@@ -1618,6 +1620,32 @@ export async function createPulseServer({
   // always: opening a held conversation takes the room that is already there. When nothing is
   // running in it and nobody is watching, it closes itself.
   const busyChats = () => [...parked.entries()].filter(([, held]) => held.room.busy()).map(([id]) => id);
+  // Every conversation at work, not only the one on screen: the brake is the room's, not the chat's.
+  async function stopEverythingHere() {
+    const result = await room.stopAll();
+    passes.clear();
+    await endCopilot('stopall');
+    for (const held of parked.values()) {
+      const more = await held.room.stopAll().catch(() => ({ plans: 0, turns: 0 }));
+      result.plans += more.plans ?? 0;
+      result.turns += more.turns ?? 0;
+    }
+    return result;
+  }
+  // What this project is doing, for «En marcha» (src/activity.mjs): every conversation's turns,
+  // plans and commands, the install running, and what ended a moment ago.
+  async function activityHere() {
+    const { chats } = await listChats(roomDir);
+    const titleOf = (id) => chats.find((one) => one.id === id)?.title ?? null;
+    const now = [];
+    for (const [id, one] of [[chatId, room], ...[...parked.entries()].map(([key, held]) => [key, held.room])]) {
+      if (!one) continue;
+      for (const item of one.activity()) now.push({ ...item, chat: id, chatTitle: titleOf(id) });
+    }
+    if (installing) now.push({ kind: 'install', what: installing, model: pulling?.model ?? null, startedAt: installingSince || null });
+    const done = await recentInProject(roomDir, { also: [chatId, ...parked.keys()] }).catch(() => []);
+    return { room: thisRoomId, name: salasRoom ? null : basename(canonicalProjectRoot), home: salasRoom, version: PACKAGE.version ?? null, now, done };
+  }
   const sayToAll = (type, payload) => {
     const event = { id: `live-${randomUUID()}`, sequence: null, live: true, timestamp: new Date().toISOString(), type, payload };
     for (const client of clients.keys()) writeEvent(client, event);
@@ -1861,6 +1889,8 @@ export async function createPulseServer({
   poller.unref();
 
   let installing = null;
+  // When the install running now began, for «En marcha» (2026-10-30).
+  let installingSince = 0;
   let pulling = null;          // the model download running now, and how to stop it
 
   // Intenciones' reading of every conversation, kept per ledger file until that file changes.
@@ -1985,7 +2015,7 @@ export async function createPulseServer({
             const { ollamaInstallPlan, adminHere } = await import('./modules/ollama.mjs');
             const plan = ollamaInstallPlan({ brew: await findOnPath('brew'), admin: await adminHere() });
             if (!plan.command) return { ok: false, error: plan.note, download: plan.download, manual: plan.manual ? plan.display : null };
-            installing = 'ollama';
+            installing = 'ollama'; installingSince = Date.now();
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: plan.display, platforms: [], alreadyInstalled: false });
             void (async () => {
               const lines = [];
@@ -2039,7 +2069,7 @@ export async function createPulseServer({
           // (the welcome's «Cancel», 2026-10-28).
           pull: async (model) => {
             if (installing) return { ok: false, error: t('Another install is running. Wait for it to finish and try again.') };
-            installing = 'ollama';
+            installing = 'ollama'; installingSince = Date.now();
             const stopper = new AbortController();
             pulling = { model, stopper };
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: `ollama pull ${model}`, platforms: [], alreadyInstalled: false });
@@ -2095,7 +2125,7 @@ export async function createPulseServer({
     // What the module asked MADRE to do first (Continuity: `git init` in a project with no git),
     // shown in the same confirmation and run before the install, each step stopping the next.
     const prepare = Array.isArray(preflight.prepare) ? preflight.prepare : [];
-    installing = id;
+    installing = id; installingSince = Date.now();
     await room.record('extension.install.started', { id, name: extension.name, command: plan.display, platforms: plan.platforms ?? [], alreadyInstalled: before.installed });
     void (async () => {
       const lines = [];
@@ -2159,7 +2189,7 @@ export async function createPulseServer({
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
-      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
+      if (request.method === 'GET' && ['/app.js', '/nostromo-engine.js', '/brands.js', '/troubleshooting.js', '/inquiry.js', '/i18n.js', '/es.js', '/resay.js', '/syntax.js', '/editor.js', '/routing.js', '/abduction.js', '/review-ask.js', '/loader.js', '/tour.js', '/tour-chapters.js', '/touch.js', '/attribution.js', '/power.js', '/wallpaper.js', '/neural.js', '/hardware.js', '/code-tools.js', '/market.js', '/market-view.js', '/market-art.js', '/welcome.js', '/remedy.js', '/icons.js', '/page-errors.js', '/activity.js', '/mcp-catalog.js', '/manual.js', '/manual-content.js', '/manual-shots.js', '/en.js'].includes(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'text/javascript; charset=utf-8');
       }
       if (request.method === 'GET' && url.pathname === '/styles.css') {
@@ -4189,7 +4219,7 @@ export async function createPulseServer({
         if (!plan?.command) return sendJson(response, 412, { error: plan?.note ?? 'There is no way to update this from here.', download: plan?.download ?? null });
         if (payload.confirm !== true) return sendJson(response, 200, { plan: { display: plan.display, note: plan.note ?? '' }, update: known });
         if (installing) return sendJson(response, 409, { error: t('Another install is running. Wait for it to finish and try again.') });
-        installing = module.id;
+        installing = module.id; installingSince = Date.now();
         await room.record('extension.install.started', { id: module.id, name: item.name, command: plan.display, platforms: [], alreadyInstalled: true });
         void (async () => {
           const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { void room.record('extension.install.output', { id: module.id, lines: [String(line).slice(0, 500)] }); } });
@@ -4435,16 +4465,63 @@ export async function createPulseServer({
         return sendJson(response, 200, { turns: await turnsPolicy() });
       }
       if (request.method === 'POST' && url.pathname === '/api/stop-all') {
-        // Every conversation at work, not only the one on screen: the brake is the room's, not the chat's.
-        const result = await room.stopAll();
-        passes.clear();
-        await endCopilot('stopall');
-        for (const held of parked.values()) {
-          const more = await held.room.stopAll().catch(() => ({ plans: 0, turns: 0 }));
-          result.plans += more.plans ?? 0;
-          result.turns += more.turns ?? 0;
+        return sendJson(response, 202, { stopped: true, ...await stopEverythingHere() });
+      }
+      // «En marcha» (2026-10-30): what runs in this project — or, asked with ?everywhere=1, in every
+      // project open on this computer — what ended a moment ago, and the reminders coming.
+      if (request.method === 'GET' && url.pathname === '/api/activity') {
+        const mine = await activityHere();
+        if (url.searchParams.get('everywhere') !== '1') return sendJson(response, 200, mine);
+        const others = (await knownRooms(root)).filter((one) => one.open && one.id !== thisRoomId);
+        const answers = await Promise.all(others.map(async (one) => {
+          const answer = await askRoom(one.open.port, '/api/activity', { timeoutMs: 1500 });
+          if (answer.unreachable) return null;
+          if (answer.outdated) return { room: one.id, name: one.name, port: one.open.port, outdated: true, now: [], done: [] };
+          return { ...answer, room: one.id, name: answer.name ?? one.name, port: one.open.port };
+        }));
+        const reminders = await readReminders(root).catch(() => []);
+        const soonUntil = Date.now() + ACTIVITY_SOON_MS;
+        const soon = reminders
+          .filter((one) => !one.done && Date.parse(one.due) > Date.now() && Date.parse(one.due) <= soonUntil)
+          .sort((a, b) => a.due.localeCompare(b.due)).slice(0, 5)
+          .map(({ id, text, due, room: where, project, chat }) => ({ id, text, due, room: where, project, chat }));
+        return sendJson(response, 200, { at: new Date().toISOString(), here: thisRoomId, projects: [{ ...mine, here: true }, ...answers.filter(Boolean)], soon });
+      }
+      // A brake from «En marcha»: one turn, one plan or one command, here or in another open project
+      // (passed on to it, never from a phone); or everything everywhere.
+      if (request.method === 'POST' && url.pathname === '/api/activity/stop') {
+        const payload = await body(request).catch(() => ({}));
+        if (payload.room && payload.room !== thisRoomId) {
+          if (viaPhone) return sendJson(response, 403, { error: t('Other projects are stopped from this computer.') });
+          const there = (await knownRooms(root)).find((one) => one.id === payload.room && one.open);
+          if (!there) return sendJson(response, 404, { error: t('That project is not open any more.') });
+          const answer = await askRoom(there.open.port, '/api/activity/stop', { method: 'POST', body: { ...payload, room: null }, timeoutMs: 8000 });
+          if (answer.outdated) return sendJson(response, 409, { error: t('That project runs an older MADRE. Update it, or close it from its terminal.'), outdated: true });
+          if (answer.unreachable) return sendJson(response, answer.status ?? 502, { error: answer.error ?? t('That project did not answer.') });
+          return sendJson(response, 200, answer);
         }
-        return sendJson(response, 202, { stopped: true, ...result });
+        const chat = String(payload.chat ?? chatId);
+        const where = chat === chatId ? room : parked.get(chat)?.room;
+        if (!where) return sendJson(response, 404, { error: t('That is not running any more.') });
+        let stopped = false;
+        if (payload.kind === 'turn') stopped = await where.stopTurn(String(payload.messageId ?? ''));
+        else if (payload.kind === 'plan') stopped = await where.stopPlan(String(payload.planId ?? ''));
+        else if (payload.kind === 'run') {
+          const id = String(payload.id ?? '');
+          const cut = id.lastIndexOf(':');
+          stopped = cut > 0 && where.stopRun({ responseMessageId: id.slice(0, cut), index: Number(id.slice(cut + 1)) });
+        }
+        return sendJson(response, stopped ? 200 : 404, stopped ? { stopped: true } : { error: t('That is not running any more.') });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/activity/stop-all') {
+        const result = await stopEverythingHere();
+        let projects = 0;
+        if (!viaPhone) {
+          const others = (await knownRooms(root)).filter((one) => one.open && one.id !== thisRoomId);
+          const stopped = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/stop-all', { method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer.unreachable && !answer.outdated)));
+          projects = stopped.filter(Boolean).length;
+        }
+        return sendJson(response, 202, { stopped: true, ...result, projects });
       }
       const stopMatch = request.method === 'POST' && url.pathname.match(/^\/api\/plans\/([0-9a-f-]+)\/stop$/);
       if (stopMatch) {

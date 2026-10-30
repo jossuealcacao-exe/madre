@@ -2184,3 +2184,6 @@ html.home-shell dialog.sm-add-framed .sm-sheet-head .surface-modes { position: a
    short, and a cut sentence read as a missing one. */
 dialog.home-news .wn-card { cursor: default; }
 dialog.home-news .wn-card-line { display: block; -webkit-line-clamp: unset; overflow: visible; }
+/* «En marcha» on Home's bar (2026-10-30): its number in the key's own badge; the line beats while
+   something runs (styles.css, .activity-button). */
+.sm-barkey.activity-button.working { color: var(--s-acc, var(--phosphor)); }

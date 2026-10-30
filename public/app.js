@@ -33,6 +33,7 @@ import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tool
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
 import { trazo, trazoDrawing } from './icons.js';
 import { tellFailures } from './page-errors.js';
+import { mountActivity } from './activity.js';
 // A failure of this page is told to MADRE's anonymous diagnostics (src/telemetry.mjs).
 tellFailures('room');
 
@@ -17653,6 +17654,18 @@ function openRoomMarket(focus = null) {
 // The Market's catalog from madre.run: the faces of the modules that came after this MADRE, and what
 // it updated on its own since, said once. Not on a phone: it has no Market.
 if (!state.device) void loadMarket({ toast: (words, action) => toast(words, { action }), open: (id) => openRoomMarket(id) }).then(() => { if (modules.dialog.open) renderModules(); });
+// «En marcha» (2026-10-30): the key with how many things run, in every open project, and its panel.
+// Not on a phone, and not in the half on the right: the left half's bar already has it.
+if (!state.device && !SPLIT_CHAT) {
+  mountActivity({ key: document.querySelector('#activity-button'), badge: document.querySelector('#activity-count'), openChat: ({ chat, messageId }) => void openChatAt(chat, messageId), toast: (words) => toast(words) });
+} else document.querySelector('#activity-button')?.remove();
+// A conversation by its address, #chat=<id> or #chat=<id>:<message>: how «En marcha» in another
+// project or in Home opens one of this project's conversations at the message.
+if (/^#chat=/.test(globalThis.location?.hash ?? '')) {
+  const [id, messageId] = decodeURIComponent(location.hash.slice(6)).split(':');
+  history.replaceState(null, '', location.pathname + location.search);
+  if (/^[a-z0-9]+$/.test(id ?? '')) setTimeout(() => { void openChatAt(id, messageId || null); }, motion(500));
+}
 // The Market's address in a project: #mercado, or #mercado=<module> on its page.
 if (/^#mercado(=|$)/.test(globalThis.location?.hash ?? '')) {
   const id = decodeURIComponent(location.hash.split('=')[1] ?? '') || null;
@@ -22296,11 +22309,13 @@ const BAR_FIXED = 'settings';
 const barLocked = (id) => id === BAR_FIXED || (id === 'crew' && chatShellOn());
 // The keys that open beside the conversation, at the right of the bar (styles.css).
 const BAR_SPLIT_KEYS = new Set(['code', 'servers']);
-const BAR_DEFAULT = ['salas', 'macroverso', 'crew', 'code', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'];
+const BAR_DEFAULT = ['salas', 'macroverso', 'crew', 'activity', 'code', 'modules', 'mother', 'nostromo', 'reload', 'servers', 'finder', 'phone'];
 // The keys that are in the markup. The crew is two elements — five spheres when there is room, one
 // button when there is not — and one key: taking it off takes both.
 const BAR_BUILT = {
   crew: { nodes: ['#agents', '#agents-compact'], name: () => t('Agents') },
+  // «En marcha» (2026-10-30): what MADRE is doing, in every open project (public/activity.js).
+  activity: { nodes: ['#activity-button'], name: () => t('Running now') },
   // In the chat shell Code and Files are one key, named for what a person looks for (adoptFinder).
   code: { nodes: ['#code-button'], name: () => (chatShellOn() ? t('Files') : t('Code')) },
   modules: { nodes: ['#modules-button'], name: () => t('Modules') },
@@ -22338,7 +22353,7 @@ const barKit = {
 
 // Keys that joined the bar after a person arranged theirs. Each is put at the end once, so it can
 // be found; taken off after that, it stays off.
-const BAR_JOINED = ['phone', 'salas', 'macroverso', 'code'];
+const BAR_JOINED = ['phone', 'salas', 'macroverso', 'code', 'activity'];
 // The MACROVERSO: an orbit, a sun and two worlds. Only the room of SALAS carries the key.
 const MACROVERSO_ICON = trazoDrawing('map');
 // SALAS: three rooms of one Mac, and what joins them.
@@ -22353,7 +22368,7 @@ function barStored() {
       const fresh = BAR_JOINED.filter((id) => !met.includes(id));
       if (fresh.length) {
         // CODE stands beside the agents, where it is seen first; the others join at the end.
-        for (const id of fresh) if (!list.includes(id)) { if (id === 'code' && list.includes('crew')) list.splice(list.indexOf('crew') + 1, 0, id); else list.push(id); }
+        for (const id of fresh) if (!list.includes(id)) { if ((id === 'code' || id === 'activity') && list.includes('crew')) list.splice(list.indexOf('crew') + 1, 0, id); else list.push(id); }
         localStorage.setItem(BAR_KEY, JSON.stringify(list));
         localStorage.setItem('pulse.barMet', JSON.stringify([...met, ...fresh]));
       }

@@ -62,12 +62,14 @@ export class RunDesk {
   // Busy is a command still working toward its answer; a server that is serving is not in the way.
   get busy() { return [...this.#runs.values()].some((run) => !run.serving); }
   serving() { return [...this.#runs.entries()].filter(([, run]) => run.serving).map(([id, run]) => ({ id, ...run.serving })); }
+  // Every run alive, with what it is and since when (the room's «En marcha»).
+  live() { return [...this.#runs.entries()].map(([id, run]) => ({ id, ...(run.meta ?? {}), startedAt: run.startedAt, serving: run.serving ?? null })); }
   // Whether a line whose id starts this way is still working toward its answer.
   runningFor(prefix) { return [...this.#runs.entries()].some(([id, run]) => id.startsWith(prefix) && !run.serving); }
 
   // Resolves with what happened when the process ends; never rejects. A program that could not
   // start is an answer too. `onServing` hears, once, that the run opened a port.
-  run({ id = 'run', argv, cwd, timeoutMs = RUN_TIMEOUT_MS, env = process.env, onServing = null }) {
+  run({ id = 'run', argv, cwd, timeoutMs = RUN_TIMEOUT_MS, env = process.env, onServing = null, meta = null }) {
     return new Promise((resolve) => {
       const started = Date.now();
       // 'error' and 'close' can both arrive for one failed spawn; the first one is the answer.
@@ -95,7 +97,7 @@ export class RunDesk {
         done({ ok: false, exitCode: null, text: couldNotRun(argv[0], error) });
         return;
       }
-      const record = { child, stoppedBy: null, serving: null };
+      const record = { child, stoppedBy: null, serving: null, meta, startedAt: started };
       this.#runs.set(id, record);
       let output = '';
       // Bounded while it runs, not only at the end: a program that prints without stopping must
