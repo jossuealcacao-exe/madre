@@ -41,6 +41,7 @@
     "bin",
     "src",
     "public",
+    "!public/assets/manual/*.pdf",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

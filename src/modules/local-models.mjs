@@ -75,7 +75,9 @@ export function parseNvidia(output) {
 export async function detectHardware({ platform = osPlatform(), arch = osArch(), totalmem = osTotalmem(), cpus = osCpus(), exec = execFile } = {}) {
   const memoryGb = Math.round(totalmem / GB);
   const cores = Array.isArray(cpus) ? cpus.length : 0;
-  let chip = Array.isArray(cpus) && cpus[0]?.model ? String(cpus[0].model).trim() : null;
+  // On Linux ARM (a container, a Raspberry Pi) Node names the processor «unknown»: no name is better
+  // than a word in English the person cannot use (QA 1.1.0, NUE-02); the page then says the cores.
+  let chip = Array.isArray(cpus) && cpus[0]?.model && !/^unknown$/i.test(String(cpus[0].model).trim()) ? String(cpus[0].model).trim() : null;
   if (platform === 'darwin') {
     const brand = await run('sysctl', ['-n', 'machdep.cpu.brand_string'], { exec });
     if (brand?.trim()) chip = brand.trim();

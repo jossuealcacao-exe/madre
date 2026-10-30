@@ -192,6 +192,15 @@ const els = {
 
 // Built-in commands live in the composer; module commands come from the
 // server (/api/commands) and run there, read-only, as fact cards.
+// The names a person reads (QA 1.1.0, NUE-28): «/bishop» was the Coordinator's old internal name and
+// «/stopall» English. The menu offers them in the room's language; the old names still work.
+const COMMAND_NAMES = { es: { bishop: 'coordinador', stopall: 'detener' }, en: { bishop: 'coordinator', stopall: 'stopall' } };
+const COMMAND_ALIASES = { coordinador: 'bishop', coordinator: 'bishop', detener: 'stopall', stop: 'stopall' };
+function spokenCommand(item) {
+  const said = COMMAND_NAMES[language()]?.[item.name];
+  if (!said || said === item.name) return item;
+  return { ...item, name: said, usage: item.usage ? item.usage.replace(`/${item.name}`, `/${said}`) : item.usage };
+}
 const CLIENT_COMMANDS = [
   // /create went away (2026-10-27): choosing #2 on the mode chip is the same thing, said once.
   { name: 'module', title: 'MODULE', usage: `/module ${t('<what it should do>')}`, summary: t('Build one MADRE module with the guided SDK flow: the agent writes it, then you review and install it.'), available: true, client: true },
@@ -487,9 +496,20 @@ const ZONE_NOTE = {
 };
 const zoneWord = (zone) => ZONE_WORDS[zone] ?? String(zone ?? '').toUpperCase();
 
+// git's own summary line («4 files changed, 197 insertions(+), 7 deletions(-)») in the room's words
+// (QA 1.1.0, NUE-20): «4 archivos · +197 −7 líneas». A line git wrote some other way stays as it is.
+function statWords(line) {
+  const said = String(line ?? '');
+  const files = Number(/(\d+) files? changed/.exec(said)?.[1]);
+  if (!Number.isFinite(files)) return said;
+  const add = Number(/(\d+) insertions?\(\+\)/.exec(said)?.[1] ?? 0);
+  const del = Number(/(\d+) deletions?\(-\)/.exec(said)?.[1] ?? 0);
+  return t('{files} {noun} · +{add} −{del} lines', { files, noun: files === 1 ? t('file') : t('files'), add, del });
+}
+
 const formatTime = (iso) => {
   const date = iso ? new Date(iso) : new Date();
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString(language(), { hour: '2-digit', minute: '2-digit' });
 };
 
 const label = (id) => state.agents.get(id)?.label ?? t(brandOf(id).label ?? id);
@@ -757,12 +777,13 @@ function projectRelative(path) {
 // Plain text with file paths turned into viewer links.
 // A memory cited by its sequence — [#214], [#64–#1431], [pulse · decision · #1928–#2141] — is a
 // piece of its own (2026-10-15), so it can be shown as a reference; its words stay exactly as written.
-const CITE = /\[(?:[^\]\n]{0,60}·\s*)?#\d+(?:\s*[–-]\s*#?\d+)?\]/g;
+// A small model writes the sign full-width now and then («[＃23]», QA 1.1.0, ACT-15): read the same.
+const CITE = /\[(?:[^\]\n]{0,60}·\s*)?[#＃]\d+(?:\s*[–-]\s*[#＃]?\d+)?\]/g;
 function appendCites(text, into) {
   let last = 0;
   for (const match of text.matchAll(CITE)) {
     if (match.index > last) into.append(text.slice(last, match.index));
-    into.append(el('span', 'cite', match[0]));
+    into.append(el('span', 'cite', match[0].replace(/＃/g, '#')));
     last = match.index + match[0].length;
   }
   if (last < text.length) into.append(text.slice(last));
@@ -3523,6 +3544,9 @@ function renderPicker() {
   const ready = [...state.agents.values()].filter(canAnswer);
   if (!ready.length) { updateCrewLabel(); return; }
   if (!els.target.value || !ready.some((agent) => agent.id === els.target.value)) els.target.value = ready[0].id;
+  // The example of a new conversation names an agent that can answer, not always Codex (QA 1.1.0, NUE-35).
+  const example = document.querySelector('.empty code[data-say]');
+  if (example) example.textContent = t('@{agent} summarize this project', { agent: els.target.value });
   const stack = el('div', 'crew-stack');
   const orb = el('button', 'crew-orb');
   orb.type = 'button';
@@ -4231,7 +4255,7 @@ function toggleCopilotMenu(anchor, { keep = false } = {}) {
     el('p', 'copilot-never', t('It never deletes, never touches MADRE\'s folders or your secrets, and never pushes, publishes or sends anything off this computer: that stays with you.')),
   );
   if (on) {
-    body.append(el('p', 'copilot-state', t('On until {time} · {left} left', { time: new Date(copilotUI.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), left: copilotLeftWords() })));
+    body.append(el('p', 'copilot-state', t('On until {time} · {left} left', { time: new Date(copilotUI.until).toLocaleTimeString(language(), { hour: '2-digit', minute: '2-digit' }), left: copilotLeftWords() })));
   } else {
     const how = el('div', 'copilot-how');
     how.append(el('span', null, t('For')), sxSeg(copilotUI.windows.map((minutes) => ({ value: String(minutes), text: copilotWindowWords(minutes) })), String(copilotUI.chosen), (value) => { copilotUI.chosen = Number(value); }, { label: t('How long the copilot lasts') }));
@@ -4816,7 +4840,7 @@ function keyForm(agent, { onDone } = {}) {
     select = el('select');
     for (const provider of providers) { const option = el('option', null, provider.label); option.value = provider.id; select.append(option); }
     const label = el('label');
-    label.append(el('span', 'k', t('PROVIDER')), select);
+    label.append(el('span', 'k', sentence(t('PROVIDER'))), select);
     form.append(label);
   }
   const input = el('input');
@@ -5778,7 +5802,9 @@ function renderModuleInstalledOrRemoved(event) {
   const node = el('div', 'system module-proposed');
   claimHead(node, t('MODULE'), name);
   node.append(el('span', 'claim-body', event.type === 'extension.installed'
-    ? t('Installed for {where} by {who}. Switch it on in MODULES.', { where: origin === 'project' ? t('this project') : t('every project'), who: !by || by === 'you' ? t('you') : `@${by}` })
+    ? origin === 'market'
+      ? t('Installed from the Market for every project by {who}, and on.', { who: !by || by === 'you' ? t('you') : `@${by}` })
+      : t('Installed for {where} by {who}. Switch it on in MODULES.', { where: origin === 'project' ? t('this project') : t('every project'), who: !by || by === 'you' ? t('you') : `@${by}` })
     : t('Removed by {who}.', { who: !by || by === 'you' ? t('you') : `@${by}` })));
   return node;
 }
@@ -5934,8 +5960,10 @@ function attachModeAsk(payload, { sequence = null } = {}) {
   const what = el('div', 'mode-what');
   what.append(el('b', 'who', `@${agent}`), t(' asks for #{n} {label} to go on', { n: wanted, label }));
   if (asked.minutes) what.append(el('span', 'mode-time', t(' · for {m} min', { m: asked.minutes })));
-  const why = el('div', 'mode-why', wanted >= 3
+  // #3 is confirmed with one click on «Unlock»; only #4 asks for the project's name (QA 1.1.0, NUE-19).
+  const why = el('div', 'mode-why', wanted >= 4
     ? t('You will type the project name, as always. Then @{agent} gets your permission and continues.', { agent })
+    : wanted === 3 ? t('You confirm it with one click on Unlock. Then @{agent} gets your permission and continues.', { agent })
     : t('@{agent} gets your permission for one message and continues.', { agent }));
   // How long the permission holds: the time the agent asked for, made one of the windows the
   // project allows (#3: 5, 15 or 30 min; #4: 5), or this message only. The human can change it.
@@ -6453,7 +6481,7 @@ function renderControlChanged(event) {
     }
     if (files.length > 40) list.append(el('li', null, t('… and {n} more', { n: files.length - 40 })));
     node.append(list);
-    if (stat) { const pre = el('pre', 'stat', stat.split('\n').slice(-1)[0]); pre.title = stat; node.append(pre); }
+    if (stat) { const pre = el('pre', 'stat', statWords(stat.split('\n').slice(-1)[0])); pre.title = stat; node.append(pre); }
   }
   if (forbiddenReverted.length) node.append(el('div', 'forbidden', t('{n} writes into forbidden zones reverted: {where}', { n: forbiddenReverted.length, where: forbiddenReverted.join(', ') })));
   if (files.length || unreadable) {
@@ -7767,7 +7795,7 @@ function renderEventNode(event) {
     case 'copilot.ended': {
       const started = event.type === 'copilot.started';
       node = el('div', `system copilot${started ? ' granted' : ''}`);
-      const when = started ? new Date(event.payload.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+      const when = started ? new Date(event.payload.until).toLocaleTimeString(language(), { hour: '2-digit', minute: '2-digit' }) : null;
       node.append(el('b', null, t('copilot › ')), started
         ? t('on until {time}: the agent you write to drives the project without asking you to confirm each message', { time: when })
         : { time: t('off: its time ran out'), stopall: t('off: STOP ALL ended it'), human: t('off: you turned it off') }[event.payload.reason] ?? t('off'));
@@ -13099,7 +13127,7 @@ syncModuleComposer();
 
 /* ---------- labels inside the field: @agent mentions and /commands ---------- */
 
-function allCommands() { return [...CLIENT_COMMANDS, ...(state.commands ?? [])]; }
+function allCommands() { return [...CLIENT_COMMANDS, ...(state.commands ?? [])].map(spokenCommand); }
 function knownAgentIds() { return [...state.agents.keys()]; }
 function escapeHtml(text) { return text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
 
@@ -13342,8 +13370,10 @@ els.input.addEventListener('keydown', (event) => {
 async function runSlashCommand(text) {
   const match = text.match(/^\/([a-z][\w-]*)(?:\s+([\s\S]*))?$/i);
   if (!match) return { handled: false };
-  const name = match[1].toLowerCase();
+  const name = COMMAND_ALIASES[match[1].toLowerCase()] ?? match[1].toLowerCase();
   const rest = (match[2] ?? '').trim();
+  // An alias goes to the server under the command's own name.
+  if (name !== match[1].toLowerCase()) text = `/${name}${rest ? ` ${rest}` : ''}`;
   if (name === 'stopall') { await stopAll(); return { handled: true }; }
   if (name === 'image' || name === 'module') {
     if (!rest) {
@@ -22718,6 +22748,7 @@ function chatShell() {
     shellRow(PLUS_ICON, t('New chat'), () => els.chatsNew?.click()),
     shellRow(`<svg viewBox="0 0 20 20" aria-hidden="true">${HOME_ICON}</svg>`, t('Home'), () => leaveTo('/salas')),
     shellRow(MARKET_ICON, t('Market'), () => openRoomMarket()),
+    (shellUI.coordinator = shellRow(trazo('coordinator'), t('Coordinator'), () => {})),
   );
 
   const scroll = el('div', 'side-scroll');
@@ -22824,11 +22855,22 @@ function paintShellTitle() {
 
 // The open projects, this one first: a press goes there, ⌘-press to a new tab. All of them, awake
 // or asleep, live in Home, one row away.
+function paintSideCoordinator() {
+  const row = shellUI.coordinator;
+  if (!row) return;
+  const room = switcher.rooms.find((one) => one.id === switcher.salas) ?? null;
+  row.hidden = !state.salas && !room;
+  row.classList.toggle('here', Boolean(state.salas));
+  row.onclick = state.salas ? null : () => { if (room?.port) location.href = `http://127.0.0.1:${room.port}/`; else leaveTo('/salas'); };
+}
 function paintSideProjects() {
   const list = shellUI.projects;
   if (!list) return;
+  // The Coordinator is not a project (QA 1.1.0, ACT-13): it has its own row up with Home and the
+  // Market, and the list below is the projects alone.
   const here = { id: 'here', name: document.querySelector('#project')?.textContent?.trim() ?? '', here: true };
-  const rooms = [here, ...switchOrder()];
+  const rooms = [...(state.salas ? [] : [here]), ...switchOrder().filter((room) => room.id !== switcher.salas)];
+  paintSideCoordinator();
   const said = JSON.stringify(rooms.map((room) => [room.id, room.name, room.here ? 'here' : switchState(room).key, switchState(room).count ?? 0]));
   if (list.dataset.said === said) return;
   list.dataset.said = said;

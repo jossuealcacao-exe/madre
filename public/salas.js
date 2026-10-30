@@ -105,7 +105,7 @@ function drawRoom(room) {
         part.style.flexGrow = String(count);
         strip.append(part);
       }
-      row.append(strip, el('span', 'salas-room-count', t('{n} memories', { n: room.census.memories })));
+      row.append(strip, el('span', 'salas-room-count', room.census.memories === 1 ? t('1 memory') : t('{n} memories', { n: room.census.memories })));
     }
     if (room.working?.length) {
       const busy = el('span', 'salas-room-busy');

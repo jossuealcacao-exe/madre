@@ -212,11 +212,22 @@ export function projectNameProblem(name) {
   if (/[<>:"/\\|?*\u0000-\u001f]/.test(text) || text !== text.trim() || /[. ]$/.test(text) || text.startsWith('.') || DEVICE_NAMES.test(text)) return 'name';
   return null;
 }
+// Where a new project goes when nobody chose (QA 1.1.0, NUE-09): the folder this person already
+// keeps projects in, when there is one, rather than the top of their home folder.
+const NEW_PROJECT_HOMES = ['Proyectos', 'Projects', 'proyectos', 'projects', 'Developer', 'Code', 'code', 'dev', 'src'];
+export async function defaultProjectsFolder(home) {
+  for (const name of NEW_PROJECT_HOMES) {
+    const found = await stat(join(home, name)).catch(() => null);
+    if (found?.isDirectory()) return join(home, name);
+  }
+  return home;
+}
+
 export async function createProject({ name, parent = null, home, stateRoot, now = new Date() }) {
   const problem = projectNameProblem(name);
   if (problem) return { error: problem };
   const top = realFolder(home);
-  const place = realFolder(parent || home);
+  const place = realFolder(parent || await defaultProjectsFolder(home));
   if (!inside(place, top)) return { error: 'outside' };
   if (inside(place, realFolder(stateRoot))) return { error: 'madre' };
   if (!(await stat(place).catch(() => null))?.isDirectory()) return { error: 'missing' };

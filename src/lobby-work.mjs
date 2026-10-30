@@ -61,8 +61,15 @@ export async function recentWork({ stateRoot, rooms, now = Date.now(), days = 14
     for (const chat of fresh) found.push({ room: room.id, name: room.name, chat: chat.id, title: chat.title, at: chat.updatedAt, messages: chat.messages });
   }
   found.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  const newest = found.slice(0, limit);
-  for (const item of newest) item.said = await lastMessages(chatLedger(join(stateRoot, 'rooms', item.room), item.chat));
+  // A conversation where nobody answered (a question whose turn failed) is not work done: summarised,
+  // it read «Se preguntó cuántos proyectos se tenían» (QA 1.1.0, ACT-15).
+  const newest = [];
+  for (const item of found) {
+    if (newest.length >= limit) break;
+    item.said = await lastMessages(chatLedger(join(stateRoot, 'rooms', item.room), item.chat));
+    if (!item.said.some((one) => one.who !== 'person')) continue;
+    newest.push(item);
+  }
   return newest;
 }
 

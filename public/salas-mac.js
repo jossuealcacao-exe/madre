@@ -636,7 +636,7 @@ function drawMemory() {
     sum.travelling += census.travelling ?? 0;
     for (const kind of KINDS) sum.kinds[kind] = (sum.kinds[kind] ?? 0) + (census.kinds?.[kind] ?? 0);
   }
-  ui.memory.total.textContent = t('{n} memories', { n: sum.memories });
+  ui.memory.total.textContent = memoriesCount(sum.memories);
   ui.memory.total.hidden = !counted.length;
   ui.memory.body.replaceChildren();
   if (!counted.length) { ui.memory.body.append(el('p', 'sm-hint', t('Open a project to count its memory.'))); return; }
@@ -756,9 +756,11 @@ function attentionItems() {
   const items = [];
   for (const one of (remindersSeen ?? []).filter((item) => Date.parse(item.due) <= Date.now())) {
     const room = data?.rooms.find((item) => item.id === one.room) ?? null;
+    // Due is waiting for the person, said as when it fell due (ACT-09): a green dot and «jueves 8:41
+    // p.m.» read as a thing done, not as one waiting.
     items.push({
-      tone: 'ok', words: one.text,
-      hint: [room ? roomLabel(room) : one.project, t('Reminder · {when}', { when: reminderWhen(one.due) })].filter(Boolean).join(' · '),
+      tone: 'wait', words: one.text,
+      hint: [room ? roomLabel(room) : one.project, t('Reminder · due {when}', { when: ago(one.due) })].filter(Boolean).join(' · '),
       act: () => void settleReminder('/api/reminders/done', { id: one.id }), go: one.repeat ? t('Done for today') : t('Done'),
       later: { go: reminderPrefs.snooze === 60 ? t('In an hour') : reminderPrefs.snooze > 60 ? t('In {n} hours', { n: Math.round(reminderPrefs.snooze / 60) }) : t('In {n} minutes', { n: reminderPrefs.snooze }), act: () => void settleReminder('/api/reminders/snooze', { id: one.id, minutes: reminderPrefs.snooze }) },
     });
@@ -2189,7 +2191,7 @@ const WIDGET_PAINT = {
     top.append(el('b', 'sm-w-big', `${reading.pairs}`), el('span', null, t('of {n} exchanges to train on', { n: reading.target })));
     body.append(top, meter(share));
     body.append(el('p', 'sm-w-says', [reading.stage, reading.says].filter(Boolean).join(' · ')));
-    const facts = [t('{n} memories', { n: reading.notes ?? 0 }), reading.trained ? t('model {name}', { name: reading.trained }) : t('no model of its own yet')];
+    const facts = [memoriesCount(reading.notes ?? 0), reading.trained ? t('model {name}', { name: reading.trained }) : t('no model of its own yet')];
     body.append(el('small', 'sm-w-foot', facts.join(' · ')));
   },
   models(body, reading) {
@@ -3077,7 +3079,7 @@ function macroWords() {
       const open = rooms.filter((room) => room.open);
       const memories = open.reduce((sum, room) => sum + (room.glance?.census?.memories ?? 0), 0);
       const waiting = open.filter((room) => room.glance?.waitingCount).length;
-      return [data?.mac ?? null, t('{n} projects', { n: rooms.length }), waiting ? t('{n} waiting for you', { n: waiting }) : null, t('{n} memories', { n: memories })].filter(Boolean).join(' · ');
+      return [data?.mac ?? null, t('{n} projects', { n: rooms.length }), waiting ? t('{n} waiting for you', { n: waiting }) : null, memoriesCount(memories)].filter(Boolean).join(' · ');
     },
     state: (room) => stateOf(room).words,
     path: homeWord,
@@ -4078,7 +4080,7 @@ function projectPicker({ onAdded = null, onChange = null, withAdd = true } = {})
   makeKey.type = 'submit';
   const freshError = el('p', 'error');
   fresh.append(nameField, whereLine, makeKey, freshError);
-  const parentNow = () => (here?.path && here.path !== here.home ? here.path : here?.home ?? null);
+  const parentNow = () => (here?.path && here.path !== here.home ? here.path : here?.defaultParent ?? here?.home ?? null);
   const sayWhere = () => {
     whereLine.replaceChildren(el('span', null, t('The folder is made in')), ' ', el('code', null, parentNow() ? homeWord(parentNow()) : '~'), ' ');
     const other = button('sm-new-other', t('Choose another place'), () => { touched = true; source = 'browse'; draw(); if (!here) void walk(); });
@@ -4550,7 +4552,9 @@ function agentsPanel({ onPaint = null, compact = false, explain = null } = {}) {
       if (agent.detected && agent.version) facts.append(el('code', 'sm-agent-line', `${agent.version}${agent.path ? ` · ${agent.path}` : ''}`));
       const said = agent.detected ? sessionDetail(answer.sessions?.[agent.id]) : null;
       if (said) facts.append(el('small', 'sm-agent-line', said));
-      if (agent.account) facts.append(el('small', 'sm-agent-note', agent.account));
+      // In the welcome, Gemini's account is already said above its card (welcome.js, explainAgent):
+      // said twice in two ways, it read as two different requirements (QA 1.1.0, NUE-04).
+      if (agent.account && !(compact && agent.id === 'gemini' && !state.ok)) facts.append(el('small', 'sm-agent-note', agent.account));
       // Installed, the installer's last line («added 2 packages in 4s») has nothing left to say.
       if (agent.detected && !installing.has(agent.id) && !state.busyNow && !answer.loggingIn) lastLine.delete(agent.id);
       if (lastLine.has(agent.id) && !state.ok && !trouble.has(agent.id)) {
@@ -5400,7 +5404,8 @@ function fillProjects(host) {
 }
 function fillRelease(host) {
   const info = versionSeen;
-  const block = sxBlock(host, t('Version'), info ? t('You run {version}. Home restarts with it from here.', { version: info.current }) : null);
+  // Up to date there is nothing to restart with (QA 1.1.0, ACT-14).
+  const block = sxBlock(host, t('Version'), info ? (info.available ? t('You run {version}. Home restarts with it from here.', { version: info.current }) : t('You run {version}, the newest.', { version: info.current })) : null);
   const check = info?.enabled ? sxButton(t('Check now'), async () => {
     check.disabled = true;
     const answer = await fetch('/api/version?force=1', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);

@@ -18,10 +18,10 @@ export function calledByName(text, { attachments = 0 } = {}) {
 
 const PHASES = { arrive: 700, beam: 1050, lift: 2000, swallow: 2400, leave: 3000, done: 3400 };
 const SHIP_FRAMES = Object.freeze({
-  idle: '/assets/abduction-cat.png',
-  blink: '/assets/abduction-cat-blink.png',
-  controlLeft: '/assets/abduction-cat-control-left.png',
-  controlRight: '/assets/abduction-cat-control-right.png',
+  idle: '/assets/abduction-cat.webp',
+  blink: '/assets/abduction-cat-blink.webp',
+  controlLeft: '/assets/abduction-cat-control-left.webp',
+  controlRight: '/assets/abduction-cat-control-right.webp',
 });
 const ease = (t) => (t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t));
 const span = (now, from, to) => ease((now - from) / (to - from));

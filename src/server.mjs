@@ -129,7 +129,7 @@ import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, 
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
-import { askRoom, associateProject, createProject, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
+import { askRoom, associateProject, createProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -2176,18 +2176,24 @@ export async function createPulseServer({
         return sendAsset(request, response, join(publicDirectory, 'manual.css'), 'text/css; charset=utf-8');
       }
       if (request.method === 'GET' && (url.pathname === '/assets/manual/madre-manual-es.pdf' || url.pathname === '/assets/manual/madre-manual-en.pdf')) {
-        return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'application/pdf');
+        // The PDFs no longer travel in the package (QA 1.1.0, NUE-34: 5.7 MB of it): a copy run from
+        // the source still has them; one installed from npm sends the browser to madre.run's.
+        const local = join(publicDirectory, url.pathname.slice(1));
+        if (await stat(local).then((found) => found.isFile(), () => false)) return sendAsset(request, response, local, 'application/pdf');
+        response.writeHead(302, { location: `https://madre.run${url.pathname}`, 'cache-control': 'no-store' });
+        return response.end();
       }
       // Its pictures: MADRE itself, photographed in each language (scripts/manual-shots.mjs). Only
       // a name of letters and dashes, so no path leaves the folder.
       if (request.method === 'GET' && /^\/assets\/manual\/shots\/(es|en)-[a-z]+\.webp$/.test(url.pathname)) {
         return sendAsset(request, response, join(publicDirectory, url.pathname.slice(1)), 'image/webp');
       }
+      // WebP since 1.1.0 (QA 1.1.0, NUE-34): four PNGs were 8.9 MB of a 22.5 MB package.
       const abductionAssets = new Map([
-        ['/assets/abduction-cat.png', 'abduction-cat.png'],
-        ['/assets/abduction-cat-blink.png', 'abduction-cat-blink.png'],
-        ['/assets/abduction-cat-control-left.png', 'abduction-cat-control-left.png'],
-        ['/assets/abduction-cat-control-right.png', 'abduction-cat-control-right.png'],
+        ['/assets/abduction-cat.webp', 'abduction-cat.webp'],
+        ['/assets/abduction-cat-blink.webp', 'abduction-cat-blink.webp'],
+        ['/assets/abduction-cat-control-left.webp', 'abduction-cat-control-left.webp'],
+        ['/assets/abduction-cat-control-right.webp', 'abduction-cat-control-right.webp'],
       ]);
       // The brand: its typefaces (SIL OFL, licences beside them) and the favicon, served from the
       // package itself. Nothing is fetched from a font service: the room never leaves this machine
@@ -2259,7 +2265,7 @@ export async function createPulseServer({
       if (request.method === 'GET' && abductionAssets.has(url.pathname)) {
         const image = await readFile(join(publicDirectory, 'assets', abductionAssets.get(url.pathname)));
         response.writeHead(200, {
-          'content-type': 'image/png',
+          'content-type': 'image/webp',
           'content-length': image.length,
           'cache-control': 'public, max-age=86400',
         });
@@ -2536,7 +2542,7 @@ export async function createPulseServer({
           const listed = await listFolders({ path: url.searchParams.get('path') || null, home, stateRoot: root });
           if (listed.error === 'outside') return sendJson(response, 403, { error: t('Only folders inside your home folder.') });
           if (listed.error) return sendJson(response, 404, { error: t('That folder is not there.') });
-          return sendJson(response, 200, listed);
+          return sendJson(response, 200, { ...listed, defaultParent: await defaultProjectsFolder(home) });
         }
         if (request.method === 'GET' && url.pathname === '/api/salas/suggestions') {
           return sendJson(response, 200, { suggestions: await suggestProjects({ home, stateRoot: root }) });
@@ -4550,7 +4556,10 @@ export async function createPulseServer({
           // First what it declares, for the person to read; then, with their yes, that same file.
           if (payload.review === true) return sendJson(response, 200, await installFromMarket({ ...marketTools(), id: String(payload.id ?? ''), catalog, review: true }));
           const done = await installFromMarket({ ...marketTools(), id: String(payload.id ?? ''), catalog, accept: typeof payload.accept === 'string' ? payload.accept : null });
-          await room.record('extension.installed', { id: done.id, name: done.name, origin: 'market', version: done.version, by: 'you' });
+          // Its name as the Market says it in the room's language, not the file's English one (QA 1.1.0,
+          // NUE-31: «Before you push» in a Spanish room); and on, as the Market turns it on.
+          const listed = catalog.modules?.find((one) => one.id === done.id);
+          await room.record('extension.installed', { id: done.id, name: inRoomLanguage(listed?.name) || done.name, origin: 'market', version: done.version, by: 'you' });
           for (const one of await knownRooms(root)) {
             if (!one.open?.port || one.id === thisRoomId) continue;
             await fetch(`http://127.0.0.1:${one.open.port}/api/extensions/reload`, { method: 'POST' }).catch(() => null);
@@ -4848,9 +4857,12 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   const url = `http://127.0.0.1:${address.port}`;
   // Installed is all this line knows: whether each one is signed in is asked in the room, and
   // «Ready: Codex, Claude…» before any sign-in told a newcomer the opposite (2026-10-19).
-  const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || 'none';
+  const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || t('none');
   const broken = agents.filter((agent) => agent.detected && !agent.ready).map((agent) => agent.label).join(', ');
-  console.log(`\nMADRE is ready\n\n  ${url}${openPath}\n  Project: ${projectRoot}\n  Agents installed: ${ready} (who is signed in: Settings › Agents)\n${broken ? `  Found but not answering: ${broken}\n` : ''}`);
+  // In the language MADRE speaks (QA 1.1.0, NUE-01): the terminal said «MADRE is ready» above
+  // «Abre esta dirección…», and Home was called «Project: …/.pulse/salas», a folder of MADRE's own.
+  const where = salasRoom ? t('Home: every project on this computer') : `${t('Project:')} ${projectRoot}`;
+  console.log(`\n${t('MADRE is ready')}\n\n  ${url}${openPath}\n  ${where}\n  ${t('Agents installed: {list} (who is signed in: Settings › Agents)', { list: ready })}\n${broken ? `  ${t('Found but not answering: {list}', { list: broken })}\n` : ''}`);
   // Not waited for: the signals below are set up while the browser opens.
   if (openBrowser) void openUrl(`${url}${openPath}`);
   // SIGHUP too: closing the Terminal the room was started in is a way of closing it.

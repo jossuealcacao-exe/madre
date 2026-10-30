@@ -107,7 +107,7 @@ export function renderReport({ agents, probes, projectRoot, config = {}, palette
     : local ? 'NO CLI ONLINE · @MADRE (LOCAL) IS. THE ROOM CAN OPEN WITH MEMORY ALONE; CONNECT A CLI TO WORK ON FILES.'
       : `NO AGENT ONLINE. THE ROOM OPENS ANYWAY AND WALKS YOU THROUGH CONNECTING ONE.`;
   lines.push('');
-  lines.push(`  ${p.phosphor('MOTHER')}${p.dim(' ›')} ${p.bold(verdict)}`);
+  lines.push(`  ${p.phosphor('MADRE')}${p.dim(' ›')} ${p.bold(verdict)}`);
   return lines.join('\n');
 }
 
@@ -158,7 +158,7 @@ export async function runSetup({ projectRoot, stateRoot, interactive = stdin.isT
       if (answer === 'q') return { action: 'quit', agents, probes };
       if (answer === 's') {
         if (!anyoneOnline()) {
-          log(`  ${p.warn('MOTHER ›')} no agent online; the room would open empty. Configure one first or press s again to open anyway.`);
+          log(`  ${p.warn('MADRE ›')} no agent online; the room would open empty. Configure one first or press s again to open anyway.`);
           const again = (await ask('start anyway? [y/N]')).trim().toLowerCase();
           if (again !== 'y') continue;
         }

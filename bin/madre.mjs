@@ -87,6 +87,27 @@ const has = (name) => cli.has(name.replace(/^--/, ''));
 // means finding the agents, opening the archive and waking the memory, and doing all of that only
 // to then refuse is a wait nobody needed. The real bind below stays the authority: this only
 // saves the waiting.
+// What `madre --help` says, in the language MADRE speaks (src/i18n.mjs).
+const HELP_TEXT = `MADRE
+
+  madre       [--port 4317] [--no-open]
+              Opens Home: every project on this computer, in one place.
+  madre start [--project PATH] [--port 4317] [--no-open] [--setup]
+              Opens the project in this folder (or PATH) directly.
+              Without --port, a busy 4317 falls through to the next free port.
+  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)
+  madre setup [--project PATH] [--port 4317] [--no-open]
+  madre doctor [--project PATH] [--json]
+  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]
+
+  (none)  Opens Home. From there you add projects, connect the agents
+          and enter any project. The Coordinator lives there.
+  start   Opens the project in this folder. From your home folder, Home.
+  setup   Detects the agents on this computer, shows who has a session,
+          and runs each agent's own sign-in from here.
+  doctor  Prints the same diagnosis without the wizard.
+`;
+
 // Where a room without --port starts looking (QA 1.1.0, GEN-02): 4317, or PULSE_PORT_BASE for the
 // test suite and for whoever keeps another program on 4317.
 const DEFAULT_PORT = /^\d{2,5}$/.test(String(process.env.PULSE_PORT_BASE ?? '')) ? String(process.env.PULSE_PORT_BASE) : '4317';
@@ -105,7 +126,7 @@ async function openRoom(options) {
   const explicit = cli.explicit('port');
   let port = options.port;
   if (explicit && await portTaken(port)) {
-    console.error(`\n  MOTHER › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
+    console.error(`\n  MADRE › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
     process.exit(2);
   }
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -113,17 +134,17 @@ async function openRoom(options) {
       return await startPulse({ ...options, port });
     } catch (error) {
       // The room itself says it is taken, whatever port this attempt used.
-      if (error.code === 'ROOM_IN_USE') { console.error(`\n  MOTHER › ${error.message}\n`); process.exit(2); }
+      if (error.code === 'ROOM_IN_USE') { console.error(`\n  MADRE › ${error.message}\n`); process.exit(2); }
       if (error.code !== 'EADDRINUSE') throw error;
       if (explicit) {
-        console.error(`\n  MOTHER › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
+        console.error(`\n  MADRE › port ${port} is already in use. Another MADRE may be open there; try --port ${port + 1} or omit --port to pick one automatically.\n`);
         process.exit(2);
       }
-      console.error(`  MOTHER › port ${port} in use, trying ${port + 1}.`);
+      console.error(`  MADRE › port ${port} in use, trying ${port + 1}.`);
       port += 1;
     }
   }
-  console.error(`\n  MOTHER › no free port between ${options.port} and ${port}. Pass --port explicitly.\n`);
+  console.error(`\n  MADRE › no free port between ${options.port} and ${port}. Pass --port explicitly.\n`);
   process.exit(2);
 }
 
@@ -138,7 +159,7 @@ const projectRoot = projectRootFor({ command, named: cli.named, project: option(
 const openPath = isSalasRoom(projectRoot, salasHome) ? '/salas' : '';
 const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
 if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 5)) {
-  console.error(`\n  MOTHER › MADRE needs Node 22.5 or newer (found ${process.version}): the room's memory runs on node:sqlite.\n`);
+  console.error(`\n  MADRE › MADRE needs Node 22.5 or newer (found ${process.version}): the room's memory runs on node:sqlite.\n`);
   process.exit(2);
 }
 if (has('--version') || has('-v') || command === 'version') {
@@ -149,17 +170,25 @@ if (has('--version') || has('-v') || command === 'version') {
   console.log(`madre ${pkg.version}${commit ? ` · ${commit}` : ''} · node ${process.version}`);
   process.exit(0);
 }
-if (command !== 'help') {
+// A command that only reads leaves nothing behind (QA 1.1.0, NUE-37): after uninstalling, `madre
+// doctor` made ~/.pulse again, with Home's folder and the update cache in it.
+const onlyReads = command === 'doctor' || command === 'check-module';
+if (command !== 'help' && !(onlyReads && isSalasRoom(projectRoot, salasHome))) {
   // The notebook of Salas is MADRE's own folder: made here, empty, the first time it is opened
   // (D-S08). If it cannot be made, the check below says so, as for any folder that is not there.
-  if (isSalasRoom(projectRoot, salasHome)) await ensureSalasProject(salasHome).catch((error) => console.error(`  MOTHER › could not make the folder of Salas at ${projectRoot}: ${error.message}`));
+  if (isSalasRoom(projectRoot, salasHome)) await ensureSalasProject(salasHome).catch((error) => console.error(`  MADRE › could not make the folder of Salas at ${projectRoot}: ${error.message}`));
   const stats = await stat(projectRoot).catch(() => null);
   if (!stats?.isDirectory()) {
-    console.error(`\n  MOTHER › project folder not found: ${projectRoot}\n  Pass an existing directory with --project, or run MADRE from inside the project.\n`);
+    console.error(`\n  MADRE › project folder not found: ${projectRoot}\n  Pass an existing directory with --project, or run MADRE from inside the project.\n`);
     process.exit(2);
   }
 }
-applyConfigToEnv(await loadConfig(stateRoot));
+const startConfig = await loadConfig(stateRoot);
+applyConfigToEnv(startConfig);
+// The terminal speaks the language MADRE was set to (QA 1.1.0, NUE-36): Spanish until someone
+// chooses English, as the room does. PULSE_LANGUAGE still wins.
+const { setLanguage: speakIn, t } = await import('../src/i18n.mjs');
+speakIn(process.env.PULSE_LANGUAGE ?? startConfig?.language ?? 'es');
 
 if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   // The same knowledge base MU/TH/UR uses in the room, printed for this platform.
@@ -216,23 +245,25 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   const { checkForUpdate, detectInstall, updateCommand } = await import('../src/updates.mjs');
   const { join: joinPath } = await import('node:path');
   const { homedir } = await import('node:os');
-  const check = await checkForUpdate({ name: pkg.name, current: pkg.version, cacheFile: joinPath(process.env.PULSE_HOME ?? joinPath(homedir(), '.pulse'), 'updates.json'), enabled: process.env.PULSE_UPDATE_CHECK !== '0' });
+  const stateFolder = process.env.PULSE_HOME ?? joinPath(homedir(), '.pulse');
+  const kept = await stat(stateFolder).then((found) => found.isDirectory(), () => false);
+  const check = await checkForUpdate({ name: pkg.name, current: pkg.version, cacheFile: kept ? joinPath(stateFolder, 'updates.json') : null, enabled: process.env.PULSE_UPDATE_CHECK !== '0' });
   const update = { ...check, command: updateCommand(detectInstall({ projectRoot }), pkg.name, check.latest ?? 'latest') };
   result.update = update;
 
   if (has('--json')) {
     console.log(JSON.stringify(result, null, 2));
   } else {
-    console.log('\nMADRE doctor\n');
+    console.log(`\n${t('MADRE doctor')}\n`);
     for (const agent of report) {
-      const mark = agent.ready ? 'ready' : agent.detected ? 'detected' : 'not found';
+      const mark = agent.ready ? t('ready') : agent.detected ? t('detected') : t('not found');
       const session = agent.detected ? ` · ${agent.session.state}${agent.session.detail ? ` (${agent.session.detail})` : ''}` : '';
       console.log(`  ${agent.label.padEnd(10)} ${mark}${agent.version ? ` · ${agent.version}` : ''}${session}`);
     }
-    console.log(`  ${'Ollama'.padEnd(10)} ${ollama.disabled ? 'ignored (PULSE_OLLAMA=0)' : ollama.running ? `running${ollama.chatModel ? ` · @madre with ${ollama.chatModel}` : ' · no chat model yet'}${ollama.embedModel ? ` · embeddings ${ollama.embedModel}` : ''}` : 'not running · optional'}`);
-    console.log(`  ${'MADRE'.padEnd(10)} ${update.current}${update.available ? ` · ${update.latest} available · ${update.command}` : update.latest ? ' · up to date' : update.enabled ? ' · npm not reachable' : ' · update check off (PULSE_UPDATE_CHECK=0)'}`);
-    console.log(`\n  Project    ${result.project}`);
-    console.log(result.ok ? '\nReady to start. Known conditions and fixes: `madre doctor --catalog [query]`.\n' : '\nNo agent is online yet. Run `madre start`: the room opens anyway and walks you through installing and signing one in. Known conditions and fixes: `madre doctor --catalog`.\n');
+    console.log(`  ${'Ollama'.padEnd(10)} ${ollama.disabled ? t('ignored (PULSE_OLLAMA=0)') : ollama.running ? `${t('running')}${ollama.chatModel ? ` · ${t('@madre with {model}', { model: ollama.chatModel })}` : ` · ${t('no chat model yet')}`}${ollama.embedModel ? ` · ${t('embeddings {model}', { model: ollama.embedModel })}` : ''}` : t('not running · optional')}`);
+    console.log(`  ${'MADRE'.padEnd(10)} ${update.current}${update.available ? ` · ${t('{version} available', { version: update.latest })} · ${update.command}` : update.latest ? ` · ${t('up to date')}` : update.enabled ? ` · ${t('npm not reachable')}` : ` · ${t('update check off (PULSE_UPDATE_CHECK=0)')}`}`);
+    console.log(`\n  ${t('Project').padEnd(10)} ${result.project}`);
+    console.log(result.ok ? `\n${t('Ready to start. Known conditions and fixes: `madre doctor --catalog [query]`.')}\n` : `\n${t('No agent is online yet. Run `madre`: Home opens anyway and walks you through installing and connecting one. Known conditions and fixes: `madre doctor --catalog`.')}\n`);
   }
   process.exitCode = result.ok ? 0 : 1;
 } else if (command === 'setup') {
@@ -268,8 +299,8 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   const file = option('--file', null);
   const entryFile = option('--entry', null);
   if (!file) { console.error('Usage: madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]'); process.exit(2); }
-  // In English, as every terminal line of MADRE is (docs/REFERENCE.md), unless asked otherwise: the
-  // madre-mercado repository writes its pull requests' summary in Spanish (--lang es).
+  // In English unless asked otherwise, whatever MADRE speaks elsewhere: this check runs in the
+  // madre-mercado repository's CI, whose pull requests' summary is asked for in Spanish (--lang es).
   (await import('../src/i18n.mjs')).setLanguage(option('--lang', 'en'));
   const { checkSubmission } = await import('../src/market-check.mjs');
   const text = await readFile(file, 'utf8');
@@ -280,25 +311,7 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   else console.log(result.markdown);
   process.exitCode = result.ok ? 0 : 1;
 } else if (command === 'help') {
-  console.log(`MADRE
-
-  madre       [--port 4317] [--no-open]
-              Opens Home: every project on this computer, in one place.
-  madre start [--project PATH] [--port 4317] [--no-open] [--setup]
-              Opens the project in this folder (or PATH) directly.
-              Without --port, a busy 4317 falls through to the next free port.
-  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)
-  madre setup [--project PATH] [--port 4317] [--no-open]
-  madre doctor [--project PATH] [--json]
-  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]
-
-  (none)  Opens Home. From there you add projects, connect the agents
-          and enter any project. The Coordinator lives there.
-  start   Opens the project in this folder. From your home folder, Home.
-  setup   Detects the agents on this computer, shows who has a session,
-          and runs each agent's own sign-in from here.
-  doctor  Prints the same diagnosis without the wizard.
-`);
+  console.log(t(HELP_TEXT));
 } else {
   console.error(`Unknown command: ${command}`);
   process.exitCode = 1;

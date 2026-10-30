@@ -117,6 +117,7 @@ export const ES = {
   'The archivist recorded this as open and nothing has answered it.':
     'Quien resume la memoria la anotó como pendiente y nadie la ha contestado.',
   ' asks for #{n} {label} to go on': ' pide el permiso #{n} {label} para seguir',
+  'You confirm it with one click on Unlock. Then @{agent} gets your permission and continues.': 'Lo confirmas con un clic en «Desbloquear». Después @{agent} recibe tu permiso y continúa.',
   'You will type the project name, as always. Then @{agent} gets your permission and continues.':
     'Para confirmar, escribe el nombre del proyecto, como siempre. Después @{agent} recibe tu permiso y continúa.',
   '@{agent} gets your permission for one message and continues.': '@{agent} recibe tu permiso solo para este mensaje y continúa.',
@@ -711,9 +712,9 @@ export const ES = {
     'una llave de API de Gemini con créditos (la que guarda la app de Gemini CLI, o GEMINI_API_KEY)',
 
   'Brings the repository into the project: /git posts the branch, the uncommitted changes, the recent commits or the diff stats as a shared fact card, without spending an agent turn.':
-    'Trae el repositorio al proyecto: /git muestra en la conversación la rama, los cambios sin commitear, los commits recientes o las estadísticas del diff como una ficha, sin gastar una respuesta de agente.',
+    'Trae el repositorio al proyecto: /git muestra en la conversación la rama, los cambios sin guardar en git, las versiones recientes o las estadísticas del diff como una ficha, sin gastar una respuesta de agente.',
   'nothing by itself · the read commands only read': 'nada por sí solo · los comandos de lectura solo leen',
-  'a local commit only when you type /git commit': 'un commit local solo cuando escribes /git commit',
+  'a local commit only when you type /git commit': 'una versión local solo cuando escribes /git commit',
   'a push only when you type /git push confirm, after it shows what would leave':
     'un push solo cuando escribes /git push confirm, después de mostrarte qué se subiría',
 
@@ -1399,6 +1400,7 @@ export const ES = {
   'PRIVACY': 'Privacidad',
   'Wrote ': 'Escribió ',
   'Read it first: a module runs inside MADRE with your permissions.': 'Léelo antes de instalarlo: un módulo corre dentro de MADRE con tus permisos.',
+  'Installed from the Market for every project by {who}, and on.': 'Instalado desde el Mercado para todos los proyectos por {who}, y encendido.',
   'Installed for {where} by {who}. Switch it on in MODULES.': 'Instalado para {where} por {who}. Enciéndelo en «Módulos».',
   'Removed by {who}.': 'Quitado por {who}.',
   'INSTALL FOR THIS PROJECT': 'Instalar para este proyecto',
@@ -2670,7 +2672,7 @@ export const ES = {
   'Diagnostics › /{name} needs a request after it, e.g. "/{name} a poster for the launch".':
     'Diagnóstico › /{name} necesita una petición después, por ejemplo «/{name} un póster para el lanzamiento».',
   'Diagnostics › /module needs a job, e.g. "/module summarize today’s commits".':
-    'Diagnóstico › /module necesita una tarea, por ejemplo «/module resume los commits de hoy».',
+    'Diagnóstico › /module necesita una tarea, por ejemplo «/module resume las versiones guardadas hoy».',
   'DIAGNOSTICS · MODULE · NEEDS #2 ›': 'DIAGNÓSTICO · MÓDULO · REQUIERE #2 ›',
   'Create a MADRE module for this request: {request} Write exactly one <id>.module.mjs file for review. Set vendor to whoever wrote it — the human\'s name or team if you know it, otherwise leave it out; never the word "you". Do not install it; MADRE will show the human an install card.':
     'Crea un módulo de MADRE para esta petición: {request} Escribe exactamente un archivo <id>.module.mjs para revisión. Pon en vendor a quien lo escribió —el nombre o el equipo del humano si lo sabes, y si no, déjalo fuera; nunca la palabra «you»—. No lo instales; MADRE le va a mostrar al humano una tarjeta de instalación.',
@@ -2827,6 +2829,7 @@ export const ES = {
   'Diagnostics › it could not be forgotten: {error}': 'Diagnóstico › no se pudo olvidar: {error}',
   'It could not be saved: {error}': 'No se pudo guardar: {error}',
   '@codex summarize this project': '@codex resume este proyecto',
+  '@{agent} summarize this project': '@{agent} resume este proyecto',
   // Los cuatro lugares de la sala. Los nombres de la nave —MU/TH/UR, NOSTROMO, ASH, RIPLEY—
   // son nombres propios; estos cuatro no lo son: dicen qué hay detrás de la puerta.
   'MODULES': 'MÓDULOS',
@@ -3158,7 +3161,7 @@ export const ES = {
   'MENTION · ↑↓ · TAB OR ENTER': 'Mención · ↑↓ · Tab o Enter',
   'COMMAND · ↑↓ · TAB OR ENTER': 'Comando · ↑↓ · Tab o Enter',
   'Repository status, recent commits, uncommitted changes and branches from the project itself; commit and push by your own hand, with a confirmation before anything leaves.':
-    'Estado del repositorio, commits recientes, cambios sin commit y ramas, leídos del propio proyecto; commit y push solo cuando tú lo pides, con una confirmación antes de que algo se suba.',
+    'Estado del repositorio, versiones recientes, cambios sin guardar y ramas, leídos del propio proyecto; guardar y subir solo cuando tú lo pides, con una confirmación antes de que algo se suba.',
   'Ask the AHP+ installed in this project for its verified status, checks or session context.':
     'Pregúntale al AHP+ instalado en este proyecto su estado verificado, sus revisiones o el contexto de la sesión.',
 
@@ -3463,7 +3466,7 @@ export const ES = {
   'Names you don\'t want saved or shared: a company, a brand, a domain. MADRE swaps them out before anything is saved or reaches another agent.': 'Nombres que no quieres que se guarden ni se compartan: una empresa, una marca, un dominio. MADRE los cambia antes de guardar nada o pasárselo a otro agente.',
   'The key is written where the Gemini CLI looks for it, readable only by you. MADRE keeps no copy.': 'La llave de API se escribe donde la busca la app de Gemini CLI, y solo tú puedes leerla. MADRE no guarda copia.',
   'OpenCode brings no model of its own: pick the provider whose key you are pasting. The key is written where OpenCode looks for it, readable only by you. MADRE keeps no copy.': 'OpenCode no trae modelo propio: elige el proveedor cuya llave de API vas a pegar. La llave se escribe donde la busca OpenCode, y solo tú puedes leerla. MADRE no guarda copia.',
-  'Gemini API key': 'API key de Gemini',
+  'Gemini API key': 'Llave de API de Gemini',
   'Provider key': 'Llave de API del proveedor',
   'Back to settings': 'Volver a Ajustes',
   'Colour': 'Color',
@@ -3753,7 +3756,7 @@ export const ES = {
   'it can merge': 'se puede fusionar',
   'it has conflicts': 'tiene conflictos',
   'GitHub is still working out whether it can merge': 'GitHub todavía está calculando si se puede fusionar',
-  '+{add} −{del} · {files} files · {commits} commits': '+{add} −{del} · {files} archivos · {commits} commits',
+  '+{add} −{del} · {files} files · {commits} commits': '+{add} −{del} · {files} archivos · {commits} versiones',
   'Review: {state}': 'Revisión: {state}',
   'The project is not on a branch, so there is no CI to ask about.': 'El proyecto no está en ninguna rama, así que no hay CI que consultar.',
   'Latest workflow runs': 'Últimas ejecuciones de workflows',
@@ -3902,7 +3905,7 @@ export const ES = {
   'Stop all': 'Detener todo',
   // SALAS on the Mac (salas-mac.js, src/salas.mjs).
   'Asleep': 'Dormido',
-  'Asleep · last open {when}': 'Dormido · última vez {when}',
+  'Asleep · last open {when}': 'Dormido · se abrió por última vez {when}',
   'Wake': 'Encender',
   'Waking…': 'Despertando…',
   'Closing…': 'Cerrando…',
@@ -4474,6 +4477,31 @@ export const ES = {
   'You are connected to this computer from another one (SSH), so the browser is over there.': 'Estás conectado a esta computadora desde otra (SSH), así que el navegador está allá.',
   'On your own computer, open another terminal and paste:': 'En tu computadora, abre otra terminal y pega:',
   'Then open {address} in your browser.': 'Luego abre {address} en tu navegador.',
+  "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Opens Home: every project on this computer, in one place.\n  madre start [--project PATH] [--port 4317] [--no-open] [--setup]\n              Opens the project in this folder (or PATH) directly.\n              Without --port, a busy 4317 falls through to the next free port.\n  madre lobby [--port 4317] [--no-open]   (also: madre salas; opens Home)\n  madre setup [--project PATH] [--port 4317] [--no-open]\n  madre doctor [--project PATH] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n\n  (none)  Opens Home. From there you add projects, connect the agents\n          and enter any project. The Coordinator lives there.\n  start   Opens the project in this folder. From your home folder, Home.\n  setup   Detects the agents on this computer, shows who has a session,\n          and runs each agent's own sign-in from here.\n  doctor  Prints the same diagnosis without the wizard.\n": "MADRE\n\n  madre       [--port 4317] [--no-open]\n              Abre Inicio: todos los proyectos de esta computadora, en un lugar.\n  madre start [--project RUTA] [--port 4317] [--no-open] [--setup]\n              Abre directo el proyecto de esta carpeta (o de RUTA).\n              Sin --port, si el 4317 está ocupado pasa al siguiente libre.\n  madre lobby [--port 4317] [--no-open]   (también: madre salas; abre Inicio)\n  madre setup [--project RUTA] [--port 4317] [--no-open]\n  madre doctor [--project RUTA] [--json]\n  madre check-module --file <module.mjs> [--entry <entrada.json>] [--json] [--lang es]\n\n  (nada)  Abre Inicio. Desde ahí agregas proyectos, conectas los agentes\n          y entras a cualquier proyecto. Ahí vive el Coordinador.\n  start   Abre el proyecto de esta carpeta. Desde tu carpeta personal, Inicio.\n  setup   Encuentra los agentes de esta computadora, dice quién tiene sesión\n          y corre aquí el inicio de sesión de cada uno.\n  doctor  Muestra el mismo diagnóstico sin el asistente.\n",
+  "MADRE doctor": "MADRE · diagnóstico",
+  "detected": "encontrado",
+  "not found": "no está",
+  "ignored (PULSE_OLLAMA=0)": "ignorado (PULSE_OLLAMA=0)",
+  "@madre with {model}": "@madre con {model}",
+  "no chat model yet": "todavía sin modelo para conversar",
+  "embeddings {model}": "memoria con {model}",
+  "not running · optional": "cerrado · opcional",
+  "npm not reachable": "npm no responde",
+  "update check off (PULSE_UPDATE_CHECK=0)": "revisión de versiones apagada (PULSE_UPDATE_CHECK=0)",
+  "Ready to start. Known conditions and fixes: `madre doctor --catalog [query]`.": "Lista para empezar. Problemas conocidos y sus arreglos: `madre doctor --catalog [búsqueda]`.",
+  "No agent is online yet. Run `madre`: Home opens anyway and walks you through installing and connecting one. Known conditions and fixes: `madre doctor --catalog`.": "Todavía no hay ningún agente conectado. Corre `madre`: Inicio se abre igual y te guía para instalar y conectar uno. Problemas conocidos y sus arreglos: `madre doctor --catalog`.",
+  '{n} cores': '{n} núcleos',
+  '{files} {noun} · +{add} −{del} lines': '{files} {noun} · +{add} −{del} líneas',
+  'Reminder · due {when}': 'Recordatorio · venció {when}',
+  '1 note in this project': '1 nota en este proyecto',
+  '1 reminder ahead': '1 recordatorio por venir',
+  '1 due': '1 vencido',
+  '{n} due': '{n} vencidos',
+  'MADRE is ready': 'MADRE está lista',
+  'Home: every project on this computer': 'Inicio: todos los proyectos de esta computadora',
+  'Project:': 'Proyecto:',
+  'Agents installed: {list} (who is signed in: Settings › Agents)': 'Agentes instalados: {list} (quién tiene sesión: Ajustes › Agentes)',
+  'Found but not answering: {list}': 'Encontrados pero sin responder: {list}',
   'Open this address in your Windows browser:': 'Abre esta dirección en tu navegador de Windows:',
   'Open this address in a browser on this computer:': 'Abre esta dirección en un navegador de esta computadora:',
   'Pinch or wheel': 'Pellizcar o rueda',
@@ -4674,7 +4702,7 @@ export const ES = {
   'It keeps the project\'s state, decisions, evidence, checkpoints and handoffs in the repository itself, in .ahp/.': 'Guarda en el propio repositorio, en .ahp/, el estado del proyecto, sus decisiones, la evidencia, los puntos de restauración y el contexto compartido entre agentes.',
   'If the agent, the editor, the account or the computer changes, the next session starts from what was recorded, not from scratch.': 'Si cambia el agente, el editor, la cuenta o la computadora, la siguiente sesión parte de lo que quedó registrado, no de cero.',
   'Claude Code, Codex and OpenCode read it through their own files, in MADRE and outside it.': 'Claude Code, Codex y OpenCode lo leen con sus propios archivos, dentro y fuera de MADRE.',
-  'It writes into the project and needs a git repository with at least one commit. Modules shows you everything it writes before you install it.': 'Escribe dentro del proyecto y necesita que el proyecto use git (control de versiones) con al menos un commit. En Módulos ves todo lo que escribe antes de instalarlo.',
+  'It writes into the project and needs a git repository with at least one commit. Modules shows you everything it writes before you install it.': 'Escribe dentro del proyecto y necesita que el proyecto use git (control de versiones) con al menos una versión guardada. En Módulos ves todo lo que escribe antes de instalarlo.',
   'See it in Modules': 'Verlo en Módulos',
   'No, thanks': 'No, gracias',
   // Wordings the ledgers already hold, from before the plain names (2026-10-10): said again in
@@ -4754,6 +4782,7 @@ export const ES = {
   'Only for Home: each project keeps its conversation as you set it there.': 'Solo para Inicio: cada proyecto conserva su conversación como la ajustaste ahí.',
   'Project cards': 'Tarjetas de proyecto',
   'Project order': 'Orden de los proyectos',
+  'You run {version}, the newest.': 'Tienes la {version}, la más reciente.',
   'You run {version}. Home restarts with it from here.': 'Tienes la {version}. Desde aquí Inicio se reinicia con la nueva.',
   '{room} runs MADRE {version}.': '{room} usa MADRE {version}.',
   'Restart it to bring it to {latest}: what is running stops.': 'Reinícialo para pasarlo a la {latest}: lo que esté en curso se detendrá.',
@@ -5543,6 +5572,13 @@ export const ES = {
   'only when you press Activate or Release on a paid module of the Market': 'solo cuando pulsas Activar o Liberar en un módulo de paga del Mercado',
   'Market › the paid module\'s page': 'Mercado › la página del módulo de paga',
   // Known failures from a real project (2026-10-19).
+  '{label} was stopped (SIGTERM) — something asked it to quit: STOP ALL, a timeout, or the room shutting down.': '{label} se detuvo (SIGTERM): algo le pidió salir: Detener todo, el tiempo límite o el cierre del proyecto.',
+  '{label} was killed outright (SIGKILL) — usually this machine running out of memory.': '{label} se cerró de golpe (SIGKILL): casi siempre porque a esta computadora se le acabó la memoria.',
+  '{label} was interrupted (SIGINT) — a Ctrl+C reached it.': '{label} se interrumpió (SIGINT): le llegó un Ctrl+C.',
+  '{label} lost its terminal (SIGHUP).': '{label} perdió su terminal (SIGHUP).',
+  '{label} ended on {signal}.': '{label} terminó con {signal}.',
+  '{label} exited cleanly without an answer.': '{label} terminó sin errores pero sin respuesta.',
+  '{label} went silent for {seconds}s and was stopped.': '{label} se quedó callado {seconds} s y se detuvo.',
   '{label} exited with code {code}.': '{label} se cerró con el código {code}.',
   'The API account behind this agent has no credit left': 'La cuenta de API de este agente se quedó sin saldo',
   'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.': 'El proveedor rechazó el turno porque la llave de API con la que se mandó ya no tiene saldo. Una llave de API se cobra aparte de una suscripción: un plan Claude Pro o Max, o ChatGPT, no la paga. En OpenCode es el proveedor del modelo que pidió el turno, y un turno que no pidió ninguno corrió con el modelo predeterminado de Ajustes › Agentes › OpenCode.',
@@ -5591,7 +5627,7 @@ export const ES = {
   'See your pages beside the conversation': 'Mira tus páginas junto al chat',
   'Shows web pages, drawings (SVG) and documents (Markdown) beside the conversation, updated while the agents work.': 'Muestra páginas web, dibujos (SVG) y documentos (Markdown) junto a la conversación, al día mientras los agentes trabajan.',
   'Your repository, at a glance': 'Tu repositorio, de un vistazo',
-  'Shows how your repository stands: what changed, the last commits and the branch you are on. It only reads; it never commits for you.': 'Muestra cómo está tu repositorio: qué cambió, los últimos commits y la rama en la que estás. Solo lee; nunca hace commits por ti.',
+  'Shows how your repository stands: what changed, the last commits and the branch you are on. It only reads; it never commits for you.': 'Muestra cómo está tu repositorio: qué cambió, las últimas versiones guardadas y la rama en la que estás. Solo lee; nunca guarda versiones por ti.',
   'An agent\'s commands, one press away': 'Comandos de tus agentes, en un clic',
   'When an agent needs a command it cannot run in its mode, it asks you here. You see the exact command and run it with one press; MADRE takes a restore point first.': 'Cuando un agente necesita un comando que no puede correr en su modo, te lo pide aquí. Ves el comando exacto y lo corres con un clic; MADRE toma antes un punto de restauración.',
   'Answer the agents with one press': 'Contesta a los agentes con un clic',
@@ -5709,7 +5745,6 @@ export const ES = {
   'Delete': 'Eliminar',
   'A reminder is due: {what}': 'Tienes un recordatorio: {what}',
   '{n} reminders are due. They are in «Needs you».': 'Tienes {n} recordatorios. Están en «Te necesita».',
-  'Reminder · {when}': 'Recordatorio · {when}',
   '{n} reminders ahead': '{n} recordatorios por venir',
   'Write what to remember.': 'Escribe qué hay que recordar.',
   'That offer is not known.': 'Esa oferta no existe.',
@@ -5948,7 +5983,7 @@ export const ES = {
   // The welcome of 1.0.6 (2026-10-28, public/welcome.js) and what it needs from the server.
   'ChatGPT account': 'Cuenta de ChatGPT',
   'With a code': 'Con un código',
-  'OpenAI API key': 'Llave de acceso de OpenAI (API key)',
+  'OpenAI API key': 'Llave de API de OpenAI',
   'Opens your browser to sign in with your ChatGPT account.': 'Abre tu navegador para conectar tu cuenta de ChatGPT.',
   'Gives you a code to type on OpenAI\'s page, from this or any other device. Use it when MADRE runs on another computer.': 'Te da un código para escribir en la página de OpenAI, desde este o cualquier otro dispositivo. Úsalo cuando MADRE corre en otra computadora.',
   'The key is handed to Codex itself, which keeps it in its own file, readable only by you. MADRE keeps no copy. It replaces the account Codex was signed in with, here and in your own terminal.': 'La llave se le entrega al propio Codex, que la guarda en su archivo, que solo tú puedes leer. MADRE no se queda con ninguna copia. Reemplaza la cuenta con la que Codex estaba conectado, aquí y en tu propia terminal.',
@@ -6079,7 +6114,6 @@ export const ES = {
   'You already have {n} projects in Home. Add another one, or continue.': 'Ya tienes {n} proyectos en Inicio. Agrega otro, o continúa.',
   'Keep your projects inside Linux (your folder in /home). A Windows folder (/mnt/c/…) makes MADRE slower and protects your files less.': 'Guarda tus proyectos dentro de Linux (tu carpeta en /home). Una carpeta de Windows (/mnt/c/…) hace a MADRE más lenta y protege menos tus archivos.',
   'You can add it from Home.': 'Podrás agregarlo desde Inicio.',
-  'MADRE is ready': 'MADRE está lista',
   'Here is what is ready. Anything you left for later has its button.': 'Esto es lo que quedó. Lo que dejaste para después tiene su botón.',
   'None connected yet': 'Ninguno conectado todavía',
   'on another computer': 'en otra computadora',

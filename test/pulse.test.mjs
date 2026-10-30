@@ -602,11 +602,11 @@ test('serves the single-room interface', async () => {
     const troubleshooting = await fetch(`http://127.0.0.1:${port}/troubleshooting.js`);
     assert.equal(troubleshooting.status, 200);
     assert.match(await troubleshooting.text(), /export const CONDITIONS/);
-    for (const asset of ['abduction-cat.png', 'abduction-cat-blink.png', 'abduction-cat-control-left.png', 'abduction-cat-control-right.png']) {
+    for (const asset of ['abduction-cat.webp', 'abduction-cat-blink.webp', 'abduction-cat-control-left.webp', 'abduction-cat-control-right.webp']) {
       const abductionCat = await fetch(`http://127.0.0.1:${port}/assets/${asset}`);
       assert.equal(abductionCat.status, 200);
-      assert.equal(abductionCat.headers.get('content-type'), 'image/png');
-      assert.ok((await abductionCat.arrayBuffer()).byteLength > 1_000_000);
+      assert.equal(abductionCat.headers.get('content-type'), 'image/webp');
+      assert.ok((await abductionCat.arrayBuffer()).byteLength > 100_000);
     }
     assert.match(html, /id="mother"/);
     assert.match(html, /id="modules"/);
@@ -1144,7 +1144,7 @@ test('renders the setup report and decides who is online', () => {
   assert.match(report, /◌ CLAUDE\s+Anthropic\s+READY\s+NO SESSION/);
   assert.match(report, /◌ GEMINI\s+Google\s+READY\s+SESSION \?/);
   assert.match(report, /○ OPENCODE\s+OpenCode\s+NOT FOUND/);
-  assert.match(report, /MOTHER › 1 OF 4 AGENTS ONLINE\. ROOM CAN OPEN\./);
+  assert.match(report, /MADRE › 1 OF 4 AGENTS ONLINE\. ROOM CAN OPEN\./);
   assert.doesNotMatch(report, /\u001b\[/, 'no ANSI codes when colors are off');
   const colored = renderReport({ agents, probes, projectRoot: '/tmp/demo', palette: makePalette({ colors: true, depth: 24 }) });
   assert.match(colored, /\u001b\[38;2;16;163;127m/, 'Codex row uses the OpenAI palette');
@@ -1326,7 +1326,7 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
       child.stderr.on('data', (chunk) => { out += chunk; });
       // Generous on purpose: the room has to open on a busy laptop, not only on an idle one.
       const timer = setTimeout(() => child.kill('SIGTERM'), 30000);
-      const poll = setInterval(() => { if (/MADRE is ready/.test(out)) { clearInterval(poll); clearTimeout(timer); child.kill('SIGTERM'); } }, 100);
+      const poll = setInterval(() => { if (/MADRE (?:is ready|está lista)/.test(out)) { clearInterval(poll); clearTimeout(timer); child.kill('SIGTERM'); } }, 100);
       child.on('close', (code) => { clearInterval(poll); clearTimeout(timer); resolve({ code, out }); });
     });
     const fallback = await run(['--port', String(port), '--auto']); // explicit port → refuse
@@ -1334,7 +1334,7 @@ test('start without --port walks past a busy port; with --port it refuses', asyn
     assert.match(fallback.out, new RegExp(`port ${port} is already in use`));
     const walked = await run([]);
     // default 4317 may or may not be busy on this machine; either way the room must come up
-    assert.match(walked.out, /MADRE is ready/);
+    assert.match(walked.out, /MADRE (?:is ready|está lista)/);
   } finally {
     await new Promise((resolve) => busy.close(resolve));
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });

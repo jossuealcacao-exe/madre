@@ -79,6 +79,8 @@ test('i18n: the catalogue says nothing the product does not say', async () => {
     }
   };
   await walk(join(import.meta.dirname, '..', 'src'));
+  // The terminal speaks the room's language too (QA 1.1.0): its help and doctor are in bin/.
+  files.push(join(import.meta.dirname, '..', 'bin', 'madre.mjs'));
   // A source file may write a character as an escape — '\u00b7' for '·' — and the catalogue is
   // keyed by the string, not by how it was typed.
   const app = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join('\n')

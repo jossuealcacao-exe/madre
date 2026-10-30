@@ -1223,11 +1223,13 @@ dialog.sm-sheet.sm-graph { --sm-sheet-w: min(1120px, 94vw); }
 .sm-attention-words { gap: 4px; }
 .sm-attention-words b { font-size: 14px; font-weight: 600; line-height: 1.45; text-wrap: pretty; }
 .sm-attention-words span { font-size: 13px; line-height: 1.5; text-wrap: pretty; }
-.sm-attention-item > :is(.sm-btn, a.sm-btn) { grid-column: 2; justify-self: start; }
+/* A reminder brings its keys in a row of their own (QA 1.1.0, ACT-09): only the single key was put
+   in the column, and the reminder's words sat to the right of a gap. */
+.sm-attention-item > :is(.sm-btn, a.sm-btn, .sm-attention-acts) { grid-column: 2; justify-self: start; }
 @container tile (min-width: 560px) {
   .sm-attention-item { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
   .sm-attention-item .dot { margin-top: 0; }
-  .sm-attention-item > :is(.sm-btn, a.sm-btn) { grid-column: 3; justify-self: end; }
+  .sm-attention-item > :is(.sm-btn, a.sm-btn, .sm-attention-acts) { grid-column: 3; justify-self: end; }
 }
 .sm-attention > .sm-hint { padding: 2px 4px; }
 

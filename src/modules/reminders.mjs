@@ -479,8 +479,12 @@ export default {
   async status(ctx) {
     const enabled = Boolean(ctx.settings.enabled);
     const list = (await readReminders(ctx.stateRoot)).filter((one) => !one.done && (!ctx.roomId || one.room === ctx.roomId));
+    // What is still to come, and what already fell due, said apart (QA 1.1.0, ACT-10).
+    const due = list.filter((one) => Date.parse(one.due) <= Date.now()).length;
+    const ahead = list.length - due;
+    const words = [ahead === 1 ? say(ctx, '1 reminder ahead') : say(ctx, '{n} reminders ahead', { n: ahead }), due ? (due === 1 ? say(ctx, '1 due') : say(ctx, '{n} due', { n: due })) : null].filter(Boolean).join(' · ');
     return {
-      status: { installed: enabled, detail: enabled ? say(ctx, '{n} reminders ahead', { n: list.length }) : say(ctx, 'off') },
+      status: { installed: enabled, detail: enabled ? words : say(ctx, 'off') },
       install: { display: enabled ? 'turn off Reminders' : 'turn on Reminders', platforms: [] },
     };
   },

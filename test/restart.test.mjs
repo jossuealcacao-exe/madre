@@ -41,8 +41,8 @@ test('restart · Home and every open project come back as new processes on the s
   lobby.stdout.on('data', (chunk) => { out += chunk; });
   lobby.stderr.on('data', (chunk) => { out += chunk; });
   try {
-    for (let waited = 0; !/MADRE is ready/.test(out) && waited < 45000; waited += 100) await pause(100);
-    assert.match(out, /MADRE is ready/, out);
+    for (let waited = 0; !/MADRE (?:is ready|está lista)/.test(out) && waited < 45000; waited += 100) await pause(100);
+    assert.match(out, /MADRE (?:is ready|está lista)/, out);
     const alfa = await fetch(`http://127.0.0.1:${port}/api/salas/start`, { method: 'POST', headers: { 'content-type': 'application/json', origin: `http://127.0.0.1:${port}` }, body: JSON.stringify({ room: alfaId }) }).then((answer) => answer.json());
     assert.ok(alfa.port, JSON.stringify(alfa));
     const before = Object.fromEntries((await knownRooms(state)).filter((one) => one.open).map((one) => [one.id, one.open]));

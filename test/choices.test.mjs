@@ -182,7 +182,7 @@ test('abduction: the room answers to its name only when that is the whole of wha
   const { calledByName } = await import('../public/abduction.js');
 
   // Every registered frame ships with the room rather than being fetched when the joke runs.
-  for (const asset of ['abduction-cat.png', 'abduction-cat-blink.png', 'abduction-cat-control-left.png', 'abduction-cat-control-right.png']) {
+  for (const asset of ['abduction-cat.webp', 'abduction-cat-blink.webp', 'abduction-cat-control-left.webp', 'abduction-cat-control-right.webp']) {
     await access(new URL(`../public/assets/${asset}`, import.meta.url));
   }
 

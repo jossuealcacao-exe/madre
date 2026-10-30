@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import { constants } from 'node:fs';
-import { access } from 'node:fs/promises';
-import { homedir, userInfo } from 'node:os';
+import { access, readFile, realpath, stat, writeFile, rename } from 'node:fs/promises';
+import { homedir, tmpdir, userInfo } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -141,10 +141,30 @@ export async function findExecutable(candidates, envPath = process.env.PATH ?? '
   return null;
 }
 
+// What each CLI answered to --version, kept per binary (its real path, size and date) for every
+// MADRE of this user (QA 1.1.0, ACT-15): each project used to run `gemini --version` as it came up,
+// and several coming up together left Gemini's half-written projects.json.<uuid>.tmp behind in
+// ~/.gemini. A binary that changes is asked again.
+const versionsFile = () => join(tmpdir(), `madre-versions-${process.getuid?.() ?? 'user'}.json`);
+async function rememberedVersions() { try { return JSON.parse(await readFile(versionsFile(), 'utf8')) ?? {}; } catch { return {}; } }
 async function readVersion(path, args) {
+  let key = null;
+  try {
+    const real = await realpath(path);
+    const found = await stat(real);
+    key = `${real}:${found.size}:${Math.round(found.mtimeMs)}:${args.join(' ')}`;
+    const kept = (await rememberedVersions())[key];
+    if (typeof kept === 'string' && kept) return kept;
+  } catch { /* asked below */ }
   try {
     const { stdout, stderr } = await execFileAsync(path, args, { timeout: 3000 });
-    return (stdout || stderr).trim().split('\n')[0] || null;
+    const version = (stdout || stderr).trim().split('\n')[0] || null;
+    if (version && key) {
+      const all = { ...(await rememberedVersions()), [key]: version };
+      const temp = `${versionsFile()}.${process.pid}.tmp`;
+      await writeFile(temp, JSON.stringify(Object.fromEntries(Object.entries(all).slice(-40)))).then(() => rename(temp, versionsFile())).catch(() => {});
+    }
+    return version;
   } catch {
     return null;
   }

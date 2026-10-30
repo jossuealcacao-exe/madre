@@ -160,7 +160,7 @@ export default {
     const list = await readNotes(ctx.roomDir);
     const enabled = Boolean(ctx.settings.enabled);
     return {
-      status: { installed: enabled, detail: enabled ? say(ctx, '{n} notes in this project', { n: list.length }) : say(ctx, 'off') },
+      status: { installed: enabled, detail: enabled ? (list.length === 1 ? say(ctx, '1 note in this project') : say(ctx, '{n} notes in this project', { n: list.length })) : say(ctx, 'off') },
       install: { display: enabled ? 'turn off Notes' : 'turn on Notes', platforms: [] },
       notes: list.length,
     };

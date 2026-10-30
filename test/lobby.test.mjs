@@ -299,8 +299,11 @@ test('a new project from nothing: one folder, named by the person, inside the ho
   assert.equal(made.root, join(home, 'Proyectos', 'mi tienda'));
   assert.ok((await stat(made.root)).isDirectory());
   assert.equal(made.id, projectRoomId(made.root));
-  // Without a place, the home folder itself.
-  assert.equal((await createProject({ name: 'notas', home, stateRoot: state })).root, join(home, 'notas'));
+  // Without a place, the folder this person keeps projects in (QA 1.1.0, NUE-09), and the home folder
+  // itself when there is none.
+  assert.equal((await createProject({ name: 'notas', home, stateRoot: state })).root, join(home, 'Proyectos', 'notas'));
+  const bare = await realpath(await scratch('madre-new-bare-'));
+  assert.equal((await createProject({ name: 'notas', home: bare, stateRoot: join(bare, '.pulse') })).root, join(bare, 'notas'));
   // Never twice, never a path, a device, a hidden folder or somewhere outside the home folder.
   assert.equal((await createProject({ name: 'mi tienda', parent: join(home, 'Proyectos'), home, stateRoot: state })).error, 'exists');
   for (const bad of ['a/b', '../fuera', '..', '.secreto', 'CON', 'lpt1.txt', 'termina.', 'espacio ', 'dos:puntos']) assert.equal(projectNameProblem(bad), 'name', bad);

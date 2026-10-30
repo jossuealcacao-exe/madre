@@ -6897,7 +6897,8 @@ dialog.mods-window { width: 1040px; height: 720px; container: modswin / inline-s
 
 /* (6) An agent's key and its sign-in command, in the sheet's own hand. */
 .sx-slot .key-form { padding: 14px; border-radius: 12px; background: transparent; box-shadow: var(--key-track); }
-.sx-slot .key-form label .k, .sx-slot .key-form label > span:first-child { display: inline-block; font-family: var(--read); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: lowercase; color: var(--text); }
+/* As written (QA 1.1.0): lowercased, «OpenAI API key» read «openai (api key)». */
+.sx-slot .key-form label .k, .sx-slot .key-form label > span:first-child { display: inline-block; font-family: var(--read); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text); }
 .sx-slot .key-form label .k::first-letter, .sx-slot .key-form label > span:first-child::first-letter { text-transform: uppercase; }
 .sx-slot .key-form :is(input, select) { border: 0 !important; background: transparent !important; box-shadow: var(--key-track) !important; outline: none; font-family: var(--read); }
 .sx-slot .key-form :is(input, select):focus { box-shadow: var(--key-sink) !important; }

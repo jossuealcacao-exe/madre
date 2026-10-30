@@ -304,7 +304,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const fact = (label, value) => { if (!value) return; const box = el('div', 'wl-fact'); box.append(el('small', null, label), el('b', null, value)); grid.append(box); };
     fact(t('Where MADRE runs'), placeWords());
     fact(t('System'), env.name ?? (env.os === 'macos' ? 'macOS' : env.os === 'linux' ? 'Linux' : env.os ?? null));
-    fact(t('Processor'), hw.chip ?? null);
+    fact(t('Processor'), hw.chip ?? (hw.cores ? t('{n} cores', { n: hw.cores }) : null));
     fact(t('Memory'), hw.memoryGb ? `${number(hw.memoryGb)} GB` : null);
     fact(t('Graphics card'), graphicsWords());
     fact(t('Free space'), env.disk ? t('{n} GB free', { n: number(env.disk.freeGb) }) : null);

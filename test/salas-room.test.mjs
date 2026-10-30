@@ -190,7 +190,7 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
   const bin = join(process.cwd(), 'bin', 'madre.mjs');
   const children = [];
-  const run = (args, cwd, { until = /MADRE is ready|already open for this project/ } = {}) => new Promise((resolve) => {
+  const run = (args, cwd, { until = /MADRE (?:is ready|está lista)|already open for this project|ya está abierto para este proyecto/ } = {}) => new Promise((resolve) => {
     const child = spawn(process.execPath, [bin, ...args], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
     children.push(child);
     let out = '';
@@ -208,8 +208,10 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
     // `madre salas`, from a folder that is nobody's business, on a port of its own.
     const port = await freePort();
     const first = await run(['salas', '--no-open', '--port', String(port)], tmpdir());
-    assert.match(first.out(), /MADRE is ready/, first.out());
-    assert.match(first.out(), new RegExp(`Project: ${notebook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    assert.match(first.out(), /MADRE (?:is ready|está lista)/, first.out());
+    // Home is said as Home, not as the folder MADRE keeps it in (QA 1.1.0, NUE-01).
+    assert.match(first.out(), /Home: every project on this computer|Inicio: todos los proyectos de esta computadora/);
+    assert.doesNotMatch(first.out(), new RegExp(notebook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     const opened = await fetch(`http://127.0.0.1:${port}/api/state`).then((answer) => answer.json());
     assert.equal(opened.salas, true);
     assert.equal(opened.room, salasRoomId(state));
@@ -231,7 +233,7 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
     assert.equal(asleep?.root, await realpath(notebook));
     // A bare `madre` from the home folder itself opens the same room.
     const third = await run(['--no-open', '--port', String(port)], home);
-    assert.match(third.out(), /MADRE is ready/, third.out());
+    assert.match(third.out(), /MADRE (?:is ready|está lista)/, third.out());
     const fromHome = await fetch(`http://127.0.0.1:${port}/api/state`).then((answer) => answer.json());
     assert.equal(fromHome.salas, true);
     assert.equal(fromHome.room, salasRoomId(state));
@@ -242,13 +244,13 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
     const project = join(home, 'a-project');
     await mkdir(project);
     const bare = await run(['--no-open', '--port', String(port)], project);
-    assert.match(bare.out(), /MADRE is ready/, bare.out());
+    assert.match(bare.out(), /MADRE (?:is ready|está lista)/, bare.out());
     assert.match(bare.out(), /\/salas/, 'a bare madre does not say it opens the lobby');
     assert.equal((await fetch(`http://127.0.0.1:${port}/api/state`).then((answer) => answer.json())).salas, true);
     bare.child.kill('SIGTERM');
     assert.equal((await bare.done).code, 0);
     const fourth = await run(['start', '--no-open', '--port', String(port)], project);
-    assert.match(fourth.out(), /MADRE is ready/, fourth.out());
+    assert.match(fourth.out(), /MADRE (?:is ready|está lista)/, fourth.out());
     const inside = await fetch(`http://127.0.0.1:${port}/api/state`).then((answer) => answer.json());
     assert.equal(inside.salas, false);
     assert.equal(await realpath(inside.projectRoot), await realpath(project));

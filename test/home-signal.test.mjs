@@ -45,8 +45,8 @@ test('home · closed by a signal, it closes every open project, also one opened 
   const ended = new Promise((finish) => lobby.on('close', (code) => finish(code)));
   const start = (at, room) => fetch(`http://127.0.0.1:${at}/api/salas/start`, { method: 'POST', headers: { 'content-type': 'application/json', origin: `http://127.0.0.1:${at}` }, body: JSON.stringify({ room }) }).then((answer) => answer.json());
   try {
-    for (let waited = 0; !/MADRE is ready/.test(out) && waited < 45000; waited += 100) await new Promise((resolve) => setTimeout(resolve, 100));
-    assert.match(out, /MADRE is ready/, out);
+    for (let waited = 0; !/MADRE (?:is ready|está lista)/.test(out) && waited < 45000; waited += 100) await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.match(out, /MADRE (?:is ready|está lista)/, out);
     // alfa opened from Home; beta opened from alfa, so its process is alfa's child, not Home's.
     const alfa = await start(port, ids.alfa);
     assert.ok(alfa.port, JSON.stringify(alfa));
