@@ -33,7 +33,8 @@ test('cursor · a reading turn runs headless in ask mode, in the project, never 
 
 test('cursor · every mode: #2 and #3 write and run nothing, #4 runs commands, and no mode writes where nobody writes (2026-10-21)', async () => {
   const { cursorConfigFor } = await import('../src/adapters/cursor.mjs');
-  const never = ['Write(.git/**)', 'Write(.madre/**)', 'Write(.env)', 'Write(.env.*)', 'Write(**/.env)', 'Write(**/.env.*)', 'Write(.claude/settings.local.json)'];
+  const { ENV_SECRETS } = await import('../src/checkpoint.mjs');
+  const never = ['Write(.git/**)', 'Write(.madre/**)', ...ENV_SECRETS.flatMap((name) => [`Write(${name})`, `Write(**/${name})`]), 'Write(.claude/settings.local.json)'];
   // No lease: read only, as before.
   assert.equal(cursorConfigFor(null), READONLY_CONFIG);
   // #2 CREATE, with its draft folder under .pulse: writing allowed, commands denied, .pulse left to the room.

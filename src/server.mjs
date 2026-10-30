@@ -843,6 +843,8 @@ export async function createPulseServer({
         memory.metaSet('local.announced', fifth.version);
         await room.record('local.present', {
           model: fifth.version,
+          // Ollama on another computer of the network (NUE-07): the card does not say «on this Mac».
+          ...(ollama.host && !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?\/?$/i.test(String(ollama.host)) ? { remote: true } : {}),
           checked: checked?.ran ? { passed: Boolean(checked.passed), matched: checked.matched ?? 0, n: checked.n ?? 0, at: checked.at ?? null } : null,
         });
       }

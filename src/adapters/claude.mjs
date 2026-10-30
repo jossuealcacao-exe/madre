@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
+import { ENV_SECRETS } from '../checkpoint.mjs';
 import { runReadonlyProcess } from './process.mjs';
 import { claudeSubagents, jsonLines } from './subagents.mjs';
 
@@ -69,7 +70,7 @@ export function buildClaudeArgs({ prompt, model = null, effort = null, attachmen
     '--tools', tools.join(','),
     ...(lease || scopes?.web || anyMcp ? ['--allowedTools', allowed.join(',')] : []),
     // CONTROL: the whole project is writable except MADRE's forbidden zones.
-    ...(lease?.control || lease?.create ? ['--disallowedTools', ['.git/**', '.pulse/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'].flatMap((glob) => leaseRoots(lease).flatMap((root) => [`Write(//${root}/${glob})`, `Edit(//${root}/${glob})`])).join(',')] : []),
+    ...(lease?.control || lease?.create ? ['--disallowedTools', ['.git/**', '.pulse/**', '.madre/**', ...ENV_SECRETS.flatMap((name) => [name, `**/${name}`]), '.claude/settings.local.json'].flatMap((glob) => leaseRoots(lease).flatMap((root) => [`Write(//${root}/${glob})`, `Edit(//${root}/${glob})`])).join(',')] : []),
     // --safe-mode disables every MCP server, ours included. With a MADRE server
     // attached we drop it and instead load no setting sources at all: no user
     // hooks, plugins or MCP servers, only the project's CLAUDE.md and ours.

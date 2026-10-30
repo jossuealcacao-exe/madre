@@ -97,7 +97,7 @@ test('composer: what you are answering sits above the field, smaller and in a ba
   // Short enough to read at a glance: it used to run to 220 characters and fill the field.
   const clip = Number(app.match(/const REPLY_CLIP = (\d+);/)?.[1]);
   assert.ok(clip && clip <= 140, `a quote of ${clip} characters is more than a couple of lines`);
-  assert.match(app, /excerpt\.slice\(0, REPLY_CLIP - 1\)/, 'the ellipsis pushes the quote past its own limit');
+  assert.match(app, /said\.slice\(0, REPLY_CLIP - 1\)/, 'the ellipsis pushes the quote past its own limit');
 });
 
 test('composer: the top bar answers a hover with a thin ring, not a neon bloom', async () => {

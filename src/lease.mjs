@@ -133,7 +133,7 @@ export function leaseInstructions({ outDir, agentId, scopes = { write: true, ima
     // gives them exactly this turn's permissions, and what they change is in the same checkpoint. In
     // #4, and for the others, only the agent itself works.
     subagentsAllowed(agentId, { airlock })
-      ? 'Your CLI\'s own subagents may help with this: they work with exactly this permission, and whatever they change is in the same checkpoint, listed to the human and undoable. Say in your answer what you handed to each one. A pulse plan that puts the room\'s other agents to work is different and still allowed.'
+      ? 'Your CLI\'s own subagents may help with this: they work with exactly this permission, and whatever they change is in the same checkpoint, listed to the human and undoable. Write each subagent\'s task in the language of this conversation and ask it to report in that language, since the human reads its report. If you used subagents, say in your answer what you handed to each one; if you did not, do not mention them. A pulse plan that puts the room\'s other agents to work is different and still allowed.'
       : `Do this work yourself rather than through your CLI's own subagents or spawned agents: ${airlock ? 'in AIRLOCK (#4) only you work, because what leaves the machine does not come back' : 'a subagent would work outside the permission MADRE controls'}, and the tools for it are blocked, which can leave you waiting instead of answering. A pulse plan that puts the room's other agents to work is different and still allowed.`,
     'List the files you created (or "none") before any plan block; nothing may follow a plan block.',
   ].filter(Boolean).join('\n');

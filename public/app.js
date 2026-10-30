@@ -5402,6 +5402,21 @@ function showReplyMenu(source, x, y) {
 // Out here it can be smaller, dimmer and set in a badge of its own, and it still goes out at the
 // head of the message, because the agent needs to see what you were answering.
 const REPLY_CLIP = 120;
+// A quote reads as words, not as markdown (QA 1.1.0, NUE-18): «## Qué es (hechos) Sitio **estático…**»
+// went out as it was written, and an answer that opened with an agent's English narration quoted
+// the narration. Marks go; a line of narration before a heading is skipped.
+function plainQuote(text) {
+  let said = String(text ?? '').replace(/\u200b/g, '');
+  const lines = said.split('\n').map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 1 && /^#{1,6}\s/.test(lines[1]) && !/^#{1,6}\s/.test(lines[0]) && lines[0].length < 160) lines.shift();
+  said = lines.join(' ')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^#{1,6}\s+/gm, '').replace(/\s#{1,6}\s+/g, ' ')
+    .replace(/(\*\*|__)(.+?)\1/g, '$2').replace(/(^|\W)[*_](\S[^*_]*?)[*_](?=\W|$)/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/(^|\s)(?:[-*+]|\d+[.)])\s+/g, '$1').replace(/\s+/g, ' ').trim();
+  return said.length > REPLY_CLIP ? `${said.slice(0, REPLY_CLIP - 1)}…` : said;
+}
 
 function quoteHead(reply) {
   if (!reply) return '';
@@ -5428,11 +5443,10 @@ function renderReplyQuote() {
 
 function replyWith(agentId, source) {
   hideReplyMenu();
-  const excerpt = source.text.replace(/\s+/g, ' ').trim();
   state.replyTo = {
     sender: source.sender,
     sequence: source.sequence ?? null,
-    text: excerpt.length > REPLY_CLIP ? `${excerpt.slice(0, REPLY_CLIP - 1)}…` : excerpt,
+    text: plainQuote(source.text),
   };
   renderReplyQuote();
   if (state.agents.get(agentId)?.ready) { els.target.value = agentId; renderPicker(); }
@@ -5776,6 +5790,10 @@ function renderModuleInstalledOrRemoved(event) {
 // exchanges, answered again by the local model, scored against a control so that talking about
 // the same project does not count. It takes minutes and spends nothing, and until now its answer
 // lived in a panel somebody had to go back to. So it is offered, and answered, here.
+// @madre's trial compares its answers with the crew's: with none yet, its button waits (QA 1.1.0,
+// NUE-16), and the card's own line says why.
+let crewAnswers = 0;
+const madreTrials = new Set();
 function renderLocalModel(payload, { asked = false } = {}) {
   const node = el('div', 'system local-model');
   // One line, held together: the card is a grid, and loose words in a grid each take a row.
@@ -5823,8 +5841,12 @@ function renderLocalModel(payload, { asked = false } = {}) {
   } else {
     // Said plainly (2026-10-11): what @madre is, why it is worth trying before it is given work,
     // what the trial does, and what it needs to have anything to compare.
-    line.textContent = t('@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.');
-    action.append(check(t('TRY IT ON THIS PROJECT')));
+    line.textContent = payload.remote
+      ? t('@madre is MADRE\'s own model, and it runs on another computer of your network. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.')
+      : t('@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.');
+    const trial = check(t('TRY IT ON THIS PROJECT'));
+    if (!crewAnswers) { trial.disabled = true; madreTrials.add(trial); }
+    action.append(trial);
     node.append(line, el('p', 'says small', t('It needs a few conversations with your agents in this project first: without them there is nothing to compare.')), action);
     return node;
   }
@@ -5947,7 +5969,7 @@ function attachModeAsk(payload, { sequence = null } = {}) {
   later.type = 'button';
   actions.append(go, myself, later);
   card.append(what, why, ...(time ? [time] : []), actions);
-  const quoted = { sender: agent, sequence, text: (() => { const one = String(payload.text ?? '').replace(/\s+/g, ' ').trim(); return one.length > REPLY_CLIP ? `${one.slice(0, REPLY_CLIP - 1)}…` : one; })() };
+  const quoted = { sender: agent, sequence, text: plainQuote(payload.text) };
   const ask = { agent, wanted, card };
   modeAsks.push(ask);
   const arm = (then) => {
@@ -7460,7 +7482,7 @@ function renderFailure(event) {
   const { messageId, target, error, recovered, partial = null, timeout = null, subagents = null } = event.payload;
   recordFailure({ time: event.timestamp, agent: target, error, recovered });
   removeThinking(messageId);
-  const node = el('div', `system fail${recovered ? ' recovered' : ''}`);
+  const node = el('div', `system fail${recovered ? ' recovered' : ''}${!recovered && state.userMessages.has(messageId) ? ' answers-person' : ''}`);
   node.append(el('span', 'label', recovered ? t('{label} · turn recovered after restart', { label: label(target) }) : t('{label} could not answer', { label: label(target) })));
   // When MADRE knows the failure, the card says first, in the room's language, what it is and what
   // to do (troubleshooting.js), and what the CLI printed waits folded under «See detail» (QA 1.1.0,
@@ -7767,6 +7789,8 @@ function renderEventNode(event) {
       node = event.payload.role === 'user' ? renderUserMessage(event) : renderAssistantMessage(event);
       if (event.payload.role === 'user' && event.payload.sender === 'you') markChoiceAnswered(event.payload.text);
       if (event.payload.role !== 'user') attachCrossReads(event.payload.messageId, node);
+      // A first answer from the crew gives @madre's trial something to compare (NUE-16).
+      if (event.payload.role !== 'user' && event.payload.sender !== 'madre') { crewAnswers += 1; for (const button of madreTrials) button.disabled = false; }
       if (event.payload.role !== 'user') removeThinking(event.payload.parentMessageId);
       // The first thing said names a conversation; the tab and the list learn the name from the room.
       if (event.payload.role === 'user' && !replaying) setTimeout(() => void loadChats(), 600);
@@ -7970,7 +7994,9 @@ const NOTICE_FOLD_MS = 10000;
 const NOTICE_KEEP = '.fail, .mother-alert, .mother, .escalation, .lease.missing, .lease.refused, .module-proposed, .control.changed, .local-model, .memory.forgotten';
 // In the chat shell a failure folds too (2026-10-27), into a red dot, once nothing on it waits for
 // a press (noticeWaits): RETRY and the way out of a provider keep it open while they are live.
-const NOTICE_KEEP_SHELL = NOTICE_KEEP.replace('.fail, ', '');
+// But not one that is the only answer to something the person asked (QA 1.1.0, NUE-13): reloaded,
+// it became a red dot under the question and the question read as unanswered.
+const NOTICE_KEEP_SHELL = NOTICE_KEEP.replace('.fail, ', '.fail.answers-person, ');
 function noticeTone(node) {
   if (node.matches('.alert, .crit, .halted, .control, .login.failed, .module.failed, .fail:not(.recovered)')) return 'crit';
   if (node.matches('.warn, .lease, .privacy, .enlace.warn')) return 'warn';
@@ -8123,7 +8149,10 @@ function measureRows() {
 }
 function followTurn(event, node, stickToBottom) {
   if (replaying) { if (stickToBottom) scrollToEnd(); return; }
-  const mine = event.type === 'message.created' && event.payload.role === 'user';
+  // A command the human ran from the box (/antes-de-subir) is theirs too: its card used to land
+  // below the fold of whoever was reading, and nothing seemed to happen (QA 1.1.0, NUE-27).
+  const mine = (event.type === 'message.created' && event.payload.role === 'user')
+    || (event.type === 'command.output' && !event.payload.run && !event.payload.bishop);
   const isAnswer = event.type === 'message.created' && event.payload.role !== 'user';
   // What the human just sent takes them to the end, wherever they were reading.
   if (mine) { setPinned(true); scroller.to({ top: scroller.height, behavior: 'smooth' }); return; }

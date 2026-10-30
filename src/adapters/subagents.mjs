@@ -18,12 +18,13 @@ const TASK_LIMIT = 160;
 const REPORT_LIMIT = 2400;
 const FILES_LIMIT = 20;
 const clip = (text, limit) => {
-  const said = String(text ?? '').replace(/\s+/g, ' ').trim();
+  const said = String(text ?? '').replace(/\u200b/g, '').replace(/\s+/g, ' ').trim();
   return said.length > limit ? `${said.slice(0, limit - 1)}…` : said || null;
 };
 // A report keeps its lines (it is markdown, shown as markdown); only its length is bounded.
 const clipBlock = (text, limit) => {
-  const said = String(text ?? '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  // A report that opens with a zero-width space (OpenCode's) read as «​# Review», not as a heading.
+  const said = String(text ?? '').replace(/\u200b/g, '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   return said.length > limit ? `${said.slice(0, limit - 1).trimEnd()}…` : said || null;
 };
 const relative = (path, root) => {

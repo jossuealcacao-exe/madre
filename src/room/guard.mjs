@@ -9,11 +9,13 @@
 
 import { chmod, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { isForbidden } from '../checkpoint.mjs';
 import { writeWhole } from '../json-file.mjs';
 
 const SKIP = new Set(['node_modules', '.git', 'dist', 'build', 'coverage']);
 
-// Files and folders to lock: every .env / .env.* up to four levels deep, .pulse/, .madre/ and .claude/settings.local.json.
+// Files and folders to lock: every .env / .env.* up to four levels deep (not its templates:
+// .env.example and the like, src/checkpoint.mjs isForbidden), .pulse/, .madre/ and .claude/settings.local.json.
 export async function forbiddenTargets(projectRoot, { maxDepth = 4 } = {}) {
   const targets = [];
   const walk = async (dir, depth) => {
@@ -26,7 +28,7 @@ export async function forbiddenTargets(projectRoot, { maxDepth = 4 } = {}) {
         if (rel === '.pulse' || rel === '.madre') { targets.push({ path, kind: 'dir' }); continue; }
         if (SKIP.has(entry.name) || depth >= maxDepth) continue;
         await walk(path, depth + 1);
-      } else if (/^\.env(\.|$)/.test(entry.name) || rel === '.claude/settings.local.json') {
+      } else if (isForbidden(rel) || rel === '.claude/settings.local.json') {
         targets.push({ path, kind: 'file' });
       }
     }

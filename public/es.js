@@ -1412,6 +1412,7 @@ export const ES = {
     'Contestó como tus agentes en {matched} de {n} preguntas reales de este proyecto. Todavía no: sigue trabajando con tus agentes aquí y pruébalo otra vez más adelante.',
   'SEND THE NEXT TURN TO @MADRE': 'Enviar el próximo mensaje a @madre',
   'MEASURED {when}': 'Probado {when}',
+  '@madre is MADRE\'s own model, and it runs on another computer of your network. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.': '@madre es el modelo propio de MADRE y corre en otra computadora de tu red. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
   '@madre is MADRE\'s own model, and it runs on this Mac. Before you give it work from this project, try it: it answers again up to 12 real questions your agents already answered here, and MADRE compares the answers. It takes a few minutes.':
     '@madre es el modelo propio de MADRE y corre en esta Mac. Antes de darle trabajo de este proyecto, pruébalo: vuelve a contestar hasta 12 preguntas reales que tus agentes ya contestaron aquí, y MADRE compara las respuestas. Tarda unos minutos.',
   'It needs a few conversations with your agents in this project first: without them there is nothing to compare.':
@@ -6057,6 +6058,9 @@ export const ES = {
   'It is kept in Settings › Local AI › Ollama address.': 'Se guarda en Ajustes › IA local › Dirección de Ollama.',
   'MADRE remembers what you decide in each project. With search by meaning it finds it even when you ask in other words.': 'MADRE recuerda lo que decides en cada proyecto. Con la búsqueda por significado lo encuentra aunque lo pidas con otras palabras.',
   'On your computer': 'En tu computadora',
+  'With your Ollama': 'Con tu Ollama',
+  'With the Ollama of the other computer, on your network. Its memory model is already there. Free and private.': 'Con el Ollama de la otra computadora, en tu red. Su modelo de memoria ya está ahí. Gratis y privado.',
+  'Search by meaning, on the other computer': 'Búsqueda por significado, en la otra computadora',
   'With Ollama. Its memory model is already here. Free and private.': 'Con Ollama. Su modelo de memoria ya está aquí. Gratis y privado.',
   'With Ollama. Downloads a memory model of {mb} MB. Free and private.': 'Con Ollama. Descarga un modelo de memoria de {mb} MB. Gratis y privado.',
   'Needs the AI on your computer (step 4).': 'Necesita la IA en tu computadora (paso 4).',

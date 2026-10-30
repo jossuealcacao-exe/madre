@@ -697,7 +697,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const pick = (value) => { s.memoryChoice = value; if (value === 'local' && !hasModel(EMBED_MODEL) && !s.pulls.get(EMBED_MODEL)?.running) void startPull(EMBED_MODEL); paintMemory(); };
     const embedReady = hasModel(EMBED_MODEL);
     const group = choices(t('Memory'),
-      choice('memory', 'local', s.memoryChoice, t('On your computer'), local ? (embedReady ? t('With Ollama. Its memory model is already here. Free and private.') : t('With Ollama. Downloads a memory model of {mb} MB. Free and private.', { mb: EMBED_MB })) : t('Needs the AI on your computer (step 4).'), pick, { badge: local ? t('Recommended') : null, disabled: !local }),
+      choice('memory', 'local', s.memoryChoice, s.ollama?.host && !localHost(s.ollama.host) ? t('With your Ollama') : t('On your computer'), local ? (embedReady ? (s.ollama?.host && !localHost(s.ollama.host) ? t('With the Ollama of the other computer, on your network. Its memory model is already there. Free and private.') : t('With Ollama. Its memory model is already here. Free and private.')) : t('With Ollama. Downloads a memory model of {mb} MB. Free and private.', { mb: EMBED_MB })) : t('Needs the AI on your computer (step 4).'), pick, { badge: local ? t('Recommended') : null, disabled: !local }),
       choice('memory', 'gemini', s.memoryChoice, t('With Gemini'), s.geminiKey ? t('Uses your Gemini key, already on this computer. Paid per use, very little. What it searches is sent to Google.') : t('Needs your Gemini key: paste it in step 3, in Gemini.'), pick, { badge: !local && s.geminiKey ? t('Recommended') : null }),
       choice('memory', 'off', s.memoryChoice, t('Exact words only'), t('Nothing extra. It finds what you ask for with the same words.'), pick),
     );
@@ -739,7 +739,14 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     picker = host.projectPicker?.({
       withAdd: false,
       onChange: (n) => { const key = primary(); if (key) { key.textContent = n ? t('Add and continue') : t('Continue'); key.disabled = !n && !(host.projects?.() ?? []).length; } },
-      onAdded: (added) => { s.added = [...s.added, ...(added ?? [])]; if (stepId() === 'project') go(s.step + 1, 'done'); },
+      // A project made new here does not drop the folders already chosen (QA 1.1.0, NUE-08): they
+      // are added too, and only then the step is done.
+      onAdded: (added) => {
+        s.added = [...s.added, ...(added ?? [])];
+        if (stepId() !== 'project') return;
+        if (picker?.count()) { void picker.add(); return; }
+        go(s.step + 1, 'done');
+      },
     });
     if (picker) parts.push(picker.node);
     content.replaceChildren(...parts);
@@ -769,7 +776,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const rows = [
       [t('Agents'), connected.length ? new Intl.ListFormat(language(), { type: 'conjunction' }).format(connected) : t('None connected yet'), connected.length > 0, 'agents'],
       [t('AI on your computer'), aiOn ? `${s.ollama.chatModel ?? chatModels()[0].name}${localHost(s.ollama.host) ? '' : ` · ${t('on another computer')}`}` : t('For later'), aiOn, 'ai'],
-      [t('Memory'), provider === 'ollama' ? t('Search by meaning, on your computer') : provider === 'gemini' ? t('Search by meaning, with Gemini') : t('Exact words'), provider === 'ollama' || provider === 'gemini', 'memory'],
+      [t('Memory'), provider === 'ollama' ? (s.ollama?.host && !localHost(s.ollama.host) ? t('Search by meaning, on the other computer') : t('Search by meaning, on your computer')) : provider === 'gemini' ? t('Search by meaning, with Gemini') : t('Exact words'), provider === 'ollama' || provider === 'gemini', 'memory'],
       [t('Project'), room ? room.name : t('None yet'), Boolean(room), 'project'],
     ];
     const summary = el('div', 'wl-card wl-checks');

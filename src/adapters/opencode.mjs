@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
+import { ENV_TEMPLATES } from '../checkpoint.mjs';
 import { t } from '../i18n.mjs';
 import { runReadonlyProcess } from './process.mjs';
 import { jsonLines, openCodeSubagents } from './subagents.mjs';
@@ -49,8 +50,10 @@ export function buildOpenCodeArgs({ projectRoot, prompt, model = process.env.PUL
 // Verified against opencode 1.18.4: absolute patterns never match, so the lease is named by
 // its directory relative to the project.
 export const FORBIDDEN_GLOBS = ['.git/**', '.pulse/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'];
+// OpenCode's last matching rule wins, so the templates of .env are allowed after the deny (NUE-21).
+const ENV_TEMPLATE_GLOBS = ENV_TEMPLATES.flatMap((name) => [name, `**/${name}`]);
 export function writeRules(relativeDir, { control = false, create = false } = {}) {
-  if (control || create) return { '*': 'allow', ...Object.fromEntries(FORBIDDEN_GLOBS.map((glob) => [glob, 'deny'])) };
+  if (control || create) return { '*': 'allow', ...Object.fromEntries(FORBIDDEN_GLOBS.map((glob) => [glob, 'deny'])), ...Object.fromEntries(ENV_TEMPLATE_GLOBS.map((glob) => [glob, 'allow'])) };
   const dir = String(relativeDir ?? '.').replace(/^\.\/+/, '').replace(/\/+$/, '');
   return { '*': 'deny', [dir && dir !== '.' ? `${dir}/**` : '**']: 'allow' };
 }
@@ -156,8 +159,21 @@ export function openCodeEnvironment(environment = process.env, { lease = null, s
   };
 }
 
+// The answer is what OpenCode says in its last step. A step before a tool call is narration
+// («I'll take a look at the project to answer accurately.»), and glued to the answer with nothing
+// between them it opened the bubble in English and left «## Qué es» as a literal line (QA 1.1.0,
+// NUE-17). Short narration goes; anything longer than the answer stays, a paragraph apart.
+const NARRATION_LIMIT = 400;
+export function answerOfSteps(steps) {
+  const said = steps.map((parts) => parts.join('').replace(/^[\s\u200b]+|[\s\u200b]+$/g, '')).filter(Boolean);
+  if (said.length < 2) return said[0] ?? '';
+  const last = said.at(-1);
+  const before = said.slice(0, -1).join('\n\n');
+  return before.length <= NARRATION_LIMIT && last.length >= before.length ? last : said.join('\n\n');
+}
+
 export function parseOpenCodeOutput(output, { root = null } = {}) {
-  const text = [];
+  const steps = [[]];
   let usage = null;
   let error = null;
   for (const line of output.split('\n').filter(Boolean)) {
@@ -167,8 +183,9 @@ export function parseOpenCodeOutput(output, { root = null } = {}) {
         const detail = event.error.data?.message ?? event.error.message ?? '';
         error = [event.error.name, detail].filter(Boolean).join(': ') || 'OpenCode returned an error.';
       }
+      if (event.type === 'step_start' && steps.at(-1).length) steps.push([]);
       if (event.type === 'text' && typeof event.part?.text === 'string') {
-        text.push(event.part.text);
+        steps.at(-1).push(event.part.text);
       }
       if (event.type === 'step_finish' && event.part?.tokens) {
         const tokens = event.part.tokens;
@@ -188,7 +205,7 @@ export function parseOpenCodeOutput(output, { root = null } = {}) {
   }
   // What its subagents did (src/adapters/subagents.mjs): each `task` call, said once it is over.
   const subagents = openCodeSubagents(jsonLines(output), { root });
-  return { text: text.join('').trim(), usage, ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
+  return { text: answerOfSteps(steps), usage, ...(error ? { error } : {}), ...(subagents.length ? { subagents } : {}) };
 }
 
 // What in OpenCode's error log ends a turn that will never answer. Only a limit that does not pass

@@ -576,6 +576,16 @@ const REMINDER_TOOL = {
   inputSchema: { type: 'object', properties: { what: { type: 'string', description: 'What to remember, short, in the person\'s language.' }, when: { type: 'string', description: 'When, in the person\'s own words: «mañana a las 5», «el lunes», «every day at 9», «in 2 hours». Empty for tomorrow morning.' } }, required: ['what'] },
 };
 
+// This file imports nothing of MADRE: the hour is written in the language the computer runs in.
+export function localWhen(iso, language = undefined) {
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime())) return String(iso);
+  const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-MX' : undefined;
+  try {
+    return when.toLocaleString(locale, { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' });
+  } catch { return when.toString(); }
+}
+
 async function createReminder(args, env) {
   const what = taskFromWords(String(args.what ?? '').trim());
   if (!what) throw new Error('The reminder needs what to remember.');
@@ -583,7 +593,10 @@ async function createReminder(args, env) {
   const when = parseWhen(String(args.when ?? ''), new Date(), { hour }) ?? { due: tomorrowMorning(new Date(), hour), repeat: null };
   const made = await addReminder(env.PULSE_REMINDERS_STATE, { text: what, due: when.due.toISOString(), repeat: when.repeat, room: env.PULSE_ROOM_ID || null, project: env.PULSE_PROJECT || null, why: 'asked' });
   if (made.error) throw new Error('The reminder was not set.');
-  return `Reminder set: «${made.reminder.text}», due ${made.reminder.due}${made.reminder.repeat ? `, repeating ${made.reminder.repeat}` : ''}. Tell the person when, in their words.`;
+  // The hour as this computer reads it (QA 1.1.0, NUE-29): handed only the ISO time, an agent told
+  // a person in Mexico City «a las 03:09 UTC» for a reminder due at 21:09 where they are.
+  const local = localWhen(made.reminder.due);
+  return `Reminder set: «${made.reminder.text}», due ${local} (this computer's local time; ${made.reminder.due} in UTC)${made.reminder.repeat ? `, repeating ${made.reminder.repeat}` : ''}. Tell the person when, in their words and in that local time, never in UTC.`;
 }
 
 export function handleRequest(message, { env = process.env } = {}) {

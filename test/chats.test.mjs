@@ -759,7 +759,7 @@ test('chat shell: flat delegated cards, failures fold into a red dot, one sideba
   const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../public/styles.css', import.meta.url), 'utf8');
   assert.match(css, /html\.chat-shell #messages#messages \.row\.delegated \.bubble \{ border: 0 !important;/);
-  assert.match(app, /const NOTICE_KEEP_SHELL = NOTICE_KEEP\.replace\('\.fail, ', ''\);/);
+  assert.match(app, /const NOTICE_KEEP_SHELL = NOTICE_KEEP\.replace\('\.fail, ', '\.fail\.answers-person, '\);/);
   assert.match(app, /!node\.matches\(chatShellOn\(\) \? NOTICE_KEEP_SHELL : NOTICE_KEEP\)/);
   assert.match(app, /\.fail:not\(\.recovered\)'\)\) return 'crit';/);
   assert.match(app, /key\.innerHTML = chatShellOn\(\) \? SIDEBAR_ICON : SPLIT_LEFT_ICON;/);

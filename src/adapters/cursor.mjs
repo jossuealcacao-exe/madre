@@ -24,6 +24,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ENV_SECRETS } from '../checkpoint.mjs';
 import { runReadonlyProcess } from './process.mjs';
 
 // What the turn's own configuration allows: reading, and nothing else.
@@ -37,7 +38,8 @@ export const READONLY_CONFIG = {
 // The places no turn writes, whatever its mode (as OpenCode's FORBIDDEN_GLOBS). `.pulse` is left to
 // the room when the turn has a draft folder there, because Cursor's denials win over its allowances
 // and would shut that folder too; the room locks every other `.pulse` path itself.
-const NEVER_WRITTEN = ['.git/**', '.madre/**', '.env', '.env.*', '**/.env', '**/.env.*', '.claude/settings.local.json'];
+// Every secret-bearing .env by name: its templates (.env.example…) are written and shared (NUE-21).
+const NEVER_WRITTEN = ['.git/**', '.madre/**', ...ENV_SECRETS.flatMap((name) => [name, `**/${name}`]), '.claude/settings.local.json'];
 // One configuration per turn, from the lease the room gave it: none, read only.
 export function cursorConfigFor(lease = null) {
   if (!lease) return READONLY_CONFIG;

@@ -25,10 +25,16 @@ export const CHECKPOINT_REF = 'refs/madre/checkpoints';
 export const FORBIDDEN = [
   /^\.git(\/|$)/i,
   /^\.pulse(\/|$)/i,
-  /(^|\/)\.env(\.|$)/i,
+  // A template that documents the variables and holds no secret is not one (QA 1.1.0, NUE-21):
+  // .env.example, .env.sample, .env.template and .env.dist are meant to be written and shared.
+  /(^|\/)\.env(?:$|\.(?!(?:example|sample|template|dist)$))/i,
   /(^|\/)\.madre(\/|$)/i,
   /(^|\/)\.claude\/settings\.local\.json$/i,
 ];
+// The same rule said as globs, for the CLIs that take a list of paths (src/adapters/*): every
+// secret-bearing variant by name, since a deny there cannot be undone by an allow.
+export const ENV_TEMPLATES = ['.env.example', '.env.sample', '.env.template', '.env.dist'];
+export const ENV_SECRETS = ['.env', '.env.local', '.env.*.local', '.env.development', '.env.dev', '.env.production', '.env.prod', '.env.staging', '.env.test', '.env.preview'];
 export const isForbidden = (path) => FORBIDDEN.some((pattern) => pattern.test(path));
 
 // A repository is a `.git` file (a worktree, a submodule) or a `.git` folder with its HEAD. A

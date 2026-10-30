@@ -8688,6 +8688,9 @@ dialog.tour-bonjour::backdrop { background: transparent; }
 .tour-keys dt { font-size: 12.5px; color: var(--text-2); }
 .tour-keys dd { margin: 0; max-width: 34ch; text-wrap: balance; justify-self: end; font-family: var(--mono); font-size: 11.5px; line-height: 1.4; text-align: right; color: var(--text); }
 .tour-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+/* The chapter's way on stays in view at the foot of the card (QA 1.1.0, NUE-10): on a laptop the
+   page scrolled and «Next chapter» sat half under the card's edge. */
+.tour-main .tour-acts { position: sticky; bottom: -20px; z-index: 1; margin-inline: -22px; padding: 12px 22px 20px; background: linear-gradient(to bottom, transparent, var(--bg-2) 14px); }
 .tour-gap { flex: 1; }
 .tour-where { font-size: 12.5px; color: var(--text-3); }
 .tour-gestures { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; margin-top: 6px; }

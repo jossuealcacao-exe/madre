@@ -125,7 +125,9 @@ test('i18n: the language is chosen in PERSONALIZE, and the page comes back in it
   // language stays wrong for the life of the page.
   assert.ok(app.indexOf('setLanguage(isLanguage(chosenLanguage)') < app.indexOf('const PLACEHOLDERS'), 'the page builds sentences before it knows the language');
   // A browser that has never chosen takes the machine's choice once, and cannot loop.
-  assert.match(app, /if \(SPLIT_CHAT \|\| chosenLanguage\) return;/);
+  assert.match(app, /if \(SPLIT_CHAT\) return;/);
+  // What the machine chose wins over what this port's storage kept (QA 1.1.0).
+  assert.match(app, /if \(chosenLanguage && !\(chosenOnMachine !== false && isLanguage\(fromMachine\) && fromMachine !== chosenLanguage\)\) return;/);
   assert.match(app, /if \(!isLanguage\(fromMachine\) \|\| fromMachine === language\(\)\) return;/);
   // A machine nobody has set takes the browser's language once, saved like a choice (2026-10-15).
   assert.match(app, /if \(chosenOnMachine === false && !state\.device\) \{\n    const mine = browserLanguage\(\);/);
