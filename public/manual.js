@@ -43,6 +43,7 @@ const ICONS = {
   book: trazoDrawing('book'),
   check: trazoDrawing('check'),
   trash: trazoDrawing('trash'),
+  running: trazoDrawing('running'),
 };
 const icon = (name) => `<svg viewBox="0 0 20 20" aria-hidden="true">${ICONS[name] ?? ICONS.help}</svg>`;
 

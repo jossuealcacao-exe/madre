@@ -214,6 +214,20 @@ export const MANUAL = {
         expert: 'Con Copiloto el agente edita y corre lo seguro, como tus pruebas. Nunca borra ni publica. Se apaga solo al acabarse el tiempo, o con «Detener todo».',
       },
       {
+        id: 'en-marcha',
+        part: 'work',
+        icon: 'running',
+        title: 'Lo que está pasando',
+        lead: 'En marcha te muestra todo lo que MADRE está haciendo en tus proyectos abiertos, sin abrir una terminal, y te deja detenerlo.',
+        tryIt: 'Pídele algo largo a un agente y abre En marcha mientras trabaja.',
+        steps: [
+          'Busca en la barra de arriba la línea de pulso. Su número dice cuántas cosas corren, y la línea late mientras algo trabaja.',
+          'Púlsala. En «Ahora» ves cada agente respondiendo, sus planes, los servidores y lo que se instala. Abajo están lo que terminó hace poco y los recordatorios que vienen.',
+          'Abre una fila para ver los detalles. «Ir al chat» te lleva a esa conversación; «Detener» frena solo eso.',
+        ],
+        expert: '«Detener todo» frena todo en todos tus proyectos, y te pide confirmar. La misma tecla está en Inicio. En una pantalla angosta, el panel sube desde abajo.',
+      },
+      {
         id: 'codigo',
         part: 'work',
         icon: 'code',
@@ -635,6 +649,20 @@ export const MANUAL = {
           'Turn it on and write the task. It asks you to confirm only once.',
         ],
         expert: 'With Copilot the agent edits and runs what is safe, such as your tests. It never deletes or publishes. It turns itself off when the time is up, or with «Stop all».',
+      },
+      {
+        id: 'en-marcha',
+        part: 'work',
+        icon: 'running',
+        title: 'What is happening',
+        lead: 'Running now shows you everything MADRE is doing in your open projects, without opening a terminal, and lets you stop it.',
+        tryIt: 'Ask an agent for something long and open Running now while it works.',
+        steps: [
+          'Look for the pulse line on the bar at the top. Its number says how many things are running, and the line beats while something works.',
+          'Press it. Under «Now» you see each agent answering, its plans, the servers and what is installing. Below are what ended a moment ago and the reminders coming up.',
+          'Open a row to see the details. «Go to the chat» takes you to that conversation; «Stop» stops only that.',
+        ],
+        expert: '«Stop everything» stops everything in all your projects, and asks you to confirm. The same key is in Home. On a narrow screen, the panel comes up from the bottom.',
       },
       {
         id: 'codigo',
