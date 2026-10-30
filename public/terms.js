@@ -59,8 +59,8 @@ function askTerms(answer, done) {
 
     const license = el('section', 'terms-block');
     license.append(
-      el('h2', null, t('The license, in short')),
-      el('p', null, t('You can use MADRE, change it and share it. An organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
+      el('h2', null, t('Personal license')),
+      el('p', null, t('MADRE is developed by one person. You can use it, change it and share it; an organization of more than 10 people, or whoever offers MADRE as a service, needs a commercial license.')),
       link(pick(answer.links?.license), t('Read the license')),
     );
 
@@ -68,8 +68,8 @@ function askTerms(answer, done) {
     const head = el('div', 'terms-help-head');
     const words = el('div');
     words.append(el('h2', null, t('Help make MADRE better')), el('p', null, returning
-      ? t('MADRE is made by one person. From this version your copy also tells the author, anonymously, how it runs, so the next versions fix first what fails for you. Never what you write, your projects or your files.')
-      : t('MADRE is made by one person. So it gets better where it matters to you, your copy tells the author, anonymously, what fails and how it is used. Never what you write, your projects or your files.')));
+      ? t('MADRE is made by one person. From this version your copy can share its errors with me anonymously, so the next versions fix first what fails for you. It is optional and you can turn it off whenever you like in Settings.')
+      : t('MADRE is made by one person. Your copy can share its errors with me anonymously, so each version fixes first what fails for you. It is optional and you can turn it off whenever you like in Settings.')));
     const knob = el('button', 'terms-switch');
     knob.type = 'button';
     knob.setAttribute('role', 'switch');
@@ -81,7 +81,7 @@ function askTerms(answer, done) {
       knob.disabled = Boolean(answer.diagnosticsFixed);
       said.replaceChildren();
       if (answer.diagnosticsFixed) said.append(t('Off: MADRE was started with PULSE_TELEMETRY=0.'));
-      else if (diagnostics) said.append(t('You can change it whenever you like in Settings.'), ' ', link(pick(answer.links?.privacy), t('See what is sent')));
+      else if (diagnostics) said.append(link(pick(answer.links?.privacy), t('See what is sent')));
       else said.append(t('Off: the author will not know when something fails for you, and it may take longer to fix.'));
     };
     knob.addEventListener('click', () => { diagnostics = !diagnostics; paintKnob(); });
