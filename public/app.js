@@ -7925,6 +7925,14 @@ function renderEventNode(event) {
     case 'extension.install.finished':
       if (!replaying) jobProgress(event);
       if (event.payload.id === 'ollama' && !replaying) void loadOllama();
+      // Installed is installed here at once (2026-10-30): the page read its modules again, so the
+      // project no longer says Continuity is missing until it is reloaded. Nothing needs a restart.
+      if (event.type === 'extension.install.finished' && !replaying && event.payload.ok !== false) {
+        installedModulesAsked = null;
+        void refreshModules().then(() => {
+          if (modules.items?.find((item) => item.id === 'ahp')?.status?.installed) document.querySelector('.empty-suggest')?.remove();
+        });
+      }
     case 'extension.install.refused':
       node = renderModuleEvent(event);
       break;
@@ -15605,7 +15613,8 @@ function jobProgress(event) {
   const key = jobKey(event);
   const payload = event.payload;
   if (event.type.endsWith('.started')) {
-    const what = payload.label ?? sentenceWords(payload.name ?? payload.id ?? payload.agent ?? '');
+    // The module's name in the room's language (Continuity → Continuidad).
+    const what = payload.label ?? sentenceWords(t(payload.name ?? payload.id ?? payload.agent ?? ''));
     jobsOf().list.set(key, { key, title: payload.alreadyInstalled ? t('Updating {name}', { name: what }) : t('Installing {name}', { name: what }), command: payload.command ?? '', started: Date.now(), percent: null, bytes: null, line: payload.command ?? '', done: null });
     jobsOf().shown = key;
     const node = jobSheet();
@@ -15618,7 +15627,8 @@ function jobProgress(event) {
   const lines = payload.lines ?? (payload.line ? [payload.line] : []);
   for (const line of lines) {
     const clean = String(line).replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim();
-    if (!clean) continue;
+    // A line of only brackets and punctuation (the end of a JSON the installer printed) says nothing.
+    if (!clean || /^[\s{}\[\](),:;"'`]*$/.test(clean)) continue;
     const percents = [...clean.matchAll(/(\d{1,3}(?:\.\d+)?)\s?%/g)];
     if (percents.length) job.percent = Math.min(100, Number(percents.at(-1)[1]));
     const bytes = clean.match(/(\d+(?:\.\d+)?\s?[KMG]i?B)\s*\/\s*(\d+(?:\.\d+)?\s?[KMG]i?B)/);
@@ -15653,6 +15663,8 @@ function paintJob(job) {
     : job.done === 'failed' ? [t('It did not finish'), job.detail].filter(Boolean).join(' · ')
       : [job.percent !== null ? `${Math.round(job.percent)}%` : t('Working'), job.bytes, time].filter(Boolean).join(' · ');
   node.line_.textContent = job.line;
+  // Done well, the installer's last line has nothing left to say: «Done» is the answer.
+  node.line_.hidden = job.done === 'done' || !job.line;
   node.hide_.textContent = job.done ? t('Close') : t('Hide');
 }
 
