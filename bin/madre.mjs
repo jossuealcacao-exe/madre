@@ -26,37 +26,36 @@ const { command } = cli;
 
 // WINDOWS (1.1.0, docs/WINDOWS.md D-001): on Windows, MADRE runs inside WSL2, not on Windows itself —
 // what it promises about permissions (the write bit, process groups, each agent's sandbox) does not
-// exist there the same way, and a start halfway is worse than none. A native start says how to get
-// there, in three steps and in the person's language, and stops. PULSE_WINDOWS_NATIVE=1 lets a
+// exist there the same way, and a start halfway is worse than none. A native start points at the
+// installer (1.1.1, WIN-033: one file, a double click, no terminal), keeps the terminal way below it
+// for whoever prefers it, in the person's language, and stops. PULSE_WINDOWS_NATIVE=1 lets a
 // developer go on anyway.
 if (process.platform === 'win32' && process.env.PULSE_WINDOWS_NATIVE !== '1' && command !== 'help') {
   const spanish = /^es\b/i.test(Intl.DateTimeFormat().resolvedOptions().locale ?? '');
   console.log(spanish ? `
-MADRE en Windows funciona dentro de WSL2 (un Linux que viene con Windows). Son tres pasos, una sola vez:
+MADRE en Windows se instala con su instalador: descárgalo y ábrelo con doble clic.
 
-  1. Abre PowerShell como administrador, escribe esto y reinicia la computadora:
-       wsl --install
-  2. Abre «Ubuntu» desde el menú Inicio y crea tu usuario.
-  3. Dentro de Ubuntu, instala Node.js y abre MADRE:
-       curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-       sudo apt install -y nodejs
-       npx @jossuealcala/madre
+  https://madre.run/windows
 
-MADRE se abre en tu navegador de Windows, como cualquier página.
-Guía con imágenes: https://madre.run/manual/#windows
+Hace todo solo: enciende WSL (el Linux que viene con Windows), prepara el Linux de MADRE
+y deja «MADRE» en el menú Inicio. Sin terminal.
+
+¿Prefieres la terminal? Dentro de Ubuntu (WSL2):
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+  sudo apt install -y nodejs zstd
+  npx @jossuealcala/madre
 ` : `
-On Windows, MADRE runs inside WSL2 (a Linux that comes with Windows). Three steps, once:
+On Windows, MADRE installs with its installer: download it and open it with a double click.
 
-  1. Open PowerShell as administrator, type this and restart the computer:
-       wsl --install
-  2. Open «Ubuntu» from the Start menu and create your user.
-  3. Inside Ubuntu, install Node.js and open MADRE:
-       curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-       sudo apt install -y nodejs
-       npx @jossuealcala/madre
+  https://madre.run/en/windows
 
-MADRE opens in your Windows browser, like any page.
-Guide with pictures: https://madre.run/en/manual/#windows
+It does everything by itself: turns on WSL (the Linux that comes with Windows), prepares
+MADRE's Linux and leaves «MADRE» in the Start menu. No terminal.
+
+Prefer the terminal? Inside Ubuntu (WSL2):
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+  sudo apt install -y nodejs zstd
+  npx @jossuealcala/madre
 `);
   process.exit(1);
 }

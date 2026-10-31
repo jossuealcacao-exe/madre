@@ -1,0 +1,233 @@
+; SPDX-License-Identifier: BUSL-1.1
+; MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
+;
+; MADRE's installer for Windows (1.1.1, docs/WINDOWS.md WIN-033). One file, opened with a double
+; click; nobody types in PowerShell or in a terminal. On Windows MADRE runs inside WSL2 (D-001), so
+; this installer:
+;   1. turns WSL on when it is off: the only step that asks Windows for permission, and the only
+;      one that may need a restart (the installer then continues by itself after it);
+;   2. creates a Linux of MADRE's own named «MADRE», from Ubuntu 24.04, with no account to create:
+;      the person's Ubuntu, if there is one, is never touched;
+;   3. inside it, as root, runs inside-setup.sh: the user, Node, zstd, wslu and MADRE;
+;   4. leaves «MADRE» in the Start menu and on the desktop (MADRE.exe, launcher.nsi), which opens
+;      it in the browser with no window of its own, and an entry in Installed apps to remove it.
+; Opened again, it repairs and updates: the same steps, each skipped when already done.
+;
+; Built by scripts/windows-installer.mjs with makensis (NSIS 3). Never run on a real Windows by its
+; author's machine: it is tested by hand on Windows 10 and 11 before each release (WIN-032).
+
+Unicode true
+SetCompressor /SOLID lzma
+
+!include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "WinVer.nsh"
+!include "x64.nsh"
+
+!ifndef VERSION
+  !define VERSION "0.0.0"
+!endif
+!ifndef OUTFILE
+  !define OUTFILE "MADRE-Instalador.exe"
+!endif
+!define DISTRO "MADRE"
+!define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\MADRE"
+!define HELP_URL "https://madre.run/windows"
+
+Name "MADRE"
+OutFile "${OUTFILE}"
+; Per user, no administrator: WSL keeps each Linux per user, and the shortcuts are this user's.
+RequestExecutionLevel user
+InstallDir "$LOCALAPPDATA\Programs\MADRE"
+ShowInstDetails hide
+ShowUninstDetails hide
+BrandingText "madre.run"
+VIProductVersion "${VERSION}.0"
+VIAddVersionKey /LANG=0 "ProductName" "MADRE"
+VIAddVersionKey /LANG=0 "FileDescription" "MADRE"
+VIAddVersionKey /LANG=0 "FileVersion" "${VERSION}"
+VIAddVersionKey /LANG=0 "ProductVersion" "${VERSION}"
+VIAddVersionKey /LANG=0 "LegalCopyright" "© 2026 Jossue Alcalá"
+
+!define MUI_ICON "madre.ico"
+!define MUI_UNICON "madre.ico"
+!define MUI_ABORTWARNING
+!define MUI_FINISHPAGE_RUN "$INSTDIR\MADRE.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "$(OpenNow)"
+!define MUI_FINISHPAGE_LINK "$(HelpLink)"
+!define MUI_FINISHPAGE_LINK_LOCATION "${HELP_URL}"
+
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+; The first language is the one for a Windows in any other language.
+!insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "Spanish"
+
+LangString OpenNow ${LANG_ENGLISH} "Open MADRE now"
+LangString OpenNow ${LANG_SPANISH} "Abrir MADRE ahora"
+LangString HelpLink ${LANG_ENGLISH} "Help with MADRE on Windows"
+LangString HelpLink ${LANG_SPANISH} "Ayuda con MADRE en Windows"
+LangString OldWindows ${LANG_ENGLISH} "MADRE needs Windows 10 (version 2004 or newer) or Windows 11, 64-bit."
+LangString OldWindows ${LANG_SPANISH} "MADRE necesita Windows 10 (versión 2004 o más nueva) o Windows 11, de 64 bits."
+LangString StepWsl ${LANG_ENGLISH} "Checking WSL, the Linux that comes with Windows…"
+LangString StepWsl ${LANG_SPANISH} "Revisando WSL, el Linux que viene con Windows…"
+LangString StepWslOn ${LANG_ENGLISH} "Turning WSL on. Windows will ask for permission once."
+LangString StepWslOn ${LANG_SPANISH} "Encendiendo WSL. Windows te pedirá permiso una vez."
+LangString StepDistro ${LANG_ENGLISH} "Preparing MADRE's Linux (a few minutes, it downloads about 400 MB)…"
+LangString StepDistro ${LANG_SPANISH} "Preparando el Linux de MADRE (unos minutos: descarga unos 400 MB)…"
+LangString StepUpdate ${LANG_ENGLISH} "Updating WSL. Windows will ask for permission once."
+LangString StepUpdate ${LANG_SPANISH} "Actualizando WSL. Windows te pedirá permiso una vez."
+LangString StepInside ${LANG_ENGLISH} "Installing Node.js and MADRE inside it…"
+LangString StepInside ${LANG_SPANISH} "Instalando Node.js y MADRE adentro…"
+LangString StepShortcuts ${LANG_ENGLISH} "Adding MADRE to the Start menu and the desktop…"
+LangString StepShortcuts ${LANG_SPANISH} "Agregando MADRE al menú Inicio y al escritorio…"
+LangString Restart ${LANG_ENGLISH} "WSL is on. Windows needs to restart to finish turning it on.$\r$\n$\r$\nWhen you come back, this installer continues by itself. Restart now?"
+LangString Restart ${LANG_SPANISH} "WSL ya está encendido. Windows tiene que reiniciar para terminar de encenderlo.$\r$\n$\r$\nAl volver, este instalador sigue solo. ¿Reiniciar ahora?"
+LangString RestartLater ${LANG_ENGLISH} "Restart Windows when you can: this installer continues by itself after it."
+LangString RestartLater ${LANG_SPANISH} "Reinicia Windows cuando puedas: después, este instalador sigue solo."
+LangString NoVirtualization ${LANG_ENGLISH} "Windows could not start MADRE's Linux. The usual reason is that virtualization is off in this computer's BIOS/UEFI.$\r$\n$\r$\nThe help page shows how to turn it on, step by step. Open it?"
+LangString NoVirtualization ${LANG_SPANISH} "Windows no pudo arrancar el Linux de MADRE. Lo más común es que la virtualización esté apagada en la BIOS/UEFI de esta computadora.$\r$\n$\r$\nLa página de ayuda explica cómo encenderla, paso a paso. ¿Abrirla?"
+LangString InsideFailed ${LANG_ENGLISH} "MADRE could not finish installing inside its Linux. Check your internet connection and open this installer again: it continues where it stopped.$\r$\n$\r$\nThe details (Show details) say what failed."
+LangString InsideFailed ${LANG_SPANISH} "MADRE no pudo terminar de instalarse dentro de su Linux. Revisa tu conexión a internet y vuelve a abrir este instalador: sigue donde se quedó.$\r$\n$\r$\nEn «Mostrar detalles» dice qué falló."
+LangString RemoveLinux ${LANG_ENGLISH} "Also delete MADRE's Linux and everything saved inside it (your projects there included)?$\r$\n$\r$\nIf you say No, it stays, and installing MADRE again finds it as it was."
+LangString RemoveLinux ${LANG_SPANISH} "¿Borrar también el Linux de MADRE y todo lo guardado adentro (tus proyectos ahí incluidos)?$\r$\n$\r$\nSi dices que no, se queda, y al volver a instalar MADRE lo encuentra como estaba."
+
+Var Wsl
+Var TurnedOn
+
+; wsl.exe lives in System32. This installer is a 32-bit program: on 64-bit Windows it sees
+; System32 through Sysnative, where wsl.exe really is.
+!macro FindWsl
+  ${If} ${FileExists} "$WINDIR\Sysnative\wsl.exe"
+    StrCpy $Wsl "$WINDIR\Sysnative\wsl.exe"
+  ${Else}
+    StrCpy $Wsl "$SYSDIR\wsl.exe"
+  ${EndIf}
+  ; wsl.exe speaks UTF-16 unless told otherwise; the details pane reads UTF-8.
+  System::Call 'Kernel32::SetEnvironmentVariable(t "WSL_UTF8", t "1")i'
+!macroend
+
+Function .onInit
+  ${IfNot} ${AtLeastWin10}
+  ${OrIfNot} ${AtLeastBuild} 19041
+  ${OrIfNot} ${RunningX64}
+    MessageBox MB_ICONSTOP "$(OldWindows)"
+    Abort
+  ${EndIf}
+  !insertmacro FindWsl
+FunctionEnd
+
+; Is MADRE's Linux there and answering? 0 when it is.
+!macro DistroAnswers result
+  nsExec::Exec '"$Wsl" -d ${DISTRO} -u root -- true'
+  Pop ${result}
+!macroend
+
+Section "MADRE" Main
+  SetOutPath "$INSTDIR"
+  StrCpy $TurnedOn "0"
+
+  ; 1 · WSL itself.
+  DetailPrint "$(StepWsl)"
+  ; `--version` only answers from the WSL that installs Linux by name (2.x, from the Store): the
+  ; one Windows 10 brings inside, or none, fails here and is brought in the same way.
+  nsExec::ExecToLog '"$Wsl" --version'
+  Pop $0
+  ${If} $0 != 0
+    DetailPrint "$(StepWslOn)"
+    ExecShellWait "runas" "$Wsl" "--install --no-distribution --web-download" SW_HIDE
+    StrCpy $TurnedOn "1"
+  ${EndIf}
+
+  ; 2 · MADRE's own Linux.
+  !insertmacro DistroAnswers $0
+  ${If} $0 != 0
+    DetailPrint "$(StepDistro)"
+    nsExec::ExecToLog '"$Wsl" --install Ubuntu-24.04 --name ${DISTRO} --no-launch --web-download'
+    Pop $0
+    ; An older WSL does not know --name: brought up to date, then once more.
+    ${If} $0 != 0
+    ${AndIf} $TurnedOn == "0"
+      DetailPrint "$(StepUpdate)"
+      ExecShellWait "runas" "$Wsl" "--update --web-download" SW_HIDE
+      nsExec::ExecToLog '"$Wsl" --install Ubuntu-24.04 --name ${DISTRO} --no-launch --web-download'
+      Pop $0
+    ${EndIf}
+    !insertmacro DistroAnswers $0
+    ${If} $0 != 0
+      ${If} $TurnedOn == "1"
+        ; WSL was just turned on: Windows finishes it on restart. Back here by itself after it.
+        WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\RunOnce" "MADRE" '"$EXEPATH"'
+        MessageBox MB_YESNO|MB_ICONINFORMATION "$(Restart)" IDNO later
+          Reboot
+        later:
+        MessageBox MB_ICONINFORMATION "$(RestartLater)"
+        Quit
+      ${EndIf}
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(NoVirtualization)" IDNO stop
+        ExecShell "open" "${HELP_URL}#virtualizacion"
+      stop:
+      Abort
+    ${EndIf}
+  ${EndIf}
+
+  ; 3 · Inside it: the user, Node, the tools and MADRE.
+  DetailPrint "$(StepInside)"
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
+  File "inside-setup.sh"
+  ReadEnvStr $1 "USERNAME"
+  nsExec::ExecToLog '"$Wsl" -d ${DISTRO} -u root --cd "$PLUGINSDIR" -- sh ./inside-setup.sh "$1"'
+  Pop $0
+  ${If} $0 != 0
+    MessageBox MB_ICONEXCLAMATION "$(InsideFailed)"
+    Abort
+  ${EndIf}
+  ; wsl.conf (systemd, the default user) is read when the Linux starts again.
+  nsExec::Exec '"$Wsl" --terminate ${DISTRO}'
+  Pop $0
+
+  ; 4 · The way in, and the way out.
+  DetailPrint "$(StepShortcuts)"
+  SetOutPath "$INSTDIR"
+  File "MADRE.exe"
+  File "madre.ico"
+  WriteUninstaller "$INSTDIR\Desinstalar MADRE.exe"
+  CreateShortCut "$SMPROGRAMS\MADRE.lnk" "$INSTDIR\MADRE.exe" "" "$INSTDIR\madre.ico"
+  CreateShortCut "$DESKTOP\MADRE.lnk" "$INSTDIR\MADRE.exe" "" "$INSTDIR\madre.ico"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "MADRE"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "Jossue Alcalá"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\madre.ico"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "URLInfoAbout" "https://madre.run"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\Desinstalar MADRE.exe"'
+  WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoModify" 1
+  WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoRepair" 1
+SectionEnd
+
+Function un.onInit
+  !insertmacro FindWsl
+FunctionEnd
+
+Section "Uninstall"
+  ; MADRE first: if it is open, it closes before its files go.
+  nsExec::Exec '"$Wsl" --terminate ${DISTRO}'
+  Pop $0
+  ; Its Linux only when the person says so: their projects may live there. No is the default.
+  MessageBox MB_YESNO|MB_DEFBUTTON2|MB_ICONQUESTION "$(RemoveLinux)" IDNO keep
+    nsExec::ExecToLog '"$Wsl" --unregister ${DISTRO}'
+    Pop $0
+  keep:
+  Delete "$SMPROGRAMS\MADRE.lnk"
+  Delete "$DESKTOP\MADRE.lnk"
+  Delete "$INSTDIR\MADRE.exe"
+  Delete "$INSTDIR\madre.ico"
+  Delete "$INSTDIR\Desinstalar MADRE.exe"
+  RMDir "$INSTDIR"
+  DeleteRegKey HKCU "${UNINSTALL_KEY}"
+SectionEnd

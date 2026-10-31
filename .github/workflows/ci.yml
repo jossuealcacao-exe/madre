@@ -42,3 +42,24 @@ jobs:
           node -e "const r = JSON.parse(require('fs').readFileSync('doctor.json', 'utf8')); if (!Array.isArray(r.agents) || r.agents.length !== 5) process.exit(1); console.log('doctor ok ·', r.node)"
       - name: Known conditions print for this platform
         run: node ./bin/madre.mjs doctor --catalog node-version
+  # The Windows installer (installer/windows, 1.1.1): it builds, and what it runs inside MADRE's
+  # Linux leaves MADRE ready on a clean Ubuntu 24.04, the one WSL installs. The installer itself is
+  # tried by hand on Windows 10 and 11: GitHub's Windows machines cannot run WSL2.
+  windows-installer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build MADRE-Instalador.exe
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q nsis
+          node scripts/windows-installer.mjs
+      - name: What runs inside MADRE's Linux, on a clean Ubuntu 24.04
+        run: |
+          docker run --rm -v "$PWD/installer/windows:/setup:ro" -w /setup ubuntu:24.04 sh -c 'sh ./inside-setup.sh "José Pérez" && su - joseperez -c "madre --version && command -v wslview zstd && sudo -n true"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MADRE-Instalador
+          path: out/windows/MADRE-Instalador.exe

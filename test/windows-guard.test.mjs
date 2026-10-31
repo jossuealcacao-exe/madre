@@ -12,9 +12,11 @@ const run = (env) => spawnSync(process.execPath, ['--import', AS_WINDOWS, BIN], 
 test('windows · started on Windows itself, MADRE explains WSL2 in three steps and stops', () => {
   const spanish = run({ LANG: 'es_MX.UTF-8', LC_ALL: 'es_MX.UTF-8' });
   assert.equal(spanish.status, 1);
-  assert.match(spanish.stdout, /wsl --install/);
+  assert.match(spanish.stdout, /https:\/\/madre\.run\/windows/);
+  assert.match(spanish.stdout, /doble clic/);
   assert.match(spanish.stdout, /npx @jossuealcala\/madre/);
   const english = run({ LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' });
   assert.equal(english.status, 1);
-  assert.match(english.stdout, /On Windows, MADRE runs inside WSL2/);
+  assert.match(english.stdout, /On Windows, MADRE installs with its installer/);
+  assert.match(english.stdout, /https:\/\/madre\.run\/en\/windows/);
 });

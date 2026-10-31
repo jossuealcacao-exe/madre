@@ -55,6 +55,9 @@ if (/\.0$/.test(version) && !notesFor(version)) fail(`${version} has no "what's 
 console.log(`\nMADRE › closing ${pkg.name}@${version} · ${today}${dryRun ? ' · DRY RUN' : ''}\n`);
 run('npm', ['test']);
 run('npm', ['run', 'pack:check']);
+// The Windows installer travels with every version as a file of the GitHub release, the one
+// madre.run/windows downloads (…/releases/latest/download/MADRE-Instalador.exe). makensis builds it.
+run('node', ['scripts/windows-installer.mjs']);
 
 if (dryRun) { console.log('\n  Dry run: would date the changelog, set package.json, commit, tag, push and create the release.\n'); process.exit(0); }
 
@@ -102,9 +105,9 @@ const media = (lang, alt) => {
 };
 const mediaEs = media('es', ['Mira cómo se usa MADRE', 'Cómo funciona MADRE: tus IAs, un chat, permisos, memoria y deshacer, en tu computadora']);
 const mediaEn = media('en', ['See how MADRE works', 'How MADRE works: your AIs, one chat, permissions, memory and undo, on your computer']);
-const notes = `${mediaEs}${body}\n\n---\n\n### English\n\n${mediaEn}${bodyEn}\n\n---\n\n\`\`\`\nnpx ${pkg.name}@${version}\n\`\`\`\n`;
+const notes = `${mediaEs}${body}\n\n---\n\n### English\n\n${mediaEn}${bodyEn}\n\n---\n\n\`\`\`\nnpx ${pkg.name}@${version}\n\`\`\`\n\nWindows: **MADRE-Instalador.exe** (abajo, en «Assets»). Doble clic y listo · double click and done.\n`;
 await writeFile(resolve(root, '.release-notes.tmp.md'), notes);
-try { run('gh', ['release', 'create', `v${version}`, '--title', `MADRE ${version}`, '--notes-file', '.release-notes.tmp.md', '--latest']); }
+try { run('gh', ['release', 'create', `v${version}`, '--title', `MADRE ${version}`, '--notes-file', '.release-notes.tmp.md', '--latest', 'out/windows/MADRE-Instalador.exe']); }
 catch { console.error('  (gh release failed; create it by hand from the tag)'); }
 finally { run('rm', ['-f', '.release-notes.tmp.md']); }
 

@@ -16,3 +16,6 @@ docs/private/
 /magna - 1.jpeg
 /paraiso.jpeg
 /ventura.jpeg
+
+# Built installers (scripts/windows-installer.mjs): published as release files, never committed
+/out/
