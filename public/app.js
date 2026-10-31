@@ -5804,6 +5804,16 @@ function installedModules() {
   installedModulesAsked ??= fetch('/api/extensions').then((response) => response.json()).then((data) => data.extensions ?? []).catch(() => []);
   return installedModulesAsked;
 }
+// A module turned on or off from Home reaches this project on its next message, without a word to
+// this page: coming back to it, the page reads its modules again (2026-10-30), at most every 10 s.
+let modulesReadOnReturn = 0;
+document.addEventListener?.('visibilitychange', () => {
+  if (document.hidden || Date.now() - modulesReadOnReturn < 10_000) return;
+  modulesReadOnReturn = Date.now();
+  installedModulesAsked = null;
+  void refreshModules();
+  void refreshCommands();
+});
 function renderModuleInstalledOrRemoved(event) {
   const { name, origin, by } = event.payload;
   const node = el('div', 'system module-proposed');
@@ -7871,7 +7881,8 @@ function renderEventNode(event) {
     case 'message.rated': { const { messageId: rated, rating } = event.payload; if (rating === 'none') state.ratings.delete(rated); else state.ratings.set(rated, rating); state.ratingNodes.get(rated)?.apply(rating === 'none' ? null : rating); return; }
     case 'privacy.redacted': node = renderPrivacy(event); break;
     case 'module.proposed': node = renderModuleProposed(event); break;
-    case 'extension.installed': case 'extension.removed': if (!replaying) void refreshCommands(); node = renderModuleInstalledOrRemoved(event); break;
+    // A module from the Market, a file or an update: its card and its commands, at once (2026-10-30).
+    case 'extension.installed': case 'extension.removed': if (!replaying) { void refreshCommands(); installedModulesAsked = null; void refreshModules(); } node = renderModuleInstalledOrRemoved(event); break;
     case 'privacy.purged': node = renderPrivacy(event); break;
     case 'privacy.warning': if (!replaying) toast(t('Diagnostics › your message carries {n} private {term}. Agents will read it as you wrote it; their replies are guarded.', { n: event.payload.hits, term: event.payload.hits === 1 ? t('term') : t('terms') })); return;
     case 'memory.forgotten': node = renderForgotten(event); break;
