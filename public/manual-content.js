@@ -79,7 +79,7 @@ export const MANUAL = {
             note: 'En Windows, MADRE funciona dentro de WSL2, el Linux que traen Windows 10 y 11. Si la abres directo en Windows, te explica estos pasos y se detiene.',
             steps: [
               'Una vez, en PowerShell como administrador, escribe `wsl --install` y reinicia.',
-              'Abre «Ubuntu» desde el menú Inicio e instala Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` y luego `sudo apt install -y nodejs`.',
+              'Abre «Ubuntu» desde el menú Inicio e instala Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` y luego `sudo apt install -y nodejs zstd` (zstd lo necesita la IA en tu computadora para instalarse).',
               'Pega el comando en Ubuntu. MADRE se abre en tu navegador de Windows.',
             ],
             code: ['npx @jossuealcala/madre'],
@@ -422,6 +422,7 @@ export const MANUAL = {
           ['«El puerto ya está en uso».', 'Ya hay otra MADRE abierta: usa esa, o abre esta en otro puerto con `npx @jossuealcala/madre --port 4800`.'],
           ['La Terminal dice que tu Node es muy viejo.', 'Instala Node 22.5 o más nuevo desde nodejs.org y vuelve a correr el comando.'],
           ['Abriste MADRE en Windows y te dice que se detiene.', 'En Windows, MADRE funciona dentro de WSL2. Sigue los pasos de «Windows, con WSL2» en «Empieza aquí».'],
+          ['En Windows (WSL), la IA en tu computadora no se instala.', 'Al instalador de Ollama le falta zstd, que Ubuntu no trae. En Ubuntu pega `sudo apt-get install -y zstd` y vuelve a pulsar Instalar.'],
           ['En WSL, la IA local de Windows no contesta.', 'En la app de Ollama de Windows, activa «Expose Ollama to the network». Luego, en Ajustes › IA local, escribe la dirección que te sugiere MADRE.'],
           ['No se abrió el navegador.', 'Abre la dirección que escribió la terminal (termina en /salas). En WSL, ábrela en tu navegador de Windows con localhost.'],
           ['Entraste por SSH y la página no carga.', 'Abre en tu computadora el túnel que escribió la terminal, con 127.0.0.1 y no localhost, y déjalo abierto.'],
@@ -516,7 +517,7 @@ export const MANUAL = {
             note: 'On Windows, MADRE runs inside WSL2, the Linux that comes with Windows 10 and 11. Opened on Windows itself, it explains these steps and stops.',
             steps: [
               'Once, in PowerShell as administrator, type `wsl --install` and restart.',
-              'Open «Ubuntu» from the Start menu and install Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` and then `sudo apt install -y nodejs`.',
+              'Open «Ubuntu» from the Start menu and install Node 22: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -` and then `sudo apt install -y nodejs zstd` (the AI on your computer needs zstd to install).',
               'Paste the command in Ubuntu. MADRE opens in your Windows browser.',
             ],
             code: ['npx @jossuealcala/madre'],
@@ -859,6 +860,7 @@ export const MANUAL = {
           ['«The port is already in use».', 'Another MADRE is open: use that one, or open this one on another port with `npx @jossuealcala/madre --port 4800`.'],
           ['The Terminal says your Node is too old.', 'Install Node 22.5 or newer from nodejs.org and run the command again.'],
           ['You opened MADRE on Windows and it says it stops.', 'On Windows, MADRE runs inside WSL2. Follow «Windows, with WSL2» in «Start here».'],
+          ['On Windows (WSL), the AI on your computer does not install.', 'Ollama\'s installer needs zstd, which Ubuntu does not come with. In Ubuntu paste `sudo apt-get install -y zstd` and press Install again.'],
           ['In WSL, Windows\' local AI does not answer.', 'In the Ollama app on Windows, turn on «Expose Ollama to the network». Then, in Settings › Local AI, type the address MADRE suggests.'],
           ['The browser did not open.', 'Open the address the terminal printed (it ends in /salas). In WSL, open it in your Windows browser with localhost.'],
           ['You came in over SSH and the page does not load.', 'On your own computer, open the tunnel the terminal printed, with 127.0.0.1 and not localhost, and leave it open.'],
