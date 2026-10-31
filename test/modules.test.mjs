@@ -76,7 +76,7 @@ test('registry: sixteen modules in MODULES order, the compat layer answers with 
   assert.equal(byId.ash.status.detail, 'off · agents answer at their own length');
   assert.equal(byId.ash.warning, undefined, 'Ash still warns about something it no longer does');
   assert.equal(byId['git-pulse'].fixed, true);
-  assert.equal(byId.ollama.status.detail, (await (await import('../src/modules/helpers.mjs')).findOnPath('ollama') ? 'installed, not running · start it here' : 'not installed · INSTALL it here'));
+  assert.equal(byId.ollama.status.detail, (await (await import('../src/modules/helpers.mjs')).findOnPath('ollama') ? 'installed, not running · start it here' : 'not installed · install it here'));
   assert.equal(byId.ollama.recommended.embed, 'nomic-embed-text');
   assert.equal(byId['image-studio'].preflight.ok, false);
   assert.equal(byId.ahp.kind, 'installer');
