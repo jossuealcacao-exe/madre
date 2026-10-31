@@ -8,6 +8,10 @@
     <link rel="icon" type="image/svg+xml" href="/assets/brand/madre-favicon.svg">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/salas-mac.css">
+    <!-- MADRE's ground over the page from the first frame until the page is ready (2026-10-30, loader.js
+         bootDone): the layout drawn half-way, and then an opening over it, read as a jump. Lifted by the
+         page itself — under its opening when it plays one —, and never kept more than 6 s. -->
+    <script>try { var m = localStorage.getItem('pulse.theme'); var l = m === 'light' || (m !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches); var r = document.documentElement; r.style.setProperty('--arrive-veil', l ? '#f4f5f2' : '#050605'); r.classList.add('madre-booting'); setTimeout(function () { r.classList.remove('madre-booting'); }, 6000); } catch (e) {}</script>
     <!-- Arriving from another MADRE page (a room, Home): a veil of the theme's ground over the first
          frame, lifted as the page rises (styles.css, madre-arriving). Not on a reload, nor on Back. -->
     <script>try { var nav = performance.getEntriesByType('navigation')[0]; var from = document.referrer ? new URL(document.referrer) : null; if (nav && nav.type === 'navigate' && from && /^(127\.0\.0\.1|localhost)$/.test(from.hostname) && from.href !== location.href) { var theme = localStorage.getItem('pulse.theme'); var light = theme === 'light' || (theme !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches); var root = document.documentElement; root.style.setProperty('--arrive-veil', light ? '#f4f5f2' : '#050605'); root.classList.add('madre-arriving'); setTimeout(function () { root.classList.remove('madre-arriving'); }, 900); } } catch (e) {}</script>

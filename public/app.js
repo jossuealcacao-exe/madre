@@ -27,7 +27,7 @@ dropStickyHover();
 let roomTourKept = null;
 let welcomeKept;
 const welcomeDone = () => welcomeKept !== undefined && (welcomeKept === null || Boolean(welcomeKept.finished));
-import { LOADER_MARK, creep, finishLoader, makeLoader, playProjectOpening, setLoader, showCurtain } from './loader.js';
+import { LOADER_MARK, bootDone, creep, finishLoader, makeLoader, playProjectOpening, setLoader, showCurtain } from './loader.js';
 import { familyOf, languageLabel, tokenize } from './syntax.js';
 import { hunkKey, lineDiff, placeHunks, revertHunk, symbolAt } from './code-tools.js';
 import { COLLAPSED, MEMORY_COLORS, NEURAL_COLORS, activityOf, collapsedChip, createNostromo, dwarfChip, hexMix, neuronChip, rawActivity, travels, turnBy } from './nostromo-engine.js';
@@ -12549,6 +12549,7 @@ setLoader(arrival, 0.7);
 // The left half closes it the next time it reads the list.
 if (SPLIT_CHAT && !Array.isArray(initial.events)) {
   els.column.replaceChildren(el('div', 'empty', t('This conversation is no longer here.')));
+  bootDone();
   await new Promise(() => {});
 }
 // The corner of the room: which MADRE this is, and whose it is, readable on any wallpaper, and a
@@ -12684,6 +12685,9 @@ function boot() {
       });
     }
   } catch { /* no storage: the room opens as it always did */ }
+  // The room is drawn, and its opening, when it plays one, is already over it: the ground put over the
+  // first frame goes (loader.js, bootDone), so nothing of the room shows before its opening.
+  bootDone();
   (() => {
     const curtain = document.getElementById('reload-curtain');
     if (!curtain) return;

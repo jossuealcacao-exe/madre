@@ -111,6 +111,17 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - ((-2 * x + 2) ** 3) / 2)
 const easeOut = (x) => 1 - (1 - x) ** 3;
 const span = (now, from, to) => Math.max(0, Math.min(1, (now - from) / (to - from)));
 
+// The page is ready (2026-10-30): the ground put over it before its first frame (index.html,
+// salas-mac.html) fades out, the way a page arriving from another one does. Under an opening, it
+// goes unseen; once is enough.
+export function bootDone() {
+  const root = globalThis.document?.documentElement;
+  if (!root?.classList?.contains('madre-booting')) return;
+  root.classList.remove('madre-booting');
+  root.classList.add('madre-arriving');
+  setTimeout(() => root.classList.remove('madre-arriving'), 700);
+}
+
 // Whether this page already played MADRE's opening: it is played once per page, never twice in a row.
 let openingDone = false;
 export const openingPlayed = () => openingDone;

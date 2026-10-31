@@ -8537,6 +8537,9 @@ html.madre-arriving body { animation: madre-rise calc(620ms * var(--motion-scale
 @keyframes madre-settle { to { transform: scale(.985); } }
 @keyframes madre-rise { from { transform: scale(1.012); } }
 @media (prefers-reduced-motion: reduce) { html.madre-leaving body, html.madre-arriving body { animation: none; } }
+/* While the page boots (index.html and salas-mac.html put it on, loader.js bootDone lifts it): the ground,
+   still, over everything but a dialog in the top layer (the license, an opening). */
+html.madre-booting::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; background: var(--arrive-veil, var(--bg)); animation: none !important; opacity: 1; }
 
 /* The memory map's keys are the room's (2026-10-10): its surface and ink in either theme, and what
    is on — the unused, the questions — in the accent. Its space stays dark; its keys do not. */

@@ -16,7 +16,7 @@ import { AUTHOR, AUTHOR_URL, YEAR, drawAttribution, drawColophonKeys, drawLegal 
 
 // Where nothing can hover (a tablet), a tapped key does not stay lit (public/touch.js).
 dropStickyHover();
-import { creep, finishLoader, makeLoader, openingPlayed, playOpening, setLoader, showCurtain } from './loader.js';
+import { bootDone, creep, finishLoader, makeLoader, openingPlayed, playOpening, setLoader, showCurtain } from './loader.js';
 import { POWER_ICON, askUninstall, labelPowerKey, openPowerMenu, powerKey } from './power.js';
 import { drawHardware } from './hardware.js';
 import { CUSTOM_WALL, addPicture, customTile, customTools, customWall, paintCustomWall, rememberedWall } from './wallpaper.js';
@@ -497,6 +497,7 @@ function projectsInOrder() {
         : [...open, ...asleep];
   return { all, open, asleep };
 }
+let homeBootAsked = false;
 function draw() {
   if (!data) return;
   const { all, open } = projectsInOrder();
@@ -508,6 +509,15 @@ function draw() {
   // Not for whoever updated from before 1.1.0: they meet the news, and «Add project» is on Home (2026-10-30).
   if (!all.length && !welcomed) { welcomed = true; void homeTour.loaded.then((answer) => { if (!answer?.owed && !answer?.upgraded) openHomeWelcome({ at: answer?.state?.welcome?.finished ? 'project' : null }); }); }
   welcomeHome();
+  // Home is drawn: the ground over its first frame goes (loader.js, bootDone) — unless the welcome is
+  // about to open, whose opening comes first; then it goes as the welcome opens (openHomeWelcome).
+  if (!homeBootAsked) {
+    homeBootAsked = true;
+    void homeTour.loaded.then((answer) => {
+      const welcomeComing = !answer?.upgraded && (answer?.owed ? homeTour.path() === 'new' : !all.length);
+      if (!welcomeComing) bootDone();
+    }, () => bootDone());
+  }
   const working = open.some((room) => room.glance?.working?.length);
   ui.stop.hidden = !working;
   drawLinks(all);
@@ -4897,7 +4907,10 @@ const welcomeHost = {
 };
 function openHomeWelcome({ at = null, then = null } = {}) {
   welcomed = true;
-  return openWelcome({ at, then, host: welcomeHost });
+  const opened = openWelcome({ at, then, host: welcomeHost });
+  // The welcome covers Home now (its opening, or its window over the stage): the boot's ground goes.
+  bootDone();
+  return opened;
 }
 
 // ---- AJUSTES, as the room's (app.js, SETTINGS_SECTIONS and its sheets; 2026-10-10): a board of
