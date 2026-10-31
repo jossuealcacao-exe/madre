@@ -1,2 +1,3 @@
 installer/windows/*.sh text eol=lf
 installer/windows/*.ico binary
+installer/windows/*.exe binary

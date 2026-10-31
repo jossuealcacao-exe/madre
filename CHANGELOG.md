@@ -6,6 +6,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.2 · Sin publicar
 
+- **El instalador de Windows ya no parece sospechoso.** Unos pocos antivirus lo marcaban por cómo se veía (4 de 71 en VirusTotal; Microsoft Defender, no). Ahora va sin comprimir, dice quién lo hace y ya no se anota para el siguiente inicio de sesión: si Windows tiene que reiniciar, al volver abres «MADRE» en tu escritorio y termina de instalarse. Y es siempre el mismo archivo, aunque MADRE cambie de versión, para que los navegadores y Windows aprendan a confiar en él.
+
 ## 1.1.1 · 2026-10-31
 
 Una versión de arreglos urgentes, con lo que dijo el diagnóstico de la 1.1.0, y un instalador para Windows.

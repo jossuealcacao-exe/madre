@@ -5,7 +5,7 @@
 ; click; nobody types in PowerShell or in a terminal. On Windows MADRE runs inside WSL2 (D-001), so
 ; this installer:
 ;   1. turns WSL on when it is off: the only step that asks Windows for permission, and the only
-;      one that may need a restart (the installer then continues by itself after it);
+;      one that may need a restart (after it, «MADRE» on the desktop finishes the install);
 ;   2. creates a Linux of MADRE's own named «MADRE», from Ubuntu 24.04, with no account to create:
 ;      the person's Ubuntu, if there is one, is never touched;
 ;   3. inside it, as root, runs inside-setup.sh: the user, Node, zstd, wslu and MADRE;
@@ -13,20 +13,28 @@
 ;      it in the browser with no window of its own, and an entry in Installed apps to remove it.
 ; Opened again, it repairs and updates: the same steps, each skipped when already done.
 ;
+; Some antivirus judge a file by how it looks, not by what it does, and an unsigned installer that
+; looks packed or writes itself into the next sign-in scores as malware (VirusTotal 4/71 on the
+; first one, all machine-learning guesses; Microsoft Defender clean). So: nothing compressed, full
+; version information, and no RunOnce.
+;
+; The file is published once and kept: it installs the MADRE npm has as latest, so a new version of
+; MADRE needs no new installer, and browsers and SmartScreen judge a file by its reputation, which
+; a new hash starts from zero. Its own number (VERSION) moves only when the installer changes.
+;
 ; Built by scripts/windows-installer.mjs with makensis (NSIS 3). Never run on a real Windows by its
 ; author's machine: it is tested by hand on Windows 10 and 11 before each release (WIN-032).
 
 Unicode true
-SetCompressor /SOLID lzma
+SetCompress off
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "WinVer.nsh"
 !include "x64.nsh"
 
-!ifndef VERSION
-  !define VERSION "0.0.0"
-!endif
+; The installer's own number, not MADRE's.
+!define VERSION "1.0.0"
 !ifndef OUTFILE
   !define OUTFILE "MADRE-Instalador.exe"
 !endif
@@ -44,10 +52,14 @@ ShowUninstDetails hide
 BrandingText "madre.run"
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey /LANG=0 "ProductName" "MADRE"
-VIAddVersionKey /LANG=0 "FileDescription" "MADRE"
+VIAddVersionKey /LANG=0 "CompanyName" "Jossue Alcalá"
+VIAddVersionKey /LANG=0 "FileDescription" "Instalador de MADRE"
 VIAddVersionKey /LANG=0 "FileVersion" "${VERSION}"
 VIAddVersionKey /LANG=0 "ProductVersion" "${VERSION}"
+VIAddVersionKey /LANG=0 "InternalName" "MADRE-Instalador"
+VIAddVersionKey /LANG=0 "OriginalFilename" "MADRE-Instalador.exe"
 VIAddVersionKey /LANG=0 "LegalCopyright" "© 2026 Jossue Alcalá"
+VIAddVersionKey /LANG=0 "Comments" "https://madre.run/windows"
 
 !define MUI_ICON "madre.ico"
 !define MUI_UNICON "madre.ico"
@@ -85,10 +97,10 @@ LangString StepInside ${LANG_ENGLISH} "Installing Node.js and MADRE inside it…
 LangString StepInside ${LANG_SPANISH} "Instalando Node.js y MADRE adentro…"
 LangString StepShortcuts ${LANG_ENGLISH} "Adding MADRE to the Start menu and the desktop…"
 LangString StepShortcuts ${LANG_SPANISH} "Agregando MADRE al menú Inicio y al escritorio…"
-LangString Restart ${LANG_ENGLISH} "WSL is on. Windows needs to restart to finish turning it on.$\r$\n$\r$\nWhen you come back, this installer continues by itself. Restart now?"
-LangString Restart ${LANG_SPANISH} "WSL ya está encendido. Windows tiene que reiniciar para terminar de encenderlo.$\r$\n$\r$\nAl volver, este instalador sigue solo. ¿Reiniciar ahora?"
-LangString RestartLater ${LANG_ENGLISH} "Restart Windows when you can: this installer continues by itself after it."
-LangString RestartLater ${LANG_SPANISH} "Reinicia Windows cuando puedas: después, este instalador sigue solo."
+LangString Restart ${LANG_ENGLISH} "WSL is on. Windows needs to restart to finish turning it on.$\r$\n$\r$\nWhen you come back, open «MADRE» on your desktop and the install finishes. Restart now?"
+LangString Restart ${LANG_SPANISH} "WSL ya está encendido. Windows tiene que reiniciar para terminar de encenderlo.$\r$\n$\r$\nAl volver, abre «MADRE» en tu escritorio y termina de instalarse. ¿Reiniciar ahora?"
+LangString RestartLater ${LANG_ENGLISH} "Restart Windows when you can. Then open «MADRE» on your desktop and the install finishes."
+LangString RestartLater ${LANG_SPANISH} "Reinicia Windows cuando puedas. Después abre «MADRE» en tu escritorio y termina de instalarse."
 LangString NoVirtualization ${LANG_ENGLISH} "Windows could not start MADRE's Linux. The usual reason is that virtualization is off in this computer's BIOS/UEFI.$\r$\n$\r$\nThe help page shows how to turn it on, step by step. Open it?"
 LangString NoVirtualization ${LANG_SPANISH} "Windows no pudo arrancar el Linux de MADRE. Lo más común es que la virtualización esté apagada en la BIOS/UEFI de esta computadora.$\r$\n$\r$\nLa página de ayuda explica cómo encenderla, paso a paso. ¿Abrirla?"
 LangString InsideFailed ${LANG_ENGLISH} "MADRE could not finish installing inside its Linux. Check your internet connection and open this installer again: it continues where it stopped.$\r$\n$\r$\nThe details (Show details) say what failed."
@@ -160,8 +172,12 @@ Section "MADRE" Main
     !insertmacro DistroAnswers $0
     ${If} $0 != 0
       ${If} $TurnedOn == "1"
-        ; WSL was just turned on: Windows finishes it on restart. Back here by itself after it.
-        WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\RunOnce" "MADRE" '"$EXEPATH"'
+        ; WSL was just turned on: Windows finishes it on restart. Until then «MADRE» on the desktop
+        ; and in the Start menu is a copy of this installer, which picks up here; step 4 points them
+        ; at MADRE.exe. Never RunOnce: writing into the next sign-in is what malware does.
+        CopyFiles /SILENT "$EXEPATH" "$INSTDIR\Instalar MADRE.exe"
+        CreateShortCut "$SMPROGRAMS\MADRE.lnk" "$INSTDIR\Instalar MADRE.exe"
+        CreateShortCut "$DESKTOP\MADRE.lnk" "$INSTDIR\Instalar MADRE.exe"
         MessageBox MB_YESNO|MB_ICONINFORMATION "$(Restart)" IDNO later
           Reboot
         later:
@@ -196,11 +212,11 @@ Section "MADRE" Main
   SetOutPath "$INSTDIR"
   File "MADRE.exe"
   File "madre.ico"
+  Delete "$INSTDIR\Instalar MADRE.exe"
   WriteUninstaller "$INSTDIR\Desinstalar MADRE.exe"
   CreateShortCut "$SMPROGRAMS\MADRE.lnk" "$INSTDIR\MADRE.exe" "" "$INSTDIR\madre.ico"
   CreateShortCut "$DESKTOP\MADRE.lnk" "$INSTDIR\MADRE.exe" "" "$INSTDIR\madre.ico"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "MADRE"
-  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "Jossue Alcalá"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\madre.ico"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "URLInfoAbout" "https://madre.run"
@@ -227,6 +243,7 @@ Section "Uninstall"
   Delete "$DESKTOP\MADRE.lnk"
   Delete "$INSTDIR\MADRE.exe"
   Delete "$INSTDIR\madre.ico"
+  Delete "$INSTDIR\Instalar MADRE.exe"
   Delete "$INSTDIR\Desinstalar MADRE.exe"
   RMDir "$INSTDIR"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"

@@ -80,7 +80,7 @@ export const MANUAL = {
             steps: [
               'Descarga `MADRE-Instalador.exe` en madre.run/windows. Pesa poco: lo demás lo descarga mientras instala.',
               'Ábrelo con doble clic. La primera vez Windows muestra «Windows protegió tu PC». Sale porque el instalador todavía no tiene firma digital, no porque haya algo malo en él: pulsa «Más información» y luego «Ejecutar de todas formas». Estamos tramitando el certificado de firma para que este aviso desaparezca.',
-              'Pulsa «Instalar». Si WSL estaba apagado, Windows te pide permiso una vez y quizá reiniciar: el instalador sigue solo al volver.',
+              'Pulsa «Instalar». Si WSL estaba apagado, Windows te pide permiso una vez y quizá reiniciar: al volver, abre «MADRE» en tu escritorio y termina de instalarse.',
               'Al terminar, abre «MADRE» desde el menú Inicio o el escritorio. Se abre en tu navegador de Windows, sin ventanas de terminal.',
             ],
             tip: 'Sin sorpresas: el instalador no pide contraseñas y fuera de encender WSL no cambia nada de Windows; su código está a la vista en GitHub (carpeta installer/windows). Para quitarlo: Configuración › Aplicaciones › MADRE › Desinstalar; te pregunta antes de borrar el Linux de MADRE. ¿Prefieres la terminal? En Ubuntu (WSL2): `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -`, `sudo apt install -y nodejs zstd` y `npx @jossuealcala/madre`.',
@@ -519,7 +519,7 @@ export const MANUAL = {
             steps: [
               'Download `MADRE-Instalador.exe` from madre.run/en/windows. It is small: the rest downloads while it installs.',
               'Open it with a double click. The first time, Windows shows «Windows protected your PC». It appears because the installer does not have a digital signature yet, not because anything is wrong with it: press «More info» and then «Run anyway». We are getting the signing certificate so this notice goes away.',
-              'Press «Install». If WSL was off, Windows asks for permission once and maybe a restart: the installer continues by itself when you are back.',
+              'Press «Install». If WSL was off, Windows asks for permission once and maybe a restart: when you are back, open «MADRE» on your desktop and the install finishes.',
               'When it finishes, open «MADRE» from the Start menu or the desktop. It opens in your Windows browser, with no terminal windows.',
             ],
             tip: 'No surprises: the installer asks for no passwords and, besides turning WSL on, changes nothing in Windows; its code is in the open on GitHub (folder installer/windows). To remove it: Settings › Apps › MADRE › Uninstall; it asks before deleting MADRE\'s Linux. Prefer the terminal? In Ubuntu (WSL2): `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -`, `sudo apt install -y nodejs zstd` and `npx @jossuealcala/madre`.',

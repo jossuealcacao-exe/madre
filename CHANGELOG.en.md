@@ -6,6 +6,8 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.2 · Unreleased
 
+- **The Windows installer no longer looks suspicious.** A few antivirus flagged it for how it looked (4 of 71 on VirusTotal; not Microsoft Defender). Now it is not compressed, it says who makes it and it no longer writes itself into the next sign-in: if Windows needs a restart, open «MADRE» on your desktop when you are back and the install finishes. And it is always the same file, even when MADRE changes version, so browsers and Windows learn to trust it.
+
 ## 1.1.1 · 2026-10-31
 
 An urgent fixes release, with what 1.1.0's diagnostics said, and an installer for Windows.
