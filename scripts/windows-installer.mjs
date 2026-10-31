@@ -19,7 +19,10 @@ import { join, resolve } from 'node:path';
 const root = resolve(new URL('..', import.meta.url).pathname);
 const source = join(root, 'installer', 'windows');
 const out = join(root, 'out', 'windows');
-const { version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+// The label it carries: package.json's, or the one release.mjs is closing (`--version 1.1.1`), which
+// is built before package.json moves.
+const asked = process.argv[process.argv.indexOf('--version') + 1];
+const version = process.argv.includes('--version') && /^\d+\.\d+\.\d+$/.test(asked ?? '') ? asked : JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
 
 // An .ico of PNG images (Windows Vista and later read them): 16, 32, 48 and 256 pixels, from the
 // app icon, with macOS's sips. Kept in the repository, so building elsewhere needs no sips.

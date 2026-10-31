@@ -57,7 +57,7 @@ run('npm', ['test']);
 run('npm', ['run', 'pack:check']);
 // The Windows installer travels with every version as a file of the GitHub release, the one
 // madre.run/windows downloads (…/releases/latest/download/MADRE-Instalador.exe). makensis builds it.
-run('node', ['scripts/windows-installer.mjs']);
+run('node', ['scripts/windows-installer.mjs', '--version', version]);
 
 if (dryRun) { console.log('\n  Dry run: would date the changelog, set package.json, commit, tag, push and create the release.\n'); process.exit(0); }
 
