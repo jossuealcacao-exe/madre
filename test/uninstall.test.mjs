@@ -131,6 +131,10 @@ test('uninstall · only from Home, from a page of this computer, once every proj
     assert.equal(asked.room, true, 'the open project was not closed first');
     assert.equal(asked.uninstall?.made, true);
     assert.equal(asked.uninstall?.plan.stateRoot, state);
+    // 1.1.0 read the room's diagnostics from startPulse, where they do not exist, and crashed
+    // before removing anything: the farewell travels with the event and never throws.
+    assert.equal(typeof asked.uninstall?.farewell, 'function');
+    await asked.uninstall.farewell();
   } finally {
     await close(lobby.server).catch(() => {});
     await close(room.server).catch(() => {});

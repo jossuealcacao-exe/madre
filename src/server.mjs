@@ -2063,7 +2063,7 @@ export async function createPulseServer({
           install: async () => {
             if (installing) return { ok: false, error: t('Another install is running. Wait for it to finish and try again.') };
             const { ollamaInstallPlan, adminHere } = await import('./modules/ollama.mjs');
-            const plan = ollamaInstallPlan({ brew: await findOnPath('brew'), admin: await adminHere() });
+            const plan = ollamaInstallPlan({ brew: await findOnPath('brew'), admin: await adminHere(), zstd: Boolean(await findOnPath('zstd')), apt: Boolean(await findOnPath('apt-get')) });
             if (!plan.command) return { ok: false, error: plan.note, download: plan.download, manual: plan.manual ? plan.display : null };
             installing = 'ollama'; installingSince = Date.now();
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: plan.display, platforms: [], alreadyInstalled: false });
@@ -2228,6 +2228,15 @@ export async function createPulseServer({
     // Which machine serves the page, written into it (public/i18n.js, hostWords): the browser that
     // reads it may be on another one, a Mac looking at a Linux box, and must not say «Mac» there.
     const withHost = (html) => html.replace('<head>', `<head>\n    <meta name="madre-host" content="${JSON.stringify(hostFacts()).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">`);
+    // A page of MADRE's own. Its files can vanish under a running copy (npx replaced its folder
+    // with a newer version): then the page says so, instead of a failure (1.1.0 diagnostics).
+    const pageHtml = async (name) => {
+      try { return withHost(await readFile(join(publicDirectory, name), 'utf8')); }
+      catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+        return `<!doctype html><meta charset="utf-8"><title>MADRE</title><body style="font:16px system-ui;background:#111;color:#eee;padding:48px"><p>${t('MADRE changed version while it was open. Close it and open it again.')}</p></body>`;
+      }
+    };
     const designationOk = (given) => typeof given === 'string' && given.trim().toLowerCase() === basename(canonicalProjectRoot).toLowerCase();
     // A request the bridge passed on from a paired phone. It reaches the room from 127.0.0.1 like
     // anything on this Mac, so «only from this computer» has to ask this too.
@@ -2235,7 +2244,7 @@ export async function createPulseServer({
     const phoneKind = viaPhone ? String(request.headers['x-madre-device-kind'] ?? 'other').slice(0, 20) : null;
     try {
       if (request.method === 'GET' && url.pathname === '/') {
-        const html = withHost(await readFile(join(publicDirectory, 'index.html'), 'utf8'));
+        const html = await pageHtml('index.html');
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...PAGE_GUARDS });
         return response.end(html);
       }
@@ -2248,7 +2257,7 @@ export async function createPulseServer({
       // The user manual (public/manual.html, 1.0.5): read here, without a network, in the room's
       // language; and the same manual printed, in both languages (scripts/manual-pdf.mjs).
       if (request.method === 'GET' && url.pathname === '/manual') {
-        const html = withHost(await readFile(join(publicDirectory, 'manual.html'), 'utf8'));
+        const html = await pageHtml('manual.html');
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', ...PAGE_GUARDS });
         return response.end(html);
       }
@@ -2444,7 +2453,7 @@ export async function createPulseServer({
             return response.end();
           }
         }
-        const html = withHost(await readFile(join(publicDirectory, 'salas-mac.html'), 'utf8'));
+        const html = await pageHtml('salas-mac.html');
         response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', ...PAGE_GUARDS });
         return response.end(html);
       }
@@ -2770,7 +2779,15 @@ export async function createPulseServer({
         const { stuck } = await closeOtherRooms();
         if (stuck.length) return sendJson(response, 409, { error: t('These projects did not close, so nothing was removed: {list}. Close them from Home and try again.', { list: stuck.join(', ') }), stuck });
         sendJson(response, 202, { uninstalling: true, ...planView(plan), madeGo: payload?.made === true });
-        setTimeout(() => server.emit('madre:uninstall', { plan, made: payload?.made === true }), 150);
+        // Said before anything goes (src/install-metrics.mjs): a copy uninstalled, with the
+        // diagnostics. It travels with the event because startPulse cannot see this room's
+        // diagnostics (1.1.0 read `testMode` there and crashed before removing anything).
+        const farewell = async () => {
+          if (testMode || !(await diagnosticsNow().catch(() => false))) return;
+          diagnostics.count('life.uninstall');
+          await diagnostics.flush({ fetchImpl: reportFetch }).catch(() => null);
+        };
+        setTimeout(() => server.emit('madre:uninstall', { plan, made: payload?.made === true, farewell }), 150);
         return undefined;
       }
       // This room, asked to close by Salas: what is running stops and the room closes the way a
@@ -5038,12 +5055,8 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   // Uninstalling (src/uninstall.mjs): the room closes as it does for a signal — every write done,
   // the memory file closed — and only then is what the plan named taken away, last thing before the
   // process ends, so nothing of MADRE's writes it back.
-  server.once('madre:uninstall', ({ plan, made }) => server.close(async () => {
-    // Said before anything goes (src/install-metrics.mjs): a copy uninstalled, with the diagnostics.
-    if (!testMode && await diagnosticsNow().catch(() => false)) {
-      diagnostics.count('life.uninstall');
-      await diagnostics.flush({ fetchImpl: reportFetch }).catch(() => null);
-    }
+  server.once('madre:uninstall', ({ plan, made, farewell }) => server.close(async () => {
+    await farewell?.().catch(() => null);
     const done = await removeMadre(plan, { made }).catch((error) => ({ removed: [], failed: [{ path: null, error: error.message }] }));
     console.log(done.failed.length ? `\nMADRE was uninstalled, except:\n${done.failed.map((one) => `  ${one.path ?? ''} ${one.error}`).join('\n')}\n` : '\nMADRE was uninstalled.\n');
     process.exit(0);

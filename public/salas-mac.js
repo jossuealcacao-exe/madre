@@ -2616,7 +2616,11 @@ function openLinkSheet({ reader = null, source = null } = {}) {
   // Coordinator as the one that shares, the two change places; it never reads both ways.
   const coordinator = (id) => Boolean(data.salas) && id === data.salas;
   if (coordinator(pick.source)) [pick.reader, pick.source] = [pick.source, pick.reader];
-  const settle = () => { if (coordinator(pick.source) && !coordinator(pick.reader)) [pick.reader, pick.source] = [pick.source, pick.reader]; if (coordinator(pick.source) || coordinator(pick.reader)) pick.both = false; };
+  // One project and the Coordinator, asked from the project's card (it as the one that reads):
+  // nobody else could share, so the project shares and the Coordinator reads. Without this the
+  // sheet started with no source and broke on its first paint (1.1.0 diagnostics, 3 copies).
+  if (!pick.source && pick.reader && !coordinator(pick.reader) && rooms.some((room) => coordinator(room.id))) [pick.source, pick.reader] = [pick.reader, data.salas];
+  const settle =() => { if (coordinator(pick.source) && !coordinator(pick.reader)) [pick.reader, pick.source] = [pick.source, pick.reader]; if (coordinator(pick.source) || coordinator(pick.reader)) pick.both = false; };
   const roomOf = (id) => rooms.find((room) => room.id === id) ?? null;
   const nameOf = (id) => { const room = roomOf(id); return room ? roomLabel(room) : ''; };
   // Orders only with BISHOP on one side; they would go into the other.
@@ -2754,7 +2758,7 @@ function openLinkSheet({ reader = null, source = null } = {}) {
     return node;
   }
   function paintEnd(node, id, role) {
-    if (node.dataset.room !== id) {
+    if (node.dataset.room !== id || !node.lastChild) {
       node.dataset.room = id;
       node.replaceChildren();
       const body = id === data.salas ? mark('bishop', 46) : (() => { const disc = el('span', 'lw-room-mark'); disc.innerHTML = FOLDER_GLYPH; return disc; })(); // trusted: drawn here
@@ -4535,6 +4539,7 @@ const TROUBLE_WORDS = {
     permission: () => t('This computer did not let MADRE install it. Try again; if it fails again, install it from a terminal (below).'),
     disk: () => t('There is not enough free space on this computer to install it.'),
     'npm-missing': () => t('Installing it needs Node and npm, and this computer does not have them. Install Node from nodejs.org, then try again.'),
+    'zstd-missing': () => t('Installing it needs zstd, which this Linux does not have. In a terminal: sudo apt install -y zstd, then try again.'),
     timeout: () => t('It took too long and was stopped. Try again.'),
     unknown: () => t('It did not install.'),
   },

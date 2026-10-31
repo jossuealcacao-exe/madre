@@ -112,7 +112,10 @@ export class ErrorSentinel {
     // diagnose — filing it would be reporting the brake as a fault. A turn cut because MADRE was
     // closing is the same: every room closed mid-turn filed «MADRE is shutting down» (2026-10-21).
     if (stopped || closing) return null;
-    const known = diagnose(error, target ?? null);
+    // A help card for everyone (informational and of no agent, like the permission modes) explains
+    // a feature, not a failure: filing one under it threw away the agent's words (1.1.0, MU-023).
+    // An agent's own notice (MU-002, Codex reading stdin) still explains its agent's failure.
+    const known = diagnose(error, target ?? null).filter((condition) => condition.severity !== 'informational' || condition.agent);
     const agentVersion = this.#agents.find((one) => one.id === target)?.version ?? null;
     // Known or not, the author hears of it (2026-10-28): how often each known condition happens is
     // as useful as the conditions nobody catalogued.

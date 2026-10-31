@@ -13,6 +13,8 @@ export function tellFailures(page) {
     // «Script error.» is a script of another site, a browser extension's: not MADRE's.
     if (!said || said === 'Script error.' || told.has(said) || told.size >= 20) return;
     if (/chrome-extension:|moz-extension:|safari-web-extension:/.test(String(stack ?? ''))) return;
+    // The browser's own notice that a resize waited one frame: nothing failed (1.1.0, 12 copies).
+    if (/^ResizeObserver loop/.test(said)) return;
     told.add(said);
     void fetch('/api/telemetry/page-error', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ page, message: said, stack: String(stack ?? '').slice(0, 4000) }) }).catch(() => null);
   };

@@ -791,7 +791,10 @@ export function openMacroverso({ host, rooms, here, enlaces = [], accent = '#9bf
     clock += dt;
     tick();
     if (camera.to) {
-      const k = Math.min(1, (now - camera.to.at) / camera.to.ms);
+      // Never below 0: a frame stamped before the flight began (a tab coming back, a measured
+      // step) made k hugely negative, the cubic ease threw the zoom to -4.5e8 and the orbits could
+      // not be drawn (1.1.0 diagnostics).
+      const k = Math.max(0, Math.min(1, (now - camera.to.at) / camera.to.ms));
       const e = ease(k);
       camera.x = camera.to.from.x + (camera.to.x - camera.to.from.x) * e;
       camera.y = camera.to.from.y + (camera.to.y - camera.to.from.y) * e;

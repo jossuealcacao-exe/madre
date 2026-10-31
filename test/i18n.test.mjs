@@ -484,8 +484,9 @@ test('i18n · the page is told which machine serves it, not the browser\'s: a Ma
   assert.equal(facts.os, process.platform);
   const html = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
   assert.match(html, /const withHost = \(html\) => html\.replace\('<head>'/);
-  assert.match(html, /withHost\(await readFile\(join\(publicDirectory, 'index\.html'\)/);
-  assert.match(html, /withHost\(await readFile\(join\(publicDirectory, 'salas-mac\.html'\)/);
+  assert.match(html, /const pageHtml = async \(name\) => \{\n\s+try \{ return withHost\(await readFile\(join\(publicDirectory, name\)/);
+  assert.match(html, /await pageHtml\('index\.html'\)/);
+  assert.match(html, /await pageHtml\('salas-mac\.html'\)/);
   const i18n = await readFile(join(import.meta.dirname, '..', 'public', 'i18n.js'), 'utf8');
   assert.match(i18n, /meta\[name="madre-host"\]/);
 });

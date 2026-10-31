@@ -54,3 +54,15 @@ test('the sudo question is only asked on Linux', async () => {
   // Elsewhere `admin` changes nothing: macOS still goes through Homebrew or the download.
   assert.equal(ollamaInstallPlan({ platform: 'darwin', brew: '/opt/homebrew/bin/brew', admin: false }).command, '/opt/homebrew/bin/brew');
 });
+
+// WIN-029: Ollama's script stops with «requires zstd» on a fresh Ubuntu. With apt, zstd goes first.
+test('Linux without zstd: the line installs zstd first, and the one handed over says sudo', async () => {
+  const zstdFirst = `sudo -n apt-get install -y zstd && ${SCRIPT}`;
+  const run = ollamaInstallPlan({ platform: 'linux', admin: true, zstd: false, apt: true });
+  assert.deepEqual([run.command, run.args, run.display], ['sh', ['-c', zstdFirst], zstdFirst]);
+  assert.deepEqual(ollamaUpdatePlan({ platform: 'linux', admin: true, zstd: false, apt: true }).args, ['-c', zstdFirst]);
+  assert.equal(ollamaInstallPlan({ platform: 'linux', admin: false, zstd: false, apt: true }).display, `sudo apt-get install -y zstd && ${SCRIPT}`);
+  // With zstd, or without apt to install it, the script is Ollama's own, as before.
+  assert.equal(ollamaInstallPlan({ platform: 'linux', admin: true, zstd: true, apt: true }).display, SCRIPT);
+  assert.equal(ollamaInstallPlan({ platform: 'linux', admin: true, zstd: false, apt: false }).display, SCRIPT);
+});

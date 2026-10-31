@@ -11,6 +11,7 @@ test('setup trouble · an install says why it failed: no internet, no permission
   assert.equal(installTrouble('npm error code ENOSPC'), 'disk');
   assert.equal(installTrouble('spawn npm ENOENT'), 'npm-missing');
   assert.equal(installTrouble("'npm' is not recognized as an internal or external command"), 'npm-missing');
+  assert.equal(installTrouble('ERROR: This version requires zstd for extraction. Please install zstd and try again:'), 'zstd-missing');
   assert.equal(installTrouble('the install timed out after 600000 ms'), 'timeout');
   assert.equal(installTrouble('something nobody planned for'), 'unknown');
 });

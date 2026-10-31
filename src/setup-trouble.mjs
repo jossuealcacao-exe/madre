@@ -11,11 +11,13 @@ const PERMISSION = /EACCES|EPERM|permission denied|operation not permitted|acces
 const DISK = /ENOSPC|no space left/i;
 const NO_NPM = /spawn npm(\.cmd)? ENOENT|npm(\.cmd)?: (command )?not found|'npm' is not recognized|command not found: npm/i;
 const TIMEOUT = /timed out|timeout|ETIMEDOUT after|SIGTERM/i;
+const NO_ZSTD = /requires zstd|install zstd/i;
 const CANCELLED = /cancell?ed|aborted by the user/i;
 
 export function installTrouble(text = '') {
   const said = String(text);
   if (NO_NPM.test(said)) return 'npm-missing';
+  if (NO_ZSTD.test(said)) return 'zstd-missing';
   if (DISK.test(said)) return 'disk';
   if (NETWORK.test(said)) return 'network';
   if (PERMISSION.test(said)) return 'permission';

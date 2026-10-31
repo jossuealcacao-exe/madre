@@ -173,3 +173,19 @@ test('sentinel: a turn cut because MADRE closes is not a fault, and nothing is w
     for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
   }
 });
+
+// 1.1.0 diagnostics: a failure that named its model was filed as the permission-modes help card
+// (MU-023) and its words were lost; Codex's usage limit and Gemini without an account were unknown.
+test('the sentinel · a help card never explains a failure; usage limit and no account are known', async () => {
+  const told = [];
+  const sentinel = new ErrorSentinel({ pkg: { name: '@jossuealcala/madre', version: '1.1.1' }, agents: [], told: (one) => told.push(one) });
+  const failed = (target, error) => ({ type: 'message.failed', timestamp: new Date().toISOString(), payload: { target, error } });
+  const odd = await sentinel.observe(failed('opencode', 'The model gpt-9 is not available for this provider'));
+  assert.equal(odd?.kind, 'unknown');
+  assert.equal(told.at(-1).code, null);
+  assert.match(told.at(-1).message, /model gpt-9/);
+  assert.equal(await sentinel.observe(failed('codex', 'You’ve hit your usage limit. Upgrade to Plus to continue using Codex, or try again at Nov 27th, 2026 12:39 PM.')), null);
+  assert.equal(told.at(-1).code, 'MU-074');
+  assert.equal(await sentinel.observe(failed('gemini', 'Gemini se cerró con el código 41. Última salida: Please set an Auth method in your settings.json')), null);
+  assert.equal(told.at(-1).code, 'MU-008');
+});

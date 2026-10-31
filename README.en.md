@@ -27,11 +27,7 @@
 npx @jossuealcala/madre
 ```
 
-**Windows.** MADRE runs inside WSL2, the Linux that comes with Windows:
-
-1. Open PowerShell as administrator and type `wsl --install`. Restart if it asks you to.
-2. Open **Ubuntu** from the Start menu.
-3. Type `npx @jossuealcala/madre` there.
+**Windows.** Download the installer from [madre.run/en/windows](https://madre.run/en/windows) and open it with a double click. It turns on WSL2 (the Linux that comes with Windows) if needed, prepares MADRE's Linux and leaves it in the Start menu, with no terminal. Prefer the terminal? Inside Ubuntu (WSL2), install Node 22 and `zstd`, and type `npx @jossuealcala/madre`.
 
 You need Node 22.5 or newer and at least one AI you are signed in to. There is no account to create. MADRE opens in your browser and a welcome guides you step by step: it connects your AIs, puts a free AI on your computer if it fits, and adds your first project.
 

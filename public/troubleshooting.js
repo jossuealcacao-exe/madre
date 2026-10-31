@@ -203,12 +203,26 @@ export const CONDITIONS = [
     fixes: same(['# plan and usage: https://cursor.com/dashboard', 'cursor-agent status']),
   },
   {
+    // Seen in the diagnostics of 1.1.0 (2026-10-31): Codex on a free ChatGPT account ran out and
+    // the room called it an unknown failure.
+    id: 'codex-usage-limit',
+    code: 'MU-074',
+    agent: 'codex',
+    severity: 'blocking',
+    title: 'Codex has reached its usage limit',
+    match: /hit your usage limit|usage limit reached|Upgrade to (?:Plus|Pro) to continue/i,
+    diagnosis: 'Your ChatGPT account has used up the Codex usage its plan gives for this period, and Codex refuses every turn until it renews. Codex says when that is at the end of its message. It is OpenAI\'s limit, not MADRE\'s: nothing in the project is wrong.',
+    remedy: 'Wait until the date Codex gives, change your ChatGPT plan, or ask another agent in the meantime.',
+    fixes: same(['# plan and usage: https://chatgpt.com/codex/settings/usage']),
+  },
+  {
     id: 'not-signed-in',
     code: 'MU-008',
     solvedIn: 'connections',
     severity: 'blocking',
     title: 'Agent installed but signed out',
-    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials/i,
+    // «set an Auth method»: Gemini with no account chosen exits with code 41 (1.1.0 diagnostics).
+    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method/i,
     diagnosis: 'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.',
     remedy: 'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.',
     fixes: same(['npx @jossuealcala/madre setup', '# or directly:', 'codex login', 'claude auth login', 'opencode auth login', 'gemini   # then /auth']),
@@ -411,7 +425,9 @@ export const CONDITIONS = [
     code: 'MU-023',
     severity: 'informational',
     title: 'Permission modes: #0 INCOGNITO · #1 CHAT ONLY · #2 CREATE · #3 EDIT · #4 FULL ACCESS',
-    match: /mode|ghost|exchange|control|airlock|deploy|despleg|producci|override|designation|max mode|#[0-4]\b/i,
+    // \bmodes?\b: a bare «mode» also matched «model», and any agent failure that named its model
+    // was filed as this help card (1.1.0 diagnostics, MU-023 from Codex and OpenCode).
+    match: /\bmodes?\b|ghost|exchange|control|airlock|deploy|despleg|producci|override|designation|max mode|#[0-4]\b/i,
     diagnosis: 'Every message goes out at a mode, chosen in the chip after TO @agent (or typed as #2 in the text). #0 INCOGNITO is off the record: nothing is saved, no other agent remembers it, gone on reload, no plan. #1 CHAT ONLY is the default: read and coordinate. #2 CREATE lets the agent add new files and folders anywhere in the project, where they belong; whatever existed before is put back after the turn and the project says so. #3 EDIT puts one agent in command of the project itself: a git restore point is taken first, every change is listed afterwards, writes into .git, .pulse or .env files are reverted on the spot, and UNDO goes back to the restore point. One holder at a time; it needs Max mode #3 and a git repository. Your mode is the ceiling of any plan the message starts, and #3 is never given to a plan step. Each agent has a Max mode in Settings → Permissions; above it, #2 is answered read-only and #3 is refused. When a #1 plan reaches a step that wants to create something, the project pauses and asks you: GRANT ONCE, GRANT FOR PLAN or DENY, with a 3-minute clock; silence denies. #4 FULL ACCESS is EDIT plus commands: tests, builds, git push, deploys with the CLIs and sessions already on this machine. Files still come back with UNDO; what leaves the machine does not, so the unlock asks for the project name twice. An agent that says it needs a "production mode" or "permission to run commands" is asking for #4.',
     remedy: 'Pick the mode in the chip, or type #0..#4 in the message. Raise an agent\'s Max mode in Settings → Permissions, under Who may do what. EDIT asks for the project name (the folder name) in the unlock; FULL ACCESS asks for it twice.',
     fixes: same(['# chip: TO @codex  #1 CHAT ONLY ▾  → choose', '@codex #2 create the poster', '@opencode #4 run the tests and deploy to preview', '# Settings → Permissions → Who may do what']),
@@ -861,12 +877,12 @@ export const CONDITIONS = [
     title: 'MADRE on Windows',
     match: /\bwin32\b|native Windows|Windows nativo|wsl --install/i,
     diagnosis: 'On Windows, MADRE runs inside WSL2 (Windows Subsystem for Linux), the Linux that comes with Windows 10 and 11. Inside it MADRE works as on any Linux, and opens in your Windows browser. It does not run on Windows directly.',
-    remedy: 'Install WSL once (it asks for an administrator and a restart), open Ubuntu from the Start menu, and start MADRE there. Keep your projects inside Linux, not in /mnt/c.',
+    remedy: 'Download MADRE\'s installer from madre.run/windows and open it with a double click: it turns WSL on, prepares MADRE\'s Linux and leaves MADRE in the Start menu, with no terminal. Keep your projects inside Linux, not in /mnt/c.',
     fixes: {
       darwin: ['# this is for Windows'],
       linux: ['# this is for Windows'],
       wsl: ['# you are already in WSL: MADRE runs here as on any Linux'],
-      win32: ['# in PowerShell, as administrator, once:', 'wsl --install', '# restart, open «Ubuntu» from the Start menu, and in it:', 'curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -', 'sudo apt install -y nodejs', 'npx @jossuealcala/madre'],
+      win32: ['# the installer, a double click and no terminal:', 'https://madre.run/windows', '# or by hand: in PowerShell, as administrator, once:', 'wsl --install', '# restart, open «Ubuntu» from the Start menu, and in it:', 'curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -', 'sudo apt install -y nodejs zstd', 'npx @jossuealcala/madre'],
     },
   },
 ];

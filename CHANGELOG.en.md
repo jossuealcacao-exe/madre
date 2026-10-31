@@ -6,6 +6,19 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.1 · Unreleased
 
+An urgent fixes release, with what 1.1.0's diagnostics said, and an installer for Windows.
+
+- **MADRE on Windows with a double click.** Download `MADRE-Instalador.exe` from madre.run/en/windows and open it. It turns on WSL if needed, prepares a Linux of MADRE's own (it does not touch your Ubuntu, if you have one) and installs Node and MADRE inside. At the end it leaves «MADRE» in the Start menu and on the desktop, and it opens in your browser with no terminal windows. Windows asks for permission once, and only if WSL was off. If a restart is needed, the installer continues by itself when you are back. To remove it, «Desinstalar MADRE» in Installed apps; it asks before deleting MADRE's Linux and what you saved there.
+- **A plan's closing step reads in plain words.** When an AI finished a plan with others, the chat showed in grey, in its name, MADRE's internal instruction to close it. Now it says «Reading what the others answered, to give you the final answer».
+- **The manual explains Windows step by step:** the installer, what to do if «Windows protected your PC» shows up, why it does (the installer has no digital signature yet; the certificate is on its way) and how to remove it.
+- **Uninstall MADRE uninstalls again.** In 1.1.0 the button closed everything and crashed before removing anything.
+- **The AI on your computer installs on Ubuntu and WSL.** Ollama's installer now needs `zstd`, and a new Ubuntu does not have it. MADRE installs it first. If it cannot, it gives you the whole line for the terminal.
+- **MADRE explains two failures it did not recognise.** When Codex runs out of your ChatGPT plan's usage, it says that is Codex's limit and when it comes back. And when Gemini has no account, it takes you to connect one.
+- **Sharing memory between projects** now opens even with only one project besides the Coordinator; the window used to break.
+- **The Map** no longer gets lost when you come back to its tab mid-animation.
+- **If MADRE changes version while it is open**, the page asks you to close it and open it again, instead of failing.
+- **Cleaner diagnostics.** A browser notice that was not a failure is no longer sent. A failure that names its model is no longer mistaken for the permission-modes help, so it arrives whole.
+
 ## 1.1.0 · 2026-10-31
 
 MADRE puts the AIs you already use (Codex, Claude, Gemini, Cursor and OpenCode) in one chat that runs on your computer. 1.1 lays it out like a chat app, adds the Market and comes to Windows.

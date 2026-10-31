@@ -26,6 +26,10 @@ export async function recommendedHere() {
 // changes format and size with each release, needs the GPU libraries beside it and a PATH the
 // running MADRE does not see, and gives no service. One person keeps this; the script keeps itself.)
 const LINUX_SCRIPT = 'curl -fsSL https://ollama.com/install.sh | sh';
+// Ollama's script now unpacks a .zst archive and stops with «requires zstd» when the tool is
+// missing, which a fresh Ubuntu (WSL included) is (WIN-029: 8 copies in 1.1.0's diagnostics). On a
+// system with apt, the line that runs, or the one handed over, installs zstd first.
+const withZstd = (script, zstd, apt) => (zstd || !apt ? script : `sudo -n apt-get install -y zstd && ${script}`);
 const NEEDS_PASSWORD = "Ollama's install script needs the administrator password, and MADRE cannot ask for it. Run the command in a terminal, then press RECHECK.";
 
 // `sudo -n true` answers at once: 0 when no password is needed, an error when one is (or when this
@@ -44,30 +48,32 @@ export async function adminHere({ platform = process.platform, uid = process.get
 
 // Ollama is not an npm package, so each system has its own way in. Where MADRE can run it, the
 // command is shown on the button before it runs; where it cannot, it hands over the download.
-export function ollamaInstallPlan({ platform = process.platform, brew = null, admin = true } = {}) {
+export function ollamaInstallPlan({ platform = process.platform, brew = null, admin = true, zstd = true, apt = false } = {}) {
+  const script = withZstd(LINUX_SCRIPT, zstd, apt);
   if (platform === 'darwin') {
     return brew
       ? { command: brew, args: ['install', 'ollama'], display: 'brew install ollama', note: 'Installs Ollama with Homebrew, the package manager already on this computer.' }
       : { command: null, download: 'https://ollama.com/download', display: null, note: 'Homebrew is not on this computer. Download Ollama from ollama.com, open it once, and press RECHECK.' };
   }
   if (platform === 'linux') {
-    if (!admin) return { command: null, manual: true, display: LINUX_SCRIPT, note: t(NEEDS_PASSWORD) };
-    return { command: 'sh', args: ['-c', LINUX_SCRIPT], display: LINUX_SCRIPT, note: "Ollama's own install script, downloaded from ollama.com and run on this computer." };
+    if (!admin) return { command: null, manual: true, display: script.replace('sudo -n ', 'sudo '), note: t(NEEDS_PASSWORD) };
+    return { command: 'sh', args: ['-c', script], display: script, note: "Ollama's own install script, downloaded from ollama.com and run on this computer." };
   }
   return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the Ollama installer from ollama.com, run it, and press RECHECK.' };
 }
 
 // A newer Ollama. Where MADRE can do it, the command is shown before it runs; where it cannot,
 // it hands over the download rather than pretending.
-export function ollamaUpdatePlan({ platform = process.platform, brew = null, admin = true } = {}) {
+export function ollamaUpdatePlan({ platform = process.platform, brew = null, admin = true, zstd = true, apt = false } = {}) {
+  const script = withZstd(LINUX_SCRIPT, zstd, apt);
   if (platform === 'darwin') {
     return brew
       ? { command: brew, args: ['upgrade', 'ollama'], display: 'brew upgrade ollama', note: 'Upgrades Ollama with Homebrew. Your models stay where they are.' }
       : { command: null, download: 'https://ollama.com/download', display: null, note: 'Ollama was not installed with Homebrew. Download the newer one from ollama.com, open it once, and press RECHECK. Your models stay where they are.' };
   }
   if (platform === 'linux') {
-    if (!admin) return { command: null, manual: true, display: LINUX_SCRIPT, note: `${t(NEEDS_PASSWORD)} ${t('Your models stay where they are.')}` };
-    return { command: 'sh', args: ['-c', LINUX_SCRIPT], display: LINUX_SCRIPT, note: "Ollama's own install script upgrades in place. Your models stay where they are." };
+    if (!admin) return { command: null, manual: true, display: script.replace('sudo -n ', 'sudo '), note: `${t(NEEDS_PASSWORD)} ${t('Your models stay where they are.')}` };
+    return { command: 'sh', args: ['-c', script], display: script, note: "Ollama's own install script upgrades in place. Your models stay where they are." };
   }
   return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the newer Ollama from ollama.com and run it. Your models stay where they are.' };
 }
@@ -81,7 +87,7 @@ export async function ollamaView(probe, settings) {
   const binary = await findOnPath('ollama');
   // The sudo question is only worth asking while there is something to install.
   const admin = binary ? true : await adminHere();
-  return { ...probe, settings, binary, install: ollamaInstallPlan({ brew: await findOnPath('brew'), admin }), start: ollamaStartPlan() };
+  return { ...probe, settings, binary, install: ollamaInstallPlan({ brew: await findOnPath('brew'), admin, zstd: Boolean(await findOnPath('zstd')), apt: Boolean(await findOnPath('apt-get')) }), start: ollamaStartPlan() };
 }
 
 export default defineModule({
@@ -118,7 +124,7 @@ export default defineModule({
   },
   async updatePlan(ctx) {
     const { findOnPath } = await import('./helpers.mjs');
-    const plan = ollamaUpdatePlan({ brew: await findOnPath('brew'), admin: await adminHere() });
+    const plan = ollamaUpdatePlan({ brew: await findOnPath('brew'), admin: await adminHere(), zstd: Boolean(await findOnPath('zstd')), apt: Boolean(await findOnPath('apt-get')) });
     if (!plan.command) return plan;
     // Upgrading replaces the binary, not the server already running: until it restarts, the old
     // version keeps answering. Said before the button is pressed, done after the command.

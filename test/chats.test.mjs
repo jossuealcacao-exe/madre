@@ -1256,13 +1256,19 @@ test('the manual starts with «Start here»: the way in for each system, then th
     const first = MANUAL[lang].sections[0];
     assert.equal(first.title, title);
     assert.equal(first.systems.length, 4, `${lang}: Mac, Linux, Windows with WSL, SSH or a virtual machine`);
-    for (const system of first.systems) assert.deepEqual(system.code, ['npx @jossuealcala/madre']);
-    // Windows says what docs/WINDOWS.md says: from 1.1.0, inside WSL2; opened on Windows itself it
-    // explains the way there and stops (bin/madre.mjs). Its card is #windows, where that message and
-    // the mail to the waiting list point.
-    assert.match(first.systems[2].note, lang === 'es' ? /dentro de WSL2.*directo en Windows, te explica estos pasos y se detiene/ : /inside WSL2.*on Windows itself, it explains these steps and stops/);
+    for (const system of first.systems.filter((one) => one.id !== 'windows')) assert.deepEqual(system.code, ['npx @jossuealcala/madre']);
+    // Windows says what docs/WINDOWS.md says: inside WSL2, and from 1.1.1 with its installer
+    // (WIN-033): a double click, no terminal; the terminal way stays in its tip. Its card is #windows,
+    // where the message on Windows itself and the mail to the waiting list point.
+    assert.match(first.systems[2].note, lang === 'es' ? /dentro de WSL2.*sin PowerShell ni terminal.*no toca tus archivos de Windows/ : /inside WSL2.*no PowerShell and no terminal.*does not touch your Windows files/);
     assert.equal(first.systems[2].id, 'windows');
-    assert.ok(first.systems[2].steps.some((step) => step.includes('`wsl --install`')));
+    // No command to paste: the way in is a file to download (a URL in a terminal box read as one).
+    assert.equal(first.systems[2].code, undefined);
+    assert.ok(first.systems[2].steps.some((step) => step.includes(lang === 'es' ? 'madre.run/windows' : 'madre.run/en/windows')));
+    assert.ok(first.systems[2].steps.some((step) => step.includes('MADRE-Instalador.exe')));
+    assert.match(first.systems[2].tip, /npx @jossuealcala\/madre/);
+    // Said plainly: why Windows warns, what to press, and that the signature is on its way.
+    assert.ok(first.systems[2].steps.some((step) => (lang === 'es' ? /Windows protegió tu PC.*Más información.*Ejecutar de todas formas.*certificado/ : /Windows protected your PC.*More info.*Run anyway.*certificate/).test(step)));
     // The intro points to it by its new name.
     assert.ok(MANUAL[lang].intro.some((line) => line.includes(`«${title}»`)));
   }
@@ -1415,4 +1421,16 @@ test('a sidebar dragged by its edge well past its narrowest closes when let go, 
   assert.match(app, /sideWidths\[surface\.key\] = Math\.max\(SIDE_MIN, wanted\);/);
   assert.match(app, /if \(closing\) \{\s*if \(before === undefined\) delete sideWidths\[surface\.key\]; else sideWidths\[surface\.key\] = before;\s*surface\.close\?\.\(\);/);
   assert.match(css, /\.closing-by-edge \{ opacity: \.45;/);
+});
+
+// 2026-10-31, seen on Windows: the plan's closing step showed MADRE's own instruction to the agent,
+// in English and in the agent's name. The page says what is happening instead; it recognises the
+// instruction by its first sentence, so both files must keep the same words.
+test('a plan\'s closing step reads as what is happening, not as MADRE\'s instruction to the agent', async () => {
+  const root = join(import.meta.dirname, '..');
+  const room = await readFile(join(root, 'src', 'room.mjs'), 'utf8');
+  const app = await readFile(join(root, 'public', 'app.js'), 'utf8');
+  assert.match(room, /directives\.closing \?\? 'Review the delegated answers and the work completed\. /);
+  assert.match(app, /closingAsk && \/\^Review the delegated answers and the work completed\\\.\/\.test/);
+  assert.match(app, /bubble\.append\(renderMarkdown\(shown\)\)/);
 });

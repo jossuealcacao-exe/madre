@@ -5240,6 +5240,12 @@ function renderUserMessage(event) {
 function renderAssistantMessage(event) {
   const { messageId, parentMessageId, sender, target, text, ash, status, step, totalSteps, model, effort, mode } = event.payload;
   const delegated = status === 'delegated';
+  // The plan's last step is MADRE asking its author to close it. What MADRE asked is an instruction
+  // to the agent, in English, not something the agent said: the room showed it word for word in the
+  // agent's name (seen on Windows, 2026-10-31). The person reads what is happening instead.
+  // A closing the agent wrote in its plan (a «closing:» line) is its own words and stays as written.
+  const closingAsk = delegated && target === sender;
+  const shown = closingAsk && /^Review the delegated answers and the work completed\./.test(String(text ?? '')) ? t('Reading what the others answered, to give you the final answer.') : text;
   const compact = state.lastSender === sender && !delegated && !ash?.active && !event.ghost;
   const node = row('assistant', sender, { compact });
   if (event.ghost || mode === 0) node.classList.add('ghost');
@@ -5256,7 +5262,7 @@ function renderAssistantMessage(event) {
         to.append(`→ @${target}`);
         who.append(to);
       }
-      who.append(el('span', 'badge', target === sender ? t('closing turn') : t('step {n}/{total}', { n: step, total: totalSteps })));
+      who.append(el('span', 'badge', closingAsk ? t('wrapping up') : t('step {n}/{total}', { n: step, total: totalSteps })));
     } else if (target && target !== 'you') {
       // And its closing answer says so, not «answering @itself».
       who.append(el('span', 'badge', target === sender ? t('closing turn') : t('answering @{agent}', { agent: target })));
@@ -5276,7 +5282,7 @@ function renderAssistantMessage(event) {
     col.append(who);
   }
   const bubble = el('div', 'bubble');
-  bubble.append(renderMarkdown(text));
+  bubble.append(renderMarkdown(shown));
   // Written as the human's copilot: a green round robot on the agent's own circle.
   if (event.payload.copilot) {
     node.classList.add('copilot');
@@ -5294,7 +5300,7 @@ function renderAssistantMessage(event) {
   const foot = el('div', 'bubble-foot');
   const used = attachMemoryUsed(event.payload);
   if (used) foot.append(used.toggle);
-  foot.append(bubbleActions({ text, sender, sequence: event.sequence, messageId: delegated ? null : messageId }));
+  foot.append(bubbleActions({ text: shown, sender, sequence: event.sequence, messageId: delegated ? null : messageId }));
   const stamp = el('div', 'stamp');
   stamp.id = `usage-${messageId}`;
   stamp.append(el('span', null, formatTime(event.timestamp)));

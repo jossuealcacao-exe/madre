@@ -6,6 +6,19 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.1 · Sin publicar
 
+Una versión de arreglos urgentes, con lo que dijo el diagnóstico de la 1.1.0, y un instalador para Windows.
+
+- **MADRE en Windows con doble clic.** Descarga `MADRE-Instalador.exe` de madre.run/windows y ábrelo. Enciende WSL si hace falta, prepara un Linux propio de MADRE (no toca tu Ubuntu, si tienes uno) e instala Node y MADRE adentro. Al final deja «MADRE» en el menú Inicio y en el escritorio, y se abre en tu navegador sin ventanas de terminal. Windows pide permiso una sola vez, y solo si WSL estaba apagado. Si hay que reiniciar, el instalador sigue solo al volver. Para quitarlo, «Desinstalar MADRE» en Aplicaciones instaladas; te pregunta antes de borrar el Linux de MADRE y lo que guardaste ahí.
+- **El paso de cierre de un plan se lee en español.** Cuando una IA terminaba un plan con otras, el chat mostraba en gris, a su nombre, la instrucción interna en inglés que MADRE le manda para cerrar. Ahora dice «Leyendo lo que contestaron los demás para darte la respuesta final».
+- **El manual explica Windows paso a paso:** el instalador, qué hacer si aparece «Windows protegió tu PC», por qué sale (el instalador aún no tiene firma digital; el certificado ya se tramita) y cómo quitarlo.
+- **Desinstalar MADRE ya desinstala.** En la 1.1.0, el botón cerraba todo y se caía antes de borrar nada.
+- **La IA en tu computadora se instala en Ubuntu y en WSL.** El instalador de Ollama ahora exige `zstd`, y un Ubuntu nuevo no lo trae. MADRE lo instala primero. Si no puede, te da la línea completa para la terminal.
+- **MADRE explica dos fallas que antes no reconocía.** Cuando Codex se queda sin uso de tu plan de ChatGPT, te dice que es su límite y cuándo vuelve. Y cuando Gemini no tiene cuenta, te lleva a conectarla.
+- **Compartir memoria entre proyectos** ya abre aunque solo tengas un proyecto además del Coordinador; antes, la ventana se rompía.
+- **El Mapa** ya no se pierde al volver a la pestaña a media animación.
+- **Si MADRE cambia de versión mientras está abierta**, la página te pide cerrarla y abrirla otra vez, en lugar de fallar.
+- **Diagnóstico más limpio.** Ya no manda un aviso del navegador que no era una falla. Una falla que menciona el modelo ya no se confunde con la ayuda de los modos de permiso, así que llega completa.
+
 ## 1.1.0 · 2026-10-31
 
 MADRE junta a las IAs que ya usas (Codex, Claude, Gemini, Cursor y OpenCode) en un chat que corre en tu computadora. La 1.1 la ordena como una app de chat, suma el Mercado y llega a Windows.
