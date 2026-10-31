@@ -4,7 +4,9 @@ Todas las versiones publicadas de `@jossuealcala/madre`. Fechas en ISO.
 
 Una versión se cierra cuando está en npm: hasta entonces su sección se llama **Sin publicar** y puede crecer. Cada versión publicada tiene exactamente una etiqueta `vX.Y.Z`, una release en GitHub y una sección aquí; el parche puede llegar a dos dígitos (`0.2.10`) antes de subir el menor. Ver `docs/ROADMAP.md` para el criterio de qué sube cada número.
 
-## 1.1.1 · Sin publicar
+## 1.1.2 · Sin publicar
+
+## 1.1.1 · 2026-10-31
 
 Una versión de arreglos urgentes, con lo que dijo el diagnóstico de la 1.1.0, y un instalador para Windows.
 
