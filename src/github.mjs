@@ -229,14 +229,16 @@ export function parseIncluded(text) {
 // already has installed — it notices that and does not count the request twice. Either way the
 // line holds the method, the address, whether it went and how long it took. Never a body, never
 // a header, never the credential.
-export async function githubRequest({ method = 'GET', path, body = null, auth, log = null, env = process.env, timeoutMs = 20000 }) {
+// `accept` is for the few reads that come in another shape (the stargazers with the day each star
+// was given, src/rumbo.mjs).
+export async function githubRequest({ method = 'GET', path, body = null, auth, log = null, env = process.env, timeoutMs = 20000, accept = 'application/vnd.github+json' }) {
   if (!auth) throw new GithubError('NO_CREDENTIAL', ERRORS.NO_SESSION);
   if (!String(path ?? '').startsWith('/')) throw new GithubError('FAILED', ERRORS.FAILED);
   const verb = String(method).toUpperCase();
   const url = `${API}${path}`;
   const started = Date.now();
   if (auth.kind === 'gh') {
-    const args = ['api', '--method', verb, '--include', '-H', 'Accept: application/vnd.github+json', '-H', 'X-GitHub-Api-Version: 2022-11-28', path.replace(/^\/+/, '')];
+    const args = ['api', '--method', verb, '--include', '-H', `Accept: ${accept}`, '-H', 'X-GitHub-Api-Version: 2022-11-28', path.replace(/^\/+/, '')];
     if (body != null) args.push('--input', '-');
     // GH_HOST pinned: a session for an enterprise host in the environment must not take this
     // request anywhere but the host the module declared.
@@ -259,7 +261,7 @@ export async function githubRequest({ method = 'GET', path, body = null, auth, l
     response = await send(url, {
       method: verb,
       headers: {
-        accept: 'application/vnd.github+json',
+        accept,
         'x-github-api-version': '2022-11-28',
         'user-agent': 'MADRE',
         authorization: `Bearer ${auth.token}`,

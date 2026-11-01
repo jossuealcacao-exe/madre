@@ -1602,6 +1602,64 @@ body.sm-in-macro > :is(.tour-hint, .tour-hint-away, .hint-spot)[data-under="page
 .sm-env-range { display: grid; grid-template-columns: 54px minmax(0, 1fr) 72px; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .sm-env-range small { text-align: right; color: var(--text-3); }
 
+/* MADRE's course (the author's model, 2026-11-01): two columns — the funnel with its leak in red,
+   and what the numbers decide, each with its light —; every variable as a row with its band (where
+   the true figure lies nine times out of ten) and the ticks where it turns amber and green; the
+   weeks and the project's record under them. One column on a narrow board. */
+.sm-rumbo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; align-items: start; }
+@media (max-width: 900px) { .sm-rumbo { grid-template-columns: minmax(0, 1fr); } }
+.sm-rumbo-col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.sm-rumbo-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line); }
+.sm-rumbo-head b { font-size: 12.5px; font-weight: 650; }
+.sm-rumbo-head small { color: var(--text-3) !important; font-size: 11.5px !important; }
+.sm-rumbo-funnel { display: grid; gap: 6px; }
+.sm-rumbo-stage { display: grid; grid-template-columns: minmax(118px, 1.1fr) minmax(0, 1fr) 46px 38px; align-items: center; gap: 8px; }
+.sm-rumbo-stage-words { display: grid; min-width: 0; }
+.sm-rumbo-stage-words b { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sm-rumbo-stage-words small { font-size: 11px !important; color: var(--text-3) !important; }
+.sm-rumbo-stage.side { opacity: .62; }
+.sm-rumbo-stage.is-leak .sm-rumbo-stage-words b, .sm-rumbo-stage.is-leak .sm-rumbo-pct { color: var(--session-bad, #d9493a) !important; }
+.sm-rumbo-n { font-size: 13px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+.sm-rumbo-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-3) !important; }
+.sm-rumbo-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--text-3); }
+.is-good > .sm-rumbo-dot { background: var(--session-ok, #3f9b3a); }
+.is-watch > .sm-rumbo-dot { background: var(--session-wait, #d9a90f); }
+.is-bad > .sm-rumbo-dot { background: var(--session-bad, #d9493a); }
+.is-info > .sm-rumbo-dot { background: color-mix(in srgb, var(--s-acc) 70%, transparent); }
+.sm-rumbo-decisions { display: grid; gap: 10px; }
+.sm-rumbo-decision { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; align-items: start; }
+.sm-rumbo-decision > .sm-rumbo-dot { margin-top: 5px; }
+.sm-rumbo-decision-words { display: grid; gap: 3px; min-width: 0; }
+.sm-rumbo-decision-words b { font-size: 12.5px; font-weight: 650; }
+.sm-rumbo-decision-words > span { font-size: 12.5px; line-height: 1.45; color: var(--text-2); }
+.sm-rumbo-bars { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.sm-rumbo-bars small { font-size: 11.5px !important; color: var(--text-3) !important; font-variant-numeric: tabular-nums; }
+.sm-rumbo-bars small.met { color: var(--session-ok, #3f9b3a) !important; }
+.sm-rumbo-vars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; }
+@media (max-width: 900px) { .sm-rumbo-vars { grid-template-columns: minmax(0, 1fr); } }
+.sm-rumbo-group { grid-column: 1 / -1; margin-top: 6px; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.sm-rumbo-var { display: grid; grid-template-columns: 8px minmax(0, 1fr) 46px 84px; grid-template-rows: auto auto; align-items: center; gap: 1px 8px; padding: 3px 0; }
+.sm-rumbo-var > .sm-rumbo-dot { grid-row: 1; }
+.sm-rumbo-var-name { font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-rumbo-var > small { grid-column: 2 / -1; font-size: 11px !important; color: var(--text-3) !important; font-variant-numeric: tabular-nums; }
+.sm-rumbo-band { position: relative; height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.sm-rumbo-band i { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: color-mix(in srgb, var(--s-acc) 38%, transparent); }
+.sm-rumbo-band b { position: absolute; top: -1px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 2px; background: var(--text); }
+.sm-rumbo-band em { position: absolute; top: -2px; width: 1px; height: 12px; background: color-mix(in srgb, var(--text) 35%, transparent); }
+.sm-rumbo-weeks { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; height: 96px; }
+.sm-rumbo-weeks > span { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr auto; align-items: end; gap: 0 2px; min-width: 0; }
+.sm-rumbo-weeks i { grid-row: 1; height: calc(var(--h) * 76px); min-height: 1px; border-radius: 3px 3px 0 0; }
+.sm-rumbo-weeks i.on { background: color-mix(in srgb, var(--s-acc) 30%, transparent); }
+.sm-rumbo-weeks i.new { background: color-mix(in srgb, var(--s-acc) 62%, transparent); }
+.sm-rumbo-weeks i.used { background: var(--s-acc); }
+.sm-rumbo-weeks small { grid-column: 1 / -1; text-align: center; font-size: 10.5px !important; color: var(--text-3) !important; white-space: nowrap; }
+.sm-usage-legend i.is-used { background: var(--s-acc); margin-left: 6px; }
+.sm-rumbo-record .sm-w-line b { min-width: 118px; }
+.sm-rumbo-record .sm-w-line { align-items: flex-start; }
+.sm-rumbo-record .sm-w-line small { margin-left: 0; text-align: right; flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+.sm-rumbo-strip { display: grid; grid-template-columns: repeat(var(--days), minmax(0, 1fr)); align-items: end; gap: 1px; height: 40px; }
+.sm-rumbo-strip i { height: calc(var(--h) * 100%); min-height: 1px; border-radius: 2px 2px 0 0; background: var(--s-acc); }
+
 /* THE BAR FROM EDGE TO EDGE (2026-10-25, route A of R-12), as a project's (styles.css): one solid
    band across the top, a hairline under it, the keys inside the same 1440 px as before. The bar
    takes the width and the spacer sends Connections, Market and the rest to its right, before

@@ -1522,6 +1522,9 @@ const WIDGETS = {
   'w-live': { kind: 'live', owner: true, name: () => t('MADRE live'), about: () => t('How many copies of MADRE are on right now, and how many of this month\'s are off. Only you see this.'), size: 4, rows: 3 },
   'w-installs': { kind: 'installs', owner: true, name: () => t('Installs'), about: () => t('Installs, updates and uninstalls of MADRE by day, the last 30 days. Only you see this.'), size: 8, rows: 3 },
   'w-environments': { kind: 'environments', owner: true, name: () => t('Where MADRE runs'), about: () => t('The systems, memory, agents, projects per copy and modules of the copies this month. Only you see this.'), size: 8, rows: 5 },
+  // MADRE's course (2026-11-01, src/rumbo.mjs): the variables that decide where the project goes,
+  // from madre.run's funnel, GitHub and npm. Only in the author's copy run from source.
+  'w-rumbo': { kind: 'rumbo', owner: true, name: () => t('MADRE\'s course'), about: () => t('The variables that decide where MADRE goes: from a visit to a habit, what the numbers decide, and GitHub and npm. Only you see this.'), size: 12, sizes: [12] },
   'w-models': { kind: 'models', name: () => t('Local models'), about: () => t('Ollama, its models, and how close each project is to its own.'), size: 4, rows: 3 },
   // Your agenda (2026-10-28): every project's reminders by when they are due — late, today, tomorrow,
   // this week, later —, each settled here, and a new one written as you would say it. Read from the
@@ -1553,6 +1556,7 @@ const TILE_ICONS = {
   'w-live': trazo('broadcast'),
   'w-installs': trazo('download'),
   'w-environments': trazo('globe'),
+  'w-rumbo': trazo('trending'),
 };
 const tileIcon = (id) => { const box = el('span', 'sm-tile-icon'); box.innerHTML = TILE_ICONS[id] ?? ''; return box; }; // trusted: our own SVG strings
 const known = (id) => Object.hasOwn(HOME_TILES, id) || Object.hasOwn(WIDGETS, id);
@@ -2153,6 +2157,255 @@ const WIDGET_PAINT = {
     }
     body.append(box);
   },
+  // MADRE's course (2026-11-01, src/rumbo.mjs): the week's north star, the funnel from a visit to a
+  // habit with its leak marked, what the numbers decide, every variable with how sure it is, the
+  // weeks, and the project's record on GitHub and npm. Read again every 20 s; each source keeps its
+  // own clock on the server.
+  rumbo(body, reading) {
+    if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
+    const n = (value) => (value === null || value === undefined ? '—' : Number(value).toLocaleString());
+    const signed = (value) => (value === null || value === undefined ? '—' : `${value > 0 ? '+' : ''}${Math.round(value * 100)}%`);
+    const shortDay = (day) => new Date(`${day}T12:00:00Z`).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short' });
+    const section = (title, line) => { const head = el('div', 'sm-rumbo-head'); head.append(el('b', null, title)); if (line) head.append(el('small', null, line)); return head; };
+    const byId = Object.fromEntries((reading.variables ?? []).map((one) => [one.id, one]));
+
+    // The north star: copies that asked an AI something this week.
+    const north = reading.north;
+    if (north) {
+      const lead = el('div', 'sm-usage-lead');
+      const change = north.before ? (north.activated - north.before) / north.before : null;
+      const trend = change === null ? t('the first week the diagnostics can tell') : change === 0 ? t('same as the week before') : change > 0 ? t('{n}% more than the week before', { n: Math.round(change * 100) }) : t('{n}% fewer than the week before', { n: Math.round(-change * 100) });
+      lead.append(el('b', 'sm-w-big', n(north.activated)), el('span', null, t('copies asked an AI something this week')), el('small', `sm-usage-trend${change > 0 ? ' up' : change < 0 ? ' down' : ''}`, `${trend} · ${t('{active} copies on this week, {fresh} of them new', { active: n(north.active), fresh: n(north.new) })}`));
+      body.append(lead);
+    }
+
+    const grid = el('div', 'sm-rumbo');
+    const left = el('div', 'sm-rumbo-col');
+    const right = el('div', 'sm-rumbo-col');
+    grid.append(left, right);
+    body.append(grid);
+
+    // THE FUNNEL: each step against the one before it; the leak in red.
+    const LEAK = { ready: 'ready', firstProject: 'used', readyToUse: 'used', d1: 'back', habit: 'habit' };
+    const leak = LEAK[(reading.decisions ?? []).find((one) => one.id === 'bottleneck')?.verdict] ?? null;
+    const STAGES = {
+      visits: [t('GitHub visitors'), t('people, 14 days')],
+      downloads: [t('npm downloads'), t('14 days, mirrors included')],
+      new: [t('New copies'), t('30 days')],
+      told: [t('With diagnostics'), t('1.1.0 or newer')],
+      ready: [t('An AI ready'), null],
+      used: [t('Asked an AI'), null],
+      back: [t('Came back another day'), null],
+      habit: [t('Used it on 2 days'), null],
+    };
+    const funnel = el('div', 'sm-rumbo-funnel');
+    const stages = (reading.funnel ?? []).filter((one) => one.n !== null);
+    const top = Math.max(1, ...stages.filter((one) => !one.side).map((one) => one.n));
+    let before = null;
+    for (const stage of stages) {
+      const [label, line] = STAGES[stage.id] ?? [stage.id, null];
+      const row = el('div', `sm-rumbo-stage${stage.side ? ' side' : ''}${leak === stage.id ? ' is-leak' : ''}`);
+      const words = el('span', 'sm-rumbo-stage-words');
+      words.append(el('b', null, label));
+      const of = stage.of ? t('of {n} at least a day old', { n: n(stage.of) }) : line;
+      if (of) words.append(el('small', null, of));
+      const base = stage.of ?? before;
+      const share = base && !stage.side && !['visits', 'new'].includes(stage.id) ? stage.n / base : null;
+      row.append(words, meter(stage.side ? stage.n / Math.max(stage.n, top) : stage.n / top, leak === stage.id ? 'hot' : null), el('b', 'sm-rumbo-n', n(stage.n)), el('small', 'sm-rumbo-pct', share === null ? '' : `${Math.round(share * 100)}%`));
+      if (leak === stage.id) row.title = t('The leak to fix first');
+      funnel.append(row);
+      if (!stage.side && stage.id !== 'visits') before = stage.n;
+    }
+    left.append(section(t('From a visit to a habit'), t('% is of the step before')), funnel);
+
+    // WHAT THE NUMBERS DECIDE.
+    const pctOf = (value) => (value === null || value === undefined ? '—' : `${Math.round(value * 100)}%`);
+    const BARS = {
+      activatedWeek: (one) => t('{value} of {need} copies asking an AI a week', { value: n(one.value), need: n(one.need) }),
+      d7: (one) => t('{value} of {need} back after 7 days', { value: pctOf(one.value), need: pctOf(one.need) }),
+      habit: (one) => t('{value} of {need} using it on 2 days', { value: pctOf(one.value), need: pctOf(one.need) }),
+      heavy: (one) => t('{value} of {need} with 2 projects or more', { value: pctOf(one.value), need: pctOf(one.need) }),
+      weeksGrowing: (one) => t('{value} of {need} weeks growing in a row', { value: n(one.value), need: n(one.need) }),
+    };
+    const SAYS = {
+      bottleneck: [t('Where people are lost'), (d) => ({
+        ready: t('Setting up an AI: only {pct} of new copies get one ready. The way to a first AI is the leak to fix first.', { pct: pctOf(d.figures.value) }),
+        firstProject: t('Opening a project: {n} of {total} copies never opened one. Without a project there is nothing to ask; the way to a first project is the leak to fix first.', { n: n(d.figures.noProject), total: n(d.figures.projectsKnown) }),
+        readyToUse: t('The first question: {pct} of the copies with an AI ready never asked it anything.', { pct: pctOf(1 - (d.figures.value ?? 0)) }),
+        d1: t('Coming back: only {pct} return after the first day.', { pct: pctOf(d.figures.value) }),
+        habit: t('Habit: only {pct} used an AI on two days or more.', { pct: pctOf(d.figures.value) }),
+      })[d.verdict]],
+      focus: [t('Product or reach'), (d) => ({
+        product: t('Product first: {used} of new copies ask an AI something and {d1} come back. More visitors now would only fill the leak.', { used: pctOf(d.figures.used), d1: pctOf(d.figures.d1) }),
+        reach: t('Reach: new copies use it and come back, but the week did not grow. Time to tell more people.'),
+        both: t('Both hold: copies use it, come back and the week grows.'),
+      })[d.verdict]],
+      windows: [t('Windows and the native app'), (d) => ({
+        priority: t('{share} of new copies come from Windows, and {win} of them ask an AI (the rest, {rest}). Windows is the main door: the native app weighs on the course.', { share: pctOf(d.figures.share), win: pctOf(d.figures.winUse), rest: pctOf(d.figures.restUse) }),
+        relevant: t('{share} of new copies come from Windows ({win} ask an AI; the rest, {rest}).', { share: pctOf(d.figures.share), win: pctOf(d.figures.winUse), rest: pctOf(d.figures.restUse) }),
+        minor: t('Windows is {share} of new copies: not the main door yet.', { share: pctOf(d.figures.share) }),
+      })[d.verdict]],
+      pro: [t('Charging for MADRE Pro'), (d) => ({
+        ready: t('The four bars are met: there is a base to charge for Pro.'),
+        close: t('{met} of 4 bars met.', { met: d.figures.met }),
+        early: t('Not yet: {met} of 4 bars met.', { met: d.figures.met }),
+      })[d.verdict]],
+      invest: [t('Traction to show'), (d) => ({
+        ready: t('Growing week after week with people who stay: there is traction to show.'),
+        waiting: t('It takes two weeks with diagnostics to tell whether it grows week after week.'),
+        close: t('{met} of 3 bars met.', { met: d.figures.met }),
+        early: t('Not yet: {met} of 3 bars met.', { met: d.figures.met }),
+      })[d.verdict]],
+      english: [t('English'), (d) => ({
+        invest: t('{share} of copies speak English: worth building for it.', { share: pctOf(d.figures.share) }),
+        keep: t('{share} of copies speak English: keep it working, Spanish leads.', { share: pctOf(d.figures.share) }),
+        spanish: t('{share} of copies speak English: Spanish is where MADRE is used.', { share: pctOf(d.figures.share) }),
+      })[d.verdict]],
+      quality: [t('Failures'), (d) => ({
+        fix: t('{share} of copies met a failure ({k} of {n}): fix before spreading MADRE further.', { share: pctOf(d.figures.value), k: n(d.figures.k), n: n(d.figures.n) }),
+        watch: t('{share} of copies met a failure ({k} of {n}): keep an eye on MADRE errors.', { share: pctOf(d.figures.value), k: n(d.figures.k), n: n(d.figures.n) }),
+        fine: t('{share} of copies met a failure: it holds up.', { share: pctOf(d.figures.value) }),
+      })[d.verdict]],
+    };
+    const decisions = el('div', 'sm-rumbo-decisions');
+    for (const one of reading.decisions ?? []) {
+      const [question, say] = SAYS[one.id] ?? [];
+      if (!question) continue;
+      const row = el('div', `sm-rumbo-decision is-${one.signal}`);
+      const words = el('div', 'sm-rumbo-decision-words');
+      words.append(el('b', null, question), el('span', null, say(one) ?? ''));
+      if (one.figures?.bars) {
+        const chips = el('div', 'sm-rumbo-bars');
+        for (const bar of one.figures.bars) chips.append(el('small', bar.met ? 'met' : null, `${bar.met ? '✓' : '·'} ${BARS[bar.id]?.(bar) ?? bar.id}`));
+        words.append(chips);
+      }
+      row.append(el('i', 'sm-rumbo-dot'), words);
+      decisions.append(row);
+    }
+    right.append(section(t('What the numbers say'), t('Green holds, amber to watch, red to act on')), decisions);
+
+    // THE VARIABLES, each with its band: where the true figure lies nine times out of ten.
+    const NAMES = {
+      ready: t('New copies with an AI ready'),
+      used: t('New copies that asked an AI'),
+      readyToUse: t('With an AI ready, asked it'),
+      firstProject: t('Copies with a project'),
+      d1: t('Back after a day'),
+      d7: t('Back after 7 days'),
+      habit: t('Used it on 2 days or more'),
+      growth: t('Copies asking an AI, week on week'),
+      newGrowth: t('New copies, week on week'),
+      starGrowth: t('Stars, week on week'),
+      starRate: t('Stars per GitHub visitor'),
+      failing: t('Copies that met a failure'),
+      uninstall: t('Uninstalls per install'),
+      windowsShare: t('New copies from Windows'),
+      englishShare: t('Copies in English'),
+      coverage: t('New copies with diagnostics'),
+      topSource: t('Visitors from the top source'),
+    };
+    const GROUPS = { activation: t('Activation'), retention: t('Retention'), momentum: t('Momentum'), quality: t('Quality'), market: t('Market') };
+    const SURE = { high: t('sure'), medium: t('fairly sure'), low: t('small sample') };
+    const table = el('div', 'sm-rumbo-vars');
+    for (const [group, title] of Object.entries(GROUPS)) {
+      const mine = (reading.variables ?? []).filter((one) => one.group === group);
+      if (!mine.length) continue;
+      table.append(el('span', 'sm-rumbo-group', title));
+      for (const one of mine) {
+        const row = el('div', `sm-rumbo-var is-${one.signal}`);
+        const name = one.id === 'topSource' && one.source ? `${NAMES[one.id]} · ${one.source}` : NAMES[one.id] ?? one.id;
+        const value = one.kind === 'change' ? signed(one.value) : pctOf(one.value);
+        const band = el('span', 'sm-rumbo-band');
+        if (one.kind === 'rate' && one.interval) {
+          const fill = el('i');
+          fill.style.left = `${one.interval.low * 100}%`;
+          fill.style.width = `${Math.max(1, (one.interval.high - one.interval.low) * 100)}%`;
+          const dot = el('b');
+          dot.style.left = `${(one.value ?? 0) * 100}%`;
+          band.append(fill, dot);
+          if (one.threshold) for (const at of [one.threshold.bad, one.threshold.good]) { const tick = el('em'); tick.style.left = `${at * 100}%`; band.append(tick); }
+          band.title = t('Between {low} and {high}, nine times out of ten', { low: pctOf(one.interval.low), high: pctOf(one.interval.high) });
+        }
+        const count = one.kind === 'change' ? t('{now} vs {before}', { now: n(one.now), before: n(one.before) }) : t('{k} of {n}', { k: n(one.k), n: n(one.n) });
+        row.append(el('i', 'sm-rumbo-dot'), el('span', 'sm-rumbo-var-name', name), el('b', 'sm-rumbo-n', value), band, el('small', null, `${count} · ${SURE[one.confidence] ?? ''}`));
+        if (one.threshold) row.title = one.threshold.lower ? t('Good at {good} or less, red over {bad}', { good: pctOf(one.threshold.good), bad: pctOf(one.threshold.bad) }) : one.kind === 'change' ? t('Good from {good}, red under {bad}', { good: signed(one.threshold.good), bad: signed(one.threshold.bad) }) : t('Good from {good}, red under {bad}', { good: pctOf(one.threshold.good), bad: pctOf(one.threshold.bad) });
+        table.append(row);
+      }
+    }
+    body.append(section(t('The variables'), t('The band is where the true figure lies nine times out of ten; the ticks, where it turns amber and green')), table);
+
+    // THE WEEKS: on, new, and the ones that asked an AI.
+    const weeks = (reading.weeks ?? []).filter((one, i, all) => one.active || all.slice(0, i).some((before) => before.active));
+    const lower = el('div', 'sm-rumbo');
+    if (weeks.length) {
+      const peak = Math.max(1, ...weeks.map((one) => one.active));
+      const chart = el('div', 'sm-rumbo-weeks');
+      chart.setAttribute('role', 'img');
+      chart.setAttribute('aria-label', t('Copies on, new and asking an AI, week by week'));
+      for (const one of weeks) {
+        const week = el('span');
+        for (const [field, tone] of [['active', 'on'], ['new', 'new'], ['activated', 'used']]) {
+          const bar = el('i', tone);
+          bar.style.setProperty('--h', String(one[field] / peak));
+          week.append(bar);
+        }
+        week.append(el('small', null, shortDay(one.start)));
+        week.title = t('Week of {day}: {active} on · {fresh} new · {used} asked an AI', { day: shortDay(one.start), active: one.active, fresh: one.new, used: one.activated });
+        chart.append(week);
+      }
+      const box = el('div', 'sm-rumbo-col');
+      const legend = el('small', 'sm-usage-legend');
+      legend.append(el('i', 'is-on'), t('on'), el('i', 'is-new'), t('new'), el('i', 'is-used'), t('asked an AI'));
+      box.append(section(t('Week by week'), null), chart, legend);
+      lower.append(box);
+    }
+
+    // THE RECORD: GitHub and npm since the start.
+    const record = reading.record ?? {};
+    const facts = el('div', 'sm-usage-lines sm-rumbo-record');
+    const lines = [];
+    if (record.stars !== null && record.stars !== undefined) lines.push([t('Stars'), t('{n} · {week} this week · {forks} forks', { n: n(record.stars), week: n(record.stars7), forks: n(record.forks) })]);
+    if (record.visits) lines.push([t('GitHub, 14 days'), t('{v} visits from {u} people · {c} clones', { v: n(record.visits.count), u: n(record.visits.uniques), c: n(record.clones?.count) })]);
+    if (record.installer) lines.push([t('Windows installer'), t('{n} downloads from GitHub', { n: n(record.installer.total) })]);
+    if (record.npm) lines.push([t('npm'), t('{week} last week · {total} in 90 days · {top}', { week: n(record.npm.lastWeek), total: n(record.npm.total), top: (record.npm.byVersion ?? []).slice(0, 3).map((one) => `${one.version} ${n(one.n)}`).join(' · ') })]);
+    const sources = byId.topSource?.sources ?? [];
+    if (sources.length) lines.push([t('Visitors come from'), sources.map((one) => `${one.name} ${n(one.n)}`).join(' · ')]);
+    for (const [label, said] of lines) {
+      const row = el('div', 'sm-w-line');
+      row.append(el('b', null, label), el('small', null, said));
+      facts.append(row);
+    }
+    // Stars by day since the first one: the project's own history.
+    const stars = record.starsByDay ?? [];
+    const box = el('div', 'sm-rumbo-col');
+    box.append(section(t('GitHub and npm'), null), facts);
+    if (stars.length) {
+      const first = Date.parse(`${stars[0].day}T12:00:00Z`);
+      const span = Math.max(1, Math.round((Date.now() - first) / 86_400_000) + 1);
+      const perDay = new Map(stars.map((one) => [one.day, one.n]));
+      const values = Array.from({ length: span }, (_, i) => perDay.get(new Date(first + i * 86_400_000).toISOString().slice(0, 10)) ?? 0);
+      const peak = Math.max(1, ...values);
+      const strip = el('div', 'sm-rumbo-strip');
+      strip.style.setProperty('--days', String(span));
+      strip.setAttribute('role', 'img');
+      strip.setAttribute('aria-label', t('Stars each day since the first'));
+      values.forEach((value, i) => { const bar = el('i'); bar.style.setProperty('--h', String(value / peak)); bar.title = `${shortDay(new Date(first + i * 86_400_000).toISOString().slice(0, 10))}: ${value}`; strip.append(bar); });
+      const axis = el('div', 'sm-usage-axis');
+      axis.append(el('small', null, shortDay(stars[0].day)), el('small', null, t('stars each day')), el('small', null, t('today')));
+      box.append(strip, axis);
+    }
+    lower.append(box);
+    body.append(lower);
+
+    // Where each figure came from, and when.
+    const said = reading.sources ?? {};
+    const when = (one) => (one?.at ? ago(one.at) : t('never'));
+    const foot = el('small', 'sm-w-foot', t('Read: madre.run {a} · GitHub {b} · npm {c}', { a: when(said.madre), b: when(said.github), c: when(said.npm) }));
+    body.append(foot);
+    if (said.madre?.failed && !said.madre.at) body.append(el('p', 'sm-hint', t('madre.run does not give the funnel yet (it answered {status}): publish the site so it has /api/rumbo.', { status: said.madre.status || '—' })));
+    else if (said.madre?.failed) body.append(el('p', 'sm-hint', t('madre.run did not answer just now: these are its last figures.')));
+    if (!said.github?.at) body.append(el('p', 'sm-hint', t('GitHub is read with your gh session: sign in with gh auth login to see stars and visits.')));
+  },
   usage(body, reading) {
     if (!reading.available) { body.append(el('p', 'sm-hint', reading.status ? t('madre.run answered {status}.', { status: reading.status }) : t('madre.run could not be reached.'))); return; }
     const n = (value) => Number(value ?? 0).toLocaleString();
@@ -2461,6 +2714,7 @@ const WIDGET_GUIDE = {
   live: () => t('Copies on right now: a copy is on when it said so in the last ten minutes. Off are the ones used this month that are not on now. It reads again every minute.'),
   installs: () => t('Installs, updates and uninstalls by day. An uninstall counts only when made from Settings; whoever simply stops using MADRE shows as off.'),
   environments: () => t('Each copy once, by what it said last this month: its system, memory, agents, how many projects and which modules. Copies from before 1.1.0 say less.'),
+  rumbo: () => t('The model of what decides MADRE\'s course: the funnel from a GitHub visit to using it on two days, with its leak in red; what the numbers say about product or reach, Windows, Pro, traction, English and failures; and every variable with how sure it is. It reads itself again on its own.'),
   agenda: () => t('Your reminders from every project, by day. ✓ settles one, «Later» moves it, and the box below sets a new one as you would say it.'),
 };
 function guideWidget(node, kind) {

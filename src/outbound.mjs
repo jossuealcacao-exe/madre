@@ -121,9 +121,17 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
-    id: 'usage', host: 'madre.run', match: (url) => url.pathname === '/api/usage', to: "madre.run · the author's usage figures",
-    what: "The author's token, to read how many copies are on. Only in the author's own copy, run from source.",
-    when: 'while the «MADRE usage» widget is on Home',
+    id: 'usage', host: 'madre.run', match: (url) => url.pathname === '/api/usage' || url.pathname === '/api/rumbo', to: "madre.run · the author's usage figures",
+    what: "The author's token, to read how many copies are on and how far new ones get. Only in the author's own copy, run from source.",
+    when: 'while the «MADRE usage» or «MADRE\'s course» widget is on Home',
+    where: "Only in the author's copy",
+    inside: true,
+  },
+  {
+    // MADRE's course (src/rumbo.mjs, 2026-11-01): npm's public download counts of the package.
+    id: 'npm-stats', host: 'api.npmjs.org', to: "npm · the package's download counts",
+    what: 'Nothing but the name of MADRE\'s package, to read how many times it was downloaded. Only in the author\'s own copy, run from source.',
+    when: 'while the «MADRE\'s course» widget is on Home, every half hour at most',
     where: "Only in the author's copy",
     inside: true,
   },

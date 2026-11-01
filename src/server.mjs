@@ -134,6 +134,7 @@ import { forgetFromMarket, installFromMarket, installedFromMarket, keptCatalog, 
 const NOT_BY_PROJECT = new Set(['bishop', 'git-pulse', 'ollama']);
 import { heartbeat, installId } from './heartbeat.mjs';
 import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from './install-metrics.mjs';
+import { keepHistory, readGithub, readHistory, readNpm, rumboModel } from './rumbo.mjs';
 import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
 import { askRoom, associateProject, createProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
@@ -532,6 +533,9 @@ export async function createPulseServer({
   const widgetReadings = new Map();
   // This copy's identifier once left out of the author's usage figures (the usage widget, below).
   const usageExcluded = new Set();
+  // The three sources of the author's course (kind «rumbo», below), each with its last good reading.
+  const rumboSources = new Map();
+  let rumboStatus = 0;
   let cpuSeen = null;
   const cpuTimes = () => cpus().reduce((sum, one) => {
     const times = one.times;
@@ -639,6 +643,34 @@ export async function createPulseServer({
       reading = body?.ok ? { available: true, ...body } : { available: false, status: answer?.status ?? 0 };
       widgetReadings.set('metrics', { at: Date.now(), reading });
       return reading;
+    } else if (kind === 'rumbo') {
+      // MADRE's course (src/rumbo.mjs, 2026-11-01): the author's model of the variables that decide
+      // where the project goes, from madre.run's funnel, GitHub and npm. Each source keeps its own
+      // clock — the funnel a minute, GitHub ten (its visits move by the hour), npm thirty (by the
+      // day) — and a source that fails keeps its last good reading, said as old.
+      const token = FROM_SOURCE ? await readSecret(root, OWNER_VAULT, 'usage') : null;
+      if (!token) return null;
+      const source = async (name, ttl, read) => {
+        const kept = rumboSources.get(name);
+        if (kept && Date.now() - (kept.tried ?? kept.at) < ttl) return kept;
+        const value = await read().catch(() => null);
+        const next = value ? { at: Date.now(), value } : { ...(kept ?? { at: null, value: null }), tried: Date.now(), failed: true };
+        rumboSources.set(name, next);
+        return next;
+      };
+      const funnel = await source('madre', 60000, async () => {
+        const answer = await reportFetch(process.env.PULSE_RUMBO_URL ?? 'https://madre.run/api/rumbo', { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10000) }).catch(() => null);
+        rumboStatus = answer?.status ?? 0;
+        const body = answer?.ok ? await answer.json().catch(() => null) : null;
+        return body?.ok ? body : null;
+      });
+      const github = await source('github', 600000, () => readGithub());
+      const npm = await source('npm', 1800000, () => readNpm({ name: PACKAGE.name ?? '@jossuealcala/madre', fetchImpl: reportFetch }));
+      const history = github.value && !github.failed && github.at > Date.now() - 1000 ? await keepHistory(root, github.value).catch(() => readHistory(root)) : await readHistory(root);
+      const said = (one) => ({ at: one.at ? new Date(one.at).toISOString() : null, failed: Boolean(one.failed) });
+      reading = funnel.value || github.value || npm.value
+        ? { available: true, ...rumboModel({ madre: funnel.value, github: github.value, npm: npm.value, history }), sources: { madre: { ...said(funnel), status: rumboStatus }, github: said(github), npm: said(npm) } }
+        : { available: false, status: rumboStatus };
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
