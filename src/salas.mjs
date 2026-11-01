@@ -13,7 +13,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { closeSync, openSync, realpathSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, stat } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import * as nodePath from 'node:path';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -235,6 +235,108 @@ export async function createProject({ name, parent = null, home, stateRoot, now 
   if (dirname(folder) !== place) return { error: 'name' };
   try { await mkdir(folder); } catch (error) { return { error: error?.code === 'EEXIST' ? 'exists' : 'missing' }; }
   return { ...(await associateProject({ root: folder, home, stateRoot, now })), created: true };
+}
+
+// A project to try MADRE with (2026-11-01): 90 of 147 copies never opened a project, and «I read it
+// all and do not know what I would do with MADRE» was said on Facebook. One page, a list of tasks,
+// small enough to read and safe to break, and a README with what to ask the agents about it. Made
+// in the projects folder under a name that is free, in the person's language.
+const SAMPLE = {
+  es: {
+    names: ['mi-primer-proyecto'],
+    readme: `# Mi primer proyecto
+
+Una lista de tareas en una sola página, \`index.html\`, para probar MADRE sin miedo a romper nada. Ábrela con doble clic para verla en tu navegador.
+
+## Cosas para pedirle a tus IAs
+
+- Explícame este proyecto.
+- Agrega un botón para borrar las tareas terminadas.
+- Haz que las tareas se guarden aunque cierre la página.
+- Revisa el código y dime qué mejorarías primero.
+- Pídele a una IA que lo cambie y a otra que revise lo que hizo.
+
+Si algo sale mal, DESHACER en MADRE lo regresa a como estaba.
+`,
+    title: 'Mis tareas', placeholder: 'Escribe una tarea', add: 'Agregar', empty: 'Nada pendiente.',
+  },
+  en: {
+    names: ['my-first-project'],
+    readme: `# My first project
+
+A to-do list on a single page, \`index.html\`, to try MADRE without fear of breaking anything. Double-click it to see it in your browser.
+
+## Things to ask your AIs
+
+- Explain this project to me.
+- Add a button that clears the finished tasks.
+- Make the tasks stay when I close the page.
+- Read the code and tell me what you would improve first.
+- Ask one AI to change it and another to review what it did.
+
+If something goes wrong, UNDO in MADRE puts it back as it was.
+`,
+    title: 'My tasks', placeholder: 'Write a task', add: 'Add', empty: 'Nothing pending.',
+  },
+};
+const samplePage = (words, lang) => `<!doctype html>
+<html lang="${lang}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${words.title}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 3rem auto; padding: 0 1rem; color: #222; }
+    form { display: flex; gap: .5rem; }
+    input[type=text] { flex: 1; padding: .5rem; }
+    li { list-style: none; padding: .35rem 0; }
+    .done span { text-decoration: line-through; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>${words.title}</h1>
+  <form id="new">
+    <input id="text" type="text" placeholder="${words.placeholder}" autocomplete="off">
+    <button>${words.add}</button>
+  </form>
+  <p id="empty">${words.empty}</p>
+  <ul id="list"></ul>
+  <script>
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    document.getElementById('new').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.getElementById('text');
+      const text = input.value.trim();
+      if (!text) return;
+      const item = document.createElement('li');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.addEventListener('change', () => item.classList.toggle('done', box.checked));
+      const words = document.createElement('span');
+      words.textContent = ' ' + text;
+      item.append(box, words);
+      list.append(item);
+      empty.hidden = true;
+      input.value = '';
+    });
+  </script>
+</body>
+</html>
+`;
+export async function createSampleProject({ home, stateRoot, language = 'es', now = new Date() }) {
+  const lang = SAMPLE[language] ? language : 'en';
+  const words = SAMPLE[lang];
+  for (let n = 1; n <= 9; n += 1) {
+    const name = n === 1 ? words.names[0] : `${words.names[0]}-${n}`;
+    const made = await createProject({ name, home, stateRoot, now });
+    if (made.error === 'exists') continue;
+    if (made.error) return made;
+    await writeFile(join(made.root, 'README.md'), words.readme);
+    await writeFile(join(made.root, 'index.html'), samplePage(words, lang));
+    return { ...made, sample: true };
+  }
+  return { error: 'exists' };
 }
 
 // Takes a project out of MADRE (2026-10-10): its record of where it is goes aside, so Home no

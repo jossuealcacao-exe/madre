@@ -73,7 +73,7 @@ test('tour · kept in ~/.pulse, one change at a time, and a file for another ver
 test('tour · the welcome of 1.0.6 keeps where the person is, what they did and what they left for later', async () => {
   const state = await scratch('madre-tour-welcome-');
   try {
-    assert.deepEqual(WELCOME_STEPS, ['hello', 'machine', 'agents', 'ai', 'memory', 'project', 'ready']);
+    assert.deepEqual(WELCOME_STEPS, ['hello', 'machine', 'agents', 'project', 'ai', 'memory', 'ready']);
     await changeTour(state, { welcome: { at: 'agents', done: 'hello' } });
     await changeTour(state, { welcome: { done: 'machine' } });
     await changeTour(state, { welcome: { skipped: 'agents', at: 'ai' } });
@@ -304,4 +304,68 @@ test('tour: every first-time card Home shows for a widget is one the server keep
   const kinds = [...home.slice(start, home.indexOf('\n};', start)).matchAll(/^\s{2}([a-z]+): \(\) =>/gm)].map((match) => `w-${match[1]}`);
   assert.ok(kinds.length >= 10);
   assert.deepEqual(kinds.filter((id) => !HINTS.includes(id)), []);
+});
+
+test('tour · how far people get in the welcome is counted by step, and nothing else (2026-11-01)', async () => {
+  const { readdir, readFile: read } = await import('node:fs/promises');
+  const state = await scratch('madre-tour-count-');
+  const project = await scratch('madre-tour-count-project-');
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  let server;
+  try {
+    ({ server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: roster, invokers: {} }));
+    const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+    const base = `http://127.0.0.1:${port}`;
+    const post = (payload) => fetch(`${base}/api/tour`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify(payload) });
+    assert.equal((await post({ welcome: { at: 'project', done: 'agents' } })).status, 200);
+    assert.equal((await post({ welcome: { at: 'ai', skipped: 'project' } })).status, 200);
+    assert.equal((await post({ welcome: { at: 'nowhere' } })).status, 422, 'a step that does not exist is refused, and never counted');
+    await post({ welcome: { finished: true, done: 'ready', at: 'ready' } });
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const folder = join(state, 'telemetry');
+    const lines = (await Promise.all((await readdir(folder)).map((file) => read(join(folder, file), 'utf8')))).join('\n').split('\n').filter(Boolean).map((line) => JSON.parse(line));
+    const counted = lines.filter((one) => one.t === 'c').map((one) => one.k).filter((key) => key.startsWith('welcome.')).sort();
+    assert.deepEqual(counted, ['welcome.at.ai', 'welcome.at.project', 'welcome.at.ready', 'welcome.done.agents', 'welcome.done.ready', 'welcome.finished', 'welcome.skip.project']);
+  } finally {
+    await new Promise((resolve) => (server ? server.close(() => resolve()) : resolve()));
+    await rm(state, { recursive: true, force: true });
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test('a project\'s first message is counted once, in any of its chats and across restarts (2026-11-01)', async () => {
+  const { readdir, readFile: read } = await import('node:fs/promises');
+  const state = await scratch('madre-first-count-');
+  const project = await scratch('madre-first-count-project-');
+  const roster = [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }];
+  const counted = async () => {
+    const folder = join(state, 'telemetry');
+    const files = await readdir(folder).catch(() => []);
+    const lines = (await Promise.all(files.map((file) => read(join(folder, file), 'utf8')))).join('\n').split('\n').filter(Boolean).map((line) => JSON.parse(line));
+    return lines.filter((one) => one.t === 'c' && one.k === 'project.first').reduce((sum, one) => sum + one.n, 0);
+  };
+  const open = async () => {
+    const { server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: roster, invokers: { 'codex-readonly': async () => ({ text: 'ok' }) } });
+    const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+    const base = `http://127.0.0.1:${port}`;
+    const say = (text) => fetch(`${base}/api/messages`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ target: 'codex', text }) });
+    return { server, say };
+  };
+  let opened;
+  try {
+    opened = await open();
+    assert.equal((await opened.say('hola')).status, 202);
+    await opened.say('otra vez');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(await counted(), 1, 'the first message was not counted, or counted twice');
+    await new Promise((resolve) => opened.server.close(() => resolve()));
+    opened = await open();
+    await opened.say('de vuelta');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(await counted(), 1, 'a project opened again counted a first message again');
+  } finally {
+    await new Promise((resolve) => (opened?.server ? opened.server.close(() => resolve()) : resolve()));
+    await rm(state, { recursive: true, force: true });
+    await rm(project, { recursive: true, force: true });
+  }
 });

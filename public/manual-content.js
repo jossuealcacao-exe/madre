@@ -111,7 +111,7 @@ export const MANUAL = {
         icon: 'check',
         shot: 'welcome',
         title: 'La bienvenida',
-        lead: 'La primera vez, MADRE te recibe con siete pasos: tu computadora, tus agentes, la IA en tu computadora, la memoria y tu primer proyecto. Todo con botones, sin terminal.',
+        lead: 'La primera vez, MADRE te recibe con siete pasos: tu computadora, tus agentes, tu primer proyecto, la IA en tu computadora y la memoria. Todo con botones, sin terminal. Si no tienes un proyecto a la mano, te crea uno de prueba, y al final te lleva a escribir tu primer mensaje.',
         tryIt: 'Si ya la cerraste, ábrela otra vez: en Inicio, Ajustes › Proyectos › «Ver la bienvenida otra vez».',
         steps: [
           'A la izquierda están los siete pasos. Puedes ir a cualquiera; los que terminas quedan con una palomita.',
@@ -550,7 +550,7 @@ export const MANUAL = {
         icon: 'check',
         shot: 'welcome',
         title: 'The welcome',
-        lead: 'The first time, MADRE greets you with seven steps: your computer, your agents, AI on your computer, the memory and your first project. All with buttons, no terminal.',
+        lead: 'The first time, MADRE greets you with seven steps: your computer, your agents, your first project, AI on your computer and the memory. All with buttons, no terminal. If you have no project at hand, it makes one to try, and at the end it takes you to write your first message.',
         tryIt: 'If you closed it, open it again: in Home, Settings › Projects › «See the welcome again».',
         steps: [
           'The seven steps are on the left. You can go to any of them; the ones you finish get a tick.',

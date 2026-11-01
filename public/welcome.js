@@ -12,8 +12,8 @@
 //
 // The host page hands in what only it can do: `agentsPanel(options)` and `projectPicker(options)`
 // (Home's own), `mark(id, size)`, `closeKey(onClick)`, `projects()`, `openProject(room)`,
-// `setLanguage(code)`, `agentState(agent, answer)`, `openLinks()`, `openMarket()`, `saved(welcome)`
-// and `closed()`.
+// `setLanguage(code)`, `agentState(agent, answer)`, `openLinks()`, `openMarket()`, `saved(welcome)`,
+// `refresh()` (Home's projects read again) and `closed()`.
 
 import { t, language } from './i18n.js';
 import { platformOf, remedyKey } from './remedy.js';
@@ -43,7 +43,10 @@ const post = async (url, payload = {}) => {
 const getJson = (url) => fetch(url, { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
 const number = (value) => new Intl.NumberFormat(language(), { maximumFractionDigits: 1 }).format(value);
 
-export const WELCOME_STEPS = ['hello', 'machine', 'agents', 'ai', 'memory', 'project', 'ready'];
+// The project comes right after the agents (2026-11-01): 90 of 147 copies never opened one, and
+// the AI on the computer and the memory, heavy and optional, stood in front of it.
+export const WELCOME_STEPS = ['hello', 'machine', 'agents', 'project', 'ai', 'memory', 'ready'];
+const stepOf = (id) => WELCOME_STEPS.indexOf(id) + 1;
 const STEP_NAMES = {
   hello: () => t('Hello'), machine: () => t('Your computer'), agents: () => t('Your agents'), ai: () => t('AI on your computer'),
   memory: () => t('Memory'), project: () => t('Your project'), ready: () => t('Ready'),
@@ -266,9 +269,9 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const list = el('div', 'wl-card wl-checks');
     for (const [title, sub] of [
       [t('Your agents'), t('The AIs that work in your projects (Claude, Codex, Gemini…). We install and connect them here.')],
+      [t('Your first project'), t('A folder you work in. It is ready when we finish.')],
       [t('AI on your computer'), t('If your computer can carry it, a free and private AI that works without internet.')],
       [t('Memory'), t('So MADRE finds what it remembers even when you ask in other words.')],
-      [t('Your first project'), t('A folder you work in. It is ready when we finish.')],
     ]) {
       const row = el('div', 'wl-check');
       const tick = el('span', 'wl-tick');
@@ -310,7 +313,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     fact(t('Free space'), env.disk ? t('{n} GB free', { n: number(env.disk.freeGb) }) : null);
     const notes = [];
     const carry = canCarry();
-    if (carry === 'yes') notes.push(note('ok', t('Your computer can run its own AI. We recommend a model in step 4.')));
+    if (carry === 'yes') notes.push(note('ok', t('Your computer can run its own AI. We recommend a model in step {n}.', { n: stepOf('ai') })));
     else if (carry === 'slow') notes.push(note('warn', t('Your computer can run a small AI, but slowly: it has no graphics card the AI can use.')));
     else notes.push(note('warn', t('This computer does not have enough memory for an AI of its own. MADRE works just the same with your agents.')));
     if (env.place === 'wsl') notes.push(note('', t('MADRE runs here on Linux, inside Windows (WSL). Your Windows browser opens it directly.')));
@@ -320,7 +323,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     if (env.vm && env.vm !== 'macOS') notes.push(note('warn', t('MADRE runs in a virtual machine: an AI here runs slower than on the computer itself. If that computer runs Windows, MADRE works better in WSL.')));
     if (env.place === 'ssh') notes.push(note('', t('You\'re connected from another computer. Some agents connect with a code instead of opening a page; each one says so.'), fix('ssh-tunnel')));
     if (env.place === 'container') notes.push(note('', t('MADRE runs inside a container: what it installs stays in that container.')));
-    if (env.disk && env.disk.freeGb < 10) notes.push(note('warn', t('Only {n} GB free. Agents fit, but an AI of its own needs more room: free some up before step 4.', { n: number(env.disk.freeGb) })));
+    if (env.disk && env.disk.freeGb < 10) notes.push(note('warn', t('Only {n} GB free. Agents fit, but an AI of its own needs more room: free some up before step {step}.', { n: number(env.disk.freeGb), step: stepOf('ai') })));
     content.replaceChildren(...head(t('Here is what we found'), t('We use it to recommend what works best on your computer. It never leaves your computer.')), grid, ...notes);
     footer();
   }
@@ -360,7 +363,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     for (const node of actions.querySelectorAll('.wl-skipnote, [data-skip]')) node.hidden = Boolean(s.ready);
   }
 
-  // ---- 4 · AI ON YOUR COMPUTER: install Ollama, download the model, try it — or use another
+  // ---- 5 · AI ON YOUR COMPUTER: install Ollama, download the model, try it — or use another
   // computer's, or leave it for later.
   function aiChoices() {
     const env = s.env ?? {};
@@ -669,7 +672,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     return box;
   }
 
-  // ---- 5 · MEMORY: search by meaning on this computer, with Gemini, or exact words.
+  // ---- 6 · MEMORY: search by meaning on this computer, with Gemini, or exact words.
   let memoryBody = null;
   function memoryStep() {
     memoryBody = el('div', 'wl-memory');
@@ -697,7 +700,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     const pick = (value) => { s.memoryChoice = value; if (value === 'local' && !hasModel(EMBED_MODEL) && !s.pulls.get(EMBED_MODEL)?.running) void startPull(EMBED_MODEL); paintMemory(); };
     const embedReady = hasModel(EMBED_MODEL);
     const group = choices(t('Memory'),
-      choice('memory', 'local', s.memoryChoice, s.ollama?.host && !localHost(s.ollama.host) ? t('With your Ollama') : t('On your computer'), local ? (embedReady ? (s.ollama?.host && !localHost(s.ollama.host) ? t('With the Ollama of the other computer, on your network. Its memory model is already there. Free and private.') : t('With Ollama. Its memory model is already here. Free and private.')) : t('With Ollama. Downloads a memory model of {mb} MB. Free and private.', { mb: EMBED_MB })) : t('Needs the AI on your computer (step 4).'), pick, { badge: local ? t('Recommended') : null, disabled: !local }),
+      choice('memory', 'local', s.memoryChoice, s.ollama?.host && !localHost(s.ollama.host) ? t('With your Ollama') : t('On your computer'), local ? (embedReady ? (s.ollama?.host && !localHost(s.ollama.host) ? t('With the Ollama of the other computer, on your network. Its memory model is already there. Free and private.') : t('With Ollama. Its memory model is already here. Free and private.')) : t('With Ollama. Downloads a memory model of {mb} MB. Free and private.', { mb: EMBED_MB })) : t('Needs the AI on your computer (step {n}).', { n: stepOf('ai') }), pick, { badge: local ? t('Recommended') : null, disabled: !local }),
       choice('memory', 'gemini', s.memoryChoice, t('With Gemini'), s.geminiKey ? t('Uses your Gemini key, already on this computer. Paid per use, very little. What it searches is sent to Google.') : t('Needs your Gemini key: paste it in step 3, in Gemini.'), pick, { badge: !local && s.geminiKey ? t('Recommended') : null }),
       choice('memory', 'off', s.memoryChoice, t('Exact words only'), t('Nothing extra. It finds what you ask for with the same words.'), pick),
     );
@@ -727,7 +730,7 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     });
   }
 
-  // ---- 6 · YOUR PROJECT: a new one or a folder that already is one.
+  // ---- 4 · YOUR PROJECT: a new one or a folder that already is one.
   function project() {
     const had = host.projects?.() ?? [];
     const lead = t('A project is a folder you work in: a store, a website, your documents. Each one has its own conversations and its own memory.');
@@ -749,6 +752,20 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
       },
     });
     if (picker) parts.push(picker.node);
+    // No project at hand (2026-11-01): one made to try MADRE, a page with a list of tasks and a README
+    // with what to ask. «I do not know what I would do with MADRE» is answered by having something.
+    const sample = el('div', 'wl-card wl-sample');
+    const said = el('p', 'wl-muted', t('No project at hand? Make one to try: a page with a list of tasks, to ask your AIs for changes without fear of breaking anything.'));
+    const make = button('wl-btn small', t('Make the project to try'), async () => {
+      make.disabled = true;
+      const answer = await post('/api/salas/new', { sample: true, language: language() });
+      if (!answer.ok) { said.textContent = answer.body?.error ?? t('The project to try MADRE could not be made.'); make.disabled = false; return; }
+      s.added = [...s.added, ...(answer.body.added ?? [])];
+      await host.refresh?.();
+      if (stepId() === 'project') go(s.step + 1, 'done');
+    });
+    sample.append(said, make);
+    parts.push(sample);
     content.replaceChildren(...parts);
     footer({
       nextOff: !had.length,
@@ -815,8 +832,19 @@ export function openWelcome({ at = null, then = null, host = {} } = {}) {
     }
     content.replaceChildren(...head(t('MADRE is ready'), t('Here is what is ready. Anything you left for later has its button.')), summary, el('p', 'wl-eyebrow wl-gap', t('What comes next')), nextCards, trainCard);
     const learn = button('wl-btn', t('Get to know MADRE'), () => { const after = then ?? host.chapters; finish(); after?.(); });
-    // Home first (2026-10-30): its first-time cards walk the person to their project; the project's
-    // own cards come when they open it. Going straight into the project skipped Home's.
+    // Into the project when there is one and an agent to answer (2026-11-01): 90 of 147 copies never
+    // opened a project, and the welcome ended in Home with the Market and connections as what comes
+    // next. The project opens on its blank page, with three first messages to press. Without a
+    // project or an agent, Home as before (2026-10-30), whose first-time cards walk the person there.
+    if (room && connected.length) {
+      const home = button('wl-btn ghost', t('Go to Home'), () => finish());
+      footer({
+        next: t('Open {name} and write your first message', { name: room.name }),
+        onNext: () => { finish(); void host.openProject?.(room); },
+        extra: (() => { const keys = el('span', 'wl-keys'); keys.append(learn, home); return keys; })(),
+      });
+      return;
+    }
     footer({
       next: t('Go to Home'),
       onNext: () => finish(),

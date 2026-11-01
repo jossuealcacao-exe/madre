@@ -355,6 +355,7 @@ La carpeta de MADRE se borra entera solo si es suya sin duda: ruta absoluta, nun
     - cuántos proyectos hay y cuántos abiertos;
     - qué módulos propios de MADRE están encendidos (uno escrito por la persona solo cuenta como «otro»);
     - cuántos días tiene la copia.
+  - **El camino al primer mensaje (desde 1.1.2):** cuántas veces se llegó a cada paso de la bienvenida, cuál se terminó y cuál se dejó para después (solo el nombre del paso: `welcome.at.project`, `welcome.skip.ai`…); cuántos proyectos se crearon, se agregaron, se crearon de prueba y se abrieron, y una cuenta cuando un proyecto recibe su primer mensaje. Nunca el nombre ni la ruta del proyecto, ni lo que escribes.
   - **Ciclo de vida:** instalada (una copia que nunca tuvo identificador), actualizada (una versión más nueva abierta por primera vez, según `~/.pulse/lifecycle.json`), desinstalada (desde Ajustes, enviado antes de borrar nada) y cada vez que se abre Inicio.
   - **Presencia:** mientras MADRE está abierta, cada cinco minutos manda a `madre.run/api/presence` solo el identificador al azar, la versión y el sistema, para saber cuántas copias están encendidas ahora; uno solo de sus procesos lo dice. Ninguna ruta, nombre de proyecto, archivo ni nada que escribas.
   - **Se apaga igual que el diagnóstico.** Las copias del autor no mandan presencia, y madre.run tampoco las cuenta. (`src/install-metrics.mjs`)

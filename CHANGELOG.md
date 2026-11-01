@@ -6,6 +6,9 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.2 · Sin publicar
 
+- **La bienvenida te lleva a tu primer mensaje.** Tu primer proyecto ahora va justo después de conectar tus agentes; la IA en tu computadora y la memoria quedan después, para cuando quieras. Si no tienes un proyecto a la mano, MADRE te crea uno de prueba: una página con una lista de tareas y un README con cosas para pedirle a tus IAs, sin miedo a romper nada. Al terminar, un botón abre tu proyecto con tres primeros mensajes listos para elegir.
+- **El diagnóstico anónimo cuenta hasta dónde llega la bienvenida.** Cuántas veces se llega a cada paso o se deja para después, cuántos proyectos se crean, agregan y abren, y cuándo un proyecto recibe su primer mensaje. Solo el nombre del paso y números, nada de lo que escribes ni de tus carpetas. Se apaga con el mismo interruptor de siempre.
+
 Una persona revisó el código de 1.1.1 por su cuenta y mandó 61 observaciones. Se comprobaron una por una; estas son las que eran fallas, ya arregladas, con lo que dijo el diagnóstico de esta semana.
 
 - **Revisar un módulo ya no lo ejecuta dentro de MADRE.** Para decirte qué hace un módulo antes de instalarlo, MADRE tenía que cargarlo, y eso corría su código con todos sus permisos antes de que aceptaras. Ahora lo carga aparte, en un proceso que no puede escribir archivos, abrir programas ni leer fuera de su carpeta. Se instala solo cuando aceptas.

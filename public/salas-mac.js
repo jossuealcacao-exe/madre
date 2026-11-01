@@ -5163,6 +5163,7 @@ const welcomeHost = {
   chapters: () => homeTour.openChapters('home'),
   saved: (welcome) => { welcomeSeen = welcome; drawAttention(); },
   closed: () => { void loadAgents(); void refresh(); },
+  refresh: () => refresh(),
 };
 function openHomeWelcome({ at = null, then = null } = {}) {
   welcomed = true;

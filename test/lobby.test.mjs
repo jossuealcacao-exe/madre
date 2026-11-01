@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { associateProject, createProject, knownRooms, listFolders, projectNameProblem, projectRoomId, salasRoomId, suggestProjects } from '../src/salas.mjs';
+import { associateProject, createProject, createSampleProject, knownRooms, listFolders, projectNameProblem, projectRoomId, salasRoomId, suggestProjects } from '../src/salas.mjs';
 import { loadConfig } from '../src/config.mjs';
 import { signContract } from '../src/enlaces.mjs';
 import { createPulseServer } from '../src/server.mjs';
@@ -311,4 +311,23 @@ test('a new project from nothing: one folder, named by the person, inside the ho
   assert.equal((await createProject({ name: 'x', parent: tmpdir(), home, stateRoot: state })).error, 'outside');
   assert.equal((await createProject({ name: 'x', parent: state, home, stateRoot: state })).error, 'madre');
   assert.equal((await createProject({ name: 'x', parent: join(home, 'no-existe'), home, stateRoot: state })).error, 'missing');
+});
+
+test('lobby: a project to try MADRE, in the person\'s language, under a name that is free', async () => {
+  const home = await realpath(await scratch('madre-sample-home-'));
+  const state = join(home, '.pulse');
+  try {
+    await mkdir(join(home, 'Proyectos'), { recursive: true });
+    const first = await createSampleProject({ home, stateRoot: state, language: 'es' });
+    assert.equal(first.sample, true);
+    assert.equal(first.root, join(home, 'Proyectos', 'mi-primer-proyecto'));
+    assert.match(await readFile(join(first.root, 'README.md'), 'utf8'), /Cosas para pedirle a tus IAs/);
+    assert.match(await readFile(join(first.root, 'index.html'), 'utf8'), /<html lang="es">[\s\S]*Mis tareas/);
+    // A second one never overwrites the first: it takes the next free name.
+    const second = await createSampleProject({ home, stateRoot: state, language: 'es' });
+    assert.equal(second.root, join(home, 'Proyectos', 'mi-primer-proyecto-2'));
+    const english = await createSampleProject({ home, stateRoot: state, language: 'en' });
+    assert.match(await readFile(join(english.root, 'index.html'), 'utf8'), /My tasks/);
+    assert.equal((await createSampleProject({ home, stateRoot: state, language: 'fr' })).root, join(home, 'Proyectos', 'my-first-project-2'), 'a language MADRE does not speak gets English');
+  } finally { await rm(home, { recursive: true, force: true }); }
 });

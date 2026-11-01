@@ -65,7 +65,7 @@ const BEFORE = ['1.0'];
 // ready after `npx madre` — agents, local AI, memory, the first project — in their order. Where the
 // person is, what they finished and what they left for later are kept here too, so closing the page
 // halfway brings them back to the same step, from whichever project or port they open next.
-export const WELCOME_STEPS = ['hello', 'machine', 'agents', 'ai', 'memory', 'project', 'ready'];
+export const WELCOME_STEPS = ['hello', 'machine', 'agents', 'project', 'ai', 'memory', 'ready'];
 const freshWelcome = () => ({ at: null, done: [], skipped: [], finished: null });
 const fresh = (before = null) => ({ version: TOUR_VERSION, path: null, bonjourAt: null, done: [], at: null, closed: false, finished: null, hints: {}, held: null, before, met: null, welcome: freshWelcome() });
 // A tab that shows the bonjour or the chapters says so every few seconds; another tab that finds it

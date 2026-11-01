@@ -2096,6 +2096,10 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
 .wl-next b, .wl-train > b { font-weight: 500; }
 .wl-next small { font-size: 12.5px; color: var(--text-2); }
 .wl-train { display: grid; gap: 4px; }
+/* The project to try MADRE (2026-11-01), under the folders; and the two quieter keys beside «Open». */
+.wl-sample { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.wl-sample .wl-muted { flex: 1; margin: 0; }
+.wl-keys { display: inline-flex; gap: 8px; }
 .wl-reqs { display: grid; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; }
 .wl-reqs li { display: flex; gap: 8px; font-size: 13px; color: var(--text-2); }
 .wl-reqs li::before { content: '·'; color: var(--text-3); }
@@ -2108,6 +2112,7 @@ dialog.wl.arriving .wl-window { animation: wl-arrive calc(.7s * var(--motion-sca
   .wl-content, .wl-actions { padding-left: 18px; padding-right: 18px; }
   .wl-actions { flex-wrap: wrap; }
   .wl-skipnote { flex-basis: 100%; order: -1; text-align: left; }
+  .wl-sample { flex-direction: column; align-items: stretch; }
 }
 @media (prefers-reduced-motion: reduce) { .wl-bar > i { transition: none; } }
 

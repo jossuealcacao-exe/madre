@@ -84,7 +84,7 @@ import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand } from './updates.mjs';
 import { bootWhatsNew, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
-import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
+import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
 // Where a person reads the module contract, in the language the room is speaking.
 const SDK_PAGE = { es: 'https://madre.run/sdk/', en: 'https://madre.run/en/sdk/' };
@@ -137,7 +137,7 @@ import { PRESENCE_EVERY_MS, environmentGauges, noteLifecycle, sayPresent } from 
 import { keepHistory, readGithub, readHistory, readNpm, rumboModel } from './rumbo.mjs';
 import { TERMS_LINKS, acceptTerms, cameFromBefore, readTerms } from './terms.mjs';
 import { activateLicense, licensedIds, releaseLicense } from './market-license.mjs';
-import { askRoom, associateProject, createProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
+import { askRoom, associateProject, createProject, createSampleProject, defaultProjectsFolder, ensureSalasProject, forgetProject, isSalasRoom, knownRooms, listFolders, markProject, projectRoomId, roomComesUp, salasRoomId, startRoom, suggestProjects, universeOf } from './salas.mjs';
 import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs';
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
@@ -1618,10 +1618,20 @@ export async function createPulseServer({
   let unsubscribeModules = () => {};
   // What the anonymous diagnostics count of a room (src/telemetry.mjs): which agent got a turn and at
   // which mode, what ran, what failed to install. Names of MADRE's own parts and numbers, never words.
+  // Whether this project was ever written to, in any of its chats: a mark in its room folder, set the
+  // first time (or found true in the chat that opens, for a project from before the mark).
+  const firstMark = join(roomDir, 'first-message');
+  let firstSaid = await access(firstMark).then(() => true, () => false);
+  if (!firstSaid && historicalEvents.some((one) => one.type === 'message.created' && one.payload?.role === 'user')) {
+    firstSaid = true;
+    await writeFile(firstMark, new Date().toISOString()).catch(() => {});
+  }
   function countForDiagnostics(event) {
     const said = event?.payload ?? {};
     if (event?.ghost) return;
     if (event?.type === 'message.created' && said.role === 'user' && !said.auto) {
+      // The first message a project ever got (2026-11-01): the step the welcome exists to reach.
+      if (!salasRoom && !firstSaid) { firstSaid = true; diagnostics.count('project.first'); void writeFile(firstMark, new Date().toISOString()).catch(() => {}); }
       if (said.target) diagnostics.count(`turn.${said.target}`);
       if (Number.isInteger(said.mode)) diagnostics.count(`mode.${said.mode}`);
       if (said.via) diagnostics.count(`via.${said.via}`);
@@ -2655,6 +2665,7 @@ export async function createPulseServer({
         // Where start.log stood before this try: only what this one wrote is read if it fails.
         const logFrom = await stat(join(root, 'rooms', room.id, 'start.log')).then((info) => info.size, () => 0);
         startRoom({ projectRoot: room.root, roomDir: join(root, 'rooms', room.id) });
+        if (room.id !== salasRoomId(root)) diagnostics.count('project.opened');
         const up = await roomComesUp(root, room.id);
         if (!up) {
           // The commonest reason, said as itself: another MADRE (another Home, `madre start`) already
@@ -2754,8 +2765,15 @@ export async function createPulseServer({
         // A project from nothing: a new folder, named by the person, in the folder they were in.
         if (request.method === 'POST' && url.pathname === '/api/salas/new') {
           const payload = await body(request).catch(() => ({}));
+          // A project to try MADRE with (src/salas.mjs, createSampleProject): from the welcome.
+          if (payload.sample === true) {
+            const sample = await createSampleProject({ home, stateRoot: root, language: payload.language === 'en' ? 'en' : 'es' });
+            if (sample.error) return sendJson(response, 422, { error: t('The project to try MADRE could not be made.'), code: sample.error });
+            diagnostics.count('project.sample');
+            return sendJson(response, 200, { added: [sample] });
+          }
           const made = await createProject({ name: typeof payload.name === 'string' ? payload.name : '', parent: typeof payload.parent === 'string' ? payload.parent : null, home, stateRoot: root });
-          if (!made.error) return sendJson(response, 200, { added: [made] });
+          if (!made.error) { diagnostics.count('project.created'); return sendJson(response, 200, { added: [made] }); }
           const said = {
             empty: t('Write a name for the project.'),
             long: t('That name is too long.'),
@@ -2777,6 +2795,7 @@ export async function createPulseServer({
             if (result.error) refused.push({ root: one, error: result.error === 'madre' ? t('That folder is MADRE\'s own.') : result.error === 'outside' ? t('Only folders inside your home folder.') : t('That folder is not there.') });
             else added.push(result);
           }
+          if (added.length) diagnostics.count('project.added', added.length);
           return sendJson(response, added.length ? 200 : 422, { added, refused });
         }
         return sendJson(response, 405, { error: 'method' });
@@ -4101,8 +4120,18 @@ export async function createPulseServer({
         }
         if (viaPhone || !fromHere || (request.method === 'POST' && request.headers.origin !== `http://${host}`)) return sendJson(response, 403, { error: t('This is done on the Mac.') });
         if (request.method === 'POST' && url.pathname === '/api/tour') {
-          const changed = await changeTour(root, await body(request).catch(() => null));
+          const change = await body(request).catch(() => null);
+          const changed = await changeTour(root, change);
           if (changed.error) return sendJson(response, 422, { error: t('That is not a change to the tour.') });
+          // How far people get in the welcome, and what they leave for later (2026-11-01): 90 of 147
+          // copies never opened a project, and nothing said where they stopped. Step ids, nothing else.
+          const step = change?.welcome;
+          if (step && typeof step === 'object') {
+            if (WELCOME_STEPS.includes(step.at)) diagnostics.count(`welcome.at.${step.at}`);
+            if (WELCOME_STEPS.includes(step.done)) diagnostics.count(`welcome.done.${step.done}`);
+            if (WELCOME_STEPS.includes(step.skipped)) diagnostics.count(`welcome.skip.${step.skipped}`);
+            if (step.finished === true) diagnostics.count('welcome.finished');
+          }
           return sendJson(response, 200, { state: changed });
         }
         if (request.method === 'GET' && url.pathname === '/api/tour/projects') {

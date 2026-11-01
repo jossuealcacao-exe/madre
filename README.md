@@ -29,7 +29,7 @@ npx @jossuealcala/madre
 
 **Windows.** Descarga el instalador en [madre.run/windows](https://madre.run/windows) y ábrelo con doble clic. Enciende WSL2 (el Linux que trae Windows) si hace falta, prepara el Linux de MADRE y la deja en el menú Inicio, sin terminal. ¿Prefieres la terminal? Dentro de Ubuntu (WSL2), instala Node 22 y `zstd`, y escribe `npx @jossuealcala/madre`.
 
-Necesitas Node 22.5 o más nuevo y al menos una IA con sesión. No hay cuenta que crear. MADRE se abre en tu navegador y una bienvenida te guía paso a paso: conecta tus IAs, pone una IA gratis en tu computadora si cabe y agrega tu primer proyecto.
+Necesitas Node 22.5 o más nuevo y al menos una IA con sesión. No hay cuenta que crear. MADRE se abre en tu navegador y una bienvenida te guía paso a paso: conecta tus IAs, agrega tu primer proyecto (o te crea uno de prueba), pone una IA gratis en tu computadora si cabe y te lleva a escribir tu primer mensaje.
 
 ## Lo nuevo en 1.1
 
