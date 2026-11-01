@@ -273,12 +273,23 @@ export async function loadMarket({ toast = null, open = null } = {}) {
   if (!toast) return answer;
   const updated = answer.news ?? [];
   if (updated.length) {
-    // Three kinds, each in its words (2026-10-25): updated itself; one of MADRE's own sent back to the
-    // one MADRE came with; a module taken out of the Market and of this computer. The why is the author's.
+    // Four kinds, each in its words (2026-10-25): updated itself; one of MADRE's own sent back to the
+    // one MADRE came with; a module taken out of the Market and of this computer; and (2026-11-01) a
+    // newer version held because it asks for more. The why is the author's.
     const line = (one) => {
       const name = one.name && typeof one.name === 'object' ? pick(one.name) : t(one.name ?? one.id);
       if (one.kind === 'returned') return [t('{name} went back to the version that comes with MADRE.', { name }), pick(one.why)];
       if (one.kind === 'removed') return [t('{name} was taken out of the Market and removed from this computer.', { name }), pick(one.why)];
+      // A newer version that declares more than the person accepted waits for them (external review #10).
+      if (one.kind === 'held') {
+        const asked = (more) => (more.what === 'reaches' ? t('it connects to {host}', { host: more.host })
+          : more.what === 'secret' ? t('it asks for {name}', { name: more.name })
+            : more.what === 'tools' ? t('it gives tools to your agents')
+              : more.what === 'reads' ? t('it reads your chats')
+                : more.what === 'writes' ? t('it writes in your project')
+                  : t('it adds {command}', { command: more.name }));
+        return [t('{name} {version} asks for more than you accepted, so it did not update on its own: {more}.', { name, version: one.to, more: (one.more ?? []).map(asked).join('; ') }), t('To accept it, remove it in Modules and install it again from the Market, where you read what it does.')];
+      }
       return [t('{name} updated itself to version {version}.', { name, version: one.to }), pick(one.changes)];
     };
     toast(updated.map((one) => line(one).filter(Boolean).join(' ')).join(' '));

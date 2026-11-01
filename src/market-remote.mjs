@@ -262,12 +262,32 @@ export async function marketAnnounced(stateRoot, keys = []) {
 export const marketNews = async (stateRoot) => (await readJson(join(folder(stateRoot), 'updates.json'))) ?? [];
 export async function marketNewsSeen(stateRoot) { await writeAtomic(join(folder(stateRoot), 'updates.json'), '[]').catch(() => {}); }
 
+// What a newer file declares that the one the person accepted did not (2026-11-01, external review
+// #10): a place it reaches, a key it asks for, tools for the agents, reading the chats, writing in
+// the project, a command. Empty when it asks for nothing more.
+export function widens(before = {}, after = {}) {
+  const more = [];
+  const hosts = (said) => new Set((said?.reaches ?? []).map((one) => one.host ?? one.to).filter(Boolean));
+  const had = hosts(before);
+  for (const host of hosts(after)) if (!had.has(host)) more.push({ what: 'reaches', host });
+  const keys = new Set((before?.secrets ?? []).map((one) => one.name));
+  for (const secret of after?.secrets ?? []) if (!keys.has(secret.name)) more.push({ what: 'secret', name: secret.label ?? secret.name });
+  for (const flag of ['tools', 'reads', 'writes']) if (after?.[flag] && !before?.[flag]) more.push({ what: flag });
+  const commands = new Set(before?.commands ?? []);
+  for (const command of after?.commands ?? []) if (!commands.has(command)) more.push({ what: 'command', name: command });
+  return more;
+}
+
 // Every module got from the Market whose signed file changed: the new one, installed, and a line
-// for the person. One that fails stays as it was and is tried again next time.
+// for the person. One that fails stays as it was and is tried again next time. One that declares
+// more than the file the person accepted is not installed on its own: it waits, and the person is
+// told once what it asks for (`held`), because accepting a module once is not accepting whatever
+// it becomes.
 export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre, fetchImpl = globalThis.fetch, verifyText, installText, names = {}, remove = null }) {
   const installed = await installedFromMarket(stateRoot);
   const updated = [];
   const removed = [];
+  const held = [];
   // Taken back (2026-10-25): a module, or the version of it this computer has, that the catalog says
   // must not run any more is removed and forgotten here, so no next catalog brings it back.
   for (const [id, have] of Object.entries(installed)) {
@@ -283,12 +303,25 @@ export async function updateFromMarket({ stateRoot, projectRoot, catalog, madre,
     const entry = catalog?.modules.find((one) => one.id === id && one.file);
     if (!entry || entry.file.sha256 === have.sha256 || !fitsVersion(madre, entry.minMadre)) continue;
     try {
+      if (have.held === entry.file.sha256) continue;
+      const fresh = await installFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl, verifyText, installText, review: true });
+      const kept = await readFile(join(stateRoot, 'modules', `${id}.mjs`), 'utf8').catch(() => null);
+      const accepted = kept ? await verifyText({ text: kept, name: `${id}.mjs`, replace: true }).catch(() => null) : null;
+      const more = accepted ? widens(accepted.declares, fresh.declares) : [];
+      if (more.length) {
+        // Read again: an update installed a moment ago in this same pass is already in the file.
+        const now = await installedFromMarket(stateRoot);
+        now[id] = { ...(now[id] ?? have), held: entry.file.sha256 };
+        await writeAtomic(join(folder(stateRoot), 'installed.json'), JSON.stringify(now, null, 2));
+        held.push({ id, name: names[id] ?? (typeof entry.name === 'string' ? entry.name : entry.name?.en) ?? id, kind: 'held', from: have.version ?? null, to: entry.version, more, at: new Date().toISOString() });
+        continue;
+      }
       await installFromMarket({ stateRoot, projectRoot, id, catalog, madre, fetchImpl, verifyText, installText, accepted: true });
       updated.push({ id, name: names[id] ?? (typeof entry.name === 'string' ? entry.name : entry.name?.en) ?? id, from: have.version ?? null, to: entry.version, changes: entry.changes ?? null, at: new Date().toISOString() });
     } catch { /* tried again the next time MADRE opens */ }
   }
   // Said once each: what updated itself, and what was taken out of this computer and why.
-  const told = [...updated, ...removed];
+  const told = [...updated, ...removed, ...held];
   if (told.length) {
     const news = [...(await marketNews(stateRoot)).filter((one) => !told.some((fresh) => fresh.id === one.id)), ...told];
     await writeAtomic(join(folder(stateRoot), 'updates.json'), JSON.stringify(news, null, 2));

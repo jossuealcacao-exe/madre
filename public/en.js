@@ -174,7 +174,7 @@ export const EN = {
   "CREATE on: what to make. New files land where they belong in the project; nothing existing changes.": "«Create» is on: what to make. New files land where they belong in the project; nothing existing changes.",
   "EDIT unlocked. Say what to change in the project; every action runs without asking.": "«Edit» unlocked. Say what to change in the project; every action runs without asking.",
   "#4 FULL ACCESS unlocked. Commands run here, and changes are pushed or deployed outside your computer. Say exactly what should go out.": "«#4 Full access» unlocked. Commands run here, and changes are pushed or deployed outside your computer. Say exactly what should go out.",
-  "The agent you write to drives the project: it edits, makes plans with the other agents (each step can go up to #3 EDIT), and runs the safe commands — reading, tests, builds, local git — on its own.": "The agent you write to drives the project: it edits, makes plans with the other agents (each step can go up to «#3 Edit»), and runs the safe commands — reading, tests, builds, local git — on its own.",
+  "The agent you write to drives the project: it edits and makes plans with the other agents (each step can go up to #3 EDIT). It runs on its own only the commands that read; tests, builds and commits wait for your click.": "The agent you write to drives the project: it edits and makes plans with the other agents (each step can go up to «#3 Edit»). It runs on its own only the commands that read; tests, builds and commits wait for your click.",
   "It asks you to confirm #3 only once. STOP ALL ends it.": "It asks you to confirm #3 only once. «Stop all» ends it.",
   "NOW": "Now",
   "RAISE TO #{n} ›": "Raise to #{n} ›",

@@ -20,13 +20,16 @@ process.stdin.on('data', (chunk) => {
   for (let at = buffer.indexOf('\\n'); at >= 0; at = buffer.indexOf('\\n')) {
     const line = buffer.slice(0, at); buffer = buffer.slice(at + 1);
     if (!line.trim()) continue;
-    const message = JSON.parse(line);
+    for (const message of [].concat(JSON.parse(line))) {
     if (message.method === 'initialize') write({ jsonrpc: '2.0', id: message.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'fake', version: '1.2.3' } } });
     else if (message.method === 'tools/list') write({ jsonrpc: '2.0', id: message.id, result: { tools: [
       { name: 'whoami', description: 'Says the key.', annotations: { readOnlyHint: true }, inputSchema: { type: 'object' } },
       { name: 'send_mail', description: 'Sends a mail.', inputSchema: { type: 'object' } },
     ] } });
     else if (message.method === 'tools/call') write({ jsonrpc: '2.0', id: message.id, result: { content: [{ type: 'text', text: message.params.name + ':' + (process.env.SECRET_KEY ?? '') }] } });
+    else if (message.method === 'resources/list') write({ jsonrpc: '2.0', id: message.id, result: { resources: [] } });
+    else if (message.id !== undefined) write({ jsonrpc: '2.0', id: message.id, result: { reached: message.method } });
+    }
   }
 });
 `;
@@ -43,7 +46,7 @@ function talk(args, messages, { ms = 8000 } = {}) {
       for (let at = out.indexOf('\n'); at >= 0; at = out.indexOf('\n')) {
         const line = out.slice(0, at); out = out.slice(at + 1);
         if (line.trim()) answers.push(JSON.parse(line));
-        if (answers.filter((one) => one.id !== undefined).length >= messages.filter((one) => one.id !== undefined).length) { clearTimeout(timer); child.stdin.end(); child.kill(); resolve(answers); }
+        if (answers.filter((one) => one.id !== undefined).length >= messages.flat().filter((one) => one.id !== undefined).length) { clearTimeout(timer); child.stdin.end(); child.kill(); resolve(answers); }
       }
     });
     for (const message of messages) child.stdin.write(`${JSON.stringify(message)}\n`);
@@ -83,11 +86,23 @@ test('mcp: a command server is checked before any turn gets it, and its secret n
       { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
       { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'whoami', arguments: {} } },
       { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'send_mail', arguments: {} } },
+      // Every other method (external review #61, 2026-11-01): the protocol's reads pass, anything
+      // else is answered by the proxy, and a batch is each of its messages.
+      { jsonrpc: '2.0', id: 5, method: 'resources/list', params: {} },
+      { jsonrpc: '2.0', id: 6, method: 'tasks/run', params: { name: 'send_mail' } },
+      [
+        { jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'send_mail', arguments: {} } },
+        { jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'whoami', arguments: {} } },
+      ],
     ]);
     const by = (id) => answers.find((one) => one.id === id);
     assert.deepEqual(by(2).result.tools.map((tool) => tool.name), ['whoami'], 'a tool outside --allow was listed');
     assert.equal(by(3).result.content[0].text, 'whoami:s3cr3t-value');
     assert.equal(by(4).result.isError, true, 'a tool outside --allow reached the server');
+    assert.deepEqual(by(5).result, { resources: [] });
+    assert.equal(by(6).error?.code, -32601, 'a method the proxy does not know reached the server');
+    assert.equal(by(7).result.isError, true, 'a tool outside --allow reached the server inside a batch');
+    assert.equal(by(8).result.content[0].text, 'whoami:s3cr3t-value');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

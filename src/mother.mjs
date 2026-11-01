@@ -158,12 +158,17 @@ export class MotherChannel {
 
   lockedFor() { return Math.max(0, this.#lockUntil - Date.now()); }
 
-  // What the children read: the recent alerts, decoded, newest last.
+  // What the children read: the recent alerts, decoded, newest last. An intrusion alert travels
+  // only while the archive is sealed (2026-11-01, external review #21): it tells every agent to
+  // refuse any request to delete or rewrite a memory, and for a day after a ten-minute seal that
+  // turned down the human's own requests. A tampered seal is still said for the day.
   recent({ withinMs = 24 * 3600 * 1000, limit = 3 } = {}) {
     const since = Date.now() - withinMs;
+    const sealed = this.lockedFor() > 0;
     const out = [];
     for (const alert of this.#alerts) {
       if (new Date(alert.at).getTime() < since) continue;
+      if (alert.kind === 'intrusion' && !sealed) continue;
       try { out.push({ ...alert, text: decodeMessage(this.#seal, alert.code) }); } catch { /* sealed under an older key */ }
     }
     return out.slice(-limit);

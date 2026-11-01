@@ -154,7 +154,11 @@ const publicDirectory = join(sourceDirectory, '..', 'public');
 // a client does not take gzip.
 const assetCache = new Map();
 async function sendAsset(request, response, file, type) {
-  const info = await stat(file);
+  // Its callers `return sendAsset(…)` without awaiting it, which is outside the handler's try: a file
+  // that is not there was an unhandled rejection and a request that never got an answer
+  // (diagnostics of 1.1.1, «stat … ENOENT» from sendAsset). It is a 404.
+  const info = await stat(file).catch(() => null);
+  if (!info?.isFile()) { response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return response.end('Not found.'); }
   const tag = `W/"${info.size.toString(36)}-${Math.floor(info.mtimeMs).toString(36)}"`;
   const headers = { 'content-type': type, 'cache-control': 'no-cache', etag: tag, vary: 'accept-encoding' };
   if (request.headers['if-none-match'] === tag) { response.writeHead(304, headers); return response.end(); }
@@ -1630,7 +1634,9 @@ export async function createPulseServer({
     else if (event?.type === 'copilot.started') diagnostics.count('copilot.on');
     else if (event?.type === 'extension.install.finished') {
       if (said.ok) diagnostics.count(`install.${said.id ?? 'module'}`);
-      else if (!said.cancelled) diagnostics.error({ kind: said.model ? 'model' : 'install', where: [said.id, said.trouble].filter(Boolean).join(' · ') || null, message: said.detail ?? 'install failed' });
+      // What was installed and how it failed travel in the message too: madre.run keeps the message and
+      // not `where`, and 10 copies of 1.1.x reported only «exit 1».
+      else if (!said.cancelled) diagnostics.error({ kind: said.model ? 'model' : 'install', where: [said.id, said.trouble].filter(Boolean).join(' · ') || null, message: [said.detail ?? 'install failed', said.id, said.trouble].filter(Boolean).join(' · ') });
     }
   }
   function wireRoom() {
@@ -2113,8 +2119,21 @@ export async function createPulseServer({
             const binary = await findOnPath('ollama');
             if (!binary) return { ok: false, error: t('Ollama is not on this computer yet.') };
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: 'ollama serve', platforms: [], alreadyInstalled: true });
-            const child = spawn(binary, ['serve'], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' });
-            child.unref();
+            // A binary this user cannot run (EACCES: an install that stopped halfway, a file of another
+            // user's) is said, not thrown: without a listener the error ended MADRE's process as an
+            // uncaught exception (diagnostics of 1.1.1, 3 copies in WSL).
+            const failed = new Promise((settle) => {
+              const child = spawn(binary, ['serve'], { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore' });
+              child.on('error', (error) => settle(error));
+              child.on('spawn', () => settle(null));
+              child.unref();
+            });
+            const refused = await failed;
+            if (refused) {
+              const words = refused.code === 'EACCES' ? t('Ollama is at {path}, but this user cannot run it. Install it again, or give it permission to run.', { path: binary }) : t('Ollama did not start: {error}', { error: refused.message });
+              await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: false, installed: true, detail: refused.code === 'EACCES' ? `cannot run ${binary} (EACCES)` : refused.message, trouble: refused.code === 'EACCES' ? 'permission' : 'unknown', ollama });
+              return { ok: false, error: words };
+            }
             // It answers in a moment or it does not: poll its own port rather than guess.
             let status = ollama;
             for (let attempt = 0; attempt < 20 && !status.running; attempt += 1) {
@@ -3735,6 +3754,9 @@ export async function createPulseServer({
         pageErrors.push(now);
         const payload = await body(request).catch(() => ({}));
         const page = ['room', 'home', 'manual', 'phone'].includes(payload.page) ? payload.page : 'room';
+        // The browser's resize notice is not a failure (public/page-errors.js drops it), but a tab
+        // opened before that filter keeps its old script and still sends it: 3 copies of 1.1.1 did.
+        if (/^ResizeObserver loop/.test(String(payload.message ?? ''))) return sendJson(response, 202, { kept: false });
         diagnostics.error({ kind: 'page', where: page, message: String(payload.message ?? '').slice(0, 2000), stack: String(payload.stack ?? '').slice(0, 4000) });
         return sendJson(response, 202, { kept: true });
       }

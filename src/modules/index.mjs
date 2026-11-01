@@ -6,9 +6,10 @@
 // (defineModule is applied here), a module already built with defineModule, or a function
 // receiving { defineModule } and returning either. Agents cannot write those folders: .madre/
 // is a forbidden zone, and ~/.pulse lives outside every project.
-import { readdir, readFile, writeFile, mkdir, unlink, mkdtemp, rm } from 'node:fs/promises';
+import { readdir, readFile, writeFile, mkdir, unlink, mkdtemp, realpath, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
 import { translate } from '../i18n.mjs';
-import { join, basename, resolve, sep } from 'node:path';
+import { join, basename, dirname, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { clearDeclaredDestinations, declareDestinations } from '../outbound.mjs';
@@ -86,6 +87,37 @@ async function importModuleFile(file) {
   return typeof spec.describe === 'function' ? spec : defineModule(spec);
 }
 
+// The same file, described in words that cross a process: what the check and the person need,
+// never the module itself. src/modules/check-alone.mjs answers with it.
+export async function inspectModuleFile(file) {
+  const module = await importModuleFile(file);
+  return {
+    id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', words: module.words ?? null, credit: module.credit ?? null, updates: module.updates ?? null, unknown: module.unknown ?? [], declares: declaredBy(module),
+    routes: (module.routes ?? []).map((route) => ({ path: typeof route.path === 'string' ? route.path : { source: route.path?.source ?? '' } })),
+  };
+}
+
+// Loads a candidate in a node of its own, fenced by Node's permission model (check-alone.mjs says
+// what it may and may not do), so that asking what a file is never runs it inside MADRE.
+const CHECK_ALONE = fileURLToPath(new URL('./check-alone.mjs', import.meta.url));
+const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
+export const CHECK_MS = 15000;
+const FENCE = ['--permission', '--experimental-permission'].find((flag) => process.allowedNodeEnvironmentFlags.has(flag)) ?? null;
+async function inspectAlone(probe) {
+  const [folder, root] = await Promise.all([realpath(dirname(probe)), realpath(PACKAGE_ROOT)]);
+  const fence = FENCE ? [FENCE, `--allow-fs-read=${folder}`, `--allow-fs-read=${root}`] : [];
+  return new Promise((done, fail) => {
+    execFile(process.execPath, [...fence, CHECK_ALONE, join(folder, basename(probe))], { env: {}, cwd: folder, timeout: CHECK_MS, maxBuffer: 1 << 20, windowsHide: true }, (error, stdout, stderr) => {
+      if (error?.killed) return fail(new Error(`it did not finish loading in ${CHECK_MS / 1000} s, so MADRE stopped it: a module only declares what it is, and loading it must not wait on anything`));
+      const said = String(stdout ?? '').split('\n').reverse().map((line) => { try { return JSON.parse(line); } catch { return null; } }).find((one) => one && typeof one.ok === 'boolean');
+      if (!said) return fail(new Error(String(stderr ?? '').trim().split('\n').at(-1) || error?.message || 'it ended before saying what it is'));
+      if (!said.ok) return fail(Object.assign(new Error(said.error), { code: said.code ?? undefined }));
+      if (!said.module || typeof said.module.id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(said.module.id)) return fail(new Error('it did not say a module id MADRE can use'));
+      return done(said.module);
+    });
+  });
+}
+
 export async function loadExternalModules({ stateRoot, projectRoot }) {
   for (let index = MODULES.length - 1; index >= 0; index -= 1) if (MODULES[index].external) MODULES.splice(index, 1);
   loadFailures.length = 0;
@@ -153,9 +185,11 @@ export async function adoptBuiltinUpdates({ stateRoot, enabled = true, factoryKe
 }
 
 // The one door every module comes through, whoever wrote it and wherever the text came from: it
-// is written to a scratch copy, imported there and checked against the house rules. A module runs
-// inside MADRE with the human's own permissions, so the check is the point. Checking installs
-// nothing and touches no registry — asking what a file is must never change what is loaded.
+// is written to a scratch copy, loaded there in a fenced node of its own (inspectAlone) and checked
+// against the house rules. An installed module runs inside MADRE with the human's own permissions,
+// so the check is the point — and checking runs nothing in MADRE (2026-11-01, external review #1).
+// Checking installs nothing and touches no registry — asking what a file is must never change
+// what is loaded.
 export async function verifyModuleText({ text, name = null, replace = true }) {
   const scratch = await mkdtemp(join(tmpdir(), 'madre-module-check-'));
   try {
@@ -163,7 +197,7 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
     await writeFile(probe, text);
     let module;
     try {
-      module = checkExternal(await importModuleFile(probe), { replace });
+      module = checkExternal(await inspectAlone(probe), { replace });
     } catch (error) {
       // The one mistake that looks right and never works: MADRE's own modules import the SDK by
       // relative path because they live inside the package, and anyone — an agent most of all —
@@ -174,7 +208,7 @@ export async function verifyModuleText({ text, name = null, replace = true }) {
       }
       throw error;
     }
-    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', words: module.words ?? null, credit: module.credit ?? null, updates: module.updates ?? null, unknown: module.unknown ?? [], declares: declaredBy(module) };
+    return { id: module.id, name: module.name, vendor: module.vendor, version: module.version ?? null, summary: module.summary ?? '', words: module.words ?? null, credit: module.credit ?? null, updates: module.updates ?? null, unknown: module.unknown ?? [], declares: module.declares };
   } finally { await rm(scratch, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 }); }
 }
 

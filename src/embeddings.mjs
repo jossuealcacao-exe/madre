@@ -76,7 +76,7 @@ async function geminiEmbed(texts, { key, model, dims, query, fetchImpl, timeoutM
 export function createEmbedder({ key = null, env = process.env, fetchImpl = globalThis.fetch, timeoutMs = Number(env.PULSE_EMBED_TIMEOUT_MS ?? 8000), ollama = null, ollamaEmbedder: makeOllama = null } = {}) {
   if (env.PULSE_EMBED === '0') return null;
   if (env.PULSE_EMBED_FAKE === '1') {
-    return { model: 'fake-64', dims: 64, embed: async (texts) => texts.map((text) => fakeEmbedding(text)) };
+    return { model: 'fake-64', dims: 64, provider: 'fake', embed: async (texts) => texts.map((text) => fakeEmbedding(text)) };
   }
   const provider = env.PULSE_EMBED_PROVIDER ?? 'auto';
   if (provider !== 'gemini' && ollama?.running && ollama.embedModel && makeOllama) return makeOllama({ host: ollama.host, model: ollama.embedModel, fetchImpl });
@@ -84,5 +84,5 @@ export function createEmbedder({ key = null, env = process.env, fetchImpl = glob
   if (!key) return null;
   const model = env.PULSE_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
   const dims = Number(env.PULSE_EMBED_DIMS ?? DEFAULT_EMBED_DIMS);
-  return { model: `${model}@${dims}`, dims, embed: (texts, { query = false } = {}) => geminiEmbed(texts, { key, model, dims, query, fetchImpl, timeoutMs }) };
+  return { model: `${model}@${dims}`, dims, provider: 'gemini', embed: (texts, { query = false } = {}) => geminiEmbed(texts, { key, model, dims, query, fetchImpl, timeoutMs }) };
 }

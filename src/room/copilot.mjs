@@ -18,48 +18,42 @@ export const COPILOT_WINDOWS = Object.freeze([30, 60, 240, 480, 1440]);
 // human: a copilot that loops is a bill, not help.
 export const COPILOT_MAX_ROUNDS = 8;
 
-// The commands a copilot may run without the human pressing: reading, testing, building, and git
-// on this machine. Narrow on purpose — a list of what is allowed, never of what is not — so a
-// command nobody thought of waits for the human instead of running.
+// The commands a copilot may run without the human pressing: reading, and reading git. Narrow on
+// purpose — a list of what is allowed, never of what is not — so a command nobody thought of waits
+// for the human instead of running.
+//
+// Tests, builds, linters and commits used to run by themselves too, and wait for the human since
+// 2026-11-01 (external review #3, the person's decision): each runs code the project defines — a
+// script in package.json, a test file, a config in JS, build.rs, a hook in .husky — and the copilot
+// edits the project. What it wrote in its turn then ran with the person's rights and the network,
+// which is what #4 and its own key are for. Reading runs nothing of the project's; git reads after
+// the turn let go of the project, when .git/config and its hooks are already back as they were.
 const READERS = new Set(['ls', 'cat', 'head', 'tail', 'wc', 'pwd', 'file', 'stat', 'du', 'tree', 'which', 'diff', 'grep', 'rg', 'echo', 'date']);
 const GIT_READ = new Set(['status', 'log', 'diff', 'show', 'rev-parse', 'ls-files', 'blame', 'shortlog', 'describe']);
-const GIT_LOCAL = new Set(['add', 'commit']);
-const SCRIPTS = new Set(['test', 'build', 'lint', 'check', 'typecheck', 'format:check']);
-const NPX_TOOLS = new Set(['tsc', 'vitest', 'jest', 'eslint']);
 
 export function copilotSafe(argv = []) {
   const [program, ...rest] = (Array.isArray(argv) ? argv : []).map(String);
   const name = String(program ?? '').split('/').pop();
   if (!name) return false;
+  // Readers that can still run or write something with one flag: rg's --pre runs a program on each
+  // file, tree -o writes its output wherever it is told.
+  if (name === 'rg' && rest.some((word) => /^--pre(-glob)?(=|$)/.test(word))) return false;
+  if (name === 'tree' && rest.some((word) => /^(-o|--output)/.test(word))) return false;
   if (READERS.has(name)) return true;
   if (name === 'find') return !rest.some((word) => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/.test(word));
   if (name === 'git') {
-    const sub = rest.find((word) => !word.startsWith('-'));
+    // The subcommand first, with no options before it: `--git-dir`, `-c` or `--exec-path` would
+    // point git at settings the project holds, and those can name a program to run. And no
+    // --output, which writes a file.
+    const sub = rest[0];
+    if (rest.some((word) => /^--output(=|$)/.test(word))) return false;
     if (GIT_READ.has(sub)) return true;
     if (sub === 'branch') return !rest.some((word) => /^-(d|D|m|M|c|C|-delete|-move|-copy|f|-force)$/.test(word)) && rest.filter((word) => !word.startsWith('-')).length === 1;
     if (sub === 'stash') return rest.includes('list');
-    if (GIT_LOCAL.has(sub)) return true;
     return false;
   }
-  if (['npm', 'pnpm', 'yarn', 'bun'].includes(name)) {
-    const [first, second] = rest.filter((word) => !word.startsWith('-'));
-    if (first === 'test' || first === 't') return true;
-    if (first === 'run' || (name !== 'npm' && SCRIPTS.has(first))) return SCRIPTS.has(first === 'run' ? second : first);
-    return false;
-  }
-  if (name === 'npx') {
-    const tool = rest.find((word) => !word.startsWith('-'));
-    if (NPX_TOOLS.has(tool)) return true;
-    if (tool === 'prettier') return rest.includes('--check');
-    if (tool === 'playwright') return rest[rest.indexOf('playwright') + 1] === 'test';
-    return false;
-  }
-  if (name === 'node') return rest[0] === '--test' || rest[0] === '--check';
-  if (name === 'tsc') return true;
-  if (name === 'pytest') return true;
-  if (/^python3?$/.test(name)) return rest[0] === '-m' && ['pytest', 'unittest', 'compileall'].includes(rest[1]);
-  if (name === 'go') return ['test', 'vet', 'build'].includes(rest[0]);
-  if (name === 'cargo') return ['test', 'build', 'check', 'clippy', 'fmt'].includes(rest[0]) && !(rest[0] === 'fmt' && !rest.includes('--check'));
+  // Parsing a file runs none of it.
+  if (name === 'node') return rest[0] === '--check';
   return false;
 }
 
@@ -69,7 +63,7 @@ const clock = (until) => new Date(until).toISOString().slice(11, 16);
 export function copilotBrief({ until }) {
   return [
     `COPILOT: the human made you their copilot for this project until ${clock(until)} UTC. Drive the work to done without asking at every step.`,
-    'You may create, write and edit the project\'s files; you may end a reply with a pulse plan for the other agents and give each step the mode it needs, up to #3; and you may ask for the commands you need with a ```pulse-run block: MADRE runs the safe local ones by itself (reading, tests, builds, local git add and commit) and hands you their output in a new turn; any other line waits for the human.',
+    'You may create, write and edit the project\'s files; you may end a reply with a pulse plan for the other agents and give each step the mode it needs, up to #3; and you may ask for the commands you need with a ```pulse-run block: MADRE runs the ones that only read by itself (ls, cat, rg, git status, diff and log) and hands you their output in a new turn; tests, builds, linters, commits and any other line wait for the human to press them, so ask for them once, together, when the work is ready to check.',
     'What stays with the human: never delete files (MADRE puts them back after your turn), never touch .git, .pulse, .madre, .env files or credentials, and never push, publish, deploy or send anything off this machine — say what would need to go out and stop there.',
     'When the task is done, end with what changed, what you checked, and what is left for the human.',
   ].join('\n');

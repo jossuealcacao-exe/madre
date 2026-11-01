@@ -11,7 +11,7 @@ import { installModuleText, verifyModuleText } from '../src/modules/index.mjs';
 // The Market from madre.run (2026-10-18): a signed catalog, files pinned by sha256, updates on their own.
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
 const PUBLIC = publicKey.export({ type: 'spki', format: 'pem' });
-const moduleText = (version) => `export default { id: 'saludo', name: 'SALUDO', version: '${version}', summary: 'Says hello.', settings: { enabled: false } };\n`;
+const moduleText = (version, extra = '') => `export default { id: 'saludo', name: 'SALUDO', version: '${version}', summary: 'Says hello.', settings: { enabled: false }${extra} };\n`;
 
 async function market() {
   const files = new Map();
@@ -23,8 +23,8 @@ async function market() {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}/mercado`;
-  const publish = (version, { issued = new Date().toISOString(), tamper = false, key = privateKey } = {}) => {
-    const text = moduleText(version);
+  const publish = (version, { issued = new Date().toISOString(), tamper = false, key = privateKey, extra = '' } = {}) => {
+    const text = moduleText(version, extra);
     files.set(`/mercado/modulos/saludo-${version}.module.mjs`, tamper ? text.replace('hello', 'goodbye') : text);
     const catalog = { schema: 1, issued, featured: ['saludo'], shelves: [{ id: 'create', title: { en: 'To create', es: 'Para crear' } }], modules: [
       { id: 'playwright', pitch: { en: 'See it.', es: 'Míralo.' } },
@@ -181,4 +181,30 @@ test('market · a room closed while it asks for the catalog writes nothing after
     await new Promise((resolve) => slow.close(resolve));
     for (const dir of [state, project]) await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('market · an update that asks for more than the person accepted waits for them, and is told once (external review #10)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'madre-market-'));
+  const project = await mkdtemp(join(tmpdir(), 'madre-market-project-'));
+  const shop = await market();
+  const env = { PULSE_MARKET_URL: shop.url };
+  const tools = { stateRoot: root, projectRoot: project, madre: '1.0.3', verifyText: verifyModuleText, installText: installModuleText };
+  try {
+    shop.publish('1.0.0');
+    let { catalog } = await refreshCatalog({ stateRoot: root, env, publicKey: PUBLIC, force: true });
+    const { sha256: accept } = await installFromMarket({ ...tools, id: 'saludo', catalog, review: true });
+    await installFromMarket({ ...tools, id: 'saludo', catalog, accept });
+    shop.publish('1.2.0', { issued: new Date(Date.now() + 1000).toISOString(), extra: ", reaches: [{ host: 'datos.example.com', to: 'A server', what: 'what you write', when: 'every message' }]" });
+    ({ catalog } = await refreshCatalog({ stateRoot: root, env, publicKey: PUBLIC, force: true }));
+    assert.deepEqual(await updateFromMarket({ ...tools, catalog, names: { saludo: 'SALUDO' } }), [], 'an update that reaches somewhere new installed itself');
+    assert.match(await readFile(join(root, 'modules', 'saludo.mjs'), 'utf8'), /version: '1.0.0'/);
+    const held = (await marketNews(root)).filter((one) => one.kind === 'held');
+    assert.deepEqual(held.map(({ id, from, to, more }) => ({ id, from, to, more })), [{ id: 'saludo', from: '1.0.0', to: '1.2.0', more: [{ what: 'reaches', host: 'datos.example.com' }] }]);
+    await updateFromMarket({ ...tools, catalog, names: { saludo: 'SALUDO' } });
+    assert.equal((await marketNews(root)).filter((one) => one.kind === 'held').length, 1, 'told again');
+    // The person reads it in the Market and accepts that very file: then it is installed.
+    const again = await installFromMarket({ ...tools, id: 'saludo', catalog, review: true });
+    await installFromMarket({ ...tools, id: 'saludo', catalog, accept: again.sha256 });
+    assert.match(await readFile(join(root, 'modules', 'saludo.mjs'), 'utf8'), /version: '1.2.0'/);
+  } finally { await shop.close(); await rm(root, { recursive: true, force: true }); await rm(project, { recursive: true, force: true }); }
 });

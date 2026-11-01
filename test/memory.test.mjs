@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventStore } from '../src/event-store.mjs';
 import { Room } from '../src/room.mjs';
-import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, HOLD, BRIDGE, MEDBAY, JETTISONED, RECALLED_ZONES, VERDICTS } from '../src/memory.mjs';
+import { RoomMemory, formatRecall, queryTerms, excerpt, zoneFor, travels, negates, HOLD, BRIDGE, MEDBAY, JETTISONED, RECALLED_ZONES, VERDICTS } from '../src/memory.mjs';
 import { Privacy, PRIVACY_MARKER } from '../src/privacy.mjs';
 
 const agents = [
@@ -491,7 +491,7 @@ test('room: every turn carries the memory server and is told to use it; the dist
     await room.embedNow();
 
     const turn = seen.find((call) => call.agent === 'codex');
-    assert.deepEqual(turn.memoryServer.env, { ...memoryServer.env, PULSE_MEMORY_AGENT: 'codex', PULSE_MEMORY_MESSAGE: turn.memoryServer.env.PULSE_MEMORY_MESSAGE, PULSE_MEMORY_MODE: '1' }, 'the server is signed for the turn');
+    assert.deepEqual(turn.memoryServer.env, { ...memoryServer.env, PULSE_EMBED: '0', PULSE_MEMORY_AGENT: 'codex', PULSE_MEMORY_MESSAGE: turn.memoryServer.env.PULSE_MEMORY_MESSAGE, PULSE_MEMORY_MODE: '1' }, 'the server is signed for the turn');
     assert.match(turn.prompt, /pulse-memory MCP tools: memory_search/);
     assert.match(turn.prompt, /only when the human explicitly asks you to remember, note or save something, call memory_note/);
     const ghost = seen.find((call) => call.agent === 'claude');
@@ -611,6 +611,7 @@ test('memory_note: saves a signed note on request, refuses ghosts and duplicates
     assert.match(await callTool('memory_note', { kind: 'fact', text: 'we are experimenting with the memory ux' }, context), /^Already remembered/);
     assert.match(await callTool('memory_note', { kind: 'decision', text: 'x'.repeat(241) }, context), /Too long/);
     assert.equal(await callTool('memory_note', { kind: 'fact', text: '   ' }, context), 'Give me the memory as one sentence.');
+    assert.match(await callTool('memory_note', { kind: 'rumor', text: 'The deploy key is in the wiki.' }, context), /^Say what kind of memory it is/, 'an unknown kind was filed as a fact');
     assert.match(await callTool('memory_note', { kind: 'fact', text: 'Ghost secret.' }, { ...context, mode: '0' }), /off the record/);
     assert.equal(memory.memoryCount(), 1);
     // Without sources the note is pinned to the ledger's current end.
@@ -695,6 +696,10 @@ test("MOTHER's channel: sealed words round-trip, the file is born once, deleting
     assert.equal(await again.load(), 'ok');
     assert.equal(again.recent()[0].text, sent.text);
     assert.equal(again.altered, false);
+    // Once the seal lifts, the order to treat deletions as hostile stops reaching the agents (external review #21).
+    const later = Date.now;
+    Date.now = () => later() + 6000;
+    try { assert.deepEqual(again.recent(), [], 'an intrusion alert outlived its seal'); } finally { Date.now = later; }
 
     // Deleted: she notices, forges a new seal, and the old word is unreadable.
     await rmP(file);
@@ -1515,4 +1520,65 @@ test('briefing: the archivist is told what stands and what the room threw out, a
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
+});
+
+test('the memory server an agent gets embeds like the room, or not at all (external review #20)', async () => {
+  const { memoryServerForTurn } = await import('../src/memory-tools.mjs');
+  const server = memoryServerFor({ dbFile: '/tmp/m.sqlite', projectRoot: '/tmp/p', env: { GEMINI_API_KEY: 'k' } });
+  const gemini = createEmbedder({ key: 'k', env: {} });
+  assert.equal(gemini.provider, 'gemini');
+  const at = (mode, embedder) => memoryServerForTurn(server, { agent: 'claude', messageId: 'm1', mode, embedder }).env;
+  assert.equal(at(1, gemini).PULSE_EMBED_PROVIDER, 'gemini');
+  assert.equal(at(1, gemini).PULSE_EMBED, undefined);
+  assert.equal(at(1, null).PULSE_EMBED, '0', 'memory off in Settings, and the server still embedded with the key');
+  assert.equal(at(1, { model: 'nomic-embed-text', dims: 768, embed: async () => [] }).PULSE_EMBED, '0', 'a room on Ollama sent searches to Gemini');
+  assert.equal(at(0, gemini).PULSE_EMBED, '0', 'an incognito search was embedded');
+  assert.equal(at(1, createEmbedder({ env: { PULSE_EMBED_FAKE: '1' } })).PULSE_EMBED, undefined);
+});
+
+test('memory_notes hands an agent only what still stands; an aberration asked by name says it is false (external review #14)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-notes-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    await store.append('message.created', { messageId: 'a', role: 'user', sender: 'you', target: 'codex', text: 'Deploys run on Fridays at noon.' });
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([{ kind: 'fact', text: 'Deploys run on Fridays at noon.', sources: [1] }], { agent: 'gemini', fromSequence: 1, throughSequence: 1 });
+    memory.addMemories([{ kind: 'decision', text: 'The webhook lives in src/webhooks.mjs.', sources: [1] }], { agent: 'gemini', fromSequence: 1, throughSequence: 1 });
+    memory.addMemories([{ kind: 'aberration', text: 'Deploys run on Fridays at noon.', correction: 'Deploys run on Tuesdays.', sources: [1] }], { agent: 'you', fromSequence: 1, throughSequence: 1 });
+    const context = { memory, projectRoot: root };
+    const all = await callTool('memory_notes', {}, context);
+    assert.match(all, /src\/webhooks\.mjs/);
+    assert.doesNotMatch(all, /Fridays/, 'a refuted note, or the aberration, travelled through memory_notes');
+    assert.equal(await callTool('memory_notes', { kind: 'fact' }, context), 'No distilled notes yet.');
+    assert.match(await callTool('memory_notes', { kind: 'aberration' }, context), /FALSE: Deploys run on Fridays at noon\. — what is true: Deploys run on Tuesdays\./);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('an aberration never takes down the note that says the opposite (external review #17)', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-negation-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    memory.addMemories([{ kind: 'decision', text: 'No desplegamos el servicio de cobro los viernes.' }], { agent: 'gemini', fromSequence: 1, throughSequence: 1 });
+    memory.addMemories([{ kind: 'fact', text: "We don't run migrations during business hours." }], { agent: 'gemini', fromSequence: 1, throughSequence: 1 });
+    memory.addMemories([{ kind: 'aberration', text: 'Desplegamos el servicio de cobro los viernes.' }], { agent: 'you', fromSequence: 1, throughSequence: 1 });
+    memory.addMemories([{ kind: 'aberration', text: 'We run migrations during business hours.' }], { agent: 'you', fromSequence: 1, throughSequence: 1 });
+    const standing = memory.memories().filter(travels).map((note) => note.text);
+    assert.ok(standing.includes('No desplegamos el servicio de cobro los viernes.'), 'the true decision was taken down by its own negation');
+    assert.ok(standing.includes("We don't run migrations during business hours."));
+    // The same claim, negation and all, is still the one refuted.
+    memory.addMemories([{ kind: 'aberration', text: 'No desplegamos el servicio de cobro los viernes.' }], { agent: 'you', fromSequence: 1, throughSequence: 1 });
+    assert.ok(!memory.memories().filter(travels).some((note) => note.text === 'No desplegamos el servicio de cobro los viernes.'));
+    assert.ok(negates('Nunca tocar main') && negates("it isn't ready") && !negates('Nothingness is a word') && !negates('Ship it on Monday'));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('the archivist sets a batch aside only for failing on its own, never for a day offline (external review #18)', async () => {
+  const { passingFailure } = await import('../src/room/archivist.mjs');
+  for (const said of ['fetch failed', 'Gemini timed out after 120 s', 'HTTP 429 Too Many Requests', "You've hit your usage limit", 'getaddrinfo ENOTFOUND api.openai.com', 'Google reported the model as unavailable (HTTP 503)']) {
+    assert.ok(passingFailure(new Error(said)), `${said} set the batch aside for good`);
+  }
+  assert.ok(passingFailure(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' })));
+  assert.equal(passingFailure(new Error('Unexpected token < in JSON at position 0')), false);
+  assert.equal(passingFailure(new Error('Codex exited with code 1')), false);
 });

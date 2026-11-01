@@ -211,7 +211,7 @@ export const MANUAL = {
           'Elige por cuánto tiempo: de 30 minutos a 24 horas.',
           'Enciéndelo y escribe la tarea. Te pide confirmar una sola vez.',
         ],
-        expert: 'Con Copiloto el agente edita y corre lo seguro, como tus pruebas. Nunca borra ni publica. Se apaga solo al acabarse el tiempo, o con «Detener todo».',
+        expert: 'Con Copiloto el agente edita y corre solo lo que lee; tus pruebas y compilaciones esperan tu clic. Nunca borra ni publica. Se apaga solo al acabarse el tiempo, o con «Detener todo».',
       },
       {
         id: 'en-marcha',
@@ -650,7 +650,7 @@ export const MANUAL = {
           'Choose for how long: from 30 minutes to 24 hours.',
           'Turn it on and write the task. It asks you to confirm only once.',
         ],
-        expert: 'With Copilot the agent edits and runs what is safe, such as your tests. It never deletes or publishes. It turns itself off when the time is up, or with «Stop all».',
+        expert: 'With Copilot the agent edits and runs on its own only what reads; your tests and builds wait for your click. It never deletes or publishes. It turns itself off when the time is up, or with «Stop all».',
       },
       {
         id: 'en-marcha',

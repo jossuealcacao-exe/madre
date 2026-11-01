@@ -11,9 +11,16 @@ export const MEMORY_TOOLS = ['memory_search', 'memory_recall', 'memory_notes', '
 
 // The same server, told who is calling: memory_note signs its notes with the
 // agent and the turn, and a GHOST turn is refused any write.
-export function memoryServerForTurn(server, { agent, messageId, mode = 1 }) {
+// It embeds the agent's searches the way the room embeds its own, or not at all (2026-11-01,
+// external review #20): `embedder` is the room's. Before, the server built its own from the Gemini
+// key in the keychain, so «Memory › off» or «Ollama» in Settings still sent each search to Google,
+// and an INCOGNITO search with them. Gemini only when the room uses Gemini; a room on Ollama or with
+// no embedder searches by words here (the server has no Ollama of its own), and #0 always does.
+export function memoryServerForTurn(server, { agent, messageId, mode = 1, embedder = null }) {
   if (!server) return null;
-  return { ...server, env: { ...server.env, PULSE_MEMORY_AGENT: agent, PULSE_MEMORY_MESSAGE: messageId, PULSE_MEMORY_MODE: String(mode) } };
+  const same = Number(mode) !== 0 && (embedder?.provider === 'gemini' || embedder?.provider === 'fake');
+  const embed = same ? (embedder.provider === 'gemini' ? { PULSE_EMBED_PROVIDER: 'gemini' } : {}) : { PULSE_EMBED: '0' };
+  return { ...server, env: { ...server.env, ...embed, PULSE_MEMORY_AGENT: agent, PULSE_MEMORY_MESSAGE: messageId, PULSE_MEMORY_MODE: String(mode) } };
 }
 
 export function memoryServerFor({ dbFile, projectRoot, env = process.env }) {

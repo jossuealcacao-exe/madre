@@ -577,12 +577,17 @@ export class RoomMemory {
   // The bar is high on purpose: almost every distinctive word of one has to be in the other.
   // A merely related note is not the same claim, and taking down the wrong one is worse than
   // taking down none.
+  // The words are not the whole claim, though: «we do not deploy on Fridays» and «we deploy on
+  // Fridays» share every long word and say opposite things (2026-11-01, external review #17). A note
+  // whose sense is the negation of the claim is never the claim, so it is never the one taken down.
   #refutedBy(text) {
     const terms = new Set(normalizeMemory(text).split(' ').filter((word) => word.length > 2));
     if (terms.size < 3) return null;
+    const denies = negates(text);
     let best = null;
     const standing = this.#db.prepare(`SELECT id, text FROM memories WHERE ${ZONE_GATE} ORDER BY id DESC LIMIT 200`).all();
     for (const row of standing) {
+      if (negates(row.text) !== denies) continue;
       const other = new Set(normalizeMemory(row.text).split(' ').filter((word) => word.length > 2));
       if (other.size < 3) continue;
       let shared = 0;
@@ -1117,6 +1122,16 @@ export class RoomMemory {
   }
 }
 
+// Whether a note says that something is not so, in Spanish or English: the short words the
+// matching above drops for being short are the ones that turn a claim around. Read in the first
+// clause only, where the claim is: «on port 7100 by default, not another» still says port 7100.
+const NEGATIONS = new Set(['no', 'not', 'never', 'nunca', 'jamas', 'sin', 'without', 'ni', 'nor', 'none', 'nadie', 'nada', 'nothing', 'nobody', 'tampoco', 'cannot']);
+export function negates(text) {
+  const words = normalizeMemory(String(text).split(/[,;:.()\u2013\u2014]/)[0]).split(' ');
+  // «don't», «isn't»: the apostrophe became a space, so the word ends in n and a lone t follows.
+  return words.some((word, index) => NEGATIONS.has(word) || (word === 't' && /n$/.test(words[index - 1] ?? '')));
+}
+
 export function normalizeMemory(text) {
   return String(text).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
@@ -1126,6 +1141,7 @@ export function formatMemories(list) {
   if (!list?.length) return '';
   return list.map((memory) => {
     const span = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}`;
+    if (memory.kind === ABERRATION) return `- [${memory.kind} · ${span}] FALSE: ${memory.text}${memory.correction ? ` — what is true: ${memory.correction}` : ''}`;
     return `- [${memory.kind} · ${span}] ${memory.text}`;
   }).join('\n');
 }

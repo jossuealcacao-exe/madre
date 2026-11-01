@@ -109,6 +109,9 @@ test('dataset: what the room got wrong trains against itself, and never as somet
   const recall = pairsFromNotes(notes, { project: 'pulse' });
   assert.equal(recall.length, 1, 'a false or refuted note reached the recall corpus');
   assert.match(recall[0].messages[2].content, /port 4317/);
+  // A note the human quarantined (a reply rated «bad») or put out never trains either (external review #14).
+  const kept = pairsFromNotes([{ ...notes[1], id: 3, zone: 'medbay' }, { ...notes[1], id: 4, zone: 'jettisoned' }, { ...notes[1], id: 5, zone: 'bridge' }], { project: 'pulse' });
+  assert.equal(kept.length, 1, 'a quarantined note became something to recall');
   for (const pair of recall) {
     assert.ok(!/Stripe signature after parsing/.test(JSON.stringify(pair)), 'the hallucination is being taught as memory');
     assert.ok(!/Rust core/.test(JSON.stringify(pair)));

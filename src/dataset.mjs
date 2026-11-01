@@ -10,7 +10,7 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { redact } from './sentinel-errors.mjs';
-import { ABERRATION, VERDICTS, NEGATIVE_VERDICTS, POSITIVE_VERDICTS } from './memory.mjs';
+import { ABERRATION, VERDICTS, NEGATIVE_VERDICTS, POSITIVE_VERDICTS, travels } from './memory.mjs';
 
 const MIN_ANSWER_CHARS = 40;
 
@@ -107,7 +107,9 @@ export function readiness(events, notes = [], { target = DATASET_TARGET } = {}) 
 // below, where being wrong is the point.
 export function pairsFromNotes(notes, { project = 'project', home, user, privacy = null } = {}) {
   const clean = guard(privacy);
-  return notes.filter((note) => note.kind !== ABERRATION && !note.refutedBy).map((note) => ({
+  // Nor one the human quarantined or put out (2026-11-01, external review #14): the recall stopped
+  // handing it over, and training on it would teach the model what the room stopped believing.
+  return notes.filter((note) => note.kind !== ABERRATION && !note.refutedBy && (!note.zone || travels(note))).map((note) => ({
     kind: 'note',
     agent: 'madre',
     mode: 1,

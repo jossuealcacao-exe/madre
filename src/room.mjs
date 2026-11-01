@@ -390,8 +390,8 @@ export class Room {
   // Characters per input token, as this room's own turns have shown. Null until it has one.
   #rate = null;
 
-  async #contextFor(priorEvents, { messageId, text, omitSynthetic = false, by = null }) {
-    const built = await contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic, anchor: this.#contextAnchor, by, cascade: this.#cascade });
+  async #contextFor(priorEvents, { messageId, text, omitSynthetic = false, by = null, ghost = false }) {
+    const built = await contextFor({ memory: this.#memory, priorEvents, messageId, text, contextMaxChars: this.#contextMaxChars, recallShare: this.#recallShare, remember: (events) => this.#remember(events), omitSynthetic, anchor: this.#contextAnchor, by, cascade: this.#cascade, ghost });
     // @madre reads a different transcript to everyone else, so it never sets where the room's
     // window begins; it only borrows it.
     if (!omitSynthetic && Number.isInteger(built.context?.anchor)) this.#contextAnchor = built.context.anchor;
@@ -1554,7 +1554,7 @@ export class Room {
 
     const priorEvents = await this.#store.readAll();
     // @madre never reads its own canned replies back: a small model would echo them.
-    const { context, recall, memories } = await this.#contextFor(priorEvents, { messageId, text, omitSynthetic: Boolean(agent.local), by: { agent: targetId, turn: messageId } });
+    const { context, recall, memories } = await this.#contextFor(priorEvents, { messageId, text, omitSynthetic: Boolean(agent.local), by: { agent: targetId, turn: messageId }, ghost: mode === 0 });
     let handoffId = null;
     if (context.previousAgent && context.previousAgent !== targetId) {
       handoffId = randomUUID();
@@ -1937,7 +1937,7 @@ export class Room {
         lease,
         scopes: turnScopes,
         imageStudio,
-        memoryServer: memoryServerForTurn(this.#memoryServer, { agent: agent.id, messageId: responseMessageId, mode: turnMode }),
+        memoryServer: memoryServerForTurn(this.#memoryServer, { agent: agent.id, messageId: responseMessageId, mode: turnMode, embedder: this.#memory?.embedder ?? null }),
         mcpServers,
         bishop,
         // For @madre: who asks, who it may convene, and whether a plan would run at all.

@@ -347,3 +347,26 @@ test('modules: an Ollama upgrade restarts the old server, because the binary cha
   const server = await readFile(join(import.meta.dirname, '..', 'src', 'server.mjs'), 'utf8');
   assert.match(server, /settled\?\.ok === false \? settled\.error/);
 });
+
+test('modules: checking a module runs none of its code inside MADRE, and the code it runs alone can write nothing (external review #1)', async () => {
+  const { verifyModuleText } = await import('../src/modules/index.mjs');
+  const { mkdtemp, rm: remove, access } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const dir = await mkdtemp(join(tmpdir(), 'madre-check-alone-'));
+  const marker = join(dir, 'ran.txt');
+  try {
+    const text = `import { writeFileSync } from 'node:fs';
+globalThis.__madreModuleRan = true;
+let wrote = false;
+try { writeFileSync(${JSON.stringify(marker)}, 'x'); wrote = true; } catch {}
+export default { id: 'probe-alone', name: 'Alone', summary: wrote ? 'wrote' : 'fenced' };`;
+    const seen = await verifyModuleText({ text, name: 'probe-alone.mjs' });
+    assert.equal(seen.id, 'probe-alone');
+    assert.equal(globalThis.__madreModuleRan, undefined, 'checking ran the module inside MADRE');
+    assert.equal(seen.summary, 'fenced', 'the module wrote a file while it was being checked');
+    assert.equal(await access(marker).then(() => true, () => false), false);
+    assert.equal(typeof seen.declares, 'object');
+    // A module that fails while it loads says why, as before.
+    await assert.rejects(verifyModuleText({ text: `throw new Error('boom at load');` }), /boom at load/);
+  } finally { await remove(dir, { recursive: true, force: true }); }
+});

@@ -12,10 +12,17 @@ import { createPulseServer } from '../src/server.mjs';
 
 const safe = (line) => copilotSafe(splitCommand(line).argv);
 
-test('copilot: what runs by itself is reading, testing, building and local git — a list of what is allowed', () => {
-  for (const line of ['ls -la', 'cat README.md', 'rg -n TODO src', 'git status --short', 'git log -3 --oneline', 'git diff --stat', 'git add src/a.mjs', 'git commit -m "fix: title"', 'git branch',
-    'npm test', 'npm run build', 'npm run lint', 'pnpm test', 'pnpm build', 'yarn typecheck', 'npx tsc --noEmit', 'npx vitest run', 'npx playwright test', 'node --test test/a.test.mjs', 'python3 -m pytest -q', 'go test ./...', 'cargo check', 'find src -name a.mjs']) {
+test('copilot: what runs by itself is reading — tests, builds and commits wait for the human (external review #3)', () => {
+  for (const line of ['ls -la', 'cat README.md', 'rg -n TODO src', 'git status --short', 'git log -3 --oneline', 'git diff --stat', 'git branch', 'git stash list', 'find src -name a.mjs', 'node --check src/a.mjs', 'tree -L 2']) {
     assert.equal(safe(line), true, `${line} should run by itself`);
+  }
+  // Each of these runs code the project defines, which the copilot can edit in its turn.
+  for (const line of ['npm test', 'npm run build', 'npm run lint', 'pnpm test', 'pnpm build', 'yarn typecheck', 'npx tsc --noEmit', 'npx vitest run', 'npx eslint .', 'npx prettier --check .', 'npx playwright test', 'node --test test/a.test.mjs', 'python3 -m pytest -q', 'pytest', 'go test ./...', 'cargo check', 'cargo build', 'tsc', 'git add src/a.mjs', 'git commit -m "fix: title"']) {
+    assert.equal(safe(line), false, `${line} ran without the human`);
+  }
+  // Readers with a flag that runs or writes, and git pointed at other settings.
+  for (const line of ['rg --pre ./x.sh TODO', 'rg --pre=./x.sh TODO', 'tree -o /tmp/out', 'git --git-dir=vendor/x status', 'git -c core.fsmonitor=./x.sh status', 'git diff --output=/tmp/x', 'git --exec-path=./bin log']) {
+    assert.equal(safe(line), false, `${line} ran without the human`);
   }
   for (const line of ['git push', 'git push origin main', 'git reset --hard HEAD~1', 'git checkout main', 'git clean -fd', 'git branch -D old', 'git branch new-one', 'npm publish', 'npm install left-pad', 'npm run deploy', 'npx wrangler deploy', 'npx vercel --prod',
     'rm -rf dist', 'mv a b', 'curl https://example.com', 'node scripts/deploy.mjs', 'node -e "1"', 'find . -delete', 'find . -exec rm {} ;', 'python3 deploy.py', 'cargo fmt', 'open index.html', 'gh release create v1']) {

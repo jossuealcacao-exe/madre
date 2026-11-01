@@ -37,20 +37,42 @@ const say = (text) => process.stderr.write(`MADRE MCP ${serverId ?? '?'}: ${text
 // The ids of tools/list requests in flight, so their answers can be filtered on the way back.
 const listing = new Set();
 function filterOutbound(message) {
+  if (Array.isArray(message)) return message.map(filterOutbound);
   if (!allowed || !message || message.id === undefined || !listing.has(message.id)) return message;
   listing.delete(message.id);
   const tools = message.result?.tools;
   if (!Array.isArray(tools)) return message;
   return { ...message, result: { ...message.result, tools: tools.filter((tool) => allowed.has(tool?.name)) } };
 }
-// A message from the CLI: answered here when it asks for a tool it may not use; passed on otherwise.
+// What a CLI may ask a server for in a turn, besides tools/call (2026-11-01, external review #61):
+// the handshake and the protocol's reads. Anything else — a method this list does not know, from
+// a newer protocol or from nobody — is answered here and never reaches the server, so a tool kept
+// out of the turn cannot come in through a door the filter did not name. Notifications and the
+// CLI's answers to the server's own questions pass as they are.
+const CLIENT_METHODS = new Set([
+  'initialize', 'ping', 'tools/list', 'tools/call',
+  'resources/list', 'resources/templates/list', 'resources/read', 'resources/subscribe', 'resources/unsubscribe',
+  'prompts/list', 'prompts/get', 'completion/complete', 'logging/setLevel',
+]);
+// A message from the CLI: answered here when it asks for something it may not use; passed on
+// otherwise. Answers what to send on, or null. A batch (an array) is each of its messages.
 function admit(message) {
-  if (message?.method === 'tools/list' && message.id !== undefined) listing.add(message.id);
-  if (message?.method === 'tools/call' && allowed && !allowed.has(message.params?.name)) {
-    write({ jsonrpc: '2.0', id: message.id, result: { isError: true, content: [{ type: 'text', text: `MADRE does not allow ${message.params?.name ?? 'that tool'} in this turn.` }] } });
-    return false;
+  if (Array.isArray(message)) {
+    const kept = message.map(admit).filter(Boolean);
+    return kept.length ? kept : null;
   }
-  return true;
+  if (!message || typeof message !== 'object') return null;
+  if (typeof message.method !== 'string') return message;   // the CLI's answer to the server
+  if (allowed && !message.method.startsWith('notifications/') && !CLIENT_METHODS.has(message.method)) {
+    fail(message.id, `MADRE does not pass ${message.method} to this server.`, -32601);
+    return null;
+  }
+  if (message.method === 'tools/list' && message.id !== undefined) listing.add(message.id);
+  if (message.method === 'tools/call' && allowed && !allowed.has(message.params?.name)) {
+    write({ jsonrpc: '2.0', id: message.id, result: { isError: true, content: [{ type: 'text', text: `MADRE does not allow ${message.params?.name ?? 'that tool'} in this turn.` }] } });
+    return null;
+  }
+  return message;
 }
 
 function lines(stream, onMessage) {
@@ -79,7 +101,7 @@ async function viaStdio(server) {
   child.stderr.on('data', (chunk) => process.stderr.write(chunk));
   child.stdin.on('error', () => {});
   lines(child.stdout, (message) => write(filterOutbound(message)));
-  lines(process.stdin, (message) => { if (admit(message)) child.stdin.write(`${JSON.stringify(message)}\n`); });
+  lines(process.stdin, (message) => { const passed = admit(message); if (passed) child.stdin.write(`${JSON.stringify(passed)}\n`); });
   process.stdin.on('end', () => { child.stdin.end(); setTimeout(() => child.kill('SIGTERM'), 2000).unref(); });
 }
 
@@ -148,9 +170,10 @@ async function viaHttp(server) {
   };
   let queue = Promise.resolve();
   lines(process.stdin, (message) => {
-    if (!admit(message)) return;
+    const passed = admit(message);
+    if (!passed) return;
     // In order, as a stdio server would read them: the handshake has to land before the rest.
-    queue = queue.then(() => send(message)).catch((error) => { say(error.message); fail(message.id, `could not reach the server: ${error.message}`); });
+    queue = queue.then(() => send(passed)).catch((error) => { say(error.message); fail(passed.id, `could not reach the server: ${error.message}`); });
   });
   process.stdin.on('end', () => { void queue.finally(() => process.exit(0)); });
 }

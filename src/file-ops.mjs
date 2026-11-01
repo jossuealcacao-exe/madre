@@ -32,7 +32,8 @@ export function needsDesignation(...paths) {
 // words of a path are not its place. `src/../.git/config`, a link named `gitlink` that points at
 // `.git`, `.ENV` on a disk that does not tell it from `.env` — each wrote into a guarded zone with
 // no designation, because only the words were read. A path that does not exist yet is judged by
-// the real folder it would land in.
+// the real folder it would land in: the nearest one that exists, however many are still to be
+// made (2026-11-01, external review #60) — `gitlink/hooks/new/x` lands in .git/hooks.
 export async function needsDesignationOnDisk(root, ...paths) {
   if (needsDesignation(...paths)) return true;
   const top = await realpath(root).catch(() => null);
@@ -40,8 +41,13 @@ export async function needsDesignationOnDisk(root, ...paths) {
   for (const path of paths.filter(Boolean)) {
     const wanted = resolve(top, String(path).replace(/^\/+/, ''));
     const real = await realpath(wanted).catch(async () => {
-      const folder = await realpath(dirname(wanted)).catch(() => null);
-      return folder ? join(folder, basename(wanted)) : null;
+      const missing = [basename(wanted)];
+      for (let folder = dirname(wanted); ; folder = dirname(folder)) {
+        const found = await realpath(folder).catch(() => null);
+        if (found) return join(found, ...missing.reverse());
+        if (dirname(folder) === folder) return null;
+        missing.push(basename(folder));
+      }
     });
     if (!real || (real !== top && !real.startsWith(top + sep))) continue;   // outside: the fence refuses it elsewhere
     if (needsDesignation(relative(top, real).split(sep).join('/'))) return true;

@@ -85,3 +85,22 @@ test('recall carries who asked, so the archive can say which agent leaned on a m
   assert.ok(built.memories?.length, 'nothing was recalled, so nothing proves who asked');
   assert.deepEqual(asked, [{ agent: 'claude', turn: 'm41' }], 'the archive was not told which agent the recall was for');
 });
+
+test('an INCOGNITO turn recalls by words: its request is never embedded nor tracked (external review #20)', async () => {
+  const { contextFor } = await import('../src/room/context.mjs');
+  let embedded = 0;
+  const tracked = [];
+  const memory = {
+    lastSequence: () => 0,
+    embedQuery: async () => { embedded += 1; return new Float32Array(4); },
+    recallMemories: (text, options) => { tracked.push({ track: options.track, vector: options.queryVector }); return [{ id: 1, kind: 'fact', text: 'a note', fromSequence: 1, throughSequence: 2, sources: [] }]; },
+    recall: () => ({ entries: [] }),
+  };
+  const priorEvents = room(40, 600);
+  await contextFor({ memory, priorEvents, messageId: 'm41', text: 'the secret', contextMaxChars: 4000, recallShare: 0.4, ghost: true });
+  assert.equal(embedded, 0, 'an incognito request went to the embedder');
+  assert.deepEqual(tracked, [{ track: false, vector: null }]);
+  await contextFor({ memory, priorEvents, messageId: 'm41', text: 'the plan', contextMaxChars: 4000, recallShare: 0.4 });
+  assert.equal(embedded, 1, 'a turn on the record no longer matches meaning');
+  assert.equal(tracked[1].track, true);
+});

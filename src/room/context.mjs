@@ -6,7 +6,7 @@
 
 import { buildConversationContext } from '../conversation-context.mjs';
 
-export async function contextFor({ memory, priorEvents, messageId, text, contextMaxChars, recallShare, remember = () => {}, omitSynthetic = false, anchor = null, by = null, cascade = true, track = true }) {
+export async function contextFor({ memory, priorEvents, messageId, text, contextMaxChars, recallShare, remember = () => {}, omitSynthetic = false, anchor = null, by = null, cascade = true, track = true, ghost = false }) {
   const full = buildConversationContext(priorEvents, { excludeMessageId: messageId, maxChars: contextMaxChars, omitSynthetic, anchor });
   const none = { context: full, recall: null, memories: null };
   if (!memory || !full.omittedMessages || recallShare <= 0) return none;
@@ -20,9 +20,12 @@ export async function contextFor({ memory, priorEvents, messageId, text, context
   let recall = null;
   try {
     // One embedding of the request lets both lookups match meaning; without it they match words.
-    const queryVector = await memory.embedQuery(text);
+    // An INCOGNITO turn (#0) matches words only (2026-11-01, external review #20): embedding its
+    // request would send it to the embedder's provider, and tracking it would write down a turn
+    // that is off the record.
+    const queryVector = ghost ? null : await memory.embedQuery(text);
     // Distilled notes first (dense, cheap), exact quotes with what is left.
-    memories = memory.recallMemories(text, { beforeSequence: before, maxChars: Math.floor(recallBudget * 0.4), queryVector, by, cascade, track });
+    memories = memory.recallMemories(text, { beforeSequence: before, maxChars: Math.floor(recallBudget * 0.4), queryVector, by, cascade, track: track && !ghost });
     const spent = memories.reduce((sum, item) => sum + item.text.length + 24, 0);
     recall = memory.recall(text, { beforeSequence: before, excludeMessageId: messageId, maxChars: recallBudget - spent, queryVector });
   } catch (error) {

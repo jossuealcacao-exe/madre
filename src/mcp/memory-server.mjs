@@ -15,7 +15,7 @@
 import { readFile, readdir, stat, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { RoomMemory, formatRecall, formatMemories, MEMORY_KINDS } from '../memory.mjs';
+import { RoomMemory, formatRecall, formatMemories, travels, ABERRATION, MEMORY_KINDS } from '../memory.mjs';
 import { createEmbedder } from '../embeddings.mjs';
 import { loadConfig } from '../config.mjs';
 import { Privacy, privacySettings } from '../privacy.mjs';
@@ -117,7 +117,10 @@ export async function callTool(name, args = {}, { memory, projectRoot = process.
       const text = String(args.text ?? '').replace(/\s+/g, ' ').trim();
       if (!text) return 'Give me the memory as one sentence.';
       if (text.length > 240) return `Too long (${text.length} characters): one sentence of at most 240.`;
-      const kind = MEMORY_KINDS.includes(args.kind) ? args.kind : 'fact';
+      // An unknown kind is said back, not filed as a fact (2026-11-01, external review #13): the
+      // store drops it for the same reason (src/memory.mjs, addMemories).
+      if (!MEMORY_KINDS.includes(args.kind)) return `Say what kind of memory it is: one of ${MEMORY_KINDS.join(', ')}.`;
+      const kind = args.kind;
       const sources = (Array.isArray(args.sources) ? args.sources : []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
       const last = memory.lastSequence();
       const before = memory.maxMemoryId();
@@ -154,7 +157,13 @@ export async function callTool(name, args = {}, { memory, projectRoot = process.
       return `${lines.join('\n\n')}${truncated ? '\n\n[truncated; ask for a narrower range]' : ''}`;
     }
     case 'memory_notes': {
-      const notes = memory.memories({ limit: clamp(args.limit, 1, 100, 20), kind: MEMORY_KINDS.includes(args.kind) ? args.kind : null });
+      // What still stands, as the recall hands it (2026-11-01, external review #14): a note the
+      // human quarantined or one a later note refuted is archive, not knowledge, and listing it
+      // here put it back in the turn the recall had kept it out of. Asked by name, aberrations are
+      // listed for what they are — claims the room established are false — with what is true.
+      const limit = clamp(args.limit, 1, 100, 20);
+      const kind = MEMORY_KINDS.includes(args.kind) ? args.kind : null;
+      const notes = kind === ABERRATION ? memory.memories({ limit, kind }) : memory.memories({ limit: 500, kind }).filter(travels).slice(0, limit);
       return notes.length ? formatMemories(notes) : 'No distilled notes yet.';
     }
     case 'memory_timeline': {

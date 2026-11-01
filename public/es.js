@@ -4259,6 +4259,16 @@ export const ES = {
   '{name} updated itself to version {version}.': '{name} se actualizó solo a la versión {version}.',
   '{name} went back to the version that comes with MADRE.': '{name} volvió a la versión que trae MADRE.',
   '{name} was taken out of the Market and removed from this computer.': '{name} salió del Mercado y se quitó de esta computadora.',
+  '{name} {version} asks for more than you accepted, so it did not update on its own: {more}.': '{name} {version} pide más de lo que aceptaste, así que no se actualizó sola: {more}.',
+  'To accept it, remove it in Modules and install it again from the Market, where you read what it does.': 'Para aceptarla, quítalo en Módulos y vuelve a instalarlo desde el Mercado, donde lees lo que hace.',
+  'it connects to {host}': 'se conecta a {host}',
+  'it asks for {name}': 'pide {name}',
+  'it gives tools to your agents': 'les da herramientas a tus agentes',
+  'it reads your chats': 'lee tus chats',
+  'it writes in your project': 'escribe en tu proyecto',
+  'it adds {command}': 'agrega {command}',
+  'Ollama is at {path}, but this user cannot run it. Install it again, or give it permission to run.': 'Ollama está en {path}, pero este usuario no puede abrirlo. Instálalo otra vez, o dale permiso para ejecutarse.',
+  'Ollama did not start: {error}': 'Ollama no arrancó: {error}',
   'Read what {name} does before installing it.': 'Lee qué hace {name} antes de instalarlo.',
   'Reading what {name} does…': 'Leyendo qué hace {name}…',
   'Before installing {name}': 'Antes de instalar {name}',
@@ -5281,8 +5291,8 @@ export const ES = {
   'Copilot on · {left} left. Click to see it or turn it off.': 'Copiloto encendido · quedan {left}. Haz clic para verlo o apagarlo.',
   'Copilot: let the agent you write to drive the project for a while.': 'Copiloto: deja que el agente al que le escribes conduzca el proyecto un rato.',
   'Copilot off. Each #3 message asks you to confirm again.': 'Copiloto apagado. Cada mensaje en #3 vuelve a pedirte confirmación.',
-  'The agent you write to drives the project: it edits, makes plans with the other agents (each step can go up to #3 EDIT), and runs the safe commands — reading, tests, builds, local git — on its own.':
-    'El agente al que le escribes conduce el proyecto: edita, arma planes con los demás agentes (cada paso puede llegar hasta «#3 Editar») y corre por su cuenta los comandos seguros: leer, probar, compilar y git local.',
+  'The agent you write to drives the project: it edits and makes plans with the other agents (each step can go up to #3 EDIT). It runs on its own only the commands that read; tests, builds and commits wait for your click.':
+    'El agente al que le escribes conduce el proyecto: edita y arma planes con los demás agentes (cada paso puede llegar hasta «#3 Editar»). Por su cuenta solo corre los comandos que leen; las pruebas, las compilaciones y guardar versiones en git esperan tu clic.',
   "It never deletes, never touches MADRE's folders or your secrets, and never pushes, publishes or sends anything off this computer: that stays with you.":
     'Nunca borra, nunca toca las carpetas de MADRE ni tus secretos, y nunca sube, publica ni envía nada fuera de esta computadora: eso se queda contigo.',
   'On until {time} · {left} left': 'Encendido hasta las {time} · quedan {left}',
@@ -5290,8 +5300,8 @@ export const ES = {
   'How long the copilot lasts': 'Cuánto dura el copiloto',
   'It asks you to confirm #3 only once. STOP ALL ends it.': 'Te pide confirmar #3 una sola vez. «Detener todo» lo apaga.',
   'Turn the copilot on for {time}': 'Encender el copiloto por {time}',
-  'The agent you write to edits the project and runs the safe commands by itself, without asking you to confirm each message, until it ends.':
-    'El agente al que le escribes edita el proyecto y corre por su cuenta los comandos seguros, sin pedirte confirmar cada mensaje, hasta que termine.',
+  'The agent you write to edits the project without asking you to confirm each message, until it ends. It runs on its own only the commands that read; tests, builds and commits wait for your click.':
+    'El agente al que le escribes edita el proyecto sin pedirte confirmar cada mensaje, hasta que termine. Por su cuenta solo corre los comandos que leen; las pruebas, las compilaciones y guardar versiones en git esperan tu clic.',
   'It never deletes, pushes, publishes or deploys; each change gets a restore point; STOP ALL ends it.':
     'Nunca borra, sube, publica ni despliega; cada cambio tiene punto de restauración; «Detener todo» lo apaga.',
   'Copilot on.': 'Copiloto encendido.',

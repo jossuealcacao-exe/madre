@@ -4257,7 +4257,7 @@ function toggleCopilotMenu(anchor, { keep = false } = {}) {
   title.append(toggle);
   const body = el('div', 'copilot-body');
   body.append(
-    el('p', 'copilot-lead', t('The agent you write to drives the project: it edits, makes plans with the other agents (each step can go up to #3 EDIT), and runs the safe commands — reading, tests, builds, local git — on its own.')),
+    el('p', 'copilot-lead', t('The agent you write to drives the project: it edits and makes plans with the other agents (each step can go up to #3 EDIT). It runs on its own only the commands that read; tests, builds and commits wait for your click.')),
     el('p', 'copilot-never', t('It never deletes, never touches MADRE\'s folders or your secrets, and never pushes, publishes or sends anything off this computer: that stays with you.')),
   );
   if (on) {
@@ -4550,7 +4550,7 @@ function openOverride(id, { raise = false, mode = 3, then = null, cancelled = nu
     if (!slot && override.form) { slot = el('div', 'tour-hint-slot'); override.form.before(slot); }
     if (slot) void roomTour().hint('key4', slot, { inside: true, title: t('#4 asks you to confirm twice'), text: t('With #4 the agent may run commands, publish and deploy: what leaves your Mac does not come back. That is why it asks you to confirm twice.') });
   }
-  override.brief.textContent = override.copilot ? t('The agent you write to edits the project and runs the safe commands by itself, without asking you to confirm each message, until it ends.') : OVERRIDE_BRIEF[mode].what(id);
+  override.brief.textContent = override.copilot ? t('The agent you write to edits the project without asking you to confirm each message, until it ends. It runs on its own only the commands that read; tests, builds and commits wait for your click.') : OVERRIDE_BRIEF[mode].what(id);
   override.safe.textContent = override.copilot ? t('It never deletes, pushes, publishes or deploys; each change gets a restore point; STOP ALL ends it.') : OVERRIDE_BRIEF[mode].safe();
   override.raised.hidden = !raise;
   override.raised.textContent = raise ? t('This also raises its max mode to #{n}.', { n: mode }) : '';

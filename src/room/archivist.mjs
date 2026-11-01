@@ -8,6 +8,12 @@
 import { pickDistiller, distillPrompt, parseDistillation, OLLAMA_ARCHIVIST } from '../distiller.mjs';
 
 export const BENCH_MS = 30 * 60 * 1000;
+// A failure that says nothing about the batch: no network, a provider's limit or a timeout
+// (2026-11-01, external review #18). Before, three of those in a row — a day offline — set the
+// batch aside for good, as if it could never be distilled, and its notes were never written. Those
+// stay in the queue and are tried again; only a batch that keeps failing for itself is skipped.
+const PASSING = /ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ENETUNREACH|fetch failed|network|timed? ?out|\b(429|502|503|504)\b|rate.?limit|quota|usage limit|overloaded|unavailable/i;
+export const passingFailure = (error) => PASSING.test(`${error?.code ?? ''} ${error?.message ?? error ?? ''}`);
 
 export function distillDefaults(distill = {}, env = process.env) {
   return {
@@ -134,7 +140,7 @@ export class Archivist {
     } catch (error) {
       const attempts = (this.#failures.get(batch.fromSequence) ?? 0) + 1;
       this.#failures.set(batch.fromSequence, attempts);
-      const skipped = attempts >= 3;
+      const skipped = attempts >= 3 && !passingFailure(error);
       if (skipped) { this.#memory.markDistilled(batch.sequences); this.#failures.delete(batch.fromSequence); }
       this.#bench.set(agent.id, Date.now() + BENCH_MS);
       const next = pickDistiller(candidates, { preferred: this.#settings.agent, busy: new Set(), invokers, benched: new Set(this.#bench.keys()) });

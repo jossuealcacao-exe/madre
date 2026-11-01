@@ -51,8 +51,14 @@ test('guarded zones: judged where the path lands and without regard to case', as
     for (const path of ['src/../.git/config', 'gitlink/config', '.ENV', '.Git/config', 'sub/.Madre/k', '.Claude/Settings.local.json']) {
       assert.ok(await needsDesignationOnDisk(root, path), `${path} was not guarded`);
     }
+    // A link and folders that do not exist yet (2026-11-01, external review #60): the nearest folder
+    // that exists decides, so `gitlink/hooks/new/x` lands in .git/hooks and is guarded.
+    for (const path of ['gitlink/hooks/new/x', 'gitlink/a/b/c/d', 'src/../gitlink/new/x']) {
+      assert.ok(await needsDesignationOnDisk(root, path), `${path} was not guarded`);
+    }
     assert.equal(await needsDesignationOnDisk(root, 'src/app.js'), false);
     assert.equal(await needsDesignationOnDisk(root, 'docs/new.md'), false, 'a path that does not exist yet');
+    assert.equal(await needsDesignationOnDisk(root, 'docs/deep/er/new.md'), false, 'folders that do not exist yet');
     assert.ok(isForbidden('.ENV') && isForbidden('.env.local') && !isForbidden('environment.md'));
   } finally {
     await rm(root, { recursive: true, force: true });
