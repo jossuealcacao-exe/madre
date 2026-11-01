@@ -6,7 +6,24 @@ A version closes when it is on npm: until then its section is called **Unrelease
 
 ## 1.1.2 · Unreleased
 
+A version to reach your first message sooner, with the fixes from an independent review of the code and what this week's diagnostics said.
+
+- **The welcome takes you to your first message.** Your first project now comes right after connecting your agents; the AI on your computer and the memory come after it, for whenever you want them. If you have no project at hand, MADRE makes one to try: a page with a to-do list and a README with things to ask your AIs, without fear of breaking anything. At the end, one button opens your project with three first messages ready to pick.
 - **The Windows installer no longer looks suspicious.** A few antivirus flagged it for how it looked (4 of 71 on VirusTotal; not Microsoft Defender). Now it is not compressed, it says who makes it and it no longer writes itself into the next sign-in: if Windows needs a restart, open «MADRE» on your desktop when you are back and the install finishes. And it is always the same file, even when MADRE changes version, so browsers and Windows learn to trust it.
+- **What the diagnostics said.** If Ollama is installed but your user cannot run it, MADRE tells you instead of crashing. Asking for a page file that does not exist now answers «not found» instead of hanging. A failed install says which one it was and why. And the browser notice that was not a failure no longer arrives from an old tab.
+- **The anonymous diagnostics count how far the welcome gets.** How many times each step is reached or left for later, how many projects are created, added and opened, and when a project gets its first message. Only the step's name and numbers, nothing you write and none of your folders. It turns off with the same switch as always.
+
+Someone reviewed the code of 1.1.1 on their own and sent 61 observations. Each one was checked; these are the ones that were faults, now fixed.
+
+- **Checking a module no longer runs it inside MADRE.** To tell you what a module does before you install it, MADRE had to load it, and that ran its code with all its permissions before you accepted. Now it loads it apart, in a process that cannot write files, open programs or read outside its folder. It is installed only when you accept.
+- **The copilot no longer runs tests or builds on its own.** Running them uses code from your project (a script in `package.json`, a test file, a config), and the copilot may have changed it in the same turn. Now, on its own, it only runs what reads: `ls`, `cat`, `rg`, `git status`, `git diff`, `git log`. Tests, builds and saving versions in git wait for your button, like any other line. Nor does it run, without you, the few forms of those reading commands that could open a program or write a file.
+- **An update that asks for more waits for your permission.** If the new version of a Market module connects somewhere else, asks for a key, gives tools to your AIs or reads your chats, it no longer installs itself. MADRE tells you once what more it asks for.
+- **The memory respects what you chose.** With the memory off or on Ollama, the searches your AIs make in the project's memory no longer go to Google. In INCOGNITO, what you ask is no longer sent to anyone to search the memory, nor written down.
+- **The memory no longer hands back what you discarded.** A note you marked bad or that another one refuted no longer reaches the AIs by any road, nor goes into the data to train your local AI. And a note that says «we do not do X» is no longer thrown out by mistake when someone marks «we do X» as false.
+- **A day without internet no longer costs the memory its notes.** If summarizing the conversation fails because of the network, an AI's limit or time, MADRE tries again later instead of giving it up.
+- **After a CODE000, your AIs listen to you again as soon as the seal opens.** Before, for a whole day, they kept treating any request to delete a memory as hostile, even yours.
+- **MCP connectors only let through what MADRE knows.** Before, only tool calls were checked; now the rest of the protocol goes through a list, and several messages sent together are checked one by one.
+- **Protected folders, protected through links too.** A link to `.git` followed by new folders no longer lets files be created there without typing the project's name.
 
 ## 1.1.1 · 2026-10-31
 

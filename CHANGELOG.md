@@ -6,10 +6,14 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.2 · Sin publicar
 
+Una versión para llegar más rápido a tu primer mensaje, con los arreglos de una revisión independiente del código y lo que dijo el diagnóstico de la semana.
+
 - **La bienvenida te lleva a tu primer mensaje.** Tu primer proyecto ahora va justo después de conectar tus agentes; la IA en tu computadora y la memoria quedan después, para cuando quieras. Si no tienes un proyecto a la mano, MADRE te crea uno de prueba: una página con una lista de tareas y un README con cosas para pedirle a tus IAs, sin miedo a romper nada. Al terminar, un botón abre tu proyecto con tres primeros mensajes listos para elegir.
+- **El instalador de Windows ya no parece sospechoso.** Unos pocos antivirus lo marcaban por cómo se veía (4 de 71 en VirusTotal; Microsoft Defender, no). Ahora va sin comprimir, dice quién lo hace y ya no se anota para el siguiente inicio de sesión: si Windows tiene que reiniciar, al volver abres «MADRE» en tu escritorio y termina de instalarse. Y es siempre el mismo archivo, aunque MADRE cambie de versión, para que los navegadores y Windows aprendan a confiar en él.
+- **Lo que dijo el diagnóstico.** Si Ollama está instalado pero tu usuario no puede abrirlo, MADRE te lo dice en vez de cerrarse. Pedir un archivo de la página que no existe ya contesta «no encontrado» en vez de quedarse esperando. Una instalación que falla dice cuál fue y por qué. Y el aviso del navegador que no era una falla ya no llega desde una pestaña vieja.
 - **El diagnóstico anónimo cuenta hasta dónde llega la bienvenida.** Cuántas veces se llega a cada paso o se deja para después, cuántos proyectos se crean, agregan y abren, y cuándo un proyecto recibe su primer mensaje. Solo el nombre del paso y números, nada de lo que escribes ni de tus carpetas. Se apaga con el mismo interruptor de siempre.
 
-Una persona revisó el código de 1.1.1 por su cuenta y mandó 61 observaciones. Se comprobaron una por una; estas son las que eran fallas, ya arregladas, con lo que dijo el diagnóstico de esta semana.
+Una persona revisó el código de 1.1.1 por su cuenta y mandó 61 observaciones. Se comprobaron una por una; estas son las que eran fallas, ya arregladas.
 
 - **Revisar un módulo ya no lo ejecuta dentro de MADRE.** Para decirte qué hace un módulo antes de instalarlo, MADRE tenía que cargarlo, y eso corría su código con todos sus permisos antes de que aceptaras. Ahora lo carga aparte, en un proceso que no puede escribir archivos, abrir programas ni leer fuera de su carpeta. Se instala solo cuando aceptas.
 - **El copiloto ya no corre pruebas ni compilaciones por su cuenta.** Para correrlas usa código de tu proyecto (un script de `package.json`, un archivo de prueba, una configuración), y el copiloto puede haberlo cambiado en el mismo turno. Ahora, por su cuenta, solo corre lo que lee: `ls`, `cat`, `rg`, `git status`, `git diff`, `git log`. Las pruebas, las compilaciones y guardar versiones en git esperan tu botón, como cualquier otra línea. Tampoco corre ya, sin ti, las pocas formas de esos comandos de lectura que podían abrir un programa o escribir un archivo.
@@ -20,9 +24,6 @@ Una persona revisó el código de 1.1.1 por su cuenta y mandó 61 observaciones.
 - **Tras un CODE000, tus IAs vuelven a escucharte en cuanto se abre el sello.** Antes seguían tratando como hostil, durante un día, cualquier pedido de borrar un recuerdo, aunque fuera tuyo.
 - **Los conectores MCP solo dejan pasar lo que MADRE conoce.** Antes solo se revisaban las llamadas a herramientas; ahora lo demás del protocolo pasa por una lista, y varios mensajes juntos se revisan uno por uno.
 - **Las carpetas protegidas, protegidas también con enlaces.** Un enlace a `.git` seguido de carpetas nuevas ya no deja crear archivos ahí sin escribir el nombre del proyecto.
-- **Lo que dijo el diagnóstico.** Si Ollama está instalado pero tu usuario no puede abrirlo, MADRE te lo dice en vez de cerrarse. Pedir un archivo de la página que no existe ya contesta «no encontrado» en vez de quedarse esperando. Una instalación que falla dice cuál fue y por qué. Y el aviso del navegador que no era una falla ya no llega desde una pestaña vieja.
-
-- **El instalador de Windows ya no parece sospechoso.** Unos pocos antivirus lo marcaban por cómo se veía (4 de 71 en VirusTotal; Microsoft Defender, no). Ahora va sin comprimir, dice quién lo hace y ya no se anota para el siguiente inicio de sesión: si Windows tiene que reiniciar, al volver abres «MADRE» en tu escritorio y termina de instalarse. Y es siempre el mismo archivo, aunque MADRE cambie de versión, para que los navegadores y Windows aprendan a confiar en él.
 
 ## 1.1.1 · 2026-10-31
 
