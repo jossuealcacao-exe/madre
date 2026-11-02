@@ -4741,6 +4741,11 @@ export const ES = {
   'Phrase, twice': 'Frase, dos veces',
   'Type your phrase again': 'Escribe tu frase otra vez',
   'Type it once more to open it.': 'Escríbela una vez más para desbloquearlo.',
+  // Instalar un módulo a mano pide la llave de #4 (2026-11-02): un módulo puede lo mismo que #4.
+  'Type it once more to install it.': 'Escríbela una vez más para instalarlo.',
+  'Confirm once more to install it: it will run with your permissions.': 'Confirma una vez más para instalarlo: va a correr con tus permisos.',
+  'Yes, install': 'Sí, instalar',
+  'MADRE checks that it loads and keeps to the house rules; what it intends, only you can judge.': 'MADRE revisa que cargue y respete las reglas de la casa; lo que pretende hacer, solo tú puedes juzgarlo.',
   'External image · {host}': 'Imagen externa · {host}',
   'Showing the first {n} lines of {total}. Open it on its own to read the rest.': 'Se muestran las primeras {n} líneas de {total}. Ábrelo aparte para leer el resto.',
   'The editor saves files up to {mb} MB.': 'El editor guarda archivos de hasta {mb} MB.',

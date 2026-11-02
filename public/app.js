@@ -4442,6 +4442,7 @@ const override = {
   again: false,           // the second time, for #4
   key: 'confirm',         // the key chosen in AJUSTES › Permissions for this mode
   words: [],              // what was typed, once or twice, sent to the project to be checked
+  module: null,           // installing a module: handed what was typed, it goes with the install
 };
 // The key for #3 and #4 is an alert of the room, said plainly: what the mode lets the agent do in
 // one sentence, what keeps it safe in a quieter one, and the field says what to type.
@@ -4519,7 +4520,32 @@ function askOverrideKey(stage, { again = false } = {}) {
   override.form.querySelector('.k').textContent = again ? t('Type your phrase again') : t('Type your phrase');
   override.input.placeholder = '';
   // Back at the first ask (a new key, or one the project turned down), the key says it again.
-  if (!again && override.arm) override.arm.textContent = override.copilot ? t('Turn on') : override.mode === 4 ? t('Open') : t('Unlock');
+  if (!again && override.arm) override.arm.textContent = override.module ? t('Install') : override.copilot ? t('Turn on') : override.mode === 4 ? t('Open') : t('Unlock');
+}
+// A module installed by hand runs with the person's permissions, as #4 does: the project asks for
+// the #4 key with the install (2026-11-02). Answers what was typed, or null if they walked away.
+function askModuleKey({ title, what, safe = t('MADRE checks that it loads and keeps to the house rules; what it intends, only you can judge.') }) {
+  return new Promise((resolve) => {
+    if (!override.dialog) { resolve(null); return; }
+    override.module = { title, what, safe, resolve };
+    override.copilot = 0;
+    override.raise = false;
+    override.mode = 4;
+    override.then = null;
+    override.cancelled = () => { override.module = null; resolve(null); };
+    override.key = overrideKeyFor(4);
+    askOverrideKey(overrideStage(override.key));
+    override.title.textContent = title;
+    override.dialog.classList.add('m4');
+    override.brief.textContent = what;
+    override.safe.textContent = safe;
+    override.raised.hidden = true;
+    override.raised.textContent = '';
+    override.reply.textContent = '';
+    override.reply.className = 'key-reply';
+    override.dialog.showModal();
+    (override.input.hidden ? override.arm : override.input).focus();
+  });
 }
 function openOverride(id, { raise = false, mode = 3, then = null, cancelled = null, preserveComposer = false, forceKey = false, minutes = 0, copilot = 0 } = {}) {
   if (!override.dialog) return;
@@ -4528,6 +4554,7 @@ function openOverride(id, { raise = false, mode = 3, then = null, cancelled = nu
   const left = raise || forceKey ? 0 : overrideGraceLeft(mode, id);
   if (left) { void grantOverride({ agent: id, raise: false, mode, then, delay: 0, left, preserveComposer }); return; }
   override.agent = id;
+  override.module = null;
   // The copilot's key: the same #3 key, opening the copilot for that long instead of one agent.
   override.copilot = copilot || 0;
   // A window chosen on an agent's request, instead of the one set in Permissions.
@@ -4584,8 +4611,19 @@ override.form?.addEventListener('submit', async (event) => {
     askOverrideKey(override.stage, { again: true });
     override.reply.textContent = override.stage === 'phrase' ? t('Type it once more to open it.') : t('Confirm once more to open it: what leaves your computer does not come back.');
     override.reply.className = 'key-reply';
-    if (override.stage === 'confirm') override.arm.textContent = t('Yes, open #4');
+    if (override.module) override.reply.textContent = override.stage === 'phrase' ? t('Type it once more to install it.') : t('Confirm once more to install it: it will run with your permissions.');
+    if (override.stage === 'confirm') override.arm.textContent = override.module ? t('Yes, install') : t('Yes, open #4');
     (override.input.hidden ? override.arm : override.input).focus();
+    return;
+  }
+  // A module's key is not checked here: it goes with the install, and the project checks both.
+  if (override.module) {
+    const { resolve } = override.module;
+    const words = [...override.words];
+    override.module = null;
+    override.cancelled = null;
+    override.dialog.close();
+    resolve(words);
     return;
   }
   override.arm.disabled = true;
@@ -5774,9 +5812,11 @@ function renderModuleProposed(event) {
   said.append(t('Wrote '), link);
   node.append(said);
   const install = async (scope, button) => {
+    const words = await askModuleKey({ title: t('Install {name}?', { name: String(name ?? path).split('/').pop() }), what: t('A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.') });
+    if (!words) return;
     button.disabled = true;
     try {
-      const payload = await fetch('/api/extensions/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, scope }) }).then((response) => response.json());
+      const payload = await fetch('/api/extensions/install-file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, scope, words }) }).then((response) => response.json());
       if (payload.error) throw new Error(payload.error);
       toast(t('Diagnostics › {name} installed for {where}. Switch it on in MODULES.', { name: payload.installed.name, where: scope === 'project' ? t('this project') : t('every project') }));
       warnUnknownModuleFields(payload.installed);
@@ -15427,19 +15467,19 @@ modules.file?.addEventListener('change', async () => {
   modules.file.value = '';
   if (!file) return;
   if (!/\.m?js$/.test(file.name)) { toast(t('Diagnostics › a module is a .mjs file.')); return; }
-  const install = await roomAsk({
+  // The question is the #4 key itself: a module can do what #4 can.
+  const words = await askModuleKey({
     title: t('Install {name}?', { name: file.name }),
-    body: t('A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.'),
-    choices: [{ value: 'no', label: t('Cancel'), focus: true }, { value: 'install', label: t('Install'), tone: 'primary' }],
+    what: t('A module runs inside MADRE, with your permissions, on this computer. MADRE checks that it loads and keeps to the house rules before installing it — it cannot check what it intends. Install it only if you trust where it came from.'),
   });
-  if (install !== 'install') return;
+  if (!words) return;
   let text;
   try { text = await file.text(); } catch (error) { toast(t('That file could not be read: {error}', { error: error.message })); return; }
   modules.add.disabled = true;
   try {
     const response = await fetch('/api/extensions/upload', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, name: file.name, scope: 'user' }),
+      body: JSON.stringify({ text, name: file.name, scope: 'user', words }),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) { toast(`${t('Diagnostics › ')}${result.error ?? 'that module was not installed.'}`); return; }
@@ -15570,9 +15610,9 @@ async function sendToMarket(host, item, opener) {
 
 async function refreshModuleFile(item, button) {
   button.disabled = true;
-  const ask = async (confirm) => {
+  const ask = async (confirm, words = undefined) => {
     const response = await reach(`/api/extensions/${item.id}/refresh`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm }),
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm, words }),
     });
     return { ok: response.ok, result: await response.json().catch(() => ({})) };
   };
@@ -15580,13 +15620,13 @@ async function refreshModuleFile(item, button) {
   if (!looked.ok) { toast(`${t('Diagnostics › ')}${looked.result.error ?? 'that module could not be checked.'}`); button.disabled = false; return; }
   const { origin, current, candidate, same } = looked.result;
   if (same) { toast(t('Diagnostics › {name} is already {version} · {from}', { name: item.name, version: current ?? t('what is published'), from: origin.from })); button.disabled = false; return; }
-  const update = await roomAsk({
+  const words = await askModuleKey({
     title: t('Update {name}?', { name: item.name }),
-    body: `${current ?? t('unversioned')} → ${candidate ?? t('unversioned')}\n${t('From {from}', { from: origin.from })}\n\n${t('It loads and keeps to the house rules. What it intends, only you can judge.')}`,
-    choices: [{ value: 'no', label: t('Cancel'), focus: true }, { value: 'update', label: t('Update'), tone: 'primary' }],
+    what: `${current ?? t('unversioned')} → ${candidate ?? t('unversioned')} · ${t('From {from}', { from: origin.from })}`,
+    safe: t('It loads and keeps to the house rules. What it intends, only you can judge.'),
   });
-  if (update !== 'update') { button.disabled = false; return; }
-  const done = await ask(true);
+  if (!words) { button.disabled = false; return; }
+  const done = await ask(true, words);
   if (!done.ok) { toast(`${t('Diagnostics › ')}${done.result.error ?? 'the module was not updated.'}`); button.disabled = false; return; }
   modules.items = done.result.extensions ?? modules.items;
   renderModules();

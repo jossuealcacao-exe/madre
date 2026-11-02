@@ -370,3 +370,14 @@ export default { id: 'probe-alone', name: 'Alone', summary: wrote ? 'wrote' : 'f
     await assert.rejects(verifyModuleText({ text: `throw new Error('boom at load');` }), /boom at load/);
   } finally { await remove(dir, { recursive: true, force: true }); }
 });
+
+test('every human module install path asks for the #4 key and sends it with the install', async () => {
+  const app = await read('app.js');
+  const proposal = app.slice(app.indexOf('function renderModuleProposed('), app.indexOf('function renderModuleInstalledOrRemoved('));
+  const upload = app.slice(app.indexOf("modules.file?.addEventListener('change'"), app.indexOf('async function refreshModuleFile('));
+  const refresh = app.slice(app.indexOf('async function refreshModuleFile('), app.indexOf('function jobsOf('));
+  for (const [where, code] of [['an agent\'s module', proposal], ['MODULES › add', upload], ['a newer copy', refresh]]) {
+    assert.match(code, /await askModuleKey\(/, `${where} installs without the #4 key`);
+    assert.match(code, /words \}\)|words\)/, `${where} does not send what was typed`);
+  }
+});

@@ -964,6 +964,19 @@ export async function createPulseServer({
     return /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) && (site === undefined || site === 'same-origin' || site === 'none') && request.headers.origin === `http://${host}`;
   };
   const onlyPressed = (mode) => !overrideSettings(overrideConfig).keys[mode].startsWith('phrase');
+  // A module installed by hand runs inside MADRE with the person's permissions, as #4 does, so it
+  // asks for the #4 key (2026-11-02, external review #5): before, any program on the computer
+  // installed one with a single POST and it ran the next time the modules loaded. The answer is
+  // the refusal to send, or null when the key holds.
+  const moduleKeyRefused = (request, payload) => {
+    const now = Date.now();
+    while (keyMisses.length && keyMisses[0] < now - 60000) keyMisses.shift();
+    if (keyMisses.length >= 8) return [429, { error: t('Too many wrong confirmations. Wait a minute and try again.') }];
+    if (onlyPressed(4) && !pressedHere(request)) return [403, { error: t('This is confirmed from MADRE\'s own page, on this computer.') }];
+    if (keyHolds(overrideConfig, { mode: 4, words: payload?.words })) return null;
+    keyMisses.push(now);
+    return [403, { error: t('That is not it. Try again, or cancel.'), denied: true }];
+  };
   const PASS_ONCE_MS = 30 * 60 * 1000;
   // `asked` is a window the human chose on an agent's request for this mode (2026-10-14): one of
   // the windows the project allows, never longer, and only for that agent and mode.
@@ -4349,6 +4362,8 @@ export async function createPulseServer({
       // scratch copy, imported there, checked against the house rules, and only then installed.
       if (request.method === 'POST' && url.pathname === '/api/extensions/upload') {
         const payload = await body(request).catch(() => ({}));
+        const refused = moduleKeyRefused(request, payload);
+        if (refused) return sendJson(response, ...refused);
         const text = String(payload.text ?? '');
         const name = String(payload.name ?? 'module.mjs');
         if (!text.trim()) return sendJson(response, 400, { error: t('That file is empty.') });
@@ -4391,6 +4406,8 @@ export async function createPulseServer({
             return sendJson(response, 200, { origin, current: module.version ?? null, candidate: candidate.version ?? null, same: (candidate.version ?? null) === (module.version ?? null) });
           } catch (error) { return sendJson(response, 422, { error: error.message, origin }); }
         }
+        const refused = moduleKeyRefused(request, payload);
+        if (refused) return sendJson(response, ...refused);
         try {
           const installed = await installModuleText({ text, name: `${module.id}.mjs`, scope: module.origin === 'project' ? 'project' : 'user', stateRoot: root, projectRoot: canonicalProjectRoot, source: origin });
           await room.record('extension.installed', { id: installed.id, name: installed.name, origin: installed.origin, file: installed.file, version: installed.version, by: 'refresh' });
@@ -4921,6 +4938,8 @@ export async function createPulseServer({
       // The human installs a module file an agent wrote (or they did): checked first, then copied into the chosen folder.
       if (request.method === 'POST' && url.pathname === '/api/extensions/install-file') {
         const payload = await body(request).catch(() => ({}));
+        const refused = moduleKeyRefused(request, payload);
+        if (refused) return sendJson(response, ...refused);
         const relative = String(payload.path ?? '').replace(/^\/+/, '');
         if (!relative || relative.includes('..')) return sendJson(response, 400, { error: t('Give the project-relative path of a <id>.module.mjs file.') });
         try {
