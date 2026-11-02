@@ -5,7 +5,9 @@
 ; click; nobody types in PowerShell or in a terminal. On Windows MADRE runs inside WSL2 (D-001), so
 ; this installer:
 ;   1. turns WSL on when it is off: the only step that asks Windows for permission, and the only
-;      one that may need a restart (after it, «MADRE» on the desktop finishes the install);
+;      one that may need a restart (after it, «MADRE» on the desktop finishes the install). It asks
+;      for that restart once: if Windows already restarted and WSL still is not the one MADRE needs,
+;      what is missing is a Windows update, and it says so instead of asking again (1.0.1);
 ;   2. creates a Linux of MADRE's own named «MADRE», from Ubuntu 24.04, with no account to create:
 ;      the person's Ubuntu, if there is one, is never touched;
 ;   3. inside it, as root, runs inside-setup.sh: the user, Node, zstd, wslu and MADRE;
@@ -34,12 +36,14 @@ SetCompress off
 !include "x64.nsh"
 
 ; The installer's own number, not MADRE's.
-!define VERSION "1.0.0"
+!define VERSION "1.0.1"
 !ifndef OUTFILE
   !define OUTFILE "MADRE-Instalador.exe"
 !endif
 !define DISTRO "MADRE"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\MADRE"
+; Where the installer remembers when it asked for a restart (the start of that Windows session).
+!define STATE_KEY "Software\MADRE\Instalador"
 !define HELP_URL "https://madre.run/windows"
 
 Name "MADRE"
@@ -83,8 +87,8 @@ LangString OpenNow ${LANG_ENGLISH} "Open MADRE now"
 LangString OpenNow ${LANG_SPANISH} "Abrir MADRE ahora"
 LangString HelpLink ${LANG_ENGLISH} "Help with MADRE on Windows"
 LangString HelpLink ${LANG_SPANISH} "Ayuda con MADRE en Windows"
-LangString OldWindows ${LANG_ENGLISH} "MADRE needs Windows 10 (version 2004 or newer) or Windows 11, 64-bit."
-LangString OldWindows ${LANG_SPANISH} "MADRE necesita Windows 10 (versión 2004 o más nueva) o Windows 11, de 64 bits."
+LangString OldWindows ${LANG_ENGLISH} "MADRE needs Windows 10 (version 21H1 or newer) or Windows 11, 64-bit.$\r$\n$\r$\nWindows Update brings Windows 10 up to 22H2 for free."
+LangString OldWindows ${LANG_SPANISH} "MADRE necesita Windows 10 (versión 21H1 o más nueva) o Windows 11, de 64 bits.$\r$\n$\r$\nWindows Update lleva Windows 10 hasta la 22H2 sin costo."
 LangString StepWsl ${LANG_ENGLISH} "Checking WSL, the Linux that comes with Windows…"
 LangString StepWsl ${LANG_SPANISH} "Revisando WSL, el Linux que viene con Windows…"
 LangString StepWslOn ${LANG_ENGLISH} "Turning WSL on. Windows will ask for permission once."
@@ -101,6 +105,10 @@ LangString Restart ${LANG_ENGLISH} "WSL is on. Windows needs to restart to finis
 LangString Restart ${LANG_SPANISH} "WSL ya está encendido. Windows tiene que reiniciar para terminar de encenderlo.$\r$\n$\r$\nAl volver, abre «MADRE» en tu escritorio y termina de instalarse. ¿Reiniciar ahora?"
 LangString RestartLater ${LANG_ENGLISH} "Restart Windows when you can. Then open «MADRE» on your desktop and the install finishes."
 LangString RestartLater ${LANG_SPANISH} "Reinicia Windows cuando puedas. Después abre «MADRE» en tu escritorio y termina de instalarse."
+LangString NoPermission ${LANG_ENGLISH} "Without Windows' permission, WSL cannot be turned on, and MADRE needs it.$\r$\n$\r$\nOpen this installer again and say Yes when Windows asks."
+LangString NoPermission ${LANG_SPANISH} "Sin el permiso de Windows no se puede encender WSL, y MADRE lo necesita.$\r$\n$\r$\nVuelve a abrir este instalador y responde Sí cuando Windows pregunte."
+LangString WslStillOld ${LANG_ENGLISH} "Windows already restarted, but it still doesn't have the WSL MADRE needs. Restarting again won't fix it: what's missing is a Windows update.$\r$\n$\r$\nOpen Windows Update, install everything pending (on Windows 10, KB5020030 or newer), restart, and open «MADRE» on your desktop again.$\r$\n$\r$\nThe help page shows it step by step. Open it?"
+LangString WslStillOld ${LANG_SPANISH} "Windows ya se reinició, pero sigue sin el WSL que MADRE necesita. Reiniciar otra vez no lo arregla: falta una actualización de Windows.$\r$\n$\r$\nAbre Windows Update, instala todo lo pendiente (en Windows 10, la KB5020030 o más nueva), reinicia y vuelve a abrir «MADRE» en tu escritorio.$\r$\n$\r$\nLa página de ayuda lo explica paso a paso. ¿Abrirla?"
 LangString NoVirtualization ${LANG_ENGLISH} "Windows could not start MADRE's Linux. The usual reason is that virtualization is off in this computer's BIOS/UEFI.$\r$\n$\r$\nThe help page shows how to turn it on, step by step. Open it?"
 LangString NoVirtualization ${LANG_SPANISH} "Windows no pudo arrancar el Linux de MADRE. Lo más común es que la virtualización esté apagada en la BIOS/UEFI de esta computadora.$\r$\n$\r$\nLa página de ayuda explica cómo encenderla, paso a paso. ¿Abrirla?"
 LangString InsideFailed ${LANG_ENGLISH} "MADRE could not finish installing inside its Linux. Check your internet connection and open this installer again: it continues where it stopped.$\r$\n$\r$\nThe details (Show details) say what failed."
@@ -125,13 +133,27 @@ Var TurnedOn
 
 Function .onInit
   ${IfNot} ${AtLeastWin10}
-  ${OrIfNot} ${AtLeastBuild} 19041
+  ; 21H1 (19043): the oldest Windows 10 the Store's WSL runs on, the only one that knows --name.
+  ${OrIfNot} ${AtLeastBuild} 19043
   ${OrIfNot} ${RunningX64}
     MessageBox MB_ICONSTOP "$(OldWindows)"
     Abort
   ${EndIf}
   !insertmacro FindWsl
 FunctionEnd
+
+; When this Windows session started, in seconds since 1601: now minus the time since boot. The
+; same number while Windows stays on; a restart moves it.
+!macro BootTime result
+  System::Call 'kernel32::GetSystemTimeAsFileTime(*l .r8)'
+  System::Call 'kernel32::GetTickCount64()l .r9'
+  System::Int64Op $8 / 10000000
+  Pop $8
+  System::Int64Op $9 / 1000
+  Pop $9
+  System::Int64Op $8 - $9
+  Pop ${result}
+!macroend
 
 ; Is MADRE's Linux there and answering? 0 when it is.
 !macro DistroAnswers result
@@ -151,7 +173,14 @@ Section "MADRE" Main
   Pop $0
   ${If} $0 != 0
     DetailPrint "$(StepWslOn)"
+    ; The error flag is Windows' permission refused: then nothing was turned on, and no restart
+    ; would change that.
+    ClearErrors
     ExecShellWait "runas" "$Wsl" "--install --no-distribution --web-download" SW_HIDE
+    ${If} ${Errors}
+      MessageBox MB_ICONEXCLAMATION "$(NoPermission)"
+      Abort
+    ${EndIf}
     StrCpy $TurnedOn "1"
   ${EndIf}
 
@@ -165,13 +194,38 @@ Section "MADRE" Main
     ${If} $0 != 0
     ${AndIf} $TurnedOn == "0"
       DetailPrint "$(StepUpdate)"
+      ClearErrors
       ExecShellWait "runas" "$Wsl" "--update --web-download" SW_HIDE
+      ${If} ${Errors}
+        MessageBox MB_ICONEXCLAMATION "$(NoPermission)"
+        Abort
+      ${EndIf}
       nsExec::ExecToLog '"$Wsl" --install Ubuntu-24.04 --name ${DISTRO} --no-launch --web-download'
       Pop $0
     ${EndIf}
     !insertmacro DistroAnswers $0
     ${If} $0 != 0
       ${If} $TurnedOn == "1"
+        ; `wsl --version` failing again after the restart this installer asked for is a Windows
+        ; without the Store's WSL (Windows 10 without KB5020030): another restart would bring the
+        ; person back here forever. A shutdown with Fast Startup keeps the session's start, so it
+        ; asks once more; a restart, which is what it asks for, does not.
+        !insertmacro BootTime $1
+        ClearErrors
+        ReadRegStr $2 HKCU "${STATE_KEY}" "RestartAsked"
+        ${IfNot} ${Errors}
+          System::Int64Op $1 - $2
+          Pop $3
+          System::Int64Op $3 > 60
+          Pop $3
+          ${If} $3 == 1
+            MessageBox MB_YESNO|MB_ICONEXCLAMATION "$(WslStillOld)" IDNO old
+              ExecShell "open" "${HELP_URL}#actualizar"
+            old:
+            Abort
+          ${EndIf}
+        ${EndIf}
+        WriteRegStr HKCU "${STATE_KEY}" "RestartAsked" "$1"
         ; WSL was just turned on: Windows finishes it on restart. Until then «MADRE» on the desktop
         ; and in the Start menu is a copy of this installer, which picks up here; step 4 points them
         ; at MADRE.exe. Never RunOnce: writing into the next sign-in is what malware does.
@@ -224,6 +278,7 @@ Section "MADRE" Main
   WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\Desinstalar MADRE.exe"'
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoRepair" 1
+  DeleteRegKey HKCU "${STATE_KEY}"
 SectionEnd
 
 Function un.onInit
@@ -247,4 +302,6 @@ Section "Uninstall"
   Delete "$INSTDIR\Desinstalar MADRE.exe"
   RMDir "$INSTDIR"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"
+  DeleteRegKey HKCU "${STATE_KEY}"
+  DeleteRegKey /ifempty HKCU "Software\MADRE"
 SectionEnd
