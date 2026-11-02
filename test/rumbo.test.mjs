@@ -135,7 +135,10 @@ test('home widgets: «MADRE\'s course» exists only with the author\'s token, an
     const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
     const read = () => fetch(`http://127.0.0.1:${port}/api/salas/widget?kind=rumbo`).then(async (response) => ({ status: response.status, body: await response.json() }));
     assert.equal((await read()).status, 404, 'no token: there is no such widget');
-    assert.equal(heard.length, 0, 'and madre.run is not asked');
+    // Only what this widget would ask counts (CI of v1.1.2, macOS · node 24): another test file, in its
+    // own process, can reach a port the system just handed this fake server, and that is not MADRE.
+    const mine = heard.filter((line) => / \/(api\/rumbo|npm)\b/.test(line));
+    assert.equal(mine.length, 0, `and madre.run is not asked: ${mine.join(' | ')}`);
     assert.equal((await writeSecret(state, OWNER_VAULT, 'usage', 'f'.repeat(64))).ok, true);
     const owner = await read();
     assert.equal(owner.status, 200);

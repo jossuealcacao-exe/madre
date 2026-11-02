@@ -42,7 +42,9 @@ test('home widgets: «MADRE usage» exists only with the author\'s token, and re
   const project = await mkdtemp(join(tmpdir(), 'madre-usage-project-'));
   const heard = [];
   const fake = createServer((request, response) => {
-    heard.push(`${request.method} ${request.headers.authorization ?? null}`);
+    // Only what the widget asks, at its own address (CI of v1.1.2): a stray request from another test
+    // process that reached a reused port is not MADRE's.
+    if (request.url.startsWith('/api/usage')) heard.push(`${request.method} ${request.headers.authorization ?? null}`);
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ ok: true, today: '2026-10-13', active: { day: 2, week: 3, month: 3, ever: 4 }, days: [], versions: [], os: [], node: [], retention: {} }));
   });
