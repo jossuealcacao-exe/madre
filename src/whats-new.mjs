@@ -388,6 +388,29 @@ export async function bootWhatsNew({ root, version }) {
   return { seen: returning ? null : version, returning };
 }
 
+// A copy that ran an older MADRE before this one (2026-11-01): `novelty` as bootWhatsNew read it at
+// start-up. A first install marks its own version as seen, so only an update makes this true; a copy
+// from before the sheet existed has rooms and no mark, and came from an older one too.
+export const cameFromOlder = (novelty, version) => (novelty?.seen ? compareVersions(version, novelty.seen) > 0 : Boolean(novelty?.returning));
+
+// THE INVITATION TO A FIRST PROJECT (2026-11-01): whoever updates and has not added a project is
+// asked once, on Home, to add one — 90 of 147 copies never opened a project. Once per version, in
+// ~/.pulse/invites.json, for every port of this computer.
+const INVITES = 'invites.json';
+export async function invitedFor(root) {
+  try {
+    const value = JSON.parse(await readFile(join(root, INVITES), 'utf8'))?.project;
+    return typeof value === 'string' ? value : null;
+  } catch {
+    return null;
+  }
+}
+export async function markInvited(root, version) {
+  await mkdir(root, { recursive: true });
+  await writeFile(join(root, INVITES), `${JSON.stringify({ project: version }, null, 2)}\n`);
+}
+export const INVITE_ANSWERS = ['shown', 'picked', 'sample', 'later'];
+
 // `any`: the sheet for this version whether or not it was seen, for when it is asked for.
 export async function whatsNew({ root, version, returning, any = false }) {
   const seen = await readSeen(root);

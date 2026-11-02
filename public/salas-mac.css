@@ -941,6 +941,12 @@ button.sm-pill { border: 0; cursor: pointer; }
 .sm-menu-item:disabled { opacity: .4; cursor: default; }
 
 dialog.sm-sheet.sm-add-sheet { --sm-sheet-w: 560px; }
+/* The invitation to a first project after an update (2026-11-01): the scene of «Add project», two lines and three keys. */
+dialog.sm-sheet.sm-invite { --sm-sheet-w: 520px; }
+.sm-invite .sm-sheet-body { display: grid; gap: 12px; }
+.sm-invite .sm-scene { height: 120px; }
+.sm-invite p { margin: 0; }
+.sm-invite-keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .sm-add-sheet .sm-sheet-body { display: grid; gap: 12px; }
 .sm-add-list { display: grid; gap: 8px; }
 .sm-add-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-radius: 12px; background: var(--surface, var(--panel)); box-shadow: var(--key-rest); }

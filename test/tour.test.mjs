@@ -369,3 +369,47 @@ test('a project\'s first message is counted once, in any of its chats and across
     await rm(project, { recursive: true, force: true });
   }
 });
+
+test('the invitation to a first project: owed after an update with no project, once per version, never to a first install (2026-11-01)', async () => {
+  const { cameFromOlder } = await import('../src/whats-new.mjs');
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(cameFromOlder({ seen: '1.1.0', returning: true }, '1.1.2'), true);
+  assert.equal(cameFromOlder({ seen: '1.1.2', returning: true }, '1.1.2'), false, 'a first install opened again is not an update');
+  assert.equal(cameFromOlder({ seen: null, returning: true }, '1.1.2'), true, 'rooms from before the sheet existed');
+  assert.equal(cameFromOlder({ seen: null, returning: false }, '1.1.2'), false);
+
+  const serve = async (state, project) => {
+    const { server } = await createPulseServer({ projectRoot: project, stateRoot: state, agents: [{ id: 'codex', label: 'Codex', detected: true, ready: true, adapter: 'codex-readonly', path: '/fake', version: 'test' }], invokers: {} });
+    const port = await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+    const base = `http://127.0.0.1:${port}`;
+    return {
+      server,
+      due: async () => (await (await fetch(`${base}/api/invite/project`)).json()).show,
+      say: (answer, headers = {}) => fetch(`${base}/api/invite/project`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, ...headers }, body: JSON.stringify({ answer }) }),
+      phone: async () => (await (await fetch(`${base}/api/invite/project`, { headers: { 'x-madre-device': 'phone-1' } })).json()).show,
+    };
+  };
+  const updated = await scratch('madre-invite-updated-');
+  const fresh = await scratch('madre-invite-fresh-');
+  const project = await scratch('madre-invite-project-');
+  let one; let two;
+  try {
+    // Came from 1.1.0: the sheet of 1.1.0 was its last seen.
+    await writeFile(join(updated, 'whats-new.json'), JSON.stringify({ seen: '1.1.0' }));
+    one = await serve(updated, project);
+    assert.equal(await one.due(), true, 'an update with no project was not invited');
+    assert.equal(await one.phone(), false, 'a phone was invited');
+    assert.equal((await one.say('maybe')).status, 422);
+    assert.equal((await one.say('shown')).status, 200);
+    assert.equal(await one.due(), false, 'invited twice in the same version');
+    assert.deepEqual(JSON.parse(await readFile(join(updated, 'invites.json'), 'utf8')), { project: pkg.version });
+    await new Promise((resolve) => one.server.close(() => resolve()));
+    one = null;
+    // A first install meets the welcome, never this.
+    two = await serve(fresh, project);
+    assert.equal(await two.due(), false, 'a first install was invited');
+  } finally {
+    for (const open of [one, two]) if (open) await new Promise((resolve) => open.server.close(() => resolve()));
+    for (const folder of [updated, fresh, project]) await rm(folder, { recursive: true, force: true });
+  }
+});

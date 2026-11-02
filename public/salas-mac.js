@@ -61,6 +61,8 @@ let arming = 0;
 let data = null;
 let macro = null;              // the macroverse, while it is open
 let welcomed = false;          // the welcome was offered this visit (public/welcome.js)
+// Whether this copy is owed the invitation to a first project (2026-11-01, homeInvite), asked once.
+const inviteAsk = fetch('/api/invite/project', { cache: 'no-store' }).then((response) => (response.ok ? response.json() : null)).catch(() => null);
 let welcomeSeen = null;         // where the welcome is (src/tour.mjs, `welcome`), as last saved
 let agentsSeen = null;         // what /api/settings said of the agents, last time it was asked
 let localSeen = null;          // what /api/salas/local-ai said: the mode and which projects use the local AI
@@ -507,7 +509,14 @@ function draw() {
   // An empty Home opens the welcome where it was left, or at the project when it was finished
   // without one; someone new meets it in place of the bonjour (public/tour.js).
   // Not for whoever updated from before 1.1.0: they meet the news, and «Add project» is on Home (2026-10-30).
-  if (!all.length && !welcomed) { welcomed = true; void homeTour.loaded.then((answer) => { if (!answer?.owed && !answer?.upgraded) openHomeWelcome({ at: answer?.state?.welcome?.finished ? 'project' : null }); }); }
+  // After an update with no project yet (2026-11-01), the invitation to add one takes the welcome's place.
+  if (!all.length && !welcomed) {
+    welcomed = true;
+    void Promise.all([homeTour.loaded, inviteAsk]).then(([answer, invite]) => {
+      if (invite?.show) { void homeInvite(); return; }
+      if (!answer?.owed && !answer?.upgraded) openHomeWelcome({ at: answer?.state?.welcome?.finished ? 'project' : null });
+    });
+  }
   welcomeHome();
   // Home is drawn: the ground over its first frame goes (loader.js, bootDone) — unless the welcome is
   // about to open, whose opening comes first; then it goes as the welcome opens (openHomeWelcome).
@@ -3342,6 +3351,47 @@ async function homeNews(tries = 0) {
   else void playOpening(dialog, { skipLabel: t('Skip') }).then(() => start.focus({ preventScroll: true }));
   // Seen once shown, as in a project: a board left open and the page closed is not owed again.
   void fetch('/api/whats-new/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => null);
+}
+
+// THE INVITATION TO A FIRST PROJECT (2026-11-01): whoever updates MADRE and still has no project is
+// asked once per version, on Home, to add one. 90 of 147 copies never opened a project, and MADRE does
+// nothing without one. Two ways in, the folder they work in or the project to try (src/salas.mjs,
+// createSampleProject), which opens straight on its first messages; and «Not now». Never over the
+// news, the welcome or another window. What they choose is counted with the anonymous diagnostics.
+const tellInvite = (answer) => fetch('/api/invite/project', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ answer }) }).catch(() => null);
+async function homeInvite(tries = 0) {
+  if (welcomeOpen() || document.querySelector('dialog[open]')) { if (tries < 120) setTimeout(() => void homeInvite(tries + 1), 3000); return; }
+  const dialog = el('dialog', 'sm-sheet sm-invite');
+  const inner = el('div', 'sm-sheet-body');
+  const head = el('header', 'sm-sheet-head');
+  let answered = false;
+  const answer = (said) => { if (answered) return; answered = true; void tellInvite(said); };
+  head.append(el('h3', null, t('Add your first project')), closeKey(() => dialog.close()));
+  const lead = el('p', null, t('MADRE works inside a project: a folder with your store, your website or your documents. There your AIs read, remember what you decide and show you every change.'));
+  const hint = el('p', 'hint', t('You have none yet. Choose a folder you already work in, or make one to try: a page with a list of tasks, to ask your AIs for changes without fear of breaking anything.'));
+  const keys = el('div', 'sm-invite-keys');
+  const later = button('sm-btn', t('Not now'), () => dialog.close());
+  const sample = button('sm-btn', t('Make the project to try'), async () => {
+    sample.disabled = true;
+    answer('sample');
+    const made = await fetch('/api/salas/new', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sample: true, language }) })
+      .then(async (response) => ({ ok: response.ok, body: await response.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    const room = made.ok ? made.body.added?.[0] : null;
+    if (!room) { hint.textContent = made.body?.error ?? t('The project to try MADRE could not be made.'); sample.disabled = false; return; }
+    dialog.close();
+    await refresh();
+    await startRoom(room, { enter: true });
+  });
+  const pick = button('sm-btn primary', t('Choose a folder'), () => { answer('picked'); dialog.close(); openAddSheet(); });
+  keys.append(later, sample, pick);
+  inner.append(head, wizardScene('projects'), lead, hint, keys);
+  dialog.append(inner);
+  dialog.addEventListener('close', () => { answer('later'); dialog.remove(); });
+  document.body.append(dialog);
+  dialog.showModal();
+  bootDone();
+  void tellInvite('shown');
+  pick.focus({ preventScroll: true });
 }
 
 // Home in another language, without a reload: what it says now, and every widget and the tour's pill.

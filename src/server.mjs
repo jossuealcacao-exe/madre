@@ -82,7 +82,7 @@ import { applyConfigToEnv, loadConfig as readConfig, updateConfig } from './conf
 import { Privacy, normalizeTerms, privacySettings } from './privacy.mjs';
 import { planView, removeMadre, uninstallPlan } from './uninstall.mjs';
 import { checkForUpdate, detectInstall, updateCommand, releaseUrl, applyCommand, fetchCommand } from './updates.mjs';
-import { bootWhatsNew, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
+import { INVITE_ANSWERS, bootWhatsNew, cameFromOlder, invitedFor, markInvited, markSeen, newestNotes, notesFor, whatsNew } from './whats-new.mjs';
 import { answerAsk, tickAsk } from './review-ask.mjs';
 import { CHAPTERS, HINTS, NEWS_LEVEL, TOUR_VERSION, WELCOME_STEPS, cameBefore, changeTour, readTour, recoverProject, roomsWithoutProject } from './tour.mjs';
 
@@ -4086,6 +4086,25 @@ export async function createPulseServer({
       if (request.method === 'POST' && url.pathname === '/api/whats-new/seen') {
         await markSeen(root, PACKAGE.version);
         return sendJson(response, 200, { seen: PACKAGE.version });
+      }
+      // The invitation to a first project (src/whats-new.mjs): due on Home to a copy that came from an
+      // older MADRE and has no project, once per version. Never on a phone. Its answers are counted
+      // with the anonymous diagnostics, and «shown» is what spends it.
+      if (url.pathname === '/api/invite/project') {
+        if (viaPhone) return sendJson(response, 200, { show: false });
+        if (request.method === 'GET') {
+          const projects = (await knownRooms(root)).filter((one) => one.id !== salasRoomId(root)).length;
+          const show = cameFromOlder(novelty, PACKAGE.version) && projects === 0 && (await invitedFor(root)) !== PACKAGE.version;
+          return sendJson(response, 200, { show, version: PACKAGE.version });
+        }
+        if (request.method === 'POST') {
+          const payload = await body(request).catch(() => ({}));
+          if (!INVITE_ANSWERS.includes(payload.answer)) return sendJson(response, 422, { error: 'answer' });
+          if (payload.answer === 'shown') await markInvited(root, PACKAGE.version);
+          diagnostics.count(`invite.project.${payload.answer}`);
+          return sendJson(response, 200, { ok: true });
+        }
+        return sendJson(response, 405, { error: 'method' });
       }
       // Asking for a star or a review (src/review-ask.mjs): a page in view says so once a minute and
       // hears whether a moment is due; the answer ends the asking or lets that moment pass. A phone
