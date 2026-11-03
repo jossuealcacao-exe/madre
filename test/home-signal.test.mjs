@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { associateProject, knownRooms } from '../src/salas.mjs';
+import { fichaHeaders } from '../src/ficha.mjs';
 
 // Home closed by a signal (Ctrl-C, its Terminal closed, `kill`) closes what Turn MADRE off closes
 // (2026-10-21): every open project, also one opened from another project. That one's process hangs
@@ -31,6 +32,8 @@ test('home · closed by a signal, it closes every open project, also one opened 
   const state = await scratch('madre-signal-state-');
   const home = await realpath(await scratch('madre-signal-home-'));
   const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0', PULSE_PORT_BASE: String(20000 + Math.floor(Math.random() * 20000)) };
+  // The CLI asks for the ficha (src/ficha.mjs): this test asks with it, as the page does with its cookie.
+  const fetch = async (address, options = {}) => globalThis.fetch(address, { ...options, headers: { ...(options.headers ?? {}), ...(await fichaHeaders(state)) } });
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
   const ids = {};
   for (const name of ['alfa', 'beta']) {

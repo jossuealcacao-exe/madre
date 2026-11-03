@@ -142,6 +142,7 @@ import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
 import { readAt } from './checkpoint.mjs';
+import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, ensureFicha, fichaCookie, fichaHeaders, fichaReader, previewKey, sameFicha, withFicha } from './ficha.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -285,8 +286,15 @@ export async function createPulseServer({
   licenseApi = null,
   // Ollama detection; tests hand in a fake probe. PULSE_OLLAMA=0 leaves Ollama alone entirely.
   ollamaProbe = process.env.PULSE_OLLAMA === '0' ? async () => ({ running: false, host: null, models: [], embedModel: null, chatModel: null, disabled: true }) : probeOllama,
+  // Whether every request has to carry the ficha (src/ficha.mjs). Only the CLI entry point
+  // (startPulse) turns it on, as it does the quota sources; a test that checks it turns it on too.
+  // `renewFicha`: asked when the browser is opened by this start; only Home acts on it, and makes a
+  // new one for this run. A project Home opens keeps Home's.
+  ficha: fichaOn = false,
+  renewFicha = false,
 }) {
   const root = stateRoot ?? process.env.PULSE_HOME ?? join(homedir(), '.pulse');
+  const currentFicha = fichaOn ? fichaReader(root) : async () => null;
   // Whether this copy had its random identifier before this run: without one it is a new install
   // (src/install-metrics.mjs, noteLifecycle).
   const hadInstallId = existsSync(join(root, 'install-id'));
@@ -311,6 +319,7 @@ export async function createPulseServer({
   // Whether this is the room of Salas (docs/MACROVERSO.md, fase 3d): the room whose project is
   // the notebook of Salas, decided once from real paths; the page carries the MACROVERSO key there.
   const salasRoom = isSalasRoom(canonicalProjectRoot, root);
+  if (fichaOn) await ensureFicha(root, { renew: renewFicha && salasRoom });
   // What left this machine. Every fetch this process makes — MADRE's own and any a module makes,
   // because a module runs in here and cannot opt out — goes through one wrapper and lands in a
   // line beside the ledger. Bodies, headers and query values are never in it. One room per
@@ -377,7 +386,7 @@ export async function createPulseServer({
   async function closeOtherRooms() {
     const here = basename(roomDir);
     const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
-    await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/close', { method: 'POST', body: {}, timeoutMs: 3000 }).catch(() => null)));
+    await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/close', { stateRoot: root, method: 'POST', body: {}, timeoutMs: 3000 }).catch(() => null)));
     let left = others;
     for (let tries = 0; tries < 60 && left.length; tries += 1) {
       await new Promise((resolve) => setTimeout(resolve, 250));
@@ -599,7 +608,7 @@ export async function createPulseServer({
     } else if (kind === 'servers') {
       const rooms = await openProjects();
       const projects = await Promise.all(rooms.map(async (one) => {
-        const answer = await askRoom(one.open.port, '/api/ports', { timeoutMs: 4000 });
+        const answer = await askRoom(one.open.port, '/api/ports', { stateRoot: root, timeoutMs: 4000 });
         if (answer.unreachable && answer.status === 412) return { id: one.id, name: one.name, preview: false, ports: [] };
         if (answer.unreachable || answer.outdated) return { id: one.id, name: one.name, unreachable: true, ports: [] };
         return { id: one.id, name: one.name, preview: true, ports: (answer.ports ?? []).map((port) => ({ port: port.port, status: port.status ?? null, command: port.command ?? null })) };
@@ -607,7 +616,7 @@ export async function createPulseServer({
       reading = { available: projects.some((one) => one.preview), projects };
     } else if (kind === 'memory' || kind === 'models') {
       const rooms = await openProjects();
-      const projects = await Promise.all(rooms.map(async (one) => ({ id: one.id, name: one.name, ...(readinessOf(await askRoom(one.open.port, '/api/dataset', { timeoutMs: 6000 })) ?? { unreachable: true }) })));
+      const projects = await Promise.all(rooms.map(async (one) => ({ id: one.id, name: one.name, ...(readinessOf(await askRoom(one.open.port, '/api/dataset', { stateRoot: root, timeoutMs: 6000 })) ?? { unreachable: true }) })));
       reading = kind === 'memory'
         ? { available: projects.some((one) => !one.unreachable), projects }
         : { available: true, ollama: { running: Boolean(ollama.running), models: (ollama.models ?? []).map((model) => model.name).filter(Boolean) }, projects: await withLocalAi(projects) };
@@ -678,7 +687,7 @@ export async function createPulseServer({
     } else if (kind === 'coordinator' && !salasRoom) {
       // Home's page is served by every project too: the Coordinator's record is its own room's.
       const coordinator = (await knownRooms(root)).find((one) => one.id === salasRoomId(root));
-      const answer = coordinator?.open ? await askRoom(coordinator.open.port, '/api/salas/widget?kind=coordinator', { timeoutMs: 6000 }) : null;
+      const answer = coordinator?.open ? await askRoom(coordinator.open.port, '/api/salas/widget?kind=coordinator', { stateRoot: root, timeoutMs: 6000 }) : null;
       reading = answer && !answer.unreachable && !answer.outdated ? answer : { available: false };
     } else if (kind === 'coordinator') {
       const notes = memory ? memory.memories({ limit: 5000 }) : [];
@@ -691,7 +700,7 @@ export async function createPulseServer({
   }
   async function lobbyGlance(one) {
     if (!one.open) { lobbyGlances.delete(one.id); return null; }
-    const reading = await askRoom(one.open.port, '/api/glance?census=1', { timeoutMs: 1200 });
+    const reading = await askRoom(one.open.port, '/api/glance?census=1', { stateRoot: root, timeoutMs: 1200 });
     if (!reading.unreachable && !reading.outdated) {
       lobbyGlances.set(one.id, { port: one.open.port, reading, at: Date.now() });
       return reading;
@@ -1008,6 +1017,12 @@ export async function createPulseServer({
   }
   let listening = null;
   const listeningPort = () => listening?.address?.()?.port ?? Number(process.env.PULSE_PORT ?? 4317);
+  // Where the agents' headless browser opens RIPLEY's preview (src/modules/playwright.mjs): under the
+  // preview's key when the ficha is on, since that browser has no cookie.
+  const previewBase = async () => {
+    const ficha = fichaOn ? await currentFicha() : null;
+    return ficha ? `/preview/${previewKey(ficha)}` : '/preview';
+  };
   // One CONTROL desk for the whole project, shared by every conversation alive at once: a single
   // holder of the working tree whichever chat asked, and an UNDO that works from any of them.
   const controlDesk = new ControlDesk({ projectRoot, guardRecord: join(roomDir, 'guard.json') });
@@ -1020,7 +1035,7 @@ export async function createPulseServer({
     controlDesk,
     privacy,
     // Modules may hand tools to a turn; the room asks once per turn, the server knows the port.
-    toolsForTurn: async (turn) => modulesToolsForTurn(await moduleContext(), { ...turn, port: listeningPort(), roomDir }),
+    toolsForTurn: async (turn) => modulesToolsForTurn(await moduleContext(), { ...turn, port: listeningPort(), roomDir, preview: await previewBase() }),
     // What BISHOP reads for a turn is recorded in that turn's conversation, not the open one.
     bishopForTurn: salasRoom ? async (turn) => moduleById('bishop').promptForTurn({ ...(await moduleContext()), record: (type, payload) => ((turn.turn && liveRooms().find((one) => one.runningTurn?.(turn.turn))) || room).record(type, payload) }, turn) : null,
     // Fase 3e: notes a link with automatic recall brings to a turn. Never in the room of Salas
@@ -2292,10 +2307,66 @@ export async function createPulseServer({
     return { status: 202, body: { accepted: true, command: plan.display } };
   }
 
+  // THE FICHA (src/ficha.mjs, 2026-11-02, external review #5). With it on, a request passes when it
+  // carries the ficha (the page's cookie, or the header MADRE's own processes send) or is one of
+  // the few that say nothing: the page's code, styles and pictures, and whether a MADRE answers here.
+  // Everything else — every read, every change, the pages themselves — waits for it.
+  const FICHA_PAGES = new Set(['/', '/salas']);
+  const fichaFree = (method, pathname) => (method === 'GET' || method === 'HEAD') && !pathname.startsWith('/api/') && !pathname.startsWith('/preview/') && !FICHA_PAGES.has(pathname);
+  const PREVIEW_ROUTE = /^\/preview\/(?:([0-9a-f]{32})\/)?(project|attachments)\/(.*)$/;
+  // true when the request was answered here.
+  async function fichaDoor(request, response, url) {
+    const ficha = await currentFicha();
+    // A page opened with the ficha in its address: the browser keeps it in a cookie, and the address
+    // it shows (and remembers) is the same one without it.
+    if (request.method === 'GET' && FICHA_PAGES.has(url.pathname) && url.searchParams.has(FICHA_PARAM) && ficha && sameFicha(url.searchParams.get(FICHA_PARAM), ficha)) {
+      url.searchParams.delete(FICHA_PARAM);
+      response.writeHead(303, { location: `${url.pathname}${url.search}`, 'set-cookie': fichaCookie(ficha), 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' });
+      response.end();
+      return true;
+    }
+    if (ficha && carriesFicha(request.headers, ficha)) return false;
+    if (fichaFree(request.method, url.pathname)) return false;
+    // RIPLEY's preview, under the key made from the ficha: a sealed frame sends no cookie.
+    const preview = request.method === 'GET' ? url.pathname.match(PREVIEW_ROUTE) : null;
+    if (preview?.[1] && ficha && sameFicha(preview[1], previewKey(ficha))) return false;
+    // A link between projects, or the Coordinator's channel, carries the key of its own
+    // (src/enlaces.mjs), kept in a file as private as the ficha; those routes check it again.
+    if ((url.pathname.startsWith('/api/enlace/') || url.pathname.startsWith('/api/x/bishop/')) && typeof request.headers[CHANNEL_HEADER] === 'string') {
+      const key = await channelKey(root).catch(() => null);
+      if (key && sameKey(request.headers[CHANNEL_HEADER], key)) return false;
+    }
+    // Whether a MADRE answers on this port, and which: Home and the CLI ask it before anything
+    // else. Nothing more without the ficha — not the project's folder, not the copy's identifier.
+    if (request.method === 'GET' && url.pathname === '/api/version') {
+      sendJson(response, 200, { name: PACKAGE.name, current: PACKAGE.version });
+      return true;
+    }
+    if (request.method === 'GET' && FICHA_PAGES.has(url.pathname)) {
+      response.writeHead(401, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', [FICHA_HEADER]: FICHA_NEEDED, ...PAGE_GUARDS });
+      response.end(fichaPage());
+      return true;
+    }
+    response.writeHead(401, { 'content-type': 'application/json; charset=utf-8', [FICHA_HEADER]: FICHA_NEEDED });
+    response.end(JSON.stringify({ error: t('This request does not carry MADRE\'s ficha. Open MADRE from its shortcut or from the address it wrote in the terminal.'), ficha: FICHA_NEEDED }));
+    return true;
+  }
+  // What a tab without the ficha shows: where to open MADRE from, nothing of the project.
+  const fichaPage = () => {
+    const escape = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<!doctype html><html lang="${roomLanguage()}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MADRE</title>`
+      + '<body style="font:16px/1.5 system-ui,sans-serif;background:#0b0c0b;color:#e8eae6;margin:0;display:grid;place-items:center;min-height:100vh"><main style="max-width:34rem;padding:32px">'
+      + `<h1 style="font-size:22px;margin:0 0 12px">${escape(t('This tab needs to be opened from MADRE'))}</h1>`
+      + `<p>${escape(t('MADRE only answers to the browser it opened itself, so that no other program on this computer can read your projects or act in them.'))}</p>`
+      + `<p>${escape(t('Open it again from its shortcut, or with npx @jossuealcala/madre, or paste the full address MADRE wrote in the terminal (the one that ends in ?ficha=…).'))}</p>`
+      + '</main></body></html>';
+  };
+
   const server = http.createServer(async (request, response) => {
     const foreign = refuseForeign(request);
     if (foreign) return sendJson(response, 403, { error: t(foreign), guarded: true });
     const url = new URL(request.url, 'http://127.0.0.1');
+    if (fichaOn && await fichaDoor(request, response, url)) return;
     // The project's own folder name, typed by the human. Declared at the top of the handler and
     // not beside the first route that happened to need it: a const sits in its temporal dead zone
     // until its own line runs, so any route above it threw instead of refusing.
@@ -2598,7 +2669,7 @@ export async function createPulseServer({
         const later = [];
         if (request.method === 'POST') {
           await Promise.all(known.filter((one) => one.open && one.id !== thisRoomId).map(async (one) => {
-            const answer = await askRoom(one.open.port, '/api/local-ai/apply', { method: 'POST', timeoutMs: 6000 });
+            const answer = await askRoom(one.open.port, '/api/local-ai/apply', { stateRoot: root, method: 'POST', timeoutMs: 6000 });
             if (answer.unreachable || answer.outdated) later.push(one.name);
           }));
         }
@@ -2645,7 +2716,7 @@ export async function createPulseServer({
           port: one.open.port,
           here: one.id === here,
           accent: owns[one.id]?.accent ?? homeAccent,
-          glance: one.id === here ? null : await askRoom(one.open.port, '/api/glance'),
+          glance: one.id === here ? null : await askRoom(one.open.port, '/api/glance', { stateRoot: root }),
         })));
         return sendJson(response, 200, { here, salas: salasRoomId(root), rooms: seen });
       }
@@ -2658,7 +2729,7 @@ export async function createPulseServer({
         const room = (await knownRooms(root)).find((one) => one.id === id);
         if (!room) return sendJson(response, 404, { error: t('MADRE does not know that project on this Mac.') });
         if (!room.open) return sendJson(response, 200, { id, asleep: true });
-        const answer = await askRoom(room.open.port, `/api/memory?designation=${encodeURIComponent(room.name)}`, { timeoutMs: 4000 });
+        const answer = await askRoom(room.open.port, `/api/memory?designation=${encodeURIComponent(room.name)}`, { stateRoot: root, timeoutMs: 4000 });
         if (answer.outdated) return sendJson(response, 200, { id, outdated: true });
         if (answer.unreachable) return sendJson(response, 200, { id, sealed: answer.status === 423, unreachable: answer.status !== 423 });
         return sendJson(response, 200, { id, ...universeOf(answer, { full: url.searchParams.get('full') === '1' }) });
@@ -2762,7 +2833,7 @@ export async function createPulseServer({
             lobbyDecisions.running = (async () => {
               const open = (await knownRooms(root)).filter((one) => one.open);
               const lists = await Promise.all(open.map(async (one) => {
-                const answer = await askRoom(one.open.port, `/api/memory?designation=${encodeURIComponent(one.name)}`, { timeoutMs: 6000 });
+                const answer = await askRoom(one.open.port, `/api/memory?designation=${encodeURIComponent(one.name)}`, { stateRoot: root, timeoutMs: 6000 });
                 if (!Array.isArray(answer?.memories)) return [];
                 return answer.memories
                   .filter((note) => note.kind === 'decision' && (note.zone === 'hold' || note.zone === 'bridge') && typeof note.text === 'string')
@@ -2822,14 +2893,14 @@ export async function createPulseServer({
           setTimeout(() => server.emit('madre:close'), 150);
           return undefined;
         }
-        const answer = await askRoom(room.open.port, '/api/room/close', { method: 'POST', body: {} });
+        const answer = await askRoom(room.open.port, '/api/room/close', { stateRoot: root, method: 'POST', body: {} });
         if (answer.outdated) return sendJson(response, 409, { error: t('That project runs an older MADRE. Update it, or close it from its terminal.'), outdated: true });
         if (answer.unreachable) return sendJson(response, 502, { error: t('That project did not answer.') });
         return sendJson(response, 202, { room: room.id, closing: true });
       }
       if (request.method === 'POST' && url.pathname === '/api/salas/stop-all') {
         const rooms = (await knownRooms(root)).filter((one) => one.open);
-        const stopped = await Promise.all(rooms.map((one) => askRoom(one.open.port, '/api/stop-all', { method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer.unreachable && !answer.outdated)));
+        const stopped = await Promise.all(rooms.map((one) => askRoom(one.open.port, '/api/stop-all', { stateRoot: root, method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer.unreachable && !answer.outdated)));
         return sendJson(response, 200, { rooms: rooms.length, stopped: stopped.filter(Boolean).length });
       }
       // Turning MADRE off (2026-10-16), from a page of this Mac only, after the person confirmed it.
@@ -2888,7 +2959,7 @@ export async function createPulseServer({
         if (viaPhone || !/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) || (site !== undefined && site !== 'same-origin' && site !== 'none') || request.headers.origin !== `http://${host}`) return sendJson(response, 403, { error: t('MADRE is restarted from its own page, on this computer.') });
         const here = basename(roomDir);
         const others = (await knownRooms(root)).filter((one) => one.open && one.id !== here);
-        const asked = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/restart', { method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer?.unreachable && !answer?.outdated).catch(() => false)));
+        const asked = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/room/restart', { stateRoot: root, method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer?.unreachable && !answer?.outdated).catch(() => false)));
         await room.record('room.restarting', { others: others.length });
         sendJson(response, 202, { restarting: true, others: others.length, stuck: others.filter((_, index) => !asked[index]).map((one) => one.name) });
         restartSelf(request.socket.localPort);
@@ -3269,7 +3340,7 @@ export async function createPulseServer({
         let one = await find();
         if (!one) return sendJson(response, 404, { error: t('MADRE does not know that project on this Mac.') });
         if (one.open) {
-          const answer = await askRoom(one.open.port, '/api/room/close', { method: 'POST', body: {} });
+          const answer = await askRoom(one.open.port, '/api/room/close', { stateRoot: root, method: 'POST', body: {} });
           if (answer.outdated) return sendJson(response, 409, { error: t('That project runs an older MADRE. Update it, or close it from its terminal.'), outdated: true });
           if (answer.unreachable) return sendJson(response, 502, { error: t('That project did not answer.') });
           for (let tries = 0; tries < 40 && one?.open; tries += 1) { await new Promise((resolve) => setTimeout(resolve, 250)); one = await find(); }
@@ -3526,11 +3597,19 @@ export async function createPulseServer({
       // (connect-src none), no forms, no top navigation, assets only from MADRE's
       // own host. Path-based, so a page's relative links to its CSS, JS and images
       // resolve to the same route.
-      const previewMatch = request.method === 'GET' && url.pathname.match(/^\/preview\/(project|attachments)\/(.*)$/);
+      const previewMatch = request.method === 'GET' && url.pathname.match(PREVIEW_ROUTE);
       if (previewMatch) {
         if (!(await ripleyOn())) return sendJson(response, 412, { error: t('Preview is off. Enable it in MODULES to render files.') });
-        const which = previewMatch[1] === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
-        const relative = decodeURIComponent(previewMatch[2]);
+        // With the ficha on, the page's frame asks by the plain address (its cookie goes with it)
+        // and is sent to the same one under the preview's key, where the sealed page's own CSS,
+        // scripts and pictures — which carry no cookie — resolve by their relative links.
+        const ficha = fichaOn ? await currentFicha() : null;
+        if (ficha && !previewMatch[1]) {
+          response.writeHead(307, { location: `/preview/${previewKey(ficha)}/${previewMatch[2]}/${previewMatch[3]}${url.search}`, 'cache-control': 'no-store' });
+          return response.end();
+        }
+        const which = previewMatch[2] === 'attachments' ? attachmentsRoot : canonicalProjectRoot;
+        const relative = decodeURIComponent(previewMatch[3]);
         const file = await readServable(which, relative);
         if (file.status !== 200) return sendJson(response, file.status, { error: file.error });
         const isPage = /\.(html?|xhtml)$/i.test(relative);
@@ -3644,7 +3723,7 @@ export async function createPulseServer({
         await wireOllama();
         const later = [];
         await Promise.all((await knownRooms(root)).filter((one) => one.open && one.id !== thisRoomId).map(async (one) => {
-          const answer = await askRoom(one.open.port, '/api/local-ai/apply', { method: 'POST', timeoutMs: 6000 });
+          const answer = await askRoom(one.open.port, '/api/local-ai/apply', { stateRoot: root, method: 'POST', timeoutMs: 6000 });
           if (answer.unreachable || answer.outdated) later.push(one.name);
         }));
         return sendJson(response, 200, { host, running: Boolean(ollama.running), models: (ollama.models ?? []).map((one) => one.name), later });
@@ -4684,7 +4763,7 @@ export async function createPulseServer({
         if (url.searchParams.get('everywhere') !== '1') return sendJson(response, 200, mine);
         const others = (await knownRooms(root)).filter((one) => one.open && one.id !== thisRoomId);
         const answers = await Promise.all(others.map(async (one) => {
-          const answer = await askRoom(one.open.port, '/api/activity', { timeoutMs: 1500 });
+          const answer = await askRoom(one.open.port, '/api/activity', { stateRoot: root, timeoutMs: 1500 });
           if (answer.unreachable) return null;
           if (answer.outdated) return { room: one.id, name: one.name, port: one.open.port, outdated: true, now: [], done: [] };
           return { ...answer, room: one.id, name: answer.name ?? one.name, port: one.open.port };
@@ -4705,7 +4784,7 @@ export async function createPulseServer({
           if (viaPhone) return sendJson(response, 403, { error: t('Other projects are stopped from this computer.') });
           const there = (await knownRooms(root)).find((one) => one.id === payload.room && one.open);
           if (!there) return sendJson(response, 404, { error: t('That project is not open any more.') });
-          const answer = await askRoom(there.open.port, '/api/activity/stop', { method: 'POST', body: { ...payload, room: null }, timeoutMs: 8000 });
+          const answer = await askRoom(there.open.port, '/api/activity/stop', { stateRoot: root, method: 'POST', body: { ...payload, room: null }, timeoutMs: 8000 });
           if (answer.outdated) return sendJson(response, 409, { error: t('That project runs an older MADRE. Update it, or close it from its terminal.'), outdated: true });
           if (answer.unreachable) return sendJson(response, answer.status ?? 502, { error: answer.error ?? t('That project did not answer.') });
           return sendJson(response, 200, answer);
@@ -4728,7 +4807,7 @@ export async function createPulseServer({
         let projects = 0;
         if (!viaPhone) {
           const others = (await knownRooms(root)).filter((one) => one.open && one.id !== thisRoomId);
-          const stopped = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/stop-all', { method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer.unreachable && !answer.outdated)));
+          const stopped = await Promise.all(others.map((one) => askRoom(one.open.port, '/api/stop-all', { stateRoot: root, method: 'POST', body: {}, timeoutMs: 3000 }).then((answer) => !answer.unreachable && !answer.outdated)));
           projects = stopped.filter(Boolean).length;
         }
         return sendJson(response, 202, { stopped: true, ...result, projects });
@@ -4853,7 +4932,7 @@ export async function createPulseServer({
           await room.record('extension.installed', { id: done.id, name: inRoomLanguage(listed?.name) || done.name, origin: 'market', version: done.version, by: 'you' });
           for (const one of await knownRooms(root)) {
             if (!one.open?.port || one.id === thisRoomId) continue;
-            await fetch(`http://127.0.0.1:${one.open.port}/api/extensions/reload`, { method: 'POST' }).catch(() => null);
+            await fetch(`http://127.0.0.1:${one.open.port}/api/extensions/reload`, { method: 'POST', headers: await fichaHeaders(root) }).catch(() => null);
           }
           return sendJson(response, 200, { installed: done, extensions: await describeModules(await moduleContext()) });
         } catch (error) { return sendJson(response, error.code === 'REVIEW_FIRST' ? 409 : 422, { error: error.message, review: error.code === 'REVIEW_FIRST' }); }
@@ -5136,11 +5215,11 @@ export async function createPulseServer({
   server.on('close', () => { for (const timer of [...aliveTimers, ...hereTimers]) clearTimeout(timer); });
 
   server.on('close', () => { void phone.stop(); });
-  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms };
+  return { server, store, agents, quotaMonitor, markOpen, releaseOpen, phone, salasRoom, closeOtherRooms, currentFicha };
 }
 
 export async function startPulse({ port, projectRoot, openBrowser, openPath = '' }) {
-  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources() });
+  const { server, agents, markOpen, phone, salasRoom, closeOtherRooms, currentFicha } = await createPulseServer({ projectRoot, quotaSources: defaultQuotaSources(), ficha: true, renewFicha: Boolean(openBrowser) });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolve);
@@ -5151,6 +5230,9 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   // From here this room offers to host the phone's bridge, when there is a phone to reach it.
   phone.start();
   const url = `http://127.0.0.1:${address.port}`;
+  // The address with the ficha (src/ficha.mjs): the one the browser is opened at and the terminal
+  // shows, so that pasting it into another browser works too.
+  const opening = withFicha(`${url}${openPath}`, await currentFicha());
   // Installed is all this line knows: whether each one is signed in is asked in the room, and
   // «Ready: Codex, Claude…» before any sign-in told a newcomer the opposite (2026-10-19).
   const ready = agents.filter((agent) => agent.ready).map((agent) => agent.label).join(', ') || t('none');
@@ -5158,9 +5240,9 @@ export async function startPulse({ port, projectRoot, openBrowser, openPath = ''
   // In the language MADRE speaks (QA 1.1.0, NUE-01): the terminal said «MADRE is ready» above
   // «Abre esta dirección…», and Home was called «Project: …/.pulse/salas», a folder of MADRE's own.
   const where = salasRoom ? t('Home: every project on this computer') : `${t('Project:')} ${projectRoot}`;
-  console.log(`\n${t('MADRE is ready')}\n\n  ${url}${openPath}\n  ${where}\n  ${t('Agents installed: {list} (who is signed in: Settings › Agents)', { list: ready })}\n${broken ? `  ${t('Found but not answering: {list}', { list: broken })}\n` : ''}`);
+  console.log(`\n${t('MADRE is ready')}\n\n  ${opening}\n  ${where}\n  ${t('Agents installed: {list} (who is signed in: Settings › Agents)', { list: ready })}\n${broken ? `  ${t('Found but not answering: {list}', { list: broken })}\n` : ''}`);
   // Not waited for: the signals below are set up while the browser opens.
-  if (openBrowser) void openUrl(`${url}${openPath}`);
+  if (openBrowser) void openUrl(opening);
   // SIGHUP too: closing the Terminal the room was started in is a way of closing it.
   // Home closed this way closes what Turn MADRE off closes (2026-10-21): every open project, also
   // one opened from another project, whose process outlives Home on its own. A second signal while

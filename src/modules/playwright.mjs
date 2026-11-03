@@ -169,7 +169,7 @@ export function forgetPlaywrightHealth(result = null, browser = null) { started 
 // What the browser may open: this room, and the servers the human started from RUNS in this project
 // while they listen on 127.0.0.1. RIPLEY's sealed frame keeps no data, so an app that stores its
 // data could only be tried through it half-blind. Nothing else on the network.
-export function playwrightServerFor({ port, outputDir, browser = 'chromium', headless = true, servers = [] }) {
+export function playwrightServerFor({ port, outputDir, browser = 'chromium', headless = true, servers = [], preview = '/preview' }) {
   const origins = [port, ...servers.filter((one) => Number.isInteger(one) && one !== port)].flatMap((one) => [`http://127.0.0.1:${one}`, `http://localhost:${one}`]);
   const served = servers.filter((one) => Number.isInteger(one) && one !== port);
   return {
@@ -185,7 +185,7 @@ export function playwrightServerFor({ port, outputDir, browser = 'chromium', hea
     args: ['--no', '@playwright/mcp', '--', ...(headless ? ['--headless'] : []), '--isolated', '--browser', browser, '--allowed-origins', origins.join(';'), '--output-dir', outputDir, '--no-sandbox'],
     env: {},
     tools: PLAYWRIGHT_TOOLS,
-    brief: `a headless browser that reaches only this MADRE at http://127.0.0.1:${port}${served.length ? ` and the project's servers the human started (${served.map((one) => `http://127.0.0.1:${one}`).join(', ')})` : ''}. Open a project file rendered by RIPLEY at http://127.0.0.1:${port}/preview/project/<path>, click, read the console and network, take screenshots (they land in ${outputDir}). RIPLEY's preview keeps no data (no localStorage, no cookies)${served.length ? '; to try an app with its data, open it on its server' : ''}. Nothing else on the network is reachable through it.`,
+    brief: `a headless browser that reaches only this MADRE at http://127.0.0.1:${port}${served.length ? ` and the project's servers the human started (${served.map((one) => `http://127.0.0.1:${one}`).join(', ')})` : ''}. Open a project file rendered by RIPLEY at http://127.0.0.1:${port}${preview}/project/<path>, click, read the console and network, take screenshots (they land in ${outputDir}). RIPLEY's preview keeps no data (no localStorage, no cookies)${served.length ? '; to try an app with its data, open it on its server' : ''}. Nothing else on the network is reachable through it.`,
   };
 }
 
@@ -265,7 +265,7 @@ export default defineModule({
     // A browser known not to start is not handed to anyone: every call to it would fail.
     if (playwrightHealth({ browser: ctx.settings.browser ?? 'chromium', env: ctx.env, cwd: ctx.projectRoot })?.ok === false) return [];
     const outputDir = turn.scratchDir ?? join(turn.roomDir ?? ctx.stateRoot, 'playwright');
-    return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false, servers: turn.servers ?? [] })];
+    return [playwrightServerFor({ port: turn.port, outputDir, browser: ctx.settings.browser ?? 'chromium', headless: ctx.settings.headless !== false, servers: turn.servers ?? [], preview: turn.preview ?? '/preview' })];
   },
   // Before it turns on, in one project or in all: the server starts and has its browser, or MADRE
   // fetches what is missing and asks again. `null` is ready; anything else is the refusal.

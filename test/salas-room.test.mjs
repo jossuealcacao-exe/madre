@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from '../src/cli-args.mjs';
 import { ensureSalasProject, isSalasRoom, knownRooms, projectRootFor, salasProjectRoot, salasRoomId } from '../src/salas.mjs';
 import { createPulseServer } from '../src/server.mjs';
+import { fichaHeaders } from '../src/ficha.mjs';
 
 // THE ROOM OF SALAS (docs/MACROVERSO.md, phase 3d; D-S08 and D-S09 assumed): `madre salas` opens a
 // room like any other whose project is MADRE's own notebook, `~/.pulse/salas`; a bare `madre` from
@@ -188,6 +189,8 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
   const home = await scratch('madre-salas-cli-home-');
   const env = { ...process.env, PULSE_HOME: state, HOME: home, PULSE_UPDATE_CHECK: '0', PULSE_PORT_BASE: String(20000 + Math.floor(Math.random() * 20000)) };
   for (const key of Object.keys(env)) if (key.startsWith('CLAUDE')) delete env[key];
+  // The CLI asks for the ficha (src/ficha.mjs): this test asks with it, as MADRE's own processes do.
+  const fetch = async (address, options = {}) => globalThis.fetch(address, { ...options, headers: { ...(options.headers ?? {}), ...(await fichaHeaders(state)) } });
   const bin = join(process.cwd(), 'bin', 'madre.mjs');
   const children = [];
   const run = (args, cwd, { until = /MADRE (?:is ready|está lista)|already open for this project|ya está abierto para este proyecto/ } = {}) => new Promise((resolve) => {
@@ -212,6 +215,7 @@ test('sala de salas · `madre salas` opens and closes as `madre start` would, a 
     // Home is said as Home, not as the folder MADRE keeps it in (QA 1.1.0, NUE-01).
     assert.match(first.out(), /Home: every project on this computer|Inicio: todos los proyectos de esta computadora/);
     assert.doesNotMatch(first.out(), new RegExp(notebook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal((await globalThis.fetch(`http://127.0.0.1:${port}/api/state`)).status, 401, 'the CLI\'s MADRE answered without the ficha');
     const opened = await fetch(`http://127.0.0.1:${port}/api/state`).then((answer) => answer.json());
     assert.equal(opened.salas, true);
     assert.equal(opened.room, salasRoomId(state));

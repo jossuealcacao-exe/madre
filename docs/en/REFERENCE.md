@@ -14,7 +14,7 @@ Everything MADRE does, with the exact numbers. To get started in five minutes, s
 You need Node 22.5 or later and at least one of these CLIs with a signed-in session: **Codex**, **Claude Code**, **Gemini CLI**, **OpenCode**. If **Ollama** is also running with a chat model, the project gets a fifth, local agent.
 
 1. Run `npx @jossuealcala/madre` from any folder: it opens Home, with all your projects and the Coordinator at the top. The first time, a three-step assistant walks you through it: connect the agents (each with its own button to install it and sign in, right there; once for all projects), add the projects (you choose folders inside your user folder; adding does not open them) and open the ones you are going to use. `npx @jossuealcala/madre start` inside a folder still opens that project directly; if there are no agents, the project opens anyway on Connect your agents so you can install them and sign in.
-2. The project opens at `http://127.0.0.1:4317`. Pick an agent in the selector or type `@claude …`. The chip next to `to @agente` says which mode the message goes out in; `#1 CHAT ONLY`, read-only, is the default.
+2. The project opens at `http://127.0.0.1:4317`. MADRE opens the browser with its ficha in the address (`?ficha=…`): the browser keeps it and the address is left clean. Pick an agent in the selector or type `@claude …`. The chip next to `to @agente` says which mode the message goes out in; `#1 CHAT ONLY`, read-only, is the default.
 3. To add or reconnect an AI later: Settings → Agents (the settings button in the bar, or ⌘, / Ctrl+,), where the agents live alongside the rest of the settings. Codex, Claude Code, Gemini (with your Google account) and OpenCode (with GitHub Copilot) sign in with one click; Gemini and OpenCode also accept their key right there. Under each agent, "Prefer your terminal?" unfolds the same step written as a command, for whoever prefers to do it by hand. MADRE does not store provider credentials: each session and each key goes to its own CLI's file.
 4. With Ollama, the Local AI module (Modules, in the bar) is already on: memory is embedded locally and `@madre` appears in the row.
 5. Settings → Memory decides who distills the memory and how often. The Memory map, from the Diagnostics header, shows what the project remembers.
@@ -25,7 +25,7 @@ npx @jossuealcala/madre setup       # the same setup, from the terminal, if you 
 npx @jossuealcala/madre start --no-open --project RUTA
 ```
 
-**On a server, with no screen.** MADRE listens only on `127.0.0.1` of the machine it runs on, and on purpose: it has no password, and whoever reached it could set the agents to work there. Do not open its ports to the network. To use it on a server, open it through an SSH tunnel from your computer. Home uses 4317 and every project you open takes the next free port (4318, 4319…), so the tunnel carries several; if you open more projects, add more `-L`.
+**On a server, with no screen.** MADRE listens only on `127.0.0.1` of the machine it runs on, and on purpose: whoever reached it could set the agents to work there. Do not open its ports to the network. To use it on a server, open it through an SSH tunnel from your computer. Home uses 4317 and every project you open takes the next free port (4318, 4319…), so the tunnel carries several; if you open more projects, add more `-L`.
 
 ```bash
 # on your computer: reach the server with the tunnel
@@ -34,7 +34,9 @@ ssh -L 4317:127.0.0.1:4317 -L 4318:127.0.0.1:4318 -L 4319:127.0.0.1:4319 -L 4320
 npx @jossuealcala/madre --no-open
 ```
 
-Then open `http://127.0.0.1:4317/salas` in your computer's browser. The agents are installed on the server and connected from Settings › Agents: Claude gives you a link and a code you paste right there, and Gemini and OpenCode take their key. Use your own user, not root: the agents work with the permissions of whoever runs MADRE.
+Then open, in your computer's browser, the address MADRE wrote in the server's terminal, the one that ends in `?ficha=…`. The agents are installed on the server and connected from Settings › Agents: Claude gives you a link and a code you paste right there, and Gemini and OpenCode take their key. Use your own user, not root: the agents work with the permissions of whoever runs MADRE.
+
+**The ficha.** Every request to MADRE carries its ficha (Spanish for «token»): a random secret in `~/.pulse/credentials/ficha.json` that only your user can read. The browser gets it once, in the address MADRE opens, and keeps it in a cookie; MADRE's own processes send it in the `x-madre-ficha` header. Without it, MADRE only says that it is MADRE and its version: it lets nobody read your projects, install modules or open #4. Home makes a new one each time it starts and opens the browser; a restart with no browser (an update, a project Home opens) keeps the one before. A tab without the ficha tells you where to open MADRE from. What it does not stop: a program running as your user can read the file, as it reads everything of yours, and the cookie also travels to other ports of `127.0.0.1` you open in the same browser.
 
 **Three names.** **MADRE** is the product. **Diagnostics** is its operational voice: failures, connections, settings. **Log** is the channel the project runs on: the event record, the plan block, the `.pulse/` folder where artifacts land; those identifiers keep their old name, PULSE.
 
@@ -153,7 +155,7 @@ MADRE runs the steps as normal turns: each one stays in the ledger and goes thro
 
 **TURNS.** In Diagnostics, next to the sentinel. On by default: a conversation that is still working when you open another one does not stop, it keeps writing its record and the conversations panel marks it until it finishes. Two limits: conversations working at the same time (2) and turns at the same time in each one (3); a message that would exceed them is rejected with the reason before it starts. All conversations share a single holder of EDIT or FULL ACCESS. When it is off, a single conversation drives the agents and you cannot switch away from one that is working. `STOP ALL` stops them all.
 
-**STOP ALL.** The button in the bar, `STOPALL` in the Write box or `curl -X POST http://127.0.0.1:4317/api/stop-all` stop all plans and kill all agent processes. Diagnostics warns in red when the project gets out of hand: three agents at once, one agent with two overlapping turns, a plan longer than five minutes.
+**STOP ALL.** The button in the bar, `STOPALL` in the Write box or `curl -X POST -H "x-madre-ficha: $(node -p "require(require('os').homedir() + '/.pulse/credentials/ficha.json').ficha")" http://127.0.0.1:4317/api/stop-all` stop all plans and kill all agent processes. Diagnostics warns in red when the project gets out of hand: three agents at once, one agent with two overlapping turns, a plan longer than five minutes.
 
 ---
 

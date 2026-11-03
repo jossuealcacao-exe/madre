@@ -14,7 +14,7 @@ Todo lo que MADRE hace, con los números exactos. Para empezar en cinco minutos,
 Necesitas Node 22.5 o superior y al menos una de estas CLIs con sesión iniciada: **Codex**, **Claude Code**, **Gemini CLI**, **OpenCode**. Si además corre **Ollama** con un modelo de chat, el proyecto tiene un quinto agente local.
 
 1. Corre `npx @jossuealcala/madre` desde cualquier carpeta: abre Inicio, con todos tus proyectos y el Coordinador arriba. La primera vez lo acompaña un asistente de tres pasos: conectar los agentes (cada uno con su botón para instalarlo y firmarlo, ahí mismo; una vez para todos los proyectos), agregar los proyectos (eliges carpetas dentro de tu carpeta de usuario; agregar no abre) y abrir los que vas a usar. `npx @jossuealcala/madre start` dentro de una carpeta sigue abriendo ese proyecto directo; si no hay agentes, el proyecto abre igual en Conecta tus agentes para instalarlos y firmarlos.
-2. El proyecto abre en `http://127.0.0.1:4317`. Elige un agente en el selector o escribe `@claude …`. El chip junto a `to @agente` dice en qué modo sale el mensaje; `#1 SOLO CONVERSAR`, solo lectura, es el predeterminado.
+2. El proyecto abre en `http://127.0.0.1:4317`. MADRE abre el navegador con su ficha en la dirección (`?ficha=…`): el navegador la guarda y la dirección queda limpia. Elige un agente en el selector o escribe `@claude …`. El chip junto a `to @agente` dice en qué modo sale el mensaje; `#1 SOLO CONVERSAR`, solo lectura, es el predeterminado.
 3. Para sumar o reconectar una IA más tarde: Ajustes → Agentes (el botón de ajustes de la barra, o ⌘, / Ctrl+,), donde los agentes viven junto al resto de los ajustes. Codex, Claude Code, Gemini (con tu cuenta de Google) y OpenCode (con GitHub Copilot) se firman con un clic; Gemini y OpenCode también aceptan su llave ahí mismo. Debajo de cada agente, «¿Prefieres tu terminal?» despliega el mismo paso escrito como comando, para quien prefiera hacerlo a mano. MADRE no guarda credenciales de proveedores: cada sesión y cada llave van al archivo de su propio CLI.
 4. Con Ollama, el módulo IA local (Módulos, en la barra) ya está encendido: la memoria se embebe localmente y `@madre` aparece en la fila.
 5. Ajustes → Memoria decide quién destila la memoria y cada cuánto. El Mapa de memoria, desde la cabecera de Diagnóstico, muestra lo que el proyecto recuerda.
@@ -25,7 +25,7 @@ npx @jossuealcala/madre setup       # el mismo alta, desde la terminal, si la pr
 npx @jossuealcala/madre start --no-open --project RUTA
 ```
 
-**En un servidor, sin pantalla.** MADRE escucha solo en `127.0.0.1` de la máquina donde corre, y es a propósito: no tiene contraseña, y quien llegara a ella podría poner a trabajar a los agentes ahí. No abras sus puertos a la red. Para usarla en un servidor, ábrela por un túnel SSH desde tu computadora. Inicio usa el 4317 y cada proyecto que abras toma el siguiente puerto libre (4318, 4319…), así que el túnel lleva varios; si abres más proyectos, agrega más `-L`.
+**En un servidor, sin pantalla.** MADRE escucha solo en `127.0.0.1` de la máquina donde corre, y es a propósito: quien llegara a ella podría poner a trabajar a los agentes ahí. No abras sus puertos a la red. Para usarla en un servidor, ábrela por un túnel SSH desde tu computadora. Inicio usa el 4317 y cada proyecto que abras toma el siguiente puerto libre (4318, 4319…), así que el túnel lleva varios; si abres más proyectos, agrega más `-L`.
 
 ```bash
 # en tu computadora: entra al servidor con el túnel
@@ -34,7 +34,9 @@ ssh -L 4317:127.0.0.1:4317 -L 4318:127.0.0.1:4318 -L 4319:127.0.0.1:4319 -L 4320
 npx @jossuealcala/madre --no-open
 ```
 
-Luego abre `http://127.0.0.1:4317/salas` en el navegador de tu computadora. Los agentes se instalan en el servidor y se conectan desde Ajustes › Agentes: Claude te da un enlace y un código que pegas ahí mismo, y Gemini y OpenCode aceptan su llave. Usa tu usuario y no root: los agentes trabajan con los permisos de quien corre MADRE.
+Luego abre en el navegador de tu computadora la dirección que MADRE escribió en la terminal del servidor, la que termina en `?ficha=…`. Los agentes se instalan en el servidor y se conectan desde Ajustes › Agentes: Claude te da un enlace y un código que pegas ahí mismo, y Gemini y OpenCode aceptan su llave. Usa tu usuario y no root: los agentes trabajan con los permisos de quien corre MADRE.
+
+**La ficha.** Cada petición a MADRE lleva su ficha: un secreto al azar en `~/.pulse/credentials/ficha.json`, que solo tu usuario puede leer. El navegador la recibe una vez, en la dirección que MADRE abre, y la guarda en una cookie; los procesos de MADRE la mandan en la cabecera `x-madre-ficha`. Sin ella, MADRE solo dice que es MADRE y su versión: no deja leer tus proyectos, ni instalar módulos, ni abrir #4. Inicio hace una nueva cada vez que arranca y abre el navegador; un reinicio sin navegador (una actualización, un proyecto que abre Inicio) conserva la de antes. Una pestaña sin ficha te dice desde dónde abrir MADRE. Lo que no frena: un programa que corre con tu usuario puede leer el archivo, como lee todo lo tuyo, y la cookie también viaja a otros puertos de `127.0.0.1` que abras en el mismo navegador.
 
 **Tres nombres.** **MADRE** es el producto. **Diagnóstico** es su voz operativa: fallas, conexiones, ajustes. **Historial** es el canal sobre el que corre el proyecto: el registro de eventos, el bloque del plan, la carpeta `.pulse/` donde caen los artefactos; esos identificadores conservan su nombre de antes, PULSE.
 
@@ -153,7 +155,7 @@ MADRE ejecuta los pasos como turnos normales: cada uno queda en el ledger, pasa 
 
 **TURNOS.** En Diagnóstico, junto al centinela. Encendido por defecto: una conversación que sigue trabajando cuando abres otra no se detiene, sigue escribiendo su registro y el panel de conversaciones la marca hasta que termina. Dos límites: conversaciones trabajando a la vez (2) y turnos a la vez en cada una (3); un mensaje que los pasaría se rechaza con el motivo antes de empezar. Todas las conversaciones comparten un solo titular de EDITAR o ACCESO TOTAL. Apagado, una sola conversación maneja a los agentes y no se puede cambiar de una que está trabajando. `DETENER TODO` detiene todas.
 
-**DETENER TODO.** El botón de la barra, `STOPALL` en la caja de Escribir o `curl -X POST http://127.0.0.1:4317/api/stop-all` detienen todos los planes y matan todos los procesos de agente. Diagnóstico avisa en rojo cuando el proyecto se escapa: tres agentes a la vez, un agente con dos turnos cruzados, un plan de más de cinco minutos.
+**DETENER TODO.** El botón de la barra, `STOPALL` en la caja de Escribir o `curl -X POST -H "x-madre-ficha: $(node -p "require(require('os').homedir() + '/.pulse/credentials/ficha.json').ficha")" http://127.0.0.1:4317/api/stop-all` detienen todos los planes y matan todos los procesos de agente. Diagnóstico avisa en rojo cuando el proyecto se escapa: tres agentes a la vez, un agente con dos turnos cruzados, un plan de más de cinco minutos.
 
 ---
 

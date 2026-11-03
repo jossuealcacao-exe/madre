@@ -220,7 +220,7 @@ async function signLink(ctx, planId, index, { designation = null, by = 'you' } =
   if (!home) return reply(409, { error: t('The Coordinator did not wake up. Go back to Home and ask again.') });
   const days = by === 'bishop' ? Math.min(link.days ?? BISHOP_SIGN_DAYS, BISHOP_SIGN_DAYS) : link.days;
   const expires = days ? new Date(Date.now() + days * 86400000).toISOString() : null;
-  const signed = await askRoom(home.open.port, '/api/salas/enlaces', { method: 'POST', timeoutMs: 6000, body: { a: link.from, b: link.to, direction: link.direction, kinds: link.kinds, expires, orders: link.orders ?? { allowed: false, maxMode: 0, perHour: 6 }, designation, ...(by === 'bishop' ? { by: 'bishop' } : {}) } });
+  const signed = await askRoom(home.open.port, '/api/salas/enlaces', { stateRoot: ctx.stateRoot, method: 'POST', timeoutMs: 6000, body: { a: link.from, b: link.to, direction: link.direction, kinds: link.kinds, expires, orders: link.orders ?? { allowed: false, maxMode: 0, perHour: 6 }, designation, ...(by === 'bishop' ? { by: 'bishop' } : {}) } });
   if (!signed?.contract?.id) return reply(signed?.status ?? 403, { error: signed?.error ?? t('UNABLE TO COMPUTE. UNABLE TO CLARIFY.') });
   const config = await ctx.readConfig();
   const contracts = activeContracts(config, { salas });
@@ -684,7 +684,7 @@ export function formatBishop({ rooms, glances = new Map(), contracts = [], links
 export async function bishopBlock(ctx, { agent, text = '', mode = 1, preview = false, turn = null } = {}) {
   if (!inSalas(ctx) || !enabled(ctx) || !agent || agent !== chosen(ctx)) return null;
   const rooms = await knownRooms(ctx.stateRoot);
-  const glances = new Map(await Promise.all(rooms.filter((room) => room.open).map(async (room) => [room.id, await askRoom(room.open.port, '/api/glance?census=1').catch(() => null)])));
+  const glances = new Map(await Promise.all(rooms.filter((room) => room.open).map(async (room) => [room.id, await askRoom(room.open.port, '/api/glance?census=1', { stateRoot: ctx.stateRoot }).catch(() => null)])));
   const salas = salasRoomId(ctx.stateRoot);
   const contracts = activeContracts(ctx.config, { salas });
   const links = readsFrom(contracts, salas);

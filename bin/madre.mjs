@@ -15,6 +15,7 @@ import { isOnline, runSetup } from '../src/setup.mjs';
 import { parseArgs } from '../src/cli-args.mjs';
 import { ensureSalasProject, isSalasRoom, projectRootFor } from '../src/salas.mjs';
 import { forgetNpxLaunch } from '../src/npm-launch.mjs';
+import { fichaHeaders, readFicha, withFicha } from '../src/ficha.mjs';
 import { createServer } from 'node:net';
 
 // Before anything is run: what npx left about the call that started MADRE is not passed on to the
@@ -67,7 +68,8 @@ async function roomAlreadyOpen(port, projectRoot, span = 8) {
   const mine = await realpath(projectRoot).catch(() => resolve(projectRoot));
   for (let candidate = port; candidate < port + span; candidate += 1) {
     try {
-      const response = await fetch(`http://127.0.0.1:${candidate}/api/version`, { signal: AbortSignal.timeout(500) });
+      // With the ficha (src/ficha.mjs): without it a MADRE says only that it is one, not which project.
+      const response = await fetch(`http://127.0.0.1:${candidate}/api/version`, { headers: await fichaHeaders(), signal: AbortSignal.timeout(500) });
       if (!response.ok) continue;
       const info = await response.json();
       const theirs = info?.project ? await realpath(info.project).catch(() => info.project) : null;
@@ -287,8 +289,9 @@ if (command === 'doctor' && (has('--catalog') || has('--conditions'))) {
   // A room for this project may already be open. Show that one instead of starting a second.
   const running = await roomAlreadyOpen(port, projectRoot);
   if (running) {
-    console.log(`\nMADRE is already open for this project\n\n  ${running.url}${openPath}\n  Project: ${projectRoot}\n  Close that room first if you want a fresh one.\n`);
-    if (!noOpen) await openUrl(`${running.url}${openPath}`);
+    const address = withFicha(`${running.url}${openPath}`, await readFicha(salasHome));
+    console.log(`\nMADRE is already open for this project\n\n  ${address}\n  Project: ${projectRoot}\n  Close that room first if you want a fresh one.\n`);
+    if (!noOpen) await openUrl(address);
     process.exit(0);
   }
   await openRoom({ port, projectRoot, openBrowser: !noOpen, openPath });

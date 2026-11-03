@@ -9,6 +9,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { FICHA_HEADER, readFicha } from '../src/ficha.mjs';
 
 const run = promisify(execFile);
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
@@ -55,10 +56,17 @@ try {
   // and a check that fails for being impatient teaches nothing.
   for (let attempt = 0; attempt < 90 && !ready; attempt += 1) {
     await new Promise((next) => setTimeout(next, 500));
-    ready = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.ok).catch(() => false);
+    // With the ficha the installed server made for this state (src/ficha.mjs), as MADRE's own CLI asks.
+    const ficha = await readFicha(stateRoot);
+    ready = Boolean(ficha) && await fetch(`http://127.0.0.1:${port}/api/state`, { headers: { [FICHA_HEADER]: ficha } }).then((response) => response.ok).catch(() => false);
   }
   check(ready, 'installed server answers /api/state');
   if (ready) {
+    const ficha = await readFicha(stateRoot);
+    const withFicha = { [FICHA_HEADER]: ficha };
+    const bare = await globalThis.fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.status);
+    check(bare === 401, 'installed server refuses /api/state without the ficha');
+    const fetch = (address, options = {}) => globalThis.fetch(address, { ...options, headers: { ...(options.headers ?? {}), ...withFicha } });
     const state = await fetch(`http://127.0.0.1:${port}/api/state`).then((response) => response.json());
     check(state.projectRoot === projectRoot, 'server is bound to the requested project');
     const html = await fetch(`http://127.0.0.1:${port}/`).then((response) => response.text());

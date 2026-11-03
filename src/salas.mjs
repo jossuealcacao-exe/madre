@@ -18,6 +18,7 @@ import * as nodePath from 'node:path';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { oneAtATime, writeWhole } from './json-file.mjs';
+import { defaultStateRoot, fichaHeaders } from './ficha.mjs';
 
 const MADRE_BIN = fileURLToPath(new URL('../bin/madre.mjs', import.meta.url));
 
@@ -450,12 +451,13 @@ export function universeOf(research, { full = false } = {}) {
 }
 
 // What a room says about itself, read from its own page's address. A room on an older MADRE
-// answers 404 to the routes it does not have yet, and is said to be outdated (S-005).
-export async function askRoom(port, path, { method = 'GET', body = null, fetchImpl = globalThis.fetch, timeoutMs = 1500 } = {}) {
+// answers 404 to the routes it does not have yet, and is said to be outdated (S-005). It goes with
+// the ficha of this computer (src/ficha.mjs), as the page's own requests do.
+export async function askRoom(port, path, { method = 'GET', body = null, fetchImpl = globalThis.fetch, timeoutMs = 1500, stateRoot = defaultStateRoot() } = {}) {
   try {
     const response = await fetchImpl(`http://127.0.0.1:${port}${path}`, {
       method,
-      headers: body ? { 'content-type': 'application/json' } : {},
+      headers: { ...(await fichaHeaders(stateRoot)), ...(body ? { 'content-type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs),
     });

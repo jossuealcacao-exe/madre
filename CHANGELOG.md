@@ -6,6 +6,8 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 
 ## 1.1.3 · Sin publicar
 
+- **Ningún otro programa de tu computadora puede usar MADRE por ti.** Hasta ahora, cualquier programa de la computadora (de cualquier usuario y, en WSL2, también los de Windows) podía leer tus proyectos, instalar un módulo o abrir #4 hablándole directo a MADRE. Ahora cada petición lleva una ficha: un secreto que solo tu usuario puede leer. El navegador que MADRE abre la recibe en la dirección y la guarda; para ti nada cambia. Si abres MADRE en otro navegador, pega la dirección completa que escribió en la terminal. Inicio hace una ficha nueva cada vez que arranca.
+
 ## 1.1.2 · 2026-11-02
 
 Una versión para llegar más rápido a tu primer mensaje, con los arreglos de una revisión independiente del código y lo que dijo el diagnóstico de la semana.

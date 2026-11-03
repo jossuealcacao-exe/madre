@@ -5,6 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>MADRE</title>
+    <!-- The ficha (src/ficha.mjs): a 401 that asks for it means this tab's was replaced (MADRE started
+         again and opened a new one); the page reloads into the page that says where to open MADRE. -->
+    <script>(function () { var ask = window.fetch; window.fetch = function () { return ask.apply(this, arguments).then(function (answer) { if (answer.status === 401 && answer.headers.get('x-madre-ficha') === 'needed') location.reload(); return answer; }); }; })();</script>
     <link rel="icon" type="image/svg+xml" href="/assets/brand/madre-favicon.svg">
     <link rel="stylesheet" href="/styles.css">
     <!-- MADRE's ground over the page from the first frame until the page is ready (2026-10-30, loader.js
