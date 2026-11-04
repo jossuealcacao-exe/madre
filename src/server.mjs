@@ -21,7 +21,7 @@ import { createEmbedder } from './embeddings.mjs';
 import { memoryServerFor } from './memory-tools.mjs';
 import { MotherChannel, CODE000_STRIKES } from './mother.mjs';
 import { ErrorSentinel } from './sentinel-errors.mjs';
-import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
+import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, patientFetch, pullModel, ollamaVersions, ownOllamaServers } from './ollama.mjs';
 import { recallForTurn } from './modules/enlaces.mjs';
 import { hardwareOnce, MODEL_TIERS } from './modules/local-models.mjs';
 import { browserAdvice, environmentOnce, openBrowser as openInBrowser } from './environment.mjs';
@@ -325,9 +325,13 @@ export async function createPulseServer({
   // line beside the ledger. Bodies, headers and query values are never in it. One room per
   // process holds the watch; a second would only log what the first already logged.
   const outbound = await new OutboundLog({ file: join(roomDir, 'outbound.jsonl') }).load();
+  // The local AI's own channel: the same watch, without Node's 300 s wait for a first byte
+  // (patientFetch in src/ollama.mjs, L-7). A test's fake reportFetch is used as it is.
+  let localFetch = reportFetch === globalThis.fetch ? patientFetch : reportFetch;
   const unwatchOutbound = outbound.install();
   process.env.PULSE_OUTBOUND_LOG = join(roomDir, 'outbound.jsonl');
   reportFetch = outbound.watch(reportFetch);
+  localFetch = outbound.watch(localFetch);
   marketFetch = outbound.watch(marketFetch);
 
   // Attachments live beside the room log, never inside the project, and belong to the project
@@ -744,7 +748,7 @@ export async function createPulseServer({
   function wireLocal(target) {
     if (!target) return;
     target.setInvoker('ollama', localWiring.archivist);
-    target.setInvoker(MADRE_ADAPTER, localWiring.madre ? madreInvoker({ memory, ollama: () => ({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }), fetchImpl: reportFetch }) : null);
+    target.setInvoker(MADRE_ADAPTER, localWiring.madre ? madreInvoker({ memory, ollama: () => ({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }), fetchImpl: localFetch }) : null);
   }
   const ollamaSettings = async () => ({ enabled: true, embeddings: true, archivist: true, agent: true, ...((await readConfig(root)).modules?.ollama ?? {}) });
   // Whether this project uses the local AI at all, as Home decides it (src/local-ai.mjs).
@@ -888,7 +892,7 @@ export async function createPulseServer({
       const embedder = createEmbedder({ key, env: embedEnvFor(await memoryConfig()), ollama: useEmbeddings ? ollama : null, ollamaEmbedder });
       if (room) room.setEmbedder(embedder); else memory.attachEmbedder(embedder);
     }
-    localWiring.archivist = useArchivist ? ollamaInvoker({ host: ollama.host, model: ollama.chatModel, fetchImpl: reportFetch }) : null;
+    localWiring.archivist = useArchivist ? ollamaInvoker({ host: ollama.host, model: ollama.chatModel, fetchImpl: localFetch }) : null;
     // @madre: the fifth agent, present whenever Ollama has a chat model and the human left it on.
     const fifth = madreAgent({ ...ollama, chatModel: ollama.madreModel ?? ollama.chatModel }, { enabled: settings.enabled && settings.agent !== false });
     const index = agents.findIndex((agent) => agent.id === MADRE_AGENT_ID);
@@ -2130,7 +2134,7 @@ export async function createPulseServer({
           generate: ({ model = null, system = null, prompt, json = false, timeoutMs = 60000, temperature = 0 } = {}) => {
             const chosen = model ?? ollama.madreModel ?? ollama.chatModel ?? null;
             if (!ollama.running || !chosen) return Promise.reject(new Error(t('The local AI is not running.')));
-            return ollamaGenerate({ host: ollama.host, model: chosen, system, prompt: String(prompt ?? ''), json, timeoutMs, temperature, fetchImpl: reportFetch });
+            return ollamaGenerate({ host: ollama.host, model: chosen, system, prompt: String(prompt ?? ''), json, timeoutMs, temperature, fetchImpl: localFetch });
           },
           project: () => localAiHere(),
           setProject: (on) => setLocalAiHere(on),
@@ -2811,7 +2815,7 @@ export async function createPulseServer({
           if (!lobbyWork.running && (asked || due)) {
             lobbyWork.tried = Date.now();
             const language = roomLanguage() === 'en' ? 'en' : 'es';
-            lobbyWork.running = ollamaGenerate({ host: ollama.host, model, system: WORK_SYSTEM[language], prompt: workPrompt(items, language), fetchImpl: reportFetch, timeoutMs: 120000, temperature: 0.1 })
+            lobbyWork.running = ollamaGenerate({ host: ollama.host, model, system: WORK_SYSTEM[language], prompt: workPrompt(items, language), fetchImpl: localFetch, timeoutMs: 120000, temperature: 0.1 })
               .then(async (answer) => {
                 const bullets = parseWork(answer.text, items);
                 if (!bullets.length) throw new Error('MADRE answered nothing the lobby could check against the conversations.');

@@ -2231,6 +2231,7 @@ export const ES = {
   '{label} was interrupted before it started: {why}.': '{label} se interrumpió antes de arrancar: {why}.',
   '{label} was interrupted: {why}.': '{label} se interrumpió: {why}.',
   '{label} did not respond before the timeout ({seconds}s).': '{label} no contestó antes del tiempo límite ({seconds}s).',
+  '{label} closed the connection before answering ({code}). Check in Settings › Local AI that Ollama is still running.': '{label} cortó la conexión antes de contestar ({code}). Revisa en Ajustes › IA local que Ollama siga encendido.',
   ' Last output: {output}': ' Última salida: {output}',
   'writing {files}': 'escribía {files}',
   'stopped from its card': 'detenido desde su tarjeta',

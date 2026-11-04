@@ -5,6 +5,8 @@
 // so remembering costs no tokens elsewhere and nothing leaves. Nothing here is
 // required: without Ollama every path falls back to what it did before.
 
+import http from 'node:http';
+import https from 'node:https';
 import { t } from './i18n.mjs';
 
 export const DEFAULT_OLLAMA_HOST = 'http://127.0.0.1:11434';
@@ -95,6 +97,30 @@ export function ollamaEmbedder({ host = ollamaHost(), model, fetchImpl = globalT
   };
 }
 
+// Node's fetch gives up on an answer whose first byte has not come in 300 s (undici's own headers
+// timeout), whatever the turn allowed, and Ollama sends nothing until the model has read the whole
+// question — streaming or not. On a server without a graphics card that is minutes: the Coordinator
+// on Carlos's server failed with a bare «fetch failed» at 303 s of the 10 000 its turn had (L-7,
+// 2026-11-04). node:http has no such limit, so a local answer waits as long as the turn says.
+// Shaped like fetch for what this file reads: ok, status, text(), json().
+export function patientFetch(url, { method = 'GET', headers = {}, body = null, signal = null } = {}) {
+  return new Promise((resolve, reject) => {
+    const failed = (error) => reject(signal?.aborted ? signal.reason : error);
+    const target = new URL(url);
+    const request = (target.protocol === 'https:' ? https : http).request(target, { method, headers, ...(signal ? { signal } : {}) }, (response) => {
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('error', failed);
+      response.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolve({ ok: response.statusCode >= 200 && response.statusCode < 300, status: response.statusCode, text: async () => text, json: async () => JSON.parse(text) });
+      });
+    });
+    request.on('error', failed);
+    request.end(body ?? undefined);
+  });
+}
+
 // One answer from a local model. `json: true` asks Ollama for a JSON object.
 export async function ollamaGenerate({ host = ollamaHost(), model, prompt, system = null, json = false, fetchImpl = globalThis.fetch, timeoutMs = 180000, temperature = 0.2, numCtx = DEFAULT_NUM_CTX, signal = null } = {}) {
   const started = Date.now();
@@ -102,7 +128,14 @@ export async function ollamaGenerate({ host = ollamaHost(), model, prompt, syste
   // A model that takes longer than the turn allows says so in the room's words, as any agent does:
   // the bare «The operation was aborted due to timeout» reached the person, in English.
   const response = await fetchImpl(`${host}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages, stream: false, options: { temperature, num_ctx: numCtx }, ...(json ? { format: 'json' } : {}) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) })
-    .catch((error) => { throw error?.name === 'TimeoutError' ? new Error(t('{label} did not respond before the timeout ({seconds}s).', { label: `Ollama (${model})`, seconds: Math.round(timeoutMs / 1000) })) : error; });
+    .catch((error) => {
+      if (error?.name === 'TimeoutError') throw new Error(t('{label} did not respond before the timeout ({seconds}s).', { label: `Ollama (${model})`, seconds: Math.round(timeoutMs / 1000) }));
+      if (error?.name === 'AbortError') throw error;
+      // Ollama stopped or closed the connection mid-answer: said in the room's words, with the code
+      // kept so the archivist still reads it as passing.
+      const code = error?.cause?.code ?? error?.code ?? error?.name ?? 'failed';
+      throw Object.assign(new Error(t('{label} closed the connection before answering ({code}). Check in Settings › Local AI that Ollama is still running.', { label: `Ollama (${model})`, code })), { code, cause: error });
+    });
   if (!response.ok) throw new Error(`Ollama HTTP ${response.status}: ${(await response.text().catch(() => '')).slice(0, 200)}`);
   const payload = await response.json();
   const inputTokens = payload.prompt_eval_count ?? 0;

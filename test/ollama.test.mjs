@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, pullModel, ollamaHost } from '../src/ollama.mjs';
+import { probeOllama, ollamaEmbedder, ollamaGenerate, ollamaInvoker, patientFetch, pullModel, ollamaHost } from '../src/ollama.mjs';
+import { createServer } from 'node:http';
+import { passingFailure } from '../src/room/archivist.mjs';
 import { createEmbedder } from '../src/embeddings.mjs';
 import { distillPrompt, parseDistillation, pickDistiller, OLLAMA_ARCHIVIST } from '../src/distiller.mjs';
 import { listExtensions } from '../src/extensions.mjs';
@@ -320,4 +322,64 @@ test('a local model that takes longer than the turn allows says so in words, not
   } finally {
     clearTimeout(hold);
   }
+});
+
+test('the local AI is asked over node:http, which has no 300 s wait for a first byte (L-7)', async () => {
+  // Ollama sends nothing until the model has read the whole question; Node's fetch dropped the
+  // Coordinator's question on Carlos's server at 303 s of the 10 000 its turn had («fetch failed»).
+  let slow = 0;
+  const ollama = createServer((request, response) => {
+    let body = '';
+    request.on('data', (chunk) => { body += chunk; });
+    request.on('end', () => {
+      if (request.url === '/slow') { slow += 1; return; }
+      if (request.url !== '/api/chat') return response.writeHead(404).end('no');
+      const asked = JSON.parse(body);
+      setTimeout(() => response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ message: { content: ` ${asked.messages.at(-1).content} ` }, prompt_eval_count: 7, eval_count: 3 })), 50);
+    });
+  }).listen(0, '127.0.0.1');
+  await new Promise((resolve) => ollama.once('listening', resolve));
+  const host = `http://127.0.0.1:${ollama.address().port}`;
+  try {
+    const answer = await ollamaGenerate({ host, model: 'qwen2.5:3b', prompt: 'hola', fetchImpl: patientFetch });
+    assert.equal(answer.text, 'hola');
+    assert.equal(answer.usage.totalTokens, 10);
+    const missing = await patientFetch(`${host}/nada`, { method: 'POST', body: '{}' });
+    assert.equal(missing.ok, false);
+    assert.equal(await missing.text(), 'no');
+    // The turn's own limit still holds, and still reads as a timeout.
+    const hold = setTimeout(() => {}, 5000);
+    try {
+      await assert.rejects(patientFetch(`${host}/slow`, { method: 'POST', body: '{}', signal: AbortSignal.timeout(80) }), (error) => error.name === 'TimeoutError');
+    } finally {
+      clearTimeout(hold);
+    }
+    assert.equal(slow, 1);
+  } finally {
+    ollama.closeAllConnections();
+    await new Promise((resolve) => ollama.close(resolve));
+  }
+  // The server asks the local AI through it; the sentinel's fake fetch still stands in for it in tests.
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /let localFetch = reportFetch === globalThis\.fetch \? patientFetch : reportFetch;/);
+  assert.match(server, /localFetch = outbound\.watch\(localFetch\);/);
+  assert.equal((server.match(/ollamaGenerate\([^\n]*fetchImpl: reportFetch/g) ?? []).length, 0, 'a local answer still goes through fetch');
+  assert.match(server, /madreInvoker\(\{ memory, [^\n]*fetchImpl: localFetch \}\)/);
+  assert.match(server, /ollamaInvoker\(\{ host: ollama\.host, model: ollama\.chatModel, fetchImpl: localFetch \}\)/);
+});
+
+test('Ollama closing the connection mid-answer is said in words, and stays a passing failure', async () => {
+  const reset = async () => { throw Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }); };
+  const failed = await ollamaGenerate({ model: 'qwen2.5:3b', prompt: 'hola', fetchImpl: reset }).catch((error) => error);
+  assert.match(failed.message, /^Ollama \(qwen2\.5:3b\) (closed the connection before answering|cortó la conexión antes de contestar) \(ECONNRESET\)\./);
+  assert.equal(failed.code, 'ECONNRESET');
+  assert.ok(passingFailure(failed), 'the archivist would give up on Ollama for good');
+  // fetch's own wrapper: the code sits on the cause.
+  const wrapped = async () => { throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } }); };
+  assert.match((await ollamaGenerate({ model: 'm', prompt: 'p', fetchImpl: wrapped }).catch((error) => error)).message, /\(ECONNREFUSED\)/);
+  // A stop the person asked for is not a broken connection.
+  const stopped = new AbortController();
+  stopped.abort();
+  const halt = async (url, init) => { throw init.signal.reason; };
+  assert.equal((await ollamaGenerate({ model: 'm', prompt: 'p', fetchImpl: halt, signal: stopped.signal }).catch((error) => error)).name, 'AbortError');
 });
