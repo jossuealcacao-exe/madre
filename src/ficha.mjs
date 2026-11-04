@@ -23,6 +23,7 @@
 // file, as it can read everything else of theirs; and the cookie travels to any other port of
 // 127.0.0.1 this browser visits.
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { fchmodSync, openSync } from 'node:fs';
 import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -86,6 +87,16 @@ export function fichaReader(stateRoot, { everyMs = 1000 } = {}) {
     if (stamp !== seen || !value) { value = await readFicha(stateRoot); seen = stamp; }
     return value;
   };
+}
+
+// A log a MADRE process writes on its way up (start.log, restart.log, update.log) holds the address
+// with the ficha that process prints: kept for the person alone, as the ficha is. One written
+// before this rule, open to every user of the computer, is closed the next time it is opened
+// (2026-11-03, the ficha's test).
+export function openPrivateLog(file) {
+  const fd = openSync(file, 'a', OWNER_ONLY);
+  try { fchmodSync(fd, OWNER_ONLY); } catch { /* a filesystem without modes */ }
+  return fd;
 }
 
 // The header a MADRE process sends to another, or nothing when this computer has no ficha yet (a

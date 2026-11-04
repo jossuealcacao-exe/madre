@@ -2,7 +2,7 @@
 // MADRE · © 2026 Jossue Alcalá · Business Source License 1.1: LICENSE
 import http from 'node:http';
 import { readFile, realpath, writeFile, mkdir, mkdtemp, cp, rename, access, rm, stat } from 'node:fs/promises';
-import { existsSync, openSync, rmSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { probePort, framable } from './ports.mjs';
 import { ControlDesk } from './room/control.mjs';
@@ -142,7 +142,7 @@ import { parseWork, recentWork, WORK_SYSTEM, workPrompt } from './lobby-work.mjs
 import { CHANNEL_HEADER, CORPUS_MAX, CORPUS_PER_HOUR, DELIVER_MAX, MAX_LIMIT as ENLACE_MAX_LIMIT, NO_SUCH_LINK, NOTICES as ENLACE_NOTICES, activeContracts, allowContract, askCorpus, askEnlace, askState, channelKey, countRecent, decideDelivery, deliverable, deliverNotes, deliversTo, linkTraffic, mayServe, noteCrossing, noticeEnlace, readInbox, readsFrom, recallContract, receiveDelivery, revokeContract, sameKey, servingRooms, signContract, trainContract } from './enlaces.mjs';
 import { readContinuity } from './modules/ahp.mjs';
 import { readAt } from './checkpoint.mjs';
-import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, ensureFicha, fichaCookie, fichaHeaders, fichaReader, previewKey, sameFicha, withFicha } from './ficha.mjs';
+import { FICHA_HEADER, FICHA_NEEDED, FICHA_PARAM, carriesFicha, ensureFicha, fichaCookie, fichaHeaders, fichaReader, openPrivateLog, previewKey, sameFicha, withFicha } from './ficha.mjs';
 
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(sourceDirectory, '..', 'public');
@@ -407,7 +407,7 @@ export async function createPulseServer({
     setTimeout(() => {
       server.close(() => {
         let log = 'ignore';
-        try { log = openSync(join(roomDir, 'restart.log'), 'a'); } catch { /* no witness, still restart */ }
+        try { log = openPrivateLog(join(roomDir, 'restart.log')); } catch { /* no witness, still restart */ }
         const env = { ...process.env, PULSE_RESTARTED: '1' };
         delete env.PULSE_UPDATE_RESTART;
         const child = spawn(process.execPath, [...process.execArgv, ...next], { cwd: process.cwd(), detached: process.platform !== 'win32', windowsHide: true, stdio: ['ignore', log, log], env });
@@ -4301,7 +4301,7 @@ export async function createPulseServer({
             // What the new copy says on the way up lands beside the ledger: if it never comes back,
             // this file is the only witness.
             let log = 'ignore';
-            try { log = openSync(join(roomDir, 'update.log'), 'a'); } catch { /* no witness, still restart */ }
+            try { log = openPrivateLog(join(roomDir, 'update.log')); } catch { /* no witness, still restart */ }
             const child = spawn(shell.file, shell.args, { cwd: canonicalProjectRoot, detached: process.platform !== 'win32', windowsHide: true, stdio: ['ignore', log, log], env: { ...process.env, PULSE_UPDATE_RESTART: '1' } });
             child.unref();
             setTimeout(() => process.exit(0), 200);

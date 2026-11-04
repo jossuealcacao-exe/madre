@@ -12,13 +12,13 @@
 
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, openSync, realpathSync } from 'node:fs';
+import { closeSync, realpathSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import * as nodePath from 'node:path';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { oneAtATime, writeWhole } from './json-file.mjs';
-import { defaultStateRoot, fichaHeaders } from './ficha.mjs';
+import { defaultStateRoot, fichaHeaders, openPrivateLog } from './ficha.mjs';
 
 const MADRE_BIN = fileURLToPath(new URL('../bin/madre.mjs', import.meta.url));
 
@@ -385,7 +385,7 @@ export async function knownRooms(stateRoot) {
 // the way up lands in start.log beside its record: if it never comes up, that file says why.
 export function startRoom({ projectRoot, roomDir, env = process.env, spawnImpl = spawn, bin = MADRE_BIN }) {
   let log = 'ignore';
-  try { log = openSync(join(roomDir, 'start.log'), 'a'); } catch { /* no witness, still start */ }
+  try { log = openPrivateLog(join(roomDir, 'start.log')); } catch { /* no witness, still start */ }
   // The new room is its own: what this room set for itself on the way up is not handed on.
   const own = { ...env };
   for (const name of ['PULSE_UPDATE_RESTART', 'PULSE_OUTBOUND_LOG']) delete own[name];

@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FICHA_COOKIE, FICHA_HEADER, carriesFicha, cookieFicha, ensureFicha, fichaFile, previewKey, readFicha, withFicha } from '../src/ficha.mjs';
+import { FICHA_COOKIE, FICHA_HEADER, carriesFicha, cookieFicha, ensureFicha, fichaFile, openPrivateLog, previewKey, readFicha, withFicha } from '../src/ficha.mjs';
 import { channelKey } from '../src/enlaces.mjs';
-import { ensureSalasProject } from '../src/salas.mjs';
+import { ensureSalasProject, startRoom } from '../src/salas.mjs';
 import { createPulseServer } from '../src/server.mjs';
 import { playwrightServerFor } from '../src/modules/playwright.mjs';
 
@@ -174,5 +174,23 @@ test('ficha · only Home, opening the browser, makes a new one; a project keeps 
   } finally {
     await rm(state, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
     await rm(other, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
+// The ficha's test (2026-11-03): the address a project prints on its way up, with the ficha, landed
+// in start.log (and restart.log, update.log) open to every user of the computer.
+test('ficha · the logs that print it are the person\'s alone, an older one too', { skip: process.platform === 'win32' }, async () => {
+  const roomDir = await mkdtemp(join(tmpdir(), 'pulse-ficha-log-'));
+  try {
+    const older = join(roomDir, 'restart.log');
+    await writeFile(older, 'http://127.0.0.1:4317/?ficha=old\n');
+    await chmod(older, 0o644);
+    const { closeSync } = await import('node:fs');
+    closeSync(openPrivateLog(older));
+    assert.equal((await stat(older)).mode & 0o777, 0o600, 'an older log stayed open to others');
+    startRoom({ projectRoot: roomDir, roomDir, spawnImpl: () => ({ unref() {} }) });
+    assert.equal((await stat(join(roomDir, 'start.log'))).mode & 0o777, 0o600, 'start.log is open to others');
+  } finally {
+    await rm(roomDir, { recursive: true, force: true });
   }
 });
