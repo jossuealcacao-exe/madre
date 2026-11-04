@@ -47,3 +47,27 @@ test('windows installer · windows-ready.ps1 travels in the build and answers 0,
     assert.match(nsi, new RegExp(`LangString StepPlatform \\$\\{LANG_${lang}\\} "[^"]*${words}`));
   }
 });
+
+// W-3 (report MR-ZGVW5G): what happens inside MADRE's Linux is kept in a file, the exit code is
+// the script's own, and the installer copies the file out to Windows when it fails.
+test('windows installer · the inside step keeps a log and its own exit code', async () => {
+  const { execFileSync, spawnSync } = await import('node:child_process');
+  const { mkdtemp, rm, writeFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const setup = await readFile(join(here, 'inside-setup.sh'), 'utf8');
+  const wrapper = setup.slice(0, setup.indexOf('say() {'));
+  assert.match(wrapper, /tee "\$log"/);
+  assert.match(nsi, /CopyFiles \/SILENT "\$PLUGINSDIR\\madre-instalacion\.log" "\$INSTDIR\\instalacion\.log"[\s\S]{0,80}\$\(InsideFailed\)/);
+  const dir = await mkdtemp(join(tmpdir(), 'madre-inside-'));
+  try {
+    for (const [end, code] of [['exit 7', 7], ['true', 0]]) {
+      await writeFile(join(dir, 'step.sh'), `${wrapper}echo "for $1"\necho oops >&2\n${end}\n`);
+      const ran = spawnSync('sh', ['step.sh', 'José'], { cwd: dir, encoding: 'utf8' });
+      assert.equal(ran.status, code, end);
+      assert.match(ran.stdout, /for José\noops/, 'still shown as it happens');
+      assert.equal(execFileSync('cat', ['madre-instalacion.log'], { cwd: dir, encoding: 'utf8' }), 'for José\noops\n');
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

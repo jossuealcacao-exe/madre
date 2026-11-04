@@ -39,7 +39,7 @@ SetCompress off
 !include "x64.nsh"
 
 ; The installer's own number, not MADRE's.
-!define VERSION "1.0.2"
+!define VERSION "1.0.3"
 !ifndef OUTFILE
   !define OUTFILE "MADRE-Instalador.exe"
 !endif
@@ -120,8 +120,8 @@ LangString PlatformStillOff ${LANG_ENGLISH} "Windows already restarted, but its 
 LangString PlatformStillOff ${LANG_SPANISH} "Windows ya se reinició, pero su Plataforma de máquina virtual sigue apagada, y el Linux de MADRE la necesita.$\r$\n$\r$\nLa página de ayuda explica cómo encenderla a mano. ¿Abrirla?"
 LangString LinuxFailed ${LANG_ENGLISH} "Virtualization and WSL are on, but Windows could not create or start MADRE's Linux. It downloads about 400 MB: check your internet connection and open this installer again.$\r$\n$\r$\nShow details has Windows' own error, and the help page says what to check. Open it?"
 LangString LinuxFailed ${LANG_SPANISH} "La virtualización y WSL están encendidos, pero Windows no pudo crear o arrancar el Linux de MADRE. Descarga unos 400 MB: revisa tu conexión a internet y vuelve a abrir este instalador.$\r$\n$\r$\nEn «Mostrar detalles» está el error de Windows, y la página de ayuda dice qué revisar. ¿Abrirla?"
-LangString InsideFailed ${LANG_ENGLISH} "MADRE could not finish installing inside its Linux. Check your internet connection and open this installer again: it continues where it stopped.$\r$\n$\r$\nThe details (Show details) say what failed."
-LangString InsideFailed ${LANG_SPANISH} "MADRE no pudo terminar de instalarse dentro de su Linux. Revisa tu conexión a internet y vuelve a abrir este instalador: sigue donde se quedó.$\r$\n$\r$\nEn «Mostrar detalles» dice qué falló."
+LangString InsideFailed ${LANG_ENGLISH} "MADRE could not finish installing inside its Linux. Check your internet connection and open this installer again: it continues where it stopped.$\r$\n$\r$\nWhat happened is saved in $INSTDIR\instalacion.log. If it fails again, send its last lines from madre.run/en/report."
+LangString InsideFailed ${LANG_SPANISH} "MADRE no pudo terminar de instalarse dentro de su Linux. Revisa tu conexión a internet y vuelve a abrir este instalador: sigue donde se quedó.$\r$\n$\r$\nLo que pasó quedó guardado en $INSTDIR\instalacion.log. Si vuelve a fallar, manda sus últimas líneas desde madre.run/reportar."
 LangString RemoveLinux ${LANG_ENGLISH} "Also delete MADRE's Linux and everything saved inside it (your projects there included)?$\r$\n$\r$\nIf you say No, it stays, and installing MADRE again finds it as it was."
 LangString RemoveLinux ${LANG_SPANISH} "¿Borrar también el Linux de MADRE y todo lo guardado adentro (tus proyectos ahí incluidos)?$\r$\n$\r$\nSi dices que no, se queda, y al volver a instalar MADRE lo encuentra como estaba."
 
@@ -323,6 +323,9 @@ Section "MADRE" Main
   nsExec::ExecToLog '"$Wsl" -d ${DISTRO} -u root --cd "$PLUGINSDIR" -- sh ./inside-setup.sh "$1"'
   Pop $0
   ${If} $0 != 0
+    ; What inside-setup.sh said, kept where the person can find it and send it.
+    CreateDirectory "$INSTDIR"
+    CopyFiles /SILENT "$PLUGINSDIR\madre-instalacion.log" "$INSTDIR\instalacion.log"
     MessageBox MB_ICONEXCLAMATION "$(InsideFailed)"
     Abort
   ${EndIf}

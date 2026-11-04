@@ -14,6 +14,21 @@
 # without a password prompt nobody would see (src/modules/ollama.mjs, adminHere).
 set -eu
 
+# Everything it says also goes to a file (installer 1.0.3, report MR-ZGVW5G): in the folder it runs
+# from, which the installer copies out to Windows when this fails, or /var/log when that folder is
+# not writable. It runs itself once more with its output through tee, so the installer still shows
+# every line as it happens, and keeps its own exit code.
+if [ -z "${MADRE_SETUP_LOGGED:-}" ]; then
+  export MADRE_SETUP_LOGGED=1
+  log=./madre-instalacion.log
+  { : > "$log"; } 2>/dev/null || log=/var/log/madre-instalacion.log
+  code=$(mktemp)
+  # `|| …` keeps set -e from ending the group before the code is written.
+  { sh "$0" "$@" 2>&1 && echo 0 > "$code" || echo $? > "$code"; } | tee "$log"
+  status=$(cat "$code"); rm -f "$code"
+  exit "$status"
+fi
+
 say() { printf '\n== %s\n' "$1"; }
 
 # A Linux user name from the Windows one: accents dropped (José → jose), lowercase letters, digits,
