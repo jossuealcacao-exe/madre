@@ -36,6 +36,7 @@ const SAID = [
   '{label} closed the connection before answering ({code}). Check in Settings › Local AI that Ollama is still running.',
   '{label} exited with code {code}.',
   ' Last output: {output}',
+  ' (also tried {model})',
   'MADRE is shutting down',
   'STOPALL by the human',
   '{label} does not know the model `{model}`.',

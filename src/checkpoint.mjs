@@ -291,6 +291,31 @@ async function diffOne(root, before, prefix = '', exclude = []) {
 
 // What changed since the checkpoint, in the project and in every nested repository, paths
 // relative to the project. Forbidden zones are judged on the path inside each repository too.
+// What a turn wrote where git does not look (L-5, Carlos's server, 2026-11-04: patient records
+// under an ignored `pacientes/`, and the card said the agent «changed nothing»). A restore point
+// never holds ignored files, so these are named as outside it. Read by modification time from git's
+// own list of what it ignores, without walking what is ignored for its size (dependencies, builds,
+// caches), MADRE's own folders or the .env files the guard already puts back; bounded, because it
+// is a note on the card and not a record.
+const HEAVY = new Set(['node_modules', '.git', '.venv', 'venv', '__pycache__', 'dist', 'build', '.next', '.nuxt', 'target', '.cache', '.turbo', 'coverage', '.gradle', 'Pods', 'vendor']);
+export async function ignoredWrittenSince(root, checkpoint, since, { limit = 20, budget = 5000 } = {}) {
+  const listed = await git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'], { via: checkpoint?.via }).catch(() => '');
+  const found = [];
+  let visits = 0;
+  const walk = async (path) => {
+    if (found.length >= limit || visits >= budget) return;
+    visits += 1;
+    const bare = path.replace(/\/$/, '');
+    if (HEAVY.has(bare.split('/').pop()) || isForbidden(bare)) return;
+    const info = await lstat(join(root, bare)).catch(() => null);
+    if (info?.isDirectory()) {
+      for (const entry of (await readdir(join(root, bare)).catch(() => [])).sort()) await walk(`${bare}/${entry}`);
+    } else if (info?.isFile() && info.mtimeMs >= since) found.push(bare);
+  };
+  for (const path of listed.split('\0').filter(Boolean)) await walk(path);
+  return found;
+}
+
 export async function diffCheckpoint(root, checkpoint) {
   const outer = await diffOne(root, checkpoint, '', checkpoint.exclude ?? []);
   const parts = [outer];

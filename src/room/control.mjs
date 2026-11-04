@@ -4,7 +4,7 @@
 // is taken before, the diff is read after, writes into forbidden zones are
 // restored on the spot, and the checkpoint stays for UNDO. One holder at a time.
 
-import { createCheckpoint, diffCheckpoint, restoreCheckpoint, settleControls } from '../checkpoint.mjs';
+import { createCheckpoint, diffCheckpoint, ignoredWrittenSince, restoreCheckpoint, settleControls } from '../checkpoint.mjs';
 import { guardForbidden } from './guard.mjs';
 
 export class ControlDesk {
@@ -115,12 +115,15 @@ export class ControlDesk {
     // The .env files git ignores never reach the diff: they come back from the guard's own copy.
     const unseen = (await run.guard?.restoreChanged?.() ?? []).filter((path) => !toRevert.has(path));
     const kept = diff.files.filter((file) => !toRevert.has(file.path));
-    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, ...(diff.afterTree ? { afterTree: diff.afterTree } : {}), forbiddenReverted: [...controls, ...reverted.filter((path) => diff.forbidden.includes(path) && !mine(path)), ...unseen], existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [], ...(deleted.size ? { deletesReverted: [...deleted] } : {}) };
+    // Written where git does not look: outside the restore point, so UNDO does not bring it back (L-5).
+    const outside = (await ignoredWrittenSince(this.#projectRoot, run.checkpoint, Date.parse(run.since)).catch(() => [])).filter((path) => !unseen.includes(path) && !mine(path));
+    const changes = { checkpointId: run.checkpoint.id, agent: run.agent, messageId: run.messageId, mode: run.mode ?? 3, files: kept, stat: diff.stat, ...(diff.afterTree ? { afterTree: diff.afterTree } : {}), forbiddenReverted: [...controls, ...reverted.filter((path) => diff.forbidden.includes(path) && !mine(path)), ...unseen], existingReverted: additive ? reverted.filter((path) => !diff.forbidden.includes(path)) : [], ...(deleted.size ? { deletesReverted: [...deleted] } : {}), ...(outside.length ? { outsideRestore: outside } : {}) };
     const count = changes.files.length;
     const notes = [
       changes.forbiddenReverted.length ? `${changes.forbiddenReverted.length} write(s) into forbidden zones were reverted.` : null,
       changes.existingReverted.length ? `${changes.existingReverted.length} change(s) to existing files were put back: CREATE only adds.` : null,
       deleted.size ? `${deleted.size} deleted file(s) were put back: the copilot does not delete.` : null,
+      outside.length ? `${outside.length} file(s) in folders git ignores were written too (${outside.slice(0, 3).join(', ')}${outside.length > 3 ? ', …' : ''}); the restore point does not hold them, so UNDO does not bring them back.` : null,
     ].filter(Boolean).join(' ');
     changes.message = `${count ? `@${run.agent} ${additive ? 'created' : 'changed'} ${count} file(s) in the project.` : `@${run.agent} ${additive ? 'created' : 'changed'} nothing in the project.`}${notes ? ` ${notes}` : ''}`;
     return changes;

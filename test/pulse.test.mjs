@@ -1958,6 +1958,11 @@ test('attachments: uploaded to the room folder, served back, handed to every CLI
     assert.equal(back.headers.get('content-type'), 'image/png');
     assert.deepEqual(Buffer.from(await back.arrayBuffer()), png);
     assert.ok((await store.readAll()).some((event) => event.type === 'attachment.stored' && event.payload.name === 'sketch.png'));
+    // D-8: an empty file is refused in words, before it is stored, and never as a broken route.
+    const empty = await fetch(`${base}/api/attachments`, { method: 'POST', headers: { 'x-pulse-filename': encodeURIComponent('vacio.txt'), 'content-type': 'text/plain' }, body: Buffer.alloc(0) });
+    assert.equal(empty.status, 400);
+    assert.match((await empty.json()).error, /The file is empty: there is nothing to attach\.|El archivo está vacío/);
+    assert.ok(!(await store.readAll()).some((event) => event.type === 'attachment.stored' && event.payload.name === 'vacio.txt'));
     assert.equal((await fetch(`${base}/api/attachments`, { method: 'POST', body: Buffer.alloc(0) })).status, 400);
 
     // send with attachment → invoker receives paths; message records the file
@@ -2771,7 +2776,18 @@ test('invokeGemini: when the spare model is refused, the person still reads why 
     invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: async (input) => { calls.push(input); return refused(input); }, fallbackModel: '' }),
     (error) => error.code === 'UNAVAILABLE' && !/also tried/.test(error.message),
   );
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 1);  // L-8 (Carlos, 2026-11-04): a room in Spanish read the notice in Spanish up to «(also tried …)».
+  const { setLanguage, language } = await import('../src/i18n.mjs');
+  const before = language();
+  setLanguage('es');
+  try {
+    await assert.rejects(
+      invokeGemini({ executable: 'gemini', projectRoot: process.cwd(), prompt: 'hi', run: refused, fallbackModel: 'gemini-3-flash-preview' }),
+      (error) => / \(también se probó gemini-3-flash-preview\)/.test(error.message) && !/also tried/.test(error.message),
+    );
+  } finally {
+    setLanguage(before);
+  }
 });
 
 

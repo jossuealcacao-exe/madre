@@ -372,7 +372,8 @@ export async function invokeGemini({
         // The spare failed too, for whatever reason (a model this account is not given, say): what
         // the person needs to read is why the model they chose failed, not why the spare did.
         if (switched && firstTrouble && !produced && !signal?.aborted) {
-          error.message = `${firstTrouble.message} ${firstTrouble.hint} (also tried ${fallbackModel})`;
+          // In the room's words, like the sentence before it (L-8: «… (also tried …)» closed a Spanish notice).
+          error.message = `${firstTrouble.message} ${firstTrouble.hint}${t(' (also tried {model})', { model: fallbackModel })}`;
           error.code = firstTrouble.code;
           throw error;
         }
@@ -390,7 +391,7 @@ export async function invokeGemini({
           continue;
         }
         if (diagnosis?.code === 'UNAVAILABLE' || diagnosis?.code === 'RATE_LIMITED') {
-          error.message = `${diagnosis.message} ${diagnosis.hint}${switched ? ` (also tried ${fallbackModel})` : ''}`;
+          error.message = `${diagnosis.message} ${diagnosis.hint}${switched ? t(' (also tried {model})', { model: fallbackModel }) : ''}`;
           error.code = diagnosis.code;
           throw error;
         }

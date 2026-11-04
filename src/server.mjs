@@ -3656,6 +3656,9 @@ export async function createPulseServer({
           return sendJson(response, error.status ?? 400, { error: error.message });
         }
         const name = decodeURIComponent(request.headers['x-pulse-filename'] ?? url.searchParams.get('name') ?? 'attachment');
+        // An empty file is the request's, not a broken route: refused in words, before it is stored,
+        // and never counted as MADRE's failure in the diagnostics (D-8, one copy of 1.1.2).
+        if (!bytes?.length) return sendJson(response, 400, { error: t('The file is empty: there is nothing to attach.') });
         const here = await scopeOf(url, response);
         if (here.error) return sendJson(response, 404, here);
         const record = await here.room.registerAttachment(await storeAttachment(attachmentsRoot, { name, bytes }));
