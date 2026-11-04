@@ -54,7 +54,7 @@ Open **Diagnostics** and type what you see, like "Gemini does not answer". It te
 
 - **It runs on your computer.** MADRE has no account and no cloud: it opens on `127.0.0.1`.
 - **Your keys are not copied.** Each AI keeps its own sign-in.
-- **You know what leaves.** What an AI reads goes to its provider, with your account, just as in your Terminal. Once a day MADRE sends anonymous diagnostics (what failed and how much it is used, never what you write or your projects); turn it off in Settings.
+- **You know what leaves.** What an AI reads goes to its provider, with your account, just as in your Terminal. Two things go to madre.run, never what you write or your projects: a daily notice that the copy is still in use (a random identifier, the version, the system and Node), which is always on, and anonymous diagnostics (what failed and how much it is used), which you turn off in Settings. The details are in [what leaves the machine](docs/en/REFERENCE.md#what-leaves-the-machine).
 
 ## License
 
