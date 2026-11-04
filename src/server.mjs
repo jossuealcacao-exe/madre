@@ -328,6 +328,13 @@ export async function createPulseServer({
   // The local AI's own channel: the same watch, without Node's 300 s wait for a first byte
   // (patientFetch in src/ollama.mjs, L-7). A test's fake reportFetch is used as it is.
   let localFetch = reportFetch === globalThis.fetch ? patientFetch : reportFetch;
+  // Whether git is on this computer (D-5): the restore point taken before an AI writes needs it,
+  // and without it every #2, #3 and #4 failed with a bare «spawn git ENOENT». Asked when the room
+  // opens and again, at most once a minute, when a page is served; the page marks those modes.
+  let gitHere = true;
+  let gitAsked = 0;
+  const askGit = () => { gitAsked = Date.now(); execFile('git', ['--version'], { timeout: 5000 }, (error) => { gitHere = error?.code !== 'ENOENT'; }); };
+  askGit();
   const unwatchOutbound = outbound.install();
   process.env.PULSE_OUTBOUND_LOG = join(roomDir, 'outbound.jsonl');
   reportFetch = outbound.watch(reportFetch);
@@ -2376,7 +2383,8 @@ export async function createPulseServer({
     // until its own line runs, so any route above it threw instead of refusing.
     // Which machine serves the page, written into it (public/i18n.js, hostWords): the browser that
     // reads it may be on another one, a Mac looking at a Linux box, and must not say «Mac» there.
-    const withHost = (html) => html.replace('<head>', `<head>\n    <meta name="madre-host" content="${JSON.stringify(hostFacts()).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">`);
+    if (Date.now() - gitAsked > 60_000) askGit();
+    const withHost = (html) => html.replace('<head>', `<head>\n    <meta name="madre-host" content="${JSON.stringify({ ...hostFacts(), ...(gitHere ? {} : { git: false }) }).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">`);
     // A page of MADRE's own. Its files can vanish under a running copy (npx replaced its folder
     // with a newer version): then the page says so, instead of a failure (1.1.0 diagnostics).
     const pageHtml = async (name) => {

@@ -5122,6 +5122,9 @@ export const ES = {
   'so the launcher stays killable': 'para que el lanzador se pueda detener',
   'the configuration for this turn, from the mode you chose': 'la configuración de este turno, según el modo que elegiste',
   'a turn never opens a page': 'un turno nunca abre una página',
+  'This computer does not have git, which MADRE needs to take the restore point before @{agent} writes, so nothing was changed. Install git and send it again.': 'Esta computadora no tiene git, que MADRE necesita para tomar el punto de restauración antes de que @{agent} escriba, así que no se cambió nada. Instala git y vuelve a enviarlo.',
+  'This computer does not have git, which MADRE needs to take the restore point before an AI writes. Install git and reload this page.': 'Esta computadora no tiene git, que MADRE necesita para tomar el punto de restauración antes de que una IA escriba. Instala git y vuelve a cargar esta página.',
+  'NEEDS GIT': 'FALTA GIT',
   'MADRE could not take the restore point before @{agent} writes, so nothing was changed: {error}': 'MADRE no pudo tomar el punto de restauración antes de que @{agent} escriba, así que no se cambió nada: {error}',
   'Reload and settings': 'Recargar y ajustes',
   '{names} will use it when restarted: it was started before this setting existed.': '{names} tomará el cambio al reiniciarse: se abrió antes de que existiera este ajuste.',
@@ -5737,6 +5740,11 @@ export const ES = {
   'Choose another model in the model menu of the Write box, or «default», or change the plan with that provider.': 'Elige otro modelo en el menú de modelos de la caja de Escribir, o «por defecto», o cambia el plan con ese proveedor.',
   '# OpenCode, the models it can use:': '# OpenCode, los modelos que puede usar:',
   'Something outside the turn stopped the agent': 'Algo fuera del turno detuvo al agente',
+  'Git is not installed on this computer': 'Git no está instalado en esta computadora',
+  '# Ubuntu, Debian or WSL': '# Ubuntu, Debian o WSL',
+  '# Fedora': '# Fedora',
+  'Before an AI writes (#2, #3 or #4), MADRE takes a restore point with git, so that UNDO can bring everything back. This computer has no git, so the turn stopped before writing and nothing was changed. Chatting (#1) works without it.': 'Antes de que una IA escriba (#2, #3 o #4), MADRE toma un punto de restauración con git, para que «Deshacer» pueda devolver todo. Esta computadora no tiene git, así que el turno se detuvo antes de escribir y no se cambió nada. Conversar (#1) funciona sin él.',
+  'Install git, reload the page and send the message again. In the mode menu the modes that write say NEEDS GIT until it is installed.': 'Instala git, vuelve a cargar la página y envía otra vez el mensaje. En el menú de modos, los que escriben dicen FALTA GIT hasta que esté instalado.',
   "The agent's program received a signal to quit that its turn did not send: the system, another program, a closed terminal or MADRE closing. It is not a failure of the agent or of the project.":
     'El programa del agente recibió una señal para salir que su turno no mandó: el sistema, otro programa, una terminal cerrada o el cierre de MADRE. No es una falla del agente ni del proyecto.',
   'Ask again. If it keeps happening, look for what closes programs on this computer: a session that ends, WSL shutting down, or a tool that stops processes.':

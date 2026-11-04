@@ -28,7 +28,7 @@ test('room · a restore point that cannot be taken ends the turn with a message,
   const seats = [...room.matchAll(/this\.#controlDesk\.begin\(\{[^\n]*\.catch\(\(error\) => \(error\?\.code === 'ABORT_ERR' \? null : \{ failed: error \}\)\);\n[^\n]*\n\s*if \(seat\.failed\) return this\.#couldNotSeat\(/g)];
   assert.equal(seats.length, 2, 'both the #3 and the #2 seat report a failed restore point');
   assert.doesNotMatch(room, /controlDesk\.begin\([^\n]*Promise\.reject\(error\)/);
-  assert.match(room, /async #couldNotSeat\(\{ messageId, agent, planId, error \}\) \{[\s\S]{0,400}this\.#emit\('message\.failed'/);
+  assert.match(room, /async #couldNotSeat\(\{ messageId, agent, planId, error \}\) \{[\s\S]{0,1000}this\.#emit\('message\.failed'/);
 });
 
 // The same day: `/module` in a project whose .pulse/ was left read-only was accepted (202) and then
@@ -45,4 +45,35 @@ test('room · /module hands the agent the SDK guide inside the project', async (
   assert.match(room, /if \(draft === true \|\| wantsModule\(text2\)\) lease\.sdk = await this\.#sdkInProject\(\);/);
   assert.match(room, /joinPath\(this\.#projectRoot, '\.pulse', 'sdk'\)/);
   assert.match(room, /sdk: input\.lease\?\.sdk \?\? sdkPaths\(\),/);
+});
+
+// D-5 (diagnostics of 1.1.2, two Linux copies): no git on the computer at all. Every #2, #3 and #4
+// failed after it was chosen with «spawn git ENOENT», and nothing said so before.
+test('no git on the computer · said as what to install, before and after choosing a mode that writes', async () => {
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const { ES } = await import('../public/es.js');
+  // What the room checks is what a missing git really throws.
+  const project = await mkdtemp(join(tmpdir(), 'madre-no-git-'));
+  await writeFile(join(project, 'README.md'), '# Tienda\n');
+  const path = process.env.PATH;
+  process.env.PATH = project;
+  const thrown = await createCheckpoint(project, { id: 'no-git-1', label: 'test' }).then(() => null, (error) => error);
+  process.env.PATH = path;
+  assert.equal(thrown?.code, 'ENOENT');
+  assert.match(`${thrown.path} ${thrown.syscall}`, /\bgit\b/);
+  const room = await readFile(new URL('../src/room.mjs', import.meta.url), 'utf8');
+  assert.match(room, /const noGit = error\?\.code === 'ENOENT' && \/\\bgit\\b\/\.test\(`\$\{error\?\.path \?\? ''\} \$\{error\?\.syscall \?\? ''\}`\);/);
+  // After: the failure is a known condition, in both languages, and never reaches the sentinel as unknown.
+  const after = 'This computer does not have git, which MADRE needs to take the restore point before @{agent} writes, so nothing was changed. Install git and send it again.';
+  assert.ok(ES[after], 'said in Spanish');
+  for (const text of [after.replace('{agent}', 'claude'), ES[after].replace('{agent}', 'claude'), 'spawn git ENOENT']) {
+    assert.equal(diagnose(text)[0]?.code, 'MU-081', text);
+  }
+  // Before: the server writes it into the page, and the modes that write say NEEDS GIT.
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(server, /execFile\('git', \['--version'\], \{ timeout: 5000 \}, \(error\) => \{ gitHere = error\?\.code !== 'ENOENT'; \}\)/);
+  assert.match(server, /JSON\.stringify\(\{ \.\.\.hostFacts\(\), \.\.\.\(gitHere \? \{\} : \{ git: false \}\) \}\)/);
+  const app = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(app, /const noGit = n >= 2 && !locked && hostLacksGit\(\);/);
+  assert.equal(ES['NEEDS GIT'], 'FALTA GIT');
 });

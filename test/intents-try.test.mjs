@@ -212,3 +212,22 @@ test('intenciones · probar: a try that fell short brings the next message of it
   other.tick();
   assert.notEqual((await other.desk.suggest(asked({ text: '¿cuál es el puerto del servidor de pruebas?' })))?.basis, 'tried');
 });
+
+test('intenciones · probar: with no rung known to go back to, no offer to go back (D-4)', async (t) => {
+  // A try taken when neither the chip nor the CLI said a rung: the offer to go back came with
+  // effort null and the page broke on it (intentReason, 1 copy of 1.1.2).
+  const { events, turn } = ledger();
+  const { desk, clock, tick } = await deskOn(t, { events });
+  const start = clock.now;
+  await desk.offered({ accepted: true, kind: 'try', agent: 'codex', model: null, intent: 'lookup', effort: 'low', from: null });
+  turn({ text: LOOKUP, effort: 'low', at: start + 2000, rating: 'bad' });
+  clock.now = start + 3 * MIN;
+  tick();
+  const next = await desk.suggest(asked({ text: '¿cuál es el puerto del servidor de pruebas?', defaultEffort: null }));
+  assert.notEqual(next?.basis, 'tried');
+  assert.ok(!next || next.effort, `an offer without a rung: ${JSON.stringify(next)}`);
+  // Once the rung is known again, the offer has somewhere to go.
+  const again = await desk.suggest(asked({ text: '¿cuál es el puerto del servidor de producción?' }));
+  assert.equal(again?.basis, 'tried');
+  assert.equal(again.effort, 'medium');
+});

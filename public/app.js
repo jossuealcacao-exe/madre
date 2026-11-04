@@ -4281,6 +4281,13 @@ function openCopilotKey(minutes) {
   openOverride(els.target.value, { mode: 3, copilot: minutes, forceKey: true });
 }
 
+// Whether the computer MADRE runs on lacks git (D-5): the server writes it into the page
+// (<meta name="madre-host">), and the modes that write, which need a restore point, say so before
+// they are chosen instead of failing with «spawn git ENOENT» after.
+function hostLacksGit() {
+  try { return JSON.parse(document.querySelector('meta[name="madre-host"]')?.content ?? 'null')?.git === false; } catch { return false; }
+}
+
 function toggleModeMenu(id, anchor) {
   if (!modeMenu.hidden && modeMenuFor === id) { closeModeMenu(); return; }
   closeModelMenu();
@@ -4312,23 +4319,25 @@ function toggleModeMenu(id, anchor) {
     body.append(el('span', 'name', sentence(MODES[n].label)), el('span', 'hint', chatShellOn() ? MODE_BRIEF[n] : MODES[n].hint));
     option.append(el('span', 'n', `#${n}`), body);
     if (onTheMac) option.title = t('#3 EDIT and #4 FULL ACCESS are opened from the Mac.');
+    const noGit = n >= 2 && !locked && hostLacksGit();
     // In the chat shell the list is quieter (2026-10-26): the mode in use wears a check, and #3 and
     // #4 say nothing of their confirming — the unlock itself asks.
     // The agent's default mode wears the same light badge as the default model, in use or not.
     if (chatShellOn()) {
-      const note = onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : '';
+      const note = onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : noGit ? t('NEEDS GIT') : '';
       if (note) option.append(el('span', `tag${raise ? ' raise' : ''}`, note));
       else if (n === defaultModeFor(id)) option.querySelector('.name')?.append(el('span', 'model-default', t('default')));
       if (state.mode === n) option.append(menuCheck());
     } else {
-      const tag = state.mode === n ? t('NOW') : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
+      const tag = state.mode === n ? t('NOW') : onTheMac ? t('ON THE MAC') : raise ? t('RAISE TO #{n} ›', { n }) : locked ? t('LOCKED') : noGit ? t('NEEDS GIT') : n === 4 ? t('CONFIRM ×2') : n === 3 ? t('CONFIRM') : n === defaultModeFor(id) ? t('DEFAULT') : '';
       if (tag) {
         const label = el('span', `tag${raise ? ' raise' : ''}`, tag);
         if (state.mode === n) label.append(el('span', 'dot'));
         option.append(label);
       }
     }
-    option.title = !locked ? MODES[n].hint
+    option.title = noGit ? t('This computer does not have git, which MADRE needs to take the restore point before an AI writes. Install git and reload this page.')
+      : !locked ? MODES[n].hint
       : raise ? t('@{id} is capped at #{cap}. This raises its max mode to #{n} in Settings › Permissions and opens the unlock.', { id, cap, n })
       : n >= 3 ? `@${id}'s CLI cannot write files, so ${MODES[n].label} is not possible for it.`
       : t("Above @{id}'s max mode (#{cap}). Raise it in Settings › Permissions.", { id, cap });
@@ -13272,6 +13281,8 @@ function paintIntentTried(box, once) {
 }
 
 function paintIntentOffer(box, said) {
+  // An offer names a rung; one without it has nothing to say and broke here (D-4).
+  if (!said.effort) { hideIntentOffer(); return; }
   if (said.kind === 'invite') {
     paintIntentInvite(box, said);
   } else if (said.kind === 'try') {

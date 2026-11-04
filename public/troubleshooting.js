@@ -277,6 +277,21 @@ export const CONDITIONS = [
     fixes: same(['# WSL: what closed the Linux', 'wsl --list --running']),
   },
   {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03, D-5): Linux copies with no git at all. The
+    // restore point before an AI writes is a git one, also in a project that is not a repository.
+    id: 'no-git',
+    code: 'MU-081',
+    severity: 'blocking',
+    title: 'Git is not installed on this computer',
+    match: /does not have git, which MADRE needs|no tiene git, que MADRE necesita|spawn git ENOENT/i,
+    diagnosis: 'Before an AI writes (#2, #3 or #4), MADRE takes a restore point with git, so that UNDO can bring everything back. This computer has no git, so the turn stopped before writing and nothing was changed. Chatting (#1) works without it.',
+    remedy: 'Install git, reload the page and send the message again. In the mode menu the modes that write say NEEDS GIT until it is installed.',
+    fixes: {
+      darwin: ['xcode-select --install'],
+      linux: ['# Ubuntu, Debian or WSL', 'sudo apt install git', '# Fedora', 'sudo dnf install git'],
+    },
+  },
+  {
     id: 'not-signed-in',
     code: 'MU-008',
     solvedIn: 'connections',

@@ -1773,7 +1773,12 @@ export class Room {
   // try that reports failures, with the room showing «writing…» until MADRE was closed.
   async #couldNotSeat({ messageId, agent, planId, error }) {
     const said = String(error?.message ?? error ?? '').split('\n').filter(Boolean).slice(0, 2).join(' ').slice(0, 300);
-    const text = t('MADRE could not take the restore point before @{agent} writes, so nothing was changed: {error}', { agent: agent.id, error: said });
+    // No git on this computer at all (D-5, Linux copies of 1.1.2): said as what to install, not as
+    // «spawn git ENOENT».
+    const noGit = error?.code === 'ENOENT' && /\bgit\b/.test(`${error?.path ?? ''} ${error?.syscall ?? ''}`);
+    const text = noGit
+      ? t('This computer does not have git, which MADRE needs to take the restore point before @{agent} writes, so nothing was changed. Install git and send it again.', { agent: agent.id })
+      : t('MADRE could not take the restore point before @{agent} writes, so nothing was changed: {error}', { agent: agent.id, error: said });
     await this.#emit('message.failed', { messageId, target: agent.id, planId, error: this.#privacy ? this.#privacy.redact(text).text : text });
     return null;
   }

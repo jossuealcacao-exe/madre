@@ -32,6 +32,7 @@ const SAID = [
   '{label} was interrupted before it started: {why}.',
   '{label} was interrupted: {why}.',
   '{label} did not respond before the timeout ({seconds}s).',
+  'This computer does not have git, which MADRE needs to take the restore point before @{agent} writes, so nothing was changed. Install git and send it again.',
   '{label} closed the connection before answering ({code}). Check in Settings › Local AI that Ollama is still running.',
   '{label} exited with code {code}.',
   ' Last output: {output}',
