@@ -189,3 +189,23 @@ test('the sentinel · a help card never explains a failure; usage limit and no a
   assert.equal(await sentinel.observe(failed('gemini', 'Gemini se cerró con el código 41. Última salida: Please set an Auth method in your settings.json')), null);
   assert.equal(told.at(-1).code, 'MU-008');
 });
+
+// 1.1.2 diagnostics (2026-11-03, D-7): limits, credits, a refused key and a plan without the model
+// reached the author as unknown failures, each in the provider's own words.
+test('the sentinel · limits, credits, keys and plans of 1.1.2 are known, each by its code', async () => {
+  const told = [];
+  const sentinel = new ErrorSentinel({ pkg: { name: '@jossuealcala/madre', version: '1.1.2' }, agents: [], told: (one) => told.push(one) });
+  const failed = (target, error) => ({ type: 'message.failed', timestamp: new Date().toISOString(), payload: { target, error } });
+  for (const [target, error, code] of [
+    ['claude', 'You\'ve hit your 5-hour limit · resets 3am (America/Tijuana)', 'MU-077'],
+    ['opencode', 'APIError: This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits.', 'MU-059'],
+    ['opencode', 'APIError: This request requires more credits, or fewer max_tokens. You requested up to 32000 tokens, but can only afford 800.', 'MU-059'],
+    ['opencode', 'APIError: The API Key appears to be invalid or may have expired. Please verify your credentials and try again.', 'MU-078'],
+    ['opencode', 'APIError: Your current subscription does not have access to kimi-for-coding-highspeed. Upgrade to higher-tier Kimi Code plans.', 'MU-079'],
+    ['gemini', 'Gemini exited with code 41. Last output: Update your environment and try again (no reload needed if using .env)!', 'MU-008'],
+    ['opencode', 'OpenCode was stopped (SIGTERM): something outside the turn asked it to quit, such as the system, another program or MADRE closing.', 'MU-080'],
+  ]) {
+    assert.equal(await sentinel.observe(failed(target, error)), null, `${code} was filed as unknown`);
+    assert.equal(told.at(-1).code, code, error);
+  }
+});

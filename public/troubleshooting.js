@@ -175,7 +175,8 @@ export const CONDITIONS = [
     code: 'MU-059',
     severity: 'blocking',
     title: 'The API account behind this agent has no credit left',
-    match: /credit balance is too low|purchase credits|insufficient_quota|exceeded your current quota|billing_hard_limit_reached/i,
+    // OpenRouter's two ways of saying it (diagnostics of 1.1.2, D-7).
+    match: /credit balance is too low|purchase credits|insufficient_quota|exceeded your current quota|billing_hard_limit_reached|requires more credits|exceed your available credits/i,
     diagnosis: 'The provider refused the turn because the API key it was sent with has no balance left. An API key is billed apart from a subscription: a Claude Pro or Max plan, or ChatGPT, does not pay for it. In OpenCode it is the provider of the model the turn asked for, and a turn that named none ran on the default model of Settings › Agents › OpenCode.',
     remedy: 'Top up that API account, or give OpenCode a model whose provider has a session that works: your ChatGPT account (openai/…), GitHub Copilot, or OpenCode\'s own free models (opencode/…). Change the default in Settings › Agents › OpenCode, or pick another model in the Write box for one turn.',
     fixes: same(['# Anthropic API: https://console.anthropic.com/settings/billing', '# OpenAI API: https://platform.openai.com/settings/organization/billing', '# OpenCode, one turn on its own free model:', 'PULSE_OPENCODE_MODEL=opencode/big-pickle madre start', '# or take the key with no balance out of OpenCode:', 'opencode auth logout anthropic']),
@@ -229,13 +230,61 @@ export const CONDITIONS = [
     fixes: same(['# the models your account lists: ~/.codex/models_cache.json', 'codex   # then /model']),
   },
   {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03, D-7): Claude's plan window ran out, and only the
+    // card that explains the usage numbers matched it, which is no reason for a failure.
+    id: 'claude-usage-limit',
+    code: 'MU-077',
+    agent: 'claude',
+    severity: 'blocking',
+    title: 'Claude has reached its usage limit',
+    match: /hit your (?:5-hour|weekly|session|usage) limit|Claude AI usage limit reached/i,
+    diagnosis: 'Your Claude account has used up what its plan gives for this window, and Claude refuses every turn until it resets. Claude says when that is at the end of its message. It is Anthropic\'s limit, not MADRE\'s: nothing in the project is wrong.',
+    remedy: 'Wait until the time Claude gives, change your Claude plan, or ask another agent in the meantime.',
+    fixes: same(['# plan and usage: https://claude.ai/settings/usage', 'claude   # then /usage']),
+  },
+  {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03, D-7): a provider of OpenCode refused its key.
+    id: 'api-key-invalid',
+    code: 'MU-078',
+    severity: 'blocking',
+    title: 'The provider refused the API key',
+    match: /API Key appears to be invalid|invalid api key|incorrect api key provided|api key (?:has |is )?expired/i,
+    diagnosis: 'The agent reached its provider, but the provider did not accept the API key it was sent with: it was mistyped, revoked or has expired. In OpenCode it is the key of the provider of the model the turn asked for.',
+    remedy: 'Make a new key in the provider\'s console and give it to the agent again in Settings › Agents, or connect that agent another way (your ChatGPT account, GitHub Copilot or a sign-in).',
+    fixes: same(['# OpenCode, the key of one provider:', 'opencode auth login', '# or take the key out:', 'opencode auth logout <provider>']),
+  },
+  {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03, D-7): a Kimi plan without the model asked for.
+    id: 'plan-lacks-model',
+    code: 'MU-079',
+    severity: 'blocking',
+    title: 'Your plan does not include that model',
+    match: /subscription does not have access|Upgrade to higher-tier/i,
+    diagnosis: 'The provider answered, but the plan of that account does not include the model this turn asked for, so it refused the turn before starting. Nothing in the project changed.',
+    remedy: 'Choose another model in the model menu of the Write box, or «default», or change the plan with that provider.',
+    fixes: same(['# OpenCode, the models it can use:', 'opencode models']),
+  },
+  {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03, D-7): STOP ALL and the time limit end a turn
+    // before its process closes, so a signal named here came from outside the turn.
+    id: 'stopped-from-outside',
+    code: 'MU-080',
+    severity: 'transient',
+    title: 'Something outside the turn stopped the agent',
+    match: /\((?:SIGTERM|SIGINT|SIGHUP)\)/,
+    diagnosis: 'The agent\'s program received a signal to quit that its turn did not send: the system, another program, a closed terminal or MADRE closing. It is not a failure of the agent or of the project.',
+    remedy: 'Ask again. If it keeps happening, look for what closes programs on this computer: a session that ends, WSL shutting down, or a tool that stops processes.',
+    fixes: same(['# WSL: what closed the Linux', 'wsl --list --running']),
+  },
+  {
     id: 'not-signed-in',
     code: 'MU-008',
     solvedIn: 'connections',
     severity: 'blocking',
     title: 'Agent installed but signed out',
     // «set an Auth method»: Gemini with no account chosen exits with code 41 (1.1.0 diagnostics).
-    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method/i,
+    // «Update your environment»: Gemini chosen to use an API key with none set, code 41 too (1.1.2, D-7).
+    match: /not logged in|sign in required|Error authenticating|unauthorized|please (?:log|sign) ?in|no credentials|set an Auth method|Update your environment and try again/i,
     diagnosis: 'The CLI is on this computer but has no session for its provider. MADRE never stores credentials; each agent keeps its own.',
     remedy: 'This agent has no session yet. Connect it once in Settings › Agents (MADRE runs its sign-in for you, nothing to type in a terminal), or ask the same of an agent that is connected.',
     fixes: same(['npx @jossuealcala/madre setup', '# or directly:', 'codex login', 'claude auth login', 'opencode auth login', 'gemini   # then /auth']),

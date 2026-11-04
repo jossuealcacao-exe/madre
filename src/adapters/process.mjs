@@ -34,7 +34,7 @@ export function terminateProcessTree(child, { graceMs = 2000 } = {}) {
 // agent and looking for whoever pulled the plug.
 // In the room's language (QA 1.1.0, ACT-11): «OpenCode exited with code 1. Última salida: …» mixed two.
 const SIGNAL_MEANING = {
-  SIGTERM: '{label} was stopped (SIGTERM) — something asked it to quit: STOP ALL, a timeout, or the room shutting down.',
+  SIGTERM: '{label} was stopped (SIGTERM): something outside the turn asked it to quit, such as the system, another program or MADRE closing.',
   SIGKILL: '{label} was killed outright (SIGKILL) — usually this machine running out of memory.',
   SIGINT: '{label} was interrupted (SIGINT) — a Ctrl+C reached it.',
   SIGHUP: '{label} lost its terminal (SIGHUP).',

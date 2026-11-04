@@ -58,6 +58,36 @@ test('a room says what it is doing: the turn, what it was asked, its limit and i
   }
 });
 
+// D-7 (2026-11-03): a turn cut by STOP ALL, or by stopping its plan, reached the diagnostics as a
+// failure; STOP turn already said it was the human's. All three brakes are.
+test('STOP ALL and stopping a plan end their turns as stopped, as stopping one turn does', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pulse-activity-stopall-'));
+  let room = null;
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    room = new Room({
+      store,
+      agents: [{ id: 'claude', label: 'Claude', detected: true, ready: true, adapter: 'claude-readonly', path: '/fake', version: 'test' }],
+      projectRoot: root,
+      invokers: {
+        'claude-readonly': ({ signal }) => new Promise((resolve, reject) => {
+          signal?.addEventListener('abort', () => reject(new Error(`Claude was interrupted: ${signal.reason}.`)));
+        }),
+      },
+    });
+    const sent = room.send({ text: 'Review the README with care', target: 'claude' });
+    for (let tries = 0; tries < 40 && !room.activity().some((one) => one.kind === 'turn'); tries += 1) await wait(25);
+    await room.stopAll();
+    await Promise.allSettled([sent]);
+    const failed = (await store.readAll()).filter((event) => event.type === 'message.failed');
+    assert.equal(failed.length, 1);
+    assert.equal(failed[0].payload.stopped, true, 'STOP ALL left the turn as a failure');
+  } finally {
+    await room?.close?.();
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});
+
 test('a plan counts once on the key: its steps live inside it', () => {
   assert.equal(runningCount({ now: [{ kind: 'plan', planId: 'p' }, { kind: 'turn', planId: 'p' }, { kind: 'turn', planId: null }, { kind: 'run' }, { kind: 'install' }] }), 4);
 });

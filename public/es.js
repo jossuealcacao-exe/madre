@@ -5693,7 +5693,7 @@ export const ES = {
   'only when you press Activate or Release on a paid module of the Market': 'solo cuando pulsas Activar o Liberar en un módulo de paga del Mercado',
   'Market › the paid module\'s page': 'Mercado › la página del módulo de paga',
   // Known failures from a real project (2026-10-19).
-  '{label} was stopped (SIGTERM) — something asked it to quit: STOP ALL, a timeout, or the room shutting down.': '{label} se detuvo (SIGTERM): algo le pidió salir: Detener todo, el tiempo límite o el cierre del proyecto.',
+  '{label} was stopped (SIGTERM): something outside the turn asked it to quit, such as the system, another program or MADRE closing.': '{label} se detuvo (SIGTERM): algo fuera del turno le pidió salir, como el sistema, otro programa o el cierre de MADRE.',
   '{label} was killed outright (SIGKILL) — usually this machine running out of memory.': '{label} se cerró de golpe (SIGKILL): casi siempre porque a esta computadora se le acabó la memoria.',
   '{label} was interrupted (SIGINT) — a Ctrl+C reached it.': '{label} se interrumpió (SIGINT): le llegó un Ctrl+C.',
   '{label} lost its terminal (SIGHUP).': '{label} perdió su terminal (SIGHUP).',
@@ -5718,6 +5718,29 @@ export const ES = {
   'Codex has reached its usage limit': 'Codex llegó a su límite de uso',
   // MU-075 (2026-11-03): un modelo que la cuenta de ChatGPT no incluye.
   'Codex does not offer that model on this account': 'Codex no ofrece ese modelo en esta cuenta',
+  // MU-077 a MU-080 (2026-11-03, D-7): límites, llaves y planes que llegaban como fallas desconocidas.
+  'Claude has reached its usage limit': 'Claude llegó a su límite de uso',
+  "Your Claude account has used up what its plan gives for this window, and Claude refuses every turn until it resets. Claude says when that is at the end of its message. It is Anthropic's limit, not MADRE's: nothing in the project is wrong.":
+    'Tu cuenta de Claude ya usó lo que su plan da en este periodo, y Claude rechaza cada turno hasta que se renueve. Claude dice cuándo al final de su mensaje. Es un límite de Anthropic, no de MADRE: en el proyecto no hay nada mal.',
+  'Wait until the time Claude gives, change your Claude plan, or ask another agent in the meantime.': 'Espera a la hora que da Claude, cambia tu plan de Claude o pregúntale a otro agente mientras tanto.',
+  'The provider refused the API key': 'El proveedor rechazó la llave de API',
+  'The agent reached its provider, but the provider did not accept the API key it was sent with: it was mistyped, revoked or has expired. In OpenCode it is the key of the provider of the model the turn asked for.':
+    'El agente llegó a su proveedor, pero el proveedor no aceptó la llave de API con la que se mandó: está mal escrita, la revocaron o ya venció. En OpenCode es la llave del proveedor del modelo que pidió el turno.',
+  "Make a new key in the provider's console and give it to the agent again in Settings › Agents, or connect that agent another way (your ChatGPT account, GitHub Copilot or a sign-in).":
+    'Haz una llave nueva en la consola del proveedor y dásela otra vez al agente en Ajustes › Agentes, o conecta ese agente de otra forma (tu cuenta de ChatGPT, GitHub Copilot o un inicio de sesión).',
+  '# OpenCode, the key of one provider:': '# OpenCode, la llave de un proveedor:',
+  '# or take the key out:': '# o quita la llave:',
+  'Your plan does not include that model': 'Tu plan no incluye ese modelo',
+  'The provider answered, but the plan of that account does not include the model this turn asked for, so it refused the turn before starting. Nothing in the project changed.':
+    'El proveedor contestó, pero el plan de esa cuenta no incluye el modelo que pidió este turno, así que lo rechazó antes de empezar. En el proyecto no cambió nada.',
+  'Choose another model in the model menu of the Write box, or «default», or change the plan with that provider.': 'Elige otro modelo en el menú de modelos de la caja de Escribir, o «por defecto», o cambia el plan con ese proveedor.',
+  '# OpenCode, the models it can use:': '# OpenCode, los modelos que puede usar:',
+  'Something outside the turn stopped the agent': 'Algo fuera del turno detuvo al agente',
+  "The agent's program received a signal to quit that its turn did not send: the system, another program, a closed terminal or MADRE closing. It is not a failure of the agent or of the project.":
+    'El programa del agente recibió una señal para salir que su turno no mandó: el sistema, otro programa, una terminal cerrada o el cierre de MADRE. No es una falla del agente ni del proyecto.',
+  'Ask again. If it keeps happening, look for what closes programs on this computer: a session that ends, WSL shutting down, or a tool that stops processes.':
+    'Vuelve a preguntar. Si se repite, busca qué cierra programas en esta computadora: una sesión que termina, WSL que se apaga o una herramienta que detiene procesos.',
+  '# WSL: what closed the Linux': '# WSL: qué cerró el Linux',
   // MU-076 y la tarjeta de IA local (2026-11-03): Ollama instalado a medias.
   'Ollama was left installed halfway': 'Ollama quedó instalado a medias',
   "Ollama's install stopped before it finished, usually because the download (more than a GB) was cut by the network or ran out of time. The program is there but the part that runs the models is not, so every answer of @madre fails.":
@@ -5747,6 +5770,8 @@ export const ES = {
   '# or take the key with no balance out of OpenCode:': '# o quítale a OpenCode la llave sin saldo:',
   '# plan and usage: https://cursor.com/dashboard': '# plan y uso: https://cursor.com/dashboard',
   '# plan and usage: https://chatgpt.com/codex/settings/usage': '# plan y uso: https://chatgpt.com/codex/settings/usage',
+  '# plan and usage: https://claude.ai/settings/usage': '# plan y uso: https://claude.ai/settings/usage',
+  'claude   # then /usage': 'claude   # luego /usage',
   'RETRY ON {model}': 'Reintentar con {model}',
   'SENT ON {model}': 'Enviado con {model}',
   'USE IT ALWAYS': 'Usarlo siempre',

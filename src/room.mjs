@@ -1472,7 +1472,9 @@ export class Room {
     // Results waiting to go back stay with the human: STOP ALL means nothing starts by itself.
     for (const id of [...this.#returns.keys(), ...this.#returning.keys()]) this.#dropped.add(id);
     this.#returns.clear();
-    for (const turn of this.#turns.values()) turn.controller.abort(reason);
+    // Marked as stopTurn marks its one turn: a turn the human braked is not a failure to diagnose,
+    // and every turn STOP ALL cut reached the diagnostics as one (D-7, 2026-11-03).
+    for (const turn of this.#turns.values()) { turn.stoppedByHuman = true; turn.controller.abort(reason); }
     this.#runDesk.stop('STOPALL');
     await this.#emit('room.stopped', { reason, plans, turns, agents: [...new Set([...this.#turns.values()].map((turn) => turn.agent))] });
     await Promise.allSettled([...this.#turns.values()].map((turn) => turn.promise));
@@ -1516,7 +1518,7 @@ export class Room {
     plan.stopped = reason;
     this.#escalation.settleAll(planId, 'stopped');
     for (const turn of this.#turns.values()) {
-      if (turn.planId === planId) turn.controller.abort(reason);
+      if (turn.planId === planId) { turn.stoppedByHuman = true; turn.controller.abort(reason); }
     }
     return true;
   }
