@@ -27,7 +27,7 @@ import { GhostLedger } from './room/ghost.mjs';
 import { Escalation } from './room/escalation.mjs';
 import { Budget, budgetTokens } from './room/budget.mjs';
 import { VectorWorker } from './room/vectors.mjs';
-import { Archivist, distillDefaults } from './room/archivist.mjs';
+import { Archivist, distillDefaults, LOCAL_DISTILL_MS } from './room/archivist.mjs';
 import { OLLAMA_ARCHIVIST } from './distiller.mjs';
 import { memoryServerForTurn } from './memory-tools.mjs';
 import { CODE000_STRIKES } from './mother.mjs';
@@ -252,7 +252,7 @@ export class Room {
         busyAgents: () => new Set([...this.#turns.values()].map((turn) => turn.agent).filter(Boolean)),
         turnsInFlight: () => this.#turns.size,
         timeoutFor: (id) => this.timeoutFor(id),
-        localTimeoutMs: () => this.#agentTimeouts.ollama ?? 300000,
+        localTimeoutMs: () => this.#agentTimeouts.ollama ?? LOCAL_DISTILL_MS,
         projectName: () => basename(this.#projectRoot),
         projectRoot: () => this.#projectRoot,
         emit: (type, payload) => this.#emit(type, payload),

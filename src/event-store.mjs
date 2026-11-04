@@ -27,8 +27,15 @@ function parseLines(text) {
   return { events, damaged };
 }
 
+// How long a write or a read waits for another to let go of the ledger. It was 500 tries, about
+// ten seconds: on a server with every core taken by local models (Carlos's, L-4, 2026-11-04) a
+// write that fsyncs took longer, and the page's reader gave up with «Timed out waiting for event
+// store lock». Thirty seconds of clock, however slow each try is.
+export const LOCK_WAIT_MS = 30_000;
+
 export class EventStore {
   #file;
+  #lockWaitMs;
   #damaged = 0;
   #nextSequence = 1;
   #writeQueue = Promise.resolve();
@@ -42,8 +49,9 @@ export class EventStore {
   // It may be a function, read at every append, when other conversations of the project are
   // writing at the same time as this one: a number fixed when the ledger opened would hand out
   // a sequence another conversation has taken since.
-  constructor(file, { floor = 0 } = {}) {
+  constructor(file, { floor = 0, lockWaitMs = LOCK_WAIT_MS } = {}) {
     this.#file = file;
+    this.#lockWaitMs = lockWaitMs;
     this.#floor = typeof floor === 'function' || Number.isFinite(floor) ? floor : 0;
     this.#lockDirectory = `${file}.lock`;
   }
@@ -121,7 +129,7 @@ export class EventStore {
   async #acquireLock() {
     const token = randomUUID();
     const ownerFile = join(this.#lockDirectory, 'owner.json');
-    for (let attempt = 0; attempt < 500; attempt += 1) {
+    for (const deadline = Date.now() + this.#lockWaitMs; Date.now() < deadline;) {
       let created = false;
       try {
         await mkdir(this.#lockDirectory);

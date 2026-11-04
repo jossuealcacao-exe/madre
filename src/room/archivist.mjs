@@ -8,11 +8,22 @@
 import { pickDistiller, distillPrompt, parseDistillation, OLLAMA_ARCHIVIST } from '../distiller.mjs';
 
 export const BENCH_MS = 30 * 60 * 1000;
+// The local model distils in the background, where nobody waits for it, on computers that may have
+// no graphics card. On Carlos's server (16 cores, no card, L-1, 2026-11-04) qwen2.5:3b took 235 to
+// 300 s a batch, and the 300 s it was given cut one batch in three: Gemini was paid for it, and the
+// local try came back half an hour later to be cut again, holding every core each time. A
+// cut try throws away its work, so a longer limit spends less of the computer, not more.
+export const LOCAL_DISTILL_MS = 15 * 60 * 1000;
+// One that does not finish even in those sits out for hours rather than half an hour: a computer
+// that slow is not faster thirty minutes later.
+export const SLOW_LOCAL_BENCH_MS = 6 * 60 * 60 * 1000;
 // A failure that says nothing about the batch: no network, a provider's limit or a timeout
 // (2026-11-01, external review #18). Before, three of those in a row — a day offline — set the
 // batch aside for good, as if it could never be distilled, and its notes were never written. Those
 // stay in the queue and are tried again; only a batch that keeps failing for itself is skipped.
-const PASSING = /ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ENETUNREACH|fetch failed|network|timed? ?out|\b(429|502|503|504)\b|rate.?limit|quota|usage limit|overloaded|unavailable/i;
+// A room in Spanish says its own timeouts in Spanish («no contestó antes del tiempo límite», L-1):
+// those read as passing too.
+const PASSING = /ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ENETUNREACH|fetch failed|network|timed? ?out|tiempo l[ií]mite|se qued[oó] callad|\b(429|502|503|504)\b|rate.?limit|quota|usage limit|overloaded|unavailable/i;
 export const passingFailure = (error) => PASSING.test(`${error?.code ?? ''} ${error?.message ?? error ?? ''}`);
 
 export function distillDefaults(distill = {}, env = process.env) {
@@ -142,7 +153,8 @@ export class Archivist {
       this.#failures.set(batch.fromSequence, attempts);
       const skipped = attempts >= 3 && !passingFailure(error);
       if (skipped) { this.#memory.markDistilled(batch.sequences); this.#failures.delete(batch.fromSequence); }
-      this.#bench.set(agent.id, Date.now() + BENCH_MS);
+      const slowLocal = agent.adapter === 'ollama' && error?.code === 'ETIMEDOUT';
+      this.#bench.set(agent.id, Date.now() + (slowLocal ? SLOW_LOCAL_BENCH_MS : BENCH_MS));
       const next = pickDistiller(candidates, { preferred: this.#settings.agent, busy: new Set(), invokers, benched: new Set(this.#bench.keys()) });
       const report = { agent: agent.id, error: this.#deps.failureMessage(error), attempts, skipped, next: next?.id ?? null, fromSequence: batch.fromSequence, throughSequence: batch.throughSequence, considered: batch.entries.length, remaining: batch.remaining };
       await this.#deps.emit('memory.distilled', report);

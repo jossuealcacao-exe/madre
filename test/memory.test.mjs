@@ -1628,3 +1628,65 @@ test('memory: a note with no source says so, and an agent\'s unsourced refutatio
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
   }
 });
+
+// L-1 (Carlos's server, 2026-11-04): with no graphics card qwen2.5:3b took 235–300 s a batch and the
+// 300 s it was given cut one in three; Gemini was paid and the local try came back half an hour
+// later to be cut again. The room said its timeout in Spanish, which did not read as passing.
+test('the local archivist gets fifteen minutes, and one that cannot finish sits out for hours (L-1)', async () => {
+  const { Archivist, LOCAL_DISTILL_MS, SLOW_LOCAL_BENCH_MS, BENCH_MS, passingFailure } = await import('../src/room/archivist.mjs');
+  const { ollamaGenerate } = await import('../src/ollama.mjs');
+  assert.equal(LOCAL_DISTILL_MS, 15 * 60 * 1000);
+  assert.ok(SLOW_LOCAL_BENCH_MS >= 6 * BENCH_MS);
+  const room = await readFileP(new URL('../src/room.mjs', import.meta.url), 'utf8');
+  assert.match(room, /localTimeoutMs: \(\) => this\.#agentTimeouts\.ollama \?\? LOCAL_DISTILL_MS,/);
+  // A local timeout carries its code, whatever language it is said in.
+  const hang = (url, options) => new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason)));
+  const hold = setTimeout(() => {}, 5000);
+  const cut = await ollamaGenerate({ model: 'qwen2.5:3b', prompt: 'p', timeoutMs: 20, fetchImpl: hang }).catch((error) => error).finally(() => clearTimeout(hold));
+  assert.equal(cut.code, 'ETIMEDOUT');
+  assert.ok(passingFailure(new Error('Ollama (qwen2.5:3b) no contestó antes del tiempo límite (300s).')), 'a Spanish timeout set the batch aside');
+  assert.ok(passingFailure(new Error('Gemini se quedó callado 90 s')));
+
+  const asked = [];
+  const reports = [];
+  let marked = 0;
+  const memory = {
+    undistilled: () => ({ entries: [{ sequence: 1, role: 'user', sender: 'you', target: 'claude', text: 'Las curaciones se registran cada 48 horas.' }], fromSequence: 1, throughSequence: 1, sequences: [1], remaining: 0 }),
+    undistilledCount: () => 1,
+    briefing: () => ({ standing: [], discarded: [] }),
+    addMemories: (notes) => notes.length,
+    markDistilled: () => { marked += 1; },
+    memoryCount: () => 0,
+  };
+  const timedOut = Object.assign(new Error('Ollama (qwen2.5:3b) no contestó antes del tiempo límite (900s).'), { code: 'ETIMEDOUT' });
+  const invokers = {
+    ollama: async ({ timeoutMs }) => { asked.push(['ollama', timeoutMs]); throw timedOut; },
+    gemini: async () => { asked.push(['gemini']); return { text: '{"memories":[]}', usage: null }; },
+  };
+  const archivist = new Archivist({ memory, settings: { enabled: true, every: 10, idleMs: 60000, maxChars: 6000, agent: null, model: null, allowed: null }, deps: {
+    agents: () => [{ id: 'gemini', detected: true, ready: true, adapter: 'gemini', path: '/bin/gemini' }],
+    invokers: () => invokers, busyAgents: () => new Set(), turnsInFlight: () => 0, timeoutFor: () => 120000,
+    localTimeoutMs: () => LOCAL_DISTILL_MS, projectName: () => 'skinhealth', projectRoot: () => '/tmp',
+    emit: async (type, payload) => { reports.push(payload); }, recordUsage: async () => {}, stopped: () => false, failureMessage: (error) => error.message,
+  } });
+  const first = await archivist.runNow();
+  assert.deepEqual(asked[0], ['ollama', LOCAL_DISTILL_MS]);
+  assert.equal(first.agent, 'ollama');
+  assert.equal(first.skipped, false, 'a local timeout set the batch aside');
+  assert.equal(first.next, 'gemini');
+  // The next batch goes to the next agent, and the local model does not come back half an hour later.
+  await archivist.runNow();
+  assert.deepEqual(asked[1], ['gemini']);
+  assert.equal(marked, 1);
+  const realNow = Date.now;
+  try {
+    Date.now = () => realNow() + BENCH_MS + 60_000;
+    await archivist.runNow();
+    assert.deepEqual(asked.at(-1), ['gemini'], 'the slow local model was tried again after half an hour');
+    Date.now = () => realNow() + SLOW_LOCAL_BENCH_MS + 60_000;
+    await archivist.runNow();
+    assert.deepEqual(asked.at(-1), ['ollama', LOCAL_DISTILL_MS], 'the local model never came back');
+  } finally {
+    Date.now = realNow;
+  }
+});

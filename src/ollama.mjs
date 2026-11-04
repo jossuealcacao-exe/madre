@@ -129,7 +129,7 @@ export async function ollamaGenerate({ host = ollamaHost(), model, prompt, syste
   // the bare «The operation was aborted due to timeout» reached the person, in English.
   const response = await fetchImpl(`${host}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages, stream: false, options: { temperature, num_ctx: numCtx }, ...(json ? { format: 'json' } : {}) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs) })
     .catch((error) => {
-      if (error?.name === 'TimeoutError') throw new Error(t('{label} did not respond before the timeout ({seconds}s).', { label: `Ollama (${model})`, seconds: Math.round(timeoutMs / 1000) }));
+      if (error?.name === 'TimeoutError') throw Object.assign(new Error(t('{label} did not respond before the timeout ({seconds}s).', { label: `Ollama (${model})`, seconds: Math.round(timeoutMs / 1000) })), { code: 'ETIMEDOUT' });
       if (error?.name === 'AbortError') throw error;
       // Ollama stopped or closed the connection mid-answer: said in the room's words, with the code
       // kept so the archivist still reads it as passing.
