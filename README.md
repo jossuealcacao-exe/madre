@@ -54,7 +54,7 @@ Abre **Diagnóstico** y escribe lo que ves, como «Gemini no contesta». Te dice
 
 - **Corre en tu computadora.** MADRE no tiene cuenta ni nube: abre en `127.0.0.1`.
 - **Tus llaves no se copian.** Cada IA guarda su propia sesión.
-- **Sabes qué sale.** Lo que lee una IA va a su proveedor, con tu cuenta, igual que en tu Terminal. A madre.run van dos cosas, nunca lo que escribes ni tus proyectos: un aviso diario de que la copia sigue en uso (un identificador al azar, la versión, el sistema y Node), que siempre está encendido, y un diagnóstico anónimo (qué falló y cuánto se usa), que apagas en Ajustes. El detalle está en [lo que sale de la máquina](docs/REFERENCE.md#lo-que-sale-de-la-máquina).
+- **Sabes qué sale.** Lo que lee una IA va a su proveedor, con tu cuenta, igual que en tu Terminal. A madre.run van tres cosas, nunca lo que escribes ni tus proyectos: un aviso diario de que la copia sigue en uso (un identificador al azar, la versión, el sistema y Node), que siempre está encendido; un diagnóstico anónimo (qué falló, cuánto se usa y, cada cinco minutos, que la copia está abierta), que apagas en Ajustes; y el reporte automático de un error que MADRE no conoce (qué falló y en qué parte de MADRE), que viene encendido con el diagnóstico y tiene su propio interruptor. Cada envío queda anotado en tu computadora, en «Lo que se envía». El detalle está en [lo que sale de la máquina](docs/REFERENCE.md#lo-que-sale-de-la-máquina).
 
 ## Licencia
 

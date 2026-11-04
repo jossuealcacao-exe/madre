@@ -7,6 +7,7 @@ A version closes when it is on npm: until then its section is called **Unrelease
 ## 1.1.3 · Unreleased
 
 - **No other program on your computer can use MADRE in your name.** Until now any program on the computer (of any user and, in WSL2, Windows' too) could read your projects, install a module or open #4 by talking to MADRE directly. Now every request carries a ficha: a secret only your user can read. The browser MADRE opens gets it in the address and keeps it; nothing changes for you. If you open MADRE in another browser, paste the full address it wrote in the terminal. Home makes a new ficha each time it starts.
+- **«What is sent» says rightly where the signal that MADRE is open goes.** The five-minute notice that is part of the anonymous diagnostics was logged as if it went to the error-report collector, with the wrong switch. It now has its own line and says it turns off with the diagnostics. The README also names the three sends to madre.run (the daily notice, the diagnostics and the automatic error report), not two.
 
 ## 1.1.2 · 2026-11-02
 

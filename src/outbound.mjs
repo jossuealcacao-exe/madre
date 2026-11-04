@@ -105,6 +105,15 @@ export const DESTINATIONS = [
     inside: true,
   },
   {
+    // On right now (src/install-metrics.mjs): part of the diagnostics and off with them. Without its
+    // own line it fell to the collector, and the log said it went to the error reports.
+    id: 'presence', host: 'madre.run', match: (url) => url.pathname === '/api/presence', to: 'madre.run · on right now',
+    what: 'This copy\'s random identifier, the MADRE version and the system, so the author knows how many copies are open now. Nothing from your projects.',
+    when: 'every five minutes while MADRE is open',
+    where: 'Off with the anonymous diagnostics: Settings › Version and reports › Send anonymous diagnostics · or PULSE_TELEMETRY=0',
+    inside: true,
+  },
+  {
     // The Market (src/market-remote.mjs): a signed catalog, and the file of a module you get from it.
     id: 'market', host: 'madre.run', match: (url) => url.pathname.startsWith('/mercado/'), to: "madre.run · the Market",
     what: 'Nothing about you: it asks for the catalog of modules, and for the file of a module you got or that has a newer version. Every file is checked against the author\'s signature before it is used.',

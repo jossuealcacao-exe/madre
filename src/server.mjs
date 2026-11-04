@@ -4010,6 +4010,8 @@ export async function createPulseServer({
             anthropic: agents.some((agent) => agent.id === 'claude' && agent.ready),
             ollama: Boolean(ollama.running),
             alive: true,
+            // The same gate as sayHere: with the diagnostics, never from the author's own copies.
+            presence: Boolean(await diagnosticsNow()) && !(await readSecret(root, OWNER_VAULT, 'usage').catch(() => null)),
             usage: FROM_SOURCE && Boolean(await readSecret(root, OWNER_VAULT, 'usage')),
           },
         }));

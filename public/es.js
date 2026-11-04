@@ -5163,6 +5163,12 @@ export const ES = {
     'Un identificador al azar que esta copia creó para sí, la versión de MADRE, el sistema y la versión de Node. Sin nombre, sin correo, sin guardar la IP y nada de tus proyectos.',
   'once a day': 'una vez al día',
   'Always on: it is how the author knows how many people use MADRE': 'Siempre encendido: así sabe el autor cuántas personas usan MADRE',
+  'madre.run · on right now': 'madre.run · encendida ahora',
+  'This copy\'s random identifier, the MADRE version and the system, so the author knows how many copies are open now. Nothing from your projects.':
+    'El identificador al azar de esta copia, la versión de MADRE y el sistema, para que el autor sepa cuántas copias están abiertas ahora. Nada de tus proyectos.',
+  'every five minutes while MADRE is open': 'cada cinco minutos mientras MADRE está abierta',
+  'Off with the anonymous diagnostics: Settings › Version and reports › Send anonymous diagnostics · or PULSE_TELEMETRY=0':
+    'Se apaga con el diagnóstico anónimo: Ajustes › Versión y reportes › Enviar diagnóstico anónimo · o PULSE_TELEMETRY=0',
   "madre.run · the author's usage figures": 'madre.run · los números de uso del autor',
   "The author's token, to read how many copies are on and how far new ones get. Only in the author's own copy, run from source.":
     'El token del autor, para leer cuántas copias están encendidas y hasta dónde llegan las nuevas. Solo en la copia del autor, corrida desde el código fuente.',

@@ -287,5 +287,7 @@ test('outbound: madre.run is three declarations, told apart by path', () => {
   assert.equal(classify('https://madre.run/api/ping', { reportHost: 'madre.run' }).id, 'alive');
   assert.equal(classify('https://madre.run/api/usage', { reportHost: 'madre.run' }).id, 'usage');
   assert.equal(classify('https://madre.run/v1/reports', { reportHost: 'madre.run' }).id, 'reports');
+  // The presence is the diagnostics' own: it never reads as the collector of reports again.
+  assert.equal(classify('https://madre.run/api/presence', { reportHost: 'madre.run' }).id, 'presence');
   assert.equal(outboundView({ state: { alive: true } }).destinations.find((one) => one.id === 'alive').on, true);
 });

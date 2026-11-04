@@ -7,6 +7,7 @@ Una versión se cierra cuando está en npm: hasta entonces su sección se llama 
 ## 1.1.3 · Sin publicar
 
 - **Ningún otro programa de tu computadora puede usar MADRE por ti.** Hasta ahora, cualquier programa de la computadora (de cualquier usuario y, en WSL2, también los de Windows) podía leer tus proyectos, instalar un módulo o abrir #4 hablándole directo a MADRE. Ahora cada petición lleva una ficha: un secreto que solo tu usuario puede leer. El navegador que MADRE abre la recibe en la dirección y la guarda; para ti nada cambia. Si abres MADRE en otro navegador, pega la dirección completa que escribió en la terminal. Inicio hace una ficha nueva cada vez que arranca.
+- **«Lo que se envía» dice bien a dónde va la señal de que MADRE está abierta.** El aviso de cada cinco minutos que forma parte del diagnóstico anónimo se anotaba como si fuera al servicio de reportes de errores, con el interruptor equivocado. Ahora tiene su propia línea y dice que se apaga con el diagnóstico. El README también nombra los tres envíos a madre.run (el aviso diario, el diagnóstico y el reporte automático de errores), no dos.
 
 ## 1.1.2 · 2026-11-02
 
