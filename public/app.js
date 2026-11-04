@@ -6190,7 +6190,7 @@ function attachMemoryHint(event) {
     pill.type = 'button';
     pill.style.setProperty('--kind', MEMORY_COLORS[note.kind] ?? MEMORY_COLORS.fact);
     pill.append(el('b', null, kindWord(note.kind).toLowerCase()), ` ${note.text.length > 64 ? `${note.text.slice(0, 63)}…` : note.text}`);
-    pill.title = `${note.text}\n${t('Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in the memory map.', { agent, from: note.fromSequence, through: note.throughSequence })}`;
+    pill.title = `${note.text}\n${note.unsourced ? t('Saved by @{agent} for every future turn, with no source. Click to see it in the memory map.', { agent }) : t('Saved by @{agent} for every future turn · #{from}–#{through}. Click to see it in the memory map.', { agent, from: note.fromSequence, through: note.throughSequence })}`;
     pill.addEventListener('click', () => { nostromo.focusId = note.id; nostromo.button?.click(); });
     hint.append(pill);
   }
@@ -21428,8 +21428,10 @@ function showNostromoCard(node) {
   card.style.setProperty('--kind', node.color);
   cardPart(card, 'kind').textContent = askWords(kindWord(memory.kind));
   cardPart(card, 'text').textContent = memory.text;
-  cardPart(card, 'span').textContent = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
-  cardPart(card, 'agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? t(" · on the human's request") : memory.origin === 'flagged' ? t(' · flagged by {who}', { who: memory.detector ?? t('the project') }) : t(' · distilled')}`;
+  // A note an agent wrote with no source says so, never a number of the history it does not come from.
+  const noSource = memory.origin === 'noted' && !memory.sources?.length;
+  cardPart(card, 'span').textContent = noSource ? t('no source') : memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}${memory.sources?.length ? ` · cites ${memory.sources.map((n) => `#${n}`).join(' ')}` : ''}`;
+  cardPart(card, 'agent').textContent = `@${memory.agent}${memory.origin === 'noted' ? t(' · noted by the agent') : memory.origin === 'flagged' ? t(' · flagged by {who}', { who: memory.detector ?? t('the project') }) : t(' · distilled')}`;
   cardPart(card, 'when').textContent = memory.created ? new Date(memory.created).toLocaleString() : '';
   // Where it stands aboard, said where it can be seen: the word on a mark of its own and what it
   // means on the line under it. The meaning used to live only in a tooltip, which a finger never

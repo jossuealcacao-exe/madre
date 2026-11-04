@@ -556,7 +556,11 @@ export class RoomMemory {
           const target = this.#refutedBy(text);
           if (target) {
             this.#db.prepare('UPDATE memories SET contradicts = ? WHERE id = ?').run(target, id);
-            this.#db.prepare(`UPDATE memories SET refuted_by = ?, zone = '${JETTISONED}' WHERE id = ? AND refuted_by IS NULL`).run(id, target);
+            // An agent's word with no sources does not take down what the human confirmed (external
+            // review #17, 2026-11-03): the two stay linked, the confirmed note keeps standing, and
+            // the claim waits in quarantine for the human, who can retire it from the map.
+            const confirmed = origin === 'noted' && !sources.length && this.#db.prepare('SELECT zone FROM memories WHERE id = ?').get(target)?.zone === BRIDGE;
+            if (!confirmed) this.#db.prepare(`UPDATE memories SET refuted_by = ?, zone = '${JETTISONED}' WHERE id = ? AND refuted_by IS NULL`).run(id, target);
           }
         }
       }
@@ -1137,12 +1141,33 @@ export function normalizeMemory(text) {
 }
 
 // The block an agent reads for distilled memories: kind, where it came from, the note.
+// A note an agent wrote with memory_note and no sources (external review #15, 2026-11-03). It is
+// kept with the last number of the history as its span, which reads exactly like a note distilled
+// from that exchange: it is never shown with that number, only as what it is.
+export function unsourced(memory) {
+  if (memory?.origin !== 'noted') return false;
+  let sources = memory.sources;
+  if (typeof sources === 'string') { try { sources = JSON.parse(sources); } catch { sources = []; } }
+  return !(Array.isArray(sources) && sources.length);
+}
+// Where the span of a note points, or that it points nowhere.
+export function memorySpan(memory) {
+  if (unsourced(memory)) return 'no source';
+  return memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}`;
+}
+// Where a note came from, said to the agent that reads it (external review #15): distilled from the
+// history is the usual and goes unsaid; written by an agent, or confirmed by the human, is said.
+const provenance = (memory) => [
+  memory.origin === 'noted' && memory.agent ? `noted by @${memory.agent}` : null,
+  memory.zone === BRIDGE ? 'confirmed by the human' : null,
+].filter(Boolean).map((words) => ` · ${words}`).join('');
+
 export function formatMemories(list) {
   if (!list?.length) return '';
   return list.map((memory) => {
-    const span = memory.fromSequence === memory.throughSequence ? `#${memory.fromSequence}` : `#${memory.fromSequence}–#${memory.throughSequence}`;
-    if (memory.kind === ABERRATION) return `- [${memory.kind} · ${span}] FALSE: ${memory.text}${memory.correction ? ` — what is true: ${memory.correction}` : ''}`;
-    return `- [${memory.kind} · ${span}] ${memory.text}`;
+    const span = memorySpan(memory);
+    if (memory.kind === ABERRATION) return `- [${memory.kind} · ${span}${provenance(memory)}] FALSE: ${memory.text}${memory.correction ? ` — what is true: ${memory.correction}` : ''}`;
+    return `- [${memory.kind} · ${span}${provenance(memory)}] ${memory.text}`;
   }).join('\n');
 }
 

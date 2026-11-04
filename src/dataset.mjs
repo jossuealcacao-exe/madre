@@ -10,7 +10,7 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { redact } from './sentinel-errors.mjs';
-import { ABERRATION, VERDICTS, NEGATIVE_VERDICTS, POSITIVE_VERDICTS, travels } from './memory.mjs';
+import { ABERRATION, VERDICTS, NEGATIVE_VERDICTS, POSITIVE_VERDICTS, travels, unsourced } from './memory.mjs';
 
 const MIN_ANSWER_CHARS = 40;
 
@@ -118,7 +118,8 @@ export function pairsFromNotes(notes, { project = 'project', home, user, privacy
     messages: [
       { role: 'system', content: `You are @madre, the memory of the MADRE room of the project "${project}". Answer only from what the room decided and recorded.` },
       { role: 'user', content: `What does the room remember about this? Kind: ${note.kind}. Topic: ${clean(redact(note.text, { home, user })).split(/[.;:]/)[0].slice(0, 80)}` },
-      { role: 'assistant', content: `${clean(redact(note.text, { home, user }))} [#${note.fromSequence}${note.throughSequence !== note.fromSequence ? `–#${note.throughSequence}` : ''}]` },
+      // A note with no source is not taught with a citation it does not have (external review #15).
+      { role: 'assistant', content: `${clean(redact(note.text, { home, user }))}${unsourced(note) ? '' : ` [#${note.fromSequence}${note.throughSequence !== note.fromSequence ? `–#${note.throughSequence}` : ''}]`}` },
     ],
   }));
 }

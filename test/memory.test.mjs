@@ -1582,3 +1582,49 @@ test('the archivist sets a batch aside only for failing on its own, never for a 
   assert.equal(passingFailure(new Error('Unexpected token < in JSON at position 0')), false);
   assert.equal(passingFailure(new Error('Codex exited with code 1')), false);
 });
+
+// External review #15 and #17 (2026-11-03): a note an agent wrote with no sources is said as such,
+// never with a number of the history; and its word alone does not take down what the human confirmed.
+test('memory: a note with no source says so, and an agent\'s unsourced refutation spares a confirmed note', async () => {
+  const { formatMemories, memorySpan, unsourced } = await import('../src/memory.mjs');
+  const { pairsFromNotes } = await import('../src/dataset.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'pulse-memory-source-'));
+  try {
+    const store = await new EventStore(join(root, 'events.jsonl')).initialize();
+    await store.append('message.created', { messageId: 'a', role: 'user', sender: 'you', target: 'codex', text: 'We deploy every Friday at noon from the release branch.' });
+    await store.append('message.created', { messageId: 'b', role: 'assistant', sender: 'codex', target: 'you', text: 'Understood: Friday noon, release branch.' });
+    const memory = await new RoomMemory(join(root, 'memory.sqlite')).initialize(store);
+    const context = { memory, projectRoot: root, agent: 'codex', mode: '1', messageId: 'resp-9' };
+    await callTool('memory_note', { kind: 'fact', text: 'The staging database is reset nightly.' }, context);
+    await callTool('memory_note', { kind: 'fact', text: 'The release branch is protected.', sources: [2] }, context);
+    const notes = memory.memories();
+    const loose = notes.find((note) => note.text.startsWith('The staging'));
+    const cited = notes.find((note) => note.text.startsWith('The release'));
+    assert.equal(unsourced(loose), true);
+    assert.equal(unsourced(cited), false);
+    assert.equal(memorySpan(loose), 'no source');
+    assert.equal(formatMemories([loose]), '- [fact · no source · noted by @codex] The staging database is reset nightly.');
+    assert.equal(formatMemories([cited]), '- [fact · #2 · noted by @codex] The release branch is protected.');
+    // Taught without a citation it does not have; a sourced one keeps its own.
+    const pairs = pairsFromNotes([loose, cited]);
+    assert.equal(pairs[0].messages.at(-1).content, 'The staging database is reset nightly.');
+    assert.match(pairs[1].messages.at(-1).content, /\[#2\]$/);
+
+    // A distilled note the human confirmed, then an agent's unsourced word that it is false.
+    memory.addMemories([{ kind: 'decision', text: 'We deploy every Friday at noon from the release branch.', sources: [1] }], { agent: 'archivist', fromSequence: 1, throughSequence: 1 });
+    const decision = memory.memories({ kind: 'decision' })[0];
+    memory.judge('a', 'good');
+    assert.equal(memory.memories({ kind: 'decision' })[0].zone, BRIDGE);
+    assert.match(formatMemories([memory.memories({ kind: 'decision' })[0]]), /^- \[decision · #1 · confirmed by the human\]/);
+    await callTool('memory_note', { kind: 'aberration', text: 'We deploy every Friday at noon from the release branch.' }, context);
+    const claim = memory.memories({ kind: 'aberration' })[0];
+    assert.equal(claim.zone, MEDBAY, 'the claim waits in quarantine');
+    assert.equal(claim.contradicts, decision.id, 'linked, for the human to see');
+    const still = memory.memories({ kind: 'decision' })[0];
+    assert.equal(still.zone, BRIDGE, 'what the human confirmed still stands');
+    assert.equal(still.refutedBy, null);
+    memory.close();
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 60 });
+  }
+});

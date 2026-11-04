@@ -15,7 +15,7 @@ import { UsageSentinel } from './usage-sentinel.mjs';
 import { BLOCK_SOURCES, buildPrompt, promptParts, sparedChars, wantsModule } from './room/prompt.mjs';
 import { turnCost, observedRate } from './room/economy.mjs';
 import { contextFor } from './room/context.mjs';
-import { VERDICTS, travels } from './memory.mjs';
+import { VERDICTS, travels, unsourced } from './memory.mjs';
 import { coldNotes, coldReading } from './cold.mjs';
 import { questionsFor } from './asking.mjs';
 import { coverageExam, consistencyExam, matchExam, exchanges, MATCH_SAMPLE, saysFor } from './exam.mjs';
@@ -2063,7 +2063,7 @@ export class Room {
       if (this.#memory && turnMode !== 0) {
         const noted = this.#memory.notesSince(notesBefore, { agent: agent.id });
         if (noted.length) {
-          await this.#emit('memory.noted', { agent: agent.id, messageId, responseMessageId, notes: noted.map((note) => ({ id: note.id, kind: note.kind, text: note.text, fromSequence: note.fromSequence, throughSequence: note.throughSequence })), total: this.#memory.memoryCount() });
+          await this.#emit('memory.noted', { agent: agent.id, messageId, responseMessageId, notes: noted.map((note) => ({ id: note.id, kind: note.kind, text: note.text, fromSequence: note.fromSequence, throughSequence: note.throughSequence, unsourced: unsourced(note) })), total: this.#memory.memoryCount() });
           this.#vectors.schedule();
         }
       }

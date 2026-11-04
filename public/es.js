@@ -2930,7 +2930,9 @@ export const ES = {
     'Están tan relacionadas que, al usar esta, también se usa la otra ({pct}%).',
   " · in MADRE's own folder ({prefix}), no administrator needed":
     ' · en la carpeta propia de MADRE ({prefix}), sin necesidad de administrador',
-  " · on the human's request": ' · a petición del humano',
+  ' · noted by the agent': ' · anotada por el agente',
+  'no source': 'sin fuente',
+  'Saved by @{agent} for every future turn, with no source. Click to see it in the memory map.': 'Guardada por @{agent} para todos los turnos que vienen, sin fuente. Haz clic para verla en el mapa de memoria.',
   'Preview reports an error in the page: {message}{where}. Find the cause and propose the fix.':
     'La vista previa reporta un error en la página: {message}{where}. Encuentra la causa y propón el arreglo.',
   '@madre runs on this machine and speaks for what the project remembers. "@madre, ask the agents …" opens a round with every agent online. To change files, write to one of the coding agents.':
