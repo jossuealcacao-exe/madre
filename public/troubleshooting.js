@@ -834,6 +834,19 @@ export const CONDITIONS = [
     },
   },
   {
+    // Seen in the diagnostics of 1.1.2 (2026-11-03), in WSL: an install of Ollama cut by the time
+    // limit or the network left the program without what runs the models.
+    id: 'ollama-halfway',
+    code: 'MU-076',
+    agent: 'madre',
+    severity: 'blocking',
+    title: 'Ollama was left installed halfway',
+    match: /llama-server binary not found/i,
+    diagnosis: 'Ollama\'s install stopped before it finished, usually because the download (more than a GB) was cut by the network or ran out of time. The program is there but the part that runs the models is not, so every answer of @madre fails.',
+    remedy: 'Install Ollama again from Settings › Local AI: it downloads it whole and finishes it. Your models stay where they are.',
+    fixes: { darwin: ['# Home → Settings → Local AI → Install'], linux: ['# Home → Settings → Local AI → Install', '# or in a terminal:', 'curl -fsSL https://ollama.com/install.sh | sh'] },
+  },
+  {
     id: 'model-download',
     code: 'MU-068',
     severity: 'transient',

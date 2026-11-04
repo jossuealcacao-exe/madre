@@ -2138,14 +2138,14 @@ export async function createPulseServer({
           // Getting Ollama onto this computer, with the command in plain sight, and waking it.
           install: async () => {
             if (installing) return { ok: false, error: t('Another install is running. Wait for it to finish and try again.') };
-            const { ollamaInstallPlan, adminHere } = await import('./modules/ollama.mjs');
+            const { ollamaInstallPlan, adminHere, OLLAMA_INSTALL_MS } = await import('./modules/ollama.mjs');
             const plan = ollamaInstallPlan({ brew: await findOnPath('brew'), admin: await adminHere(), zstd: Boolean(await findOnPath('zstd')), apt: Boolean(await findOnPath('apt-get')) });
             if (!plan.command) return { ok: false, error: plan.note, download: plan.download, manual: plan.manual ? plan.display : null };
             installing = 'ollama'; installingSince = Date.now();
             await room.record('extension.install.started', { id: 'ollama', name: 'OLLAMA', command: plan.display, platforms: [], alreadyInstalled: false });
             void (async () => {
               const lines = [];
-              const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { lines.push(line); void room.record('extension.install.output', { id: 'ollama', lines: [line.slice(0, 500)] }); } });
+              const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: OLLAMA_INSTALL_MS, onLine: (line) => { lines.push(line); void room.record('extension.install.output', { id: 'ollama', lines: [line.slice(0, 500)] }); } });
               const status = await wireOllama();
               await room.record('extension.install.finished', { id: 'ollama', name: 'OLLAMA', ok: result.code === 0, installed: Boolean(await findOnPath('ollama')), detail: result.code === 0 ? 'Ollama installed · START it to wake it' : (result.error ?? `exit ${result.code}`), trouble: result.code === 0 ? null : installTrouble(`${result.error ?? ''}\n${lines.slice(-20).join('\n')}`), ollama: status });
               installing = null;
@@ -4511,7 +4511,7 @@ export async function createPulseServer({
         installing = module.id; installingSince = Date.now();
         await room.record('extension.install.started', { id: module.id, name: item.name, command: plan.display, platforms: [], alreadyInstalled: true });
         void (async () => {
-          const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: 900000, onLine: (line) => { void room.record('extension.install.output', { id: module.id, lines: [String(line).slice(0, 500)] }); } });
+          const result = await runInstaller({ command: plan.command, args: plan.args, projectRoot: canonicalProjectRoot, timeoutMs: plan.timeoutMs ?? 900000, onLine: (line) => { void room.record('extension.install.output', { id: module.id, lines: [String(line).slice(0, 500)] }); } });
           // What the plan does once the command is done (Ollama: restart the old server). If it could
           // not, that is the outcome: «now runs <the old version>» would read as an update that worked.
           const settled = result.code === 0 ? await (async () => plan.after?.())().catch((error) => ({ ok: false, error: error.message })) : null;

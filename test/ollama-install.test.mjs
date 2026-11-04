@@ -66,3 +66,42 @@ test('Linux without zstd: the line installs zstd first, and the one handed over 
   assert.equal(ollamaInstallPlan({ platform: 'linux', admin: true, zstd: true, apt: true }).display, SCRIPT);
   assert.equal(ollamaInstallPlan({ platform: 'linux', admin: true, zstd: false, apt: false }).display, SCRIPT);
 });
+
+// D-2 (diagnostics of 1.1.2, 2026-11-03): Ollama's script deletes lib/ollama and unpacks the whole
+// bundle in one stream. Cut halfway, bin/ollama stays without llama-server, or cannot run.
+test('ollama · an install cut halfway is seen as not installed, gets an hour, and its error is named', async () => {
+  const { mkdtemp, mkdir, writeFile, chmod, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { ollamaHalfway, ollamaUpdatePlan, OLLAMA_INSTALL_MS } = await import('../src/modules/ollama.mjs');
+  const { realpath } = await import('node:fs/promises');
+  // The real path: on macOS the temporary folder is reached through a link (/var → /private/var).
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'madre-ollama-half-')));
+  try {
+    const binary = join(root, 'bin', 'ollama');
+    await mkdir(join(root, 'bin'), { recursive: true });
+    await writeFile(binary, '#!/bin/sh\n');
+    await chmod(binary, 0o755);
+    const here = { platform: 'linux', scriptRoot: root };
+    assert.equal(await ollamaHalfway(binary, here), true, 'no lib/ollama beside it');
+    await mkdir(join(root, 'lib', 'ollama'), { recursive: true });
+    assert.equal(await ollamaHalfway(binary, here), true, 'lib/ollama empty');
+    await writeFile(join(root, 'lib', 'ollama', 'llama-server'), '');
+    assert.equal(await ollamaHalfway(binary, here), false, 'whole');
+    await chmod(binary, 0o644);
+    assert.equal(await ollamaHalfway(binary, here), true, 'a binary that cannot run');
+    await chmod(binary, 0o755);
+    // Elsewhere (Homebrew, a package, the Mac) the layout is not the script's: never called halfway.
+    await rm(join(root, 'lib'), { recursive: true });
+    assert.equal(await ollamaHalfway(binary, { platform: 'linux', scriptRoot: '/usr/local' }), false);
+    assert.equal(await ollamaHalfway(binary, { platform: 'darwin', scriptRoot: root }), false);
+    assert.equal(await ollamaHalfway(null, here), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+  assert.equal(OLLAMA_INSTALL_MS, 3600000);
+  assert.equal(ollamaUpdatePlan({ platform: 'linux' }).timeoutMs, OLLAMA_INSTALL_MS);
+  const { diagnose } = await import('../public/troubleshooting.js');
+  const said = 'Ollama HTTP 500: {"error":"error starting llama-server: llama-server binary not found (checked: /usr/local/lib/ollama/llama-server)"}';
+  assert.ok(diagnose(said, 'madre').some((one) => one.code === 'MU-076'));
+});

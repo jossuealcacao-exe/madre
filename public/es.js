@@ -5716,6 +5716,17 @@ export const ES = {
   'Codex has reached its usage limit': 'Codex llegó a su límite de uso',
   // MU-075 (2026-11-03): un modelo que la cuenta de ChatGPT no incluye.
   'Codex does not offer that model on this account': 'Codex no ofrece ese modelo en esta cuenta',
+  // MU-076 y la tarjeta de IA local (2026-11-03): Ollama instalado a medias.
+  'Ollama was left installed halfway': 'Ollama quedó instalado a medias',
+  "Ollama's install stopped before it finished, usually because the download (more than a GB) was cut by the network or ran out of time. The program is there but the part that runs the models is not, so every answer of @madre fails.":
+    'La instalación de Ollama se detuvo antes de terminar, casi siempre porque la descarga (más de 1 GB) se cortó o se quedó sin tiempo. El programa está, pero falta la parte que corre los modelos, así que cada respuesta de @madre falla.',
+  'Install Ollama again from Settings › Local AI: it downloads it whole and finishes it. Your models stay where they are.':
+    'Instala Ollama de nuevo desde Ajustes › IA local: lo descarga completo y lo termina. Tus modelos se quedan donde están.',
+  '# Home → Settings → Local AI → Install': '# Inicio → Ajustes → IA local → Instalar',
+  '# or in a terminal:': '# o en una terminal:',
+  'Ollama was left installed halfway (the download stopped). Installing it again finishes it; your models stay where they are.':
+    'Ollama quedó instalado a medias (la descarga se detuvo). Instalarlo de nuevo lo termina; tus modelos se quedan donde están.',
+  'installed halfway · INSTALL it again here': 'instalado a medias · instálalo de nuevo aquí',
   '# the models your account lists: ~/.codex/models_cache.json': '# los modelos que lista tu cuenta: ~/.codex/models_cache.json',
   'The model chosen for this turn is not one your ChatGPT account can use in Codex, so Codex refused the turn before starting. Nothing in the project changed.':
     'El modelo elegido para este turno no es uno que tu cuenta de ChatGPT pueda usar en Codex, así que Codex rechazó el turno antes de empezar. No cambió nada en el proyecto.',

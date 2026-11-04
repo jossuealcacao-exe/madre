@@ -4,6 +4,8 @@
 // Ollama runs. The server offers the wiring through ctx.services.ollama.
 
 import { execFile } from 'node:child_process';
+import { access, constants, readdir, realpath } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { defineModule } from './sdk.mjs';
 import { t } from '../i18n.mjs';
 import { findOnPath } from './helpers.mjs';
@@ -73,9 +75,30 @@ export function ollamaUpdatePlan({ platform = process.platform, brew = null, adm
   }
   if (platform === 'linux') {
     if (!admin) return { command: null, manual: true, display: script.replace('sudo -n ', 'sudo '), note: `${t(NEEDS_PASSWORD)} ${t('Your models stay where they are.')}` };
-    return { command: 'sh', args: ['-c', script], display: script, note: "Ollama's own install script upgrades in place. Your models stay where they are." };
+    return { command: 'sh', args: ['-c', script], display: script, timeoutMs: OLLAMA_INSTALL_MS, note: "Ollama's own install script upgrades in place. Your models stay where they are." };
   }
   return { command: null, download: 'https://ollama.com/download', display: null, note: 'Download the newer Ollama from ollama.com and run it. Your models stay where they are.' };
+}
+
+// How long Ollama's script may take (D-2, 2026-11-03): it streams a bundle of more than a GB, and on
+// a slow line inside WSL fifteen minutes ran out halfway (diagnostics of 1.1.2: «timeout»).
+export const OLLAMA_INSTALL_MS = 60 * 60 * 1000;
+
+// An install that stopped halfway (D-2, 2026-11-03). Ollama's script first deletes lib/ollama and
+// then unpacks the whole bundle in one stream; cut by the time limit or the network, it leaves
+// bin/ollama with no llama-server beside it («llama-server binary not found», 1.1.2) or a binary
+// this user cannot run (EACCES). Either reads as installed, and every answer of @madre failed. Seen
+// as halfway, the card offers the install again, which finishes it. Only Linux, and only where the
+// script installs (`scriptRoot`): Homebrew, the Mac app or a distribution's package lay it out
+// otherwise.
+export async function ollamaHalfway(binary, { platform = process.platform, scriptRoot = '/usr/local' } = {}) {
+  if (!binary || platform !== 'linux') return false;
+  try { await access(binary, constants.X_OK); } catch { return true; }
+  const real = await realpath(binary).catch(() => binary);
+  const root = dirname(dirname(real));
+  if (root !== scriptRoot) return false;
+  const lib = await readdir(join(root, 'lib', 'ollama')).catch(() => null);
+  return !lib?.length;
 }
 
 // Waking it: the same command on every system, and the app on macOS does it too.
@@ -84,11 +107,17 @@ export const ollamaStartPlan = () => ({ command: 'ollama', args: ['serve'], disp
 // What the room needs to know about the local brain: its own state, whether it is even on this
 // computer, and the one step that moves it forward. The card and the routes share this.
 export async function ollamaView(probe, settings) {
-  const binary = await findOnPath('ollama');
+  const found = await findOnPath('ollama');
+  // Halfway is not installed: no binary for the card, which offers the install again, and the path
+  // kept apart so it can say what it found.
+  const halfway = await ollamaHalfway(found) ? found : null;
+  const binary = halfway ? null : found;
   // The sudo question is only worth asking while there is something to install.
   const admin = binary ? true : await adminHere();
-  return { ...probe, settings, binary, install: ollamaInstallPlan({ brew: await findOnPath('brew'), admin, zstd: Boolean(await findOnPath('zstd')), apt: Boolean(await findOnPath('apt-get')) }), start: ollamaStartPlan() };
+  const install = ollamaInstallPlan({ brew: await findOnPath('brew'), admin, zstd: Boolean(await findOnPath('zstd')), apt: Boolean(await findOnPath('apt-get')) });
+  return { ...probe, settings, binary, ...(halfway ? { halfway } : {}), install: halfway && install.command ? { ...install, note: t(HALFWAY_NOTE) } : install, start: ollamaStartPlan() };
 }
+const HALFWAY_NOTE = 'Ollama was left installed halfway (the download stopped). Installing it again finishes it; your models stay where they are.';
 
 export default defineModule({
   id: 'ollama',
@@ -108,7 +137,7 @@ export default defineModule({
     const roles = [settings.embeddings && probe.embedModel ? `${t('smart search')} · ${probe.embedModel}` : null, settings.archivist && probe.chatModel ? `${t('archivist')} · ${probe.chatModel}` : null, settings.agent !== false && probe.chatModel ? t('@madre in the project') : null].filter(Boolean);
     // Home can leave this one project without the local AI while the module stays on (src/local-ai.mjs).
     const project = await ctx.services.ollama?.project?.() ?? { on: true };
-    const detail = !probe.running ? (binary ? t('installed, not running · START it here') : t('not installed · INSTALL it here'))
+    const detail = !probe.running ? (binary ? t('installed, not running · START it here') : view.halfway ? t('installed halfway · INSTALL it again here') : t('not installed · INSTALL it here'))
       : !settings.enabled ? t('off · {n} models available', { n: probe.models.length })
         : !project.on ? t('off in this project · Home › Settings › Local AI')
         : roles.length ? `${t('on')} · ${roles.join(' · ')}` : t('on · no usable model yet · PULL one');
